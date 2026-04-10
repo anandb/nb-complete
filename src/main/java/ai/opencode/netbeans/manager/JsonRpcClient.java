@@ -24,13 +24,14 @@ public class JsonRpcClient {
     private final AtomicLong nextId = new AtomicLong(0);
     private final Map<Long, CompletableFuture<JsonNode>> pendingRequests = new ConcurrentHashMap<>();
     private final Map<String, Consumer<JsonNode>> notificationListeners = new ConcurrentHashMap<>();
-    private boolean running = true;
+    private volatile boolean running = true;
+    private final Thread readerThread;
 
     public JsonRpcClient(Process process) {
         this.writer = new PrintWriter(process.getOutputStream(), true);
         this.reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
         
-        Thread readerThread = new Thread(this::readLoop, "OpenCode-JSONRPC-Reader");
+        readerThread = new Thread(this::readLoop, "OpenCode-JSONRPC-Reader");
         readerThread.setDaemon(true);
         readerThread.start();
     }
@@ -104,7 +105,9 @@ public class JsonRpcClient {
             CompletableFuture<JsonNode> future = pendingRequests.remove(id);
             if (future != null) {
                 if (node.has("error")) {
-                    future.completeExceptionally(new RuntimeException(node.get("error").toString()));
+                    JsonNode errNode = node.get("error");
+                    String errMsg = errNode.has("message") ? errNode.get("message").asText() : errNode.toString();
+                    future.completeExceptionally(new RuntimeException(errMsg));
                 } else if (node.has("result")) {
                     future.complete(node.get("result"));
                 } else {
@@ -123,6 +126,9 @@ public class JsonRpcClient {
 
     public void close() {
         running = false;
+        if (readerThread != null) {
+            readerThread.interrupt();
+        }
         writer.close();
         try {
             reader.close();

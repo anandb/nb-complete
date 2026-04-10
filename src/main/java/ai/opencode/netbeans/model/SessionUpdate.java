@@ -25,7 +25,21 @@ public record SessionUpdate(
         Message message,
         List<Agent> agents,
         List<Session> sessions,
-        Boolean isThinking
+        Boolean isThinking,
+        List<AvailableCommand> availableCommands,
+        List<Session.SessionConfigOption> configOptions
+    ) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record AvailableCommand(
+        String name,
+        String description,
+        AvailableCommandInput input
+    ) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record AvailableCommandInput(
+        String hint
     ) {}
 
     // Convenience methods to maintain backward compatibility in some logic if needed

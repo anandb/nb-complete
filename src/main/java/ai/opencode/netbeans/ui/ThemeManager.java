@@ -8,20 +8,26 @@ public class ThemeManager {
     public static class Theme {
         public Color background;
         public Color foreground;
+        public Color assistantForeground;
         public Color bubbleUser;
         public Color bubbleAssistant;
         public Color bubbleBorder;
         public Color selection;
+        public Color accent;
+        public Color ghostBackground;
         
-        public String toCss() {
-            String fg = toHtmlHex(foreground);
+        public String toCss(Color bubbleBg, boolean isAssistant) {
+            String fg = toHtmlHex(isAssistant ? assistantForeground : foreground);
             String sel = toHtmlHex(selection);
+            String bg = bubbleBg != null ? toHtmlHex(bubbleBg) : "transparent";
             
-            return "body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 13px; color: " + fg + "; background-color: transparent; margin: 0; line-height: 1.4; }" +
-                   "code { background-color: rgba(128,128,128,0.15); padding: 2px 4px; border-radius: 3px; font-family: 'JetBrains Mono', 'Cascadia Code', monospace; }" +
-                   "pre { background-color: rgba(0,0,0,0.05); padding: 10px; border-radius: 6px; border: 1px solid rgba(128,128,128,0.2); overflow-x: auto; }" +
-                   "p { margin: 2px 0; }" +
-                   "a { color: " + sel + "; text-decoration: none; }" +
+            return "body { font-family: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; color: " + fg + "; background-color: " + bg + "; margin: 0; line-height: 1.6; }" +
+                   "code { background-color: rgba(128,128,128,0.12); padding: 2px 5px; border-radius: 4px; font-family: 'JetBrains Mono', 'Cascadia Code', monospace; font-size: 13px; }" +
+                   "pre { background-color: #e9e9d0; padding: 12px; border-radius: 8px; border: 1px solid rgba(128,128,128,0.15); overflow-x: auto; margin: 12px 0; }" +
+                   "p { margin: 8px 0; }" +
+                   "ul, ol { padding-left: 20px; margin: 8px 0; }" +
+                   "li { margin: 4px 0; }" +
+                   "a { color: " + sel + "; text-decoration: none; font-weight: 500; }" +
                    "a:hover { text-decoration: underline; }";
         }
         
@@ -41,6 +47,9 @@ public class ThemeManager {
         if (fg == null) fg = UIManager.getColor("Label.foreground");
         theme.foreground = fg;
         
+        // Assistant text: Dark Brown (#3C2A21 or similar premium dark brown)
+        theme.assistantForeground = new Color(0x3C2A21);
+        
         Color sel = UIManager.getColor("TextArea.selectionBackground");
         if (sel == null) sel = UIManager.getColor("textHighlight");
         if (sel == null) sel = new Color(0, 120, 215);
@@ -51,8 +60,11 @@ public class ThemeManager {
         // Assistant bubble: No background (transparent)
         theme.bubbleAssistant = null;
         // Border: No border for assistant, but keep a subtle one for user if desired?
-        // Let's set it to null for assistant logic.
         theme.bubbleBorder = new Color(0, 0, 0, 0); // Transparent
+        
+        // Custom UI accents
+        theme.accent = theme.selection;
+        theme.ghostBackground = new Color(fg.getRed(), fg.getGreen(), fg.getBlue(), 15);
         
         return theme;
     }

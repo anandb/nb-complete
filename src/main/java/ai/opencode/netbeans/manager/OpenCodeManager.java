@@ -13,10 +13,12 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.netbeans.api.project.Project;
+import org.netbeans.api.project.ui.OpenProjects;
+import org.openide.util.NbPreferences;
 
 public class OpenCodeManager {
     private static final Logger LOG = Logger.getLogger(OpenCodeManager.class.getName());
-    private static final String BINARY_PATH = "/home/anand/.opencode/bin/opencode";
     private static OpenCodeManager instance;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -28,6 +30,7 @@ public class OpenCodeManager {
     private final List<Consumer<SessionUpdate>> sseListeners = new CopyOnWriteArrayList<>();
     private final List<Consumer<String>> projectChangeListeners = new CopyOnWriteArrayList<>();
     private String activeProjectDir;
+    private final List<SessionUpdate.AvailableCommand> availableCommands = new CopyOnWriteArrayList<>();
 
     private OpenCodeManager() {
         startServer();
@@ -43,7 +46,9 @@ public class OpenCodeManager {
     private void startServer() {
         LOG.info("Starting OpenCode ACP server...");
         try {
-            String binaryPath = BINARY_PATH;
+            String defaultPath = System.getProperty("user.home") + "/.opencode/bin/opencode";
+            String binaryPath = NbPreferences.forModule(ai.opencode.netbeans.ui.OpenCodeOptionsPanel.class)
+                    .get("opencodeExecutablePath", defaultPath);
             LOG.log(Level.INFO, "Binary path: {0}", binaryPath);
             
             java.io.File binaryFile = new java.io.File(binaryPath);
@@ -63,6 +68,22 @@ public class OpenCodeManager {
                 try {
                     SessionUpdate.Params sessionParams = objectMapper.treeToValue(params, SessionUpdate.Params.class);
                     SessionUpdate update = new SessionUpdate("2.0", "session/update", sessionParams);
+                    
+                    // Update available commands if present
+                    if (update.update() != null && "available_commands_update".equals(update.update().type())) {
+                        if (update.update().availableCommands() != null) {
+                            availableCommands.clear();
+                            availableCommands.addAll(update.update().availableCommands());
+                        }
+                    }
+                    
+                    // Update session configurations if present
+                    if (update.update() != null && "config_options_update".equals(update.update().type())) {
+                        if (update.update().configOptions() != null) {
+                            // Forward this update to UI via the SSE listener
+                        }
+                    }
+                    
                     notifyListeners(update);
                 } catch (Exception e) {
                     LOG.log(Level.WARNING, "Failed to parse session/update notification: " + e.getMessage(), e);
@@ -89,6 +110,7 @@ public class OpenCodeManager {
             )
         );
         rpcClient.sendRequest("initialize", params)
+                .orTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
                 .thenAccept(res -> {
                     this.initialized = true;
                     readyFuture.complete(null);
@@ -97,6 +119,7 @@ public class OpenCodeManager {
                 .exceptionally(ex -> {
                     LOG.log(Level.SEVERE, "Failed to initialize OpenCode ACP", ex);
                     readyFuture.completeExceptionally(ex);
+                    stopServer();
                     return null;
                 });
     }
@@ -104,6 +127,7 @@ public class OpenCodeManager {
     private void stopServer() {
         if (rpcClient != null) {
             rpcClient.close();
+            rpcClient = null;
         }
         if (serverProcess != null && serverProcess.isAlive()) {
             serverProcess.destroy();
@@ -138,10 +162,35 @@ public class OpenCodeManager {
 
     public CompletableFuture<Session> createSession(String cwd) {
         if (rpcClient == null) return CompletableFuture.failedFuture(new RuntimeException("Server not started"));
-        String effectiveCwd = (cwd != null) ? cwd : activeProjectDir;
+        
+        String effectiveCwd = cwd;
+
+        // 1. Try provided CWD
+        // 2. Fallback to activeProjectDir (synchronized by OpenCodeProjectManager)
+        if (effectiveCwd == null) {
+            effectiveCwd = activeProjectDir;
+        }
+        
+        // 3. Last ditch attempt to get it directly from NetBeans APIs
+        if (effectiveCwd == null) {
+            Project main = OpenProjects.getDefault().getMainProject();
+            if (main != null && main.getProjectDirectory() != null) {
+                effectiveCwd = main.getProjectDirectory().getPath();
+            } else {
+                Project[] open = OpenProjects.getDefault().getOpenProjects();
+                if (open != null && open.length > 0 && open[0].getProjectDirectory() != null) {
+                    effectiveCwd = open[0].getProjectDirectory().getPath();
+                }
+            }
+        }
+
+        // 4. Default to system user dir if all else fails
         if (effectiveCwd == null) {
             effectiveCwd = System.getProperty("user.dir");
         }
+
+        LOG.log(Level.INFO, "Creating new session with CWD: {0}", effectiveCwd);
+
         Map<String, Object> params = Map.of(
             "cwd", effectiveCwd,
             "mcpServers", List.of()
@@ -186,6 +235,13 @@ public class OpenCodeManager {
         return rpcClient.sendRequest("session/cancel", Map.of("sessionId", sessionId))
                 .thenApply(v -> null);
     }
+
+    public CompletableFuture<Void> deleteSession(String sessionId) {
+        if (rpcClient == null) return CompletableFuture.failedFuture(new RuntimeException("Server not started"));
+        // Using session/close as the standard termination method
+        return rpcClient.sendRequest("session/close", Map.of("sessionId", sessionId))
+                .thenApply(v -> null);
+    }
     
     // Placeholder for completions - need to verify method name
     public CompletableFuture<JsonNode> getCompletions(String sessionId, String text, int line, int column) {
@@ -198,6 +254,17 @@ public class OpenCodeManager {
         );
         // Trying completion/inline as a best guess for ACP
         return rpcClient.sendRequest("completion/inline", params);
+    }
+
+    public CompletableFuture<Void> setSessionConfigOption(String sessionId, String configId, String value) {
+        if (rpcClient == null) return CompletableFuture.failedFuture(new RuntimeException("Server not started"));
+        Map<String, Object> params = Map.of(
+            "sessionId", sessionId,
+            "configId", configId,
+            "value", value
+        );
+        return rpcClient.sendRequest("session/set_config_option", params)
+                .thenApply(v -> null);
     }
 
     public void setActiveProject(String path) {
@@ -213,6 +280,10 @@ public class OpenCodeManager {
 
     public void addProjectChangeListener(Consumer<String> listener) {
         projectChangeListeners.add(listener);
+    }
+
+    public List<SessionUpdate.AvailableCommand> getAvailableCommands() {
+        return new ArrayList<>(availableCommands);
     }
 
     public boolean isInitialized() {
