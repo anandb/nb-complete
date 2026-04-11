@@ -21,7 +21,7 @@ public class ThemeManager {
             String sel = toHtmlHex(getSelection());
             String bg = bubbleBg != null ? toHtmlHex(bubbleBg) : "transparent";
 
-            return "body { font-family: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; color: " + fg + "; background-color: " + bg + "; margin: 0; line-height: 1.6; }" +
+            return "body { font-family: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; color: " + fg + "; background-color: " + bg + "; margin: 0 0 8px 0; line-height: 1.6; }" +
                    "code { background-color: rgba(128,128,128,0.12); padding: 2px 5px; border-radius: 4px; font-family: 'AtkynsonMono NFP Medium', 'JetBrains Mono', 'Cascadia Code', monospace; font-size: 13px; }" +
                    "pre { background-color: #e9e9d0; padding: 12px; border-radius: 8px; border: 1px solid rgba(128,128,128,0.15); overflow-x: auto; margin: 12px 0; }" +
                    "p { margin: 8px 0; }" +

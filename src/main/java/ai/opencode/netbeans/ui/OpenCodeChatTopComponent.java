@@ -76,12 +76,12 @@ public final class OpenCodeChatTopComponent extends TopComponent {
     @ActionRegistration(displayName = "#CTL_OpenCodeChatAction")
     @ActionReferences({
         @ActionReference(path = "Menu/Window"),
-        @ActionReference(path = "Shortcuts", name = "D-L")
+        @ActionReference(path = "Shortcuts", name = "C-L")
     })
     public static final class OpenCodeToggleAction implements ActionListener {
         @Override
         public void actionPerformed(ActionEvent e) {
-            TopComponent tc = WindowManager.getDefault().findTopComponent("OpenCodeChatTopComponent");
+            TopComponent tc = findInstance();
             if (tc != null) {
                 if (tc.isOpened() && tc.isShowing() && WindowManager.getDefault().getRegistry().getActivated() == tc) {
                     tc.close();
@@ -501,6 +501,11 @@ public final class OpenCodeChatTopComponent extends TopComponent {
                 if (text != null && !text.isEmpty()) {
                     if ("agent_thought_chunk".equals(type)) {
                         SwingUtilities.invokeLater(() -> statusLabel.setText("Thinking..."));
+                    } else if ("tool_call".equals(type) || "tool_call_update".equals(type)) {
+                        final String toolText = text;
+                        SwingUtilities.invokeLater(() -> {
+                            chatPanel.appendOrAddMessage("tool", toolText);
+                        });
                     } else {
                         final String finalText = text;
                         final String finalRole = role;

@@ -42,7 +42,7 @@ public class MessageBubble extends JPanel {
 
         setLayout(new GridBagLayout());
         setOpaque(false);
-        setBorder(new EmptyBorder(4, 8, 4, 8));
+        setBorder(new EmptyBorder(4, 8, 8, 8));
 
         ThemeManager.Theme theme = ThemeManager.getCurrentTheme();
 
@@ -52,7 +52,7 @@ public class MessageBubble extends JPanel {
 
         RoundedPanel bubble = new RoundedPanel(16);
         bubble.setLayout(new BorderLayout());
-        bubble.setBorder(new EmptyBorder(4, 12, 4, 12));
+        bubble.setBorder(new EmptyBorder(4, 12, 12, 12));
         bubble.add(segmentsContainer, BorderLayout.CENTER);
 
         updateContent(theme);
@@ -72,12 +72,17 @@ public class MessageBubble extends JPanel {
             bubble.setBackground(errorBg);
             bubble.setBaseColor(errorBg);
             gbc.anchor = GridBagConstraints.WEST;
-            bubble.setBorder(new EmptyBorder(4, 12, 4, 12));
-        } else {
-            bubble.setBackground(new Color(0,0,0,0));
+            bubble.setBorder(new EmptyBorder(4, 12, 10, 12));
+        } else if ("tool".equals(type)) {
+            bubble.setBackground(new Color(0, 0, 0, 0));
             bubble.setBaseColor(null);
             gbc.anchor = GridBagConstraints.WEST;
-            bubble.setBorder(new EmptyBorder(4, 0, 4, 12));
+            bubble.setBorder(new EmptyBorder(0, 4, 10, 12));
+        } else {
+            bubble.setBackground(new Color(0, 0, 0, 0));
+            bubble.setBaseColor(null);
+            gbc.anchor = GridBagConstraints.WEST;
+            bubble.setBorder(new EmptyBorder(4, 0, 8, 12));
         }
 
         add(bubble, gbc);
@@ -128,13 +133,46 @@ public class MessageBubble extends JPanel {
     }
 
     private void updateContent(ThemeManager.Theme theme) {
+        // Handle specialized tool rendering
+        if ("tool".equals(type)) {
+            String rawText = text.toString();
+            String title = "🛠️ Tool Call";
+            String displayContent = rawText;
+
+            // Try to extract a summary title from the tool call text
+            if (rawText.startsWith("Called")) {
+                int toolStart = rawText.indexOf("the ") + 4;
+                int toolEnd = rawText.indexOf(" tool");
+                if (toolStart > 3 && toolEnd > toolStart) {
+                    title = "🛠️ Use " + rawText.substring(toolStart, toolEnd).trim();
+                }
+            } else if (rawText.contains(":") && rawText.length() < 100) {
+                 title = "🛠️ " + rawText;
+            }
+
+            // Reuse existing tool pane if possible to preserve expanded state
+            if (segmentsContainer.getComponentCount() > 0 && segmentsContainer.getComponent(0) instanceof CollapsibleToolPane) {
+                CollapsibleToolPane existingPane = (CollapsibleToolPane) segmentsContainer.getComponent(0);
+                existingPane.setTitle(title);
+                existingPane.setContent(displayContent);
+            } else {
+                segmentsContainer.removeAll();
+                CollapsibleToolPane toolPane = new CollapsibleToolPane(title, displayContent, false);
+                segmentsContainer.add(toolPane);
+            }
+            segmentsContainer.revalidate();
+            segmentsContainer.repaint();
+            return;
+        }
+
         // Simple markdown splitting for code blocks: ```[lang]\n<code>```
         String rawText = text.toString();
 
         segmentsContainer.removeAll();
 
         // Pattern to find code blocks: ```[lang]...```
-        Pattern pattern = Pattern.compile("```([\\w\\-\\+\\#\\.]*)\\n?(.*?)(?:```|$)", Pattern.DOTALL);
+        // Robust pattern that handles nested blocks by requiring closer to be at start of a line and followed by space/newline/EOF
+        Pattern pattern = Pattern.compile("```([\\w\\-\\+\\#\\.]*)\\R?(.*?)(?:\\R```\\s*(?=\\R|$)|$)", Pattern.DOTALL);
         Matcher matcher = pattern.matcher(rawText);
 
         int lastEnd = 0;
@@ -212,10 +250,12 @@ public class MessageBubble extends JPanel {
             bg = theme.getBackground();
         }
 
-        boolean isAssistant = !"user".equals(type) && !"error".equals(type);
+        boolean isAssistant = !"user".equals(type) && !"error".equals(type) && !"tool".equals(type);
         String customCss = theme.toCss(bg, isAssistant);
         if ("error".equals(type)) {
             customCss += " body { color: #D32F2F; font-weight: bold; }";
+        } else if ("tool".equals(type)) {
+            customCss += " body { color: #777777; font-size: 11px; }";
         }
 
         String styledHtml = "<html><head><style>" + customCss + "</style></head><body style='font-family: sans-serif; margin: 0;'>" + html + "</body></html>";
@@ -223,6 +263,6 @@ public class MessageBubble extends JPanel {
         pane.putClientProperty(JEditorPane.HONOR_DISPLAY_PROPERTIES, Boolean.TRUE);
 
         segmentsContainer.add(pane);
-        segmentsContainer.add(Box.createVerticalStrut(4));
+        segmentsContainer.add(Box.createVerticalStrut(8));
     }
 }

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -20,7 +21,7 @@ import java.util.logging.Logger;
 
 public class JsonRpcClient {
     private static final Logger LOG = Logger.getLogger(JsonRpcClient.class.getName());
-    private static final long DEFAULT_TIMEOUT_SECONDS = 30;
+    private static final long DEFAULT_TIMEOUT_SECONDS = 60;
 
     private final ObjectMapper mapper = new ObjectMapper();
     private final PrintWriter writer;
@@ -29,6 +30,7 @@ public class JsonRpcClient {
     private final AtomicLong nextId = new AtomicLong(0);
     private final Map<Long, CompletableFuture<JsonNode>> pendingRequests = new ConcurrentHashMap<>();
     private final Map<String, Consumer<JsonNode>> notificationListeners = new ConcurrentHashMap<>();
+    private final Map<String, RequestHandler> requestHandlers = new ConcurrentHashMap<>();
     private volatile boolean running = true;
     private Thread readerThread;
     private Thread errorReaderThread;
@@ -53,6 +55,10 @@ public class JsonRpcClient {
 
     public void onNotification(String method, Consumer<JsonNode> listener) {
         notificationListeners.put(method, listener);
+    }
+
+    public void onRequest(String method, RequestHandler handler) {
+        requestHandlers.put(method, handler);
     }
 
     public void setConnectionErrorHandler(Consumer<Throwable> handler) {
@@ -173,21 +179,30 @@ public class JsonRpcClient {
     private void handleMessage(JsonNode node) {
         if (node.has("id")) {
             long id = node.get("id").asLong();
-            CompletableFuture<JsonNode> future = pendingRequests.remove(id);
-            if (future != null) {
-                if (node.has("error")) {
-                    JsonNode errNode = node.get("error");
-                    String errMsg = errNode.has("message") ? errNode.get("message").asText() : errNode.toString();
-                    future.completeExceptionally(new RuntimeException(errMsg));
-                } else if (node.has("result")) {
-                    future.complete(node.get("result"));
-                } else {
-                    future.complete(null);
-                }
+            if (node.has("method")) {
+                // Incoming Request
+                String method = node.get("method").asText();
+                JsonNode params = node.has("params") ? node.get("params") : mapper.createObjectNode();
+                handleIncomingRequest(id, method, params);
             } else {
-                LOG.log(Level.WARNING, "Received response for unknown request id: {0}", id);
+                // Response to Outgoing Request
+                CompletableFuture<JsonNode> future = pendingRequests.remove(id);
+                if (future != null) {
+                    if (node.has("error")) {
+                        JsonNode errNode = node.get("error");
+                        String errMsg = errNode.has("message") ? errNode.get("message").asText() : errNode.toString();
+                        future.completeExceptionally(new RuntimeException(errMsg));
+                    } else if (node.has("result")) {
+                        future.complete(node.get("result"));
+                    } else {
+                        future.complete(null);
+                    }
+                } else {
+                    LOG.log(Level.WARNING, "Received response for unknown request id: {0}", id);
+                }
             }
         } else if (node.has("method")) {
+            // Incoming Notification
             String method = node.get("method").asText();
             Consumer<JsonNode> listener = notificationListeners.get(method);
             if (listener != null) {
@@ -202,6 +217,61 @@ public class JsonRpcClient {
                 LOG.log(Level.FINE, "No listener for notification method: {0}", method);
             }
         }
+    }
+
+    private void handleIncomingRequest(long id, String method, JsonNode params) {
+        RequestHandler handler = requestHandlers.get(method);
+        if (handler != null) {
+            handler.handle(params)
+                    .thenAccept(result -> sendResponse(id, result))
+                    .exceptionally(ex -> {
+                        LOG.log(Level.SEVERE, "Error handling request " + method + " (" + id + ")", ex);
+                        sendError(id, -32603, ex.getMessage());
+                        return null;
+                    });
+        } else {
+            LOG.log(Level.WARNING, "No handler for request method: {0}", method);
+            sendError(id, -32601, "Method not found: " + method);
+        }
+    }
+
+    private void sendResponse(long id, JsonNode result) {
+        ObjectNode response = mapper.createObjectNode();
+        response.put("jsonrpc", "2.0");
+        response.put("id", id);
+        response.set("result", result != null ? result : mapper.createObjectNode());
+
+        try {
+            String json = mapper.writeValueAsString(response);
+            LOG.log(Level.INFO, "Sending response: {0}", json);
+            writer.println(json);
+        } catch (JsonProcessingException e) {
+            LOG.log(Level.SEVERE, "Failed to serialize response", e);
+        }
+    }
+
+    private void sendError(long id, int code, String message) {
+        ObjectNode response = mapper.createObjectNode();
+        response.put("jsonrpc", "2.0");
+        response.put("id", id);
+
+        ObjectNode error = mapper.createObjectNode();
+        error.put("code", code);
+        error.put("message", message);
+        response.set("error", error);
+
+        try {
+            String json = mapper.writeValueAsString(response);
+            LOG.log(Level.INFO, "Sending error response: {0}", json);
+            writer.println(json);
+        } catch (JsonProcessingException e) {
+            LOG.log(Level.SEVERE, "Failed to serialize error response", e);
+        }
+    }
+
+    @FunctionalInterface
+    public interface RequestHandler {
+        CompletableFuture<JsonNode> handle(JsonNode params);
     }
 
     private void notifyConnectionError(Throwable t) {

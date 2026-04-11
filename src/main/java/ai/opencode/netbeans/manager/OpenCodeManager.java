@@ -16,7 +16,12 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.netbeans.api.project.Project;
 import org.netbeans.api.project.ui.OpenProjects;
+import org.openide.cookies.EditorCookie;
+import org.openide.filesystems.FileObject;
+import org.openide.filesystems.FileUtil;
+import org.openide.loaders.DataObject;
 import org.openide.util.NbPreferences;
+import javax.swing.text.Document;
 
 public class OpenCodeManager {
     private static final Logger LOG = Logger.getLogger(OpenCodeManager.class.getName());
@@ -64,6 +69,9 @@ public class OpenCodeManager {
 
             this.rpcClient = new JsonRpcClient(serverProcess);
             rpcClient.start();
+
+            // Register handlers
+            rpcClient.onRequest("fs/readTextFile", this::handleReadTextFile);
 
             // Listen for session updates
             rpcClient.onNotification("session/update", params -> {
@@ -334,18 +342,28 @@ public class OpenCodeManager {
                 .thenApply(v -> null);
     }
 
-    // Placeholder for completions - need to verify method name
+    public CompletableFuture<JsonNode> getCompletions(String sessionId, String text, int line, int column, String prefix, String suffix) {
+        return getCompletionsInline(text, line, column, prefix, suffix);
+    }
+
     public CompletableFuture<JsonNode> getCompletions(String sessionId, String text, int line, int column) {
+        return getCompletions(sessionId, text, line, column, null, null);
+    }
+
+    public CompletableFuture<JsonNode> getCompletionsInline(String text, int line, int column, String prefix, String suffix) {
         if (rpcClient == null) {
             return CompletableFuture.completedFuture(null);
         }
-        Map<String, Object> params = Map.of(
-            "sessionId", sessionId,
-            "text", text,
-            "line", line,
-            "column", column
-        );
-        // Trying completion/inline as a best guess for ACP
+        Map<String, Object> params = new java.util.HashMap<>();
+        params.put("text", text);
+        params.put("line", line);
+        params.put("column", column);
+        if (prefix != null && !prefix.isEmpty()) {
+            params.put("prefix", prefix);
+        }
+        if (suffix != null && !suffix.isEmpty()) {
+            params.put("suffix", suffix);
+        }
         return rpcClient.sendRequest("completion/inline", params);
     }
 
@@ -391,6 +409,49 @@ public class OpenCodeManager {
 
     public CompletableFuture<Void> whenReady() {
         return readyFuture;
+    }
+
+    private CompletableFuture<JsonNode> handleReadTextFile(JsonNode params) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                String filePath = params.has("filePath") ? params.get("filePath").asText()
+                        : params.has("path") ? params.get("path").asText() : null;
+
+                if (filePath == null) {
+                    throw new RuntimeException("Missing filePath parameter");
+                }
+
+                java.io.File file = new java.io.File(filePath);
+                if (!file.exists()) {
+                    throw new RuntimeException("File not found: " + filePath);
+                }
+
+                FileObject fo = FileUtil.toFileObject(file);
+                if (fo != null) {
+                    try {
+                        DataObject dobj = DataObject.find(fo);
+                        EditorCookie ec = dobj.getLookup().lookup(EditorCookie.class);
+                        if (ec != null) {
+                            Document doc = ec.getDocument();
+                            if (doc != null) {
+                                String content = doc.getText(0, doc.getLength());
+                                return objectMapper.createObjectNode().put("content", content);
+                            }
+                        }
+                    } catch (Exception e) {
+                        LOG.log(Level.FINE, "Could not read from editor for {0}, falling back to disk", filePath);
+                    }
+                }
+
+                // Fallback to disk
+                byte[] bytes = java.nio.file.Files.readAllBytes(file.toPath());
+                String content = new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
+                return objectMapper.createObjectNode().put("content", content);
+            } catch (Exception e) {
+                LOG.log(Level.SEVERE, "fs/readTextFile failed", e);
+                throw new RuntimeException("Failed to read file: " + e.getMessage(), e);
+            }
+        });
     }
 
     private String getLanguageFromPath(String path) {
