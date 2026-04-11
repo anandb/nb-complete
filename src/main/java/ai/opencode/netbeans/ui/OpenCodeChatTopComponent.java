@@ -668,6 +668,9 @@ public final class OpenCodeChatTopComponent extends TopComponent {
 
         chatPanel.clearMessages();
 
+        // Use active project directory as working directory
+        String projectCwd = OpenCodeManager.getInstance().getActiveProjectDir();
+        
         OpenCodeManager.getInstance().getSessions().thenAccept(sessions -> {
             String sessionCwd = sessions.stream()
                     .filter(s -> s.id().equals(sessionId))
@@ -675,9 +678,13 @@ public final class OpenCodeChatTopComponent extends TopComponent {
                     .map(s -> s.cwd() != null ? s.cwd() : s.directory())
                     .orElse(null);
 
-            String currentProjectCwd = OpenCodeManager.getInstance().getActiveProjectDir();
-            String workingCwd = currentProjectCwd != null ? currentProjectCwd : sessionCwd;
-            LOG.log(Level.INFO, "loadSession: currentProjectCwd={0}, sessionCwd={1}, using={2}", new Object[]{currentProjectCwd, sessionCwd, workingCwd});
+            // Priority: projectCwd > sessionCwd > user.dir
+            String workingCwd = projectCwd != null ? projectCwd : sessionCwd;
+            if (workingCwd == null) {
+                workingCwd = System.getProperty("user.dir");
+            }
+            
+            LOG.log(Level.INFO, "loadSession: projectCwd={0}, sessionCwd={1}, using={2}", new Object[]{projectCwd, sessionCwd, workingCwd});
             updateCwdLabel(workingCwd);
             this.lastProjectDir = workingCwd;
             OpenCodeManager.getInstance().loadSession(sessionId, workingCwd)
@@ -687,6 +694,19 @@ public final class OpenCodeChatTopComponent extends TopComponent {
                         if (configOptions != null) {
                             updateConfigControls(configOptions);
                         }
+                        
+                        // Set default mode to "plan" if not already set
+                        if (modeCombo.getItemCount() > 0 && modeCombo.getSelectedIndex() == -1) {
+                            for (int i = 0; i < modeCombo.getItemCount(); i++) {
+                                ConfigItem item = modeCombo.getItemAt(i);
+                                if ("plan".equals(item.value)) {
+                                    modeCombo.setSelectedIndex(i);
+                                    OpenCodeManager.getInstance().setSessionConfigOption(sessionId, "mode", "plan");
+                                    break;
+                                }
+                            }
+                        }
+                        
                         setInputEnabled(true);
 
                         isSwitchingSessionDropdown = true;
@@ -731,6 +751,19 @@ public final class OpenCodeChatTopComponent extends TopComponent {
                         if (session.configOptions() != null) {
                             updateConfigControls(session.configOptions());
                         }
+                        
+                        // Set default mode to "plan" if mode combo is populated
+                        if (modeCombo.getItemCount() > 0) {
+                            for (int i = 0; i < modeCombo.getItemCount(); i++) {
+                                ConfigItem item = modeCombo.getItemAt(i);
+                                if ("plan".equals(item.value)) {
+                                    modeCombo.setSelectedIndex(i);
+                                    OpenCodeManager.getInstance().setSessionConfigOption(currentSessionId, "mode", "plan");
+                                    break;
+                                }
+                            }
+                        }
+                        
                         setInputEnabled(true);
 
                         // Sync both dropdown and sidebar list
@@ -1203,7 +1236,7 @@ public final class OpenCodeChatTopComponent extends TopComponent {
             if (title != null && !title.trim().isEmpty()) {
                 return title;
             }
-            return "Chat " + session.id().substring(0, Math.min(8, session.id().length()));
+            return session.id();
         }
 
         @Override

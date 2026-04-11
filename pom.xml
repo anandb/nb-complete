@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>ai.opencode</groupId>
     <artifactId>opencode-netbeans-plugin</artifactId>
-    <version>1.1.74</version>
+    <version>1.1.76</version>
     <packaging>nbm</packaging>
 
     <name>OpenCode NetBeans Plugin</name>
@@ -111,7 +111,11 @@
             <artifactId>org-openide-loaders</artifactId>
             <version>${netbeans.version}</version>
         </dependency>
-
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>3.14.0</version>
+        </dependency>
 
         <!-- Markdown Processing -->
         <dependency>

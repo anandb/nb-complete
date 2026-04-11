@@ -19,7 +19,10 @@ import javax.swing.JEditorPane;
 import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
 
+import org.apache.commons.lang3.StringUtils;
+
 import java.util.ArrayList;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -239,8 +242,14 @@ public class MessageBubble extends JPanel {
         MutableDataSet options = new MutableDataSet();
         Parser parser = Parser.builder(options).build();
         HtmlRenderer renderer = HtmlRenderer.builder(options).build();
-
-        String html = renderer.render(parser.parse(markdown));
+        
+        String markdownWithTables = renderTablesAsHtml(markdown);
+        String html = renderer.render(parser.parse(markdownWithTables));
+        
+        html = html.replace("<table>", "<table border='1' style='border-collapse: collapse; width: 100%;'>");
+        html = html.replace("<th>", "<th style='background: #f0f0f0; padding: 8px; border: 1px solid #ddd;'>");
+        html = html.replace("<td>", "<td style='padding: 8px; border: 1px solid #ddd;'>");
+        html = html.replace("<tr>", "<tr>");
 
         JEditorPane pane = new JEditorPane();
         pane.setEditable(false);
@@ -270,5 +279,125 @@ public class MessageBubble extends JPanel {
 
         segmentsContainer.add(pane);
         segmentsContainer.add(Box.createVerticalStrut(8));
+    }
+    
+    private String renderTablesAsHtml(String markdown) {
+        StringBuilder result = new StringBuilder();
+        String[] lines = markdown.split("\n", -1);
+        boolean inTable = false;
+        boolean headerFound = false;
+        List<String> headerCells = new ArrayList<>();
+        List<List<String>> rows = new ArrayList<>();
+        int i = 0;
+        
+        while (i < lines.length) {
+            String line = lines[i];
+            
+            if (line == null || line.isEmpty()) {
+                if (inTable && headerFound) {
+                    result.append(convertTableToHtml(headerCells, rows));
+                    headerCells.clear();
+                    rows.clear();
+                    headerFound = false;
+                    inTable = false;
+                }
+                result.append(line).append("\n");
+                i++;
+                continue;
+            }
+            
+            if (line.trim().startsWith("|") && line.trim().endsWith("|")) {
+                String trimmedLine = line.trim();
+                String[] cells = StringUtils.split(trimmedLine, "|", -1);
+                List<String> rowCells = new ArrayList<>();
+                for (String cell : cells) {
+                    String c = cell.trim();
+                    if (!c.isEmpty()) {
+                        rowCells.add(c);
+                    }
+                }
+                
+                if (rowCells.isEmpty()) {
+                    if (inTable && headerFound) {
+                        result.append(convertTableToHtml(headerCells, rows));
+                        headerCells.clear();
+                        rows.clear();
+                        headerFound = false;
+                        inTable = false;
+                    }
+                    result.append(line).append("\n");
+                    i++;
+                    continue;
+                }
+                
+                if (inTable && isSeparatorRow(rowCells)) {
+                    i++;
+                    continue;
+                }
+                
+                if (!inTable) {
+                    inTable = true;
+                    headerCells = rowCells;
+                    headerFound = true;
+                } else if (headerFound) {
+                    rows.add(rowCells);
+                } else {
+                    rows.add(rowCells);
+                }
+            } else {
+                if (inTable && headerFound) {
+                    result.append(convertTableToHtml(headerCells, rows));
+                    headerCells.clear();
+                    rows.clear();
+                    headerFound = false;
+                    inTable = false;
+                }
+                result.append(line).append("\n");
+            }
+            i++;
+        }
+        
+        if (inTable && headerFound) {
+            result.append(convertTableToHtml(headerCells, rows));
+        }
+        
+        return result.toString();
+    }
+    
+    private boolean isSeparatorRow(List<String> row) {
+        for (String cell : row) {
+            if (!cell.matches("-+") && !cell.matches(":-+-.*") && !cell.matches(".*:-+") && 
+                !cell.matches("-+:") && !cell.matches(":.*-+")) {
+                return false;
+            }
+        }
+        return true;
+    }
+    
+    private String convertTableToHtml(List<String> headers, List<List<String>> rows) {
+        StringBuilder html = new StringBuilder();
+        html.append("<table>\n<thead><tr>");
+        for (String h : headers) {
+            html.append("<th>").append(escapeHtml(h)).append("</th>");
+        }
+        html.append("</tr></thead>\n<tbody>");
+        for (List<String> row : rows) {
+            html.append("<tr>");
+            // Ensure row has same columns as header
+            for (int j = 0; j < headers.size(); j++) {
+                String cell = j < row.size() ? row.get(j) : "";
+                html.append("<td>").append(escapeHtml(cell)).append("</td>");
+            }
+            html.append("</tr>");
+        }
+        html.append("</tbody></table>\n");
+        return html.toString();
+    }
+    
+    private String escapeHtml(String text) {
+        return text.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;");
     }
 }
