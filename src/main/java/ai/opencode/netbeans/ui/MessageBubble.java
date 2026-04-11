@@ -73,7 +73,7 @@ public class MessageBubble extends JPanel {
             bubble.setBaseColor(errorBg);
             gbc.anchor = GridBagConstraints.WEST;
             bubble.setBorder(new EmptyBorder(4, 12, 10, 12));
-        } else if ("tool".equals(type)) {
+        } else if ("tool".equals(type) || "thought".equals(type)) {
             bubble.setBackground(new Color(0, 0, 0, 0));
             bubble.setBaseColor(null);
             gbc.anchor = GridBagConstraints.WEST;
@@ -134,20 +134,25 @@ public class MessageBubble extends JPanel {
 
     private void updateContent(ThemeManager.Theme theme) {
         // Handle specialized tool rendering
-        if ("tool".equals(type)) {
+        if ("tool".equals(type) || "thought".equals(type)) {
             String rawText = text.toString();
-            String title = "🛠️ Tool Call";
+            String title = "thought".equals(type) ? "💭 Thinking Process" : "🛠️ Tool Call";
             String displayContent = rawText;
 
             // Try to extract a summary title from the tool call text
-            if (rawText.startsWith("Called")) {
-                int toolStart = rawText.indexOf("the ") + 4;
-                int toolEnd = rawText.indexOf(" tool");
-                if (toolStart > 3 && toolEnd > toolStart) {
-                    title = "🛠️ Use " + rawText.substring(toolStart, toolEnd).trim();
+            if ("tool".equals(type)) {
+                if (rawText.startsWith("Called")) {
+                    int toolStart = rawText.indexOf("the ") + 4;
+                    int toolEnd = rawText.indexOf(" tool");
+                    if (toolStart > 3 && toolEnd > toolStart) {
+                        title = "🛠️ Use " + rawText.substring(toolStart, toolEnd).trim();
+                    }
+                } else if (rawText.contains(":") && rawText.length() < 100) {
+                    title = "🛠️ " + rawText;
                 }
-            } else if (rawText.contains(":") && rawText.length() < 100) {
-                 title = "🛠️ " + rawText;
+            } else {
+                // For thought, we might want a different default expanded state but
+                // CollapsibleToolPane takes that in constructor
             }
 
             // Reuse existing tool pane if possible to preserve expanded state
@@ -157,7 +162,8 @@ public class MessageBubble extends JPanel {
                 existingPane.setContent(displayContent);
             } else {
                 segmentsContainer.removeAll();
-                CollapsibleToolPane toolPane = new CollapsibleToolPane(title, displayContent, false);
+                boolean defaultExpanded = "thought".equals(type);
+                CollapsibleToolPane toolPane = new CollapsibleToolPane(title, displayContent, defaultExpanded);
                 segmentsContainer.add(toolPane);
             }
             segmentsContainer.revalidate();
@@ -172,7 +178,7 @@ public class MessageBubble extends JPanel {
 
         // Pattern to find code blocks: ```[lang]...```
         // Robust pattern that handles nested blocks by requiring closer to be at start of a line and followed by space/newline/EOF
-        Pattern pattern = Pattern.compile("```([\\w\\-\\+\\#\\.]*)\\R?(.*?)(?:\\R```\\s*(?=\\R|$)|$)", Pattern.DOTALL);
+        Pattern pattern = Pattern.compile("\\s*```([\\w\\-\\+\\#\\.]*)\\R?(.*?)(?:\\s*```\\s*(?=\\R|$)|$)", Pattern.DOTALL);
         Matcher matcher = pattern.matcher(rawText);
 
         int lastEnd = 0;

@@ -7,6 +7,7 @@ import org.openide.util.NbPreferences;
 
 @NbBundle.Messages({
     "LBL_ExecutablePath=Executable Path:",
+    "LBL_DefaultModel=Default Model:",
     "BTN_Browse=Browse...",
     "TITLE_SelectExecutable=Select OpenCode Executable"
 })
@@ -23,12 +24,22 @@ public class OpenCodeOptionsPanel extends javax.swing.JPanel {
         jLabel1 = new javax.swing.JLabel();
         pathField = new javax.swing.JTextField();
         browseButton = new javax.swing.JButton();
+        modelLabel = new javax.swing.JLabel();
+        modelField = new javax.swing.JTextField();
 
         jLabel1.setText(NbBundle.getMessage(OpenCodeOptionsPanel.class, "LBL_ExecutablePath"));
+        modelLabel.setText(NbBundle.getMessage(OpenCodeOptionsPanel.class, "LBL_DefaultModel"));
         browseButton.setText(NbBundle.getMessage(OpenCodeOptionsPanel.class, "BTN_Browse"));
         browseButton.addActionListener(evt -> browseButtonActionPerformed());
         
         pathField.addKeyListener(new java.awt.event.KeyAdapter() {
+            @Override
+            public void keyReleased(java.awt.event.KeyEvent evt) {
+                controller.changed();
+            }
+        });
+
+        modelField.addKeyListener(new java.awt.event.KeyAdapter() {
             @Override
             public void keyReleased(java.awt.event.KeyEvent evt) {
                 controller.changed();
@@ -41,11 +52,17 @@ public class OpenCodeOptionsPanel extends javax.swing.JPanel {
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(jLabel1)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(pathField, javax.swing.GroupLayout.DEFAULT_SIZE, 300, Short.MAX_VALUE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(browseButton)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(layout.createSequentialGroup()
+                        .addComponent(jLabel1)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(pathField, javax.swing.GroupLayout.DEFAULT_SIZE, 300, Short.MAX_VALUE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(browseButton))
+                    .addGroup(layout.createSequentialGroup()
+                        .addComponent(modelLabel)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(modelField, javax.swing.GroupLayout.DEFAULT_SIZE, 400, Short.MAX_VALUE)))
                 .addContainerGap())
         );
         layout.setVerticalGroup(
@@ -56,6 +73,10 @@ public class OpenCodeOptionsPanel extends javax.swing.JPanel {
                     .addComponent(jLabel1)
                     .addComponent(pathField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(browseButton))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(modelLabel)
+                    .addComponent(modelField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
     }
@@ -79,10 +100,12 @@ public class OpenCodeOptionsPanel extends javax.swing.JPanel {
     void load() {
         String defaultPath = System.getProperty("user.home") + "/.opencode/bin/opencode";
         pathField.setText(NbPreferences.forModule(OpenCodeOptionsPanel.class).get("opencodeExecutablePath", defaultPath));
+        modelField.setText(NbPreferences.forModule(OpenCodeOptionsPanel.class).get("defaultModel", "opencode/big-pickle"));
     }
 
     void store() {
         NbPreferences.forModule(OpenCodeOptionsPanel.class).put("opencodeExecutablePath", pathField.getText());
+        NbPreferences.forModule(OpenCodeOptionsPanel.class).put("defaultModel", modelField.getText());
     }
 
     boolean valid() {
@@ -92,4 +115,6 @@ public class OpenCodeOptionsPanel extends javax.swing.JPanel {
     private javax.swing.JButton browseButton;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JTextField pathField;
+    private javax.swing.JLabel modelLabel;
+    private javax.swing.JTextField modelField;
 }

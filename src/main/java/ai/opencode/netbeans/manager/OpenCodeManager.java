@@ -1,6 +1,7 @@
 package ai.opencode.netbeans.manager;
 
 import ai.opencode.netbeans.model.Session;
+import ai.opencode.netbeans.model.SessionConfigOption;
 import ai.opencode.netbeans.model.SessionUpdate;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -65,6 +66,14 @@ public class OpenCodeManager {
 
             ProcessBuilder pb = new ProcessBuilder(binaryPath, "acp");
             pb.redirectError(ProcessBuilder.Redirect.INHERIT);
+            
+            Map<String, String> env = pb.environment();
+            String defaultModel = NbPreferences.forModule(ai.opencode.netbeans.ui.OpenCodeOptionsPanel.class)
+                    .get("defaultModel", "opencode/big-pickle");
+            if (!defaultModel.isEmpty()) {
+                env.put("OPENCODE_DEFAULT_MODEL", defaultModel);
+            }
+            
             this.serverProcess = pb.start();
 
             this.rpcClient = new JsonRpcClient(serverProcess);
@@ -236,7 +245,7 @@ public class OpenCodeManager {
                 });
     }
 
-    public CompletableFuture<Void> loadSession(String sessionId, String cwd) {
+    public CompletableFuture<List<SessionConfigOption>> loadSession(String sessionId, String cwd) {
         LOG.log(Level.INFO, "loadSession: called with {0}, cwd={1}", new Object[]{sessionId, cwd});
         if (rpcClient == null) {
             return CompletableFuture.failedFuture(new RuntimeException("Server not started"));
@@ -251,11 +260,18 @@ public class OpenCodeManager {
         return rpcClient.sendRequest("session/load", params)
                 .thenApply(res -> {
                     LOG.log(Level.INFO, "loadSession: got response {0}", res);
-                    return (Void) null;
+                    if (res != null && res.has("configOptions")) {
+                        try {
+                            return objectMapper.convertValue(res.get("configOptions"), new TypeReference<List<SessionConfigOption>>() {});
+                        } catch (Exception e) {
+                            LOG.log(Level.WARNING, "Failed to parse configOptions: {0}", e.getMessage());
+                        }
+                    }
+                    return null;
                 })
                 .exceptionally(ex -> {
                     LOG.log(Level.WARNING, "loadSession: error: {0}", ex.getMessage());
-                    return (Void) null;
+                    return null;
                 });
     }
 
@@ -265,63 +281,52 @@ public class OpenCodeManager {
         }
 
         List<Map<String, Object>> promptBlocks = new ArrayList<>();
-        promptBlocks.add(Map.of("type", "text", "text", text));
-
+        
+        String displayText = text;
+        
         if (context != null) {
             String filePath = (String) context.get("filePath");
             String selectionContent = (String) context.get("selectionContent");
             if (filePath != null) {
                 java.io.File file = new java.io.File(filePath);
-                Map<String, Object> resourceLink = new java.util.HashMap<>();
-                resourceLink.put("type", "resource_link");
-                resourceLink.put("uri", (filePath.startsWith("/") ? "file://" : "file:///") + filePath);
-                resourceLink.put("name", file.getName());
-                resourceLink.put("size", file.length());
-                
                 String lang = getLanguageFromPath(filePath);
-                // Basic mimeType deduction
-                String mimeType = "text/plain";
-                switch (lang) {
-                    case "java" -> mimeType = "text/x-java";
-                    case "javascript" -> mimeType = "text/javascript";
-                    case "python" -> mimeType = "text/x-python";
-                    case "html" -> mimeType = "text/html";
-                    case "css" -> mimeType = "text/css";
-                    case "xml" -> mimeType = "application/xml";
-                    case "json" -> mimeType = "application/json";
-                    default -> {}
+                
+                String fileName = file.getName();
+                Object cursorObj = context.get("cursor");
+                String cursorPos = cursorObj != null ? objectMapper.valueToTree(cursorObj).toString() : null;
+                Object selObj = context.get("selection");
+                String selection = selObj != null ? objectMapper.valueToTree(selObj).toString() : null;
+                
+                StringBuilder metadata = new StringBuilder();
+                metadata.append("<!-- ");
+                metadata.append("{");
+                metadata.append("\"file\":\"").append(fileName.replace("\"", "\\\"")).append("\",");
+                metadata.append("\"path\":\"").append(filePath.replace("\"", "\\\"")).append("\",");
+                metadata.append("\"language\":\"").append(lang).append("\"");
+                if (cursorPos != null && !cursorPos.isEmpty()) {
+                    metadata.append(",\"cursor\":\"").append(cursorPos.replace("\"", "\\\"")).append("\"");
                 }
-                resourceLink.put("mimeType", mimeType);
-
-                // Add selection and cursor info as annotations if present
-                Map<String, Object> annotations = new java.util.HashMap<>();
-                if (context.containsKey("selection")) {
-                    annotations.put("selection", context.get("selection"));
+                if (selection != null && !selection.isEmpty()) {
+                    metadata.append(",\"selection\":\"").append(selection.replace("\"", "\\\"").replace("\n", "\\n")).append("\"");
                 }
-                if (context.containsKey("cursor")) {
-                    annotations.put("cursor", context.get("cursor"));
-                }
-                if (!annotations.isEmpty()) {
-                    resourceLink.put("annotations", annotations);
-                }
-
-                promptBlocks.add(resourceLink);
-
-                // If there is a selection, send it as a separate code block
+                metadata.append("} -->");
+                
                 if (selectionContent != null && !selectionContent.isEmpty()) {
-                    promptBlocks.add(Map.of(
-                        "type", "text",
-                        "text", "Selection from `" + file.getName() + "`:\n```" + lang + "\n" + selectionContent + "\n```"
-                    ));
+                    displayText = metadata.toString() + "\n\nSelection from `" + fileName + "`:\n```" + lang + "\n" + selectionContent + "\n```\n" + text;
+                } else {
+                    displayText = metadata.toString() + "\n" + text;
                 }
             }
         }
+        
+        promptBlocks.add(Map.of("type", "text", "text", displayText));
 
-        Map<String, Object> params = Map.of(
-                "sessionId", sessionId,
-                "prompt", promptBlocks
-        );
-        return rpcClient.sendRequest("session/prompt", params)
+        Map<String, Object> params = new java.util.HashMap<>();
+        params.put("sessionId", sessionId);
+        params.put("prompt", promptBlocks);
+        params.put("mcpServers", List.of());
+        
+        return rpcClient.sendRequest("session/prompt", params, 300)
                 .thenApply(v -> null);
     }
 

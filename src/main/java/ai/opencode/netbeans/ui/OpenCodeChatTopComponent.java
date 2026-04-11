@@ -69,7 +69,7 @@ import ai.opencode.netbeans.model.SessionUpdate;
 })
 @ConvertAsProperties(dtd = "-//ai.opencode.netbeans.ui//OpenCodeChat//EN", autostore = false)
 @TopComponent.Description(preferredID = "OpenCodeChatTopComponent", iconBase = "ai/opencode/netbeans/ui/logo.png", persistenceType = TopComponent.PERSISTENCE_ALWAYS)
-@TopComponent.Registration(mode = "explorer", openAtStartup = true)
+@TopComponent.Registration(mode = "explorer", openAtStartup = false)
 public final class OpenCodeChatTopComponent extends TopComponent {
 
     @ActionID(category = "Window", id = "ai.opencode.netbeans.ui.OpenCodeToggleAction")
@@ -83,7 +83,7 @@ public final class OpenCodeChatTopComponent extends TopComponent {
         public void actionPerformed(ActionEvent e) {
             TopComponent tc = findInstance();
             if (tc != null) {
-                if (tc.isOpened() && tc.isShowing() && WindowManager.getDefault().getRegistry().getActivated() == tc) {
+                if (tc.isOpened()) {
                     tc.close();
                 } else {
                     tc.open();
@@ -500,7 +500,11 @@ public final class OpenCodeChatTopComponent extends TopComponent {
 
                 if (text != null && !text.isEmpty()) {
                     if ("agent_thought_chunk".equals(type)) {
-                        SwingUtilities.invokeLater(() -> statusLabel.setText("Thinking..."));
+                        final String thoughtText = text;
+                        SwingUtilities.invokeLater(() -> {
+                            statusLabel.setText("Thinking...");
+                            chatPanel.appendOrAddMessage("thought", thoughtText);
+                        });
                     } else if ("tool_call".equals(type) || "tool_call_update".equals(type)) {
                         final String toolText = text;
                         SwingUtilities.invokeLater(() -> {
@@ -524,6 +528,9 @@ public final class OpenCodeChatTopComponent extends TopComponent {
                                 if ("user_message_chunk".equals(finalType)) {
                                     String outText = finalText;
                                     boolean chunkStartsWithPath = outText.startsWith("<path>");
+                                    
+                                    // Strip the metadata comment from display
+                                    outText = outText.replaceAll("<!--\\s*\\{.*?\\}\\s*-->", "").trim();
 
                                     if (chunkStartsWithPath) {
                                         isReceivingPathBasedResource = true;
@@ -545,7 +552,10 @@ public final class OpenCodeChatTopComponent extends TopComponent {
                                         isReceivingPathBasedResource = false;
                                     }
                                 } else {
-                                    chatPanel.addMessage(finalRole, finalText);
+                                    String outText = finalText.replaceAll("<!--\\s*\\{.*?\\}\\s*-->", "").trim();
+                                    if (!outText.isEmpty()) {
+                                        chatPanel.addMessage(finalRole, outText);
+                                    }
                                 }
                             } else {
                                 chatPanel.appendOrAddMessage(finalRole, finalText);
@@ -671,9 +681,12 @@ public final class OpenCodeChatTopComponent extends TopComponent {
             updateCwdLabel(workingCwd);
             this.lastProjectDir = workingCwd;
             OpenCodeManager.getInstance().loadSession(sessionId, workingCwd)
-                .thenAccept(v -> {
+                .thenAccept(configOptions -> {
                     SwingUtilities.invokeLater(() -> {
                         statusLabel.setText("Ready");
+                        if (configOptions != null) {
+                            updateConfigControls(configOptions);
+                        }
                         setInputEnabled(true);
 
                         isSwitchingSessionDropdown = true;
@@ -759,7 +772,7 @@ public final class OpenCodeChatTopComponent extends TopComponent {
     }
 
     private void sendMessage() {
-        String text = inputArea.getText().trim() + "\n\n";
+        String text = inputArea.getText().trim() + "\n";
         if (text.isEmpty()) {
             return;
         }
@@ -823,16 +836,12 @@ public final class OpenCodeChatTopComponent extends TopComponent {
 
             int startLine = NbDocument.findLineNumber(styledDoc, selStart) + 1;
             int endLine = NbDocument.findLineNumber(styledDoc, selEnd) + 1;
-
-            Map<String, Object> range = new java.util.HashMap<>();
-            range.put("start", Map.of("line", startLine, "character", 0));
-            range.put("end", Map.of("line", endLine, "character", 0));
-            context.put("selection", range);
+            context.put("selection", startLine + ":" + endLine);
         }
 
         int caretPos = editor.getCaretPosition();
         int cursorLine = NbDocument.findLineNumber(styledDoc, caretPos) + 1;
-        context.put("cursor", Map.of("line", cursorLine, "character", 0));
+        context.put("cursor", String.valueOf(cursorLine));
 
         return context;
     }

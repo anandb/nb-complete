@@ -7,19 +7,20 @@ import java.awt.Font;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import javax.swing.BorderFactory;
-import javax.swing.JEditorPane;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
+import javax.swing.ScrollPaneConstants;
 
 public class CollapsibleToolPane extends JPanel {
-    private final String content;
     private final JPanel contentPanel;
     private final JLabel headerLabel;
-    private final JEditorPane textPane;
+    private final JLabel toggleIcon;
+    private final JTextArea textArea;
     private boolean expanded;
 
     public CollapsibleToolPane(String title, String content, boolean expandedByDefault) {
-        this.content = content;
         this.expanded = expandedByDefault;
 
         setLayout(new BorderLayout());
@@ -40,30 +41,41 @@ public class CollapsibleToolPane extends JPanel {
         header.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
         headerLabel = new JLabel(title);
-        headerLabel.setFont(new Font("SansSerif", Font.PLAIN, 11));
+        headerLabel.setFont(new Font("SansSerif", Font.PLAIN, 13));
         headerLabel.setForeground(new Color(100, 100, 100));
-        header.add(headerLabel, BorderLayout.CENTER);
 
-        JLabel toggleIcon = new JLabel(expanded ? "▼" : "▶");
-        toggleIcon.setFont(new Font("Monospaced", Font.PLAIN, 10));
+        toggleIcon = new JLabel(expanded ? "▼" : "▶");
+        toggleIcon.setFont(new Font("Monospaced", Font.PLAIN, 12));
         toggleIcon.setForeground(new Color(120, 120, 120));
-        header.add(toggleIcon, BorderLayout.WEST);
-        headerLabel.setBorder(BorderFactory.createEmptyBorder(0, 6, 0, 0));
 
-        // Content
+        JPanel leftPanel = new JPanel(new BorderLayout(4, 0));
+        leftPanel.setOpaque(false);
+        leftPanel.add(toggleIcon, BorderLayout.WEST);
+        leftPanel.add(headerLabel, BorderLayout.CENTER);
+        
+        header.add(leftPanel, BorderLayout.CENTER);
+
+        // Content - wrap in JScrollPane with horizontal scrollbar never
         contentPanel = new JPanel(new BorderLayout());
         contentPanel.setOpaque(false);
         
-        textPane = new JEditorPane();
-        textPane.setEditable(false);
-        textPane.setContentType("text/plain");
-        textPane.setOpaque(false);
-        textPane.setFont(new Font("Monospaced", Font.PLAIN, 11));
-        textPane.setForeground(new Color(110, 110, 110));
-        textPane.setText(content);
-        textPane.setBorder(BorderFactory.createEmptyBorder(4, 20, 4, 8));
+        textArea = new JTextArea(content);
+        textArea.setEditable(false);
+        textArea.setOpaque(false);
+        textArea.setFont(new Font("Monospaced", Font.PLAIN, 13));
+        textArea.setForeground(new Color(110, 110, 110));
+        textArea.setBorder(BorderFactory.createEmptyBorder(4, 20, 4, 8));
+        textArea.setLineWrap(true);
+        textArea.setWrapStyleWord(true);
         
-        contentPanel.add(textPane, BorderLayout.CENTER);
+        JScrollPane scrollPane = new JScrollPane(textArea);
+        scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        scrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
+        scrollPane.setOpaque(false);
+        scrollPane.getViewport().setOpaque(false);
+        scrollPane.setBorder(null);
+        
+        contentPanel.add(scrollPane, BorderLayout.CENTER);
         contentPanel.setVisible(expanded);
 
         add(header, BorderLayout.NORTH);
@@ -87,7 +99,7 @@ public class CollapsibleToolPane extends JPanel {
     }
 
     public void setContent(String content) {
-        textPane.setText(content);
+        textArea.setText(content);
     }
 
     public void setTitle(String title) {
