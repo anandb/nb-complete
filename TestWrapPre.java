@@ -1,6 +1,15 @@
-import javax.swing.*;
-import javax.swing.text.*;
-import javax.swing.text.html.*;
+import javax.swing.JEditorPane;
+import javax.swing.text.AbstractDocument;
+import javax.swing.text.AttributeSet;
+import javax.swing.text.CSS;
+import javax.swing.text.Element;
+import javax.swing.text.HTML;
+import javax.swing.text.HTMLEditorKit;
+import javax.swing.text.HTMLEditorKit.HTMLFactory;
+import javax.swing.text.HTMLEditorKit.ViewFactory;
+import javax.swing.text.StyleConstants;
+import javax.swing.text.View;
+import javax.swing.text.html.LabelView;
 
 public class TestWrapPre {
     public static void main(String[] args) {

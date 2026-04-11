@@ -2,13 +2,32 @@ package ai.opencode.netbeans.ui;
 
 import ai.opencode.netbeans.model.Message;
 import ai.opencode.netbeans.model.Session;
-import java.awt.*;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.GridLayout;
+import java.awt.Rectangle;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.swing.*;
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JScrollBar;
+import javax.swing.JScrollPane;
+import javax.swing.JSeparator;
+import javax.swing.ScrollPaneConstants;
+import javax.swing.Scrollable;
+import javax.swing.SwingUtilities;
 
 public class ChatThreadPanel extends JPanel {
     private static final Logger LOG = Logger.getLogger(ChatThreadPanel.class.getName());
@@ -63,25 +82,33 @@ public class ChatThreadPanel extends JPanel {
     public void addMessage(Message message) {
         String type = message.type();
         StringBuilder sb = new StringBuilder();
-        
+
         if ("user".equals(type)) {
-            if (message.prompt().text() != null) sb.append(message.prompt().text());
+            if (message.prompt().text() != null) {
+                sb.append(message.prompt().text());
+            }
             if (message.prompt().parts() != null) {
                 for (Message.ContentPart part : message.prompt().parts()) {
                     String pt = part.getDisplayText();
                     if (pt != null && !pt.isEmpty()) {
-                        if (sb.length() > 0) sb.append("\n\n");
+                        if (sb.length() > 0) {
+                    sb.append("\n\n");
+                }
                         sb.append(pt);
                     }
                 }
             }
         } else {
-            if (message.completion().text() != null) sb.append(message.completion().text());
+            if (message.completion().text() != null) {
+                sb.append(message.completion().text());
+            }
             if (message.completion().parts() != null) {
                 for (Message.ContentPart part : message.completion().parts()) {
                     String pt = part.getDisplayText();
                     if (pt != null && !pt.isEmpty()) {
-                        if (sb.length() > 0) sb.append("\n\n");
+                        if (sb.length() > 0) {
+                    sb.append("\n\n");
+                }
                         sb.append(pt);
                     }
                 }
@@ -97,7 +124,7 @@ public class ChatThreadPanel extends JPanel {
             messagesContainer.add(Box.createVerticalStrut(8));
             messagesContainer.revalidate();
             messagesContainer.repaint();
-            
+
             scrollToBottom();
         });
     }
@@ -108,8 +135,8 @@ public class ChatThreadPanel extends JPanel {
             MessageBubble lastBubble = null;
             for (int i = count - 1; i >= 0; i--) {
                 Component c = messagesContainer.getComponent(i);
-                if (c instanceof MessageBubble) {
-                    lastBubble = (MessageBubble) c;
+                if (c instanceof MessageBubble messageBubble) {
+                    lastBubble = messageBubble;
                     break;
                 }
             }
@@ -149,7 +176,7 @@ public class ChatThreadPanel extends JPanel {
             messagesContainer.repaint();
         });
     }
-    
+
     public void setMessages(List<Message> messages) {
         SwingUtilities.invokeLater(() -> {
             clearMessages();
@@ -160,18 +187,18 @@ public class ChatThreadPanel extends JPanel {
     }
 
     public void setSessionList(List<Session> sessions, Consumer<String> onSessionSelected, Runnable onNewChat) {
-        LOG.info("setSessionList: received " + sessions.size() + " sessions, onSessionSelected=" + onSessionSelected);
+        LOG.log(Level.INFO, "setSessionList: received {0} sessions, onSessionSelected={1}", new Object[]{sessions.size(), onSessionSelected});
         SwingUtilities.invokeLater(() -> {
             try {
                 clearMessages();
-                
+
                 JLabel title = new JLabel(sessions.isEmpty() ? "Welcome to OpenCode" : "Welcome back!");
                 title.setFont(new Font("SansSerif", Font.BOLD, 18));
                 title.setBorder(BorderFactory.createEmptyBorder(20, 12, 10, 12));
                 messagesContainer.add(title);
 
-                JLabel subtitle = new JLabel(sessions.isEmpty() ? 
-                    "Ask questions, generate code, or have me explain anything." : 
+                JLabel subtitle = new JLabel(sessions.isEmpty() ?
+                    "Ask questions, generate code, or have me explain anything." :
                     "Continue a recent chat or start a new one.");
                 subtitle.setFont(new Font("SansSerif", Font.PLAIN, 13));
                 subtitle.setForeground(Color.GRAY);
@@ -204,18 +231,18 @@ public class ChatThreadPanel extends JPanel {
                 messagesContainer.revalidate();
                 messagesContainer.repaint();
             } catch (Exception ex) {
-                LOG.warning("setSessionList error: " + ex.getMessage());
+                LOG.log(Level.WARNING, "setSessionList error: {0}", ex.getMessage());
             }
         });
     }
 
     private JButton createSelectionButton(String text, String subtext) {
         ThemeManager.Theme theme = ThemeManager.getCurrentTheme();
-        
+
         JButton btn = new JButton();
         btn.setLayout(new BorderLayout(8, 0));
         btn.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(theme.bubbleBorder != null ? theme.bubbleBorder : Color.LIGHT_GRAY, 1, true),
+            BorderFactory.createLineBorder(theme.getBubbleBorder() != null ? theme.getBubbleBorder() : Color.LIGHT_GRAY, 1, true),
             BorderFactory.createEmptyBorder(12, 16, 12, 16)
         ));
         btn.setFocusPainted(false);
@@ -226,7 +253,7 @@ public class ChatThreadPanel extends JPanel {
 
         JPanel textPanel = new JPanel(new GridLayout(subtext != null ? 2 : 1, 1));
         textPanel.setOpaque(false);
-        
+
         JLabel mainLabel = new JLabel(text);
         mainLabel.setFont(new Font("SansSerif", Font.BOLD, 13));
         textPanel.add(mainLabel);
@@ -240,7 +267,7 @@ public class ChatThreadPanel extends JPanel {
         }
 
         btn.add(textPanel, BorderLayout.CENTER);
-        
+
         btn.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseEntered(java.awt.event.MouseEvent e) {

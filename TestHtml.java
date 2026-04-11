@@ -1,5 +1,5 @@
-import javax.swing.*;
-import java.awt.*;
+import javax.swing.JEditorPane;
+import javax.swing.SwingUtilities;
 
 public class TestHtml {
     public static void main(String[] args) throws Exception {

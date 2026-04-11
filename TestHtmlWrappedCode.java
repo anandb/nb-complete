@@ -1,4 +1,4 @@
-import javax.swing.*;
+import javax.swing.JEditorPane;
 
 public class TestHtmlWrappedCode {
     public static void main(String[] args) {

@@ -17,10 +17,7 @@
 - JUnit 5 for testing
 
 ## ?The "codex7" (Context7) Protocol
-When working on this codebase, you **must** leverage Context7 for documentation on internal and external libraries.
-*   **Internal Libraries**: For any `org.puffincreek` or `com.hartreeresearch` or `com.hartree` package, don't use `context7`.
-*   **External Logic**: Use Context7 to query documentation for other classes. E.g. `MillerUpdatingRegression` (Apache Commons Math) or Spring Cloud Stream Pub/Sub patterns, etc.
-*   **Precedence**: Always check Context7 before making assumptions about shared utility functions in `CommonUtility` or `EnergyUtility`.
+When working on this codebase, you **must** leverage Context7 for documentation on external libraries.
 
 ## Source Structure
 - `src/main/java/ai/opencode/netbeans/` - Main source code
@@ -39,3 +36,9 @@ When working on this codebase, you **must** leverage Context7 for documentation 
 ## Important Files
 - `pom.xml` - Maven configuration
 - `src/main/resources/ai/opencode/netbeans/ui/layer.xml` - NetBeans layer configuration
+
+## Coding Notes
+
+- If-Else Statements Should Use Braces
+- For, Do-While and While loops should all use braces
+- For log statements using `java.util.logging.Logger` Use index based placeholders, don't concatenate strings.

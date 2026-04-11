@@ -33,6 +33,7 @@ import javax.swing.event.DocumentListener;
 import org.netbeans.api.settings.ConvertAsProperties;
 import org.openide.awt.ActionID;
 import org.openide.awt.ActionReference;
+import org.openide.awt.ActionReferences;
 import org.openide.util.NbBundle;
 import org.openide.windows.TopComponent;
 
@@ -48,12 +49,15 @@ import ai.opencode.netbeans.model.SessionUpdate;
 @TopComponent.Description(preferredID = "OpenCodeChatTopComponent", iconBase = "ai/opencode/netbeans/ui/logo.png", persistenceType = TopComponent.PERSISTENCE_ALWAYS)
 @TopComponent.Registration(mode = "explorer", openAtStartup = true)
 @ActionID(category = "Window", id = "ai.opencode.netbeans.ui.OpenCodeChatTopComponent")
-@ActionReference(path = "Menu/Window" /* , position = 333 */)
+@ActionReferences({
+    @ActionReference(path = "Menu/Window" /* , position = 333 */),
+    @ActionReference(path = "Shortcuts", name = "D-L")
+})
 @TopComponent.OpenActionRegistration(displayName = "#CTL_OpenCodeChatAction", preferredID = "OpenCodeChatTopComponent")
 @NbBundle.Messages({
-    "CTL_OpenCodeChatAction=OpenCode Chat",
-    "CTL_OpenCodeChatTopComponent=OpenCode Chat",
-    "HINT_OpenCodeChatTopComponent=This is an OpenCode Chat window"
+    "CTL_OpenCodeChatAction=OpenCode",
+    "CTL_OpenCodeChatTopComponent=OpenCode",
+    "HINT_OpenCodeChatTopComponent=This is an OpenCode window"
 })
 public final class OpenCodeChatTopComponent extends TopComponent {
     private static final java.util.logging.Logger LOG = java.util.logging.Logger
@@ -109,16 +113,18 @@ public final class OpenCodeChatTopComponent extends TopComponent {
         sessionDropdown.setFocusable(false);
         sessionDropdown.setToolTipText("Select Session");
         sessionDropdown.setPreferredSize(new Dimension(200, 28));
-        
+
         ActionListener sessionDropdownListener = e -> {
-            LOG.info("sessionDropdown: action fired, switching=" + isSwitchingSessionDropdown + ", item=" + sessionDropdown.getSelectedItem());
-            if (isSwitchingSessionDropdown) return;
+            LOG.log(Level.INFO, "sessionDropdown: action fired, switching={0}, item={1}", new Object[]{isSwitchingSessionDropdown, sessionDropdown.getSelectedItem()});
+            if (isSwitchingSessionDropdown) {
+                return;
+            }
             SessionItem item = (SessionItem) sessionDropdown.getSelectedItem();
-            LOG.info("sessionDropdown: selected item=" + (item != null ? item.getSession().id() : "null"));
+            LOG.log(Level.INFO, "sessionDropdown: selected item={0}", item != null ? item.getSession().id() : "null");
             if (item != null) {
                 String selectedId = item.getSession().id();
                 if (currentSessionId == null || !currentSessionId.equals(selectedId)) {
-                    LOG.info("sessionDropdown: calling loadSession for " + selectedId);
+                    LOG.log(Level.INFO, "sessionDropdown: calling loadSession for {0}", selectedId);
                     loadSession(selectedId);
                 }
             }
@@ -182,7 +188,7 @@ public final class OpenCodeChatTopComponent extends TopComponent {
         ThemeManager.Theme theme = ThemeManager.getCurrentTheme();
         inputArea.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(
-                        theme.bubbleBorder != null && theme.bubbleBorder.getAlpha() > 0 ? theme.bubbleBorder
+                        theme.getBubbleBorder() != null && theme.getBubbleBorder().getAlpha() > 0 ? theme.getBubbleBorder()
                                 : new Color(0, 0, 0, 30),
                         1, true),
                 new EmptyBorder(4, 4, 4, 4)));
@@ -386,8 +392,9 @@ public final class OpenCodeChatTopComponent extends TopComponent {
                     final String mText = text;
                     SwingUtilities.invokeLater(() -> {
                         chatPanel.addMessage(mRole, mText);
-                        if ("assistant".equals(mRole))
+                        if ("assistant".equals(mRole)) {
                             resetStatus();
+                        }
                     });
                 }
             }
@@ -492,13 +499,13 @@ public final class OpenCodeChatTopComponent extends TopComponent {
     private void initChat() {
         statusLabel.setText("Connecting...");
         OpenCodeManager manager = OpenCodeManager.getInstance();
-        LOG.info("initChat: initialized=" + manager.isInitialized());
+        LOG.log(Level.INFO, "initChat: initialized={0}", manager.isInitialized());
         manager.whenReady()
                 .thenCompose(v -> manager.getSessions())
                 .thenAccept(sessions -> {
-                    LOG.info("initChat: received " + sessions.size() + " sessions, before sorting");
+                    LOG.log(Level.INFO, "initChat: received {0} sessions, before sorting", sessions.size());
                     for (Session s : sessions) {
-                        LOG.info("initChat: session id=" + s.id() + ", title='" + s.title() + "'");
+                        LOG.log(Level.INFO, "initChat: session id={0}, title=''{1}''", new Object[]{s.id(), s.title()});
                     }
                     LOG.info("initChat: after logging sessions, before sorting");
                     List<Session> sortedSessions = sessions.stream()
@@ -509,20 +516,20 @@ public final class OpenCodeChatTopComponent extends TopComponent {
                             })
                             .toList();
 
-                    LOG.info("initChat: after sorting, calling setSessionList with " + sortedSessions.size() + " sessions");
+                    LOG.log(Level.INFO, "initChat: after sorting, calling setSessionList with {0} sessions", sortedSessions.size());
                     chatPanel.setSessionList(sortedSessions, this::loadSession, this::createNewSession);
                     SwingUtilities.invokeLater(() -> {
                         isSwitchingSessionDropdown = true;
                         try {
                             sessionDropdown.removeAllItems();
-                            LOG.info("initChat: adding " + sortedSessions.size() + " sessions to dropdown");
+                            LOG.log(Level.INFO, "initChat: adding {0} sessions to dropdown", sortedSessions.size());
                             for (ai.opencode.netbeans.model.Session s : sortedSessions) {
                                 sessionDropdown.addItem(new SessionItem(s));
                             }
-                            
+
                             // Auto-select most recent session if available
                             if (!sortedSessions.isEmpty()) {
-                                LOG.info("initChat: auto-selecting session " + sortedSessions.get(0).id());
+                                LOG.log(Level.INFO, "initChat: auto-selecting session {0}", sortedSessions.get(0).id());
                                 sessionDropdown.setSelectedIndex(0);
                                 currentSessionId = sortedSessions.get(0).id();
                                 loadSession(currentSessionId);
@@ -547,27 +554,27 @@ public final class OpenCodeChatTopComponent extends TopComponent {
     private void loadSession(String sessionId) {
         this.currentSessionId = sessionId;
         statusLabel.setText("Loading chat...");
-        LOG.info("loadSession: clearing and calling loadSession for " + sessionId);
-        
+        LOG.log(Level.INFO, "loadSession: clearing and calling loadSession for {0}", sessionId);
+
         chatPanel.clearMessages();
-        
+
         OpenCodeManager.getInstance().getSessions().thenAccept(sessions -> {
             String sessionCwd = sessions.stream()
                     .filter(s -> s.id().equals(sessionId))
                     .findFirst()
                     .map(s -> s.cwd() != null ? s.cwd() : s.directory())
                     .orElse(null);
-            
+
             String currentProjectCwd = OpenCodeManager.getInstance().getActiveProjectDir();
             String workingCwd = currentProjectCwd != null ? currentProjectCwd : sessionCwd;
-            LOG.info("loadSession: currentProjectCwd=" + currentProjectCwd + ", sessionCwd=" + sessionCwd + ", using=" + workingCwd);
+            LOG.log(Level.INFO, "loadSession: currentProjectCwd={0}, sessionCwd={1}, using={2}", new Object[]{currentProjectCwd, sessionCwd, workingCwd});
             updateCwdLabel(workingCwd);
             OpenCodeManager.getInstance().loadSession(sessionId, workingCwd)
                 .thenAccept(v -> {
                     SwingUtilities.invokeLater(() -> {
                         statusLabel.setText("Ready");
                         setInputEnabled(true);
-                        
+
                         isSwitchingSessionDropdown = true;
                         try {
                             for (int i = 0; i < sessionDropdown.getItemCount(); i++) {
@@ -580,7 +587,7 @@ public final class OpenCodeChatTopComponent extends TopComponent {
                         } finally {
                             isSwitchingSessionDropdown = false;
                         }
-                        
+
                         inputArea.requestFocusInWindow();
                     });
                 })
@@ -609,12 +616,12 @@ public final class OpenCodeChatTopComponent extends TopComponent {
                             updateConfigControls(session.configOptions());
                         }
                         setInputEnabled(true);
-                        
+
                         // Sync both dropdown and sidebar list
                         isSwitchingSessionDropdown = true;
                         try {
                             SessionItem newItem = new SessionItem(session);
-                            
+
                             // Check if it's already in the dropdown, if not add it at the top
                             boolean found = false;
                             for (int i = 0; i < sessionDropdown.getItemCount(); i++) {
@@ -624,12 +631,12 @@ public final class OpenCodeChatTopComponent extends TopComponent {
                                     break;
                                 }
                             }
-                            
+
                             if (!found) {
                                 sessionDropdown.insertItemAt(newItem, 0);
                                 sessionDropdown.setSelectedIndex(0);
                             }
-                            
+
                             // Also refresh the sidebar panel's list of sessions
                             refreshAllSessionsList();
                         } finally {
@@ -650,8 +657,9 @@ public final class OpenCodeChatTopComponent extends TopComponent {
 
     private void sendMessage() {
         String text = inputArea.getText().trim();
-        if (text.isEmpty())
+        if (text.isEmpty()) {
             return;
+        }
 
         if (currentSessionId == null) {
             statusLabel.setText("Error: No active session.");
@@ -686,8 +694,9 @@ public final class OpenCodeChatTopComponent extends TopComponent {
     }
 
     private void stopMessage() {
-        if (currentSessionId == null)
+        if (currentSessionId == null) {
             return;
+        }
         statusLabel.setText("Stopping...");
         OpenCodeManager.getInstance().stopMessage(currentSessionId)
                 .thenAccept(v -> {
@@ -703,8 +712,9 @@ public final class OpenCodeChatTopComponent extends TopComponent {
     }
 
     private void deleteSessionSelected() {
-        if (currentSessionId == null)
+        if (currentSessionId == null) {
             return;
+        }
 
         String sid = currentSessionId;
         statusLabel.setText("Deleting session...");
@@ -745,7 +755,9 @@ public final class OpenCodeChatTopComponent extends TopComponent {
                                 String base = txt.replace(".", "");
                                 thinkingDots = (thinkingDots + 1) % 4;
                                 String dots = "";
-                                for (int i = 0; i < thinkingDots; i++) dots += ".";
+                                for (int i = 0; i < thinkingDots; i++) {
+                                    dots += ".";
+                                }
                                 statusLabel.setText(base + dots);
                             }
                         }
@@ -764,8 +776,9 @@ public final class OpenCodeChatTopComponent extends TopComponent {
         SwingUtilities.invokeLater(() -> {
             statusLabel.setText("Ready");
             updateButtonState(false);
-            if (currentSessionId != null)
+            if (currentSessionId != null) {
                 setInputEnabled(true);
+            }
         });
     }
 
@@ -824,10 +837,9 @@ public final class OpenCodeChatTopComponent extends TopComponent {
         combo.addActionListener(e -> {
             Object selected = combo.getSelectedItem();
             ConfigItem item = null;
-            if (selected instanceof ConfigItem) {
-                item = (ConfigItem) selected;
-            } else if (selected instanceof String) {
-                String val = (String) selected;
+            if (selected instanceof ConfigItem configItem) {
+                item = configItem;
+            } else if (selected instanceof String val) {
                 // Try to find matching item by name or value
                 for (int i = 0; i < combo.getItemCount(); i++) {
                     ConfigItem current = combo.getItemAt(i);
@@ -863,13 +875,14 @@ public final class OpenCodeChatTopComponent extends TopComponent {
         SwingUtilities.invokeLater(() -> {
             for (SessionConfigOption opt : options) {
                 JComboBox<ConfigItem> combo = null;
-                if ("mode".equals(opt.category()))
+                if ("mode".equals(opt.category())) {
                     combo = modeCombo;
-                else if ("model".equals(opt.category()))
+                } else if ("model".equals(opt.category())) {
                     combo = modelCombo;
-                else if (opt.category() != null
-                        && (opt.category().contains("thinking") || opt.category().contains("thought")))
+                } else if (opt.category() != null
+                        && (opt.category().contains("thinking") || opt.category().contains("thought"))) {
                     combo = thinkingCombo;
+                }
 
                 if (combo != null) {
                     combo.removeAllItems();
@@ -979,6 +992,15 @@ public final class OpenCodeChatTopComponent extends TopComponent {
     }
 
     @Override
+    public void componentActivated() {
+        SwingUtilities.invokeLater(() -> {
+            if (inputArea != null) {
+                inputArea.requestFocusInWindow();
+            }
+        });
+    }
+
+    @Override
     public void componentClosed() {
         if (thinkingTimer != null && thinkingTimer.isRunning()) {
             thinkingTimer.stop();
@@ -1032,8 +1054,12 @@ public final class OpenCodeChatTopComponent extends TopComponent {
 
         @Override
         public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
             SessionItem that = (SessionItem) o;
             return session.id().equals(that.session.id());
         }
@@ -1045,7 +1071,9 @@ public final class OpenCodeChatTopComponent extends TopComponent {
     }
 
     private long parseTimestamp(String ts) {
-        if (ts == null || ts.isEmpty()) return 0;
+        if (ts == null || ts.isEmpty()) {
+            return 0;
+        }
         try {
             if (ts.contains("T")) {
                 java.time.Instant instant = java.time.Instant.parse(ts);

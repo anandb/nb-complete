@@ -1,6 +1,7 @@
 package ai.opencode.netbeans.manager;
 
-import ai.opencode.netbeans.model.*;
+import ai.opencode.netbeans.model.Session;
+import ai.opencode.netbeans.model.SessionUpdate;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -26,7 +27,7 @@ public class OpenCodeManager {
     private JsonRpcClient rpcClient;
     private boolean initialized = false;
     private final CompletableFuture<Void> readyFuture = new CompletableFuture<>();
-    
+
     private final List<Consumer<SessionUpdate>> sseListeners = new CopyOnWriteArrayList<>();
     private final List<Consumer<String>> projectChangeListeners = new CopyOnWriteArrayList<>();
     private String activeProjectDir;
@@ -50,7 +51,7 @@ public class OpenCodeManager {
             String binaryPath = NbPreferences.forModule(ai.opencode.netbeans.ui.OpenCodeOptionsPanel.class)
                     .get("opencodeExecutablePath", defaultPath);
             LOG.log(Level.INFO, "Binary path: {0}", binaryPath);
-            
+
             java.io.File binaryFile = new java.io.File(binaryPath);
             if (!binaryFile.exists()) {
                 LOG.log(Level.SEVERE, "OpenCode binary NOT found at {0}", binaryPath);
@@ -58,17 +59,18 @@ public class OpenCodeManager {
             }
 
             ProcessBuilder pb = new ProcessBuilder(binaryPath, "acp");
-            pb.redirectError(ProcessBuilder.Redirect.INHERIT); 
+            pb.redirectError(ProcessBuilder.Redirect.INHERIT);
             this.serverProcess = pb.start();
-            
+
             this.rpcClient = new JsonRpcClient(serverProcess);
-            
+            rpcClient.start();
+
             // Listen for session updates
             rpcClient.onNotification("session/update", params -> {
                 try {
                     SessionUpdate.Params sessionParams = objectMapper.treeToValue(params, SessionUpdate.Params.class);
                     SessionUpdate update = new SessionUpdate("2.0", "session/update", sessionParams);
-                    
+
                     // Update available commands if present
                     if (update.update() != null && "available_commands_update".equals(update.update().type())) {
                         if (update.update().availableCommands() != null) {
@@ -76,14 +78,14 @@ public class OpenCodeManager {
                             availableCommands.addAll(update.update().availableCommands());
                         }
                     }
-                    
+
                     // Update session configurations if present
                     if (update.update() != null && "config_options_update".equals(update.update().type())) {
                         if (update.update().configOptions() != null) {
                             // Forward this update to UI via the SSE listener
                         }
                     }
-                    
+
                     notifyListeners(update);
                 } catch (Exception e) {
                     LOG.log(Level.WARNING, "Failed to parse session/update notification: " + e.getMessage(), e);
@@ -92,10 +94,10 @@ public class OpenCodeManager {
 
             // Initialize ACP
             initializeProtocol();
-            
+
             Runtime.getRuntime().addShutdownHook(new Thread(this::stopServer));
-            
-            LOG.info("OpenCode ACP server process started successfully");
+
+            LOG.log(Level.INFO, "OpenCode ACP server process started successfully");
         } catch (Exception e) {
             LOG.log(Level.SEVERE, "CRITICAL: Failed to start OpenCode ACP server", e);
         }
@@ -114,7 +116,7 @@ public class OpenCodeManager {
                 .thenAccept(res -> {
                     this.initialized = true;
                     readyFuture.complete(null);
-                    LOG.info("OpenCode ACP initialized successfully");
+                    LOG.log(Level.INFO, "OpenCode ACP initialized successfully");
                 })
                 .exceptionally(ex -> {
                     LOG.log(Level.SEVERE, "Failed to initialize OpenCode ACP", ex);
@@ -131,7 +133,7 @@ public class OpenCodeManager {
         }
         if (serverProcess != null && serverProcess.isAlive()) {
             serverProcess.destroy();
-            LOG.info("OpenCode server stopped");
+            LOG.log(Level.INFO, "OpenCode server stopped");
         }
     }
 
@@ -147,36 +149,36 @@ public class OpenCodeManager {
 
 
     public CompletableFuture<List<Session>> getSessions() {
-        LOG.info("getSessions: called");
-        if (rpcClient == null) return CompletableFuture.failedFuture(new RuntimeException("Server not started"));
+        LOG.log(Level.INFO, "getSessions: called");
+        if (rpcClient == null) {
+            return CompletableFuture.failedFuture(new RuntimeException("Server not started"));
+        }
         return rpcClient.sendRequest("session/list", Map.of())
                 .thenApply(res -> {
                     try {
-                        LOG.info("getSessions: got response");
+                        LOG.log(Level.INFO, "getSessions: got response");
                         JsonNode root = objectMapper.readTree(res.traverse());
                         JsonNode result = root.has("result") ? root.get("result") : root;
                         JsonNode sessionsNode = result.has("sessions") ? result.get("sessions") : result.has("data") ? result.get("data") : result;
                         if (sessionsNode.isArray()) {
                             List<Session> sessions = objectMapper.readValue(sessionsNode.traverse(), new TypeReference<List<Session>>() {});
-                            LOG.info("getSessions: deserialized " + sessions.size() + " sessions");
+                            LOG.log(Level.INFO, "getSessions: deserialized {0} sessions", sessions.size());
                             for (Session s : sessions) {
-                                LOG.info("getSessions: id=" + s.id() + ", title='" + s.title() + "'");
+                                LOG.log(Level.INFO, "getSessions: id={0}, title=''{1}''", new Object[]{s.id(), s.title()});
                             }
                             return sessions;
                         } else {
-                            LOG.warning("getSessions: sessionsNode is not an array: " + sessionsNode);
+                            LOG.log(Level.WARNING, "getSessions: sessionsNode is not an array: {0}", sessionsNode);
                             return new ArrayList<Session>();
                         }
                     } catch (IOException e) {
-                        LOG.warning("getSessions: failed to deserialize: " + e.getMessage());
-                        e.printStackTrace();
+                        LOG.log(Level.WARNING, "getSessions: failed to deserialize: {0} {1}", new Object[]{e.getMessage(), e.toString()});
                         return new ArrayList<Session>();
                     }
                 })
                 .exceptionally(ex -> {
-                    LOG.warning("getSessions: rpc error: " + ex.getMessage());
-                    ex.printStackTrace();
-                    return new ArrayList<Session>();
+                    LOG.log(Level.WARNING, "getSessions: rpc error: {0} {1}", new Object[]{ex.getMessage(), ex.toString()});
+                    return new ArrayList<>();
                 });
     }
 
@@ -193,8 +195,10 @@ public class OpenCodeManager {
     }
 
     public CompletableFuture<Session> createSession(String cwd) {
-        if (rpcClient == null) return CompletableFuture.failedFuture(new RuntimeException("Server not started"));
-        
+        if (rpcClient == null) {
+            return CompletableFuture.failedFuture(new RuntimeException("Server not started"));
+        }
+
         String effectiveCwd = cwd;
 
         // 1. Use provided CWD if given
@@ -225,26 +229,32 @@ public class OpenCodeManager {
     }
 
     public CompletableFuture<Void> loadSession(String sessionId, String cwd) {
-        LOG.info("loadSession: called with " + sessionId + ", cwd=" + cwd);
-        if (rpcClient == null) return CompletableFuture.failedFuture(new RuntimeException("Server not started"));
+        LOG.log(Level.INFO, "loadSession: called with {0}, cwd={1}", new Object[]{sessionId, cwd});
+        if (rpcClient == null) {
+            return CompletableFuture.failedFuture(new RuntimeException("Server not started"));
+        }
         Map<String, Object> params = new java.util.HashMap<>();
         params.put("sessionId", sessionId);
-        if (cwd != null) params.put("cwd", cwd);
+        if (cwd != null) {
+            params.put("cwd", cwd);
+        }
         params.put("mcpServers", List.of());
-        
+
         return rpcClient.sendRequest("session/load", params)
                 .thenApply(res -> {
-                    LOG.info("loadSession: got response " + res);
+                    LOG.log(Level.INFO, "loadSession: got response {0}", res);
                     return (Void) null;
                 })
                 .exceptionally(ex -> {
-                    LOG.warning("loadSession: error: " + ex.getMessage());
+                    LOG.log(Level.WARNING, "loadSession: error: {0}", ex.getMessage());
                     return (Void) null;
                 });
     }
 
     public CompletableFuture<Void> sendMessage(String sessionId, String text) {
-        if (rpcClient == null) return CompletableFuture.failedFuture(new RuntimeException("Server not started"));
+        if (rpcClient == null) {
+            return CompletableFuture.failedFuture(new RuntimeException("Server not started"));
+        }
         Map<String, Object> params = Map.of(
             "sessionId", sessionId,
             "prompt", List.of(Map.of("type", "text", "text", text))
@@ -254,21 +264,27 @@ public class OpenCodeManager {
     }
 
     public CompletableFuture<Void> stopMessage(String sessionId) {
-        if (rpcClient == null) return CompletableFuture.failedFuture(new RuntimeException("Server not started"));
+        if (rpcClient == null) {
+            return CompletableFuture.failedFuture(new RuntimeException("Server not started"));
+        }
         return rpcClient.sendRequest("session/cancel", Map.of("sessionId", sessionId))
                 .thenApply(v -> null);
     }
 
     public CompletableFuture<Void> deleteSession(String sessionId) {
-        if (rpcClient == null) return CompletableFuture.failedFuture(new RuntimeException("Server not started"));
+        if (rpcClient == null) {
+            return CompletableFuture.failedFuture(new RuntimeException("Server not started"));
+        }
         // Using session/close as the standard termination method
         return rpcClient.sendRequest("session/delete", Map.of("sessionId", sessionId))
                 .thenApply(v -> null);
     }
-    
+
     // Placeholder for completions - need to verify method name
     public CompletableFuture<JsonNode> getCompletions(String sessionId, String text, int line, int column) {
-        if (rpcClient == null) return CompletableFuture.completedFuture(null);
+        if (rpcClient == null) {
+            return CompletableFuture.completedFuture(null);
+        }
         Map<String, Object> params = Map.of(
             "sessionId", sessionId,
             "text", text,
@@ -280,7 +296,9 @@ public class OpenCodeManager {
     }
 
     public CompletableFuture<Void> setSessionConfigOption(String sessionId, String configId, String value) {
-        if (rpcClient == null) return CompletableFuture.failedFuture(new RuntimeException("Server not started"));
+        if (rpcClient == null) {
+            return CompletableFuture.failedFuture(new RuntimeException("Server not started"));
+        }
         Map<String, Object> params = Map.of(
             "sessionId", sessionId,
             "configId", configId,

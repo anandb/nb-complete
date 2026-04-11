@@ -9,10 +9,10 @@ import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
 
 @OptionsPanelController.SubRegistration(
-        location = "HtmlEditor",
+        location = "Advanced",
         displayName = "#OptionsCategory_Name_OpenCode",
         keywords = "#OptionsCategory_Keywords_OpenCode",
-        keywordsCategory = "HtmlEditor/OpenCode"
+        keywordsCategory = "Advanced/OpenCode"
 )
 @NbBundle.Messages({"OptionsCategory_Name_OpenCode=OpenCode", "OptionsCategory_Keywords_OpenCode=opencode, ai, chatbot, path"})
 public final class OpenCodeOptionsPanelController extends OptionsPanelController {

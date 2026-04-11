@@ -36,9 +36,15 @@ public record Message(
         String data
     ) {
         public String getDisplayText() {
-            if ("text".equals(type)) return text;
-            if ("image".equals(type)) return "[Image: " + (filename != null ? filename : url) + "]";
-            if ("file".equals(type)) return "[File: " + filename + "]";
+            if ("text".equals(type)) {
+                return text;
+            }
+            if ("image".equals(type)) {
+                return "[Image: " + (filename != null ? filename : url) + "]";
+            }
+            if ("file".equals(type)) {
+                return "[File: " + filename + "]";
+            }
             return "";
         }
     }

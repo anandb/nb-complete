@@ -25,12 +25,14 @@ public class JsonRpcClient {
     private final Map<Long, CompletableFuture<JsonNode>> pendingRequests = new ConcurrentHashMap<>();
     private final Map<String, Consumer<JsonNode>> notificationListeners = new ConcurrentHashMap<>();
     private volatile boolean running = true;
-    private final Thread readerThread;
+    private Thread readerThread;
 
     public JsonRpcClient(Process process) {
         this.writer = new PrintWriter(process.getOutputStream(), true);
         this.reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-        
+    }
+
+    public void start() {
         readerThread = new Thread(this::readLoop, "OpenCode-JSONRPC-Reader");
         readerThread.setDaemon(true);
         readerThread.start();
@@ -82,7 +84,9 @@ public class JsonRpcClient {
         try {
             String line;
             while (running && (line = reader.readLine()) != null) {
-                if (line.trim().isEmpty()) continue;
+                if (line.trim().isEmpty()) {
+                    continue;
+                }
                 LOG.log(Level.INFO, "Received line: {0}", line);
                 try {
                     JsonNode node = mapper.readTree(line);
