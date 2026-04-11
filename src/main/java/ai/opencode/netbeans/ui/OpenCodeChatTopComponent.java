@@ -8,21 +8,28 @@ import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.Insets;
+import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 
+import java.awt.Component;
 import javax.swing.BorderFactory;
+import javax.swing.DefaultListCellRenderer;
+import javax.swing.DefaultListModel;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
+import javax.swing.JList;
 import javax.swing.JMenuItem;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
+import javax.swing.ListSelectionModel;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
@@ -30,12 +37,22 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 
+import javax.swing.text.Document;
+import javax.swing.text.JTextComponent;
+import javax.swing.text.StyledDocument;
+
+import org.netbeans.api.editor.EditorRegistry;
 import org.netbeans.api.settings.ConvertAsProperties;
+import org.netbeans.modules.editor.NbEditorUtilities;
 import org.openide.awt.ActionID;
 import org.openide.awt.ActionReference;
 import org.openide.awt.ActionReferences;
+import org.openide.awt.ActionRegistration;
+import org.openide.filesystems.FileObject;
+import org.openide.text.NbDocument;
 import org.openide.util.NbBundle;
 import org.openide.windows.TopComponent;
+import org.openide.windows.WindowManager;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
@@ -45,21 +62,36 @@ import ai.opencode.netbeans.model.SessionConfigOption;
 import ai.opencode.netbeans.model.SessionConfigSelectOption;
 import ai.opencode.netbeans.model.SessionUpdate;
 
-@ConvertAsProperties(dtd = "-//ai.opencode.netbeans.ui//OpenCodeChat//EN", autostore = false)
-@TopComponent.Description(preferredID = "OpenCodeChatTopComponent", iconBase = "ai/opencode/netbeans/ui/logo.png", persistenceType = TopComponent.PERSISTENCE_ALWAYS)
-@TopComponent.Registration(mode = "explorer", openAtStartup = true)
-@ActionID(category = "Window", id = "ai.opencode.netbeans.ui.OpenCodeChatTopComponent")
-@ActionReferences({
-    @ActionReference(path = "Menu/Window" /* , position = 333 */),
-    @ActionReference(path = "Shortcuts", name = "D-L")
-})
-@TopComponent.OpenActionRegistration(displayName = "#CTL_OpenCodeChatAction", preferredID = "OpenCodeChatTopComponent")
 @NbBundle.Messages({
     "CTL_OpenCodeChatAction=OpenCode",
     "CTL_OpenCodeChatTopComponent=OpenCode",
     "HINT_OpenCodeChatTopComponent=This is an OpenCode window"
 })
+@ConvertAsProperties(dtd = "-//ai.opencode.netbeans.ui//OpenCodeChat//EN", autostore = false)
+@TopComponent.Description(preferredID = "OpenCodeChatTopComponent", iconBase = "ai/opencode/netbeans/ui/logo.png", persistenceType = TopComponent.PERSISTENCE_ALWAYS)
+@TopComponent.Registration(mode = "explorer", openAtStartup = true)
 public final class OpenCodeChatTopComponent extends TopComponent {
+
+    @ActionID(category = "Window", id = "ai.opencode.netbeans.ui.OpenCodeToggleAction")
+    @ActionRegistration(displayName = "#CTL_OpenCodeChatAction")
+    @ActionReferences({
+        @ActionReference(path = "Menu/Window"),
+        @ActionReference(path = "Shortcuts", name = "D-L")
+    })
+    public static final class OpenCodeToggleAction implements ActionListener {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            TopComponent tc = WindowManager.getDefault().findTopComponent("OpenCodeChatTopComponent");
+            if (tc != null) {
+                if (tc.isOpened() && tc.isShowing() && WindowManager.getDefault().getRegistry().getActivated() == tc) {
+                    tc.close();
+                } else {
+                    tc.open();
+                    tc.requestActive();
+                }
+            }
+        }
+    }
     private static final java.util.logging.Logger LOG = java.util.logging.Logger
             .getLogger(OpenCodeChatTopComponent.class.getName());
     private static OpenCodeChatTopComponent instance;
@@ -67,10 +99,13 @@ public final class OpenCodeChatTopComponent extends TopComponent {
 
     private final ChatThreadPanel chatPanel;
     private final JTextArea inputArea;
+    private JPopupMenu autocompletePopup;
+    private JList<SessionUpdate.AvailableCommand> commandList;
+    private JScrollPane commandScroll;
     private final JLabel statusLabel;
     private final JButton sendBtn;
     private final JButton stopBtn;
-    private final JButton deleteSessionBtn;
+
     private final JComboBox<SessionItem> sessionDropdown;
     private boolean isSwitchingSessionDropdown = false;
     private final JLabel cwdLabel;
@@ -79,10 +114,11 @@ public final class OpenCodeChatTopComponent extends TopComponent {
     private final JComboBox<ConfigItem> thinkingCombo;
     private final JPanel configPanel;
     private final JButton toggleOptionsBtn;
-    private final JPopupMenu autocompletePopup;
     private String currentSessionId;
+    private String lastProjectDir;
     private javax.swing.Timer thinkingTimer;
     private int thinkingDots = 0;
+    private boolean isReceivingPathBasedResource = false;
 
     public OpenCodeChatTopComponent() {
         LOG.info("Initializing OpenCodeChatTopComponent...");
@@ -131,16 +167,9 @@ public final class OpenCodeChatTopComponent extends TopComponent {
         };
         sessionDropdown.addActionListener(sessionDropdownListener);
 
-        deleteSessionBtn = new JButton("Delete");
-        deleteSessionBtn.setFocusPainted(false);
-        deleteSessionBtn.setToolTipText("Delete Session");
-        deleteSessionBtn.setVisible(false);
-        deleteSessionBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        deleteSessionBtn.addActionListener(e -> deleteSessionSelected());
 
         JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         buttonsPanel.setOpaque(false);
-        buttonsPanel.add(deleteSessionBtn);
         buttonsPanel.add(newSessionBtn);
 
         JPanel actionPanel = new JPanel(new BorderLayout(0, 0));
@@ -195,6 +224,33 @@ public final class OpenCodeChatTopComponent extends TopComponent {
 
         autocompletePopup = new JPopupMenu();
         autocompletePopup.setFocusable(false);
+        commandList = new JList<>();
+        commandList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        commandList.setFocusable(false);
+        commandList.setCellRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+                JLabel label = (JLabel) super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                if (value instanceof SessionUpdate.AvailableCommand cmd) {
+                    label.setText("/" + cmd.name() + (cmd.description() != null ? " - " + cmd.description() : ""));
+                    label.setBorder(new EmptyBorder(4, 8, 4, 8));
+                }
+                if (isSelected) {
+                    label.setBackground(theme.getSelection());
+                    label.setForeground(Color.WHITE);
+                } else {
+                    label.setBackground(Color.WHITE);
+                    label.setForeground(Color.BLACK);
+                }
+                return label;
+            }
+        });
+        
+        commandScroll = new JScrollPane(commandList);
+        commandScroll.setBorder(null);
+        commandScroll.setPreferredSize(new Dimension(600, 200));
+        autocompletePopup.add(commandScroll);
+
         inputArea.addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
@@ -202,8 +258,20 @@ public final class OpenCodeChatTopComponent extends TopComponent {
                     if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
                         autocompletePopup.setVisible(false);
                         e.consume();
-                    } else if (e.getKeyCode() == KeyEvent.VK_DOWN || e.getKeyCode() == KeyEvent.VK_UP) {
-                        // Allow navigation in popup handled by Swing
+                    } else if (e.getKeyCode() == KeyEvent.VK_DOWN) {
+                        int index = commandList.getSelectedIndex();
+                        if (index < commandList.getModel().getSize() - 1) {
+                            commandList.setSelectedIndex(index + 1);
+                            commandList.ensureIndexIsVisible(index + 1);
+                        }
+                        e.consume();
+                    } else if (e.getKeyCode() == KeyEvent.VK_UP) {
+                        int index = commandList.getSelectedIndex();
+                        if (index > 0) {
+                            commandList.setSelectedIndex(index - 1);
+                            commandList.ensureIndexIsVisible(index - 1);
+                        }
+                        e.consume();
                     }
                 }
 
@@ -213,7 +281,9 @@ public final class OpenCodeChatTopComponent extends TopComponent {
                         return;
                     }
                     if (autocompletePopup.isVisible()) {
-                        autocompletePopup.setVisible(false);
+                        selectCommand();
+                        e.consume();
+                        return;
                     }
                     e.consume();
                     sendMessage();
@@ -447,7 +517,28 @@ public final class OpenCodeChatTopComponent extends TopComponent {
                                 // echo)
                                 // Standard user message updates should be separate bubbles
                                 if ("user_message_chunk".equals(finalType)) {
-                                    chatPanel.appendOrAddMessage(finalRole, finalText);
+                                    String outText = finalText;
+                                    boolean chunkStartsWithPath = outText.startsWith("<path>");
+
+                                    if (chunkStartsWithPath) {
+                                        isReceivingPathBasedResource = true;
+                                        outText = "```\n" + outText;
+                                    }
+
+                                    boolean chunkEndsWithContent = outText.endsWith("</content>");
+                                    if (chunkEndsWithContent) {
+                                        outText += "\n```";
+                                    }
+
+                                    if (chunkStartsWithPath) {
+                                        chatPanel.addMessage(finalRole, outText);
+                                    } else {
+                                        chatPanel.appendOrAddMessage(finalRole, outText);
+                                    }
+
+                                    if (chunkEndsWithContent) {
+                                        isReceivingPathBasedResource = false;
+                                    }
                                 } else {
                                     chatPanel.addMessage(finalRole, finalText);
                                 }
@@ -486,9 +577,13 @@ public final class OpenCodeChatTopComponent extends TopComponent {
         OpenCodeManager.getInstance().addProjectChangeListener(path -> {
             if (path != null) {
                 SwingUtilities.invokeLater(() -> {
-                    // Automatically clear and start fresh session for new project context
-                    createNewSession();
-                    statusLabel.setText("Context switched: " + new java.io.File(path).getName());
+                    // Only automatically clear if the project has actually changed
+                    if (lastProjectDir != null && !lastProjectDir.equals(path)) {
+                        LOG.log(Level.INFO, "Project changed from {0} to {1}, creating new session", new Object[]{lastProjectDir, path});
+                        createNewSession();
+                        statusLabel.setText("Context switched: " + new java.io.File(path).getName());
+                    }
+                    lastProjectDir = path;
                 });
             }
         });
@@ -516,8 +611,6 @@ public final class OpenCodeChatTopComponent extends TopComponent {
                             })
                             .toList();
 
-                    LOG.log(Level.INFO, "initChat: after sorting, calling setSessionList with {0} sessions", sortedSessions.size());
-                    chatPanel.setSessionList(sortedSessions, this::loadSession, this::createNewSession);
                     SwingUtilities.invokeLater(() -> {
                         isSwitchingSessionDropdown = true;
                         try {
@@ -530,11 +623,13 @@ public final class OpenCodeChatTopComponent extends TopComponent {
                             // Auto-select most recent session if available
                             if (!sortedSessions.isEmpty()) {
                                 LOG.log(Level.INFO, "initChat: auto-selecting session {0}", sortedSessions.get(0).id());
-                                sessionDropdown.setSelectedIndex(0);
                                 currentSessionId = sortedSessions.get(0).id();
+                                sessionDropdown.setSelectedIndex(0);
+                                // loadSession will clear the panel and request messages
                                 loadSession(currentSessionId);
                             } else {
-                                LOG.info("initChat: no sessions, showing empty state");
+                                LOG.info("initChat: no sessions, showing welcome state");
+                                chatPanel.setSessionList(sortedSessions, this::loadSession, this::createNewSession);
                                 sessionDropdown.setSelectedIndex(-1);
                                 statusLabel.setText("Click '+ New Chat' to start");
                                 setInputEnabled(false);
@@ -569,6 +664,7 @@ public final class OpenCodeChatTopComponent extends TopComponent {
             String workingCwd = currentProjectCwd != null ? currentProjectCwd : sessionCwd;
             LOG.log(Level.INFO, "loadSession: currentProjectCwd={0}, sessionCwd={1}, using={2}", new Object[]{currentProjectCwd, sessionCwd, workingCwd});
             updateCwdLabel(workingCwd);
+            this.lastProjectDir = workingCwd;
             OpenCodeManager.getInstance().loadSession(sessionId, workingCwd)
                 .thenAccept(v -> {
                     SwingUtilities.invokeLater(() -> {
@@ -607,11 +703,13 @@ public final class OpenCodeChatTopComponent extends TopComponent {
         OpenCodeManager.getInstance().createSession(null)
                 .thenAccept(session -> {
                     this.currentSessionId = session.id();
-                    LOG.log(Level.INFO, "New session created: {0}", currentSessionId);
+                    String sessCwd = session.cwd() != null ? session.cwd() : session.directory();
+                    this.lastProjectDir = sessCwd;
+                    LOG.log(Level.INFO, "New session created: {0}, CWD: {1}", new Object[]{currentSessionId, lastProjectDir});
                     SwingUtilities.invokeLater(() -> {
                         chatPanel.clearMessages();
                         statusLabel.setText("Session created: " + currentSessionId);
-                        updateCwdLabel(session.cwd() != null ? session.cwd() : session.directory());
+                        updateCwdLabel(sessCwd);
                         if (session.configOptions() != null) {
                             updateConfigControls(session.configOptions());
                         }
@@ -656,7 +754,7 @@ public final class OpenCodeChatTopComponent extends TopComponent {
     }
 
     private void sendMessage() {
-        String text = inputArea.getText().trim();
+        String text = inputArea.getText().trim() + "\n\n";
         if (text.isEmpty()) {
             return;
         }
@@ -670,7 +768,8 @@ public final class OpenCodeChatTopComponent extends TopComponent {
         statusLabel.setText("Sending");
         updateButtonState(true);
 
-        OpenCodeManager.getInstance().sendMessage(currentSessionId, text)
+        Map<String, Object> context = captureEditorContext();
+        OpenCodeManager.getInstance().sendMessage(currentSessionId, text, context)
                 .thenAccept(v -> {
                     SwingUtilities.invokeLater(() -> {
                         String currentStatus = statusLabel.getText();
@@ -693,6 +792,46 @@ public final class OpenCodeChatTopComponent extends TopComponent {
                 });
     }
 
+    private Map<String, Object> captureEditorContext() {
+        JTextComponent editor = EditorRegistry.lastFocusedComponent();
+        if (editor == null) {
+            return null;
+        }
+
+        Document doc = editor.getDocument();
+        if (!(doc instanceof StyledDocument styledDoc)) {
+            return null;
+        }
+
+        Map<String, Object> context = new java.util.HashMap<>();
+
+        FileObject fo = NbEditorUtilities.getFileObject(doc);
+        if (fo != null) {
+            context.put("filePath", fo.getPath());
+        }
+
+        String selection = editor.getSelectedText();
+        if (selection != null && !selection.isEmpty()) {
+            context.put("selectionContent", selection);
+            int selStart = editor.getSelectionStart();
+            int selEnd = editor.getSelectionEnd();
+
+            int startLine = NbDocument.findLineNumber(styledDoc, selStart) + 1;
+            int endLine = NbDocument.findLineNumber(styledDoc, selEnd) + 1;
+
+            Map<String, Object> range = new java.util.HashMap<>();
+            range.put("start", Map.of("line", startLine, "character", 0));
+            range.put("end", Map.of("line", endLine, "character", 0));
+            context.put("selection", range);
+        }
+
+        int caretPos = editor.getCaretPosition();
+        int cursorLine = NbDocument.findLineNumber(styledDoc, caretPos) + 1;
+        context.put("cursor", Map.of("line", cursorLine, "character", 0));
+
+        return context;
+    }
+
     private void stopMessage() {
         if (currentSessionId == null) {
             return;
@@ -711,28 +850,6 @@ public final class OpenCodeChatTopComponent extends TopComponent {
                 });
     }
 
-    private void deleteSessionSelected() {
-        if (currentSessionId == null) {
-            return;
-        }
-
-        String sid = currentSessionId;
-        statusLabel.setText("Deleting session...");
-        OpenCodeManager.getInstance().deleteSession(sid)
-                .thenAccept(v -> {
-                    SwingUtilities.invokeLater(() -> {
-                        this.currentSessionId = null;
-                        chatPanel.clearMessages();
-                        deleteSessionBtn.setVisible(false);
-                        setInputEnabled(false);
-                        initChat(); // Refresh list
-                    });
-                })
-                .exceptionally(ex -> {
-                    SwingUtilities.invokeLater(() -> statusLabel.setText("Delete failed: " + ex.getMessage()));
-                    return null;
-                });
-    }
 
     private void updateOptionsButtonText() {
         toggleOptionsBtn.setText(configPanel.isVisible() ? "Options ▲" : "Options ▼");
@@ -786,7 +903,6 @@ public final class OpenCodeChatTopComponent extends TopComponent {
         SwingUtilities.invokeLater(() -> {
             inputArea.setEnabled(enabled);
             sendBtn.setEnabled(enabled);
-            deleteSessionBtn.setVisible(enabled);
             toggleOptionsBtn.setVisible(enabled);
             // Don't force configPanel visibility here, let the toggle handle it
             if (!enabled) {
@@ -802,31 +918,50 @@ public final class OpenCodeChatTopComponent extends TopComponent {
     }
 
     private void showAutocomplete() {
-        List<SessionUpdate.AvailableCommand> commands = OpenCodeManager.getInstance().getAvailableCommands();
-        if (commands.isEmpty()) {
+        List<SessionUpdate.AvailableCommand> allCommands = OpenCodeManager.getInstance().getAvailableCommands();
+        if (allCommands.isEmpty()) {
             autocompletePopup.setVisible(false);
             return;
         }
 
-        autocompletePopup.removeAll();
-        for (SessionUpdate.AvailableCommand cmd : commands) {
-            String label = "/" + cmd.name() + (cmd.description() != null ? " - " + cmd.description() : "");
-            JMenuItem item = new JMenuItem(label);
-            item.addActionListener(e -> {
-                inputArea.setText("/" + cmd.name() + " ");
-                inputArea.requestFocusInWindow();
-                autocompletePopup.setVisible(false);
-            });
-            autocompletePopup.add(item);
+        // Filter based on prefix
+        String prefix = inputArea.getText().substring(1); // after '/'
+        List<SessionUpdate.AvailableCommand> filtered = allCommands.stream()
+                .filter(c -> c.name().toLowerCase().startsWith(prefix.toLowerCase()))
+                .toList();
+
+        if (filtered.isEmpty()) {
+            autocompletePopup.setVisible(false);
+            return;
         }
+
+        DefaultListModel<SessionUpdate.AvailableCommand> model = new DefaultListModel<>();
+        for (SessionUpdate.AvailableCommand cmd : filtered) {
+            model.addElement(cmd);
+        }
+        commandList.setModel(model);
+        commandList.setSelectedIndex(0);
 
         try {
             java.awt.Rectangle rect = inputArea.modelToView2D(0).getBounds();
-            autocompletePopup.show(inputArea, rect.x, rect.y - autocompletePopup.getPreferredSize().height);
+            // Show above input area
+            int height = autocompletePopup.getPreferredSize().height;
+            autocompletePopup.show(inputArea, rect.x, -height - 5); 
         } catch (Exception e) {
             autocompletePopup.show(inputArea, 0, 0);
         }
-        inputArea.requestFocusInWindow();
+        
+        // Ensure requestFocus stays with inputArea
+        SwingUtilities.invokeLater(() -> inputArea.requestFocusInWindow());
+    }
+
+    private void selectCommand() {
+        SessionUpdate.AvailableCommand selected = commandList.getSelectedValue();
+        if (selected != null) {
+            inputArea.setText("/" + selected.name() + " ");
+            autocompletePopup.setVisible(false);
+            inputArea.requestFocusInWindow();
+        }
     }
 
     private void setupConfigCombo(JComboBox<ConfigItem> combo, String configId) {
@@ -1027,9 +1162,14 @@ public final class OpenCodeChatTopComponent extends TopComponent {
 
     private void refreshAllSessionsList() {
         OpenCodeManager manager = OpenCodeManager.getInstance();
-        manager.getSessions().thenAccept(sessions -> SwingUtilities.invokeLater(() -> {
-            chatPanel.setSessionList(sessions, this::loadSession, this::createNewSession);
-        }));
+        manager.getSessions().thenAccept(sessions -> {
+            List<ai.opencode.netbeans.model.Session> sortedSessions = sessions.stream()
+                    .sorted((s1, s2) -> Long.compare(parseTimestamp(s2.updatedAt()), parseTimestamp(s1.updatedAt())))
+                    .toList();
+            SwingUtilities.invokeLater(() -> {
+                chatPanel.setSessionList(sortedSessions, this::loadSession, this::createNewSession);
+            });
+        });
     }
 
     private static class SessionItem {

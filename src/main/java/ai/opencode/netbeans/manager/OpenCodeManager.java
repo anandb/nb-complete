@@ -251,13 +251,67 @@ public class OpenCodeManager {
                 });
     }
 
-    public CompletableFuture<Void> sendMessage(String sessionId, String text) {
+    public CompletableFuture<Void> sendMessage(String sessionId, String text, Map<String, Object> context) {
         if (rpcClient == null) {
             return CompletableFuture.failedFuture(new RuntimeException("Server not started"));
         }
+
+        List<Map<String, Object>> promptBlocks = new ArrayList<>();
+        promptBlocks.add(Map.of("type", "text", "text", text));
+
+        if (context != null) {
+            String filePath = (String) context.get("filePath");
+            String selectionContent = (String) context.get("selectionContent");
+            if (filePath != null) {
+                java.io.File file = new java.io.File(filePath);
+                Map<String, Object> resourceLink = new java.util.HashMap<>();
+                resourceLink.put("type", "resource_link");
+                resourceLink.put("uri", (filePath.startsWith("/") ? "file://" : "file:///") + filePath);
+                resourceLink.put("name", file.getName());
+                resourceLink.put("size", file.length());
+                
+                String lang = getLanguageFromPath(filePath);
+                // Basic mimeType deduction
+                String mimeType = "text/plain";
+                switch (lang) {
+                    case "java" -> mimeType = "text/x-java";
+                    case "javascript" -> mimeType = "text/javascript";
+                    case "python" -> mimeType = "text/x-python";
+                    case "html" -> mimeType = "text/html";
+                    case "css" -> mimeType = "text/css";
+                    case "xml" -> mimeType = "application/xml";
+                    case "json" -> mimeType = "application/json";
+                    default -> {}
+                }
+                resourceLink.put("mimeType", mimeType);
+
+                // Add selection and cursor info as annotations if present
+                Map<String, Object> annotations = new java.util.HashMap<>();
+                if (context.containsKey("selection")) {
+                    annotations.put("selection", context.get("selection"));
+                }
+                if (context.containsKey("cursor")) {
+                    annotations.put("cursor", context.get("cursor"));
+                }
+                if (!annotations.isEmpty()) {
+                    resourceLink.put("annotations", annotations);
+                }
+
+                promptBlocks.add(resourceLink);
+
+                // If there is a selection, send it as a separate code block
+                if (selectionContent != null && !selectionContent.isEmpty()) {
+                    promptBlocks.add(Map.of(
+                        "type", "text",
+                        "text", "Selection from `" + file.getName() + "`:\n```" + lang + "\n" + selectionContent + "\n```"
+                    ));
+                }
+            }
+        }
+
         Map<String, Object> params = Map.of(
-            "sessionId", sessionId,
-            "prompt", List.of(Map.of("type", "text", "text", text))
+                "sessionId", sessionId,
+                "prompt", promptBlocks
         );
         return rpcClient.sendRequest("session/prompt", params)
                 .thenApply(v -> null);
@@ -337,5 +391,25 @@ public class OpenCodeManager {
 
     public CompletableFuture<Void> whenReady() {
         return readyFuture;
+    }
+
+    private String getLanguageFromPath(String path) {
+        if (path == null) return "";
+        int lastDot = path.lastIndexOf('.');
+        if (lastDot == -1) return "";
+        String ext = path.substring(lastDot + 1).toLowerCase();
+        return switch (ext) {
+            case "java" -> "java";
+            case "py" -> "python";
+            case "js" -> "javascript";
+            case "ts" -> "typescript";
+            case "html" -> "html";
+            case "css" -> "css";
+            case "xml" -> "xml";
+            case "md" -> "markdown";
+            case "json" -> "json";
+            case "sh" -> "bash";
+            default -> ext;
+        };
     }
 }

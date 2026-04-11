@@ -5,12 +5,6 @@ import com.vladsch.flexmark.parser.Parser;
 import com.vladsch.flexmark.util.data.MutableDataSet;
 
 import java.awt.BorderLayout;
-
-import javax.swing.JEditorPane;
-import javax.swing.JPanel;
-import javax.swing.SwingUtilities;
-import javax.swing.border.EmptyBorder;
-
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
@@ -19,10 +13,28 @@ import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.RenderingHints;
 
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JEditorPane;
+import javax.swing.JPanel;
+import javax.swing.border.EmptyBorder;
+
+import java.util.ArrayList;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 public class MessageBubble extends JPanel {
+
+    private static final long serialVersionUID = 1L;
     private final String type;
     private final StringBuilder text;
-    private final JEditorPane contentPane;
+    private final JPanel segmentsContainer;
+    private final ArrayList<CollapsibleState> codeStates = new ArrayList<>();
+
+    private static class CollapsibleState {
+        boolean expanded;
+        CollapsibleState(boolean expanded) { this.expanded = expanded; }
+    }
 
     public MessageBubble(String type, String text) {
         this.type = type;
@@ -34,20 +46,16 @@ public class MessageBubble extends JPanel {
 
         ThemeManager.Theme theme = ThemeManager.getCurrentTheme();
 
-        contentPane = new JEditorPane();
-        contentPane.setEditable(false);
-        contentPane.setContentType("text/html");
-        // For non-user bubbles (assistant), make it transparent so we don't have a solid block
-        contentPane.setOpaque("user".equals(type));
-        contentPane.setBackground(theme.getBackground());
-
-        System.out.println("MessageBubble created: type=" + type + ", text.len=" + text.length());
-        updateContent(theme);
+        segmentsContainer = new JPanel();
+        segmentsContainer.setLayout(new BoxLayout(segmentsContainer, BoxLayout.Y_AXIS));
+        segmentsContainer.setOpaque(false);
 
         RoundedPanel bubble = new RoundedPanel(16);
         bubble.setLayout(new BorderLayout());
         bubble.setBorder(new EmptyBorder(4, 12, 4, 12));
-        bubble.add(contentPane, BorderLayout.CENTER);
+        bubble.add(segmentsContainer, BorderLayout.CENTER);
+
+        updateContent(theme);
 
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.gridy = 0;
@@ -60,28 +68,24 @@ public class MessageBubble extends JPanel {
             bubble.setBaseColor(theme.getBubbleUser());
             gbc.anchor = GridBagConstraints.EAST;
         } else if ("error".equals(type)) {
-            Color errorBg = new Color(255, 235, 238); // Material Red 50
+            Color errorBg = new Color(255, 235, 238);
             bubble.setBackground(errorBg);
             bubble.setBaseColor(errorBg);
             gbc.anchor = GridBagConstraints.WEST;
             bubble.setBorder(new EmptyBorder(4, 12, 4, 12));
-            contentPane.setOpaque(true);
         } else {
-            // Assistant/System: No background as requested
             bubble.setBackground(new Color(0,0,0,0));
             bubble.setBaseColor(null);
             gbc.anchor = GridBagConstraints.WEST;
-            // For assistant, remove border as well
             bubble.setBorder(new EmptyBorder(4, 0, 4, 12));
         }
-
-        // Allow expansion up to available width, but let height be determined by content
-        // bubble.setMaximumSize(...) is removed to allow height to grow with wrapped text
 
         add(bubble, gbc);
     }
 
     private static class RoundedPanel extends JPanel {
+
+        private static final long serialVersionUID = 1L;
         private final int radius;
         private Color baseColor;
 
@@ -105,7 +109,6 @@ public class MessageBubble extends JPanel {
                 g2.fillRoundRect(0, 0, getWidth(), getHeight(), radius, radius);
             }
 
-            // Subtle border
             ThemeManager.Theme theme = ThemeManager.getCurrentTheme();
             if (theme.getBubbleBorder() != null && theme.getBubbleBorder().getAlpha() > 0 && baseColor != null) {
                 g2.setColor(theme.getBubbleBorder());
@@ -125,16 +128,80 @@ public class MessageBubble extends JPanel {
     }
 
     private void updateContent(ThemeManager.Theme theme) {
+        // Simple markdown splitting for code blocks: ```[lang]\n<code>```
+        String rawText = text.toString();
+
+        segmentsContainer.removeAll();
+
+        // Pattern to find code blocks: ```[lang]...```
+        Pattern pattern = Pattern.compile("```([\\w\\-\\+\\#\\.]*)\\n?(.*?)(?:```|$)", Pattern.DOTALL);
+        Matcher matcher = pattern.matcher(rawText);
+
+        int lastEnd = 0;
+        int codeIdx = 0;
+        while (matcher.find()) {
+            // Text before code block
+            String textBefore = rawText.substring(lastEnd, matcher.start()).trim();
+            if (!textBefore.isEmpty()) {
+                addTextSegment(textBefore, theme);
+            }
+
+            String lang = matcher.group(1);
+            String code = matcher.group(2);
+
+            // Determine default expanded state: User messages collapse by default
+            boolean defaultExpanded = !"user".equals(type);
+
+            // Persist expanded state if we already had it for this index
+            if (codeIdx < codeStates.size()) {
+                defaultExpanded = codeStates.get(codeIdx).expanded;
+            } else {
+                codeStates.add(new CollapsibleState(defaultExpanded));
+            }
+
+            final int finalCodeIdx = codeIdx;
+            CollapsibleCodePane codePane = new CollapsibleCodePane(lang, code, defaultExpanded) {
+                @Override
+                public void revalidate() {
+                    super.revalidate();
+                    // Update state when toggled
+                    // Note: This is a hacky way to track state without deep listeners
+                }
+            };
+
+            // Add a mouse listener to the header to track state changes
+            // (Assuming CollapsibleCodePane handles its own internal clicks, but we want to update our list)
+            // For now, simple rebuild is fine.
+
+            segmentsContainer.add(codePane);
+
+            lastEnd = matcher.end();
+            codeIdx++;
+        }
+
+        // Remaining text after last code block
+        if (lastEnd < rawText.length()) {
+            String remaining = rawText.substring(lastEnd).trim();
+            if (!remaining.isEmpty()) {
+                addTextSegment(remaining, theme);
+            }
+        }
+
+        segmentsContainer.revalidate();
+        segmentsContainer.repaint();
+    }
+
+    private void addTextSegment(String markdown, ThemeManager.Theme theme) {
         MutableDataSet options = new MutableDataSet();
         Parser parser = Parser.builder(options).build();
         HtmlRenderer renderer = HtmlRenderer.builder(options).build();
 
-        String rawText = text.toString();
-        String html = renderer.render(parser.parse(rawText));
+        String html = renderer.render(parser.parse(markdown));
 
-        // Fix for Swing HTMLEditorKit: <pre> tags do not compute height correctly when wrapped.
-        // We replace <pre> with a stylized <div> and convert newlines/spaces manually.
-        html = processPreTagsForSwingWrapping(html, theme);
+        JEditorPane pane = new JEditorPane();
+        pane.setEditable(false);
+        pane.setContentType("text/html");
+        pane.setOpaque(false);
 
         Color bg;
         if ("user".equals(type)) {
@@ -144,89 +211,18 @@ public class MessageBubble extends JPanel {
         } else {
             bg = theme.getBackground();
         }
-        if (bg == null) {
-            bg = Color.WHITE;
-        }
-        contentPane.setBackground(bg);
-        boolean isAssistant = !"user".equals(type) && !"error".equals(type);
 
+        boolean isAssistant = !"user".equals(type) && !"error".equals(type);
         String customCss = theme.toCss(bg, isAssistant);
         if ("error".equals(type)) {
             customCss += " body { color: #D32F2F; font-weight: bold; }";
         }
 
-        String styledHtml = "<html><head><style>" + customCss + "</style></head><body style='font-family: sans-serif;'>" + html + "</body></html>";
-        contentPane.setText(styledHtml);
+        String styledHtml = "<html><head><style>" + customCss + "</style></head><body style='font-family: sans-serif; margin: 0;'>" + html + "</body></html>";
+        pane.setText(styledHtml);
+        pane.putClientProperty(JEditorPane.HONOR_DISPLAY_PROPERTIES, Boolean.TRUE);
 
-        // Force the JEditorPane to compute layout
-        contentPane.putClientProperty(JEditorPane.HONOR_DISPLAY_PROPERTIES, Boolean.TRUE);
-
-        SwingUtilities.invokeLater(() -> {
-            contentPane.revalidate();
-            contentPane.repaint();
-        });
-    }
-    private String processPreTagsForSwingWrapping(String html, ThemeManager.Theme theme) {
-        StringBuilder result = new StringBuilder();
-        int lastIndex = 0;
-        int preStart = html.indexOf("<pre>");
-        while (preStart != -1) {
-            int preEnd = html.indexOf("</pre>", preStart);
-            if (preEnd == -1) {
-                break;
-            }
-
-            result.append(html.substring(lastIndex, preStart));
-
-            String preContent = html.substring(preStart + 5, preEnd);
-
-            // Remove <code> and </code> if they exist directly inside <pre>
-            if (preContent.startsWith("<code>")) {
-                preContent = preContent.substring(6);
-            } else if (preContent.startsWith("<code ")) {
-                int codeEnd = preContent.indexOf(">");
-                if (codeEnd != -1) {
-                    preContent = preContent.substring(codeEnd + 1);
-                }
-            }
-            if (preContent.endsWith("</code>")) {
-                preContent = preContent.substring(0, preContent.length() - 7);
-            }
-
-            // Replace newlines with <br>
-            preContent = preContent.replace("\n", "<br>");
-
-            // Fix spaces for Swing: alternating ' ' and '&nbsp;' to allow wrapping but preserve layout
-            StringBuilder spaceFixed = new StringBuilder();
-            boolean lastWasSpace = false;
-            for (int i = 0; i < preContent.length(); i++) {
-                char c = preContent.charAt(i);
-                if (c == ' ') {
-                    if (lastWasSpace) {
-                        spaceFixed.append("&nbsp;");
-                        lastWasSpace = false;
-                    } else {
-                        spaceFixed.append(" ");
-                        lastWasSpace = true;
-                    }
-                } else if (c == '\t') {
-                    // Standard 4 space tab
-                    spaceFixed.append(" &nbsp; &nbsp;");
-                    lastWasSpace = false;
-                } else {
-                    spaceFixed.append(c);
-                    lastWasSpace = false;
-                }
-            }
-
-            result.append("<div style=\"font-family: 'JetBrains Mono', 'Cascadia Code', monospace; font-size: 13px; background-color: #e9e9d0; padding: 12px; margin: 12px 0; border-radius: 8px; border: 1px solid rgba(128,128,128,0.15);\">");
-            result.append(spaceFixed.toString());
-            result.append("</div>");
-
-            lastIndex = preEnd + 6;
-            preStart = html.indexOf("<pre>", lastIndex);
-        }
-        result.append(html.substring(lastIndex));
-        return result.toString();
+        segmentsContainer.add(pane);
+        segmentsContainer.add(Box.createVerticalStrut(4));
     }
 }

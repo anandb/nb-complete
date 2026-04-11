@@ -3,48 +3,12 @@
 <filesystem>
     <folder name="Actions">
         <folder name="Window">
-            <file name="ai-opencode-netbeans-ui-OpenCodeChatTopComponent.instance">
-                <attr name="component" methodvalue="ai.opencode.netbeans.ui.OpenCodeChatTopComponent.findInstance"/>
-                <attr name="displayName" bundlevalue="ai.opencode.netbeans.ui.Bundle#CTL_OpenCodeChatAction"/>
-                <attr name="preferredID" stringvalue="OpenCodeChatTopComponent"/>
-                <attr name="instanceCreate" methodvalue="org.openide.windows.TopComponent.openAction"/>
-            </file>
         </folder>
     </folder>
     <folder name="Menu">
         <folder name="Window">
-            <file name="ai-opencode-netbeans-ui-OpenCodeChatTopComponent.shadow">
-                <attr name="originalFile" stringvalue="Actions/Window/ai-opencode-netbeans-ui-OpenCodeChatTopComponent.instance"/>
-                <attr name="position" intvalue="333"/>
-            </file>
         </folder>
     </folder>
     <folder name="Windows2">
-        <folder name="Components">
-            <file name="OpenCodeChatTopComponent.settings">
-<![CDATA[<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE settings PUBLIC "-//NetBeans//DTD Session settings 1.0//EN" "http://www.netbeans.org/dtds/sessionsettings-1_0.dtd">
-<settings version="1.0">
-    <module name="ai.opencode.opencode.netbeans.plugin" spec="1.0"/>
-    <instanceOf class="org.openide.windows.TopComponent"/>
-    <instanceOf class="ai.opencode.netbeans.ui.OpenCodeChatTopComponent"/>
-    <instance class="ai.opencode.netbeans.ui.OpenCodeChatTopComponent"/>
-</settings>
-]]>
-            </file>
-        </folder>
-        <folder name="Modes">
-            <folder name="explorer">
-                <file name="OpenCodeChatTopComponent.wstcref">
-<![CDATA[<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE tc-ref PUBLIC "-//NetBeans//DTD Top Component in Mode Properties 2.0//EN" "http://www.netbeans.org/dtds/tc-ref2_0.dtd">
-<tc-ref version="2.0">
-    <tc-id id="OpenCodeChatTopComponent"/>
-    <state opened="true"/>
-</tc-ref>
-]]>
-                </file>
-            </folder>
-        </folder>
     </folder>
 </filesystem>
