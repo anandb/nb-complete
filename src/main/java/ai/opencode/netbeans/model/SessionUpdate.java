@@ -27,7 +27,7 @@ public record SessionUpdate(
         List<Session> sessions,
         Boolean isThinking,
         List<AvailableCommand> availableCommands,
-        List<Session.SessionConfigOption> configOptions
+        List<SessionConfigOption> configOptions
     ) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)

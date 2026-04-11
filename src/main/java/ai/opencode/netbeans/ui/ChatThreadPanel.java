@@ -7,9 +7,11 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.logging.Logger;
 import javax.swing.*;
 
 public class ChatThreadPanel extends JPanel {
+    private static final Logger LOG = Logger.getLogger(ChatThreadPanel.class.getName());
     private final JPanel messagesContainer;
     private final JScrollPane scrollPane;
     private final List<Message> messageList = new ArrayList<>();
@@ -18,7 +20,6 @@ public class ChatThreadPanel extends JPanel {
         setLayout(new BorderLayout());
         setOpaque(false);
 
-        // Use a panel that tracks viewport width to force wrapping
         messagesContainer = new ScrollablePanel();
         messagesContainer.setLayout(new BoxLayout(messagesContainer, BoxLayout.Y_AXIS));
         messagesContainer.setOpaque(false);
@@ -121,7 +122,6 @@ public class ChatThreadPanel extends JPanel {
                 scrollToBottom();
             } else {
                 System.out.println("Adding new bubble for role: " + role);
-                // Manually add since we're already on EDT
                 MessageBubble bubble = new MessageBubble(role, text);
                 messagesContainer.add(bubble);
                 messagesContainer.add(Box.createVerticalStrut(8));
@@ -160,55 +160,58 @@ public class ChatThreadPanel extends JPanel {
     }
 
     public void setSessionList(List<Session> sessions, Consumer<String> onSessionSelected, Runnable onNewChat) {
+        LOG.info("setSessionList: received " + sessions.size() + " sessions, onSessionSelected=" + onSessionSelected);
         SwingUtilities.invokeLater(() -> {
-            clearMessages();
-            
-            JLabel title = new JLabel(sessions.isEmpty() ? "Welcome to OpenCode" : "Welcome back!");
-            title.setFont(new Font("SansSerif", Font.BOLD, 18));
-            title.setBorder(BorderFactory.createEmptyBorder(20, 12, 10, 12));
-            messagesContainer.add(title);
+            try {
+                clearMessages();
+                
+                JLabel title = new JLabel(sessions.isEmpty() ? "Welcome to OpenCode" : "Welcome back!");
+                title.setFont(new Font("SansSerif", Font.BOLD, 18));
+                title.setBorder(BorderFactory.createEmptyBorder(20, 12, 10, 12));
+                messagesContainer.add(title);
 
-            JLabel subtitle = new JLabel(sessions.isEmpty() ? 
-                "Ask questions, generate code, or have me explain anything." : 
-                "Continue a recent chat or start a new one.");
-            subtitle.setFont(new Font("SansSerif", Font.PLAIN, 13));
-            subtitle.setForeground(Color.GRAY);
-            subtitle.setBorder(BorderFactory.createEmptyBorder(0, 12, 20, 12));
-            messagesContainer.add(subtitle);
+                JLabel subtitle = new JLabel(sessions.isEmpty() ? 
+                    "Ask questions, generate code, or have me explain anything." : 
+                    "Continue a recent chat or start a new one.");
+                subtitle.setFont(new Font("SansSerif", Font.PLAIN, 13));
+                subtitle.setForeground(Color.GRAY);
+                subtitle.setBorder(BorderFactory.createEmptyBorder(0, 12, 20, 12));
+                messagesContainer.add(subtitle);
 
-            // "New Chat" button bubble
-            JButton newChatBtn = createSelectionButton("✨ Start New Chat", null);
-            newChatBtn.addActionListener(e -> onNewChat.run());
-            messagesContainer.add(newChatBtn);
-            messagesContainer.add(Box.createVerticalStrut(12));
-
-            if (!sessions.isEmpty()) {
-                JSeparator sep = new JSeparator();
-                sep.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
-                messagesContainer.add(sep);
+                JButton newChatBtn = createSelectionButton("✨ Start New Chat", null);
+                newChatBtn.addActionListener(e -> onNewChat.run());
+                messagesContainer.add(newChatBtn);
                 messagesContainer.add(Box.createVerticalStrut(12));
 
-                for (Session s : sessions) {
-                    String label = s.title();
-                    if (label == null || label.isEmpty()) {
-                        label = "Chat " + s.id().substring(0, Math.min(8, s.id().length()));
-                    }
-                    JButton sessionBtn = createSelectionButton(label, s.cwd());
-                    sessionBtn.addActionListener(e -> onSessionSelected.accept(s.id()));
-                    messagesContainer.add(sessionBtn);
-                    messagesContainer.add(Box.createVerticalStrut(8));
-                }
-            }
+                if (!sessions.isEmpty()) {
+                    JSeparator sep = new JSeparator();
+                    sep.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
+                    messagesContainer.add(sep);
+                    messagesContainer.add(Box.createVerticalStrut(12));
 
-            messagesContainer.revalidate();
-            messagesContainer.repaint();
+                    for (Session s : sessions) {
+                        String label = s.title();
+                        if (label == null || label.isEmpty()) {
+                            label = "Chat " + s.id().substring(0, Math.min(8, s.id().length()));
+                        }
+                        JButton sessionBtn = createSelectionButton(label, s.cwd());
+                        sessionBtn.addActionListener(e -> onSessionSelected.accept(s.id()));
+                        messagesContainer.add(sessionBtn);
+                        messagesContainer.add(Box.createVerticalStrut(8));
+                    }
+                }
+
+                messagesContainer.revalidate();
+                messagesContainer.repaint();
+            } catch (Exception ex) {
+                LOG.warning("setSessionList error: " + ex.getMessage());
+            }
         });
     }
 
     private JButton createSelectionButton(String text, String subtext) {
         ThemeManager.Theme theme = ThemeManager.getCurrentTheme();
         
-        // Using a button styled like a selection bubble
         JButton btn = new JButton();
         btn.setLayout(new BorderLayout(8, 0));
         btn.setBorder(BorderFactory.createCompoundBorder(
@@ -238,12 +241,11 @@ public class ChatThreadPanel extends JPanel {
 
         btn.add(textPanel, BorderLayout.CENTER);
         
-        // Hover effect
         btn.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseEntered(java.awt.event.MouseEvent e) {
                 btn.setOpaque(true);
-                btn.setBackground(new Color(0, 0, 0, 10)); // Very subtle hover
+                btn.setBackground(new Color(0, 0, 0, 10));
                 btn.repaint();
             }
             @Override

@@ -18,8 +18,8 @@
 
 ## ?The "codex7" (Context7) Protocol
 When working on this codebase, you **must** leverage Context7 for documentation on internal and external libraries.
-*   **Internal Libraries**: For any `org.puffincreek` or `com.hartreeresearch` package, use `context7_resolve-library-id` (e.g., searching for "puffincreek core-rest") followed by `context7_query-docs`.
-*   **External Logic**: Use Context7 to query documentation for `MillerUpdatingRegression` (Apache Commons Math) or Spring Cloud Stream Pub/Sub patterns.
+*   **Internal Libraries**: For any `org.puffincreek` or `com.hartreeresearch` or `com.hartree` package, don't use `context7`.
+*   **External Logic**: Use Context7 to query documentation for other classes. E.g. `MillerUpdatingRegression` (Apache Commons Math) or Spring Cloud Stream Pub/Sub patterns, etc.
 *   **Precedence**: Always check Context7 before making assumptions about shared utility functions in `CommonUtility` or `EnergyUtility`.
 
 ## Source Structure

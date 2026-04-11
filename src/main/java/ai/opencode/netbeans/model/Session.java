@@ -8,34 +8,10 @@ import java.util.List;
 public record Session(
     @JsonProperty("sessionId") String id,
     String title,
-    String cwd,           // Matches server's "cwd"
-    String directory,     // Legacy compatibility
+    String cwd,
+    String directory,
     String parentID,
-    SessionTime time,
+    @JsonProperty("updatedAt") String updatedAt,
     List<Object> mcpServers,
     List<SessionConfigOption> configOptions
-) {
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    public record SessionTime(
-        long created,
-        long updated
-    ) {}
-
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    public record SessionConfigOption(
-        String id,
-        String name,
-        String description,
-        String category, // "mode", "model", "thought_level"
-        String type,     // "select"
-        String currentValue,
-        List<SessionConfigSelectOption> options
-    ) {}
-
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    public record SessionConfigSelectOption(
-        String value,
-        String name,
-        String description
-    ) {}
-}
+) {}

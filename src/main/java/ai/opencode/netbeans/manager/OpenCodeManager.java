@@ -147,17 +147,49 @@ public class OpenCodeManager {
 
 
     public CompletableFuture<List<Session>> getSessions() {
+        LOG.info("getSessions: called");
         if (rpcClient == null) return CompletableFuture.failedFuture(new RuntimeException("Server not started"));
         return rpcClient.sendRequest("session/list", Map.of())
                 .thenApply(res -> {
                     try {
-                        List<Session> sessions = objectMapper.readValue(res.traverse(), new TypeReference<List<Session>>() {});
-                        return sessions;
+                        LOG.info("getSessions: got response");
+                        JsonNode root = objectMapper.readTree(res.traverse());
+                        JsonNode result = root.has("result") ? root.get("result") : root;
+                        JsonNode sessionsNode = result.has("sessions") ? result.get("sessions") : result.has("data") ? result.get("data") : result;
+                        if (sessionsNode.isArray()) {
+                            List<Session> sessions = objectMapper.readValue(sessionsNode.traverse(), new TypeReference<List<Session>>() {});
+                            LOG.info("getSessions: deserialized " + sessions.size() + " sessions");
+                            for (Session s : sessions) {
+                                LOG.info("getSessions: id=" + s.id() + ", title='" + s.title() + "'");
+                            }
+                            return sessions;
+                        } else {
+                            LOG.warning("getSessions: sessionsNode is not an array: " + sessionsNode);
+                            return new ArrayList<Session>();
+                        }
                     } catch (IOException e) {
+                        LOG.warning("getSessions: failed to deserialize: " + e.getMessage());
+                        e.printStackTrace();
                         return new ArrayList<Session>();
                     }
                 })
-                .exceptionally(ex -> new ArrayList<Session>());
+                .exceptionally(ex -> {
+                    LOG.warning("getSessions: rpc error: " + ex.getMessage());
+                    ex.printStackTrace();
+                    return new ArrayList<Session>();
+                });
+    }
+
+    private static String getProjectPath() {
+        Project main = OpenProjects.getDefault().getMainProject();
+        if (main != null && main.getProjectDirectory() != null) {
+            return main.getProjectDirectory().getPath();
+        }
+        Project[] open = OpenProjects.getDefault().getOpenProjects();
+        if (open != null && open.length > 0 && open[0].getProjectDirectory() != null) {
+            return open[0].getProjectDirectory().getPath();
+        }
+        return null;
     }
 
     public CompletableFuture<Session> createSession(String cwd) {
@@ -165,26 +197,13 @@ public class OpenCodeManager {
         
         String effectiveCwd = cwd;
 
-        // 1. Try provided CWD
-        // 2. Fallback to activeProjectDir (synchronized by OpenCodeProjectManager)
+        // 1. Use provided CWD if given
+        // 2. Query NetBeans APIs directly
         if (effectiveCwd == null) {
-            effectiveCwd = activeProjectDir;
-        }
-        
-        // 3. Last ditch attempt to get it directly from NetBeans APIs
-        if (effectiveCwd == null) {
-            Project main = OpenProjects.getDefault().getMainProject();
-            if (main != null && main.getProjectDirectory() != null) {
-                effectiveCwd = main.getProjectDirectory().getPath();
-            } else {
-                Project[] open = OpenProjects.getDefault().getOpenProjects();
-                if (open != null && open.length > 0 && open[0].getProjectDirectory() != null) {
-                    effectiveCwd = open[0].getProjectDirectory().getPath();
-                }
-            }
+            effectiveCwd = getProjectPath();
         }
 
-        // 4. Default to system user dir if all else fails
+        // 3. Default to system user dir if all else fails
         if (effectiveCwd == null) {
             effectiveCwd = System.getProperty("user.dir");
         }
@@ -205,18 +224,23 @@ public class OpenCodeManager {
                 });
     }
 
-    public CompletableFuture<List<Message>> getMessages(String sessionId) {
+    public CompletableFuture<Void> loadSession(String sessionId, String cwd) {
+        LOG.info("loadSession: called with " + sessionId + ", cwd=" + cwd);
         if (rpcClient == null) return CompletableFuture.failedFuture(new RuntimeException("Server not started"));
-        return rpcClient.sendRequest("session/messages", Map.of("sessionId", sessionId))
+        Map<String, Object> params = new java.util.HashMap<>();
+        params.put("sessionId", sessionId);
+        if (cwd != null) params.put("cwd", cwd);
+        params.put("mcpServers", List.of());
+        
+        return rpcClient.sendRequest("session/load", params)
                 .thenApply(res -> {
-                    try {
-                        List<Message> messages = objectMapper.readValue(res.traverse(), new TypeReference<List<Message>>() {});
-                        return messages;
-                    } catch (IOException e) {
-                        return new ArrayList<Message>();
-                    }
+                    LOG.info("loadSession: got response " + res);
+                    return (Void) null;
                 })
-                .exceptionally(ex -> new ArrayList<Message>());
+                .exceptionally(ex -> {
+                    LOG.warning("loadSession: error: " + ex.getMessage());
+                    return (Void) null;
+                });
     }
 
     public CompletableFuture<Void> sendMessage(String sessionId, String text) {
@@ -225,7 +249,6 @@ public class OpenCodeManager {
             "sessionId", sessionId,
             "prompt", List.of(Map.of("type", "text", "text", text))
         );
-        
         return rpcClient.sendRequest("session/prompt", params)
                 .thenApply(v -> null);
     }
@@ -239,7 +262,7 @@ public class OpenCodeManager {
     public CompletableFuture<Void> deleteSession(String sessionId) {
         if (rpcClient == null) return CompletableFuture.failedFuture(new RuntimeException("Server not started"));
         // Using session/close as the standard termination method
-        return rpcClient.sendRequest("session/close", Map.of("sessionId", sessionId))
+        return rpcClient.sendRequest("session/delete", Map.of("sessionId", sessionId))
                 .thenApply(v -> null);
     }
     
@@ -275,7 +298,11 @@ public class OpenCodeManager {
     }
 
     public String getActiveProjectDir() {
-        return activeProjectDir;
+        String path = getProjectPath();
+        if (path == null) {
+            path = System.getProperty("user.dir");
+        }
+        return path;
     }
 
     public void addProjectChangeListener(Consumer<String> listener) {

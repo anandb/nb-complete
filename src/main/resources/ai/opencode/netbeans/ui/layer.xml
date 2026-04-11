@@ -6,6 +6,7 @@
             <file name="ai-opencode-netbeans-ui-OpenCodeChatTopComponent.instance">
                 <attr name="component" methodvalue="ai.opencode.netbeans.ui.OpenCodeChatTopComponent.findInstance"/>
                 <attr name="displayName" bundlevalue="ai.opencode.netbeans.ui.Bundle#CTL_OpenCodeChatAction"/>
+                <attr name="preferredID" stringvalue="OpenCodeChatTopComponent"/>
                 <attr name="instanceCreate" methodvalue="org.openide.windows.TopComponent.openAction"/>
             </file>
         </folder>
