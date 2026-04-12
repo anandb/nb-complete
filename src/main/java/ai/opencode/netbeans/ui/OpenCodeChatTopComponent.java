@@ -368,7 +368,7 @@ public final class OpenCodeChatTopComponent extends TopComponent {
         toggleOptionsBtn.setBorderPainted(false);
         toggleOptionsBtn.setContentAreaFilled(false);
         toggleOptionsBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        toggleOptionsBtn.setFont(new Font("SansSerif", Font.BOLD, 12));
+        toggleOptionsBtn.setFont(new Font("SansSerif", Font.BOLD, 13));
         toggleOptionsBtn.setHorizontalAlignment(SwingConstants.LEFT);
         toggleOptionsBtn.setForeground(Color.GRAY);
         toggleOptionsBtn.addActionListener(e -> {
@@ -401,7 +401,7 @@ public final class OpenCodeChatTopComponent extends TopComponent {
         configPanel.add(thinkingCombo);
 
         statusLabel = new JLabel("Ready");
-        statusLabel.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        statusLabel.setFont(new Font("SansSerif", Font.PLAIN, 13));
         statusLabel.setForeground(Color.GRAY);
         inputContainer.add(statusLabel, BorderLayout.SOUTH);
 
@@ -737,6 +737,7 @@ public final class OpenCodeChatTopComponent extends TopComponent {
 
     private void createNewSession() {
         LOG.info("Attempting to create new session...");
+        updateTabName(null);
         statusLabel.setText("Creating new session...");
         OpenCodeManager.getInstance().createSession(null)
                 .thenAccept(session -> {
@@ -1035,6 +1036,19 @@ public final class OpenCodeChatTopComponent extends TopComponent {
 
             if (item != null && currentSessionId != null && !item.isInternalUpdate) {
                 OpenCodeManager.getInstance().setSessionConfigOption(currentSessionId, configId, item.value);
+                if (combo == modelCombo) {
+                    updateTabName(item.name);
+                }
+            }
+        });
+    }
+
+    private void updateTabName(String modelName) {
+        SwingUtilities.invokeLater(() -> {
+            if (modelName != null && !modelName.isEmpty()) {
+                setName(modelName);
+            } else {
+                setName(NbBundle.getMessage(OpenCodeChatTopComponent.class, "CTL_OpenCodeChatTopComponent"));
             }
         });
     }
@@ -1103,6 +1117,7 @@ public final class OpenCodeChatTopComponent extends TopComponent {
 
                     if ("model".equals(opt.category())) {
                         combo.setEditable(true);
+                        updateTabName(selected != null ? selected.name : null);
                     }
                     if (opt.category() != null
                             && (opt.category().contains("thinking") || opt.category().contains("thought"))) {
