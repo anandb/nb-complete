@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>ai.opencode</groupId>
     <artifactId>opencode-netbeans-plugin</artifactId>
-    <version>1.2.0</version>
+    <version>1.2.1</version>
     <packaging>nbm</packaging>
 
     <name>OpenCode NetBeans Plugin</name>
@@ -129,6 +129,13 @@
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
             <version>2.16.1</version>
+        </dependency>
+
+        <!-- Syntax Highlighting -->
+        <dependency>
+            <groupId>com.fifesoft</groupId>
+            <artifactId>rsyntaxtextarea</artifactId>
+            <version>3.4.0</version>
         </dependency>
 
         <!-- Test -->

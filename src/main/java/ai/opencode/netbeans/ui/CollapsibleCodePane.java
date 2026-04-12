@@ -8,20 +8,24 @@ import java.awt.Font;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 
+import java.io.InputStream;
 import javax.swing.BorderFactory;
-import javax.swing.JEditorPane;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+
+import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
+import org.fife.ui.rsyntaxtextarea.SyntaxConstants;
 
 import ai.opencode.netbeans.ui.ThemeManager.Theme;
 
 public class CollapsibleCodePane extends JPanel {
     private final String language;
     private final String code;
-    private final JPanel contentPanel;
     private final JLabel headerLabel;
     private final JLabel toggleIcon;
-    private final JEditorPane codePane;
+    private final RSyntaxTextArea codeTextArea;
+    private final JPanel contentPanel;
     private boolean expanded;
 
     public CollapsibleCodePane(String language, String code, boolean expandedByDefault) {
@@ -62,15 +66,37 @@ public class CollapsibleCodePane extends JPanel {
         contentPanel = new JPanel(new BorderLayout());
         contentPanel.setOpaque(false);
         
-        codePane = new JEditorPane();
-        codePane.setEditable(false);
-        codePane.setContentType("text/html");
-        codePane.setOpaque(true);
-        codePane.setBackground(new Color(0xe9e9d0)); // Matches theme pre background
+        codeTextArea = new RSyntaxTextArea();
+        codeTextArea.setEditable(false);
+        codeTextArea.setHighlightCurrentLine(false);
+        codeTextArea.setAnimateBracketMatching(false);
+        codeTextArea.setLineWrap(true);
         
-        updateCodeContent();
+        // Solarized Dark Theme Colors
+        Color bg = Color.decode("#002B36");
+        Color fg = Color.decode("#839496");
         
-        contentPanel.add(codePane, BorderLayout.CENTER);
+        codeTextArea.setBackground(bg);
+        codeTextArea.setForeground(fg);
+        codeTextArea.setCaretColor(fg);
+        codeTextArea.setSelectionColor(new Color(7, 54, 66)); // base02
+        
+        applySyntaxStyle();
+        applySolarizedDarkTheme();
+        
+        // Ensure font is set AFTER theme application to avoid being overwritten
+        codeTextArea.setFont(new Font("JetBrains Mono", Font.PLAIN, 13));
+        
+        codeTextArea.setText(code);
+        codeTextArea.setCaretPosition(0);
+        
+        // Wrap in a panel with padding instead of a scrollpane since we are in a chat bubble
+        JPanel codeWrapper = new JPanel(new BorderLayout());
+        codeWrapper.setBackground(bg);
+        codeWrapper.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        codeWrapper.add(codeTextArea, BorderLayout.CENTER);
+        
+        contentPanel.add(codeWrapper, BorderLayout.CENTER);
         contentPanel.setVisible(expanded);
 
         add(header, BorderLayout.NORTH);
@@ -124,42 +150,58 @@ public class CollapsibleCodePane extends JPanel {
         return "∨ CODE BLOCK (" + language.toUpperCase() + ", " + lineCount + " lines)";
     }
 
-    private void updateCodeContent() {
-        Theme theme = ThemeManager.getCurrentTheme();
+    private void applySyntaxStyle() {
+        String style = SyntaxConstants.SYNTAX_STYLE_NONE;
+        String lang = language.toLowerCase();
         
-        // Escape HTML
-        String escaped = code.replace("&", "&amp;")
-                             .replace("<", "&lt;")
-                             .replace(">", "&gt;")
-                             .replace("\"", "&quot;")
-                             .replace("\n", "<br>");
+        if (lang.contains("java")) style = SyntaxConstants.SYNTAX_STYLE_JAVA;
+        else if (lang.contains("python") || lang.equals("py")) style = SyntaxConstants.SYNTAX_STYLE_PYTHON;
+        else if (lang.contains("javascript") || lang.equals("js")) style = SyntaxConstants.SYNTAX_STYLE_JAVASCRIPT;
+        else if (lang.contains("typescript") || lang.equals("ts")) style = SyntaxConstants.SYNTAX_STYLE_TYPESCRIPT;
+        else if (lang.contains("html")) style = SyntaxConstants.SYNTAX_STYLE_HTML;
+        else if (lang.contains("xml")) style = SyntaxConstants.SYNTAX_STYLE_XML;
+        else if (lang.contains("css")) style = SyntaxConstants.SYNTAX_STYLE_CSS;
+        else if (lang.contains("json")) style = SyntaxConstants.SYNTAX_STYLE_JSON;
+        else if (lang.contains("yaml") || lang.equals("yml")) style = SyntaxConstants.SYNTAX_STYLE_YAML;
+        else if (lang.contains("sql")) style = SyntaxConstants.SYNTAX_STYLE_SQL;
+        else if (lang.contains("shell") || lang.equals("sh") || lang.equals("bash")) style = SyntaxConstants.SYNTAX_STYLE_UNIX_SHELL;
+        else if (lang.contains("docker")) style = SyntaxConstants.SYNTAX_STYLE_DOCKERFILE;
+        else if (lang.contains("markdown") || lang.equals("md")) style = SyntaxConstants.SYNTAX_STYLE_MARKDOWN;
+        else if (lang.contains("c++") || lang.equals("cpp")) style = SyntaxConstants.SYNTAX_STYLE_CPLUSPLUS;
+        else if (lang.contains("c#") || lang.equals("cs")) style = SyntaxConstants.SYNTAX_STYLE_CSHARP;
+        else if (lang.equals("c")) style = SyntaxConstants.SYNTAX_STYLE_C;
+        else if (lang.contains("go")) style = SyntaxConstants.SYNTAX_STYLE_GO;
+        else if (lang.contains("rust") || lang.equals("rs")) style = SyntaxConstants.SYNTAX_STYLE_RUST;
+        else if (lang.contains("php")) style = SyntaxConstants.SYNTAX_STYLE_PHP;
+        else if (lang.contains("ruby") || lang.equals("rb")) style = SyntaxConstants.SYNTAX_STYLE_RUBY;
+        
+        codeTextArea.setSyntaxEditingStyle(style);
+    }
 
-        // Alternate spaces to allow wrapping in Swing but preserve indentation
-        StringBuilder spaceFixed = new StringBuilder();
-        boolean lastWasSpace = false;
-        for (int i = 0; i < escaped.length(); i++) {
-            char c = escaped.charAt(i);
-            if (c == ' ') {
-                if (lastWasSpace) {
-                    spaceFixed.append("&nbsp;");
-                    lastWasSpace = false;
-                } else {
-                    spaceFixed.append(" ");
-                    lastWasSpace = true;
-                }
-            } else if (c == '\t') {
-                spaceFixed.append(" &nbsp; &nbsp;");
-                lastWasSpace = false;
-            } else {
-                spaceFixed.append(c);
-                lastWasSpace = false;
+    private void applySolarizedDarkTheme() {
+        try {
+            // Load the dark theme from RSyntaxTextArea resources
+            java.io.InputStream in = getClass().getResourceAsStream("/org/fife/ui/rsyntaxtextarea/themes/dark.xml");
+            if (in == null) {
+                // Fallback to manual coloring if XML loading fails
+                manualSolarizedDark();
+                return;
             }
+            org.fife.ui.rsyntaxtextarea.Theme rTheme = org.fife.ui.rsyntaxtextarea.Theme.load(in);
+            rTheme.apply(codeTextArea);
+            
+            // Override background to strict Solarized Dark
+            codeTextArea.setBackground(Color.decode("#002B36"));
+            codeTextArea.setSelectionColor(new Color(7, 54, 66));
+        } catch (Exception ioe) {
+            manualSolarizedDark();
         }
+    }
 
-        String html = "<html><body style=\"font-family: 'JetBrains Mono', 'Input Mono', monospace; font-size: 12px; color: #839496; background-color: #002B36; padding: 10px; margin: 0;\">"
-                    + spaceFixed.toString()
-                    + "</body></html>";
-        codePane.setText(html);
-        codePane.setBackground(Color.decode("#002B36"));
+    private void manualSolarizedDark() {
+        codeTextArea.setBackground(Color.decode("#002B36"));
+        codeTextArea.setForeground(Color.decode("#839496"));
+        codeTextArea.setSelectionColor(new Color(7, 54, 66));
+        codeTextArea.setCurrentLineHighlightColor(new Color(0, 43, 54));
     }
 }
