@@ -401,7 +401,7 @@ public final class OpenCodeChatTopComponent extends TopComponent {
         configPanel.add(thinkingCombo);
 
         statusLabel = new JLabel("Ready");
-        statusLabel.setFont(new Font("SansSerif", Font.PLAIN, 11));
+        statusLabel.setFont(new Font("SansSerif", Font.PLAIN, 12));
         statusLabel.setForeground(Color.GRAY);
         inputContainer.add(statusLabel, BorderLayout.SOUTH);
 

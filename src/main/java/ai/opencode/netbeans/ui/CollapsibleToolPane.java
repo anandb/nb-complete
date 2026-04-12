@@ -68,14 +68,7 @@ public class CollapsibleToolPane extends JPanel {
         textArea.setLineWrap(true);
         textArea.setWrapStyleWord(true);
         
-        JScrollPane scrollPane = new JScrollPane(textArea);
-        scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-        scrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
-        scrollPane.setOpaque(false);
-        scrollPane.getViewport().setOpaque(false);
-        scrollPane.setBorder(null);
-        
-        contentPanel.add(scrollPane, BorderLayout.CENTER);
+        contentPanel.add(textArea, BorderLayout.CENTER);
         contentPanel.setVisible(expanded);
 
         add(header, BorderLayout.NORTH);

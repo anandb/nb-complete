@@ -270,7 +270,7 @@ public class MessageBubble extends JPanel {
         if ("error".equals(type)) {
             customCss += " body { color: #D32F2F; font-weight: bold; }";
         } else if ("tool".equals(type)) {
-            customCss += " body { color: #777777; font-size: 11px; }";
+            customCss += " body { color: #777777; font-size: 13px; }";
         }
 
         String styledHtml = "<html><head><style>" + customCss + "</style></head><body style='font-family: sans-serif; margin: 0;'>" + html + "</body></html>";

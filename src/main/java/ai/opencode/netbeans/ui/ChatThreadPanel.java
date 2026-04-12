@@ -1,4 +1,7 @@
 package ai.opencode.netbeans.ui;
+import java.awt.event.ContainerAdapter;
+import java.awt.event.ContainerEvent;
+
 
 import ai.opencode.netbeans.model.Message;
 import ai.opencode.netbeans.model.Session;
@@ -49,6 +52,20 @@ public class ChatThreadPanel extends JPanel {
         scrollPane.getVerticalScrollBar().setUnitIncrement(16);
         scrollPane.setOpaque(false);
         scrollPane.getViewport().setOpaque(false);
+        
+        // Fix: Mouse wheel scrolling often breaks when mouse is over child components
+        // like JEditorPane. We redirect those events to the main scroll pane.
+        messagesContainer.addMouseWheelListener(e -> {
+            scrollPane.dispatchEvent(SwingUtilities.convertMouseEvent(messagesContainer, e, scrollPane));
+        });
+        
+        // Automatically fix mouse wheel for any added component
+        messagesContainer.addContainerListener(new ContainerAdapter() {
+            @Override
+            public void componentAdded(ContainerEvent e) {
+                fixMouseWheel(e.getChild());
+            }
+        });
 
         add(scrollPane, BorderLayout.CENTER);
     }
@@ -142,13 +159,11 @@ public class ChatThreadPanel extends JPanel {
             }
 
             if (lastBubble != null && lastBubble.getType().equals(role)) {
-                System.out.println("Appending to existing bubble for role: " + role);
                 lastBubble.appendText(text);
                 messagesContainer.revalidate();
                 messagesContainer.repaint();
                 scrollToBottom();
             } else {
-                System.out.println("Adding new bubble for role: " + role);
                 MessageBubble bubble = new MessageBubble(role, text);
                 messagesContainer.add(bubble);
                 messagesContainer.add(Box.createVerticalStrut(8));
@@ -157,6 +172,17 @@ public class ChatThreadPanel extends JPanel {
                 scrollToBottom();
             }
         });
+    }
+
+    private void fixMouseWheel(Component c) {
+        c.addMouseWheelListener(e -> {
+            scrollPane.dispatchEvent(SwingUtilities.convertMouseEvent(c, e, scrollPane));
+        });
+        if (c instanceof java.awt.Container container) {
+            for (Component child : container.getComponents()) {
+                fixMouseWheel(child);
+            }
+        }
     }
 
     private void scrollToBottom() {
