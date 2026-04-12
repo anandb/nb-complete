@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>ai.opencode</groupId>
     <artifactId>opencode-netbeans-plugin</artifactId>
-    <version>1.1.76</version>
+    <version>1.1.77</version>
     <packaging>nbm</packaging>
 
     <name>OpenCode NetBeans Plugin</name>

@@ -21,7 +21,7 @@ import java.util.logging.Logger;
 
 public class JsonRpcClient {
     private static final Logger LOG = Logger.getLogger(JsonRpcClient.class.getName());
-    private static final long DEFAULT_TIMEOUT_SECONDS = 60;
+    private static final long DEFAULT_TIMEOUT_SECONDS = 0; // 0 means no timeout by default
 
     private final ObjectMapper mapper = new ObjectMapper();
     private final PrintWriter writer;
@@ -99,13 +99,17 @@ public class JsonRpcClient {
             future.completeExceptionally(e);
         }
 
-        return future.orTimeout(timeoutSeconds, TimeUnit.SECONDS)
-                .whenComplete((result, error) -> {
-                    if (error instanceof java.util.concurrent.TimeoutException) {
-                        pendingRequests.remove(id);
-                        LOG.log(Level.WARNING, "Request timed out: method={0}, id={1}", new Object[]{method, id});
-                    }
-                });
+        if (timeoutSeconds > 0) {
+            return future.orTimeout(timeoutSeconds, TimeUnit.SECONDS)
+                    .whenComplete((result, error) -> {
+                        if (error instanceof java.util.concurrent.TimeoutException) {
+                            pendingRequests.remove(id);
+                            LOG.log(Level.WARNING, "Request timed out: method={0}, id={1}", new Object[]{method, id});
+                        }
+                    });
+        }
+
+        return future;
     }
 
     public CompletableFuture<JsonNode> sendRequest(String method, Object params, long timeout, TimeUnit unit) {

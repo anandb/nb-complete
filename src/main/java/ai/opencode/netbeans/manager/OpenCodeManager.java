@@ -326,7 +326,7 @@ public class OpenCodeManager {
         params.put("prompt", promptBlocks);
         params.put("mcpServers", List.of());
         
-        return rpcClient.sendRequest("session/prompt", params, 300)
+        return rpcClient.sendRequest("session/prompt", params)
                 .thenApply(v -> null);
     }
 
