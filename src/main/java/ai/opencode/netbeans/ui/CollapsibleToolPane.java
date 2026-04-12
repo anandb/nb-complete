@@ -6,12 +6,11 @@ import java.awt.Cursor;
 import java.awt.Font;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+
 import javax.swing.BorderFactory;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
-import javax.swing.ScrollPaneConstants;
 
 public class CollapsibleToolPane extends JPanel {
     private final JPanel contentPanel;
@@ -36,26 +35,23 @@ public class CollapsibleToolPane extends JPanel {
         header.setBackground(headerBg);
         header.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createLineBorder(borderCol, 1, true),
-            BorderFactory.createEmptyBorder(4, 8, 4, 8)
+            BorderFactory.createEmptyBorder(6, 10, 6, 10)
         ));
         header.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
         headerLabel = new JLabel(title);
         headerLabel.setFont(new Font("SansSerif", Font.PLAIN, 13));
-        headerLabel.setForeground(new Color(100, 100, 100));
+        headerLabel.setForeground(new Color(110, 110, 110));
+        headerLabel.setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 0));
 
         toggleIcon = new JLabel(expanded ? "▼" : "▶");
-        toggleIcon.setFont(new Font("Monospaced", Font.PLAIN, 12));
+        toggleIcon.setFont(new Font("Monospaced", Font.BOLD, 12));
         toggleIcon.setForeground(new Color(120, 120, 120));
 
-        JPanel leftPanel = new JPanel(new BorderLayout(4, 0));
-        leftPanel.setOpaque(false);
-        leftPanel.add(toggleIcon, BorderLayout.WEST);
-        leftPanel.add(headerLabel, BorderLayout.CENTER);
-        
-        header.add(leftPanel, BorderLayout.CENTER);
+        header.add(toggleIcon, BorderLayout.WEST);
+        header.add(headerLabel, BorderLayout.CENTER);
 
-        // Content - wrap in JScrollPane with horizontal scrollbar never
+        // Content
         contentPanel = new JPanel(new BorderLayout());
         contentPanel.setOpaque(false);
         
@@ -74,11 +70,10 @@ public class CollapsibleToolPane extends JPanel {
         add(header, BorderLayout.NORTH);
         add(contentPanel, BorderLayout.CENTER);
 
-        header.addMouseListener(new MouseAdapter() {
+        MouseAdapter toggleListener = new MouseAdapter() {
             @Override
-            public void mouseClicked(MouseEvent e) {
+            public void mousePressed(MouseEvent e) {
                 toggle();
-                toggleIcon.setText(expanded ? "▼" : "▶");
             }
             @Override
             public void mouseEntered(MouseEvent e) {
@@ -88,7 +83,10 @@ public class CollapsibleToolPane extends JPanel {
             public void mouseExited(MouseEvent e) {
                 header.setBackground(headerBg);
             }
-        });
+        };
+        header.addMouseListener(toggleListener);
+        headerLabel.addMouseListener(toggleListener);
+        toggleIcon.addMouseListener(toggleListener);
     }
 
     public void setContent(String content) {
@@ -102,7 +100,17 @@ public class CollapsibleToolPane extends JPanel {
     private void toggle() {
         expanded = !expanded;
         contentPanel.setVisible(expanded);
+        toggleIcon.setText(expanded ? "▼" : "▶");
         revalidate();
         repaint();
+        // Force parent re-layout to update the chat thread
+        if (getParent() != null) {
+            getParent().revalidate();
+            getParent().repaint();
+            if (getParent().getParent() != null) {
+                getParent().getParent().revalidate();
+                getParent().getParent().repaint();
+            }
+        }
     }
 }

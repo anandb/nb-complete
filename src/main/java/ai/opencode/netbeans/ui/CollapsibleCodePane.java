@@ -1,24 +1,25 @@
 package ai.opencode.netbeans.ui;
 
-import ai.opencode.netbeans.ui.ThemeManager.Theme;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Cursor;
-import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+
 import javax.swing.BorderFactory;
 import javax.swing.JEditorPane;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.SwingConstants;
+
+import ai.opencode.netbeans.ui.ThemeManager.Theme;
 
 public class CollapsibleCodePane extends JPanel {
     private final String language;
     private final String code;
     private final JPanel contentPanel;
     private final JLabel headerLabel;
+    private final JLabel toggleIcon;
     private final JEditorPane codePane;
     private boolean expanded;
 
@@ -50,7 +51,7 @@ public class CollapsibleCodePane extends JPanel {
         headerLabel.setForeground(Color.GRAY);
         header.add(headerLabel, BorderLayout.CENTER);
 
-        JLabel toggleIcon = new JLabel(expanded ? "▼" : "▶");
+        toggleIcon = new JLabel(expanded ? "▼" : "▶");
         toggleIcon.setFont(new Font("Monospaced", Font.BOLD, 12));
         toggleIcon.setForeground(Color.GRAY);
         header.add(toggleIcon, BorderLayout.WEST);
@@ -74,11 +75,10 @@ public class CollapsibleCodePane extends JPanel {
         add(header, BorderLayout.NORTH);
         add(contentPanel, BorderLayout.CENTER);
 
-        header.addMouseListener(new MouseAdapter() {
+        MouseAdapter toggleListener = new MouseAdapter() {
             @Override
-            public void mouseClicked(MouseEvent e) {
+            public void mousePressed(MouseEvent e) {
                 toggle();
-                toggleIcon.setText(expanded ? "▼" : "▶");
             }
             @Override
             public void mouseEntered(MouseEvent e) {
@@ -88,15 +88,28 @@ public class CollapsibleCodePane extends JPanel {
             public void mouseExited(MouseEvent e) {
                 header.setBackground(headerBg);
             }
-        });
+        };
+        header.addMouseListener(toggleListener);
+        headerLabel.addMouseListener(toggleListener);
+        toggleIcon.addMouseListener(toggleListener);
     }
 
     private void toggle() {
         expanded = !expanded;
         contentPanel.setVisible(expanded);
         headerLabel.setText(getLabelText());
+        toggleIcon.setText(expanded ? "▼" : "▶");
         revalidate();
         repaint();
+        // Force parent re-layout
+        if (getParent() != null) {
+            getParent().revalidate();
+            getParent().repaint();
+            if (getParent().getParent() != null) {
+                getParent().getParent().revalidate();
+                getParent().getParent().repaint();
+            }
+        }
     }
 
     private String getLabelText() {
