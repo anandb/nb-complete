@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.awt.Component;
 
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -137,6 +138,16 @@ public class MessageBubble extends JPanel {
     public void setExpanded(boolean expanded) {
         if (segmentsContainer.getComponentCount() > 0 && segmentsContainer.getComponent(0) instanceof CollapsibleToolPane pane) {
             pane.setExpanded(expanded);
+        }
+    }
+
+    public void toggleAllBlocks(boolean expanded) {
+        for (Component c : segmentsContainer.getComponents()) {
+            if (c instanceof CollapsibleCodePane codePane) {
+                codePane.setExpanded(expanded);
+            } else if (c instanceof CollapsibleToolPane toolPane) {
+                toolPane.setExpanded(expanded);
+            }
         }
     }
 

@@ -6,6 +6,7 @@ import ai.opencode.netbeans.model.SessionUpdate;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -336,6 +337,19 @@ public class OpenCodeManager {
         }
         return rpcClient.sendRequest("session/cancel", Map.of("sessionId", sessionId))
                 .thenApply(v -> null);
+    }
+
+    public CompletableFuture<JsonNode> renameSession(String sessionId, String newTitle) {
+        ObjectNode params = objectMapper.createObjectNode();
+        params.put("sessionId", sessionId);
+        
+        ObjectNode update = objectMapper.createObjectNode();
+        update.put("sessionUpdate", "session_info_update");
+        update.put("title", newTitle);
+        
+        params.set("update", update);
+        
+        return rpcClient.sendRequest("session/update", params);
     }
 
     public CompletableFuture<Void> deleteSession(String sessionId) {

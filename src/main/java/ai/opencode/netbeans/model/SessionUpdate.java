@@ -20,6 +20,7 @@ public record SessionUpdate(
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record UpdateData(
         @JsonProperty("sessionUpdate") String type,
+        String title,
         String messageId,
         JsonNode content,
         Message message,
@@ -71,6 +72,11 @@ public record SessionUpdate(
     public String messageId() {
         UpdateData ud = update();
         return ud != null ? ud.messageId() : null;
+    }
+
+    public String title() {
+        UpdateData ud = update();
+        return ud != null ? ud.title() : null;
     }
 
     public UpdateData update() {

@@ -5,18 +5,16 @@ import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.GraphicsEnvironment;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-
-import java.awt.GraphicsEnvironment;
-import java.io.InputStream;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
+
 import javax.swing.BorderFactory;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JScrollPane;
 
 import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
 import org.fife.ui.rsyntaxtextarea.SyntaxConstants;
@@ -131,14 +129,24 @@ public class CollapsibleCodePane extends JPanel {
         return new Dimension(Integer.MAX_VALUE, pref.height);
     }
 
+    public void setExpanded(boolean expanded) {
+        if (this.expanded != expanded) {
+            this.expanded = expanded;
+            contentPanel.setVisible(expanded);
+            headerLabel.setText(getLabelText());
+            toggleIcon.setText(expanded ? "▼" : "▶");
+            revalidate();
+            repaint();
+            // Force parent re-layout
+            updateParentLayout();
+        }
+    }
+
     private void toggle() {
-        expanded = !expanded;
-        contentPanel.setVisible(expanded);
-        headerLabel.setText(getLabelText());
-        toggleIcon.setText(expanded ? "▼" : "▶");
-        revalidate();
-        repaint();
-        // Force parent re-layout
+        setExpanded(!expanded);
+    }
+
+    private void updateParentLayout() {
         if (getParent() != null) {
             getParent().revalidate();
             getParent().repaint();

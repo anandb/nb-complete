@@ -224,6 +224,18 @@ public class ChatThreadPanel extends JPanel {
         });
     }
 
+    public void toggleAllBlocks(boolean expanded) {
+        SwingUtilities.invokeLater(() -> {
+            for (Component c : messagesContainer.getComponents()) {
+                if (c instanceof MessageBubble bubble) {
+                    bubble.toggleAllBlocks(expanded);
+                }
+            }
+            messagesContainer.revalidate();
+            messagesContainer.repaint();
+        });
+    }
+
     public void clearMessages() {
         SwingUtilities.invokeLater(() -> {
             messageList.clear();

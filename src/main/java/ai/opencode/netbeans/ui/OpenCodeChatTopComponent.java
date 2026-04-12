@@ -138,6 +138,8 @@ public final class OpenCodeChatTopComponent extends TopComponent {
         header.setOpaque(true);
         header.setBackground(base3);
 
+        chatPanel = new ChatThreadPanel();
+
         cwdLabel = new JLabel("");
         cwdLabel.setFont(new Font("Segoe UI", Font.BOLD, 12));
         cwdLabel.setForeground(theme.getForeground());
@@ -178,8 +180,17 @@ public final class OpenCodeChatTopComponent extends TopComponent {
         };
         sessionDropdown.addActionListener(sessionDropdownListener);
 
+        JButton renameSessionBtn = new JButton("Rename");
+        renameSessionBtn.setFocusPainted(false);
+        renameSessionBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        renameSessionBtn.setBackground(theme.getBase2());
+        renameSessionBtn.setForeground(theme.getForeground());
+        renameSessionBtn.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        renameSessionBtn.addActionListener(e -> renameCurrentSession());
+
         JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         buttonsPanel.setOpaque(false);
+        // buttonsPanel.add(renameSessionBtn); // Hidden for now
         buttonsPanel.add(newSessionBtn);
 
         JPanel actionPanel = new JPanel(new BorderLayout(0, 0));
@@ -191,6 +202,32 @@ public final class OpenCodeChatTopComponent extends TopComponent {
         headerContent.setOpaque(false);
         headerContent.add(cwdLabel);
         headerContent.add(actionPanel);
+        
+        // Block control buttons
+        JPanel blockControls = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        blockControls.setOpaque(false);
+        blockControls.setBorder(new EmptyBorder(4, 0, 0, 0));
+        
+        JButton expandAllBtn = new JButton("↔ Expand Blocks");
+        expandAllBtn.setFocusPainted(false);
+        expandAllBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        expandAllBtn.setContentAreaFilled(false);
+        expandAllBtn.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        expandAllBtn.setForeground(theme.getSelection());
+        expandAllBtn.addActionListener(e -> chatPanel.toggleAllBlocks(true));
+        
+        JButton collapseAllBtn = new JButton("↕ Collapse Blocks");
+        collapseAllBtn.setFocusPainted(false);
+        collapseAllBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        collapseAllBtn.setContentAreaFilled(false);
+        collapseAllBtn.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        collapseAllBtn.setForeground(theme.getSelection());
+        collapseAllBtn.addActionListener(e -> chatPanel.toggleAllBlocks(false));
+        
+        blockControls.add(expandAllBtn);
+        blockControls.add(collapseAllBtn);
+        headerContent.add(blockControls);
+
         header.add(headerContent, BorderLayout.CENTER);
 
         add(header, BorderLayout.NORTH);
@@ -201,7 +238,6 @@ public final class OpenCodeChatTopComponent extends TopComponent {
         OpenCodeManager.getInstance().addProjectChangeListener(this::updateCwdLabel);
 
         // Chat History (Center)
-        chatPanel = new ChatThreadPanel();
         add(chatPanel, BorderLayout.CENTER);
 
         // Footer / Input Container (Bottom)
@@ -460,6 +496,11 @@ public final class OpenCodeChatTopComponent extends TopComponent {
 
             String type = update.type();
 
+            if ("session_info_update".equals(type)) {
+                SwingUtilities.invokeLater(() -> refreshSessions(currentSessionId, false));
+                return;
+            }
+
             // Log for debugging - extremely important to find missing chunks
             LOG.log(Level.INFO, "SSE Event: type={0}, content={1}, hasMessage={2}",
                     new Object[] { type, (update.content() != null), (update.message() != null) });
@@ -640,18 +681,17 @@ public final class OpenCodeChatTopComponent extends TopComponent {
     }
 
     private void initChat() {
+        refreshSessions(null, true);
+    }
+
+    private void refreshSessions(String autoselectId, boolean loadMessages) {
         statusLabel.setText("Connecting...");
         OpenCodeManager manager = OpenCodeManager.getInstance();
-        LOG.log(Level.INFO, "initChat: initialized={0}", manager.isInitialized());
+        LOG.log(Level.INFO, "refreshSessions: initialized={0}", manager.isInitialized());
         manager.whenReady()
                 .thenCompose(v -> manager.getSessions())
                 .thenAccept(sessions -> {
-                    LOG.log(Level.INFO, "initChat: received {0} sessions, before sorting", sessions.size());
-                    for (Session s : sessions) {
-                        LOG.log(Level.INFO, "initChat: session id={0}, title=''{1}''",
-                                new Object[] { s.id(), s.title() });
-                    }
-                    LOG.info("initChat: after logging sessions, before sorting");
+                    LOG.log(Level.INFO, "refreshSessions: received {0} sessions, before sorting", sessions.size());
                     List<Session> sortedSessions = sessions.stream()
                             .sorted((s1, s2) -> {
                                 long t1 = parseTimestamp(s1.updatedAt());
@@ -664,21 +704,25 @@ public final class OpenCodeChatTopComponent extends TopComponent {
                         isSwitchingSessionDropdown = true;
                         try {
                             sessionDropdown.removeAllItems();
-                            LOG.log(Level.INFO, "initChat: adding {0} sessions to dropdown", sortedSessions.size());
-                            for (ai.opencode.netbeans.model.Session s : sortedSessions) {
+                            LOG.log(Level.INFO, "refreshSessions: adding {0} sessions to dropdown", sortedSessions.size());
+                            int selectIdx = -1;
+                            for (int i = 0; i < sortedSessions.size(); i++) {
+                                Session s = sortedSessions.get(i);
                                 sessionDropdown.addItem(new SessionItem(s));
+                                if (autoselectId != null && s.id().equals(autoselectId)) {
+                                    selectIdx = i;
+                                }
                             }
 
-                            // Auto-select most recent session if available
                             if (!sortedSessions.isEmpty()) {
-                                String selectedId = sortedSessions.get(0).id();
-                                LOG.log(Level.INFO, "initChat: auto-selecting session {0}", selectedId);
+                                if (selectIdx == -1) selectIdx = 0;
+                                String selectedId = sortedSessions.get(selectIdx).id();
                                 currentSessionId = selectedId;
-                                sessionDropdown.setSelectedIndex(0);
-                                // loadSession will clear the panel and request messages
-                                loadSession(selectedId, true);
+                                sessionDropdown.setSelectedIndex(selectIdx);
+                                if (loadMessages) {
+                                    loadSession(selectedId, true);
+                                }
                             } else {
-                                LOG.info("initChat: no sessions, showing welcome state");
                                 chatPanel.setSessionList(sortedSessions, this::loadSession, this::createNewSession);
                                 sessionDropdown.setSelectedIndex(-1);
                                 statusLabel.setText("Click '+ New Chat' to start");
@@ -691,7 +735,7 @@ public final class OpenCodeChatTopComponent extends TopComponent {
                 })
                 .exceptionally(ex -> {
                     SwingUtilities.invokeLater(() -> statusLabel.setText("Error: " + ex.getMessage()));
-                    LOG.log(Level.SEVERE, "Failed to initialize chat", ex);
+                    LOG.log(Level.SEVERE, "Failed to refresh sessions", ex);
                     return null;
                 });
     }
@@ -766,6 +810,31 @@ public final class OpenCodeChatTopComponent extends TopComponent {
                         return null;
                     });
         });
+    }
+
+    private void renameCurrentSession() {
+        if (currentSessionId == null) {
+            return;
+        }
+
+        SessionItem selectedItem = (SessionItem) sessionDropdown.getSelectedItem();
+        String currentTitle = selectedItem != null ? selectedItem.getSession().title() : "";
+        if (currentTitle == null) currentTitle = "";
+
+        String newTitle = javax.swing.JOptionPane.showInputDialog(this, "Enter new session title:", currentTitle);
+        if (newTitle != null && !newTitle.trim().isEmpty()) {
+            OpenCodeManager.getInstance().renameSession(currentSessionId, newTitle.trim())
+                .thenRun(() -> {
+                    SwingUtilities.invokeLater(() -> {
+                        // Refresh session list without reloading messages
+                        refreshSessions(currentSessionId, false);
+                    });
+                })
+                .exceptionally(ex -> {
+                    LOG.log(Level.SEVERE, "Failed to rename session", ex);
+                    return null;
+                });
+        }
     }
 
     private void createNewSession() {
