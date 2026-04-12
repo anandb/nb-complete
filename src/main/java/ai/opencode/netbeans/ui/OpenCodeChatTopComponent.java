@@ -50,6 +50,7 @@ import org.openide.awt.ActionRegistration;
 import org.openide.filesystems.FileObject;
 import org.openide.text.NbDocument;
 import org.openide.util.NbBundle;
+import org.openide.util.NbPreferences;
 import org.openide.windows.TopComponent;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -107,6 +108,7 @@ public final class OpenCodeChatTopComponent extends TopComponent {
 
     private final JComboBox<SessionItem> sessionDropdown;
     private boolean isSwitchingSessionDropdown = false;
+    private boolean isUpdatingConfigControls = false;
     private final JLabel cwdLabel;
     private final JComboBox<ConfigItem> modeCombo;
     private final JComboBox<ConfigItem> modelCombo;
@@ -669,11 +671,12 @@ public final class OpenCodeChatTopComponent extends TopComponent {
 
                             // Auto-select most recent session if available
                             if (!sortedSessions.isEmpty()) {
-                                LOG.log(Level.INFO, "initChat: auto-selecting session {0}", sortedSessions.get(0).id());
-                                currentSessionId = sortedSessions.get(0).id();
+                                String selectedId = sortedSessions.get(0).id();
+                                LOG.log(Level.INFO, "initChat: auto-selecting session {0}", selectedId);
+                                currentSessionId = selectedId;
                                 sessionDropdown.setSelectedIndex(0);
                                 // loadSession will clear the panel and request messages
-                                loadSession(currentSessionId);
+                                loadSession(selectedId, true);
                             } else {
                                 LOG.info("initChat: no sessions, showing welcome state");
                                 chatPanel.setSessionList(sortedSessions, this::loadSession, this::createNewSession);
@@ -694,6 +697,10 @@ public final class OpenCodeChatTopComponent extends TopComponent {
     }
 
     private void loadSession(String sessionId) {
+        loadSession(sessionId, false);
+    }
+
+    private void loadSession(String sessionId, boolean isStartup) {
         this.currentSessionId = sessionId;
         statusLabel.setText("Loading chat...");
         LOG.log(Level.INFO, "loadSession: clearing and calling loadSession for {0}", sessionId);
@@ -720,24 +727,17 @@ public final class OpenCodeChatTopComponent extends TopComponent {
                     new Object[] { projectCwd, sessionCwd, workingCwd });
             updateCwdLabel(workingCwd);
             this.lastProjectDir = workingCwd;
+            final String targetSessionId = sessionId;
             OpenCodeManager.getInstance().loadSession(sessionId, workingCwd)
                     .thenAccept(configOptions -> {
                         SwingUtilities.invokeLater(() -> {
+                            // Verify we are still on the same session
+                            if (!targetSessionId.equals(this.currentSessionId)) {
+                                return;
+                            }
                             statusLabel.setText("Ready");
                             if (configOptions != null) {
-                                updateConfigControls(configOptions);
-                            }
-
-                            // Set default mode to "plan" if not already set
-                            if (modeCombo.getItemCount() > 0 && modeCombo.getSelectedIndex() == -1) {
-                                for (int i = 0; i < modeCombo.getItemCount(); i++) {
-                                    ConfigItem item = modeCombo.getItemAt(i);
-                                    if ("plan".equals(item.value)) {
-                                        modeCombo.setSelectedIndex(i);
-                                        OpenCodeManager.getInstance().setSessionConfigOption(sessionId, "mode", "plan");
-                                        break;
-                                    }
-                                }
+                                updateConfigControls(configOptions, isStartup);
                             }
 
                             setInputEnabled(true);
@@ -779,26 +779,18 @@ public final class OpenCodeChatTopComponent extends TopComponent {
                     this.lastProjectDir = sessCwd;
                     LOG.log(Level.INFO, "New session created: {0}, CWD: {1}",
                             new Object[] { currentSessionId, lastProjectDir });
+                    final String targetSessionId = session.id();
                     SwingUtilities.invokeLater(() -> {
+                        if (!targetSessionId.equals(this.currentSessionId)) {
+                            return;
+                        }
                         chatPanel.clearMessages();
                         statusLabel.setText("Session created: " + currentSessionId);
                         updateCwdLabel(sessCwd);
                         if (session.configOptions() != null) {
-                            updateConfigControls(session.configOptions());
+                            updateConfigControls(session.configOptions(), true);
                         }
 
-                        // Set default mode to "plan" if mode combo is populated
-                        if (modeCombo.getItemCount() > 0) {
-                            for (int i = 0; i < modeCombo.getItemCount(); i++) {
-                                ConfigItem item = modeCombo.getItemAt(i);
-                                if ("plan".equals(item.value)) {
-                                    modeCombo.setSelectedIndex(i);
-                                    OpenCodeManager.getInstance().setSessionConfigOption(currentSessionId, "mode",
-                                            "plan");
-                                    break;
-                                }
-                            }
-                        }
 
                         setInputEnabled(true);
 
@@ -1053,6 +1045,9 @@ public final class OpenCodeChatTopComponent extends TopComponent {
             combo.setFont(btnFont);
         }
         combo.addActionListener(e -> {
+            if (isUpdatingConfigControls) {
+                return;
+            }
             Object selected = combo.getSelectedItem();
             ConfigItem item = null;
             if (selected instanceof ConfigItem configItem) {
@@ -1070,6 +1065,7 @@ public final class OpenCodeChatTopComponent extends TopComponent {
             }
 
             if (item != null && currentSessionId != null && !item.isInternalUpdate) {
+                LOG.log(Level.INFO, "Config changed: {0}={1} for session {2}", new Object[]{configId, item.value, currentSessionId});
                 OpenCodeManager.getInstance().setSessionConfigOption(currentSessionId, configId, item.value);
                 if (combo == modelCombo) {
                     updateTabName(item.name);
@@ -1103,62 +1099,105 @@ public final class OpenCodeChatTopComponent extends TopComponent {
     }
 
     private void updateConfigControls(List<SessionConfigOption> options) {
-        SwingUtilities.invokeLater(() -> {
-            for (SessionConfigOption opt : options) {
-                JComboBox<ConfigItem> combo = null;
-                if ("mode".equals(opt.category())) {
-                    combo = modeCombo;
-                } else if ("model".equals(opt.category())) {
-                    combo = modelCombo;
-                } else if (opt.category() != null
-                        && (opt.category().contains("thinking") || opt.category().contains("thought"))) {
-                    combo = thinkingCombo;
-                }
+        updateConfigControls(options, false);
+    }
 
-                if (combo != null) {
-                    combo.removeAllItems();
-                    ConfigItem selected = null;
-                    for (SessionConfigSelectOption o : opt.options()) {
-                        String displayName = o.name();
-                        // If model is free, show it
-                        if ("model".equals(opt.category())) {
-                            String lowerName = (o.name() != null) ? o.name().toLowerCase() : "";
-                            String lowerValue = (o.value() != null) ? o.value().toLowerCase() : "";
-                            String lowerDesc = o.description() != null ? o.description().toLowerCase() : "";
-                            if (lowerName.contains("free") || lowerValue.contains("free")
-                                    || lowerDesc.contains("free")) {
-                                if (!displayName.toLowerCase().contains("(free)")) {
-                                    displayName += " (Free)";
+    private void updateConfigControls(List<SessionConfigOption> options, boolean forceStartupDefaults) {
+        SwingUtilities.invokeLater(() -> {
+            isUpdatingConfigControls = true;
+            try {
+                String defaultModel = NbPreferences.forModule(OpenCodeOptionsPanel.class)
+                        .get("defaultModel", "opencode/big-pickle");
+                LOG.log(Level.INFO, "updateConfigControls: force={0}, defaultModel={1}", new Object[]{forceStartupDefaults, defaultModel});
+
+                for (SessionConfigOption opt : options) {
+                    JComboBox<ConfigItem> combo = null;
+                    boolean isThinking = false;
+                    if ("mode".equals(opt.category())) {
+                        combo = modeCombo;
+                    } else if ("model".equals(opt.category())) {
+                        combo = modelCombo;
+                    } else if (opt.category() != null
+                            && (opt.category().contains("thinking") || opt.category().contains("thought"))) {
+                        combo = thinkingCombo;
+                        isThinking = true;
+                    }
+
+                    if (combo != null) {
+                        combo.removeAllItems();
+                        ConfigItem selected = null;
+
+                        String valueToSelect = opt.currentValue();
+                        if (forceStartupDefaults) {
+                            String forcedValue = null;
+                            if ("mode".equals(opt.category())) {
+                                if (opt.options().stream().anyMatch(o -> "plan".equalsIgnoreCase(o.value()))) {
+                                    forcedValue = "plan";
+                                }
+                            } else if ("model".equals(opt.category())) {
+                                if (opt.options().stream().anyMatch(o -> defaultModel.equalsIgnoreCase(o.value()))) {
+                                    forcedValue = defaultModel;
+                                }
+                            } else if (isThinking) {
+                                if (opt.options().stream().anyMatch(o -> "default".equalsIgnoreCase(o.value()))) {
+                                    forcedValue = "default";
                                 }
                             }
+
+                            if (forcedValue != null && !forcedValue.equalsIgnoreCase(opt.currentValue()) && currentSessionId != null) {
+                                LOG.log(Level.INFO, "Forcing default: {0}={1} (was {2})", new Object[]{opt.id(), forcedValue, opt.currentValue()});
+                                valueToSelect = forcedValue;
+                                OpenCodeManager.getInstance().setSessionConfigOption(currentSessionId, opt.id(), forcedValue);
+                            }
                         }
-                        ConfigItem item = new ConfigItem(displayName, o.value());
-                        combo.addItem(item);
-                        if (o.value().equals(opt.currentValue())) {
-                            selected = item;
+
+                        for (SessionConfigSelectOption o : opt.options()) {
+                            String displayName = o.name();
+                            // If model is free, show it
+                            if ("model".equals(opt.category())) {
+                                String lowerName = (o.name() != null) ? o.name().toLowerCase() : "";
+                                String lowerValue = (o.value() != null) ? o.value().toLowerCase() : "";
+                                String lowerDesc = o.description() != null ? o.description().toLowerCase() : "";
+                                if (lowerName.contains("free") || lowerValue.contains("free")
+                                        || lowerDesc.contains("free")) {
+                                    if (!displayName.toLowerCase().contains("(free)")) {
+                                        displayName += " (Free)";
+                                    }
+                                }
+                            }
+                            ConfigItem item = new ConfigItem(displayName, o.value());
+                            combo.addItem(item);
+                            if (o.value() != null && valueToSelect != null && o.value().equalsIgnoreCase(valueToSelect)) {
+                                selected = item;
+                            }
                         }
-                    }
 
-                    // Initialize the listener if not already done
-                    if (combo.getActionListeners().length == 0) {
-                        setupConfigCombo(combo, opt.id());
-                    }
+                        // Initialize the listener if not already done
+                        if (combo.getActionListeners().length == 0) {
+                            setupConfigCombo(combo, opt.id());
+                        }
 
-                    if (selected != null) {
-                        selected.isInternalUpdate = true;
-                        combo.setSelectedItem(selected);
-                        selected.isInternalUpdate = false;
-                    }
+                        if (selected != null) {
+                            selected.isInternalUpdate = true;
+                            combo.setSelectedItem(selected);
+                            selected.isInternalUpdate = false;
+                        } else if (combo.getItemCount() > 0) {
+                            // Fallback to first if nothing selected
+                            combo.setSelectedIndex(0);
+                        }
 
-                    if ("model".equals(opt.category())) {
-                        combo.setEditable(true);
-                        updateTabName(selected != null ? selected.name : null);
-                    }
-                    if (opt.category() != null
-                            && (opt.category().contains("thinking") || opt.category().contains("thought"))) {
-                        combo.setEditable(true);
+                        if ("model".equals(opt.category())) {
+                            combo.setEditable(true);
+                            updateTabName(selected != null ? selected.name : null);
+                        }
+                        if (opt.category() != null
+                                && (opt.category().contains("thinking") || opt.category().contains("thought"))) {
+                            combo.setEditable(true);
+                        }
                     }
                 }
+            } finally {
+                isUpdatingConfigControls = false;
             }
         });
     }
@@ -1169,12 +1208,7 @@ public final class OpenCodeChatTopComponent extends TopComponent {
         boolean isInternalUpdate = false;
 
         ConfigItem(String name, String value) {
-            // If name has slashes, display only the text after the last slash
-            if (name != null && name.contains("/")) {
-                this.name = name.substring(name.lastIndexOf("/") + 1);
-            } else {
-                this.name = name;
-            }
+            this.name = name;
             this.value = value;
         }
 
