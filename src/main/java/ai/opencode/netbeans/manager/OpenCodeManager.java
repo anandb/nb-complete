@@ -416,6 +416,10 @@ public class OpenCodeManager {
         return readyFuture;
     }
 
+    public void removeSseListener(Consumer<SessionUpdate> listener) {
+        sseListeners.remove(listener);
+    }
+
     private CompletableFuture<JsonNode> handleReadTextFile(JsonNode params) {
         return CompletableFuture.supplyAsync(() -> {
             try {

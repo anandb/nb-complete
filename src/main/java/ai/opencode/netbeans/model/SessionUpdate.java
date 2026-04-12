@@ -58,6 +58,21 @@ public record SessionUpdate(
         return ud != null ? ud.isThinking() : null;
     }
     
+    public JsonNode content() {
+        UpdateData ud = update();
+        return ud != null ? ud.content() : null;
+    }
+
+    public List<SessionConfigOption> configOptions() {
+        UpdateData ud = update();
+        return ud != null ? ud.configOptions() : null;
+    }
+
+    public String messageId() {
+        UpdateData ud = update();
+        return ud != null ? ud.messageId() : null;
+    }
+
     public UpdateData update() {
         return params != null ? params.update() : null;
     }

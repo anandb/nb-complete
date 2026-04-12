@@ -3,6 +3,7 @@ package ai.opencode.netbeans.ui;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Cursor;
+import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -94,6 +95,12 @@ public class CollapsibleCodePane extends JPanel {
         toggleIcon.addMouseListener(toggleListener);
     }
 
+    @Override
+    public Dimension getMaximumSize() {
+        Dimension pref = getPreferredSize();
+        return new Dimension(Integer.MAX_VALUE, pref.height);
+    }
+
     private void toggle() {
         expanded = !expanded;
         contentPanel.setVisible(expanded);
@@ -114,7 +121,7 @@ public class CollapsibleCodePane extends JPanel {
 
     private String getLabelText() {
         int lineCount = code.split("\n", -1).length;
-        return language.toUpperCase() + " (" + lineCount + " lines)";
+        return "∨ CODE BLOCK (" + language.toUpperCase() + ", " + lineCount + " lines)";
     }
 
     private void updateCodeContent() {
@@ -149,9 +156,10 @@ public class CollapsibleCodePane extends JPanel {
             }
         }
 
-        String html = "<html><body style=\"font-family: 'JetBrains Mono', 'Cascadia Code', monospace; font-size: 13px; background-color: #e9e9d0; padding: 10px; margin: 0;\">"
+        String html = "<html><body style=\"font-family: 'JetBrains Mono', 'Input Mono', monospace; font-size: 12px; color: #839496; background-color: #002B36; padding: 10px; margin: 0;\">"
                     + spaceFixed.toString()
                     + "</body></html>";
         codePane.setText(html);
+        codePane.setBackground(Color.decode("#002B36"));
     }
 }

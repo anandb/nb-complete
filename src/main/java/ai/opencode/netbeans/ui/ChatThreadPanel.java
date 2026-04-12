@@ -48,10 +48,13 @@ public class ChatThreadPanel extends JPanel {
 
         scrollPane = new JScrollPane(messagesContainer);
         scrollPane.setBorder(null);
+        scrollPane.setBorder(BorderFactory.createEmptyBorder());
+        scrollPane.setOpaque(true);
+        scrollPane.setBackground(Color.decode("#FDF6E3"));
+        scrollPane.getViewport().setOpaque(true);
+        scrollPane.getViewport().setBackground(Color.decode("#FDF6E3"));
         scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         scrollPane.getVerticalScrollBar().setUnitIncrement(16);
-        scrollPane.setOpaque(false);
-        scrollPane.getViewport().setOpaque(false);
         
         // Fix: Mouse wheel scrolling often breaks when mouse is over child components
         // like JEditorPane. We redirect those events to the main scroll pane.
@@ -109,7 +112,7 @@ public class ChatThreadPanel extends JPanel {
                     String pt = part.getDisplayText();
                     if (pt != null && !pt.isEmpty()) {
                         if (sb.length() > 0) {
-                    sb.append("\n\n");
+                    sb.append("\n");
                 }
                         sb.append(pt);
                     }
@@ -135,8 +138,12 @@ public class ChatThreadPanel extends JPanel {
     }
 
     public void addMessage(String role, String text) {
+        addMessage(role, text, null);
+    }
+
+    public void addMessage(String role, String text, String messageId) {
         SwingUtilities.invokeLater(() -> {
-            MessageBubble bubble = new MessageBubble(role, text);
+            MessageBubble bubble = new MessageBubble(role, text, messageId);
             messagesContainer.add(bubble);
             messagesContainer.add(Box.createVerticalStrut(8));
             messagesContainer.revalidate();
@@ -146,7 +153,26 @@ public class ChatThreadPanel extends JPanel {
         });
     }
 
+    public void collapseLastThought() {
+        SwingUtilities.invokeLater(() -> {
+            int count = messagesContainer.getComponentCount();
+            for (int i = count - 1; i >= 0; i--) {
+                Component c = messagesContainer.getComponent(i);
+                if (c instanceof MessageBubble messageBubble) {
+                    if ("thought".equals(messageBubble.getType())) {
+                        messageBubble.setExpanded(false);
+                        break;
+                    }
+                }
+            }
+        });
+    }
+
     public void appendOrAddMessage(String role, String text) {
+        appendOrAddMessage(role, text, null);
+    }
+
+    public void appendOrAddMessage(String role, String text, String messageId) {
         SwingUtilities.invokeLater(() -> {
             int count = messagesContainer.getComponentCount();
             MessageBubble lastBubble = null;
@@ -158,18 +184,22 @@ public class ChatThreadPanel extends JPanel {
                 }
             }
 
-            if (lastBubble != null && lastBubble.getType().equals(role)) {
+            boolean canAppend = lastBubble != null && lastBubble.getType().equals(role);
+            
+            // If we have message IDs, they must match
+            if (canAppend && messageId != null && lastBubble.getMessageId() != null) {
+                if (!messageId.equals(lastBubble.getMessageId())) {
+                    canAppend = false;
+                }
+            }
+
+            if (canAppend) {
                 lastBubble.appendText(text);
                 messagesContainer.revalidate();
                 messagesContainer.repaint();
                 scrollToBottom();
             } else {
-                MessageBubble bubble = new MessageBubble(role, text);
-                messagesContainer.add(bubble);
-                messagesContainer.add(Box.createVerticalStrut(8));
-                messagesContainer.revalidate();
-                messagesContainer.repaint();
-                scrollToBottom();
+                addMessage(role, text, messageId);
             }
         });
     }

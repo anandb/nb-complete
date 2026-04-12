@@ -1,7 +1,6 @@
 package ai.opencode.netbeans.ui;
 
 import java.awt.Color;
-import javax.swing.UIManager;
 
 public class ThemeManager {
 
@@ -14,16 +13,20 @@ public class ThemeManager {
         private Color bubbleBorder;
         private Color selection;
         private Color accent;
+        private Color yellow;
+        private Color base1;
+        private Color base2;
+        private Color base3;
         private Color ghostBackground;
 
         public String toCss(Color bubbleBg, boolean isAssistant) {
             String fg = toHtmlHex(isAssistant ? getAssistantForeground() : getForeground());
-            String sel = toHtmlHex(getSelection());
+            String sel = "#268BD2"; // Solarized Blue
             String bg = bubbleBg != null ? toHtmlHex(bubbleBg) : "transparent";
 
-            return "body { font-family: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; color: " + fg + "; background-color: " + bg + "; margin: 0 0 8px 0; line-height: 1.6; }" +
-                   "code { background-color: rgba(128,128,128,0.12); padding: 2px 5px; border-radius: 4px; font-family: 'AtkynsonMono NFP Medium', 'JetBrains Mono', 'Cascadia Code', monospace; font-size: 13px; }" +
-                   "pre { background-color: #e9e9d0; padding: 12px; border-radius: 8px; border: 1px solid rgba(128,128,128,0.15); overflow-x: auto; margin: 12px 0; }" +
+            return "body { font-family: 'Segoe UI', 'Ubuntu', sans-serif; font-size: 13px; color: " + fg + "; background-color: " + bg + "; margin: 0 0 8px 0; line-height: 1.4; }" +
+                   "code { background-color: rgba(7, 54, 66, 0.1); padding: 2px 4px; border-radius: 3px; font-family: 'JetBrains Mono', 'Input Mono', monospace; font-size: 12px; }" +
+                   "pre { background-color: #002B36; color: #839496; padding: 10px; border-radius: 4px; font-family: 'JetBrains Mono', 'Input Mono', monospace; font-size: 12px; overflow-x: auto; margin: 10px 0; }" +
                    "p { margin: 8px 0; }" +
                    "ul, ol { padding-left: 20px; margin: 8px 0; }" +
                    "li { margin: 4px 0; }" +
@@ -35,136 +38,52 @@ public class ThemeManager {
             return String.format("#%02x%02x%02x", color.getRed(), color.getGreen(), color.getBlue());
         }
 
-        /**
-         * @return the background
-         */
-        public Color getBackground() {
-            return background;
-        }
-
-        /**
-         * @return the foreground
-         */
-        public Color getForeground() {
-            return foreground;
-        }
-
-        /**
-         * @return the assistantForeground
-         */
-        public Color getAssistantForeground() {
-            return assistantForeground;
-        }
-
-        /**
-         * @return the bubbleUser
-         */
-        public Color getBubbleUser() {
-            return bubbleUser;
-        }
-
-        /**
-         * @return the bubbleAssistant
-         */
-        public Color getBubbleAssistant() {
-            return bubbleAssistant;
-        }
-
-        /**
-         * @return the bubbleBorder
-         */
-        public Color getBubbleBorder() {
-            return bubbleBorder;
-        }
-
-        /**
-         * @return the selection
-         */
-        public Color getSelection() {
-            return selection;
-        }
-
-        /**
-         * @return the accent
-         */
-        public Color getAccent() {
-            return accent;
-        }
-
-        /**
-         * @return the ghostBackground
-         */
-        public Color getGhostBackground() {
-            return ghostBackground;
-        }
+        public Color getBackground() { return background; }
+        public Color getForeground() { return foreground; }
+        public Color getAssistantForeground() { return assistantForeground; }
+        public Color getBubbleUser() { return bubbleUser; }
+        public Color getBubbleAssistant() { return bubbleAssistant; }
+        public Color getBubbleBorder() { return bubbleBorder; }
+        public Color getSelection() { return selection; }
+        public Color getAccent() { return accent; }
+        public Color getYellow() { return yellow; }
+        public Color getBase1() { return base1; }
+        public Color getBase2() { return base2; }
+        public Color getBase3() { return base3; }
+        public Color getGhostBackground() { return ghostBackground; }
     }
 
     public static Theme getCurrentTheme() {
         Theme theme = new Theme();
 
-        Color bg = UIManager.getColor("Editor.background");
-        if (bg == null) {
-            bg = UIManager.getColor("Panel.background");
-        }
-        theme.background = bg;
+        // Solarized Light (Base 3)
+        Color base3 = Color.decode("#FDF6E3");
+        Color base2 = Color.decode("#EEE8D5");
+        Color base1 = Color.decode("#93A1A1");
+        Color base00 = Color.decode("#657B83");
+        Color yellow = Color.decode("#B58900");
+        Color blue = Color.decode("#268BD2");
 
-        Color fg = UIManager.getColor("Editor.foreground");
-        if (fg == null) {
-            fg = UIManager.getColor("Label.foreground");
-        }
-        theme.foreground = fg;
+        theme.base3 = base3;
+        theme.base2 = base2;
+        theme.base1 = base1;
+        theme.yellow = yellow;
 
-        // Assistant text: Dark Brown (#3C2A21 or similar premium dark brown)
-        theme.assistantForeground = new Color(0x3C2A21);
+        theme.background = base3;
+        theme.foreground = base00;
+        theme.assistantForeground = base00;
 
-        Color sel = UIManager.getColor("TextArea.selectionBackground");
-        if (sel == null) {
-            sel = UIManager.getColor("textHighlight");
-        }
-        if (sel == null) {
-            sel = new Color(0, 120, 215);
-        }
-        theme.selection = sel;
+        theme.selection = blue;
+        theme.accent = blue;
 
-        // User bubble: Fixed hex color as requested
-        theme.bubbleUser = new Color(0xCEC7AF);
-        // Assistant bubble: No background (transparent)
+        // User bubble: slightly darker beige
+        theme.bubbleUser = base2;
         theme.bubbleAssistant = null;
-        // Border: No border for assistant, but keep a subtle one for user if desired?
-        theme.bubbleBorder = new Color(0, 0, 0, 0); // Transparent
+        theme.bubbleBorder = Color.decode("#DCD6C1");
 
-        // Custom UI accents
-        theme.accent = theme.getSelection();
-        theme.ghostBackground = new Color(fg.getRed(), fg.getGreen(), fg.getBlue(), 15);
+        theme.ghostBackground = new Color(base00.getRed(), base00.getGreen(), base00.getBlue(), 15);
 
         return theme;
     }
-
-    private static Color getContrastColor(Color c, float factor) {
-        if (c == null) {
-            return Color.GRAY;
-        }
-        int r = c.getRed();
-        int g = c.getGreen();
-        int b = c.getBlue();
-
-        boolean isDark = (r * 0.299 + g * 0.587 + b * 0.114) < 128; // Standard luminance
-        if (isDark) {
-            return new Color(
-                clamp((int)(r + 255 * factor)),
-                clamp((int)(g + 255 * factor)),
-                clamp((int)(b + 255 * factor))
-            );
-        } else {
-            return new Color(
-                clamp((int)(r - 255 * factor)),
-                clamp((int)(g - 255 * factor)),
-                clamp((int)(b - 255 * factor))
-            );
-        }
-    }
-
-    private static int clamp(int val) {
-        return Math.max(0, Math.min(255, val));
-    }
+    
 }

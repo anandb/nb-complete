@@ -1,9 +1,5 @@
 package ai.opencode.netbeans.ui;
 
-import com.vladsch.flexmark.html.HtmlRenderer;
-import com.vladsch.flexmark.parser.Parser;
-import com.vladsch.flexmark.util.data.MutableDataSet;
-
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Graphics;
@@ -12,6 +8,10 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.RenderingHints;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -19,17 +19,15 @@ import javax.swing.JEditorPane;
 import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
 
-import org.apache.commons.lang3.StringUtils;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import com.vladsch.flexmark.html.HtmlRenderer;
+import com.vladsch.flexmark.parser.Parser;
+import com.vladsch.flexmark.util.data.MutableDataSet;
 
 public class MessageBubble extends JPanel {
 
     private static final long serialVersionUID = 1L;
     private final String type;
+    private final String messageId;
     private final StringBuilder text;
     private final JPanel segmentsContainer;
     private final ArrayList<CollapsibleState> codeStates = new ArrayList<>();
@@ -40,7 +38,12 @@ public class MessageBubble extends JPanel {
     }
 
     public MessageBubble(String type, String text) {
+        this(type, text, null);
+    }
+
+    public MessageBubble(String type, String text, String messageId) {
         this.type = type;
+        this.messageId = messageId;
         this.text = new StringBuilder(text);
 
         setLayout(new GridBagLayout());
@@ -131,15 +134,25 @@ public class MessageBubble extends JPanel {
         updateContent(ThemeManager.getCurrentTheme());
     }
 
+    public void setExpanded(boolean expanded) {
+        if (segmentsContainer.getComponentCount() > 0 && segmentsContainer.getComponent(0) instanceof CollapsibleToolPane pane) {
+            pane.setExpanded(expanded);
+        }
+    }
+
     public String getType() {
         return type;
+    }
+
+    public String getMessageId() {
+        return messageId;
     }
 
     private void updateContent(ThemeManager.Theme theme) {
         // Handle specialized tool rendering
         if ("tool".equals(type) || "thought".equals(type)) {
             String rawText = text.toString();
-            String title = "thought".equals(type) ? "💭 Thinking Process" : "🛠️ Tool Call";
+            String title = "thought".equals(type) ? "THINKING PROCESS" : "🛠️ Tool Call";
             String displayContent = rawText;
 
             // Try to extract a summary title from the tool call text
@@ -308,13 +321,13 @@ public class MessageBubble extends JPanel {
             
             if (line.trim().startsWith("|") && line.trim().endsWith("|")) {
                 String trimmedLine = line.trim();
-                String[] cells = StringUtils.split(trimmedLine, "|", -1);
+                // Strip leading and trailing pipes
+                String content = trimmedLine.substring(1, trimmedLine.length() - 1);
+                // Split by pipes not preceded by a backslash
+                String[] cells = content.split("(?<!\\\\)\\|", -1);                
                 List<String> rowCells = new ArrayList<>();
                 for (String cell : cells) {
-                    String c = cell.trim();
-                    if (!c.isEmpty()) {
-                        rowCells.add(c);
-                    }
+                    rowCells.add(cell.trim().replace("\\|", "|"));
                 }
                 
                 if (rowCells.isEmpty()) {
