@@ -23,7 +23,7 @@
 When working on this codebase, you **must** leverage Context7 for documentation on external libraries.
 
 ## Source Structure
-- `src/main/java/ai/acp/netbeans/` - Main source code
+- `src/main/java/github/anandb/netbeans/` - Main source code
   - `completion/` - Code completion provider
   - `manager/` - ACPManager, JsonRpcClient
   - `model/` - Message, Session, Agent, SessionUpdate (ACP compliant)
@@ -42,7 +42,7 @@ When working on this codebase, you **must** leverage Context7 for documentation 
 
 ## Important Files
 - `pom.xml` - Maven configuration and dependencies (RSyntaxTextArea, Flexmark, Jackson).
-- `src/main/resources/ai/acp/netbeans/ui/layer.xml` - NetBeans registration for the chat window.
+- `src/main/resources/github/anandb/netbeans/ui/layer.xml` - NetBeans registration for the chat window.
 
 ## Coding Notes
 - **Braces**: Always use braces for `if-else`, `for`, `while`, and `do-while` loops.
