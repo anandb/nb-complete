@@ -9,7 +9,8 @@ import org.openide.util.NbPreferences;
     "LBL_ExecutablePath=Executable Path:",
     "LBL_DefaultModel=Default Model:",
     "BTN_Browse=Browse...",
-    "TITLE_SelectExecutable=Select OpenCode Executable"
+    "TITLE_SelectExecutable=Select OpenCode Executable",
+    "LBL_PingAtStartup=Ping at Startup (send test message on start)"
 })
 public class OpenCodeOptionsPanel extends javax.swing.JPanel {
 
@@ -26,9 +27,12 @@ public class OpenCodeOptionsPanel extends javax.swing.JPanel {
         browseButton = new javax.swing.JButton();
         modelLabel = new javax.swing.JLabel();
         modelField = new javax.swing.JTextField();
+        pingAtStartupCheckBox = new javax.swing.JCheckBox();
 
         jLabel1.setText(NbBundle.getMessage(OpenCodeOptionsPanel.class, "LBL_ExecutablePath"));
         modelLabel.setText(NbBundle.getMessage(OpenCodeOptionsPanel.class, "LBL_DefaultModel"));
+        pingAtStartupCheckBox.setText(NbBundle.getMessage(OpenCodeOptionsPanel.class, "LBL_PingAtStartup"));
+        pingAtStartupCheckBox.addActionListener(evt -> controller.changed());
         browseButton.setText(NbBundle.getMessage(OpenCodeOptionsPanel.class, "BTN_Browse"));
         browseButton.addActionListener(evt -> browseButtonActionPerformed());
         
@@ -62,7 +66,8 @@ public class OpenCodeOptionsPanel extends javax.swing.JPanel {
                     .addGroup(layout.createSequentialGroup()
                         .addComponent(modelLabel)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(modelField, javax.swing.GroupLayout.DEFAULT_SIZE, 400, Short.MAX_VALUE)))
+                        .addComponent(modelField, javax.swing.GroupLayout.DEFAULT_SIZE, 400, Short.MAX_VALUE))
+                    .addComponent(pingAtStartupCheckBox))
                 .addContainerGap())
         );
         layout.setVerticalGroup(
@@ -77,6 +82,8 @@ public class OpenCodeOptionsPanel extends javax.swing.JPanel {
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(modelLabel)
                     .addComponent(modelField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(pingAtStartupCheckBox)
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
     }
@@ -101,11 +108,13 @@ public class OpenCodeOptionsPanel extends javax.swing.JPanel {
         String defaultPath = System.getProperty("user.home") + "/.opencode/bin/opencode";
         pathField.setText(NbPreferences.forModule(OpenCodeOptionsPanel.class).get("opencodeExecutablePath", defaultPath));
         modelField.setText(NbPreferences.forModule(OpenCodeOptionsPanel.class).get("defaultModel", "opencode/big-pickle"));
+        pingAtStartupCheckBox.setSelected(NbPreferences.forModule(OpenCodeOptionsPanel.class).getBoolean("pingAtStartup", false));
     }
 
     void store() {
         NbPreferences.forModule(OpenCodeOptionsPanel.class).put("opencodeExecutablePath", pathField.getText());
         NbPreferences.forModule(OpenCodeOptionsPanel.class).put("defaultModel", modelField.getText());
+        NbPreferences.forModule(OpenCodeOptionsPanel.class).putBoolean("pingAtStartup", pingAtStartupCheckBox.isSelected());
     }
 
     boolean valid() {
@@ -117,4 +126,5 @@ public class OpenCodeOptionsPanel extends javax.swing.JPanel {
     private javax.swing.JTextField pathField;
     private javax.swing.JLabel modelLabel;
     private javax.swing.JTextField modelField;
+    private javax.swing.JCheckBox pingAtStartupCheckBox;
 }

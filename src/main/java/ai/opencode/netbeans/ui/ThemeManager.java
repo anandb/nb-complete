@@ -5,6 +5,7 @@ import java.awt.Color;
 public class ThemeManager {
 
     public static class Theme {
+        private boolean isDark;
         private Color background;
         private Color foreground;
         private Color assistantForeground;
@@ -21,16 +22,17 @@ public class ThemeManager {
 
         public String toCss(Color bubbleBg, boolean isAssistant) {
             String fg = toHtmlHex(isAssistant ? getAssistantForeground() : getForeground());
-            String sel = "#268BD2"; // Solarized Blue
             String bg = bubbleBg != null ? toHtmlHex(bubbleBg) : "transparent";
+            String linkColor = isDark ? "#589DF6" : "#268BD2";
+            String codeBg = isDark ? "rgba(255, 255, 255, 0.1)" : "rgba(7, 54, 66, 0.1)";
 
             return "body { font-family: 'Segoe UI', 'Ubuntu', sans-serif; font-size: 13px; color: " + fg + "; background-color: " + bg + "; margin: 0 0 8px 0; line-height: 1.4; }" +
-                   "code { background-color: rgba(7, 54, 66, 0.1); padding: 2px 4px; border-radius: 3px; font-family: 'JetBrains Mono', 'Input Mono', monospace; font-size: 12px; }" +
+                   "code { background-color: " + codeBg + "; padding: 2px 4px; border-radius: 3px; font-family: 'JetBrains Mono', 'Input Mono', monospace; font-size: 12px; }" +
                    "pre { background-color: #002B36; color: #839496; padding: 10px; border-radius: 4px; font-family: 'JetBrains Mono', 'Input Mono', monospace; font-size: 12px; overflow-x: auto; margin: 10px 0; }" +
                    "p { margin: 8px 0; }" +
                    "ul, ol { padding-left: 20px; margin: 8px 0; }" +
                    "li { margin: 4px 0; }" +
-                   "a { color: " + sel + "; text-decoration: none; font-weight: 500; }" +
+                   "a { color: " + linkColor + "; text-decoration: none; font-weight: 500; }" +
                    "a:hover { text-decoration: underline; }";
         }
 
@@ -38,6 +40,7 @@ public class ThemeManager {
             return String.format("#%02x%02x%02x", color.getRed(), color.getGreen(), color.getBlue());
         }
 
+        public boolean isDark() { return isDark; }
         public Color getBackground() { return background; }
         public Color getForeground() { return foreground; }
         public Color getAssistantForeground() { return assistantForeground; }
@@ -54,13 +57,22 @@ public class ThemeManager {
     }
 
     public static Theme getCurrentTheme() {
-        Theme theme = new Theme();
+        boolean isDark = org.openide.util.NbPreferences.forModule(ThemeManager.class).getBoolean("isDarkMode", false);
+        return isDark ? getDarkTheme() : getLightTheme();
+    }
 
-        // Solarized Light (Base 3)
-        Color base3 = Color.decode("#FDF6E3");
-        Color base2 = Color.decode("#EEE8D5");
-        Color base1 = Color.decode("#93A1A1");
-        Color base00 = Color.decode("#657B83");
+    public static void setDarkMode(boolean isDark) {
+        org.openide.util.NbPreferences.forModule(ThemeManager.class).putBoolean("isDarkMode", isDark);
+    }
+
+    private static Theme getLightTheme() {
+        Theme theme = new Theme();
+        theme.isDark = false;
+
+        Color base3 = Color.decode("#D9D0B4"); // Background
+        Color base2 = Color.decode("#EEE8D5"); // Bubbles
+        Color base1 = Color.decode("#93A1A1"); // Metadata
+        Color base02 = Color.decode("#073642"); // Dark Text
         Color yellow = Color.decode("#B58900");
         Color blue = Color.decode("#268BD2");
 
@@ -68,20 +80,42 @@ public class ThemeManager {
         theme.base2 = base2;
         theme.base1 = base1;
         theme.yellow = yellow;
-
         theme.background = base3;
-        theme.foreground = base00;
-        theme.assistantForeground = base00;
-
+        theme.foreground = base02;
+        theme.assistantForeground = base02;
         theme.selection = blue;
         theme.accent = blue;
 
-        // User bubble: slightly darker beige
         theme.bubbleUser = base2;
         theme.bubbleAssistant = null;
         theme.bubbleBorder = Color.decode("#DCD6C1");
+        theme.ghostBackground = new Color(base02.getRed(), base02.getGreen(), base02.getBlue(), 15);
 
-        theme.ghostBackground = new Color(base00.getRed(), base00.getGreen(), base00.getBlue(), 15);
+        return theme;
+    }
+
+    private static Theme getDarkTheme() {
+        Theme theme = new Theme();
+        theme.isDark = true;
+
+        Color bg = Color.decode("#2B2B2B");
+        Color fg = Color.decode("#A9B7C6");
+        Color selection = Color.decode("#214283");
+        Color bubbleUser = Color.decode("#3E434C");
+
+        theme.background = bg;
+        theme.foreground = fg;
+        theme.assistantForeground = fg;
+        theme.bubbleUser = bubbleUser;
+        theme.bubbleAssistant = null;
+        theme.bubbleBorder = Color.decode("#555555");
+        theme.selection = selection;
+        theme.accent = Color.decode("#589DF6");
+        theme.yellow = Color.decode("#BBB529");
+        theme.base1 = Color.decode("#909090");
+        theme.base2 = Color.decode("#3C3F41");
+        theme.base3 = bg;
+        theme.ghostBackground = new Color(255, 255, 255, 15);
 
         return theme;
     }

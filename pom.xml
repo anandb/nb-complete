@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>ai.opencode</groupId>
     <artifactId>opencode-netbeans-plugin</artifactId>
-    <version>1.2.9</version>
+    <version>1.2.19</version>
     <packaging>nbm</packaging>
 
     <name>OpenCode NetBeans Plugin</name>
@@ -144,6 +144,11 @@
             <artifactId>junit-jupiter-api</artifactId>
             <version>5.10.1</version>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.netbeans.api</groupId>
+            <artifactId>org-openide-modules</artifactId>
+            <version>${netbeans.version}</version>
         </dependency>
     </dependencies>
 

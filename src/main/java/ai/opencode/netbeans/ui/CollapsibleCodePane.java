@@ -22,8 +22,8 @@ import org.fife.ui.rsyntaxtextarea.SyntaxConstants;
 import ai.opencode.netbeans.ui.ThemeManager.Theme;
 
 public class CollapsibleCodePane extends JPanel {
-    private final String language;
-    private final String code;
+    private String language;
+    private String code;
     private final JLabel headerLabel;
     private final JLabel toggleIcon;
     private final RSyntaxTextArea codeTextArea;
@@ -37,6 +37,7 @@ public class CollapsibleCodePane extends JPanel {
 
         setLayout(new BorderLayout());
         setOpaque(false);
+        setDoubleBuffered(true);
         setBorder(BorderFactory.createEmptyBorder(8, 0, 8, 0));
 
         Theme theme = ThemeManager.getCurrentTheme();
@@ -140,6 +141,35 @@ public class CollapsibleCodePane extends JPanel {
             // Force parent re-layout
             updateParentLayout();
         }
+    }
+
+    public void updateContent(String language, String code) {
+        if (code == null) code = "";
+        if (!code.equals(this.code)) {
+            this.code = code;
+            this.language = (language != null && !language.isEmpty()) ? language : "Code";
+            codeTextArea.setText(code);
+            codeTextArea.setCaretPosition(0);
+            headerLabel.setText(getLabelText());
+            applySyntaxStyle();
+            revalidate();
+            repaint();
+        }
+    }
+
+    public void refreshTheme() {
+        Theme theme = ThemeManager.getCurrentTheme();
+        codeTextArea.setBackground(theme.isDark() ? Color.decode("#002B36") : Color.WHITE);
+        codeTextArea.setForeground(theme.isDark() ? Color.decode("#839496") : Color.BLACK);
+        
+        // Recolor wrapper
+        if (codeTextArea.getParent() != null) {
+            codeTextArea.getParent().setBackground(codeTextArea.getBackground());
+        }
+        
+        applySolarizedDarkTheme();
+        revalidate();
+        repaint();
     }
 
     private void toggle() {

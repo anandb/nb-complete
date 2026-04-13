@@ -32,6 +32,7 @@ public class MessageBubble extends JPanel {
     private final String messageId;
     private final StringBuilder text;
     private final JPanel segmentsContainer;
+    private final RoundedPanel bubble;
     private final ArrayList<CollapsibleState> codeStates = new ArrayList<>();
 
     private static class CollapsibleState {
@@ -50,6 +51,7 @@ public class MessageBubble extends JPanel {
 
         setLayout(new GridBagLayout());
         setOpaque(false);
+        setDoubleBuffered(true);
         setBorder(new EmptyBorder(4, 8, 8, 8));
 
         ThemeManager.Theme theme = ThemeManager.getCurrentTheme();
@@ -57,8 +59,9 @@ public class MessageBubble extends JPanel {
         segmentsContainer = new JPanel();
         segmentsContainer.setLayout(new BoxLayout(segmentsContainer, BoxLayout.Y_AXIS));
         segmentsContainer.setOpaque(false);
+        segmentsContainer.setDoubleBuffered(true);
 
-        RoundedPanel bubble = new RoundedPanel(16);
+        this.bubble = new RoundedPanel(16);
         bubble.setLayout(new BorderLayout());
         bubble.setBorder(new EmptyBorder(4, 12, 12, 12));
         bubble.add(segmentsContainer, BorderLayout.CENTER);
@@ -141,6 +144,7 @@ public class MessageBubble extends JPanel {
         public RoundedPanel(int radius) {
             this.radius = radius;
             setOpaque(false);
+            setDoubleBuffered(true);
         }
 
         public void setBaseColor(Color color) {
@@ -199,6 +203,31 @@ public class MessageBubble extends JPanel {
     public String getRawText() {
         return text.toString();
     }
+    
+    public void refreshTheme() {
+        ThemeManager.Theme theme = ThemeManager.getCurrentTheme();
+        if ("user".equals(type)) {
+            bubble.setBackground(theme.getBubbleUser());
+            bubble.setBaseColor(theme.getBubbleUser());
+        } else if ("error".equals(type)) {
+            Color errorBg = new Color(255, 235, 238);
+            bubble.setBackground(errorBg);
+            bubble.setBaseColor(errorBg);
+        } else {
+            bubble.setBackground(new Color(0, 0, 0, 0));
+            bubble.setBaseColor(null);
+        }
+        
+        for (Component c : segmentsContainer.getComponents()) {
+            if (c instanceof CollapsibleCodePane pane) {
+                pane.refreshTheme();
+            } else if (c instanceof CollapsibleToolPane pane) {
+                pane.refreshTheme();
+            }
+        }
+        
+        updateContent(theme);
+    }
 
     private void updateContent(ThemeManager.Theme theme) {
         // Handle specialized tool rendering
@@ -242,12 +271,11 @@ public class MessageBubble extends JPanel {
         // Simple markdown splitting for code blocks: ```[lang]\n<code>```
         String rawText = text.toString();
 
-        segmentsContainer.removeAll();
-
-        // Pattern to find code blocks: ```[lang]...```
-        // Robust pattern that handles nested blocks by requiring closer to be at start of a line and followed by space/newline/EOF
         Pattern pattern = Pattern.compile("\\s*```([\\w\\-\\+\\#\\.]*)\\R?(.*?)(?:\\s*```\\s*(?=\\R|$)|$)", Pattern.DOTALL);
         Matcher matcher = pattern.matcher(rawText);
+        
+        // Track current components to reuse them
+        int currentCompIdx = 0;
 
         int lastEnd = 0;
         int codeIdx = 0;
@@ -255,7 +283,7 @@ public class MessageBubble extends JPanel {
             // Text before code block
             String textBefore = rawText.substring(lastEnd, matcher.start()).trim();
             if (!textBefore.isEmpty()) {
-                addTextSegment(textBefore, theme);
+                updateOrAddTextSegment(textBefore, theme, currentCompIdx++);
             }
 
             String lang = matcher.group(1);
@@ -271,21 +299,7 @@ public class MessageBubble extends JPanel {
                 codeStates.add(new CollapsibleState(defaultExpanded));
             }
 
-            final int finalCodeIdx = codeIdx;
-            CollapsibleCodePane codePane = new CollapsibleCodePane(lang, code, defaultExpanded) {
-                @Override
-                public void revalidate() {
-                    super.revalidate();
-                    // Update state when toggled
-                    // Note: This is a hacky way to track state without deep listeners
-                }
-            };
-
-            // Add a mouse listener to the header to track state changes
-            // (Assuming CollapsibleCodePane handles its own internal clicks, but we want to update our list)
-            // For now, simple rebuild is fine.
-
-            segmentsContainer.add(codePane);
+            updateOrAddCodeSegment(lang, code, defaultExpanded, codeIdx, currentCompIdx++);
 
             lastEnd = matcher.end();
             codeIdx++;
@@ -295,15 +309,62 @@ public class MessageBubble extends JPanel {
         if (lastEnd < rawText.length()) {
             String remaining = rawText.substring(lastEnd).trim();
             if (!remaining.isEmpty()) {
-                addTextSegment(remaining, theme);
+                updateOrAddTextSegment(remaining, theme, currentCompIdx++);
             }
+        }
+        
+        // Remove extra old components
+        while (segmentsContainer.getComponentCount() > currentCompIdx) {
+            segmentsContainer.remove(segmentsContainer.getComponentCount() - 1);
         }
 
         segmentsContainer.revalidate();
         segmentsContainer.repaint();
     }
 
-    private void addTextSegment(String markdown, ThemeManager.Theme theme) {
+    private void updateOrAddCodeSegment(String lang, String code, boolean expanded, int codeIdx, int compIdx) {
+        if (compIdx < segmentsContainer.getComponentCount()) {
+            Component c = segmentsContainer.getComponent(compIdx);
+            if (c instanceof CollapsibleCodePane pane) {
+                pane.updateContent(lang, code);
+                return;
+            }
+        }
+        
+        // If we can't reuse, we have to rebuild from here down to be safe
+        // But for simplicity, we'll just insert/replace
+        CollapsibleCodePane codePane = new CollapsibleCodePane(lang, code, expanded);
+        if (compIdx < segmentsContainer.getComponentCount()) {
+            segmentsContainer.remove(compIdx);
+            segmentsContainer.add(codePane, compIdx);
+        } else {
+            segmentsContainer.add(codePane);
+        }
+    }
+
+    private void updateOrAddTextSegment(String markdown, ThemeManager.Theme theme, int compIdx) {
+        String styledHtml = prepareHtml(markdown, theme);
+        
+        if (compIdx < segmentsContainer.getComponentCount()) {
+            Component c = segmentsContainer.getComponent(compIdx);
+            if (c instanceof JEditorPane pane) {
+                if (!styledHtml.equals(pane.getText())) {
+                    pane.setText(styledHtml);
+                }
+                return;
+            }
+        }
+        
+        JEditorPane pane = createHtmlPane(styledHtml);
+        if (compIdx < segmentsContainer.getComponentCount()) {
+            segmentsContainer.remove(compIdx);
+            segmentsContainer.add(pane, compIdx);
+        } else {
+            segmentsContainer.add(pane);
+        }
+    }
+
+    private String prepareHtml(String markdown, ThemeManager.Theme theme) {
         MutableDataSet options = new MutableDataSet();
         Parser parser = Parser.builder(options).build();
         HtmlRenderer renderer = HtmlRenderer.builder(options).build();
@@ -314,13 +375,7 @@ public class MessageBubble extends JPanel {
         html = html.replace("<table>", "<table border='1' style='border-collapse: collapse; width: 100%;'>");
         html = html.replace("<th>", "<th style='background: #f0f0f0; padding: 8px; border: 1px solid #ddd;'>");
         html = html.replace("<td>", "<td style='padding: 8px; border: 1px solid #ddd;'>");
-        html = html.replace("<tr>", "<tr>");
-
-        JEditorPane pane = new JEditorPane();
-        pane.setEditable(false);
-        pane.setContentType("text/html");
-        pane.setOpaque(false);
-
+        
         Color bg;
         if ("user".equals(type)) {
             bg = theme.getBubbleUser();
@@ -338,12 +393,18 @@ public class MessageBubble extends JPanel {
             customCss += " body { color: #777777; font-size: 13px; }";
         }
 
-        String styledHtml = "<html><head><style>" + customCss + "</style></head><body style='font-family: sans-serif; margin: 0;'>" + html + "</body></html>";
+        return "<html><head><style>" + customCss + "</style></head><body style='font-family: sans-serif; margin: 0;'>" + html + "</body></html>";
+    }
+
+    private JEditorPane createHtmlPane(String styledHtml) {
+        JEditorPane pane = new JEditorPane();
+        pane.setEditable(false);
+        pane.setContentType("text/html");
+        pane.setOpaque(false);
+        pane.setDoubleBuffered(true);
         pane.setText(styledHtml);
         pane.putClientProperty(JEditorPane.HONOR_DISPLAY_PROPERTIES, Boolean.TRUE);
-
-        segmentsContainer.add(pane);
-        segmentsContainer.add(Box.createVerticalStrut(8));
+        return pane;
     }
     
     private String renderTablesAsHtml(String markdown) {

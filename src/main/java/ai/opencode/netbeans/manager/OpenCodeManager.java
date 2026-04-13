@@ -79,6 +79,8 @@ public class OpenCodeManager {
             pb.redirectError(ProcessBuilder.Redirect.INHERIT);
             
             Map<String, String> env = pb.environment();
+            env.putAll(System.getenv()); // Ensure all system environment variables are propagated
+            
             String defaultModel = NbPreferences.forModule(ai.opencode.netbeans.ui.OpenCodeOptionsPanel.class)
                     .get("defaultModel", "opencode/big-pickle");
             if (!defaultModel.isEmpty()) {

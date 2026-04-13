@@ -18,7 +18,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 
@@ -26,6 +25,7 @@ import javax.swing.BorderFactory;
 import javax.swing.DefaultListCellRenderer;
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
@@ -39,10 +39,10 @@ import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import javax.swing.UIManager;
-import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.border.EmptyBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.text.Document;
 import javax.swing.text.JTextComponent;
 import javax.swing.text.StyledDocument;
@@ -63,6 +63,7 @@ import org.openide.windows.TopComponent;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import ai.opencode.netbeans.manager.OpenCodeManager;
+import ai.opencode.netbeans.manager.SessionTitleManager;
 import ai.opencode.netbeans.model.Session;
 import ai.opencode.netbeans.model.SessionConfigOption;
 import ai.opencode.netbeans.model.SessionConfigSelectOption;
@@ -112,6 +113,8 @@ public final class OpenCodeChatTopComponent extends TopComponent implements Open
     private final JLabel statusLabel;
     private final JButton sendBtn;
     private final JButton stopBtn;
+    private final JPanel header;
+    private final JScrollPane inputScrollPane;
 
     private final JComboBox<SessionItem> sessionDropdown;
     private boolean isSwitchingSessionDropdown = false;
@@ -126,8 +129,17 @@ public final class OpenCodeChatTopComponent extends TopComponent implements Open
     private String lastProjectDir;
     private javax.swing.Timer thinkingTimer;
     private int thinkingDots = 0;
-    private boolean isReceivingPathBasedResource = false;
     private final Consumer<SessionUpdate> sseListener;
+    
+    private boolean isSessionLoading = false;
+    
+    // Test message state
+    private static boolean testMessageSent = false;
+    
+    // Message history
+    private final List<String> messageHistory = new java.util.ArrayList<>();
+    private int historyIndex = -1;
+    private String currentDraft = "";
 
     public OpenCodeChatTopComponent() {
         instance = this;
@@ -141,7 +153,7 @@ public final class OpenCodeChatTopComponent extends TopComponent implements Open
         Color base3 = theme.getBackground();
         setBackground(base3);
 
-        JPanel header = new JPanel(new BorderLayout());
+        header = new JPanel(new BorderLayout());
         header.setBorder(new EmptyBorder(10, 10, 10, 10)); // Reduced margins
         header.setOpaque(true);
         header.setBackground(base3);
@@ -149,7 +161,7 @@ public final class OpenCodeChatTopComponent extends TopComponent implements Open
         chatPanel = new ChatThreadPanel();
 
         cwdLabel = new JLabel("");
-        cwdLabel.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        cwdLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
         cwdLabel.setForeground(theme.getForeground());
         cwdLabel.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(theme.getBubbleBorder(), 1),
@@ -162,7 +174,7 @@ public final class OpenCodeChatTopComponent extends TopComponent implements Open
         newSessionBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
         newSessionBtn.setBackground(theme.getSelection());
         newSessionBtn.setForeground(Color.WHITE);
-        newSessionBtn.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        newSessionBtn.setFont(new Font("Segoe UI", Font.BOLD, 13));
         newSessionBtn.addActionListener(e -> createNewSession());
 
         sessionDropdown = new JComboBox<>();
@@ -193,12 +205,12 @@ public final class OpenCodeChatTopComponent extends TopComponent implements Open
         renameSessionBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
         renameSessionBtn.setBackground(theme.getBase2());
         renameSessionBtn.setForeground(theme.getForeground());
-        renameSessionBtn.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        renameSessionBtn.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         renameSessionBtn.addActionListener(e -> renameCurrentSession());
 
         JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         buttonsPanel.setOpaque(false);
-        // buttonsPanel.add(renameSessionBtn); // Hidden for now
+        buttonsPanel.add(renameSessionBtn);
         buttonsPanel.add(newSessionBtn);
 
         JPanel actionPanel = new JPanel(new BorderLayout(0, 0));
@@ -212,37 +224,50 @@ public final class OpenCodeChatTopComponent extends TopComponent implements Open
         headerContent.add(actionPanel);
         
         // Block control buttons
-        JPanel blockControls = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        JPanel blockControls = new JPanel(new BorderLayout());
         blockControls.setOpaque(false);
         blockControls.setBorder(new EmptyBorder(4, 0, 0, 0));
         
-        JButton expandAllBtn = new JButton("↔ Expand Blocks");
+        JButton expandAllBtn = new JButton("Expand All");
         expandAllBtn.setFocusPainted(false);
         expandAllBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        expandAllBtn.setContentAreaFilled(false);
-        expandAllBtn.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        expandAllBtn.setForeground(theme.getSelection());
+        expandAllBtn.setBackground(theme.getSelection());
+        expandAllBtn.setForeground(Color.WHITE);
+        expandAllBtn.setFont(new Font("Segoe UI", Font.BOLD, 13));
         expandAllBtn.addActionListener(e -> chatPanel.toggleAllBlocks(true));
         
-        JButton collapseAllBtn = new JButton("↕ Collapse Blocks");
+        JButton collapseAllBtn = new JButton("Collapse All");
         collapseAllBtn.setFocusPainted(false);
         collapseAllBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        collapseAllBtn.setContentAreaFilled(false);
-        collapseAllBtn.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        collapseAllBtn.setForeground(theme.getSelection());
+        collapseAllBtn.setBackground(theme.getSelection());
+        collapseAllBtn.setForeground(Color.WHITE);
+        collapseAllBtn.setFont(new Font("Segoe UI", Font.BOLD, 13));
         collapseAllBtn.addActionListener(e -> chatPanel.toggleAllBlocks(false));
         
-        JButton exportBtn = new JButton("📤 Export Markdown");
+        JButton exportBtn = new JButton("Export Markdown");
         exportBtn.setFocusPainted(false);
         exportBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        exportBtn.setContentAreaFilled(false);
-        exportBtn.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        exportBtn.setForeground(theme.getSelection());
+        exportBtn.setBackground(theme.getSelection());
+        exportBtn.setForeground(Color.WHITE);
+        exportBtn.setFont(new Font("Segoe UI", Font.BOLD, 13));
         exportBtn.addActionListener(e -> exportConversation());
         
-        blockControls.add(expandAllBtn);
-        blockControls.add(collapseAllBtn);
-        blockControls.add(exportBtn);
+        JButton themeToggleBtn = new JButton(theme.isDark() ? "☀️ Light" : "🌙 Dark");
+        themeToggleBtn.setFocusPainted(false);
+        themeToggleBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        themeToggleBtn.setBackground(theme.getSelection());
+        themeToggleBtn.setForeground(Color.WHITE);
+        themeToggleBtn.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        themeToggleBtn.addActionListener(e -> toggleDarkMode());
+
+        JPanel blockControlsRight = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        blockControlsRight.setOpaque(false);
+        blockControlsRight.add(expandAllBtn);
+        blockControlsRight.add(collapseAllBtn);
+        blockControlsRight.add(exportBtn);
+
+        blockControls.add(themeToggleBtn, BorderLayout.WEST);
+        blockControls.add(blockControlsRight, BorderLayout.EAST);
         headerContent.add(blockControls);
 
         header.add(headerContent, BorderLayout.CENTER);
@@ -356,6 +381,12 @@ public final class OpenCodeChatTopComponent extends TopComponent implements Open
                         }
                         e.consume();
                     }
+                } else if (e.getKeyCode() == KeyEvent.VK_UP) {
+                    navigateHistory(-1);
+                    e.consume();
+                } else if (e.getKeyCode() == KeyEvent.VK_DOWN) {
+                    navigateHistory(1);
+                    e.consume();
                 }
 
                 if (e.getKeyCode() == KeyEvent.VK_ENTER) {
@@ -416,11 +447,11 @@ public final class OpenCodeChatTopComponent extends TopComponent implements Open
             }
         });
 
-        JScrollPane inputScroll = new JScrollPane(inputArea);
-        inputScroll.setBorder(null);
-        inputScroll.setOpaque(false);
-        inputScroll.getViewport().setOpaque(false);
-        inputWrapper.add(inputScroll, BorderLayout.CENTER);
+        inputScrollPane = new JScrollPane(inputArea);
+        inputScrollPane.setBorder(null);
+        inputScrollPane.setOpaque(false);
+        inputScrollPane.getViewport().setOpaque(false);
+        inputWrapper.add(inputScrollPane, BorderLayout.CENTER);
 
         sendBtn = new JButton("Go");
         sendBtn.setFocusPainted(false);
@@ -627,7 +658,6 @@ public final class OpenCodeChatTopComponent extends TopComponent implements Open
                                     outText = outText.replaceAll("<!--\\s*\\{.*?\\}\\s*-->", "").trim();
 
                                     if (chunkStartsWithPath) {
-                                        isReceivingPathBasedResource = true;
                                         outText = "```\n" + outText;
                                     }
 
@@ -643,7 +673,7 @@ public final class OpenCodeChatTopComponent extends TopComponent implements Open
                                     }
 
                                     if (chunkEndsWithContent) {
-                                        isReceivingPathBasedResource = false;
+                                        // End of path based resource
                                     }
                                 } else {
                                     String outText = finalText.replaceAll("<!--\\s*\\{.*?\\}\\s*-->", "").trim();
@@ -691,6 +721,7 @@ public final class OpenCodeChatTopComponent extends TopComponent implements Open
         });
 
         initChat();
+        refreshTheme();
     }
 
     private void initChat() {
@@ -721,7 +752,8 @@ public final class OpenCodeChatTopComponent extends TopComponent implements Open
                             int selectIdx = -1;
                             for (int i = 0; i < sortedSessions.size(); i++) {
                                 Session s = sortedSessions.get(i);
-                                sessionDropdown.addItem(new SessionItem(s));
+                                String customTitle = ai.opencode.netbeans.manager.SessionTitleManager.getTitle(s.id(), s.title());
+                                sessionDropdown.addItem(new SessionItem(s, customTitle));
                                 if (autoselectId != null && s.id().equals(autoselectId)) {
                                     selectIdx = i;
                                 }
@@ -759,6 +791,7 @@ public final class OpenCodeChatTopComponent extends TopComponent implements Open
 
     private void loadSession(String sessionId, boolean isStartup) {
         this.currentSessionId = sessionId;
+        this.isSessionLoading = true;
         statusLabel.setText("Loading chat...");
         LOG.log(Level.INFO, "loadSession: clearing and calling loadSession for {0}", sessionId);
 
@@ -792,6 +825,7 @@ public final class OpenCodeChatTopComponent extends TopComponent implements Open
                             if (!targetSessionId.equals(this.currentSessionId)) {
                                 return;
                             }
+                            this.isSessionLoading = false;
                             statusLabel.setText("Ready");
                             if (configOptions != null) {
                                 updateConfigControls(configOptions, isStartup);
@@ -813,10 +847,12 @@ public final class OpenCodeChatTopComponent extends TopComponent implements Open
                             }
 
                             inputArea.requestFocusInWindow();
+                            chatPanel.scrollToBottom();
                         });
                     })
                     .exceptionally(ex -> {
                         SwingUtilities.invokeLater(() -> {
+                            this.isSessionLoading = false;
                             statusLabel.setText("Error loading session: " + ex.getMessage());
                             chatPanel.addMessage("error", "Failed to load session: " + ex.getMessage());
                         });
@@ -831,23 +867,26 @@ public final class OpenCodeChatTopComponent extends TopComponent implements Open
         }
 
         SessionItem selectedItem = (SessionItem) sessionDropdown.getSelectedItem();
-        String currentTitle = selectedItem != null ? selectedItem.getSession().title() : "";
-        if (currentTitle == null) currentTitle = "";
-
-        String newTitle = javax.swing.JOptionPane.showInputDialog(this, "Enter new session title:", currentTitle);
-        if (newTitle != null && !newTitle.trim().isEmpty()) {
-            OpenCodeManager.getInstance().renameSession(currentSessionId, newTitle.trim())
-                .thenRun(() -> {
-                    SwingUtilities.invokeLater(() -> {
-                        // Refresh session list without reloading messages
-                        refreshSessions(currentSessionId, false);
-                    });
-                })
-                .exceptionally(ex -> {
-                    LOG.log(Level.SEVERE, "Failed to rename session", ex);
-                    return null;
-                });
+        if (selectedItem == null) {
+            return;
         }
+
+        String currentTitle = selectedIdToTitle(selectedItem.getSession());
+        String newTitle = javax.swing.JOptionPane.showInputDialog(this, "Enter new title for this session:", currentTitle);
+        
+        if (newTitle != null && !newTitle.trim().isEmpty()) {
+            SessionTitleManager.setTitle(currentSessionId, newTitle.trim());
+            // Refresh the session list in the dropdown
+            refreshSessions(currentSessionId, false);
+        }
+    }
+
+    private String selectedIdToTitle(Session session) {
+        String title = session.title();
+        if (title == null || title.isEmpty()) {
+            title = "Chat " + session.id().substring(0, Math.min(8, session.id().length()));
+        }
+        return SessionTitleManager.getTitle(session.id(), title);
     }
 
     private void createNewSession() {
@@ -879,7 +918,7 @@ public final class OpenCodeChatTopComponent extends TopComponent implements Open
                         // Sync both dropdown and sidebar list
                         isSwitchingSessionDropdown = true;
                         try {
-                            SessionItem newItem = new SessionItem(session);
+                            SessionItem newItem = new SessionItem(session, session.title());
 
                             // Check if it's already in the dropdown, if not add it at the top
                             boolean found = false;
@@ -915,10 +954,20 @@ public final class OpenCodeChatTopComponent extends TopComponent implements Open
     }
 
     private void sendMessage() {
-        String text = inputArea.getText().trim() + "\n";
+        String text = inputArea.getText().trim();
         if (text.isEmpty()) {
             return;
         }
+
+        // Add to history
+        if (messageHistory.isEmpty() || !messageHistory.get(messageHistory.size() - 1).equals(text)) {
+            messageHistory.add(text);
+            if (messageHistory.size() > 50) {
+                messageHistory.remove(0);
+            }
+        }
+        historyIndex = -1;
+        currentDraft = "";
 
         if (currentSessionId == null) {
             statusLabel.setText("Error: No active session.");
@@ -1336,6 +1385,39 @@ public final class OpenCodeChatTopComponent extends TopComponent implements Open
             if (inputArea != null) {
                 inputArea.requestFocusInWindow();
             }
+            if (!testMessageSent) {
+                checkAndSendTestMessage();
+            }
+        });
+    }
+
+    private void checkAndSendTestMessage() {
+        OpenCodeManager.getInstance().whenReady().thenAccept(v -> {
+            SwingUtilities.invokeLater(() -> {
+                if (testMessageSent) {
+                    return;
+                }
+                
+                boolean pingEnabled = org.openide.util.NbPreferences.forModule(OpenCodeOptionsPanel.class).getBoolean("pingAtStartup", false);
+                if (!pingEnabled) {
+                    testMessageSent = true; // Don't ask again
+                    return;
+                }
+                
+                // Wait until we have a session (either loaded or click-to-start state)
+                // and make sure it's not currently loading historical messages
+                if (currentSessionId == null || isSessionLoading) {
+                    // Try again in a bit
+                    Timer t = new Timer(1000, e -> checkAndSendTestMessage());
+                    t.setRepeats(false);
+                    t.start();
+                    return;
+                }
+                
+                testMessageSent = true;
+                inputArea.setText("Say 'ok' if you can hear me");
+                sendMessage();
+            });
         });
     }
 
@@ -1374,6 +1456,64 @@ public final class OpenCodeChatTopComponent extends TopComponent implements Open
             instance = new OpenCodeChatTopComponent();
         }
         return instance;
+    }
+
+    private void toggleDarkMode() {
+        ThemeManager.Theme current = ThemeManager.getCurrentTheme();
+        ThemeManager.setDarkMode(!current.isDark());
+        refreshTheme();
+    }
+
+    private void refreshTheme() {
+        ThemeManager.Theme theme = ThemeManager.getCurrentTheme();
+        
+        setBackground(theme.getBackground());
+        header.setBackground(theme.getBackground());
+        
+        cwdLabel.setForeground(theme.getForeground());
+        cwdLabel.setBackground(theme.getBase2());
+        cwdLabel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(theme.getBubbleBorder(), 1),
+                new EmptyBorder(4, 8, 4, 8)));
+        
+        sessionDropdown.setBackground(theme.getBackground());
+        sessionDropdown.setForeground(theme.getForeground());
+        
+        // Update all buttons in header
+        Component[] comps = header.getComponents();
+        updateButtonsRecursive(header, theme);
+        
+        inputArea.setBackground(theme.getBackground());
+        inputArea.setForeground(theme.getForeground());
+        inputArea.setCaretColor(theme.getForeground());
+        
+        inputScrollPane.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, theme.getBubbleBorder()));
+        
+        chatPanel.refreshTheme();
+        
+        revalidate();
+        repaint();
+    }
+
+    private void updateButtonsRecursive(Component container, ThemeManager.Theme theme) {
+        if (container instanceof JButton btn) {
+            if (btn.getBackground().equals(Color.WHITE) || btn.getForeground().equals(Color.WHITE)) {
+                // Primary buttons (white on blue)
+                btn.setBackground(theme.getSelection());
+                btn.setForeground(Color.WHITE);
+            } else {
+                // Secondary buttons
+                btn.setBackground(theme.getBase2());
+                btn.setForeground(theme.getForeground());
+            }
+            if (btn.getText().contains("Light") || btn.getText().contains("Dark")) {
+                btn.setText(theme.isDark() ? "☀️ Light" : "🌙 Dark");
+            }
+        } else if (container instanceof java.awt.Container cont) {
+            for (Component c : cont.getComponents()) {
+                updateButtonsRecursive(c, theme);
+            }
+        }
     }
 
     private void refreshAllSessionsList() {
@@ -1439,9 +1579,15 @@ public final class OpenCodeChatTopComponent extends TopComponent implements Open
 
     private static class SessionItem {
         private final Session session;
+        private final String customTitle;
 
         public SessionItem(Session session) {
+            this(session, null);
+        }
+
+        public SessionItem(Session session, String customTitle) {
             this.session = session;
+            this.customTitle = customTitle;
         }
 
         public Session getSession() {
@@ -1450,6 +1596,9 @@ public final class OpenCodeChatTopComponent extends TopComponent implements Open
 
         @Override
         public String toString() {
+            if (customTitle != null && !customTitle.trim().isEmpty()) {
+                return customTitle;
+            }
             String title = session.title();
             if (title != null && !title.trim().isEmpty()) {
                 return title;
@@ -1480,6 +1629,29 @@ public final class OpenCodeChatTopComponent extends TopComponent implements Open
             inputArea.setText(text);
             inputArea.requestFocusInWindow();
         });
+    }
+
+    private void navigateHistory(int delta) {
+        if (messageHistory.isEmpty()) {
+            return;
+        }
+
+        if (historyIndex == -1) {
+            currentDraft = inputArea.getText();
+            historyIndex = messageHistory.size();
+        }
+
+        int newIndex = historyIndex + delta;
+        if (newIndex >= 0 && newIndex <= messageHistory.size()) {
+            historyIndex = newIndex;
+            if (historyIndex == messageHistory.size()) {
+                inputArea.setText(currentDraft);
+            } else {
+                inputArea.setText(messageHistory.get(historyIndex));
+            }
+            // Move caret to end
+            inputArea.setCaretPosition(inputArea.getText().length());
+        }
     }
 
     private void exportConversation() {

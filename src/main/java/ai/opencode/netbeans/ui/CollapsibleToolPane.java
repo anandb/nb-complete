@@ -26,6 +26,7 @@ public class CollapsibleToolPane extends JPanel {
 
         setLayout(new BorderLayout());
         setOpaque(false);
+        setDoubleBuffered(true);
         setBorder(BorderFactory.createEmptyBorder(2, 0, 4, 0));
 
         ThemeManager.Theme theme = ThemeManager.getCurrentTheme();
@@ -133,10 +134,35 @@ public class CollapsibleToolPane extends JPanel {
                     headerLabel.setText("🧠 Thinking Process...");
                 }
             }
-
+ 
             revalidate();
             repaint();
         }
+    }
+
+    public void refreshTheme() {
+        ThemeManager.Theme theme = ThemeManager.getCurrentTheme();
+        Color headerBg = theme.getBase2();
+        Color yellowAccent = theme.getYellow();
+
+        // Update components
+        Component[] comps = getComponents();
+        for (Component c : comps) {
+            if (c instanceof JPanel jp && jp.getLayout() instanceof BorderLayout) {
+                // This is likely the header or contentPanel
+                jp.setBackground(headerBg);
+                if (jp == contentPanel) {
+                     jp.setBorder(BorderFactory.createMatteBorder(0, 4, 1, 1, yellowAccent));
+                }
+            }
+        }
+        
+        textArea.setForeground(theme.getForeground());
+        headerLabel.setForeground(theme.getBase1());
+        toggleIcon.setForeground(theme.getBase1());
+        
+        revalidate();
+        repaint();
     }
 
     private void toggle() {

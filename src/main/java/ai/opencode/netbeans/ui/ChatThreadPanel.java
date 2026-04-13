@@ -41,19 +41,23 @@ public class ChatThreadPanel extends JPanel {
 
     public ChatThreadPanel() {
         setLayout(new BorderLayout());
-        setOpaque(false);
+        setOpaque(true);
+        setBackground(ThemeManager.getCurrentTheme().getBackground());
+        setDoubleBuffered(true);
 
         messagesContainer = new ScrollablePanel();
         messagesContainer.setLayout(new BoxLayout(messagesContainer, BoxLayout.Y_AXIS));
         messagesContainer.setOpaque(false);
 
+        ThemeManager.Theme theme = ThemeManager.getCurrentTheme();
+
         scrollPane = new JScrollPane(messagesContainer);
         scrollPane.setBorder(null);
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
         scrollPane.setOpaque(true);
-        scrollPane.setBackground(Color.decode("#FDF6E3"));
+        scrollPane.setBackground(theme.getBackground());
         scrollPane.getViewport().setOpaque(true);
-        scrollPane.getViewport().setBackground(Color.decode("#FDF6E3"));
+        scrollPane.getViewport().setBackground(theme.getBackground());
         scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         scrollPane.getVerticalScrollBar().setUnitIncrement(16);
         
@@ -77,6 +81,7 @@ public class ChatThreadPanel extends JPanel {
     private static class ScrollablePanel extends JPanel implements Scrollable {
         public ScrollablePanel() {
             setOpaque(false);
+            setDoubleBuffered(true);
         }
         @Override
         public Dimension getPreferredScrollableViewportSize() {
@@ -344,12 +349,17 @@ public class ChatThreadPanel extends JPanel {
         }
     }
 
-    private void scrollToBottom() {
+    public void scrollToBottom() {
         SwingUtilities.invokeLater(() -> {
-            SwingUtilities.invokeLater(() -> {
-                JScrollBar vertical = scrollPane.getVerticalScrollBar();
+            JScrollBar vertical = scrollPane.getVerticalScrollBar();
+            vertical.setValue(vertical.getMaximum());
+            
+            // Re-apply after a short delay to account for dynamic component resizing
+            javax.swing.Timer timer = new javax.swing.Timer(50, e -> {
                 vertical.setValue(vertical.getMaximum());
             });
+            timer.setRepeats(false);
+            timer.start();
         });
     }
 
@@ -395,6 +405,25 @@ public class ChatThreadPanel extends JPanel {
         return sb.toString();
     }
 
+    public void refreshTheme() {
+        SwingUtilities.invokeLater(() -> {
+            ThemeManager.Theme theme = ThemeManager.getCurrentTheme();
+            setBackground(theme.getBackground());
+            scrollPane.setBackground(theme.getBackground());
+            scrollPane.getViewport().setBackground(theme.getBackground());
+            
+            for (Component c : messagesContainer.getComponents()) {
+                if (c instanceof MessageBubble bubble) {
+                    bubble.refreshTheme();
+                } else if (c instanceof JSeparator sep) {
+                    // Update separator colors
+                }
+            }
+            revalidate();
+            repaint();
+        });
+    }
+
     public void clearMessages() {
         SwingUtilities.invokeLater(() -> {
             messageList.clear();
@@ -419,10 +448,10 @@ public class ChatThreadPanel extends JPanel {
             try {
                 clearMessages();
 
-                JLabel title = new JLabel(sessions.isEmpty() ? "Welcome to OpenCode" : "Welcome back!");
-                title.setFont(new Font("SansSerif", Font.BOLD, 18));
-                title.setBorder(BorderFactory.createEmptyBorder(20, 12, 10, 12));
-                messagesContainer.add(title);
+                JLabel titleLabel = new JLabel(sessions.isEmpty() ? "Welcome to OpenCode" : "Welcome back!");
+                titleLabel.setFont(new Font("SansSerif", Font.BOLD, 18));
+                titleLabel.setBorder(BorderFactory.createEmptyBorder(20, 12, 10, 12));
+                messagesContainer.add(titleLabel);
 
                 JLabel subtitle = new JLabel(sessions.isEmpty() ?
                     "Ask questions, generate code, or have me explain anything." :
@@ -444,10 +473,11 @@ public class ChatThreadPanel extends JPanel {
                     messagesContainer.add(Box.createVerticalStrut(12));
 
                     for (Session s : sessions) {
-                        String label = s.title();
-                        if (label == null || label.isEmpty()) {
-                            label = "Chat " + s.id().substring(0, Math.min(8, s.id().length()));
+                        String title = s.title();
+                        if (title == null || title.isEmpty()) {
+                            title = "Chat " + s.id().substring(0, Math.min(8, s.id().length()));
                         }
+                        String label = ai.opencode.netbeans.manager.SessionTitleManager.getTitle(s.id(), title);
                         JButton sessionBtn = createSelectionButton(label, s.cwd());
                         sessionBtn.addActionListener(e -> onSessionSelected.accept(s.id()));
                         messagesContainer.add(sessionBtn);
