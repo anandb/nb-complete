@@ -1,4 +1,4 @@
-package ai.opencode.netbeans.ui;
+package github.anandb.netbeans.ui;
 
 import java.io.File;
 import javax.swing.JFileChooser;
@@ -9,14 +9,14 @@ import org.openide.util.NbPreferences;
     "LBL_ExecutablePath=Executable Path:",
     "LBL_DefaultModel=Default Model:",
     "BTN_Browse=Browse...",
-    "TITLE_SelectExecutable=Select OpenCode Executable",
+    "TITLE_SelectExecutable=Select ACP Executable",
     "LBL_PingAtStartup=Ping at Startup (send test message on start)"
 })
-public class OpenCodeOptionsPanel extends javax.swing.JPanel {
+public class ACPOptionsPanel extends javax.swing.JPanel {
 
-    private final OpenCodeOptionsPanelController controller;
+    private final ACPOptionsPanelController controller;
 
-    OpenCodeOptionsPanel(OpenCodeOptionsPanelController controller) {
+    ACPOptionsPanel(ACPOptionsPanelController controller) {
         this.controller = controller;
         initComponents();
     }
@@ -29,11 +29,11 @@ public class OpenCodeOptionsPanel extends javax.swing.JPanel {
         modelField = new javax.swing.JTextField();
         pingAtStartupCheckBox = new javax.swing.JCheckBox();
 
-        jLabel1.setText(NbBundle.getMessage(OpenCodeOptionsPanel.class, "LBL_ExecutablePath"));
-        modelLabel.setText(NbBundle.getMessage(OpenCodeOptionsPanel.class, "LBL_DefaultModel"));
-        pingAtStartupCheckBox.setText(NbBundle.getMessage(OpenCodeOptionsPanel.class, "LBL_PingAtStartup"));
+        jLabel1.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_ExecutablePath"));
+        modelLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_DefaultModel"));
+        pingAtStartupCheckBox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_PingAtStartup"));
         pingAtStartupCheckBox.addActionListener(evt -> controller.changed());
-        browseButton.setText(NbBundle.getMessage(OpenCodeOptionsPanel.class, "BTN_Browse"));
+        browseButton.setText(NbBundle.getMessage(ACPOptionsPanel.class, "BTN_Browse"));
         browseButton.addActionListener(evt -> browseButtonActionPerformed());
         
         pathField.addKeyListener(new java.awt.event.KeyAdapter() {
@@ -97,7 +97,7 @@ public class OpenCodeOptionsPanel extends javax.swing.JPanel {
                 chooser.setSelectedFile(currentFile);
             }
         }
-        chooser.setDialogTitle(NbBundle.getMessage(OpenCodeOptionsPanel.class, "TITLE_SelectExecutable"));
+        chooser.setDialogTitle(NbBundle.getMessage(ACPOptionsPanel.class, "TITLE_SelectExecutable"));
         if (chooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
             pathField.setText(chooser.getSelectedFile().getAbsolutePath());
             controller.changed();
@@ -106,15 +106,15 @@ public class OpenCodeOptionsPanel extends javax.swing.JPanel {
 
     void load() {
         String defaultPath = System.getProperty("user.home") + "/.opencode/bin/opencode";
-        pathField.setText(NbPreferences.forModule(OpenCodeOptionsPanel.class).get("opencodeExecutablePath", defaultPath));
-        modelField.setText(NbPreferences.forModule(OpenCodeOptionsPanel.class).get("defaultModel", "opencode/big-pickle"));
-        pingAtStartupCheckBox.setSelected(NbPreferences.forModule(OpenCodeOptionsPanel.class).getBoolean("pingAtStartup", false));
+        pathField.setText(NbPreferences.forModule(ACPOptionsPanel.class).get("acpExecutablePath", defaultPath));
+        modelField.setText(NbPreferences.forModule(ACPOptionsPanel.class).get("defaultModel", "acp/big-pickle"));
+        pingAtStartupCheckBox.setSelected(NbPreferences.forModule(ACPOptionsPanel.class).getBoolean("pingAtStartup", false));
     }
 
     void store() {
-        NbPreferences.forModule(OpenCodeOptionsPanel.class).put("opencodeExecutablePath", pathField.getText());
-        NbPreferences.forModule(OpenCodeOptionsPanel.class).put("defaultModel", modelField.getText());
-        NbPreferences.forModule(OpenCodeOptionsPanel.class).putBoolean("pingAtStartup", pingAtStartupCheckBox.isSelected());
+        NbPreferences.forModule(ACPOptionsPanel.class).put("acpExecutablePath", pathField.getText());
+        NbPreferences.forModule(ACPOptionsPanel.class).put("defaultModel", modelField.getText());
+        NbPreferences.forModule(ACPOptionsPanel.class).putBoolean("pingAtStartup", pingAtStartupCheckBox.isSelected());
     }
 
     boolean valid() {

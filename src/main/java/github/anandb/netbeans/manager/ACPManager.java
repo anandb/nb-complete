@@ -1,8 +1,8 @@
-package ai.opencode.netbeans.manager;
+package github.anandb.netbeans.manager;
 
-import ai.opencode.netbeans.model.Session;
-import ai.opencode.netbeans.model.SessionConfigOption;
-import ai.opencode.netbeans.model.SessionUpdate;
+import github.anandb.netbeans.model.Session;
+import github.anandb.netbeans.model.SessionConfigOption;
+import github.anandb.netbeans.model.SessionUpdate;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -25,9 +25,9 @@ import org.openide.loaders.DataObject;
 import org.openide.util.NbPreferences;
 import javax.swing.text.Document;
 
-public class OpenCodeManager {
-    private static final Logger LOG = Logger.getLogger(OpenCodeManager.class.getName());
-    private static OpenCodeManager instance;
+public class ACPManager {
+    private static final Logger LOG = Logger.getLogger(ACPManager.class.getName());
+    private static ACPManager instance;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private Process serverProcess;
@@ -50,28 +50,28 @@ public class OpenCodeManager {
         void handlePermissionRequest(String sessionId, JsonNode params, CompletableFuture<String> response);
     }
 
-    private OpenCodeManager() {
+    private ACPManager() {
         startServer();
     }
 
-    public static synchronized OpenCodeManager getInstance() {
+    public static synchronized ACPManager getInstance() {
         if (instance == null) {
-            instance = new OpenCodeManager();
+            instance = new ACPManager();
         }
         return instance;
     }
 
     private void startServer() {
-        LOG.info("Starting OpenCode ACP server...");
+        LOG.info("Starting ACP server...");
         try {
             String defaultPath = System.getProperty("user.home") + "/.opencode/bin/opencode";
-            String binaryPath = NbPreferences.forModule(ai.opencode.netbeans.ui.OpenCodeOptionsPanel.class)
-                    .get("opencodeExecutablePath", defaultPath);
+            String binaryPath = NbPreferences.forModule(github.anandb.netbeans.ui.ACPOptionsPanel.class)
+                    .get("acpExecutablePath", defaultPath);
             LOG.log(Level.INFO, "Binary path: {0}", binaryPath);
 
             java.io.File binaryFile = new java.io.File(binaryPath);
             if (!binaryFile.exists()) {
-                LOG.log(Level.SEVERE, "OpenCode binary NOT found at {0}", binaryPath);
+                LOG.log(Level.SEVERE, "ACP binary NOT found at {0}", binaryPath);
                 return;
             }
 
@@ -81,8 +81,8 @@ public class OpenCodeManager {
             Map<String, String> env = pb.environment();
             env.putAll(System.getenv()); // Ensure all system environment variables are propagated
             
-            String defaultModel = NbPreferences.forModule(ai.opencode.netbeans.ui.OpenCodeOptionsPanel.class)
-                    .get("defaultModel", "opencode/big-pickle");
+            String defaultModel = NbPreferences.forModule(github.anandb.netbeans.ui.ACPOptionsPanel.class)
+                    .get("defaultModel", "acp/big-pickle");
             if (!defaultModel.isEmpty()) {
                 env.put("OPENCODE_DEFAULT_MODEL", defaultModel);
             }
@@ -130,9 +130,9 @@ public class OpenCodeManager {
 
             Runtime.getRuntime().addShutdownHook(new Thread(this::stopServer));
 
-            LOG.log(Level.INFO, "OpenCode ACP server process started successfully");
+            LOG.log(Level.INFO, "ACP server process started successfully");
         } catch (Exception e) {
-            LOG.log(Level.SEVERE, "CRITICAL: Failed to start OpenCode ACP server", e);
+            LOG.log(Level.SEVERE, "CRITICAL: Failed to start ACP server", e);
         }
     }
 
@@ -149,10 +149,10 @@ public class OpenCodeManager {
                 .thenAccept(res -> {
                     this.initialized = true;
                     readyFuture.complete(null);
-                    LOG.log(Level.INFO, "OpenCode ACP initialized successfully");
+                    LOG.log(Level.INFO, "ACP initialized successfully");
                 })
                 .exceptionally(ex -> {
-                    LOG.log(Level.SEVERE, "Failed to initialize OpenCode ACP", ex);
+                    LOG.log(Level.SEVERE, "Failed to initialize ACP", ex);
                     readyFuture.completeExceptionally(ex);
                     stopServer();
                     return null;
@@ -167,7 +167,7 @@ public class OpenCodeManager {
         }
         if (serverProcess != null && serverProcess.isAlive()) {
             serverProcess.destroy();
-            LOG.log(Level.INFO, "OpenCode server stopped");
+            LOG.log(Level.INFO, "ACP server stopped");
         }
     }
 
@@ -455,7 +455,7 @@ public class OpenCodeManager {
             return;
         }
 
-        LOG.log(Level.WARNING, "OpenCode server disconnected unexpectedly");
+        LOG.log(Level.WARNING, "ACP server disconnected unexpectedly");
         this.initialized = false;
 
         long now = System.currentTimeMillis();
@@ -467,13 +467,13 @@ public class OpenCodeManager {
             restartCount++;
             lastRestartTime = now;
             long delay = restartCount * 2000L; // Exponential backoff: 2s, 4s, 6s...
-            LOG.log(Level.INFO, "Respawning OpenCode server in {0}ms (attempt {1}/{2})...", 
+            LOG.log(Level.INFO, "Respawning ACP server in {0}ms (attempt {1}/{2})...", 
                     new Object[]{delay, restartCount, MAX_RESTARTS});
             
             java.util.concurrent.Executors.newSingleThreadScheduledExecutor()
                     .schedule(this::startServer, delay, java.util.concurrent.TimeUnit.MILLISECONDS);
         } else {
-            LOG.log(Level.SEVERE, "OpenCode server crashed {0} times within {1}ms. Giving up.", 
+            LOG.log(Level.SEVERE, "ACP server crashed {0} times within {1}ms. Giving up.", 
                     new Object[]{MAX_RESTARTS, RESTART_RESET_INTERVAL});
         }
     }

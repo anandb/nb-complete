@@ -1,4 +1,4 @@
-package ai.opencode.netbeans.ui;
+package github.anandb.netbeans.ui;
 
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
@@ -10,14 +10,14 @@ import org.openide.util.NbBundle;
 
 @OptionsPanelController.SubRegistration(
         location = "Advanced",
-        displayName = "#OptionsCategory_Name_OpenCode",
-        keywords = "#OptionsCategory_Keywords_OpenCode",
-        keywordsCategory = "Advanced/OpenCode"
+        displayName = "#OptionsCategory_Name_ACP",
+        keywords = "#OptionsCategory_Keywords_ACP",
+        keywordsCategory = "Advanced/ACP"
 )
-@NbBundle.Messages({"OptionsCategory_Name_OpenCode=OpenCode", "OptionsCategory_Keywords_OpenCode=opencode, ai, chatbot, path"})
-public final class OpenCodeOptionsPanelController extends OptionsPanelController {
+@NbBundle.Messages({"OptionsCategory_Name_ACP=ACP", "OptionsCategory_Keywords_ACP=acp, ai, chatbot, path"})
+public final class ACPOptionsPanelController extends OptionsPanelController {
 
-    private OpenCodeOptionsPanel panel;
+    private ACPOptionsPanel panel;
     private final PropertyChangeSupport pcs = new PropertyChangeSupport(this);
     private boolean changed;
 
@@ -68,9 +68,9 @@ public final class OpenCodeOptionsPanelController extends OptionsPanelController
         pcs.removePropertyChangeListener(l);
     }
 
-    private OpenCodeOptionsPanel getPanel() {
+    private ACPOptionsPanel getPanel() {
         if (panel == null) {
-            panel = new OpenCodeOptionsPanel(this);
+            panel = new ACPOptionsPanel(this);
         }
         return panel;
     }

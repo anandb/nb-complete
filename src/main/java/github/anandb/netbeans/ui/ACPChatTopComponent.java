@@ -1,4 +1,4 @@
-package ai.opencode.netbeans.ui;
+package github.anandb.netbeans.ui;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -62,30 +62,30 @@ import org.openide.windows.TopComponent;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
-import ai.opencode.netbeans.manager.OpenCodeManager;
-import ai.opencode.netbeans.manager.SessionTitleManager;
-import ai.opencode.netbeans.model.Session;
-import ai.opencode.netbeans.model.SessionConfigOption;
-import ai.opencode.netbeans.model.SessionConfigSelectOption;
-import ai.opencode.netbeans.model.SessionUpdate;
+import github.anandb.netbeans.manager.ACPManager;
+import github.anandb.netbeans.manager.SessionTitleManager;
+import github.anandb.netbeans.model.Session;
+import github.anandb.netbeans.model.SessionConfigOption;
+import github.anandb.netbeans.model.SessionConfigSelectOption;
+import github.anandb.netbeans.model.SessionUpdate;
 
 @NbBundle.Messages({
-        "CTL_OpenCodeChatAction=OpenCode",
-        "CTL_OpenCodeChatTopComponent=OpenCode",
-        "HINT_OpenCodeChatTopComponent=This is an OpenCode window"
+        "CTL_ACPChatAction=ACP",
+        "CTL_ACPChatTopComponent=ACP",
+        "HINT_ACPChatTopComponent=This is an ACP window"
 })
-@ConvertAsProperties(dtd = "-//ai.opencode.netbeans.ui//OpenCodeChat//EN", autostore = false)
-@TopComponent.Description(preferredID = "OpenCodeChatTopComponent", iconBase = "ai/opencode/netbeans/ui/logo.png", persistenceType = TopComponent.PERSISTENCE_ALWAYS)
+@ConvertAsProperties(dtd = "-//github.anandb.netbeans.ui//ACPChat//EN", autostore = false)
+@TopComponent.Description(preferredID = "ACPChatTopComponent", iconBase = "github/anandb/netbeans/ui/logo.png", persistenceType = TopComponent.PERSISTENCE_ALWAYS)
 @TopComponent.Registration(mode = "explorer", openAtStartup = false)
-public final class OpenCodeChatTopComponent extends TopComponent implements OpenCodeManager.PermissionHandler {
+public final class ACPChatTopComponent extends TopComponent implements ACPManager.PermissionHandler {
 
-    @ActionID(category = "Window", id = "ai.opencode.netbeans.ui.OpenCodeToggleAction")
-    @ActionRegistration(displayName = "#CTL_OpenCodeChatAction")
+    @ActionID(category = "Window", id = "github.anandb.netbeans.ui.ACPToggleAction")
+    @ActionRegistration(displayName = "#CTL_ACPChatAction")
     @ActionReferences({
             @ActionReference(path = "Menu/Window"),
             @ActionReference(path = "Shortcuts", name = "C-L")
     })
-    public static final class OpenCodeToggleAction implements ActionListener {
+    public static final class ACPToggleAction implements ActionListener {
         @Override
         public void actionPerformed(ActionEvent e) {
             TopComponent tc = findInstance();
@@ -101,8 +101,8 @@ public final class OpenCodeChatTopComponent extends TopComponent implements Open
     }
 
     private static final java.util.logging.Logger LOG = java.util.logging.Logger
-            .getLogger(OpenCodeChatTopComponent.class.getName());
-    private static OpenCodeChatTopComponent instance;
+            .getLogger(ACPChatTopComponent.class.getName());
+    private static ACPChatTopComponent instance;
     private static final long serialVersionUID = 1L;
 
     private final ChatThreadPanel chatPanel;
@@ -141,12 +141,12 @@ public final class OpenCodeChatTopComponent extends TopComponent implements Open
     private int historyIndex = -1;
     private String currentDraft = "";
 
-    public OpenCodeChatTopComponent() {
+    public ACPChatTopComponent() {
         instance = this;
-        LOG.info("Initializing OpenCodeChatTopComponent...");
+        LOG.info("Initializing ACPChatTopComponent...");
         ThemeManager.Theme theme = ThemeManager.getCurrentTheme();
-        setName(NbBundle.getMessage(OpenCodeChatTopComponent.class, "CTL_OpenCodeChatTopComponent"));
-        setToolTipText(NbBundle.getMessage(OpenCodeChatTopComponent.class, "HINT_OpenCodeChatTopComponent"));
+        setName(NbBundle.getMessage(ACPChatTopComponent.class, "CTL_ACPChatTopComponent"));
+        setToolTipText(NbBundle.getMessage(ACPChatTopComponent.class, "HINT_ACPChatTopComponent"));
         setLayout(new BorderLayout());
         setOpaque(true);
 
@@ -275,9 +275,9 @@ public final class OpenCodeChatTopComponent extends TopComponent implements Open
         add(header, BorderLayout.NORTH);
 
         // Initial CWD
-        String initialDir = OpenCodeManager.getInstance().getActiveProjectDir();
+        String initialDir = ACPManager.getInstance().getActiveProjectDir();
         updateCwdLabel(initialDir != null ? initialDir : System.getProperty("user.dir"));
-        OpenCodeManager.getInstance().addProjectChangeListener(this::updateCwdLabel);
+        ACPManager.getInstance().addProjectChangeListener(this::updateCwdLabel);
 
         // Chat History (Center)
         add(chatPanel, BorderLayout.CENTER);
@@ -702,10 +702,10 @@ public final class OpenCodeChatTopComponent extends TopComponent implements Open
             }
         };
 
-        OpenCodeManager.getInstance().addSseListener(sseListener);
-        OpenCodeManager.getInstance().setPermissionHandler(this);
+        ACPManager.getInstance().addSseListener(sseListener);
+        ACPManager.getInstance().setPermissionHandler(this);
 
-        OpenCodeManager.getInstance().addProjectChangeListener(path -> {
+        ACPManager.getInstance().addProjectChangeListener(path -> {
             if (path != null) {
                 SwingUtilities.invokeLater(() -> {
                     // Only automatically clear if the project has actually changed
@@ -730,7 +730,7 @@ public final class OpenCodeChatTopComponent extends TopComponent implements Open
 
     private void refreshSessions(String autoselectId, boolean loadMessages) {
         statusLabel.setText("Connecting...");
-        OpenCodeManager manager = OpenCodeManager.getInstance();
+        ACPManager manager = ACPManager.getInstance();
         LOG.log(Level.INFO, "refreshSessions: initialized={0}", manager.isInitialized());
         manager.whenReady()
                 .thenCompose(v -> manager.getSessions())
@@ -752,7 +752,7 @@ public final class OpenCodeChatTopComponent extends TopComponent implements Open
                             int selectIdx = -1;
                             for (int i = 0; i < sortedSessions.size(); i++) {
                                 Session s = sortedSessions.get(i);
-                                String customTitle = ai.opencode.netbeans.manager.SessionTitleManager.getTitle(s.id(), s.title());
+                                String customTitle = github.anandb.netbeans.manager.SessionTitleManager.getTitle(s.id(), s.title());
                                 sessionDropdown.addItem(new SessionItem(s, customTitle));
                                 if (autoselectId != null && s.id().equals(autoselectId)) {
                                     selectIdx = i;
@@ -798,9 +798,9 @@ public final class OpenCodeChatTopComponent extends TopComponent implements Open
         chatPanel.clearMessages();
 
         // Use active project directory as working directory
-        String projectCwd = OpenCodeManager.getInstance().getActiveProjectDir();
+        String projectCwd = ACPManager.getInstance().getActiveProjectDir();
 
-        OpenCodeManager.getInstance().getSessions().thenAccept(sessions -> {
+        ACPManager.getInstance().getSessions().thenAccept(sessions -> {
             String sessionCwd = sessions.stream()
                     .filter(s -> s.id().equals(sessionId))
                     .findFirst()
@@ -818,7 +818,7 @@ public final class OpenCodeChatTopComponent extends TopComponent implements Open
             updateCwdLabel(workingCwd);
             this.lastProjectDir = workingCwd;
             final String targetSessionId = sessionId;
-            OpenCodeManager.getInstance().loadSession(sessionId, workingCwd)
+            ACPManager.getInstance().loadSession(sessionId, workingCwd)
                     .thenAccept(configOptions -> {
                         SwingUtilities.invokeLater(() -> {
                             // Verify we are still on the same session
@@ -893,7 +893,7 @@ public final class OpenCodeChatTopComponent extends TopComponent implements Open
         LOG.info("Attempting to create new session...");
         updateTabName(null);
         statusLabel.setText("Creating new session...");
-        OpenCodeManager.getInstance().createSession(null)
+        ACPManager.getInstance().createSession(null)
                 .thenAccept(session -> {
                     this.currentSessionId = session.id();
                     String sessCwd = session.cwd() != null ? session.cwd() : session.directory();
@@ -979,7 +979,7 @@ public final class OpenCodeChatTopComponent extends TopComponent implements Open
         updateButtonState(true);
 
         Map<String, Object> context = captureEditorContext();
-        OpenCodeManager.getInstance().sendMessage(currentSessionId, text, context)
+        ACPManager.getInstance().sendMessage(currentSessionId, text, context)
                 .thenAccept(v -> {
                     SwingUtilities.invokeLater(() -> {
                         String currentStatus = statusLabel.getText();
@@ -1043,7 +1043,7 @@ public final class OpenCodeChatTopComponent extends TopComponent implements Open
             return;
         }
         statusLabel.setText("Stopping...");
-        OpenCodeManager.getInstance().stopMessage(currentSessionId)
+        ACPManager.getInstance().stopMessage(currentSessionId)
                 .thenAccept(v -> {
                     SwingUtilities.invokeLater(() -> {
                         statusLabel.setText("Stopped");
@@ -1124,7 +1124,7 @@ public final class OpenCodeChatTopComponent extends TopComponent implements Open
     }
 
     private void showAutocomplete() {
-        List<SessionUpdate.AvailableCommand> allCommands = OpenCodeManager.getInstance().getAvailableCommands();
+        List<SessionUpdate.AvailableCommand> allCommands = ACPManager.getInstance().getAvailableCommands();
         if (allCommands.isEmpty()) {
             autocompletePopup.setVisible(false);
             return;
@@ -1197,7 +1197,7 @@ public final class OpenCodeChatTopComponent extends TopComponent implements Open
 
             if (item != null && currentSessionId != null && !item.isInternalUpdate) {
                 LOG.log(Level.INFO, "Config changed: {0}={1} for session {2}", new Object[]{configId, item.value, currentSessionId});
-                OpenCodeManager.getInstance().setSessionConfigOption(currentSessionId, configId, item.value);
+                ACPManager.getInstance().setSessionConfigOption(currentSessionId, configId, item.value);
                 if (combo == modelCombo) {
                     updateTabName(item.name);
                 }
@@ -1210,7 +1210,7 @@ public final class OpenCodeChatTopComponent extends TopComponent implements Open
             if (modelName != null && !modelName.isEmpty()) {
                 setName(modelName);
             } else {
-                setName(NbBundle.getMessage(OpenCodeChatTopComponent.class, "CTL_OpenCodeChatTopComponent"));
+                setName(NbBundle.getMessage(ACPChatTopComponent.class, "CTL_ACPChatTopComponent"));
             }
         });
     }
@@ -1237,8 +1237,8 @@ public final class OpenCodeChatTopComponent extends TopComponent implements Open
         SwingUtilities.invokeLater(() -> {
             isUpdatingConfigControls = true;
             try {
-                String defaultModel = NbPreferences.forModule(OpenCodeOptionsPanel.class)
-                        .get("defaultModel", "opencode/big-pickle");
+                String defaultModel = NbPreferences.forModule(ACPOptionsPanel.class)
+                        .get("defaultModel", "acp/big-pickle");
                 LOG.log(Level.INFO, "updateConfigControls: force={0}, defaultModel={1}", new Object[]{forceStartupDefaults, defaultModel});
 
                 for (SessionConfigOption opt : options) {
@@ -1278,7 +1278,7 @@ public final class OpenCodeChatTopComponent extends TopComponent implements Open
                             if (forcedValue != null && !forcedValue.equalsIgnoreCase(opt.currentValue()) && currentSessionId != null) {
                                 LOG.log(Level.INFO, "Forcing default: {0}={1} (was {2})", new Object[]{opt.id(), forcedValue, opt.currentValue()});
                                 valueToSelect = forcedValue;
-                                OpenCodeManager.getInstance().setSessionConfigOption(currentSessionId, opt.id(), forcedValue);
+                                ACPManager.getInstance().setSessionConfigOption(currentSessionId, opt.id(), forcedValue);
                             }
                         }
 
@@ -1353,7 +1353,7 @@ public final class OpenCodeChatTopComponent extends TopComponent implements Open
         SwingUtilities.invokeLater(() -> {
             String effectivePath = path;
             if (effectivePath == null || effectivePath.isEmpty()) {
-                effectivePath = OpenCodeManager.getInstance().getActiveProjectDir();
+                effectivePath = ACPManager.getInstance().getActiveProjectDir();
             }
             if (effectivePath == null || effectivePath.isEmpty()) {
                 effectivePath = System.getProperty("user.dir");
@@ -1392,13 +1392,13 @@ public final class OpenCodeChatTopComponent extends TopComponent implements Open
     }
 
     private void checkAndSendTestMessage() {
-        OpenCodeManager.getInstance().whenReady().thenAccept(v -> {
+        ACPManager.getInstance().whenReady().thenAccept(v -> {
             SwingUtilities.invokeLater(() -> {
                 if (testMessageSent) {
                     return;
                 }
                 
-                boolean pingEnabled = org.openide.util.NbPreferences.forModule(OpenCodeOptionsPanel.class).getBoolean("pingAtStartup", false);
+                boolean pingEnabled = org.openide.util.NbPreferences.forModule(ACPOptionsPanel.class).getBoolean("pingAtStartup", false);
                 if (!pingEnabled) {
                     testMessageSent = true; // Don't ask again
                     return;
@@ -1433,7 +1433,7 @@ public final class OpenCodeChatTopComponent extends TopComponent implements Open
     @Override
     public void componentClosed() {
         if (sseListener != null) {
-            OpenCodeManager.getInstance().removeSseListener(sseListener);
+            ACPManager.getInstance().removeSseListener(sseListener);
         }
         if (thinkingTimer != null && thinkingTimer.isRunning()) {
             thinkingTimer.stop();
@@ -1451,9 +1451,9 @@ public final class OpenCodeChatTopComponent extends TopComponent implements Open
         String version = p.getProperty("version");
     }
 
-    public static synchronized OpenCodeChatTopComponent findInstance() {
+    public static synchronized ACPChatTopComponent findInstance() {
         if (instance == null) {
-            instance = new OpenCodeChatTopComponent();
+            instance = new ACPChatTopComponent();
         }
         return instance;
     }
@@ -1517,9 +1517,9 @@ public final class OpenCodeChatTopComponent extends TopComponent implements Open
     }
 
     private void refreshAllSessionsList() {
-        OpenCodeManager manager = OpenCodeManager.getInstance();
+        ACPManager manager = ACPManager.getInstance();
         manager.getSessions().thenAccept(sessions -> {
-            List<ai.opencode.netbeans.model.Session> sortedSessions = sessions.stream()
+            List<github.anandb.netbeans.model.Session> sortedSessions = sessions.stream()
                     .sorted((s1, s2) -> Long.compare(parseTimestamp(s2.updatedAt()), parseTimestamp(s1.updatedAt())))
                     .toList();
             SwingUtilities.invokeLater(() -> {

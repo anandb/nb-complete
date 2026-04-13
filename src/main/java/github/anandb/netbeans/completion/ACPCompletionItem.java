@@ -1,4 +1,4 @@
-package ai.opencode.netbeans.completion;
+package github.anandb.netbeans.completion;
 
 import java.awt.Color;
 import java.awt.Font;
@@ -11,12 +11,12 @@ import org.netbeans.spi.editor.completion.CompletionItem;
 import org.netbeans.spi.editor.completion.CompletionTask;
 import org.netbeans.spi.editor.completion.support.CompletionUtilities;
 
-public class OpenCodeCompletionItem implements CompletionItem {
+public class ACPCompletionItem implements CompletionItem {
 
     private final String text;
     private static final ImageIcon icon = null; // Placeholder for AI icon
 
-    public OpenCodeCompletionItem(String text) {
+    public ACPCompletionItem(String text) {
         this.text = text;
     }
 
@@ -39,7 +39,7 @@ public class OpenCodeCompletionItem implements CompletionItem {
     @Override
     public void render(Graphics g, Font defaultFont, Color defaultColor, Color backgroundColor, int width, int height,
             boolean selected) {
-        CompletionUtilities.renderHtml(icon, "<b>OpenCode</b>: " + text, null, g, defaultFont, defaultColor, width,
+        CompletionUtilities.renderHtml(icon, "<b>ACP</b>: " + text, null, g, defaultFont, defaultColor, width,
                 height, selected);
     }
 

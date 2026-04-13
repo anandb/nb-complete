@@ -1,4 +1,4 @@
-package ai.opencode.netbeans.manager;
+package github.anandb.netbeans.manager;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -44,11 +44,11 @@ public class JsonRpcClient {
     }
 
     public void start() {
-        readerThread = new Thread(this::readLoop, "OpenCode-JSONRPC-Reader");
+        readerThread = new Thread(this::readLoop, "ACP-JSONRPC-Reader");
         readerThread.setDaemon(true);
         readerThread.start();
 
-        errorReaderThread = new Thread(this::readErrorLoop, "OpenCode-JSONRPC-ErrorReader");
+        errorReaderThread = new Thread(this::readErrorLoop, "ACP-JSONRPC-ErrorReader");
         errorReaderThread.setDaemon(true);
         errorReaderThread.start();
     }

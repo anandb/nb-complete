@@ -1,6 +1,6 @@
-package ai.opencode.netbeans.completion;
+package github.anandb.netbeans.completion;
 
-import ai.opencode.netbeans.manager.OpenCodeManager;
+import github.anandb.netbeans.manager.ACPManager;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -14,8 +14,8 @@ import org.netbeans.spi.editor.completion.support.AsyncCompletionQuery;
 import org.netbeans.spi.editor.completion.support.AsyncCompletionTask;
 
 @MimeRegistration(mimeType = "text/x-java", service = CompletionProvider.class)
-public class OpenCodeCompletionProvider implements CompletionProvider {
-    private static final Logger LOG = Logger.getLogger(OpenCodeCompletionProvider.class.getName());
+public class ACPCompletionProvider implements CompletionProvider {
+    private static final Logger LOG = Logger.getLogger(ACPCompletionProvider.class.getName());
 
     @Override
     public CompletionTask createTask(int queryType, JTextComponent component) {
@@ -27,10 +27,10 @@ public class OpenCodeCompletionProvider implements CompletionProvider {
             @Override
             protected void query(CompletionResultSet resultSet, Document doc, int caretOffset) {
                 try {
-                    OpenCodeManager manager = OpenCodeManager.getInstance();
+                    ACPManager manager = ACPManager.getInstance();
 
                     if (!manager.isInitialized()) {
-                        LOG.log(Level.FINE, "OpenCodeManager not initialized yet");
+                        LOG.log(Level.FINE, "ACPManager not initialized yet");
                         resultSet.finish();
                         return;
                     }
@@ -64,7 +64,7 @@ public class OpenCodeCompletionProvider implements CompletionProvider {
                     if (result != null && result.has("suggestions")) {
                         for (JsonNode sug : result.get("suggestions")) {
                             String insertText = sug.has("insertText") ? sug.get("insertText").asText() : sug.get("text").asText();
-                            resultSet.addItem(new OpenCodeCompletionItem(insertText));
+                            resultSet.addItem(new ACPCompletionItem(insertText));
                         }
                         LOG.log(Level.FINE, "Added {0} completion items", result.get("suggestions").size());
                     } else {

@@ -1,4 +1,4 @@
-package ai.opencode.netbeans.ui;
+package github.anandb.netbeans.ui;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -19,7 +19,7 @@ import javax.swing.JPanel;
 import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
 import org.fife.ui.rsyntaxtextarea.SyntaxConstants;
 
-import ai.opencode.netbeans.ui.ThemeManager.Theme;
+import github.anandb.netbeans.ui.ThemeManager.Theme;
 
 public class CollapsibleCodePane extends JPanel {
     private String language;

@@ -1,10 +1,10 @@
-package ai.opencode.netbeans.ui;
+package github.anandb.netbeans.ui;
 import java.awt.event.ContainerAdapter;
 import java.awt.event.ContainerEvent;
 
 
-import ai.opencode.netbeans.model.Message;
-import ai.opencode.netbeans.model.Session;
+import github.anandb.netbeans.model.Message;
+import github.anandb.netbeans.model.Session;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
@@ -377,7 +377,7 @@ public class ChatThreadPanel extends JPanel {
 
     public String getConversationAsMarkdown() {
         StringBuilder sb = new StringBuilder();
-        sb.append("# OpenCode Conversation Export\n\n");
+        sb.append("# ACP Conversation Export\n\n");
         
         for (Component c : messagesContainer.getComponents()) {
             if (c instanceof MessageBubble bubble) {
@@ -448,7 +448,7 @@ public class ChatThreadPanel extends JPanel {
             try {
                 clearMessages();
 
-                JLabel titleLabel = new JLabel(sessions.isEmpty() ? "Welcome to OpenCode" : "Welcome back!");
+                JLabel titleLabel = new JLabel(sessions.isEmpty() ? "Welcome to ACP" : "Welcome back!");
                 titleLabel.setFont(new Font("SansSerif", Font.BOLD, 18));
                 titleLabel.setBorder(BorderFactory.createEmptyBorder(20, 12, 10, 12));
                 messagesContainer.add(titleLabel);
@@ -477,7 +477,7 @@ public class ChatThreadPanel extends JPanel {
                         if (title == null || title.isEmpty()) {
                             title = "Chat " + s.id().substring(0, Math.min(8, s.id().length()));
                         }
-                        String label = ai.opencode.netbeans.manager.SessionTitleManager.getTitle(s.id(), title);
+                        String label = github.anandb.netbeans.manager.SessionTitleManager.getTitle(s.id(), title);
                         JButton sessionBtn = createSelectionButton(label, s.cwd());
                         sessionBtn.addActionListener(e -> onSessionSelected.accept(s.id()));
                         messagesContainer.add(sessionBtn);

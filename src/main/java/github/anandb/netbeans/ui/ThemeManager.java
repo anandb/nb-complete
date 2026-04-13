@@ -1,4 +1,4 @@
-package ai.opencode.netbeans.ui;
+package github.anandb.netbeans.ui;
 
 import java.awt.Color;
 

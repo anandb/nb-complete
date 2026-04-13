@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <groupId>ai.opencode</groupId>
-    <artifactId>opencode-netbeans-plugin</artifactId>
-    <version>1.2.19</version>
+    <groupId>github.anandb</groupId>
+    <artifactId>acp-netbeans-plugin</artifactId>
+    <version>1.2.20</version>
     <packaging>nbm</packaging>
 
-    <name>OpenCode NetBeans Plugin</name>
+    <name>ACP NetBeans Plugin</name>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -160,7 +160,7 @@
                 <version>4.8</version>
                 <extensions>true</extensions>
                 <configuration>
-                    <author>OpenCode</author>
+                    <author>ACP</author>
                     <licenseName>Apache 2.0</licenseName>
                     <licenseFile>LICENSE</licenseFile>
                 </configuration>
@@ -178,7 +178,7 @@
                     <archive>
                         <manifestFile>${project.build.outputDirectory}/META-INF/MANIFEST.MF</manifestFile>
                         <manifestEntries>
-                            <OpenIDE-Module-Layer>ai/opencode/netbeans/ui/layer.xml</OpenIDE-Module-Layer>
+                            <OpenIDE-Module-Layer>ai/acp/netbeans/ui/layer.xml</OpenIDE-Module-Layer>
                         </manifestEntries>
                     </archive>
                 </configuration>

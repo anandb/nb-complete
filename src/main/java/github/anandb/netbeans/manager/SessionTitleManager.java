@@ -1,4 +1,4 @@
-package ai.opencode.netbeans.manager;
+package github.anandb.netbeans.manager;
 
 import java.io.*;
 import java.util.Properties;
@@ -8,7 +8,7 @@ import org.openide.modules.Places;
 
 public class SessionTitleManager {
     private static final Logger LOG = Logger.getLogger(SessionTitleManager.class.getName());
-    private static final String TITLES_FILE = "opencode_session_titles.properties";
+    private static final String TITLES_FILE = "acp_session_titles.properties";
     private static final Properties titles = new Properties();
 
     static {
@@ -19,7 +19,7 @@ public class SessionTitleManager {
         File userDir = Places.getUserDirectory();
         File opencodeDir;
         if (userDir != null) {
-            opencodeDir = new File(userDir, "opencode");
+            opencodeDir = new File(userDir, "acp");
         } else {
             opencodeDir = new File(System.getProperty("user.home"), ".opencode");
         }
@@ -52,7 +52,7 @@ public class SessionTitleManager {
     private static void save() {
         File file = getStorageFile();
         try (OutputStream os = new FileOutputStream(file)) {
-            titles.store(os, "OpenCode Session Titles");
+            titles.store(os, "ACP Session Titles");
         } catch (IOException e) {
             LOG.log(Level.WARNING, "Failed to save session titles: {0}", e.getMessage());
         }

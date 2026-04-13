@@ -1,7 +1,7 @@
-# Agent Instructions for opencode-netbeans-plugin
+# Agent Instructions for acp-netbeans-plugin
 
 ## Project Overview
-- **Project name**: OpenCode NetBeans Plugin
+- **Project name**: ACP NetBeans Plugin
 - **Project type**: NetBeans IDE plugin (NBM packaging)
 - **Language**: Java 17
 - **Build tool**: Maven
@@ -23,9 +23,9 @@
 When working on this codebase, you **must** leverage Context7 for documentation on external libraries.
 
 ## Source Structure
-- `src/main/java/ai/opencode/netbeans/` - Main source code
+- `src/main/java/ai/acp/netbeans/` - Main source code
   - `completion/` - Code completion provider
-  - `manager/` - OpenCodeManager, JsonRpcClient
+  - `manager/` - ACPManager, JsonRpcClient
   - `model/` - Message, Session, Agent, SessionUpdate (ACP compliant)
   - `project/` - Project management (startup, project manager)
   - `ui/` - UI components (chat panel, message bubbles, collapsible panes, theme manager)
@@ -35,14 +35,14 @@ When working on this codebase, you **must** leverage Context7 for documentation 
 - **JSON-RPC**: Bidirectional communication via `JsonRpcClient`.
 - **SSE Streams**: Handles `session/update` notifications for real-time AI response streaming.
 - **UI Architecture**:
-    - `OpenCodeChatTopComponent`: Primary chat window with global controls.
+    - `ACPChatTopComponent`: Primary chat window with global controls.
     - `ChatThreadPanel`: Manages the thread of message bubbles.
     - `MessageBubble`: Handles rendering of specific message turns, including "thought" and "code" segments.
     - `CollapsibleCodePane`: Custom component for syntax-highlighted code with copy/insert actions.
 
 ## Important Files
 - `pom.xml` - Maven configuration and dependencies (RSyntaxTextArea, Flexmark, Jackson).
-- `src/main/resources/ai/opencode/netbeans/ui/layer.xml` - NetBeans registration for the chat window.
+- `src/main/resources/ai/acp/netbeans/ui/layer.xml` - NetBeans registration for the chat window.
 
 ## Coding Notes
 - **Braces**: Always use braces for `if-else`, `for`, `while`, and `do-while` loops.

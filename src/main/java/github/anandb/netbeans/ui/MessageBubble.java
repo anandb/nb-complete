@@ -1,4 +1,4 @@
-package ai.opencode.netbeans.ui;
+package github.anandb.netbeans.ui;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -90,7 +90,7 @@ public class MessageBubble extends JPanel {
             copyBtn.setVisible(false);
             
             copyBtn.addActionListener(e -> {
-                OpenCodeChatTopComponent.findInstance().setInputText(this.text.toString());
+                ACPChatTopComponent.findInstance().setInputText(this.text.toString());
             });
 
             JPanel footer = new JPanel(new BorderLayout());
