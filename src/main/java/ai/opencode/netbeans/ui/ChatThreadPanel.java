@@ -16,6 +16,7 @@ import java.awt.Rectangle;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -204,6 +205,134 @@ public class ChatThreadPanel extends JPanel {
         });
     }
 
+    public void addPermissionRequest(String prompt, com.fasterxml.jackson.databind.JsonNode options, java.util.concurrent.CompletableFuture<String> responseFuture) {
+        SwingUtilities.invokeLater(() -> {
+            PermissionBubble bubble = new PermissionBubble(prompt, options, responseFuture);
+            messagesContainer.add(bubble);
+            messagesContainer.add(Box.createVerticalStrut(8));
+            messagesContainer.revalidate();
+            messagesContainer.repaint();
+            scrollToBottom();
+        });
+    }
+
+    private static class PermissionBubble extends JPanel {
+        public PermissionBubble(String prompt, com.fasterxml.jackson.databind.JsonNode options, java.util.concurrent.CompletableFuture<String> responseFuture) {
+            setLayout(new BorderLayout());
+            setOpaque(false);
+            setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+
+            ThemeManager.Theme theme = ThemeManager.getCurrentTheme();
+
+            JPanel content = new JPanel(new BorderLayout(0, 10));
+            content.setBackground(new Color(255, 243, 224)); // Light orange/amber background
+            content.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(255, 160, 0), 1, true),
+                BorderFactory.createEmptyBorder(12, 16, 12, 16)
+            ));
+
+            JLabel titleLabel = new JLabel("🛡️ Permission Required");
+            titleLabel.setFont(new Font("SansSerif", Font.BOLD, 13));
+            titleLabel.setForeground(new Color(230, 81, 0));
+            content.add(titleLabel, BorderLayout.NORTH);
+
+            JLabel promptLabel = new JLabel("<html>" + prompt.replace("\n", "<br>") + "</html>");
+            promptLabel.setFont(new Font("SansSerif", Font.PLAIN, 13));
+            content.add(promptLabel, BorderLayout.CENTER);
+
+            int numOptions = (options != null && options.isArray() && options.size() > 0) ? options.size() : 2;
+            JPanel buttons = new JPanel(new java.awt.GridLayout(1, numOptions, 4, 0));
+            buttons.setOpaque(false);
+
+            if (options != null && options.isArray() && options.size() > 0) {
+                LOG.log(Level.INFO, "PermissionBubble: rendering {0} options", options.size());
+                for (com.fasterxml.jackson.databind.JsonNode opt : options) {
+                    String optionId = opt.has("optionId") ? opt.get("optionId").asText() : "";
+                    String name = opt.has("name") ? opt.get("name").asText() : optionId;
+                    String kind = opt.has("kind") ? opt.get("kind").asText() : "";
+                    
+                    JButton btn = new JButton(name);
+                    btn.setFocusPainted(false);
+                    if (kind.contains("allow")) {
+                        btn.setBackground(new Color(76, 175, 80));
+                        btn.setForeground(Color.WHITE);
+                    } else if (kind.contains("reject")) {
+                        btn.setBackground(new Color(244, 67, 54));
+                        btn.setForeground(Color.WHITE);
+                    }
+                    
+                    btn.addActionListener(e -> {
+                        responseFuture.complete(optionId);
+                        boolean allowed = kind.contains("allow");
+                        String statusText = (allowed ? "✅ " : "❌ ") + name;
+                        Color fg = allowed ? new Color(46, 125, 50) : new Color(198, 40, 40);
+                        Color bg = allowed ? new Color(232, 245, 233) : new Color(255, 235, 238);
+                        Color border = allowed ? new Color(76, 175, 80) : new Color(244, 67, 54);
+                        collapse(content, statusText, fg, bg, border);
+                    });
+                    buttons.add(btn);
+                }
+            } else {
+                JButton allowBtn = new JButton("Allow");
+                allowBtn.setBackground(new Color(76, 175, 80));
+                allowBtn.setForeground(Color.WHITE);
+                allowBtn.setFocusPainted(false);
+
+                JButton denyBtn = new JButton("Deny");
+                denyBtn.setBackground(new Color(244, 67, 54));
+                denyBtn.setForeground(Color.WHITE);
+                denyBtn.setFocusPainted(false);
+
+                allowBtn.addActionListener(e -> {
+                    responseFuture.complete("allow");
+                    collapse(content, "✅ Permission Granted", new Color(46, 125, 50), new Color(232, 245, 233), new Color(76, 175, 80));
+                });
+
+                denyBtn.addActionListener(e -> {
+                    responseFuture.complete("reject");
+                    collapse(content, "❌ Permission Denied", new Color(198, 40, 40), new Color(255, 235, 238), new Color(244, 67, 54));
+                });
+
+                buttons.add(denyBtn);
+                buttons.add(allowBtn);
+            }
+            
+            content.add(buttons, BorderLayout.SOUTH);
+            add(content, BorderLayout.CENTER);
+            
+            setAlignmentX(LEFT_ALIGNMENT);
+        }
+
+        @Override
+        public Dimension getMaximumSize() {
+            Dimension pref = getPreferredSize();
+            if (getParent() != null && getParent().getWidth() > 0) {
+                return new Dimension((int) (getParent().getWidth() * 0.8), pref.height);
+            }
+            return new Dimension(Integer.MAX_VALUE, pref.height);
+        }
+
+        private void collapse(JPanel content, String status, Color fg, Color bg, Color border) {
+            content.removeAll();
+            content.setLayout(new BorderLayout());
+            content.setBackground(bg);
+            content.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(border, 1, true),
+                BorderFactory.createEmptyBorder(6, 12, 6, 12)
+            ));
+            
+            JLabel lbl = new JLabel(status);
+            lbl.setFont(new Font("SansSerif", Font.BOLD, 12));
+            lbl.setForeground(fg);
+            content.add(lbl, BorderLayout.CENTER);
+            
+            revalidate();
+            repaint();
+            // Recalculate max size to collapse vertically
+            setMaximumSize(new Dimension(Integer.MAX_VALUE, getPreferredSize().height));
+        }
+    }
+
     private void fixMouseWheel(Component c) {
         c.addMouseWheelListener(e -> {
             scrollPane.dispatchEvent(SwingUtilities.convertMouseEvent(c, e, scrollPane));
@@ -234,6 +363,36 @@ public class ChatThreadPanel extends JPanel {
             messagesContainer.revalidate();
             messagesContainer.repaint();
         });
+    }
+
+    public String getConversationAsMarkdown() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("# OpenCode Conversation Export\n\n");
+        
+        for (Component c : messagesContainer.getComponents()) {
+            if (c instanceof MessageBubble bubble) {
+                String role = bubble.getType();
+                String text = bubble.getRawText();
+                
+                if (text == null || text.trim().isEmpty()) {
+                    continue;
+                }
+
+                if ("user".equals(role)) {
+                    sb.append("## USER\n\n");
+                    sb.append(text).append("\n\n");
+                } else if ("thought".equals(role)) {
+                    sb.append("> **Thinking:**\n> ").append(text.replace("\n", "\n> ")).append("\n\n");
+                } else if ("tool".equals(role)) {
+                    sb.append("`Tool Output: ").append(text.replace("`", "'")).append("`\n\n");
+                } else {
+                    sb.append("## ASSISTANT\n\n");
+                    sb.append(text).append("\n\n");
+                }
+                sb.append("---\n\n");
+            }
+        }
+        return sb.toString();
     }
 
     public void clearMessages() {

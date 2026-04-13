@@ -39,6 +39,16 @@ public class OpenCodeManager {
     private final List<Consumer<String>> projectChangeListeners = new CopyOnWriteArrayList<>();
     private String activeProjectDir;
     private final List<SessionUpdate.AvailableCommand> availableCommands = new CopyOnWriteArrayList<>();
+    private PermissionHandler permissionHandler;
+    private boolean isClosing = false;
+    private int restartCount = 0;
+    private long lastRestartTime = 0;
+    private static final int MAX_RESTARTS = 3;
+    private static final long RESTART_RESET_INTERVAL = 300000; // 5 minutes
+
+    public interface PermissionHandler {
+        void handlePermissionRequest(String sessionId, JsonNode params, CompletableFuture<String> response);
+    }
 
     private OpenCodeManager() {
         startServer();
@@ -79,9 +89,12 @@ public class OpenCodeManager {
 
             this.rpcClient = new JsonRpcClient(serverProcess);
             rpcClient.start();
+            rpcClient.setDisconnectionHandler(this::handleDisconnection);
 
             // Register handlers
             rpcClient.onRequest("fs/readTextFile", this::handleReadTextFile);
+            rpcClient.onRequest("fs/writeTextFile", this::handleWriteTextFile);
+            rpcClient.onRequest("session/request_permission", this::handleRequestPermission);
 
             // Listen for session updates
             rpcClient.onNotification("session/update", params -> {
@@ -145,6 +158,7 @@ public class OpenCodeManager {
     }
 
     private void stopServer() {
+        isClosing = true;
         if (rpcClient != null) {
             rpcClient.close();
             rpcClient = null;
@@ -432,6 +446,141 @@ public class OpenCodeManager {
 
     public void removeSseListener(Consumer<SessionUpdate> listener) {
         sseListeners.remove(listener);
+    }
+
+    private void handleDisconnection() {
+        if (isClosing) {
+            return;
+        }
+
+        LOG.log(Level.WARNING, "OpenCode server disconnected unexpectedly");
+        this.initialized = false;
+
+        long now = System.currentTimeMillis();
+        if (now - lastRestartTime > RESTART_RESET_INTERVAL) {
+            restartCount = 0;
+        }
+
+        if (restartCount < MAX_RESTARTS) {
+            restartCount++;
+            lastRestartTime = now;
+            long delay = restartCount * 2000L; // Exponential backoff: 2s, 4s, 6s...
+            LOG.log(Level.INFO, "Respawning OpenCode server in {0}ms (attempt {1}/{2})...", 
+                    new Object[]{delay, restartCount, MAX_RESTARTS});
+            
+            java.util.concurrent.Executors.newSingleThreadScheduledExecutor()
+                    .schedule(this::startServer, delay, java.util.concurrent.TimeUnit.MILLISECONDS);
+        } else {
+            LOG.log(Level.SEVERE, "OpenCode server crashed {0} times within {1}ms. Giving up.", 
+                    new Object[]{MAX_RESTARTS, RESTART_RESET_INTERVAL});
+        }
+    }
+
+    public void setPermissionHandler(PermissionHandler handler) {
+        this.permissionHandler = handler;
+    }
+
+    private CompletableFuture<JsonNode> handleRequestPermission(JsonNode params) {
+        String sessionId = params.has("sessionId") ? params.get("sessionId").asText() : null;
+        
+        // Find toolCallId in multiple possible places common in ACP/LCP implementations
+        String extractedId = null;
+        if (params.has("toolCallId")) {
+            extractedId = params.get("toolCallId").asText();
+        } else if (params.has("tool_call_id")) {
+            extractedId = params.get("tool_call_id").asText();
+        } else if (params.has("toolCall")) {
+            JsonNode tc = params.get("toolCall");
+            if (tc.has("toolCallId")) extractedId = tc.get("toolCallId").asText();
+            else if (tc.has("id")) extractedId = tc.get("id").asText();
+        } else if (params.has("tool_call")) {
+            JsonNode tc = params.get("tool_call");
+            if (tc.has("id")) extractedId = tc.get("id").asText();
+        }
+        
+        final String toolCallId = extractedId;
+        CompletableFuture<String> response = new CompletableFuture<>();
+        
+        if (permissionHandler != null) {
+            javax.swing.SwingUtilities.invokeLater(() -> {
+                permissionHandler.handlePermissionRequest(sessionId, params, response);
+            });
+        } else {
+            response.complete("reject");
+        }
+
+        return response.thenApply(optionId -> {
+            ObjectNode res = objectMapper.createObjectNode();
+            
+            // Map common internal IDs to standard ACP ones if needed
+            String mappedId = optionId;
+            if ("allow".equals(optionId) || "true".equals(optionId)) {
+                mappedId = "once";
+            } else if ("deny".equals(optionId) || "false".equals(optionId)) {
+                mappedId = "reject";
+            }
+            if (mappedId == null) {
+                mappedId = "once";
+            }
+
+            // Match ACP outcome structure
+            ObjectNode outcome = objectMapper.createObjectNode();
+            outcome.put("outcome", "selected");
+            outcome.put("optionId", mappedId);
+            res.set("outcome", outcome);
+
+            if (sessionId != null) {
+                res.put("sessionId", sessionId);
+            }
+            if (toolCallId != null) {
+                res.put("toolCallId", toolCallId);
+                res.put("tool_call_id", toolCallId);
+            }
+            
+            // Compatibility fields
+            if ("reject".equals(optionId)) {
+                res.put("allow", false);
+            } else {
+                res.put("allow", true);
+            }
+            
+            return res;
+        });
+    }
+
+    private CompletableFuture<JsonNode> handleWriteTextFile(JsonNode params) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                String filePath = params.has("path") ? params.get("path").asText()
+                        : params.has("filePath") ? params.get("filePath").asText() : null;
+                
+                if (filePath == null) {
+                    throw new RuntimeException("Missing path parameter");
+                }
+
+                String content = params.has("content") ? params.get("content").asText() : "";
+                java.io.File file = new java.io.File(filePath);
+                
+                // Ensure parent directories exist
+                java.io.File parent = file.getParentFile();
+                if (parent != null && !parent.exists()) {
+                    parent.mkdirs();
+                }
+
+                java.nio.file.Files.writeString(file.toPath(), content, java.nio.charset.StandardCharsets.UTF_8);
+                
+                // Refresh NetBeans filesystem to see the change
+                FileObject fo = FileUtil.toFileObject(file);
+                if (fo != null) {
+                    fo.refresh();
+                }
+                
+                return objectMapper.createObjectNode().put("success", true);
+            } catch (Exception e) {
+                LOG.log(Level.SEVERE, "fs/writeTextFile failed", e);
+                throw new RuntimeException("Failed to write file: " + e.getMessage(), e);
+            }
+        });
     }
 
     private CompletableFuture<JsonNode> handleReadTextFile(JsonNode params) {

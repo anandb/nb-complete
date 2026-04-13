@@ -16,6 +16,7 @@ import java.awt.Component;
 
 import javax.swing.Box;
 import javax.swing.BoxLayout;
+import javax.swing.JButton;
 import javax.swing.JEditorPane;
 import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
@@ -74,6 +75,42 @@ public class MessageBubble extends JPanel {
             bubble.setBackground(theme.getBubbleUser());
             bubble.setBaseColor(theme.getBubbleUser());
             gbc.anchor = GridBagConstraints.EAST;
+            
+            // Add copy button that appears on hover
+            JButton copyBtn = new JButton("📋");
+            copyBtn.setToolTipText("Copy to input");
+            copyBtn.setFont(copyBtn.getFont().deriveFont(10f));
+            copyBtn.setFocusPainted(false);
+            copyBtn.setContentAreaFilled(false);
+            copyBtn.setBorder(new EmptyBorder(2, 4, 2, 4));
+            copyBtn.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+            copyBtn.setVisible(false);
+            
+            copyBtn.addActionListener(e -> {
+                OpenCodeChatTopComponent.findInstance().setInputText(this.text.toString());
+            });
+
+            JPanel footer = new JPanel(new BorderLayout());
+            footer.setOpaque(false);
+            footer.add(copyBtn, BorderLayout.EAST);
+            bubble.add(footer, BorderLayout.SOUTH);
+
+            // Hover effects
+            bubble.addMouseListener(new java.awt.event.MouseAdapter() {
+                @Override
+                public void mouseEntered(java.awt.event.MouseEvent e) {
+                    copyBtn.setVisible(true);
+                    copyBtn.repaint();
+                }
+                @Override
+                public void mouseExited(java.awt.event.MouseEvent e) {
+                    java.awt.Point p = e.getPoint();
+                    if (p.x < 0 || p.y < 0 || p.x >= bubble.getWidth() || p.y >= bubble.getHeight()) {
+                        copyBtn.setVisible(false);
+                        copyBtn.repaint();
+                    }
+                }
+            });
         } else if ("error".equals(type)) {
             Color errorBg = new Color(255, 235, 238);
             bubble.setBackground(errorBg);
@@ -157,6 +194,10 @@ public class MessageBubble extends JPanel {
 
     public String getMessageId() {
         return messageId;
+    }
+
+    public String getRawText() {
+        return text.toString();
     }
 
     private void updateContent(ThemeManager.Theme theme) {

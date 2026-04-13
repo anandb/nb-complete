@@ -27,6 +27,10 @@ public record SessionUpdate(
         List<Agent> agents,
         List<Session> sessions,
         Boolean isThinking,
+        String status,
+        String kind,
+        String toolCallId,
+        JsonNode rawOutput,
         List<AvailableCommand> availableCommands,
         List<SessionConfigOption> configOptions
     ) {}
@@ -77,6 +81,16 @@ public record SessionUpdate(
     public String title() {
         UpdateData ud = update();
         return ud != null ? ud.title() : null;
+    }
+
+    public String status() {
+        UpdateData ud = update();
+        return ud != null ? ud.status() : null;
+    }
+
+    public JsonNode rawOutput() {
+        UpdateData ud = update();
+        return ud != null ? ud.rawOutput() : null;
     }
 
     public UpdateData update() {

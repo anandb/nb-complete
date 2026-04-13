@@ -13,8 +13,12 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 
@@ -23,6 +27,7 @@ import javax.swing.DefaultListCellRenderer;
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
+import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JPanel;
@@ -32,7 +37,9 @@ import javax.swing.JTextArea;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
+import javax.swing.Timer;
 import javax.swing.UIManager;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.border.EmptyBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
@@ -69,7 +76,7 @@ import ai.opencode.netbeans.model.SessionUpdate;
 @ConvertAsProperties(dtd = "-//ai.opencode.netbeans.ui//OpenCodeChat//EN", autostore = false)
 @TopComponent.Description(preferredID = "OpenCodeChatTopComponent", iconBase = "ai/opencode/netbeans/ui/logo.png", persistenceType = TopComponent.PERSISTENCE_ALWAYS)
 @TopComponent.Registration(mode = "explorer", openAtStartup = false)
-public final class OpenCodeChatTopComponent extends TopComponent {
+public final class OpenCodeChatTopComponent extends TopComponent implements OpenCodeManager.PermissionHandler {
 
     @ActionID(category = "Window", id = "ai.opencode.netbeans.ui.OpenCodeToggleAction")
     @ActionRegistration(displayName = "#CTL_OpenCodeChatAction")
@@ -123,6 +130,7 @@ public final class OpenCodeChatTopComponent extends TopComponent {
     private final Consumer<SessionUpdate> sseListener;
 
     public OpenCodeChatTopComponent() {
+        instance = this;
         LOG.info("Initializing OpenCodeChatTopComponent...");
         ThemeManager.Theme theme = ThemeManager.getCurrentTheme();
         setName(NbBundle.getMessage(OpenCodeChatTopComponent.class, "CTL_OpenCodeChatTopComponent"));
@@ -224,8 +232,17 @@ public final class OpenCodeChatTopComponent extends TopComponent {
         collapseAllBtn.setForeground(theme.getSelection());
         collapseAllBtn.addActionListener(e -> chatPanel.toggleAllBlocks(false));
         
+        JButton exportBtn = new JButton("📤 Export Markdown");
+        exportBtn.setFocusPainted(false);
+        exportBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        exportBtn.setContentAreaFilled(false);
+        exportBtn.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        exportBtn.setForeground(theme.getSelection());
+        exportBtn.addActionListener(e -> exportConversation());
+        
         blockControls.add(expandAllBtn);
         blockControls.add(collapseAllBtn);
+        blockControls.add(exportBtn);
         headerContent.add(blockControls);
 
         header.add(headerContent, BorderLayout.CENTER);
@@ -256,9 +273,9 @@ public final class OpenCodeChatTopComponent extends TopComponent {
         inputArea = new JTextArea(3, 20);
         inputArea.setLineWrap(true);
         inputArea.setWrapStyleWord(true);
-        inputArea.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        inputArea.setFont(new Font("Segoe UI", Font.PLAIN, 15));
         inputArea.setBackground(Color.WHITE);
-        inputArea.setForeground(theme.getForeground());
+        inputArea.setForeground(Color.decode("#073642")); // Solarized Base02 (Darker than current foreground)
         inputArea.setMargin(new Insets(8, 8, 8, 8));
 
         inputArea.setBorder(BorderFactory.createCompoundBorder(
@@ -560,26 +577,7 @@ public final class OpenCodeChatTopComponent extends TopComponent {
                     return;
                 }
 
-                if (content.isArray()) {
-                    StringBuilder sb = new StringBuilder();
-                    for (JsonNode node : content) {
-                        if (node.isTextual()) {
-                            sb.append(node.asText());
-                        } else if (node.has("text")) {
-                            sb.append(node.get("text").asText());
-                        }
-                    }
-                    text = sb.toString();
-                } else if (content.isObject()) {
-                    if (content.has("text")) {
-                        text = content.get("text").asText();
-                    } else if (content.has("content")) {
-                        text = content.get("content").asText();
-                    }
-                } else if (content.isTextual()) {
-                    text = content.asText();
-                }
-
+                text = extractText(content);
                 if (text != null && !text.isEmpty()) {
                     if ("agent_thought_chunk".equals(type)) {
                         final String thoughtText = text;
@@ -588,10 +586,24 @@ public final class OpenCodeChatTopComponent extends TopComponent {
                             chatPanel.appendOrAddMessage("thought", thoughtText, msgId);
                         });
                     } else if ("tool_call".equals(type) || "tool_call_update".equals(type)) {
-                        final String toolText = text;
-                        SwingUtilities.invokeLater(() -> {
-                            chatPanel.appendOrAddMessage("tool", toolText, msgId);
-                        });
+                        String status = update.status();
+                        String title = update.title();
+                        String toolText = text;
+                        if (toolText == null || toolText.isEmpty()) {
+                            if (status != null && !status.isEmpty()) {
+                                String displayTitle = (title != null) ? title : type;
+                                toolText = "Tool: " + displayTitle + " (" + status + ")";
+                            } else {
+                                toolText = extractText(update.rawOutput());
+                            }
+                        }
+                        
+                        if (toolText != null && !toolText.isEmpty()) {
+                            final String finalToolText = toolText;
+                            SwingUtilities.invokeLater(() -> {
+                                chatPanel.appendOrAddMessage("tool", finalToolText, msgId);
+                            });
+                        }
                     } else {
                         final String finalText = text;
                         final String finalRole = role;
@@ -661,6 +673,7 @@ public final class OpenCodeChatTopComponent extends TopComponent {
         };
 
         OpenCodeManager.getInstance().addSseListener(sseListener);
+        OpenCodeManager.getInstance().setPermissionHandler(this);
 
         OpenCodeManager.getInstance().addProjectChangeListener(path -> {
             if (path != null) {
@@ -1375,6 +1388,55 @@ public final class OpenCodeChatTopComponent extends TopComponent {
         });
     }
 
+    @Override
+    public void handlePermissionRequest(String sessionId, JsonNode params, java.util.concurrent.CompletableFuture<String> response) {
+        if (this.currentSessionId == null || !this.currentSessionId.equals(sessionId)) {
+            LOG.log(Level.FINE, "Received permission request for session {0}, but current is {1}",
+                    new Object[] { sessionId, this.currentSessionId });
+        }
+
+        String prompt = "Permission requested";
+        if (params.has("message")) {
+            prompt = params.get("message").asText();
+        } else if (params.has("content")) {
+            prompt = params.get("content").asText();
+        } else if (params.has("toolCall") || params.has("tool_call")) {
+            JsonNode tc = params.has("toolCall") ? params.get("toolCall") : params.get("tool_call");
+            String title = tc.has("title") ? tc.get("title").asText()
+                    : tc.has("name") ? tc.get("name").asText() : "tool";
+            prompt = "The agent wants to use the tool: '" + title + "'. Do you want to allow it?";
+        }
+
+        final String finalPrompt = prompt;
+        SwingUtilities.invokeLater(() -> {
+            chatPanel.addPermissionRequest(finalPrompt, params.get("options"), response);
+            requestActive(); // Bring attention to the chat
+        });
+    }
+
+    private String extractText(JsonNode node) {
+        if (node == null || node.isNull()) {
+            return "";
+        }
+        if (node.isTextual()) {
+            return node.asText();
+        }
+        if (node.has("text") && node.get("text").isTextual()) {
+            return node.get("text").asText();
+        }
+        if (node.has("content")) {
+            return extractText(node.get("content"));
+        }
+        if (node.isArray()) {
+            StringBuilder sb = new StringBuilder();
+            for (JsonNode child : node) {
+                sb.append(extractText(child));
+            }
+            return sb.toString();
+        }
+        return "";
+    }
+
     private static class SessionItem {
         private final Session session;
 
@@ -1411,6 +1473,57 @@ public final class OpenCodeChatTopComponent extends TopComponent {
         public int hashCode() {
             return session.id().hashCode();
         }
+    }
+
+    public void setInputText(String text) {
+        SwingUtilities.invokeLater(() -> {
+            inputArea.setText(text);
+            inputArea.requestFocusInWindow();
+        });
+    }
+
+    private void exportConversation() {
+        String markdown = chatPanel.getConversationAsMarkdown();
+        if (markdown == null || markdown.trim().isEmpty()) {
+            return;
+        }
+
+        SwingUtilities.invokeLater(() -> {
+            JFileChooser fileChooser = new JFileChooser();
+            fileChooser.setDialogTitle("Export Conversation as Markdown");
+            fileChooser.setFileFilter(new FileNameExtensionFilter("Markdown File (*.md)", "md"));
+
+            // Suggest a filename
+            String baseName = "conversation";
+            if (currentSessionId != null) {
+                baseName = "chat-" + currentSessionId.substring(0, Math.min(8, currentSessionId.length()));
+            }
+            fileChooser.setSelectedFile(new File(baseName + ".md"));
+
+            int userSelection = fileChooser.showSaveDialog(this);
+            if (userSelection == JFileChooser.APPROVE_OPTION) {
+                File fileToSave = fileChooser.getSelectedFile();
+                if (!fileToSave.getName().toLowerCase().endsWith(".md")) {
+                    fileToSave = new File(fileToSave.getAbsolutePath() + ".md");
+                }
+
+                try (FileWriter writer = new FileWriter(fileToSave)) {
+                    writer.write(markdown);
+                    statusLabel.setText("Exported to " + fileToSave.getName());
+                    LOG.log(Level.INFO, "Conversation exported to: {0}", fileToSave.getAbsolutePath());
+                    // Reset status after a few seconds
+                    Timer timer = new Timer(3000, e -> resetStatus());
+                    timer.setRepeats(false);
+                    timer.start();
+                } catch (IOException ex) {
+                    LOG.log(Level.SEVERE, "Failed to export conversation", ex);
+                    javax.swing.JOptionPane.showMessageDialog(this,
+                            "Error saving file: " + ex.getMessage(),
+                            "Export Error",
+                            javax.swing.JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        });
     }
 
     private long parseTimestamp(String ts) {
