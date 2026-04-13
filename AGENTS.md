@@ -5,7 +5,7 @@
 - **Project type**: NetBeans IDE plugin (NBM packaging)
 - **Language**: Java 17
 - **Build tool**: Maven
-- **Current Version**: 1.2.3
+- **Current Version**: 1.2.9
 
 ## Build Commands
 - Build: `mvn package`
