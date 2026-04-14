@@ -18,23 +18,31 @@ public class ThemeManager {
         int size = (editorFont != null) ? editorFont.getSize() : 13;
         return (editorFont != null)
             ? new Font(editorFont.getName(), editorFont.getStyle(), size)
-            : new Font("Monospaced", Font.PLAIN, size);
+            : new Font(Font.MONOSPACED, Font.PLAIN, size);
     }
 
     public static Font getCodeBlockTitleFont() {
         Font editorFont = UIManager.getFont("EditorPane.font");
         int size = (editorFont != null) ? editorFont.getSize() : 13;
 
+        String[] availableFontNames = java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames();
+        java.util.List<String> available = java.util.Arrays.asList(availableFontNames);
+
         String[] emojiFonts = {"Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", "Segoe UI Symbol", "EmojiOne Color", "Noto Emoji"};
         for (String name : emojiFonts) {
-            Font testFont = new Font(name, Font.BOLD, size);
-            if (testFont != null && testFont.getFamily().equals(name)) {
-                return testFont;
+            if (available.contains(name)) {
+                return new Font(name, Font.BOLD, size);
             }
         }
 
-        Font font = new Font("MesloLGS NF", Font.BOLD, size);
-        return font != null ? font : editorFont;
+        String[] fallbackFonts = {"MesloLGM", "MesloLGS NF", "SF Pro", "Ubuntu"};
+        for (String name : fallbackFonts) {
+            if (available.contains(name)) {
+                return new Font(name, Font.BOLD, size);
+            }
+        }
+
+        return new Font(Font.SANS_SERIF, Font.BOLD, size);
     }
 
     public static class Theme {
@@ -58,13 +66,15 @@ public class ThemeManager {
             String bg = bubbleBg != null ? toHtmlHex(bubbleBg) : "transparent";
             String linkColor = isDark ? "#589DF6" : "#268BD2";
             String codeBg = isDark ? "rgba(255, 255, 255, 0.1)" : "rgba(7, 54, 66, 0.1)";
+            String preBg = isDark ? "#002B36" : "#EEE8D5";
+            String preFg = isDark ? "#839496" : "#57685E";
 
             String fontStack = "Dialog, 'Noto Sans', 'Segoe UI', 'Ubuntu', 'Helvetica Neue', 'Arial', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', sans-serif";
             String monoStack = "'JetBrains Mono', 'Monaco', 'Fira Code', 'Monospace', Monospaced, monospace";
 
             return "body { font-family: " + fontStack + "; font-size: 13px; color: " + fg + "; background-color: " + bg + "; margin: 0 0 8px 0; line-height: 1.4; }" +
                    "code { background-color: " + codeBg + "; padding: 2px 4px; border-radius: 3px; font-family: " + monoStack + "; font-size: 12px; }" +
-                   "pre { background-color: #002B36; color: #839496; padding: 10px; border-radius: 4px; font-family: " + monoStack + "; font-size: 13px; overflow-x: auto; margin: 10px 0; }" +
+                   "pre { background-color: " + preBg + "; color: " + preFg + "; padding: 10px; border-radius: 4px; font-family: " + monoStack + "; font-size: 13px; overflow-x: auto; margin: 10px 0; }" +
                     "p { margin: 8px 0; }" +
                     "ul, ol { padding-left: 20px; margin: 8px 0; }" +
                     "li { margin: 4px 0; }" +

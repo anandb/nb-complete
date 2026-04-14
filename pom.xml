@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>github.anandb</groupId>
     <artifactId>acp-netbeans-plugin</artifactId>
-    <version>1.2.49</version>
+    <version>1.2.56</version>
     <packaging>nbm</packaging>
 
     <name>ACP NetBeans Plugin</name>
