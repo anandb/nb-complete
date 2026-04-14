@@ -59,7 +59,7 @@ public class CollapsibleCodePane extends JPanel {
         toggleIcon.setFont(ThemeManager.getMonospaceFont().deriveFont(Font.BOLD));
         toggleIcon.setForeground(Color.GRAY);
         header.add(toggleIcon, BorderLayout.WEST);
-        headerLabel.setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 0));
+        headerLabel.setBorder(BorderFactory.createEmptyBorder(6, 8, 0, 0));
 
         // Content
         contentPanel = new JPanel(new BorderLayout());
@@ -185,7 +185,7 @@ public class CollapsibleCodePane extends JPanel {
 
     private String getLabelText() {
         int lineCount = code.split("\n", -1).length;
-        return "∨ CODE BLOCK (" + language.toUpperCase() + ", " + lineCount + " lines)";
+        return "📄 CODE " + language.toUpperCase() + " (" + lineCount + " lines)";
     }
 
     private void applySyntaxStyle() {

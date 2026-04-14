@@ -60,12 +60,8 @@ public class MessageBubble extends JPanel {
             if (w <= 20) {
                 w = 400;
             }
-            
+
             try {
-                // Set sizes to force layout calculation
-                setSize(w, 10000); 
-                validate();
-                
                 View root = getUI().getRootView(this);
                 if (root != null) {
                     root.setSize(w, Short.MAX_VALUE);
@@ -78,7 +74,7 @@ public class MessageBubble extends JPanel {
                 }
             } catch (Exception ignored) {
             }
-            
+
             if (lastComputedHeight > 0) {
                 return new Dimension(w, Math.max(30, lastComputedHeight + 6));
             }
@@ -210,7 +206,7 @@ public class MessageBubble extends JPanel {
         }
         // Preserve all content exactly as it comes from the stream
         this.text.append(newText);
-        
+
         // Use a more robust check for first content to reveal
         if (!hasSeenFirstNewline) {
             if (newText.contains("\n") || text.indexOf("\n") != -1) {
@@ -220,7 +216,7 @@ public class MessageBubble extends JPanel {
                 hasSeenFirstNewline = true;
             }
         }
-        
+
         hasPendingTextUpdate = true;
     }
 
@@ -235,7 +231,7 @@ public class MessageBubble extends JPanel {
             if (!force && !hasSeenFirstNewline && "assistant".equals(type)) {
                 return false;
             }
-            
+
             hasPendingTextUpdate = false;
             updateContent(ThemeManager.getCurrentTheme(), true);
             return true;

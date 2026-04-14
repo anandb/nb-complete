@@ -16,7 +16,7 @@ public class ThemeManager {
     public static Font getMonospaceFont() {
         Font editorFont = UIManager.getFont("EditorPane.font");
         int size = (editorFont != null) ? editorFont.getSize() : 13;
-        return (editorFont != null) 
+        return (editorFont != null)
             ? new Font(editorFont.getName(), editorFont.getStyle(), size)
             : new Font("Monospaced", Font.PLAIN, size);
     }
@@ -24,6 +24,14 @@ public class ThemeManager {
     public static Font getCodeBlockTitleFont() {
         Font editorFont = UIManager.getFont("EditorPane.font");
         int size = (editorFont != null) ? editorFont.getSize() : 13;
+
+        String[] emojiFonts = {"Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", "Segoe UI Symbol", "EmojiOne Color", "Noto Emoji"};
+        for (String name : emojiFonts) {
+            Font testFont = new Font(name, Font.BOLD, size);
+            if (testFont != null && testFont.getFamily().equals(name)) {
+                return testFont;
+            }
+        }
 
         Font font = new Font("MesloLGS NF", Font.BOLD, size);
         return font != null ? font : editorFont;
@@ -46,28 +54,23 @@ public class ThemeManager {
         private Color ghostBackground;
 
         public String toCss(Color bubbleBg, boolean isAssistant) {
-             String fg = toHtmlHex(isAssistant ? getAssistantForeground() : getForeground());
-        String bg = bubbleBg != null ? toHtmlHex(bubbleBg) : "transparent";
-        String linkColor = isDark ? "#589DF6" : "#268BD2";
-        String codeBg = isDark ? "rgba(255, 255, 255, 0.1)" : "rgba(7, 54, 66, 0.1)";
+            String fg = toHtmlHex(isAssistant ? getAssistantForeground() : getForeground());
+            String bg = bubbleBg != null ? toHtmlHex(bubbleBg) : "transparent";
+            String linkColor = isDark ? "#589DF6" : "#268BD2";
+            String codeBg = isDark ? "rgba(255, 255, 255, 0.1)" : "rgba(7, 54, 66, 0.1)";
 
-        Font ideFont = getFont();
-        String fontName = ideFont.getFamily();
-        int baseSize = getFont().getSize();
-        int pxSize = (int) Math.round(baseSize * 2.0); // Massive scaling
-        if (pxSize < 22) pxSize = 22;
+            String fontStack = "Dialog, 'Noto Sans', 'Segoe UI', 'Ubuntu', 'Helvetica Neue', 'Arial', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', sans-serif";
+            String monoStack = "'JetBrains Mono', 'Monaco', 'Fira Code', 'Monospace', Monospaced, monospace";
 
-        return "* { font-family: '" + fontName + "', SansSerif, sans-serif !important; font-size: " + pxSize + "px !important; }" +
-               "body { color: " + fg + "; background-color: " + bg + "; margin: 0; white-space: pre-wrap !important; line-height: 1.2; }" +
-               "body { margin-bottom: 2px; }" +
-               "code { background-color: " + codeBg + "; padding: 3px 6px; border-radius: 4px; font-family: Monospaced, monospace !important; font-size: " + (pxSize - 4) + "px !important; }" +
-               "pre { background-color: #002B36; color: #839496; padding: 12px; border-radius: 4px; font-family: Monospaced, monospace !important; font-size: " + (pxSize - 2) + "px !important; overflow-x: auto; margin: 10px 0; }" +
-               "p { margin: 2px 0 4px 0; }" +
-               "ul, ol { padding-left: 20px; margin: 4px 0; }" +
-               "li { margin: 2px 0; }" +
-               "a { color: " + linkColor + "; text-decoration: none; font-weight: 500; }" +
-               "a:hover { text-decoration: underline; }";
-    }
+            return "body { font-family: " + fontStack + "; font-size: 13px; color: " + fg + "; background-color: " + bg + "; margin: 0 0 8px 0; line-height: 1.4; }" +
+                   "code { background-color: " + codeBg + "; padding: 2px 4px; border-radius: 3px; font-family: " + monoStack + "; font-size: 12px; }" +
+                   "pre { background-color: #002B36; color: #839496; padding: 10px; border-radius: 4px; font-family: " + monoStack + "; font-size: 13px; overflow-x: auto; margin: 10px 0; }" +
+                    "p { margin: 8px 0; }" +
+                    "ul, ol { padding-left: 20px; margin: 8px 0; }" +
+                    "li { margin: 4px 0; }" +
+                    "a { color: " + linkColor + "; text-decoration: none; font-weight: 500; }" +
+                    "a:hover { text-decoration: underline; }";
+        }
 
         private String toHtmlHex(Color color) {
             return String.format("#%02x%02x%02x", color.getRed(), color.getGreen(), color.getBlue());

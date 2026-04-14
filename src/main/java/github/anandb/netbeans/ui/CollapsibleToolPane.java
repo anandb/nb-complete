@@ -53,7 +53,7 @@ public class CollapsibleToolPane extends JPanel {
         headerLabel = new JLabel(displayTitle);
         headerLabel.setFont(ThemeManager.getCodeBlockTitleFont());
         headerLabel.setForeground(theme.getBase1());
-        headerLabel.setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 0));
+        headerLabel.setBorder(BorderFactory.createEmptyBorder(6, 8, 0, 0));
 
         // Letter spacing simulation (Swing doesn't support it directly easily, but we can try uppercase)
         if (displayTitle.equals("THINKING PROCESS")) {
