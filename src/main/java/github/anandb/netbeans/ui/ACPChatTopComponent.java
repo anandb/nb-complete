@@ -161,7 +161,7 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
         chatPanel = new ChatThreadPanel();
 
         cwdLabel = new JLabel("");
-        cwdLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        cwdLabel.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
         cwdLabel.setForeground(theme.getForeground());
         cwdLabel.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(theme.getBubbleBorder(), 1),
@@ -174,7 +174,7 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
         newSessionBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
         newSessionBtn.setBackground(theme.getSelection());
         newSessionBtn.setForeground(Color.WHITE);
-        newSessionBtn.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        newSessionBtn.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
         newSessionBtn.addActionListener(e -> createNewSession());
 
         sessionDropdown = new JComboBox<>();
@@ -205,7 +205,7 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
         renameSessionBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
         renameSessionBtn.setBackground(theme.getBase2());
         renameSessionBtn.setForeground(theme.getForeground());
-        renameSessionBtn.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        renameSessionBtn.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN));
         renameSessionBtn.addActionListener(e -> renameCurrentSession());
 
         JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
@@ -233,7 +233,7 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
         expandAllBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
         expandAllBtn.setBackground(theme.getSelection());
         expandAllBtn.setForeground(Color.WHITE);
-        expandAllBtn.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        expandAllBtn.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
         expandAllBtn.addActionListener(e -> chatPanel.toggleAllBlocks(true));
         
         JButton collapseAllBtn = new JButton("Collapse All");
@@ -241,7 +241,7 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
         collapseAllBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
         collapseAllBtn.setBackground(theme.getSelection());
         collapseAllBtn.setForeground(Color.WHITE);
-        collapseAllBtn.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        collapseAllBtn.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
         collapseAllBtn.addActionListener(e -> chatPanel.toggleAllBlocks(false));
         
         JButton exportBtn = new JButton("Export Markdown");
@@ -249,7 +249,7 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
         exportBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
         exportBtn.setBackground(theme.getSelection());
         exportBtn.setForeground(Color.WHITE);
-        exportBtn.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        exportBtn.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
         exportBtn.addActionListener(e -> exportConversation());
         
         JButton themeToggleBtn = new JButton(theme.isDark() ? "☀️ Light" : "🌙 Dark");
@@ -257,7 +257,7 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
         themeToggleBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
         themeToggleBtn.setBackground(theme.getSelection());
         themeToggleBtn.setForeground(Color.WHITE);
-        themeToggleBtn.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        themeToggleBtn.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
         themeToggleBtn.addActionListener(e -> toggleDarkMode());
 
         JPanel blockControlsRight = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
@@ -298,7 +298,7 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
         inputArea = new JTextArea(3, 20);
         inputArea.setLineWrap(true);
         inputArea.setWrapStyleWord(true);
-        inputArea.setFont(new Font("Segoe UI", Font.PLAIN, 15));
+        inputArea.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN));
         inputArea.setBackground(Color.WHITE);
         inputArea.setForeground(Color.decode("#073642")); // Solarized Base02 (Darker than current foreground)
         inputArea.setMargin(new Insets(8, 8, 8, 8));
@@ -457,7 +457,7 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
         sendBtn.setFocusPainted(false);
         sendBtn.setBackground(theme.getSelection());
         sendBtn.setForeground(Color.WHITE);
-        sendBtn.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        sendBtn.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
         sendBtn.setPreferredSize(new Dimension(80, 0));
         sendBtn.addActionListener(e -> sendMessage());
 
@@ -465,7 +465,7 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
         stopBtn.setFocusPainted(false);
         stopBtn.setBackground(Color.decode("#DC322F")); // Solarized Red for stop
         stopBtn.setForeground(Color.WHITE);
-        stopBtn.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        stopBtn.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
         stopBtn.setPreferredSize(new Dimension(80, 0));
         stopBtn.addActionListener(e -> stopMessage());
 
@@ -488,7 +488,7 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
         toggleOptionsBtn.setBorderPainted(false);
         toggleOptionsBtn.setContentAreaFilled(false);
         toggleOptionsBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        toggleOptionsBtn.setFont(new Font("SansSerif", Font.BOLD, 13));
+        toggleOptionsBtn.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
         toggleOptionsBtn.setHorizontalAlignment(SwingConstants.LEFT);
         toggleOptionsBtn.setForeground(Color.GRAY);
         toggleOptionsBtn.addActionListener(e -> {
@@ -524,7 +524,7 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
         configPanel.add(thinkingCombo);
 
         statusLabel = new JLabel("Ready");
-        statusLabel.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        statusLabel.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN));
         statusLabel.setForeground(Color.GRAY);
         inputContainer.add(statusLabel, BorderLayout.SOUTH);
 

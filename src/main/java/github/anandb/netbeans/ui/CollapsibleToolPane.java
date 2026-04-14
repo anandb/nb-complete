@@ -50,7 +50,7 @@ public class CollapsibleToolPane extends JPanel {
         }
 
         headerLabel = new JLabel(displayTitle);
-        headerLabel.setFont(new Font("JetBrains Mono", Font.BOLD, 12));
+        headerLabel.setFont(ThemeManager.getMonospaceFont().deriveFont(Font.BOLD));
         headerLabel.setForeground(theme.getBase1());
         headerLabel.setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 0));
 
@@ -60,7 +60,7 @@ public class CollapsibleToolPane extends JPanel {
         }
 
         toggleIcon = new JLabel(expanded ? "▼" : "▶");
-        toggleIcon.setFont(new Font("Monospaced", Font.BOLD, 12));
+        toggleIcon.setFont(ThemeManager.getMonospaceFont().deriveFont(Font.BOLD));
         toggleIcon.setForeground(theme.getBase1());
 
         header.add(toggleIcon, BorderLayout.WEST);
@@ -75,7 +75,7 @@ public class CollapsibleToolPane extends JPanel {
         textArea = new JTextArea(content);
         textArea.setEditable(false);
         textArea.setOpaque(false);
-        textArea.setFont(new Font("JetBrains Mono", Font.PLAIN, 13));
+        textArea.setFont(ThemeManager.getMonospaceFont().deriveFont(Font.PLAIN));
         textArea.setForeground(theme.getForeground());
         textArea.setBorder(BorderFactory.createEmptyBorder(4, 25, 8, 10));
         textArea.setLineWrap(true);

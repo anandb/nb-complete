@@ -1,8 +1,25 @@
 package github.anandb.netbeans.ui;
 
 import java.awt.Color;
+import java.awt.Font;
+import java.util.logging.Logger;
+
+import javax.swing.UIManager;
 
 public class ThemeManager {
+    private static final Logger LOG = Logger.getLogger(ThemeManager.class.getName());
+
+    public static Font getFont() {
+        Font controlFont = UIManager.getFont("controlFont");
+        int size = (controlFont != null) ? controlFont.getSize() : 12;
+        return new Font("Dialog", Font.PLAIN, size);
+    }
+
+    public static Font getMonospaceFont() {
+        Font editorFont = UIManager.getFont("EditorPane.font");
+        int size = (editorFont != null) ? editorFont.getSize() : 13;
+        return new Font("Monospaced", Font.PLAIN, size);
+    }
 
     public static class Theme {
         private boolean isDark;
@@ -25,10 +42,13 @@ public class ThemeManager {
             String bg = bubbleBg != null ? toHtmlHex(bubbleBg) : "transparent";
             String linkColor = isDark ? "#589DF6" : "#268BD2";
             String codeBg = isDark ? "rgba(255, 255, 255, 0.1)" : "rgba(7, 54, 66, 0.1)";
-
-            return "body { font-family: 'Segoe UI', 'Ubuntu', sans-serif; font-size: 13px; color: " + fg + "; background-color: " + bg + "; margin: 0 0 8px 0; line-height: 1.4; }" +
-                   "code { background-color: " + codeBg + "; padding: 2px 4px; border-radius: 3px; font-family: 'JetBrains Mono', 'Input Mono', monospace; font-size: 12px; }" +
-                   "pre { background-color: #002B36; color: #839496; padding: 10px; border-radius: 4px; font-family: 'JetBrains Mono', 'Input Mono', monospace; font-size: 12px; overflow-x: auto; margin: 10px 0; }" +
+            
+            String fontStack = "Dialog, 'Noto Sans', 'Segoe UI', 'Ubuntu', 'Helvetica Neue', 'Arial', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', sans-serif";
+            String monoStack = "'JetBrains Mono', 'Monaco', 'Fira Code', 'Monospace', Monospaced, monospace";
+            
+            return "body { font-family: " + fontStack + "; font-size: 13px; color: " + fg + "; background-color: " + bg + "; margin: 0 0 8px 0; line-height: 1.4; }" +
+                   "code { background-color: " + codeBg + "; padding: 2px 4px; border-radius: 3px; font-family: " + monoStack + "; font-size: 12px; }" +
+                   "pre { background-color: #002B36; color: #839496; padding: 10px; border-radius: 4px; font-family: " + monoStack + "; font-size: 13px; overflow-x: auto; margin: 10px 0; }" +
                    "p { margin: 8px 0; }" +
                    "ul, ol { padding-left: 20px; margin: 8px 0; }" +
                    "li { margin: 4px 0; }" +

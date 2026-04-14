@@ -264,7 +264,6 @@ public class MessageBubble extends JPanel {
                 segmentsContainer.add(toolPane);
             }
             segmentsContainer.revalidate();
-            segmentsContainer.repaint();
             return;
         }
 
@@ -319,7 +318,6 @@ public class MessageBubble extends JPanel {
         }
 
         segmentsContainer.revalidate();
-        segmentsContainer.repaint();
     }
 
     private void updateOrAddCodeSegment(String lang, String code, boolean expanded, int codeIdx, int compIdx) {
@@ -348,6 +346,7 @@ public class MessageBubble extends JPanel {
         if (compIdx < segmentsContainer.getComponentCount()) {
             Component c = segmentsContainer.getComponent(compIdx);
             if (c instanceof JEditorPane pane) {
+                // Check if content actually changed to avoid flickering
                 if (!styledHtml.equals(pane.getText())) {
                     pane.setText(styledHtml);
                 }
@@ -393,7 +392,7 @@ public class MessageBubble extends JPanel {
             customCss += " body { color: #777777; font-size: 13px; }";
         }
 
-        return "<html><head><style>" + customCss + "</style></head><body style='font-family: sans-serif; margin: 0;'>" + html + "</body></html>";
+        return "<html><head><style>" + customCss + "</style></head><body style='margin: 0;'>" + html + "</body></html>";
     }
 
     private JEditorPane createHtmlPane(String styledHtml) {
@@ -404,6 +403,7 @@ public class MessageBubble extends JPanel {
         pane.setDoubleBuffered(true);
         pane.setText(styledHtml);
         pane.putClientProperty(JEditorPane.HONOR_DISPLAY_PROPERTIES, Boolean.TRUE);
+        pane.setFont(ThemeManager.getFont());
         return pane;
     }
     

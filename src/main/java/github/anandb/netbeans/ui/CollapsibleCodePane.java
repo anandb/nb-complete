@@ -5,12 +5,8 @@ import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Font;
-import java.awt.GraphicsEnvironment;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
 
 import javax.swing.BorderFactory;
 import javax.swing.JLabel;
@@ -55,12 +51,12 @@ public class CollapsibleCodePane extends JPanel {
         header.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
         headerLabel = new JLabel(getLabelText());
-        headerLabel.setFont(new Font("SansSerif", Font.BOLD, 12));
+        headerLabel.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
         headerLabel.setForeground(Color.GRAY);
         header.add(headerLabel, BorderLayout.CENTER);
 
         toggleIcon = new JLabel(expanded ? "▼" : "▶");
-        toggleIcon.setFont(new Font("Monospaced", Font.BOLD, 12));
+        toggleIcon.setFont(ThemeManager.getMonospaceFont().deriveFont(Font.BOLD));
         toggleIcon.setForeground(Color.GRAY);
         header.add(toggleIcon, BorderLayout.WEST);
         headerLabel.setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 0));
@@ -88,7 +84,7 @@ public class CollapsibleCodePane extends JPanel {
         applySolarizedDarkTheme();
         
         // Ensure font is set AFTER theme application to avoid being overwritten
-        codeTextArea.setFont(new Font(getBestMonospaceFont(), Font.PLAIN, 13));
+        codeTextArea.setFont(ThemeManager.getMonospaceFont().deriveFont(Font.PLAIN));
         
         codeTextArea.setText(code);
         codeTextArea.setCaretPosition(0);
@@ -245,32 +241,5 @@ public class CollapsibleCodePane extends JPanel {
         codeTextArea.setForeground(Color.decode("#839496"));
         codeTextArea.setSelectionColor(new Color(7, 54, 66));
         codeTextArea.setCurrentLineHighlightColor(new Color(0, 43, 54));
-    }
-
-    private String getBestMonospaceFont() {
-        String[] preferredFonts = {
-            "AtkynsonMono NF Medium", 
-            "JetBrains Mono", 
-            "Fira Code", 
-            "Monaco", 
-            "Droid Sans Mono", 
-            "monospace"
-        };
-        
-        try {
-            Set<String> availableFonts = new HashSet<>(Arrays.asList(
-                GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames()
-            ));
-            
-            for (String font : preferredFonts) {
-                if (availableFonts.contains(font)) {
-                    return font;
-                }
-            }
-        } catch (Exception e) {
-            // Fallback to generic monospace if something goes wrong
-        }
-        
-        return "Monospaced";
     }
 }

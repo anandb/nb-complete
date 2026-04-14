@@ -29,6 +29,7 @@ import javax.swing.JPanel;
 import javax.swing.JScrollBar;
 import javax.swing.JScrollPane;
 import javax.swing.JSeparator;
+import javax.swing.JViewport;
 import javax.swing.ScrollPaneConstants;
 import javax.swing.Scrollable;
 import javax.swing.SwingUtilities;
@@ -45,20 +46,20 @@ public class ChatThreadPanel extends JPanel {
         setBackground(ThemeManager.getCurrentTheme().getBackground());
         setDoubleBuffered(true);
 
+        ThemeManager.Theme theme = ThemeManager.getCurrentTheme();
         messagesContainer = new ScrollablePanel();
         messagesContainer.setLayout(new BoxLayout(messagesContainer, BoxLayout.Y_AXIS));
-        messagesContainer.setOpaque(false);
-
-        ThemeManager.Theme theme = ThemeManager.getCurrentTheme();
+        messagesContainer.setOpaque(true);
+        messagesContainer.setBackground(theme.getBackground());
 
         scrollPane = new JScrollPane(messagesContainer);
         scrollPane.setBorder(null);
-        scrollPane.setBorder(BorderFactory.createEmptyBorder());
         scrollPane.setOpaque(true);
         scrollPane.setBackground(theme.getBackground());
         scrollPane.getViewport().setOpaque(true);
         scrollPane.getViewport().setBackground(theme.getBackground());
         scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        scrollPane.getViewport().setScrollMode(JViewport.SIMPLE_SCROLL_MODE);
         scrollPane.getVerticalScrollBar().setUnitIncrement(16);
         
         // Fix: Mouse wheel scrolling often breaks when mouse is over child components
@@ -237,12 +238,12 @@ public class ChatThreadPanel extends JPanel {
             ));
 
             JLabel titleLabel = new JLabel("🛡️ Permission Required");
-            titleLabel.setFont(new Font("SansSerif", Font.BOLD, 13));
+            titleLabel.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
             titleLabel.setForeground(new Color(230, 81, 0));
             content.add(titleLabel, BorderLayout.NORTH);
 
             JLabel promptLabel = new JLabel("<html>" + prompt.replace("\n", "<br>") + "</html>");
-            promptLabel.setFont(new Font("SansSerif", Font.PLAIN, 13));
+            promptLabel.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN));
             content.add(promptLabel, BorderLayout.CENTER);
 
             int numOptions = (options != null && options.isArray() && options.size() > 0) ? options.size() : 2;
@@ -327,7 +328,7 @@ public class ChatThreadPanel extends JPanel {
             ));
             
             JLabel lbl = new JLabel(status);
-            lbl.setFont(new Font("SansSerif", Font.BOLD, 12));
+            lbl.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
             lbl.setForeground(fg);
             content.add(lbl, BorderLayout.CENTER);
             
@@ -357,6 +358,7 @@ public class ChatThreadPanel extends JPanel {
             // Re-apply after a short delay to account for dynamic component resizing
             javax.swing.Timer timer = new javax.swing.Timer(50, e -> {
                 vertical.setValue(vertical.getMaximum());
+                scrollPane.repaint();
             });
             timer.setRepeats(false);
             timer.start();
@@ -449,14 +451,14 @@ public class ChatThreadPanel extends JPanel {
                 clearMessages();
 
                 JLabel titleLabel = new JLabel(sessions.isEmpty() ? "Welcome to ACP" : "Welcome back!");
-                titleLabel.setFont(new Font("SansSerif", Font.BOLD, 18));
+                titleLabel.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
                 titleLabel.setBorder(BorderFactory.createEmptyBorder(20, 12, 10, 12));
                 messagesContainer.add(titleLabel);
 
                 JLabel subtitle = new JLabel(sessions.isEmpty() ?
                     "Ask questions, generate code, or have me explain anything." :
                     "Continue a recent chat or start a new one.");
-                subtitle.setFont(new Font("SansSerif", Font.PLAIN, 13));
+                subtitle.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN));
                 subtitle.setForeground(Color.GRAY);
                 subtitle.setBorder(BorderFactory.createEmptyBorder(0, 12, 20, 12));
                 messagesContainer.add(subtitle);
@@ -512,13 +514,13 @@ public class ChatThreadPanel extends JPanel {
         textPanel.setOpaque(false);
 
         JLabel mainLabel = new JLabel(text);
-        mainLabel.setFont(new Font("SansSerif", Font.BOLD, 13));
+        mainLabel.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
         textPanel.add(mainLabel);
 
         if (subtext != null) {
             String folder = new File(subtext).getName();
             JLabel subLabel = new JLabel("in " + folder);
-            subLabel.setFont(new Font("SansSerif", Font.PLAIN, 11));
+            subLabel.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN));
             subLabel.setForeground(Color.GRAY);
             textPanel.add(subLabel);
         }
