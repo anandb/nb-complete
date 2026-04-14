@@ -50,8 +50,16 @@ public class ACPManager {
         void handlePermissionRequest(String sessionId, JsonNode params, CompletableFuture<String> response);
     }
 
+    private volatile boolean serverStarted = false;
+
     private ACPManager() {
-        startServer();
+    }
+
+    public synchronized void ensureStarted() {
+        if (!serverStarted) {
+            serverStarted = true;
+            startServer();
+        }
     }
 
     public static synchronized ACPManager getInstance() {
@@ -77,16 +85,16 @@ public class ACPManager {
 
             ProcessBuilder pb = new ProcessBuilder(binaryPath, "acp");
             pb.redirectError(ProcessBuilder.Redirect.INHERIT);
-            
+
             Map<String, String> env = pb.environment();
             env.putAll(System.getenv()); // Ensure all system environment variables are propagated
-            
+
             String defaultModel = NbPreferences.forModule(github.anandb.netbeans.ui.ACPOptionsPanel.class)
                     .get("defaultModel", "acp/big-pickle");
             if (!defaultModel.isEmpty()) {
                 env.put("OPENCODE_DEFAULT_MODEL", defaultModel);
             }
-            
+
             this.serverProcess = pb.start();
 
             this.rpcClient = new JsonRpcClient(serverProcess);
@@ -128,7 +136,7 @@ public class ACPManager {
             // Initialize ACP
             initializeProtocol();
 
-            Runtime.getRuntime().addShutdownHook(new Thread(this::stopServer));
+            Runtime.getRuntime().addShutdownHook(new Thread(this::shutdown));
 
             LOG.log(Level.INFO, "ACP server process started successfully");
         } catch (Exception e) {
@@ -145,7 +153,7 @@ public class ACPManager {
             )
         );
         rpcClient.sendRequest("initialize", params)
-                .orTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+                .orTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
                 .thenAccept(res -> {
                     this.initialized = true;
                     readyFuture.complete(null);
@@ -154,9 +162,24 @@ public class ACPManager {
                 .exceptionally(ex -> {
                     LOG.log(Level.SEVERE, "Failed to initialize ACP", ex);
                     readyFuture.completeExceptionally(ex);
+                    serverStarted = false;
                     stopServer();
                     return null;
                 });
+    }
+
+    public void shutdown() {
+        isClosing = true;
+        if (rpcClient != null) {
+            rpcClient.close();
+            rpcClient = null;
+        }
+        if (serverProcess != null) {
+            serverProcess.toHandle().descendants().forEach(ProcessHandle::destroyForcibly);
+            serverProcess.destroyForcibly();
+            LOG.log(Level.INFO, "ACP server and all child processes stopped");
+            serverProcess = null;
+        }
     }
 
     private void stopServer() {
@@ -298,22 +321,22 @@ public class ACPManager {
         }
 
         List<Map<String, Object>> promptBlocks = new ArrayList<>();
-        
+
         String displayText = text;
-        
+
         if (context != null) {
             String filePath = (String) context.get("filePath");
             String selectionContent = (String) context.get("selectionContent");
             if (filePath != null) {
                 java.io.File file = new java.io.File(filePath);
                 String lang = getLanguageFromPath(filePath);
-                
+
                 String fileName = file.getName();
                 Object cursorObj = context.get("cursor");
                 String cursorPos = cursorObj != null ? objectMapper.valueToTree(cursorObj).toString() : null;
                 Object selObj = context.get("selection");
                 String selection = selObj != null ? objectMapper.valueToTree(selObj).toString() : null;
-                
+
                 StringBuilder metadata = new StringBuilder();
                 metadata.append("<!-- ");
                 metadata.append("{");
@@ -327,7 +350,7 @@ public class ACPManager {
                     metadata.append(",\"selection\":\"").append(selection.replace("\"", "\\\"").replace("\n", "\\n")).append("\"");
                 }
                 metadata.append("} -->");
-                
+
                 if (selectionContent != null && !selectionContent.isEmpty()) {
                     displayText = metadata.toString() + "\n\nSelection from `" + fileName + "`:\n```" + lang + "\n" + selectionContent + "\n```\n" + text;
                 } else {
@@ -335,14 +358,14 @@ public class ACPManager {
                 }
             }
         }
-        
+
         promptBlocks.add(Map.of("type", "text", "text", displayText));
 
         Map<String, Object> params = new java.util.HashMap<>();
         params.put("sessionId", sessionId);
         params.put("prompt", promptBlocks);
         params.put("mcpServers", List.of());
-        
+
         return rpcClient.sendRequest("session/prompt", params)
                 .thenApply(v -> null);
     }
@@ -358,13 +381,13 @@ public class ACPManager {
     public CompletableFuture<JsonNode> renameSession(String sessionId, String newTitle) {
         ObjectNode params = objectMapper.createObjectNode();
         params.put("sessionId", sessionId);
-        
+
         ObjectNode update = objectMapper.createObjectNode();
         update.put("sessionUpdate", "session_info_update");
         update.put("title", newTitle);
-        
+
         params.set("update", update);
-        
+
         return rpcClient.sendRequest("session/update", params);
     }
 
@@ -467,13 +490,13 @@ public class ACPManager {
             restartCount++;
             lastRestartTime = now;
             long delay = restartCount * 2000L; // Exponential backoff: 2s, 4s, 6s...
-            LOG.log(Level.INFO, "Respawning ACP server in {0}ms (attempt {1}/{2})...", 
+            LOG.log(Level.INFO, "Respawning ACP server in {0}ms (attempt {1}/{2})...",
                     new Object[]{delay, restartCount, MAX_RESTARTS});
-            
+
             java.util.concurrent.Executors.newSingleThreadScheduledExecutor()
                     .schedule(this::startServer, delay, java.util.concurrent.TimeUnit.MILLISECONDS);
         } else {
-            LOG.log(Level.SEVERE, "ACP server crashed {0} times within {1}ms. Giving up.", 
+            LOG.log(Level.SEVERE, "ACP server crashed {0} times within {1}ms. Giving up.",
                     new Object[]{MAX_RESTARTS, RESTART_RESET_INTERVAL});
         }
     }
@@ -484,7 +507,7 @@ public class ACPManager {
 
     private CompletableFuture<JsonNode> handleRequestPermission(JsonNode params) {
         String sessionId = params.has("sessionId") ? params.get("sessionId").asText() : null;
-        
+
         // Find toolCallId in multiple possible places common in ACP/LCP implementations
         String extractedId = null;
         if (params.has("toolCallId")) {
@@ -499,10 +522,10 @@ public class ACPManager {
             JsonNode tc = params.get("tool_call");
             if (tc.has("id")) extractedId = tc.get("id").asText();
         }
-        
+
         final String toolCallId = extractedId;
         CompletableFuture<String> response = new CompletableFuture<>();
-        
+
         if (permissionHandler != null) {
             javax.swing.SwingUtilities.invokeLater(() -> {
                 permissionHandler.handlePermissionRequest(sessionId, params, response);
@@ -513,7 +536,7 @@ public class ACPManager {
 
         return response.thenApply(optionId -> {
             ObjectNode res = objectMapper.createObjectNode();
-            
+
             // Map common internal IDs to standard ACP ones if needed
             String mappedId = optionId;
             if ("allow".equals(optionId) || "true".equals(optionId)) {
@@ -538,14 +561,14 @@ public class ACPManager {
                 res.put("toolCallId", toolCallId);
                 res.put("tool_call_id", toolCallId);
             }
-            
+
             // Compatibility fields
             if ("reject".equals(optionId)) {
                 res.put("allow", false);
             } else {
                 res.put("allow", true);
             }
-            
+
             return res;
         });
     }
@@ -555,14 +578,14 @@ public class ACPManager {
             try {
                 String filePath = params.has("path") ? params.get("path").asText()
                         : params.has("filePath") ? params.get("filePath").asText() : null;
-                
+
                 if (filePath == null) {
                     throw new RuntimeException("Missing path parameter");
                 }
 
                 String content = params.has("content") ? params.get("content").asText() : "";
                 java.io.File file = new java.io.File(filePath);
-                
+
                 // Ensure parent directories exist
                 java.io.File parent = file.getParentFile();
                 if (parent != null && !parent.exists()) {
@@ -570,13 +593,13 @@ public class ACPManager {
                 }
 
                 java.nio.file.Files.writeString(file.toPath(), content, java.nio.charset.StandardCharsets.UTF_8);
-                
+
                 // Refresh NetBeans filesystem to see the change
                 FileObject fo = FileUtil.toFileObject(file);
                 if (fo != null) {
                     fo.refresh();
                 }
-                
+
                 return objectMapper.createObjectNode().put("success", true);
             } catch (Exception e) {
                 LOG.log(Level.SEVERE, "fs/writeTextFile failed", e);

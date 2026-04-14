@@ -143,15 +143,20 @@ public class JsonRpcClient {
         try {
             String line;
             while (running && (line = reader.readLine()) != null) {
-                if (line.trim().isEmpty()) {
+                String trimmed = line.trim();
+                if (trimmed.isEmpty()) {
                     continue;
                 }
-                LOG.log(Level.INFO, "Received line: {0}", line);
+                if (!trimmed.startsWith("{")) {
+                    LOG.log(Level.FINE, "Ignoring non-JSON process output: {0}", line);
+                    continue;
+                }
+                LOG.log(Level.FINE, "Received JSON-RPC line: {0}", line);
                 try {
                     JsonNode node = mapper.readTree(line);
                     handleMessage(node);
                 } catch (Exception e) {
-                    LOG.log(Level.SEVERE, "Error parsing JSON-RPC line: {0}", new Object[]{line});
+                    LOG.log(Level.WARNING, "Error parsing JSON-RPC line: {0}", new Object[]{line});
                     LOG.log(Level.FINE, "Parse exception", e);
                 }
             }

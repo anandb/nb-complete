@@ -39,6 +39,8 @@ public class ChatThreadPanel extends JPanel {
     private final JPanel messagesContainer;
     private final JScrollPane scrollPane;
     private final List<Message> messageList = new ArrayList<>();
+    private MessageBubble activeStreamBubble = null;
+    private javax.swing.Timer streamFlushTimer;
 
     public ChatThreadPanel() {
         setLayout(new BorderLayout());
@@ -61,13 +63,13 @@ public class ChatThreadPanel extends JPanel {
         scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         scrollPane.getViewport().setScrollMode(JViewport.SIMPLE_SCROLL_MODE);
         scrollPane.getVerticalScrollBar().setUnitIncrement(16);
-        
+
         // Fix: Mouse wheel scrolling often breaks when mouse is over child components
         // like JEditorPane. We redirect those events to the main scroll pane.
         messagesContainer.addMouseWheelListener(e -> {
             scrollPane.dispatchEvent(SwingUtilities.convertMouseEvent(messagesContainer, e, scrollPane));
         });
-        
+
         // Automatically fix mouse wheel for any added component
         messagesContainer.addContainerListener(new ContainerAdapter() {
             @Override
@@ -77,6 +79,15 @@ public class ChatThreadPanel extends JPanel {
         });
 
         add(scrollPane, BorderLayout.CENTER);
+
+        streamFlushTimer = new javax.swing.Timer(100, e -> {
+            if (activeStreamBubble != null && activeStreamBubble.flushUpdate()) {
+                messagesContainer.revalidate();
+                messagesContainer.repaint();
+                scrollToBottom();
+            }
+        });
+        streamFlushTimer.setRepeats(true);
     }
 
     private static class ScrollablePanel extends JPanel implements Scrollable {
@@ -192,9 +203,12 @@ public class ChatThreadPanel extends JPanel {
             }
 
             boolean canAppend = lastBubble != null && lastBubble.getType().equals(role);
-            
-            // If we have message IDs, they must match
-            if (canAppend && messageId != null && lastBubble.getMessageId() != null) {
+
+            // If we are currently streaming into a bubble, and types match, we MUST append to it
+            // This prevents overlapping bubbles if messageId is intermittently missing or takes time to appear
+            if (activeStreamBubble != null && activeStreamBubble == lastBubble && lastBubble.getType().equals(role)) {
+                canAppend = true;
+            } else if (canAppend && messageId != null && lastBubble.getMessageId() != null) {
                 if (!messageId.equals(lastBubble.getMessageId())) {
                     canAppend = false;
                 }
@@ -202,11 +216,34 @@ public class ChatThreadPanel extends JPanel {
 
             if (canAppend) {
                 lastBubble.appendText(text);
-                messagesContainer.revalidate();
-                messagesContainer.repaint();
-                scrollToBottom();
+                activeStreamBubble = lastBubble;
+                if (!streamFlushTimer.isRunning()) {
+                    streamFlushTimer.start();
+                }
             } else {
+                if (activeStreamBubble != null) {
+                    activeStreamBubble.flushUpdate(true);
+                    activeStreamBubble = null;
+                }
+                if (streamFlushTimer.isRunning()) {
+                    streamFlushTimer.stop();
+                }
                 addMessage(role, text, messageId);
+            }
+        });
+    }
+
+    public void stopStreaming() {
+        SwingUtilities.invokeLater(() -> {
+            if (activeStreamBubble != null) {
+                if (activeStreamBubble.flushUpdate(true)) {
+                    messagesContainer.revalidate();
+                    scrollToBottom();
+                }
+                activeStreamBubble = null;
+            }
+            if (streamFlushTimer.isRunning()) {
+                streamFlushTimer.stop();
             }
         });
     }
@@ -256,17 +293,9 @@ public class ChatThreadPanel extends JPanel {
                     String optionId = opt.has("optionId") ? opt.get("optionId").asText() : "";
                     String name = opt.has("name") ? opt.get("name").asText() : optionId;
                     String kind = opt.has("kind") ? opt.get("kind").asText() : "";
-                    
+
                     JButton btn = new JButton(name);
                     btn.setFocusPainted(false);
-                    if (kind.contains("allow")) {
-                        btn.setBackground(new Color(76, 175, 80));
-                        btn.setForeground(Color.WHITE);
-                    } else if (kind.contains("reject")) {
-                        btn.setBackground(new Color(244, 67, 54));
-                        btn.setForeground(Color.WHITE);
-                    }
-                    
                     btn.addActionListener(e -> {
                         responseFuture.complete(optionId);
                         boolean allowed = kind.contains("allow");
@@ -280,13 +309,9 @@ public class ChatThreadPanel extends JPanel {
                 }
             } else {
                 JButton allowBtn = new JButton("Allow");
-                allowBtn.setBackground(new Color(76, 175, 80));
-                allowBtn.setForeground(Color.WHITE);
                 allowBtn.setFocusPainted(false);
 
                 JButton denyBtn = new JButton("Deny");
-                denyBtn.setBackground(new Color(244, 67, 54));
-                denyBtn.setForeground(Color.WHITE);
                 denyBtn.setFocusPainted(false);
 
                 allowBtn.addActionListener(e -> {
@@ -302,10 +327,10 @@ public class ChatThreadPanel extends JPanel {
                 buttons.add(denyBtn);
                 buttons.add(allowBtn);
             }
-            
+
             content.add(buttons, BorderLayout.SOUTH);
             add(content, BorderLayout.CENTER);
-            
+
             setAlignmentX(LEFT_ALIGNMENT);
         }
 
@@ -326,12 +351,12 @@ public class ChatThreadPanel extends JPanel {
                 BorderFactory.createLineBorder(border, 1, true),
                 BorderFactory.createEmptyBorder(6, 12, 6, 12)
             ));
-            
+
             JLabel lbl = new JLabel(status);
             lbl.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
             lbl.setForeground(fg);
             content.add(lbl, BorderLayout.CENTER);
-            
+
             revalidate();
             repaint();
             // Recalculate max size to collapse vertically
@@ -354,11 +379,10 @@ public class ChatThreadPanel extends JPanel {
         SwingUtilities.invokeLater(() -> {
             JScrollBar vertical = scrollPane.getVerticalScrollBar();
             vertical.setValue(vertical.getMaximum());
-            
+
             // Re-apply after a short delay to account for dynamic component resizing
             javax.swing.Timer timer = new javax.swing.Timer(50, e -> {
                 vertical.setValue(vertical.getMaximum());
-                scrollPane.repaint();
             });
             timer.setRepeats(false);
             timer.start();
@@ -380,12 +404,12 @@ public class ChatThreadPanel extends JPanel {
     public String getConversationAsMarkdown() {
         StringBuilder sb = new StringBuilder();
         sb.append("# ACP Conversation Export\n\n");
-        
+
         for (Component c : messagesContainer.getComponents()) {
             if (c instanceof MessageBubble bubble) {
                 String role = bubble.getType();
                 String text = bubble.getRawText();
-                
+
                 if (text == null || text.trim().isEmpty()) {
                     continue;
                 }
@@ -413,7 +437,7 @@ public class ChatThreadPanel extends JPanel {
             setBackground(theme.getBackground());
             scrollPane.setBackground(theme.getBackground());
             scrollPane.getViewport().setBackground(theme.getBackground());
-            
+
             for (Component c : messagesContainer.getComponents()) {
                 if (c instanceof MessageBubble bubble) {
                     bubble.refreshTheme();

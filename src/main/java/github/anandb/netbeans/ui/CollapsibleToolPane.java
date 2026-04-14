@@ -30,8 +30,7 @@ public class CollapsibleToolPane extends JPanel {
         setBorder(BorderFactory.createEmptyBorder(2, 0, 4, 0));
 
         ThemeManager.Theme theme = ThemeManager.getCurrentTheme();
-        Color headerBg = theme.getBase2();
-        Color borderCol = Color.decode("#DCD6C1");
+        Color headerBg = theme.getBase2();        
         Color yellowAccent = theme.getYellow();
 
         // Header
@@ -40,17 +39,19 @@ public class CollapsibleToolPane extends JPanel {
         header.setBackground(headerBg);
         header.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createMatteBorder(1, 4, 1, 1, yellowAccent),
-            BorderFactory.createEmptyBorder(6, 10, 6, 10)
+            BorderFactory.createEmptyBorder(2, 10, 2, 10)
         ));
         header.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
         String displayTitle = title;
         if (title.toUpperCase().contains("THINKING")) {
-            displayTitle = "THINKING PROCESS";
+            displayTitle = expanded ? "🧠 THINKING PROCESS" : "🧠 Thinking Process...";
+        } else if (title.toUpperCase().contains("TOOL")) {
+            displayTitle = "🛠️ TOOL: " + title.replaceFirst("(?i)TOOL:?\\s*", "").trim();
         }
 
         headerLabel = new JLabel(displayTitle);
-        headerLabel.setFont(ThemeManager.getMonospaceFont().deriveFont(Font.BOLD));
+        headerLabel.setFont(ThemeManager.getCodeBlockTitleFont());
         headerLabel.setForeground(theme.getBase1());
         headerLabel.setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 0));
 
@@ -60,7 +61,7 @@ public class CollapsibleToolPane extends JPanel {
         }
 
         toggleIcon = new JLabel(expanded ? "▼" : "▶");
-        toggleIcon.setFont(ThemeManager.getMonospaceFont().deriveFont(Font.BOLD));
+        toggleIcon.setFont(ThemeManager.getCodeBlockTitleFont());
         toggleIcon.setForeground(theme.getBase1());
 
         header.add(toggleIcon, BorderLayout.WEST);
@@ -77,7 +78,7 @@ public class CollapsibleToolPane extends JPanel {
         textArea.setOpaque(false);
         textArea.setFont(ThemeManager.getMonospaceFont().deriveFont(Font.PLAIN));
         textArea.setForeground(theme.getForeground());
-        textArea.setBorder(BorderFactory.createEmptyBorder(4, 25, 8, 10));
+        textArea.setBorder(BorderFactory.createEmptyBorder(2, 25, 2, 10));
         textArea.setLineWrap(true);
         textArea.setWrapStyleWord(true);
         
@@ -117,7 +118,13 @@ public class CollapsibleToolPane extends JPanel {
     }
 
     public void setTitle(String title) {
-        headerLabel.setText(title);
+        String displayTitle = title;
+        if (title.toUpperCase().contains("THINKING")) {
+            displayTitle = expanded ? "🧠 THINKING PROCESS" : "🧠 Thinking Process...";
+        } else if (title.toUpperCase().contains("TOOL")) {
+            displayTitle = "🛠️ TOOL: " + title.replaceFirst("(?i)TOOL:?\\s*", "").trim();
+        }
+        headerLabel.setText(displayTitle);
     }
 
     public void setExpanded(boolean expanded) {
@@ -126,10 +133,10 @@ public class CollapsibleToolPane extends JPanel {
             contentPanel.setVisible(expanded);
             toggleIcon.setText(expanded ? "▼" : "▶");
             
-            // If it's a thinking process, update the title to include the emoji when collapsed
+            // If it's a thinking process, update the title to include the emoji
             if (headerLabel.getText().contains("THINKING")) {
                 if (expanded) {
-                    headerLabel.setText("THINKING PROCESS");
+                    headerLabel.setText("🧠 THINKING PROCESS");
                 } else {
                     headerLabel.setText("🧠 Thinking Process...");
                 }

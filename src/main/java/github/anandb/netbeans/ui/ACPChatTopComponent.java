@@ -25,7 +25,6 @@ import javax.swing.BorderFactory;
 import javax.swing.DefaultListCellRenderer;
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
-import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
@@ -70,9 +69,9 @@ import github.anandb.netbeans.model.SessionConfigSelectOption;
 import github.anandb.netbeans.model.SessionUpdate;
 
 @NbBundle.Messages({
-        "CTL_ACPChatAction=ACP",
-        "CTL_ACPChatTopComponent=ACP",
-        "HINT_ACPChatTopComponent=This is an ACP window"
+        "CTL_ACPChatAction=Assistant",
+        "CTL_ACPChatTopComponent=Assistant",
+        "HINT_ACPChatTopComponent=This is an Assistant window"
 })
 @ConvertAsProperties(dtd = "-//github.anandb.netbeans.ui//ACPChat//EN", autostore = false)
 @TopComponent.Description(preferredID = "ACPChatTopComponent", iconBase = "github/anandb/netbeans/ui/logo.png", persistenceType = TopComponent.PERSISTENCE_ALWAYS)
@@ -80,7 +79,7 @@ import github.anandb.netbeans.model.SessionUpdate;
 public final class ACPChatTopComponent extends TopComponent implements ACPManager.PermissionHandler {
 
     @ActionID(category = "Window", id = "github.anandb.netbeans.ui.ACPToggleAction")
-    @ActionRegistration(displayName = "#CTL_ACPChatAction")
+    @ActionRegistration(displayName = "#CTL_ACPChatAction", iconBase = "github/anandb/netbeans/ui/logo.png")
     @ActionReferences({
             @ActionReference(path = "Menu/Window"),
             @ActionReference(path = "Shortcuts", name = "C-L")
@@ -130,12 +129,9 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
     private javax.swing.Timer thinkingTimer;
     private int thinkingDots = 0;
     private final Consumer<SessionUpdate> sseListener;
-    
+
     private boolean isSessionLoading = false;
-    
-    // Test message state
-    private static boolean testMessageSent = false;
-    
+
     // Message history
     private final List<String> messageHistory = new java.util.ArrayList<>();
     private int historyIndex = -1;
@@ -172,8 +168,6 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
         JButton newSessionBtn = new JButton("+ New Chat");
         newSessionBtn.setFocusPainted(false);
         newSessionBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        newSessionBtn.setBackground(theme.getSelection());
-        newSessionBtn.setForeground(Color.WHITE);
         newSessionBtn.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
         newSessionBtn.addActionListener(e -> createNewSession());
 
@@ -203,9 +197,7 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
         JButton renameSessionBtn = new JButton("Rename");
         renameSessionBtn.setFocusPainted(false);
         renameSessionBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        renameSessionBtn.setBackground(theme.getBase2());
-        renameSessionBtn.setForeground(theme.getForeground());
-        renameSessionBtn.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN));
+        renameSessionBtn.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
         renameSessionBtn.addActionListener(e -> renameCurrentSession());
 
         JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
@@ -222,41 +214,33 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
         headerContent.setOpaque(false);
         headerContent.add(cwdLabel);
         headerContent.add(actionPanel);
-        
+
         // Block control buttons
         JPanel blockControls = new JPanel(new BorderLayout());
         blockControls.setOpaque(false);
         blockControls.setBorder(new EmptyBorder(4, 0, 0, 0));
-        
+
         JButton expandAllBtn = new JButton("Expand All");
         expandAllBtn.setFocusPainted(false);
         expandAllBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        expandAllBtn.setBackground(theme.getSelection());
-        expandAllBtn.setForeground(Color.WHITE);
         expandAllBtn.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
         expandAllBtn.addActionListener(e -> chatPanel.toggleAllBlocks(true));
-        
+
         JButton collapseAllBtn = new JButton("Collapse All");
         collapseAllBtn.setFocusPainted(false);
         collapseAllBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        collapseAllBtn.setBackground(theme.getSelection());
-        collapseAllBtn.setForeground(Color.WHITE);
         collapseAllBtn.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
         collapseAllBtn.addActionListener(e -> chatPanel.toggleAllBlocks(false));
-        
+
         JButton exportBtn = new JButton("Export Markdown");
         exportBtn.setFocusPainted(false);
         exportBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        exportBtn.setBackground(theme.getSelection());
-        exportBtn.setForeground(Color.WHITE);
         exportBtn.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
         exportBtn.addActionListener(e -> exportConversation());
-        
+
         JButton themeToggleBtn = new JButton(theme.isDark() ? "☀️ Light" : "🌙 Dark");
         themeToggleBtn.setFocusPainted(false);
         themeToggleBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        themeToggleBtn.setBackground(theme.getSelection());
-        themeToggleBtn.setForeground(Color.WHITE);
         themeToggleBtn.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
         themeToggleBtn.addActionListener(e -> toggleDarkMode());
 
@@ -455,16 +439,12 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
 
         sendBtn = new JButton("Go");
         sendBtn.setFocusPainted(false);
-        sendBtn.setBackground(theme.getSelection());
-        sendBtn.setForeground(Color.WHITE);
         sendBtn.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
         sendBtn.setPreferredSize(new Dimension(80, 0));
         sendBtn.addActionListener(e -> sendMessage());
 
         stopBtn = new JButton("Stop");
         stopBtn.setFocusPainted(false);
-        stopBtn.setBackground(Color.decode("#DC322F")); // Solarized Red for stop
-        stopBtn.setForeground(Color.WHITE);
         stopBtn.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
         stopBtn.setPreferredSize(new Dimension(80, 0));
         stopBtn.addActionListener(e -> stopMessage());
@@ -514,7 +494,8 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
         modelCombo = new JComboBox<>();
         modelCombo.setPreferredSize(new Dimension(300, 28));
         thinkingCombo = new JComboBox<>();
-        thinkingCombo.setPreferredSize(new Dimension(300, 28));        
+        thinkingCombo.setPreferredSize(new Dimension(300, 28));
+        thinkingCombo.setEnabled(false);
 
         // Options will be populated via updateConfigControls when session is
         // created/loaded
@@ -628,7 +609,7 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
                                 toolText = extractText(update.rawOutput());
                             }
                         }
-                        
+
                         if (toolText != null && !toolText.isEmpty()) {
                             final String finalToolText = toolText;
                             SwingUtilities.invokeLater(() -> {
@@ -642,7 +623,7 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
                         SwingUtilities.invokeLater(() -> {
                             // If we get real content, we are definitely Responding (not just thinking)
                             if ("assistant".equals(finalRole)) {
-                                LOG.log(Level.INFO, "Found assistant content: {0}", finalText);
+                                LOG.log(Level.INFO, "Assistant stream chunk: [{0}] (len: {1})", new Object[]{finalText, finalText.length()});
                                 statusLabel.setText("Responding...");
                                 updateButtonState(true);
                                 chatPanel.appendOrAddMessage(finalRole, finalText, msgId);
@@ -654,8 +635,8 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
                                     String outText = finalText;
                                     boolean chunkStartsWithPath = outText.startsWith("<path>");
 
-                                    // Strip the metadata comment from display
-                                    outText = outText.replaceAll("<!--\\s*\\{.*?\\}\\s*-->", "").trim();
+                                    // Strip the metadata comment from display without consuming surrounding spaces
+                                    outText = outText.replaceAll("<!--\\s*\\{.*?\\}-->", "");
 
                                     if (chunkStartsWithPath) {
                                         outText = "```\n" + outText;
@@ -676,7 +657,7 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
                                         // End of path based resource
                                     }
                                 } else {
-                                    String outText = finalText.replaceAll("<!--\\s*\\{.*?\\}\\s*-->", "").trim();
+                                    String outText = finalText.replaceAll("<!--\\s*\\{.*?\\}\\s*-->", "");
                                     if (!outText.isEmpty()) {
                                         chatPanel.addMessage(finalRole, outText, msgId);
                                     }
@@ -690,19 +671,16 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
             }
 
             // End of turn signals
-            if ("usage_update".equals(type) ||
-                    ("completion_chunk".equals(type) && update.content() == null) ||
-                    "thought_finished".equals(type) ||
-                    "responding_finished".equals(type) ||
+            if ("responding_finished".equals(type) ||
                     "end_turn".equals(type)) {
                 SwingUtilities.invokeLater(() -> {
                     resetStatus();
+                    chatPanel.stopStreaming();
                     chatPanel.collapseLastThought();
                 });
             }
         };
 
-        ACPManager.getInstance().addSseListener(sseListener);
         ACPManager.getInstance().setPermissionHandler(this);
 
         ACPManager.getInstance().addProjectChangeListener(path -> {
@@ -873,7 +851,7 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
 
         String currentTitle = selectedIdToTitle(selectedItem.getSession());
         String newTitle = javax.swing.JOptionPane.showInputDialog(this, "Enter new title for this session:", currentTitle);
-        
+
         if (newTitle != null && !newTitle.trim().isEmpty()) {
             SessionTitleManager.setTitle(currentSessionId, newTitle.trim());
             // Refresh the session list in the dropdown
@@ -940,6 +918,24 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
                         } finally {
                             isSwitchingSessionDropdown = false;
                         }
+
+                        String preamble = github.anandb.netbeans.manager.ACPSettings.getPreamble().trim();
+                        if (!preamble.isEmpty()) {
+                            final String sessionId = targetSessionId;
+                            LOG.log(Level.INFO, "Sending preamble to new session {0}", sessionId);
+                            statusLabel.setText("Sending preamble...");
+                            updateButtonState(true);
+                            ACPManager.getInstance().sendMessage(sessionId, preamble, null)
+                                    .thenAccept(v -> SwingUtilities.invokeLater(() -> {
+                                        statusLabel.setText("Ready");
+                                        updateButtonState(false);
+                                    }))
+                                    .exceptionally(ex -> {
+                                        LOG.log(Level.WARNING, "Failed to send preamble", ex);
+                                        SwingUtilities.invokeLater(() -> updateButtonState(false));
+                                        return null;
+                                    });
+                        }
                     });
                 })
                 .exceptionally(ex -> {
@@ -954,7 +950,7 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
     }
 
     private void sendMessage() {
-        String text = inputArea.getText().trim();
+        String text = inputArea.getText(); // Don't trim user input spaces
         if (text.isEmpty()) {
             return;
         }
@@ -1119,10 +1115,6 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
         });
     }
 
-    private boolean textIsEmpty() {
-        return inputArea.getText().trim().isEmpty();
-    }
-
     private void showAutocomplete() {
         List<SessionUpdate.AvailableCommand> allCommands = ACPManager.getInstance().getAvailableCommands();
         if (allCommands.isEmpty()) {
@@ -1213,20 +1205,6 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
                 setName(NbBundle.getMessage(ACPChatTopComponent.class, "CTL_ACPChatTopComponent"));
             }
         });
-    }
-
-    private JPanel createLabelledCombo(String labelText, JComboBox<ConfigItem> combo) {
-        JPanel p = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
-        p.setOpaque(false);
-        JLabel label = new JLabel(labelText);
-        Font btnFont = UIManager.getFont("Button.font");
-        if (btnFont != null) {
-            label.setFont(btnFont);
-            combo.setFont(btnFont);
-        }
-        p.add(label);
-        p.add(combo);
-        return p;
     }
 
     private void updateConfigControls(List<SessionConfigOption> options) {
@@ -1327,6 +1305,7 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
                         }
                     }
                 }
+                thinkingCombo.setEnabled(thinkingCombo.getItemCount() > 0);
             } finally {
                 isUpdatingConfigControls = false;
             }
@@ -1381,45 +1360,19 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
 
     @Override
     public void componentOpened() {
+        ACPManager.getInstance().ensureStarted();
+        if (sseListener != null) {
+            ACPManager.getInstance().removeSseListener(sseListener);
+            ACPManager.getInstance().addSseListener(sseListener);
+        }
         SwingUtilities.invokeLater(() -> {
             if (inputArea != null) {
                 inputArea.requestFocusInWindow();
             }
-            if (!testMessageSent) {
-                checkAndSendTestMessage();
-            }
+            refreshSessions(null, true);
         });
     }
 
-    private void checkAndSendTestMessage() {
-        ACPManager.getInstance().whenReady().thenAccept(v -> {
-            SwingUtilities.invokeLater(() -> {
-                if (testMessageSent) {
-                    return;
-                }
-                
-                boolean pingEnabled = org.openide.util.NbPreferences.forModule(ACPOptionsPanel.class).getBoolean("pingAtStartup", false);
-                if (!pingEnabled) {
-                    testMessageSent = true; // Don't ask again
-                    return;
-                }
-                
-                // Wait until we have a session (either loaded or click-to-start state)
-                // and make sure it's not currently loading historical messages
-                if (currentSessionId == null || isSessionLoading) {
-                    // Try again in a bit
-                    Timer t = new Timer(1000, e -> checkAndSendTestMessage());
-                    t.setRepeats(false);
-                    t.start();
-                    return;
-                }
-                
-                testMessageSent = true;
-                inputArea.setText("Say 'ok' if you can hear me");
-                sendMessage();
-            });
-        });
-    }
 
     @Override
     public void componentActivated() {
@@ -1448,7 +1401,6 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
     }
 
     void readProperties(java.util.Properties p) {
-        String version = p.getProperty("version");
     }
 
     public static synchronized ACPChatTopComponent findInstance() {
@@ -1466,46 +1418,36 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
 
     private void refreshTheme() {
         ThemeManager.Theme theme = ThemeManager.getCurrentTheme();
-        
+
         setBackground(theme.getBackground());
         header.setBackground(theme.getBackground());
-        
+
         cwdLabel.setForeground(theme.getForeground());
         cwdLabel.setBackground(theme.getBase2());
         cwdLabel.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(theme.getBubbleBorder(), 1),
                 new EmptyBorder(4, 8, 4, 8)));
-        
+
         sessionDropdown.setBackground(theme.getBackground());
         sessionDropdown.setForeground(theme.getForeground());
-        
+
         // Update all buttons in header
-        Component[] comps = header.getComponents();
         updateButtonsRecursive(header, theme);
-        
+
         inputArea.setBackground(theme.getBackground());
         inputArea.setForeground(theme.getForeground());
         inputArea.setCaretColor(theme.getForeground());
-        
+
         inputScrollPane.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, theme.getBubbleBorder()));
-        
+
         chatPanel.refreshTheme();
-        
+
         revalidate();
         repaint();
     }
 
     private void updateButtonsRecursive(Component container, ThemeManager.Theme theme) {
         if (container instanceof JButton btn) {
-            if (btn.getBackground().equals(Color.WHITE) || btn.getForeground().equals(Color.WHITE)) {
-                // Primary buttons (white on blue)
-                btn.setBackground(theme.getSelection());
-                btn.setForeground(Color.WHITE);
-            } else {
-                // Secondary buttons
-                btn.setBackground(theme.getBase2());
-                btn.setForeground(theme.getForeground());
-            }
             if (btn.getText().contains("Light") || btn.getText().contains("Dark")) {
                 btn.setText(theme.isDark() ? "☀️ Light" : "🌙 Dark");
             }
@@ -1580,10 +1522,6 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
     private static class SessionItem {
         private final Session session;
         private final String customTitle;
-
-        public SessionItem(Session session) {
-            this(session, null);
-        }
 
         public SessionItem(Session session, String customTitle) {
             this.session = session;

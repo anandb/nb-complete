@@ -2,6 +2,7 @@ package github.anandb.netbeans.ui;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.GridBagConstraints;
@@ -14,12 +15,14 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.awt.Component;
 
-import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JEditorPane;
 import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
+import javax.swing.text.Element;
+import javax.swing.text.View;
+import javax.swing.text.html.HTMLDocument;
 
 import com.vladsch.flexmark.html.HtmlRenderer;
 import com.vladsch.flexmark.parser.Parser;
@@ -38,6 +41,54 @@ public class MessageBubble extends JPanel {
     private static class CollapsibleState {
         boolean expanded;
         CollapsibleState(boolean expanded) { this.expanded = expanded; }
+    }
+
+    @Override
+    public Dimension getMaximumSize() {
+        return new Dimension(Integer.MAX_VALUE, getPreferredSize().height);
+    }
+
+    private static final class FitEditorPane extends JEditorPane {
+        private int lastComputedHeight = 0;
+
+        @Override
+        public Dimension getPreferredSize() {
+            int w = getWidth();
+            if (w <= 0 && getParent() != null) {
+                w = getParent().getWidth();
+            }
+            if (w <= 20) {
+                w = 400;
+            }
+            
+            try {
+                // Set sizes to force layout calculation
+                setSize(w, 10000); 
+                validate();
+                
+                View root = getUI().getRootView(this);
+                if (root != null) {
+                    root.setSize(w, Short.MAX_VALUE);
+                    float h = root.getPreferredSpan(View.Y_AXIS);
+                    if (h > 0) {
+                        lastComputedHeight = (int) Math.ceil(h);
+                        // Significant reduction for large fonts
+                        return new Dimension(w, lastComputedHeight + 6);
+                    }
+                }
+            } catch (Exception ignored) {
+            }
+            
+            if (lastComputedHeight > 0) {
+                return new Dimension(w, Math.max(30, lastComputedHeight + 6));
+            }
+            return new Dimension(w, Math.max(30, super.getPreferredSize().height));
+        }
+
+        @Override
+        public Dimension getMaximumSize() {
+            return new Dimension(Integer.MAX_VALUE, getPreferredSize().height);
+        }
     }
 
     public MessageBubble(String type, String text) {
@@ -78,8 +129,7 @@ public class MessageBubble extends JPanel {
             bubble.setBackground(theme.getBubbleUser());
             bubble.setBaseColor(theme.getBubbleUser());
             gbc.anchor = GridBagConstraints.EAST;
-            
-            // Add copy button that appears on hover
+
             JButton copyBtn = new JButton("📋");
             copyBtn.setToolTipText("Copy to input");
             copyBtn.setFont(copyBtn.getFont().deriveFont(10f));
@@ -87,33 +137,13 @@ public class MessageBubble extends JPanel {
             copyBtn.setContentAreaFilled(false);
             copyBtn.setBorder(new EmptyBorder(2, 4, 2, 4));
             copyBtn.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
-            copyBtn.setVisible(false);
-            
-            copyBtn.addActionListener(e -> {
-                ACPChatTopComponent.findInstance().setInputText(this.text.toString());
-            });
+
+            copyBtn.addActionListener(e -> ACPChatTopComponent.findInstance().setInputText(this.text.toString()));
 
             JPanel footer = new JPanel(new BorderLayout());
             footer.setOpaque(false);
             footer.add(copyBtn, BorderLayout.EAST);
             bubble.add(footer, BorderLayout.SOUTH);
-
-            // Hover effects
-            bubble.addMouseListener(new java.awt.event.MouseAdapter() {
-                @Override
-                public void mouseEntered(java.awt.event.MouseEvent e) {
-                    copyBtn.setVisible(true);
-                    copyBtn.repaint();
-                }
-                @Override
-                public void mouseExited(java.awt.event.MouseEvent e) {
-                    java.awt.Point p = e.getPoint();
-                    if (p.x < 0 || p.y < 0 || p.x >= bubble.getWidth() || p.y >= bubble.getHeight()) {
-                        copyBtn.setVisible(false);
-                        copyBtn.repaint();
-                    }
-                }
-            });
         } else if ("error".equals(type)) {
             Color errorBg = new Color(255, 235, 238);
             bubble.setBackground(errorBg);
@@ -171,9 +201,46 @@ public class MessageBubble extends JPanel {
         }
     }
 
+    private boolean hasPendingTextUpdate = false;
+    private boolean hasSeenFirstNewline = false;
+
     public void appendText(String newText) {
+        if (newText == null || newText.isEmpty()) {
+            return;
+        }
+        // Preserve all content exactly as it comes from the stream
         this.text.append(newText);
-        updateContent(ThemeManager.getCurrentTheme());
+        
+        // Use a more robust check for first content to reveal
+        if (!hasSeenFirstNewline) {
+            if (newText.contains("\n") || text.indexOf("\n") != -1) {
+                hasSeenFirstNewline = true;
+            } else if (text.length() > 60) {
+                // If we've buffered a lot of text without a newline, reveal it anyway
+                hasSeenFirstNewline = true;
+            }
+        }
+        
+        hasPendingTextUpdate = true;
+    }
+
+    public boolean flushUpdate() {
+        return flushUpdate(false);
+    }
+
+    public boolean flushUpdate(boolean force) {
+        if (hasPendingTextUpdate) {
+            // Buffer till the first newline before displaying assistant messages
+            // This avoids showing partial metadata or transient lines at the start
+            if (!force && !hasSeenFirstNewline && "assistant".equals(type)) {
+                return false;
+            }
+            
+            hasPendingTextUpdate = false;
+            updateContent(ThemeManager.getCurrentTheme(), true);
+            return true;
+        }
+        return false;
     }
 
     public void setExpanded(boolean expanded) {
@@ -203,7 +270,7 @@ public class MessageBubble extends JPanel {
     public String getRawText() {
         return text.toString();
     }
-    
+
     public void refreshTheme() {
         ThemeManager.Theme theme = ThemeManager.getCurrentTheme();
         if ("user".equals(type)) {
@@ -217,7 +284,7 @@ public class MessageBubble extends JPanel {
             bubble.setBackground(new Color(0, 0, 0, 0));
             bubble.setBaseColor(null);
         }
-        
+
         for (Component c : segmentsContainer.getComponents()) {
             if (c instanceof CollapsibleCodePane pane) {
                 pane.refreshTheme();
@@ -225,15 +292,19 @@ public class MessageBubble extends JPanel {
                 pane.refreshTheme();
             }
         }
-        
+
         updateContent(theme);
     }
 
     private void updateContent(ThemeManager.Theme theme) {
+        updateContent(theme, false);
+    }
+
+    private void updateContent(ThemeManager.Theme theme, boolean incremental) {
         // Handle specialized tool rendering
         if ("tool".equals(type) || "thought".equals(type)) {
             String rawText = text.toString();
-            String title = "thought".equals(type) ? "THINKING PROCESS" : "🛠️ Tool Call";
+            String title = "thought".equals(type) ? "THINKING PROCESS" : "Tool Call";
             String displayContent = rawText;
 
             // Try to extract a summary title from the tool call text
@@ -242,14 +313,13 @@ public class MessageBubble extends JPanel {
                     int toolStart = rawText.indexOf("the ") + 4;
                     int toolEnd = rawText.indexOf(" tool");
                     if (toolStart > 3 && toolEnd > toolStart) {
-                        title = "🛠️ Use " + rawText.substring(toolStart, toolEnd).trim();
+                        title = "TOOL: Use " + rawText.substring(toolStart, toolEnd).trim();
                     }
                 } else if (rawText.contains(":") && rawText.length() < 100) {
-                    title = "🛠️ " + rawText;
+                    title = "TOOL: " + rawText;
+                } else {
+                    title = "TOOL: " + title;
                 }
-            } else {
-                // For thought, we might want a different default expanded state but
-                // CollapsibleToolPane takes that in constructor
             }
 
             // Reuse existing tool pane if possible to preserve expanded state
@@ -270,9 +340,9 @@ public class MessageBubble extends JPanel {
         // Simple markdown splitting for code blocks: ```[lang]\n<code>```
         String rawText = text.toString();
 
-        Pattern pattern = Pattern.compile("\\s*```([\\w\\-\\+\\#\\.]*)\\R?(.*?)(?:\\s*```\\s*(?=\\R|$)|$)", Pattern.DOTALL);
+        Pattern pattern = Pattern.compile("```([\\w\\-\\+\\#\\.]*)\\R?(.*?)(?:```(?=\\R|$)|$)", Pattern.DOTALL);
         Matcher matcher = pattern.matcher(rawText);
-        
+
         // Track current components to reuse them
         int currentCompIdx = 0;
 
@@ -280,9 +350,9 @@ public class MessageBubble extends JPanel {
         int codeIdx = 0;
         while (matcher.find()) {
             // Text before code block
-            String textBefore = rawText.substring(lastEnd, matcher.start()).trim();
+            String textBefore = rawText.substring(lastEnd, matcher.start());
             if (!textBefore.isEmpty()) {
-                updateOrAddTextSegment(textBefore, theme, currentCompIdx++);
+                updateOrAddTextSegment(textBefore, theme, currentCompIdx++, incremental);
             }
 
             String lang = matcher.group(1);
@@ -306,18 +376,20 @@ public class MessageBubble extends JPanel {
 
         // Remaining text after last code block
         if (lastEnd < rawText.length()) {
-            String remaining = rawText.substring(lastEnd).trim();
+            String remaining = rawText.substring(lastEnd);
             if (!remaining.isEmpty()) {
-                updateOrAddTextSegment(remaining, theme, currentCompIdx++);
+                updateOrAddTextSegment(remaining, theme, currentCompIdx++, incremental);
             }
         }
-        
+
         // Remove extra old components
         while (segmentsContainer.getComponentCount() > currentCompIdx) {
             segmentsContainer.remove(segmentsContainer.getComponentCount() - 1);
         }
 
         segmentsContainer.revalidate();
+        bubble.revalidate();
+        this.revalidate();
     }
 
     private void updateOrAddCodeSegment(String lang, String code, boolean expanded, int codeIdx, int compIdx) {
@@ -328,7 +400,7 @@ public class MessageBubble extends JPanel {
                 return;
             }
         }
-        
+
         // If we can't reuse, we have to rebuild from here down to be safe
         // But for simplicity, we'll just insert/replace
         CollapsibleCodePane codePane = new CollapsibleCodePane(lang, code, expanded);
@@ -340,21 +412,22 @@ public class MessageBubble extends JPanel {
         }
     }
 
-    private void updateOrAddTextSegment(String markdown, ThemeManager.Theme theme, int compIdx) {
+    private void updateOrAddTextSegment(String markdown, ThemeManager.Theme theme, int compIdx, boolean incremental) {
         String styledHtml = prepareHtml(markdown, theme);
-        
+        Color bg = getBubbleBackground(theme);
+
         if (compIdx < segmentsContainer.getComponentCount()) {
             Component c = segmentsContainer.getComponent(compIdx);
             if (c instanceof JEditorPane pane) {
-                // Check if content actually changed to avoid flickering
-                if (!styledHtml.equals(pane.getText())) {
-                    pane.setText(styledHtml);
-                }
+                pane.setBackground(bg);
+                // Always use setText to ensure full document structure and styles are applied correctly
+                // setInnerHTML can be unreliable with complex styles like pre-wrap
+                pane.setText(styledHtml);
                 return;
             }
         }
-        
-        JEditorPane pane = createHtmlPane(styledHtml);
+
+        JEditorPane pane = createHtmlPane(styledHtml, bg);
         if (compIdx < segmentsContainer.getComponentCount()) {
             segmentsContainer.remove(compIdx);
             segmentsContainer.add(pane, compIdx);
@@ -363,18 +436,54 @@ public class MessageBubble extends JPanel {
         }
     }
 
+    private void setBodyContent(JEditorPane pane, String styledHtml) {
+        if (pane.getDocument() instanceof HTMLDocument doc) {
+            String bodyContent = extractBodyContent(styledHtml);
+            Element root = doc.getDefaultRootElement();
+            for (int i = 0; i < root.getElementCount(); i++) {
+                Element child = root.getElement(i);
+                if ("body".equals(child.getName())) {
+                    try {
+                        doc.setInnerHTML(child, bodyContent);
+                        return;
+                    } catch (Exception ex) {
+                        break;
+                    }
+                }
+            }
+        }
+        pane.setText(styledHtml);
+    }
+
+    private String extractBodyContent(String fullHtml) {
+        int start = fullHtml.indexOf("<body");
+        if (start >= 0) {
+            start = fullHtml.indexOf('>', start) + 1;
+            int end = fullHtml.lastIndexOf("</body>");
+            if (end > start) {
+                return fullHtml.substring(start, end);
+            }
+        }
+        return fullHtml;
+    }
+
     private String prepareHtml(String markdown, ThemeManager.Theme theme) {
         MutableDataSet options = new MutableDataSet();
+        options.set(HtmlRenderer.SOFT_BREAK, "\n");
         Parser parser = Parser.builder(options).build();
         HtmlRenderer renderer = HtmlRenderer.builder(options).build();
-        
+
         String markdownWithTables = renderTablesAsHtml(markdown);
         String html = renderer.render(parser.parse(markdownWithTables));
-        
-        html = html.replace("<table>", "<table border='1' style='border-collapse: collapse; width: 100%;'>");
-        html = html.replace("<th>", "<th style='background: #f0f0f0; padding: 8px; border: 1px solid #ddd;'>");
-        html = html.replace("<td>", "<td style='padding: 8px; border: 1px solid #ddd;'>");
-        
+
+        html = html.replace("<table>", "<table border='1' style='border-collapse: collapse; width: 100%; margin: 8px 0;'>");
+        html = html.replace("<th>", "<th style='background: #f0f0f0; padding: 8px; border: 1px solid #ddd; text-align: left;'>");
+        html = html.replace("<td>", "<td style='padding: 8px; border: 1px solid #ddd; vertical-align: top;'>");
+
+        // Hack to prevent space collapse in JEditorPane
+        // Replace double spaces with space + &nbsp;
+        html = html.replace("  ", " &nbsp;");
+
         Color bg;
         if ("user".equals(type)) {
             bg = theme.getBubbleUser();
@@ -392,21 +501,33 @@ public class MessageBubble extends JPanel {
             customCss += " body { color: #777777; font-size: 13px; }";
         }
 
+        // Removed the <pre> wrap which was causing nested <p> segments to render incorrectly and overlap.
+        // We rely on 'white-space: pre-wrap' in the base CSS to preserve whitespace.
         return "<html><head><style>" + customCss + "</style></head><body style='margin: 0;'>" + html + "</body></html>";
     }
 
-    private JEditorPane createHtmlPane(String styledHtml) {
-        JEditorPane pane = new JEditorPane();
+    private Color getBubbleBackground(ThemeManager.Theme theme) {
+        if ("user".equals(type)) {
+            return theme.getBubbleUser();
+        } else if ("error".equals(type)) {
+            return new Color(255, 235, 238);
+        } else {
+            return theme.getBackground();
+        }
+    }
+
+    private JEditorPane createHtmlPane(String styledHtml, Color bg) {
+        JEditorPane pane = new FitEditorPane();
         pane.setEditable(false);
         pane.setContentType("text/html");
-        pane.setOpaque(false);
+        pane.setOpaque(true);
+        pane.setBackground(bg);
         pane.setDoubleBuffered(true);
         pane.setText(styledHtml);
-        pane.putClientProperty(JEditorPane.HONOR_DISPLAY_PROPERTIES, Boolean.TRUE);
         pane.setFont(ThemeManager.getFont());
         return pane;
     }
-    
+
     private String renderTablesAsHtml(String markdown) {
         StringBuilder result = new StringBuilder();
         String[] lines = markdown.split("\n", -1);
@@ -415,10 +536,10 @@ public class MessageBubble extends JPanel {
         List<String> headerCells = new ArrayList<>();
         List<List<String>> rows = new ArrayList<>();
         int i = 0;
-        
+
         while (i < lines.length) {
             String line = lines[i];
-            
+
             if (line == null || line.isEmpty()) {
                 if (inTable && headerFound) {
                     result.append(convertTableToHtml(headerCells, rows));
@@ -431,18 +552,16 @@ public class MessageBubble extends JPanel {
                 i++;
                 continue;
             }
-            
-            if (line.trim().startsWith("|") && line.trim().endsWith("|")) {
-                String trimmedLine = line.trim();
-                // Strip leading and trailing pipes
-                String content = trimmedLine.substring(1, trimmedLine.length() - 1);
+
+            if (line.contains("|") && line.trim().startsWith("|") && line.trim().endsWith("|")) {
+                String content = line.substring(line.indexOf("|") + 1, line.lastIndexOf("|"));
                 // Split by pipes not preceded by a backslash
-                String[] cells = content.split("(?<!\\\\)\\|", -1);                
+                String[] cells = content.split("(?<!\\\\)\\|", -1);
                 List<String> rowCells = new ArrayList<>();
                 for (String cell : cells) {
-                    rowCells.add(cell.trim().replace("\\|", "|"));
+                    rowCells.add(cell.replace("\\|", "|"));
                 }
-                
+
                 if (rowCells.isEmpty()) {
                     if (inTable && headerFound) {
                         result.append(convertTableToHtml(headerCells, rows));
@@ -455,12 +574,12 @@ public class MessageBubble extends JPanel {
                     i++;
                     continue;
                 }
-                
+
                 if (inTable && isSeparatorRow(rowCells)) {
                     i++;
                     continue;
                 }
-                
+
                 if (!inTable) {
                     inTable = true;
                     headerCells = rowCells;
@@ -482,24 +601,24 @@ public class MessageBubble extends JPanel {
             }
             i++;
         }
-        
+
         if (inTable && headerFound) {
             result.append(convertTableToHtml(headerCells, rows));
         }
-        
+
         return result.toString();
     }
-    
+
     private boolean isSeparatorRow(List<String> row) {
         for (String cell : row) {
-            if (!cell.matches("-+") && !cell.matches(":-+-.*") && !cell.matches(".*:-+") && 
+            if (!cell.matches("-+") && !cell.matches(":-+-.*") && !cell.matches(".*:-+") &&
                 !cell.matches("-+:") && !cell.matches(":.*-+")) {
                 return false;
             }
         }
         return true;
     }
-    
+
     private String convertTableToHtml(List<String> headers, List<List<String>> rows) {
         StringBuilder html = new StringBuilder();
         html.append("<table>\n<thead><tr>");
@@ -519,7 +638,7 @@ public class MessageBubble extends JPanel {
         html.append("</tbody></table>\n");
         return html.toString();
     }
-    
+
     private String escapeHtml(String text) {
         return text.replace("&", "&amp;")
                 .replace("<", "&lt;")

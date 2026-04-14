@@ -10,11 +10,14 @@ import org.openide.util.NbBundle;
 
 @OptionsPanelController.SubRegistration(
         location = "Advanced",
-        displayName = "#OptionsCategory_Name_ACP",
-        keywords = "#OptionsCategory_Keywords_ACP",
-        keywordsCategory = "Advanced/ACP"
+        displayName = "#OptionsCategory_Name_Assistant",
+        keywords = "#OptionsCategory_Keywords_Assistant",
+        keywordsCategory = "Advanced/Assistant"
 )
-@NbBundle.Messages({"OptionsCategory_Name_ACP=ACP", "OptionsCategory_Keywords_ACP=acp, ai, chatbot, path"})
+@NbBundle.Messages({
+    "OptionsCategory_Name_Assistant=Assistant", 
+    "OptionsCategory_Keywords_Assistant=assistant, ai, chatbot, path, acp"
+})
 public final class ACPOptionsPanelController extends OptionsPanelController {
 
     private ACPOptionsPanel panel;

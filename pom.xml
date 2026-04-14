@@ -3,14 +3,14 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>github.anandb</groupId>
     <artifactId>acp-netbeans-plugin</artifactId>
-    <version>1.2.24</version>
+    <version>1.2.44</version>
     <packaging>nbm</packaging>
 
     <name>ACP NetBeans Plugin</name>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.compiler.release>17</maven.compiler.release>
+        <maven.compiler.release>21</maven.compiler.release>
         <netbeans.version>RELEASE210</netbeans.version>
     </properties>
 
@@ -157,7 +157,7 @@
             <plugin>
                 <groupId>org.apache.netbeans.utilities</groupId>
                 <artifactId>nbm-maven-plugin</artifactId>
-                <version>4.8</version>
+                <version>14.4</version>
                 <extensions>true</extensions>
                 <configuration>
                     <author>ACP</author>
@@ -168,7 +168,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.11.0</version>
+                <version>3.15.0</version>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
