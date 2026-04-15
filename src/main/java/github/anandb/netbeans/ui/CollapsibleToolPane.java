@@ -10,11 +10,13 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 
 import javax.swing.BorderFactory;
+import javax.swing.Icon;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextArea;
+import org.openide.util.ImageUtilities;
 
-public class CollapsibleToolPane extends JPanel {
+public class CollapsibleToolPane extends RoundedPanel {
     private final JPanel contentPanel;
     private final JLabel headerLabel;
     private final JLabel toggleIcon;
@@ -22,6 +24,7 @@ public class CollapsibleToolPane extends JPanel {
     private boolean expanded;
 
     public CollapsibleToolPane(String title, String content, boolean expandedByDefault) {
+        super(12);
         this.expanded = expandedByDefault;
 
         setLayout(new BorderLayout());
@@ -29,8 +32,8 @@ public class CollapsibleToolPane extends JPanel {
         setDoubleBuffered(true);
         setBorder(BorderFactory.createEmptyBorder(2, 0, 4, 0));
 
-        ThemeManager.Theme theme = ThemeManager.getCurrentTheme();
-        Color headerBg = theme.getBase2();        
+        ColorTheme theme = ThemeManager.getCurrentTheme();
+        Color headerBg = theme.getPanelHeader();
         Color yellowAccent = theme.getYellow();
 
         // Header
@@ -38,31 +41,36 @@ public class CollapsibleToolPane extends JPanel {
         header.setOpaque(true);
         header.setBackground(headerBg);
         header.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createMatteBorder(1, 4, 1, 1, yellowAccent),
+            BorderFactory.createMatteBorder(0, 4, 0, 0, yellowAccent),
             BorderFactory.createEmptyBorder(2, 10, 2, 10)
         ));
         header.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
+        Icon headerIcon = null;
         String displayTitle = title;
         if (title.toUpperCase().contains("THINKING")) {
-            displayTitle = expanded ? "🧠 THINKING PROCESS" : "🧠 Thinking Process...";
+            displayTitle = expanded ? "Thinking Process" : "Thinking Process...";
+            headerIcon = ThemeManager.getIcon("brain.svg", 21);
         } else if (title.toUpperCase().contains("TOOL")) {
-            displayTitle = "🛠️ TOOL: " + title.replaceFirst("(?i)TOOL:?\\s*", "").trim();
+            String stripped = title.replaceFirst("(?i)TOOL:?\\s*", "").trim();
+            if (stripped.isEmpty() || stripped.equalsIgnoreCase("Tool Call")) {
+                displayTitle = "Tool";
+            } else {
+                displayTitle = "Tool: " + stripped;
+            }
+            headerIcon = ThemeManager.getIcon("tool.svg", 21);
         }
 
-        headerLabel = new JLabel(displayTitle);
-        headerLabel.setFont(ThemeManager.getCodeBlockTitleFont());
-        headerLabel.setForeground(theme.getBase1());
-        headerLabel.setBorder(BorderFactory.createEmptyBorder(6, 8, 0, 0));
+        headerLabel = new JLabel(displayTitle, headerIcon, JLabel.LEFT);
+        headerLabel.setIconTextGap(8);
+        headerLabel.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
+        headerLabel.setForeground(theme.isDark() ? Color.decode("#BBBBBB") : Color.decode("#555555"));
+        headerLabel.setBorder(BorderFactory.createEmptyBorder(4, 8, 0, 0));
 
-        // Letter spacing simulation (Swing doesn't support it directly easily, but we can try uppercase)
-        if (displayTitle.equals("THINKING PROCESS")) {
-             headerLabel.setText("THINKING PROCESS");
-        }
 
         toggleIcon = new JLabel(expanded ? "▼" : "▶");
-        toggleIcon.setFont(ThemeManager.getCodeBlockTitleFont());
-        toggleIcon.setForeground(theme.getBase1());
+        toggleIcon.setFont(ThemeManager.getMonospaceFont().deriveFont(Font.BOLD));
+        toggleIcon.setForeground(theme.isDark() ? Color.decode("#BBBBBB") : Color.decode("#555555"));
 
         header.add(toggleIcon, BorderLayout.WEST);
         header.add(headerLabel, BorderLayout.CENTER);
@@ -70,13 +78,16 @@ public class CollapsibleToolPane extends JPanel {
         // Content
         contentPanel = new JPanel(new BorderLayout());
         contentPanel.setOpaque(true);
-        contentPanel.setBackground(headerBg);
-        contentPanel.setBorder(BorderFactory.createMatteBorder(0, 4, 1, 1, yellowAccent));
+        contentPanel.setBackground(theme.getBase2());
+        contentPanel.setBorder(BorderFactory.createMatteBorder(0, 4, 0, 0, yellowAccent));
         
         textArea = new JTextArea(content);
         textArea.setEditable(false);
         textArea.setOpaque(false);
-        textArea.setFont(ThemeManager.getMonospaceFont().deriveFont(Font.PLAIN));
+        boolean isThinking = title.toUpperCase().contains("THINKING");
+        textArea.setFont(isThinking
+                ? ThemeManager.getFont().deriveFont(Font.PLAIN)
+                : ThemeManager.getMonospaceFont().deriveFont(Font.PLAIN));
         textArea.setForeground(theme.getForeground());
         textArea.setBorder(BorderFactory.createEmptyBorder(2, 25, 2, 10));
         textArea.setLineWrap(true);
@@ -95,7 +106,7 @@ public class CollapsibleToolPane extends JPanel {
             }
             @Override
             public void mouseEntered(MouseEvent e) {
-                header.setBackground(new Color(230, 225, 205)); // Subtle hover
+                header.setBackground(theme.getPanelHeaderHover()); // Subtle hover
             }
             @Override
             public void mouseExited(MouseEvent e) {
@@ -114,17 +125,24 @@ public class CollapsibleToolPane extends JPanel {
     }
 
     public void setContent(String content) {
+        if (content != null && content.equals(textArea.getText())) {
+            return;
+        }
         textArea.setText(content);
     }
 
     public void setTitle(String title) {
+        Icon headerIcon = null;
         String displayTitle = title;
         if (title.toUpperCase().contains("THINKING")) {
-            displayTitle = expanded ? "🧠 THINKING PROCESS" : "🧠 Thinking Process...";
+            displayTitle = expanded ? "THINKING PROCESS" : "Thinking Process...";
+            headerIcon = ThemeManager.getIcon("brain.svg", 21);
         } else if (title.toUpperCase().contains("TOOL")) {
-            displayTitle = "🛠️ TOOL: " + title.replaceFirst("(?i)TOOL:?\\s*", "").trim();
+            displayTitle = "TOOL: " + title.replaceFirst("(?i)TOOL:?\\s*", "").trim();
+            headerIcon = ThemeManager.getIcon("tool.svg", 21);
         }
         headerLabel.setText(displayTitle);
+        headerLabel.setIcon(headerIcon);
     }
 
     public void setExpanded(boolean expanded) {
@@ -133,22 +151,16 @@ public class CollapsibleToolPane extends JPanel {
             contentPanel.setVisible(expanded);
             toggleIcon.setText(expanded ? "▼" : "▶");
             
-            // If it's a thinking process, update the title to include the emoji
-            if (headerLabel.getText().contains("THINKING")) {
-                if (expanded) {
-                    headerLabel.setText("🧠 THINKING PROCESS");
-                } else {
-                    headerLabel.setText("🧠 Thinking Process...");
-                }
+            if (headerLabel.getText().toUpperCase().contains("THINKING")) {
+                headerLabel.setText(expanded ? "Thinking Process" : "Thinking Process...");
             }
- 
             revalidate();
             repaint();
         }
     }
 
     public void refreshTheme() {
-        ThemeManager.Theme theme = ThemeManager.getCurrentTheme();
+        ColorTheme theme = ThemeManager.getCurrentTheme();
         Color headerBg = theme.getBase2();
         Color yellowAccent = theme.getYellow();
 
@@ -165,8 +177,9 @@ public class CollapsibleToolPane extends JPanel {
         }
         
         textArea.setForeground(theme.getForeground());
-        headerLabel.setForeground(theme.getBase1());
-        toggleIcon.setForeground(theme.getBase1());
+        Color headerFg = theme.isDark() ? Color.decode("#BBBBBB") : Color.decode("#555555");
+        headerLabel.setForeground(headerFg);
+        toggleIcon.setForeground(headerFg);
         
         revalidate();
         repaint();

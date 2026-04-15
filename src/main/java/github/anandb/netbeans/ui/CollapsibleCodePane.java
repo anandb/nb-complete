@@ -5,28 +5,37 @@ import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.Toolkit;
+import java.awt.datatransfer.StringSelection;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 
 import javax.swing.BorderFactory;
+import javax.swing.Icon;
+import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import org.openide.util.ImageUtilities;
 
 import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
 import org.fife.ui.rsyntaxtextarea.SyntaxConstants;
 
-import github.anandb.netbeans.ui.ThemeManager.Theme;
+import github.anandb.netbeans.ui.ColorTheme;
 
-public class CollapsibleCodePane extends JPanel {
+public class CollapsibleCodePane extends RoundedPanel {
+
+    private static final long serialVersionUID = 1L;
     private String language;
     private String code;
     private final JLabel headerLabel;
     private final JLabel toggleIcon;
     private final RSyntaxTextArea codeTextArea;
     private final JPanel contentPanel;
+    private final JButton copyButton;
     private boolean expanded;
 
     public CollapsibleCodePane(String language, String code, boolean expandedByDefault) {
+        super(12);
         this.language = language != null && !language.isEmpty() ? language : "Code";
         this.code = code;
         this.expanded = expandedByDefault;
@@ -36,65 +45,77 @@ public class CollapsibleCodePane extends JPanel {
         setDoubleBuffered(true);
         setBorder(BorderFactory.createEmptyBorder(8, 0, 8, 0));
 
-        Theme theme = ThemeManager.getCurrentTheme();
-        Color headerBg = new Color(0, 0, 0, 15);
-        Color borderCol = new Color(0, 0, 0, 30);
+        ColorTheme theme = ThemeManager.getCurrentTheme();
+        Color headerBg = theme.getBase2();
+        Color borderCol = theme.getBubbleBorder();
 
         // Header
         JPanel header = new JPanel(new BorderLayout());
         header.setOpaque(true);
         header.setBackground(headerBg);
-        header.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(borderCol, 1, true),
-            BorderFactory.createEmptyBorder(6, 10, 6, 10)
-        ));
+        header.setBorder(BorderFactory.createEmptyBorder(6, 12, 6, 3));
         header.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
-        headerLabel = new JLabel(getLabelText());
+        Icon fileIcon = ThemeManager.getIcon("file.svg");
+        headerLabel = new JLabel(getLabelText(), fileIcon, JLabel.LEFT);
+        headerLabel.setIconTextGap(8);
         headerLabel.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
-        headerLabel.setForeground(Color.GRAY);
+        headerLabel.setForeground(theme.isDark() ? Color.decode("#BBBBBB") : Color.decode("#555555"));
         header.add(headerLabel, BorderLayout.CENTER);
-
         toggleIcon = new JLabel(expanded ? "▼" : "▶");
         toggleIcon.setFont(ThemeManager.getMonospaceFont().deriveFont(Font.BOLD));
-        toggleIcon.setForeground(Color.GRAY);
+        toggleIcon.setForeground(theme.isDark() ? Color.decode("#BBBBBB") : Color.decode("#555555"));
         header.add(toggleIcon, BorderLayout.WEST);
-        headerLabel.setBorder(BorderFactory.createEmptyBorder(6, 8, 0, 0));
+        headerLabel.setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 0));
+
+        // Copy button
+        Icon copyIcon = ThemeManager.getIcon("copy.svg", 20);
+        copyButton = new JButton(copyIcon);
+        copyButton.setToolTipText("Copy code");
+        copyButton.setFont(ThemeManager.getFont().deriveFont(12f));
+        copyButton.setFocusPainted(false);
+        copyButton.setContentAreaFilled(false);
+        copyButton.setBorder(BorderFactory.createEmptyBorder(2, 4, 2, 4));
+        copyButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        copyButton.setForeground(theme.isDark() ? Color.decode("#BBBBBB") : Color.decode("#555555"));
+        copyButton.addActionListener(e -> copyCodeToClipboard());
+
+        header.add(copyButton, BorderLayout.EAST);
 
         // Content
         contentPanel = new JPanel(new BorderLayout());
         contentPanel.setOpaque(false);
-        
+
         codeTextArea = new RSyntaxTextArea();
         codeTextArea.setEditable(false);
         codeTextArea.setHighlightCurrentLine(false);
         codeTextArea.setAnimateBracketMatching(false);
         codeTextArea.setLineWrap(true);
-        
-        // Solarized Dark Theme Colors
+
+        // Always use Solarized Dark for code blocks per user preference
         Color bg = Color.decode("#002B36");
         Color fg = Color.decode("#839496");
-        
+
         codeTextArea.setBackground(bg);
         codeTextArea.setForeground(fg);
         codeTextArea.setCaretColor(fg);
-        codeTextArea.setSelectionColor(new Color(7, 54, 66)); // base02
-        
+        codeTextArea.setSelectionColor(new Color(7, 54, 66));
+
         applySyntaxStyle();
         applySolarizedDarkTheme();
-        
+
         // Ensure font is set AFTER theme application to avoid being overwritten
         codeTextArea.setFont(ThemeManager.getMonospaceFont().deriveFont(Font.PLAIN));
-        
+
         codeTextArea.setText(code);
         codeTextArea.setCaretPosition(0);
-        
-        // Wrap in a panel with padding instead of a scrollpane since we are in a chat bubble
+
+        // Wrap in a panel with padding
         JPanel codeWrapper = new JPanel(new BorderLayout());
         codeWrapper.setBackground(bg);
         codeWrapper.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         codeWrapper.add(codeTextArea, BorderLayout.CENTER);
-        
+
         contentPanel.add(codeWrapper, BorderLayout.CENTER);
         contentPanel.setVisible(expanded);
 
@@ -153,16 +174,37 @@ public class CollapsibleCodePane extends JPanel {
         }
     }
 
+    private void copyCodeToClipboard() {
+        StringSelection selection = new StringSelection(code);
+        Toolkit.getDefaultToolkit().getSystemClipboard().setContents(selection, selection);
+
+        // Visual feedback
+        Icon originalIcon = copyButton.getIcon();
+        Icon checkIcon = ThemeManager.getIcon("check.svg", 20);
+        copyButton.setIcon(checkIcon);
+        
+        javax.swing.Timer timer = new javax.swing.Timer(2000, e -> {
+            copyButton.setIcon(originalIcon);
+        });
+        timer.setRepeats(false);
+        timer.start();
+    }
+
     public void refreshTheme() {
-        Theme theme = ThemeManager.getCurrentTheme();
+        ColorTheme theme = ThemeManager.getCurrentTheme();
         codeTextArea.setBackground(theme.isDark() ? Color.decode("#002B36") : Color.WHITE);
         codeTextArea.setForeground(theme.isDark() ? Color.decode("#839496") : Color.BLACK);
-        
+
         // Recolor wrapper
         if (codeTextArea.getParent() != null) {
             codeTextArea.getParent().setBackground(codeTextArea.getBackground());
         }
-        
+
+        Color headerFg = theme.isDark() ? Color.decode("#BBBBBB") : Color.decode("#555555");
+        headerLabel.setForeground(headerFg);
+        toggleIcon.setForeground(headerFg);
+        copyButton.setForeground(headerFg);
+
         applySolarizedDarkTheme();
         revalidate();
         repaint();
@@ -184,14 +226,13 @@ public class CollapsibleCodePane extends JPanel {
     }
 
     private String getLabelText() {
-        int lineCount = code.split("\n", -1).length;
-        return "📄 CODE " + language.toUpperCase() + " (" + lineCount + " lines)";
+        return language.toUpperCase();
     }
 
     private void applySyntaxStyle() {
         String style = SyntaxConstants.SYNTAX_STYLE_NONE;
         String lang = language.toLowerCase();
-        
+
         if (lang.contains("java")) style = SyntaxConstants.SYNTAX_STYLE_JAVA;
         else if (lang.contains("python") || lang.equals("py")) style = SyntaxConstants.SYNTAX_STYLE_PYTHON;
         else if (lang.contains("javascript") || lang.equals("js")) style = SyntaxConstants.SYNTAX_STYLE_JAVASCRIPT;
@@ -212,7 +253,7 @@ public class CollapsibleCodePane extends JPanel {
         else if (lang.contains("rust") || lang.equals("rs")) style = SyntaxConstants.SYNTAX_STYLE_RUST;
         else if (lang.contains("php")) style = SyntaxConstants.SYNTAX_STYLE_PHP;
         else if (lang.contains("ruby") || lang.equals("rb")) style = SyntaxConstants.SYNTAX_STYLE_RUBY;
-        
+
         codeTextArea.setSyntaxEditingStyle(style);
     }
 
@@ -227,7 +268,7 @@ public class CollapsibleCodePane extends JPanel {
             }
             org.fife.ui.rsyntaxtextarea.Theme rTheme = org.fife.ui.rsyntaxtextarea.Theme.load(in);
             rTheme.apply(codeTextArea);
-            
+
             // Override background to strict Solarized Dark
             codeTextArea.setBackground(Color.decode("#002B36"));
             codeTextArea.setSelectionColor(new Color(7, 54, 66));
@@ -241,5 +282,28 @@ public class CollapsibleCodePane extends JPanel {
         codeTextArea.setForeground(Color.decode("#839496"));
         codeTextArea.setSelectionColor(new Color(7, 54, 66));
         codeTextArea.setCurrentLineHighlightColor(new Color(0, 43, 54));
+    }
+
+    private void applySolarizedLightTheme() {
+        try {
+            java.io.InputStream in = getClass().getResourceAsStream("/org/fife/ui/rsyntaxtextarea/themes/default.xml");
+            if (in == null) {
+                manualSolarizedLight();
+                return;
+            }
+            org.fife.ui.rsyntaxtextarea.Theme rTheme = org.fife.ui.rsyntaxtextarea.Theme.load(in);
+            rTheme.apply(codeTextArea);
+            codeTextArea.setBackground(Color.decode("#FDF6E3"));
+            codeTextArea.setSelectionColor(new Color(238, 232, 213));
+        } catch (Exception ioe) {
+            manualSolarizedLight();
+        }
+    }
+
+    private void manualSolarizedLight() {
+        codeTextArea.setBackground(Color.decode("#FDF6E3"));
+        codeTextArea.setForeground(Color.decode("#657B83"));
+        codeTextArea.setSelectionColor(new Color(238, 232, 213));
+        codeTextArea.setCurrentLineHighlightColor(new Color(253, 246, 227));
     }
 }

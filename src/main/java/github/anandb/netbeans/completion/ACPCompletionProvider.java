@@ -26,15 +26,15 @@ public class ACPCompletionProvider implements CompletionProvider {
         return new AsyncCompletionTask(new AsyncCompletionQuery() {
             @Override
             protected void query(CompletionResultSet resultSet, Document doc, int caretOffset) {
+                ACPManager manager = ACPManager.getInstance();
+
+                if (!manager.isInitialized()) {
+                    LOG.log(Level.FINE, "ACPManager not initialized yet");
+                    resultSet.finish();
+                    return;
+                }
+
                 try {
-                    ACPManager manager = ACPManager.getInstance();
-
-                    if (!manager.isInitialized()) {
-                        LOG.log(Level.FINE, "ACPManager not initialized yet");
-                        resultSet.finish();
-                        return;
-                    }
-
                     String text = doc.getText(0, doc.getLength());
 
                     int prefixStart = Math.max(0, caretOffset - 2048);
@@ -59,20 +59,28 @@ public class ACPCompletionProvider implements CompletionProvider {
                     LOG.log(Level.FINE, "Requesting completions: prefixLen={0}, suffixLen={1}, adjustedColumn={2}", 
                             new Object[]{prefix.length(), suffix.length(), adjustedColumn});
 
-                    JsonNode result = manager.getCompletionsInline(focusedText, 1, adjustedColumn, prefix, suffix).get();
-
-                    if (result != null && result.has("suggestions")) {
-                        for (JsonNode sug : result.get("suggestions")) {
-                            String insertText = sug.has("insertText") ? sug.get("insertText").asText() : sug.get("text").asText();
-                            resultSet.addItem(new ACPCompletionItem(insertText));
+                    manager.getCompletionsInline(focusedText, 1, adjustedColumn, prefix, suffix, 10, java.util.concurrent.TimeUnit.SECONDS)
+                        .thenAccept(result -> {
+                            if (result != null && result.has("suggestions")) {
+                                for (JsonNode sug : result.get("suggestions")) {
+                                    String insertText = sug.has("insertText") ? sug.get("insertText").asText() : sug.get("text").asText();
+                                    resultSet.addItem(new ACPCompletionItem(insertText));
+                                }
+                                LOG.log(Level.FINE, "Added {0} completion items", result.get("suggestions").size());
+                            } else {
+                                LOG.log(Level.FINE, "No suggestions returned");
+                            }
+                        })
+                        .exceptionally(ex -> {
+                            LOG.log(Level.WARNING, "Completion query failed", ex);
+                            return null;
+                        })
+                        .thenRun(() -> {
+                            resultSet.finish();
                         }
-                        LOG.log(Level.FINE, "Added {0} completion items", result.get("suggestions").size());
-                    } else {
-                        LOG.log(Level.FINE, "No suggestions returned");
-                    }
+                    );
                 } catch (Exception ex) {
-                    LOG.log(Level.WARNING, "Completion query failed", ex);
-                } finally {
+                    LOG.log(Level.SEVERE, "Failed to get completions", ex);
                     resultSet.finish();
                 }
             }

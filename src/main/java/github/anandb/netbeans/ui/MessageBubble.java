@@ -2,6 +2,7 @@ package github.anandb.netbeans.ui;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
@@ -13,16 +14,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.awt.Component;
 
 import javax.swing.BoxLayout;
+import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.JEditorPane;
 import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
-import javax.swing.text.Element;
 import javax.swing.text.View;
-import javax.swing.text.html.HTMLDocument;
 
 import com.vladsch.flexmark.html.HtmlRenderer;
 import com.vladsch.flexmark.parser.Parser;
@@ -35,7 +34,7 @@ public class MessageBubble extends JPanel {
     private final String messageId;
     private final StringBuilder text;
     private final JPanel segmentsContainer;
-    private final RoundedPanel bubble;
+    private JPanel bubble;
     private final ArrayList<CollapsibleState> codeStates = new ArrayList<>();
 
     private static class CollapsibleState {
@@ -50,6 +49,18 @@ public class MessageBubble extends JPanel {
 
     private static final class FitEditorPane extends JEditorPane {
         private int lastComputedHeight = 0;
+        private int lastComputedWidth = 0;
+        private String lastText = null;
+
+        @Override
+        public void setText(String t) {
+            if (t != null && t.equals(lastText)) {
+                return;
+            }
+            lastText = t;
+            super.setText(t);
+            lastComputedHeight = 0; // Reset cache
+        }
 
         @Override
         public Dimension getPreferredSize() {
@@ -61,6 +72,10 @@ public class MessageBubble extends JPanel {
                 w = 400;
             }
 
+            if (w == lastComputedWidth && lastComputedHeight > 0) {
+                return new Dimension(w, lastComputedHeight + 12);
+            }
+
             try {
                 View root = getUI().getRootView(this);
                 if (root != null) {
@@ -68,15 +83,15 @@ public class MessageBubble extends JPanel {
                     float h = root.getPreferredSpan(View.Y_AXIS);
                     if (h > 0) {
                         lastComputedHeight = (int) Math.ceil(h);
-                        // Significant reduction for large fonts
-                        return new Dimension(w, lastComputedHeight + 6);
+                        lastComputedWidth = w;
+                        return new Dimension(w, lastComputedHeight + 12);
                     }
                 }
             } catch (Exception ignored) {
             }
 
             if (lastComputedHeight > 0) {
-                return new Dimension(w, Math.max(30, lastComputedHeight + 6));
+                return new Dimension(w, Math.max(30, lastComputedHeight + 12));
             }
             return new Dimension(w, Math.max(30, super.getPreferredSize().height));
         }
@@ -99,19 +114,27 @@ public class MessageBubble extends JPanel {
         setLayout(new GridBagLayout());
         setOpaque(false);
         setDoubleBuffered(true);
-        setBorder(new EmptyBorder(4, 8, 8, 8));
+        setBorder(new EmptyBorder(4, 16, 8, 16));
 
-        ThemeManager.Theme theme = ThemeManager.getCurrentTheme();
+        ColorTheme theme = ThemeManager.getCurrentTheme();
 
         segmentsContainer = new JPanel();
         segmentsContainer.setLayout(new BoxLayout(segmentsContainer, BoxLayout.Y_AXIS));
         segmentsContainer.setOpaque(false);
         segmentsContainer.setDoubleBuffered(true);
 
-        this.bubble = new RoundedPanel(16);
-        bubble.setLayout(new BorderLayout());
-        bubble.setBorder(new EmptyBorder(4, 12, 12, 12));
-        bubble.add(segmentsContainer, BorderLayout.CENTER);
+        this.bubble = new JPanel(new BorderLayout());
+        bubble.setOpaque(false);
+        // Only User messages get the prominent global bubble wrapper
+        if ("user".equals(type)) {
+            RoundedPanel p = new RoundedPanel(16);
+            p.setLayout(new BorderLayout());
+            p.setBorder(new EmptyBorder(8, 16, 12, 16));
+            this.bubble = p;
+        } else {
+            this.bubble.setBorder(new EmptyBorder(4, 12, 12, 12));
+        }
+        this.bubble.add(segmentsContainer, BorderLayout.CENTER);
 
         updateContent(theme);
 
@@ -122,20 +145,30 @@ public class MessageBubble extends JPanel {
         gbc.insets = new Insets(2, 2, 2, 2);
 
         if ("user".equals(type)) {
+            if (bubble instanceof RoundedPanel rp) { rp.setBaseColor(theme.getBubbleUser()); }
             bubble.setBackground(theme.getBubbleUser());
-            bubble.setBaseColor(theme.getBubbleUser());
-            gbc.anchor = GridBagConstraints.EAST;
+            gbc.anchor = GridBagConstraints.WEST;
+            gbc.insets = new Insets(4, 12, 12, 12);
 
-            JButton copyBtn = new JButton("📋");
+            Icon copyIcon = ThemeManager.getIcon("copy.svg", 20);
+            JButton copyBtn = new JButton(copyIcon);
             copyBtn.setToolTipText("Copy to input");
-            copyBtn.setFont(copyBtn.getFont().deriveFont(10f));
             copyBtn.setFocusPainted(false);
             copyBtn.setContentAreaFilled(false);
-            copyBtn.setBorder(new EmptyBorder(2, 4, 2, 4));
+            copyBtn.setBorder(new EmptyBorder(2, 8, 2, 8));
             copyBtn.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
 
-            copyBtn.addActionListener(e -> ACPChatTopComponent.findInstance().setInputText(this.text.toString()));
-
+            copyBtn.addActionListener(e -> {
+                ACPChatTopComponent.findInstance().setInputText(this.text.toString());
+                
+                // Visual feedback
+                Icon originalIcon = copyBtn.getIcon();
+                Icon checkIcon = ThemeManager.getIcon("check.svg", 20);
+                copyBtn.setIcon(checkIcon);
+                javax.swing.Timer timer = new javax.swing.Timer(1500, ev -> copyBtn.setIcon(originalIcon));
+                timer.setRepeats(false);
+                timer.start();
+            });
             JPanel footer = new JPanel(new BorderLayout());
             footer.setOpaque(false);
             footer.add(copyBtn, BorderLayout.EAST);
@@ -143,59 +176,24 @@ public class MessageBubble extends JPanel {
         } else if ("error".equals(type)) {
             Color errorBg = new Color(255, 235, 238);
             bubble.setBackground(errorBg);
-            bubble.setBaseColor(errorBg);
+            if (bubble instanceof RoundedPanel rp) { rp.setBaseColor(errorBg); }
             gbc.anchor = GridBagConstraints.WEST;
-            bubble.setBorder(new EmptyBorder(4, 12, 10, 12));
+            gbc.insets = new Insets(4, 12, 12, 12);
         } else if ("tool".equals(type) || "thought".equals(type)) {
             bubble.setBackground(new Color(0, 0, 0, 0));
-            bubble.setBaseColor(null);
+            if (bubble instanceof RoundedPanel rp) { rp.setBaseColor(null); }
             gbc.anchor = GridBagConstraints.WEST;
-            bubble.setBorder(new EmptyBorder(0, 4, 10, 12));
+            gbc.insets = new Insets(4, 12, 12, 12);
         } else {
             bubble.setBackground(new Color(0, 0, 0, 0));
-            bubble.setBaseColor(null);
+            if (bubble instanceof RoundedPanel rp) { rp.setBaseColor(null); }
             gbc.anchor = GridBagConstraints.WEST;
-            bubble.setBorder(new EmptyBorder(4, 0, 8, 12));
+            gbc.insets = new Insets(4, 12, 12, 12);
         }
 
         add(bubble, gbc);
     }
 
-    private static class RoundedPanel extends JPanel {
-
-        private static final long serialVersionUID = 1L;
-        private final int radius;
-        private Color baseColor;
-
-        public RoundedPanel(int radius) {
-            this.radius = radius;
-            setOpaque(false);
-            setDoubleBuffered(true);
-        }
-
-        public void setBaseColor(Color color) {
-            this.baseColor = color;
-        }
-
-        @Override
-        protected void paintComponent(Graphics g) {
-            super.paintComponent(g);
-            Graphics2D g2 = (Graphics2D) g.create();
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-
-            if (baseColor != null) {
-                g2.setColor(baseColor);
-                g2.fillRoundRect(0, 0, getWidth(), getHeight(), radius, radius);
-            }
-
-            ThemeManager.Theme theme = ThemeManager.getCurrentTheme();
-            if (theme.getBubbleBorder() != null && theme.getBubbleBorder().getAlpha() > 0 && baseColor != null) {
-                g2.setColor(theme.getBubbleBorder());
-                g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, radius, radius);
-            }
-            g2.dispose();
-        }
-    }
 
     private boolean hasPendingTextUpdate = false;
     private boolean hasSeenFirstNewline = false;
@@ -268,17 +266,17 @@ public class MessageBubble extends JPanel {
     }
 
     public void refreshTheme() {
-        ThemeManager.Theme theme = ThemeManager.getCurrentTheme();
+        ColorTheme theme = ThemeManager.getCurrentTheme();
         if ("user".equals(type)) {
             bubble.setBackground(theme.getBubbleUser());
-            bubble.setBaseColor(theme.getBubbleUser());
+            if (bubble instanceof RoundedPanel rp) { rp.setBaseColor(theme.getBubbleUser()); }
         } else if ("error".equals(type)) {
             Color errorBg = new Color(255, 235, 238);
             bubble.setBackground(errorBg);
-            bubble.setBaseColor(errorBg);
+            if (bubble instanceof RoundedPanel rp) { rp.setBaseColor(errorBg); }
         } else {
             bubble.setBackground(new Color(0, 0, 0, 0));
-            bubble.setBaseColor(null);
+            if (bubble instanceof RoundedPanel rp) { rp.setBaseColor(null); }
         }
 
         for (Component c : segmentsContainer.getComponents()) {
@@ -292,15 +290,15 @@ public class MessageBubble extends JPanel {
         updateContent(theme);
     }
 
-    private void updateContent(ThemeManager.Theme theme) {
+    private void updateContent(ColorTheme theme) {
         updateContent(theme, false);
     }
 
-    private void updateContent(ThemeManager.Theme theme, boolean incremental) {
+    private void updateContent(ColorTheme theme, boolean incremental) {
         // Handle specialized tool rendering
         if ("tool".equals(type) || "thought".equals(type)) {
             String rawText = text.toString();
-            String title = "thought".equals(type) ? "THINKING PROCESS" : "Tool Call";
+            String title = "thought".equals(type) ? "Thinking Process" : "Tool";
             String displayContent = rawText;
 
             // Try to extract a summary title from the tool call text
@@ -309,12 +307,10 @@ public class MessageBubble extends JPanel {
                     int toolStart = rawText.indexOf("the ") + 4;
                     int toolEnd = rawText.indexOf(" tool");
                     if (toolStart > 3 && toolEnd > toolStart) {
-                        title = "TOOL: Use " + rawText.substring(toolStart, toolEnd).trim();
+                        title = "Tool: Use " + rawText.substring(toolStart, toolEnd).trim();
                     }
                 } else if (rawText.contains(":") && rawText.length() < 100) {
-                    title = "TOOL: " + rawText;
-                } else {
-                    title = "TOOL: " + title;
+                    title = "Tool: " + rawText;
                 }
             }
 
@@ -323,9 +319,14 @@ public class MessageBubble extends JPanel {
                 CollapsibleToolPane existingPane = (CollapsibleToolPane) segmentsContainer.getComponent(0);
                 existingPane.setTitle(title);
                 existingPane.setContent(displayContent);
+                // Auto-collapse if we are no longer in incremental mode
+                if (!incremental) {
+                    existingPane.setExpanded(false);
+                }
             } else {
                 segmentsContainer.removeAll();
-                boolean defaultExpanded = "thought".equals(type);
+                // Thoughts and Tools expand only during active creation (incremental)
+                boolean defaultExpanded = incremental;
                 CollapsibleToolPane toolPane = new CollapsibleToolPane(title, displayContent, defaultExpanded);
                 segmentsContainer.add(toolPane);
             }
@@ -388,6 +389,18 @@ public class MessageBubble extends JPanel {
         this.revalidate();
     }
 
+    public void finalizeStreaming() {
+        // When streaming ends, collapse all process blocks (Tools/Thoughts) 
+        // but leave Code blocks open
+        for (Component c : segmentsContainer.getComponents()) {
+            if (c instanceof CollapsibleToolPane toolPane) {
+                toolPane.setExpanded(false);
+            }
+        }
+        revalidate();
+        repaint();
+    }
+
     private void updateOrAddCodeSegment(String lang, String code, boolean expanded, int codeIdx, int compIdx) {
         if (compIdx < segmentsContainer.getComponentCount()) {
             Component c = segmentsContainer.getComponent(compIdx);
@@ -408,22 +421,21 @@ public class MessageBubble extends JPanel {
         }
     }
 
-    private void updateOrAddTextSegment(String markdown, ThemeManager.Theme theme, int compIdx, boolean incremental) {
+    private void updateOrAddTextSegment(String markdown, ColorTheme theme, int compIdx, boolean incremental) {
         String styledHtml = prepareHtml(markdown, theme);
         Color bg = getBubbleBackground(theme);
 
         if (compIdx < segmentsContainer.getComponentCount()) {
             Component c = segmentsContainer.getComponent(compIdx);
-            if (c instanceof JEditorPane pane) {
+            if (c instanceof FitEditorPane pane) {
                 pane.setBackground(bg);
-                // Always use setText to ensure full document structure and styles are applied correctly
-                // setInnerHTML can be unreliable with complex styles like pre-wrap
+                // FitEditorPane.setText now includes a dirty check
                 pane.setText(styledHtml);
                 return;
             }
         }
 
-        JEditorPane pane = createHtmlPane(styledHtml, bg);
+        FitEditorPane pane = createHtmlPane(styledHtml, bg);
         if (compIdx < segmentsContainer.getComponentCount()) {
             segmentsContainer.remove(compIdx);
             segmentsContainer.add(pane, compIdx);
@@ -432,38 +444,9 @@ public class MessageBubble extends JPanel {
         }
     }
 
-    private void setBodyContent(JEditorPane pane, String styledHtml) {
-        if (pane.getDocument() instanceof HTMLDocument doc) {
-            String bodyContent = extractBodyContent(styledHtml);
-            Element root = doc.getDefaultRootElement();
-            for (int i = 0; i < root.getElementCount(); i++) {
-                Element child = root.getElement(i);
-                if ("body".equals(child.getName())) {
-                    try {
-                        doc.setInnerHTML(child, bodyContent);
-                        return;
-                    } catch (Exception ex) {
-                        break;
-                    }
-                }
-            }
-        }
-        pane.setText(styledHtml);
-    }
 
-    private String extractBodyContent(String fullHtml) {
-        int start = fullHtml.indexOf("<body");
-        if (start >= 0) {
-            start = fullHtml.indexOf('>', start) + 1;
-            int end = fullHtml.lastIndexOf("</body>");
-            if (end > start) {
-                return fullHtml.substring(start, end);
-            }
-        }
-        return fullHtml;
-    }
 
-    private String prepareHtml(String markdown, ThemeManager.Theme theme) {
+    private String prepareHtml(String markdown, ColorTheme theme) {
         MutableDataSet options = new MutableDataSet();
         options.set(HtmlRenderer.SOFT_BREAK, "\n");
         Parser parser = Parser.builder(options).build();
@@ -486,7 +469,7 @@ public class MessageBubble extends JPanel {
         } else if ("error".equals(type)) {
             bg = new Color(255, 235, 238);
         } else {
-            bg = theme.getBackground();
+            bg = theme.getSunkenBackground();
         }
 
         boolean isAssistant = !"user".equals(type) && !"error".equals(type) && !"tool".equals(type);
@@ -499,28 +482,32 @@ public class MessageBubble extends JPanel {
 
         // Removed the <pre> wrap which was causing nested <p> segments to render incorrectly and overlap.
         // We rely on 'white-space: pre-wrap' in the base CSS to preserve whitespace.
-        return "<html><head><style>" + customCss + "</style></head><body style='margin: 0;'>" + html + "</body></html>";
+        return "<html><head><style>" + customCss + "</style></head><body style='margin: 0; padding: 8px;'>" + html + "</body></html>";
     }
 
-    private Color getBubbleBackground(ThemeManager.Theme theme) {
+    private Color getBubbleBackground(ColorTheme theme) {
         if ("user".equals(type)) {
             return theme.getBubbleUser();
         } else if ("error".equals(type)) {
             return new Color(255, 235, 238);
         } else {
-            return theme.getBackground();
+            return theme.getSunkenBackground();
         }
     }
 
-    private JEditorPane createHtmlPane(String styledHtml, Color bg) {
-        JEditorPane pane = new FitEditorPane();
+    private FitEditorPane createHtmlPane(String styledHtml, Color bg) {
+        ColorTheme theme = ThemeManager.getCurrentTheme();
+        FitEditorPane pane = new FitEditorPane();
+        pane.putClientProperty(javax.swing.JEditorPane.HONOR_DISPLAY_PROPERTIES, Boolean.TRUE);
         pane.setEditable(false);
         pane.setContentType("text/html");
         pane.setOpaque(true);
         pane.setBackground(bg);
+        pane.setForeground(theme.getForeground());
         pane.setDoubleBuffered(true);
         pane.setText(styledHtml);
         pane.setFont(ThemeManager.getFont());
+        pane.setBorder(new javax.swing.border.EmptyBorder(0, 0, 10, 0));
         return pane;
     }
 

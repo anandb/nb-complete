@@ -48,20 +48,26 @@ public class ChatThreadPanel extends JPanel {
         setBackground(ThemeManager.getCurrentTheme().getBackground());
         setDoubleBuffered(true);
 
-        ThemeManager.Theme theme = ThemeManager.getCurrentTheme();
+        ColorTheme theme = ThemeManager.getCurrentTheme();
         messagesContainer = new ScrollablePanel();
         messagesContainer.setLayout(new BoxLayout(messagesContainer, BoxLayout.Y_AXIS));
         messagesContainer.setOpaque(true);
-        messagesContainer.setBackground(theme.getBackground());
+        messagesContainer.setBackground(theme.getSunkenBackground());
+        messagesContainer.setBorder(new javax.swing.border.EmptyBorder(0, 0, 40, 0));
 
         scrollPane = new JScrollPane(messagesContainer);
-        scrollPane.setBorder(null);
+        // Sunken feel border
+        Color shadow = theme.isDark() ? Color.BLACK : theme.getBubbleBorder();
+        scrollPane.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createMatteBorder(1, 0, 1, 0, shadow),
+            BorderFactory.createEmptyBorder(0, 0, 0, 0)
+        ));
         scrollPane.setOpaque(true);
-        scrollPane.setBackground(theme.getBackground());
+        scrollPane.setBackground(theme.getSunkenBackground());
         scrollPane.getViewport().setOpaque(true);
-        scrollPane.getViewport().setBackground(theme.getBackground());
+        scrollPane.getViewport().setBackground(theme.getSunkenBackground());
         scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-        scrollPane.getViewport().setScrollMode(JViewport.SIMPLE_SCROLL_MODE);
+        scrollPane.getViewport().setScrollMode(JViewport.BLIT_SCROLL_MODE);
         scrollPane.getVerticalScrollBar().setUnitIncrement(16);
 
         // Fix: Mouse wheel scrolling often breaks when mouse is over child components
@@ -130,8 +136,8 @@ public class ChatThreadPanel extends JPanel {
                     String pt = part.getDisplayText();
                     if (pt != null && !pt.isEmpty()) {
                         if (sb.length() > 0) {
-                    sb.append("\n");
-                }
+                            sb.append("\n");
+                        }
                         sb.append(pt);
                     }
                 }
@@ -222,6 +228,7 @@ public class ChatThreadPanel extends JPanel {
                 }
             } else {
                 if (activeStreamBubble != null) {
+                    activeStreamBubble.finalizeStreaming();
                     activeStreamBubble.flushUpdate(true);
                     activeStreamBubble = null;
                 }
@@ -236,6 +243,7 @@ public class ChatThreadPanel extends JPanel {
     public void stopStreaming() {
         SwingUtilities.invokeLater(() -> {
             if (activeStreamBubble != null) {
+                activeStreamBubble.finalizeStreaming();
                 if (activeStreamBubble.flushUpdate(true)) {
                     messagesContainer.revalidate();
                     scrollToBottom();
@@ -265,18 +273,18 @@ public class ChatThreadPanel extends JPanel {
             setOpaque(false);
             setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
 
-            ThemeManager.Theme theme = ThemeManager.getCurrentTheme();
+            ColorTheme theme = ThemeManager.getCurrentTheme();
 
             JPanel content = new JPanel(new BorderLayout(0, 10));
-            content.setBackground(new Color(255, 243, 224)); // Light orange/amber background
+            content.setBackground(theme.getPermissionBg());
             content.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(255, 160, 0), 1, true),
+                BorderFactory.createLineBorder(theme.getPermissionBorder(), 1, true),
                 BorderFactory.createEmptyBorder(12, 16, 12, 16)
             ));
 
             JLabel titleLabel = new JLabel("🛡️ Permission Required");
             titleLabel.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
-            titleLabel.setForeground(new Color(230, 81, 0));
+            titleLabel.setForeground(theme.getPermissionTitle());
             content.add(titleLabel, BorderLayout.NORTH);
 
             JLabel promptLabel = new JLabel("<html>" + prompt.replace("\n", "<br>") + "</html>");
@@ -433,7 +441,7 @@ public class ChatThreadPanel extends JPanel {
 
     public void refreshTheme() {
         SwingUtilities.invokeLater(() -> {
-            ThemeManager.Theme theme = ThemeManager.getCurrentTheme();
+            ColorTheme theme = ThemeManager.getCurrentTheme();
             setBackground(theme.getBackground());
             scrollPane.setBackground(theme.getBackground());
             scrollPane.getViewport().setBackground(theme.getBackground());
@@ -520,7 +528,7 @@ public class ChatThreadPanel extends JPanel {
     }
 
     private JButton createSelectionButton(String text, String subtext) {
-        ThemeManager.Theme theme = ThemeManager.getCurrentTheme();
+        ColorTheme theme = ThemeManager.getCurrentTheme();
 
         JButton btn = new JButton();
         btn.setLayout(new BorderLayout(8, 0));

@@ -20,6 +20,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.logging.Level;
+import javax.swing.Icon;
+import org.openide.util.ImageUtilities;
 
 import javax.swing.BorderFactory;
 import javax.swing.DefaultListCellRenderer;
@@ -118,6 +120,7 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
     private final JComboBox<SessionItem> sessionDropdown;
     private boolean isSwitchingSessionDropdown = false;
     private boolean isUpdatingConfigControls = false;
+    private boolean isRefreshingSessions = false;
     private final JLabel cwdLabel;
     private final JComboBox<ConfigItem> modeCombo;
     private final JComboBox<ConfigItem> modelCombo;
@@ -140,7 +143,7 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
     public ACPChatTopComponent() {
         instance = this;
         LOG.info("Initializing ACPChatTopComponent...");
-        ThemeManager.Theme theme = ThemeManager.getCurrentTheme();
+        ColorTheme theme = ThemeManager.getCurrentTheme();
         setName(NbBundle.getMessage(ACPChatTopComponent.class, "CTL_ACPChatTopComponent"));
         setToolTipText(NbBundle.getMessage(ACPChatTopComponent.class, "HINT_ACPChatTopComponent"));
         setLayout(new BorderLayout());
@@ -150,7 +153,7 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
         setBackground(base3);
 
         header = new JPanel(new BorderLayout());
-        header.setBorder(new EmptyBorder(10, 10, 10, 10)); // Reduced margins
+        header.setBorder(new EmptyBorder(10, 28, 10, 28)); // Aligned with code block/segments
         header.setOpaque(true);
         header.setBackground(base3);
 
@@ -166,9 +169,6 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
         cwdLabel.setOpaque(true);
 
         JButton newSessionBtn = new JButton("+ New Chat");
-        newSessionBtn.setFocusPainted(false);
-        newSessionBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        newSessionBtn.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
         newSessionBtn.addActionListener(e -> createNewSession());
 
         sessionDropdown = new JComboBox<>();
@@ -195,9 +195,6 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
         sessionDropdown.addActionListener(sessionDropdownListener);
 
         JButton renameSessionBtn = new JButton("Rename");
-        renameSessionBtn.setFocusPainted(false);
-        renameSessionBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        renameSessionBtn.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
         renameSessionBtn.addActionListener(e -> renameCurrentSession());
 
         JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
@@ -221,27 +218,16 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
         blockControls.setBorder(new EmptyBorder(4, 0, 0, 0));
 
         JButton expandAllBtn = new JButton("Expand All");
-        expandAllBtn.setFocusPainted(false);
-        expandAllBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        expandAllBtn.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
         expandAllBtn.addActionListener(e -> chatPanel.toggleAllBlocks(true));
 
         JButton collapseAllBtn = new JButton("Collapse All");
-        collapseAllBtn.setFocusPainted(false);
-        collapseAllBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        collapseAllBtn.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
         collapseAllBtn.addActionListener(e -> chatPanel.toggleAllBlocks(false));
 
         JButton exportBtn = new JButton("Export Markdown");
-        exportBtn.setFocusPainted(false);
-        exportBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        exportBtn.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
         exportBtn.addActionListener(e -> exportConversation());
 
-        JButton themeToggleBtn = new JButton(theme.isDark() ? "☀️ Light" : "🌙 Dark");
-        themeToggleBtn.setFocusPainted(false);
-        themeToggleBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        themeToggleBtn.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
+        Icon themeIcon = ThemeManager.getIcon(theme.isDark() ? "sun.svg" : "moon.svg", 18);
+        JButton themeToggleBtn = new JButton(theme.isDark() ? "Light Mode" : "Dark Mode", themeIcon);
         themeToggleBtn.addActionListener(e -> toggleDarkMode());
 
         JPanel blockControlsRight = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
@@ -273,7 +259,7 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
 
         // Input Area Wrapper with border and shadow-like padding
         JPanel inputContainer = new JPanel(new BorderLayout(0, 8));
-        inputContainer.setBorder(new EmptyBorder(16, 16, 12, 16));
+        inputContainer.setBorder(new EmptyBorder(16, 28, 12, 28));
         inputContainer.setOpaque(false);
 
         JPanel inputWrapper = new JPanel(new BorderLayout());
@@ -375,7 +361,9 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
 
                 if (e.getKeyCode() == KeyEvent.VK_ENTER) {
                     if (e.isShiftDown()) {
-                        // Allow default behavior for Shift+Enter (new line)
+                        int pos = inputArea.getCaretPosition();
+                        inputArea.insert("\n", pos);
+                        e.consume();
                         return;
                     }
                     if (autocompletePopup.isVisible()) {
@@ -438,14 +426,10 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
         inputWrapper.add(inputScrollPane, BorderLayout.CENTER);
 
         sendBtn = new JButton("Go");
-        sendBtn.setFocusPainted(false);
-        sendBtn.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
         sendBtn.setPreferredSize(new Dimension(80, 0));
         sendBtn.addActionListener(e -> sendMessage());
 
         stopBtn = new JButton("Stop");
-        stopBtn.setFocusPainted(false);
-        stopBtn.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
         stopBtn.setPreferredSize(new Dimension(80, 0));
         stopBtn.addActionListener(e -> stopMessage());
 
@@ -464,11 +448,8 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
         configPanel.setVisible(false);
 
         toggleOptionsBtn = new JButton("Options ▼");
-        toggleOptionsBtn.setFocusPainted(false);
         toggleOptionsBtn.setBorderPainted(false);
         toggleOptionsBtn.setContentAreaFilled(false);
-        toggleOptionsBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        toggleOptionsBtn.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
         toggleOptionsBtn.setHorizontalAlignment(SwingConstants.LEFT);
         toggleOptionsBtn.setForeground(Color.GRAY);
         toggleOptionsBtn.addActionListener(e -> {
@@ -676,7 +657,6 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
                 SwingUtilities.invokeLater(() -> {
                     resetStatus();
                     chatPanel.stopStreaming();
-                    chatPanel.collapseLastThought();
                 });
             }
         };
@@ -684,7 +664,7 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
         ACPManager.getInstance().setPermissionHandler(this);
 
         ACPManager.getInstance().addProjectChangeListener(path -> {
-            if (path != null) {
+            if (path != null && !path.equals(lastProjectDir)) {
                 SwingUtilities.invokeLater(() -> {
                     // Only automatically clear if the project has actually changed
                     if (lastProjectDir != null && !lastProjectDir.equals(path)) {
@@ -707,6 +687,10 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
     }
 
     private void refreshSessions(String autoselectId, boolean loadMessages) {
+        if (isRefreshingSessions) {
+            return;
+        }
+        isRefreshingSessions = true;
         statusLabel.setText("Connecting...");
         ACPManager manager = ACPManager.getInstance();
         LOG.log(Level.INFO, "refreshSessions: initialized={0}", manager.isInitialized());
@@ -760,6 +744,9 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
                     SwingUtilities.invokeLater(() -> statusLabel.setText("Error: " + ex.getMessage()));
                     LOG.log(Level.SEVERE, "Failed to refresh sessions", ex);
                     return null;
+                })
+                .thenRun(() -> {
+                    isRefreshingSessions = false;
                 });
     }
 
@@ -1043,6 +1030,7 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
                 .thenAccept(v -> {
                     SwingUtilities.invokeLater(() -> {
                         statusLabel.setText("Stopped");
+                        chatPanel.stopStreaming();
                         updateButtonState(false);
                     });
                 })
@@ -1240,7 +1228,9 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
                         if (forceStartupDefaults) {
                             String forcedValue = null;
                             if ("mode".equals(opt.category())) {
-                                if (opt.options().stream().anyMatch(o -> "plan".equalsIgnoreCase(o.value()))) {
+                                if (opt.options().stream().anyMatch(o -> "build".equalsIgnoreCase(o.value()))) {
+                                    forcedValue = "build";
+                                } else if (opt.options().stream().anyMatch(o -> "plan".equalsIgnoreCase(o.value()))) {
                                     forcedValue = "plan";
                                 }
                             } else if ("model".equals(opt.category())) {
@@ -1346,8 +1336,8 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
                 int availableWidth = cwdLabel.getWidth() - 10;
                 String displayPath = effectivePath;
 
-                if (availableWidth > 20 && fm.stringWidth(effectivePath) > availableWidth) {
-                    while (displayPath.length() > 10 && fm.stringWidth("..." + displayPath) > availableWidth) {
+                if (availableWidth > 30 && fm.stringWidth(effectivePath) > availableWidth) {
+                    while (displayPath.length() > 5 && fm.stringWidth("..." + displayPath) > availableWidth) {
                         displayPath = displayPath.substring(1);
                     }
                     displayPath = "..." + displayPath;
@@ -1411,13 +1401,13 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
     }
 
     private void toggleDarkMode() {
-        ThemeManager.Theme current = ThemeManager.getCurrentTheme();
+        ColorTheme current = ThemeManager.getCurrentTheme();
         ThemeManager.setDarkMode(!current.isDark());
         refreshTheme();
     }
 
     private void refreshTheme() {
-        ThemeManager.Theme theme = ThemeManager.getCurrentTheme();
+        ColorTheme theme = ThemeManager.getCurrentTheme();
 
         setBackground(theme.getBackground());
         header.setBackground(theme.getBackground());
@@ -1446,10 +1436,13 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
         repaint();
     }
 
-    private void updateButtonsRecursive(Component container, ThemeManager.Theme theme) {
+    private void updateButtonsRecursive(Component container, ColorTheme theme) {
         if (container instanceof JButton btn) {
-            if (btn.getText().contains("Light") || btn.getText().contains("Dark")) {
-                btn.setText(theme.isDark() ? "☀️ Light" : "🌙 Dark");
+            if (btn.getText().contains("Light") || btn.getText().contains("Dark") || btn.getText().contains("Mode")) {
+                btn.setText(theme.isDark() ? "Light Mode" : "Dark Mode");
+                Icon tIcon = ThemeManager.getIcon(theme.isDark() ? "sun.svg" : "moon.svg", 18);
+                btn.setIcon(tIcon);
+                btn.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN));
             }
         } else if (container instanceof java.awt.Container cont) {
             for (Component c : cont.getComponents()) {

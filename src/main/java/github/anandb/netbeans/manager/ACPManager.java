@@ -33,14 +33,14 @@ public class ACPManager {
     private Process serverProcess;
     private JsonRpcClient rpcClient;
     private boolean initialized = false;
-    private final CompletableFuture<Void> readyFuture = new CompletableFuture<>();
+    private CompletableFuture<Void> readyFuture = new CompletableFuture<>();
 
     private final List<Consumer<SessionUpdate>> sseListeners = new CopyOnWriteArrayList<>();
     private final List<Consumer<String>> projectChangeListeners = new CopyOnWriteArrayList<>();
     private String activeProjectDir;
     private final List<SessionUpdate.AvailableCommand> availableCommands = new CopyOnWriteArrayList<>();
     private PermissionHandler permissionHandler;
-    private boolean isClosing = false;
+    private volatile boolean isClosing = false;
     private int restartCount = 0;
     private long lastRestartTime = 0;
     private static final int MAX_RESTARTS = 3;
@@ -69,7 +69,14 @@ public class ACPManager {
         return instance;
     }
 
-    private void startServer() {
+    private synchronized void startServer() {
+        if (serverProcess != null && serverProcess.isAlive()) {
+            return;
+        }
+        isClosing = false;
+        if (readyFuture.isDone()) {
+            readyFuture = new CompletableFuture<>();
+        }
         LOG.info("Starting ACP server...");
         try {
             String defaultPath = System.getProperty("user.home") + "/.opencode/bin/opencode";
@@ -409,6 +416,10 @@ public class ACPManager {
     }
 
     public CompletableFuture<JsonNode> getCompletionsInline(String text, int line, int column, String prefix, String suffix) {
+        return getCompletionsInline(text, line, column, prefix, suffix, 0, java.util.concurrent.TimeUnit.SECONDS);
+    }
+
+    public CompletableFuture<JsonNode> getCompletionsInline(String text, int line, int column, String prefix, String suffix, long timeout, java.util.concurrent.TimeUnit unit) {
         if (rpcClient == null) {
             return CompletableFuture.completedFuture(null);
         }
@@ -422,7 +433,7 @@ public class ACPManager {
         if (suffix != null && !suffix.isEmpty()) {
             params.put("suffix", suffix);
         }
-        return rpcClient.sendRequest("completion/inline", params);
+        return rpcClient.sendRequest("completion/inline", params, timeout, unit);
     }
 
     public CompletableFuture<Void> setSessionConfigOption(String sessionId, String configId, String value) {
