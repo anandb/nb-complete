@@ -169,7 +169,7 @@ public class ChatThreadPanel extends JPanel {
         SwingUtilities.invokeLater(() -> {
             MessageBubble bubble = new MessageBubble(role, text, messageId);
             messagesContainer.add(bubble);
-            messagesContainer.add(Box.createVerticalStrut(8));
+            messagesContainer.add(Box.createVerticalStrut(4));
             messagesContainer.revalidate();
             messagesContainer.repaint();
 
@@ -260,7 +260,7 @@ public class ChatThreadPanel extends JPanel {
         SwingUtilities.invokeLater(() -> {
             PermissionBubble bubble = new PermissionBubble(prompt, options, responseFuture);
             messagesContainer.add(bubble);
-            messagesContainer.add(Box.createVerticalStrut(8));
+            messagesContainer.add(Box.createVerticalStrut(4));
             messagesContainer.revalidate();
             messagesContainer.repaint();
             scrollToBottom();
@@ -515,7 +515,7 @@ public class ChatThreadPanel extends JPanel {
                         JButton sessionBtn = createSelectionButton(label, s.cwd());
                         sessionBtn.addActionListener(e -> onSessionSelected.accept(s.id()));
                         messagesContainer.add(sessionBtn);
-                        messagesContainer.add(Box.createVerticalStrut(8));
+                        messagesContainer.add(Box.createVerticalStrut(4));
                     }
                 }
 

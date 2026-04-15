@@ -114,7 +114,7 @@ public class MessageBubble extends JPanel {
         setLayout(new GridBagLayout());
         setOpaque(false);
         setDoubleBuffered(true);
-        setBorder(new EmptyBorder(4, 16, 8, 16));
+        setBorder(new EmptyBorder(4, 16, 4, 16));
 
         ColorTheme theme = ThemeManager.getCurrentTheme();
 
@@ -148,7 +148,7 @@ public class MessageBubble extends JPanel {
             if (bubble instanceof RoundedPanel rp) { rp.setBaseColor(theme.getBubbleUser()); }
             bubble.setBackground(theme.getBubbleUser());
             gbc.anchor = GridBagConstraints.WEST;
-            gbc.insets = new Insets(4, 12, 12, 12);
+            gbc.insets = new Insets(4, 12, 4, 12);
 
             Icon copyIcon = ThemeManager.getIcon("copy.svg", 20);
             JButton copyBtn = new JButton(copyIcon);
@@ -178,17 +178,17 @@ public class MessageBubble extends JPanel {
             bubble.setBackground(errorBg);
             if (bubble instanceof RoundedPanel rp) { rp.setBaseColor(errorBg); }
             gbc.anchor = GridBagConstraints.WEST;
-            gbc.insets = new Insets(4, 12, 12, 12);
+            gbc.insets = new Insets(4, 12, 4, 12);
         } else if ("tool".equals(type) || "thought".equals(type)) {
             bubble.setBackground(new Color(0, 0, 0, 0));
             if (bubble instanceof RoundedPanel rp) { rp.setBaseColor(null); }
             gbc.anchor = GridBagConstraints.WEST;
-            gbc.insets = new Insets(4, 12, 12, 12);
+            gbc.insets = new Insets(4, 12, 4, 12);
         } else {
             bubble.setBackground(new Color(0, 0, 0, 0));
             if (bubble instanceof RoundedPanel rp) { rp.setBaseColor(null); }
             gbc.anchor = GridBagConstraints.WEST;
-            gbc.insets = new Insets(4, 12, 12, 12);
+            gbc.insets = new Insets(4, 12, 4, 12);
         }
 
         add(bubble, gbc);
