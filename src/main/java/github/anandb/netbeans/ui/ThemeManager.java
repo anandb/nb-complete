@@ -51,6 +51,9 @@ public class ThemeManager {
 
     public static ColorTheme getCurrentTheme() {
         boolean isDark = org.openide.util.NbPreferences.forModule(ThemeManager.class).getBoolean("isDarkMode", false);
+        if (System.getProperty("os.name").contains("Mac")) {
+            return ColorTheme.NATIVE;
+        }
         return isDark ? ColorTheme.DARK : ColorTheme.LIGHT;
     }
 

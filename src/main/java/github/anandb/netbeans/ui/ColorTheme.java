@@ -1,6 +1,7 @@
 package github.anandb.netbeans.ui;
 
 import java.awt.Color;
+import javax.swing.UIManager;
 
 /**
  * Centralized color definitions for the ACP NetBeans plugin.
@@ -89,6 +90,30 @@ public class ColorTheme {
     public Color getPermissionBg() { return permissionBg; }
     public Color getPermissionBorder() { return permissionBorder; }
     public Color getPermissionTitle() { return permissionTitle; }
+
+    public static final ColorTheme NATIVE = new Builder(false)
+            .background(UIManager.getColor("Panel.background"))
+            .foreground(UIManager.getColor("Panel.foreground"))
+            .selection(UIManager.getColor("TextArea.selectionBackground"))
+            .accent(UIManager.getColor("Button.focusColor"))
+            .sunkenBackground(UIManager.getColor("Panel.background"))
+            .ghostBackground(UIManager.getColor("Label.background"))
+            .bubbleUser(UIManager.getColor("TextField.background"))
+            .assistantForeground(UIManager.getColor("TextArea.foreground"))
+            .bubbleBorder(UIManager.getColor("Button.borderColor"))
+            .panelHeader(UIManager.getColor("Panel.background"))
+            .panelHeaderHover(UIManager.getColor("Button.background"))
+            .base1(UIManager.getColor("Label.foreground"))
+            .base2(UIManager.getColor("controlShadow"))
+            .base3(UIManager.getColor("control"))
+            .yellow(UIManager.getColor("ComboBox.selectionBackground"))
+            .codeBackground(UIManager.getColor("TextArea.background"))
+            .codeForeground(UIManager.getColor("TextArea.foreground"))
+            .codeSelection(UIManager.getColor("TextArea.selectionBackground"))
+            .permissionBg(UIManager.getColor("OptionPane.background"))
+            .permissionBorder(UIManager.getColor("Button.focusColor"))
+            .permissionTitle(UIManager.getColor("OptionPane.messageForeground"))
+            .build();
 
     public static final ColorTheme LIGHT = new Builder(false)
             .background(Color.decode("#D9D0B4"))       // secondary3: main panel bg
