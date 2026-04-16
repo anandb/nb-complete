@@ -35,6 +35,10 @@ public class ColorTheme {
     private final Color codeBackground;
     private final Color codeForeground;
     private final Color codeSelection;
+    
+    // Generic
+    private final Color headerForeground;
+    private final Color errorBackground;
 
     // Permission Panel
     private final Color permissionBg;
@@ -65,6 +69,8 @@ public class ColorTheme {
         this.permissionBg = builder.permissionBg;
         this.permissionBorder = builder.permissionBorder;
         this.permissionTitle = builder.permissionTitle;
+        this.headerForeground = builder.headerForeground;
+        this.errorBackground = builder.errorBackground;
     }
 
     public boolean isDark() { return isDark; }
@@ -90,6 +96,8 @@ public class ColorTheme {
     public Color getPermissionBg() { return permissionBg; }
     public Color getPermissionBorder() { return permissionBorder; }
     public Color getPermissionTitle() { return permissionTitle; }
+    public Color getHeaderForeground() { return headerForeground; }
+    public Color getErrorBackground() { return errorBackground; }
 
     public static final ColorTheme NATIVE = new Builder(false)
             .background(UIManager.getColor("Panel.background"))
@@ -113,6 +121,8 @@ public class ColorTheme {
             .permissionBg(UIManager.getColor("OptionPane.background"))
             .permissionBorder(UIManager.getColor("Button.focusColor"))
             .permissionTitle(UIManager.getColor("OptionPane.messageForeground"))
+            .headerForeground(UIManager.getColor("Label.foreground"))
+            .errorBackground(Color.decode("#FFEBEE"))
             .build();
 
     public static final ColorTheme LIGHT = new Builder(false)
@@ -137,6 +147,8 @@ public class ColorTheme {
             .permissionBg(Color.decode("#FFF3E0"))
             .permissionBorder(Color.decode("#FFA000"))
             .permissionTitle(Color.decode("#E65100"))
+            .headerForeground(Color.decode("#555555"))
+            .errorBackground(Color.decode("#FFEBEE"))
             .build();
 
     public static final ColorTheme DARK = new Builder(true)
@@ -161,6 +173,8 @@ public class ColorTheme {
             .permissionBg(Color.decode("#32230A"))
             .permissionBorder(Color.decode("#B46E00"))
             .permissionTitle(Color.decode("#FFA726"))
+            .headerForeground(Color.decode("#BBBBBB"))
+            .errorBackground(Color.decode("#401010"))
             .build();
 
     public static final ColorTheme MACOS_LIGHT = new Builder(false)
@@ -185,6 +199,8 @@ public class ColorTheme {
             .permissionBg(Color.decode("#FFF3E0"))
             .permissionBorder(Color.decode("#FFA000"))
             .permissionTitle(Color.decode("#E65100"))
+            .headerForeground(Color.decode("#555555"))
+            .errorBackground(Color.decode("#FFEBEE"))
             .build();
 
     public static final ColorTheme MACOS_DARK = new Builder(true)
@@ -209,6 +225,8 @@ public class ColorTheme {
             .permissionBg(Color.decode("#32230A"))
             .permissionBorder(Color.decode("#B46E00"))
             .permissionTitle(Color.decode("#FFA726"))
+            .headerForeground(Color.decode("#BBBBBB"))
+            .errorBackground(Color.decode("#401010"))
             .build();
 
     private static class Builder {
@@ -235,6 +253,8 @@ public class ColorTheme {
         private Color permissionBg;
         private Color permissionBorder;
         private Color permissionTitle;
+        private Color headerForeground;
+        private Color errorBackground;
 
         public Builder(boolean isDark) { this.isDark = isDark; }
         public Builder background(Color c) { this.background = c; return this; }
@@ -258,6 +278,8 @@ public class ColorTheme {
         public Builder permissionBg(Color c) { this.permissionBg = c; return this; }
         public Builder permissionBorder(Color c) { this.permissionBorder = c; return this; }
         public Builder permissionTitle(Color c) { this.permissionTitle = c; return this; }
+        public Builder headerForeground(Color c) { this.headerForeground = c; return this; }
+        public Builder errorBackground(Color c) { this.errorBackground = c; return this; }
         
         public ColorTheme build() { return new ColorTheme(this); }
     }

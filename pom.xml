@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>github.anandb</groupId>
     <artifactId>acp-netbeans-plugin</artifactId>
-    <version>1.2.129</version>
+    <version>1.2.140</version>
     <packaging>nbm</packaging>
 
     <name>ACP NetBeans Plugin</name>
@@ -13,7 +13,6 @@
         <maven.compiler.release>21</maven.compiler.release>
         <netbeans.version>RELEASE210</netbeans.version>
     </properties>
-
 
     <dependencies>
         <dependency>
@@ -163,6 +162,13 @@
                     <author>ACP</author>
                     <licenseName>Apache 2.0</licenseName>
                     <licenseFile>LICENSE</licenseFile>
+                    <publicPackages>
+                        <publicPackage>github.anandb.netbeans.completion</publicPackage>
+                        <publicPackage>github.anandb.netbeans.manager</publicPackage>
+                        <publicPackage>github.anandb.netbeans.model</publicPackage>
+                        <publicPackage>github.anandb.netbeans.project</publicPackage>
+                        <publicPackage>github.anandb.netbeans.ui</publicPackage>
+                    </publicPackages>
                 </configuration>
             </plugin>
             <plugin>

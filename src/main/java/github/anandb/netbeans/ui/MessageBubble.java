@@ -159,7 +159,7 @@ public class MessageBubble extends JPanel {
             copyBtn.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
 
             copyBtn.addActionListener(e -> {
-                ACPChatTopComponent.findInstance().setInputText(this.text.toString());
+                AssistantTopComponent.findInstance().setInputText(this.text.toString());
                 
                 // Visual feedback
                 Icon originalIcon = copyBtn.getIcon();
@@ -173,8 +173,8 @@ public class MessageBubble extends JPanel {
             footer.setOpaque(false);
             footer.add(copyBtn, BorderLayout.EAST);
             bubble.add(footer, BorderLayout.SOUTH);
-        } else if ("error".equals(type)) {
-            Color errorBg = new Color(255, 235, 238);
+        } else if ("error".equals(type)) {            
+            Color errorBg = theme.getErrorBackground();
             bubble.setBackground(errorBg);
             if (bubble instanceof RoundedPanel rp) { rp.setBaseColor(errorBg); }
             gbc.anchor = GridBagConstraints.WEST;
@@ -271,7 +271,7 @@ public class MessageBubble extends JPanel {
             bubble.setBackground(theme.getBubbleUser());
             if (bubble instanceof RoundedPanel rp) { rp.setBaseColor(theme.getBubbleUser()); }
         } else if ("error".equals(type)) {
-            Color errorBg = new Color(255, 235, 238);
+            Color errorBg = theme.getErrorBackground();
             bubble.setBackground(errorBg);
             if (bubble instanceof RoundedPanel rp) { rp.setBaseColor(errorBg); }
         } else {

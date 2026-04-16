@@ -2,6 +2,7 @@ package github.anandb.netbeans.ui;
 import java.awt.event.ContainerAdapter;
 import java.awt.event.ContainerEvent;
 
+import org.apache.commons.lang3.StringUtils;
 
 import github.anandb.netbeans.model.Message;
 import github.anandb.netbeans.model.Session;
@@ -39,7 +40,7 @@ public class ChatThreadPanel extends JPanel {
     private final JPanel messagesContainer;
     private final JScrollPane scrollPane;
     private final List<Message> messageList = new ArrayList<>();
-    private MessageBubble activeStreamBubble = null;
+    private volatile MessageBubble activeStreamBubble = null;
     private javax.swing.Timer streamFlushTimer;
 
     public ChatThreadPanel() {
@@ -167,14 +168,22 @@ public class ChatThreadPanel extends JPanel {
 
     public void addMessage(String role, String text, String messageId) {
         SwingUtilities.invokeLater(() -> {
+            finalizeGroup();
+
             MessageBubble bubble = new MessageBubble(role, text, messageId);
+            if ("tool".equals(role) || "thought".equals(role)) {
+                bubble.setExpanded(false);
+            }
+
             messagesContainer.add(bubble);
             messagesContainer.add(Box.createVerticalStrut(4));
             messagesContainer.revalidate();
             messagesContainer.repaint();
-
             scrollToBottom();
         });
+    }
+
+    private void finalizeGroup() {
     }
 
     public void collapseLastThought() {
@@ -507,10 +516,7 @@ public class ChatThreadPanel extends JPanel {
                     messagesContainer.add(Box.createVerticalStrut(12));
 
                     for (Session s : sessions) {
-                        String title = s.title();
-                        if (title == null || title.isEmpty()) {
-                            title = "Chat " + s.id().substring(0, Math.min(8, s.id().length()));
-                        }
+                        String title = StringUtils.defaultIfBlank(s.title(), "Chat " + StringUtils.left(s.id(), 8));
                         String label = github.anandb.netbeans.manager.SessionTitleManager.getTitle(s.id(), title);
                         String dir = s.effectiveDirectory();
                         JButton sessionBtn = createSelectionButtonWithBadge(label, s.projectName(), dir);

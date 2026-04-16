@@ -3,7 +3,6 @@ package github.anandb.netbeans.ui;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
-import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
@@ -18,12 +17,10 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Consumer;
 import java.util.logging.Level;
+
 import javax.swing.Icon;
-import java.util.concurrent.CompletableFuture;
-import org.openide.util.ImageUtilities;
 
 import javax.swing.BorderFactory;
 import javax.swing.DefaultListCellRenderer;
@@ -65,26 +62,27 @@ import org.openide.windows.TopComponent;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
+import org.apache.commons.lang3.StringUtils;
+
 import github.anandb.netbeans.manager.ACPManager;
-import github.anandb.netbeans.manager.SessionTitleManager;
 import github.anandb.netbeans.model.Session;
-import github.anandb.netbeans.project.ACPProjectManager;
-import org.netbeans.api.project.Project;
 import github.anandb.netbeans.model.SessionConfigOption;
 import github.anandb.netbeans.model.SessionConfigSelectOption;
 import github.anandb.netbeans.model.SessionUpdate;
 
+import github.anandb.netbeans.manager.SessionManager;
+
 @NbBundle.Messages({
         "CTL_ACPChatAction=Assistant",
-        "CTL_ACPChatTopComponent=Assistant",
-        "HINT_ACPChatTopComponent=This is an Assistant window"
+        "CTL_AssistantTopComponent=Assistant",
+        "HINT_AssistantTopComponent=This is an Assistant window"
 })
-@ConvertAsProperties(dtd = "-//github.anandb.netbeans.ui//ACPChat//EN", autostore = false)
-@TopComponent.Description(preferredID = "ACPChatTopComponent", iconBase = "github/anandb/netbeans/ui/logo.png", persistenceType = TopComponent.PERSISTENCE_ALWAYS)
+@ConvertAsProperties(dtd = "-//github.anandb.netbeans.ui//Assistant//EN/2.0", autostore = false)
+@TopComponent.Description(preferredID = "AssistantTopComponent", iconBase = "github/anandb/netbeans/ui/logo.png", persistenceType = TopComponent.PERSISTENCE_ALWAYS)
 @TopComponent.Registration(mode = "explorer", openAtStartup = false)
-public final class ACPChatTopComponent extends TopComponent implements ACPManager.PermissionHandler {
+public final class AssistantTopComponent extends TopComponent implements ACPManager.PermissionHandler, SessionManager.SessionListener {
 
-    @ActionID(category = "Window", id = "github.anandb.netbeans.ui.ACPToggleAction")
+    @ActionID(category = "Window", id = "github.anandb.netbeans.ui.AssistantToggleAction")
     @ActionRegistration(displayName = "#CTL_ACPChatAction", iconBase = "github/anandb/netbeans/ui/logo.png")
     @ActionReferences({
             @ActionReference(path = "Menu/Window"),
@@ -106,8 +104,8 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
     }
 
     private static final java.util.logging.Logger LOG = java.util.logging.Logger
-            .getLogger(ACPChatTopComponent.class.getName());
-    private static ACPChatTopComponent instance;
+            .getLogger(AssistantTopComponent.class.getName());
+    private static AssistantTopComponent instance;
     private static final long serialVersionUID = 1L;
 
     private final ChatThreadPanel chatPanel;
@@ -132,25 +130,21 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
     private final JComboBox<ConfigItem> thinkingCombo;
     private final JPanel configPanel;
     private final JButton toggleOptionsBtn;
-    private volatile String currentSessionId;
-    private volatile String lastProjectDir;
     private javax.swing.Timer thinkingTimer;
     private int thinkingDots = 0;
     private final Consumer<SessionUpdate> sseListener;
-
-    private volatile boolean isSessionLoading = false;
 
     // Message history
     private final List<String> messageHistory = new java.util.ArrayList<>();
     private int historyIndex = -1;
     private String currentDraft = "";
 
-    public ACPChatTopComponent() {
+    public AssistantTopComponent() {
         instance = this;
-        LOG.info("Initializing ACPChatTopComponent...");
+        LOG.log(Level.INFO, "Initializing AssistantTopComponent [{0}]...", System.identityHashCode(this));
         ColorTheme theme = ThemeManager.getCurrentTheme();
-        setName(NbBundle.getMessage(ACPChatTopComponent.class, "CTL_ACPChatTopComponent"));
-        setToolTipText(NbBundle.getMessage(ACPChatTopComponent.class, "HINT_ACPChatTopComponent"));
+        setName(NbBundle.getMessage(AssistantTopComponent.class, "CTL_AssistantTopComponent"));
+        setToolTipText(NbBundle.getMessage(AssistantTopComponent.class, "HINT_AssistantTopComponent"));
         setLayout(new BorderLayout());
         setOpaque(true);
 
@@ -174,7 +168,7 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
         cwdLabel.setOpaque(true);
 
         newSessionBtn = new JButton("+ New Chat");
-        newSessionBtn.addActionListener(e -> createNewSession());
+        newSessionBtn.addActionListener(e -> SessionManager.getInstance().createNewSession(null));
 
         sessionDropdown = new JComboBox<>();
         sessionDropdown.setFocusable(false);
@@ -208,9 +202,10 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
             LOG.log(Level.INFO, "sessionDropdown: selected item={0}", item != null ? item.getSession().id() : "null");
             if (item != null) {
                 String selectedId = item.getSession().id();
-                if (currentSessionId == null || !currentSessionId.equals(selectedId)) {
+                String currentId = SessionManager.getInstance().getCurrentSessionId();
+                if (currentId == null || !currentId.equals(selectedId)) {
                     LOG.log(Level.INFO, "sessionDropdown: calling loadSession for {0}", selectedId);
-                    loadSession(selectedId);
+                    SessionManager.getInstance().loadSession(selectedId);
                 }
             }
         };
@@ -269,7 +264,7 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
         // Initial CWD
         String initialDir = ACPManager.getInstance().getActiveProjectDir();
         updateCwdLabel(initialDir != null ? initialDir : System.getProperty("user.dir"));
-        ACPManager.getInstance().addProjectChangeListener(this::updateCwdLabel);
+        SessionManager.getInstance().addSessionListener(this);
 
         // Chat History (Center)
         add(chatPanel, BorderLayout.CENTER);
@@ -529,7 +524,7 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
             String type = update.type();
 
             if ("session_info_update".equals(type)) {
-                SwingUtilities.invokeLater(() -> refreshSessionsForOpenProjects());
+                SwingUtilities.invokeLater(() -> SessionManager.getInstance().refreshSessions());
                 return;
             }
 
@@ -687,391 +682,94 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
 
         ACPManager.getInstance().setPermissionHandler(this);
 
-        ACPProjectManager.getInstance().setProjectCloseListener(this::handleProjectClosed);
-        ACPProjectManager.getInstance().setProjectOpenListener(this::handleProjectOpened);
-
-        ACPManager.getInstance().addProjectChangeListener(path -> {
-            if (path != null && !path.equals(lastProjectDir)) {
-                SwingUtilities.invokeLater(() -> {
-                    // Only automatically clear if the project has actually changed
-                    if (lastProjectDir != null && !lastProjectDir.equals(path)) {
-                        LOG.log(Level.INFO, "Project changed from {0} to {1}, creating new session",
-                                new Object[] { lastProjectDir, path });
-                        createNewSession();
-                        statusLabel.setText("Context switched: " + new java.io.File(path).getName());
-                    }
-                    lastProjectDir = path;
-                });
-            }
-        });
-
         initChat();
         refreshTheme();
     }
 
-    private void handleProjectClosed(String closedDir) {
+    @Override
+    public void onSessionListUpdated(List<Session> sessions) {
         SwingUtilities.invokeLater(() -> {
-            LOG.log(Level.INFO, "handleProjectClosed: closedDir={0}, currentSessionId={1}",
-                    new Object[]{closedDir, currentSessionId});
-
-            String sessionDir = getSessionCwd(currentSessionId);
-            boolean sessionAffected = sessionDir != null && sessionDir.equals(closedDir);
-
-            ACPManager.getInstance().getSessions(closedDir)
-                    .thenAccept(closedDirSessions -> {
-                        for (Session s : closedDirSessions) {
-                            LOG.log(Level.INFO, "Closing session for closed project: {0}", s.id());
-                            ACPManager.getInstance().deleteSession(s.id());
-                        }
-                    });
-
-            String newDir = ACPManager.getInstance().getActiveProjectDir();
-
-            if (sessionAffected) {
-                if (newDir != null && !newDir.equals(closedDir)) {
-                    LOG.log(Level.INFO, "Switching to new CWD: {0}", newDir);
-                    updateCwdLabel(newDir);
-                    loadFirstSessionForDirectory(newDir);
-                } else {
-                    updateCwdLabel(null);
-                    clearCurrentSession();
+            isSwitchingSessionDropdown = true;
+            try {
+                String currentId = SessionManager.getInstance().getCurrentSessionId();
+                sessionDropdown.removeAllItems();
+                LOG.log(Level.INFO, "onSessionListUpdated: adding {0} sessions to dropdown", sessions.size());
+                int selectIdx = -1;
+                for (int i = 0; i < sessions.size(); i++) {
+                    Session s = sessions.get(i);
+                    String customTitle = github.anandb.netbeans.manager.SessionTitleManager.getTitle(s.id(), s.title());
+                    sessionDropdown.addItem(new SessionItem(s, customTitle));
+                    if (currentId != null && s.id().equals(currentId)) {
+                        selectIdx = i;
+                    }
                 }
-            }
 
-            refreshSessionsForOpenProjects();
+                boolean hasSessions = !sessions.isEmpty();
+                newSessionBtn.setEnabled(true); // Always allow new chat
+                renameSessionBtn.setEnabled(hasSessions);
+
+                if (hasSessions) {
+                    if (selectIdx != -1) {
+                        sessionDropdown.setSelectedIndex(selectIdx);
+                    } else {
+                        // If current ID is not in new list, don't force selection here
+                    }
+                } else {
+                    chatPanel.setSessionList(sessions, id -> SessionManager.getInstance().loadSession(id), () -> SessionManager.getInstance().createNewSession(null));
+                    sessionDropdown.setSelectedIndex(-1);
+                    statusLabel.setText("Click '+ New Chat' to start");
+                    setInputEnabled(false);
+                }
+            } finally {
+                isSwitchingSessionDropdown = false;
+                sessionDropdown.revalidate();
+                sessionDropdown.repaint();
+            }
         });
     }
 
-    private void handleProjectOpened(String openedDir) {
+    @Override
+    public void onSessionStarted(String sessionId) {
         SwingUtilities.invokeLater(() -> {
-            LOG.log(Level.INFO, "handleProjectOpened: openedDir={0}", openedDir);
-            refreshSessionsForOpenProjects();
+            chatPanel.clearMessages();
+            if (sessionId == null) {
+                statusLabel.setText("Creating new session...");
+                updateTabName(null);
+            } else {
+                statusLabel.setText("Loading chat...");
+            }
         });
     }
 
-    private void refreshSessionsForOpenProjects() {
-        ACPManager manager = ACPManager.getInstance();
-        manager.whenReady()
-                .thenCompose(v -> {
-                    Project[] openProjects = ACPProjectManager.getInstance().getAllOpenProjects();
-                    List<String> openProjectDirs = new java.util.ArrayList<>();
-                    for (Project p : openProjects) {
-                        if (p != null) {
-                            openProjectDirs.add(p.getProjectDirectory().getPath());
-                        }
-                    }
-                    LOG.log(Level.INFO, "refreshSessionsForOpenProjects: starting refresh for {0} projects", openProjectDirs.size());
-                    if (openProjectDirs.isEmpty()) {
-                        return CompletableFuture.completedFuture(new java.util.ArrayList<Session>());
-                    }
-                    return manager.getSessionsForDirectories(openProjectDirs);
-                })
-                .thenAccept(sessions -> {
-                    LOG.log(Level.INFO, "refreshSessionsForOpenProjects: received {0} sessions from manager", sessions.size());
-                    List<Session> filteredSessions = new java.util.ArrayList<>(sessions);
-                    filteredSessions.sort((s1, s2) -> {
-                        String p1 = s1.projectName() != null ? s1.projectName() : "";
-                        String p2 = s2.projectName() != null ? s2.projectName() : "";
-                        int projectComp = p1.compareTo(p2);
-                        if (projectComp != 0) {
-                            return projectComp;
-                        }
-                        long t1 = parseTimestamp(s1.updatedAt());
-                        long t2 = parseTimestamp(s2.updatedAt());
-                        return Long.compare(t2, t1);
-                    });
-
-                    SwingUtilities.invokeLater(() -> {
-                        isSwitchingSessionDropdown = true;
-                        try {
-                            sessionDropdown.removeAllItems();
-                            LOG.log(Level.INFO, "refreshSessionsForOpenProjects: adding {0} sessions to dropdown", filteredSessions.size());
-                            int selectIdx = -1;
-                            for (int i = 0; i < filteredSessions.size(); i++) {
-                                Session s = filteredSessions.get(i);
-                                String customTitle = github.anandb.netbeans.manager.SessionTitleManager.getTitle(s.id(), s.title());
-                                sessionDropdown.addItem(new SessionItem(s, customTitle));
-                                if (currentSessionId != null && s.id().equals(currentSessionId)) {
-                                    selectIdx = i;
-                                }
-                            }
-
-                            boolean hasSessions = !filteredSessions.isEmpty();
-                            newSessionBtn.setEnabled(hasSessions);
-                            renameSessionBtn.setEnabled(hasSessions);
-
-                            if (hasSessions) {
-                                boolean needsLoad = (currentSessionId == null);
-                                if (selectIdx == -1) {
-                                    selectIdx = 0;
-                                    needsLoad = true;
-                                }
-                                String selectedId = filteredSessions.get(selectIdx).id();
-                                currentSessionId = selectedId;
-                                sessionDropdown.setSelectedIndex(selectIdx);
-                                if (needsLoad) {
-                                    loadSession(selectedId, true);
-                                }
-                            } else {
-                                chatPanel.setSessionList(filteredSessions, this::loadSession, this::createNewSession);
-                                sessionDropdown.setSelectedIndex(-1);
-                                statusLabel.setText("Click '+ New Chat' to start");
-                                setInputEnabled(false);
-                            }
-                        } finally {
-                            isSwitchingSessionDropdown = false;
-                            sessionDropdown.revalidate();
-                            sessionDropdown.repaint();
-                        }
-                    });
-                });
-    }
-
-    private void clearCurrentSession() {
-        currentSessionId = null;
-        chatPanel.clearMessages();
-        setInputEnabled(false);
-    }
-
-    private void loadFirstSessionForDirectory(String dir) {
-        ACPManager.getInstance().getSessions(dir)
-            .thenAccept(allSessions -> {
-                Session first = allSessions.stream()
-                    .filter(s -> {
-                        String sd = s.effectiveDirectory();
-                        return sd != null && sd.equals(dir);
-                    })
-                    .min((s1, s2) -> Long.compare(parseTimestamp(s1.updatedAt()), parseTimestamp(s2.updatedAt())))
-                    .orElse(null);
-
-                if (first != null) {
-                    SwingUtilities.invokeLater(() -> loadSession(first.id()));
-                } else {
-                    SwingUtilities.invokeLater(() -> {
-                        createNewSession();
-                    });
-                }
-            });
-    }
-
-    private String getSessionCwd(String sessionId) {
-        if (sessionId == null) return null;
-        for (Session s : getAllSessions()) {
-            if (s.id().equals(sessionId)) {
-                return s.effectiveDirectory();
+    @Override
+    public void onSessionLoaded(String sessionId, List<SessionConfigOption> configOptions, boolean isStartup) {
+        SwingUtilities.invokeLater(() -> {
+            statusLabel.setText("Ready");
+            updateCwdLabel(null);
+            if (configOptions != null) {
+                updateConfigControls(configOptions, isStartup);
             }
-        }
-        return null;
+            setInputEnabled(true);
+            inputArea.requestFocusInWindow();
+            chatPanel.scrollToBottom();
+        });
     }
 
-    private List<Session> getAllSessions() {
-        List<Session> sessions = new java.util.ArrayList<>();
-        for (int i = 0; i < sessionDropdown.getItemCount(); i++) {
-            sessions.add(sessionDropdown.getItemAt(i).getSession());
-        }
-        return sessions;
+    @Override
+    public void onSessionLoading(boolean isLoading) {
+        setInputEnabled(!isLoading);
+    }
+
+    @Override
+    public void onSessionError(String message) {
+        SwingUtilities.invokeLater(() -> {
+            statusLabel.setText("Error: " + message);
+            chatPanel.addMessage("error", message);
+        });
     }
 
     private void initChat() {
-        refreshSessionsForOpenProjects();
-    }
-
-    private void loadSession(String sessionId) {
-        loadSession(sessionId, false);
-    }
-
-    private void loadSession(String sessionId, boolean isStartup) {
-        this.currentSessionId = sessionId;
-        this.isSessionLoading = true;
-        statusLabel.setText("Loading chat...");
-        LOG.log(Level.INFO, "loadSession: clearing and calling loadSession for {0}", sessionId);
-
-        chatPanel.clearMessages();
-
-        // Use active project directory as working directory
-        String projectCwd = ACPManager.getInstance().getActiveProjectDir();
-
-        ACPManager.getInstance().getSessions(projectCwd).thenAccept(sessions -> {
-            String sessionCwd = sessions.stream()
-                    .filter(s -> s.id().equals(sessionId))
-                    .findFirst()
-                    .map(s -> s.cwd() != null ? s.cwd() : s.directory())
-                    .orElse(null);
-
-            // Priority: projectCwd > sessionCwd > user.dir
-            String workingCwd = projectCwd != null ? projectCwd : sessionCwd;
-            if (workingCwd == null) {
-                workingCwd = System.getProperty("user.dir");
-            }
-
-            LOG.log(Level.INFO, "loadSession: projectCwd={0}, sessionCwd={1}, using={2}",
-                    new Object[] { projectCwd, sessionCwd, workingCwd });
-            updateCwdLabel(workingCwd);
-            this.lastProjectDir = workingCwd;
-            final String targetSessionId = sessionId;
-            ACPManager.getInstance().loadSession(sessionId, workingCwd)
-                    .thenAccept(configOptions -> {
-                        SwingUtilities.invokeLater(() -> {
-                            // Verify we are still on the same session
-                            if (!targetSessionId.equals(this.currentSessionId)) {
-                                return;
-                            }
-                            this.isSessionLoading = false;
-                            statusLabel.setText("Ready");
-                            if (configOptions != null) {
-                                updateConfigControls(configOptions, isStartup);
-                            }
-
-                            setInputEnabled(true);
-                            inputArea.requestFocusInWindow();
-                            chatPanel.scrollToBottom();
-                        });
-                    })
-                    .exceptionally(ex -> {
-                        SwingUtilities.invokeLater(() -> {
-                            this.isSessionLoading = false;
-                            statusLabel.setText("Error loading session: " + ex.getMessage());
-                            chatPanel.addMessage("error", "Failed to load session: " + ex.getMessage());
-                        });
-                        return null;
-                    });
-        });
-    }
-
-    private void populateDropdownWithSessions(List<Session> sessions, String selectSessionId) {
-        populateDropdownWithSessions(sessions, selectSessionId, true);
-    }
-
-    private void populateDropdownWithSessions(List<Session> sessions, String selectSessionId, boolean loadMessages) {
-        isSwitchingSessionDropdown = true;
-        try {
-            sessionDropdown.removeAllItems();
-            for (Session s : sessions) {
-                String customTitle = github.anandb.netbeans.manager.SessionTitleManager.getTitle(s.id(), s.title());
-                sessionDropdown.addItem(new SessionItem(s, customTitle));
-            }
-
-            if (selectSessionId != null) {
-                for (int i = 0; i < sessionDropdown.getItemCount(); i++) {
-                    if (sessionDropdown.getItemAt(i).getSession().id().equals(selectSessionId)) {
-                        sessionDropdown.setSelectedIndex(i);
-                        break;
-                    }
-                }
-            }
-        } finally {
-            isSwitchingSessionDropdown = false;
-        }
-    }
-
-    private void renameCurrentSession() {
-        if (currentSessionId == null) {
-            return;
-        }
-
-        SessionItem selectedItem = (SessionItem) sessionDropdown.getSelectedItem();
-        if (selectedItem == null) {
-            return;
-        }
-
-        String currentTitle = selectedIdToTitle(selectedItem.getSession());
-        String newTitle = javax.swing.JOptionPane.showInputDialog(this, "Enter new title for this session:", currentTitle);
-
-        if (newTitle != null && !newTitle.trim().isEmpty()) {
-            SessionTitleManager.setTitle(currentSessionId, newTitle.trim());
-            refreshSessionsForOpenProjects();
-        }
-    }
-
-    private String selectedIdToTitle(Session session) {
-        String title = session.title();
-        if (title == null || title.isEmpty()) {
-            title = "Chat " + session.id().substring(0, Math.min(8, session.id().length()));
-        }
-        return SessionTitleManager.getTitle(session.id(), title);
-    }
-
-    private void createNewSession() {
-        LOG.info("Attempting to create new session...");
-        updateTabName(null);
-        statusLabel.setText("Creating new session...");
-        ACPManager.getInstance().createSession(null)
-                .thenAccept(session -> {
-                    this.currentSessionId = session.id();
-                    String sessCwd = session.effectiveDirectory();
-                    this.lastProjectDir = sessCwd;
-                    LOG.log(Level.INFO, "New session created: ID={0}, title=''{1}'', CWD={2}",
-                            new Object[] { currentSessionId, session.title(), lastProjectDir });
-                    final String targetSessionId = session.id();
-                    SwingUtilities.invokeLater(() -> {
-                        if (!targetSessionId.equals(this.currentSessionId)) {
-                            return;
-                        }
-                        chatPanel.clearMessages();
-                        statusLabel.setText("Session created: " + currentSessionId);
-                        updateCwdLabel(sessCwd);
-                        if (session.configOptions() != null) {
-                            updateConfigControls(session.configOptions(), true);
-                        }
-
-
-                        setInputEnabled(true);
-
-                        // Sync both dropdown and sidebar list
-                        isSwitchingSessionDropdown = true;
-                        try {
-                            SessionItem newItem = new SessionItem(session, session.title());
-
-                            // Check if it's already in the dropdown, if not add it at the top
-                            boolean found = false;
-                            for (int i = 0; i < sessionDropdown.getItemCount(); i++) {
-                                if (sessionDropdown.getItemAt(i).equals(newItem)) {
-                                    sessionDropdown.setSelectedIndex(i);
-                                    found = true;
-                                    break;
-                                }
-                            }
-
-                            if (!found) {
-                                sessionDropdown.insertItemAt(newItem, 0);
-                                sessionDropdown.setSelectedIndex(0);
-                            }
-
-                            // Also refresh sessions for active project only
-                            // Refresh sessions globally to stay in sync across all projects
-                            refreshSessionsForOpenProjects();
-                        } finally {
-                            isSwitchingSessionDropdown = false;
-                        }
-
-                        String preamble = github.anandb.netbeans.manager.ACPSettings.getPreamble().trim();
-                        if (!preamble.isEmpty()) {
-                            final String sessionId = targetSessionId;
-                            LOG.log(Level.INFO, "Sending preamble to new session {0}", sessionId);
-                            statusLabel.setText("Sending preamble...");
-                            updateButtonState(true);
-                            ACPManager.getInstance().sendMessage(sessionId, preamble, null)
-                                    .thenAccept(v -> SwingUtilities.invokeLater(() -> {
-                                        statusLabel.setText("Ready");
-                                        updateButtonState(false);
-                                    }))
-                                    .exceptionally(ex -> {
-                                        LOG.log(Level.WARNING, "Failed to send preamble", ex);
-                                        SwingUtilities.invokeLater(() -> updateButtonState(false));
-                                        return null;
-                                    });
-                        }
-                    });
-                })
-                .exceptionally(ex -> {
-                    LOG.log(Level.SEVERE, "Failed to create session", ex);
-                    SwingUtilities.invokeLater(() -> {
-                        statusLabel.setText("Failed to create session: " + ex.getMessage());
-                        chatPanel.addMessage("error", "Failed to create session: " + ex.getMessage());
-                        setInputEnabled(false);
-                    });
-                    return null;
-                });
+        SessionManager.getInstance().refreshSessions();
     }
 
     private void sendMessage() {
@@ -1090,6 +788,7 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
         historyIndex = -1;
         currentDraft = "";
 
+        String currentSessionId = SessionManager.getInstance().getCurrentSessionId();
         if (currentSessionId == null) {
             statusLabel.setText("Error: No active session.");
             return;
@@ -1161,6 +860,7 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
     }
 
     private void stopMessage() {
+        String currentSessionId = SessionManager.getInstance().getCurrentSessionId();
         if (currentSessionId == null) {
             return;
         }
@@ -1181,6 +881,30 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
 
     private void updateOptionsButtonText() {
         toggleOptionsBtn.setText(configPanel.isVisible() ? "Options ▲" : "Options ▼");
+    }
+
+    private void renameCurrentSession() {
+        String currentId = SessionManager.getInstance().getCurrentSessionId();
+        if (currentId == null) {
+            return;
+        }
+
+        SessionItem selectedItem = (SessionItem) sessionDropdown.getSelectedItem();
+        if (selectedItem == null) {
+            return;
+        }
+
+        String currentTitle = selectedIdToTitle(selectedItem.getSession());
+        String newTitle = javax.swing.JOptionPane.showInputDialog(this, "Enter new title for this session:", currentTitle);
+
+        if (newTitle != null && !newTitle.trim().isEmpty()) {
+            SessionManager.getInstance().renameSession(currentId, newTitle.trim());
+        }
+    }
+
+    private String selectedIdToTitle(Session session) {
+        String title = StringUtils.defaultIfBlank(session.title(), "Chat " + StringUtils.left(session.id(), 8));
+        return github.anandb.netbeans.manager.SessionTitleManager.getTitle(session.id(), title);
     }
 
     private void updateButtonState(boolean isProcessing) {
@@ -1222,7 +946,7 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
         SwingUtilities.invokeLater(() -> {
             statusLabel.setText("Ready");
             updateButtonState(false);
-            if (currentSessionId != null) {
+            if (SessionManager.getInstance().getCurrentSessionId() != null) {
                 setInputEnabled(true);
             }
         });
@@ -1314,9 +1038,10 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
                 }
             }
 
-            if (item != null && currentSessionId != null && !item.isInternalUpdate) {
-                LOG.log(Level.INFO, "Config changed: {0}={1} for session {2}", new Object[]{configId, item.value, currentSessionId});
-                ACPManager.getInstance().setSessionConfigOption(currentSessionId, configId, item.value);
+            if (item != null && SessionManager.getInstance().getCurrentSessionId() != null && !item.isInternalUpdate) {
+                String currentId = SessionManager.getInstance().getCurrentSessionId();
+                LOG.log(Level.INFO, "Config changed: {0}={1} for session {2}", new Object[]{configId, item.value, currentId});
+                ACPManager.getInstance().setSessionConfigOption(currentId, configId, item.value);
                 if (combo == modelCombo) {
                     updateTabName(item.name);
                 }
@@ -1329,7 +1054,7 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
             if (modelName != null && !modelName.isEmpty()) {
                 setName(modelName);
             } else {
-                setName(NbBundle.getMessage(ACPChatTopComponent.class, "CTL_ACPChatTopComponent"));
+                setName(NbBundle.getMessage(AssistantTopComponent.class, "CTL_AssistantTopComponent"));
             }
         });
     }
@@ -1382,10 +1107,11 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
                                 }
                             }
 
-                            if (forcedValue != null && !forcedValue.equalsIgnoreCase(opt.currentValue()) && currentSessionId != null) {
+                            if (forcedValue != null && !forcedValue.equalsIgnoreCase(opt.currentValue()) && SessionManager.getInstance().getCurrentSessionId() != null) {
+                                String currentId = SessionManager.getInstance().getCurrentSessionId();
                                 LOG.log(Level.INFO, "Forcing default: {0}={1} (was {2})", new Object[]{opt.id(), forcedValue, opt.currentValue()});
                                 valueToSelect = forcedValue;
-                                ACPManager.getInstance().setSessionConfigOption(currentSessionId, opt.id(), forcedValue);
+                                ACPManager.getInstance().setSessionConfigOption(currentId, opt.id(), forcedValue);
                             }
                         }
 
@@ -1471,7 +1197,7 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
             String effectivePath = path;
 
             if (effectivePath == null || effectivePath.isEmpty()) {
-                effectivePath = getSessionCwd(currentSessionId);
+                effectivePath = SessionManager.getInstance().getCurrentSessionId(); // Placeholder for actual CWD look up if needed, SessionManager should probably handle this
             }
             if (effectivePath == null || effectivePath.isEmpty()) {
                 effectivePath = ACPManager.getInstance().getActiveProjectDir();
@@ -1511,7 +1237,7 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
             if (inputArea != null) {
                 inputArea.requestFocusInWindow();
             }
-            refreshSessionsForOpenProjects();
+            SessionManager.getInstance().refreshSessions();
         });
     }
 
@@ -1539,15 +1265,19 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
     }
 
     void writeProperties(java.util.Properties p) {
-        p.setProperty("version", "1.0");
+        p.setProperty("version", "2.0");
     }
 
     void readProperties(java.util.Properties p) {
     }
 
-    public static synchronized ACPChatTopComponent findInstance() {
+    public static synchronized AssistantTopComponent findInstance() {
+        TopComponent tc = org.openide.windows.WindowManager.getDefault().findTopComponent("AssistantTopComponent");
+        if (tc instanceof AssistantTopComponent) {
+            return (AssistantTopComponent) tc;
+        }
         if (instance == null) {
-            instance = new ACPChatTopComponent();
+            instance = new AssistantTopComponent();
         }
         return instance;
     }
@@ -1606,9 +1336,10 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
 
     @Override
     public void handlePermissionRequest(String sessionId, JsonNode params, java.util.concurrent.CompletableFuture<String> response) {
-        if (this.currentSessionId == null || !this.currentSessionId.equals(sessionId)) {
+        String currentId = SessionManager.getInstance().getCurrentSessionId();
+        if (currentId == null || !currentId.equals(sessionId)) {
             LOG.log(Level.FINE, "Received permission request for session {0}, but current is {1}",
-                    new Object[] { sessionId, this.currentSessionId });
+                    new Object[] { sessionId, currentId });
         }
 
         String prompt = "Permission requested";
@@ -1701,10 +1432,22 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
     }
 
     public void setInputText(String text) {
+        String cleaned = stripUserMessageMetadata(text);
         SwingUtilities.invokeLater(() -> {
-            inputArea.setText(text);
+            inputArea.setText(cleaned);
             inputArea.requestFocusInWindow();
         });
+    }
+
+    private String stripUserMessageMetadata(String text) {
+        if (text == null) {
+            return null;
+        }
+        return text
+            .replaceAll("<!--\\s*\\{.*?\\}\\s*-->", "")
+            .replaceAll("<!--\\s*\\[.*?\\]\\s*-->", "")
+            .replaceAll("<path>.*?</path>", "")
+            .replaceAll("</content>", "");
     }
 
     private void navigateHistory(int delta) {
@@ -1743,8 +1486,9 @@ public final class ACPChatTopComponent extends TopComponent implements ACPManage
 
             // Suggest a filename
             String baseName = "conversation";
-            if (currentSessionId != null) {
-                baseName = "chat-" + currentSessionId.substring(0, Math.min(8, currentSessionId.length()));
+            String currentId = SessionManager.getInstance().getCurrentSessionId();
+            if (currentId != null) {
+                baseName = "chat-" + org.apache.commons.lang3.StringUtils.left(currentId, 8);
             }
             fileChooser.setSelectedFile(new File(baseName + ".md"));
 
