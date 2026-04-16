@@ -512,7 +512,8 @@ public class ChatThreadPanel extends JPanel {
                             title = "Chat " + s.id().substring(0, Math.min(8, s.id().length()));
                         }
                         String label = github.anandb.netbeans.manager.SessionTitleManager.getTitle(s.id(), title);
-                        JButton sessionBtn = createSelectionButton(label, s.cwd());
+                        String dir = s.effectiveDirectory();
+                        JButton sessionBtn = createSelectionButtonWithBadge(label, s.projectName(), dir);
                         sessionBtn.addActionListener(e -> onSessionSelected.accept(s.id()));
                         messagesContainer.add(sessionBtn);
                         messagesContainer.add(Box.createVerticalStrut(4));
@@ -558,6 +559,59 @@ public class ChatThreadPanel extends JPanel {
         }
 
         btn.add(textPanel, BorderLayout.CENTER);
+
+        btn.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseEntered(java.awt.event.MouseEvent e) {
+                btn.setOpaque(true);
+                btn.setBackground(new Color(0, 0, 0, 10));
+                btn.repaint();
+            }
+            @Override
+            public void mouseExited(java.awt.event.MouseEvent e) {
+                btn.setOpaque(false);
+                btn.repaint();
+            }
+        });
+
+        return btn;
+    }
+
+    private JButton createSelectionButtonWithBadge(String text, String projectName, String fullPath) {
+        ColorTheme theme = ThemeManager.getCurrentTheme();
+
+        JButton btn = new JButton();
+        btn.setLayout(new BorderLayout(8, 0));
+        btn.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(theme.getBubbleBorder() != null ? theme.getBubbleBorder() : Color.LIGHT_GRAY, 1, true),
+            BorderFactory.createEmptyBorder(12, 16, 12, 16)
+        ));
+        btn.setFocusPainted(false);
+        btn.setContentAreaFilled(false);
+        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btn.setAlignmentX(Component.LEFT_ALIGNMENT);
+        btn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 60));
+
+        JPanel leftPanel = new JPanel();
+        leftPanel.setOpaque(false);
+
+        if (projectName != null && !projectName.isEmpty()) {
+            JLabel badge = new JLabel("[" + projectName + "]");
+            badge.setFont(ThemeManager.getFont().deriveFont(Font.BOLD, 10));
+            badge.setForeground(new Color(100, 100, 100));
+            badge.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 8));
+            leftPanel.add(badge);
+        }
+
+        JLabel mainLabel = new JLabel(text);
+        mainLabel.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
+        leftPanel.add(mainLabel);
+
+        btn.add(leftPanel, BorderLayout.CENTER);
+
+        if (fullPath != null && !fullPath.isEmpty()) {
+            btn.setToolTipText(fullPath);
+        }
 
         btn.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override

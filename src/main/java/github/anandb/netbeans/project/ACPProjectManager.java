@@ -3,6 +3,9 @@ package github.anandb.netbeans.project;
 import github.anandb.netbeans.manager.ACPManager;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.netbeans.api.project.Project;
@@ -13,6 +16,10 @@ public class ACPProjectManager implements PropertyChangeListener {
     private static final Logger LOG = Logger.getLogger(ACPProjectManager.class.getName());
     private static ACPProjectManager instance;
 
+    private Project[] currentProjects = new Project[0];
+    private Consumer<String> projectCloseListener;
+    private Consumer<String> projectOpenListener;
+
     private ACPProjectManager() {
     }
 
@@ -21,6 +28,14 @@ public class ACPProjectManager implements PropertyChangeListener {
             instance = new ACPProjectManager();
         }
         return instance;
+    }
+
+    public void setProjectCloseListener(Consumer<String> listener) {
+        this.projectCloseListener = listener;
+    }
+
+    public void setProjectOpenListener(Consumer<String> listener) {
+        this.projectOpenListener = listener;
     }
 
     public void start() {
@@ -39,15 +54,62 @@ public class ACPProjectManager implements PropertyChangeListener {
     }
 
     private void syncActiveProject() {
+        Project[] openProjects = OpenProjects.getDefault().getOpenProjects();
         Project main = OpenProjects.getDefault().getMainProject();
-        if (main != null) {
-            FileObject dir = main.getProjectDirectory();
+
+        Set<String> oldDirs = dirsOf(currentProjects);
+        Set<String> newDirs = dirsOf(openProjects);
+
+        Set<String> closedDirs = new HashSet<>(oldDirs);
+        closedDirs.removeAll(newDirs);
+
+        if (!closedDirs.isEmpty()) {
+            for (String closedDir : closedDirs) {
+                LOG.log(Level.INFO, "Project closed: {0}", closedDir);
+                if (projectCloseListener != null) {
+                    projectCloseListener.accept(closedDir);
+                }
+            }
+        }
+
+        Set<String> openedDirs = new HashSet<>(newDirs);
+        openedDirs.removeAll(oldDirs);
+
+        if (!openedDirs.isEmpty()) {
+            for (String openedDir : openedDirs) {
+                LOG.log(Level.INFO, "Project opened: {0}", openedDir);
+                if (projectOpenListener != null) {
+                    projectOpenListener.accept(openedDir);
+                }
+            }
+        }
+
+        Project active = main != null ? main : (openProjects.length > 0 ? openProjects[0] : null);
+        if (active != null) {
+            FileObject dir = active.getProjectDirectory();
             String path = dir.getPath();
             LOG.log(Level.INFO, "Active project synchronized: {0}", path);
             ACPManager.getInstance().setActiveProject(path);
         } else {
-            // Handle case where no project is active - maybe default to user dir?
             ACPManager.getInstance().setActiveProject(null);
         }
+
+        currentProjects = openProjects;
+    }
+
+    private Set<String> dirsOf(Project[] projects) {
+        Set<String> dirs = new HashSet<>();
+        if (projects != null) {
+            for (Project p : projects) {
+                if (p != null) {
+                    dirs.add(p.getProjectDirectory().getPath());
+                }
+            }
+        }
+        return dirs;
+    }
+
+    public Project[] getAllOpenProjects() {
+        return OpenProjects.getDefault().getOpenProjects();
     }
 }

@@ -176,17 +176,10 @@ public class ACPManager {
     }
 
     public void shutdown() {
-        isClosing = true;
-        if (rpcClient != null) {
-            rpcClient.close();
-            rpcClient = null;
+        if (isClosing) {
+            return;
         }
-        if (serverProcess != null) {
-            serverProcess.toHandle().descendants().forEach(ProcessHandle::destroyForcibly);
-            serverProcess.destroyForcibly();
-            LOG.log(Level.INFO, "ACP server and all child processes stopped");
-            serverProcess = null;
-        }
+        stopServer();
     }
 
     private void stopServer() {
@@ -194,11 +187,42 @@ public class ACPManager {
         if (rpcClient != null) {
             rpcClient.close();
             rpcClient = null;
+            
+            // Wait for the process to exit gracefully after closing stdin
+            if (serverProcess != null && serverProcess.isAlive()) {
+                LOG.log(Level.INFO, "ACP server shutdown: waiting for graceful exit...");
+                try {
+                    if (serverProcess.waitFor(3, java.util.concurrent.TimeUnit.SECONDS)) {
+                        LOG.log(Level.INFO, "ACP server terminated gracefully");
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
         }
         if (serverProcess != null && serverProcess.isAlive()) {
+            LOG.log(Level.INFO, "ACP server shutdown: still alive, sending SIGTERM (attempt 1)");
             serverProcess.destroy();
-            LOG.log(Level.INFO, "ACP server stopped");
+            try {
+                if (!serverProcess.waitFor(5, java.util.concurrent.TimeUnit.SECONDS)) {
+                    LOG.log(Level.INFO, "ACP server still running: sending second SIGTERM");
+                    serverProcess.destroy();
+                    serverProcess.waitFor(5, java.util.concurrent.TimeUnit.SECONDS);
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            if (serverProcess.isAlive()) {
+                LOG.log(Level.WARNING, "ACP server did not terminate gracefully, forcing kill");
+                serverProcess.descendants().forEach(ProcessHandle::destroyForcibly);
+                serverProcess.destroyForcibly();
+            } else {
+                LOG.log(Level.INFO, "ACP server terminated after SIGTERM");
+            }
+            serverProcess = null;
+            LOG.log(Level.INFO, "ACP server shutdown complete");
         }
+        serverProcess = null;
     }
 
     public void addSseListener(Consumer<SessionUpdate> listener) {
@@ -212,12 +236,16 @@ public class ACPManager {
     }
 
 
-    public CompletableFuture<List<Session>> getSessions() {
-        LOG.log(Level.INFO, "getSessions: called");
+    public CompletableFuture<List<Session>> getSessions(String directory) {
+        LOG.log(Level.INFO, "getSessions: called with directory={0}", directory);
         if (rpcClient == null) {
             return CompletableFuture.failedFuture(new RuntimeException("Server not started"));
         }
-        return rpcClient.sendRequest("session/list", Map.of())
+        Map<String, Object> params = new java.util.HashMap<>();
+        if (directory != null && !directory.isEmpty()) {
+            params.put("cwd", directory);
+        }
+        return rpcClient.sendRequest("session/list", params)
                 .thenApply(res -> {
                     try {
                         LOG.log(Level.INFO, "getSessions: got response");
@@ -225,10 +253,18 @@ public class ACPManager {
                         JsonNode result = root.has("result") ? root.get("result") : root;
                         JsonNode sessionsNode = result.has("sessions") ? result.get("sessions") : result.has("data") ? result.get("data") : result;
                         if (sessionsNode.isArray()) {
-                            List<Session> sessions = objectMapper.readValue(sessionsNode.traverse(), new TypeReference<List<Session>>() {});
+                            List<Session> rawSessions = objectMapper.readValue(sessionsNode.traverse(), new TypeReference<List<Session>>() {});
+                            List<Session> sessions = new ArrayList<>();
+                            for (Session s : rawSessions) {
+                                // If the server returns a session for this specific directory, but it's missing the directory field, fill it in.
+                                if (s.effectiveDirectory() == null) {
+                                    s = new Session(s.id(), s.title(), directory, directory, s.parentID(), s.updatedAt(), s.mcpServers(), s.configOptions());
+                                }
+                                sessions.add(s);
+                            }
                             LOG.log(Level.INFO, "getSessions: deserialized {0} sessions", sessions.size());
                             for (Session s : sessions) {
-                                LOG.log(Level.INFO, "getSessions: id={0}, title=''{1}''", new Object[]{s.id(), s.title()});
+                                LOG.log(Level.INFO, "getSessions: id={0}, title=''{1}'', directory={2}", new Object[]{s.id(), s.title(), s.effectiveDirectory()});
                             }
                             return sessions;
                         } else {
@@ -244,6 +280,27 @@ public class ACPManager {
                     LOG.log(Level.WARNING, "getSessions: rpc error: {0} {1}", new Object[]{ex.getMessage(), ex.toString()});
                     return new ArrayList<>();
                 });
+    }    
+
+    public CompletableFuture<List<Session>> getSessionsForDirectories(List<String> directories) {
+        if (directories == null || directories.isEmpty()) {
+            return CompletableFuture.completedFuture(new ArrayList<>());
+        }
+        LOG.log(Level.INFO, "getSessionsForDirectories: querying {0} directories: {1}", new Object[]{directories.size(), directories});
+        List<CompletableFuture<List<Session>>> futures = directories.stream()
+                .map(dir -> getSessions(dir))
+                .toList();
+        return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
+                .thenApply(v -> futures.stream()
+                        .flatMap(f -> {
+                            try {
+                                return f.get().stream();
+                            } catch (Exception e) {
+                                LOG.log(Level.WARNING, "Failed to get sessions for directory: {0}", e.getMessage());
+                                return java.util.stream.Stream.empty();
+                            }
+                        })
+                        .toList());
     }
 
     private static String getProjectPath() {
@@ -277,15 +334,21 @@ public class ACPManager {
         }
 
         LOG.log(Level.INFO, "Creating new session with CWD: {0}", effectiveCwd);
+        final String finalCwd = effectiveCwd;
 
         Map<String, Object> params = Map.of(
-            "cwd", effectiveCwd,
+            "cwd", finalCwd,
             "mcpServers", List.of()
         );
         return rpcClient.sendRequest("session/new", params)
                 .thenApply(res -> {
                     try {
-                        return objectMapper.treeToValue(res, Session.class);
+                        Session s = objectMapper.treeToValue(res, Session.class);
+                        // If the server didn't explicitly return the CWD we sent, associate it ourselves
+                        if (s.effectiveDirectory() == null) {
+                            s = new Session(s.id(), s.title(), finalCwd, finalCwd, s.parentID(), s.updatedAt(), s.mcpServers(), s.configOptions());
+                        }
+                        return s;
                     } catch (Exception e) {
                         throw new RuntimeException(e);
                     }

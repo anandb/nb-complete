@@ -14,4 +14,16 @@ public record Session(
     @JsonProperty("updatedAt") String updatedAt,
     List<Object> mcpServers,
     List<SessionConfigOption> configOptions
-) {}
+) {
+    public String effectiveDirectory() {
+        return cwd() != null ? cwd() : directory();
+    }
+
+    public String projectName() {
+        String dir = effectiveDirectory();
+        if (dir == null || dir.isEmpty()) {
+            return null;
+        }
+        return new java.io.File(dir).getName();
+    }
+}

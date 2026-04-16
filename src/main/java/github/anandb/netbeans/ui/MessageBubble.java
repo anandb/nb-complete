@@ -73,7 +73,7 @@ public class MessageBubble extends JPanel {
             }
 
             if (w == lastComputedWidth && lastComputedHeight > 0) {
-                return new Dimension(w, lastComputedHeight + 12);
+                return new Dimension(w, lastComputedHeight + 4);
             }
 
             try {
@@ -84,14 +84,14 @@ public class MessageBubble extends JPanel {
                     if (h > 0) {
                         lastComputedHeight = (int) Math.ceil(h);
                         lastComputedWidth = w;
-                        return new Dimension(w, lastComputedHeight + 12);
+                        return new Dimension(w, lastComputedHeight + 4);
                     }
                 }
             } catch (Exception ignored) {
             }
 
             if (lastComputedHeight > 0) {
-                return new Dimension(w, Math.max(30, lastComputedHeight + 12));
+                return new Dimension(w, Math.max(30, lastComputedHeight + 4));
             }
             return new Dimension(w, Math.max(30, super.getPreferredSize().height));
         }
@@ -129,7 +129,7 @@ public class MessageBubble extends JPanel {
         if ("user".equals(type)) {
             RoundedPanel p = new RoundedPanel(16);
             p.setLayout(new BorderLayout());
-            p.setBorder(new EmptyBorder(8, 16, 12, 16));
+            p.setBorder(new EmptyBorder(8, 16, 8, 16));
             this.bubble = p;
         } else {
             this.bubble.setBorder(new EmptyBorder(4, 12, 12, 12));
@@ -482,7 +482,7 @@ public class MessageBubble extends JPanel {
 
         // Removed the <pre> wrap which was causing nested <p> segments to render incorrectly and overlap.
         // We rely on 'white-space: pre-wrap' in the base CSS to preserve whitespace.
-        return "<html><head><style>" + customCss + "</style></head><body style='margin: 0; padding: 8px;'>" + html + "</body></html>";
+        return "<html><head><style>" + customCss + "</style></head><body style='margin: 0; padding: 4px;'>" + html + "</body></html>";
     }
 
     private Color getBubbleBackground(ColorTheme theme) {
@@ -507,7 +507,7 @@ public class MessageBubble extends JPanel {
         pane.setDoubleBuffered(true);
         pane.setText(styledHtml);
         pane.setFont(ThemeManager.getFont());
-        pane.setBorder(new javax.swing.border.EmptyBorder(0, 0, 10, 0));
+        pane.setBorder(new javax.swing.border.EmptyBorder(0, 0, 2, 0));
         return pane;
     }
 
