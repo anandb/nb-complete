@@ -43,7 +43,7 @@ public class CollapsibleCodePane extends RoundedPanel {
         setLayout(new BorderLayout());
         setOpaque(false);
         setDoubleBuffered(true);
-        setBorder(BorderFactory.createEmptyBorder(4, 0, 4, 0));
+        setBorder(BorderFactory.createEmptyBorder(2, 0, 2, 0));
 
         ColorTheme theme = ThemeManager.getCurrentTheme();
         Color headerBg = theme.getBase2();

@@ -1,13 +1,14 @@
 package github.anandb.netbeans.ui;
 
-import java.awt.Color;
 import java.awt.Font;
+import java.util.HashMap;
+import java.util.Locale;
+import java.util.Map;
 
 import javax.swing.Icon;
 import javax.swing.UIManager;
+
 import org.openide.util.ImageUtilities;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * Handles non-color theme resources (Icons, Fonts) and coordinates with ColorTheme.
@@ -51,10 +52,15 @@ public class ThemeManager {
 
     public static ColorTheme getCurrentTheme() {
         boolean isDark = org.openide.util.NbPreferences.forModule(ThemeManager.class).getBoolean("isDarkMode", false);
-        if (System.getProperty("os.name").contains("Mac")) {
-            return ColorTheme.NATIVE;
+        if (isMac()) {
+            return isDark ? ColorTheme.MACOS_DARK : ColorTheme.MACOS_LIGHT;
         }
         return isDark ? ColorTheme.DARK : ColorTheme.LIGHT;
+    }
+
+    private static boolean isMac() {
+        String osName = System.getProperty("os.name", "");
+        return osName.toLowerCase(Locale.ROOT).contains("mac");
     }
 
     public static void setDarkMode(boolean isDark) {

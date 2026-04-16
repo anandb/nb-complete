@@ -163,6 +163,54 @@ public class ColorTheme {
             .permissionTitle(Color.decode("#FFA726"))
             .build();
 
+    public static final ColorTheme MACOS_LIGHT = new Builder(false)
+            .background(Color.decode("#D9D0B4"))
+            .foreground(Color.decode("#073642"))
+            .selection(Color.decode("#268BD2"))
+            .accent(Color.decode("#268BD2"))
+            .sunkenBackground(Color.decode("#D9D0B4"))
+            .ghostBackground(new Color(7, 54, 66, 15))
+            .bubbleUser(Color.decode("#EEE8D5"))
+            .assistantForeground(Color.decode("#073642"))
+            .bubbleBorder(Color.decode("#DCD6C1"))
+            .panelHeader(Color.decode("#EEE8D5"))
+            .panelHeaderHover(Color.decode("#DCD6C1"))
+            .base1(Color.decode("#93A1A1"))
+            .base2(Color.decode("#EEE8D5"))
+            .base3(Color.decode("#D9D0B4"))
+            .yellow(Color.decode("#B58900"))
+            .codeBackground(Color.decode("#EEE8D5"))
+            .codeForeground(Color.decode("#57685E"))
+            .codeSelection(Color.decode("#073642"))
+            .permissionBg(Color.decode("#FFF3E0"))
+            .permissionBorder(Color.decode("#FFA000"))
+            .permissionTitle(Color.decode("#E65100"))
+            .build();
+
+    public static final ColorTheme MACOS_DARK = new Builder(true)
+            .background(Color.decode("#2B2B2B"))
+            .foreground(Color.decode("#A9B7C6"))
+            .selection(Color.decode("#214283"))
+            .accent(Color.decode("#589DF6"))
+            .sunkenBackground(Color.decode("#2B2B2B"))
+            .ghostBackground(new Color(255, 255, 255, 15))
+            .bubbleUser(Color.decode("#3E434C"))
+            .assistantForeground(Color.decode("#A9B7C6"))
+            .bubbleBorder(Color.decode("#555555"))
+            .panelHeader(Color.decode("#3C3F41"))
+            .panelHeaderHover(Color.decode("#555555"))
+            .base1(Color.decode("#909090"))
+            .base2(Color.decode("#3C3F41"))
+            .base3(Color.decode("#2B2B2B"))
+            .yellow(Color.decode("#BBB529"))
+            .codeBackground(Color.decode("#002B36"))
+            .codeForeground(Color.decode("#839496"))
+            .codeSelection(Color.decode("#073642"))
+            .permissionBg(Color.decode("#32230A"))
+            .permissionBorder(Color.decode("#B46E00"))
+            .permissionTitle(Color.decode("#FFA726"))
+            .build();
+
     private static class Builder {
         private boolean isDark;
         private Color background;
@@ -217,27 +265,21 @@ public class ColorTheme {
     public String toCss(Color bubbleBg, boolean isAssistant) {
         String fg = toHtmlHex(isAssistant ? assistantForeground : foreground);
         String bg = bubbleBg != null ? toHtmlHex(bubbleBg) : "transparent";
-        String linkColor = toHtmlHex(accent);
-        String codeBg = String.format("rgba(%d, %d, %d, %.2f)", 
-                ghostBackground.getRed(), ghostBackground.getGreen(), ghostBackground.getBlue(), 
-                ghostBackground.getAlpha() / 255.0);
+        String linkColor = isDark ? "#589DF6" : "#268BD2";
+        String codeBg = isDark ? "rgba(255, 255, 255, 0.1)" : "rgba(7, 54, 66, 0.1)";
+        String preBg = isDark ? "#002B36" : "#EEE8D5";
+        String preFg = isDark ? "#839496" : "#57685E";
+        String fontStack = "Dialog, 'Noto Sans', 'Segoe UI', 'Ubuntu', 'Helvetica Neue', 'Arial', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', sans-serif";
+        String monoStack = "'JetBrains Mono', 'Monaco', 'Fira Code', 'Monospace', Monospaced, monospace";
 
-        String preBg = toHtmlHex(codeBackground);
-        String preFg = toHtmlHex(codeForeground);
-
-        java.awt.Font labelFont = ThemeManager.getFont();
-        String fontFamily = "'" + labelFont.getFamily() + "'";
-        String fontSize = labelFont.getSize() + "pt";
-        String monoStack = "'JetBrains Mono This', 'JetBrains Mono', 'Monaco', 'Fira Code', 'Monospace', Monospaced, monospace";
-
-        return "body { font-family: " + fontFamily + "; font-size: " + fontSize + "; color: " + fg + "; background-color: " + bg + "; margin: 0 0 8px 0; line-height: 1.4; }" +
+        return "body { font-family: " + fontStack + "; font-size: 13px; color: " + fg + "; background-color: " + bg + "; margin: 0; line-height: 1.4; }" +
                "code { background-color: " + codeBg + "; padding: 2px 4px; border-radius: 3px; font-family: " + monoStack + "; font-size: 12px; }" +
-               "pre { background-color: " + preBg + "; color: " + preFg + "; padding: 10px; border-radius: 4px; font-family: " + monoStack + "; font-size: 13px; overflow-x: auto; margin: 10px 0; }" +
-                "p { margin: 8px 0; }" +
-                "ul, ol { padding-left: 20px; margin: 8px 0; }" +
-                "li { margin: 4px 0; }" +
-                "a { color: " + linkColor + "; text-decoration: none; font-weight: 500; }" +
-                "a:hover { text-decoration: underline; }";
+               "pre { background-color: " + preBg + "; color: " + preFg + "; padding: 10px; border-radius: 4px; font-family: " + monoStack + "; font-size: 13px; overflow-x: auto; margin: 6px 0; }" +
+                 "p { margin: 2px 0; }" +
+                 "ul, ol { padding-left: 20px; margin: 4px 0; }" +
+                 "li { margin: 2px 0; }" +
+                 "a { color: " + linkColor + "; text-decoration: none; font-weight: 500; }" +
+                 "a:hover { text-decoration: underline; }";
     }
 
     private String toHtmlHex(Color color) {
