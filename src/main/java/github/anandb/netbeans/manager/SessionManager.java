@@ -60,6 +60,10 @@ public class SessionManager {
         return currentSessionId;
     }
 
+    public String getCurrentSessionDirectory() {
+        return lastProjectDir;
+    }
+
     public boolean isSessionLoading() {
         return isSessionLoading;
     }

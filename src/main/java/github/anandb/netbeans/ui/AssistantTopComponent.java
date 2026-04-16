@@ -1197,7 +1197,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
             String effectivePath = path;
 
             if (effectivePath == null || effectivePath.isEmpty()) {
-                effectivePath = SessionManager.getInstance().getCurrentSessionId(); // Placeholder for actual CWD look up if needed, SessionManager should probably handle this
+                effectivePath = SessionManager.getInstance().getCurrentSessionDirectory();
             }
             if (effectivePath == null || effectivePath.isEmpty()) {
                 effectivePath = ACPManager.getInstance().getActiveProjectDir();
