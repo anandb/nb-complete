@@ -7,7 +7,7 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import javax.swing.BorderFactory;
+
 import javax.swing.Icon;
 import javax.swing.JLabel;
 import javax.swing.JPanel;

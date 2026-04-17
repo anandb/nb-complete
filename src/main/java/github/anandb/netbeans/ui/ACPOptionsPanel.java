@@ -1,12 +1,11 @@
 package github.anandb.netbeans.ui;
 
-import github.anandb.netbeans.manager.ModelCache;
 import java.awt.Component;
-import java.awt.event.ItemEvent;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.DefaultListCellRenderer;
 import javax.swing.JComboBox;
@@ -16,8 +15,11 @@ import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
+
 import org.openide.util.NbBundle;
 import org.openide.util.NbPreferences;
+
+import github.anandb.netbeans.manager.ModelCache;
 
 @NbBundle.Messages({
     "LBL_ExecutablePath=Executable Path:",

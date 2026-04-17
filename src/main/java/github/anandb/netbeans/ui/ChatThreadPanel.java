@@ -1,11 +1,4 @@
 package github.anandb.netbeans.ui;
-import java.awt.event.ContainerAdapter;
-import java.awt.event.ContainerEvent;
-
-import org.apache.commons.lang3.StringUtils;
-
-import github.anandb.netbeans.model.Message;
-import github.anandb.netbeans.model.Session;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
@@ -14,16 +7,19 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.Rectangle;
+import java.awt.event.ContainerAdapter;
+import java.awt.event.ContainerEvent;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
+import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -33,7 +29,13 @@ import javax.swing.JSeparator;
 import javax.swing.JViewport;
 import javax.swing.ScrollPaneConstants;
 import javax.swing.Scrollable;
+import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
+
+import org.apache.commons.lang3.StringUtils;
+
+import github.anandb.netbeans.model.Message;
+import github.anandb.netbeans.model.Session;
 
 public class ChatThreadPanel extends JPanel {
     private static final Logger LOG = Logger.getLogger(ChatThreadPanel.class.getName());
@@ -291,7 +293,8 @@ public class ChatThreadPanel extends JPanel {
                 BorderFactory.createEmptyBorder(12, 16, 12, 16)
             ));
 
-            JLabel titleLabel = new JLabel("🛡️ Permission Required");
+            JLabel titleLabel = new JLabel("Permission Required", ThemeManager.getIcon("shield.svg", 18), SwingConstants.LEFT);
+            titleLabel.setIconTextGap(8);
             titleLabel.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
             titleLabel.setForeground(theme.getPermissionTitle());
             content.add(titleLabel, BorderLayout.NORTH);
@@ -316,11 +319,12 @@ public class ChatThreadPanel extends JPanel {
                     btn.addActionListener(e -> {
                         responseFuture.complete(optionId);
                         boolean allowed = kind.contains("allow");
-                        String statusText = (allowed ? "✅ " : "❌ ") + name;
+                        Icon statusIcon = ThemeManager.getIcon(allowed ? "check.svg" : "x.svg", 16);
+                        String statusText = name;
                         Color fg = allowed ? new Color(46, 125, 50) : new Color(198, 40, 40);
                         Color bg = allowed ? new Color(232, 245, 233) : new Color(255, 235, 238);
                         Color border = allowed ? new Color(76, 175, 80) : new Color(244, 67, 54);
-                        collapse(content, statusText, fg, bg, border);
+                        collapse(content, statusText, statusIcon, fg, bg, border);
                     });
                     buttons.add(btn);
                 }
@@ -333,12 +337,12 @@ public class ChatThreadPanel extends JPanel {
 
                 allowBtn.addActionListener(e -> {
                     responseFuture.complete("allow");
-                    collapse(content, "✅ Permission Granted", new Color(46, 125, 50), new Color(232, 245, 233), new Color(76, 175, 80));
+                    collapse(content, "Permission Granted", ThemeManager.getIcon("check.svg", 16), new Color(46, 125, 50), new Color(232, 245, 233), new Color(76, 175, 80));
                 });
 
                 denyBtn.addActionListener(e -> {
                     responseFuture.complete("reject");
-                    collapse(content, "❌ Permission Denied", new Color(198, 40, 40), new Color(255, 235, 238), new Color(244, 67, 54));
+                    collapse(content, "Permission Denied", ThemeManager.getIcon("x.svg", 16), new Color(198, 40, 40), new Color(255, 235, 238), new Color(244, 67, 54));
                 });
 
                 buttons.add(denyBtn);
@@ -360,7 +364,7 @@ public class ChatThreadPanel extends JPanel {
             return new Dimension(Integer.MAX_VALUE, pref.height);
         }
 
-        private void collapse(JPanel content, String status, Color fg, Color bg, Color border) {
+        private void collapse(JPanel content, String status, Icon icon, Color fg, Color bg, Color border) {
             content.removeAll();
             content.setLayout(new BorderLayout());
             content.setBackground(bg);
@@ -369,7 +373,8 @@ public class ChatThreadPanel extends JPanel {
                 BorderFactory.createEmptyBorder(6, 12, 6, 12)
             ));
 
-            JLabel lbl = new JLabel(status);
+            JLabel lbl = new JLabel(status, icon, SwingConstants.LEFT);
+            lbl.setIconTextGap(8);
             lbl.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
             lbl.setForeground(fg);
             content.add(lbl, BorderLayout.CENTER);
