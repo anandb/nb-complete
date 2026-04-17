@@ -26,7 +26,8 @@ import github.anandb.netbeans.manager.ModelCache;
     "LBL_DefaultModel=Default Model:",
     "BTN_Browse=Browse...",
     "TITLE_SelectExecutable=Select Assistant Executable",
-    "LBL_Preamble=Session preamble (sent as first user message for new chats):"
+    "LBL_Preamble=Session preamble (sent as first user message for new chats):",
+    "LBL_EchoUserInput=Echo user input immediately (Local Echo)"
 })
 public class ACPOptionsPanel extends javax.swing.JPanel {
 
@@ -38,6 +39,7 @@ public class ACPOptionsPanel extends javax.swing.JPanel {
     private javax.swing.JScrollPane preambleScroll;
     private javax.swing.JButton browseButton;
     private javax.swing.JLabel modelLabel;
+    private javax.swing.JCheckBox echoCheckbox;
     private JComboBox<String> modelCombo;
     private JTextField modelEditor;
     private List<String> allModels;
@@ -58,11 +60,15 @@ public class ACPOptionsPanel extends javax.swing.JPanel {
         modelCombo = new JComboBox<>();
         modelCombo.setEditable(true);
         modelEditor = (JTextField) modelCombo.getEditor().getEditorComponent();
+        echoCheckbox = new javax.swing.JCheckBox();
 
         jLabel1.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_ExecutablePath"));
         modelLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_DefaultModel"));
         browseButton.setText(NbBundle.getMessage(ACPOptionsPanel.class, "BTN_Browse"));
         browseButton.addActionListener(evt -> browseButtonActionPerformed());
+        
+        echoCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_EchoUserInput"));
+        echoCheckbox.addActionListener(evt -> controller.changed());
         
         preambleLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_Preamble"));
         preambleArea.setLineWrap(true);
@@ -132,6 +138,7 @@ public class ACPOptionsPanel extends javax.swing.JPanel {
                         .addComponent(modelLabel)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(modelCombo, 0, 400, Short.MAX_VALUE))
+                    .addComponent(echoCheckbox)
                     .addComponent(preambleLabel)
                     .addComponent(preambleScroll))
                 .addContainerGap())
@@ -148,6 +155,8 @@ public class ACPOptionsPanel extends javax.swing.JPanel {
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(modelLabel)
                     .addComponent(modelCombo, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(echoCheckbox)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(preambleLabel)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
@@ -193,6 +202,7 @@ public class ACPOptionsPanel extends javax.swing.JPanel {
         }
 
         preambleArea.setText(github.anandb.netbeans.manager.ACPSettings.getPreamble());
+        echoCheckbox.setSelected(NbPreferences.forModule(ACPOptionsPanel.class).getBoolean("echoUserInput", true));
     }
 
     void store() {
@@ -204,6 +214,7 @@ public class ACPOptionsPanel extends javax.swing.JPanel {
             ModelCache.addModel(modelValue);
         }
         github.anandb.netbeans.manager.ACPSettings.setPreamble(preambleArea.getText());
+        NbPreferences.forModule(ACPOptionsPanel.class).putBoolean("echoUserInput", echoCheckbox.isSelected());
     }
 
     private void filterModels() {

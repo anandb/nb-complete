@@ -797,7 +797,10 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
         inputArea.setText("");
         statusLabel.setText("Sending");
         updateButtonState(true);
-        chatPanel.addMessage("user", text);
+        boolean localEcho = NbPreferences.forModule(ACPOptionsPanel.class).getBoolean("echoUserInput", true);
+        if (localEcho) {
+            chatPanel.addMessage("user", text);
+        }
 
         Map<String, Object> context = captureEditorContext();
         ACPManager.getInstance().sendMessage(currentSessionId, text, context)
