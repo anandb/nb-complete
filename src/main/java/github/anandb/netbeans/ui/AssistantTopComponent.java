@@ -493,11 +493,8 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
         modelCombo.setPreferredSize(new Dimension(300, 28));
         thinkingCombo = new JComboBox<>();
         thinkingCombo.setPreferredSize(new Dimension(300, 28));
-        thinkingCombo.setEnabled(false);
 
-        // Options will be populated via updateConfigControls when session is
-        // created/loaded
-
+        // Options will be populated via updateConfigControls when session is created/loaded
         configPanel.add(modeCombo);
         configPanel.add(modelCombo);
         configPanel.add(thinkingCombo);
@@ -708,11 +705,20 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
                 newSessionBtn.setEnabled(true); // Always allow new chat
                 renameSessionBtn.setEnabled(hasSessions);
 
+                // Prefill model combo with preference value if available
+                prefillModelFromPreferences();
+
                 if (hasSessions) {
                     if (selectIdx != -1) {
                         sessionDropdown.setSelectedIndex(selectIdx);
                     } else {
-                        // If current ID is not in new list, don't force selection here
+                        // If no current session exists, load the most recent one (index 0)
+                        // Sessions are sorted by timestamp descending, so index 0 is most recent
+                        Session mostRecent = sessions.get(0);
+                        if (mostRecent != null) {
+                            LOG.log(Level.INFO, "Loading most recent session: {0}", mostRecent.id());
+                            SessionManager.getInstance().loadSession(mostRecent.id());
+                        }
                     }
                 } else {
                     chatPanel.setSessionList(sessions, id -> SessionManager.getInstance().loadSession(id), () -> SessionManager.getInstance().createNewSession(null));
@@ -749,6 +755,12 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
             if (configOptions != null) {
                 updateConfigControls(configOptions, isStartup);
             }
+            // If this is a new session (isStartup=true), apply any pre-selected config values
+            // from the config panel that the user may have set before creating the chat
+            if (isStartup) {
+                applyPreSelectedConfigValues(sessionId, configOptions);
+            }
+
             setInputEnabled(true);
             inputArea.requestFocusInWindow();
             chatPanel.scrollToBottom();
@@ -960,11 +972,10 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
             inputArea.setEnabled(enabled);
             sendBtn.setEnabled(enabled);
             toggleOptionsBtn.setVisible(enabled);
-            // Don't force configPanel visibility here, let the toggle handle it
+            // Keep config panel visible even when input is disabled so users can select
+            // options before starting a new chat
             if (!enabled) {
                 inputArea.setBackground(UIManager.getColor("TextArea.background"));
-                configPanel.setVisible(false);
-                updateOptionsButtonText();
             }
         });
     }
@@ -1066,13 +1077,57 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
         updateConfigControls(options, false);
     }
 
+    private void applyPreSelectedConfigValues(String sessionId, List<SessionConfigOption> configOptions) {
+        // Apply any values that were pre-selected in the config panel before creating the session
+        for (SessionConfigOption opt : configOptions) {
+            JComboBox<ConfigItem> combo = null;
+            if ("mode".equals(opt.category())) {
+                combo = modeCombo;
+            } else if ("model".equals(opt.category())) {
+                combo = modelCombo;
+            } else if (opt.category() != null
+                    && (opt.category().contains("thinking") || opt.category().contains("thought"))) {
+                combo = thinkingCombo;
+            }
+
+            if (combo != null && combo.getSelectedItem() instanceof ConfigItem selectedItem) {
+                String selectedValue = selectedItem.value;
+                String currentValue = opt.currentValue();
+                // Only apply if the selected value differs from the server's default
+                if (selectedValue != null && !selectedValue.isEmpty() && !selectedValue.equals(currentValue)) {
+                    LOG.log(Level.INFO, "Applying pre-selected config: {0}={1} (server default was {2})",
+                            new Object[]{opt.id(), selectedValue, currentValue});
+                    ACPManager.getInstance().setSessionConfigOption(sessionId, opt.id(), selectedValue);
+                }
+            }
+        }
+    }
+
+    private void prefillModelFromPreferences() {
+        String defaultModel = NbPreferences.forModule(ACPOptionsPanel.class).get("defaultModel", "");
+        if (!defaultModel.isEmpty() && modelCombo.getItemCount() > 0) {
+            // Try to find matching model in the combo
+            for (int i = 0; i < modelCombo.getItemCount(); i++) {
+                ConfigItem item = modelCombo.getItemAt(i);
+                if (item != null && defaultModel.equalsIgnoreCase(item.value)) {
+                    modelCombo.setSelectedItem(item);
+                    LOG.log(Level.INFO, "Prefilled model from preferences: {0}", defaultModel);
+                    return;
+                }
+            }
+            // If not found, add it to the combo and select it
+            ConfigItem newItem = new ConfigItem(defaultModel, defaultModel);
+            modelCombo.addItem(newItem);
+            modelCombo.setSelectedItem(newItem);
+            LOG.log(Level.INFO, "Added and prefilled model from preferences: {0}", defaultModel);
+        }
+    }
+
     private void updateConfigControls(List<SessionConfigOption> options, boolean forceStartupDefaults) {
         SwingUtilities.invokeLater(() -> {
             isUpdatingConfigControls = true;
             try {
-                String defaultModel = NbPreferences.forModule(ACPOptionsPanel.class)
-                        .get("defaultModel", "acp/big-pickle");
-                LOG.log(Level.INFO, "updateConfigControls: force={0}, defaultModel={1}", new Object[]{forceStartupDefaults, defaultModel});
+                LOG.log(Level.INFO, "updateConfigControls: force={0}", new Object[]{forceStartupDefaults});
 
                 for (SessionConfigOption opt : options) {
                     JComboBox<ConfigItem> combo = null;
@@ -1099,11 +1154,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
                                     forcedValue = "build";
                                 } else if (opt.options().stream().anyMatch(o -> "plan".equalsIgnoreCase(o.value()))) {
                                     forcedValue = "plan";
-                                }
-                            } else if ("model".equals(opt.category())) {
-                                if (opt.options().stream().anyMatch(o -> defaultModel.equalsIgnoreCase(o.value()))) {
-                                    forcedValue = defaultModel;
-                                }
+                                }                            
                             } else if (isThinking) {
                                 if (opt.options().stream().anyMatch(o -> "default".equalsIgnoreCase(o.value()))) {
                                     forcedValue = "default";
@@ -1172,7 +1223,8 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
                         }
                     }
                 }
-                thinkingCombo.setEnabled(thinkingCombo.getItemCount() > 0);
+                // Always enable thinkingCombo even if empty, so users can configure it without a session
+                thinkingCombo.setEnabled(true);
             } finally {
                 isUpdatingConfigControls = false;
             }

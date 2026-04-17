@@ -3,6 +3,8 @@ package github.anandb.netbeans.manager;
 import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.model.SessionConfigOption;
 import github.anandb.netbeans.model.SessionUpdate;
+import github.anandb.netbeans.ui.ACPOptionsPanel;
+
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -45,6 +47,7 @@ public class ACPManager {
     private long lastRestartTime = 0;
     private static final int MAX_RESTARTS = 3;
     private static final long RESTART_RESET_INTERVAL = 300000; // 5 minutes
+    private boolean shutdownHookAdded = false;
 
     public interface PermissionHandler {
         void handlePermissionRequest(String sessionId, JsonNode params, CompletableFuture<String> response);
@@ -90,17 +93,17 @@ public class ACPManager {
                 return;
             }
 
-            ProcessBuilder pb = new ProcessBuilder(binaryPath, "acp");
+            String processArgs = NbPreferences.forModule(ACPOptionsPanel.class).get("processArguments", "acp");
+            List<String> argsList = parseCommandLineArguments(processArgs);
+            List<String> command = new ArrayList<>();
+            command.add(binaryPath);
+            command.addAll(argsList);
+
+            ProcessBuilder pb = new ProcessBuilder(command);
             pb.redirectError(ProcessBuilder.Redirect.INHERIT);
 
             Map<String, String> env = pb.environment();
             env.putAll(System.getenv()); // Ensure all system environment variables are propagated
-
-            String defaultModel = NbPreferences.forModule(github.anandb.netbeans.ui.ACPOptionsPanel.class)
-                    .get("defaultModel", "acp/big-pickle");
-            if (!defaultModel.isEmpty()) {
-                env.put("OPENCODE_DEFAULT_MODEL", defaultModel);
-            }
 
             this.serverProcess = pb.start();
 
@@ -143,7 +146,10 @@ public class ACPManager {
             // Initialize ACP
             initializeProtocol();
 
-            Runtime.getRuntime().addShutdownHook(new Thread(this::shutdown));
+            if (!shutdownHookAdded) {
+                Runtime.getRuntime().addShutdownHook(new Thread(this::shutdown));
+                shutdownHookAdded = true;
+            }
 
             LOG.log(Level.INFO, "ACP server process started successfully");
         } catch (Exception e) {
@@ -187,40 +193,60 @@ public class ACPManager {
         if (rpcClient != null) {
             rpcClient.close();
             rpcClient = null;
-            
-            // Wait for the process to exit gracefully after closing stdin
-            if (serverProcess != null && serverProcess.isAlive()) {
-                LOG.log(Level.INFO, "ACP server shutdown: waiting for graceful exit...");
-                try {
-                    if (serverProcess.waitFor(3, java.util.concurrent.TimeUnit.SECONDS)) {
-                        LOG.log(Level.INFO, "ACP server terminated gracefully");
-                    }
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
-            }
         }
+
         if (serverProcess != null && serverProcess.isAlive()) {
-            LOG.log(Level.INFO, "ACP server shutdown: still alive, sending SIGTERM (attempt 1)");
-            serverProcess.destroy();
+            LOG.log(Level.INFO, "Stopping ACP server (PID: {0})...", serverProcess.pid());
+            
+            // Capture descendants before the parent process potentially disappears
+            List<ProcessHandle> descendants = serverProcess.descendants().toList();
+            
+            // 1. Try graceful exit via closed stdin (already triggered by rpcClient.close())
             try {
-                if (!serverProcess.waitFor(5, java.util.concurrent.TimeUnit.SECONDS)) {
-                    LOG.log(Level.INFO, "ACP server still running: sending second SIGTERM");
-                    serverProcess.destroy();
-                    serverProcess.waitFor(5, java.util.concurrent.TimeUnit.SECONDS);
+                if (serverProcess.waitFor(2, java.util.concurrent.TimeUnit.SECONDS)) {
+                    LOG.log(Level.INFO, "ACP server exited gracefully.");
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
-            if (serverProcess.isAlive()) {
-                LOG.log(Level.WARNING, "ACP server did not terminate gracefully, forcing kill");
-                serverProcess.descendants().forEach(ProcessHandle::destroyForcibly);
-                serverProcess.destroyForcibly();
-            } else {
-                LOG.log(Level.INFO, "ACP server terminated after SIGTERM");
+
+            // 2. If still alive, or if there are orphaned descendants, send SIGTERM
+            if (serverProcess.isAlive() || descendants.stream().anyMatch(ProcessHandle::isAlive)) {
+                LOG.log(Level.INFO, "Terminating process tree (parent + {0} descendants)...", descendants.size());
+                
+                descendants.forEach(h -> {
+                    if (h.isAlive()) {
+                        LOG.log(Level.FINE, "Sending SIGTERM to descendant PID: {0}", h.pid());
+                        h.destroy();
+                    }
+                });
+                if (serverProcess.isAlive()) {
+                    serverProcess.destroy();
+                }
+
+                try {
+                    serverProcess.waitFor(3, java.util.concurrent.TimeUnit.SECONDS);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
             }
+
+            // 3. Final cleanup: Force kill anything remaining in the tree
+            if (serverProcess.isAlive() || descendants.stream().anyMatch(ProcessHandle::isAlive)) {
+                LOG.log(Level.WARNING, "Some processes still alive, forcing SIGKILL...");
+                descendants.forEach(h -> {
+                    if (h.isAlive()) {
+                        LOG.log(Level.WARNING, "Killing descendant PID: {0}", h.pid());
+                        h.destroyForcibly();
+                    }
+                });
+                if (serverProcess.isAlive()) {
+                    serverProcess.destroyForcibly();
+                }
+            }
+            
             serverProcess = null;
-            LOG.log(Level.INFO, "ACP server shutdown complete");
+            LOG.log(Level.INFO, "ACP server shutdown complete.");
         }
         serverProcess = null;
     }
@@ -743,5 +769,53 @@ public class ACPManager {
             case "sh" -> "bash";
             default -> ext;
         };
+    }
+
+    private List<String> parseCommandLineArguments(String args) {
+        List<String> result = new ArrayList<>();
+        if (args == null || args.trim().isEmpty()) {
+            return result;
+        }
+
+        StringBuilder current = new StringBuilder();
+        boolean inQuotes = false;
+        boolean inSingleQuotes = false;
+
+        for (int i = 0; i < args.length(); i++) {
+            char c = args.charAt(i);
+
+            if (inQuotes) {
+                if (c == '"') {
+                    inQuotes = false;
+                } else {
+                    current.append(c);
+                }
+            } else if (inSingleQuotes) {
+                if (c == '\'') {
+                    inSingleQuotes = false;
+                } else {
+                    current.append(c);
+                }
+            } else {
+                if (c == '"') {
+                    inQuotes = true;
+                } else if (c == '\'') {
+                    inSingleQuotes = true;
+                } else if (Character.isWhitespace(c)) {
+                    if (current.length() > 0) {
+                        result.add(current.toString());
+                        current = new StringBuilder();
+                    }
+                } else {
+                    current.append(c);
+                }
+            }
+        }
+
+        if (current.length() > 0) {
+            result.add(current.toString());
+        }
+
+        return result;
     }
 }

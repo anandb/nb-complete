@@ -26,7 +26,7 @@ public class ModelCache {
         if (userDir != null) {
             acpDir = new File(userDir, "acp");
         } else {
-            acpDir = new File(System.getProperty("user.home"), ".opencode");
+            acpDir = new File(System.getProperty("user.home"), ".acp");
         }
         if (!acpDir.exists()) {
             acpDir.mkdirs();

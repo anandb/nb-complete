@@ -1,20 +1,8 @@
 package github.anandb.netbeans.ui;
 
-import java.awt.Component;
 import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.stream.Collectors;
 
-import javax.swing.DefaultComboBoxModel;
-import javax.swing.DefaultListCellRenderer;
-import javax.swing.JComboBox;
 import javax.swing.JFileChooser;
-import javax.swing.JList;
-import javax.swing.JTextField;
-import javax.swing.SwingUtilities;
-import javax.swing.event.DocumentEvent;
-import javax.swing.event.DocumentListener;
 
 import org.openide.util.NbBundle;
 import org.openide.util.NbPreferences;
@@ -23,7 +11,8 @@ import github.anandb.netbeans.manager.ModelCache;
 
 @NbBundle.Messages({
     "LBL_ExecutablePath=Executable Path:",
-    "LBL_DefaultModel=Default Model:",
+    "LBL_DefaultModel=Default Model (for new chats):",
+    "LBL_ProcessArguments=Process Arguments:",
     "BTN_Browse=Browse...",
     "TITLE_SelectExecutable=Select Assistant Executable",
     "LBL_Preamble=Session preamble (sent as first user message for new chats):",
@@ -40,9 +29,9 @@ public class ACPOptionsPanel extends javax.swing.JPanel {
     private javax.swing.JButton browseButton;
     private javax.swing.JLabel modelLabel;
     private javax.swing.JCheckBox echoCheckbox;
-    private JComboBox<String> modelCombo;
-    private JTextField modelEditor;
-    private List<String> allModels;
+    private javax.swing.JTextField modelField;
+    private javax.swing.JLabel argsLabel;
+    private javax.swing.JTextField argsField;
 
     ACPOptionsPanel(ACPOptionsPanelController controller) {
         this.controller = controller;
@@ -57,19 +46,34 @@ public class ACPOptionsPanel extends javax.swing.JPanel {
         preambleScroll = new javax.swing.JScrollPane(preambleArea);
         browseButton = new javax.swing.JButton();
         modelLabel = new javax.swing.JLabel();
-        modelCombo = new JComboBox<>();
-        modelCombo.setEditable(true);
-        modelEditor = (JTextField) modelCombo.getEditor().getEditorComponent();
+        modelField = new javax.swing.JTextField();
+        argsLabel = new javax.swing.JLabel();
+        argsField = new javax.swing.JTextField();
         echoCheckbox = new javax.swing.JCheckBox();
 
         jLabel1.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_ExecutablePath"));
         modelLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_DefaultModel"));
+        argsLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_ProcessArguments"));
         browseButton.setText(NbBundle.getMessage(ACPOptionsPanel.class, "BTN_Browse"));
         browseButton.addActionListener(evt -> browseButtonActionPerformed());
         
         echoCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_EchoUserInput"));
         echoCheckbox.addActionListener(evt -> controller.changed());
         
+        modelField.addKeyListener(new java.awt.event.KeyAdapter() {
+            @Override
+            public void keyReleased(java.awt.event.KeyEvent evt) {
+                controller.changed();
+            }
+        });
+        
+        argsField.addKeyListener(new java.awt.event.KeyAdapter() {
+            @Override
+            public void keyReleased(java.awt.event.KeyEvent evt) {
+                controller.changed();
+            }
+        });
+
         preambleLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_Preamble"));
         preambleArea.setLineWrap(true);
         preambleArea.setWrapStyleWord(true);
@@ -79,45 +83,10 @@ public class ACPOptionsPanel extends javax.swing.JPanel {
                 controller.changed();
             }
         });
-        
+
         pathField.addKeyListener(new java.awt.event.KeyAdapter() {
-            @Override
             public void keyReleased(java.awt.event.KeyEvent evt) {
                 controller.changed();
-            }
-        });
-
-        modelEditor.getDocument().addDocumentListener(new DocumentListener() {
-            @Override
-            public void insertUpdate(DocumentEvent e) {
-                filterModels();
-                controller.changed();
-            }
-
-            @Override
-            public void removeUpdate(DocumentEvent e) {
-                filterModels();
-                controller.changed();
-            }
-
-            @Override
-            public void changedUpdate(DocumentEvent e) {
-                filterModels();
-                controller.changed();
-            }
-        });
-
-        modelCombo.setRenderer(new DefaultListCellRenderer() {
-            @Override
-            public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
-                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-                if (value != null) {
-                    String text = value.toString();
-                    if (text.toLowerCase().contains("free")) {
-                        setText(text);
-                    }
-                }
-                return this;
             }
         });
 
@@ -137,7 +106,11 @@ public class ACPOptionsPanel extends javax.swing.JPanel {
                     .addGroup(layout.createSequentialGroup()
                         .addComponent(modelLabel)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(modelCombo, 0, 400, Short.MAX_VALUE))
+                        .addComponent(modelField, javax.swing.GroupLayout.DEFAULT_SIZE, 400, Short.MAX_VALUE))
+                    .addGroup(layout.createSequentialGroup()
+                        .addComponent(argsLabel)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(argsField, javax.swing.GroupLayout.DEFAULT_SIZE, 400, Short.MAX_VALUE))
                     .addComponent(echoCheckbox)
                     .addComponent(preambleLabel)
                     .addComponent(preambleScroll))
@@ -154,7 +127,11 @@ public class ACPOptionsPanel extends javax.swing.JPanel {
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(modelLabel)
-                    .addComponent(modelCombo, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(modelField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(argsLabel)
+                    .addComponent(argsField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(echoCheckbox)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
@@ -185,21 +162,8 @@ public class ACPOptionsPanel extends javax.swing.JPanel {
         String defaultPath = System.getProperty("user.home") + "/.opencode/bin/opencode";
         pathField.setText(NbPreferences.forModule(ACPOptionsPanel.class).get("acpExecutablePath", defaultPath));
 
-        allModels = new ArrayList<>(ModelCache.getCachedModels());
-        
-        modelCombo.removeAllItems();
-        for (String model : allModels) {
-            modelCombo.addItem(model);
-        }
-
-        String savedModel = NbPreferences.forModule(ACPOptionsPanel.class).get("defaultModel", "acp/big-pickle");
-        if (savedModel != null && !savedModel.isEmpty()) {
-            if (!allModels.contains(savedModel)) {
-                allModels.add(0, savedModel);
-                modelCombo.insertItemAt(savedModel, 0);
-            }
-            modelCombo.setSelectedItem(savedModel);
-        }
+        modelField.setText(NbPreferences.forModule(ACPOptionsPanel.class).get("defaultModel", ""));
+        argsField.setText(NbPreferences.forModule(ACPOptionsPanel.class).get("processArguments", "acp"));
 
         preambleArea.setText(github.anandb.netbeans.manager.ACPSettings.getPreamble());
         echoCheckbox.setSelected(NbPreferences.forModule(ACPOptionsPanel.class).getBoolean("echoUserInput", true));
@@ -207,59 +171,14 @@ public class ACPOptionsPanel extends javax.swing.JPanel {
 
     void store() {
         NbPreferences.forModule(ACPOptionsPanel.class).put("acpExecutablePath", pathField.getText());
-        Object selected = modelCombo.getSelectedItem();
-        String modelValue = selected != null ? selected.toString() : "";
+        String modelValue = modelField.getText();
         NbPreferences.forModule(ACPOptionsPanel.class).put("defaultModel", modelValue);
+        NbPreferences.forModule(ACPOptionsPanel.class).put("processArguments", argsField.getText());
         if (modelValue != null && !modelValue.isEmpty()) {
             ModelCache.addModel(modelValue);
         }
         github.anandb.netbeans.manager.ACPSettings.setPreamble(preambleArea.getText());
         NbPreferences.forModule(ACPOptionsPanel.class).putBoolean("echoUserInput", echoCheckbox.isSelected());
-    }
-
-    private void filterModels() {
-        SwingUtilities.invokeLater(() -> {
-            String searchText = modelEditor.getText().toLowerCase();
-
-            // Prevent recursion
-            modelCombo.removeItemListener(e -> {});
-
-            // Save selected item
-            Object selected = modelCombo.getSelectedItem();
-
-            // Filter models
-            List<String> filtered = allModels.stream()
-                    .filter(model -> model.toLowerCase().contains(searchText))
-                    .collect(Collectors.toList());
-
-            // Update model
-            DefaultComboBoxModel<String> comboModel = new DefaultComboBoxModel<>();
-            for (String model : filtered) {
-                comboModel.addElement(model);
-            }
-
-            // Always show current text even if no match
-            if (!searchText.isEmpty() && !filtered.contains(searchText)) {
-                comboModel.insertElementAt(searchText, 0);
-            }
-
-            modelCombo.setModel(comboModel);
-
-            // Restore selected item
-            if (selected != null) {
-                modelCombo.setSelectedItem(selected);
-            }
-
-            // Restore text
-            modelEditor.setText(searchText);
-
-            // Show popup if there are matches
-            if (modelCombo.isDisplayable() && comboModel.getSize() > 0) {
-                modelCombo.showPopup();
-            }
-
-            controller.changed();
-        });
     }
 
     boolean valid() {
