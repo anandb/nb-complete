@@ -77,7 +77,7 @@ import github.anandb.netbeans.manager.SessionManager;
         "CTL_AssistantTopComponent=Assistant",
         "HINT_AssistantTopComponent=This is an Assistant window"
 })
-@ConvertAsProperties(dtd = "-//github.anandb.netbeans.ui//Assistant//EN/2.0", autostore = false)
+@ConvertAsProperties(dtd = "-//github.anandb.netbeans.ui//Assistant//EN", autostore = false)
 @TopComponent.Description(preferredID = "AssistantTopComponent", iconBase = "github/anandb/netbeans/ui/logo.png", persistenceType = TopComponent.PERSISTENCE_ALWAYS)
 @TopComponent.Registration(mode = "explorer", openAtStartup = false)
 public final class AssistantTopComponent extends TopComponent implements ACPManager.PermissionHandler, SessionManager.SessionListener {
@@ -1154,7 +1154,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
                                     forcedValue = "build";
                                 } else if (opt.options().stream().anyMatch(o -> "plan".equalsIgnoreCase(o.value()))) {
                                     forcedValue = "plan";
-                                }                            
+                                }
                             } else if (isThinking) {
                                 if (opt.options().stream().anyMatch(o -> "default".equalsIgnoreCase(o.value()))) {
                                     forcedValue = "default";
@@ -1283,7 +1283,11 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
 
     @Override
     public void componentOpened() {
-        ACPManager.getInstance().ensureStarted();
+        try {
+            ACPManager.getInstance().ensureStarted();
+        } catch (Exception ex) {
+            LOG.log(Level.SEVERE, "Failed to ensure server is started", ex);
+        }
         if (sseListener != null) {
             ACPManager.getInstance().removeSseListener(sseListener);
             ACPManager.getInstance().addSseListener(sseListener);

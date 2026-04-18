@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>github.anandb</groupId>
     <artifactId>acp-netbeans-plugin</artifactId>
-    <version>1.2.151</version>
+    <version>1.2.155</version>
     <packaging>nbm</packaging>
 
     <name>ACP NetBeans Plugin</name>
@@ -113,7 +113,12 @@
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
-            <version>3.14.0</version>
+            <version>3.20.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-exec</artifactId>
+            <version>1.6.0</version>
         </dependency>
 
         <!-- Markdown Processing -->
@@ -150,64 +155,68 @@
             <version>${netbeans.version}</version>
         </dependency>
     </dependencies>
-
     <build>
+    <pluginManagement>
         <plugins>
             <plugin>
-                <groupId>org.apache.netbeans.utilities</groupId>
-                <artifactId>nbm-maven-plugin</artifactId>
-                <version>14.4</version>
-                <extensions>true</extensions>
-                <configuration>
-                    <author>ACP</author>
-                    <licenseName>Apache 2.0</licenseName>
-                    <licenseFile>LICENSE</licenseFile>
-                    <publicPackages>
-                        <publicPackage>github.anandb.netbeans.completion</publicPackage>
-                        <publicPackage>github.anandb.netbeans.manager</publicPackage>
-                        <publicPackage>github.anandb.netbeans.model</publicPackage>
-                        <publicPackage>github.anandb.netbeans.project</publicPackage>
-                        <publicPackage>github.anandb.netbeans.ui</publicPackage>
-                    </publicPackages>
-                </configuration>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.3.1</version>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.15.0</version>
+                <artifactId>maven-install-plugin</artifactId>
+                <version>3.1.1</version>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-jar-plugin</artifactId>
-                <version>3.3.0</version>
-                <configuration>
-                    <archive>
-                        <manifestFile>${project.build.outputDirectory}/META-INF/MANIFEST.MF</manifestFile>
-                        <manifestEntries>
-                            <OpenIDE-Module-Layer>github/anandb/netbeans/ui/layer.xml</OpenIDE-Module-Layer>
-                        </manifestEntries>
-                    </archive>
-                </configuration>
+                <artifactId>maven-deploy-plugin</artifactId>
+                <version>3.1.1</version>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.5.5</version>
             </plugin>
         </plugins>
-        <pluginManagement>
-            <plugins>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-resources-plugin</artifactId>
-                    <version>3.3.1</version>
-                </plugin>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-install-plugin</artifactId>
-                    <version>3.1.1</version>
-                </plugin>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-deploy-plugin</artifactId>
-                    <version>3.1.1</version>
-                </plugin>
-            </plugins>
-        </pluginManagement>
+    </pluginManagement>
+    <plugins>
+        <plugin>
+            <groupId>org.apache.netbeans.utilities</groupId>
+            <artifactId>nbm-maven-plugin</artifactId>
+            <version>14.4</version>
+            <extensions>true</extensions>
+            <configuration>
+                <author>ACP</author>
+                <licenseName>The Unlicense</licenseName>
+                <licenseFile>LICENSE</licenseFile>
+                <publicPackages>
+
+                    <publicPackage>github.anandb.netbeans.manager</publicPackage>
+                    <publicPackage>github.anandb.netbeans.model</publicPackage>
+                    <publicPackage>github.anandb.netbeans.project</publicPackage>
+                    <publicPackage>github.anandb.netbeans.ui</publicPackage>
+                </publicPackages>
+            </configuration>
+        </plugin>
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-compiler-plugin</artifactId>
+            <version>3.15.0</version>
+        </plugin>
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-jar-plugin</artifactId>
+            <version>3.3.0</version>
+            <configuration>
+                <archive>
+                    <manifestFile>${project.build.outputDirectory}/META-INF/MANIFEST.MF</manifestFile>
+                    <manifestEntries>
+                        <OpenIDE-Module-Layer>github/anandb/netbeans/ui/layer.xml</OpenIDE-Module-Layer>
+                    </manifestEntries>
+                </archive>
+            </configuration>
+        </plugin>
+    </plugins>
     </build>
 </project>

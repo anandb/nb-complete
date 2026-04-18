@@ -9,8 +9,11 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -18,6 +21,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
 import org.netbeans.api.project.Project;
 import org.netbeans.api.project.ui.OpenProjects;
 import org.openide.cookies.EditorCookie;
@@ -25,7 +29,10 @@ import org.openide.filesystems.FileObject;
 import org.openide.filesystems.FileUtil;
 import org.openide.loaders.DataObject;
 import org.openide.util.NbPreferences;
+
 import javax.swing.text.Document;
+
+import org.apache.commons.exec.CommandLine;
 
 public class ACPManager {
     private static final Logger LOG = Logger.getLogger(ACPManager.class.getName());
@@ -82,24 +89,18 @@ public class ACPManager {
         }
         LOG.info("Starting ACP server...");
         try {
-            String defaultPath = System.getProperty("user.home") + "/.opencode/bin/opencode";
-            String binaryPath = NbPreferences.forModule(github.anandb.netbeans.ui.ACPOptionsPanel.class)
-                    .get("acpExecutablePath", defaultPath);
-            LOG.log(Level.INFO, "Binary path: {0}", binaryPath);
+            CommandLine cmd = parseCommand();
+            LOG.log(Level.INFO, "Command Line: {0}", cmd);
 
-            java.io.File binaryFile = new java.io.File(binaryPath);
+            File binaryFile = new File(cmd.getExecutable());
             if (!binaryFile.exists()) {
-                LOG.log(Level.SEVERE, "ACP binary NOT found at {0}", binaryPath);
+                String errorMsg = "ACP binary NOT found at " + cmd.getExecutable();
+                LOG.log(Level.SEVERE, errorMsg);
+                readyFuture.completeExceptionally(new IOException(errorMsg));
                 return;
             }
 
-            String processArgs = NbPreferences.forModule(ACPOptionsPanel.class).get("processArguments", "acp");
-            List<String> argsList = parseCommandLineArguments(processArgs);
-            List<String> command = new ArrayList<>();
-            command.add(binaryPath);
-            command.addAll(argsList);
-
-            ProcessBuilder pb = new ProcessBuilder(command);
+            ProcessBuilder pb = new ProcessBuilder(Arrays.asList(cmd.toStrings()));
             pb.redirectError(ProcessBuilder.Redirect.INHERIT);
 
             Map<String, String> env = pb.environment();
@@ -154,7 +155,14 @@ public class ACPManager {
             LOG.log(Level.INFO, "ACP server process started successfully");
         } catch (Exception e) {
             LOG.log(Level.SEVERE, "CRITICAL: Failed to start ACP server", e);
+            readyFuture.completeExceptionally(e);
         }
+    }
+
+    public CommandLine parseCommand() {
+        String ocPath = System.getProperty("user.home") + "/.opencode/bin/opencode";
+        ACPCommandBuilder commandBuilder = new ACPCommandBuilder(NbPreferences.forModule(ACPOptionsPanel.class));
+        return commandBuilder.build(ocPath);
     }
 
     private void initializeProtocol() {
@@ -197,10 +205,10 @@ public class ACPManager {
 
         if (serverProcess != null && serverProcess.isAlive()) {
             LOG.log(Level.INFO, "Stopping ACP server (PID: {0})...", serverProcess.pid());
-            
+
             // Capture descendants before the parent process potentially disappears
             List<ProcessHandle> descendants = serverProcess.descendants().toList();
-            
+
             // 1. Try graceful exit via closed stdin (already triggered by rpcClient.close())
             try {
                 if (serverProcess.waitFor(2, java.util.concurrent.TimeUnit.SECONDS)) {
@@ -213,7 +221,7 @@ public class ACPManager {
             // 2. If still alive, or if there are orphaned descendants, send SIGTERM
             if (serverProcess.isAlive() || descendants.stream().anyMatch(ProcessHandle::isAlive)) {
                 LOG.log(Level.INFO, "Terminating process tree (parent + {0} descendants)...", descendants.size());
-                
+
                 descendants.forEach(h -> {
                     if (h.isAlive()) {
                         LOG.log(Level.FINE, "Sending SIGTERM to descendant PID: {0}", h.pid());
@@ -244,7 +252,7 @@ public class ACPManager {
                     serverProcess.destroyForcibly();
                 }
             }
-            
+
             serverProcess = null;
             LOG.log(Level.INFO, "ACP server shutdown complete.");
         }
@@ -306,7 +314,7 @@ public class ACPManager {
                     LOG.log(Level.WARNING, "getSessions: rpc error: {0} {1}", new Object[]{ex.getMessage(), ex.toString()});
                     return new ArrayList<>();
                 });
-    }    
+    }
 
     public CompletableFuture<List<Session>> getSessionsForDirectories(List<String> directories) {
         if (directories == null || directories.isEmpty()) {
@@ -417,14 +425,13 @@ public class ACPManager {
         }
 
         List<Map<String, Object>> promptBlocks = new ArrayList<>();
-
         String displayText = text;
 
         if (context != null) {
             String filePath = (String) context.get("filePath");
             String selectionContent = (String) context.get("selectionContent");
             if (filePath != null) {
-                java.io.File file = new java.io.File(filePath);
+                File file = new File(filePath);
                 String lang = getLanguageFromPath(filePath);
 
                 String fileName = file.getName();
@@ -752,13 +759,19 @@ public class ACPManager {
     }
 
     private String getLanguageFromPath(String path) {
-        if (path == null) return "";
+        if (path == null) {
+            return "";
+        }
         int lastDot = path.lastIndexOf('.');
-        if (lastDot == -1) return "";
+        if (lastDot == -1) {
+            return "";
+        }
         String ext = path.substring(lastDot + 1).toLowerCase();
         return switch (ext) {
             case "java" -> "java";
             case "py" -> "python";
+            case "pl" -> "perl";
+            case "awk" -> "awk";
             case "js" -> "javascript";
             case "ts" -> "typescript";
             case "html" -> "html";
@@ -767,55 +780,9 @@ public class ACPManager {
             case "md" -> "markdown";
             case "json" -> "json";
             case "sh" -> "bash";
+            case "ksh" -> "bash";
+            case "zsh" -> "bash";
             default -> ext;
         };
-    }
-
-    private List<String> parseCommandLineArguments(String args) {
-        List<String> result = new ArrayList<>();
-        if (args == null || args.trim().isEmpty()) {
-            return result;
-        }
-
-        StringBuilder current = new StringBuilder();
-        boolean inQuotes = false;
-        boolean inSingleQuotes = false;
-
-        for (int i = 0; i < args.length(); i++) {
-            char c = args.charAt(i);
-
-            if (inQuotes) {
-                if (c == '"') {
-                    inQuotes = false;
-                } else {
-                    current.append(c);
-                }
-            } else if (inSingleQuotes) {
-                if (c == '\'') {
-                    inSingleQuotes = false;
-                } else {
-                    current.append(c);
-                }
-            } else {
-                if (c == '"') {
-                    inQuotes = true;
-                } else if (c == '\'') {
-                    inSingleQuotes = true;
-                } else if (Character.isWhitespace(c)) {
-                    if (current.length() > 0) {
-                        result.add(current.toString());
-                        current = new StringBuilder();
-                    }
-                } else {
-                    current.append(c);
-                }
-            }
-        }
-
-        if (current.length() > 0) {
-            result.add(current.toString());
-        }
-
-        return result;
     }
 }
