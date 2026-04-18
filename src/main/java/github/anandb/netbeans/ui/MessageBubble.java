@@ -42,6 +42,26 @@ public class MessageBubble extends JPanel {
         CollapsibleState(boolean expanded) { this.expanded = expanded; }
     }
 
+    /**
+     * Apply background color and RoundedPanel base color for a message bubble.
+     * @param theme the current theme
+     * @param type the message type (user, error, assistant, tool, thought)
+     */
+    private void applyBubbleTheme(ColorTheme theme, String type) {
+        Color bgColor;
+        if ("user".equals(type)) {
+            bgColor = theme.getBubbleUser();
+        } else if ("error".equals(type)) {
+            bgColor = theme.getErrorBackground();
+        } else {
+            bgColor = new Color(0, 0, 0, 0);
+        }
+        bubble.setBackground(bgColor);
+        if (bubble instanceof RoundedPanel rp) {
+            rp.setBaseColor(bgColor);
+        }
+    }
+
     @Override
     public Dimension getMaximumSize() {
         return new Dimension(Integer.MAX_VALUE, getPreferredSize().height);
@@ -144,9 +164,9 @@ public class MessageBubble extends JPanel {
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.insets = new Insets(2, 2, 2, 2);
 
+        applyBubbleTheme(theme, type);
+        
         if ("user".equals(type)) {
-            if (bubble instanceof RoundedPanel rp) { rp.setBaseColor(theme.getBubbleUser()); }
-            bubble.setBackground(theme.getBubbleUser());
             gbc.anchor = GridBagConstraints.WEST;
             gbc.insets = new Insets(4, 12, 4, 12);
 
@@ -174,19 +194,12 @@ public class MessageBubble extends JPanel {
             footer.add(copyBtn, BorderLayout.EAST);
             bubble.add(footer, BorderLayout.SOUTH);
         } else if ("error".equals(type)) {            
-            Color errorBg = theme.getErrorBackground();
-            bubble.setBackground(errorBg);
-            if (bubble instanceof RoundedPanel rp) { rp.setBaseColor(errorBg); }
             gbc.anchor = GridBagConstraints.WEST;
             gbc.insets = new Insets(4, 12, 4, 12);
         } else if ("tool".equals(type) || "thought".equals(type)) {
-            bubble.setBackground(new Color(0, 0, 0, 0));
-            if (bubble instanceof RoundedPanel rp) { rp.setBaseColor(null); }
             gbc.anchor = GridBagConstraints.WEST;
             gbc.insets = new Insets(4, 12, 4, 12);
         } else {
-            bubble.setBackground(new Color(0, 0, 0, 0));
-            if (bubble instanceof RoundedPanel rp) { rp.setBaseColor(null); }
             gbc.anchor = GridBagConstraints.WEST;
             gbc.insets = new Insets(4, 12, 4, 12);
         }
@@ -267,17 +280,7 @@ public class MessageBubble extends JPanel {
 
     public void refreshTheme() {
         ColorTheme theme = ThemeManager.getCurrentTheme();
-        if ("user".equals(type)) {
-            bubble.setBackground(theme.getBubbleUser());
-            if (bubble instanceof RoundedPanel rp) { rp.setBaseColor(theme.getBubbleUser()); }
-        } else if ("error".equals(type)) {
-            Color errorBg = theme.getErrorBackground();
-            bubble.setBackground(errorBg);
-            if (bubble instanceof RoundedPanel rp) { rp.setBaseColor(errorBg); }
-        } else {
-            bubble.setBackground(new Color(0, 0, 0, 0));
-            if (bubble instanceof RoundedPanel rp) { rp.setBaseColor(null); }
-        }
+        applyBubbleTheme(theme, type);
 
         for (Component c : segmentsContainer.getComponents()) {
             if (c instanceof CollapsibleCodePane pane) {

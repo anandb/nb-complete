@@ -59,6 +59,8 @@ import org.openide.text.NbDocument;
 import org.openide.util.NbBundle;
 import org.openide.util.NbPreferences;
 import org.openide.windows.TopComponent;
+import org.openide.modules.Modules;
+import org.openide.modules.ModuleInfo;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
@@ -499,10 +501,20 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
         configPanel.add(modelCombo);
         configPanel.add(thinkingCombo);
 
+        JPanel statusPanel = new JPanel(new BorderLayout());
+        statusPanel.setOpaque(false);
+
         statusLabel = new JLabel("Ready");
         statusLabel.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN));
         statusLabel.setForeground(Color.GRAY);
-        inputContainer.add(statusLabel, BorderLayout.SOUTH);
+        statusPanel.add(statusLabel, BorderLayout.WEST);
+
+        JLabel versionLabel = new JLabel("v" + getPluginVersion());
+        versionLabel.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN, 10f));
+        versionLabel.setForeground(Color.GRAY);
+        statusPanel.add(versionLabel, BorderLayout.EAST);
+
+        inputContainer.add(statusPanel, BorderLayout.SOUTH);
 
         footer.add(inputContainer, BorderLayout.CENTER);
         add(footer, BorderLayout.SOUTH);
@@ -1590,6 +1602,18 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
         } catch (Exception e) {
             return 0;
         }
+    }
+
+    private String getPluginVersion() {
+        try {
+            ModuleInfo mi = Modules.getDefault().ownerOf(getClass());
+            if (mi != null) {
+                return mi.getSpecificationVersion().toString();
+            }
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "Could not determine plugin version", e);
+        }
+        return "unknown";
     }
 
 }

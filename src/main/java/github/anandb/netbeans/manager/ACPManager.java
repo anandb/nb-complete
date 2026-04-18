@@ -269,10 +269,16 @@ public class ACPManager {
         }
     }
 
+    /**
+     * Check if RPC client is initialized. Returns false if not ready.
+     */
+    private boolean rpcClientReady() {
+        return rpcClient != null;
+    }
 
     public CompletableFuture<List<Session>> getSessions(String directory) {
         LOG.log(Level.INFO, "getSessions: called with directory={0}", directory);
-        if (rpcClient == null) {
+        if (!rpcClientReady()) {
             return CompletableFuture.failedFuture(new RuntimeException("Server not started"));
         }
         Map<String, Object> params = new java.util.HashMap<>();
@@ -350,7 +356,7 @@ public class ACPManager {
     }
 
     public CompletableFuture<Session> createSession(String cwd) {
-        if (rpcClient == null) {
+        if (!rpcClientReady()) {
             return CompletableFuture.failedFuture(new RuntimeException("Server not started"));
         }
 
@@ -391,7 +397,7 @@ public class ACPManager {
 
     public CompletableFuture<List<SessionConfigOption>> loadSession(String sessionId, String cwd) {
         LOG.log(Level.INFO, "loadSession: called with {0}, cwd={1}", new Object[]{sessionId, cwd});
-        if (rpcClient == null) {
+        if (!rpcClientReady()) {
             return CompletableFuture.failedFuture(new RuntimeException("Server not started"));
         }
         Map<String, Object> params = new java.util.HashMap<>();
@@ -420,7 +426,7 @@ public class ACPManager {
     }
 
     public CompletableFuture<Void> sendMessage(String sessionId, String text, Map<String, Object> context) {
-        if (rpcClient == null) {
+        if (!rpcClientReady()) {
             return CompletableFuture.failedFuture(new RuntimeException("Server not started"));
         }
 
@@ -474,7 +480,7 @@ public class ACPManager {
     }
 
     public CompletableFuture<Void> stopMessage(String sessionId) {
-        if (rpcClient == null) {
+        if (!rpcClientReady()) {
             return CompletableFuture.failedFuture(new RuntimeException("Server not started"));
         }
         return rpcClient.sendRequest("session/cancel", Map.of("sessionId", sessionId))
@@ -495,7 +501,7 @@ public class ACPManager {
     }
 
     public CompletableFuture<Void> deleteSession(String sessionId) {
-        if (rpcClient == null) {
+        if (!rpcClientReady()) {
             return CompletableFuture.failedFuture(new RuntimeException("Server not started"));
         }
         // Using session/close as the standard termination method
@@ -516,7 +522,7 @@ public class ACPManager {
     }
 
     public CompletableFuture<JsonNode> getCompletionsInline(String text, int line, int column, String prefix, String suffix, long timeout, java.util.concurrent.TimeUnit unit) {
-        if (rpcClient == null) {
+        if (!rpcClientReady()) {
             return CompletableFuture.completedFuture(null);
         }
         Map<String, Object> params = new java.util.HashMap<>();
@@ -533,7 +539,7 @@ public class ACPManager {
     }
 
     public CompletableFuture<Void> setSessionConfigOption(String sessionId, String configId, String value) {
-        if (rpcClient == null) {
+        if (!rpcClientReady()) {
             return CompletableFuture.failedFuture(new RuntimeException("Server not started"));
         }
         Map<String, Object> params = Map.of(
@@ -614,23 +620,9 @@ public class ACPManager {
 
     private CompletableFuture<JsonNode> handleRequestPermission(JsonNode params) {
         String sessionId = params.has("sessionId") ? params.get("sessionId").asText() : null;
+        String toolCallId = extractToolCallId(params);
 
-        // Find toolCallId in multiple possible places common in ACP/LCP implementations
-        String extractedId = null;
-        if (params.has("toolCallId")) {
-            extractedId = params.get("toolCallId").asText();
-        } else if (params.has("tool_call_id")) {
-            extractedId = params.get("tool_call_id").asText();
-        } else if (params.has("toolCall")) {
-            JsonNode tc = params.get("toolCall");
-            if (tc.has("toolCallId")) extractedId = tc.get("toolCallId").asText();
-            else if (tc.has("id")) extractedId = tc.get("id").asText();
-        } else if (params.has("tool_call")) {
-            JsonNode tc = params.get("tool_call");
-            if (tc.has("id")) extractedId = tc.get("id").asText();
-        }
-
-        final String toolCallId = extractedId;
+        final String extractedId = toolCallId;
         CompletableFuture<String> response = new CompletableFuture<>();
 
         if (permissionHandler != null) {
@@ -664,9 +656,9 @@ public class ACPManager {
             if (sessionId != null) {
                 res.put("sessionId", sessionId);
             }
-            if (toolCallId != null) {
-                res.put("toolCallId", toolCallId);
-                res.put("tool_call_id", toolCallId);
+            if (extractedId != null) {
+                res.put("toolCallId", extractedId);
+                res.put("tool_call_id", extractedId);
             }
 
             // Compatibility fields
@@ -678,6 +670,30 @@ public class ACPManager {
 
             return res;
         });
+    }
+
+    /**
+     * Extract toolCallId from params, supporting both camelCase and snake_case variants.
+     */
+    private String extractToolCallId(JsonNode params) {
+        if (params.has("toolCallId")) {
+            return params.get("toolCallId").asText();
+        } else if (params.has("tool_call_id")) {
+            return params.get("tool_call_id").asText();
+        } else if (params.has("toolCall")) {
+            JsonNode tc = params.get("toolCall");
+            if (tc.has("toolCallId")) {
+                return tc.get("toolCallId").asText();
+            } else if (tc.has("id")) {
+                return tc.get("id").asText();
+            }
+        } else if (params.has("tool_call")) {
+            JsonNode tc = params.get("tool_call");
+            if (tc.has("id")) {
+                return tc.get("id").asText();
+            }
+        }
+        return null;
     }
 
     private CompletableFuture<JsonNode> handleWriteTextFile(JsonNode params) {
@@ -758,31 +774,37 @@ public class ACPManager {
         });
     }
 
-    private String getLanguageFromPath(String path) {
-        if (path == null) {
-            return "";
-        }
+    private static String getLanguageFromPath(String path) {
+        if (path == null || path.isEmpty()) return "";
+
         int lastDot = path.lastIndexOf('.');
-        if (lastDot == -1) {
+        if (lastDot == -1) return "";
+
+        try {
+            String ext = path.substring(lastDot + 1).toLowerCase();
+
+            // Common language keywords
+            if (ext.equals("java")) return "java";
+            if (ext.equals("py")) return "python";
+            if (ext.equals("pl")) return "perl";
+            if (ext.equals("awk")) return "awk";
+
+            // Alias mappings - extract to map for cleaner handling
+            if (ext.equals("javascript") || ext.equals("js")) return "javascript";
+            if (ext.equals("typescript") || ext.equals("ts")) return "typescript";
+            if (ext.equals("html")) return "html";
+            if (ext.equals("css")) return "css";
+            if (ext.equals("xml")) return "xml";
+            if (ext.equals("markdown") || ext.equals("md")) return "markdown";
+            if (ext.equals("json")) return "json";
+
+            // Shell family aliases
+            if (ext.equals("bash") || ext.equals("sh") || ext.equals("ksh") || ext.equals("zsh")) return "bash";
+
+            // Return raw extension for unrecognized files
+            return ext;
+        } catch (IndexOutOfBoundsException e) {
             return "";
         }
-        String ext = path.substring(lastDot + 1).toLowerCase();
-        return switch (ext) {
-            case "java" -> "java";
-            case "py" -> "python";
-            case "pl" -> "perl";
-            case "awk" -> "awk";
-            case "js" -> "javascript";
-            case "ts" -> "typescript";
-            case "html" -> "html";
-            case "css" -> "css";
-            case "xml" -> "xml";
-            case "md" -> "markdown";
-            case "json" -> "json";
-            case "sh" -> "bash";
-            case "ksh" -> "bash";
-            case "zsh" -> "bash";
-            default -> ext;
-        };
     }
 }
