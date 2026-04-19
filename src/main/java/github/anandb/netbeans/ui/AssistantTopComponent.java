@@ -184,11 +184,15 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
         JPanel sessionControls = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         sessionControls.setOpaque(false);
 
-        newSessionBtn = new JButton("New");
+        newSessionBtn = new JButton();
+        newSessionBtn.setIcon(ThemeManager.getIcon("new.svg", 24));
+        newSessionBtn.setToolTipText("New Session");
         newSessionBtn.setFocusPainted(false);
         newSessionBtn.addActionListener(e -> SessionManager.getInstance().createNewSession(null));
 
-        renameSessionBtn = new JButton("Rename");
+        renameSessionBtn = new JButton();
+        renameSessionBtn.setIcon(ThemeManager.getIcon("rename.svg", 24));
+        renameSessionBtn.setToolTipText("Rename Session");
         renameSessionBtn.setFocusPainted(false);
         renameSessionBtn.addActionListener(e -> renameCurrentSession());
 
@@ -199,7 +203,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
         themeBtn.addActionListener(e -> toggleDarkMode());
 
         exportBtn = new JButton();
-        exportBtn.setIcon(ThemeManager.getIcon("file.svg", 24));
+        exportBtn.setIcon(ThemeManager.getIcon("export.svg", 24));
         exportBtn.setToolTipText("Export Conversation");
         exportBtn.setFocusPainted(false);
         exportBtn.addActionListener(e -> exportConversation());
