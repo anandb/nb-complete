@@ -1,6 +1,7 @@
 package github.anandb.netbeans.ui;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.Dimension;
@@ -19,7 +20,6 @@ import javax.swing.JPanel;
 public abstract class BaseCollapsiblePane extends RoundedPanel {
     protected final JPanel header;
     protected final JLabel headerLabel;
-    protected final JLabel toggleIcon;
     protected final JPanel contentPanel;
     protected boolean expanded;
 
@@ -38,16 +38,11 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
         header.setOpaque(true);
         header.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
-        toggleIcon = new JLabel(expanded ? "▼" : "▶");
-        toggleIcon.setFont(ThemeManager.getMonospaceFont().deriveFont(Font.BOLD));
-        toggleIcon.setForeground(theme.getHeaderForeground());
-
         headerLabel = new JLabel(title, icon, JLabel.LEFT);
         headerLabel.setIconTextGap(8);
         headerLabel.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
         headerLabel.setForeground(theme.getHeaderForeground());
 
-        header.add(toggleIcon, BorderLayout.WEST);
         header.add(headerLabel, BorderLayout.CENTER);
 
         // Content setup
@@ -75,14 +70,12 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
         };
         header.addMouseListener(toggleListener);
         headerLabel.addMouseListener(toggleListener);
-        toggleIcon.addMouseListener(toggleListener);
     }
 
     public void setExpanded(boolean expanded) {
         if (this.expanded != expanded) {
             this.expanded = expanded;
             contentPanel.setVisible(expanded);
-            toggleIcon.setText(expanded ? "▼" : "▶");
             onToggle(expanded);
             revalidate();
             repaint();
@@ -107,8 +100,12 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
         if (hover) {
             header.setBackground(theme.getPanelHeaderHover());
         } else {
-            header.setBackground(theme.getBase2()); // Default fallback
+            header.setBackground(getDefaultHeaderBackground());
         }
+    }
+
+    protected Color getDefaultHeaderBackground() {
+        return ThemeManager.getCurrentTheme().getPanelHeader();
     }
 
     @Override

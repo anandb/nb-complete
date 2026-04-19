@@ -16,7 +16,7 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
         ColorTheme theme = ThemeManager.getCurrentTheme();
         Color yellowAccent = theme.getYellow();
 
-        header.setBackground(theme.getPanelHeader());
+        header.setBackground(getDefaultHeaderBackground());
         header.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createMatteBorder(0, 4, 0, 0, yellowAccent),
             BorderFactory.createEmptyBorder(2, 10, 2, 10)
@@ -80,6 +80,12 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
     }
 
     @Override
+    protected void onHeaderHover(boolean hover) {
+        // No color change for tool or thought headers
+        header.setBackground(getDefaultHeaderBackground());
+    }
+
+    @Override
     protected void onToggle(boolean expanded) {
         if (headerLabel.getText().toUpperCase().contains("THINKING")) {
             headerLabel.setText(expanded ? "Thinking Process" : "Thinking Process...");
@@ -87,9 +93,14 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
     }
 
     @Override
+    protected Color getDefaultHeaderBackground() {
+        return ThemeManager.getCurrentTheme().getThinkingHeaderBackground();
+    }
+
+    @Override
     public void refreshTheme() {
         ColorTheme theme = ThemeManager.getCurrentTheme();
-        Color headerBg = theme.getPanelHeader();
+        Color headerBg = getDefaultHeaderBackground();
         Color yellowAccent = theme.getYellow();
 
         header.setBackground(headerBg);
@@ -97,9 +108,8 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
         contentPanel.setBorder(BorderFactory.createMatteBorder(0, 4, 0, 0, yellowAccent));
         
         textArea.setForeground(theme.getForeground());
-        Color headerFg = theme.getHeaderForeground();
+        Color headerFg = theme.getThinkingHeaderForeground();
         headerLabel.setForeground(headerFg);
-        toggleIcon.setForeground(headerFg);
         
         revalidate();
         repaint();

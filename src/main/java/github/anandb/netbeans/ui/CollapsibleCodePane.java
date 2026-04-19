@@ -100,7 +100,7 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
         this.code = code;
 
         ColorTheme theme = ThemeManager.getCurrentTheme();
-        header.setBackground(theme.getBase2());
+        header.setBackground(theme.getCodeHeaderBackground());
         header.setBorder(BorderFactory.createEmptyBorder(6, 12, 6, 3));
         headerLabel.setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 0));
 
@@ -112,7 +112,7 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
         copyButton.setContentAreaFilled(false);
         copyButton.setBorder(BorderFactory.createEmptyBorder(2, 4, 2, 4));
         copyButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        copyButton.setForeground(theme.getHeaderForeground());
+        copyButton.setForeground(theme.getCodeHeaderForeground());
         copyButton.addActionListener(e -> copyCodeToClipboard());
         header.add(copyButton, BorderLayout.EAST);
 
@@ -171,11 +171,10 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
     @Override
     public void refreshTheme() {
         ColorTheme theme = ThemeManager.getCurrentTheme();
-        header.setBackground(theme.getBase2());
+        header.setBackground(theme.getCodeHeaderBackground());
         
-        Color headerFg = theme.getHeaderForeground();
+        Color headerFg = theme.getCodeHeaderForeground();
         headerLabel.setForeground(headerFg);
-        toggleIcon.setForeground(headerFg);
         copyButton.setForeground(headerFg);
 
         applySolarizedDarkTheme();
@@ -183,7 +182,17 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
             codeTextArea.getParent().setBackground(codeTextArea.getBackground());
         }
         revalidate();
-        repaint();
+    }
+
+    @Override
+    protected void onHeaderHover(boolean hover) {
+        // No color change for code block headers
+        header.setBackground(getDefaultHeaderBackground());
+    }
+
+    @Override
+    protected java.awt.Color getDefaultHeaderBackground() {
+        return ThemeManager.getCurrentTheme().getCodeHeaderBackground();
     }
 
     private void applySyntaxStyle() {

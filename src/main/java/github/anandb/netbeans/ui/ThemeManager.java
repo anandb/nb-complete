@@ -1,38 +1,22 @@
 package github.anandb.netbeans.ui;
 
 import java.awt.Font;
-import java.util.HashMap;
-import java.util.Locale;
-import java.util.Map;
-
 import javax.swing.Icon;
 import javax.swing.UIManager;
-
 import org.openide.util.ImageUtilities;
 
 /**
  * Handles non-color theme resources (Icons, Fonts) and coordinates with ColorTheme.
  */
 public class ThemeManager {
-    private static final Map<String, Icon> iconCache = new HashMap<>();
-
-    public static Icon getIcon(String name, int size) {
+    public static Icon getIcon(String name) {
         if (name == null) return null;
-        String key = name + "_" + size;
-        if (!iconCache.containsKey(key)) {
-            java.awt.Image img = ImageUtilities.loadImage("github/anandb/netbeans/ui/icons/" + name, true);
-            if (img != null) {
-                java.awt.Image scaled = img.getScaledInstance(size, size, java.awt.Image.SCALE_SMOOTH);
-                iconCache.put(key, ImageUtilities.image2Icon(scaled));
-            } else {
-                return null;
-            }
-        }
-        return iconCache.get(key);
+        java.awt.Image img = ImageUtilities.loadImage("github/anandb/netbeans/ui/icons/" + name, true);
+        return img != null ? ImageUtilities.image2Icon(img) : null;
     }
 
-    public static Icon getIcon(String name) {
-        return getIcon(name, 16);
+    public static Icon getIcon(String name, int size) {
+        return getIcon(name);
     }
 
     public static Font getFont() {

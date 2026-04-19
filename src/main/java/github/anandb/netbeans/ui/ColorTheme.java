@@ -39,6 +39,14 @@ public class ColorTheme {
     // Generic
     private final Color headerForeground;
     private final Color errorBackground;
+    
+    // Code Header
+    private final Color codeHeaderBackground;
+    private final Color codeHeaderForeground;
+    
+    // Thinking Header
+    private final Color thinkingHeaderBackground;
+    private final Color thinkingHeaderForeground;
 
     // Permission Panel
     private final Color permissionBg;
@@ -71,6 +79,10 @@ public class ColorTheme {
         this.permissionTitle = builder.permissionTitle;
         this.headerForeground = builder.headerForeground;
         this.errorBackground = builder.errorBackground;
+        this.codeHeaderBackground = builder.codeHeaderBackground;
+        this.codeHeaderForeground = builder.codeHeaderForeground;
+        this.thinkingHeaderBackground = builder.thinkingHeaderBackground;
+        this.thinkingHeaderForeground = builder.thinkingHeaderForeground;
     }
 
     public boolean isDark() { return isDark; }
@@ -98,6 +110,10 @@ public class ColorTheme {
     public Color getPermissionTitle() { return permissionTitle; }
     public Color getHeaderForeground() { return headerForeground; }
     public Color getErrorBackground() { return errorBackground; }
+    public Color getCodeHeaderBackground() { return codeHeaderBackground; }
+    public Color getCodeHeaderForeground() { return codeHeaderForeground; }
+    public Color getThinkingHeaderBackground() { return thinkingHeaderBackground; }
+    public Color getThinkingHeaderForeground() { return thinkingHeaderForeground; }
 
     public static ColorTheme getNativeTheme() {
         boolean isDark = UIManager.getBoolean("nb.dark.theme");
@@ -125,14 +141,18 @@ public class ColorTheme {
             .base2(UIManager.getColor("controlShadow"))
             .base3(UIManager.getColor("control"))
             .yellow(UIManager.getColor("ComboBox.selectionBackground"))
-            .codeBackground(UIManager.getColor("TextArea.background"))
-            .codeForeground(UIManager.getColor("TextArea.foreground"))
-            .codeSelection(UIManager.getColor("TextArea.selectionBackground"))
+            .codeBackground(Color.decode("#1e1f22")) // FlatLaf Dark background
+            .codeForeground(Color.decode("#bcbec4")) // FlatLaf Dark foreground
+            .codeSelection(Color.decode("#353739"))  // FlatLaf Dark selection
             .permissionBg(UIManager.getColor("OptionPane.background"))
             .permissionBorder(UIManager.getColor("Button.focusColor"))
             .permissionTitle(UIManager.getColor("OptionPane.messageForeground"))
             .headerForeground(UIManager.getColor("Label.foreground"))
             .errorBackground(Color.decode(isDark ? "#401010" : "#FFEBEE"))
+            .codeHeaderBackground(Color.decode("#2b2d30")) // Darker header
+            .codeHeaderForeground(Color.decode("#bcbec4")) // Light text
+            .thinkingHeaderBackground(isDark ? UIManager.getColor("Panel.background") : Color.decode("#fdf6e3"))
+            .thinkingHeaderForeground(UIManager.getColor("Label.foreground"))
             .build();
     }
 
@@ -162,6 +182,10 @@ public class ColorTheme {
         private Color permissionTitle;
         private Color headerForeground;
         private Color errorBackground;
+        private Color codeHeaderBackground;
+        private Color codeHeaderForeground;
+        private Color thinkingHeaderBackground;
+        private Color thinkingHeaderForeground;
 
         public Builder(boolean isDark) { this.isDark = isDark; }
         public Builder background(Color c) { this.background = c; return this; }
@@ -187,6 +211,10 @@ public class ColorTheme {
         public Builder permissionTitle(Color c) { this.permissionTitle = c; return this; }
         public Builder headerForeground(Color c) { this.headerForeground = c; return this; }
         public Builder errorBackground(Color c) { this.errorBackground = c; return this; }
+        public Builder codeHeaderBackground(Color c) { this.codeHeaderBackground = c; return this; }
+        public Builder codeHeaderForeground(Color c) { this.codeHeaderForeground = c; return this; }
+        public Builder thinkingHeaderBackground(Color c) { this.thinkingHeaderBackground = c; return this; }
+        public Builder thinkingHeaderForeground(Color c) { this.thinkingHeaderForeground = c; return this; }
         
         public ColorTheme build() { return new ColorTheme(this); }
     }
@@ -195,9 +223,10 @@ public class ColorTheme {
         String fg = toHtmlHex(isAssistant ? assistantForeground : foreground);
         String bg = bubbleBg != null ? toHtmlHex(bubbleBg) : "transparent";
         String linkColor = isDark ? "#589DF6" : "#268BD2";
-        String codeBg = isDark ? "rgba(255, 255, 255, 0.1)" : "rgba(7, 54, 66, 0.1)";
-        String preBg = isDark ? "#002B36" : "#EEE8D5";
-        String preFg = isDark ? "#839496" : "#57685E";
+        // Markdown inline code and blocks are now forced to Dark mode as well
+        String codeBg = "rgba(255, 255, 255, 0.1)";
+        String preBg = "#1e1f22";
+        String preFg = "#bcbec4";
         String fontStack = "Dialog, 'Noto Sans', 'Segoe UI', 'Ubuntu', 'Helvetica Neue', 'Arial', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', sans-serif";
         String monoStack = "'JetBrains Mono', 'Monaco', 'Fira Code', 'Monospace', Monospaced, monospace";
 

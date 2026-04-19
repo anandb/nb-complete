@@ -54,6 +54,7 @@ import org.openide.text.NbDocument;
 import org.openide.util.NbBundle;
 import org.openide.util.NbPreferences;
 import org.openide.windows.TopComponent;
+import org.netbeans.api.project.ui.OpenProjects;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
@@ -184,26 +185,26 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
         sessionControls.setOpaque(false);
 
         newSessionBtn = new JButton();
-        newSessionBtn.setIcon(ThemeManager.getIcon("new.svg", 24));
+        newSessionBtn.setIcon(ThemeManager.getIcon("new.svg"));
         newSessionBtn.setToolTipText("New Session");
         newSessionBtn.setFocusPainted(false);
         newSessionBtn.addActionListener(e -> SessionManager.getInstance().createNewSession(null));
 
         renameSessionBtn = new JButton();
-        renameSessionBtn.setIcon(ThemeManager.getIcon("rename.svg", 24));
+        renameSessionBtn.setIcon(ThemeManager.getIcon("rename.svg"));
         renameSessionBtn.setToolTipText("Rename Session");
         renameSessionBtn.setFocusPainted(false);
         renameSessionBtn.addActionListener(e -> renameCurrentSession());
 
         exportBtn = new JButton();
-        exportBtn.setIcon(ThemeManager.getIcon("export.svg", 24));
+        exportBtn.setIcon(ThemeManager.getIcon("export.svg"));
         exportBtn.setToolTipText("Export Conversation");
         exportBtn.setFocusPainted(false);
         exportBtn.addActionListener(e -> exportConversation());
         
         // Block control buttons
         toggleBlocksBtn = new JButton();
-        toggleBlocksBtn.setIcon(ThemeManager.getIcon("expand.svg", 24));
+        toggleBlocksBtn.setIcon(ThemeManager.getIcon("expand.svg"));
         toggleBlocksBtn.setToolTipText("Expand All Blocks");
         toggleBlocksBtn.setFocusPainted(false);
         toggleBlocksBtn.putClientProperty("state", "expand");
@@ -213,7 +214,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
             String newState = isCollapse ? "expand" : "collapse";
             toggleBlocksBtn.putClientProperty("state", newState);
             toggleBlocksBtn.setToolTipText(isCollapse ? "Expand All Blocks" : "Collapse All Blocks");
-            toggleBlocksBtn.setIcon(ThemeManager.getIcon(isCollapse ? "expand.svg" : "collapse.svg", 24));
+            toggleBlocksBtn.setIcon(ThemeManager.getIcon(isCollapse ? "expand.svg" : "collapse.svg"));
         });
 
         sessionControls.add(newSessionBtn);
@@ -265,7 +266,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
         statusLabel.setFont(statusLabel.getFont().deriveFont(11f));
         statusPanel.add(statusLabel, BorderLayout.WEST);
 
-        toggleOptionsBtn = new JButton("Options ▼");
+        toggleOptionsBtn = new JButton("Options");
         toggleOptionsBtn.setFont(toggleOptionsBtn.getFont().deriveFont(11f));
         toggleOptionsBtn.setBorderPainted(false);
         toggleOptionsBtn.setContentAreaFilled(false);
@@ -325,9 +326,17 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
         add(bottomPanel, BorderLayout.SOUTH);
 
         autocompletePopup = new JPopupMenu();
+        autocompletePopup.setBorder(BorderFactory.createLineBorder(UIManager.getColor("controlShadow")));
+        
         commandList = new JList<>();
-        autocompletePopup.add(new javax.swing.JScrollPane(commandList));
+        commandList.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
         commandList.setFocusable(false);
+        commandList.setCellRenderer(new AutocompleteRenderer());
+        
+        JScrollPane scrollPane = new JScrollPane(commandList);
+        scrollPane.setBorder(null);
+        scrollPane.setPreferredSize(new Dimension(250, 150));
+        autocompletePopup.add(scrollPane);
 
         setupListeners();
 
@@ -459,11 +468,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
 
             @Override
             public void keyReleased(KeyEvent e) {
-                if (inputArea.getText().startsWith("/")) {
-                    showAutocomplete();
-                } else {
-                    autocompletePopup.setVisible(false);
-                }
+                checkAutocomplete(e);
             }
         });
 
@@ -505,12 +510,20 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
                 }
 
                 boolean hasSessions = !sessions.isEmpty();
-                newSessionBtn.setEnabled(true); // Always allow new chat
+                boolean hasProjects = OpenProjects.getDefault().getOpenProjects().length > 0;
+                newSessionBtn.setEnabled(hasProjects); 
                 renameSessionBtn.setEnabled(hasSessions);
 
-                if (modelCombo.getItemCount() > 0 && modelCombo.getSelectedIndex() < 0) {
-                    modelCombo.setSelectedIndex(0);
-                } if (hasSessions) {
+                isUpdatingConfigControls = true;
+                try {
+                    if (modelCombo.getItemCount() > 0 && modelCombo.getSelectedIndex() < 0) {
+                        modelCombo.setSelectedIndex(0);
+                    }
+                } finally {
+                    isUpdatingConfigControls = false;
+                }
+                
+                if (hasSessions) {
                     if (selectIdx != -1) {
                         sessionDropdown.setSelectedIndex(selectIdx);
                     } else {
@@ -525,7 +538,11 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
                 } else {
                     chatPanel.setSessionList(sessions, id -> SessionManager.getInstance().loadSession(id), () -> SessionManager.getInstance().createNewSession(null));
                     sessionDropdown.setSelectedIndex(-1);
-                    statusLabel.setText("Click '+ New Chat' to start");
+                    if (!hasProjects) {
+                        statusLabel.setText("Open a project to start chatting");
+                    } else {
+                        statusLabel.setText("Click '+ New Chat' to start");
+                    }
                     setInputEnabled(false);
                 }
             } finally {
@@ -704,7 +721,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
     }
 
     private void updateOptionsButtonText() {
-        toggleOptionsBtn.setText(configPanel.isVisible() ? "Options ▲" : "Options ▼");
+        toggleOptionsBtn.setText("Options");
     }
 
     private void renameCurrentSession() {
@@ -809,17 +826,64 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
         });
     }
 
+    private void checkAutocomplete(KeyEvent e) {
+        int keyCode = e.getKeyCode();
+        if (keyCode == KeyEvent.VK_ESCAPE || keyCode == KeyEvent.VK_ENTER || keyCode == KeyEvent.VK_SPACE) {
+            autocompletePopup.setVisible(false);
+            return;
+        }
+        
+        if (keyCode == KeyEvent.VK_UP || keyCode == KeyEvent.VK_DOWN) {
+            if (autocompletePopup.isVisible()) {
+                int size = commandList.getModel().getSize();
+                if (size > 0) {
+                    int index = commandList.getSelectedIndex();
+                    if (keyCode == KeyEvent.VK_UP) {
+                        index = (index - 1 + size) % size;
+                    } else {
+                        index = (index + 1) % size;
+                    }
+                    commandList.setSelectedIndex(index);
+                    commandList.ensureIndexIsVisible(index);
+                }
+                return;
+            }
+        }
+
+        showAutocomplete();
+    }
+
     private void showAutocomplete() {
-        List<SessionUpdate.AvailableCommand> allCommands = ACPManager.getInstance().getAvailableCommands();
-        if (allCommands.isEmpty()) {
+        String text = inputArea.getText();
+        int caret = inputArea.getCaretPosition();
+        if (caret <= 0) {
             autocompletePopup.setVisible(false);
             return;
         }
 
-        // Filter based on prefix
-        String prefix = inputArea.getText().substring(1);
+        // Find the trigger character (/ or @) before caret
+        int start = caret - 1;
+        while (start >= 0 && !Character.isWhitespace(text.charAt(start))) {
+            if (text.charAt(start) == '/' || text.charAt(start) == '@') {
+                break;
+            }
+            start--;
+        }
+
+        if (start < 0 || (text.charAt(start) != '/' && text.charAt(start) != '@')) {
+            autocompletePopup.setVisible(false);
+            return;
+        }
+
+        char trigger = text.charAt(start);
+        String prefix = text.substring(start + 1, caret).toLowerCase();
+
+        List<SessionUpdate.AvailableCommand> allCommands = trigger == '/' 
+            ? ACPManager.getInstance().getAvailableCommands()
+            : java.util.Collections.emptyList(); // Mentions not yet implemented
+
         List<SessionUpdate.AvailableCommand> filtered = allCommands.stream()
-                .filter(c -> c.name().toLowerCase().startsWith(prefix.toLowerCase()))
+                .filter(c -> c.name().toLowerCase().startsWith(prefix))
                 .toList();
 
         if (filtered.isEmpty()) {
@@ -835,24 +899,51 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
         commandList.setSelectedIndex(0);
 
         try {
-            java.awt.Rectangle rect = inputArea.modelToView2D(0).getBounds();
-            // Show above input area
+            java.awt.geom.Rectangle2D rect2d = inputArea.modelToView2D(start);
+            java.awt.Rectangle rect = rect2d.getBounds();
             int height = autocompletePopup.getPreferredSize().height;
-            autocompletePopup.show(inputArea, rect.x, -height - 5);
-        } catch (Exception e) {
+            // Position above the caret
+            autocompletePopup.show(inputArea, rect.x, rect.y - height - 2);
+        } catch (Exception ex) {
             autocompletePopup.show(inputArea, 0, 0);
         }
 
-        // Ensure requestFocus stays with inputArea
-        SwingUtilities.invokeLater(() -> inputArea.requestFocusInWindow());
+        inputArea.requestFocusInWindow();
     }
 
     private void selectCommand() {
         SessionUpdate.AvailableCommand selected = commandList.getSelectedValue();
         if (selected != null) {
-            inputArea.setText("/" + selected.name() + " ");
+            String text = inputArea.getText();
+            int caret = inputArea.getCaretPosition();
+            int start = caret - 1;
+            while (start >= 0 && !Character.isWhitespace(text.charAt(start))) {
+                if (text.charAt(start) == '/' || text.charAt(start) == '@') break;
+                start--;
+            }
+            
+            if (start >= 0) {
+                String before = text.substring(0, start);
+                String after = text.substring(caret);
+                inputArea.setText(before + "/" + selected.name() + " " + after);
+                inputArea.setCaretPosition(before.length() + selected.name().length() + 2);
+            }
+            
             autocompletePopup.setVisible(false);
             inputArea.requestFocusInWindow();
+        }
+    }
+
+    private class AutocompleteRenderer extends javax.swing.DefaultListCellRenderer {
+        @Override
+        public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+            super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+            if (value instanceof SessionUpdate.AvailableCommand cmd) {
+                setText(" /" + cmd.name() + (cmd.description() != null ? "  - " + cmd.description() : ""));
+                setFont(ThemeManager.getFont().deriveFont(13f));
+                setBorder(BorderFactory.createEmptyBorder(2, 5, 2, 5));
+            }
+            return this;
         }
     }
 
@@ -886,18 +977,20 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
 
                 if (combo == modelCombo) {
                     lastSelectedModelId = item.value;
-                    // Update thinkingCombo based on variants
                     updateThinkingComboForModel(item.value);
-
-                    LOG.log(Level.INFO, "Model changed: {0} for session {1}", new Object[]{item.value, currentId});
                     updateTabName(item.name);
                 }
+
+                LOG.log(Level.INFO, "Config update: {0}={1} for session {2}", new Object[]{configId, item.value, currentId});
                 ACPManager.getInstance().setSessionConfigOption(currentId, configId, item.value);
+            } else if (item != null && item.isInternalUpdate) {
+                LOG.log(Level.FINE, "Skipping internal config update: {0}={1}", new Object[]{configId, item.value});
             }
         });
     }
 
     private void updateThinkingComboForModel(String baseId) {
+        boolean alreadyUpdating = isUpdatingConfigControls;
         isUpdatingConfigControls = true;
         try {
             thinkingCombo.removeAllItems();
@@ -920,7 +1013,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
                 thinkingCombo.setEnabled(false);
             }
         } finally {
-            isUpdatingConfigControls = false;
+            isUpdatingConfigControls = alreadyUpdating;
         }
     }
 

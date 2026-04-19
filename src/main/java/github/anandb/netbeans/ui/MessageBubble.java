@@ -30,6 +30,7 @@ public class MessageBubble extends JPanel {
     private final String type;
     private final String messageId;
     private final StringBuilder text;
+    private final String copyableText;
     private final JPanel segmentsContainer;
     private JPanel bubble;
     private final ArrayList<CollapsibleState> codeStates = new ArrayList<>();
@@ -96,7 +97,7 @@ public class MessageBubble extends JPanel {
             }
 
             if (w == lastComputedWidth && lastComputedHeight > 0) {
-                return new Dimension(w, lastComputedHeight + 4);
+                return new Dimension(w, lastComputedHeight + 8);
             }
 
             try {
@@ -108,14 +109,14 @@ public class MessageBubble extends JPanel {
                     if (h > 0) {
                         lastComputedHeight = (int) Math.ceil(h);
                         lastComputedWidth = w;
-                        return new Dimension(w, lastComputedHeight + 4);
+                        return new Dimension(w, lastComputedHeight + 8);
                     }
                 }
             } catch (Exception ignored) {
             }
 
             if (lastComputedHeight > 0) {
-                return new Dimension(w, Math.max(30, lastComputedHeight + 4));
+                return new Dimension(w, Math.max(30, lastComputedHeight + 8));
             }
             return new Dimension(w, Math.max(30, super.getPreferredSize().height));
         }
@@ -127,18 +128,23 @@ public class MessageBubble extends JPanel {
     }
 
     public MessageBubble(String type, String text) {
-        this(type, text, null);
+        this(type, text, null, text);
     }
 
     public MessageBubble(String type, String text, String messageId) {
+        this(type, text, messageId, text);
+    }
+    
+    public MessageBubble(String type, String text, String messageId, String copyableText) {
         this.type = type;
         this.messageId = messageId;
         this.text = new StringBuilder(text);
+        this.copyableText = copyableText;
 
         setLayout(new GridBagLayout());
         setOpaque(false);
         setDoubleBuffered(true);
-        setBorder(new EmptyBorder(4, 16, 4, 16));
+        setBorder(new EmptyBorder(2, 8, 2, 8));
 
         ColorTheme theme = ThemeManager.getCurrentTheme();
 
@@ -152,10 +158,10 @@ public class MessageBubble extends JPanel {
         if ("user".equals(type)) {
             RoundedPanel p = new RoundedPanel(16);
             p.setLayout(new BorderLayout());
-            p.setBorder(new EmptyBorder(8, 16, 8, 16));
+            p.setBorder(new EmptyBorder(6, 12, 6, 12));
             this.bubble = p;
         } else {
-            this.bubble.setBorder(new EmptyBorder(4, 12, 12, 12));
+            this.bubble.setBorder(new EmptyBorder(2, 8, 6, 8));
         }
         this.bubble.add(segmentsContainer, BorderLayout.CENTER);
 
@@ -171,7 +177,7 @@ public class MessageBubble extends JPanel {
         
         if ("user".equals(type)) {
             gbc.anchor = GridBagConstraints.WEST;
-            gbc.insets = new Insets(4, 12, 4, 12);
+            gbc.insets = new Insets(2, 6, 2, 6);
 
             Icon copyIcon = ThemeManager.getIcon("copy.svg", 20);
             JButton copyBtn = new JButton(copyIcon);
@@ -182,7 +188,7 @@ public class MessageBubble extends JPanel {
             copyBtn.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
 
             copyBtn.addActionListener(e -> {
-                AssistantTopComponent.findInstance().setInputText(this.text.toString());
+                AssistantTopComponent.findInstance().setInputText(this.copyableText);
                 
                 // Visual feedback
                 Icon originalIcon = copyBtn.getIcon();
@@ -412,6 +418,7 @@ public class MessageBubble extends JPanel {
             Component c = segmentsContainer.getComponent(compIdx);
             if (c instanceof CollapsibleCodePane pane) {
                 pane.updateContent(lang, code);
+                pane.setVisible(code != null && !code.trim().isEmpty());
                 return;
             }
         }
@@ -419,6 +426,7 @@ public class MessageBubble extends JPanel {
         // If we can't reuse, we have to rebuild from here down to be safe
         // But for simplicity, we'll just insert/replace
         CollapsibleCodePane codePane = new CollapsibleCodePane(lang, code, expanded);
+        codePane.setVisible(code != null && !code.trim().isEmpty());
         if (compIdx < segmentsContainer.getComponentCount()) {
             segmentsContainer.remove(compIdx);
             segmentsContainer.add(codePane, compIdx);

@@ -168,7 +168,8 @@ public class ChatThreadPanel extends JPanel {
         }
         String text = sb.toString();
         LOG.info("addMessage(Message) final text length: " + text.length());
-        addMessage(type, text);
+        String copyable = "user".equals(type) && message.prompt() != null ? message.prompt().text() : text;
+        addMessage(type, text, message.id(), copyable);
     }
 
     public void addMessage(String role, String text) {
@@ -176,10 +177,36 @@ public class ChatThreadPanel extends JPanel {
     }
 
     public void addMessage(String role, String text, String messageId) {
+        addMessage(role, text, messageId, text);
+    }
+
+    public void addMessage(String role, String text, String messageId, String copyableText) {
+        if (isIgnorableToolMessage(role, text)) {
+            return;
+        }
         SwingUtilities.invokeLater(() -> {
+            MessageBubble lastBubble = findLastNonIgnorableBubble();
+            
+            boolean canMerge = lastBubble != null && lastBubble.getType().equals(role);
+            if (canMerge) {
+                if ("thought".equals(role)) {
+                    // Always merge consecutive thoughts
+                } else if (messageId != null && messageId.equals(lastBubble.getMessageId())) {
+                    // Merge same ID
+                } else {
+                    canMerge = false;
+                }
+            }
+
+            if (canMerge) {
+                lastBubble.appendText(text);
+                lastBubble.flushUpdate(true);
+                return;
+            }
+
             finalizeGroup();
 
-            MessageBubble bubble = new MessageBubble(role, text, messageId);
+            MessageBubble bubble = new MessageBubble(role, text, messageId, copyableText);
             if ("tool".equals(role) || "thought".equals(role)) {
                 bubble.setExpanded(false);
             }
@@ -216,17 +243,7 @@ public class ChatThreadPanel extends JPanel {
 
     public void appendOrAddMessage(String role, String text, String messageId) {
         SwingUtilities.invokeLater(() -> {
-            int count = messagesContainer.getComponentCount();
-            MessageBubble lastBubble = null;
-            if (count > 0) {
-                for (int i = count - 1; i >= 0; i--) {
-                    Component c = messagesContainer.getComponent(i);
-                    if (c instanceof MessageBubble mb) {
-                        lastBubble = mb;
-                        break;
-                    }
-                }
-            }
+            MessageBubble lastBubble = findLastNonIgnorableBubble();
 
             boolean canAppend = lastBubble != null && lastBubble.getType().equals(role);
             if (canAppend && messageId != null && lastBubble.getMessageId() != null) {
@@ -262,6 +279,10 @@ public class ChatThreadPanel extends JPanel {
             String role = "tool";
             String text = update.status();
             String messageId = update.messageId();
+
+            if (isIgnorableToolMessage(role, text)) {
+                return;
+            }
 
             int count = messagesContainer.getComponentCount();
             MessageBubble lastBubble = null;
@@ -676,5 +697,30 @@ public class ChatThreadPanel extends JPanel {
         });
 
         return btn;
+    }
+    private boolean isIgnorableToolMessage(String role, String text) {
+        if (!"tool".equals(role)) return false;
+        if (text == null) return true;
+        String trimmed = text.trim().toLowerCase();
+        // Remove trailing punctuation for the check
+        if (trimmed.endsWith(".") || trimmed.endsWith("!")) {
+            trimmed = trimmed.substring(0, trimmed.length() - 1);
+        }
+        return trimmed.equals("completed") || trimmed.equals("failed") 
+            || trimmed.equals("in-progress") || trimmed.equals("in progress") || trimmed.equals("in_progress") 
+            || trimmed.equals("success") || trimmed.equals("done");
+    }
+    private MessageBubble findLastNonIgnorableBubble() {
+        int count = messagesContainer.getComponentCount();
+        for (int i = count - 1; i >= 0; i--) {
+            Component c = messagesContainer.getComponent(i);
+            if (c instanceof MessageBubble mb) {
+                if (isIgnorableToolMessage(mb.getType(), mb.getRawText())) {
+                    continue;
+                }
+                return mb;
+            }
+        }
+        return null;
     }
 }
