@@ -20,6 +20,79 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
     private final RSyntaxTextArea codeTextArea;
     private final JButton copyButton;
 
+    private static final java.util.Map<String, String> LANGUAGE_MAP = new java.util.HashMap<>();
+
+    static {
+        // C/C++ / C#
+        LANGUAGE_MAP.put("c", SyntaxConstants.SYNTAX_STYLE_C);
+        LANGUAGE_MAP.put("cpp", SyntaxConstants.SYNTAX_STYLE_CPLUSPLUS);
+        LANGUAGE_MAP.put("c++", SyntaxConstants.SYNTAX_STYLE_CPLUSPLUS);
+        LANGUAGE_MAP.put("cs", SyntaxConstants.SYNTAX_STYLE_CSHARP);
+        LANGUAGE_MAP.put("c#", SyntaxConstants.SYNTAX_STYLE_CSHARP);
+
+        // Java & JVM
+        LANGUAGE_MAP.put("java", SyntaxConstants.SYNTAX_STYLE_JAVA);
+        LANGUAGE_MAP.put("kotlin", SyntaxConstants.SYNTAX_STYLE_KOTLIN);
+        LANGUAGE_MAP.put("kt", SyntaxConstants.SYNTAX_STYLE_KOTLIN);
+        LANGUAGE_MAP.put("groovy", SyntaxConstants.SYNTAX_STYLE_GROOVY);
+        LANGUAGE_MAP.put("scala", SyntaxConstants.SYNTAX_STYLE_SCALA);
+        LANGUAGE_MAP.put("clojure", SyntaxConstants.SYNTAX_STYLE_CLOJURE);
+
+        // Web
+        LANGUAGE_MAP.put("html", SyntaxConstants.SYNTAX_STYLE_HTML);
+        LANGUAGE_MAP.put("htm", SyntaxConstants.SYNTAX_STYLE_HTML);
+        LANGUAGE_MAP.put("css", SyntaxConstants.SYNTAX_STYLE_CSS);
+        LANGUAGE_MAP.put("javascript", SyntaxConstants.SYNTAX_STYLE_JAVASCRIPT);
+        LANGUAGE_MAP.put("js", SyntaxConstants.SYNTAX_STYLE_JAVASCRIPT);
+        LANGUAGE_MAP.put("typescript", SyntaxConstants.SYNTAX_STYLE_TYPESCRIPT);
+        LANGUAGE_MAP.put("ts", SyntaxConstants.SYNTAX_STYLE_TYPESCRIPT);
+        LANGUAGE_MAP.put("json", SyntaxConstants.SYNTAX_STYLE_JSON);
+        LANGUAGE_MAP.put("php", SyntaxConstants.SYNTAX_STYLE_PHP);
+
+        // Scripting
+        LANGUAGE_MAP.put("python", SyntaxConstants.SYNTAX_STYLE_PYTHON);
+        LANGUAGE_MAP.put("py", SyntaxConstants.SYNTAX_STYLE_PYTHON);
+        LANGUAGE_MAP.put("ruby", SyntaxConstants.SYNTAX_STYLE_RUBY);
+        LANGUAGE_MAP.put("rb", SyntaxConstants.SYNTAX_STYLE_RUBY);
+        LANGUAGE_MAP.put("lua", SyntaxConstants.SYNTAX_STYLE_LUA);
+        LANGUAGE_MAP.put("perl", SyntaxConstants.SYNTAX_STYLE_PERL);
+        LANGUAGE_MAP.put("pl", SyntaxConstants.SYNTAX_STYLE_PERL);
+        LANGUAGE_MAP.put("tcl", SyntaxConstants.SYNTAX_STYLE_TCL);
+
+        // Shell & Scripts
+        LANGUAGE_MAP.put("sh", SyntaxConstants.SYNTAX_STYLE_UNIX_SHELL);
+        LANGUAGE_MAP.put("bash", SyntaxConstants.SYNTAX_STYLE_UNIX_SHELL);
+        LANGUAGE_MAP.put("zsh", SyntaxConstants.SYNTAX_STYLE_UNIX_SHELL);
+        LANGUAGE_MAP.put("ksh", SyntaxConstants.SYNTAX_STYLE_UNIX_SHELL);
+        LANGUAGE_MAP.put("shell", SyntaxConstants.SYNTAX_STYLE_UNIX_SHELL);
+        LANGUAGE_MAP.put("batch", SyntaxConstants.SYNTAX_STYLE_WINDOWS_BATCH);
+        LANGUAGE_MAP.put("bat", SyntaxConstants.SYNTAX_STYLE_WINDOWS_BATCH);
+
+        // Config & Data
+        LANGUAGE_MAP.put("xml", SyntaxConstants.SYNTAX_STYLE_XML);
+        LANGUAGE_MAP.put("yaml", SyntaxConstants.SYNTAX_STYLE_YAML);
+        LANGUAGE_MAP.put("yml", SyntaxConstants.SYNTAX_STYLE_YAML);
+        LANGUAGE_MAP.put("sql", SyntaxConstants.SYNTAX_STYLE_SQL);
+        LANGUAGE_MAP.put("dockerfile", SyntaxConstants.SYNTAX_STYLE_DOCKERFILE);
+        LANGUAGE_MAP.put("docker", SyntaxConstants.SYNTAX_STYLE_DOCKERFILE);
+        LANGUAGE_MAP.put("properties", SyntaxConstants.SYNTAX_STYLE_PROPERTIES_FILE);
+        LANGUAGE_MAP.put("ini", SyntaxConstants.SYNTAX_STYLE_PROPERTIES_FILE);
+
+        // Others
+        LANGUAGE_MAP.put("go", SyntaxConstants.SYNTAX_STYLE_GO);
+        LANGUAGE_MAP.put("rust", SyntaxConstants.SYNTAX_STYLE_RUST);
+        LANGUAGE_MAP.put("rs", SyntaxConstants.SYNTAX_STYLE_RUST);
+        LANGUAGE_MAP.put("markdown", SyntaxConstants.SYNTAX_STYLE_MARKDOWN);
+        LANGUAGE_MAP.put("md", SyntaxConstants.SYNTAX_STYLE_MARKDOWN);
+        LANGUAGE_MAP.put("makefile", SyntaxConstants.SYNTAX_STYLE_MAKEFILE);
+        LANGUAGE_MAP.put("make", SyntaxConstants.SYNTAX_STYLE_MAKEFILE);
+        LANGUAGE_MAP.put("dart", SyntaxConstants.SYNTAX_STYLE_DART);
+        LANGUAGE_MAP.put("latex", SyntaxConstants.SYNTAX_STYLE_LATEX);
+        LANGUAGE_MAP.put("tex", SyntaxConstants.SYNTAX_STYLE_LATEX);
+        LANGUAGE_MAP.put("actionscript", SyntaxConstants.SYNTAX_STYLE_ACTIONSCRIPT);
+        LANGUAGE_MAP.put("as", SyntaxConstants.SYNTAX_STYLE_ACTIONSCRIPT);
+    }
+
     public CollapsibleCodePane(String language, String code, boolean expandedByDefault) {
         super(12, (language != null && !language.isEmpty() ? language : "Code").toUpperCase(),
                 ThemeManager.getIcon("file.svg"), expandedByDefault);
@@ -114,28 +187,18 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
     }
 
     private void applySyntaxStyle() {
-        String style = SyntaxConstants.SYNTAX_STYLE_NONE;
-        String lang = language.toLowerCase();
-        if (lang.contains("java")) style = SyntaxConstants.SYNTAX_STYLE_JAVA;
-        else if (lang.contains("python") || lang.equals("py")) style = SyntaxConstants.SYNTAX_STYLE_PYTHON;
-        else if (lang.contains("javascript") || lang.equals("js")) style = SyntaxConstants.SYNTAX_STYLE_JAVASCRIPT;
-        else if (lang.contains("typescript") || lang.equals("ts")) style = SyntaxConstants.SYNTAX_STYLE_TYPESCRIPT;
-        else if (lang.contains("html")) style = SyntaxConstants.SYNTAX_STYLE_HTML;
-        else if (lang.contains("xml")) style = SyntaxConstants.SYNTAX_STYLE_XML;
-        else if (lang.contains("css")) style = SyntaxConstants.SYNTAX_STYLE_CSS;
-        else if (lang.contains("json")) style = SyntaxConstants.SYNTAX_STYLE_JSON;
-        else if (lang.contains("yaml") || lang.equals("yml")) style = SyntaxConstants.SYNTAX_STYLE_YAML;
-        else if (lang.contains("sql")) style = SyntaxConstants.SYNTAX_STYLE_SQL;
-        else if (lang.contains("shell") || lang.equals("sh") || lang.equals("bash")) style = SyntaxConstants.SYNTAX_STYLE_UNIX_SHELL;
-        else if (lang.contains("docker")) style = SyntaxConstants.SYNTAX_STYLE_DOCKERFILE;
-        else if (lang.contains("markdown") || lang.equals("md")) style = SyntaxConstants.SYNTAX_STYLE_MARKDOWN;
-        else if (lang.contains("c++") || lang.equals("cpp")) style = SyntaxConstants.SYNTAX_STYLE_CPLUSPLUS;
-        else if (lang.contains("c#") || lang.equals("cs")) style = SyntaxConstants.SYNTAX_STYLE_CSHARP;
-        else if (lang.equals("c")) style = SyntaxConstants.SYNTAX_STYLE_C;
-        else if (lang.contains("go")) style = SyntaxConstants.SYNTAX_STYLE_GO;
-        else if (lang.contains("rust") || lang.equals("rs")) style = SyntaxConstants.SYNTAX_STYLE_RUST;
-        else if (lang.contains("php")) style = SyntaxConstants.SYNTAX_STYLE_PHP;
-        else if (lang.contains("ruby") || lang.equals("rb")) style = SyntaxConstants.SYNTAX_STYLE_RUBY;
+        String lang = (language != null) ? language.toLowerCase() : "";
+        String style = LANGUAGE_MAP.getOrDefault(lang, SyntaxConstants.SYNTAX_STYLE_NONE);
+
+        // Fallback for compound identifiers (e.g., 'custom-java' -> 'java')
+        if (SyntaxConstants.SYNTAX_STYLE_NONE.equals(style)) {
+            for (java.util.Map.Entry<String, String> entry : LANGUAGE_MAP.entrySet()) {
+                if (lang.endsWith(entry.getKey())) {
+                    style = entry.getValue();
+                    break;
+                }
+            }
+        }
 
         codeTextArea.setSyntaxEditingStyle(style);
     }

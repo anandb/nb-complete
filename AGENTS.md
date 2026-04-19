@@ -1,11 +1,11 @@
 # Agent Instructions for acp-netbeans-plugin
 
 ## Project Overview
-- **Project name**: ACP NetBeans Plugin
+- **Project name**: Assistant NetBeans Plugin
 - **Project type**: NetBeans IDE plugin (NBM packaging)
-- **Language**: Java 17
+- **Language**: Java 21
 - **Build tool**: Maven
-- **Current Version**: 1.2.9
+- **Current Version**: 1.2.160
 
 ## Build Commands
 - Build: `mvn package`
@@ -35,9 +35,9 @@ When working on this codebase, you **must** leverage Context7 for documentation 
 - **JSON-RPC**: Bidirectional communication via `JsonRpcClient`.
 - **SSE Streams**: Handles `session/update` notifications for real-time AI response streaming.
 - **UI Architecture**:
-    - `ACPChatTopComponent`: Primary chat window with global controls.
+    - `AssistantTopComponent`: Primary chat window with global controls.
     - `ChatThreadPanel`: Manages the thread of message bubbles.
-    - `MessageBubble`: Handles rendering of specific message turns, including "thought" and "code" segments.
+    - `MessageBubble`: Handles rendering of specific message turns, including "thought", "tool", and "code" segments.
     - `CollapsibleCodePane`: Custom component for syntax-highlighted code with copy/insert actions.
 
 ## Important Files
