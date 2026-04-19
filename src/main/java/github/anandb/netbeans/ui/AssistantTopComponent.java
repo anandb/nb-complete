@@ -1,680 +1,410 @@
 package github.anandb.netbeans.ui;
 
 import java.awt.BorderLayout;
+import java.awt.CardLayout;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
-import java.awt.GridLayout;
-import java.awt.Insets;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
+import java.awt.event.InputEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.logging.Level;
-
-import javax.swing.Icon;
+import java.util.logging.Logger;
 
 import javax.swing.BorderFactory;
-import javax.swing.DefaultListCellRenderer;
 import javax.swing.DefaultListModel;
+import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
-import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
-import javax.swing.ListSelectionModel;
-import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
-import javax.swing.Timer;
 import javax.swing.UIManager;
 import javax.swing.border.EmptyBorder;
-import javax.swing.event.DocumentEvent;
-import javax.swing.event.DocumentListener;
-import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.text.Document;
 import javax.swing.text.JTextComponent;
 import javax.swing.text.StyledDocument;
 
+import org.apache.commons.lang3.StringUtils;
 import org.netbeans.api.editor.EditorRegistry;
 import org.netbeans.api.settings.ConvertAsProperties;
 import org.netbeans.modules.editor.NbEditorUtilities;
 import org.openide.awt.ActionID;
 import org.openide.awt.ActionReference;
-import org.openide.awt.ActionReferences;
-import org.openide.awt.ActionRegistration;
+import github.anandb.netbeans.model.Message;
 import org.openide.filesystems.FileObject;
 import org.openide.text.NbDocument;
 import org.openide.util.NbBundle;
 import org.openide.util.NbPreferences;
 import org.openide.windows.TopComponent;
-import org.openide.modules.Modules;
-import org.openide.modules.ModuleInfo;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
-import org.apache.commons.lang3.StringUtils;
-
 import github.anandb.netbeans.manager.ACPManager;
+import github.anandb.netbeans.manager.SessionManager;
 import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.model.SessionConfigOption;
 import github.anandb.netbeans.model.SessionConfigSelectOption;
 import github.anandb.netbeans.model.SessionUpdate;
 
-import github.anandb.netbeans.manager.SessionManager;
-
+@ConvertAsProperties(
+        dtd = "-//github.anandb.netbeans.ui//Assistant//EN",
+        autostore = false
+)
+@TopComponent.Description(
+        preferredID = "AssistantTopComponent",
+        iconBase = "github/anandb/netbeans/ui/ai.svg",
+        persistenceType = TopComponent.PERSISTENCE_ALWAYS
+)
+@TopComponent.Registration(mode = "explorer", openAtStartup = true)
+@ActionID(category = "Window", id = "github.anandb.netbeans.ui.AssistantTopComponent")
+@ActionReference(path = "Menu/Window" /*, position = 333 */)
+@TopComponent.OpenActionRegistration(
+        displayName = "#CTL_AssistantAction",
+        preferredID = "AssistantTopComponent"
+)
 @NbBundle.Messages({
-        "CTL_ACPChatAction=Assistant",
-        "CTL_AssistantTopComponent=Assistant",
-        "HINT_AssistantTopComponent=This is an Assistant window"
+    "CTL_AssistantAction=Assistant",
+    "CTL_AssistantTopComponent=Assistant",
+    "HINT_AssistantTopComponent=This is an Assistant window"
 })
-@ConvertAsProperties(dtd = "-//github.anandb.netbeans.ui//Assistant//EN", autostore = false)
-@TopComponent.Description(preferredID = "AssistantTopComponent", iconBase = "github/anandb/netbeans/ui/logo.png", persistenceType = TopComponent.PERSISTENCE_ALWAYS)
-@TopComponent.Registration(mode = "explorer", openAtStartup = false)
 public final class AssistantTopComponent extends TopComponent implements ACPManager.PermissionHandler, SessionManager.SessionListener {
 
-    @ActionID(category = "Window", id = "github.anandb.netbeans.ui.AssistantToggleAction")
-    @ActionRegistration(displayName = "#CTL_ACPChatAction", iconBase = "github/anandb/netbeans/ui/logo.png")
-    @ActionReferences({
-            @ActionReference(path = "Menu/Window"),
-            @ActionReference(path = "Shortcuts", name = "C-L")
-    })
-    public static final class ACPToggleAction implements ActionListener {
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            TopComponent tc = findInstance();
-            if (tc != null) {
-                if (tc.isOpened()) {
-                    tc.close();
-                } else {
-                    tc.open();
-                    tc.requestActive();
-                }
-            }
-        }
-    }
-
-    private static final java.util.logging.Logger LOG = java.util.logging.Logger
-            .getLogger(AssistantTopComponent.class.getName());
+    private static final Logger LOG = Logger.getLogger(AssistantTopComponent.class.getName());
     private static AssistantTopComponent instance;
-    private static final long serialVersionUID = 1L;
 
     private final ChatThreadPanel chatPanel;
     private final JTextArea inputArea;
-    private JPopupMenu autocompletePopup;
-    private JList<SessionUpdate.AvailableCommand> commandList;
-    private JScrollPane commandScroll;
-    private final JLabel statusLabel;
     private final JButton sendBtn;
     private final JButton stopBtn;
-    private final JPanel header;
-    private final JScrollPane inputScrollPane;
-
     private final JComboBox<SessionItem> sessionDropdown;
     private final JButton newSessionBtn;
     private final JButton renameSessionBtn;
-    private volatile boolean isSwitchingSessionDropdown = false;
-    private volatile boolean isUpdatingConfigControls = false;
-    private final JLabel cwdLabel;
+    private final JButton exportBtn;
+    private final JButton toggleBlocksBtn;
+    private final JButton toggleOptionsBtn;
+    private final JButton themeBtn;
+    private final JPanel configPanel;
     private final JComboBox<ConfigItem> modeCombo;
     private final JComboBox<ConfigItem> modelCombo;
     private final JComboBox<ConfigItem> thinkingCombo;
-    private final JPanel configPanel;
-    private final JButton toggleOptionsBtn;
-    private javax.swing.Timer thinkingTimer;
-    private int thinkingDots = 0;
-    private final Consumer<SessionUpdate> sseListener;
-
-    // Message history
-    private final List<String> messageHistory = new java.util.ArrayList<>();
+    private final JLabel statusLabel;
+    private final JLabel versionLabel;
+    private final JLabel cwdLabel;
+    private final JScrollPane inputScrollPane;
+    private final JPanel header;
+    private final JPopupMenu autocompletePopup;
+    private final JList<SessionUpdate.AvailableCommand> commandList;
+    private final List<String> messageHistory = new ArrayList<>();
     private int historyIndex = -1;
     private String currentDraft = "";
+    private final List<ConfigItem> allModels = new ArrayList<>();
+    private static String lastSelectedModelId;
+
+    private Consumer<SessionUpdate> sseListener;
+    private boolean isSwitchingSessionDropdown = false;
+    private boolean isUpdatingConfigControls = false;
+    private javax.swing.Timer thinkingTimer;
+    private int thinkingDots = 0;
+
+    private final Map<String, List<ConfigItem>> modelVariants = new LinkedHashMap<>();
+    private String currentConfigModelId = null;
 
     public AssistantTopComponent() {
         instance = this;
-        LOG.log(Level.INFO, "Initializing AssistantTopComponent [{0}]...", System.identityHashCode(this));
-        ColorTheme theme = ThemeManager.getCurrentTheme();
+        initComponents();
         setName(NbBundle.getMessage(AssistantTopComponent.class, "CTL_AssistantTopComponent"));
         setToolTipText(NbBundle.getMessage(AssistantTopComponent.class, "HINT_AssistantTopComponent"));
+
         setLayout(new BorderLayout());
-        setOpaque(true);
-
-        Color base3 = theme.getBackground();
-        setBackground(base3);
-
-        header = new JPanel(new BorderLayout());
-        header.setBorder(new EmptyBorder(10, 28, 10, 28)); // Aligned with code block/segments
-        header.setOpaque(true);
-        header.setBackground(base3);
-
         chatPanel = new ChatThreadPanel();
 
-        cwdLabel = new JLabel("");
-        cwdLabel.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
-        cwdLabel.setForeground(theme.getForeground());
-        cwdLabel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(theme.getBubbleBorder(), 1),
-                new EmptyBorder(4, 8, 4, 8)));
-        cwdLabel.setBackground(theme.getBase2());
-        cwdLabel.setOpaque(true);
+        configPanel = new JPanel(new java.awt.GridBagLayout());
+        configPanel.setVisible(false);
+        configPanel.setOpaque(false);
+        configPanel.setBorder(new EmptyBorder(5, 12, 5, 12));
 
-        newSessionBtn = new JButton("+ New Chat");
-        newSessionBtn.addActionListener(e -> SessionManager.getInstance().createNewSession(null));
+        java.awt.GridBagConstraints gbc = new java.awt.GridBagConstraints();
+        gbc.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        gbc.insets = new java.awt.Insets(2, 0, 2, 8);
+
+        modeCombo = new JComboBox<>();
+        modelCombo = new JComboBox<>();
+        thinkingCombo = new JComboBox<>();
+
+        gbc.gridx = 0; gbc.gridy = 0; gbc.weightx = 0;
+        configPanel.add(new JLabel("Agent:"), gbc);
+        gbc.gridx = 1; gbc.weightx = 0.2;
+        configPanel.add(modeCombo, gbc);
+
+        gbc.gridx = 2; gbc.weightx = 0;
+        configPanel.add(new JLabel("Model:"), gbc);
+        gbc.gridx = 3; gbc.weightx = 0.4;
+        configPanel.add(modelCombo, gbc);
+
+        gbc.gridx = 4; gbc.weightx = 0;
+        configPanel.add(new JLabel("Thinking:"), gbc);
+        gbc.gridx = 5; gbc.weightx = 0.4;
+        configPanel.add(thinkingCombo, gbc);
+
+        header = new JPanel(new BorderLayout());
+        header.setBorder(new EmptyBorder(8, 12, 8, 12));
+
+        JPanel topBar = new JPanel(new BorderLayout(8, 0));
+        topBar.setOpaque(false);
 
         sessionDropdown = new JComboBox<>();
-        sessionDropdown.setFocusable(false);
-        sessionDropdown.setToolTipText("Select Session");
-        sessionDropdown.setPreferredSize(new Dimension(200, 28));
-        sessionDropdown.setRenderer(new DefaultListCellRenderer() {
-            @Override
-            public Component getListCellRendererComponent(JList<?> list, Object value, int index,
-                    boolean isSelected, boolean cellHasFocus) {
-                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-                if (value instanceof SessionItem item) {
-                    String projectName = item.getSession().projectName();
-                    if (projectName != null && !projectName.isEmpty()) {
-                        setText("[" + projectName + "] " + item.toString());
-                    }
-                    if (item.getSession().effectiveDirectory() != null) {
-                        setToolTipText(item.getSession().effectiveDirectory());
-                    }
-                }
-                return this;
-            }
-        });
-
-        ActionListener sessionDropdownListener = e -> {
-            LOG.log(Level.INFO, "sessionDropdown: action fired, switching={0}, item={1}",
-                    new Object[] { isSwitchingSessionDropdown, sessionDropdown.getSelectedItem() });
+        sessionDropdown.addActionListener(e -> {
             if (isSwitchingSessionDropdown) {
                 return;
             }
-            SessionItem item = (SessionItem) sessionDropdown.getSelectedItem();
-            LOG.log(Level.INFO, "sessionDropdown: selected item={0}", item != null ? item.getSession().id() : "null");
-            if (item != null) {
-                String selectedId = item.getSession().id();
-                String currentId = SessionManager.getInstance().getCurrentSessionId();
-                if (currentId == null || !currentId.equals(selectedId)) {
-                    LOG.log(Level.INFO, "sessionDropdown: calling loadSession for {0}", selectedId);
-                    SessionManager.getInstance().loadSession(selectedId);
-                }
+            SessionItem selected = (SessionItem) sessionDropdown.getSelectedItem();
+            if (selected != null) {
+                SessionManager.getInstance().loadSession(selected.getSession().id());
             }
-        };
-        sessionDropdown.addActionListener(sessionDropdownListener);
+        });
+
+        JPanel sessionControls = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        sessionControls.setOpaque(false);
+
+        newSessionBtn = new JButton("New");
+        newSessionBtn.setFocusPainted(false);
+        newSessionBtn.addActionListener(e -> SessionManager.getInstance().createNewSession(null));
 
         renameSessionBtn = new JButton("Rename");
+        renameSessionBtn.setFocusPainted(false);
         renameSessionBtn.addActionListener(e -> renameCurrentSession());
 
-        JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
-        buttonsPanel.setOpaque(false);
-        buttonsPanel.add(renameSessionBtn);
-        buttonsPanel.add(newSessionBtn);
+        themeBtn = new JButton();
+        themeBtn.setIcon(ThemeManager.getIcon("moon.svg", 24));
+        themeBtn.setToolTipText("Switch Theme");
+        themeBtn.setFocusPainted(false);
+        themeBtn.addActionListener(e -> toggleDarkMode());
 
-        JPanel actionPanel = new JPanel(new BorderLayout(0, 0));
-        actionPanel.setOpaque(false);
-        actionPanel.add(sessionDropdown, BorderLayout.CENTER);
-        actionPanel.add(buttonsPanel, BorderLayout.EAST);
-
-        JPanel headerContent = new JPanel(new GridLayout(0, 1, 0, 18));
-        headerContent.setOpaque(false);
-        headerContent.add(cwdLabel);
-        headerContent.add(actionPanel);
-
-        // Block control buttons
-        JPanel blockControls = new JPanel(new BorderLayout());
-        blockControls.setOpaque(false);
-        blockControls.setBorder(new EmptyBorder(4, 0, 0, 0));
-
-        JButton expandAllBtn = new JButton("Expand All");
-        expandAllBtn.addActionListener(e -> chatPanel.toggleAllBlocks(true));
-
-        JButton collapseAllBtn = new JButton("Collapse All");
-        collapseAllBtn.addActionListener(e -> chatPanel.toggleAllBlocks(false));
-
-        JButton exportBtn = new JButton("Export Markdown");
+        exportBtn = new JButton();
+        exportBtn.setIcon(ThemeManager.getIcon("file.svg", 24));
+        exportBtn.setToolTipText("Export Conversation");
+        exportBtn.setFocusPainted(false);
         exportBtn.addActionListener(e -> exportConversation());
+        
+        // Block control buttons
+        toggleBlocksBtn = new JButton();
+        toggleBlocksBtn.setIcon(ThemeManager.getIcon("expand.svg", 24));
+        toggleBlocksBtn.setToolTipText("Expand All Blocks");
+        toggleBlocksBtn.setFocusPainted(false);
+        toggleBlocksBtn.putClientProperty("state", "expand");
+        toggleBlocksBtn.addActionListener(e -> {
+            boolean isCollapse = "collapse".equals(toggleBlocksBtn.getClientProperty("state"));
+            chatPanel.toggleAllBlocks(!isCollapse);
+            String newState = isCollapse ? "expand" : "collapse";
+            toggleBlocksBtn.putClientProperty("state", newState);
+            toggleBlocksBtn.setToolTipText(isCollapse ? "Expand All Blocks" : "Collapse All Blocks");
+            toggleBlocksBtn.setIcon(ThemeManager.getIcon(isCollapse ? "expand.svg" : "collapse.svg", 24));
+        });
 
-        Icon themeIcon = ThemeManager.getIcon(theme.isDark() ? "sun.svg" : "moon.svg", 18);
-        JButton themeToggleBtn = new JButton(theme.isDark() ? "Light Mode" : "Dark Mode", themeIcon);
-        themeToggleBtn.addActionListener(e -> toggleDarkMode());
+        sessionControls.add(newSessionBtn);
+        sessionControls.add(renameSessionBtn);
+        sessionControls.add(toggleBlocksBtn);
+        sessionControls.add(exportBtn);
+        sessionControls.add(themeBtn);
 
-        JPanel blockControlsRight = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
-        blockControlsRight.setOpaque(false);
-        blockControlsRight.add(expandAllBtn);
-        blockControlsRight.add(collapseAllBtn);
-        blockControlsRight.add(exportBtn);
+        topBar.add(sessionDropdown, BorderLayout.CENTER);
+        topBar.add(sessionControls, BorderLayout.EAST);
 
-        blockControls.add(themeToggleBtn, BorderLayout.WEST);
-        blockControls.add(blockControlsRight, BorderLayout.EAST);
-        headerContent.add(blockControls);
+        cwdLabel = new JLabel("");
+        cwdLabel.setFont(cwdLabel.getFont().deriveFont(Font.BOLD));
+        cwdLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        cwdLabel.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                String path = cwdLabel.getToolTipText();
+                if (path != null && !path.isEmpty()) {
+                    File f = new File(path);
+                    if (f.exists()) {
+                        try {
+                            java.awt.Desktop.getDesktop().open(f);
+                        } catch (IOException ex) {
+                            LOG.log(Level.WARNING, "Failed to open directory", ex);
+                        }
+                    }
+                }
+            }
+        });
+
+        JPanel headerContent = new JPanel(new BorderLayout(0, 4));
+        headerContent.setOpaque(false);
+        headerContent.add(cwdLabel, BorderLayout.NORTH);
+        headerContent.add(topBar, BorderLayout.SOUTH);
 
         header.add(headerContent, BorderLayout.CENTER);
 
         add(header, BorderLayout.NORTH);
 
-        // Initial CWD
-        String initialDir = ACPManager.getInstance().getActiveProjectDir();
-        updateCwdLabel(initialDir != null ? initialDir : System.getProperty("user.dir"));
-        SessionManager.getInstance().addSessionListener(this);
-
-        // Chat History (Center)
         add(chatPanel, BorderLayout.CENTER);
 
-        // Footer / Input Container (Bottom)
-        JPanel footer = new JPanel(new BorderLayout(0, 0));
-        footer.setBorder(new EmptyBorder(0, 0, 0, 0));
-        footer.setOpaque(false);
-
-        // Input Area Wrapper with border and shadow-like padding
-        JPanel inputContainer = new JPanel(new BorderLayout(0, 8));
-        inputContainer.setBorder(new EmptyBorder(16, 28, 12, 28));
-        inputContainer.setOpaque(false);
-
-        JPanel inputWrapper = new JPanel(new BorderLayout());
-        inputWrapper.setOpaque(false);
-
-        inputArea = new JTextArea(3, 20);
-        inputArea.setLineWrap(true);
-        inputArea.setWrapStyleWord(true);
-        inputArea.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN));
-        inputArea.setBackground(Color.WHITE);
-        inputArea.setForeground(Color.decode("#073642")); // Solarized Base02 (Darker than current foreground)
-        inputArea.setMargin(new Insets(8, 8, 8, 8));
-
-        inputArea.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(
-                        theme.getBubbleBorder() != null && theme.getBubbleBorder().getAlpha() > 0
-                                ? theme.getBubbleBorder()
-                                : new Color(0, 0, 0, 30),
-                        1, true),
-                new EmptyBorder(4, 4, 4, 4)));
-
-        autocompletePopup = new JPopupMenu();
-        autocompletePopup.setFocusable(false);
-        commandList = new JList<>();
-        commandList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        commandList.setFocusable(false);
-        commandList.setCellRenderer(new DefaultListCellRenderer() {
-            @Override
-            public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected,
-                    boolean cellHasFocus) {
-                JLabel label = (JLabel) super.getListCellRendererComponent(list, value, index, isSelected,
-                        cellHasFocus);
-                if (value instanceof SessionUpdate.AvailableCommand cmd) {
-                    label.setText("/" + cmd.name() + (cmd.description() != null ? " - " + cmd.description() : ""));
-                    label.setBorder(new EmptyBorder(4, 8, 4, 8));
-                }
-                if (isSelected) {
-                    label.setBackground(theme.getSelection());
-                    label.setForeground(Color.WHITE);
-                } else {
-                    label.setBackground(Color.WHITE);
-                    label.setForeground(Color.BLACK);
-                }
-                return label;
-            }
-        });
-
-        commandScroll = new JScrollPane(commandList);
-        commandScroll.setBorder(null);
-        commandScroll.setPreferredSize(new Dimension(800, 250));
-        autocompletePopup.add(commandScroll);
-
-        inputArea.addKeyListener(new KeyAdapter() {
-            @Override
-            public void keyPressed(KeyEvent e) {
-                if (autocompletePopup.isVisible()) {
-                    if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
-                        autocompletePopup.setVisible(false);
-                        e.consume();
-                    } else if (e.getKeyCode() == KeyEvent.VK_DOWN) {
-                        int index = commandList.getSelectedIndex();
-                        if (index < commandList.getModel().getSize() - 1) {
-                            commandList.setSelectedIndex(index + 1);
-                            commandList.ensureIndexIsVisible(index + 1);
-                        }
-                        e.consume();
-                    } else if (e.getKeyCode() == KeyEvent.VK_UP) {
-                        int index = commandList.getSelectedIndex();
-                        if (index > 0) {
-                            commandList.setSelectedIndex(index - 1);
-                            commandList.ensureIndexIsVisible(index - 1);
-                        }
-                        e.consume();
-                    } else if (e.getKeyCode() == KeyEvent.VK_PAGE_DOWN) {
-                        int index = commandList.getSelectedIndex();
-                        int size = commandList.getModel().getSize();
-                        int next = Math.min(size - 1, index + 10);
-                        if (next >= 0) {
-                            commandList.setSelectedIndex(next);
-                            commandList.ensureIndexIsVisible(next);
-                        }
-                        e.consume();
-                    } else if (e.getKeyCode() == KeyEvent.VK_PAGE_UP) {
-                        int index = commandList.getSelectedIndex();
-                        int next = Math.max(0, index - 10);
-                        if (index >= 0) {
-                            commandList.setSelectedIndex(next);
-                            commandList.ensureIndexIsVisible(next);
-                        }
-                        e.consume();
-                    }
-                } else if (e.getKeyCode() == KeyEvent.VK_UP) {
-                    navigateHistory(-1);
-                    e.consume();
-                } else if (e.getKeyCode() == KeyEvent.VK_DOWN) {
-                    navigateHistory(1);
-                    e.consume();
-                }
-
-                if (e.getKeyCode() == KeyEvent.VK_ENTER) {
-                    if (e.isShiftDown()) {
-                        int pos = inputArea.getCaretPosition();
-                        inputArea.insert("\n", pos);
-                        e.consume();
-                        return;
-                    }
-                    if (autocompletePopup.isVisible()) {
-                        selectCommand();
-                        e.consume();
-                        return;
-                    }
-                    e.consume();
-                    sendMessage();
-                } else if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
-                    if (autocompletePopup.isVisible()) {
-                        autocompletePopup.setVisible(false);
-                    } else if (stopBtn.isVisible() && stopBtn.isEnabled()) {
-                        stopMessage();
-                    } else {
-                        inputArea.setText("");
-                    }
-                    e.consume();
-                }
-            }
-        });
-
-        inputArea.getDocument().addDocumentListener(new DocumentListener() {
-            @Override
-            public void insertUpdate(DocumentEvent e) {
-                checkAutocomplete(e);
-            }
-
-            @Override
-            public void removeUpdate(DocumentEvent e) {
-                checkAutocomplete(e);
-            }
-
-            @Override
-            public void changedUpdate(DocumentEvent e) {
-                checkAutocomplete(e);
-            }
-
-            private void checkAutocomplete(DocumentEvent e) {
-                SwingUtilities.invokeLater(() -> {
-                    try {
-                        String text = inputArea.getText();
-                        int caretPos = inputArea.getCaretPosition();
-                        if (caretPos > 0 && text.startsWith("/") && !text.contains(" ")) {
-                            showAutocomplete();
-                        } else {
-                            autocompletePopup.setVisible(false);
-                        }
-                    } catch (Exception ex) {
-                        // Ignore
-                    }
-                });
-            }
-        });
-
-        inputScrollPane = new JScrollPane(inputArea);
-        inputScrollPane.setBorder(null);
-        inputScrollPane.setOpaque(false);
-        inputScrollPane.getViewport().setOpaque(false);
-        inputWrapper.add(inputScrollPane, BorderLayout.CENTER);
-
-        sendBtn = new JButton("Go");
-        sendBtn.setPreferredSize(new Dimension(80, 0));
-        sendBtn.addActionListener(e -> sendMessage());
-
-        stopBtn = new JButton("Stop");
-        stopBtn.setPreferredSize(new Dimension(80, 0));
-        stopBtn.addActionListener(e -> stopMessage());
-
-        JPanel buttonPanel = new JPanel(new java.awt.CardLayout());
-        buttonPanel.setOpaque(false);
-        buttonPanel.setBorder(new EmptyBorder(0, 8, 0, 0));
-        buttonPanel.add(sendBtn, "SEND");
-        buttonPanel.add(stopBtn, "STOP");
-
-        inputWrapper.add(buttonPanel, BorderLayout.EAST);
-        inputContainer.add(inputWrapper, BorderLayout.CENTER);
-
-        configPanel = new JPanel(new GridLayout(0, 1, 0, 4));
-        configPanel.setBorder(new EmptyBorder(8, 2, 8, 2));
-        configPanel.setOpaque(false);
-        configPanel.setVisible(false);
-
-        toggleOptionsBtn = new JButton("Options ▼");
-        toggleOptionsBtn.setBorderPainted(false);
-        toggleOptionsBtn.setContentAreaFilled(false);
-        toggleOptionsBtn.setHorizontalAlignment(SwingConstants.LEFT);
-        toggleOptionsBtn.setForeground(Color.GRAY);
-        toggleOptionsBtn.addActionListener(e -> {
-            configPanel.setVisible(!configPanel.isVisible());
-            updateOptionsButtonText();
-            revalidate();
-            repaint();
-        });
-
-        JPanel optionsHeader = new JPanel(new BorderLayout());
-        optionsHeader.setOpaque(false);
-        optionsHeader.add(toggleOptionsBtn, BorderLayout.WEST);
-
-        JPanel optionsContainer = new JPanel(new BorderLayout());
-        optionsContainer.setOpaque(false);
-        optionsContainer.add(optionsHeader, BorderLayout.NORTH);
-        optionsContainer.add(configPanel, BorderLayout.CENTER);
-
-        inputContainer.add(optionsContainer, BorderLayout.NORTH);
-
-        modeCombo = new JComboBox<>();
-        modeCombo.setPreferredSize(new Dimension(300, 28));
-        modelCombo = new JComboBox<>();
-        modelCombo.setPreferredSize(new Dimension(300, 28));
-        thinkingCombo = new JComboBox<>();
-        thinkingCombo.setPreferredSize(new Dimension(300, 28));
-
-        // Options will be populated via updateConfigControls when session is created/loaded
-        configPanel.add(modeCombo);
-        configPanel.add(modelCombo);
-        configPanel.add(thinkingCombo);
+        JPanel bottomPanel = new JPanel(new BorderLayout());
 
         JPanel statusPanel = new JPanel(new BorderLayout());
+        statusPanel.setBorder(new EmptyBorder(4, 12, 4, 12));
         statusPanel.setOpaque(false);
 
         statusLabel = new JLabel("Ready");
-        statusLabel.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN));
-        statusLabel.setForeground(Color.GRAY);
+        statusLabel.setFont(statusLabel.getFont().deriveFont(11f));
         statusPanel.add(statusLabel, BorderLayout.WEST);
 
-        JLabel versionLabel = new JLabel("v" + getPluginVersion());
-        versionLabel.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN, 10f));
+        toggleOptionsBtn = new JButton("Options ▼");
+        toggleOptionsBtn.setFont(toggleOptionsBtn.getFont().deriveFont(11f));
+        toggleOptionsBtn.setBorderPainted(false);
+        toggleOptionsBtn.setContentAreaFilled(false);
+        toggleOptionsBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        toggleOptionsBtn.addActionListener(e -> {
+            configPanel.setVisible(!configPanel.isVisible());
+            updateOptionsButtonText();
+            AssistantTopComponent.this.revalidate();
+            AssistantTopComponent.this.repaint();
+        });
+
+        statusPanel.add(toggleOptionsBtn, BorderLayout.EAST);
+
+        bottomPanel.add(statusPanel, BorderLayout.NORTH);
+
+        inputArea = new JTextArea();
+        inputArea.setLineWrap(true);
+        inputArea.setWrapStyleWord(true);
+        inputArea.setBorder(new EmptyBorder(12, 12, 12, 12));
+        inputArea.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 17));
+
+        inputScrollPane = new JScrollPane(inputArea);
+        inputScrollPane.setPreferredSize(new Dimension(100, 100));
+
+        JPanel inputMainPanel = new JPanel(new BorderLayout(0, 4));
+        inputMainPanel.setOpaque(false);
+        inputMainPanel.add(configPanel, BorderLayout.NORTH);
+        inputMainPanel.add(inputScrollPane, BorderLayout.CENTER);
+
+        JPanel btnCard = new JPanel(new CardLayout());
+        btnCard.setOpaque(false);
+        sendBtn = new JButton("Go");
+        sendBtn.setFocusPainted(false);
+        sendBtn.addActionListener(e -> sendMessage());
+
+        stopBtn = new JButton("Stop");
+        stopBtn.setFocusPainted(false);
+        stopBtn.addActionListener(e -> stopMessage());
+
+        btnCard.add(sendBtn, "SEND");
+        btnCard.add(stopBtn, "STOP");
+
+        versionLabel = new JLabel("v" + getVersion());
+        versionLabel.setFont(versionLabel.getFont().deriveFont(9f));
         versionLabel.setForeground(Color.GRAY);
-        statusPanel.add(versionLabel, BorderLayout.EAST);
+        versionLabel.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
 
-        inputContainer.add(statusPanel, BorderLayout.SOUTH);
+        JPanel rightPanel = new JPanel(new BorderLayout(0, 4));
+        rightPanel.setOpaque(false);
+        rightPanel.add(btnCard, BorderLayout.CENTER);
+        rightPanel.add(versionLabel, BorderLayout.SOUTH);
 
-        footer.add(inputContainer, BorderLayout.CENTER);
-        add(footer, BorderLayout.SOUTH);
+        inputMainPanel.add(rightPanel, BorderLayout.EAST);
 
-        // Initially disable input
-        setInputEnabled(false);
+        bottomPanel.add(inputMainPanel, BorderLayout.CENTER);
+
+        add(bottomPanel, BorderLayout.SOUTH);
+
+        autocompletePopup = new JPopupMenu();
+        commandList = new JList<>();
+        autocompletePopup.add(new javax.swing.JScrollPane(commandList));
+        commandList.setFocusable(false);
+
+        setupListeners();
 
         // Register for SSE events
-        sseListener = (SessionUpdate sseUpdate) -> {
-            SessionUpdate.UpdateData update = sseUpdate.update();
-            if (update == null) {
-                LOG.log(Level.INFO, "Received SSE update with null data");
-                return;
-            }
+        this.sseListener = update -> {
+            String type = update.update() != null ? update.update().type() : null;
+            String msgId = update.update() != null ? update.update().messageId() : null;
 
-            String type = update.type();
-
-            if ("session_info_update".equals(type)) {
-                SwingUtilities.invokeLater(() -> SessionManager.getInstance().refreshSessions());
-                return;
-            }
-
-            // Log for debugging - extremely important to find missing chunks
-            LOG.log(Level.INFO, "SSE Event: type={0}, content={1}, hasMessage={2}",
-                    new Object[] { type, (update.content() != null), (update.message() != null) });
-
-            // Check for explicit thinking status
-            Boolean isThinking = update.isThinking();
-            if (isThinking != null) {
-                SwingUtilities.invokeLater(() -> {
-                    if (isThinking) {
-                        statusLabel.setText("Thinking...");
-                        updateButtonState(true);
-                    } else {
-                        // Always reset when isThinking is explicitly false, regardless of current status text
-                        // This handles cases where the status has animated dots appended
-                        resetStatus();
+            if ("agent_message_chunk".equals(type) || "agent_thought_chunk".equals(type) || "user_message_chunk".equals(type)) {
+                JsonNode content = update.update().content();
+                
+                // Filter out tool outputs which are marked for the assistant's eyes only
+                boolean skip = false;
+                if ("user_message_chunk".equals(type) && content != null && content.has("annotations")) {
+                    JsonNode annotations = content.get("annotations");
+                    if (annotations.has("audience") && annotations.get("audience").isArray()) {
+                        for (JsonNode aud : annotations.get("audience")) {
+                            if ("assistant".equals(aud.asText())) {
+                                skip = true;
+                                break;
+                            }
+                        }
                     }
+                }
+                
+                if (!skip) {
+                    String text = extractText(content);
+                    if (text != null && !text.isEmpty()) {
+                        String role = "agent_message_chunk".equals(type) ? "assistant" : 
+                                      "agent_thought_chunk".equals(type) ? "thought" : "user";
+                        SwingUtilities.invokeLater(() -> {
+                            chatPanel.appendOrAddMessage(role, text, msgId);
+                            updateButtonState(true);
+                        });
+                    }
+                }
+            } else if ("message".equals(type)) {
+                Message msg = update.update().message();
+                LOG.info("Received message update: id=" + (msg != null ? msg.id() : "null") + ", type=" + (msg != null ? msg.type() : "null"));
+                if (msg != null) {
+                    SwingUtilities.invokeLater(() -> chatPanel.addMessage(msg));
+                }
+            } else if ("tool_call_update".equals(type)) {
+                SwingUtilities.invokeLater(() -> {
+                    chatPanel.updateToolCall(update.update());
+                    updateButtonState(true);
+                });
+            } else if ("config_options_update".equals(type)) {
+                if (update.update().configOptions() != null) {
+                    updateConfigControls(update.update().configOptions());
+                }
+            } else if ("session_info_update".equals(type)) {
+                SessionManager.getInstance().refreshSessions();
+            } else if ("usage_update".equals(type)) {
+                SwingUtilities.invokeLater(() -> {
+                    statusLabel.setToolTipText("Usage: " + update.update().used() + "/" + update.update().size() + " tokens");
                 });
             }
 
-            // Determine role more robustly
-            String role = "assistant";
-            if (type != null && (type.contains("user") || type.contains("user_message"))) {
-                role = "user";
-            } else if (type != null && (type.contains("assistant") || type.contains("completion")
-                    || type.contains("agent") || type.contains("bot") || type.contains("ai"))) {
-                role = "assistant";
-            }
-
-            // Update configuration options if present
-            if (update.configOptions() != null) {
-                updateConfigControls(update.configOptions());
-            }
-
-            final String msgId = update.messageId();
-
-            // Handle full message object if present
-            if (update.message() != null) {
-                String text = (update.message().prompt() != null) ? update.message().prompt().text()
-                        : (update.message().completion() != null) ? update.message().completion().text() : null;
-                if (text != null && !text.isEmpty()) {
-                    final String mRole = role;
-                    final String mText = text;
+            // Status updates
+            if (msgId != null) {
+                Boolean isThinking = update.isThinking();
+                if (isThinking != null) {
                     SwingUtilities.invokeLater(() -> {
-                        chatPanel.addMessage(mRole, mText, msgId);
-                        if ("assistant".equals(mRole)) {
-                            resetStatus();
+                        if (isThinking) {
+                            statusLabel.setText("Thinking...");
+                        } else {
+                            // Always reset when isThinking is explicitly false, regardless of current status text
+                            if ("Thinking...".equals(statusLabel.getText()) || statusLabel.getText().startsWith("Thinking")) {
+                                statusLabel.setText("Responding...");
+                            }
                         }
                     });
-                }
-            }
-            // Handle chunked content if present
-            else if (update.content() != null) {
-                JsonNode content = update.content();
-                String text = null;
-
-                // Skip boolean values (they're metadata, not content)
-                if (content.isBoolean()) {
-                    return;
-                }
-
-                text = extractText(content);
-                if (text != null && !text.isEmpty()) {
-                    if ("agent_thought_chunk".equals(type)) {
-                        final String thoughtText = text;
-                        SwingUtilities.invokeLater(() -> {
-                            statusLabel.setText("Thinking...");
-                            chatPanel.appendOrAddMessage("thought", thoughtText, msgId);
-                        });
-                    } else if ("tool_call".equals(type) || "tool_call_update".equals(type)) {
-                        String status = update.status();
-                        String title = update.title();
-                        String toolText = text;
-                        if (toolText == null || toolText.isEmpty()) {
-                            if (status != null && !status.isEmpty()) {
-                                String displayTitle = (title != null) ? title : type;
-                                toolText = "Tool: " + displayTitle + " (" + status + ")";
-                            } else {
-                                toolText = extractText(update.rawOutput());
-                            }
-                        }
-
-                        if (toolText != null && !toolText.isEmpty()) {
-                            final String finalToolText = toolText;
-                            SwingUtilities.invokeLater(() -> {
-                                chatPanel.appendOrAddMessage("tool", finalToolText, msgId);
-                            });
-                        }
-                    } else {
-                        final String finalText = text;
-                        final String finalRole = role;
-                        final String finalType = type;
-                        SwingUtilities.invokeLater(() -> {
-                            // If we get real content, we are definitely Responding (not just thinking)
-                            if ("assistant".equals(finalRole)) {
-                                LOG.log(Level.INFO, "Assistant stream chunk: [{0}] (len: {1})", new Object[]{finalText, finalText.length()});
-                                statusLabel.setText("Responding...");
-                                updateButtonState(true);
-                                chatPanel.appendOrAddMessage(finalRole, finalText, msgId);
-                            } else if ("user".equals(finalRole)) {
-                                // For user messages, we ONLY append if explicitly chunked (like streaming local
-                                // echo)
-                                // Standard user message updates should be separate bubbles
-                                if ("user_message_chunk".equals(finalType)) {
-                                    String outText = finalText;
-                                    boolean chunkStartsWithPath = outText.startsWith("<path>");
-
-                                    // Strip the metadata comment from display without consuming surrounding spaces
-                                    outText = outText.replaceAll("<!--\\s*\\{.*?\\}-->", "");
-
-                                    if (chunkStartsWithPath) {
-                                        outText = "```\n" + outText;
-                                    }
-
-                                    boolean chunkEndsWithContent = outText.endsWith("</content>");
-                                    if (chunkEndsWithContent) {
-                                        outText += "\n```";
-                                    }
-
-                                    if (chunkStartsWithPath) {
-                                        chatPanel.addMessage(finalRole, outText, msgId);
-                                    } else {
-                                        chatPanel.appendOrAddMessage(finalRole, outText, msgId);
-                                    }
-
-                                    if (chunkEndsWithContent) {
-                                        // End of path based resource
-                                    }
-                                } else {
-                                    String outText = finalText.replaceAll("<!--\\s*\\{.*?\\}\\s*-->", "");
-                                    if (!outText.isEmpty()) {
-                                        chatPanel.addMessage(finalRole, outText, msgId);
-                                    }
-                                }
-                            } else {
-                                chatPanel.appendOrAddMessage(finalRole, finalText, msgId);
-                            }
-                        });
-                    }
                 }
             }
 
@@ -693,6 +423,71 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
 
         initChat();
         refreshTheme();
+    }
+
+
+
+    private void setupListeners() {
+        inputArea.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+                    if ((e.getModifiersEx() & InputEvent.SHIFT_DOWN_MASK) != 0) {
+                        inputArea.append("\n");
+                    } else {
+                        e.consume();
+                        sendMessage();
+                    }
+                } else if (e.getKeyCode() == KeyEvent.VK_UP) {
+                    if (inputArea.getCaretPosition() == 0 && !messageHistory.isEmpty()) {
+                        if (historyIndex == -1) {
+                            currentDraft = inputArea.getText();
+                            historyIndex = messageHistory.size() - 1;
+                        } else if (historyIndex > 0) {
+                            historyIndex--;
+                        }
+                        inputArea.setText(messageHistory.get(historyIndex));
+                    }
+                } else if (e.getKeyCode() == KeyEvent.VK_DOWN) {
+                    if (inputArea.getCaretPosition() == inputArea.getText().length() && historyIndex != -1) {
+                        if (historyIndex < messageHistory.size() - 1) {
+                            historyIndex++;
+                            inputArea.setText(messageHistory.get(historyIndex));
+                        } else {
+                            historyIndex = -1;
+                            inputArea.setText(currentDraft);
+                        }
+                    }
+                }
+            }
+
+            @Override
+            public void keyReleased(KeyEvent e) {
+                if (inputArea.getText().startsWith("/")) {
+                    showAutocomplete();
+                } else {
+                    autocompletePopup.setVisible(false);
+                }
+            }
+        });
+
+        commandList.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (e.getClickCount() == 2) {
+                    selectCommand();
+                }
+            }
+        });
+
+        commandList.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+                    selectCommand();
+                }
+            }
+        });
     }
 
     @Override
@@ -717,10 +512,9 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
                 newSessionBtn.setEnabled(true); // Always allow new chat
                 renameSessionBtn.setEnabled(hasSessions);
 
-                // Prefill model combo with preference value if available
-                prefillModelFromPreferences();
-
-                if (hasSessions) {
+                if (modelCombo.getItemCount() > 0 && modelCombo.getSelectedIndex() < 0) {
+                    modelCombo.setSelectedIndex(0);
+                } if (hasSessions) {
                     if (selectIdx != -1) {
                         sessionDropdown.setSelectedIndex(selectIdx);
                     } else {
@@ -752,7 +546,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
             chatPanel.clearMessages();
             if (sessionId == null) {
                 statusLabel.setText("Creating new session...");
-                updateTabName(null);
+                updateTabName((String) null);
             } else {
                 statusLabel.setText("Loading chat...");
             }
@@ -886,6 +680,13 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
         return context;
     }
 
+    public void setInputText(String text) {
+        SwingUtilities.invokeLater(() -> {
+            inputArea.setText(text);
+            inputArea.requestFocusInWindow();
+        });
+    }
+
     private void stopMessage() {
         String currentSessionId = SessionManager.getInstance().getCurrentSessionId();
         if (currentSessionId == null) {
@@ -932,6 +733,26 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
     private String selectedIdToTitle(Session session) {
         String title = StringUtils.defaultIfBlank(session.title(), "Chat " + StringUtils.left(session.id(), 8));
         return github.anandb.netbeans.manager.SessionTitleManager.getTitle(session.id(), title);
+    }
+
+    private void exportConversation() {
+        String markdown = chatPanel.getConversationAsMarkdown();
+        if (markdown == null || markdown.trim().isEmpty()) {
+            return;
+        }
+
+        javax.swing.JFileChooser chooser = new javax.swing.JFileChooser();
+        chooser.setDialogTitle("Export Conversation");
+        chooser.setSelectedFile(new java.io.File("conversation.md"));
+        if (chooser.showSaveDialog(this) == javax.swing.JFileChooser.APPROVE_OPTION) {
+            java.io.File file = chooser.getSelectedFile();
+            try (java.io.FileWriter writer = new java.io.FileWriter(file)) {
+                writer.write(markdown);
+                LOG.log(Level.INFO, "Conversation exported to {0}", file.getAbsolutePath());
+            } catch (java.io.IOException ex) {
+                LOG.log(Level.SEVERE, "Failed to export conversation", ex);
+            }
+        }
     }
 
     private void updateButtonState(boolean isProcessing) {
@@ -1000,7 +821,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
         }
 
         // Filter based on prefix
-        String prefix = inputArea.getText().substring(1); // after '/'
+        String prefix = inputArea.getText().substring(1);
         List<SessionUpdate.AvailableCommand> filtered = allCommands.stream()
                 .filter(c -> c.name().toLowerCase().startsWith(prefix.toLowerCase()))
                 .toList();
@@ -1066,13 +887,45 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
 
             if (item != null && SessionManager.getInstance().getCurrentSessionId() != null && !item.isInternalUpdate) {
                 String currentId = SessionManager.getInstance().getCurrentSessionId();
-                LOG.log(Level.INFO, "Config changed: {0}={1} for session {2}", new Object[]{configId, item.value, currentId});
-                ACPManager.getInstance().setSessionConfigOption(currentId, configId, item.value);
+
                 if (combo == modelCombo) {
+                    lastSelectedModelId = item.value;
+                    // Update thinkingCombo based on variants
+                    updateThinkingComboForModel(item.value);
+
+                    LOG.log(Level.INFO, "Model changed: {0} for session {1}", new Object[]{item.value, currentId});
                     updateTabName(item.name);
                 }
+                ACPManager.getInstance().setSessionConfigOption(currentId, configId, item.value);
             }
         });
+    }
+
+    private void updateThinkingComboForModel(String baseId) {
+        isUpdatingConfigControls = true;
+        try {
+            thinkingCombo.removeAllItems();
+            List<ConfigItem> variants = modelVariants.get(baseId);
+            if (variants != null && !variants.isEmpty()) {
+                ConfigItem selectedVariant = null;
+                for (ConfigItem v : variants) {
+                    thinkingCombo.addItem(v);
+                    if (v.value.equalsIgnoreCase(currentConfigModelId)) {
+                        selectedVariant = v;
+                    }
+                }
+                if (selectedVariant != null) {
+                    thinkingCombo.setSelectedItem(selectedVariant);
+                } else {
+                    thinkingCombo.setSelectedIndex(0);
+                }
+                thinkingCombo.setEnabled(true);
+            } else {
+                thinkingCombo.setEnabled(false);
+            }
+        } finally {
+            isUpdatingConfigControls = false;
+        }
     }
 
     private void updateTabName(String modelName) {
@@ -1115,24 +968,43 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
         }
     }
 
-    private void prefillModelFromPreferences() {
-        String defaultModel = NbPreferences.forModule(ACPOptionsPanel.class).get("defaultModel", "");
-        if (!defaultModel.isEmpty() && modelCombo.getItemCount() > 0) {
-            // Try to find matching model in the combo
-            for (int i = 0; i < modelCombo.getItemCount(); i++) {
-                ConfigItem item = modelCombo.getItemAt(i);
-                if (item != null && defaultModel.equalsIgnoreCase(item.value)) {
-                    modelCombo.setSelectedItem(item);
-                    LOG.log(Level.INFO, "Prefilled model from preferences: {0}", defaultModel);
+    private void setupSearchableCombo(JComboBox<ConfigItem> combo, List<ConfigItem> allItems) {
+        combo.setEditable(true);
+        javax.swing.text.JTextComponent editor = (javax.swing.text.JTextComponent) combo.getEditor().getEditorComponent();
+        editor.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyReleased(KeyEvent e) {
+                if (e.getKeyCode() == KeyEvent.VK_ENTER || e.getKeyCode() == KeyEvent.VK_UP 
+                        || e.getKeyCode() == KeyEvent.VK_DOWN || e.getKeyCode() == KeyEvent.VK_ESCAPE) {
                     return;
                 }
+                String text = editor.getText();
+                if (text == null) text = "";
+                
+                final String filterText = text.toLowerCase();
+                final String finalOriginalText = text;
+                List<ConfigItem> filtered = allItems.stream()
+                        .filter(item -> item.name.toLowerCase().contains(filterText) 
+                                || item.value.toLowerCase().contains(filterText))
+                        .collect(java.util.stream.Collectors.toList());
+                
+                SwingUtilities.invokeLater(() -> {
+                    isUpdatingConfigControls = true;
+                    try {
+                        combo.removeAllItems();
+                        for (ConfigItem item : filtered) {
+                            combo.addItem(item);
+                        }
+                        editor.setText(filterText.isEmpty() ? "" : finalOriginalText);
+                        if (!filtered.isEmpty() && combo.isShowing()) {
+                            combo.showPopup();
+                        }
+                    } finally {
+                        isUpdatingConfigControls = false;
+                    }
+                });
             }
-            // If not found, add it to the combo and select it
-            ConfigItem newItem = new ConfigItem(defaultModel, defaultModel);
-            modelCombo.addItem(newItem);
-            modelCombo.setSelectedItem(newItem);
-            LOG.log(Level.INFO, "Added and prefilled model from preferences: {0}", defaultModel);
-        }
+        });
     }
 
     private void updateConfigControls(List<SessionConfigOption> options, boolean forceStartupDefaults) {
@@ -1143,15 +1015,45 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
 
                 for (SessionConfigOption opt : options) {
                     JComboBox<ConfigItem> combo = null;
-                    boolean isThinking = false;
+                    boolean isThinkingCategory = false;
                     if ("mode".equals(opt.category())) {
                         combo = modeCombo;
                     } else if ("model".equals(opt.category())) {
                         combo = modelCombo;
+                        this.currentConfigModelId = opt.currentValue();
+
+                        // Parse variants from model list
+                        modelVariants.clear();
+                        for (SessionConfigSelectOption o : opt.options()) {
+                            String value = o.value();
+                            String name = o.name();
+
+                            String[] segments = value.split("/");
+                            String baseId;
+                            String variantName;
+
+                            if (segments.length >= 3) {
+                                // last part is variant
+                                baseId = String.join("/", Arrays.copyOfRange(segments, 0, segments.length - 1));
+                                variantName = segments[segments.length - 1];
+                            } else {
+                                // provider/model or other
+                                baseId = value;
+                                variantName = "default";
+                            }
+
+                            String displayName = name;
+                            if (displayName.contains("(") && displayName.endsWith(")")) {
+                                displayName = displayName.substring(0, displayName.lastIndexOf("(")).trim();
+                            }
+
+                            modelVariants.computeIfAbsent(baseId, k -> new ArrayList<>())
+                                        .add(new ConfigItem(variantName, value, displayName));
+                        }
                     } else if (opt.category() != null
                             && (opt.category().contains("thinking") || opt.category().contains("thought"))) {
                         combo = thinkingCombo;
-                        isThinking = true;
+                        isThinkingCategory = true;
                     }
 
                     if (combo != null) {
@@ -1167,7 +1069,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
                                 } else if (opt.options().stream().anyMatch(o -> "plan".equalsIgnoreCase(o.value()))) {
                                     forcedValue = "plan";
                                 }
-                            } else if (isThinking) {
+                            } else if (isThinkingCategory) {
                                 if (opt.options().stream().anyMatch(o -> "default".equalsIgnoreCase(o.value()))) {
                                     forcedValue = "default";
                                 }
@@ -1178,37 +1080,39 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
                                 LOG.log(Level.INFO, "Forcing default: {0}={1} (was {2})", new Object[]{opt.id(), forcedValue, opt.currentValue()});
                                 valueToSelect = forcedValue;
                                 ACPManager.getInstance().setSessionConfigOption(currentId, opt.id(), forcedValue);
+                            } else if ("model".equals(opt.category()) && lastSelectedModelId != null && !lastSelectedModelId.equalsIgnoreCase(opt.currentValue())) {
+                                String currentId = SessionManager.getInstance().getCurrentSessionId();
+                                valueToSelect = lastSelectedModelId;
+                                ACPManager.getInstance().setSessionConfigOption(currentId, opt.id(), lastSelectedModelId);
                             }
                         }
 
-                        for (SessionConfigSelectOption o : opt.options()) {
-                            String displayName = o.name();
-                            // If model is free, show it
-                            if ("model".equals(opt.category())) {
-                                String lowerName = (o.name() != null) ? o.name().toLowerCase() : "";
-                                String lowerValue = (o.value() != null) ? o.value().toLowerCase() : "";
-                                String lowerDesc = o.description() != null ? o.description().toLowerCase() : "";
-                                if (lowerName.contains("free") || lowerValue.contains("free")
-                                        || lowerDesc.contains("free")) {
-                                    if (!displayName.toLowerCase().contains("(free)")) {
-                                        displayName += " (Free)";
+                        if ("model".equals(opt.category())) {
+                            allModels.clear();
+                            for (Map.Entry<String, List<ConfigItem>> entry : modelVariants.entrySet()) {
+                                List<ConfigItem> variants = entry.getValue();
+                                ConfigItem baseItem = variants.get(0);
+                                ConfigItem item = new ConfigItem(baseItem.baseName, entry.getKey());
+                                combo.addItem(item);
+                                allModels.add(item);
+
+                                // Check if current model ID belongs to this base
+                                for (ConfigItem v : variants) {
+                                    if (v.value.equalsIgnoreCase(valueToSelect)) {
+                                        selected = item;
+                                        break;
                                     }
                                 }
                             }
-                            ConfigItem item = new ConfigItem(displayName, o.value());
-                            combo.addItem(item);
-                            if (o.value() != null && valueToSelect != null && o.value().equalsIgnoreCase(valueToSelect)) {
-                                selected = item;
+                            setupSearchableCombo(combo, allModels);
+                        } else {
+                            for (SessionConfigSelectOption o : opt.options()) {
+                                ConfigItem item = new ConfigItem(o.name(), o.value());
+                                combo.addItem(item);
+                                if (o.value() != null && valueToSelect != null && o.value().equalsIgnoreCase(valueToSelect)) {
+                                    selected = item;
+                                }
                             }
-                        }
-
-                        // Cache model list for preferences dropdown
-                        if ("model".equals(opt.category())) {
-                            List<String> modelValues = opt.options().stream()
-                                    .map(SessionConfigSelectOption::value)
-                                    .filter(v -> v != null && !v.isEmpty())
-                                    .toList();
-                            github.anandb.netbeans.manager.ModelCache.updateModels(modelValues);
                         }
 
                         // Initialize the listener if not already done
@@ -1228,15 +1132,11 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
                         if ("model".equals(opt.category())) {
                             combo.setEditable(true);
                             updateTabName(selected != null ? selected.name : null);
-                        }
-                        if (opt.category() != null
-                                && (opt.category().contains("thinking") || opt.category().contains("thought"))) {
-                            combo.setEditable(true);
+                            updateThinkingComboForModel(((ConfigItem)combo.getSelectedItem()).value);
                         }
                     }
                 }
-                // Always enable thinkingCombo even if empty, so users can configure it without a session
-                thinkingCombo.setEnabled(true);
+                thinkingCombo.setEnabled(thinkingCombo.getItemCount() > 0);
             } finally {
                 isUpdatingConfigControls = false;
             }
@@ -1246,16 +1146,22 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
     private static class ConfigItem {
         final String name;
         final String value;
+        final String baseName;
         boolean isInternalUpdate = false;
 
         ConfigItem(String name, String value) {
+            this(name, value, name);
+        }
+
+        ConfigItem(String name, String value, String baseName) {
             this.name = name;
             this.value = value;
+            this.baseName = baseName;
         }
 
         @Override
         public String toString() {
-            return value;
+            return name;
         }
     }
 
@@ -1295,6 +1201,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
 
     @Override
     public void componentOpened() {
+        SessionManager.getInstance().addSessionListener(this);
         try {
             ACPManager.getInstance().ensureStarted();
         } catch (Exception ex) {
@@ -1311,7 +1218,6 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
             SessionManager.getInstance().refreshSessions();
         });
     }
-
 
     @Override
     public void componentActivated() {
@@ -1333,6 +1239,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
         if (chatPanel != null) {
             chatPanel.clearMessages();
         }
+        SessionManager.getInstance().removeSessionListener(this);
     }
 
     void writeProperties(java.util.Properties p) {
@@ -1366,16 +1273,21 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
         header.setBackground(theme.getBackground());
 
         cwdLabel.setForeground(theme.getForeground());
-        cwdLabel.setBackground(theme.getBase2());
+        cwdLabel.setOpaque(true);
+        cwdLabel.setBackground(theme.getSunkenBackground());
         cwdLabel.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(theme.getBubbleBorder(), 1),
                 new EmptyBorder(4, 8, 4, 8)));
+
+        versionLabel.setForeground(theme.getBase1());
 
         sessionDropdown.setBackground(theme.getBackground());
         sessionDropdown.setForeground(theme.getForeground());
 
         // Update all buttons in header
-        updateButtonsRecursive(header, theme);
+        updateButtonsRecursive(this, theme);
+        themeBtn.setIcon(ThemeManager.getIcon(theme.isDark() ? "sun.svg" : "moon.svg", 24));
+        themeBtn.setToolTipText(theme.isDark() ? "Switch to Light Mode" : "Switch to Dark Mode");
 
         inputArea.setBackground(theme.getBackground());
         inputArea.setForeground(theme.getForeground());
@@ -1403,7 +1315,6 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
             }
         }
     }
-
 
     @Override
     public void handlePermissionRequest(String sessionId, JsonNode params, java.util.concurrent.CompletableFuture<String> response) {
@@ -1455,165 +1366,44 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
         return "";
     }
 
+
+
     private static class SessionItem {
         private final Session session;
-        private final String customTitle;
+        private final String title;
 
-        public SessionItem(Session session, String customTitle) {
+        public SessionItem(Session session, String title) {
             this.session = session;
-            this.customTitle = customTitle;
+            this.title = title;
         }
 
         public Session getSession() {
             return session;
         }
 
-        public String getDirectory() {
-            return session.effectiveDirectory();
-        }
-
         @Override
         public String toString() {
-            if (customTitle != null && !customTitle.trim().isEmpty()) {
-                return customTitle;
+            String projectName = session.projectName();
+            if (projectName != null && !projectName.isEmpty()) {
+                return "[" + projectName + "] " + title;
             }
-            String title = session.title();
-            if (title != null && !title.trim().isEmpty()) {
-                return title;
-            }
-            return session.id();
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) {
-                return true;
-            }
-            if (o == null || getClass() != o.getClass()) {
-                return false;
-            }
-            SessionItem that = (SessionItem) o;
-            return session.id().equals(that.session.id());
-        }
-
-        @Override
-        public int hashCode() {
-            return session.id().hashCode();
+            return title;
         }
     }
 
-    public void setInputText(String text) {
-        String cleaned = stripUserMessageMetadata(text);
-        SwingUtilities.invokeLater(() -> {
-            inputArea.setText(cleaned);
-            inputArea.requestFocusInWindow();
-        });
-    }
-
-    private String stripUserMessageMetadata(String text) {
-        if (text == null) {
-            return null;
-        }
-        return text
-            .replaceAll("<!--\\s*\\{.*?\\}\\s*-->", "")
-            .replaceAll("<!--\\s*\\[.*?\\]\\s*-->", "")
-            .replaceAll("<path>.*?</path>", "")
-            .replaceAll("</content>", "");
-    }
-
-    private void navigateHistory(int delta) {
-        if (messageHistory.isEmpty()) {
-            return;
-        }
-
-        if (historyIndex == -1) {
-            currentDraft = inputArea.getText();
-            historyIndex = messageHistory.size();
-        }
-
-        int newIndex = historyIndex + delta;
-        if (newIndex >= 0 && newIndex <= messageHistory.size()) {
-            historyIndex = newIndex;
-            if (historyIndex == messageHistory.size()) {
-                inputArea.setText(currentDraft);
-            } else {
-                inputArea.setText(messageHistory.get(historyIndex));
-            }
-            // Move caret to end
-            inputArea.setCaretPosition(inputArea.getText().length());
-        }
-    }
-
-    private void exportConversation() {
-        String markdown = chatPanel.getConversationAsMarkdown();
-        if (markdown == null || markdown.trim().isEmpty()) {
-            return;
-        }
-
-        SwingUtilities.invokeLater(() -> {
-            JFileChooser fileChooser = new JFileChooser();
-            fileChooser.setDialogTitle("Export Conversation as Markdown");
-            fileChooser.setFileFilter(new FileNameExtensionFilter("Markdown File (*.md)", "md"));
-
-            // Suggest a filename
-            String baseName = "conversation";
-            String currentId = SessionManager.getInstance().getCurrentSessionId();
-            if (currentId != null) {
-                baseName = "chat-" + org.apache.commons.lang3.StringUtils.left(currentId, 8);
-            }
-            fileChooser.setSelectedFile(new File(baseName + ".md"));
-
-            int userSelection = fileChooser.showSaveDialog(this);
-            if (userSelection == JFileChooser.APPROVE_OPTION) {
-                File fileToSave = fileChooser.getSelectedFile();
-                if (!fileToSave.getName().toLowerCase().endsWith(".md")) {
-                    fileToSave = new File(fileToSave.getAbsolutePath() + ".md");
-                }
-
-                try (FileWriter writer = new FileWriter(fileToSave)) {
-                    writer.write(markdown);
-                    statusLabel.setText("Exported to " + fileToSave.getName());
-                    LOG.log(Level.INFO, "Conversation exported to: {0}", fileToSave.getAbsolutePath());
-                    // Reset status after a few seconds
-                    Timer timer = new Timer(3000, e -> resetStatus());
-                    timer.setRepeats(false);
-                    timer.start();
-                } catch (IOException ex) {
-                    LOG.log(Level.SEVERE, "Failed to export conversation", ex);
-                    javax.swing.JOptionPane.showMessageDialog(this,
-                            "Error saving file: " + ex.getMessage(),
-                            "Export Error",
-                            javax.swing.JOptionPane.ERROR_MESSAGE);
-                }
-            }
-        });
-    }
-
-    private long parseTimestamp(String ts) {
-        if (ts == null || ts.isEmpty()) {
-            return 0;
-        }
+    private String getVersion() {
         try {
-            if (ts.contains("T")) {
-                java.time.Instant instant = java.time.Instant.parse(ts);
-                return instant.toEpochMilli();
-            }
-            return Long.parseLong(ts);
-        } catch (Exception e) {
-            return 0;
-        }
-    }
-
-    private String getPluginVersion() {
-        try {
-            ModuleInfo mi = Modules.getDefault().ownerOf(getClass());
-            if (mi != null) {
-                return mi.getSpecificationVersion().toString();
+            org.openide.modules.ModuleInfo m = org.openide.modules.Modules.getDefault()
+                    .findCodeNameBase("github.anandb.acp.netbeans.plugin");
+            if (m != null && m.getSpecificationVersion() != null) {
+                return m.getSpecificationVersion().toString();
             }
         } catch (Exception e) {
-            LOG.log(Level.WARNING, "Could not determine plugin version", e);
+            LOG.log(Level.FINE, "Failed to get module version", e);
         }
-        return "unknown";
+        return "1.2.x";
     }
 
+    private void initComponents() {
+    }
 }

@@ -7,11 +7,8 @@ import javax.swing.JFileChooser;
 import org.openide.util.NbBundle;
 import org.openide.util.NbPreferences;
 
-import github.anandb.netbeans.manager.ModelCache;
-
 @NbBundle.Messages({
     "LBL_ExecutablePath=Executable Path:",
-    "LBL_DefaultModel=Default Model (for new chats):",
     "LBL_ProcessArguments=Process Arguments:",
     "BTN_Browse=Browse...",
     "TITLE_SelectExecutable=Select Assistant Executable",
@@ -27,9 +24,7 @@ public class ACPOptionsPanel extends javax.swing.JPanel {
     private javax.swing.JTextArea preambleArea;
     private javax.swing.JScrollPane preambleScroll;
     private javax.swing.JButton browseButton;
-    private javax.swing.JLabel modelLabel;
     private javax.swing.JCheckBox echoCheckbox;
-    private javax.swing.JTextField modelField;
     private javax.swing.JLabel argsLabel;
     private javax.swing.JTextField argsField;
 
@@ -45,27 +40,17 @@ public class ACPOptionsPanel extends javax.swing.JPanel {
         preambleArea = new javax.swing.JTextArea(5, 40);
         preambleScroll = new javax.swing.JScrollPane(preambleArea);
         browseButton = new javax.swing.JButton();
-        modelLabel = new javax.swing.JLabel();
-        modelField = new javax.swing.JTextField();
         argsLabel = new javax.swing.JLabel();
         argsField = new javax.swing.JTextField();
         echoCheckbox = new javax.swing.JCheckBox();
 
         jLabel1.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_ExecutablePath"));
-        modelLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_DefaultModel"));
         argsLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_ProcessArguments"));
         browseButton.setText(NbBundle.getMessage(ACPOptionsPanel.class, "BTN_Browse"));
         browseButton.addActionListener(evt -> browseButtonActionPerformed());
         
         echoCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_EchoUserInput"));
         echoCheckbox.addActionListener(evt -> controller.changed());
-        
-        modelField.addKeyListener(new java.awt.event.KeyAdapter() {
-            @Override
-            public void keyReleased(java.awt.event.KeyEvent evt) {
-                controller.changed();
-            }
-        });
         
         argsField.addKeyListener(new java.awt.event.KeyAdapter() {
             @Override
@@ -104,10 +89,6 @@ public class ACPOptionsPanel extends javax.swing.JPanel {
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(browseButton))
                     .addGroup(layout.createSequentialGroup()
-                        .addComponent(modelLabel)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(modelField, javax.swing.GroupLayout.DEFAULT_SIZE, 400, Short.MAX_VALUE))
-                    .addGroup(layout.createSequentialGroup()
                         .addComponent(argsLabel)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(argsField, javax.swing.GroupLayout.DEFAULT_SIZE, 400, Short.MAX_VALUE))
@@ -124,10 +105,6 @@ public class ACPOptionsPanel extends javax.swing.JPanel {
                     .addComponent(jLabel1)
                     .addComponent(pathField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(browseButton))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(modelLabel)
-                    .addComponent(modelField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(argsLabel)
@@ -161,8 +138,6 @@ public class ACPOptionsPanel extends javax.swing.JPanel {
     void load() {
         String defaultPath = System.getProperty("user.home") + "/.opencode/bin/opencode";
         pathField.setText(NbPreferences.forModule(ACPOptionsPanel.class).get("acpExecutablePath", defaultPath));
-
-        modelField.setText(NbPreferences.forModule(ACPOptionsPanel.class).get("defaultModel", ""));
         argsField.setText(NbPreferences.forModule(ACPOptionsPanel.class).get("processArguments", "acp"));
 
         preambleArea.setText(github.anandb.netbeans.manager.ACPSettings.getPreamble());
@@ -171,12 +146,7 @@ public class ACPOptionsPanel extends javax.swing.JPanel {
 
     void store() {
         NbPreferences.forModule(ACPOptionsPanel.class).put("acpExecutablePath", pathField.getText());
-        String modelValue = modelField.getText();
-        NbPreferences.forModule(ACPOptionsPanel.class).put("defaultModel", modelValue);
         NbPreferences.forModule(ACPOptionsPanel.class).put("processArguments", argsField.getText());
-        if (modelValue != null && !modelValue.isEmpty()) {
-            ModelCache.addModel(modelValue);
-        }
         github.anandb.netbeans.manager.ACPSettings.setPreamble(preambleArea.getText());
         NbPreferences.forModule(ACPOptionsPanel.class).putBoolean("echoUserInput", echoCheckbox.isSelected());
     }

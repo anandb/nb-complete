@@ -14,6 +14,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -120,6 +121,7 @@ public class ACPManager {
             // Listen for session updates
             rpcClient.onNotification("session/update", params -> {
                 try {
+                    LOG.info("Received session/update notification: " + params.toString());
                     SessionUpdate.Params sessionParams = objectMapper.treeToValue(params, SessionUpdate.Params.class);
                     SessionUpdate update = new SessionUpdate("2.0", "session/update", sessionParams);
 
@@ -431,46 +433,70 @@ public class ACPManager {
         }
 
         List<Map<String, Object>> promptBlocks = new ArrayList<>();
-        String displayText = text;
+
+        // 1. User Message Block
+        Map<String, Object> userTextPart = new HashMap<>();
+        userTextPart.put("type", "text");
+        userTextPart.put("text", text);
+        promptBlocks.add(userTextPart);
 
         if (context != null) {
             String filePath = (String) context.get("filePath");
-            String selectionContent = (String) context.get("selectionContent");
             if (filePath != null) {
                 File file = new File(filePath);
                 String lang = getLanguageFromPath(filePath);
-
                 String fileName = file.getName();
+
+                // 2. Resource Link Block (Visual Breadcrumb)
+                Map<String, Object> resourceLinkPart = new HashMap<>();
+                resourceLinkPart.put("type", "resource_link");
+                resourceLinkPart.put("uri", "file://" + filePath);
+                resourceLinkPart.put("name", fileName);
+                promptBlocks.add(resourceLinkPart);
+
+                // 3. Metadata Comment Block (For the AI)
                 Object cursorObj = context.get("cursor");
-                String cursorPos = cursorObj != null ? objectMapper.valueToTree(cursorObj).toString() : null;
                 Object selObj = context.get("selection");
-                String selection = selObj != null ? objectMapper.valueToTree(selObj).toString() : null;
 
-                StringBuilder metadata = new StringBuilder();
-                metadata.append("<!-- ");
-                metadata.append("{");
-                metadata.append("\"file\":\"").append(fileName.replace("\"", "\\\"")).append("\",");
-                metadata.append("\"path\":\"").append(filePath.replace("\"", "\\\"")).append("\",");
-                metadata.append("\"language\":\"").append(lang).append("\"");
-                if (cursorPos != null && !cursorPos.isEmpty()) {
-                    metadata.append(",\"cursor\":\"").append(cursorPos.replace("\"", "\\\"")).append("\"");
+                // Construct the JSON metadata object
+                Map<String, Object> metadataMap = new HashMap<>();
+                metadataMap.put("language", lang);
+                metadataMap.put("filePath", filePath);
+                if (cursorObj != null) {
+                    metadataMap.put("cursor", cursorObj);
                 }
-                if (selection != null && !selection.isEmpty()) {
-                    metadata.append(",\"selection\":\"").append(selection.replace("\"", "\\\"").replace("\n", "\\n")).append("\"");
+                if (selObj != null) {
+                    metadataMap.put("selection", selObj);
                 }
-                metadata.append("} -->");
 
+                try {
+                    String json = objectMapper.writeValueAsString(metadataMap);
+                    Map<String, Object> metadataPart = new HashMap<>();
+                    metadataPart.put("type", "text");
+                    metadataPart.put("text", "<!-- " + json + " -->");
+
+                    // Add annotations for assistant audience (OpenCode internal)
+                    Map<String, Object> annotations = new HashMap<>();
+                    annotations.put("audience", List.of("assistant"));
+                    metadataPart.put("annotations", annotations);
+
+                    promptBlocks.add(metadataPart);
+                } catch (Exception e) {
+                    LOG.log(Level.WARNING, "Failed to serialize metadata", e);
+                }
+
+                // 4. Selection Content Block (if any)
+                String selectionContent = (String) context.get("selectionContent");
                 if (selectionContent != null && !selectionContent.isEmpty()) {
-                    displayText = metadata.toString() + "\n\nSelection from `" + fileName + "`:\n```" + lang + "\n" + selectionContent + "\n```\n" + text;
-                } else {
-                    displayText = metadata.toString() + "\n" + text;
+                    Map<String, Object> selectionPart = new HashMap<>();
+                    selectionPart.put("type", "text");
+                    selectionPart.put("text", "\nSelection from `" + fileName + "`:\n```" + lang + "\n" + selectionContent + "\n```");
+                    promptBlocks.add(selectionPart);
                 }
             }
         }
 
-        promptBlocks.add(Map.of("type", "text", "text", displayText));
-
-        Map<String, Object> params = new java.util.HashMap<>();
+        Map<String, Object> params = new HashMap<>();
         params.put("sessionId", sessionId);
         params.put("prompt", promptBlocks);
         params.put("mcpServers", List.of());

@@ -92,7 +92,7 @@ public class ChatThreadPanel extends JPanel {
         streamFlushTimer = new javax.swing.Timer(100, e -> {
             if (activeStreamBubble != null && activeStreamBubble.flushUpdate()) {
                 messagesContainer.revalidate();
-                messagesContainer.repaint();
+                // removed messagesContainer.repaint() as revalidate schedules painting
                 scrollToBottom();
             }
         });
@@ -129,39 +129,46 @@ public class ChatThreadPanel extends JPanel {
     public void addMessage(Message message) {
         String type = message.type();
         StringBuilder sb = new StringBuilder();
+        LOG.info("addMessage(Message) called. type=" + type);
 
         if ("user".equals(type)) {
-            if (message.prompt().text() != null) {
-                sb.append(message.prompt().text());
-            }
-            if (message.prompt().parts() != null) {
-                for (Message.ContentPart part : message.prompt().parts()) {
-                    String pt = part.getDisplayText();
-                    if (pt != null && !pt.isEmpty()) {
-                        if (sb.length() > 0) {
-                            sb.append("\n");
+            if (message.prompt() != null) {
+                if (message.prompt().text() != null) {
+                    sb.append(message.prompt().text());
+                }
+                if (message.prompt().parts() != null) {
+                    for (Message.ContentPart part : message.prompt().parts()) {
+                        String pt = part.getDisplayText();
+                        if (pt != null && !pt.isEmpty()) {
+                            if (sb.length() > 0) {
+                                sb.append("\n");
+                            }
+                            sb.append(pt);
                         }
-                        sb.append(pt);
                     }
                 }
             }
         } else {
-            if (message.completion().text() != null) {
-                sb.append(message.completion().text());
-            }
-            if (message.completion().parts() != null) {
-                for (Message.ContentPart part : message.completion().parts()) {
-                    String pt = part.getDisplayText();
-                    if (pt != null && !pt.isEmpty()) {
-                        if (sb.length() > 0) {
-                    sb.append("\n\n");
+            if (message.completion() != null) {
+                if (message.completion().text() != null) {
+                    sb.append(message.completion().text());
                 }
-                        sb.append(pt);
+                if (message.completion().parts() != null) {
+                    for (Message.ContentPart part : message.completion().parts()) {
+                        String pt = part.getDisplayText();
+                        if (pt != null && !pt.isEmpty()) {
+                            if (sb.length() > 0) {
+                                sb.append("\n\n");
+                            }
+                            sb.append(pt);
+                        }
                     }
                 }
             }
         }
-        addMessage(type, sb.toString());
+        String text = sb.toString();
+        LOG.info("addMessage(Message) final text length: " + text.length());
+        addMessage(type, text);
     }
 
     public void addMessage(String role, String text) {
@@ -180,7 +187,7 @@ public class ChatThreadPanel extends JPanel {
             messagesContainer.add(bubble);
             messagesContainer.add(Box.createVerticalStrut(4));
             messagesContainer.revalidate();
-            messagesContainer.repaint();
+            // removed repaint() as revalidate() triggers layout and repaint automatically
             scrollToBottom();
         });
     }
@@ -211,22 +218,21 @@ public class ChatThreadPanel extends JPanel {
         SwingUtilities.invokeLater(() -> {
             int count = messagesContainer.getComponentCount();
             MessageBubble lastBubble = null;
-            for (int i = count - 1; i >= 0; i--) {
-                Component c = messagesContainer.getComponent(i);
-                if (c instanceof MessageBubble messageBubble) {
-                    lastBubble = messageBubble;
-                    break;
+            if (count > 0) {
+                for (int i = count - 1; i >= 0; i--) {
+                    Component c = messagesContainer.getComponent(i);
+                    if (c instanceof MessageBubble mb) {
+                        lastBubble = mb;
+                        break;
+                    }
                 }
             }
 
             boolean canAppend = lastBubble != null && lastBubble.getType().equals(role);
-
-            // If we are currently streaming into a bubble, and types match, we MUST append to it
-            // This prevents overlapping bubbles if messageId is intermittently missing or takes time to appear
-            if (activeStreamBubble != null && activeStreamBubble == lastBubble && lastBubble.getType().equals(role)) {
-                canAppend = true;
-            } else if (canAppend && messageId != null && lastBubble.getMessageId() != null) {
-                if (!messageId.equals(lastBubble.getMessageId())) {
+            if (canAppend && messageId != null && lastBubble.getMessageId() != null) {
+                // For "thought" segments, we want to group them together even if they have different IDs 
+                // if they are consecutive. For other types, we still require matching IDs.
+                if (!role.equals("thought") && !messageId.equals(lastBubble.getMessageId())) {
                     canAppend = false;
                 }
             }
@@ -246,6 +252,33 @@ public class ChatThreadPanel extends JPanel {
                 if (streamFlushTimer.isRunning()) {
                     streamFlushTimer.stop();
                 }
+                addMessage(role, text, messageId);
+            }
+        });
+    }
+
+    public void updateToolCall(github.anandb.netbeans.model.SessionUpdate.UpdateData update) {
+        SwingUtilities.invokeLater(() -> {
+            String role = "tool";
+            String text = update.status();
+            String messageId = update.messageId();
+
+            int count = messagesContainer.getComponentCount();
+            MessageBubble lastBubble = null;
+            if (count > 0) {
+                Component c = messagesContainer.getComponent(count - 1);
+                if (c instanceof MessageBubble mb) {
+                    lastBubble = mb;
+                }
+            }
+
+            if (lastBubble != null && "tool".equals(lastBubble.getType()) && messageId != null && messageId.equals(lastBubble.getMessageId())) {
+                lastBubble.appendText(text);
+                activeStreamBubble = lastBubble;
+                if (!streamFlushTimer.isRunning()) {
+                    streamFlushTimer.start();
+                }
+            } else {
                 addMessage(role, text, messageId);
             }
         });
@@ -397,17 +430,23 @@ public class ChatThreadPanel extends JPanel {
         }
     }
 
+    private javax.swing.Timer scrollTimer;
+
     public void scrollToBottom() {
         SwingUtilities.invokeLater(() -> {
             JScrollBar vertical = scrollPane.getVerticalScrollBar();
             vertical.setValue(vertical.getMaximum());
 
             // Re-apply after a short delay to account for dynamic component resizing
-            javax.swing.Timer timer = new javax.swing.Timer(50, e -> {
-                vertical.setValue(vertical.getMaximum());
-            });
-            timer.setRepeats(false);
-            timer.start();
+            if (scrollTimer != null && scrollTimer.isRunning()) {
+                scrollTimer.restart();
+            } else {
+                scrollTimer = new javax.swing.Timer(50, e -> {
+                    vertical.setValue(vertical.getMaximum());
+                });
+                scrollTimer.setRepeats(false);
+                scrollTimer.start();
+            }
         });
     }
 
@@ -419,7 +458,7 @@ public class ChatThreadPanel extends JPanel {
                 }
             }
             messagesContainer.revalidate();
-            messagesContainer.repaint();
+            // revalidate automatically schedules repaint, removed redundant repaint() call
         });
     }
 
@@ -463,12 +502,10 @@ public class ChatThreadPanel extends JPanel {
             for (Component c : messagesContainer.getComponents()) {
                 if (c instanceof MessageBubble bubble) {
                     bubble.refreshTheme();
-                } else if (c instanceof JSeparator sep) {
-                    // Update separator colors
                 }
             }
-            revalidate();
-            repaint();
+            messagesContainer.revalidate();
+            messagesContainer.repaint();
         });
     }
 
@@ -574,7 +611,7 @@ public class ChatThreadPanel extends JPanel {
         btn.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseEntered(java.awt.event.MouseEvent e) {
-                btn.setOpaque(true);
+                btn.setOpaque(false);
                 btn.setBackground(new Color(0, 0, 0, 10));
                 btn.repaint();
             }
@@ -627,7 +664,7 @@ public class ChatThreadPanel extends JPanel {
         btn.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseEntered(java.awt.event.MouseEvent e) {
-                btn.setOpaque(true);
+                btn.setOpaque(false);
                 btn.setBackground(new Color(0, 0, 0, 10));
                 btn.repaint();
             }

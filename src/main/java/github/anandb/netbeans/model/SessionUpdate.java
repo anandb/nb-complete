@@ -32,7 +32,15 @@ public record SessionUpdate(
         String toolCallId,
         JsonNode rawOutput,
         List<AvailableCommand> availableCommands,
-        List<SessionConfigOption> configOptions
+        List<SessionConfigOption> configOptions,
+        Long used,
+        Long size
+    ) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record Content(
+        String type,
+        String text
     ) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -40,7 +48,12 @@ public record SessionUpdate(
         String name,
         String description,
         AvailableCommandInput input
-    ) {}
+    ) {
+        @Override
+        public String toString() {
+            return "/" + name;
+        }
+    }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record AvailableCommandInput(
@@ -91,6 +104,16 @@ public record SessionUpdate(
     public JsonNode rawOutput() {
         UpdateData ud = update();
         return ud != null ? ud.rawOutput() : null;
+    }
+
+    public Long used() {
+        UpdateData ud = update();
+        return ud != null ? ud.used() : null;
+    }
+
+    public Long size() {
+        UpdateData ud = update();
+        return ud != null ? ud.size() : null;
     }
 
     public UpdateData update() {

@@ -4,12 +4,9 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
-import java.awt.RenderingHints;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -56,9 +53,15 @@ public class MessageBubble extends JPanel {
         } else {
             bgColor = new Color(0, 0, 0, 0);
         }
+        
         bubble.setBackground(bgColor);
+        bubble.setOpaque(true);
+        segmentsContainer.setBackground(bgColor);
+        segmentsContainer.setOpaque(true);
+        
         if (bubble instanceof RoundedPanel rp) {
             rp.setBaseColor(bgColor);
+            rp.setOpaque(false); // Rounded panels must be non-opaque to show corners
         }
     }
 
@@ -99,6 +102,7 @@ public class MessageBubble extends JPanel {
             try {
                 View root = getUI().getRootView(this);
                 if (root != null) {
+                    // Only re-layout if width or text actually changed
                     root.setSize(w, Short.MAX_VALUE);
                     float h = root.getPreferredSpan(View.Y_AXIS);
                     if (h > 0) {
@@ -140,11 +144,10 @@ public class MessageBubble extends JPanel {
 
         segmentsContainer = new JPanel();
         segmentsContainer.setLayout(new BoxLayout(segmentsContainer, BoxLayout.Y_AXIS));
-        segmentsContainer.setOpaque(false);
         segmentsContainer.setDoubleBuffered(true);
 
         this.bubble = new JPanel(new BorderLayout());
-        bubble.setOpaque(false);
+        this.bubble.setDoubleBuffered(true);
         // Only User messages get the prominent global bubble wrapper
         if ("user".equals(type)) {
             RoundedPanel p = new RoundedPanel(16);
