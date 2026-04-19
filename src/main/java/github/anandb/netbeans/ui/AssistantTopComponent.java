@@ -100,7 +100,6 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
     private final JButton exportBtn;
     private final JButton toggleBlocksBtn;
     private final JButton toggleOptionsBtn;
-    private final JButton themeBtn;
     private final JPanel configPanel;
     private final JComboBox<ConfigItem> modeCombo;
     private final JComboBox<ConfigItem> modelCombo;
@@ -196,12 +195,6 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
         renameSessionBtn.setFocusPainted(false);
         renameSessionBtn.addActionListener(e -> renameCurrentSession());
 
-        themeBtn = new JButton();
-        themeBtn.setIcon(ThemeManager.getIcon("moon.svg", 24));
-        themeBtn.setToolTipText("Switch Theme");
-        themeBtn.setFocusPainted(false);
-        themeBtn.addActionListener(e -> toggleDarkMode());
-
         exportBtn = new JButton();
         exportBtn.setIcon(ThemeManager.getIcon("export.svg", 24));
         exportBtn.setToolTipText("Export Conversation");
@@ -227,7 +220,6 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
         sessionControls.add(renameSessionBtn);
         sessionControls.add(toggleBlocksBtn);
         sessionControls.add(exportBtn);
-        sessionControls.add(themeBtn);
 
         topBar.add(sessionDropdown, BorderLayout.CENTER);
         topBar.add(sessionControls, BorderLayout.EAST);
@@ -1264,12 +1256,6 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
         return instance;
     }
 
-    private void toggleDarkMode() {
-        ColorTheme current = ThemeManager.getCurrentTheme();
-        ThemeManager.setDarkMode(!current.isDark());
-        refreshTheme();
-    }
-
     private void refreshTheme() {
         ColorTheme theme = ThemeManager.getCurrentTheme();
 
@@ -1290,8 +1276,6 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
 
         // Update all buttons in header
         updateButtonsRecursive(this, theme);
-        themeBtn.setIcon(ThemeManager.getIcon(theme.isDark() ? "sun.svg" : "moon.svg", 24));
-        themeBtn.setToolTipText(theme.isDark() ? "Switch to Light Mode" : "Switch to Dark Mode");
 
         inputArea.setBackground(theme.getBackground());
         inputArea.setForeground(theme.getForeground());

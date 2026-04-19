@@ -99,7 +99,17 @@ public class ColorTheme {
     public Color getHeaderForeground() { return headerForeground; }
     public Color getErrorBackground() { return errorBackground; }
 
-    public static final ColorTheme NATIVE = new Builder(false)
+    public static ColorTheme getNativeTheme() {
+        boolean isDark = UIManager.getBoolean("nb.dark.theme");
+        if (!UIManager.getDefaults().containsKey("nb.dark.theme")) {
+            Color bg = UIManager.getColor("Panel.background");
+            if (bg != null) {
+                isDark = (bg.getRed() * 0.299 + bg.getGreen() * 0.587 + bg.getBlue() * 0.114) < 128;
+            }
+        }
+        
+        // Use UIManager properties to dynamically build the theme based on the current Look and Feel
+        return new Builder(isDark)
             .background(UIManager.getColor("Panel.background"))
             .foreground(UIManager.getColor("Panel.foreground"))
             .selection(UIManager.getColor("TextArea.selectionBackground"))
@@ -122,112 +132,9 @@ public class ColorTheme {
             .permissionBorder(UIManager.getColor("Button.focusColor"))
             .permissionTitle(UIManager.getColor("OptionPane.messageForeground"))
             .headerForeground(UIManager.getColor("Label.foreground"))
-            .errorBackground(Color.decode("#FFEBEE"))
+            .errorBackground(Color.decode(isDark ? "#401010" : "#FFEBEE"))
             .build();
-
-    public static final ColorTheme LIGHT = new Builder(false)
-            .background(Color.decode("#D9D0B4"))       // secondary3: main panel bg
-            .foreground(Color.decode("#321A01"))      // primary1: dark brown text
-            .selection(Color.decode("#CC9966"))        // primary3: selection highlight
-            .accent(Color.decode("#996633"))           // primary2: focused accent
-            .sunkenBackground(Color.decode("#F9F4E0")) // slightly darker than bg for sunken feel
-            .ghostBackground(new Color(102, 51, 0, 15)) // primary1 at low alpha
-            .bubbleUser(Color.decode("#FEFEFE"))       // mid-tone warm brown for user bubbles
-            .assistantForeground(Color.decode("#4D2600")) // secondary1: darkest for readability
-            .bubbleBorder(Color.decode("#804D1A"))     // secondary2: border brown
-            .panelHeader(Color.decode("#EEE8D5"))      // slightly recessed header
-            .panelHeaderHover(Color.decode("#D4CCB5")) // secondary3 as hover (brighter)
-            .base1(Color.decode("#804D1A"))            // secondary2: metadata/subtle text
-            .base2(Color.decode("#EEE8D5"))            // sunken areas
-            .base3(Color.decode("#D9D0B4"))            // secondary3: lightest bg
-            .yellow(Color.decode("#996633"))           // primary2 as warm accent
-            .codeBackground(Color.decode("#002B36"))
-            .codeForeground(Color.decode("#839496"))
-            .codeSelection(Color.decode("#073642"))
-            .permissionBg(Color.decode("#FFF3E0"))
-            .permissionBorder(Color.decode("#FFA000"))
-            .permissionTitle(Color.decode("#E65100"))
-            .headerForeground(Color.decode("#555555"))
-            .errorBackground(Color.decode("#FFEBEE"))
-            .build();
-
-    public static final ColorTheme DARK = new Builder(true)
-            .background(Color.decode("#2B2B2B"))
-            .foreground(Color.decode("#A9B7C6"))
-            .selection(Color.decode("#214283"))
-            .accent(Color.decode("#589DF6"))
-            .sunkenBackground(Color.decode("#1A1C1E"))
-            .ghostBackground(new Color(255, 255, 255, 15))
-            .bubbleUser(Color.decode("#3E362E"))
-            .assistantForeground(Color.decode("#A9B7C6"))
-            .bubbleBorder(Color.decode("#555555"))
-            .panelHeader(Color.decode("#151515"))
-            .panelHeaderHover(Color.decode("#252525"))
-            .base1(Color.decode("#909090"))
-            .base2(Color.decode("#3C3F41"))
-            .base3(Color.decode("#2B2B2B"))
-            .yellow(Color.decode("#BBB529"))
-            .codeBackground(Color.decode("#002B36"))
-            .codeForeground(Color.decode("#839496"))
-            .codeSelection(Color.decode("#073642"))
-            .permissionBg(Color.decode("#32230A"))
-            .permissionBorder(Color.decode("#B46E00"))
-            .permissionTitle(Color.decode("#FFA726"))
-            .headerForeground(Color.decode("#BBBBBB"))
-            .errorBackground(Color.decode("#401010"))
-            .build();
-
-    public static final ColorTheme MACOS_LIGHT = new Builder(false)
-            .background(Color.decode("#D9D0B4"))
-            .foreground(Color.decode("#073642"))
-            .selection(Color.decode("#268BD2"))
-            .accent(Color.decode("#268BD2"))
-            .sunkenBackground(Color.decode("#D9D0B4"))
-            .ghostBackground(new Color(7, 54, 66, 15))
-            .bubbleUser(Color.decode("#EEE8D5"))
-            .assistantForeground(Color.decode("#073642"))
-            .bubbleBorder(Color.decode("#DCD6C1"))
-            .panelHeader(Color.decode("#EEE8D5"))
-            .panelHeaderHover(Color.decode("#DCD6C1"))
-            .base1(Color.decode("#93A1A1"))
-            .base2(Color.decode("#EEE8D5"))
-            .base3(Color.decode("#D9D0B4"))
-            .yellow(Color.decode("#B58900"))
-            .codeBackground(Color.decode("#002B36"))
-            .codeForeground(Color.decode("#839496"))
-            .codeSelection(Color.decode("#073642"))
-            .permissionBg(Color.decode("#FFF3E0"))
-            .permissionBorder(Color.decode("#FFA000"))
-            .permissionTitle(Color.decode("#E65100"))
-            .headerForeground(Color.decode("#555555"))
-            .errorBackground(Color.decode("#FFEBEE"))
-            .build();
-
-    public static final ColorTheme MACOS_DARK = new Builder(true)
-            .background(Color.decode("#2B2B2B"))
-            .foreground(Color.decode("#A9B7C6"))
-            .selection(Color.decode("#214283"))
-            .accent(Color.decode("#589DF6"))
-            .sunkenBackground(Color.decode("#2B2B2B"))
-            .ghostBackground(new Color(255, 255, 255, 15))
-            .bubbleUser(Color.decode("#3E434C"))
-            .assistantForeground(Color.decode("#A9B7C6"))
-            .bubbleBorder(Color.decode("#555555"))
-            .panelHeader(Color.decode("#3C3F41"))
-            .panelHeaderHover(Color.decode("#555555"))
-            .base1(Color.decode("#909090"))
-            .base2(Color.decode("#3C3F41"))
-            .base3(Color.decode("#2B2B2B"))
-            .yellow(Color.decode("#BBB529"))
-            .codeBackground(Color.decode("#002B36"))
-            .codeForeground(Color.decode("#839496"))
-            .codeSelection(Color.decode("#073642"))
-            .permissionBg(Color.decode("#32230A"))
-            .permissionBorder(Color.decode("#B46E00"))
-            .permissionTitle(Color.decode("#FFA726"))
-            .headerForeground(Color.decode("#BBBBBB"))
-            .errorBackground(Color.decode("#401010"))
-            .build();
+    }
 
     private static class Builder {
         private boolean isDark;

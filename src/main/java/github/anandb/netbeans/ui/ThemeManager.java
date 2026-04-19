@@ -51,19 +51,6 @@ public class ThemeManager {
     }
 
     public static ColorTheme getCurrentTheme() {
-        boolean isDark = org.openide.util.NbPreferences.forModule(ThemeManager.class).getBoolean("isDarkMode", false);
-        if (isMac()) {
-            return isDark ? ColorTheme.MACOS_DARK : ColorTheme.MACOS_LIGHT;
-        }
-        return isDark ? ColorTheme.DARK : ColorTheme.LIGHT;
-    }
-
-    private static boolean isMac() {
-        String osName = System.getProperty("os.name", "");
-        return osName.toLowerCase(Locale.ROOT).contains("mac");
-    }
-
-    public static void setDarkMode(boolean isDark) {
-        org.openide.util.NbPreferences.forModule(ThemeManager.class).putBoolean("isDarkMode", isDark);
+        return ColorTheme.getNativeTheme();
     }
 }
