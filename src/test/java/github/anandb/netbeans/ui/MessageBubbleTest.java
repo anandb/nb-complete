@@ -25,14 +25,14 @@ class MessageBubbleTest {
 
     @Test
     void testAppendTextHandlesLeadingNewlines() {
-        // Test that leading newlines are stripped on first append
+        // Test that leading newlines are preserved exactly as they come from the stream
         MessageBubble bubble = new MessageBubble("assistant", "");
         
         bubble.appendText("\n\nline1\n");
-        assertEquals("line1\n", bubble.getRawText()); // Leading newlines stripped, trailing preserved
+        assertEquals("\n\nline1\n", bubble.getRawText());
         
         bubble.appendText("line2\n");
-        assertEquals("line1\nline2\n", bubble.getRawText());
+        assertEquals("\n\nline1\nline2\n", bubble.getRawText());
     }
 
     @Test
@@ -54,9 +54,9 @@ class MessageBubbleTest {
         MessageBubble bubble = new MessageBubble("assistant", "");
         
         bubble.appendText("\n\n\n");
-        assertEquals("", bubble.getRawText()); // All newlines stripped when no content
+        assertEquals("\n\n\n", bubble.getRawText());
         
         bubble.appendText("hello");
-        assertEquals("hello", bubble.getRawText());
+        assertEquals("\n\n\nhello", bubble.getRawText());
     }
 }
