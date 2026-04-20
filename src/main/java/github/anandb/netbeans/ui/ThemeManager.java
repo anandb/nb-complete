@@ -16,7 +16,13 @@ public class ThemeManager {
     }
 
     public static Icon getIcon(String name, int size) {
-        return getIcon(name);
+        if (name == null) return null;
+        java.awt.Image img = ImageUtilities.loadImage("github/anandb/netbeans/ui/icons/" + name, true);
+        if (img == null) return null;
+        if (size > 0 && (img.getWidth(null) != size || img.getHeight(null) != size)) {
+            img = img.getScaledInstance(size, size, java.awt.Image.SCALE_SMOOTH);
+        }
+        return ImageUtilities.image2Icon(img);
     }
 
     public static Font getFont() {

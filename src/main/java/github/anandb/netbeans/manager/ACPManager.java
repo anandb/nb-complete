@@ -198,6 +198,15 @@ public class ACPManager {
         stopServer();
     }
 
+    public synchronized void restartServer() {
+        LOG.info("Manual restart of ACP server requested...");
+        stopServer();
+        // Reset state so startServer() actually proceeds
+        serverStarted = true; // Still marked as started since we want it to run
+        initialized = false;
+        startServer();
+    }
+
     private void stopServer() {
         isClosing = true;
         if (rpcClient != null) {

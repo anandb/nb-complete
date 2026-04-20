@@ -55,6 +55,9 @@ public class MessageBubble extends JPanel {
             bgColor = new Color(0, 0, 0, 0);
         }
         
+        setBackground(theme.getSunkenBackground());
+        setOpaque(true);
+
         bubble.setBackground(bgColor);
         bubble.setOpaque(true);
         segmentsContainer.setBackground(bgColor);
@@ -141,13 +144,14 @@ public class MessageBubble extends JPanel {
         this.text = new StringBuilder(text);
         this.copyableText = copyableText;
 
-        setLayout(new GridBagLayout());
-        setOpaque(false);
-        setDoubleBuffered(true);
-        setBorder(new EmptyBorder(2, 8, 2, 8));
-
         ColorTheme theme = ThemeManager.getCurrentTheme();
 
+        setLayout(new GridBagLayout());
+        setOpaque(true);
+        setBackground(theme.getSunkenBackground());
+        setDoubleBuffered(true);
+        setBorder(new EmptyBorder(2, 8, 2, 8));
+        
         segmentsContainer = new JPanel();
         segmentsContainer.setLayout(new BoxLayout(segmentsContainer, BoxLayout.Y_AXIS));
         segmentsContainer.setDoubleBuffered(true);

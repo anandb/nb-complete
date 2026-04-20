@@ -99,6 +99,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
     private final JButton newSessionBtn;
     private final JButton renameSessionBtn;
     private final JButton exportBtn;
+    private final JButton restartServerBtn;
     private final JButton toggleBlocksBtn;
     private final JButton toggleOptionsBtn;
     private final JPanel configPanel;
@@ -185,26 +186,32 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
         sessionControls.setOpaque(false);
 
         newSessionBtn = new JButton();
-        newSessionBtn.setIcon(ThemeManager.getIcon("new.svg"));
+        newSessionBtn.setIcon(ThemeManager.getIcon("new.png", 28));
         newSessionBtn.setToolTipText("New Session");
         newSessionBtn.setFocusPainted(false);
         newSessionBtn.addActionListener(e -> SessionManager.getInstance().createNewSession(null));
 
         renameSessionBtn = new JButton();
-        renameSessionBtn.setIcon(ThemeManager.getIcon("rename.svg"));
+        renameSessionBtn.setIcon(ThemeManager.getIcon("rename.png", 28));
         renameSessionBtn.setToolTipText("Rename Session");
         renameSessionBtn.setFocusPainted(false);
         renameSessionBtn.addActionListener(e -> renameCurrentSession());
 
         exportBtn = new JButton();
-        exportBtn.setIcon(ThemeManager.getIcon("export.svg"));
+        exportBtn.setIcon(ThemeManager.getIcon("export.png", 28));
         exportBtn.setToolTipText("Export Conversation");
         exportBtn.setFocusPainted(false);
         exportBtn.addActionListener(e -> exportConversation());
+
+        restartServerBtn = new JButton();
+        restartServerBtn.setIcon(ThemeManager.getIcon("restart.png", 28));
+        restartServerBtn.setToolTipText("Restart Server");
+        restartServerBtn.setFocusPainted(false);
+        restartServerBtn.addActionListener(e -> promptRestartServer());
         
         // Block control buttons
         toggleBlocksBtn = new JButton();
-        toggleBlocksBtn.setIcon(ThemeManager.getIcon("expand.svg"));
+        toggleBlocksBtn.setIcon(ThemeManager.getIcon("expand.png", 28));
         toggleBlocksBtn.setToolTipText("Expand All Blocks");
         toggleBlocksBtn.setFocusPainted(false);
         toggleBlocksBtn.putClientProperty("state", "expand");
@@ -214,13 +221,14 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
             String newState = isCollapse ? "expand" : "collapse";
             toggleBlocksBtn.putClientProperty("state", newState);
             toggleBlocksBtn.setToolTipText(isCollapse ? "Expand All Blocks" : "Collapse All Blocks");
-            toggleBlocksBtn.setIcon(ThemeManager.getIcon(isCollapse ? "expand.svg" : "collapse.svg"));
+            toggleBlocksBtn.setIcon(ThemeManager.getIcon(isCollapse ? "expand.png" : "collapse.png", 28));
         });
 
         sessionControls.add(newSessionBtn);
         sessionControls.add(renameSessionBtn);
         sessionControls.add(toggleBlocksBtn);
         sessionControls.add(exportBtn);
+        sessionControls.add(restartServerBtn);
 
         topBar.add(sessionDropdown, BorderLayout.CENTER);
         topBar.add(sessionControls, BorderLayout.EAST);
@@ -766,6 +774,45 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
                 LOG.log(Level.SEVERE, "Failed to export conversation", ex);
             }
         }
+    }
+
+    private void promptRestartServer() {
+        int choice = javax.swing.JOptionPane.showConfirmDialog(this,
+                "Are you sure you want to restart the ACP server?\nThis will terminate current operations and relaunch the server.",
+                "Restart Server",
+                javax.swing.JOptionPane.YES_NO_OPTION,
+                javax.swing.JOptionPane.WARNING_MESSAGE);
+
+        if (choice == javax.swing.JOptionPane.YES_OPTION) {
+            restartServer();
+        }
+    }
+
+    private void restartServer() {
+        String currentSessionId = SessionManager.getInstance().getCurrentSessionId();
+        statusLabel.setText("Restarting server...");
+        setInputEnabled(false);
+
+        // Perform restart
+        ACPManager.getInstance().restartServer();
+
+        // Wait for server to be ready and reload session
+        ACPManager.getInstance().whenReady().thenAccept(v -> {
+            SwingUtilities.invokeLater(() -> {
+                statusLabel.setText("Server restarted. Reloading session...");
+                if (currentSessionId != null) {
+                    SessionManager.getInstance().loadSession(currentSessionId);
+                } else {
+                    SessionManager.getInstance().refreshSessions();
+                }
+            });
+        }).exceptionally(ex -> {
+            SwingUtilities.invokeLater(() -> {
+                statusLabel.setText("Restart failed: " + ex.getMessage());
+                setInputEnabled(true);
+            });
+            return null;
+        });
     }
 
     private void updateButtonState(boolean isProcessing) {
@@ -1367,9 +1414,6 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
         sessionDropdown.setBackground(theme.getBackground());
         sessionDropdown.setForeground(theme.getForeground());
 
-        // Update all buttons in header
-        updateButtonsRecursive(this, theme);
-
         inputArea.setBackground(theme.getBackground());
         inputArea.setForeground(theme.getForeground());
         inputArea.setCaretColor(theme.getForeground());
@@ -1380,21 +1424,6 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
 
         revalidate();
         repaint();
-    }
-
-    private void updateButtonsRecursive(Component container, ColorTheme theme) {
-        if (container instanceof JButton btn) {
-            if (btn.getText().contains("Light") || btn.getText().contains("Dark") || btn.getText().contains("Mode")) {
-                btn.setText(theme.isDark() ? "Light Mode" : "Dark Mode");
-                Icon tIcon = ThemeManager.getIcon(theme.isDark() ? "sun.svg" : "moon.svg", 18);
-                btn.setIcon(tIcon);
-                btn.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN));
-            }
-        } else if (container instanceof java.awt.Container cont) {
-            for (Component c : cont.getComponents()) {
-                updateButtonsRecursive(c, theme);
-            }
-        }
     }
 
     @Override

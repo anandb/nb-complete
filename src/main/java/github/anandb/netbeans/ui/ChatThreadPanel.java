@@ -92,7 +92,6 @@ public class ChatThreadPanel extends JPanel {
         streamFlushTimer = new javax.swing.Timer(100, e -> {
             if (activeStreamBubble != null && activeStreamBubble.flushUpdate()) {
                 messagesContainer.revalidate();
-                // removed messagesContainer.repaint() as revalidate schedules painting
                 scrollToBottom();
             }
         });
@@ -214,8 +213,7 @@ public class ChatThreadPanel extends JPanel {
             messagesContainer.add(bubble);
             messagesContainer.add(Box.createVerticalStrut(4));
             messagesContainer.revalidate();
-            // removed repaint() as revalidate() triggers layout and repaint automatically
-            scrollToBottom();
+            scrollToBottom(true);
         });
     }
 
@@ -328,7 +326,7 @@ public class ChatThreadPanel extends JPanel {
             messagesContainer.add(Box.createVerticalStrut(4));
             messagesContainer.revalidate();
             messagesContainer.repaint();
-            scrollToBottom();
+            scrollToBottom(true);
         });
     }
 
@@ -453,8 +451,25 @@ public class ChatThreadPanel extends JPanel {
 
     private javax.swing.Timer scrollTimer;
 
+    private boolean isAtBottom() {
+        JScrollBar vertical = scrollPane.getVerticalScrollBar();
+        int extent = vertical.getModel().getExtent();
+        int value = vertical.getValue();
+        int maximum = vertical.getMaximum();
+        // Use a small threshold (e.g., 100 pixels) to be "at the bottom"
+        return (value + extent >= maximum - 100);
+    }
+
     public void scrollToBottom() {
+        scrollToBottom(false);
+    }
+
+    public void scrollToBottom(boolean force) {
         SwingUtilities.invokeLater(() -> {
+            if (!force && !isAtBottom()) {
+                return;
+            }
+
             JScrollBar vertical = scrollPane.getVerticalScrollBar();
             vertical.setValue(vertical.getMaximum());
 
