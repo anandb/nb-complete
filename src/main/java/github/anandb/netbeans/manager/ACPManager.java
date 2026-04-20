@@ -88,7 +88,7 @@ public class ACPManager {
         if (readyFuture.isDone()) {
             readyFuture = new CompletableFuture<>();
         }
-        LOG.info("Starting ACP server...");
+        LOG.fine("Starting ACP server...");
         try {
             String executable = resolveExecutablePath();
             String args = NbPreferences.forModule(ACPOptionsPanel.class).get("processArguments", "acp");
@@ -96,7 +96,7 @@ public class ACPManager {
             CommandLine cmd = new CommandLine(executable);
             cmd.addArguments(args, true);
 
-            LOG.log(Level.INFO, "Executing: {0}", cmd);
+            LOG.log(Level.FINE, "Executing: {0}", cmd);
 
             ProcessBuilder pb = new ProcessBuilder(Arrays.asList(cmd.toStrings()));
             pb.redirectError(ProcessBuilder.Redirect.INHERIT);
@@ -118,7 +118,7 @@ public class ACPManager {
             // Listen for session updates
             rpcClient.onNotification("session/update", params -> {
                 try {
-                    LOG.info("Received session/update notification: " + params.toString());
+                    LOG.fine("Received session/update notification: " + params.toString());
                     SessionUpdate.Params sessionParams = objectMapper.treeToValue(params, SessionUpdate.Params.class);
                     SessionUpdate update = new SessionUpdate("2.0", "session/update", sessionParams);
 
@@ -151,7 +151,7 @@ public class ACPManager {
                 shutdownHookAdded = true;
             }
 
-            LOG.log(Level.INFO, "ACP server process started successfully");
+            LOG.log(Level.FINE, "ACP server process started successfully");
         } catch (Exception e) {
             LOG.log(Level.SEVERE, "CRITICAL: Failed to start ACP server", e);
             readyFuture.completeExceptionally(e);
@@ -169,7 +169,7 @@ public class ACPManager {
         if (configuredPath != null && !configuredPath.trim().isEmpty()) {
             File f = new File(configuredPath);
             if (f.isAbsolute() && f.exists()) {
-                LOG.log(Level.INFO, "Using configured absolute path: {0}", configuredPath);
+                LOG.log(Level.FINE, "Using configured absolute path: {0}", configuredPath);
                 return configuredPath;
             } else if (f.isAbsolute()) {
                 LOG.log(Level.WARNING, "Configured path not found: {0}", configuredPath);
@@ -178,14 +178,14 @@ public class ACPManager {
 
         // 2. Search System PATH
         if (isInPath(exeName)) {
-            LOG.log(Level.INFO, "Using 'opencode' found in system PATH");
+            LOG.log(Level.FINE, "Using 'opencode' found in system PATH");
             return exeName;
         }
 
         // 3. Default location
         String defaultPath = System.getProperty("user.home") + File.separator + ".opencode" + File.separator + "bin" + File.separator + exeName;
         if (new File(defaultPath).exists()) {
-            LOG.log(Level.INFO, "Using default location: {0}", defaultPath);
+            LOG.log(Level.FINE, "Using default location: {0}", defaultPath);
             return defaultPath;
         }
 
@@ -228,7 +228,7 @@ public class ACPManager {
                 .thenAccept(res -> {
                     this.initialized = true;
                     readyFuture.complete(null);
-                    LOG.log(Level.INFO, "ACP initialized successfully");
+                    LOG.log(Level.FINE, "ACP initialized successfully");
                 })
                 .exceptionally(ex -> {
                     LOG.log(Level.SEVERE, "Failed to initialize ACP", ex);
@@ -247,7 +247,7 @@ public class ACPManager {
     }
 
     public synchronized void restartServer() {
-        LOG.info("Manual restart of ACP server requested...");
+        LOG.fine("Manual restart of ACP server requested...");
         stopServer();
         // Reset state so startServer() actually proceeds
         serverStarted = true; // Still marked as started since we want it to run
@@ -263,7 +263,7 @@ public class ACPManager {
         }
 
         if (serverProcess != null && serverProcess.isAlive()) {
-            LOG.log(Level.INFO, "Stopping ACP server (PID: {0})...", serverProcess.pid());
+            LOG.log(Level.FINE, "Stopping ACP server (PID: {0})...", serverProcess.pid());
 
             // Capture descendants before the parent process potentially disappears
             List<ProcessHandle> descendants = serverProcess.descendants().toList();
@@ -271,7 +271,7 @@ public class ACPManager {
             // 1. Try graceful exit via closed stdin (already triggered by rpcClient.close())
             try {
                 if (serverProcess.waitFor(2, java.util.concurrent.TimeUnit.SECONDS)) {
-                    LOG.log(Level.INFO, "ACP server exited gracefully.");
+                    LOG.log(Level.FINE, "ACP server exited gracefully.");
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
@@ -279,7 +279,7 @@ public class ACPManager {
 
             // 2. If still alive, or if there are orphaned descendants, send SIGTERM
             if (serverProcess.isAlive() || descendants.stream().anyMatch(ProcessHandle::isAlive)) {
-                LOG.log(Level.INFO, "Terminating process tree (parent + {0} descendants)...", descendants.size());
+                LOG.log(Level.FINE, "Terminating process tree (parent + {0} descendants)...", descendants.size());
 
                 descendants.forEach(h -> {
                     if (h.isAlive()) {
@@ -313,7 +313,7 @@ public class ACPManager {
             }
 
             serverProcess = null;
-            LOG.log(Level.INFO, "ACP server shutdown complete.");
+            LOG.log(Level.FINE, "ACP server shutdown complete.");
         }
         serverProcess = null;
     }
@@ -336,7 +336,7 @@ public class ACPManager {
     }
 
     public CompletableFuture<List<Session>> getSessions(String directory) {
-        LOG.log(Level.INFO, "getSessions: called with directory={0}", directory);
+        LOG.log(Level.FINE, "getSessions: called with directory={0}", directory);
         if (!rpcClientReady()) {
             return CompletableFuture.failedFuture(new RuntimeException("Server not started"));
         }
@@ -347,7 +347,7 @@ public class ACPManager {
         return rpcClient.sendRequest("session/list", params)
                 .thenApply(res -> {
                     try {
-                        LOG.log(Level.INFO, "getSessions: got response");
+                        LOG.log(Level.FINE, "getSessions: got response");
                         JsonNode root = objectMapper.readTree(res.traverse());
                         JsonNode result = root.has("result") ? root.get("result") : root;
                         JsonNode sessionsNode = result.has("sessions") ? result.get("sessions") : result.has("data") ? result.get("data") : result;
@@ -361,9 +361,9 @@ public class ACPManager {
                                 }
                                 sessions.add(s);
                             }
-                            LOG.log(Level.INFO, "getSessions: deserialized {0} sessions", sessions.size());
+                            LOG.log(Level.FINE, "getSessions: deserialized {0} sessions", sessions.size());
                             for (Session s : sessions) {
-                                LOG.log(Level.INFO, "getSessions: id={0}, title=''{1}'', directory={2}", new Object[]{s.id(), s.title(), s.effectiveDirectory()});
+                                LOG.log(Level.FINE, "getSessions: id={0}, title=''{1}'', directory={2}", new Object[]{s.id(), s.title(), s.effectiveDirectory()});
                             }
                             return sessions;
                         } else {
@@ -385,7 +385,7 @@ public class ACPManager {
         if (directories == null || directories.isEmpty()) {
             return CompletableFuture.completedFuture(new ArrayList<>());
         }
-        LOG.log(Level.INFO, "getSessionsForDirectories: querying {0} directories: {1}", new Object[]{directories.size(), directories});
+        LOG.log(Level.FINE, "getSessionsForDirectories: querying {0} directories: {1}", new Object[]{directories.size(), directories});
         List<CompletableFuture<List<Session>>> futures = directories.stream()
                 .map(dir -> getSessions(dir))
                 .toList();
@@ -432,7 +432,7 @@ public class ACPManager {
             effectiveCwd = System.getProperty("user.dir");
         }
 
-        LOG.log(Level.INFO, "Creating new session with CWD: {0}", effectiveCwd);
+        LOG.log(Level.FINE, "Creating new session with CWD: {0}", effectiveCwd);
         final String finalCwd = effectiveCwd;
 
         Map<String, Object> params = Map.of(
@@ -455,7 +455,7 @@ public class ACPManager {
     }
 
     public CompletableFuture<List<SessionConfigOption>> loadSession(String sessionId, String cwd) {
-        LOG.log(Level.INFO, "loadSession: called with {0}, cwd={1}", new Object[]{sessionId, cwd});
+        LOG.log(Level.FINE, "loadSession: called with {0}, cwd={1}", new Object[]{sessionId, cwd});
         if (!rpcClientReady()) {
             return CompletableFuture.failedFuture(new RuntimeException("Server not started"));
         }
@@ -468,7 +468,7 @@ public class ACPManager {
 
         return rpcClient.sendRequest("session/load", params)
                 .thenApply(res -> {
-                    LOG.log(Level.INFO, "loadSession: got response {0}", res);
+                    LOG.log(Level.FINE, "loadSession: got response {0}", res);
                     if (res != null && res.has("configOptions")) {
                         try {
                             return objectMapper.convertValue(res.get("configOptions"), new TypeReference<List<SessionConfigOption>>() {});
@@ -686,7 +686,7 @@ public class ACPManager {
             restartCount++;
             lastRestartTime = now;
             long delay = restartCount * 2000L; // Exponential backoff: 2s, 4s, 6s...
-            LOG.log(Level.INFO, "Respawning ACP server in {0}ms (attempt {1}/{2})...",
+            LOG.log(Level.FINE, "Respawning ACP server in {0}ms (attempt {1}/{2})...",
                     new Object[]{delay, restartCount, MAX_RESTARTS});
 
             java.util.concurrent.Executors.newSingleThreadScheduledExecutor()

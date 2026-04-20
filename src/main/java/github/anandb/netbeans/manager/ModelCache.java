@@ -58,7 +58,7 @@ public class ModelCache {
         if (file.exists()) {
             try {
                 cachedModels = objectMapper.readValue(file, new TypeReference<List<String>>() {});
-                LOG.log(Level.INFO, "Loaded {0} cached models", cachedModels.size());
+                LOG.log(Level.FINE, "Loaded {0} cached models", cachedModels.size());
             } catch (IOException e) {
                 LOG.log(Level.WARNING, "Failed to load cached models: {0}", e.getMessage());
                 cachedModels = new ArrayList<>();

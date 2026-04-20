@@ -86,7 +86,7 @@ public class JsonRpcClient {
 
         try {
             String json = mapper.writeValueAsString(request);
-            LOG.log(Level.INFO, "Sending request: {0}", json);
+            LOG.log(Level.FINE, "Sending request: {0}", json);
             writer.println(json);
             if (writer.checkError()) {
                 pendingRequests.remove(id);
@@ -252,7 +252,7 @@ public class JsonRpcClient {
 
         try {
             String json = mapper.writeValueAsString(response);
-            LOG.log(Level.INFO, "Sending response: {0}", json);
+            LOG.log(Level.FINE, "Sending response: {0}", json);
             writer.println(json);
         } catch (JsonProcessingException e) {
             LOG.log(Level.SEVERE, "Failed to serialize response", e);
@@ -271,7 +271,7 @@ public class JsonRpcClient {
 
         try {
             String json = mapper.writeValueAsString(response);
-            LOG.log(Level.INFO, "Sending error response: {0}", json);
+            LOG.log(Level.FINE, "Sending error response: {0}", json);
             writer.println(json);
         } catch (JsonProcessingException e) {
             LOG.log(Level.SEVERE, "Failed to serialize error response", e);

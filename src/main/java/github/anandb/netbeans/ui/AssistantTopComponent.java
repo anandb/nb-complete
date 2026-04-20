@@ -383,7 +383,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
                 }
             } else if ("message".equals(type)) {
                 Message msg = update.update().message();
-                LOG.info("Received message update: id=" + (msg != null ? msg.id() : "null") + ", type=" + (msg != null ? msg.type() : "null"));
+                LOG.fine("Received message update: id=" + (msg != null ? msg.id() : "null") + ", type=" + (msg != null ? msg.type() : "null"));
                 if (msg != null) {
                     SwingUtilities.invokeLater(() -> chatPanel.addMessage(msg));
                 }
@@ -506,7 +506,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
             try {
                 String currentId = SessionManager.getInstance().getCurrentSessionId();
                 sessionDropdown.removeAllItems();
-                LOG.log(Level.INFO, "onSessionListUpdated: adding {0} sessions to dropdown", sessions.size());
+                LOG.log(Level.FINE, "onSessionListUpdated: adding {0} sessions to dropdown", sessions.size());
                 int selectIdx = -1;
                 for (int i = 0; i < sessions.size(); i++) {
                     Session s = sessions.get(i);
@@ -539,7 +539,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
                         // Sessions are sorted by timestamp descending, so index 0 is most recent
                         Session mostRecent = sessions.get(0);
                         if (mostRecent != null) {
-                            LOG.log(Level.INFO, "Loading most recent session: {0}", mostRecent.id());
+                            LOG.log(Level.FINE, "Loading most recent session: {0}", mostRecent.id());
                             SessionManager.getInstance().loadSession(mostRecent.id());
                         }
                     }
@@ -769,7 +769,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
             java.io.File file = chooser.getSelectedFile();
             try (java.io.FileWriter writer = new java.io.FileWriter(file)) {
                 writer.write(markdown);
-                LOG.log(Level.INFO, "Conversation exported to {0}", file.getAbsolutePath());
+                LOG.log(Level.FINE, "Conversation exported to {0}", file.getAbsolutePath());
             } catch (java.io.IOException ex) {
                 LOG.log(Level.SEVERE, "Failed to export conversation", ex);
             }
@@ -1028,7 +1028,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
                     updateTabName(item.name);
                 }
 
-                LOG.log(Level.INFO, "Config update: {0}={1} for session {2}", new Object[]{configId, item.value, currentId});
+                LOG.log(Level.FINE, "Config update: {0}={1} for session {2}", new Object[]{configId, item.value, currentId});
                 ACPManager.getInstance().setSessionConfigOption(currentId, configId, item.value);
             } else if (item != null && item.isInternalUpdate) {
                 LOG.log(Level.FINE, "Skipping internal config update: {0}={1}", new Object[]{configId, item.value});
@@ -1096,7 +1096,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
                 String currentValue = opt.currentValue();
                 // Only apply if the selected value differs from the server's default
                 if (selectedValue != null && !selectedValue.isEmpty() && !selectedValue.equals(currentValue)) {
-                    LOG.log(Level.INFO, "Applying pre-selected config: {0}={1} (server default was {2})",
+                    LOG.log(Level.FINE, "Applying pre-selected config: {0}={1} (server default was {2})",
                             new Object[]{opt.id(), selectedValue, currentValue});
                     ACPManager.getInstance().setSessionConfigOption(sessionId, opt.id(), selectedValue);
                 }
@@ -1147,7 +1147,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
         SwingUtilities.invokeLater(() -> {
             isUpdatingConfigControls = true;
             try {
-                LOG.log(Level.INFO, "updateConfigControls: force={0}", new Object[]{forceStartupDefaults});
+                LOG.log(Level.FINE, "updateConfigControls: force={0}", new Object[]{forceStartupDefaults});
 
                 for (SessionConfigOption opt : options) {
                     JComboBox<ConfigItem> combo = null;
@@ -1213,7 +1213,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
 
                             if (forcedValue != null && !forcedValue.equalsIgnoreCase(opt.currentValue()) && SessionManager.getInstance().getCurrentSessionId() != null) {
                                 String currentId = SessionManager.getInstance().getCurrentSessionId();
-                                LOG.log(Level.INFO, "Forcing default: {0}={1} (was {2})", new Object[]{opt.id(), forcedValue, opt.currentValue()});
+                                LOG.log(Level.FINE, "Forcing default: {0}={1} (was {2})", new Object[]{opt.id(), forcedValue, opt.currentValue()});
                                 valueToSelect = forcedValue;
                                 ACPManager.getInstance().setSessionConfigOption(currentId, opt.id(), forcedValue);
                             } else if ("model".equals(opt.category()) && lastSelectedModelId != null && !lastSelectedModelId.equalsIgnoreCase(opt.currentValue())) {

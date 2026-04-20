@@ -40,7 +40,7 @@ public class ACPProjectManager implements PropertyChangeListener {
 
     public void start() {
         OpenProjects.getDefault().addPropertyChangeListener(this);
-        LOG.info("ACPProjectManager started, tracking projects.");
+        LOG.fine("ACPProjectManager started, tracking projects.");
         syncActiveProject();
     }
 
@@ -65,7 +65,7 @@ public class ACPProjectManager implements PropertyChangeListener {
 
         if (!closedDirs.isEmpty()) {
             for (String closedDir : closedDirs) {
-                LOG.log(Level.INFO, "Project closed: {0}", closedDir);
+                LOG.log(Level.FINE, "Project closed: {0}", closedDir);
                 if (projectCloseListener != null) {
                     projectCloseListener.accept(closedDir);
                 }
@@ -77,7 +77,7 @@ public class ACPProjectManager implements PropertyChangeListener {
 
         if (!openedDirs.isEmpty()) {
             for (String openedDir : openedDirs) {
-                LOG.log(Level.INFO, "Project opened: {0}", openedDir);
+                LOG.log(Level.FINE, "Project opened: {0}", openedDir);
                 if (projectOpenListener != null) {
                     projectOpenListener.accept(openedDir);
                 }
@@ -88,7 +88,7 @@ public class ACPProjectManager implements PropertyChangeListener {
         if (active != null) {
             FileObject dir = active.getProjectDirectory();
             String path = dir.getPath();
-            LOG.log(Level.INFO, "Active project synchronized: {0}", path);
+            LOG.log(Level.FINE, "Active project synchronized: {0}", path);
             ACPManager.getInstance().setActiveProject(path);
         } else {
             ACPManager.getInstance().setActiveProject(null);

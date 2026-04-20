@@ -128,7 +128,7 @@ public class ChatThreadPanel extends JPanel {
     public void addMessage(Message message) {
         String type = message.type();
         StringBuilder sb = new StringBuilder();
-        LOG.info("addMessage(Message) called. type=" + type);
+        LOG.fine("addMessage(Message) called. type=" + type);
 
         if ("user".equals(type)) {
             if (message.prompt() != null) {
@@ -166,7 +166,7 @@ public class ChatThreadPanel extends JPanel {
             }
         }
         String text = sb.toString();
-        LOG.info("addMessage(Message) final text length: " + text.length());
+        LOG.fine("addMessage(Message) final text length: " + text.length());
         String copyable = "user".equals(type) && message.prompt() != null ? message.prompt().text() : text;
         addMessage(type, text, message.id(), copyable);
     }
@@ -360,7 +360,7 @@ public class ChatThreadPanel extends JPanel {
             buttons.setOpaque(false);
 
             if (options != null && options.isArray() && options.size() > 0) {
-                LOG.log(Level.INFO, "PermissionBubble: rendering {0} options", options.size());
+                LOG.log(Level.FINE, "PermissionBubble: rendering {0} options", options.size());
                 for (com.fasterxml.jackson.databind.JsonNode opt : options) {
                     String optionId = opt.has("optionId") ? opt.get("optionId").asText() : "";
                     String name = opt.has("name") ? opt.get("name").asText() : optionId;
@@ -564,7 +564,7 @@ public class ChatThreadPanel extends JPanel {
     }
 
     public void setSessionList(List<Session> sessions, Consumer<String> onSessionSelected, Runnable onNewChat) {
-        LOG.log(Level.INFO, "setSessionList: received {0} sessions, onSessionSelected={1}", new Object[]{sessions.size(), onSessionSelected});
+        LOG.log(Level.FINE, "setSessionList: received {0} sessions, onSessionSelected={1}", new Object[]{sessions.size(), onSessionSelected});
         SwingUtilities.invokeLater(() -> {
             try {
                 clearMessages();

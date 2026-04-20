@@ -83,7 +83,7 @@ public class SessionManager {
                             openProjectDirs.add(p.getProjectDirectory().getPath());
                         }
                     }
-                    LOG.log(Level.INFO, "refreshSessions: starting refresh for {0} projects", openProjectDirs.size());
+                    LOG.log(Level.FINE, "refreshSessions: starting refresh for {0} projects", openProjectDirs.size());
                     if (openProjectDirs.isEmpty()) {
                         return CompletableFuture.completedFuture(new ArrayList<Session>());
                     }
@@ -181,7 +181,7 @@ public class SessionManager {
     private void handleProjectChanged(String path) {
         if (path != null && !path.equals(lastProjectDir)) {
             if (lastProjectDir != null) {
-                LOG.log(Level.INFO, "Project changed from {0} to {1}, creating new session",
+                LOG.log(Level.FINE, "Project changed from {0} to {1}, creating new session",
                         new Object[]{lastProjectDir, path});
                 createNewSession(path);
             }
