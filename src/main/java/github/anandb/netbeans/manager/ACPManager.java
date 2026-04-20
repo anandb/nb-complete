@@ -90,16 +90,13 @@ public class ACPManager {
         }
         LOG.info("Starting ACP server...");
         try {
-            CommandLine cmd = parseCommand();
-            LOG.log(Level.INFO, "Command Line: {0}", cmd);
+            String executable = resolveExecutablePath();
+            String args = NbPreferences.forModule(ACPOptionsPanel.class).get("processArguments", "acp");
+            
+            CommandLine cmd = new CommandLine(executable);
+            cmd.addArguments(args, true);
 
-            File binaryFile = new File(cmd.getExecutable());
-            if (!binaryFile.exists()) {
-                String errorMsg = "ACP binary NOT found at " + cmd.getExecutable();
-                LOG.log(Level.SEVERE, errorMsg);
-                readyFuture.completeExceptionally(new IOException(errorMsg));
-                return;
-            }
+            LOG.log(Level.INFO, "Executing: {0}", cmd);
 
             ProcessBuilder pb = new ProcessBuilder(Arrays.asList(cmd.toStrings()));
             pb.redirectError(ProcessBuilder.Redirect.INHERIT);
@@ -161,10 +158,61 @@ public class ACPManager {
         }
     }
 
+    private String resolveExecutablePath() {
+        // We use NbPreferences to match the rest of the plugin
+        java.util.prefs.Preferences nbPrefs = NbPreferences.forModule(ACPOptionsPanel.class);
+        String configuredPath = nbPrefs.get("acpExecutablePath", null);
+        boolean isWindows = System.getProperty("os.name").toLowerCase().contains("win");
+        String exeName = isWindows ? "opencode.exe" : "opencode";
+
+        // 1. Configured absolute path
+        if (configuredPath != null && !configuredPath.trim().isEmpty()) {
+            File f = new File(configuredPath);
+            if (f.isAbsolute() && f.exists()) {
+                LOG.log(Level.INFO, "Using configured absolute path: {0}", configuredPath);
+                return configuredPath;
+            } else if (f.isAbsolute()) {
+                LOG.log(Level.WARNING, "Configured path not found: {0}", configuredPath);
+            }
+        }
+
+        // 2. Search System PATH
+        if (isInPath(exeName)) {
+            LOG.log(Level.INFO, "Using 'opencode' found in system PATH");
+            return exeName;
+        }
+
+        // 3. Default location
+        String defaultPath = System.getProperty("user.home") + File.separator + ".opencode" + File.separator + "bin" + File.separator + exeName;
+        if (new File(defaultPath).exists()) {
+            LOG.log(Level.INFO, "Using default location: {0}", defaultPath);
+            return defaultPath;
+        }
+
+        LOG.log(Level.WARNING, "Binary not found in standard locations, defaulting to {0}", exeName);
+        return exeName;
+    }
+
+    private boolean isInPath(String command) {
+        String pathEnv = System.getenv("PATH");
+        if (pathEnv == null) {
+            return false;
+        }
+        String sep = File.pathSeparator;
+        for (String p : pathEnv.split(java.util.regex.Pattern.quote(sep))) {
+            File f = new File(p, command);
+            if (f.exists() && f.canExecute()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public CommandLine parseCommand() {
-        String ocPath = System.getProperty("user.home") + "/.opencode/bin/opencode";
+        boolean isWindows = System.getProperty("os.name").toLowerCase().contains("win");
+        String defaultOcPath = System.getProperty("user.home") + "/.opencode/bin/opencode" + (isWindows ? ".exe" : "");
         ACPCommandBuilder commandBuilder = new ACPCommandBuilder(NbPreferences.forModule(ACPOptionsPanel.class));
-        return commandBuilder.build(ocPath);
+        return commandBuilder.build(defaultOcPath);
     }
 
     private void initializeProtocol() {
