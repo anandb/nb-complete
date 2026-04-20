@@ -88,7 +88,7 @@ public class ACPManager {
         if (readyFuture.isDone()) {
             readyFuture = new CompletableFuture<>();
         }
-        LOG.fine("Starting ACP server...");
+        LOG.info("Starting ACP server...");
         try {
             String executable = resolveExecutablePath();
             String args = NbPreferences.forModule(ACPOptionsPanel.class).get("processArguments", "acp");
@@ -96,7 +96,7 @@ public class ACPManager {
             CommandLine cmd = new CommandLine(executable);
             cmd.addArguments(args, true);
 
-            LOG.log(Level.FINE, "Executing: {0}", cmd);
+            LOG.log(Level.INFO, "Executing: {0}", cmd);
 
             ProcessBuilder pb = new ProcessBuilder(Arrays.asList(cmd.toStrings()));
             pb.redirectError(ProcessBuilder.Redirect.INHERIT);
