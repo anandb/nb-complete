@@ -274,14 +274,14 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
         statusLabel.setFont(statusLabel.getFont().deriveFont(11f));
         statusPanel.add(statusLabel, BorderLayout.WEST);
 
-        toggleOptionsBtn = new JButton("Options");
-        toggleOptionsBtn.setFont(toggleOptionsBtn.getFont().deriveFont(11f));
+        toggleOptionsBtn = new JButton();
+        toggleOptionsBtn.setIcon(ThemeManager.getIcon("settings.svg", 16));
+        toggleOptionsBtn.setToolTipText("Options");
         toggleOptionsBtn.setBorderPainted(false);
         toggleOptionsBtn.setContentAreaFilled(false);
         toggleOptionsBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         toggleOptionsBtn.addActionListener(e -> {
             configPanel.setVisible(!configPanel.isVisible());
-            updateOptionsButtonText();
             AssistantTopComponent.this.revalidate();
             AssistantTopComponent.this.repaint();
         });
@@ -728,9 +728,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
                 });
     }
 
-    private void updateOptionsButtonText() {
-        toggleOptionsBtn.setText("Options");
-    }
+
 
     private void renameCurrentSession() {
         String currentId = SessionManager.getInstance().getCurrentSessionId();
@@ -1011,7 +1009,8 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
                 // Try to find matching item by name or value
                 for (int i = 0; i < combo.getItemCount(); i++) {
                     ConfigItem current = combo.getItemAt(i);
-                    if (current.name.equalsIgnoreCase(val) || current.value.equalsIgnoreCase(val)) {
+                    if (current.name.equalsIgnoreCase(val) || current.value.equalsIgnoreCase(val) 
+                            || truncateConfigName(current.name, 25).equalsIgnoreCase(val)) {
                         item = current;
                         combo.setSelectedItem(current);
                         break;
@@ -1106,7 +1105,26 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
 
     private void setupSearchableCombo(JComboBox<ConfigItem> combo, List<ConfigItem> allItems) {
         combo.setEditable(true);
+        combo.setRenderer(new ConfigItemRenderer(25));
         javax.swing.text.JTextComponent editor = (javax.swing.text.JTextComponent) combo.getEditor().getEditorComponent();
+
+        editor.addFocusListener(new java.awt.event.FocusAdapter() {
+            @Override
+            public void focusGained(java.awt.event.FocusEvent e) {
+                Object selected = combo.getSelectedItem();
+                if (selected instanceof ConfigItem item) {
+                    editor.setText(item.name);
+                }
+            }
+
+            @Override
+            public void focusLost(java.awt.event.FocusEvent e) {
+                Object selected = combo.getSelectedItem();
+                if (selected instanceof ConfigItem item) {
+                    editor.setText(truncateConfigName(item.name, 25));
+                }
+            }
+        });
         editor.addKeyListener(new KeyAdapter() {
             @Override
             public void keyReleased(KeyEvent e) {
@@ -1300,6 +1318,44 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
             return name;
         }
     }
+    
+    private String truncateConfigName(String name, int max) {
+        if (name == null || name.length() <= max) {
+            return name;
+        }
+        int lastSlash = name.lastIndexOf('/');
+        if (lastSlash != -1) {
+            String suffix = name.substring(lastSlash);
+            if (suffix.length() + 3 <= max) {
+                return "..." + suffix;
+            }
+        }
+        return name.substring(0, max - 3) + "...";
+    }
+
+    private class ConfigItemRenderer extends javax.swing.DefaultListCellRenderer {
+        private final int maxLength;
+
+        ConfigItemRenderer(int maxLength) {
+            this.maxLength = maxLength;
+        }
+
+        @Override
+        public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+            super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+            if (value instanceof ConfigItem item) {
+                String name = item.name;
+                if (index == -1) {
+                    setText(truncateConfigName(name, maxLength));
+                } else {
+                    setText(name);
+                }
+                setToolTipText(name);
+            }
+            return this;
+        }
+    }
+
 
     private void updateCwdLabel(String path) {
         SwingUtilities.invokeLater(() -> {

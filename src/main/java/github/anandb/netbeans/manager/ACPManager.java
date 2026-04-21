@@ -47,7 +47,6 @@ public class ACPManager {
 
     private final List<Consumer<SessionUpdate>> sseListeners = new CopyOnWriteArrayList<>();
     private final List<Consumer<String>> projectChangeListeners = new CopyOnWriteArrayList<>();
-    private String activeProjectDir;
     private final List<SessionUpdate.AvailableCommand> availableCommands = new CopyOnWriteArrayList<>();
     private PermissionHandler permissionHandler;
     private volatile boolean isClosing = false;
@@ -92,7 +91,7 @@ public class ACPManager {
         try {
             String executable = resolveExecutablePath();
             String args = NbPreferences.forModule(ACPOptionsPanel.class).get("processArguments", "acp");
-            
+
             CommandLine cmd = new CommandLine(executable);
             cmd.addArguments(args, true);
 
@@ -118,7 +117,7 @@ public class ACPManager {
             // Listen for session updates
             rpcClient.onNotification("session/update", params -> {
                 try {
-                    LOG.fine("Received session/update notification: " + params.toString());
+                    LOG.log(Level.FINE, "Received session/update notification: {0}", params.toString());
                     SessionUpdate.Params sessionParams = objectMapper.treeToValue(params, SessionUpdate.Params.class);
                     SessionUpdate update = new SessionUpdate("2.0", "session/update", sessionParams);
 
@@ -356,10 +355,12 @@ public class ACPManager {
                             List<Session> sessions = new ArrayList<>();
                             for (Session s : rawSessions) {
                                 // If the server returns a session for this specific directory, but it's missing the directory field, fill it in.
-                                if (s.effectiveDirectory() == null) {
-                                    s = new Session(s.id(), s.title(), directory, directory, s.parentID(), s.updatedAt(), s.mcpServers(), s.configOptions());
+                                if (s.effectiveDirectory() != null) {
+                                    sessions.add(s);
+                                    continue;
                                 }
-                                sessions.add(s);
+
+                                sessions.add(new Session(s.id(), s.title(), directory, directory, s.parentID(), s.updatedAt(), s.mcpServers(), s.configOptions()));
                             }
                             LOG.log(Level.FINE, "getSessions: deserialized {0} sessions", sessions.size());
                             for (Session s : sessions) {
@@ -389,7 +390,7 @@ public class ACPManager {
         List<CompletableFuture<List<Session>>> futures = directories.stream()
                 .map(dir -> getSessions(dir))
                 .toList();
-        return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
+        return CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new))
                 .thenApply(v -> futures.stream()
                         .flatMap(f -> {
                             try {
@@ -635,7 +636,6 @@ public class ACPManager {
     }
 
     public void setActiveProject(String path) {
-        this.activeProjectDir = path;
         for (Consumer<String> listener : projectChangeListeners) {
             listener.accept(path);
         }

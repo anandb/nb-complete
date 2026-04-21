@@ -18,6 +18,8 @@ import javax.swing.JPanel;
  * Provides a standardized header, toggle behavior, and layout.
  */
 public abstract class BaseCollapsiblePane extends RoundedPanel {
+
+    private static final long serialVersionUID = 1L;
     protected final JPanel header;
     protected final JLabel headerLabel;
     protected final JPanel contentPanel;
