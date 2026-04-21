@@ -19,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class JsonRpcClientTest {
+class AcpProtocolClientTest {
 
     @Mock
     private Process process;
@@ -31,7 +31,7 @@ class JsonRpcClientTest {
     private PipedOutputStream clientInputEmulator; // What the client reads from
     private PipedInputStream clientOutputEmulator; // What the client writes to
     
-    private JsonRpcClient client;
+    private AcpProtocolClient client;
     private final ObjectMapper mapper = new ObjectMapper();
 
     @BeforeEach
@@ -48,7 +48,7 @@ class JsonRpcClientTest {
         when(process.getInputStream()).thenReturn(processOutput);
         when(process.getErrorStream()).thenReturn(processError);
 
-        client = new JsonRpcClient(process);
+        client = new AcpProtocolClient(process);
         client.start();
     }
 

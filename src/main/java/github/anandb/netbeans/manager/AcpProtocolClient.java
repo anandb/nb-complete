@@ -19,8 +19,8 @@ import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class JsonRpcClient {
-    private static final Logger LOG = Logger.getLogger(JsonRpcClient.class.getName());
+public class AcpProtocolClient {
+    private static final Logger LOG = Logger.getLogger(AcpProtocolClient.class.getName());
     private static final long DEFAULT_TIMEOUT_SECONDS = 0; // 0 means no timeout by default
 
     private final ObjectMapper mapper = new ObjectMapper();
@@ -37,7 +37,7 @@ public class JsonRpcClient {
     private Consumer<Throwable> connectionErrorHandler;
     private Runnable disconnectionHandler;
 
-    public JsonRpcClient(Process process) {
+    public AcpProtocolClient(Process process) {
         this.writer = new PrintWriter(process.getOutputStream(), true);
         this.reader = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8));
         this.errorReader = new BufferedReader(new InputStreamReader(process.getErrorStream(), StandardCharsets.UTF_8));

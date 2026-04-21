@@ -41,7 +41,7 @@ public class ACPManager {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private Process serverProcess;
-    private JsonRpcClient rpcClient;
+    private AcpProtocolClient rpcClient;
     private boolean initialized = false;
     private CompletableFuture<Void> readyFuture = new CompletableFuture<>();
 
@@ -105,7 +105,7 @@ public class ACPManager {
 
             this.serverProcess = pb.start();
 
-            this.rpcClient = new JsonRpcClient(serverProcess);
+            this.rpcClient = new AcpProtocolClient(serverProcess);
             rpcClient.start();
             rpcClient.setDisconnectionHandler(this::handleDisconnection);
 

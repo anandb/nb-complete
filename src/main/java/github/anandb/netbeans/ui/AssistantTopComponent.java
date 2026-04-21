@@ -26,7 +26,6 @@ import java.util.logging.Logger;
 
 import javax.swing.BorderFactory;
 import javax.swing.DefaultListModel;
-import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
@@ -44,22 +43,22 @@ import javax.swing.text.StyledDocument;
 
 import org.apache.commons.lang3.StringUtils;
 import org.netbeans.api.editor.EditorRegistry;
+import org.netbeans.api.project.ui.OpenProjects;
 import org.netbeans.api.settings.ConvertAsProperties;
 import org.netbeans.modules.editor.NbEditorUtilities;
 import org.openide.awt.ActionID;
 import org.openide.awt.ActionReference;
-import github.anandb.netbeans.model.Message;
 import org.openide.filesystems.FileObject;
 import org.openide.text.NbDocument;
 import org.openide.util.NbBundle;
 import org.openide.util.NbPreferences;
 import org.openide.windows.TopComponent;
-import org.netbeans.api.project.ui.OpenProjects;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
 import github.anandb.netbeans.manager.ACPManager;
 import github.anandb.netbeans.manager.SessionManager;
+import github.anandb.netbeans.model.Message;
 import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.model.SessionConfigOption;
 import github.anandb.netbeans.model.SessionConfigSelectOption;
@@ -157,12 +156,12 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
 
         gbc.gridx = 2; gbc.weightx = 0;
         configPanel.add(new JLabel("Model:"), gbc);
-        gbc.gridx = 3; gbc.weightx = 0.4;
+        gbc.gridx = 3; gbc.weightx = 0.7;
         configPanel.add(modelCombo, gbc);
 
         gbc.gridx = 4; gbc.weightx = 0;
         configPanel.add(new JLabel("Thinking:"), gbc);
-        gbc.gridx = 5; gbc.weightx = 0.4;
+        gbc.gridx = 5; gbc.weightx = 0.1;
         configPanel.add(thinkingCombo, gbc);
 
         header = new JPanel(new BorderLayout());
@@ -275,7 +274,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
         statusPanel.add(statusLabel, BorderLayout.WEST);
 
         toggleOptionsBtn = new JButton();
-        toggleOptionsBtn.setIcon(ThemeManager.getIcon("settings.svg", 16));
+        toggleOptionsBtn.setIcon(ThemeManager.getIcon("settings.svg", 22));
         toggleOptionsBtn.setToolTipText("Options");
         toggleOptionsBtn.setBorderPainted(false);
         toggleOptionsBtn.setContentAreaFilled(false);
@@ -1009,8 +1008,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
                 // Try to find matching item by name or value
                 for (int i = 0; i < combo.getItemCount(); i++) {
                     ConfigItem current = combo.getItemAt(i);
-                    if (current.name.equalsIgnoreCase(val) || current.value.equalsIgnoreCase(val) 
-                            || truncateConfigName(current.name, 25).equalsIgnoreCase(val)) {
+                    if (current.value.equalsIgnoreCase(val) || current.name.equalsIgnoreCase(val)) {
                         item = current;
                         combo.setSelectedItem(current);
                         break;
@@ -1103,64 +1101,6 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
         }
     }
 
-    private void setupSearchableCombo(JComboBox<ConfigItem> combo, List<ConfigItem> allItems) {
-        combo.setEditable(true);
-        combo.setRenderer(new ConfigItemRenderer(25));
-        javax.swing.text.JTextComponent editor = (javax.swing.text.JTextComponent) combo.getEditor().getEditorComponent();
-
-        editor.addFocusListener(new java.awt.event.FocusAdapter() {
-            @Override
-            public void focusGained(java.awt.event.FocusEvent e) {
-                Object selected = combo.getSelectedItem();
-                if (selected instanceof ConfigItem item) {
-                    editor.setText(item.name);
-                }
-            }
-
-            @Override
-            public void focusLost(java.awt.event.FocusEvent e) {
-                Object selected = combo.getSelectedItem();
-                if (selected instanceof ConfigItem item) {
-                    editor.setText(truncateConfigName(item.name, 25));
-                }
-            }
-        });
-        editor.addKeyListener(new KeyAdapter() {
-            @Override
-            public void keyReleased(KeyEvent e) {
-                if (e.getKeyCode() == KeyEvent.VK_ENTER || e.getKeyCode() == KeyEvent.VK_UP 
-                        || e.getKeyCode() == KeyEvent.VK_DOWN || e.getKeyCode() == KeyEvent.VK_ESCAPE) {
-                    return;
-                }
-                String text = editor.getText();
-                if (text == null) text = "";
-                
-                final String filterText = text.toLowerCase();
-                final String finalOriginalText = text;
-                List<ConfigItem> filtered = allItems.stream()
-                        .filter(item -> item.name.toLowerCase().contains(filterText) 
-                                || item.value.toLowerCase().contains(filterText))
-                        .collect(java.util.stream.Collectors.toList());
-                
-                SwingUtilities.invokeLater(() -> {
-                    isUpdatingConfigControls = true;
-                    try {
-                        combo.removeAllItems();
-                        for (ConfigItem item : filtered) {
-                            combo.addItem(item);
-                        }
-                        editor.setText(filterText.isEmpty() ? "" : finalOriginalText);
-                        if (!filtered.isEmpty() && combo.isShowing()) {
-                            combo.showPopup();
-                        }
-                    } finally {
-                        isUpdatingConfigControls = false;
-                    }
-                });
-            }
-        });
-    }
-
     private void updateConfigControls(List<SessionConfigOption> options, boolean forceStartupDefaults) {
         SwingUtilities.invokeLater(() -> {
             isUpdatingConfigControls = true;
@@ -1242,13 +1182,11 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
                         }
 
                         if ("model".equals(opt.category())) {
-                            allModels.clear();
                             for (Map.Entry<String, List<ConfigItem>> entry : modelVariants.entrySet()) {
                                 List<ConfigItem> variants = entry.getValue();
                                 ConfigItem baseItem = variants.get(0);
                                 ConfigItem item = new ConfigItem(baseItem.baseName, entry.getKey());
                                 combo.addItem(item);
-                                allModels.add(item);
 
                                 // Check if current model ID belongs to this base
                                 for (ConfigItem v : variants) {
@@ -1258,7 +1196,6 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
                                     }
                                 }
                             }
-                            setupSearchableCombo(combo, allModels);
                         } else {
                             for (SessionConfigSelectOption o : opt.options()) {
                                 ConfigItem item = new ConfigItem(o.name(), o.value());
@@ -1279,12 +1216,11 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
                             combo.setSelectedItem(selected);
                             selected.isInternalUpdate = false;
                         } else if (combo.getItemCount() > 0) {
-                            // Fallback to first if nothing selected
                             combo.setSelectedIndex(0);
                         }
 
                         if ("model".equals(opt.category())) {
-                            combo.setEditable(true);
+                            combo.setEditable(false);
                             updateTabName(selected != null ? selected.name : null);
                             updateThinkingComboForModel(((ConfigItem)combo.getSelectedItem()).value);
                         }
@@ -1319,48 +1255,13 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
         }
     }
     
-    private String truncateConfigName(String name, int max) {
-        if (name == null || name.length() <= max) {
-            return name;
-        }
-        int lastSlash = name.lastIndexOf('/');
-        if (lastSlash != -1) {
-            String prefix = name.substring(0, lastSlash);
-            String suffix = name.substring(lastSlash); // includes "/"
-            
-            int availableForPrefix = max - suffix.length();
-            if (availableForPrefix >= 4) { // keep at least 1 char + "..."
-                return prefix.substring(0, availableForPrefix - 3) + "..." + suffix;
-            } else if (max > suffix.length()) {
-                return "..." + suffix;
-            }
-        }
-        return name.substring(0, max - 3) + "...";
+    private void initComponents() {
     }
 
-    private class ConfigItemRenderer extends javax.swing.DefaultListCellRenderer {
-        private final int maxLength;
-
-        ConfigItemRenderer(int maxLength) {
-            this.maxLength = maxLength;
-        }
-
-        @Override
-        public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
-            super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-            if (value instanceof ConfigItem item) {
-                String name = item.name;
-                if (index == -1) {
-                    setText(truncateConfigName(name, maxLength));
-                } else {
-                    setText(name);
-                }
-                setToolTipText(name);
-            }
-            return this;
-        }
+    @Override
+    public Dimension getMinimumSize() {
+        return new Dimension(50, 50);
     }
-
 
     private void updateCwdLabel(String path) {
         SwingUtilities.invokeLater(() -> {
@@ -1573,8 +1474,5 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
             LOG.log(Level.FINE, "Failed to get module version", e);
         }
         return "1.2.x";
-    }
-
-    private void initComponents() {
-    }
+    }    
 }

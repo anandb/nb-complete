@@ -21,11 +21,6 @@ class ACPManagerTest {
         Field instanceField = ACPManager.class.getDeclaredField("instance");
         instanceField.setAccessible(true);
         instanceField.set(null, null);
-
-        ACPManager manager = ACPManager.getInstance();
-        Field activeProjectDirField = ACPManager.class.getDeclaredField("activeProjectDir");
-        activeProjectDirField.setAccessible(true);
-        activeProjectDirField.set(manager, null);
     }
 
     @Test
@@ -45,7 +40,8 @@ class ACPManagerTest {
     @Test
     void testSseListenerRegistration() {
         ACPManager manager = ACPManager.getInstance();
-        manager.addSseListener(update -> {});
+        manager.addSseListener(update -> {
+        });
         // Just verify no exception
     }
 }
