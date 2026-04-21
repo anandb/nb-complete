@@ -1325,8 +1325,13 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
         }
         int lastSlash = name.lastIndexOf('/');
         if (lastSlash != -1) {
-            String suffix = name.substring(lastSlash);
-            if (suffix.length() + 3 <= max) {
+            String prefix = name.substring(0, lastSlash);
+            String suffix = name.substring(lastSlash); // includes "/"
+            
+            int availableForPrefix = max - suffix.length();
+            if (availableForPrefix >= 4) { // keep at least 1 char + "..."
+                return prefix.substring(0, availableForPrefix - 3) + "..." + suffix;
+            } else if (max > suffix.length()) {
                 return "..." + suffix;
             }
         }

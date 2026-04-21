@@ -3,14 +3,14 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>github.anandb</groupId>
     <artifactId>acp-netbeans-plugin</artifactId>
-    <version>1.3.3</version>
+    <version>1.3.4</version>
     <packaging>nbm</packaging>
 
     <name>ACP NetBeans Plugin</name>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.compiler.release>21</maven.compiler.release>
+        <maven.compiler.release>17</maven.compiler.release>
         <netbeans.version>RELEASE210</netbeans.version>
     </properties>
 
