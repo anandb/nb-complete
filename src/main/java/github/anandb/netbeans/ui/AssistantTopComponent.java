@@ -71,7 +71,7 @@ import github.anandb.netbeans.model.SessionUpdate;
 )
 @TopComponent.Description(
         preferredID = "AssistantTopComponent",
-        iconBase = "github/anandb/netbeans/ui/ai.svg",
+        iconBase = "github/anandb/netbeans/ui/logo.png",
         persistenceType = TopComponent.PERSISTENCE_ALWAYS
 )
 @TopComponent.Registration(mode = "explorer", openAtStartup = true)
