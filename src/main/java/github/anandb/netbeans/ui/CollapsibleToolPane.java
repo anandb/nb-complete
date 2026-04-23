@@ -60,7 +60,7 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
 
     private static Icon getHeaderIcon(String title) {
         if (title.toUpperCase().contains("THINKING")) {
-            return ThemeManager.getIcon("brain.svg", 21);
+            return ThemeManager.getIcon("brain.svg", 42);
         } else if (title.toUpperCase().contains("TOOL")) {
             return ThemeManager.getIcon("tool.svg", 21);
         }

@@ -1,20 +1,21 @@
 # Assistant NetBeans Plugin
 
-[![Version](https://img.shields.io/badge/version-1.2.160-blue.svg)](pom.xml)
+[![Version](https://img.shields.io/badge/version-1.3.25-blue.svg)](pom.xml)
 [![Build Status](https://img.shields.io/badge/build-success-brightgreen.svg)](https://github.com/anandb/nb-complete)
 [![NetBeans](https://img.shields.io/badge/NetBeans-RELEASE210-orange.svg)](https://netbeans.apache.org/download/index.html)
 
-The **Assistant NetBeans Plugin** is an AI coding assistant integrated directly into the NetBeans IDE. It implements the **Agent Client Protocol (ACP)** to provide a seamless, real-time interactive chat experience for developers—supporting code generation, explanation, and project-aware assistance.
+The **Assistant NetBeans Plugin** is a tool for integrating AI assistance into the NetBeans IDE. It uses the **Agent Client Protocol (ACP)** to provide a chat interface for code generation, explanation, and project-related tasks.
 
 ---
 
-## 🌟 Key Features
+## Features
 
-### 🎨 Modern & Responsive UI
-- **Dual-Theme Support**: Toggle between **Solarized Light** and **Darcula Dark** modes instantly with a single click.
-- **Collapsible Blocks**: Automatically handles **Thinking Process** (🧠), **Tool Calls** (🛠️), and **Code** segments. Use global toggles to expand or collapse all blocks.
-- **Comprehensive Syntax Highlighting**: Rich rendering for over 40+ programming languages (Java, Python, Rust, Go, TS/JS, C++, etc.) using `RSyntaxTextArea`.
-- **Micro-Animations**: Smooth transitions and status indicators (Thinking..., Responding...) for a premium feel.
+### UI and Theming
+- **Theme Support**: Compatible with both **Solarized Light** and **Darcula Dark** modes.
+- **Icon Support**: Automatically switches to high-contrast icons (e.g., settings, brain, tools) in dark mode.
+- **Collapsible Blocks**: Handles **Thinking Process**, **Tool Calls**, and **Code** segments.
+- **Syntax Highlighting**: Support for multiple languages via `RSyntaxTextArea`.
+- **Interrupt Support**: Functional "Stop" button to halt active AI processing.
 
 ### 📁 Persistent Session Management
 - **User-Defined Titles**: Rename your chat sessions to find them easily later.
@@ -52,7 +53,7 @@ The **Assistant NetBeans Plugin** is an AI coding assistant integrated directly 
    ```bash
    mvn package -DskipTests
    ```
-3. The plugin will be generated at `./target/nbm/acp-netbeans-plugin-1.2.160.nbm`.
+3. The plugin will be generated at `./target/nbm/beanagent-1.3.25.nbm`.
 4. In NetBeans, go to **Tools -> Plugins -> Downloaded -> Add Plugins...** and select the `.nbm` file.
 
 ---
@@ -67,15 +68,15 @@ Navigate to **Tools -> Options -> Advanced -> Assistant** to configure the follo
 
 ---
 
-## 🏗️ Technical Architecture
+## Architecture
 
-The plugin follows a robust, event-driven architecture designed for high responsiveness:
+The plugin uses an event-driven approach:
 
-- **ACPManager**: Orchestrates the lifecycle of the AI server process and JSON-RPC communication.
-- **JsonRpcClient**: Handles bidirectional message passing and response futures.
-- **SSE Streamer**: Parses incoming streaming updates and routes them to the UI thread for real-time rendering.
-- **AssistantTopComponent**: The primary controller for the NetBeans window, managing state transitions between sessions.
-- **ThemeManager**: A centralized system for dynamic CSS-like restyling of Swing components across light and dark modes.
+- **ACPManager**: Manages the AI server process lifecycle and communication.
+- **AcpProtocolClient**: Handles JSON-RPC messaging.
+- **SSE Streamer**: Processes streaming updates for real-time rendering.
+- **AssistantTopComponent**: Main NetBeans window controller.
+- **ThemeManager**: Manages styling across different IDE themes.
 
 ---
 

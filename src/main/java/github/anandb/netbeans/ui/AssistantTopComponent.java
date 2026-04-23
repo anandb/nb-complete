@@ -41,7 +41,6 @@ import javax.swing.text.Document;
 import javax.swing.text.JTextComponent;
 import javax.swing.text.StyledDocument;
 
-import org.apache.commons.lang3.StringUtils;
 import org.netbeans.api.editor.EditorRegistry;
 import org.netbeans.api.project.ui.OpenProjects;
 import org.netbeans.api.settings.ConvertAsProperties;
@@ -56,6 +55,8 @@ import org.openide.windows.TopComponent;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
+import java.io.InputStream;
+
 import github.anandb.netbeans.manager.ACPManager;
 import github.anandb.netbeans.manager.SessionManager;
 import github.anandb.netbeans.model.Message;
@@ -63,6 +64,9 @@ import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.model.SessionConfigOption;
 import github.anandb.netbeans.model.SessionConfigSelectOption;
 import github.anandb.netbeans.model.SessionUpdate;
+
+import static org.apache.commons.lang3.StringUtils.defaultIfBlank;
+import static org.apache.commons.lang3.StringUtils.left;
 
 @ConvertAsProperties(
         dtd = "-//github.anandb.netbeans.ui//Assistant//EN",
@@ -91,7 +95,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
     private static AssistantTopComponent instance;
 
     private final ChatThreadPanel chatPanel;
-    private final JTextArea inputArea;
+    private final PlaceholderTextArea inputArea;
     private final JButton sendBtn;
     private final JButton stopBtn;
     private final JComboBox<SessionItem> sessionDropdown;
@@ -101,6 +105,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
     private final JButton restartServerBtn;
     private final JButton toggleBlocksBtn;
     private final JButton toggleOptionsBtn;
+    private boolean optionsPanelCollapsed = true;
     private final JPanel configPanel;
     private final JComboBox<ConfigItem> modeCombo;
     private final JComboBox<ConfigItem> modelCombo;
@@ -185,34 +190,34 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
         sessionControls.setOpaque(false);
 
         newSessionBtn = new JButton();
-        newSessionBtn.setIcon(ThemeManager.getIcon("new.png", 28));
+        newSessionBtn.setIcon(ThemeManager.getIcon("new.svg", 24));
         newSessionBtn.setToolTipText("New Session");
-        newSessionBtn.setFocusPainted(false);
+        styleToolbarButton(newSessionBtn);
         newSessionBtn.addActionListener(e -> SessionManager.getInstance().createNewSession(null));
 
         renameSessionBtn = new JButton();
-        renameSessionBtn.setIcon(ThemeManager.getIcon("rename.png", 28));
+        renameSessionBtn.setIcon(ThemeManager.getIcon("rename.svg", 24));
         renameSessionBtn.setToolTipText("Rename Session");
-        renameSessionBtn.setFocusPainted(false);
+        styleToolbarButton(renameSessionBtn);
         renameSessionBtn.addActionListener(e -> renameCurrentSession());
 
         exportBtn = new JButton();
-        exportBtn.setIcon(ThemeManager.getIcon("export.png", 28));
+        exportBtn.setIcon(ThemeManager.getIcon("export.svg", 24));
         exportBtn.setToolTipText("Export Conversation");
-        exportBtn.setFocusPainted(false);
+        styleToolbarButton(exportBtn);
         exportBtn.addActionListener(e -> exportConversation());
 
         restartServerBtn = new JButton();
-        restartServerBtn.setIcon(ThemeManager.getIcon("restart.png", 28));
+        restartServerBtn.setIcon(ThemeManager.getIcon("restart.svg", 24));
         restartServerBtn.setToolTipText("Restart Server");
-        restartServerBtn.setFocusPainted(false);
+        styleToolbarButton(restartServerBtn);
         restartServerBtn.addActionListener(e -> promptRestartServer());
-        
+
         // Block control buttons
         toggleBlocksBtn = new JButton();
-        toggleBlocksBtn.setIcon(ThemeManager.getIcon("expand.png", 28));
+        toggleBlocksBtn.setIcon(ThemeManager.getIcon("expand.svg", 24));
         toggleBlocksBtn.setToolTipText("Expand All Blocks");
-        toggleBlocksBtn.setFocusPainted(false);
+        styleToolbarButton(toggleBlocksBtn);
         toggleBlocksBtn.putClientProperty("state", "expand");
         toggleBlocksBtn.addActionListener(e -> {
             boolean isCollapse = "collapse".equals(toggleBlocksBtn.getClientProperty("state"));
@@ -220,7 +225,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
             String newState = isCollapse ? "expand" : "collapse";
             toggleBlocksBtn.putClientProperty("state", newState);
             toggleBlocksBtn.setToolTipText(isCollapse ? "Expand All Blocks" : "Collapse All Blocks");
-            toggleBlocksBtn.setIcon(ThemeManager.getIcon(isCollapse ? "expand.png" : "collapse.png", 28));
+            toggleBlocksBtn.setIcon(ThemeManager.getIcon(isCollapse ? "expand.svg" : "collapse.svg", 24));
         });
 
         sessionControls.add(newSessionBtn);
@@ -276,11 +281,11 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
         toggleOptionsBtn = new JButton();
         toggleOptionsBtn.setIcon(ThemeManager.getIcon("settings.svg", 22));
         toggleOptionsBtn.setToolTipText("Options");
-        toggleOptionsBtn.setBorderPainted(false);
-        toggleOptionsBtn.setContentAreaFilled(false);
-        toggleOptionsBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        styleToolbarButton(toggleOptionsBtn);
         toggleOptionsBtn.addActionListener(e -> {
-            configPanel.setVisible(!configPanel.isVisible());
+            optionsPanelCollapsed = !optionsPanelCollapsed;
+            configPanel.setVisible(!optionsPanelCollapsed);
+            toggleOptionsBtn.setIcon(ThemeManager.getIcon(optionsPanelCollapsed ? "settings.svg" : "arrow-down.svg", 22));
             AssistantTopComponent.this.revalidate();
             AssistantTopComponent.this.repaint();
         });
@@ -289,7 +294,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
 
         bottomPanel.add(statusPanel, BorderLayout.NORTH);
 
-        inputArea = new JTextArea();
+        inputArea = new PlaceholderTextArea("Type Message Here");
         inputArea.setLineWrap(true);
         inputArea.setWrapStyleWord(true);
         inputArea.setBorder(new EmptyBorder(12, 12, 12, 12));
@@ -307,10 +312,14 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
         btnCard.setOpaque(false);
         sendBtn = new JButton("Go");
         sendBtn.setFocusPainted(false);
+        sendBtn.setMargin(new java.awt.Insets(2, 12, 2, 12));
+        sendBtn.setPreferredSize(new Dimension(65, 32));
         sendBtn.addActionListener(e -> sendMessage());
 
         stopBtn = new JButton("Stop");
         stopBtn.setFocusPainted(false);
+        stopBtn.setMargin(new java.awt.Insets(2, 12, 2, 12));
+        stopBtn.setPreferredSize(new Dimension(65, 32));
         stopBtn.addActionListener(e -> stopMessage());
 
         btnCard.add(sendBtn, "SEND");
@@ -334,12 +343,12 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
 
         autocompletePopup = new JPopupMenu();
         autocompletePopup.setBorder(BorderFactory.createLineBorder(UIManager.getColor("controlShadow")));
-        
+
         commandList = new JList<>();
         commandList.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
         commandList.setFocusable(false);
         commandList.setCellRenderer(new AutocompleteRenderer());
-        
+
         JScrollPane scrollPane = new JScrollPane(commandList);
         scrollPane.setBorder(null);
         scrollPane.setPreferredSize(new Dimension(250, 150));
@@ -354,7 +363,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
 
             if ("agent_message_chunk".equals(type) || "agent_thought_chunk".equals(type) || "user_message_chunk".equals(type)) {
                 JsonNode content = update.update().content();
-                
+
                 // Filter out tool outputs which are marked for the assistant's eyes only
                 boolean skip = false;
                 if ("user_message_chunk".equals(type) && content != null && content.has("annotations")) {
@@ -368,11 +377,11 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
                         }
                     }
                 }
-                
+
                 if (!skip) {
                     String text = extractText(content);
                     if (text != null && !text.isEmpty()) {
-                        String role = "agent_message_chunk".equals(type) ? "assistant" : 
+                        String role = "agent_message_chunk".equals(type) ? "assistant" :
                                       "agent_thought_chunk".equals(type) ? "thought" : "user";
                         SwingUtilities.invokeLater(() -> {
                             chatPanel.appendOrAddMessage(role, text, msgId);
@@ -518,7 +527,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
 
                 boolean hasSessions = !sessions.isEmpty();
                 boolean hasProjects = OpenProjects.getDefault().getOpenProjects().length > 0;
-                newSessionBtn.setEnabled(hasProjects); 
+                newSessionBtn.setEnabled(hasProjects);
                 renameSessionBtn.setEnabled(hasSessions);
 
                 isUpdatingConfigControls = true;
@@ -529,7 +538,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
                 } finally {
                     isUpdatingConfigControls = false;
                 }
-                
+
                 if (hasSessions) {
                     if (selectIdx != -1) {
                         sessionDropdown.setSelectedIndex(selectIdx);
@@ -550,6 +559,9 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
                     } else {
                         statusLabel.setText("Click '+ New Chat' to start");
                     }
+                    optionsPanelCollapsed = false;
+                    configPanel.setVisible(true);
+                    toggleOptionsBtn.setIcon(ThemeManager.getIcon("arrow-down.svg", 22));
                     setInputEnabled(false);
                 }
             } finally {
@@ -749,7 +761,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
     }
 
     private String selectedIdToTitle(Session session) {
-        String title = StringUtils.defaultIfBlank(session.title(), "Chat " + StringUtils.left(session.id(), 8));
+        String title = defaultIfBlank(session.title(), "Chat " + left(session.id(), 8));
         return github.anandb.netbeans.manager.SessionTitleManager.getTitle(session.id(), title);
     }
 
@@ -782,6 +794,18 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
 
         if (choice == javax.swing.JOptionPane.YES_OPTION) {
             restartServer();
+        }
+    }
+
+    private void styleToolbarButton(JButton btn) {
+        btn.setFocusPainted(false);
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        // We keep the transparent SVG icons, but restore the standard button look
+        if (btn.getIcon() != null) {
+            int w = btn.getIcon().getIconWidth();
+            int h = btn.getIcon().getIconHeight();
+            // Standard NetBeans toolbar buttons often have a bit of padding
+            btn.setPreferredSize(new Dimension(w + 8, h + 8));
         }
     }
 
@@ -876,7 +900,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
             autocompletePopup.setVisible(false);
             return;
         }
-        
+
         if (keyCode == KeyEvent.VK_UP || keyCode == KeyEvent.VK_DOWN) {
             if (autocompletePopup.isVisible()) {
                 int size = commandList.getModel().getSize();
@@ -922,7 +946,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
         char trigger = text.charAt(start);
         String prefix = text.substring(start + 1, caret).toLowerCase();
 
-        List<SessionUpdate.AvailableCommand> allCommands = trigger == '/' 
+        List<SessionUpdate.AvailableCommand> allCommands = trigger == '/'
             ? ACPManager.getInstance().getAvailableCommands()
             : java.util.Collections.emptyList(); // Mentions not yet implemented
 
@@ -965,14 +989,14 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
                 if (text.charAt(start) == '/' || text.charAt(start) == '@') break;
                 start--;
             }
-            
+
             if (start >= 0) {
                 String before = text.substring(0, start);
                 String after = text.substring(caret);
                 inputArea.setText(before + "/" + selected.name() + " " + after);
                 inputArea.setCaretPosition(before.length() + selected.name().length() + 2);
             }
-            
+
             autocompletePopup.setVisible(false);
             inputArea.requestFocusInWindow();
         }
@@ -1254,7 +1278,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
             return name;
         }
     }
-    
+
     private void initComponents() {
     }
 
@@ -1466,13 +1490,27 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
     private String getVersion() {
         try {
             org.openide.modules.ModuleInfo m = org.openide.modules.Modules.getDefault()
-                    .findCodeNameBase("github.anandb.acp.netbeans.plugin");
+                    .findCodeNameBase("github.anandb.beanagent");
             if (m != null && m.getSpecificationVersion() != null) {
                 return m.getSpecificationVersion().toString();
             }
         } catch (Exception e) {
             LOG.log(Level.FINE, "Failed to get module version", e);
         }
-        return "1.2.x";
-    }    
+        try {
+            InputStream is = getClass().getResourceAsStream("/META-INF/MANIFEST.MF");
+            if (is != null) {
+                java.util.Properties p = new java.util.Properties();
+                p.load(is);
+                String v = p.getProperty("OpenIDE-Module-Specification-Version");
+                if (v != null) {
+                    return v;
+                }
+            }
+        } catch (Exception e) {
+            LOG.log(Level.FINE, "Failed to get version from manifest", e);
+        }
+
+        return "0.0.0";
+    }
 }

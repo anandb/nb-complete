@@ -5,7 +5,7 @@
 - **Project type**: NetBeans IDE plugin (NBM packaging)
 - **Language**: Java 21
 - **Build tool**: Maven
-- **Current Version**: 1.2.160
+- **Current Version**: 1.3.25
 
 ## Build Commands
 - Build: `mvn package`
@@ -25,15 +25,16 @@ When working on this codebase, you **must** leverage Context7 for documentation 
 ## Source Structure
 - `src/main/java/github/anandb/netbeans/` - Main source code
   - `completion/` - Code completion provider
-  - `manager/` - ACPManager, JsonRpcClient
+  - `manager/` - ACPManager, AcpProtocolClient
   - `model/` - Message, Session, Agent, SessionUpdate (ACP compliant)
   - `project/` - Project management (startup, project manager)
   - `ui/` - UI components (chat panel, message bubbles, collapsible panes, theme manager)
 
 ## Architecture & Communication
 - **Agent Client Protocol (ACP)**: Plugin is compliant with ACP for session metadata and updates.
-- **JSON-RPC**: Bidirectional communication via `JsonRpcClient`.
+- **JSON-RPC**: Bidirectional communication via `AcpProtocolClient`.
 - **SSE Streams**: Handles `session/update` notifications for real-time AI response streaming.
+- **Stop Mechanism**: `session/cancel` MUST be sent as a **notification**, not a request, as per ACP protocol v1.
 - **UI Architecture**:
     - `AssistantTopComponent`: Primary chat window with global controls.
     - `ChatThreadPanel`: Manages the thread of message bubbles.
@@ -47,5 +48,5 @@ When working on this codebase, you **must** leverage Context7 for documentation 
 ## Coding Notes
 - **Braces**: Always use braces for `if-else`, `for`, `while`, and `do-while` loops.
 - **Logging**: Use index-based placeholders (e.g., `{0}`) for `java.util.logging.Logger`; do not concatenate strings.
-- **Theming**: Use `ThemeManager.getCurrentTheme()` for colors to ensure Darcula and Light mode compatibility.
+- **Theming**: Use `ThemeManager.getCurrentTheme()` for colors. Icons should have `-dark.svg` variants for high-contrast dark mode support, resolved automatically via `ThemeManager`.
 - **Asynchrony**: Use `SwingUtilities.invokeLater()` for all UI updates coming from background RPC/SSE threads.

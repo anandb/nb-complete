@@ -1,15 +1,5 @@
 package github.anandb.netbeans.manager;
 
-import github.anandb.netbeans.model.Session;
-import github.anandb.netbeans.model.SessionConfigOption;
-import github.anandb.netbeans.model.SessionUpdate;
-import github.anandb.netbeans.ui.ACPOptionsPanel;
-
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -23,6 +13,9 @@ import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import javax.swing.text.Document;
+
+import org.apache.commons.exec.CommandLine;
 import org.netbeans.api.project.Project;
 import org.netbeans.api.project.ui.OpenProjects;
 import org.openide.cookies.EditorCookie;
@@ -31,9 +24,15 @@ import org.openide.filesystems.FileUtil;
 import org.openide.loaders.DataObject;
 import org.openide.util.NbPreferences;
 
-import javax.swing.text.Document;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
-import org.apache.commons.exec.CommandLine;
+import github.anandb.netbeans.model.Session;
+import github.anandb.netbeans.model.SessionConfigOption;
+import github.anandb.netbeans.model.SessionUpdate;
+import github.anandb.netbeans.ui.ACPOptionsPanel;
 
 public class ACPManager {
     private static final Logger LOG = Logger.getLogger(ACPManager.class.getName());
@@ -567,8 +566,8 @@ public class ACPManager {
         if (!rpcClientReady()) {
             return CompletableFuture.failedFuture(new RuntimeException("Server not started"));
         }
-        return rpcClient.sendRequest("session/cancel", Map.of("sessionId", sessionId))
-                .thenApply(v -> null);
+        rpcClient.sendNotification("session/cancel", Map.of("sessionId", sessionId));
+        return CompletableFuture.completedFuture(null);
     }
 
     public CompletableFuture<JsonNode> renameSession(String sessionId, String newTitle) {

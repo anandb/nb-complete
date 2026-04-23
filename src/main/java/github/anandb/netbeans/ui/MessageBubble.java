@@ -63,9 +63,10 @@ public class MessageBubble extends JPanel {
         segmentsContainer.setBackground(bgColor);
         segmentsContainer.setOpaque(true);
         
-        if (bubble instanceof RoundedPanel rp) {
+        if (bubble instanceof RoundedPanel) {
+            RoundedPanel rp = (RoundedPanel) bubble;
             rp.setBaseColor(bgColor);
-            rp.setOpaque(false); // Rounded panels must be non-opaque to show corners
+            rp.setOpaque(false);
         }
     }
 
@@ -188,7 +189,7 @@ public class MessageBubble extends JPanel {
             copyBtn.setToolTipText("Copy to input");
             copyBtn.setFocusPainted(false);
             copyBtn.setContentAreaFilled(false);
-            copyBtn.setBorder(new EmptyBorder(2, 8, 2, 8));
+            copyBtn.setBorder(new javax.swing.border.EmptyBorder(2, 8, 2, 8));
             copyBtn.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
 
             copyBtn.addActionListener(e -> {

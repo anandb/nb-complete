@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import java.io.BufferedReader;
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
@@ -19,7 +20,9 @@ import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class AcpProtocolClient {
+import static github.anandb.netbeans.manager.AgentUtils.closeQuietly;
+
+public class AcpProtocolClient implements Closeable {
     private static final Logger LOG = Logger.getLogger(AcpProtocolClient.class.getName());
     private static final long DEFAULT_TIMEOUT_SECONDS = 0; // 0 means no timeout by default
 
@@ -303,6 +306,7 @@ public class AcpProtocolClient {
         }
     }
 
+    @Override
     public void close() {
         running = false;
 
@@ -320,16 +324,8 @@ public class AcpProtocolClient {
             errorReaderThread.interrupt();
         }
 
-        writer.close();
-        try {
-            reader.close();
-        } catch (IOException e) {
-            LOG.log(Level.FINE, "Error closing reader", e);
-        }
-        try {
-            errorReader.close();
-        } catch (IOException e) {
-            LOG.log(Level.FINE, "Error closing error reader", e);
-        }
+        closeQuietly(writer);
+        closeQuietly(reader);
+        closeQuietly(errorReader);
     }
 }

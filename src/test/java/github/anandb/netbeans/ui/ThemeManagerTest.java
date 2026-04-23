@@ -18,7 +18,7 @@ class ThemeManagerTest {
     @Test
     void testGetIcon() {
         // Test with an icon that should exist
-        Icon icon = ThemeManager.getIcon("new.png", 24);
+        Icon icon = ThemeManager.getIcon("new.svg", 24);
         assertNotNull(icon);
         assertEquals(24, icon.getIconWidth());
         assertEquals(24, icon.getIconHeight());

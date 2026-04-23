@@ -32,18 +32,22 @@ import javax.swing.Scrollable;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 
-import org.apache.commons.lang3.StringUtils;
-
 import github.anandb.netbeans.model.Message;
 import github.anandb.netbeans.model.Session;
 
+import static org.apache.commons.lang3.StringUtils.defaultIfBlank;
+import static org.apache.commons.lang3.StringUtils.isBlank;
+import static org.apache.commons.lang3.StringUtils.left;
+
 public class ChatThreadPanel extends JPanel {
     private static final Logger LOG = Logger.getLogger(ChatThreadPanel.class.getName());
+    private static final long serialVersionUID = 1L;
+
     private final JPanel messagesContainer;
     private final JScrollPane scrollPane;
-    private final List<Message> messageList = new ArrayList<>();
+    private final ArrayList<Message> messageList = new ArrayList<>();
     private volatile MessageBubble activeStreamBubble = null;
-    private javax.swing.Timer streamFlushTimer;
+    private final javax.swing.Timer streamFlushTimer;
 
     public ChatThreadPanel() {
         setLayout(new BorderLayout());
@@ -128,7 +132,7 @@ public class ChatThreadPanel extends JPanel {
     public void addMessage(Message message) {
         String type = message.type();
         StringBuilder sb = new StringBuilder();
-        LOG.fine("addMessage(Message) called. type=" + type);
+        LOG.log(Level.FINE, "addMessage(Message) called. type={0}", type);
 
         if ("user".equals(type)) {
             if (message.prompt() != null) {
@@ -165,8 +169,9 @@ public class ChatThreadPanel extends JPanel {
                 }
             }
         }
+        
         String text = sb.toString();
-        LOG.fine("addMessage(Message) final text length: " + text.length());
+        LOG.log(Level.FINE, "addMessage(Message) final text length: {0}", text.length());
         String copyable = "user".equals(type) && message.prompt() != null ? message.prompt().text() : text;
         addMessage(type, text, message.id(), copyable);
     }
@@ -180,19 +185,17 @@ public class ChatThreadPanel extends JPanel {
     }
 
     public void addMessage(String role, String text, String messageId, String copyableText) {
-        if (isIgnorableToolMessage(role, text)) {
+        LOG.log(Level.INFO, "ADD [{0}] [{1}] {2}", new Object[]{role, messageId, copyableText});
+        if (isIgnorableMessage(role, text)) {
             return;
         }
+
         SwingUtilities.invokeLater(() -> {
             MessageBubble lastBubble = findLastNonIgnorableBubble();
-            
-            boolean canMerge = lastBubble != null && lastBubble.getType().equals(role);
+            boolean canMerge = (lastBubble != null && role.equals(lastBubble.getType()));
             if (canMerge) {
-                if ("thought".equals(role)) {
-                    // Always merge consecutive thoughts
-                } else if (messageId != null && messageId.equals(lastBubble.getMessageId())) {
-                    // Merge same ID
-                } else {
+                // Always merge consecutive thoughts
+                if (!"thought".equals(role) && (messageId == null || !messageId.equals(lastBubble.getMessageId()))) {
                     canMerge = false;
                 }
             }
@@ -242,10 +245,9 @@ public class ChatThreadPanel extends JPanel {
     public void appendOrAddMessage(String role, String text, String messageId) {
         SwingUtilities.invokeLater(() -> {
             MessageBubble lastBubble = findLastNonIgnorableBubble();
-
             boolean canAppend = lastBubble != null && lastBubble.getType().equals(role);
             if (canAppend && messageId != null && lastBubble.getMessageId() != null) {
-                // For "thought" segments, we want to group them together even if they have different IDs 
+                // For "thought" segments, we want to group them together even if they have different IDs
                 // if they are consecutive. For other types, we still require matching IDs.
                 if (!role.equals("thought") && !messageId.equals(lastBubble.getMessageId())) {
                     canAppend = false;
@@ -278,7 +280,7 @@ public class ChatThreadPanel extends JPanel {
             String text = update.status();
             String messageId = update.messageId();
 
-            if (isIgnorableToolMessage(role, text)) {
+            if (isIgnorableMessage(role, text)) {
                 return;
             }
 
@@ -331,6 +333,7 @@ public class ChatThreadPanel extends JPanel {
     }
 
     private static class PermissionBubble extends JPanel {
+        private static final long serialVersionUID = 1L;
         public PermissionBubble(String prompt, com.fasterxml.jackson.databind.JsonNode options, java.util.concurrent.CompletableFuture<String> responseFuture) {
             setLayout(new BorderLayout());
             setOpaque(false);
@@ -594,7 +597,7 @@ public class ChatThreadPanel extends JPanel {
                     messagesContainer.add(Box.createVerticalStrut(12));
 
                     for (Session s : sessions) {
-                        String title = StringUtils.defaultIfBlank(s.title(), "Chat " + StringUtils.left(s.id(), 8));
+                        String title = defaultIfBlank(s.title(), "Chat " + left(s.id(), 8));
                         String label = github.anandb.netbeans.manager.SessionTitleManager.getTitle(s.id(), title);
                         String dir = s.effectiveDirectory();
                         JButton sessionBtn = createSelectionButtonWithBadge(label, s.projectName(), dir);
@@ -713,29 +716,38 @@ public class ChatThreadPanel extends JPanel {
 
         return btn;
     }
-    private boolean isIgnorableToolMessage(String role, String text) {
-        if (!"tool".equals(role)) return false;
-        if (text == null) return true;
-        String trimmed = text.trim().toLowerCase();
+
+    private boolean isIgnorableMessage(String role, String text) {
+        if ("assistant".equals(role) && isBlank(text)) {
+            return true;
+        }
+
+        String trimmed = defaultIfBlank(text, "").trim().toLowerCase();
+
         // Remove trailing punctuation for the check
         if (trimmed.endsWith(".") || trimmed.endsWith("!")) {
             trimmed = trimmed.substring(0, trimmed.length() - 1);
         }
-        return trimmed.equals("completed") || trimmed.equals("failed") 
-            || trimmed.equals("in-progress") || trimmed.equals("in progress") || trimmed.equals("in_progress") 
-            || trimmed.equals("success") || trimmed.equals("done");
+
+        return "tool".equals(role) && (trimmed.equals("completed") || trimmed.equals("failed") ||
+                trimmed.equals("in-progress") || trimmed.equals("in progress") || trimmed.equals("in_progress") ||
+                trimmed.equals("inprogress") || trimmed.equals("success") || trimmed.equals("done"));
     }
+
     private MessageBubble findLastNonIgnorableBubble() {
         int count = messagesContainer.getComponentCount();
         for (int i = count - 1; i >= 0; i--) {
             Component c = messagesContainer.getComponent(i);
             if (c instanceof MessageBubble mb) {
-                if (isIgnorableToolMessage(mb.getType(), mb.getRawText())) {
+                if (isIgnorableMessage(mb.getType(), mb.getRawText())) {
+                    LOG.log(Level.INFO, "findLastNonIgnorableBubble() called. mb={0}, type={1}, text={2}", new Object[]{mb, mb.getType(), mb.getRawText()});
                     continue;
                 }
+
                 return mb;
             }
         }
+
         return null;
     }
 }

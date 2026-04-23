@@ -2,19 +2,21 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <groupId>github.anandb</groupId>
-    <artifactId>acp-netbeans-plugin</artifactId>
-    <version>1.3.9</version>
+    <artifactId>beanagent</artifactId>
+    <version>1.3.25</version>
     <packaging>nbm</packaging>
 
-    <name>OpenCode Client for Netbeans</name>
+    <name>Coding Assistant for Netbeans using ACP, Use OpenCode via the Agent Client Protocol</name>
 
-    <properties>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.compiler.release>17</maven.compiler.release>
-        <netbeans.version>RELEASE210</netbeans.version>
-    </properties>
+        <properties>
+            <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+            <maven.compiler.release>17</maven.compiler.release>
+            <netbeans.version>RELEASE210</netbeans.version>
+            <argLine></argLine>
+        </properties>
 
     <dependencies>
+        <!-- NetBeans APIs - automatically provided by IDE -->
         <dependency>
             <groupId>org.netbeans.api</groupId>
             <artifactId>org-netbeans-api-annotations-common</artifactId>
@@ -121,162 +123,146 @@
             <version>3.20.0</version>
         </dependency>
         <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>1.18.44</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- Commons -->
+        <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-exec</artifactId>
             <version>1.6.0</version>
         </dependency>
 
-        <!-- Markdown Processing -->
+        <!-- Flexmark markdown - use only core instead of all -->
         <dependency>
             <groupId>com.vladsch.flexmark</groupId>
-            <artifactId>flexmark-all</artifactId>
+            <artifactId>flexmark</artifactId>
             <version>0.64.8</version>
         </dependency>
 
-        <!-- JSON Processing -->
+        <!-- Jackson JSON -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-core</artifactId>
+            <version>2.17.0</version>
+        </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-            <version>2.16.1</version>
+            <version>2.17.0</version>
         </dependency>
 
-        <!-- Syntax Highlighting -->
+        <!-- RSyntaxTextArea for syntax highlighting -->
         <dependency>
             <groupId>com.fifesoft</groupId>
             <artifactId>rsyntaxtextarea</artifactId>
-            <version>3.4.0</version>
+            <version>3.5.3</version>
         </dependency>
 
-        <!-- Test -->
+        <!-- ASM for bytecode manipulation (required by nbm) -->
+        <dependency>
+            <groupId>org.ow2.asm</groupId>
+            <artifactId>asm</artifactId>
+            <version>9.7.1</version>
+        </dependency>
+
+        <!-- JUnit 5 -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-api</artifactId>
-            <version>5.10.1</version>
+            <artifactId>junit-jupiter</artifactId>
+            <version>5.11.4</version>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-engine</artifactId>
-            <version>5.10.1</version>
-            <scope>test</scope>
-        </dependency>
+
+        <!-- Mockito -->
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
-            <version>5.8.0</version>
+            <version>5.17.0</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-junit-jupiter</artifactId>
-            <version>5.8.0</version>
+            <version>5.17.0</version>
             <scope>test</scope>
-        </dependency>        
+        </dependency>
     </dependencies>
+
     <build>
-    <pluginManagement>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-resources-plugin</artifactId>
+                    <version>3.5.0</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-install-plugin</artifactId>
+                    <version>3.1.4</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-deploy-plugin</artifactId>
+                    <version>3.1.4</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>3.5.5</version>
+                    <configuration>
+                        <argLine>@{argLine} -Dnet.bytebuddy.experimental=true</argLine>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
         <plugins>
             <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-resources-plugin</artifactId>
-                <version>3.3.1</version>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-install-plugin</artifactId>
-                <version>3.1.1</version>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-deploy-plugin</artifactId>
-                <version>3.1.1</version>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.5.5</version>
+                <groupId>org.apache.netbeans.utilities</groupId>
+                <artifactId>nbm-maven-plugin</artifactId>
+                <version>14.4</version>
+                <extensions>true</extensions>
                 <configuration>
-                    <argLine>@{argLine} -Dnet.bytebuddy.experimental=true</argLine>
+                    <author>ACP</author>
+                    <licenseName>The Unlicense</licenseName>
+                    <licenseFile>LICENSE</licenseFile>
+                    <publicPackages>
+                        <publicPackage>github.anandb.netbeans.manager</publicPackage>
+                        <publicPackage>github.anandb.netbeans.model</publicPackage>
+                        <publicPackage>github.anandb.netbeans.project</publicPackage>
+                        <publicPackage>github.anandb.netbeans.ui</publicPackage>
+                    </publicPackages>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+                <configuration>
+                    <source>${maven.compiler.release}</source>
+                    <target>${maven.compiler.release}</target>
+                    <release>${maven.compiler.release}</release>
+                    <showWarnings>true</showWarnings>
+                    <showDeprecation>false</showDeprecation>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.4.2</version>
+                <configuration>
+                    <archive>
+                        <manifestFile>${project.build.outputDirectory}/META-INF/MANIFEST.MF</manifestFile>
+                        <manifestEntries>
+                            <OpenIDE-Module-Layer>github/anandb/netbeans/ui/layer.xml</OpenIDE-Module-Layer>
+                        </manifestEntries>
+                    </archive>
                 </configuration>
             </plugin>
         </plugins>
-    </pluginManagement>
-    <plugins>
-        <plugin>
-            <groupId>org.apache.netbeans.utilities</groupId>
-            <artifactId>nbm-maven-plugin</artifactId>
-            <version>14.4</version>
-            <extensions>true</extensions>
-            <configuration>
-                <author>ACP</author>
-                <licenseName>The Unlicense</licenseName>
-                <licenseFile>LICENSE</licenseFile>
-                <publicPackages>
-
-                    <publicPackage>github.anandb.netbeans.manager</publicPackage>
-                    <publicPackage>github.anandb.netbeans.model</publicPackage>
-                    <publicPackage>github.anandb.netbeans.project</publicPackage>
-                    <publicPackage>github.anandb.netbeans.ui</publicPackage>
-                </publicPackages>
-            </configuration>
-        </plugin>
-        <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-compiler-plugin</artifactId>
-            <version>3.15.0</version>
-        </plugin>
-        <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-jar-plugin</artifactId>
-            <version>3.3.0</version>
-            <configuration>
-                <archive>
-                    <manifestFile>${project.build.outputDirectory}/META-INF/MANIFEST.MF</manifestFile>
-                    <manifestEntries>
-                        <OpenIDE-Module-Layer>github/anandb/netbeans/ui/layer.xml</OpenIDE-Module-Layer>
-                    </manifestEntries>
-                </archive>
-            </configuration>
-        </plugin>
-        <plugin>
-            <groupId>org.jacoco</groupId>
-            <artifactId>jacoco-maven-plugin</artifactId>
-            <version>0.8.11</version>
-            <executions>
-                <execution>
-                    <goals>
-                        <goal>prepare-agent</goal>
-                    </goals>
-                </execution>
-                <execution>
-                    <id>report</id>
-                    <phase>test</phase>
-                    <goals>
-                        <goal>report</goal>
-                    </goals>
-                </execution>
-                <execution>
-                    <id>check</id>
-                    <goals>
-                        <goal>check</goal>
-                    </goals>
-                    <configuration>
-                        <rules>
-                            <rule>
-                                <element>BUNDLE</element>
-                                <limits>
-                                    <limit>
-                                        <counter>LINE</counter>
-                                        <value>COVEREDRATIO</value>
-                                        <minimum>0.15</minimum>
-                                    </limit>
-                                </limits>
-                            </rule>
-                        </rules>
-                    </configuration>
-                </execution>
-            </executions>
-        </plugin>
-    </plugins>
     </build>
 </project>
