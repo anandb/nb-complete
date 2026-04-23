@@ -486,7 +486,7 @@ public class MessageBubble extends JPanel {
         if ("user".equals(type)) {
             bg = theme.getBubbleUser();
         } else if ("error".equals(type)) {
-            bg = new Color(255, 235, 238);
+            bg = theme.getErrorBackground();
         } else {
             bg = theme.getSunkenBackground();
         }
@@ -496,7 +496,7 @@ public class MessageBubble extends JPanel {
         if ("error".equals(type)) {
             customCss += " body { color: #D32F2F; font-weight: bold; }";
         } else if ("tool".equals(type)) {
-            customCss += " body { color: #777777; font-size: 13px; }";
+            customCss += " body { color: " + theme.getToolForeground() + "; font-size: 13px; }";
         }
 
         // Removed the <pre> wrap which was causing nested <p> segments to render incorrectly and overlap.
@@ -508,7 +508,7 @@ public class MessageBubble extends JPanel {
         if ("user".equals(type)) {
             return theme.getBubbleUser();
         } else if ("error".equals(type)) {
-            return new Color(255, 235, 238);
+            return theme.getErrorBackground();
         } else {
             return theme.getSunkenBackground();
         }

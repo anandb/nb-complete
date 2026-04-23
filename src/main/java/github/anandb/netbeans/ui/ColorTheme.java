@@ -48,6 +48,9 @@ public class ColorTheme {
     private final Color thinkingHeaderBackground;
     private final Color thinkingHeaderForeground;
 
+    // Tool Message
+    private final Color toolForeground;
+
     // Permission Panel
     private final Color permissionBg;
     private final Color permissionBorder;
@@ -83,6 +86,7 @@ public class ColorTheme {
         this.codeHeaderForeground = builder.codeHeaderForeground;
         this.thinkingHeaderBackground = builder.thinkingHeaderBackground;
         this.thinkingHeaderForeground = builder.thinkingHeaderForeground;
+        this.toolForeground = builder.toolForeground;
     }
 
     public boolean isDark() { return isDark; }
@@ -114,6 +118,7 @@ public class ColorTheme {
     public Color getCodeHeaderForeground() { return codeHeaderForeground; }
     public Color getThinkingHeaderBackground() { return thinkingHeaderBackground; }
     public Color getThinkingHeaderForeground() { return thinkingHeaderForeground; }
+    public Color getToolForeground() { return toolForeground; }
 
     public static ColorTheme getNativeTheme() {
         boolean isDark = UIManager.getBoolean("nb.dark.theme");
@@ -149,10 +154,11 @@ public class ColorTheme {
             .permissionTitle(UIManager.getColor("OptionPane.messageForeground"))
             .headerForeground(UIManager.getColor("Label.foreground"))
             .errorBackground(Color.decode(isDark ? "#401010" : "#FFEBEE"))
-            .codeHeaderBackground(Color.decode("#2b2d30")) // Darker header
-            .codeHeaderForeground(Color.decode("#bcbec4")) // Light text
+            .codeHeaderBackground(Color.decode("#2b2d30"))
+            .codeHeaderForeground(Color.decode("#bcbec4"))
             .thinkingHeaderBackground(isDark ? UIManager.getColor("Panel.background") : Color.decode("#fdf6e3"))
             .thinkingHeaderForeground(UIManager.getColor("Label.foreground"))
+            .toolForeground(Color.decode(isDark ? "#9CA3AF" : "#777777"))
             .build();
     }
 
@@ -187,6 +193,9 @@ public class ColorTheme {
         private Color thinkingHeaderBackground;
         private Color thinkingHeaderForeground;
 
+        // Tool Message
+        private Color toolForeground;
+
         public Builder(boolean isDark) { this.isDark = isDark; }
         public Builder background(Color c) { this.background = c; return this; }
         public Builder foreground(Color c) { this.foreground = c; return this; }
@@ -215,6 +224,7 @@ public class ColorTheme {
         public Builder codeHeaderForeground(Color c) { this.codeHeaderForeground = c; return this; }
         public Builder thinkingHeaderBackground(Color c) { this.thinkingHeaderBackground = c; return this; }
         public Builder thinkingHeaderForeground(Color c) { this.thinkingHeaderForeground = c; return this; }
+        public Builder toolForeground(Color c) { this.toolForeground = c; return this; }
         
         public ColorTheme build() { return new ColorTheme(this); }
     }
