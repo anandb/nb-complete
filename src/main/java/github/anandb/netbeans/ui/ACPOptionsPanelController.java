@@ -8,11 +8,12 @@ import org.openide.util.HelpCtx;
 import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
 
-@OptionsPanelController.SubRegistration(
-        location = "Advanced",
-        displayName = "#OptionsCategory_Name_Assistant",
+@OptionsPanelController.TopLevelRegistration(
+        categoryName = "#OptionsCategory_Name_Assistant",
+        iconBase = "github/anandb/netbeans/ui/icons/logo.svg",
         keywords = "#OptionsCategory_Keywords_Assistant",
-        keywordsCategory = "Advanced/Assistant"
+        keywordsCategory = "Assistant",
+        position = 1100
 )
 @NbBundle.Messages({
     "OptionsCategory_Name_Assistant=Assistant", 

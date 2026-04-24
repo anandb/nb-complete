@@ -116,7 +116,7 @@ public class ACPManager {
             // Listen for session updates
             rpcClient.onNotification("session/update", params -> {
                 try {
-                    LOG.log(Level.FINE, "Received session/update notification: {0}", params.toString());
+                    LOG.log(Level.INFO, "Received session/update notification: {0}", params.toString());
                     SessionUpdate.Params sessionParams = objectMapper.treeToValue(params, SessionUpdate.Params.class);
                     SessionUpdate update = new SessionUpdate("2.0", "session/update", sessionParams);
 
@@ -484,7 +484,7 @@ public class ACPManager {
                 });
     }
 
-    public CompletableFuture<Void> sendMessage(String sessionId, String text, Map<String, Object> context) {
+    public CompletableFuture<JsonNode> sendMessage(String sessionId, String text, Map<String, Object> context) {
         if (!rpcClientReady()) {
             return CompletableFuture.failedFuture(new RuntimeException("Server not started"));
         }

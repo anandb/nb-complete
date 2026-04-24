@@ -9,6 +9,7 @@ import java.awt.GridLayout;
 import java.awt.Rectangle;
 import java.awt.event.ContainerAdapter;
 import java.awt.event.ContainerEvent;
+import com.fasterxml.jackson.databind.JsonNode;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
@@ -191,6 +192,7 @@ public class ChatThreadPanel extends JPanel {
         }
 
         SwingUtilities.invokeLater(() -> {
+            LOG.log(Level.INFO, "EDT: Adding bubble for role={0}, id={1}", new Object[]{role, messageId});
             MessageBubble lastBubble = findLastNonIgnorableBubble();
             boolean canMerge = (lastBubble != null && role.equals(lastBubble.getType()));
             if (canMerge) {
@@ -216,6 +218,7 @@ public class ChatThreadPanel extends JPanel {
             messagesContainer.add(bubble);
             messagesContainer.add(Box.createVerticalStrut(4));
             messagesContainer.revalidate();
+            messagesContainer.repaint();
             scrollToBottom(true);
         });
     }
@@ -277,8 +280,11 @@ public class ChatThreadPanel extends JPanel {
     public void updateToolCall(github.anandb.netbeans.model.SessionUpdate.UpdateData update) {
         SwingUtilities.invokeLater(() -> {
             String role = "tool";
-            String text = update.status();
-            String messageId = update.messageId();
+            String messageId = update.messageId() != null ? update.messageId() : update.toolCallId();
+            String text = extractContentText(update.content());
+            if (text == null || text.isEmpty()) {
+                text = update.status();
+            }
 
             if (isIgnorableMessage(role, text)) {
                 return;
@@ -302,7 +308,34 @@ public class ChatThreadPanel extends JPanel {
             } else {
                 addMessage(role, text, messageId);
             }
+            messagesContainer.revalidate();
+            messagesContainer.repaint();
+            scrollToBottom(true);
         });
+    }
+
+    private String extractContentText(JsonNode content) {
+        if (content == null) {
+            return null;
+        }
+        StringBuilder sb = new StringBuilder();
+        if (content.isArray()) {
+            for (JsonNode part : content) {
+                if (part.has("content")) {
+                    JsonNode inner = part.get("content");
+                    if (inner.has("text")) {
+                        sb.append(inner.get("text").asText());
+                    }
+                } else if (part.has("type") && "text".equals(part.get("type").asText())) {
+                    if (part.has("text")) {
+                        sb.append(part.get("text").asText());
+                    }
+                }
+            }
+        } else if (content.has("text")) {
+            sb.append(content.get("text").asText());
+        }
+        return sb.toString();
     }
 
     public void stopStreaming() {
@@ -474,14 +507,18 @@ public class ChatThreadPanel extends JPanel {
             }
 
             JScrollBar vertical = scrollPane.getVerticalScrollBar();
+            
+            // Set twice to handle layout updates
             vertical.setValue(vertical.getMaximum());
 
             // Re-apply after a short delay to account for dynamic component resizing
             if (scrollTimer != null && scrollTimer.isRunning()) {
                 scrollTimer.restart();
             } else {
-                scrollTimer = new javax.swing.Timer(50, e -> {
+                scrollTimer = new javax.swing.Timer(100, e -> {
                     vertical.setValue(vertical.getMaximum());
+                    // Force a scroll to bottom by moving the viewport
+                    messagesContainer.scrollRectToVisible(new Rectangle(0, messagesContainer.getHeight() - 1, 1, 1));
                 });
                 scrollTimer.setRepeats(false);
                 scrollTimer.start();

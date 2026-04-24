@@ -89,7 +89,7 @@ public class AcpProtocolClient implements Closeable {
 
         try {
             String json = mapper.writeValueAsString(request);
-            LOG.log(Level.FINE, "Sending request: {0}", json);
+            LOG.log(Level.INFO, "Sending request: {0}", json);
             writer.println(json);
             if (writer.checkError()) {
                 pendingRequests.remove(id);
@@ -151,13 +151,16 @@ public class AcpProtocolClient implements Closeable {
                     continue;
                 }
                 if (!trimmed.startsWith("{")) {
-                    LOG.log(Level.FINE, "Ignoring non-JSON process output: {0}", line);
+                    LOG.log(Level.INFO, "Ignoring non-JSON process output: {0}", line);
                     continue;
                 }
-                LOG.log(Level.FINE, "Received JSON-RPC line: {0}", line);
+                LOG.log(Level.INFO, "Received JSON-RPC line: {0}", line);
                 try {
-                    JsonNode node = mapper.readTree(line);
-                    handleMessage(node);
+                    com.fasterxml.jackson.core.JsonParser parser = mapper.getFactory().createParser(line);
+                    com.fasterxml.jackson.databind.MappingIterator<JsonNode> it = mapper.readValues(parser, JsonNode.class);
+                    while (it.hasNext()) {
+                        handleMessage(it.next());
+                    }
                 } catch (Exception e) {
                     LOG.log(Level.WARNING, "Error parsing JSON-RPC line: {0}", new Object[]{line});
                     LOG.log(Level.FINE, "Parse exception", e);
@@ -228,6 +231,8 @@ public class AcpProtocolClient implements Closeable {
             } else {
                 LOG.log(Level.FINE, "No listener for notification method: {0}", method);
             }
+        } else {
+            LOG.log(Level.FINE, "Received unknown JSON payload: {0}", node.toString());
         }
     }
 

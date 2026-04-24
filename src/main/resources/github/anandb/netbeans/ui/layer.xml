@@ -12,13 +12,15 @@
     <folder name="Windows2">
     </folder>
     <folder name="OptionsDialog">
-        <folder name="Advanced">
-            <file name="github-anandb-netbeans-ui-ACPOptionsPanelController.instance">
-                <attr name="instanceClass" stringvalue="github.anandb.netbeans.ui.ACPOptionsPanelController"/>
-                <attr name="position" intvalue="700"/>
-                <attr name="displayName" stringvalue="Assistant"/>
-                <attr name="keywords" stringvalue="assistant, ai, chatbot, path, acp"/>
-            </file>
-        </folder>
+        <file name="github-anandb-netbeans-ui-ACPOptionsPanelController.instance">
+            <attr methodvalue="org.netbeans.spi.options.OptionsCategory.createCategory" name="instanceCreate"/>
+            <attr name="controller" newvalue="github.anandb.netbeans.ui.ACPOptionsPanelController"/>
+            <attr bundlevalue="github.anandb.netbeans.ui.Bundle#OptionsCategory_Name_Assistant" name="categoryName"/>
+            <attr intvalue="1100" name="position"/>
+            <attr name="iconBase" stringvalue="github/anandb/netbeans/ui/icons/logo.svg"/>
+            <attr bundlevalue="github.anandb.netbeans.ui.Bundle#OptionsCategory_Keywords_Assistant" name="keywords"/>
+            <attr name="keywordsCategory" stringvalue="Assistant"/>
+        </file>
     </folder>
+
 </filesystem>

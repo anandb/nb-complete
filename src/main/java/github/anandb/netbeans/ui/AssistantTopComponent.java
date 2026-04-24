@@ -74,7 +74,7 @@ import static org.apache.commons.lang3.StringUtils.left;
 )
 @TopComponent.Description(
         preferredID = "AssistantTopComponent",
-        iconBase = "github/anandb/netbeans/ui/logo.png",
+        iconBase = "github/anandb/netbeans/ui/icons/logo.svg",
         persistenceType = TopComponent.PERSISTENCE_ALWAYS
 )
 @TopComponent.Registration(mode = "explorer", openAtStartup = true)
@@ -294,7 +294,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
 
         bottomPanel.add(statusPanel, BorderLayout.NORTH);
 
-        inputArea = new PlaceholderTextArea("Type Message Here");
+        inputArea = new PlaceholderTextArea(" Type Message Here");
         inputArea.setLineWrap(true);
         inputArea.setWrapStyleWord(true);
         inputArea.setBorder(new EmptyBorder(12, 12, 12, 12));
@@ -360,6 +360,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
         this.sseListener = update -> {
             String type = update.update() != null ? update.update().type() : null;
             String msgId = update.update() != null ? update.update().messageId() : null;
+            LOG.log(Level.INFO, "UI received session update: type={0}, msgId={1}", new Object[]{type, msgId});
 
             if ("agent_message_chunk".equals(type) || "agent_thought_chunk".equals(type) || "user_message_chunk".equals(type)) {
                 JsonNode content = update.update().content();
@@ -430,9 +431,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
             }
 
             // End of turn signals
-            if ("responding_finished".equals(type) ||
-                    "end_turn".equals(type) ||
-                    "usage_update".equals(type)) {
+            if ("responding_finished".equals(type) || "end_turn".equals(type)) {
                 SwingUtilities.invokeLater(() -> {
                     resetStatus();
                     chatPanel.stopStreaming();
@@ -453,7 +452,10 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
             @Override
             public void keyPressed(KeyEvent e) {
                 if (e.getKeyCode() == KeyEvent.VK_ENTER) {
-                    if ((e.getModifiersEx() & InputEvent.SHIFT_DOWN_MASK) != 0) {
+                    if (autocompletePopup.isVisible()) {
+                        e.consume();
+                        selectCommand();
+                    } else if ((e.getModifiersEx() & InputEvent.SHIFT_DOWN_MASK) != 0) {
                         inputArea.append("\n");
                     } else {
                         e.consume();
@@ -624,6 +626,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
 
     private void sendMessage() {
         String text = inputArea.getText(); // Don't trim user input spaces
+        LOG.log(Level.INFO, "sendMessage called with text: {0}", text);
         if (text.isEmpty()) {
             return;
         }
@@ -652,15 +655,21 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
             chatPanel.addMessage("user", text);
         }
 
-        Map<String, Object> context = captureEditorContext();
+        Map<String, Object> context = text.trim().startsWith("/") ? null : captureEditorContext();
         ACPManager.getInstance().sendMessage(currentSessionId, text, context)
-                .thenAccept(v -> {
+                .thenAccept(result -> {
                     SwingUtilities.invokeLater(() -> {
                         String currentStatus = statusLabel.getText();
                         if (currentStatus != null && currentStatus.startsWith("Sending")) {
                             statusLabel.setText("Ready");
                             updateButtonState(false);
                             inputArea.requestFocusInWindow();
+                        }
+                        
+                        // Handle turn completion from RPC result
+                        if (result != null && result.has("stopReason")) {
+                            LOG.log(Level.INFO, "Turn finished via RPC result: stopReason={0}", result.get("stopReason").asText());
+                            chatPanel.stopStreaming();
                         }
                     });
                 })
@@ -896,7 +905,18 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
 
     private void checkAutocomplete(KeyEvent e) {
         int keyCode = e.getKeyCode();
-        if (keyCode == KeyEvent.VK_ESCAPE || keyCode == KeyEvent.VK_ENTER || keyCode == KeyEvent.VK_SPACE) {
+        if (keyCode == KeyEvent.VK_ESCAPE) {
+            autocompletePopup.setVisible(false);
+            return;
+        }
+        if (keyCode == KeyEvent.VK_ENTER) {
+            if (autocompletePopup.isVisible()) {
+                selectCommand();
+            }
+            autocompletePopup.setVisible(false);
+            return;
+        }
+        if (keyCode == KeyEvent.VK_SPACE) {
             autocompletePopup.setVisible(false);
             return;
         }

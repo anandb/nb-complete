@@ -9,6 +9,8 @@ import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -26,6 +28,7 @@ import com.vladsch.flexmark.util.data.MutableDataSet;
 
 public class MessageBubble extends JPanel {
 
+    private static final Logger LOG = Logger.getLogger(MessageBubble.class.getName());
     private static final long serialVersionUID = 1L;
     private final String type;
     private final String messageId;
@@ -219,6 +222,7 @@ public class MessageBubble extends JPanel {
         }
 
         add(bubble, gbc);
+        LOG.log(Level.INFO, "Created MessageBubble: type={0}, id={1}, textLength={2}", new Object[]{type, messageId, text.length()});
     }
 
 

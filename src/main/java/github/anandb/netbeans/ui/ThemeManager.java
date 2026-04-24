@@ -24,7 +24,7 @@ public class ThemeManager {
 
     private static String getThemeAwareName(String name) {
         if (ColorTheme.getNativeTheme().isDark()) {
-            String darkName = name.replace(".svg", "-dark.svg");
+            String darkName = name.replace(".svg", "_dark.svg");
             // Check if the dark version exists
             if (ImageUtilities.loadImage("github/anandb/netbeans/ui/icons/" + darkName, true) != null) {
                 return darkName;
