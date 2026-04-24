@@ -1,5 +1,7 @@
 package github.anandb.netbeans.model;
 
+import org.apache.commons.lang3.StringUtils;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
@@ -21,7 +23,7 @@ public record Session(
 
     public String projectName() {
         String dir = effectiveDirectory();
-        if (dir == null || dir.isEmpty()) {
+        if (StringUtils.isBlank(dir)) {
             return null;
         }
         return new java.io.File(dir).getName();

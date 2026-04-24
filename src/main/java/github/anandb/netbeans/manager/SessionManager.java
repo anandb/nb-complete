@@ -32,6 +32,7 @@ public class SessionManager {
         void onSessionLoaded(String sessionId, List<SessionConfigOption> configOptions, boolean isStartup);
         void onSessionLoading(boolean isLoading);
         void onSessionError(String message);
+        void onSessionUpdate(github.anandb.netbeans.model.SessionUpdate update);
     }
 
     private SessionManager() {
@@ -39,6 +40,20 @@ public class SessionManager {
         ACPManager.getInstance().addProjectChangeListener(this::handleProjectChanged);
         ACPProjectManager.getInstance().setProjectOpenListener(this::handleProjectOpened);
         ACPProjectManager.getInstance().setProjectCloseListener(this::handleProjectClosed);
+        
+        // Register for SSE updates to route them to the active session
+        ACPManager.getInstance().addSseListener(this::handleSseUpdate);
+    }
+
+    private void handleSseUpdate(github.anandb.netbeans.model.SessionUpdate update) {
+        String updateSessionId = update.params() != null ? update.params().sessionId() : null;
+        if (updateSessionId != null && updateSessionId.equals(currentSessionId)) {
+            for (SessionListener l : listeners) {
+                l.onSessionUpdate(update);
+            }
+        } else {
+            LOG.log(Level.FINE, "Ignoring update for background session: {0}", updateSessionId);
+        }
     }
 
     public static synchronized SessionManager getInstance() {
@@ -135,6 +150,7 @@ public class SessionManager {
     }
 
     public void loadSession(String sessionId, boolean isStartup) {
+        // Always set the new sessionId and notify UI that we are starting a load
         this.currentSessionId = sessionId;
         setLoading(true);
         notifySessionStarted(sessionId);

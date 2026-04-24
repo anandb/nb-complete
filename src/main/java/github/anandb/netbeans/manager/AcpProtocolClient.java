@@ -1,5 +1,7 @@
 package github.anandb.netbeans.manager;
 
+import org.apache.commons.lang3.StringUtils;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -147,7 +149,7 @@ public class AcpProtocolClient implements Closeable {
             String line;
             while (running && (line = reader.readLine()) != null) {
                 String trimmed = line.trim();
-                if (trimmed.isEmpty()) {
+                if (StringUtils.isBlank(trimmed)) {
                     continue;
                 }
                 if (!trimmed.startsWith("{")) {

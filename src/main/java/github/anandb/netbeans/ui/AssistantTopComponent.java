@@ -1,5 +1,8 @@
 package github.anandb.netbeans.ui;
 
+import static org.apache.commons.lang3.StringUtils.defaultIfBlank;
+import static org.apache.commons.lang3.StringUtils.left;
+
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Color;
@@ -15,12 +18,12 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -33,7 +36,6 @@ import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
-import javax.swing.JTextArea;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import javax.swing.border.EmptyBorder;
@@ -55,8 +57,6 @@ import org.openide.windows.TopComponent;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
-import java.io.InputStream;
-
 import github.anandb.netbeans.manager.ACPManager;
 import github.anandb.netbeans.manager.SessionManager;
 import github.anandb.netbeans.model.Message;
@@ -64,9 +64,6 @@ import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.model.SessionConfigOption;
 import github.anandb.netbeans.model.SessionConfigSelectOption;
 import github.anandb.netbeans.model.SessionUpdate;
-
-import static org.apache.commons.lang3.StringUtils.defaultIfBlank;
-import static org.apache.commons.lang3.StringUtils.left;
 
 @ConvertAsProperties(
         dtd = "-//github.anandb.netbeans.ui//Assistant//EN",
@@ -120,10 +117,9 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
     private final List<String> messageHistory = new ArrayList<>();
     private int historyIndex = -1;
     private String currentDraft = "";
-    private final List<ConfigItem> allModels = new ArrayList<>();
     private static String lastSelectedModelId;
 
-    private Consumer<SessionUpdate> sseListener;
+
     private boolean isSwitchingSessionDropdown = false;
     private boolean isUpdatingConfigControls = false;
     private javax.swing.Timer thinkingTimer;
@@ -356,94 +352,95 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
 
         setupListeners();
 
-        // Register for SSE events
-        this.sseListener = update -> {
-            String type = update.update() != null ? update.update().type() : null;
-            String msgId = update.update() != null ? update.update().messageId() : null;
-            LOG.log(Level.INFO, "UI received session update: type={0}, msgId={1}", new Object[]{type, msgId});
-
-            if ("agent_message_chunk".equals(type) || "agent_thought_chunk".equals(type) || "user_message_chunk".equals(type)) {
-                JsonNode content = update.update().content();
-
-                // Filter out tool outputs which are marked for the assistant's eyes only
-                boolean skip = false;
-                if ("user_message_chunk".equals(type) && content != null && content.has("annotations")) {
-                    JsonNode annotations = content.get("annotations");
-                    if (annotations.has("audience") && annotations.get("audience").isArray()) {
-                        for (JsonNode aud : annotations.get("audience")) {
-                            if ("assistant".equals(aud.asText())) {
-                                skip = true;
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                if (!skip) {
-                    String text = extractText(content);
-                    if (text != null && !text.isEmpty()) {
-                        String role = "agent_message_chunk".equals(type) ? "assistant" :
-                                      "agent_thought_chunk".equals(type) ? "thought" : "user";
-                        SwingUtilities.invokeLater(() -> {
-                            chatPanel.appendOrAddMessage(role, text, msgId);
-                            updateButtonState(true);
-                        });
-                    }
-                }
-            } else if ("message".equals(type)) {
-                Message msg = update.update().message();
-                LOG.fine("Received message update: id=" + (msg != null ? msg.id() : "null") + ", type=" + (msg != null ? msg.type() : "null"));
-                if (msg != null) {
-                    SwingUtilities.invokeLater(() -> chatPanel.addMessage(msg));
-                }
-            } else if ("tool_call_update".equals(type)) {
-                SwingUtilities.invokeLater(() -> {
-                    chatPanel.updateToolCall(update.update());
-                    updateButtonState(true);
-                });
-            } else if ("config_options_update".equals(type)) {
-                if (update.update().configOptions() != null) {
-                    updateConfigControls(update.update().configOptions());
-                }
-            } else if ("session_info_update".equals(type)) {
-                SessionManager.getInstance().refreshSessions();
-            } else if ("usage_update".equals(type)) {
-                SwingUtilities.invokeLater(() -> {
-                    statusLabel.setToolTipText("Usage: " + update.update().used() + "/" + update.update().size() + " tokens");
-                });
-            }
-
-            // Status updates
-            if (msgId != null) {
-                Boolean isThinking = update.isThinking();
-                if (isThinking != null) {
-                    SwingUtilities.invokeLater(() -> {
-                        if (isThinking) {
-                            statusLabel.setText("Thinking...");
-                        } else {
-                            // Always reset when isThinking is explicitly false, regardless of current status text
-                            if ("Thinking...".equals(statusLabel.getText()) || statusLabel.getText().startsWith("Thinking")) {
-                                statusLabel.setText("Responding...");
-                            }
-                        }
-                    });
-                }
-            }
-
-            // End of turn signals
-            if ("responding_finished".equals(type) || "end_turn".equals(type)) {
-                SwingUtilities.invokeLater(() -> {
-                    resetStatus();
-                    chatPanel.stopStreaming();
-                });
-            }
-        };
-
         ACPManager.getInstance().setPermissionHandler(this);
 
         initChat();
         refreshTheme();
     }
+
+    @Override
+    public void onSessionUpdate(SessionUpdate update) {
+        String type = update.update() != null ? update.update().type() : null;
+        String msgId = update.update() != null ? update.update().messageId() : null;
+        LOG.log(Level.INFO, "UI received session update: type={0}, msgId={1}", new Object[]{type, msgId});
+
+        if ("agent_message_chunk".equals(type) || "agent_thought_chunk".equals(type) || "user_message_chunk".equals(type)) {
+            JsonNode content = update.update().content();
+
+            // Filter out tool outputs which are marked for the assistant's eyes only
+            boolean skip = false;
+            if ("user_message_chunk".equals(type) && content != null && content.has("annotations")) {
+                JsonNode annotations = content.get("annotations");
+                if (annotations.has("audience") && annotations.get("audience").isArray()) {
+                    for (JsonNode aud : annotations.get("audience")) {
+                        if ("assistant".equals(aud.asText())) {
+                            skip = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (!skip) {
+                String text = extractText(content);
+                if (text != null && !text.isEmpty()) {
+                    String role = "agent_message_chunk".equals(type) ? "assistant" :
+                                  "agent_thought_chunk".equals(type) ? "thought" : "user";
+                    SwingUtilities.invokeLater(() -> {
+                        chatPanel.appendOrAddMessage(role, text, msgId);
+                        updateButtonState(true);
+                    });
+                }
+            }
+        } else if ("message".equals(type)) {
+            Message msg = update.update().message();
+            LOG.fine("Received message update: id=" + (msg != null ? msg.id() : "null") + ", type=" + (msg != null ? msg.type() : "null"));
+            if (msg != null) {
+                SwingUtilities.invokeLater(() -> chatPanel.addMessage(msg));
+            }
+        } else if ("tool_call_update".equals(type)) {
+            SwingUtilities.invokeLater(() -> {
+                chatPanel.updateToolCall(update.update());
+                updateButtonState(true);
+            });
+        } else if ("config_options_update".equals(type)) {
+            if (update.update().configOptions() != null) {
+                updateConfigControls(update.update().configOptions());
+            }
+        } else if ("session_info_update".equals(type)) {
+            SessionManager.getInstance().refreshSessions();
+        } else if ("usage_update".equals(type)) {
+            SwingUtilities.invokeLater(() -> {
+                statusLabel.setToolTipText("Usage: " + update.update().used() + "/" + update.update().size() + " tokens");
+            });
+        }
+
+        // Status updates
+        if (msgId != null) {
+            Boolean isThinking = update.isThinking();
+            if (isThinking != null) {
+                SwingUtilities.invokeLater(() -> {
+                    if (isThinking) {
+                        statusLabel.setText("Thinking...");
+                    } else {
+                        // Always reset when isThinking is explicitly false, regardless of current status text
+                        if ("Thinking...".equals(statusLabel.getText()) || statusLabel.getText().startsWith("Thinking")) {
+                            statusLabel.setText("Responding...");
+                        }
+                    }
+                });
+            }
+        }
+
+        // End of turn signals
+        if ("responding_finished".equals(type) || "end_turn".equals(type)) {
+            SwingUtilities.invokeLater(() -> {
+                resetStatus();
+                chatPanel.stopStreaming();
+            });
+        }
+    }
+
 
 
 
@@ -1349,10 +1346,6 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
         } catch (Exception ex) {
             LOG.log(Level.SEVERE, "Failed to ensure server is started", ex);
         }
-        if (sseListener != null) {
-            ACPManager.getInstance().removeSseListener(sseListener);
-            ACPManager.getInstance().addSseListener(sseListener);
-        }
         SwingUtilities.invokeLater(() -> {
             if (inputArea != null) {
                 inputArea.requestFocusInWindow();
@@ -1372,9 +1365,6 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
 
     @Override
     public void componentClosed() {
-        if (sseListener != null) {
-            ACPManager.getInstance().removeSseListener(sseListener);
-        }
         if (thinkingTimer != null && thinkingTimer.isRunning()) {
             thinkingTimer.stop();
         }
