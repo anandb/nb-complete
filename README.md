@@ -1,10 +1,14 @@
 # Assistant NetBeans Plugin
 
-[![Version](https://img.shields.io/badge/version-1.3.25-blue.svg)](pom.xml)
+[![Version](https://img.shields.io/badge/version-1.3.38-blue.svg)](pom.xml)
 [![Build Status](https://img.shields.io/badge/build-success-brightgreen.svg)](https://github.com/anandb/nb-complete)
 [![NetBeans](https://img.shields.io/badge/NetBeans-RELEASE210-orange.svg)](https://netbeans.apache.org/download/index.html)
 
 The **Assistant NetBeans Plugin** is a tool for integrating AI assistance into the NetBeans IDE. It uses the **Agent Client Protocol (ACP)** to provide a chat interface for code generation, explanation, and project-related tasks.
+
+| | |
+| :---: | :---: |
+| ![UI Screenshot 1](screenshots/Screenshot_20260424_030044.png) | ![UI Screenshot 2](screenshots/Screenshot_20260424_025618.png) |
 
 ---
 
@@ -59,7 +63,7 @@ be configured under Options -> Assistant. The Preamble will be inserted automati
    ```bash
    mvn package -DskipTests
    ```
-3. The plugin will be generated at `./target/nbm/beanagent-1.3.25.nbm`.
+3. The plugin will be generated at `./target/nbm/beanagent-1.3.38.nbm`.
 4. In NetBeans, go to **Tools -> Plugins -> Downloaded -> Add Plugins...** and select the `.nbm` file.
 
 ---
