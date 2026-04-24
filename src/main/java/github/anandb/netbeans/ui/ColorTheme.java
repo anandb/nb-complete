@@ -8,7 +8,7 @@ import javax.swing.UIManager;
  */
 public class ColorTheme {
     private final boolean isDark;
-    
+
     // UI Framework
     private final Color background;
     private final Color foreground;
@@ -16,13 +16,13 @@ public class ColorTheme {
     private final Color accent;
     private final Color ghostBackground;
     private final Color sunkenBackground;
-    
+
     // Bubbles
     private final Color bubbleUser;
     private final Color bubbleAssistant;
     private final Color bubbleBorder;
     private final Color assistantForeground;
-    
+
     // Components (Panels/Blocks)
     private final Color panelHeader;
     private final Color panelHeaderHover;
@@ -30,20 +30,20 @@ public class ColorTheme {
     private final Color base2;
     private final Color base3;
     private final Color yellow;
-    
+
     // Code Blocks
     private final Color codeBackground;
     private final Color codeForeground;
     private final Color codeSelection;
-    
+
     // Generic
     private final Color headerForeground;
     private final Color errorBackground;
-    
+
     // Code Header
     private final Color codeHeaderBackground;
     private final Color codeHeaderForeground;
-    
+
     // Thinking Header
     private final Color thinkingHeaderBackground;
     private final Color thinkingHeaderForeground;
@@ -128,7 +128,7 @@ public class ColorTheme {
                 isDark = (bg.getRed() * 0.299 + bg.getGreen() * 0.587 + bg.getBlue() * 0.114) < 128;
             }
         }
-        
+
         // Use UIManager properties to dynamically build the theme based on the current Look and Feel
         return new Builder(isDark)
             .background(UIManager.getColor("Panel.background"))
@@ -146,9 +146,9 @@ public class ColorTheme {
             .base2(UIManager.getColor("controlShadow"))
             .base3(UIManager.getColor("control"))
             .yellow(UIManager.getColor("ComboBox.selectionBackground"))
-            .codeBackground(Color.decode("#1e1f22")) // FlatLaf Dark background
-            .codeForeground(Color.decode("#bcbec4")) // FlatLaf Dark foreground
-            .codeSelection(Color.decode("#353739"))  // FlatLaf Dark selection
+            .codeBackground(Color.decode("#1e1f22"))
+            .codeForeground(Color.decode("#bcbec4"))
+            .codeSelection(Color.decode("#353739"))
             .permissionBg(UIManager.getColor("OptionPane.background"))
             .permissionBorder(UIManager.getColor("Button.focusColor"))
             .permissionTitle(UIManager.getColor("OptionPane.messageForeground"))
@@ -203,7 +203,7 @@ public class ColorTheme {
         public Builder accent(Color c) { this.accent = c; return this; }
         public Builder ghostBackground(Color c) { this.ghostBackground = c; return this; }
         public Builder sunkenBackground(Color c) { this.sunkenBackground = c; return this; }
-        public Builder bubbleUser(Color c) { this.bubbleUser = c; return this; }        
+        public Builder bubbleUser(Color c) { this.bubbleUser = c; return this; }
         public Builder bubbleBorder(Color c) { this.bubbleBorder = c; return this; }
         public Builder assistantForeground(Color c) { this.assistantForeground = c; return this; }
         public Builder panelHeader(Color c) { this.panelHeader = c; return this; }
@@ -225,20 +225,25 @@ public class ColorTheme {
         public Builder thinkingHeaderBackground(Color c) { this.thinkingHeaderBackground = c; return this; }
         public Builder thinkingHeaderForeground(Color c) { this.thinkingHeaderForeground = c; return this; }
         public Builder toolForeground(Color c) { this.toolForeground = c; return this; }
-        
+
         public ColorTheme build() { return new ColorTheme(this); }
+    }
+
+    public String getMonoStack() {
+        return "'Source Code Pro', 'JetBrains Mono', 'Monaco', 'Fira Code', 'Monospace', Monospaced, monospace";
     }
 
     public String toCss(Color bubbleBg, boolean isAssistant) {
         String fg = toHtmlHex(isAssistant ? assistantForeground : foreground);
         String bg = bubbleBg != null ? toHtmlHex(bubbleBg) : "transparent";
         String linkColor = isDark ? "#589DF6" : "#268BD2";
+
         // Markdown inline code and blocks are now forced to Dark mode as well
         String codeBg = "rgba(255, 255, 255, 0.1)";
         String preBg = "#1e1f22";
         String preFg = "#bcbec4";
         String fontStack = "Dialog, 'Noto Sans', 'Segoe UI', 'Ubuntu', 'Helvetica Neue', 'Arial', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', sans-serif";
-        String monoStack = "'JetBrains Mono', 'Monaco', 'Fira Code', 'Monospace', Monospaced, monospace";
+        String monoStack = getMonoStack();
 
         return "body { font-family: " + fontStack + "; font-size: 13px; color: " + fg + "; background-color: " + bg + "; margin: 0; line-height: 1.4; }" +
                "code { background-color: " + codeBg + "; padding: 2px 4px; border-radius: 3px; font-family: " + monoStack + "; font-size: 12px; }" +

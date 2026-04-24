@@ -51,12 +51,12 @@ public class ChatThreadPanel extends JPanel {
     private final javax.swing.Timer streamFlushTimer;
 
     public ChatThreadPanel() {
+        ColorTheme theme = ThemeManager.getCurrentTheme();
         setLayout(new BorderLayout());
         setOpaque(true);
-        setBackground(ThemeManager.getCurrentTheme().getBackground());
+        setBackground(theme.getBackground());
         setDoubleBuffered(true);
 
-        ColorTheme theme = ThemeManager.getCurrentTheme();
         messagesContainer = new ScrollablePanel();
         messagesContainer.setLayout(new BoxLayout(messagesContainer, BoxLayout.Y_AXIS));
         messagesContainer.setOpaque(true);
@@ -171,9 +171,9 @@ public class ChatThreadPanel extends JPanel {
             }
         }
         
-        String text = sb.toString();
+        String text = sb.toString().stripTrailing();
         LOG.log(Level.FINE, "addMessage(Message) final text length: {0}", text.length());
-        String copyable = "user".equals(type) && message.prompt() != null ? message.prompt().text() : text;
+        String copyable = "user".equals(type) && message.prompt() != null ? message.prompt().text().stripTrailing() : text;
         addMessage(type, text, message.id(), copyable);
     }
 

@@ -9,8 +9,6 @@ import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -26,10 +24,14 @@ import com.vladsch.flexmark.html.HtmlRenderer;
 import com.vladsch.flexmark.parser.Parser;
 import com.vladsch.flexmark.util.data.MutableDataSet;
 
+import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.TextScanner;
+
 public class MessageBubble extends JPanel {
 
-    private static final Logger LOG = Logger.getLogger(MessageBubble.class.getName());
+    private static final Logger LOG = new Logger(MessageBubble.class);
     private static final long serialVersionUID = 1L;
+
     private final String type;
     private final String messageId;
     private final StringBuilder text;
@@ -175,54 +177,34 @@ public class MessageBubble extends JPanel {
 
         updateContent(theme);
 
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.gridy = 0;
-        gbc.weightx = 1.0;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.insets = new Insets(2, 2, 2, 2);
+        Insets gbcInsets = new Insets(4, 12, 4, 12);
+        int anchor = GridBagConstraints.WEST;
 
         applyBubbleTheme(theme, type);
-        
-        if ("user".equals(type)) {
-            gbc.anchor = GridBagConstraints.WEST;
-            gbc.insets = new Insets(2, 6, 2, 6);
 
-            Icon copyIcon = ThemeManager.getIcon("copy.svg", 20);
-            JButton copyBtn = new JButton(copyIcon);
-            copyBtn.setToolTipText("Copy to input");
-            copyBtn.setFocusPainted(false);
+        if ("user".equals(type)) {
+            anchor = GridBagConstraints.WEST;
+            gbcInsets = new Insets(2, 6, 2, 6);
+
+            JButton copyBtn = UIUtils.createToolbarButton("copy.svg", 20, "Copy to input", null);
             copyBtn.setContentAreaFilled(false);
             copyBtn.setBorder(new javax.swing.border.EmptyBorder(2, 8, 2, 8));
-            copyBtn.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
 
             copyBtn.addActionListener(e -> {
                 AssistantTopComponent.findInstance().setInputText(this.copyableText);
-                
-                // Visual feedback
                 Icon originalIcon = copyBtn.getIcon();
-                Icon checkIcon = ThemeManager.getIcon("check.svg", 20);
-                copyBtn.setIcon(checkIcon);
+                copyBtn.setIcon(ThemeManager.getIcon("check.svg", 20));
                 javax.swing.Timer timer = new javax.swing.Timer(1500, ev -> copyBtn.setIcon(originalIcon));
                 timer.setRepeats(false);
                 timer.start();
             });
-            JPanel footer = new JPanel(new BorderLayout());
-            footer.setOpaque(false);
-            footer.add(copyBtn, BorderLayout.EAST);
-            bubble.add(footer, BorderLayout.SOUTH);
-        } else if ("error".equals(type)) {            
-            gbc.anchor = GridBagConstraints.WEST;
-            gbc.insets = new Insets(4, 12, 4, 12);
-        } else if ("tool".equals(type) || "thought".equals(type)) {
-            gbc.anchor = GridBagConstraints.WEST;
-            gbc.insets = new Insets(4, 12, 4, 12);
-        } else {
-            gbc.anchor = GridBagConstraints.WEST;
-            gbc.insets = new Insets(4, 12, 4, 12);
+            JPanel sidePanel = UIUtils.createTransparentPanel(new BorderLayout());
+            sidePanel.add(copyBtn, BorderLayout.SOUTH);
+            bubble.add(sidePanel, BorderLayout.EAST);
         }
 
-        add(bubble, gbc);
-        LOG.log(Level.INFO, "Created MessageBubble: type={0}, id={1}, textLength={2}", new Object[]{type, messageId, text.length()});
+        add(bubble, UIUtils.createGbc(0, 0, 1.0, 0, GridBagConstraints.HORIZONTAL, anchor, gbcInsets));
+        LOG.info("Created MessageBubble: type={0}, id={1}, textLength={2}", type, messageId, text.length());
     }
 
 
@@ -483,8 +465,13 @@ public class MessageBubble extends JPanel {
         html = html.replace("<td>", "<td style='padding: 8px; border: 1px solid #ddd; vertical-align: top;'>");
 
         // Hack to prevent space collapse in JEditorPane
-        // Replace double spaces with space + &nbsp;
-        html = html.replace("  ", " &nbsp;");
+        // Replace double spaces with space + &nbsp; but ONLY if it's not ASCII art
+        boolean hasArt = TextScanner.containsAsciiArt(markdown);
+        if (!hasArt) {
+            html = html.replace("  ", " &nbsp;");
+        } else {
+            LOG.fine("Contains ASCII art, not replacing spaces");
+        }
 
         Color bg;
         if ("user".equals(type)) {
@@ -499,13 +486,23 @@ public class MessageBubble extends JPanel {
         String customCss = theme.toCss(bg, isAssistant);
         if ("error".equals(type)) {
             customCss += " body { color: #D32F2F; font-weight: bold; }";
-        } else if ("tool".equals(type)) {
-            customCss += " body { color: " + theme.getToolForeground() + "; font-size: 13px; }";
         }
-
-        // Removed the <pre> wrap which was causing nested <p> segments to render incorrectly and overlap.
-        // We rely on 'white-space: pre-wrap' in the base CSS to preserve whitespace.
-        return "<html><head><style>" + customCss + "</style></head><body style='margin: 0; padding: 4px;'>" + html + "</body></html>";
+        // Detect if the content looks like ASCII art (contains box drawing characters)
+        String bodyStyle = "margin: 0; padding: 4px;";
+        if (hasArt) {
+            // Avoid pre tag to prevent theme conflicts (black box). 
+            // Use manual line breaks and nbsp to preserve structure in old renderers.
+            String monoStack = theme.getMonoStack();
+            customCss += " .ascii-art { font-family: " + monoStack + "; line-height: 1.0; }";
+            
+            // Flexmark might have already wrapped it in <p> or added other tags.
+            // We need to be careful with replacement.
+            html = html.replace("  ", " &nbsp;"); // Replace double spaces at least
+            html = html.replace("\n", "<br/>");
+            html = "<div class='ascii-art'>" + html + "</div>";
+        }
+        
+        return "<html><head><style>" + customCss + "</style></head><body style='" + bodyStyle + "'>" + html + "</body></html>";
     }
 
     private Color getBubbleBackground(ColorTheme theme) {

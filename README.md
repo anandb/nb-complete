@@ -14,9 +14,10 @@ The **Assistant NetBeans Plugin** is a tool for integrating AI assistance into t
 
 ## Quickstart
 
-Install the .nbm from the Tools -> Plugins -> Downloaded menu,  After installing the plugin, select Assistant from the
-Window menu, if `opencode` is on the system path, then the location will be picked up directly, otherwise the path can
-be configured under Options -> Assistant. The Preamble will be inserted automatically into every new chat conversation.
+1. **Install**: Go to **Tools > Plugins > Downloaded** and add the `.nbm` file.
+2. **Open**: Launch the interface via **Window > Assistant**.
+3. **Configure**: The plugin automatically detects `opencode` if it's in your system path. If not, manually set the binary location in **Tools > Options > Advanced > Assistant**.
+4. **Preamble**: Customize your global system prompt in the options; it will be automatically applied to every new chat session.
 
 ## Features
 

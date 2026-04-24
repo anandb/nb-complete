@@ -18,4 +18,31 @@ public final class AgentUtils {
             LOG.log(Level.FINE, "Failed to close", e);
         }
     }
+
+    public static String getVersion() {
+        try {
+            org.openide.modules.ModuleInfo m = org.openide.modules.Modules.getDefault()
+                    .findCodeNameBase("github.anandb.beanagent");
+            if (m != null && m.getSpecificationVersion() != null) {
+                return m.getSpecificationVersion().toString();
+            }
+        } catch (Exception e) {
+            LOG.log(Level.FINE, "Failed to get module version", e);
+        }
+        try {
+            java.io.InputStream is = AgentUtils.class.getResourceAsStream("/META-INF/MANIFEST.MF");
+            if (is != null) {
+                java.util.Properties p = new java.util.Properties();
+                p.load(is);
+                String v = p.getProperty("OpenIDE-Module-Specification-Version");
+                if (v != null) {
+                    return v;
+                }
+            }
+        } catch (Exception e) {
+            LOG.log(Level.FINE, "Failed to get version from manifest", e);
+        }
+
+        return "0.0.0";
+    }
 }

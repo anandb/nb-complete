@@ -11,10 +11,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 import java.util.logging.Level;
-import java.util.logging.Logger;
-
 import javax.swing.text.Document;
-
 import org.apache.commons.exec.CommandLine;
 import org.netbeans.api.project.Project;
 import org.netbeans.api.project.ui.OpenProjects;
@@ -33,9 +30,10 @@ import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.model.SessionConfigOption;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.ui.ACPOptionsPanel;
+import github.anandb.netbeans.support.Logger;
 
 public class ACPManager {
-    private static final Logger LOG = Logger.getLogger(ACPManager.class.getName());
+    private static final Logger LOG = new Logger(ACPManager.class);
     private static ACPManager instance;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -94,7 +92,7 @@ public class ACPManager {
             CommandLine cmd = new CommandLine(executable);
             cmd.addArguments(args, true);
 
-            LOG.log(Level.INFO, "Executing: {0}", cmd);
+            LOG.info("Executing: {0}", cmd);
 
             ProcessBuilder pb = new ProcessBuilder(Arrays.asList(cmd.toStrings()));
             pb.redirectError(ProcessBuilder.Redirect.INHERIT);
@@ -116,7 +114,7 @@ public class ACPManager {
             // Listen for session updates
             rpcClient.onNotification("session/update", params -> {
                 try {
-                    LOG.log(Level.INFO, "Received session/update notification: {0}", params.toString());
+                    LOG.info("Received session/update notification: {0}", params.toString());
                     SessionUpdate.Params sessionParams = objectMapper.treeToValue(params, SessionUpdate.Params.class);
                     SessionUpdate update = new SessionUpdate("2.0", "session/update", sessionParams);
 
@@ -137,7 +135,7 @@ public class ACPManager {
 
                     notifyListeners(update);
                 } catch (Exception e) {
-                    LOG.log(Level.WARNING, "Failed to parse session/update notification: " + e.getMessage(), e);
+                    LOG.warn("Failed to parse session/update notification: " + e.getMessage(), e);
                 }
             });
 
@@ -149,9 +147,9 @@ public class ACPManager {
                 shutdownHookAdded = true;
             }
 
-            LOG.log(Level.FINE, "ACP server process started successfully");
+            LOG.fine("ACP server process started successfully");
         } catch (Exception e) {
-            LOG.log(Level.SEVERE, "CRITICAL: Failed to start ACP server", e);
+            LOG.severe("CRITICAL: Failed to start ACP server", e);
             readyFuture.completeExceptionally(e);
         }
     }
@@ -167,10 +165,10 @@ public class ACPManager {
         if (configuredPath != null && !configuredPath.trim().isEmpty()) {
             File f = new File(configuredPath);
             if (f.isAbsolute() && f.exists()) {
-                LOG.log(Level.FINE, "Using configured absolute path: {0}", configuredPath);
+                LOG.fine("Using configured absolute path: {0}", configuredPath);
                 return configuredPath;
-            } else if (f.isAbsolute()) {
-                LOG.log(Level.WARNING, "Configured path not found: {0}", configuredPath);
+            } else {
+                LOG.warn("Configured path not found: {0}", configuredPath);
             }
         }
 
@@ -361,22 +359,22 @@ public class ACPManager {
 
                                 sessions.add(new Session(s.id(), s.title(), directory, directory, s.parentID(), s.updatedAt(), s.mcpServers(), s.configOptions()));
                             }
-                            LOG.log(Level.FINE, "getSessions: deserialized {0} sessions", sessions.size());
+                            LOG.fine("getSessions: deserialized {0} sessions", sessions.size());
                             for (Session s : sessions) {
-                                LOG.log(Level.FINE, "getSessions: id={0}, title=''{1}'', directory={2}", new Object[]{s.id(), s.title(), s.effectiveDirectory()});
+                                LOG.fine("getSessions: id={0}, title=''{1}'', directory={2}", s.id(), s.title(), s.effectiveDirectory());
                             }
                             return sessions;
                         } else {
-                            LOG.log(Level.WARNING, "getSessions: sessionsNode is not an array: {0}", sessionsNode);
+                            LOG.warn("getSessions: sessionsNode is not an array: {0}", sessionsNode);
                             return new ArrayList<Session>();
                         }
                     } catch (IOException e) {
-                        LOG.log(Level.WARNING, "getSessions: failed to deserialize: {0} {1}", new Object[]{e.getMessage(), e.toString()});
+                        LOG.warn("getSessions: failed to deserialize: {0} {1}", e.getMessage(), e.toString());
                         return new ArrayList<Session>();
                     }
                 })
                 .exceptionally(ex -> {
-                    LOG.log(Level.WARNING, "getSessions: rpc error: {0} {1}", new Object[]{ex.getMessage(), ex.toString()});
+                    LOG.warn("getSessions: rpc error: {0} {1}", ex.getMessage(), ex.toString());
                     return new ArrayList<>();
                 });
     }
@@ -385,7 +383,7 @@ public class ACPManager {
         if (directories == null || directories.isEmpty()) {
             return CompletableFuture.completedFuture(new ArrayList<>());
         }
-        LOG.log(Level.FINE, "getSessionsForDirectories: querying {0} directories: {1}", new Object[]{directories.size(), directories});
+        LOG.fine("getSessionsForDirectories: querying {0} directories: {1}", directories.size(), directories);
         List<CompletableFuture<List<Session>>> futures = directories.stream()
                 .map(dir -> getSessions(dir))
                 .toList();
@@ -455,7 +453,7 @@ public class ACPManager {
     }
 
     public CompletableFuture<List<SessionConfigOption>> loadSession(String sessionId, String cwd) {
-        LOG.log(Level.FINE, "loadSession: called with {0}, cwd={1}", new Object[]{sessionId, cwd});
+        LOG.fine("loadSession: called with {0}, cwd={1}", sessionId, cwd);
         if (!rpcClientReady()) {
             return CompletableFuture.failedFuture(new RuntimeException("Server not started"));
         }
@@ -468,18 +466,18 @@ public class ACPManager {
 
         return rpcClient.sendRequest("session/load", params)
                 .thenApply(res -> {
-                    LOG.log(Level.FINE, "loadSession: got response {0}", res);
+                    LOG.fine("loadSession: got response {0}", res);
                     if (res != null && res.has("configOptions")) {
                         try {
                             return objectMapper.convertValue(res.get("configOptions"), new TypeReference<List<SessionConfigOption>>() {});
                         } catch (Exception e) {
-                            LOG.log(Level.WARNING, "Failed to parse configOptions: {0}", e.getMessage());
+                            LOG.warn("Failed to parse configOptions: {0}", e.getMessage());
                         }
                     }
                     return null;
                 })
                 .exceptionally(ex -> {
-                    LOG.log(Level.WARNING, "loadSession: error: {0}", ex.getMessage());
+                    LOG.warn("loadSession: error: {0}", ex.getMessage());
                     return null;
                 });
     }

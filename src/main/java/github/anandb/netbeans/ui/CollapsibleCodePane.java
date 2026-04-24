@@ -105,15 +105,10 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
         headerLabel.setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 0));
 
         // Copy button
-        Icon copyIcon = ThemeManager.getIcon("copy.svg", 20);
-        copyButton = new JButton(copyIcon);
-        copyButton.setToolTipText("Copy code");
-        copyButton.setFocusPainted(false);
+        copyButton = UIUtils.createToolbarButton("copy.svg", 20, "Copy code", e -> copyCodeToClipboard());
         copyButton.setContentAreaFilled(false);
         copyButton.setBorder(BorderFactory.createEmptyBorder(2, 4, 2, 4));
-        copyButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
         copyButton.setForeground(theme.getCodeHeaderForeground());
-        copyButton.addActionListener(e -> copyCodeToClipboard());
         header.add(copyButton, BorderLayout.EAST);
 
         codeTextArea = new RSyntaxTextArea();

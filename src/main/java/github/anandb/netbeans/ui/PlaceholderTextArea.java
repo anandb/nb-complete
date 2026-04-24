@@ -35,7 +35,7 @@ public class PlaceholderTextArea extends JTextArea {
             Color oldColor = g.getColor();
             Font oldFont = g.getFont();
             g.setColor(new Color(150, 150, 150));
-            g.setFont(oldFont.deriveFont(Font.ITALIC));
+            g.setFont(oldFont.deriveFont(Font.PLAIN));
             int x = getInsets().left;
             int y = getInsets().top + g.getFontMetrics().getAscent();
             g.drawString(placeholder, x, y);
