@@ -65,6 +65,8 @@ import github.anandb.netbeans.model.SessionConfigOption;
 import github.anandb.netbeans.model.SessionConfigSelectOption;
 import github.anandb.netbeans.model.SessionUpdate;
 
+import static org.apache.commons.lang3.StringUtils.split;
+
 @ConvertAsProperties(
         dtd = "-//github.anandb.netbeans.ui//Assistant//EN",
         autostore = false
@@ -90,6 +92,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
 
     private static final Logger LOG = Logger.getLogger(AssistantTopComponent.class.getName());
     private static AssistantTopComponent instance;
+    private static final long serialVersionUID = 1L;
 
     private final ChatThreadPanel chatPanel;
     private final PlaceholderTextArea inputArea;
@@ -114,7 +117,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
     private final JPanel header;
     private final JPopupMenu autocompletePopup;
     private final JList<SessionUpdate.AvailableCommand> commandList;
-    private final List<String> messageHistory = new ArrayList<>();
+    private final ArrayList<String> messageHistory = new ArrayList<>();
     private int historyIndex = -1;
     private String currentDraft = "";
     private static String lastSelectedModelId;
@@ -125,7 +128,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
     private javax.swing.Timer thinkingTimer;
     private int thinkingDots = 0;
 
-    private final Map<String, List<ConfigItem>> modelVariants = new LinkedHashMap<>();
+    private final LinkedHashMap<String, List<ConfigItem>> modelVariants = new LinkedHashMap<>();
     private String currentConfigModelId = null;
 
     public AssistantTopComponent() {
@@ -369,11 +372,19 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
 
             // Filter out tool outputs which are marked for the assistant's eyes only
             boolean skip = false;
-            if ("user_message_chunk".equals(type) && content != null && content.has("annotations")) {
+            if (content != null && content.has("annotations")) {
                 JsonNode annotations = content.get("annotations");
                 if (annotations.has("audience") && annotations.get("audience").isArray()) {
                     for (JsonNode aud : annotations.get("audience")) {
                         if ("assistant".equals(aud.asText())) {
+                            skip = true;
+                            break;
+                        }
+                    }
+                }
+                if (!skip && annotations.has("tags") && annotations.get("tags").isArray()) {
+                    for (JsonNode tag : annotations.get("tags")) {
+                        if ("hidden".equals(tag.asText())) {
                             skip = true;
                             break;
                         }
@@ -394,7 +405,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
             }
         } else if ("message".equals(type)) {
             Message msg = update.update().message();
-            LOG.fine("Received message update: id=" + (msg != null ? msg.id() : "null") + ", type=" + (msg != null ? msg.type() : "null"));
+            LOG.log(Level.FINE, "Received message update: id={0}, type={1}", new Object[]{msg != null ? msg.id() : "null", msg != null ? msg.type() : "null"});
             if (msg != null) {
                 SwingUtilities.invokeLater(() -> chatPanel.addMessage(msg));
             }
@@ -440,8 +451,6 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
             });
         }
     }
-
-
 
 
     private void setupListeners() {
@@ -577,7 +586,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
             chatPanel.clearMessages();
             if (sessionId == null) {
                 statusLabel.setText("Creating new session...");
-                updateTabName((String) null);
+                updateTabName(null);
             } else {
                 statusLabel.setText("Loading chat...");
             }
@@ -662,7 +671,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
                             updateButtonState(false);
                             inputArea.requestFocusInWindow();
                         }
-                        
+
                         // Handle turn completion from RPC result
                         if (result != null && result.has("stopReason")) {
                             LOG.log(Level.INFO, "Turn finished via RPC result: stopReason={0}", result.get("stopReason").asText());
@@ -1003,7 +1012,9 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
             int caret = inputArea.getCaretPosition();
             int start = caret - 1;
             while (start >= 0 && !Character.isWhitespace(text.charAt(start))) {
-                if (text.charAt(start) == '/' || text.charAt(start) == '@') break;
+                if (text.charAt(start) == '/' || text.charAt(start) == '@') {
+                    break;
+                }
                 start--;
             }
 
@@ -1020,6 +1031,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
     }
 
     private class AutocompleteRenderer extends javax.swing.DefaultListCellRenderer {
+        private static final long serialVersionUID = 1L;
         @Override
         public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
             super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
@@ -1163,7 +1175,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
                             String value = o.value();
                             String name = o.name();
 
-                            String[] segments = value.split("/");
+                            String[] segments = split(value, '/');
                             String baseId;
                             String variantName;
 
@@ -1383,12 +1395,14 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
 
     public static synchronized AssistantTopComponent findInstance() {
         TopComponent tc = org.openide.windows.WindowManager.getDefault().findTopComponent("AssistantTopComponent");
-        if (tc instanceof AssistantTopComponent) {
-            return (AssistantTopComponent) tc;
+        if (tc instanceof AssistantTopComponent assistantTopComponent) {
+            return assistantTopComponent;
         }
+
         if (instance == null) {
             instance = new AssistantTopComponent();
         }
+
         return instance;
     }
 

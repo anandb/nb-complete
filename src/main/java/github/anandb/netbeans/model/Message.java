@@ -33,9 +33,18 @@ public record Message(
         String url,
         String filename,
         @JsonProperty("mimeType") String mimeType,
-        String data
+        String data,
+        Annotations annotations
     ) {
         public String getDisplayText() {
+            if (annotations != null) {
+                if (annotations.audience() != null && annotations.audience().contains("assistant")) {
+                    return "";
+                }
+                if (annotations.tags() != null && annotations.tags().contains("hidden")) {
+                    return "";
+                }
+            }
             if ("text".equals(type)) {
                 return text;
             }
@@ -48,6 +57,12 @@ public record Message(
             return "";
         }
     }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record Annotations(
+        List<String> audience,
+        List<String> tags
+    ) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record ToolCall(

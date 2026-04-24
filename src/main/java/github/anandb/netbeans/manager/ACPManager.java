@@ -491,12 +491,7 @@ public class ACPManager {
 
         List<Map<String, Object>> promptBlocks = new ArrayList<>();
 
-        // 1. User Message Block
-        Map<String, Object> userTextPart = new HashMap<>();
-        userTextPart.put("type", "text");
-        userTextPart.put("text", text);
-        promptBlocks.add(userTextPart);
-
+        // 1. Context & Metadata (Start with this so model has environment context first)
         if (context != null) {
             String filePath = (String) context.get("filePath");
             if (filePath != null) {
@@ -504,45 +499,42 @@ public class ACPManager {
                 String lang = getLanguageFromPath(filePath);
                 String fileName = file.getName();
 
-                // 2. Resource Link Block (Visual Breadcrumb)
+                // Resource Link Block (Visual Breadcrumb)
                 Map<String, Object> resourceLinkPart = new HashMap<>();
                 resourceLinkPart.put("type", "resource_link");
                 resourceLinkPart.put("uri", "file://" + filePath);
                 resourceLinkPart.put("name", fileName);
                 promptBlocks.add(resourceLinkPart);
 
-                // 3. Metadata Comment Block (For the AI)
+                // Metadata XML Block (For the AI)
+                StringBuilder xml = new StringBuilder();
+                xml.append("<metadata>\n");
+                xml.append("  <language>").append(lang).append("</language>\n");
+                xml.append("  <file_path>").append(filePath).append("</file_path>\n");
+                
                 Object cursorObj = context.get("cursor");
-                Object selObj = context.get("selection");
-
-                // Construct the JSON metadata object
-                Map<String, Object> metadataMap = new HashMap<>();
-                metadataMap.put("language", lang);
-                metadataMap.put("filePath", filePath);
                 if (cursorObj != null) {
-                    metadataMap.put("cursor", cursorObj);
+                    xml.append("  <cursor>").append(cursorObj.toString()).append("</cursor>\n");
                 }
+                
+                Object selObj = context.get("selection");
                 if (selObj != null) {
-                    metadataMap.put("selection", selObj);
+                    xml.append("  <selection>").append(selObj.toString()).append("</selection>\n");
                 }
+                xml.append("</metadata>");
 
-                try {
-                    String json = objectMapper.writeValueAsString(metadataMap);
-                    Map<String, Object> metadataPart = new HashMap<>();
-                    metadataPart.put("type", "text");
-                    metadataPart.put("text", "<!-- " + json + " -->");
+                Map<String, Object> metadataPart = new HashMap<>();
+                metadataPart.put("type", "text");
+                metadataPart.put("text", xml.toString());
 
-                    // Add annotations for assistant audience (OpenCode internal)
-                    Map<String, Object> annotations = new HashMap<>();
-                    annotations.put("audience", List.of("assistant"));
-                    metadataPart.put("annotations", annotations);
+                // Add annotations for assistant audience (OpenCode internal)
+                Map<String, Object> annotations = new HashMap<>();
+                annotations.put("audience", List.of("assistant"));
+                metadataPart.put("annotations", annotations);
 
-                    promptBlocks.add(metadataPart);
-                } catch (Exception e) {
-                    LOG.log(Level.WARNING, "Failed to serialize metadata", e);
-                }
+                promptBlocks.add(metadataPart);
 
-                // 4. Selection Content Block (if any)
+                // Selection Content Block (if any)
                 String selectionContent = (String) context.get("selectionContent");
                 if (selectionContent != null && !selectionContent.isEmpty()) {
                     Map<String, Object> selectionPart = new HashMap<>();
@@ -552,6 +544,12 @@ public class ACPManager {
                 }
             }
         }
+
+        // 2. User Message Block (End with this so model's focus is on the instruction)
+        Map<String, Object> userTextPart = new HashMap<>();
+        userTextPart.put("type", "text");
+        userTextPart.put("text", text);
+        promptBlocks.add(userTextPart);
 
         Map<String, Object> params = new HashMap<>();
         params.put("sessionId", sessionId);
