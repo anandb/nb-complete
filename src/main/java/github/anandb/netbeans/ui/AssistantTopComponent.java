@@ -25,6 +25,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
+
 import github.anandb.netbeans.support.Logger;
 
 import javax.swing.BorderFactory;
@@ -58,6 +59,8 @@ import org.openide.util.NbPreferences;
 import org.openide.windows.TopComponent;
 
 import com.fasterxml.jackson.databind.JsonNode;
+
+import java.util.concurrent.CompletableFuture;
 
 import github.anandb.netbeans.manager.ACPManager;
 import github.anandb.netbeans.manager.AgentUtils;
@@ -330,7 +333,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
         ACPManager.getInstance().setPermissionHandler(this);
 
         initChat();
-        refreshTheme();
+        applyInitialTheme();
     }
 
     @Override
@@ -1364,38 +1367,36 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
         return instance;
     }
 
-    private void refreshTheme() {
+    private void applyInitialTheme() {
         ColorTheme theme = ThemeManager.getCurrentTheme();
 
-        setBackground(theme.getBackground());
-        header.setBackground(theme.getBackground());
+        setBackground(theme.background());
+        header.setBackground(theme.background());
 
-        cwdLabel.setForeground(theme.getForeground());
+        cwdLabel.setForeground(theme.foreground());
         cwdLabel.setOpaque(true);
-        cwdLabel.setBackground(theme.getSunkenBackground());
+        cwdLabel.setBackground(theme.sunkenBackground());
         cwdLabel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(theme.getBubbleBorder(), 1),
+                BorderFactory.createLineBorder(theme.bubbleBorder(), 1),
                 new EmptyBorder(4, 8, 4, 8)));
 
-        versionLabel.setForeground(theme.getBase1());
+        versionLabel.setForeground(theme.base1());
 
-        sessionDropdown.setBackground(theme.getBackground());
-        sessionDropdown.setForeground(theme.getForeground());
+        sessionDropdown.setBackground(theme.background());
+        sessionDropdown.setForeground(theme.foreground());
 
-        inputArea.setBackground(theme.getBackground());
-        inputArea.setForeground(theme.getForeground());
-        inputArea.setCaretColor(theme.getForeground());
+        inputArea.setBackground(theme.background());
+        inputArea.setForeground(theme.foreground());
+        inputArea.setCaretColor(theme.foreground());
 
-        inputScrollPane.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, theme.getBubbleBorder()));
-
-        chatPanel.refreshTheme();
+        inputScrollPane.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, theme.bubbleBorder()));
 
         revalidate();
         repaint();
     }
 
     @Override
-    public void handlePermissionRequest(String sessionId, JsonNode params, java.util.concurrent.CompletableFuture<String> response) {
+    public void handlePermissionRequest(String sessionId, JsonNode params, CompletableFuture<String> response) {
         String currentId = SessionManager.getInstance().getCurrentSessionId();
         if (currentId == null || !currentId.equals(sessionId)) {
             LOG.log(Level.FINE, "Received permission request for session {0}, but current is {1}",

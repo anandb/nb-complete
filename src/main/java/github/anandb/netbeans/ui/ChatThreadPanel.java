@@ -54,26 +54,26 @@ public class ChatThreadPanel extends JPanel {
         ColorTheme theme = ThemeManager.getCurrentTheme();
         setLayout(new BorderLayout());
         setOpaque(true);
-        setBackground(theme.getBackground());
+        setBackground(theme.background());
         setDoubleBuffered(true);
 
         messagesContainer = new ScrollablePanel();
         messagesContainer.setLayout(new BoxLayout(messagesContainer, BoxLayout.Y_AXIS));
         messagesContainer.setOpaque(true);
-        messagesContainer.setBackground(theme.getSunkenBackground());
+        messagesContainer.setBackground(theme.sunkenBackground());
         messagesContainer.setBorder(new javax.swing.border.EmptyBorder(0, 0, 40, 0));
 
         scrollPane = new JScrollPane(messagesContainer);
         // Sunken feel border
-        Color shadow = theme.isDark() ? Color.BLACK : theme.getBubbleBorder();
+        Color shadow = theme.isDark() ? Color.BLACK : theme.bubbleBorder();
         scrollPane.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createMatteBorder(1, 0, 1, 0, shadow),
             BorderFactory.createEmptyBorder(0, 0, 0, 0)
         ));
         scrollPane.setOpaque(true);
-        scrollPane.setBackground(theme.getSunkenBackground());
+        scrollPane.setBackground(theme.sunkenBackground());
         scrollPane.getViewport().setOpaque(true);
-        scrollPane.getViewport().setBackground(theme.getSunkenBackground());
+        scrollPane.getViewport().setBackground(theme.sunkenBackground());
         scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         scrollPane.getViewport().setScrollMode(JViewport.BLIT_SCROLL_MODE);
         scrollPane.getVerticalScrollBar().setUnitIncrement(16);
@@ -170,7 +170,7 @@ public class ChatThreadPanel extends JPanel {
                 }
             }
         }
-        
+
         String text = sb.toString().stripTrailing();
         LOG.log(Level.FINE, "addMessage(Message) final text length: {0}", text.length());
         String copyable = "user".equals(type) && message.prompt() != null ? message.prompt().text().stripTrailing() : text;
@@ -375,16 +375,16 @@ public class ChatThreadPanel extends JPanel {
             ColorTheme theme = ThemeManager.getCurrentTheme();
 
             JPanel content = new JPanel(new BorderLayout(0, 10));
-            content.setBackground(theme.getPermissionBg());
+            content.setBackground(theme.permissionBg());
             content.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(theme.getPermissionBorder(), 1, true),
+                BorderFactory.createLineBorder(theme.permissionBorder(), 1, true),
                 BorderFactory.createEmptyBorder(12, 16, 12, 16)
             ));
 
             JLabel titleLabel = new JLabel("Permission Required", ThemeManager.getIcon("shield.svg", 18), SwingConstants.LEFT);
             titleLabel.setIconTextGap(8);
             titleLabel.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
-            titleLabel.setForeground(theme.getPermissionTitle());
+            titleLabel.setForeground(theme.permissionTitle());
             content.add(titleLabel, BorderLayout.NORTH);
 
             JLabel promptLabel = new JLabel("<html>" + prompt.replace("\n", "<br>") + "</html>");
@@ -507,7 +507,7 @@ public class ChatThreadPanel extends JPanel {
             }
 
             JScrollBar vertical = scrollPane.getVerticalScrollBar();
-            
+
             // Set twice to handle layout updates
             vertical.setValue(vertical.getMaximum());
 
@@ -568,22 +568,6 @@ public class ChatThreadPanel extends JPanel {
         return sb.toString();
     }
 
-    public void refreshTheme() {
-        SwingUtilities.invokeLater(() -> {
-            ColorTheme theme = ThemeManager.getCurrentTheme();
-            setBackground(theme.getBackground());
-            scrollPane.setBackground(theme.getBackground());
-            scrollPane.getViewport().setBackground(theme.getBackground());
-
-            for (Component c : messagesContainer.getComponents()) {
-                if (c instanceof MessageBubble bubble) {
-                    bubble.refreshTheme();
-                }
-            }
-            messagesContainer.revalidate();
-            messagesContainer.repaint();
-        });
-    }
 
     public void clearMessages() {
         SwingUtilities.invokeLater(() -> {
@@ -658,7 +642,7 @@ public class ChatThreadPanel extends JPanel {
         JButton btn = new JButton();
         btn.setLayout(new BorderLayout(8, 0));
         btn.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(theme.getBubbleBorder() != null ? theme.getBubbleBorder() : Color.LIGHT_GRAY, 1, true),
+            BorderFactory.createLineBorder(theme.bubbleBorder() != null ? theme.bubbleBorder() : Color.LIGHT_GRAY, 1, true),
             BorderFactory.createEmptyBorder(12, 16, 12, 16)
         ));
         btn.setFocusPainted(false);
@@ -707,7 +691,7 @@ public class ChatThreadPanel extends JPanel {
         JButton btn = new JButton();
         btn.setLayout(new BorderLayout(8, 0));
         btn.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(theme.getBubbleBorder() != null ? theme.getBubbleBorder() : Color.LIGHT_GRAY, 1, true),
+            BorderFactory.createLineBorder(theme.bubbleBorder() != null ? theme.bubbleBorder() : Color.LIGHT_GRAY, 1, true),
             BorderFactory.createEmptyBorder(12, 16, 12, 16)
         ));
         btn.setFocusPainted(false);

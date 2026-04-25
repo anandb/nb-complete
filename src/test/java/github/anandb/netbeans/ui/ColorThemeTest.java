@@ -26,10 +26,10 @@ class ColorThemeTest {
         UIManager.put("OptionPane.background", Color.BLACK);
         UIManager.put("OptionPane.messageForeground", Color.WHITE);
 
-        ColorTheme theme = ColorTheme.getNativeTheme();
-        assertNotNull(theme.getBackground());
-        assertNotNull(theme.getForeground());
-        assertNotNull(theme.getBubbleUser());
-        assertNotNull(theme.getAssistantForeground());
+        ColorTheme theme = ThemeManager.getCurrentTheme();
+        assertNotNull(theme.background());
+        assertNotNull(theme.foreground());
+        assertNotNull(theme.bubbleUser());
+        assertNotNull(theme.assistantForeground());
     }
 }

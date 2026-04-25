@@ -43,7 +43,7 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
         headerLabel = new JLabel(title, icon, JLabel.LEFT);
         headerLabel.setIconTextGap(8);
         headerLabel.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
-        headerLabel.setForeground(theme.getHeaderForeground());
+        headerLabel.setForeground(theme.headerForeground());
 
         header.add(headerLabel, BorderLayout.CENTER);
 
@@ -100,14 +100,14 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
     protected void onHeaderHover(boolean hover) {
         ColorTheme theme = ThemeManager.getCurrentTheme();
         if (hover) {
-            header.setBackground(theme.getPanelHeaderHover());
+            header.setBackground(theme.panelHeaderHover());
         } else {
             header.setBackground(getDefaultHeaderBackground());
         }
     }
 
     protected Color getDefaultHeaderBackground() {
-        return ThemeManager.getCurrentTheme().getPanelHeader();
+        return ThemeManager.getCurrentTheme().panelHeader();
     }
 
     @Override
@@ -128,5 +128,4 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
         }
     }
 
-    public abstract void refreshTheme();
 }

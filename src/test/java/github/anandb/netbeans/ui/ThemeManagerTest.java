@@ -11,8 +11,8 @@ class ThemeManagerTest {
     void testGetCurrentTheme() {
         ColorTheme theme = ThemeManager.getCurrentTheme();
         assertNotNull(theme);
-        assertNotNull(theme.getBackground());
-        assertNotNull(theme.getForeground());
+        assertNotNull(theme.background());
+        assertNotNull(theme.foreground());
     }
 
     @Test

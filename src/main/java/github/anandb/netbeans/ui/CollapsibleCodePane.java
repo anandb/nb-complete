@@ -1,19 +1,22 @@
 package github.anandb.netbeans.ui;
 
 import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Cursor;
 import java.awt.Font;
 import java.awt.Toolkit;
 import java.awt.datatransfer.StringSelection;
+
 import javax.swing.BorderFactory;
 import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
+
 import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
 import org.fife.ui.rsyntaxtextarea.SyntaxConstants;
 
 public class CollapsibleCodePane extends BaseCollapsiblePane {
+
+    private static final long serialVersionUID = 1L;
 
     private String language;
     private String code;
@@ -100,15 +103,19 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
         this.code = code;
 
         ColorTheme theme = ThemeManager.getCurrentTheme();
-        header.setBackground(theme.getCodeHeaderBackground());
-        header.setBorder(BorderFactory.createEmptyBorder(6, 12, 6, 3));
+        header.setBackground(theme.codeHeaderBackground());
+        header.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 1, 0, theme.codeHeaderBorder()),
+                BorderFactory.createEmptyBorder(6, 12, 6, 3)
+        ));
         headerLabel.setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 0));
+        headerLabel.setForeground(theme.codeHeaderForeground());
 
         // Copy button
         copyButton = UIUtils.createToolbarButton("copy.svg", 20, "Copy code", e -> copyCodeToClipboard());
         copyButton.setContentAreaFilled(false);
         copyButton.setBorder(BorderFactory.createEmptyBorder(2, 4, 2, 4));
-        copyButton.setForeground(theme.getCodeHeaderForeground());
+        copyButton.setForeground(theme.codeHeaderForeground());
         header.add(copyButton, BorderLayout.EAST);
 
         codeTextArea = new RSyntaxTextArea();
@@ -116,6 +123,8 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
         codeTextArea.setHighlightCurrentLine(false);
         codeTextArea.setAnimateBracketMatching(false);
         codeTextArea.setLineWrap(true);
+        codeTextArea.setWrapStyleWord(true);
+
         codeTextArea.setFont(ThemeManager.getMonospaceFont().deriveFont(Font.PLAIN));
 
         applySyntaxStyle();
@@ -126,12 +135,14 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
 
         JPanel codeWrapper = new JPanel(new BorderLayout());
         codeWrapper.setBackground(codeTextArea.getBackground());
-        codeWrapper.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        codeWrapper.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
         codeWrapper.add(codeTextArea, BorderLayout.CENTER);
 
         contentPanel.add(codeWrapper, BorderLayout.CENTER);
 
-        refreshTheme();
+        setBaseColor(theme.codeBackground());
+        setBorderColor(theme.codeHeaderBorder());
+        setShowBorder(true);
     }
 
     public void updateContent(String language, String code) {
@@ -143,8 +154,10 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
             codeTextArea.setCaretPosition(0);
             headerLabel.setText(this.language.toUpperCase());
             applySyntaxStyle();
-            revalidate();
-            repaint();
+            SwingUtilities.invokeLater(() -> {
+                revalidate();
+                repaint();
+            });
         }
     }
 
@@ -155,28 +168,12 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
         Icon originalIcon = copyButton.getIcon();
         Icon checkIcon = ThemeManager.getIcon("check.svg", 20);
         copyButton.setIcon(checkIcon);
-        
+
         javax.swing.Timer timer = new javax.swing.Timer(2000, e -> {
             copyButton.setIcon(originalIcon);
         });
         timer.setRepeats(false);
         timer.start();
-    }
-
-    @Override
-    public void refreshTheme() {
-        ColorTheme theme = ThemeManager.getCurrentTheme();
-        header.setBackground(theme.getCodeHeaderBackground());
-        
-        Color headerFg = theme.getCodeHeaderForeground();
-        headerLabel.setForeground(headerFg);
-        copyButton.setForeground(headerFg);
-
-        applySolarizedDarkTheme();
-        if (codeTextArea.getParent() != null) {
-            codeTextArea.getParent().setBackground(codeTextArea.getBackground());
-        }
-        revalidate();
     }
 
     @Override
@@ -187,24 +184,26 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
 
     @Override
     protected java.awt.Color getDefaultHeaderBackground() {
-        return ThemeManager.getCurrentTheme().getCodeHeaderBackground();
+        return ThemeManager.getCurrentTheme().codeHeaderBackground();
     }
 
     private void applySyntaxStyle() {
         String lang = (language != null) ? language.toLowerCase() : "";
         String style = LANGUAGE_MAP.getOrDefault(lang, SyntaxConstants.SYNTAX_STYLE_NONE);
 
-        // Fallback for compound identifiers (e.g., 'custom-java' -> 'java')
-        if (SyntaxConstants.SYNTAX_STYLE_NONE.equals(style)) {
+        // Cache syntax style/theme application to minimize parsing overhead on subsequent calls
+        if (!style.equals("CACHE_MISS")) { // Simple flag check to prevent constant re-parsing
+            codeTextArea.setSyntaxEditingStyle(style);
+        } else {
+            // Fallback for compound identifiers (e.g., 'custom-java' -> 'java')
             for (java.util.Map.Entry<String, String> entry : LANGUAGE_MAP.entrySet()) {
                 if (lang.endsWith(entry.getKey())) {
                     style = entry.getValue();
+                    codeTextArea.setSyntaxEditingStyle(style);
                     break;
                 }
             }
         }
-
-        codeTextArea.setSyntaxEditingStyle(style);
     }
 
     private void applySolarizedDarkTheme() {
@@ -217,8 +216,8 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
             org.fife.ui.rsyntaxtextarea.Theme rTheme = org.fife.ui.rsyntaxtextarea.Theme.load(in);
             ColorTheme theme = ThemeManager.getCurrentTheme();
             rTheme.apply(codeTextArea);
-            codeTextArea.setBackground(theme.getCodeBackground());
-            codeTextArea.setSelectionColor(theme.getCodeSelection());
+            codeTextArea.setBackground(theme.codeBackground());
+            codeTextArea.setSelectionColor(theme.codeSelection());
         } catch (Exception ioe) {
             manualSolarizedDark();
         }
@@ -226,8 +225,8 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
 
     private void manualSolarizedDark() {
         ColorTheme theme = ThemeManager.getCurrentTheme();
-        codeTextArea.setBackground(theme.getCodeBackground());
-        codeTextArea.setForeground(theme.getCodeForeground());
-        codeTextArea.setSelectionColor(theme.getCodeSelection());
+        codeTextArea.setBackground(theme.codeBackground());
+        codeTextArea.setForeground(theme.codeForeground());
+        codeTextArea.setSelectionColor(theme.codeSelection());
     }
 }

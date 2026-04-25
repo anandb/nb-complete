@@ -53,21 +53,21 @@ public class MessageBubble extends JPanel {
     private void applyBubbleTheme(ColorTheme theme, String type) {
         Color bgColor;
         if ("user".equals(type)) {
-            bgColor = theme.getBubbleUser();
+            bgColor = theme.bubbleUser();
         } else if ("error".equals(type)) {
-            bgColor = theme.getErrorBackground();
+            bgColor = theme.errorBackground();
         } else {
             bgColor = new Color(0, 0, 0, 0);
         }
-        
-        setBackground(theme.getSunkenBackground());
+
+        setBackground(theme.sunkenBackground());
         setOpaque(true);
 
         bubble.setBackground(bgColor);
         bubble.setOpaque(true);
         segmentsContainer.setBackground(bgColor);
         segmentsContainer.setOpaque(true);
-        
+
         if (bubble instanceof RoundedPanel) {
             RoundedPanel rp = (RoundedPanel) bubble;
             rp.setBaseColor(bgColor);
@@ -143,7 +143,7 @@ public class MessageBubble extends JPanel {
     public MessageBubble(String type, String text, String messageId) {
         this(type, text, messageId, text);
     }
-    
+
     public MessageBubble(String type, String text, String messageId, String copyableText) {
         this.type = type;
         this.messageId = messageId;
@@ -154,10 +154,10 @@ public class MessageBubble extends JPanel {
 
         setLayout(new GridBagLayout());
         setOpaque(true);
-        setBackground(theme.getSunkenBackground());
+        setBackground(theme.sunkenBackground());
         setDoubleBuffered(true);
         setBorder(new EmptyBorder(2, 8, 2, 8));
-        
+
         segmentsContainer = new JPanel();
         segmentsContainer.setLayout(new BoxLayout(segmentsContainer, BoxLayout.Y_AXIS));
         segmentsContainer.setDoubleBuffered(true);
@@ -278,20 +278,6 @@ public class MessageBubble extends JPanel {
         return text.toString();
     }
 
-    public void refreshTheme() {
-        ColorTheme theme = ThemeManager.getCurrentTheme();
-        applyBubbleTheme(theme, type);
-
-        for (Component c : segmentsContainer.getComponents()) {
-            if (c instanceof CollapsibleCodePane pane) {
-                pane.refreshTheme();
-            } else if (c instanceof CollapsibleToolPane pane) {
-                pane.refreshTheme();
-            }
-        }
-
-        updateContent(theme);
-    }
 
     private void updateContent(ColorTheme theme) {
         updateContent(theme, false);
@@ -393,7 +379,7 @@ public class MessageBubble extends JPanel {
     }
 
     public void finalizeStreaming() {
-        // When streaming ends, collapse all process blocks (Tools/Thoughts) 
+        // When streaming ends, collapse all process blocks (Tools/Thoughts)
         // but leave Code blocks open
         for (Component c : segmentsContainer.getComponents()) {
             if (c instanceof CollapsibleToolPane toolPane) {
@@ -475,11 +461,11 @@ public class MessageBubble extends JPanel {
 
         Color bg;
         if ("user".equals(type)) {
-            bg = theme.getBubbleUser();
+            bg = theme.bubbleUser();
         } else if ("error".equals(type)) {
-            bg = theme.getErrorBackground();
+            bg = theme.errorBackground();
         } else {
-            bg = theme.getSunkenBackground();
+            bg = theme.sunkenBackground();
         }
 
         boolean isAssistant = !"user".equals(type) && !"error".equals(type) && !"tool".equals(type);
@@ -490,28 +476,28 @@ public class MessageBubble extends JPanel {
         // Detect if the content looks like ASCII art (contains box drawing characters)
         String bodyStyle = "margin: 0; padding: 4px;";
         if (hasArt) {
-            // Avoid pre tag to prevent theme conflicts (black box). 
+            // Avoid pre tag to prevent theme conflicts (black box).
             // Use manual line breaks and nbsp to preserve structure in old renderers.
             String monoStack = theme.getMonoStack();
             customCss += " .ascii-art { font-family: " + monoStack + "; line-height: 1.0; }";
-            
+
             // Flexmark might have already wrapped it in <p> or added other tags.
             // We need to be careful with replacement.
             html = html.replace("  ", " &nbsp;"); // Replace double spaces at least
             html = html.replace("\n", "<br/>");
             html = "<div class='ascii-art'>" + html + "</div>";
         }
-        
+
         return "<html><head><style>" + customCss + "</style></head><body style='" + bodyStyle + "'>" + html + "</body></html>";
     }
 
     private Color getBubbleBackground(ColorTheme theme) {
         if ("user".equals(type)) {
-            return theme.getBubbleUser();
+            return theme.bubbleUser();
         } else if ("error".equals(type)) {
-            return theme.getErrorBackground();
+            return theme.errorBackground();
         } else {
-            return theme.getSunkenBackground();
+            return theme.sunkenBackground();
         }
     }
 
@@ -523,7 +509,7 @@ public class MessageBubble extends JPanel {
         pane.setContentType("text/html");
         pane.setOpaque(true);
         pane.setBackground(bg);
-        pane.setForeground(theme.getForeground());
+        pane.setForeground(theme.foreground());
         pane.setDoubleBuffered(true);
         pane.setText(styledHtml);
         pane.setFont(ThemeManager.getFont());

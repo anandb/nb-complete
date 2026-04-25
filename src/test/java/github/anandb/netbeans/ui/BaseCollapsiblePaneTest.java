@@ -7,10 +7,7 @@ class BaseCollapsiblePaneTest {
 
     @Test
     void testToggleCollapse() {
-        BaseCollapsiblePane pane = new BaseCollapsiblePane(10, "Title", null, true) {
-            @Override
-            public void refreshTheme() {}
-        };
+        BaseCollapsiblePane pane = new BaseCollapsiblePane(10, "Title", null, true) {};
         assertTrue(pane.isExpanded());
         
         pane.setExpanded(false);

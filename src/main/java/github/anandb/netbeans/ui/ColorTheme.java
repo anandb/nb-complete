@@ -6,227 +6,42 @@ import javax.swing.UIManager;
 /**
  * Centralized color definitions for the ACP NetBeans plugin.
  */
-public class ColorTheme {
-    private final boolean isDark;
-
-    // UI Framework
-    private final Color background;
-    private final Color foreground;
-    private final Color selection;
-    private final Color accent;
-    private final Color ghostBackground;
-    private final Color sunkenBackground;
-
-    // Bubbles
-    private final Color bubbleUser;
-    private final Color bubbleAssistant;
-    private final Color bubbleBorder;
-    private final Color assistantForeground;
-
-    // Components (Panels/Blocks)
-    private final Color panelHeader;
-    private final Color panelHeaderHover;
-    private final Color base1;
-    private final Color base2;
-    private final Color base3;
-    private final Color yellow;
-
-    // Code Blocks
-    private final Color codeBackground;
-    private final Color codeForeground;
-    private final Color codeSelection;
-
-    // Generic
-    private final Color headerForeground;
-    private final Color errorBackground;
-
-    // Code Header
-    private final Color codeHeaderBackground;
-    private final Color codeHeaderForeground;
-
-    // Thinking Header
-    private final Color thinkingHeaderBackground;
-    private final Color thinkingHeaderForeground;
-
-    // Tool Message
-    private final Color toolForeground;
-
-    // Permission Panel
-    private final Color permissionBg;
-    private final Color permissionBorder;
-    private final Color permissionTitle;
-
-    private ColorTheme(Builder builder) {
-        this.isDark = builder.isDark;
-        this.background = builder.background;
-        this.foreground = builder.foreground;
-        this.selection = builder.selection;
-        this.accent = builder.accent;
-        this.ghostBackground = builder.ghostBackground;
-        this.sunkenBackground = builder.sunkenBackground;
-        this.bubbleUser = builder.bubbleUser;
-        this.bubbleAssistant = builder.bubbleAssistant;
-        this.bubbleBorder = builder.bubbleBorder;
-        this.assistantForeground = builder.assistantForeground;
-        this.panelHeader = builder.panelHeader;
-        this.panelHeaderHover = builder.panelHeaderHover;
-        this.base1 = builder.base1;
-        this.base2 = builder.base2;
-        this.base3 = builder.base3;
-        this.yellow = builder.yellow;
-        this.codeBackground = builder.codeBackground;
-        this.codeForeground = builder.codeForeground;
-        this.codeSelection = builder.codeSelection;
-        this.permissionBg = builder.permissionBg;
-        this.permissionBorder = builder.permissionBorder;
-        this.permissionTitle = builder.permissionTitle;
-        this.headerForeground = builder.headerForeground;
-        this.errorBackground = builder.errorBackground;
-        this.codeHeaderBackground = builder.codeHeaderBackground;
-        this.codeHeaderForeground = builder.codeHeaderForeground;
-        this.thinkingHeaderBackground = builder.thinkingHeaderBackground;
-        this.thinkingHeaderForeground = builder.thinkingHeaderForeground;
-        this.toolForeground = builder.toolForeground;
-    }
-
-    public boolean isDark() { return isDark; }
-    public Color getBackground() { return background; }
-    public Color getForeground() { return foreground; }
-    public Color getSelection() { return selection; }
-    public Color getAccent() { return accent; }
-    public Color getGhostBackground() { return ghostBackground; }
-    public Color getSunkenBackground() { return sunkenBackground; }
-    public Color getBubbleUser() { return bubbleUser; }
-    public Color getBubbleAssistant() { return bubbleAssistant; }
-    public Color getBubbleBorder() { return bubbleBorder; }
-    public Color getAssistantForeground() { return assistantForeground; }
-    public Color getPanelHeader() { return panelHeader; }
-    public Color getPanelHeaderHover() { return panelHeaderHover; }
-    public Color getBase1() { return base1; }
-    public Color getBase2() { return base2; }
-    public Color getBase3() { return base3; }
-    public Color getYellow() { return yellow; }
-    public Color getCodeBackground() { return codeBackground; }
-    public Color getCodeForeground() { return codeForeground; }
-    public Color getCodeSelection() { return codeSelection; }
-    public Color getPermissionBg() { return permissionBg; }
-    public Color getPermissionBorder() { return permissionBorder; }
-    public Color getPermissionTitle() { return permissionTitle; }
-    public Color getHeaderForeground() { return headerForeground; }
-    public Color getErrorBackground() { return errorBackground; }
-    public Color getCodeHeaderBackground() { return codeHeaderBackground; }
-    public Color getCodeHeaderForeground() { return codeHeaderForeground; }
-    public Color getThinkingHeaderBackground() { return thinkingHeaderBackground; }
-    public Color getThinkingHeaderForeground() { return thinkingHeaderForeground; }
-    public Color getToolForeground() { return toolForeground; }
-
-    public static ColorTheme getNativeTheme() {
-        boolean isDark = UIManager.getBoolean("nb.dark.theme");
-        if (!UIManager.getDefaults().containsKey("nb.dark.theme")) {
-            Color bg = UIManager.getColor("Panel.background");
-            if (bg != null) {
-                isDark = (bg.getRed() * 0.299 + bg.getGreen() * 0.587 + bg.getBlue() * 0.114) < 128;
-            }
-        }
-
-        // Use UIManager properties to dynamically build the theme based on the current Look and Feel
-        return new Builder(isDark)
-            .background(UIManager.getColor("Panel.background"))
-            .foreground(UIManager.getColor("Panel.foreground"))
-            .selection(UIManager.getColor("TextArea.selectionBackground"))
-            .accent(UIManager.getColor("Button.focusColor"))
-            .sunkenBackground(UIManager.getColor("Panel.background"))
-            .ghostBackground(UIManager.getColor("Label.background"))
-            .bubbleUser(UIManager.getColor("TextField.background"))
-            .assistantForeground(UIManager.getColor("TextArea.foreground"))
-            .bubbleBorder(UIManager.getColor("Button.borderColor"))
-            .panelHeader(UIManager.getColor("Panel.background"))
-            .panelHeaderHover(UIManager.getColor("Button.background"))
-            .base1(UIManager.getColor("Label.foreground"))
-            .base2(UIManager.getColor("controlShadow"))
-            .base3(UIManager.getColor("control"))
-            .yellow(UIManager.getColor("ComboBox.selectionBackground"))
-            .codeBackground(Color.decode("#1e1f22"))
-            .codeForeground(Color.decode("#bcbec4"))
-            .codeSelection(Color.decode("#353739"))
-            .permissionBg(UIManager.getColor("OptionPane.background"))
-            .permissionBorder(UIManager.getColor("Button.focusColor"))
-            .permissionTitle(UIManager.getColor("OptionPane.messageForeground"))
-            .headerForeground(UIManager.getColor("Label.foreground"))
-            .errorBackground(Color.decode(isDark ? "#401010" : "#FFEBEE"))
-            .codeHeaderBackground(Color.decode("#2b2d30"))
-            .codeHeaderForeground(Color.decode("#bcbec4"))
-            .thinkingHeaderBackground(isDark ? UIManager.getColor("Panel.background") : Color.decode("#fdf6e3"))
-            .thinkingHeaderForeground(UIManager.getColor("Label.foreground"))
-            .toolForeground(Color.decode(isDark ? "#9CA3AF" : "#777777"))
-            .build();
-    }
-
-    private static class Builder {
-        private boolean isDark;
-        private Color background;
-        private Color foreground;
-        private Color selection;
-        private Color accent;
-        private Color ghostBackground;
-        private Color sunkenBackground;
-        private Color bubbleUser;
-        private Color bubbleAssistant;
-        private Color bubbleBorder;
-        private Color assistantForeground;
-        private Color panelHeader;
-        private Color panelHeaderHover;
-        private Color base1;
-        private Color base2;
-        private Color base3;
-        private Color yellow;
-        private Color codeBackground;
-        private Color codeForeground;
-        private Color codeSelection;
-        private Color permissionBg;
-        private Color permissionBorder;
-        private Color permissionTitle;
-        private Color headerForeground;
-        private Color errorBackground;
-        private Color codeHeaderBackground;
-        private Color codeHeaderForeground;
-        private Color thinkingHeaderBackground;
-        private Color thinkingHeaderForeground;
-
-        // Tool Message
-        private Color toolForeground;
-
-        public Builder(boolean isDark) { this.isDark = isDark; }
-        public Builder background(Color c) { this.background = c; return this; }
-        public Builder foreground(Color c) { this.foreground = c; return this; }
-        public Builder selection(Color c) { this.selection = c; return this; }
-        public Builder accent(Color c) { this.accent = c; return this; }
-        public Builder ghostBackground(Color c) { this.ghostBackground = c; return this; }
-        public Builder sunkenBackground(Color c) { this.sunkenBackground = c; return this; }
-        public Builder bubbleUser(Color c) { this.bubbleUser = c; return this; }
-        public Builder bubbleBorder(Color c) { this.bubbleBorder = c; return this; }
-        public Builder assistantForeground(Color c) { this.assistantForeground = c; return this; }
-        public Builder panelHeader(Color c) { this.panelHeader = c; return this; }
-        public Builder panelHeaderHover(Color c) { this.panelHeaderHover = c; return this; }
-        public Builder base1(Color c) { this.base1 = c; return this; }
-        public Builder base2(Color c) { this.base2 = c; return this; }
-        public Builder base3(Color c) { this.base3 = c; return this; }
-        public Builder yellow(Color c) { this.yellow = c; return this; }
-        public Builder codeBackground(Color c) { this.codeBackground = c; return this; }
-        public Builder codeForeground(Color c) { this.codeForeground = c; return this; }
-        public Builder codeSelection(Color c) { this.codeSelection = c; return this; }
-        public Builder permissionBg(Color c) { this.permissionBg = c; return this; }
-        public Builder permissionBorder(Color c) { this.permissionBorder = c; return this; }
-        public Builder permissionTitle(Color c) { this.permissionTitle = c; return this; }
-        public Builder headerForeground(Color c) { this.headerForeground = c; return this; }
-        public Builder errorBackground(Color c) { this.errorBackground = c; return this; }
-        public Builder codeHeaderBackground(Color c) { this.codeHeaderBackground = c; return this; }
-        public Builder codeHeaderForeground(Color c) { this.codeHeaderForeground = c; return this; }
-        public Builder thinkingHeaderBackground(Color c) { this.thinkingHeaderBackground = c; return this; }
-        public Builder thinkingHeaderForeground(Color c) { this.thinkingHeaderForeground = c; return this; }
-        public Builder toolForeground(Color c) { this.toolForeground = c; return this; }
-
-        public ColorTheme build() { return new ColorTheme(this); }
+public record ColorTheme(
+    boolean isDark,
+    Color background, Color foreground, Color selection, Color accent,
+    Color ghostBackground, Color sunkenBackground, Color bubbleUser,
+    Color bubbleAssistant, Color bubbleBorder, Color assistantForeground,
+    Color panelHeader, Color panelHeaderHover, Color base1, Color base2, Color base3,
+    Color yellow, Color codeBackground, Color codeForeground, Color codeSelection,
+    Color headerForeground, Color errorBackground, Color codeHeaderBackground,
+    Color codeHeaderForeground, Color codeHeaderBorder, Color thinkingHeaderBackground, Color thinkingHeaderForeground,
+    Color toolForeground, Color permissionBg, Color permissionBorder, Color permissionTitle
+) {
+    public static ColorTheme getNativeTheme(boolean darkMode) {
+        return new ColorTheme(
+                darkMode, UIManager.getColor("Panel.background"),
+                UIManager.getColor("Panel.foreground"), UIManager.getColor("TextArea.selectionBackground"),
+                UIManager.getColor("Button.focusColor"), UIManager.getColor("Label.background"),
+                UIManager.getColor("Editor.background"), UIManager.getColor("TextField.background"),
+                null, UIManager.getColor("Button.borderColor"),
+                UIManager.getColor("TextArea.foreground"), UIManager.getColor("Panel.background"),
+                UIManager.getColor("Button.background"), UIManager.getColor("Label.foreground"),
+                UIManager.getColor("controlShadow"), UIManager.getColor("control"),
+                UIManager.getColor("ComboBox.selectionBackground"),
+                UIManager.getColor("Terminal.background") != null ? UIManager.getColor("Terminal.background") : Color.decode("#1e1f22"),
+                UIManager.getColor("Terminal.foreground") != null ? UIManager.getColor("Terminal.foreground") : Color.decode("#bcbec4"),
+                Color.decode("#353739"),
+                UIManager.getColor("Label.foreground"),
+                darkMode ? Color.decode("#401010") : Color.decode("#FFEBEE"),
+                UIManager.getColor("TableHeader.background"), UIManager.getColor("TableHeader.foreground"),
+                darkMode ? Color.decode("#AAAAAA") : Color.decode("#333333"),
+                darkMode ? UIManager.getColor("Panel.background") : Color.decode("#fdf6e3"),
+                UIManager.getColor("Label.foreground"),
+                darkMode ? Color.decode("#9CA3AF") : Color.decode("#777777"),
+                UIManager.getColor("OptionPane.background"),
+                UIManager.getColor("Button.focusColor"),
+                UIManager.getColor("OptionPane.messageForeground")
+        );
     }
 
     public String getMonoStack() {
@@ -234,14 +49,14 @@ public class ColorTheme {
     }
 
     public String toCss(Color bubbleBg, boolean isAssistant) {
-        String fg = toHtmlHex(isAssistant ? assistantForeground : foreground);
+        String fg = toHtmlHex(isAssistant ? assistantForeground() : foreground());
         String bg = bubbleBg != null ? toHtmlHex(bubbleBg) : "transparent";
-        String linkColor = isDark ? "#589DF6" : "#268BD2";
+        String linkColor = isDark() ? "#589DF6" : "#268BD2";
 
         // Markdown inline code and blocks are now forced to Dark mode as well
         String codeBg = "rgba(255, 255, 255, 0.1)";
-        String preBg = "#1e1f22";
-        String preFg = "#bcbec4";
+        String preBg = codeBackground() != null ? toHtmlHex(codeBackground()) : "#1e1f22";
+        String preFg = codeForeground() != null ? toHtmlHex(codeForeground()) : "#bcbec4";
         String fontStack = "Dialog, 'Noto Sans', 'Segoe UI', 'Ubuntu', 'Helvetica Neue', 'Arial', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', sans-serif";
         String monoStack = getMonoStack();
 

@@ -14,7 +14,7 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
         super(12, getDisplayTitle(title, expandedByDefault), getHeaderIcon(title), expandedByDefault);
 
         ColorTheme theme = ThemeManager.getCurrentTheme();
-        Color yellowAccent = theme.getYellow();
+        Color yellowAccent = theme.yellow();
 
         header.setBackground(getDefaultHeaderBackground());
         header.setBorder(BorderFactory.createCompoundBorder(
@@ -24,9 +24,9 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
         headerLabel.setBorder(BorderFactory.createEmptyBorder(4, 8, 0, 0));
 
         contentPanel.setOpaque(true);
-        contentPanel.setBackground(theme.getBase2());
+        contentPanel.setBackground(theme.base2());
         contentPanel.setBorder(BorderFactory.createMatteBorder(0, 4, 0, 0, yellowAccent));
-        
+
         textArea = new JTextArea(content);
         textArea.setEditable(false);
         textArea.setOpaque(false);
@@ -34,14 +34,14 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
         textArea.setFont(isThinking
                 ? ThemeManager.getFont().deriveFont(Font.PLAIN)
                 : ThemeManager.getMonospaceFont().deriveFont(Font.PLAIN));
-        textArea.setForeground(theme.getForeground());
+        textArea.setForeground(theme.foreground());
         textArea.setBorder(BorderFactory.createEmptyBorder(2, 25, 2, 10));
         textArea.setLineWrap(true);
         textArea.setWrapStyleWord(true);
-        
+
         contentPanel.add(textArea, BorderLayout.CENTER);
-        
-        refreshTheme();
+
+        headerLabel.setForeground(theme.thinkingHeaderForeground());
     }
 
     private static String getDisplayTitle(String title, boolean expanded) {
@@ -94,24 +94,7 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
 
     @Override
     protected Color getDefaultHeaderBackground() {
-        return ThemeManager.getCurrentTheme().getThinkingHeaderBackground();
+        return ThemeManager.getCurrentTheme().thinkingHeaderBackground();
     }
 
-    @Override
-    public void refreshTheme() {
-        ColorTheme theme = ThemeManager.getCurrentTheme();
-        Color headerBg = getDefaultHeaderBackground();
-        Color yellowAccent = theme.getYellow();
-
-        header.setBackground(headerBg);
-        contentPanel.setBackground(theme.getBase2());
-        contentPanel.setBorder(BorderFactory.createMatteBorder(0, 4, 0, 0, yellowAccent));
-        
-        textArea.setForeground(theme.getForeground());
-        Color headerFg = theme.getThinkingHeaderForeground();
-        headerLabel.setForeground(headerFg);
-        
-        revalidate();
-        repaint();
-    }
 }

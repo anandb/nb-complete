@@ -20,6 +20,8 @@ public class RoundedPanel extends JPanel {
     private static final long serialVersionUID = 1L;
     private int radius;
     private Color baseColor; // null = transparent (children fill their own backgrounds)
+    private Color borderColor; // null = use theme's bubbleBorder
+    private boolean showBorder = true;
 
     public RoundedPanel(int radius) {
         this.radius = radius;
@@ -33,6 +35,14 @@ public class RoundedPanel extends JPanel {
 
     public void setBaseColor(Color color) {
         this.baseColor = color;
+    }
+
+    public void setShowBorder(boolean showBorder) {
+        this.showBorder = showBorder;
+    }
+
+    public void setBorderColor(Color borderColor) {
+        this.borderColor = borderColor;
     }
 
     private RoundRectangle2D.Float getShape() {
@@ -69,8 +79,8 @@ public class RoundedPanel extends JPanel {
 
         // Draw border AFTER children so it is always on top of child panels
         ColorTheme theme = ThemeManager.getCurrentTheme();
-        Color border = theme.getBubbleBorder();
-        if (border != null && border.getAlpha() > 0) {
+        Color border = borderColor != null ? borderColor : theme.bubbleBorder();
+        if (showBorder && border != null && border.getAlpha() > 0) {
             Graphics2D g3 = (Graphics2D) g.create();
             g3.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             g3.setColor(border);
