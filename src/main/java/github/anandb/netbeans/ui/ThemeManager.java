@@ -72,6 +72,13 @@ public class ThemeManager {
     public static Font getMonospaceFont() {
         Font editorFont = UIManager.getFont("EditorPane.font");
         int size = (editorFont != null) ? editorFont.getSize() : 13;
+
+        // Try MesloLGS NF first as it's the preferred font for Nerd Font support
+        Font meslo = new Font("MesloLGS NF", Font.PLAIN, size);
+        if (meslo.getFamily().equalsIgnoreCase("MesloLGS NF")) {
+            return meslo;
+        }
+
         return (editorFont != null)
                 ? new Font(editorFont.getName(), editorFont.getStyle(), size)
                 : new Font(Font.MONOSPACED, Font.PLAIN, size);

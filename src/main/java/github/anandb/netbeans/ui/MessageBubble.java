@@ -323,6 +323,19 @@ public class MessageBubble extends JPanel {
             return;
         }
 
+        // For user messages, we don't need complex code panels. 
+        // Just render the whole thing as markdown to get simple <pre> blocks.
+        if ("user".equals(type)) {
+            updateOrAddTextSegment(text.toString(), theme, 0, incremental);
+            while (segmentsContainer.getComponentCount() > 1) {
+                segmentsContainer.remove(segmentsContainer.getComponentCount() - 1);
+            }
+            segmentsContainer.revalidate();
+            bubble.revalidate();
+            this.revalidate();
+            return;
+        }
+
         // Simple markdown splitting for code blocks: ```[lang]\n<code>```
         String rawText = text.toString();
 
@@ -344,8 +357,8 @@ public class MessageBubble extends JPanel {
             String lang = matcher.group(1);
             String code = matcher.group(2);
 
-            // Determine default expanded state: User messages collapse by default
-            boolean defaultExpanded = !"user".equals(type);
+            // Determine default expanded state: Assistant messages expand by default
+            boolean defaultExpanded = true;
 
             // Persist expanded state if we already had it for this index
             if (codeIdx < codeStates.size()) {

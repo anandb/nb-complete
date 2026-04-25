@@ -1,7 +1,7 @@
-# Agent Instructions for acp-netbeans-plugin
+# Agent Instructions for beanagent
 
 ## Project Overview
-- **Project name**: Assistant NetBeans Plugin
+- **Project name**: Coding Assistant
 - **Project type**: NetBeans IDE plugin (NBM packaging)
 - **Language**: Java 21
 - **Build tool**: Maven

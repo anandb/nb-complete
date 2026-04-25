@@ -16,7 +16,6 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
         ColorTheme theme = ThemeManager.getCurrentTheme();
         Color yellowAccent = theme.yellow();
 
-        header.setBackground(getDefaultHeaderBackground());
         header.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createMatteBorder(0, 4, 0, 0, yellowAccent),
             BorderFactory.createEmptyBorder(2, 10, 2, 10)
@@ -24,24 +23,34 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
         headerLabel.setBorder(BorderFactory.createEmptyBorder(4, 8, 0, 0));
 
         contentPanel.setOpaque(true);
-        contentPanel.setBackground(theme.base2());
         contentPanel.setBorder(BorderFactory.createMatteBorder(0, 4, 0, 0, yellowAccent));
 
         textArea = new JTextArea(content);
+        // Let contentPanel handle the background color for textArea to ensure consistency across states.
+        textArea.setBackground(null); // Null allows it to inherit from parent (contentPanel)
         textArea.setEditable(false);
         textArea.setOpaque(false);
+        
         boolean isThinking = title.toUpperCase().contains("THINKING");
         textArea.setFont(isThinking
                 ? ThemeManager.getFont().deriveFont(Font.PLAIN)
                 : ThemeManager.getMonospaceFont().deriveFont(Font.PLAIN));
-        textArea.setForeground(theme.foreground());
-        textArea.setBorder(BorderFactory.createEmptyBorder(2, 25, 2, 10));
+
+        textArea.setBorder(BorderFactory.createEmptyBorder(8, 25, 8, 12));
         textArea.setLineWrap(true);
         textArea.setWrapStyleWord(true);
 
         contentPanel.add(textArea, BorderLayout.CENTER);
+        
+        updateAppearance();
+    }
 
-        headerLabel.setForeground(theme.thinkingHeaderForeground());
+    private void updateAppearance() {
+        ColorTheme theme = ThemeManager.getCurrentTheme();
+        header.setBackground(expanded ? theme.base2() : theme.thinkingHeaderBackground());
+        contentPanel.setBackground(expanded ? theme.thinkingHeaderBackground() : theme.base2());
+        textArea.setForeground(expanded ? theme.thinkingHeaderForeground() : theme.foreground());
+        headerLabel.setForeground(expanded ? theme.foreground() : theme.thinkingHeaderForeground());
     }
 
     private static String getDisplayTitle(String title, boolean expanded) {
@@ -81,20 +90,22 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
 
     @Override
     protected void onHeaderHover(boolean hover) {
-        // No color change for tool or thought headers
-        header.setBackground(getDefaultHeaderBackground());
+        // Ensure colors are consistent even during hover events
+        updateAppearance();
     }
 
     @Override
     protected void onToggle(boolean expanded) {
-        if (headerLabel.getText().toUpperCase().contains("THINKING")) {
+        if (headerLabel.getText().toUpperCase().contains("THINKING") || 
+            headerLabel.getText().toUpperCase().contains("PROCESS")) {
             headerLabel.setText(expanded ? "Thinking Process" : "Thinking Process...");
         }
+        updateAppearance();
     }
 
     @Override
     protected Color getDefaultHeaderBackground() {
-        return ThemeManager.getCurrentTheme().thinkingHeaderBackground();
+        return expanded ? ThemeManager.getCurrentTheme().base2() : ThemeManager.getCurrentTheme().thinkingHeaderBackground();
     }
 
 }

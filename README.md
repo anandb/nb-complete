@@ -1,10 +1,10 @@
-# Assistant NetBeans Plugin
+# Coding Assistant
 
 [![Version](https://img.shields.io/badge/version-1.3.38-blue.svg)](pom.xml)
 [![Build Status](https://img.shields.io/badge/build-success-brightgreen.svg)](https://github.com/anandb/nb-complete)
 [![NetBeans](https://img.shields.io/badge/NetBeans-RELEASE210-orange.svg)](https://netbeans.apache.org/download/index.html)
 
-The **Assistant NetBeans Plugin** is a tool for integrating AI assistance into the NetBeans IDE. It uses the **Agent Client Protocol (ACP)** to provide a chat interface for code generation, explanation, and project-related tasks.
+The **Coding Assistant** is a tool for integrating AI assistance into the NetBeans IDE. It uses the **Agent Client Protocol (ACP)** to provide a chat interface for code generation, explanation, and project-related tasks.
 
 | | |
 | :---: | :---: |

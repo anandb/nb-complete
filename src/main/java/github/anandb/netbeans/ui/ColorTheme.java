@@ -45,7 +45,7 @@ public record ColorTheme(
     }
 
     public String getMonoStack() {
-        return "'Source Code Pro', 'JetBrains Mono', 'Monaco', 'Fira Code', 'Monospace', Monospaced, monospace";
+        return "'MesloLGS NF', 'Source Code Pro', 'JetBrains Mono', Monaco, 'Fira Code', monospace";
     }
 
     public String toCss(Color bubbleBg, boolean isAssistant) {
@@ -57,7 +57,7 @@ public record ColorTheme(
         String codeBg = "rgba(255, 255, 255, 0.1)";
         String preBg = codeBackground() != null ? toHtmlHex(codeBackground()) : "#1e1f22";
         String preFg = codeForeground() != null ? toHtmlHex(codeForeground()) : "#bcbec4";
-        String fontStack = "Dialog, 'Noto Sans', 'Segoe UI', 'Ubuntu', 'Helvetica Neue', 'Arial', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', sans-serif";
+        String fontStack = "Dialog, 'Noto Sans', 'Segoe UI', 'Ubuntu', 'Helvetica Neue', Arial, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', sans-serif";
         String monoStack = getMonoStack();
 
         return "body { font-family: " + fontStack + "; font-size: 13px; color: " + fg + "; background-color: " + bg + "; margin: 0; line-height: 1.4; }" +

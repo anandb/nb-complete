@@ -3,10 +3,10 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>github.anandb</groupId>
     <artifactId>beanagent</artifactId>
-    <version>1.3.64</version>
+    <version>1.3.68</version>
     <packaging>nbm</packaging>
 
-    <name>Coding Assistant Plugin</name>
+    <name>Coding Assistant</name>
     <description>Coding Assistant for NetBeans using ACP, connect to OpenCode via the Agent Client Protocol.</description>
 
         <properties>
