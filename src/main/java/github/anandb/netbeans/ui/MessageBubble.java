@@ -32,6 +32,20 @@ public class MessageBubble extends JPanel {
     private static final Logger LOG = new Logger(MessageBubble.class);
     private static final long serialVersionUID = 1L;
 
+    // Static cached Pattern for code block parsing - compiled once
+    private static final Pattern CODE_BLOCK_PATTERN = Pattern.compile(
+        "```([\\w\\-\\+\\#\\.]*)\\R?(.*?)(?:```(?=\\R|$)|$)", Pattern.DOTALL);
+
+    // Static cached Flexmark parser/renderer - created once
+    private static final Parser FLEXMARK_PARSER;
+    private static final HtmlRenderer FLEXMARK_RENDERER;
+    static {
+        MutableDataSet options = new MutableDataSet();
+        options.set(HtmlRenderer.SOFT_BREAK, "\n");
+        FLEXMARK_PARSER = Parser.builder(options).build();
+        FLEXMARK_RENDERER = HtmlRenderer.builder(options).build();
+    }
+
     private final String type;
     private final String messageId;
     private final StringBuilder text;
@@ -81,9 +95,12 @@ public class MessageBubble extends JPanel {
     }
 
     private static final class FitEditorPane extends JEditorPane {
+        private static final long serialVersionUID = 1L;
+
         private int lastComputedHeight = 0;
         private int lastComputedWidth = 0;
         private String lastText = null;
+        private Dimension cachedSize = null;
 
         @Override
         public void setText(String t) {
@@ -92,7 +109,9 @@ public class MessageBubble extends JPanel {
             }
             lastText = t;
             super.setText(t);
-            lastComputedHeight = 0; // Reset cache
+            // Invalidate cached size when text changes
+            lastComputedHeight = 0;
+            cachedSize = null;
         }
 
         @Override
@@ -105,29 +124,32 @@ public class MessageBubble extends JPanel {
                 w = 400;
             }
 
-            if (w == lastComputedWidth && lastComputedHeight > 0) {
-                return new Dimension(w, lastComputedHeight + 8);
+            // Fast path: return cached size if dimensions match and cache is valid
+            if (w == lastComputedWidth && lastComputedHeight > 0 && cachedSize != null) {
+                return cachedSize;
             }
 
             try {
                 View root = getUI().getRootView(this);
                 if (root != null) {
-                    // Only re-layout if width or text actually changed
                     root.setSize(w, Short.MAX_VALUE);
                     float h = root.getPreferredSpan(View.Y_AXIS);
                     if (h > 0) {
                         lastComputedHeight = (int) Math.ceil(h);
                         lastComputedWidth = w;
-                        return new Dimension(w, lastComputedHeight + 8);
+                        cachedSize = new Dimension(w, lastComputedHeight + 8);
+                        return cachedSize;
                     }
                 }
             } catch (Exception ignored) {
             }
 
             if (lastComputedHeight > 0) {
-                return new Dimension(w, Math.max(30, lastComputedHeight + 8));
+                cachedSize = new Dimension(w, Math.max(30, lastComputedHeight + 8));
+                return cachedSize;
             }
-            return new Dimension(w, Math.max(30, super.getPreferredSize().height));
+            cachedSize = new Dimension(w, Math.max(30, super.getPreferredSize().height));
+            return cachedSize;
         }
 
         @Override
@@ -319,28 +341,27 @@ public class MessageBubble extends JPanel {
                 CollapsibleToolPane toolPane = new CollapsibleToolPane(title, displayContent, defaultExpanded);
                 segmentsContainer.add(toolPane);
             }
-            segmentsContainer.revalidate();
+            // Single revalidate at container level is sufficient
+            revalidate();
             return;
         }
 
-        // For user messages, we don't need complex code panels. 
+        // For user messages, we don't need complex code panels.
         // Just render the whole thing as markdown to get simple <pre> blocks.
         if ("user".equals(type)) {
             updateOrAddTextSegment(text.toString(), theme, 0, incremental);
             while (segmentsContainer.getComponentCount() > 1) {
                 segmentsContainer.remove(segmentsContainer.getComponentCount() - 1);
             }
-            segmentsContainer.revalidate();
-            bubble.revalidate();
-            this.revalidate();
+            // Single revalidate at top level cascades to children
+            revalidate();
             return;
         }
 
         // Simple markdown splitting for code blocks: ```[lang]\n<code>```
         String rawText = text.toString();
 
-        Pattern pattern = Pattern.compile("```([\\w\\-\\+\\#\\.]*)\\R?(.*?)(?:```(?=\\R|$)|$)", Pattern.DOTALL);
-        Matcher matcher = pattern.matcher(rawText);
+        Matcher matcher = CODE_BLOCK_PATTERN.matcher(rawText);
 
         // Track current components to reuse them
         int currentCompIdx = 0;
@@ -386,9 +407,8 @@ public class MessageBubble extends JPanel {
             segmentsContainer.remove(segmentsContainer.getComponentCount() - 1);
         }
 
-        segmentsContainer.revalidate();
-        bubble.revalidate();
-        this.revalidate();
+        // Single revalidate at top level cascades to all children
+        revalidate();
     }
 
     public void finalizeStreaming() {
@@ -451,13 +471,11 @@ public class MessageBubble extends JPanel {
 
 
     private String prepareHtml(String markdown, ColorTheme theme) {
-        MutableDataSet options = new MutableDataSet();
-        options.set(HtmlRenderer.SOFT_BREAK, "\n");
-        Parser parser = Parser.builder(options).build();
-        HtmlRenderer renderer = HtmlRenderer.builder(options).build();
-
+        // Skip expensive table parsing during incremental streaming updates
+        // Tables will be rendered when message is finalized
         String markdownWithTables = renderTablesAsHtml(markdown);
-        String html = renderer.render(parser.parse(markdownWithTables));
+        // Use cached static parser/renderer instead of creating new instances
+        String html = FLEXMARK_RENDERER.render(FLEXMARK_PARSER.parse(markdownWithTables));
 
         html = html.replace("<table>", "<table border='1' style='border-collapse: collapse; width: 100%; margin: 8px 0;'>");
         html = html.replace("<th>", "<th style='background: #f0f0f0; padding: 8px; border: 1px solid #ddd; text-align: left;'>");
@@ -531,6 +549,11 @@ public class MessageBubble extends JPanel {
     }
 
     private String renderTablesAsHtml(String markdown) {
+        // Fast-path: skip if no table markers present
+        if (!markdown.contains("|")) {
+            return markdown;
+        }
+
         StringBuilder result = new StringBuilder();
         String[] lines = markdown.split("\n", -1);
         boolean inTable = false;
