@@ -2,6 +2,7 @@ package github.anandb.netbeans.manager;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,6 +16,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
+import github.anandb.netbeans.support.MapperSupplier;
+
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.when;
 
@@ -27,21 +30,21 @@ class AcpProtocolClientTest {
     private PipedOutputStream processInput;
     private PipedInputStream processOutput;
     private PipedInputStream processError;
-    
+
     private PipedOutputStream clientInputEmulator; // What the client reads from
     private PipedInputStream clientOutputEmulator; // What the client writes to
-    
+
     private AcpProtocolClient client;
-    private final ObjectMapper mapper = new ObjectMapper();
+    private final ObjectMapper mapper = MapperSupplier.get();
 
     @BeforeEach
     void setUp() throws IOException {
         processInput = new PipedOutputStream();
         clientOutputEmulator = new PipedInputStream(processInput);
-        
+
         clientInputEmulator = new PipedOutputStream();
         processOutput = new PipedInputStream(clientInputEmulator);
-        
+
         processError = new PipedInputStream(new PipedOutputStream()); // Not used much here
 
         when(process.getOutputStream()).thenReturn(processInput);
@@ -60,7 +63,7 @@ class AcpProtocolClientTest {
     @Test
     void testSendRequestAndReceiveResponse() throws Exception {
         CompletableFuture<JsonNode> future = client.sendRequest("testMethod", "testParams");
-        
+
         // Read the sent request from the emulator
         BufferedReader reader = new BufferedReader(new InputStreamReader(clientOutputEmulator, StandardCharsets.UTF_8));
         String sentJson = reader.readLine();
@@ -89,15 +92,15 @@ class AcpProtocolClientTest {
 
         // Give some time for the reader thread
         Thread.sleep(200);
-        
+
         assertNotNull(receivedParams.get());
         assertEquals("value", receivedParams.get().get("key").asText());
     }
-    
+
     @Test
     void testErrorResponse() throws Exception {
         CompletableFuture<JsonNode> future = client.sendRequest("failMethod", null);
-        
+
         BufferedReader reader = new BufferedReader(new InputStreamReader(clientOutputEmulator, StandardCharsets.UTF_8));
         String sentJson = reader.readLine();
         long id = mapper.readTree(sentJson).get("id").asLong();

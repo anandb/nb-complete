@@ -111,9 +111,14 @@ public record SessionUpdate(
         return ud != null ? ud.used() : null;
     }
 
-    public Long size() {
+    public String kind() {
         UpdateData ud = update();
-        return ud != null ? ud.size() : null;
+        return ud != null ? ud.kind() : null;
+    }
+
+    public String toolCallId() {
+        UpdateData ud = update();
+        return ud != null ? ud.toolCallId() : null;
     }
 
     public UpdateData update() {

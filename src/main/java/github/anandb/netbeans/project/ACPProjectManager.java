@@ -6,14 +6,13 @@ import java.beans.PropertyChangeListener;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.function.Consumer;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import github.anandb.netbeans.support.Logger;
 import org.netbeans.api.project.Project;
 import org.netbeans.api.project.ui.OpenProjects;
 import org.openide.filesystems.FileObject;
 
 public class ACPProjectManager implements PropertyChangeListener {
-    private static final Logger LOG = Logger.getLogger(ACPProjectManager.class.getName());
+    private static final Logger LOG = new Logger(ACPProjectManager.class);
     private static ACPProjectManager instance;
 
     private Project[] currentProjects = new Project[0];
@@ -65,7 +64,7 @@ public class ACPProjectManager implements PropertyChangeListener {
 
         if (!closedDirs.isEmpty()) {
             for (String closedDir : closedDirs) {
-                LOG.log(Level.FINE, "Project closed: {0}", closedDir);
+                LOG.fine("Project closed: {0}", closedDir);
                 if (projectCloseListener != null) {
                     projectCloseListener.accept(closedDir);
                 }
@@ -77,7 +76,7 @@ public class ACPProjectManager implements PropertyChangeListener {
 
         if (!openedDirs.isEmpty()) {
             for (String openedDir : openedDirs) {
-                LOG.log(Level.FINE, "Project opened: {0}", openedDir);
+                LOG.fine("Project opened: {0}", openedDir);
                 if (projectOpenListener != null) {
                     projectOpenListener.accept(openedDir);
                 }
@@ -88,7 +87,7 @@ public class ACPProjectManager implements PropertyChangeListener {
         if (active != null) {
             FileObject dir = active.getProjectDirectory();
             String path = dir.getPath();
-            LOG.log(Level.FINE, "Active project synchronized: {0}", path);
+            LOG.fine("Active project synchronized: {0}", path);
             ACPManager.getInstance().setActiveProject(path);
         } else {
             ACPManager.getInstance().setActiveProject(null);

@@ -1,4 +1,5 @@
 package github.anandb.netbeans.ui;
+
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
@@ -9,13 +10,10 @@ import java.awt.GridLayout;
 import java.awt.Rectangle;
 import java.awt.event.ContainerAdapter;
 import java.awt.event.ContainerEvent;
-import com.fasterxml.jackson.databind.JsonNode;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -33,15 +31,20 @@ import javax.swing.Scrollable;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 
+import com.fasterxml.jackson.databind.JsonNode;
+
 import github.anandb.netbeans.model.Message;
 import github.anandb.netbeans.model.Session;
+import github.anandb.netbeans.model.SessionUpdate.UpdateData;
+import github.anandb.netbeans.support.Logger;
 
 import static org.apache.commons.lang3.StringUtils.defaultIfBlank;
+import static org.apache.commons.lang3.StringUtils.defaultString;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.lang3.StringUtils.left;
 
 public class ChatThreadPanel extends JPanel {
-    private static final Logger LOG = Logger.getLogger(ChatThreadPanel.class.getName());
+    private static final Logger LOG = new Logger(ChatThreadPanel.class);
     private static final long serialVersionUID = 1L;
 
     private final JPanel messagesContainer;
@@ -79,7 +82,7 @@ public class ChatThreadPanel extends JPanel {
         scrollPane.getVerticalScrollBar().setUnitIncrement(16);
 
         // Fix: Mouse wheel scrolling often breaks when mouse is over child components
-        // like JEditorPane. We redirect those events to the main scroll pane.
+        // like JTextPane. We redirect those events to the main scroll pane.
         messagesContainer.addMouseWheelListener(e -> {
             scrollPane.dispatchEvent(SwingUtilities.convertMouseEvent(messagesContainer, e, scrollPane));
         });
@@ -133,7 +136,7 @@ public class ChatThreadPanel extends JPanel {
     public void addMessage(Message message) {
         String type = message.type();
         StringBuilder sb = new StringBuilder();
-        LOG.log(Level.FINE, "addMessage(Message) called. type={0}", type);
+        LOG.fine("addMessage(Message) called. type={0}", type);
 
         if ("user".equals(type)) {
             if (message.prompt() != null) {
@@ -172,27 +175,27 @@ public class ChatThreadPanel extends JPanel {
         }
 
         String text = sb.toString().stripTrailing();
-        LOG.log(Level.FINE, "addMessage(Message) final text length: {0}", text.length());
+        LOG.fine("addMessage(Message) final text length: {0}", text.length());
         String copyable = "user".equals(type) && message.prompt() != null ? message.prompt().text().stripTrailing() : text;
         addMessage(type, text, message.id(), copyable);
     }
 
     public void addMessage(String role, String text) {
-        addMessage(role, text, null);
+        addMessage(role, text, null, null);
     }
 
-    public void addMessage(String role, String text, String messageId) {
-        addMessage(role, text, messageId, text);
+    public void addMessage(String role, String text, String messageId, String kind) {
+        addMessage(role, text, messageId, text, kind);
     }
 
-    public void addMessage(String role, String text, String messageId, String copyableText) {
-        LOG.log(Level.INFO, "ADD [{0}] [{1}] {2}", new Object[]{role, messageId, copyableText});
+    public void addMessage(String role, String text, String messageId, String copyableText, String kind) {
+        LOG.info("ADD [{0}] [{1}] {2}", new Object[]{role, messageId, copyableText});
         if (isIgnorableMessage(role, text)) {
             return;
         }
 
         SwingUtilities.invokeLater(() -> {
-            LOG.log(Level.INFO, "EDT: Adding bubble for role={0}, id={1}", new Object[]{role, messageId});
+            LOG.info("EDT: Adding bubble for role={0}, id={1}", new Object[]{role, messageId});
             MessageBubble lastBubble = findLastNonIgnorableBubble();
             boolean canMerge = (lastBubble != null && role.equals(lastBubble.getType()));
             if (canMerge) {
@@ -210,9 +213,11 @@ public class ChatThreadPanel extends JPanel {
 
             finalizeGroup();
 
-            MessageBubble bubble = new MessageBubble(role, text, messageId, copyableText);
-            if ("tool".equals(role) || "thought".equals(role)) {
+            MessageBubble bubble = new MessageBubble(role, text, messageId, copyableText, kind);
+            if ("tool".equals(role)) {
                 bubble.setExpanded(false);
+            } else if ("thought".equals(role)) {
+                bubble.setExpanded(true);
             }
 
             messagesContainer.add(bubble);
@@ -272,24 +277,23 @@ public class ChatThreadPanel extends JPanel {
                 if (streamFlushTimer.isRunning()) {
                     streamFlushTimer.stop();
                 }
-                addMessage(role, text, messageId);
+
+                addMessage(role, text, messageId, null);
             }
         });
     }
 
-    public void updateToolCall(github.anandb.netbeans.model.SessionUpdate.UpdateData update) {
+    public void updateToolCall(UpdateData update) {
         SwingUtilities.invokeLater(() -> {
             String role = "tool";
             String messageId = update.messageId() != null ? update.messageId() : update.toolCallId();
-            String text = extractContentText(update.content());
-            if (text == null || text.isEmpty()) {
-                text = update.status();
-            }
+            String text = defaultIfBlank(extractContentText(update.content()), update.status());
 
             if (isIgnorableMessage(role, text)) {
                 return;
             }
 
+            text = defaultIfBlank(text, update.status());
             int count = messagesContainer.getComponentCount();
             MessageBubble lastBubble = null;
             if (count > 0) {
@@ -299,14 +303,14 @@ public class ChatThreadPanel extends JPanel {
                 }
             }
 
-            if (lastBubble != null && "tool".equals(lastBubble.getType()) && messageId != null && messageId.equals(lastBubble.getMessageId())) {
+            if (lastBubble != null && "tool".equals(lastBubble.getType()) && defaultString(messageId).equals(lastBubble.getMessageId())) {
                 lastBubble.appendText(text);
                 activeStreamBubble = lastBubble;
                 if (!streamFlushTimer.isRunning()) {
                     streamFlushTimer.start();
                 }
             } else {
-                addMessage(role, text, messageId);
+                addMessage(role, text, defaultString(messageId), text, update.kind());
             }
             messagesContainer.revalidate();
             messagesContainer.repaint();
@@ -396,7 +400,7 @@ public class ChatThreadPanel extends JPanel {
             buttons.setOpaque(false);
 
             if (options != null && options.isArray() && options.size() > 0) {
-                LOG.log(Level.FINE, "PermissionBubble: rendering {0} options", options.size());
+                LOG.fine("PermissionBubble: rendering {0} options", options.size());
                 for (com.fasterxml.jackson.databind.JsonNode opt : options) {
                     String optionId = opt.has("optionId") ? opt.get("optionId").asText() : "";
                     String name = opt.has("name") ? opt.get("name").asText() : optionId;
@@ -449,7 +453,7 @@ public class ChatThreadPanel extends JPanel {
             if (getParent() != null && getParent().getWidth() > 0) {
                 return new Dimension((int) (getParent().getWidth() * 0.8), pref.height);
             }
-            return new Dimension(Integer.MAX_VALUE, pref.height);
+            return new Dimension(pref.width, pref.height);
         }
 
         private void collapse(JPanel content, String status, Icon icon, Color fg, Color bg, Color border) {
@@ -470,7 +474,8 @@ public class ChatThreadPanel extends JPanel {
             revalidate();
             repaint();
             // Recalculate max size to collapse vertically
-            setMaximumSize(new Dimension(Integer.MAX_VALUE, getPreferredSize().height));
+            Dimension pref = getPreferredSize();
+            setMaximumSize(new Dimension(pref.width, pref.height));
         }
     }
 
@@ -486,6 +491,17 @@ public class ChatThreadPanel extends JPanel {
     }
 
     private javax.swing.Timer scrollTimer;
+
+    @Override
+    public void removeNotify() {
+        super.removeNotify();
+        if (streamFlushTimer != null && streamFlushTimer.isRunning()) {
+            streamFlushTimer.stop();
+        }
+        if (scrollTimer != null && scrollTimer.isRunning()) {
+            scrollTimer.stop();
+        }
+    }
 
     private boolean isAtBottom() {
         JScrollBar vertical = scrollPane.getVerticalScrollBar();
@@ -588,7 +604,7 @@ public class ChatThreadPanel extends JPanel {
     }
 
     public void setSessionList(List<Session> sessions, Consumer<String> onSessionSelected, Runnable onNewChat) {
-        LOG.log(Level.FINE, "setSessionList: received {0} sessions, onSessionSelected={1}", new Object[]{sessions.size(), onSessionSelected});
+        LOG.fine("setSessionList: received {0} sessions, onSessionSelected={1}", new Object[]{sessions.size(), onSessionSelected});
         SwingUtilities.invokeLater(() -> {
             try {
                 clearMessages();
@@ -631,7 +647,7 @@ public class ChatThreadPanel extends JPanel {
                 messagesContainer.revalidate();
                 messagesContainer.repaint();
             } catch (Exception ex) {
-                LOG.log(Level.WARNING, "setSessionList error: {0}", ex.getMessage());
+                LOG.warn("setSessionList error: {0}", ex.getMessage());
             }
         });
     }
@@ -761,7 +777,7 @@ public class ChatThreadPanel extends JPanel {
             Component c = messagesContainer.getComponent(i);
             if (c instanceof MessageBubble mb) {
                 if (isIgnorableMessage(mb.getType(), mb.getRawText())) {
-                    LOG.log(Level.INFO, "findLastNonIgnorableBubble() called. mb={0}, type={1}, text={2}", new Object[]{mb, mb.getType(), mb.getRawText()});
+                    LOG.info("findLastNonIgnorableBubble() called. mb={0}, type={1}, text={2}", new Object[]{mb, mb.getType(), mb.getRawText()});
                     continue;
                 }
 

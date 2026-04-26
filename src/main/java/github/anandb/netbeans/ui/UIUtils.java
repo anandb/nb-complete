@@ -40,7 +40,10 @@ public class UIUtils {
     }
 
     public static void styleToolbarButton(JButton btn) {
+        btn.putClientProperty("JButton.buttonType", "toolBarButton");
         btn.setFocusPainted(false);
+        btn.setRolloverEnabled(true);
+        btn.setOpaque(false);
         btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         if (btn.getIcon() != null) {
             int w = btn.getIcon().getIconWidth();

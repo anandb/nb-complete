@@ -32,6 +32,7 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
         setLayout(new BorderLayout());
         setOpaque(false);
         setDoubleBuffered(true);
+        setAlignmentX(java.awt.Component.LEFT_ALIGNMENT);
 
         ColorTheme theme = ThemeManager.getCurrentTheme();
 
@@ -121,7 +122,7 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
         while (parent != null) {
             parent.revalidate();
             parent.repaint();
-            if (parent.getClass().getName().contains("ChatThreadPanel")) {
+            if (parent instanceof ChatThreadPanel) {
                 break;
             }
             parent = parent.getParent();

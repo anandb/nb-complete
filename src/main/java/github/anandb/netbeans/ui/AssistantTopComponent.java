@@ -24,7 +24,6 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.logging.Level;
 
 import github.anandb.netbeans.support.Logger;
 
@@ -169,9 +168,20 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
         gbc.gridx = 3; gbc.weightx = 0.7;
         configPanel.add(modelCombo, gbc);
 
-        gbc.gridx = 4; gbc.weightx = 0;
+        gbc.gridx = 4; gbc.weightx = 0; gbc.insets = new java.awt.Insets(2, 0, 2, 4);
+        JButton copyModelBtn = UIUtils.createToolbarButton("copy.svg", 18, "Copy Model ID", e -> {
+            ConfigItem selected = (ConfigItem) modelCombo.getSelectedItem();
+            if (selected != null && selected.value != null) {
+                java.awt.Toolkit.getDefaultToolkit().getSystemClipboard()
+                    .setContents(new java.awt.datatransfer.StringSelection(selected.value), null);
+            }
+        });
+        configPanel.add(copyModelBtn, gbc);
+        gbc.insets = new java.awt.Insets(2, 0, 2, 8);
+
+        gbc.gridx = 5; gbc.weightx = 0;
         configPanel.add(new JLabel("Thinking:"), gbc);
-        gbc.gridx = 5; gbc.weightx = 0.1;
+        gbc.gridx = 6; gbc.weightx = 0.1;
         configPanel.add(thinkingCombo, gbc);
 
         header = new JPanel(new BorderLayout());
@@ -225,23 +235,6 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
 
         cwdLabel = new JLabel("");
         cwdLabel.setFont(cwdLabel.getFont().deriveFont(Font.BOLD));
-        cwdLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        cwdLabel.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                String path = cwdLabel.getToolTipText();
-                if (path != null && !path.isEmpty()) {
-                    File f = new File(path);
-                    if (f.exists()) {
-                        try {
-                            java.awt.Desktop.getDesktop().open(f);
-                        } catch (IOException ex) {
-                            LOG.log(Level.WARNING, "Failed to open directory", ex);
-                        }
-                    }
-                }
-            }
-        });
 
         JPanel headerContent = new JPanel(new BorderLayout(0, 4));
         headerContent.setOpaque(false);
@@ -397,7 +390,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
             SessionManager.getInstance().refreshSessions();
         } else if ("usage_update".equals(type)) {
             SwingUtilities.invokeLater(() -> {
-                statusLabel.setToolTipText("Usage: " + update.update().used() + "/" + update.update().size() + " tokens");
+                statusLabel.setToolTipText("Context Usage: " + update.update().used() + "/" + update.update().size() + " tokens");
             });
         }
 
@@ -590,7 +583,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
 
     @Override
     public void onSessionLoading(boolean isLoading) {
-        setInputEnabled(!isLoading);
+        SwingUtilities.invokeLater(() -> setInputEnabled(!isLoading));
     }
 
     @Override
@@ -714,7 +707,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
         if (currentSessionId == null) {
             return;
         }
-        statusLabel.setText("Stopping...");
+        SwingUtilities.invokeLater(() -> statusLabel.setText("Stopping..."));
         ACPManager.getInstance().stopMessage(currentSessionId)
                 .thenAccept(v -> {
                     SwingUtilities.invokeLater(() -> {
@@ -775,9 +768,9 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
             java.io.File file = chooser.getSelectedFile();
             try (java.io.FileWriter writer = new java.io.FileWriter(file)) {
                 writer.write(markdown);
-                LOG.log(Level.FINE, "Conversation exported to {0}", file.getAbsolutePath());
+                LOG.fine("Conversation exported to {0}", file.getAbsolutePath());
             } catch (java.io.IOException ex) {
-                LOG.log(Level.SEVERE, "Failed to export conversation", ex);
+                LOG.warn("Failed to export conversation", ex);
             }
         }
     }
@@ -794,17 +787,6 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
         }
     }
 
-    private void styleToolbarButton(JButton btn) {
-        btn.setFocusPainted(false);
-        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        // We keep the transparent SVG icons, but restore the standard button look
-        if (btn.getIcon() != null) {
-            int w = btn.getIcon().getIconWidth();
-            int h = btn.getIcon().getIconHeight();
-            // Standard NetBeans toolbar buttons often have a bit of padding
-            btn.setPreferredSize(new Dimension(w + 8, h + 8));
-        }
-    }
 
     private void restartServer() {
         String currentSessionId = SessionManager.getInstance().getCurrentSessionId();
@@ -1060,10 +1042,10 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
                     updateTabName(item.name);
                 }
 
-                LOG.log(Level.FINE, "Config update: {0}={1} for session {2}", new Object[]{configId, item.value, currentId});
+                LOG.fine("Config update: {0}={1} for session {2}", new Object[]{configId, item.value, currentId});
                 ACPManager.getInstance().setSessionConfigOption(currentId, configId, item.value);
             } else if (item != null && item.isInternalUpdate) {
-                LOG.log(Level.FINE, "Skipping internal config update: {0}={1}", new Object[]{configId, item.value});
+                LOG.fine("Skipping internal config update: {0}={1}", new Object[]{configId, item.value});
             }
         });
     }
@@ -1128,7 +1110,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
                 String currentValue = opt.currentValue();
                 // Only apply if the selected value differs from the server's default
                 if (selectedValue != null && !selectedValue.isEmpty() && !selectedValue.equals(currentValue)) {
-                    LOG.log(Level.FINE, "Applying pre-selected config: {0}={1} (server default was {2})",
+                    LOG.fine("Applying pre-selected config: {0}={1} (server default was {2})",
                             new Object[]{opt.id(), selectedValue, currentValue});
                     ACPManager.getInstance().setSessionConfigOption(sessionId, opt.id(), selectedValue);
                 }
@@ -1140,7 +1122,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
         SwingUtilities.invokeLater(() -> {
             isUpdatingConfigControls = true;
             try {
-                LOG.log(Level.FINE, "updateConfigControls: force={0}", new Object[]{forceStartupDefaults});
+                LOG.fine("updateConfigControls: force={0}", new Object[]{forceStartupDefaults});
 
                 for (SessionConfigOption opt : options) {
                     JComboBox<ConfigItem> combo = null;
@@ -1206,13 +1188,38 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
 
                             if (forcedValue != null && !forcedValue.equalsIgnoreCase(opt.currentValue()) && SessionManager.getInstance().getCurrentSessionId() != null) {
                                 String currentId = SessionManager.getInstance().getCurrentSessionId();
-                                LOG.log(Level.FINE, "Forcing default: {0}={1} (was {2})", new Object[]{opt.id(), forcedValue, opt.currentValue()});
+                                LOG.fine("Forcing default: {0}={1} (was {2})", new Object[]{opt.id(), forcedValue, opt.currentValue()});
                                 valueToSelect = forcedValue;
                                 ACPManager.getInstance().setSessionConfigOption(currentId, opt.id(), forcedValue);
-                            } else if ("model".equals(opt.category()) && lastSelectedModelId != null && !lastSelectedModelId.equalsIgnoreCase(opt.currentValue())) {
-                                String currentId = SessionManager.getInstance().getCurrentSessionId();
-                                valueToSelect = lastSelectedModelId;
-                                ACPManager.getInstance().setSessionConfigOption(currentId, opt.id(), lastSelectedModelId);
+                            } else if ("model".equals(opt.category())) {
+                                String envModel = System.getenv("OPENCODE_MODEL");
+                                if (envModel != null && !envModel.isEmpty() && SessionManager.getInstance().getCurrentSessionId() != null) {
+                                    String match = null;
+                                    for (SessionConfigSelectOption o : opt.options()) {
+                                        if (o.value().equalsIgnoreCase(envModel)) {
+                                            match = o.value();
+                                            break;
+                                        }
+                                    }
+                                    if (match == null) {
+                                        for (Map.Entry<String, List<ConfigItem>> entry : modelVariants.entrySet()) {
+                                            if (entry.getKey().equalsIgnoreCase(envModel)) {
+                                                match = entry.getValue().get(0).value;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                    if (match != null) {
+                                        String currentId = SessionManager.getInstance().getCurrentSessionId();
+                                        LOG.fine("Using OPENCODE_MODEL: {0}", new Object[]{match});
+                                        valueToSelect = match;
+                                        ACPManager.getInstance().setSessionConfigOption(currentId, opt.id(), match);
+                                    }
+                                } else if (lastSelectedModelId != null && !lastSelectedModelId.equalsIgnoreCase(opt.currentValue())) {
+                                    String currentId = SessionManager.getInstance().getCurrentSessionId();
+                                    valueToSelect = lastSelectedModelId;
+                                    ACPManager.getInstance().setSessionConfigOption(currentId, opt.id(), lastSelectedModelId);
+                                }
                             }
                         }
 
@@ -1317,7 +1324,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
         try {
             ACPManager.getInstance().ensureStarted();
         } catch (Exception ex) {
-            LOG.log(Level.SEVERE, "Failed to ensure server is started", ex);
+            LOG.severe("Failed to ensure server is started", ex);
         }
         SwingUtilities.invokeLater(() -> {
             if (inputArea != null) {
@@ -1399,7 +1406,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
     public void handlePermissionRequest(String sessionId, JsonNode params, CompletableFuture<String> response) {
         String currentId = SessionManager.getInstance().getCurrentSessionId();
         if (currentId == null || !currentId.equals(sessionId)) {
-            LOG.log(Level.FINE, "Received permission request for session {0}, but current is {1}",
+            LOG.fine("Received permission request for session {0}, but current is {1}",
                     new Object[] { sessionId, currentId });
         }
 

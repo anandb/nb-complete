@@ -15,14 +15,15 @@ public record ColorTheme(
     Color yellow, Color codeBackground, Color codeForeground, Color codeSelection,
     Color headerForeground, Color errorBackground, Color codeHeaderBackground,
     Color codeHeaderForeground, Color codeHeaderBorder, Color thinkingHeaderBackground, Color thinkingHeaderForeground,
-    Color toolForeground, Color permissionBg, Color permissionBorder, Color permissionTitle
+    Color toolForeground, Color permissionBg, Color permissionBorder, Color permissionTitle,
+    Color tableBackground, Color tableHeaderBackground, Color tableBorder
 ) {
     public static ColorTheme getNativeTheme(boolean darkMode) {
         return new ColorTheme(
                 darkMode, UIManager.getColor("Panel.background"),
                 UIManager.getColor("Panel.foreground"), UIManager.getColor("TextArea.selectionBackground"),
                 UIManager.getColor("Button.focusColor"), UIManager.getColor("Label.background"),
-                UIManager.getColor("Editor.background"), UIManager.getColor("TextField.background"),
+                UIManager.getColor("Editor.background"), UIManager.getColor("EditorPane.background"),
                 null, UIManager.getColor("Button.borderColor"),
                 UIManager.getColor("TextArea.foreground"), UIManager.getColor("Panel.background"),
                 UIManager.getColor("Button.background"), UIManager.getColor("Label.foreground"),
@@ -40,7 +41,10 @@ public record ColorTheme(
                 darkMode ? Color.decode("#9CA3AF") : Color.decode("#777777"),
                 UIManager.getColor("OptionPane.background"),
                 UIManager.getColor("Button.focusColor"),
-                UIManager.getColor("OptionPane.messageForeground")
+                UIManager.getColor("OptionPane.messageForeground"),
+                darkMode ? Color.decode("#2d2d2d") : Color.decode("#fdf6e3"),
+                darkMode ? Color.decode("#383838") : Color.decode("#eee8d5"),
+                darkMode ? Color.decode("#454545") : Color.decode("#e8e0c8")
         );
     }
 
@@ -70,7 +74,7 @@ public record ColorTheme(
                  "a:hover { text-decoration: underline; }";
     }
 
-    private String toHtmlHex(Color color) {
+    public String toHtmlHex(Color color) {
         return String.format("#%02x%02x%02x", color.getRed(), color.getGreen(), color.getBlue());
     }
 }

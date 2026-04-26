@@ -9,15 +9,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import github.anandb.netbeans.support.Logger;
 
 /**
  * Manages the state and lifecycle of chat sessions.
  * Decouples session logic from the AssistantTopComponent UI.
  */
 public class SessionManager {
-    private static final Logger LOG = Logger.getLogger(SessionManager.class.getName());
+    private static final Logger LOG = new Logger(SessionManager.class);
     private static SessionManager instance;
 
     private final List<SessionListener> listeners = new CopyOnWriteArrayList<>();
@@ -52,7 +51,7 @@ public class SessionManager {
                 l.onSessionUpdate(update);
             }
         } else {
-            LOG.log(Level.FINE, "Ignoring update for background session: {0}", updateSessionId);
+            LOG.fine("Ignoring update for background session: {0}", updateSessionId);
         }
     }
 
@@ -98,7 +97,7 @@ public class SessionManager {
                             openProjectDirs.add(p.getProjectDirectory().getPath());
                         }
                     }
-                    LOG.log(Level.FINE, "refreshSessions: starting refresh for {0} projects", openProjectDirs.size());
+                    LOG.fine("refreshSessions: starting refresh for {0} projects", openProjectDirs.size());
                     if (openProjectDirs.isEmpty()) {
                         return CompletableFuture.completedFuture(new ArrayList<Session>());
                     }
@@ -138,7 +137,7 @@ public class SessionManager {
                     });
                 })
                 .exceptionally(ex -> {
-                    LOG.log(Level.SEVERE, "Failed to create session", ex);
+                    LOG.severe("Failed to create session", ex);
                     notifyError("Failed to create session: " + ex.getMessage());
                     setLoading(false);
                     return null;
@@ -197,7 +196,7 @@ public class SessionManager {
     private void handleProjectChanged(String path) {
         if (path != null && !path.equals(lastProjectDir)) {
             if (lastProjectDir != null) {
-                LOG.log(Level.FINE, "Project changed from {0} to {1}, creating new session",
+                LOG.fine("Project changed from {0} to {1}, creating new session",
                         new Object[]{lastProjectDir, path});
                 createNewSession(path);
             }
@@ -224,7 +223,7 @@ public class SessionManager {
         if (!preamble.isEmpty()) {
             ACPManager.getInstance().sendMessage(sessionId, preamble, null)
                     .exceptionally(ex -> {
-                        LOG.log(Level.WARNING, "Failed to send preamble", ex);
+                        LOG.warn("Failed to send preamble", ex);
                         return null;
                     });
         }

@@ -14,7 +14,7 @@ class CollapsibleToolPaneTest {
         UIManager.put("ComboBox.selectionBackground", Color.YELLOW);
         
         CollapsibleToolPane pane = new CollapsibleToolPane("TOOL: run_command", "ls -la", true);
-        assertEquals("Tool: run_command", pane.headerLabel.getText());
+        assertEquals("run_command", pane.headerLabel.getText());
         assertTrue(pane.isExpanded());
     }
 

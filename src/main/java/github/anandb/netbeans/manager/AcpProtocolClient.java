@@ -19,16 +19,19 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import github.anandb.netbeans.support.Logger;
+
+import github.anandb.netbeans.support.MapperSupplier;
 
 import static github.anandb.netbeans.manager.AgentUtils.closeQuietly;
 
 public class AcpProtocolClient implements Closeable {
-    private static final Logger LOG = Logger.getLogger(AcpProtocolClient.class.getName());
+    private static final Logger LOG = new Logger(AcpProtocolClient.class);
     private static final long DEFAULT_TIMEOUT_SECONDS = 0; // 0 means no timeout by default
 
-    private final ObjectMapper mapper = new ObjectMapper();
+    // Static shared ObjectMapper for better performance across all instances
+    private static final ObjectMapper MAPPER = MapperSupplier.get();
+
     private final PrintWriter writer;
     private final BufferedReader reader;
     private final BufferedReader errorReader;
@@ -83,15 +86,15 @@ public class AcpProtocolClient implements Closeable {
         CompletableFuture<JsonNode> future = new CompletableFuture<>();
         pendingRequests.put(id, future);
 
-        ObjectNode request = mapper.createObjectNode();
+        ObjectNode request = MAPPER.createObjectNode();
         request.put("jsonrpc", "2.0");
         request.put("id", id);
         request.put("method", method);
-        request.set("params", mapper.valueToTree(params));
+        request.set("params", MAPPER.valueToTree(params));
 
         try {
-            String json = mapper.writeValueAsString(request);
-            LOG.log(Level.INFO, "Sending request: {0}", json);
+            String json = MAPPER.writeValueAsString(request);
+            LOG.info("[ACP] Sending request: {0}", json);
             writer.println(json);
             if (writer.checkError()) {
                 pendingRequests.remove(id);
@@ -109,7 +112,7 @@ public class AcpProtocolClient implements Closeable {
                     .whenComplete((result, error) -> {
                         if (error instanceof java.util.concurrent.TimeoutException) {
                             pendingRequests.remove(id);
-                            LOG.log(Level.WARNING, "Request timed out: method={0}, id={1}", new Object[]{method, id});
+                            LOG.warn("Request timed out: method={0}, id={1}", new Object[]{method, id});
                         }
                     });
         }
@@ -126,21 +129,21 @@ public class AcpProtocolClient implements Closeable {
     }
 
     public void sendNotification(String method, Object params) {
-        ObjectNode notification = mapper.createObjectNode();
+        ObjectNode notification = MAPPER.createObjectNode();
         notification.put("jsonrpc", "2.0");
         notification.put("method", method);
-        notification.set("params", mapper.valueToTree(params));
+        notification.set("params", MAPPER.valueToTree(params));
 
         try {
-            String json = mapper.writeValueAsString(notification);
-            LOG.log(Level.FINE, "Sending notification: {0}", json);
+            String json = MAPPER.writeValueAsString(notification);
+            LOG.info("[ACP] Sending notification: {0}", json);
             writer.println(json);
             if (writer.checkError()) {
-                LOG.log(Level.SEVERE, "Failed to write notification");
+                LOG.severe("Failed to write notification");
                 notifyConnectionError(new IOException("Failed to write notification"));
             }
         } catch (JsonProcessingException e) {
-            LOG.log(Level.SEVERE, "Failed to serialize notification", e);
+            LOG.severe("Failed to serialize notification", e);
         }
     }
 
@@ -148,29 +151,39 @@ public class AcpProtocolClient implements Closeable {
         try {
             String line;
             while (running && (line = reader.readLine()) != null) {
-                String trimmed = line.trim();
-                if (StringUtils.isBlank(trimmed)) {
+                // Fast path: skip empty lines without creating trimmed string
+                if (line.isEmpty()) {
                     continue;
                 }
-                if (!trimmed.startsWith("{")) {
-                    LOG.log(Level.INFO, "Ignoring non-JSON process output: {0}", line);
+                // Check raw line first - avoid trim() if possible
+                char firstChar = line.charAt(0);
+                char lastChar = line.charAt(line.length() - 1);
+                // Skip whitespace-only lines by checking first/last char
+                if ((firstChar <= ' ' && StringUtils.isBlank(line)) || (lastChar <= ' ' && StringUtils.isBlank(line))) {
                     continue;
                 }
-                LOG.log(Level.INFO, "Received JSON-RPC line: {0}", line);
+                // Quick check for JSON object start on raw line
+                int idx = 0;
+                while (idx < line.length() && line.charAt(idx) <= ' ') {
+                    idx++;
+                }
+                if (idx >= line.length() || line.charAt(idx) != '{') {
+                    LOG.fine("Ignoring non-JSON process output: {0}", line);
+                    continue;
+                }
+                LOG.info("[ACP] Received: {0}", line);
                 try {
-                    com.fasterxml.jackson.core.JsonParser parser = mapper.getFactory().createParser(line);
-                    com.fasterxml.jackson.databind.MappingIterator<JsonNode> it = mapper.readValues(parser, JsonNode.class);
-                    while (it.hasNext()) {
-                        handleMessage(it.next());
-                    }
+                    // Direct readTree is faster than creating JsonParser + MappingIterator
+                    JsonNode node = MAPPER.readTree(line);
+                    handleMessage(node);
                 } catch (Exception e) {
-                    LOG.log(Level.WARNING, "Error parsing JSON-RPC line: {0}", new Object[]{line});
-                    LOG.log(Level.FINE, "Parse exception", e);
+                    LOG.warn("Error parsing JSON-RPC line: {0}", new Object[]{line});
+                    LOG.fine("Parse exception", e);
                 }
             }
         } catch (IOException e) {
             if (running) {
-                LOG.log(Level.SEVERE, "JSON-RPC reader thread error", e);
+                LOG.severe("JSON-RPC reader thread error", e);
                 notifyConnectionError(e);
             }
         } finally {
@@ -184,11 +197,11 @@ public class AcpProtocolClient implements Closeable {
         try {
             String line;
             while (running && (line = errorReader.readLine()) != null) {
-                LOG.log(Level.WARNING, "Process stderr: {0}", line);
+                LOG.warn("Process stderr: {0}", line);
             }
         } catch (IOException e) {
             if (running) {
-                LOG.log(Level.FINE, "Error reader thread error", e);
+                LOG.fine("Error reader thread error", e);
             }
         }
     }
@@ -199,7 +212,7 @@ public class AcpProtocolClient implements Closeable {
             if (node.has("method")) {
                 // Incoming Request
                 String method = node.get("method").asText();
-                JsonNode params = node.has("params") ? node.get("params") : mapper.createObjectNode();
+                JsonNode params = node.has("params") ? node.get("params") : MAPPER.createObjectNode();
                 handleIncomingRequest(id, method, params);
             } else {
                 // Response to Outgoing Request
@@ -215,7 +228,7 @@ public class AcpProtocolClient implements Closeable {
                         future.complete(null);
                     }
                 } else {
-                    LOG.log(Level.WARNING, "Received response for unknown request id: {0}", id);
+                    LOG.warn("Received response for unknown request id: {0}", id);
                 }
             }
         } else if (node.has("method")) {
@@ -224,17 +237,17 @@ public class AcpProtocolClient implements Closeable {
             Consumer<JsonNode> listener = notificationListeners.get(method);
             if (listener != null) {
                 try {
-                    JsonNode params = node.has("params") ? node.get("params") : mapper.createObjectNode();
-                    listener.accept(params);
+            JsonNode params = node.has("params") ? node.get("params") : MAPPER.createObjectNode();
+                listener.accept(params);
                 } catch (Exception e) {
-                    LOG.log(Level.WARNING, "Notification handler error for method: {0}", method);
-                    LOG.log(Level.FINE, "Handler exception", e);
+                    LOG.warn("Notification handler error for method: {0}", method);
+                    LOG.fine("Handler exception", e);
                 }
             } else {
-                LOG.log(Level.FINE, "No listener for notification method: {0}", method);
+                LOG.fine("No listener for notification method: {0}", method);
             }
         } else {
-            LOG.log(Level.FINE, "Received unknown JSON payload: {0}", node.toString());
+            LOG.fine("Received unknown JSON payload: {0}", node);
         }
     }
 
@@ -244,47 +257,47 @@ public class AcpProtocolClient implements Closeable {
             handler.handle(params)
                     .thenAccept(result -> sendResponse(id, result))
                     .exceptionally(ex -> {
-                        LOG.log(Level.SEVERE, "Error handling request " + method + " (" + id + ")", ex);
+                        LOG.severe("Error handling request " + method + " (" + id + ")", ex);
                         sendError(id, -32603, ex.getMessage());
                         return null;
                     });
         } else {
-            LOG.log(Level.WARNING, "No handler for request method: {0}", method);
+            LOG.warn("No handler for request method: {0}", method);
             sendError(id, -32601, "Method not found: " + method);
         }
     }
 
     private void sendResponse(long id, JsonNode result) {
-        ObjectNode response = mapper.createObjectNode();
+        ObjectNode response = MAPPER.createObjectNode();
         response.put("jsonrpc", "2.0");
         response.put("id", id);
-        response.set("result", result != null ? result : mapper.createObjectNode());
+        response.set("result", result != null ? result : MAPPER.createObjectNode());
 
         try {
-            String json = mapper.writeValueAsString(response);
-            LOG.log(Level.FINE, "Sending response: {0}", json);
+            String json = MAPPER.writeValueAsString(response);
+            LOG.info("[ACP] Sending response: {0}", json);
             writer.println(json);
         } catch (JsonProcessingException e) {
-            LOG.log(Level.SEVERE, "Failed to serialize response", e);
+            LOG.severe("Failed to serialize response", e);
         }
     }
 
     private void sendError(long id, int code, String message) {
-        ObjectNode response = mapper.createObjectNode();
+        ObjectNode response = MAPPER.createObjectNode();
         response.put("jsonrpc", "2.0");
         response.put("id", id);
 
-        ObjectNode error = mapper.createObjectNode();
+        ObjectNode error = MAPPER.createObjectNode();
         error.put("code", code);
         error.put("message", message);
         response.set("error", error);
 
         try {
-            String json = mapper.writeValueAsString(response);
-            LOG.log(Level.FINE, "Sending error response: {0}", json);
+            String json = MAPPER.writeValueAsString(response);
+            LOG.info("[ACP] Sending error response: {0}", json);
             writer.println(json);
         } catch (JsonProcessingException e) {
-            LOG.log(Level.SEVERE, "Failed to serialize error response", e);
+            LOG.severe("Failed to serialize error response", e);
         }
     }
 
@@ -298,7 +311,7 @@ public class AcpProtocolClient implements Closeable {
             try {
                 connectionErrorHandler.accept(t);
             } catch (Exception e) {
-                LOG.log(Level.WARNING, "Connection error handler threw exception", e);
+                LOG.warn("Connection error handler threw exception", e);
             }
         }
     }
@@ -308,7 +321,7 @@ public class AcpProtocolClient implements Closeable {
             try {
                 disconnectionHandler.run();
             } catch (Exception e) {
-                LOG.log(Level.WARNING, "Disconnection handler threw exception", e);
+                LOG.warn("Disconnection handler threw exception", e);
             }
         }
     }

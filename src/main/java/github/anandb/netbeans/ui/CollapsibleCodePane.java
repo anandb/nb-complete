@@ -113,7 +113,6 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
 
         // Copy button
         copyButton = UIUtils.createToolbarButton("copy.svg", 20, "Copy code", e -> copyCodeToClipboard());
-        copyButton.setContentAreaFilled(false);
         copyButton.setBorder(BorderFactory.createEmptyBorder(2, 4, 2, 4));
         copyButton.setForeground(theme.codeHeaderForeground());
         header.add(copyButton, BorderLayout.EAST);
@@ -143,6 +142,7 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
         setBaseColor(theme.codeBackground());
         setBorderColor(theme.codeHeaderBorder());
         setShowBorder(true);
+        setAlignmentX(java.awt.Component.LEFT_ALIGNMENT);
     }
 
     public void updateContent(String language, String code) {

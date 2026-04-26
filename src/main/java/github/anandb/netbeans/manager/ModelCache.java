@@ -2,18 +2,20 @@ package github.anandb.netbeans.manager;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import github.anandb.netbeans.support.Logger;
+
+import github.anandb.netbeans.support.MapperSupplier;
 import org.openide.modules.Places;
 
 public class ModelCache {
-    private static final Logger LOG = Logger.getLogger(ModelCache.class.getName());
+    private static final Logger LOG = new Logger(ModelCache.class);
     private static final String MODELS_FILE = "acp_models.json";
-    private static final ObjectMapper objectMapper = new ObjectMapper();
+    private static final ObjectMapper mapper = MapperSupplier.get();
     private static List<String> cachedModels = new ArrayList<>();
 
     static {
@@ -57,10 +59,10 @@ public class ModelCache {
         File file = getStorageFile();
         if (file.exists()) {
             try {
-                cachedModels = objectMapper.readValue(file, new TypeReference<List<String>>() {});
-                LOG.log(Level.FINE, "Loaded {0} cached models", cachedModels.size());
+                cachedModels = mapper.readValue(file, new TypeReference<List<String>>() {});
+                LOG.fine("Loaded {0} cached models", cachedModels.size());
             } catch (IOException e) {
-                LOG.log(Level.WARNING, "Failed to load cached models: {0}", e.getMessage());
+                LOG.warn("Failed to load cached models: {0}", e.getMessage());
                 cachedModels = new ArrayList<>();
             }
         }
@@ -69,9 +71,9 @@ public class ModelCache {
     private static void save() {
         File file = getStorageFile();
         try {
-            objectMapper.writerWithDefaultPrettyPrinter().writeValue(file, cachedModels);
+            mapper.writerWithDefaultPrettyPrinter().writeValue(file, cachedModels);
         } catch (IOException e) {
-            LOG.log(Level.WARNING, "Failed to save cached models: {0}", e.getMessage());
+            LOG.warn("Failed to save cached models: {0}", e.getMessage());
         }
     }
 }

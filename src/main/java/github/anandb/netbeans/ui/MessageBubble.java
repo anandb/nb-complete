@@ -5,8 +5,8 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.awt.Rectangle;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -15,8 +15,9 @@ import java.util.regex.Pattern;
 import javax.swing.BoxLayout;
 import javax.swing.Icon;
 import javax.swing.JButton;
-import javax.swing.JEditorPane;
 import javax.swing.JPanel;
+import javax.swing.JTextPane;
+import javax.swing.Scrollable;
 import javax.swing.border.EmptyBorder;
 import javax.swing.text.View;
 
@@ -27,14 +28,16 @@ import com.vladsch.flexmark.util.data.MutableDataSet;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.TextScanner;
 
-public class MessageBubble extends JPanel {
+import static github.anandb.netbeans.manager.ToolParamsExtractor.extractToolTitle;
+
+public class MessageBubble extends JPanel implements Scrollable {
 
     private static final Logger LOG = new Logger(MessageBubble.class);
     private static final long serialVersionUID = 1L;
 
     // Static cached Pattern for code block parsing - compiled once
     private static final Pattern CODE_BLOCK_PATTERN = Pattern.compile(
-        "```([\\w\\-\\+\\#\\.]*)\\R?(.*?)(?:```(?=\\R|$)|$)", Pattern.DOTALL);
+            "```([\\w\\-\\+\\#\\.]*)\\R?(.*?)(?:```(?=\\R|$)|$)", Pattern.DOTALL);
 
     // Static cached Flexmark parser/renderer - created once
     private static final Parser FLEXMARK_PARSER;
@@ -50,19 +53,24 @@ public class MessageBubble extends JPanel {
     private final String messageId;
     private final StringBuilder text;
     private final String copyableText;
+    private final String kind;
     private final JPanel segmentsContainer;
     private JPanel bubble;
     private final ArrayList<CollapsibleState> codeStates = new ArrayList<>();
 
     private static class CollapsibleState {
         boolean expanded;
-        CollapsibleState(boolean expanded) { this.expanded = expanded; }
+
+        CollapsibleState(boolean expanded) {
+            this.expanded = expanded;
+        }
     }
 
     /**
      * Apply background color and RoundedPanel base color for a message bubble.
+     *
      * @param theme the current theme
-     * @param type the message type (user, error, assistant, tool, thought)
+     * @param type  the message type (user, error, assistant, tool, thought)
      */
     private void applyBubbleTheme(ColorTheme theme, String type) {
         Color bgColor;
@@ -91,10 +99,11 @@ public class MessageBubble extends JPanel {
 
     @Override
     public Dimension getMaximumSize() {
-        return new Dimension(Integer.MAX_VALUE, getPreferredSize().height);
+        Dimension pref = getPreferredSize();
+        return new Dimension(Integer.MAX_VALUE, pref.height);
     }
 
-    private static final class FitEditorPane extends JEditorPane {
+    private static final class FitEditorPane extends JTextPane {
         private static final long serialVersionUID = 1L;
 
         private int lastComputedHeight = 0;
@@ -154,27 +163,28 @@ public class MessageBubble extends JPanel {
 
         @Override
         public Dimension getMaximumSize() {
-            return new Dimension(Integer.MAX_VALUE, getPreferredSize().height);
+            Dimension pref = getPreferredSize();
+            return new Dimension(Integer.MAX_VALUE, pref.height);
         }
     }
 
     public MessageBubble(String type, String text) {
-        this(type, text, null, text);
+        this(type, text, null, text, null);
     }
 
     public MessageBubble(String type, String text, String messageId) {
-        this(type, text, messageId, text);
+        this(type, text, messageId, text, null);
     }
 
-    public MessageBubble(String type, String text, String messageId, String copyableText) {
+    public MessageBubble(String type, String text, String messageId, String copyableText, String kind) {
         this.type = type;
         this.messageId = messageId;
         this.text = new StringBuilder(text);
         this.copyableText = copyableText;
+        this.kind = kind;
 
         ColorTheme theme = ThemeManager.getCurrentTheme();
-
-        setLayout(new GridBagLayout());
+        setLayout(new java.awt.GridBagLayout());
         setOpaque(true);
         setBackground(theme.sunkenBackground());
         setDoubleBuffered(true);
@@ -206,10 +216,9 @@ public class MessageBubble extends JPanel {
 
         if ("user".equals(type)) {
             anchor = GridBagConstraints.WEST;
-            gbcInsets = new Insets(2, 6, 2, 6);
+            gbcInsets = new Insets(2, 12, 2, 6);
 
             JButton copyBtn = UIUtils.createToolbarButton("copy.svg", 20, "Copy to input", null);
-            copyBtn.setContentAreaFilled(false);
             copyBtn.setBorder(new javax.swing.border.EmptyBorder(2, 8, 2, 8));
 
             copyBtn.addActionListener(e -> {
@@ -228,7 +237,6 @@ public class MessageBubble extends JPanel {
         add(bubble, UIUtils.createGbc(0, 0, 1.0, 0, GridBagConstraints.HORIZONTAL, anchor, gbcInsets));
         LOG.info("Created MessageBubble: type={0}, id={1}, textLength={2}", type, messageId, text.length());
     }
-
 
     private boolean hasPendingTextUpdate = false;
     private boolean hasSeenFirstNewline = false;
@@ -273,7 +281,8 @@ public class MessageBubble extends JPanel {
     }
 
     public void setExpanded(boolean expanded) {
-        if (segmentsContainer.getComponentCount() > 0 && segmentsContainer.getComponent(0) instanceof CollapsibleToolPane pane) {
+        if (segmentsContainer.getComponentCount() > 0
+                && segmentsContainer.getComponent(0) instanceof CollapsibleToolPane pane) {
             pane.setExpanded(expanded);
         }
     }
@@ -300,7 +309,6 @@ public class MessageBubble extends JPanel {
         return text.toString();
     }
 
-
     private void updateContent(ColorTheme theme) {
         updateContent(theme, false);
     }
@@ -314,20 +322,12 @@ public class MessageBubble extends JPanel {
 
             // Try to extract a summary title from the tool call text
             if ("tool".equals(type)) {
-                if (rawText.startsWith("Called")) {
-                    int toolStart = rawText.indexOf("the ") + 4;
-                    int toolEnd = rawText.indexOf(" tool");
-                    if (toolStart > 3 && toolEnd > toolStart) {
-                        title = "Tool: Use " + rawText.substring(toolStart, toolEnd).trim();
-                    }
-                } else if (rawText.contains(":") && rawText.length() < 100) {
-                    title = "Tool: " + rawText;
-                }
+                title = extractToolTitle(messageId, rawText, kind);
             }
 
             // Reuse existing tool pane if possible to preserve expanded state
-            if (segmentsContainer.getComponentCount() > 0 && segmentsContainer.getComponent(0) instanceof CollapsibleToolPane) {
-                CollapsibleToolPane existingPane = (CollapsibleToolPane) segmentsContainer.getComponent(0);
+            if (segmentsContainer.getComponentCount() > 0
+                    && segmentsContainer.getComponent(0) instanceof CollapsibleToolPane existingPane) {
                 existingPane.setTitle(title);
                 existingPane.setContent(displayContent);
                 // Auto-collapse if we are no longer in incremental mode
@@ -369,10 +369,10 @@ public class MessageBubble extends JPanel {
         int lastEnd = 0;
         int codeIdx = 0;
         while (matcher.find()) {
-            // Text before code block
+            // Text before code block (may contain tables)
             String textBefore = rawText.substring(lastEnd, matcher.start());
             if (!textBefore.isEmpty()) {
-                updateOrAddTextSegment(textBefore, theme, currentCompIdx++, incremental);
+                currentCompIdx = addTextAndTableSegments(textBefore, theme, currentCompIdx, incremental);
             }
 
             String lang = matcher.group(1);
@@ -398,7 +398,7 @@ public class MessageBubble extends JPanel {
         if (lastEnd < rawText.length()) {
             String remaining = rawText.substring(lastEnd);
             if (!remaining.isEmpty()) {
-                updateOrAddTextSegment(remaining, theme, currentCompIdx++, incremental);
+                currentCompIdx = addTextAndTableSegments(remaining, theme, currentCompIdx, incremental);
             }
         }
 
@@ -446,13 +446,14 @@ public class MessageBubble extends JPanel {
     }
 
     private void updateOrAddTextSegment(String markdown, ColorTheme theme, int compIdx, boolean incremental) {
-        String styledHtml = prepareHtml(markdown, theme);
+        String styledHtml = prepareHtml(markdown, theme, incremental);
         Color bg = getBubbleBackground(theme);
 
         if (compIdx < segmentsContainer.getComponentCount()) {
             Component c = segmentsContainer.getComponent(compIdx);
             if (c instanceof FitEditorPane pane) {
                 pane.setBackground(bg);
+                pane.setOpaque(true);
                 // FitEditorPane.setText now includes a dirty check
                 pane.setText(styledHtml);
                 return;
@@ -468,18 +469,139 @@ public class MessageBubble extends JPanel {
         }
     }
 
+    private int addTextAndTableSegments(String text, ColorTheme theme, int compIdx, boolean incremental) {
+        if (text.isEmpty()) {
+            return compIdx;
+        }
 
+        // Fast-path for non-table text
+        if (!text.contains("|")) {
+            updateOrAddTextSegment(text, theme, compIdx++, incremental);
+            return compIdx;
+        }
 
-    private String prepareHtml(String markdown, ColorTheme theme) {
-        // Skip expensive table parsing during incremental streaming updates
-        // Tables will be rendered when message is finalized
-        String markdownWithTables = renderTablesAsHtml(markdown);
+        String[] lines = text.split("\n", -1);
+        StringBuilder textBuffer = new StringBuilder();
+        List<String> tableLines = new ArrayList<>();
+        boolean inTable = false;
+        boolean headerFound = false;
+        int currentIdx = compIdx;
+
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i];
+            boolean isTableRow = line.contains("|") && line.trim().startsWith("|") && line.trim().endsWith("|");
+
+            if (isTableRow) {
+                if (!inTable) {
+                    inTable = true;
+                    tableLines.add(line);
+                } else {
+                    tableLines.add(line);
+                    if (!headerFound) {
+                        if (isSeparatorRowLine(line)) {
+                            headerFound = true;
+                            if (textBuffer.length() > 0) {
+                                updateOrAddTextSegment(textBuffer.toString(), theme, currentIdx++, incremental);
+                                textBuffer.setLength(0);
+                            }
+                        }
+                    }
+                }
+            } else {
+                if (inTable) {
+                    if (headerFound) {
+                        updateOrAddTableSegment(String.join("\n", tableLines), theme, currentIdx++, incremental);
+                    } else {
+                        for (String l : tableLines) {
+                            textBuffer.append(l).append("\n");
+                        }
+                    }
+                    tableLines.clear();
+                    inTable = false;
+                    headerFound = false;
+                }
+                textBuffer.append(line);
+                if (i < lines.length - 1) {
+                    textBuffer.append("\n");
+                }
+            }
+        }
+
+        if (inTable && headerFound) {
+            updateOrAddTableSegment(String.join("\n", tableLines), theme, currentIdx++, incremental);
+        } else if (inTable) {
+            for (String l : tableLines) {
+                textBuffer.append(l).append("\n");
+            }
+        }
+
+        if (textBuffer.length() > 0) {
+            updateOrAddTextSegment(textBuffer.toString(), theme, currentIdx++, incremental);
+        }
+
+        return currentIdx;
+    }
+
+    private boolean isSeparatorRowLine(String line) {
+        String content = line.trim();
+        if (content.startsWith("|") && content.endsWith("|")) {
+            content = content.substring(1, content.length() - 1);
+        }
+        String[] cells = content.split("(?<!\\\\)\\|", -1);
+        List<String> rowCells = new ArrayList<>();
+        for (String cell : cells) {
+            rowCells.add(cell.replace("\\|", "|"));
+        }
+        return isSeparatorRow(rowCells);
+    }
+
+    private void updateOrAddTableSegment(String tableMarkdown, ColorTheme theme, int compIdx, boolean incremental) {
+        String styledHtml = prepareHtml(tableMarkdown, theme, incremental);
+
+        if (compIdx < segmentsContainer.getComponentCount()) {
+            Component c = segmentsContainer.getComponent(compIdx);
+            if (c instanceof RoundedPanel rp && rp.getComponentCount() > 0 && rp.getComponent(0) instanceof FitEditorPane pane) {
+                rp.setBaseColor(theme.tableBackground());
+                rp.setBorderColor(theme.tableBorder());
+                pane.setText(styledHtml);
+                return;
+            }
+        }
+
+        RoundedPanel rp = new RoundedPanel(12);
+        rp.setBaseColor(theme.tableBackground());
+        rp.setBorderColor(theme.tableBorder());
+        rp.setLayout(new BorderLayout());
+        rp.setBorder(new EmptyBorder(1, 1, 1, 1)); // 1px margin for the rounded border
+
+        FitEditorPane pane = createHtmlPane(styledHtml, theme.tableBackground());
+        pane.setOpaque(false); // Let RoundedPanel background show through
+        pane.setBorder(new EmptyBorder(4, 4, 4, 4));
+        rp.add(pane, BorderLayout.CENTER);
+
+        if (compIdx < segmentsContainer.getComponentCount()) {
+            segmentsContainer.remove(compIdx);
+            segmentsContainer.add(rp, compIdx);
+        } else {
+            segmentsContainer.add(rp);
+        }
+    }
+
+    private String prepareHtml(String markdown, ColorTheme theme, boolean incremental) {
+        String markdownWithTables = incremental ? markdown : renderTablesAsHtml(markdown);
         // Use cached static parser/renderer instead of creating new instances
         String html = FLEXMARK_RENDERER.render(FLEXMARK_PARSER.parse(markdownWithTables));
 
-        html = html.replace("<table>", "<table border='1' style='border-collapse: collapse; width: 100%; margin: 8px 0;'>");
-        html = html.replace("<th>", "<th style='background: #f0f0f0; padding: 8px; border: 1px solid #ddd; text-align: left;'>");
-        html = html.replace("<td>", "<td style='padding: 8px; border: 1px solid #ddd; vertical-align: top;'>");
+        String tableBg = theme.toHtmlHex(theme.tableBackground());
+        String headerBg = theme.toHtmlHex(theme.tableHeaderBackground());
+        String borderColor = theme.toHtmlHex(theme.tableBorder());
+
+        html = html.replace("<table>",
+                "<table border='1' bordercolor='" + borderColor + "' cellspacing='0' cellpadding='8' style='border-collapse: collapse; width: 100%; margin: 8px 0; background-color: " + tableBg + ";'>");
+        html = html.replace("<th>",
+                "<th bgcolor='" + headerBg + "' style='padding: 8px; border: 1px solid " + borderColor + "; text-align: left;'><b>");
+        html = html.replace("</th>", "</b></th>");
+        html = html.replace("<td>", "<td style='padding: 8px; border: 1px solid " + borderColor + "; vertical-align: top;'>");
 
         // Hack to prevent space collapse in JEditorPane
         // Replace double spaces with space + &nbsp; but ONLY if it's not ASCII art
@@ -505,7 +627,7 @@ public class MessageBubble extends JPanel {
             customCss += " body { color: #D32F2F; font-weight: bold; }";
         }
         // Detect if the content looks like ASCII art (contains box drawing characters)
-        String bodyStyle = "margin: 0; padding: 4px;";
+        String bodyStyle = "margin: 0; padding: 4px; text-align: left; word-wrap: break-word; overflow-wrap: break-word; max-width: 100%;";
         if (hasArt) {
             // Avoid pre tag to prevent theme conflicts (black box).
             // Use manual line breaks and nbsp to preserve structure in old renderers.
@@ -519,7 +641,8 @@ public class MessageBubble extends JPanel {
             html = "<div class='ascii-art'>" + html + "</div>";
         }
 
-        return "<html><head><style>" + customCss + "</style></head><body style='" + bodyStyle + "'>" + html + "</body></html>";
+        return "<html><head><style>" + customCss + "</style></head><body style='" + bodyStyle + "'>" + html
+                + "</body></html>";
     }
 
     private Color getBubbleBackground(ColorTheme theme) {
@@ -535,16 +658,17 @@ public class MessageBubble extends JPanel {
     private FitEditorPane createHtmlPane(String styledHtml, Color bg) {
         ColorTheme theme = ThemeManager.getCurrentTheme();
         FitEditorPane pane = new FitEditorPane();
-        pane.putClientProperty(javax.swing.JEditorPane.HONOR_DISPLAY_PROPERTIES, Boolean.TRUE);
+        pane.putClientProperty(javax.swing.JTextPane.HONOR_DISPLAY_PROPERTIES, Boolean.TRUE);
         pane.setEditable(false);
         pane.setContentType("text/html");
         pane.setOpaque(true);
         pane.setBackground(bg);
         pane.setForeground(theme.foreground());
         pane.setDoubleBuffered(true);
-        pane.setText(styledHtml);
         pane.setFont(ThemeManager.getFont());
-        pane.setBorder(new javax.swing.border.EmptyBorder(0, 0, 2, 0));
+        pane.setBorder(new EmptyBorder(0, 12, 2, 12));
+        pane.setAlignmentX(Component.LEFT_ALIGNMENT);
+        pane.setText(styledHtml);
         return pane;
     }
 
@@ -579,7 +703,15 @@ public class MessageBubble extends JPanel {
             }
 
             if (line.contains("|") && line.trim().startsWith("|") && line.trim().endsWith("|")) {
-                String content = line.substring(line.indexOf("|") + 1, line.lastIndexOf("|"));
+                int firstPipe = line.indexOf("|");
+                int lastPipe = line.lastIndexOf("|");
+                if (firstPipe >= lastPipe) {
+                    // Malformed table row (single pipe or empty content)
+                    result.append(line).append("\n");
+                    i++;
+                    continue;
+                }
+                String content = line.substring(firstPipe + 1, lastPipe);
                 // Split by pipes not preceded by a backslash
                 String[] cells = content.split("(?<!\\\\)\\|", -1);
                 List<String> rowCells = new ArrayList<>();
@@ -637,7 +769,7 @@ public class MessageBubble extends JPanel {
     private boolean isSeparatorRow(List<String> row) {
         for (String cell : row) {
             if (!cell.matches("-+") && !cell.matches(":-+-.*") && !cell.matches(".*:-+") &&
-                !cell.matches("-+:") && !cell.matches(":.*-+")) {
+                    !cell.matches("-+:") && !cell.matches(":.*-+")) {
                 return false;
             }
         }
@@ -645,10 +777,18 @@ public class MessageBubble extends JPanel {
     }
 
     private String convertTableToHtml(List<String> headers, List<List<String>> rows) {
+        ColorTheme theme = ThemeManager.getCurrentTheme();
+        String borderColor = theme.toHtmlHex(theme.tableBorder());
+        String headerBg = theme.toHtmlHex(theme.tableHeaderBackground());
+        String tableBg = theme.toHtmlHex(theme.tableBackground());
+
         StringBuilder html = new StringBuilder();
-        html.append("<table>\n<thead><tr>");
+        html.append("<table border='1' bordercolor='").append(borderColor)
+            .append("' cellspacing='0' cellpadding='8' style='border-collapse: collapse; width: 100%; margin: 8px 0; background-color: ")
+            .append(tableBg).append(";'>\n<thead><tr bgcolor='").append(headerBg).append("'>");
         for (String h : headers) {
-            html.append("<th>").append(escapeHtml(h)).append("</th>");
+            html.append("<th style='border: 1px solid ").append(borderColor).append("; text-align: left;'><b>")
+                .append(escapeHtml(h)).append("</b></th>");
         }
         html.append("</tr></thead>\n<tbody>");
         for (List<String> row : rows) {
@@ -656,7 +796,8 @@ public class MessageBubble extends JPanel {
             // Ensure row has same columns as header
             for (int j = 0; j < headers.size(); j++) {
                 String cell = j < row.size() ? row.get(j) : "";
-                html.append("<td>").append(escapeHtml(cell)).append("</td>");
+                html.append("<td style='border: 1px solid ").append(borderColor).append("; vertical-align: top;'>")
+                    .append(escapeHtml(cell)).append("</td>");
             }
             html.append("</tr>");
         }
@@ -669,5 +810,31 @@ public class MessageBubble extends JPanel {
                 .replace("<", "&lt;")
                 .replace(">", "&gt;")
                 .replace("\"", "&quot;");
+    }
+
+    @Override
+    public boolean getScrollableTracksViewportWidth() {
+        return true; // This is the secret sauce for wrapping
+    }
+
+    // Other Scrollable methods can return default values
+    @Override
+    public Dimension getPreferredScrollableViewportSize() {
+        return getPreferredSize();
+    }
+
+    @Override
+    public int getScrollableUnitIncrement(Rectangle visibleRect, int orientation, int direction) {
+        return 10;
+    }
+
+    @Override
+    public int getScrollableBlockIncrement(Rectangle visibleRect, int orientation, int direction) {
+        return 100;
+    }
+
+    @Override
+    public boolean getScrollableTracksViewportHeight() {
+        return false;
     }
 }

@@ -11,7 +11,9 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 import java.util.logging.Level;
+
 import javax.swing.text.Document;
+
 import org.apache.commons.exec.CommandLine;
 import org.netbeans.api.project.Project;
 import org.netbeans.api.project.ui.OpenProjects;
@@ -31,12 +33,25 @@ import github.anandb.netbeans.model.SessionConfigOption;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.ui.ACPOptionsPanel;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.LanguageResolver;
+import github.anandb.netbeans.support.MapperSupplier;
 
 public class ACPManager {
+
     private static final Logger LOG = new Logger(ACPManager.class);
     private static ACPManager instance;
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    // Static shared ObjectMapper for all JSON operations
+    private final ObjectMapper objectMapper = MapperSupplier.get();
+
+    // Shared ScheduledExecutor for reconnection delays
+    private final java.util.concurrent.ScheduledExecutorService reconnectExecutor
+            = java.util.concurrent.Executors.newSingleThreadScheduledExecutor(r -> {
+                Thread t = new Thread(r, "ACP-Reconnect");
+                t.setDaemon(true);
+                return t;
+            });
+
     private Process serverProcess;
     private AcpProtocolClient rpcClient;
     private boolean initialized = false;
@@ -54,6 +69,7 @@ public class ACPManager {
     private boolean shutdownHookAdded = false;
 
     public interface PermissionHandler {
+
         void handlePermissionRequest(String sessionId, JsonNode params, CompletableFuture<String> response);
     }
 
@@ -114,7 +130,7 @@ public class ACPManager {
             // Listen for session updates
             rpcClient.onNotification("session/update", params -> {
                 try {
-                    LOG.info("Received session/update notification: {0}", params.toString());
+                    LOG.info("Received session/update notification: {0}", params);
                     SessionUpdate.Params sessionParams = objectMapper.treeToValue(params, SessionUpdate.Params.class);
                     SessionUpdate update = new SessionUpdate("2.0", "session/update", sessionParams);
 
@@ -129,7 +145,7 @@ public class ACPManager {
                     // Update session configurations if present
                     if (update.update() != null && "config_options_update".equals(update.update().type())) {
                         if (update.update().configOptions() != null) {
-                            // Forward this update to UI via the SSE listener
+                            notifyListeners(update);
                         }
                     }
 
@@ -213,11 +229,11 @@ public class ACPManager {
 
     private void initializeProtocol() {
         Map<String, Object> params = Map.of(
-            "protocolVersion", 1,
-            "clientCapabilities", Map.of(
-                "fs", Map.of("readTextFile", true, "writeTextFile", true),
-                "terminal", true
-            )
+                "protocolVersion", 1,
+                "clientCapabilities", Map.of(
+                        "fs", Map.of("readTextFile", true, "writeTextFile", true),
+                        "terminal", true
+                )
         );
         rpcClient.sendRequest("initialize", params)
                 .orTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
@@ -348,7 +364,8 @@ public class ACPManager {
                         JsonNode result = root.has("result") ? root.get("result") : root;
                         JsonNode sessionsNode = result.has("sessions") ? result.get("sessions") : result.has("data") ? result.get("data") : result;
                         if (sessionsNode.isArray()) {
-                            List<Session> rawSessions = objectMapper.readValue(sessionsNode.traverse(), new TypeReference<List<Session>>() {});
+                            List<Session> rawSessions = objectMapper.readValue(sessionsNode.traverse(), new TypeReference<List<Session>>() {
+                            });
                             List<Session> sessions = new ArrayList<>();
                             for (Session s : rawSessions) {
                                 // If the server returns a session for this specific directory, but it's missing the directory field, fill it in.
@@ -389,15 +406,15 @@ public class ACPManager {
                 .toList();
         return CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new))
                 .thenApply(v -> futures.stream()
-                        .flatMap(f -> {
-                            try {
-                                return f.get().stream();
-                            } catch (Exception e) {
-                                LOG.log(Level.WARNING, "Failed to get sessions for directory: {0}", e.getMessage());
-                                return java.util.stream.Stream.empty();
-                            }
-                        })
-                        .toList());
+                .flatMap(f -> {
+                    try {
+                        return f.get().stream();
+                    } catch (Exception e) {
+                        LOG.log(Level.WARNING, "Failed to get sessions for directory: {0}", e.getMessage());
+                        return java.util.stream.Stream.empty();
+                    }
+                })
+                .toList());
     }
 
     private static String getProjectPath() {
@@ -434,8 +451,8 @@ public class ACPManager {
         final String finalCwd = effectiveCwd;
 
         Map<String, Object> params = Map.of(
-            "cwd", finalCwd,
-            "mcpServers", List.of()
+                "cwd", finalCwd,
+                "mcpServers", List.of()
         );
         return rpcClient.sendRequest("session/new", params)
                 .thenApply(res -> {
@@ -469,7 +486,8 @@ public class ACPManager {
                     LOG.fine("loadSession: got response {0}", res);
                     if (res != null && res.has("configOptions")) {
                         try {
-                            return objectMapper.convertValue(res.get("configOptions"), new TypeReference<List<SessionConfigOption>>() {});
+                            return objectMapper.convertValue(res.get("configOptions"), new TypeReference<List<SessionConfigOption>>() {
+                            });
                         } catch (Exception e) {
                             LOG.warn("Failed to parse configOptions: {0}", e.getMessage());
                         }
@@ -494,7 +512,7 @@ public class ACPManager {
             String filePath = (String) context.get("filePath");
             if (filePath != null) {
                 File file = new File(filePath);
-                String lang = getLanguageFromPath(filePath);
+                String lang = LanguageResolver.fromPath(filePath);
                 String fileName = file.getName();
 
                 // Resource Link Block (Visual Breadcrumb)
@@ -509,12 +527,12 @@ public class ACPManager {
                 xml.append("<metadata>\n");
                 xml.append("  <language>").append(lang).append("</language>\n");
                 xml.append("  <file_path>").append(filePath).append("</file_path>\n");
-                
+
                 Object cursorObj = context.get("cursor");
                 if (cursorObj != null) {
                     xml.append("  <cursor>").append(cursorObj.toString()).append("</cursor>\n");
                 }
-                
+
                 Object selObj = context.get("selection");
                 if (selObj != null) {
                     xml.append("  <selection>").append(selObj.toString()).append("</selection>\n");
@@ -622,9 +640,9 @@ public class ACPManager {
             return CompletableFuture.failedFuture(new RuntimeException("Server not started"));
         }
         Map<String, Object> params = Map.of(
-            "sessionId", sessionId,
-            "configId", configId,
-            "value", value
+                "sessionId", sessionId,
+                "configId", configId,
+                "value", value
         );
         return rpcClient.sendRequest("session/set_config_option", params)
                 .thenApply(v -> null);
@@ -684,8 +702,7 @@ public class ACPManager {
             LOG.log(Level.FINE, "Respawning ACP server in {0}ms (attempt {1}/{2})...",
                     new Object[]{delay, restartCount, MAX_RESTARTS});
 
-            java.util.concurrent.Executors.newSingleThreadScheduledExecutor()
-                    .schedule(this::startServer, delay, java.util.concurrent.TimeUnit.MILLISECONDS);
+            reconnectExecutor.schedule(this::startServer, delay, java.util.concurrent.TimeUnit.MILLISECONDS);
         } else {
             LOG.log(Level.SEVERE, "ACP server crashed {0} times within {1}ms. Giving up.",
                     new Object[]{MAX_RESTARTS, RESTART_RESET_INTERVAL});
@@ -698,7 +715,7 @@ public class ACPManager {
 
     private CompletableFuture<JsonNode> handleRequestPermission(JsonNode params) {
         String sessionId = params.has("sessionId") ? params.get("sessionId").asText() : null;
-        String toolCallId = extractToolCallId(params);
+        String toolCallId = ToolParamsExtractor.extractToolCallId(params);
 
         final String extractedId = toolCallId;
         CompletableFuture<String> response = new CompletableFuture<>();
@@ -748,30 +765,6 @@ public class ACPManager {
 
             return res;
         });
-    }
-
-    /**
-     * Extract toolCallId from params, supporting both camelCase and snake_case variants.
-     */
-    private String extractToolCallId(JsonNode params) {
-        if (params.has("toolCallId")) {
-            return params.get("toolCallId").asText();
-        } else if (params.has("tool_call_id")) {
-            return params.get("tool_call_id").asText();
-        } else if (params.has("toolCall")) {
-            JsonNode tc = params.get("toolCall");
-            if (tc.has("toolCallId")) {
-                return tc.get("toolCallId").asText();
-            } else if (tc.has("id")) {
-                return tc.get("id").asText();
-            }
-        } else if (params.has("tool_call")) {
-            JsonNode tc = params.get("tool_call");
-            if (tc.has("id")) {
-                return tc.get("id").asText();
-            }
-        }
-        return null;
     }
 
     private CompletableFuture<JsonNode> handleWriteTextFile(JsonNode params) {
@@ -852,37 +845,4 @@ public class ACPManager {
         });
     }
 
-    private static String getLanguageFromPath(String path) {
-        if (path == null || path.isEmpty()) return "";
-
-        int lastDot = path.lastIndexOf('.');
-        if (lastDot == -1) return "";
-
-        try {
-            String ext = path.substring(lastDot + 1).toLowerCase();
-
-            // Common language keywords
-            if (ext.equals("java")) return "java";
-            if (ext.equals("py")) return "python";
-            if (ext.equals("pl")) return "perl";
-            if (ext.equals("awk")) return "awk";
-
-            // Alias mappings - extract to map for cleaner handling
-            if (ext.equals("javascript") || ext.equals("js")) return "javascript";
-            if (ext.equals("typescript") || ext.equals("ts")) return "typescript";
-            if (ext.equals("html")) return "html";
-            if (ext.equals("css")) return "css";
-            if (ext.equals("xml")) return "xml";
-            if (ext.equals("markdown") || ext.equals("md")) return "markdown";
-            if (ext.equals("json")) return "json";
-
-            // Shell family aliases
-            if (ext.equals("bash") || ext.equals("sh") || ext.equals("ksh") || ext.equals("zsh")) return "bash";
-
-            // Return raw extension for unrecognized files
-            return ext;
-        } catch (IndexOutOfBoundsException e) {
-            return "";
-        }
-    }
 }

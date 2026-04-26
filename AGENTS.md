@@ -1,11 +1,11 @@
-# Agent Instructions for beanagent
+# Agent Instructions for beanbot
 
 ## Project Overview
 - **Project name**: Coding Assistant
 - **Project type**: NetBeans IDE plugin (NBM packaging)
-- **Language**: Java 21
+- **Language**: Java 17
 - **Build tool**: Maven
-- **Current Version**: 1.3.25
+- **Current Version**: 1.4.1
 
 ## Build Commands
 - Build: `mvn package`

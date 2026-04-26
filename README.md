@@ -1,10 +1,10 @@
 # Coding Assistant
 
-[![Version](https://img.shields.io/badge/version-1.3.38-blue.svg)](pom.xml)
+[![Version](https://img.shields.io/badge/version-1.4.1-blue.svg)](pom.xml)
 [![Build Status](https://img.shields.io/badge/build-success-brightgreen.svg)](https://github.com/anandb/nb-complete)
 [![NetBeans](https://img.shields.io/badge/NetBeans-RELEASE210-orange.svg)](https://netbeans.apache.org/download/index.html)
 
-The **Coding Assistant** is a tool for integrating AI assistance into the NetBeans IDE. It uses the **Agent Client Protocol (ACP)** to provide a chat interface for code generation, explanation, and project-related tasks.
+The Coding Assistant is a NetBeans IDE plugin designed to provide integrated AI capabilities through the Agent Client Protocol (ACP). It offers a structured chat interface for technical assistance, including code generation, project analysis, and automated task execution.
 
 | | |
 | :---: | :---: |
@@ -14,104 +14,89 @@ The **Coding Assistant** is a tool for integrating AI assistance into the NetBea
 
 ## Quickstart
 
-1. **Install**: Go to **Tools > Plugins > Downloaded** and add the `.nbm` file.
-2. **Open**: Launch the interface via **Window > Assistant**.
-3. **Configure**: The plugin automatically detects `opencode` if it's in your system path. If not, manually set the binary location in **Tools > Options > Advanced > Assistant**.
-4. **Preamble**: Customize your global system prompt in the options; it will be automatically applied to every new chat session.
+1. **Installation**: Add the NBM file via Tools > Plugins > Downloaded.
+2. **Access**: Open the assistant interface through Window > Assistant.
+3. **Configuration**: The plugin attempts to locate the backend service automatically. Manual adjustments can be made in Tools > Options > Advanced > Assistant.
+4. **Environment**: A global system prompt can be defined in the options to maintain consistent context across sessions.
 
-## Features
+## Core Capabilities
 
-### UI and Theming
-- **Theme Support**: Compatible with both **Solarized Light** and **Darcula Dark** modes.
-- **Icon Support**: Automatically switches to high-contrast icons (e.g., settings, brain, tools) in dark mode.
-- **Collapsible Blocks**: Handles **Thinking Process**, **Tool Calls**, and **Code** segments.
-- **Syntax Highlighting**: Support for multiple languages via `RSyntaxTextArea`.
-- **Interrupt Support**: Functional "Stop" button to halt active AI processing.
+### User Interface and Experience
+- **Theme Integration**: Compatible with standard NetBeans themes, including dedicated support for Solarized and Darcula variants.
+- **Visual Assets**: Optimized high-contrast SVG icons that adjust based on the active IDE theme.
+- **Content Organization**: Support for segmented display of model reasoning, tool interactions, and code blocks.
+- **Syntax Highlighting**: Integrated code block rendering with language-specific highlighting.
+- **Execution Control**: Support for interrupting active streaming responses.
 
-### 📁 Persistent Session Management
-- **User-Defined Titles**: Rename your chat sessions to find them easily later.
-- **Local Persistence**: Custom titles and session metadata are stored in your NetBeans user root, ensuring they survive IDE restarts.
-- **Smart Welcome View**: A dedicated welcome screen lists your recent chats for quick resumption.
-- **Export to Markdown**: Export your entire AI interaction as a clean, formatted Markdown file for documentation or sharing.
+### Session and Data Management
+- **Persistence**: Chat history and session metadata are stored locally, allowing for continuity across IDE restarts.
+- **Organization**: Support for renaming sessions to facilitate better categorization of technical discussions.
+- **Resumption**: A central entry point provides access to recent interactions.
+- **Documentation**: Capabilities for exporting sessions to Markdown format for external reference.
 
-### ⚙️ Deep IDE Integration
-- **Project Awareness**: Automatically tracks your active project and context.
-- **Standardized Options**: Configure the plugin via the official NetBeans Options dialog (**Tools -> Options -> Advanced -> Assistant**).
-- **Startup Connection Test**: Optional "Ping at Startup" feature verifies your AI connection as soon as you open the IDE.
-- **Context Menu Actions**: Quick access via window toggles and keyboard shortcuts (`Ctrl+L`).
+### IDE Integration
+- **Context Awareness**: The assistant maintains awareness of the active project and workspace state.
+- **Standardized Configuration**: Configuration is managed through the native NetBeans options framework.
+- **Security**: Interactive permission handling for sensitive operations, such as direct file system modifications requested by the AI.
 
-### 🔌 Advanced Communication
-- **SSE Streaming**: Uses Server-Sent Events for real-time, chunk-by-chunk AI response streaming.
-- **ACP Compliant**: Full implementation of the Agent Client Protocol for session management and tool usage.
-- **Interactive Permissions**: Handles security-sensitive AI tool requests (like file edits) through an interactive UI approval process.
+### Protocol and Communication
+- **Standardized Messaging**: Built on the Agent Client Protocol (ACP) for reliable inter-process communication.
+- **Asynchronous Streaming**: Uses Server-Sent Events to provide real-time updates during response generation.
+- **Protocol Compliance**: Support for complex interactions including multi-step tool usage and state synchronization.
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
-- **NetBeans IDE**: RELEASE210 or later.
-- **Java**: JDK 17+ (Project uses Java 21 features).
-- **ACP Server**: An compatible ACP-compliant backend (e.g., OpenCode binary).
+- **NetBeans IDE**: Version RELEASE210 or later.
+- **Java Development Kit**: JDK 17 or later.
+- **Backend Service**: An ACP-compliant backend service.
 
-### Installation (Build from Source)
+### Installation from Source
 1. Clone the repository:
    ```bash
    git clone https://github.com/anandb/nb-complete.git
    cd nb-complete
    ```
-2. Build the NBM package:
+2. Build the package:
    ```bash
    mvn package -DskipTests
    ```
-3. The plugin will be generated at `./target/nbm/beanagent-1.3.38.nbm`.
-4. In NetBeans, go to **Tools -> Plugins -> Downloaded -> Add Plugins...** and select the `.nbm` file.
-
----
-
-## 🛠️ Configuration
-
-Navigate to **Tools -> Options -> Advanced -> Assistant** to configure the following:
-
-- **Executable Path**: The location of your ACP-compliant AI server binary.
-- **Default Model**: Specify which LLM model you wish to use by default.
-- **Ping at Startup**: Enable this to send a test message automatically when the panel is first opened to ensure connectivity.
+3. The generated NBM will be located in the `./target/nbm/` directory.
+4. Install the plugin through the NetBeans Plugin Manager.
 
 ---
 
 ## Architecture
 
-The plugin uses an event-driven approach:
+The project follows an event-driven architecture integrated into the NetBeans Platform:
 
-- **ACPManager**: Manages the AI server process lifecycle and communication.
-- **AcpProtocolClient**: Handles JSON-RPC messaging.
-- **SSE Streamer**: Processes streaming updates for real-time rendering.
-- **AssistantTopComponent**: Main NetBeans window controller.
-- **ThemeManager**: Manages styling across different IDE themes.
+- **Management Layer**: Handles the lifecycle of the communication process and service discovery.
+- **Protocol Layer**: Manages JSON-RPC communication and session state transitions.
+- **Streaming Service**: Processes real-time data feeds for the user interface.
+- **UI Components**: Provides specialized Swing-based components for chat rendering and interaction.
+- **Theme System**: Ensures visual consistency with the host IDE environment.
 
 ---
 
-## 📜 Source Structure
+## Source Organization
 
 - `src/main/java/github/anandb/netbeans/`
-  - `completion/`: Intelligent code completion providers.
-  - `manager/`: Core business logic and RPC client.
-  - `model/`: ACP Protocol data models (Jackson-powered).
-  - `project/`: Integration with NetBeans Project API.
-  - `ui/`: Custom Swing components and theme management.
+  - `completion/`: Code completion implementation.
+  - `manager/`: Core orchestration and protocol clients.
+  - `model/`: Data models compliant with the ACP specification.
+  - `project/`: Workspace and project API integration.
+  - `ui/`: Interface components and theme management.
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
-Contributions are welcome! Please ensure that your pull requests adhere to the project's coding standards:
-- Always use braces for control flow.
-- Use index-based placeholders for logging (`{0}`).
-- Ensure all new components support both Light and Dark themes via `ThemeManager`.
+Development follows standard NetBeans Platform patterns. Contributors are expected to maintain consistency with existing styling and logging conventions. New components must be validated against both light and dark IDE themes.
 
 ---
 
-## 📄 License
+## License
 
-This project is licensed under the UNLICENSE - see the [LICENSE](LICENSE) file for details.
-
+This software is released under the UNLICENSE. Further details can be found in the LICENSE file.

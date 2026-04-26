@@ -7,13 +7,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Properties;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import github.anandb.netbeans.support.Logger;
 
 import org.openide.modules.Places;
 
 public class SessionTitleManager {
-    private static final Logger LOG = Logger.getLogger(SessionTitleManager.class.getName());
+    private static final Logger LOG = new Logger(SessionTitleManager.class);
     private static final String TITLES_FILE = "acp_session_titles.properties";
     private static final Properties titles = new Properties();
 
@@ -50,7 +49,7 @@ public class SessionTitleManager {
             try (InputStream is = new FileInputStream(file)) {
                 titles.load(is);
             } catch (IOException e) {
-                LOG.log(Level.WARNING, "Failed to load session titles: {0}", e.getMessage());
+                LOG.warn("Failed to load session titles: {0}", e.getMessage());
             }
         }
     }
@@ -60,7 +59,7 @@ public class SessionTitleManager {
         try (OutputStream os = new FileOutputStream(file)) {
             titles.store(os, "ACP Session Titles");
         } catch (IOException e) {
-            LOG.log(Level.WARNING, "Failed to save session titles: {0}", e.getMessage());
+            LOG.warn("Failed to save session titles: {0}", e.getMessage());
         }
     }
 }
