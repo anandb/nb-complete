@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>github.anandb</groupId>
     <artifactId>beanbot</artifactId>
-    <version>1.4.2.2</version>
+    <version>1.4.22</version>
     <packaging>nbm</packaging>
 
     <name>Coding Assistant</name>
@@ -134,6 +134,11 @@
         <dependency>
             <groupId>com.vladsch.flexmark</groupId>
             <artifactId>flexmark</artifactId>
+            <version>0.64.8</version>
+        </dependency>
+        <dependency>
+            <groupId>com.vladsch.flexmark</groupId>
+            <artifactId>flexmark-ext-tables</artifactId>
             <version>0.64.8</version>
         </dependency>
 

@@ -26,9 +26,9 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
 
         header.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createMatteBorder(0, 4, 0, 0, yellowAccent),
-            BorderFactory.createEmptyBorder(2, 10, 2, 10)
+            BorderFactory.createEmptyBorder(2, 4, 2, 10)
         ));
-        headerLabel.setBorder(BorderFactory.createEmptyBorder(4, 8, 0, 0));
+        headerLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
 
         titlePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0)) {
             @Override
@@ -50,7 +50,7 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
         textArea.setFont(isThinking
                 ? ThemeManager.getFont().deriveFont(Font.PLAIN)
                 : ThemeManager.getMonospaceFont().deriveFont(Font.PLAIN));
-        textArea.setBorder(BorderFactory.createEmptyBorder(8, 25, 8, 12));
+        textArea.setBorder(BorderFactory.createEmptyBorder(8, 40, 8, 12));
         textArea.setLineWrap(true);
         textArea.setWrapStyleWord(true);
 
@@ -63,21 +63,11 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
 
     private void setupTitleLabels(String rawTitle) {
         titlePanel.removeAll();
-
         Icon icon = getHeaderIcon(rawTitle);
-        if (icon != null) {
-            JLabel iconLabel = new JLabel(icon) {
-                @Override
-                public boolean contains(int x, int y) {
-                    return false;
-                }
-            };
-            iconLabel.setVerticalAlignment(JLabel.CENTER);
-            titlePanel.add(iconLabel);
-        }
 
+        headerLabel.setIcon(icon);
+        headerLabel.setIconTextGap(8);
         headerLabel.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
-        headerLabel.setIcon(null);
         titlePanel.add(headerLabel);
 
         if (isThinking) {
@@ -153,7 +143,7 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
 
     private static Icon getHeaderIcon(String title) {
         if (title.toUpperCase().contains("THINKING")) {
-            return ThemeManager.getIcon("brain.svg", 32);
+            return ThemeManager.getIcon("brain.svg", 24);
         }
         return ThemeManager.getIcon("tool.svg", 24);
     }

@@ -2,7 +2,10 @@ package github.anandb.netbeans.ui;
 
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
+import java.io.Serializable;
+
 import javax.swing.JComponent;
+
 import org.netbeans.spi.options.OptionsPanelController;
 import org.openide.util.HelpCtx;
 import org.openide.util.Lookup;
@@ -16,11 +19,12 @@ import org.openide.util.NbBundle;
         position = 1100
 )
 @NbBundle.Messages({
-    "OptionsCategory_Name_Assistant=Assistant", 
+    "OptionsCategory_Name_Assistant=Assistant",
     "OptionsCategory_Keywords_Assistant=assistant, ai, chatbot, path, acp"
 })
-public final class ACPOptionsPanelController extends OptionsPanelController {
+public final class ACPOptionsPanelController extends OptionsPanelController implements Serializable {
 
+    private static final long serialVersionUID = 1L;
     private ACPOptionsPanel panel;
     private final PropertyChangeSupport pcs = new PropertyChangeSupport(this);
     private boolean changed;

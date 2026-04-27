@@ -3,10 +3,13 @@ package github.anandb.netbeans.ui;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.GridBagConstraints;
 import java.awt.Insets;
 import java.awt.Rectangle;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -15,12 +18,14 @@ import java.util.regex.Pattern;
 import javax.swing.BoxLayout;
 import javax.swing.Icon;
 import javax.swing.JButton;
+import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextPane;
 import javax.swing.Scrollable;
 import javax.swing.border.EmptyBorder;
 import javax.swing.text.View;
 
+import com.vladsch.flexmark.ext.tables.TablesExtension;
 import com.vladsch.flexmark.html.HtmlRenderer;
 import com.vladsch.flexmark.parser.Parser;
 import com.vladsch.flexmark.util.data.MutableDataSet;
@@ -45,6 +50,7 @@ public class MessageBubble extends JPanel implements Scrollable {
     static {
         MutableDataSet options = new MutableDataSet();
         options.set(HtmlRenderer.SOFT_BREAK, "\n");
+        options.set(Parser.EXTENSIONS, List.of(TablesExtension.create()));
         FLEXMARK_PARSER = Parser.builder(options).build();
         FLEXMARK_RENDERER = HtmlRenderer.builder(options).build();
     }
@@ -98,9 +104,13 @@ public class MessageBubble extends JPanel implements Scrollable {
     }
 
     @Override
+    public float getAlignmentX() {
+        return Component.LEFT_ALIGNMENT;
+    }
+
+    @Override
     public Dimension getMaximumSize() {
-        Dimension pref = getPreferredSize();
-        return new Dimension(Integer.MAX_VALUE, pref.height);
+        return new Dimension(Integer.MAX_VALUE, super.getMaximumSize().height);
     }
 
     private static final class FitEditorPane extends JTextPane {
@@ -130,8 +140,8 @@ public class MessageBubble extends JPanel implements Scrollable {
             if (w <= 0 && getParent() != null) {
                 w = getParent().getWidth();
             }
-            if (w <= 20) {
-                w = 400;
+            if (w <= 0) {
+                w = 500; // Better default for calculation
             }
 
             // Fast path: return cached size if dimensions match and cache is valid
@@ -167,9 +177,13 @@ public class MessageBubble extends JPanel implements Scrollable {
         }
 
         @Override
+        public float getAlignmentX() {
+            return Component.LEFT_ALIGNMENT;
+        }
+
+        @Override
         public Dimension getMaximumSize() {
-            Dimension pref = getPreferredSize();
-            return new Dimension(Integer.MAX_VALUE, pref.height);
+            return new Dimension(Integer.MAX_VALUE, getPreferredSize().height);
         }
     }
 
@@ -197,6 +211,7 @@ public class MessageBubble extends JPanel implements Scrollable {
 
         segmentsContainer = new JPanel();
         segmentsContainer.setLayout(new BoxLayout(segmentsContainer, BoxLayout.Y_AXIS));
+        segmentsContainer.setAlignmentX(Component.LEFT_ALIGNMENT);
         segmentsContainer.setDoubleBuffered(true);
 
         this.bubble = new JPanel(new BorderLayout());
@@ -205,7 +220,7 @@ public class MessageBubble extends JPanel implements Scrollable {
         if ("user".equals(type)) {
             RoundedPanel p = new RoundedPanel(16);
             p.setLayout(new BorderLayout());
-            p.setBorder(new EmptyBorder(6, 12, 6, 12));
+            p.setBorder(new EmptyBorder(10, 8, 10, 8));
             this.bubble = p;
         } else {
             this.bubble.setBorder(new EmptyBorder(2, 8, 6, 8));
@@ -213,33 +228,64 @@ public class MessageBubble extends JPanel implements Scrollable {
         this.bubble.add(segmentsContainer, BorderLayout.CENTER);
 
         updateContent(theme);
+        boolean isAssistant = "assistant".equals(type);
 
         Insets gbcInsets = new Insets(4, 12, 4, 12);
-        int anchor = GridBagConstraints.WEST;
+        int anchor = isAssistant ? GridBagConstraints.NORTHWEST : GridBagConstraints.WEST;
+        int fill = GridBagConstraints.HORIZONTAL;
 
         applyBubbleTheme(theme, type);
 
         if ("user".equals(type)) {
-            anchor = GridBagConstraints.WEST;
-            gbcInsets = new Insets(2, 12, 2, 6);
+            gbcInsets = new Insets(4, 12, 4, 12); // Full width, consistent with AI
 
-            JButton copyBtn = UIUtils.createToolbarButton("copy.svg", 20, "Copy to input", null);
-            copyBtn.setBorder(new javax.swing.border.EmptyBorder(2, 8, 2, 8));
+            JLabel userLabel = new JLabel(ThemeManager.getIcon("user.svg", 32));
+            userLabel.setBorder(new javax.swing.border.EmptyBorder(6, 8, 0, 10));
+            userLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            userLabel.setToolTipText("Copy to input");
 
-            copyBtn.addActionListener(e -> {
-                AssistantTopComponent.findInstance().setInputText(this.copyableText);
-                Icon originalIcon = copyBtn.getIcon();
-                copyBtn.setIcon(ThemeManager.getIcon("check.svg", 20));
-                javax.swing.Timer timer = new javax.swing.Timer(1500, ev -> copyBtn.setIcon(originalIcon));
-                timer.setRepeats(false);
-                timer.start();
+            userLabel.addMouseListener(new MouseAdapter() {
+                private final Icon userIcon = ThemeManager.getIcon("user.svg", 32);
+                private final Icon copyIcon = ThemeManager.getIcon("copy.svg", 28);
+                private final Icon checkIcon = ThemeManager.getIcon("check.svg", 28);
+
+                @Override
+                public void mouseEntered(MouseEvent e) {
+                    userLabel.setIcon(copyIcon);
+                }
+
+                @Override
+                public void mouseExited(MouseEvent e) {
+                    userLabel.setIcon(userIcon);
+                }
+
+                @Override
+                public void mousePressed(MouseEvent e) {
+                    AssistantTopComponent.findInstance().setInputText(copyableText);
+                    userLabel.setIcon(checkIcon);
+                    javax.swing.Timer timer = new javax.swing.Timer(1500, ev -> {
+                        // Only revert to user icon if mouse has already exited
+                        if (!userLabel.getBounds().contains(e.getPoint())) {
+                            userLabel.setIcon(userIcon);
+                        } else {
+                            userLabel.setIcon(copyIcon);
+                        }
+                    });
+                    timer.setRepeats(false);
+                    timer.start();
+                }
             });
-            JPanel sidePanel = UIUtils.createTransparentPanel(new BorderLayout());
-            sidePanel.add(copyBtn, BorderLayout.SOUTH);
-            bubble.add(sidePanel, BorderLayout.EAST);
+
+            JPanel rightPanel = UIUtils.createTransparentPanel(new BorderLayout());
+            rightPanel.add(userLabel, BorderLayout.NORTH);
+            bubble.add(rightPanel, BorderLayout.EAST);
+        } else {
+            // AI messages use full width
+            gbcInsets.left = 12;
+            gbcInsets.right = 12;
         }
 
-        add(bubble, UIUtils.createGbc(0, 0, 1.0, 0, GridBagConstraints.HORIZONTAL, anchor, gbcInsets));
+        add(bubble, UIUtils.createGbc(0, 0, 1.0, 0, fill, anchor, gbcInsets));
         LOG.info("Created MessageBubble: type={0}, id={1}, textLength={2}", type, messageId, text.length());
     }
 
@@ -383,8 +429,8 @@ public class MessageBubble extends JPanel implements Scrollable {
             String lang = matcher.group(1);
             String code = matcher.group(2);
 
-            // Determine default expanded state: Assistant messages expand by default
-            boolean defaultExpanded = true;
+            // Code blocks collapsed by default to avoid flicker from syntax highlighting
+            boolean defaultExpanded = false;
 
             // Persist expanded state if we already had it for this index
             if (codeIdx < codeStates.size()) {
@@ -593,27 +639,27 @@ public class MessageBubble extends JPanel implements Scrollable {
     }
 
     private String prepareHtml(String markdown, ColorTheme theme, boolean incremental) {
-        String markdownWithTables = incremental ? markdown : renderTablesAsHtml(markdown);
-        // Use cached static parser/renderer instead of creating new instances
-        String html = FLEXMARK_RENDERER.render(FLEXMARK_PARSER.parse(markdownWithTables));
+        String html = FLEXMARK_RENDERER.render(FLEXMARK_PARSER.parse(markdown));
 
         String tableBg = theme.toHtmlHex(theme.tableBackground());
         String headerBg = theme.toHtmlHex(theme.tableHeaderBackground());
         String borderColor = theme.toHtmlHex(theme.tableBorder());
 
         html = html.replace("<table>",
-                "<table border='1' bordercolor='" + borderColor + "' cellspacing='0' cellpadding='8' style='border-collapse: collapse; width: 100%; margin: 8px 0; background-color: " + tableBg + ";'>");
+                "<table align='left' border='1' bordercolor='" + borderColor + "' cellspacing='0' cellpadding='8' style='border-collapse: collapse; width: 100%; margin: 8px 0; background-color: " + tableBg + ";'>");
         html = html.replace("<th>",
-                "<th bgcolor='" + headerBg + "' style='padding: 8px; border: 1px solid " + borderColor + "; text-align: left;'><b>");
+                "<th align='left' bgcolor='" + headerBg + "' style='padding: 8px; border: 1px solid " + borderColor + "; text-align: left;'><b>");
         html = html.replace("</th>", "</b></th>");
-        html = html.replace("<td>", "<td style='padding: 8px; border: 1px solid " + borderColor + "; vertical-align: top;'>");
+        html = html.replace("<td>", "<td align='left' style='padding: 8px; border: 1px solid " + borderColor + "; vertical-align: top;'>");
+        html = html.replace("<p>", "<p align='left' style='text-align: left !important;'>");
+        html = html.replace("<div>", "<div align='left' style='text-align: left !important;'>");
 
         // Hack to prevent space collapse in JEditorPane
         // Replace double spaces with space + &nbsp; but ONLY if it's not ASCII art
         boolean hasArt = TextScanner.containsAsciiArt(markdown);
-        if (!hasArt) {
+        if (!hasArt && !"user".equals(type)) {
             html = html.replace("  ", " &nbsp;");
-        } else {
+        } else if (hasArt) {
             LOG.fine("Contains ASCII art, not replacing spaces");
         }
 
@@ -634,7 +680,7 @@ public class MessageBubble extends JPanel implements Scrollable {
             customCss += " body { font-weight: 500; }";
         }
         // Detect if the content looks like ASCII art (contains box drawing characters)
-        String bodyStyle = "margin: 0; padding: 0; text-align: left; word-wrap: break-word; overflow-wrap: break-word; max-width: 100%;";
+        String bodyStyle = "margin: 0; padding: 0; text-align: left !important; width: 100%;";
         if (hasArt) {
             // Avoid pre tag to prevent theme conflicts (black box).
             // Use manual line breaks and nbsp to preserve structure in old renderers.
@@ -648,7 +694,16 @@ public class MessageBubble extends JPanel implements Scrollable {
             html = "<div class='ascii-art'>" + html + "</div>";
         }
 
-        return "<html><head><style>" + customCss + "</style></head><body style='" + bodyStyle + "'>" + html
+        // Use a wrapping table for robust alignment
+        String cellStyle = "text-align: left !important;";
+        if ("user".equals(type)) {
+            cellStyle += " font-weight: 300;";
+        }
+
+        return "<html><head><style>" + customCss + "</style></head><body style='" + bodyStyle + "'>"
+                + "<table width='100%' cellpadding='0' cellspacing='0' border='0'><tr><td align='left' style='" + cellStyle + "'>"
+                + html
+                + "</td></tr></table>"
                 + "</body></html>";
     }
 
@@ -673,7 +728,8 @@ public class MessageBubble extends JPanel implements Scrollable {
         pane.setForeground(theme.foreground());
         pane.setDoubleBuffered(true);
         pane.setFont(ThemeManager.getFont());
-        pane.setBorder(new EmptyBorder(4, 12, 8, 12));
+        // Default AI text alignment: 8 (bubble) + 40 (pane padding) = 48px
+        pane.setBorder(new EmptyBorder(6, 40, 10, 12));
         pane.setAlignmentX(Component.LEFT_ALIGNMENT);
         pane.setText(styledHtml);
         return pane;

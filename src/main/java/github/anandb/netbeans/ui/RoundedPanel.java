@@ -6,6 +6,7 @@ import java.awt.Graphics2D;
 import java.awt.Insets;
 import java.awt.RenderingHints;
 import java.awt.geom.RoundRectangle2D;
+import java.awt.Component;
 import javax.swing.JPanel;
 
 /**
@@ -27,6 +28,7 @@ public class RoundedPanel extends JPanel {
         this.radius = radius;
         setOpaque(false);
         setDoubleBuffered(true);
+        setAlignmentX(Component.LEFT_ALIGNMENT);
     }
 
     public void setRadius(int radius) {

@@ -50,11 +50,8 @@ public final class ToolParamsExtractor {
         }
 
         LOG.info("Identifier {0}/{1}", identifier, rawText);
-        String result = (tag.length() < 60 ? tag : "tool").toLowerCase();
-        if (!identifier.isEmpty()) {
-            result += " " + abbreviateMiddle(identifier, "...", 60);
-        }
-        return result;
+        tag = tag.length() < 60 ? tag : "Tool";
+        return tag + " " + abbreviateMiddle(identifier, "...", 60);
     }
 
     public static String extractToolCallId(JsonNode params) {

@@ -58,6 +58,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import github.anandb.netbeans.manager.ACPManager;
 import github.anandb.netbeans.manager.AgentUtils;
 import github.anandb.netbeans.manager.SessionManager;
+import github.anandb.netbeans.manager.SessionTitleManager;
 import github.anandb.netbeans.model.ConfigItem;
 import github.anandb.netbeans.model.Message;
 import github.anandb.netbeans.model.Session;
@@ -487,7 +488,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
                 int selectIdx = -1;
                 for (int i = 0; i < sessions.size(); i++) {
                     Session s = sessions.get(i);
-                    String customTitle = github.anandb.netbeans.manager.SessionTitleManager.getTitle(s.id(), s.title());
+                    String customTitle = SessionTitleManager.getTitle(s.id(), s.title());
                     sessionDropdown.addItem(new SessionItem(s, customTitle));
                     if (currentId != null && s.id().equals(currentId)) {
                         selectIdx = i;
@@ -738,7 +739,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
 
     private String selectedIdToTitle(Session session) {
         String title = defaultIfBlank(session.title(), "Chat " + left(session.id(), 8));
-        return github.anandb.netbeans.manager.SessionTitleManager.getTitle(session.id(), title);
+        return SessionTitleManager.getTitle(session.id(), title);
     }
 
     private void reloadCurrentSession() {

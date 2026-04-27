@@ -4,11 +4,15 @@ import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.model.SessionConfigOption;
 import github.anandb.netbeans.project.ACPProjectManager;
 import org.netbeans.api.project.Project;
+
 import javax.swing.SwingUtilities;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
+
+import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.Logger;
 
 /**
@@ -31,7 +35,7 @@ public class SessionManager {
         void onSessionLoaded(String sessionId, List<SessionConfigOption> configOptions, boolean isStartup);
         void onSessionLoading(boolean isLoading);
         void onSessionError(String message);
-        void onSessionUpdate(github.anandb.netbeans.model.SessionUpdate update);
+        void onSessionUpdate(SessionUpdate update);
     }
 
     private SessionManager() {
@@ -39,12 +43,12 @@ public class SessionManager {
         ACPManager.getInstance().addProjectChangeListener(this::handleProjectChanged);
         ACPProjectManager.getInstance().setProjectOpenListener(this::handleProjectOpened);
         ACPProjectManager.getInstance().setProjectCloseListener(this::handleProjectClosed);
-        
+
         // Register for SSE updates to route them to the active session
         ACPManager.getInstance().addSseListener(this::handleSseUpdate);
     }
 
-    private void handleSseUpdate(github.anandb.netbeans.model.SessionUpdate update) {
+    private void handleSseUpdate(SessionUpdate update) {
         String updateSessionId = update.params() != null ? update.params().sessionId() : null;
         if (updateSessionId != null && updateSessionId.equals(currentSessionId)) {
             for (SessionListener l : listeners) {
@@ -129,7 +133,7 @@ public class SessionManager {
                 .thenAccept(session -> {
                     this.currentSessionId = session.id();
                     this.lastProjectDir = session.effectiveDirectory();
-                    
+
                     SwingUtilities.invokeLater(() -> {
                         notifySessionLoaded(session.id(), session.configOptions(), true);
                         refreshSessions();

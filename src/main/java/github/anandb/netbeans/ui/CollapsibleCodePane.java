@@ -106,9 +106,10 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
         header.setBackground(theme.codeHeaderBackground());
         header.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createMatteBorder(0, 0, 1, 0, theme.codeHeaderBorder()),
-                BorderFactory.createEmptyBorder(6, 12, 6, 3)
+                BorderFactory.createEmptyBorder(6, 8, 6, 3)
         ));
-        headerLabel.setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 0));
+        headerLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
+        headerLabel.setIconTextGap(8);
         headerLabel.setForeground(theme.codeHeaderForeground());
 
         // Copy button
@@ -134,7 +135,7 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
 
         JPanel codeWrapper = new JPanel(new BorderLayout());
         codeWrapper.setBackground(codeTextArea.getBackground());
-        codeWrapper.setBorder(BorderFactory.createEmptyBorder(8, 12, 8, 12));
+        codeWrapper.setBorder(BorderFactory.createEmptyBorder(8, 40, 8, 12));
         codeWrapper.add(codeTextArea, BorderLayout.CENTER);
 
         contentPanel.add(codeWrapper, BorderLayout.CENTER);

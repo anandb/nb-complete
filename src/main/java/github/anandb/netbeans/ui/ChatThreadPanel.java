@@ -33,6 +33,8 @@ import javax.swing.SwingUtilities;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
+import github.anandb.netbeans.manager.SessionTitleManager;
+import github.anandb.netbeans.manager.ToolParamsExtractor;
 import github.anandb.netbeans.model.Message;
 import github.anandb.netbeans.model.MessageClassification;
 import github.anandb.netbeans.model.Session;
@@ -191,7 +193,7 @@ public class ChatThreadPanel extends JPanel {
 
     public void addMessage(String role, String text, String messageId, String copyableText, String kind) {
         LOG.info("ADD [{0}] [{1}] {2}", new Object[]{role, messageId, copyableText});
-        MessageClassification classification = github.anandb.netbeans.manager.ToolParamsExtractor.classify(role, text, kind);
+        MessageClassification classification = ToolParamsExtractor.classify(role, text, kind);
         final String effectiveRole = classification.role();
         final String effectiveKind = classification.kind();
 
@@ -640,7 +642,7 @@ public class ChatThreadPanel extends JPanel {
 
                     for (Session s : sessions) {
                         String title = defaultIfBlank(s.title(), "Chat " + left(s.id(), 8));
-                        String label = github.anandb.netbeans.manager.SessionTitleManager.getTitle(s.id(), title);
+                        String label = SessionTitleManager.getTitle(s.id(), title);
                         String dir = s.effectiveDirectory();
                         JButton sessionBtn = createSelectionButtonWithBadge(label, s.projectName(), dir);
                         sessionBtn.addActionListener(e -> onSessionSelected.accept(s.id()));

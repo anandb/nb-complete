@@ -4,6 +4,7 @@ import java.io.File;
 
 import javax.swing.JFileChooser;
 
+import github.anandb.netbeans.manager.ACPSettings;
 import org.openide.util.NbBundle;
 import org.openide.util.NbPreferences;
 
@@ -17,6 +18,7 @@ import org.openide.util.NbPreferences;
 })
 public class ACPOptionsPanel extends javax.swing.JPanel {
 
+    private static final long serialVersionUID = 1L;
     private final ACPOptionsPanelController controller;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JTextField pathField;
@@ -48,10 +50,10 @@ public class ACPOptionsPanel extends javax.swing.JPanel {
         argsLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_ProcessArguments"));
         browseButton.setText(NbBundle.getMessage(ACPOptionsPanel.class, "BTN_Browse"));
         browseButton.addActionListener(evt -> browseButtonActionPerformed());
-        
+
         echoCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_EchoUserInput"));
         echoCheckbox.addActionListener(evt -> controller.changed());
-        
+
         argsField.addKeyListener(new java.awt.event.KeyAdapter() {
             @Override
             public void keyReleased(java.awt.event.KeyEvent evt) {
@@ -140,14 +142,14 @@ public class ACPOptionsPanel extends javax.swing.JPanel {
         pathField.setText(NbPreferences.forModule(ACPOptionsPanel.class).get("acpExecutablePath", defaultPath));
         argsField.setText(NbPreferences.forModule(ACPOptionsPanel.class).get("processArguments", "acp"));
 
-        preambleArea.setText(github.anandb.netbeans.manager.ACPSettings.getPreamble());
+        preambleArea.setText(ACPSettings.getPreamble());
         echoCheckbox.setSelected(NbPreferences.forModule(ACPOptionsPanel.class).getBoolean("echoUserInput", true));
     }
 
     void store() {
         NbPreferences.forModule(ACPOptionsPanel.class).put("acpExecutablePath", pathField.getText());
         NbPreferences.forModule(ACPOptionsPanel.class).put("processArguments", argsField.getText());
-        github.anandb.netbeans.manager.ACPSettings.setPreamble(preambleArea.getText());
+        ACPSettings.setPreamble(preambleArea.getText());
         NbPreferences.forModule(ACPOptionsPanel.class).putBoolean("echoUserInput", echoCheckbox.isSelected());
     }
 

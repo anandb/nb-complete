@@ -13,8 +13,6 @@ import org.openide.util.ImageUtilities;
  */
 public class ThemeManager {
 
-    private static ColorTheme colorTheme;
-
     public static Icon getIcon(String name) {
         if (name == null) {
             return null;
@@ -96,12 +94,7 @@ public class ThemeManager {
     }
 
     public static ColorTheme getCurrentTheme() {
-        if (colorTheme == null) {
-            // Ok to set it twice.
-            colorTheme = ColorTheme.getNativeTheme(isDark());
-        }
-
-        return colorTheme;
+        return ColorTheme.getNativeTheme(isDark());
     }
 
     private static String getThemeAwareName(String name) {

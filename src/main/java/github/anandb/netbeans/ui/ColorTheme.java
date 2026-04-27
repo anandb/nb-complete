@@ -19,12 +19,17 @@ public record ColorTheme(
     Color tableBackground, Color tableHeaderBackground, Color tableBorder
 ) {
     public static ColorTheme getNativeTheme(boolean darkMode) {
-        Color bubbleUser = UIManager.getColor("Search.background");
-        if (bubbleUser == null) {
-            bubbleUser = UIManager.getColor("Editor.searchBackground");
-        }
-        if (bubbleUser == null) {
-            bubbleUser = UIManager.getColor("EditorPane.background");
+        Color bubbleUser;
+        if (darkMode) {
+            bubbleUser = UIManager.getColor("Search.background");
+            if (bubbleUser == null) {
+                bubbleUser = UIManager.getColor("Editor.searchBackground");
+            }
+            if (bubbleUser == null) {
+                bubbleUser = UIManager.getColor("EditorPane.background");
+            }
+        } else {
+            bubbleUser = Color.decode("#cfecf7");
         }
 
         return new ColorTheme(
@@ -72,13 +77,14 @@ public record ColorTheme(
         String fontStack = "Dialog, 'Noto Sans', 'Segoe UI', 'Ubuntu', 'Helvetica Neue', Arial, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', sans-serif";
         String monoStack = getMonoStack();
 
-        return "body { font-family: " + fontStack + "; font-size: 13px; color: " + fg + "; background-color: " + bg + "; margin: 0; line-height: 1.4; }" +
+        return "html, body { font-family: " + fontStack + "; font-size: 13px; color: " + fg + "; background-color: " + bg + "; margin: 0; padding: 0; line-height: 1.4; text-align: left !important; width: 100% !important; }" +
                "code { background-color: " + codeBg + "; padding: 2px 4px; border-radius: 3px; font-family: " + monoStack + "; font-size: 12px; }" +
-               "pre { background-color: " + preBg + "; color: " + preFg + "; padding: 10px; border-radius: 4px; font-family: " + monoStack + "; font-size: 13px; overflow-x: auto; margin: 6px 0; }" +
-                 "p { margin: 2px 0; }" +
-                 "ul, ol { padding-left: 20px; margin: 4px 0; }" +
-                 "li { margin: 2px 0; }" +
-                 "a { color: " + linkColor + "; text-decoration: none; font-weight: 500; }" +
+               "pre { background-color: " + preBg + "; color: " + preFg + "; padding: 10px; border-radius: 4px; font-family: " + monoStack + "; font-size: 13px; overflow-x: auto; margin: 6px 0; text-align: left !important; width: 100% !important; }" +
+                 "p, div, h1, h2, h3, h4, h5, h6 { margin: 2px 0; text-align: left !important; width: 100% !important; }" +
+                 "ul, ol { padding-left: 20px; margin: 4px 0; text-align: left !important; }" +
+                 "li { margin: 2px 0; text-align: left !important; }" +
+                 "table { width: 100% !important; border-collapse: collapse; text-align: left !important; }" +
+                 "a { color: " + linkColor + "; text-decoration: none; font-weight: 500; } " +
                  "a:hover { text-decoration: underline; }";
     }
 
