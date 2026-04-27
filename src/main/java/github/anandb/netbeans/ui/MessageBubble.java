@@ -88,7 +88,7 @@ public class MessageBubble extends JPanel implements Scrollable {
         bubble.setBackground(bgColor);
         bubble.setOpaque(true);
         segmentsContainer.setBackground(bgColor);
-        segmentsContainer.setOpaque(true);
+        segmentsContainer.setOpaque(false);
 
         if (bubble instanceof RoundedPanel) {
             RoundedPanel rp = (RoundedPanel) bubble;
@@ -457,8 +457,8 @@ public class MessageBubble extends JPanel implements Scrollable {
         if (compIdx < segmentsContainer.getComponentCount()) {
             Component c = segmentsContainer.getComponent(compIdx);
             if (c instanceof FitEditorPane pane) {
-                pane.setBackground(bg);
-                pane.setOpaque(true);
+                pane.setBackground(new Color(0, 0, 0, 0));
+                pane.setOpaque(false);
                 // FitEditorPane.setText now includes a dirty check
                 pane.setText(styledHtml);
                 return;
@@ -627,9 +627,11 @@ public class MessageBubble extends JPanel implements Scrollable {
         }
 
         boolean isAssistant = !"user".equals(type) && !"error".equals(type) && !"tool".equals(type);
-        String customCss = theme.toCss(bg, isAssistant);
+        String customCss = theme.toCss(null, isAssistant);
         if ("error".equals(type)) {
             customCss += " body { color: #D32F2F; font-weight: bold; }";
+        } else if ("user".equals(type)) {
+            customCss += " body { font-weight: 500; }";
         }
         // Detect if the content looks like ASCII art (contains box drawing characters)
         String bodyStyle = "margin: 0; padding: 0; text-align: left; word-wrap: break-word; overflow-wrap: break-word; max-width: 100%;";
@@ -666,8 +668,8 @@ public class MessageBubble extends JPanel implements Scrollable {
         pane.putClientProperty(javax.swing.JTextPane.HONOR_DISPLAY_PROPERTIES, Boolean.TRUE);
         pane.setEditable(false);
         pane.setContentType("text/html");
-        pane.setOpaque(true);
-        pane.setBackground(bg);
+        pane.setOpaque(false);
+        pane.setBackground(new Color(0, 0, 0, 0));
         pane.setForeground(theme.foreground());
         pane.setDoubleBuffered(true);
         pane.setFont(ThemeManager.getFont());

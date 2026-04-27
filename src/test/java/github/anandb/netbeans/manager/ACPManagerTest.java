@@ -3,6 +3,7 @@ package github.anandb.netbeans.manager;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
+import github.anandb.netbeans.model.SessionUpdate;
 import java.lang.reflect.Field;
 import java.nio.file.Path;
 

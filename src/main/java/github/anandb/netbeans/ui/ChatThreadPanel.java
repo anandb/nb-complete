@@ -34,6 +34,7 @@ import javax.swing.SwingUtilities;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import github.anandb.netbeans.model.Message;
+import github.anandb.netbeans.model.MessageClassification;
 import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.model.SessionUpdate.UpdateData;
 import github.anandb.netbeans.support.Logger;
@@ -190,17 +191,21 @@ public class ChatThreadPanel extends JPanel {
 
     public void addMessage(String role, String text, String messageId, String copyableText, String kind) {
         LOG.info("ADD [{0}] [{1}] {2}", new Object[]{role, messageId, copyableText});
-        if (isIgnorableMessage(role, text)) {
+        MessageClassification classification = github.anandb.netbeans.manager.ToolParamsExtractor.classify(role, text, kind);
+        final String effectiveRole = classification.role();
+        final String effectiveKind = classification.kind();
+
+        if (isIgnorableMessage(effectiveRole, text)) {
             return;
         }
 
         SwingUtilities.invokeLater(() -> {
-            LOG.info("EDT: Adding bubble for role={0}, id={1}", new Object[]{role, messageId});
+            LOG.info("EDT: Adding bubble for role={0}, id={1}", new Object[]{effectiveRole, messageId});
             MessageBubble lastBubble = findLastNonIgnorableBubble();
-            boolean canMerge = (lastBubble != null && role.equals(lastBubble.getType()));
+            boolean canMerge = (lastBubble != null && effectiveRole.equals(lastBubble.getType()));
             if (canMerge) {
                 // Always merge consecutive thoughts
-                if (!"thought".equals(role) && (messageId == null || !messageId.equals(lastBubble.getMessageId()))) {
+                if (!"thought".equals(effectiveRole) && (messageId == null || !messageId.equals(lastBubble.getMessageId()))) {
                     canMerge = false;
                 }
             }
@@ -213,10 +218,10 @@ public class ChatThreadPanel extends JPanel {
 
             finalizeGroup();
 
-            MessageBubble bubble = new MessageBubble(role, text, messageId, copyableText, kind);
-            if ("tool".equals(role)) {
+            MessageBubble bubble = new MessageBubble(effectiveRole, text, messageId, copyableText, effectiveKind);
+            if ("tool".equals(effectiveRole)) {
                 bubble.setExpanded(false);
-            } else if ("thought".equals(role)) {
+            } else if ("thought".equals(effectiveRole)) {
                 bubble.setExpanded(true);
             }
 

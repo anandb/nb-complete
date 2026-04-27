@@ -19,11 +19,19 @@ public record ColorTheme(
     Color tableBackground, Color tableHeaderBackground, Color tableBorder
 ) {
     public static ColorTheme getNativeTheme(boolean darkMode) {
+        Color bubbleUser = UIManager.getColor("Search.background");
+        if (bubbleUser == null) {
+            bubbleUser = UIManager.getColor("Editor.searchBackground");
+        }
+        if (bubbleUser == null) {
+            bubbleUser = UIManager.getColor("EditorPane.background");
+        }
+
         return new ColorTheme(
                 darkMode, UIManager.getColor("Panel.background"),
                 UIManager.getColor("Panel.foreground"), UIManager.getColor("TextArea.selectionBackground"),
                 UIManager.getColor("Button.focusColor"), UIManager.getColor("Label.background"),
-                UIManager.getColor("Editor.background"), UIManager.getColor("EditorPane.background"),
+                UIManager.getColor("Editor.background"), bubbleUser,
                 null, UIManager.getColor("Button.borderColor"),
                 UIManager.getColor("TextArea.foreground"), UIManager.getColor("Panel.background"),
                 UIManager.getColor("Button.background"), UIManager.getColor("Label.foreground"),

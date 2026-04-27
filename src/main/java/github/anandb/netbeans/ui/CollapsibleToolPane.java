@@ -155,6 +155,6 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
         if (title.toUpperCase().contains("THINKING")) {
             return ThemeManager.getIcon("brain.svg", 32);
         }
-        return ThemeManager.getIcon("tool.svg", 21);
+        return ThemeManager.getIcon("tool.svg", 24);
     }
 }

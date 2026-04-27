@@ -5,6 +5,7 @@ import java.util.regex.Pattern;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
+import github.anandb.netbeans.model.MessageClassification;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.Logger;
 
@@ -49,8 +50,11 @@ public final class ToolParamsExtractor {
         }
 
         LOG.info("Identifier {0}/{1}", identifier, rawText);
-        tag = tag.length() < 60 ? tag : "Tool";
-        return tag + " " + abbreviateMiddle(identifier, "...", 60);
+        String result = (tag.length() < 60 ? tag : "tool").toLowerCase();
+        if (!identifier.isEmpty()) {
+            result += " " + abbreviateMiddle(identifier, "...", 60);
+        }
+        return result;
     }
 
     public static String extractToolCallId(JsonNode params) {
@@ -72,5 +76,16 @@ public final class ToolParamsExtractor {
             }
         }
         return null;
+    }
+
+    public static MessageClassification classify(String role, String text, String kind) {
+        if (isDcpCleanup(text)) {
+            return new MessageClassification("tool", "context cleanup");
+        }
+        return new MessageClassification(role, kind);
+    }
+
+    public static boolean isDcpCleanup(String text) {
+        return text != null && (text.contains("▣ DCP") || text.contains("  DCP Sweep  "));
     }
 }
