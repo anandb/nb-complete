@@ -2,12 +2,12 @@ package github.anandb.netbeans.ui;
 
 import static org.apache.commons.lang3.StringUtils.defaultIfBlank;
 import static org.apache.commons.lang3.StringUtils.left;
+import static org.apache.commons.lang3.StringUtils.split;
 
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Color;
 import java.awt.Component;
-import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
@@ -16,16 +16,12 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-
-import github.anandb.netbeans.support.Logger;
+import java.util.concurrent.CompletableFuture;
 
 import javax.swing.BorderFactory;
 import javax.swing.DefaultListModel;
@@ -59,20 +55,17 @@ import org.openide.windows.TopComponent;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
-import java.util.concurrent.CompletableFuture;
-
 import github.anandb.netbeans.manager.ACPManager;
 import github.anandb.netbeans.manager.AgentUtils;
 import github.anandb.netbeans.manager.SessionManager;
 import github.anandb.netbeans.model.ConfigItem;
 import github.anandb.netbeans.model.Message;
 import github.anandb.netbeans.model.Session;
-import github.anandb.netbeans.model.SessionItem;
 import github.anandb.netbeans.model.SessionConfigOption;
 import github.anandb.netbeans.model.SessionConfigSelectOption;
+import github.anandb.netbeans.model.SessionItem;
 import github.anandb.netbeans.model.SessionUpdate;
-
-import static org.apache.commons.lang3.StringUtils.split;
+import github.anandb.netbeans.support.Logger;
 
 @ConvertAsProperties(
         dtd = "-//github.anandb.netbeans.ui//Assistant//EN",
@@ -1154,8 +1147,9 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
                             }
 
                             String displayName = name;
-                            if (displayName.contains("(") && displayName.endsWith(")")) {
-                                displayName = displayName.substring(0, displayName.lastIndexOf("(")).trim();
+                            int parenIdx = displayName.lastIndexOf("(");
+                            if (parenIdx > 0 && displayName.endsWith(")")) {
+                                displayName = displayName.substring(0, parenIdx).trim();
                             }
 
                             modelVariants.computeIfAbsent(baseId, k -> new ArrayList<>())

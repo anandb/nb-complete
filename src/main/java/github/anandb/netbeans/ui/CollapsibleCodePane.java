@@ -189,21 +189,16 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
 
     private void applySyntaxStyle() {
         String lang = (language != null) ? language.toLowerCase() : "";
-        String style = LANGUAGE_MAP.getOrDefault(lang, SyntaxConstants.SYNTAX_STYLE_NONE);
-
-        // Cache syntax style/theme application to minimize parsing overhead on subsequent calls
-        if (!style.equals("CACHE_MISS")) { // Simple flag check to prevent constant re-parsing
-            codeTextArea.setSyntaxEditingStyle(style);
-        } else {
+        String style = LANGUAGE_MAP.get(lang);
+        if (style == null) {
             // Fallback for compound identifiers (e.g., 'custom-java' -> 'java')
-            for (java.util.Map.Entry<String, String> entry : LANGUAGE_MAP.entrySet()) {
-                if (lang.endsWith(entry.getKey())) {
-                    style = entry.getValue();
-                    codeTextArea.setSyntaxEditingStyle(style);
-                    break;
-                }
-            }
+            style = LANGUAGE_MAP.entrySet().stream()
+                .filter(e -> lang.endsWith(e.getKey()))
+                .map(java.util.Map.Entry::getValue)
+                .findFirst()
+                .orElse(SyntaxConstants.SYNTAX_STYLE_NONE);
         }
+        codeTextArea.setSyntaxEditingStyle(style);
     }
 
     private void applySolarizedDarkTheme() {

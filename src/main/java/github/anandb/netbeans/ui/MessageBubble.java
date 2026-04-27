@@ -125,6 +125,7 @@ public class MessageBubble extends JPanel implements Scrollable {
 
         @Override
         public Dimension getPreferredSize() {
+            Insets insets = getInsets();
             int w = getWidth();
             if (w <= 0 && getParent() != null) {
                 w = getParent().getWidth();
@@ -141,12 +142,15 @@ public class MessageBubble extends JPanel implements Scrollable {
             try {
                 View root = getUI().getRootView(this);
                 if (root != null) {
-                    root.setSize(w, Short.MAX_VALUE);
+                    // Subtract insets to get actual content width for wrapping calculation
+                    int contentWidth = Math.max(1, w - insets.left - insets.right);
+                    root.setSize(contentWidth, Short.MAX_VALUE);
                     float h = root.getPreferredSpan(View.Y_AXIS);
                     if (h > 0) {
                         lastComputedHeight = (int) Math.ceil(h);
                         lastComputedWidth = w;
-                        cachedSize = new Dimension(w, lastComputedHeight + 8);
+                        // Add insets back and a 4px safety buffer to prevent clipping
+                        cachedSize = new Dimension(w, lastComputedHeight + insets.top + insets.bottom + 4);
                         return cachedSize;
                     }
                 }
@@ -154,10 +158,11 @@ public class MessageBubble extends JPanel implements Scrollable {
             }
 
             if (lastComputedHeight > 0) {
-                cachedSize = new Dimension(w, Math.max(30, lastComputedHeight + 8));
+                cachedSize = new Dimension(w, Math.max(30, lastComputedHeight + insets.top + insets.bottom + 4));
                 return cachedSize;
             }
-            cachedSize = new Dimension(w, Math.max(30, super.getPreferredSize().height));
+            Dimension superSize = super.getPreferredSize();
+            cachedSize = new Dimension(w, Math.max(30, superSize.height + insets.top + insets.bottom + 4));
             return cachedSize;
         }
 
@@ -576,7 +581,7 @@ public class MessageBubble extends JPanel implements Scrollable {
 
         FitEditorPane pane = createHtmlPane(styledHtml, theme.tableBackground());
         pane.setOpaque(false); // Let RoundedPanel background show through
-        pane.setBorder(new EmptyBorder(4, 4, 4, 4));
+        pane.setBorder(new EmptyBorder(8, 8, 8, 8));
         rp.add(pane, BorderLayout.CENTER);
 
         if (compIdx < segmentsContainer.getComponentCount()) {
@@ -627,7 +632,7 @@ public class MessageBubble extends JPanel implements Scrollable {
             customCss += " body { color: #D32F2F; font-weight: bold; }";
         }
         // Detect if the content looks like ASCII art (contains box drawing characters)
-        String bodyStyle = "margin: 0; padding: 4px; text-align: left; word-wrap: break-word; overflow-wrap: break-word; max-width: 100%;";
+        String bodyStyle = "margin: 0; padding: 0; text-align: left; word-wrap: break-word; overflow-wrap: break-word; max-width: 100%;";
         if (hasArt) {
             // Avoid pre tag to prevent theme conflicts (black box).
             // Use manual line breaks and nbsp to preserve structure in old renderers.
@@ -666,7 +671,7 @@ public class MessageBubble extends JPanel implements Scrollable {
         pane.setForeground(theme.foreground());
         pane.setDoubleBuffered(true);
         pane.setFont(ThemeManager.getFont());
-        pane.setBorder(new EmptyBorder(0, 12, 2, 12));
+        pane.setBorder(new EmptyBorder(4, 12, 8, 12));
         pane.setAlignmentX(Component.LEFT_ALIGNMENT);
         pane.setText(styledHtml);
         return pane;

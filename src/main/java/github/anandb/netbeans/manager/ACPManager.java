@@ -360,6 +360,10 @@ public class ACPManager {
                 .thenApply(res -> {
                     try {
                         LOG.log(Level.FINE, "getSessions: got response");
+                        if (res == null) {
+                            LOG.warn("getSessions: null response");
+                            return new ArrayList<Session>();
+                        }
                         JsonNode root = objectMapper.readTree(res.traverse());
                         JsonNode result = root.has("result") ? root.get("result") : root;
                         JsonNode sessionsNode = result.has("sessions") ? result.get("sessions") : result.has("data") ? result.get("data") : result;
