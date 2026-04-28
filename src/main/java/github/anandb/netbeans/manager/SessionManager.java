@@ -227,7 +227,9 @@ public class SessionManager {
         if (!preamble.isEmpty()) {
             ACPManager.getInstance().sendMessage(sessionId, preamble, null)
                     .exceptionally(ex -> {
-                        LOG.warn("Failed to send preamble", ex);
+                        Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
+                        LOG.warn("Failed to send preamble: {0}", cause.getMessage());
+                        notifyError("Connection lost while sending preamble: " + cause.getMessage());
                         return null;
                     });
         }

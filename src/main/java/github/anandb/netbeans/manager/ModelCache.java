@@ -55,6 +55,14 @@ public class ModelCache {
         }
     }
 
+    public static synchronized void clear() {
+        cachedModels.clear();
+        File file = getStorageFile();
+        if (file.exists()) {
+            file.delete();
+        }
+    }
+
     private static void load() {
         File file = getStorageFile();
         if (file.exists()) {

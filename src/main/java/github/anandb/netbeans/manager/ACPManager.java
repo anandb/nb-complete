@@ -267,6 +267,7 @@ public class ACPManager {
 
     public synchronized void restartServer() {
         LOG.fine("Manual restart of ACP server requested...");
+        ModelCache.clear();
         stopServer();
         // Reset state so startServer() actually proceeds
         serverStarted = true; // Still marked as started since we want it to run
@@ -720,6 +721,13 @@ public class ACPManager {
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
+        }
+
+        // Drain all pending futures so callers (e.g. sendMessage) get their exceptionally() fired
+        if (rpcClient != null) {
+            AcpProtocolClient staleClient = rpcClient;
+            rpcClient = null;
+            staleClient.close();
         }
 
         this.initialized = false;
