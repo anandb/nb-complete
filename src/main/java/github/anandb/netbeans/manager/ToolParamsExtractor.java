@@ -16,8 +16,8 @@ import static org.apache.commons.lang3.StringUtils.firstNonBlank;
 public final class ToolParamsExtractor {
     private static final Logger LOG = new Logger(ToolParamsExtractor.class);
     private static final Pattern[] TOOL_CONTENT_PATTERNS = {
-        Pattern.compile("<skill_content name=\"(.{2,}?)\".*$", Pattern.DOTALL),
-        Pattern.compile("(?:.*?)<path>(.{10,})</path>.*$", Pattern.DOTALL)
+        Pattern.compile("<skill_content name=\"([^\"]{2,})\""),
+        Pattern.compile("<path>([^<]{10,})</path>")
     };
 
     private ToolParamsExtractor() {
@@ -46,10 +46,11 @@ public final class ToolParamsExtractor {
             Matcher m = pattern.matcher(rawText);
             if (m.find()) {
                 identifier = m.group(1);
+                break;
             }
         }
 
-        LOG.info("Identifier {0}/{1}", identifier, rawText);
+        LOG.fine("Identifier {0}/{1}", identifier, rawText);
         tag = tag.length() < 60 ? tag : "Tool";
         return tag + " " + abbreviateMiddle(identifier, "...", 60);
     }

@@ -5,6 +5,7 @@ import javax.swing.UIManager;
 
 /**
  * Centralized color definitions for the ACP NetBeans plugin.
+ * Cached singleton refreshed on L&F changes.
  */
 public record ColorTheme(
     boolean isDark,
@@ -18,7 +19,23 @@ public record ColorTheme(
     Color toolForeground, Color permissionBg, Color permissionBorder, Color permissionTitle,
     Color tableBackground, Color tableHeaderBackground, Color tableBorder
 ) {
+
+    private static volatile ColorTheme cachedTheme;
+    static {
+        UIManager.addPropertyChangeListener(e -> cachedTheme = null);
+    }
+
     public static ColorTheme getNativeTheme(boolean darkMode) {
+        ColorTheme theme = cachedTheme;
+        if (theme != null) {
+            return theme;
+        }
+        theme = createNativeTheme(darkMode);
+        cachedTheme = theme;
+        return theme;
+    }
+
+    private static ColorTheme createNativeTheme(boolean darkMode) {
         Color bubbleUser;
         if (darkMode) {
             bubbleUser = UIManager.getColor("Search.background");
@@ -27,6 +44,9 @@ public record ColorTheme(
             }
             if (bubbleUser == null) {
                 bubbleUser = UIManager.getColor("EditorPane.background");
+            }
+            if (bubbleUser == null) {
+                bubbleUser = Color.decode("#2d2d2d");
             }
         } else {
             bubbleUser = Color.decode("#cfecf7");

@@ -53,8 +53,9 @@ public class ChatThreadPanel extends JPanel {
     private final JPanel messagesContainer;
     private final JScrollPane scrollPane;
     private final ArrayList<Message> messageList = new ArrayList<>();
-    private volatile MessageBubble activeStreamBubble = null;
+    private MessageBubble activeStreamBubble = null;
     private final javax.swing.Timer streamFlushTimer;
+    private final javax.swing.Timer scrollTimer;
 
     public ChatThreadPanel() {
         ColorTheme theme = ThemeManager.getCurrentTheme();
@@ -107,6 +108,13 @@ public class ChatThreadPanel extends JPanel {
             }
         });
         streamFlushTimer.setRepeats(true);
+
+        scrollTimer = new javax.swing.Timer(100, e -> {
+            JScrollBar vertical = scrollPane.getVerticalScrollBar();
+            vertical.setValue(vertical.getMaximum());
+            messagesContainer.scrollRectToVisible(new Rectangle(0, messagesContainer.getHeight() - 1, 1, 1));
+        });
+        scrollTimer.setRepeats(false);
     }
 
     private static class ScrollablePanel extends JPanel implements Scrollable {
@@ -320,7 +328,6 @@ public class ChatThreadPanel extends JPanel {
                 addMessage(role, text, defaultString(messageId), text, update.kind());
             }
             messagesContainer.revalidate();
-            messagesContainer.repaint();
             scrollToBottom(true);
         });
     }
@@ -371,7 +378,6 @@ public class ChatThreadPanel extends JPanel {
             messagesContainer.add(bubble);
             messagesContainer.add(Box.createVerticalStrut(4));
             messagesContainer.revalidate();
-            messagesContainer.repaint();
             scrollToBottom(true);
         });
     }
@@ -386,6 +392,7 @@ public class ChatThreadPanel extends JPanel {
             ColorTheme theme = ThemeManager.getCurrentTheme();
 
             JPanel content = new JPanel(new BorderLayout(0, 10));
+            content.setOpaque(true);
             content.setBackground(theme.permissionBg());
             content.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(theme.permissionBorder(), 1, true),
@@ -497,8 +504,6 @@ public class ChatThreadPanel extends JPanel {
         }
     }
 
-    private javax.swing.Timer scrollTimer;
-
     @Override
     public void removeNotify() {
         super.removeNotify();
@@ -530,20 +535,11 @@ public class ChatThreadPanel extends JPanel {
             }
 
             JScrollBar vertical = scrollPane.getVerticalScrollBar();
-
-            // Set twice to handle layout updates
             vertical.setValue(vertical.getMaximum());
 
-            // Re-apply after a short delay to account for dynamic component resizing
-            if (scrollTimer != null && scrollTimer.isRunning()) {
+            if (scrollTimer.isRunning()) {
                 scrollTimer.restart();
             } else {
-                scrollTimer = new javax.swing.Timer(100, e -> {
-                    vertical.setValue(vertical.getMaximum());
-                    // Force a scroll to bottom by moving the viewport
-                    messagesContainer.scrollRectToVisible(new Rectangle(0, messagesContainer.getHeight() - 1, 1, 1));
-                });
-                scrollTimer.setRepeats(false);
                 scrollTimer.start();
             }
         });
@@ -551,13 +547,17 @@ public class ChatThreadPanel extends JPanel {
 
     public void toggleAllBlocks(boolean expanded) {
         SwingUtilities.invokeLater(() -> {
-            for (Component c : messagesContainer.getComponents()) {
-                if (c instanceof MessageBubble bubble) {
-                    bubble.toggleAllBlocks(expanded);
+            BaseCollapsiblePane.setBatchMode(true);
+            try {
+                for (Component c : messagesContainer.getComponents()) {
+                    if (c instanceof MessageBubble bubble) {
+                        bubble.toggleAllBlocks(expanded);
+                    }
                 }
+            } finally {
+                BaseCollapsiblePane.setBatchMode(false);
             }
             messagesContainer.revalidate();
-            // revalidate automatically schedules repaint, removed redundant repaint() call
         });
     }
 
@@ -597,7 +597,6 @@ public class ChatThreadPanel extends JPanel {
             messageList.clear();
             messagesContainer.removeAll();
             messagesContainer.revalidate();
-            messagesContainer.repaint();
         });
     }
 
@@ -652,7 +651,6 @@ public class ChatThreadPanel extends JPanel {
                 }
 
                 messagesContainer.revalidate();
-                messagesContainer.repaint();
             } catch (Exception ex) {
                 LOG.warn("setSessionList error: {0}", ex.getMessage());
             }

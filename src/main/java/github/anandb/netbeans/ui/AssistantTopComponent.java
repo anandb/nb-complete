@@ -109,7 +109,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
     private final JComboBox<ConfigItem> modeCombo;
     private final JComboBox<ConfigItem> modelCombo;
     private final JComboBox<ConfigItem> thinkingCombo;
-    private final JLabel statusLabel;
+    private JLabel statusLabel;
     private final JLabel versionLabel;
     private final JLabel cwdLabel;
     private final JScrollPane inputScrollPane;
@@ -126,6 +126,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
     private boolean isUpdatingConfigControls = false;
     private javax.swing.Timer thinkingTimer;
     private int thinkingDots = 0;
+    private static final String[] DOT_STRINGS = {"", ".", "..", "..."};
 
     private final LinkedHashMap<String, List<ConfigItem>> modelVariants = new LinkedHashMap<>();
     private String currentConfigModelId = null;
@@ -135,6 +136,18 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
         initComponents();
         setName(NbBundle.getMessage(AssistantTopComponent.class, "CTL_AssistantTopComponent"));
         setToolTipText(NbBundle.getMessage(AssistantTopComponent.class, "HINT_AssistantTopComponent"));
+
+        thinkingTimer = new javax.swing.Timer(500, e -> {
+            if (statusLabel != null && statusLabel.getText() != null) {
+                String txt = statusLabel.getText();
+                if (txt.startsWith("Thinking") || txt.startsWith("Responding")
+                        || txt.startsWith("Sending")) {
+                    String base = txt.replace(".", "");
+                    thinkingDots = (thinkingDots + 1) % 4;
+                    statusLabel.setText(base + DOT_STRINGS[thinkingDots]);
+                }
+            }
+        });
 
         setLayout(new BorderLayout());
         chatPanel = new ChatThreadPanel();
@@ -818,28 +831,9 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
             }
 
             if (isProcessing) {
-                if (thinkingTimer == null) {
-                    thinkingTimer = new javax.swing.Timer(500, e -> {
-                        if (statusLabel != null && statusLabel.getText() != null) {
-                            String txt = statusLabel.getText();
-                            if (txt.startsWith("Thinking") || txt.startsWith("Responding")
-                                    || txt.startsWith("Sending")) {
-                                String base = txt.replace(".", "");
-                                thinkingDots = (thinkingDots + 1) % 4;
-                                String dots = "";
-                                for (int i = 0; i < thinkingDots; i++) {
-                                    dots += ".";
-                                }
-                                statusLabel.setText(base + dots);
-                            }
-                        }
-                    });
-                }
                 thinkingTimer.start();
             } else {
-                if (thinkingTimer != null) {
-                    thinkingTimer.stop();
-                }
+                thinkingTimer.stop();
             }
         });
     }

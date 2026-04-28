@@ -94,6 +94,12 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
                     }
                 };
                 paramLabel.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN));
+                paramLabel.addMouseListener(new java.awt.event.MouseAdapter() {
+                    @Override
+                    public void mousePressed(java.awt.event.MouseEvent e) {
+                        toggle();
+                    }
+                });
             }
             paramLabel.setText(" " + parts[1]);
             titlePanel.add(paramLabel);

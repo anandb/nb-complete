@@ -23,6 +23,9 @@ public class RoundedPanel extends JPanel {
     private Color baseColor; // null = transparent (children fill their own backgrounds)
     private Color borderColor; // null = use theme's bubbleBorder
     private boolean showBorder = true;
+    private volatile RoundRectangle2D.Float cachedShape;
+    private int cachedWidth = -1;
+    private int cachedHeight = -1;
 
     public RoundedPanel(int radius) {
         this.radius = radius;
@@ -33,6 +36,7 @@ public class RoundedPanel extends JPanel {
 
     public void setRadius(int radius) {
         this.radius = radius;
+        invalidateShape();
     }
 
     public void setBaseColor(Color color) {
@@ -47,13 +51,35 @@ public class RoundedPanel extends JPanel {
         this.borderColor = borderColor;
     }
 
+    private void invalidateShape() {
+        cachedShape = null;
+        cachedWidth = -1;
+        cachedHeight = -1;
+    }
+
+    @Override
+    public void setBounds(int x, int y, int w, int h) {
+        if (w != cachedWidth || h != cachedHeight) {
+            invalidateShape();
+        }
+        super.setBounds(x, y, w, h);
+    }
+
     private RoundRectangle2D.Float getShape() {
+        RoundRectangle2D.Float shape = cachedShape;
+        if (shape != null) {
+            return shape;
+        }
         Insets ins = getInsets();
         float x = ins.left;
         float y = ins.top;
         float w = getWidth() - ins.left - ins.right;
         float h = getHeight() - ins.top - ins.bottom;
-        return new RoundRectangle2D.Float(x, y, w, h, radius, radius);
+        shape = new RoundRectangle2D.Float(x, y, w, h, radius, radius);
+        cachedShape = shape;
+        cachedWidth = getWidth();
+        cachedHeight = getHeight();
+        return shape;
     }
 
     @Override
@@ -73,23 +99,22 @@ public class RoundedPanel extends JPanel {
     protected void paintChildren(Graphics g) {
         Graphics2D g2 = (Graphics2D) g.create();
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        RoundRectangle2D.Float shape = getShape();
         if (radius > 0) {
-            g2.clip(getShape());
+            g2.clip(shape);
         }
         super.paintChildren(g2);
         g2.dispose();
 
         // Draw border AFTER children so it is always on top of child panels
-        ColorTheme theme = ThemeManager.getCurrentTheme();
-        Color border = borderColor != null ? borderColor : theme.bubbleBorder();
+        Color border = borderColor != null ? borderColor : ThemeManager.getCurrentTheme().bubbleBorder();
         if (showBorder && border != null && border.getAlpha() > 0) {
             Graphics2D g3 = (Graphics2D) g.create();
             g3.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             g3.setColor(border);
-            RoundRectangle2D.Float shape = getShape();
             g3.draw(new RoundRectangle2D.Float(
                     shape.x + 0.5f, shape.y + 0.5f,
-                    shape.width - 1, shape.height - 1,
+                    shape.width - 1.0f, shape.height - 1.0f,
                     radius, radius));
             g3.dispose();
         }

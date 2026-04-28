@@ -82,7 +82,37 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
             onToggle(expanded);
             revalidate();
             repaint();
-            updateParentLayout();
+            if (!inBatch) {
+                updateParentLayout();
+            }
+        }
+    }
+
+    private static volatile boolean inBatch = false;
+
+    public static void setBatchMode(boolean batch) {
+        inBatch = batch;
+    }
+
+    public static boolean isBatchMode() {
+        return inBatch;
+    }
+
+    @Override
+    public Dimension getMaximumSize() {
+        Dimension pref = getPreferredSize();
+        return new Dimension(Integer.MAX_VALUE, pref.height);
+    }
+
+    protected void updateParentLayout() {
+        Component parent = getParent();
+        while (parent != null) {
+            parent.revalidate();
+            parent.repaint();
+            if (parent instanceof ChatThreadPanel) {
+                break;
+            }
+            parent = parent.getParent();
         }
     }
 
@@ -109,24 +139,6 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
 
     protected Color getDefaultHeaderBackground() {
         return ThemeManager.getCurrentTheme().panelHeader();
-    }
-
-    @Override
-    public Dimension getMaximumSize() {
-        Dimension pref = getPreferredSize();
-        return new Dimension(Integer.MAX_VALUE, pref.height);
-    }
-
-    protected void updateParentLayout() {
-        Component parent = getParent();
-        while (parent != null) {
-            parent.revalidate();
-            parent.repaint();
-            if (parent instanceof ChatThreadPanel) {
-                break;
-            }
-            parent = parent.getParent();
-        }
     }
 
 }

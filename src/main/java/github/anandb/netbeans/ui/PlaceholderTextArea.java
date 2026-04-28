@@ -38,7 +38,12 @@ public class PlaceholderTextArea extends JTextArea {
             g.setFont(oldFont.deriveFont(Font.PLAIN));
             int x = getInsets().left;
             int y = getInsets().top + g.getFontMetrics().getAscent();
-            g.drawString(placeholder, x, y);
+            int lineHeight = g.getFontMetrics().getHeight();
+            String[] lines = placeholder.split("\\R", -1);
+            for (String line : lines) {
+                g.drawString(line, x, y);
+                y += lineHeight;
+            }
             g.setColor(oldColor);
             g.setFont(oldFont);
         }

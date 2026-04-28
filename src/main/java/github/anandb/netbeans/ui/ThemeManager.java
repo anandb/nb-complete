@@ -2,6 +2,8 @@ package github.anandb.netbeans.ui;
 
 import java.awt.Color;
 import java.awt.Font;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import javax.swing.Icon;
 import javax.swing.UIManager;
@@ -13,24 +15,29 @@ import org.openide.util.ImageUtilities;
  */
 public class ThemeManager {
 
+    private static final Map<String, Icon> ICON_CACHE = new LinkedHashMap<>(64, 0.75f, true) {
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<String, Icon> eldest) {
+            return size() > 256;
+        }
+    };
+
+    public static void clearIconCache() {
+        ICON_CACHE.clear();
+    }
+
     public static Icon getIcon(String name) {
-        if (name == null) {
-            return null;
-        }
-        String resourcePath = "github/anandb/netbeans/ui/icons/" + getThemeAwareName(name);
-        java.awt.Image img = ImageUtilities.loadImage(resourcePath, true);
-        if (img == null) {
-            java.net.URL url = ThemeManager.class.getClassLoader().getResource(resourcePath);
-            if (url != null) {
-                img = new javax.swing.ImageIcon(url).getImage();
-            }
-        }
-        return img != null ? ImageUtilities.image2Icon(img) : null;
+        return getIcon(name, 0);
     }
 
     public static Icon getIcon(String name, int size) {
         if (name == null) {
             return null;
+        }
+        String cacheKey = name + "@" + size;
+        Icon cached = ICON_CACHE.get(cacheKey);
+        if (cached != null) {
+            return cached;
         }
         String resourcePath = "github/anandb/netbeans/ui/icons/" + getThemeAwareName(name);
         java.awt.Image img = ImageUtilities.loadImage(resourcePath, true);
@@ -53,7 +60,9 @@ public class ThemeManager {
             g2.dispose();
             img = bi;
         }
-        return ImageUtilities.image2Icon(img);
+        Icon icon = ImageUtilities.image2Icon(img);
+        ICON_CACHE.put(cacheKey, icon);
+        return icon;
     }
 
     public static Font getFont() {
