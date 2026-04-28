@@ -45,6 +45,7 @@ public class ACPManager {
     private final ObjectMapper objectMapper = MapperSupplier.get();
 
     // Shared ScheduledExecutor for reconnection delays
+    private java.util.concurrent.ScheduledFuture<?> reconnectFuture;
     private final java.util.concurrent.ScheduledExecutorService reconnectExecutor
             = java.util.concurrent.Executors.newSingleThreadScheduledExecutor(r -> {
                 Thread t = new Thread(r, "ACP-Reconnect");
@@ -93,8 +94,14 @@ public class ACPManager {
     }
 
     private synchronized void startServer() {
-        if (serverProcess != null && serverProcess.isAlive()) {
+        if (isClosing || (serverProcess != null && serverProcess.isAlive())) {
             return;
+        }
+
+        // Cancel any pending reconnect future
+        if (reconnectFuture != null && !reconnectFuture.isDone()) {
+            reconnectFuture.cancel(false);
+            reconnectFuture = null;
         }
         isClosing = false;
         if (readyFuture.isDone()) {
@@ -269,6 +276,14 @@ public class ACPManager {
 
     private void stopServer() {
         isClosing = true;
+
+        // Cancel any pending reconnect future
+        if (reconnectFuture != null && !reconnectFuture.isDone()) {
+            reconnectFuture.cancel(false);
+            reconnectFuture = null;
+        }
+        reconnectExecutor.shutdownNow();
+
         if (rpcClient != null) {
             rpcClient.close();
             rpcClient = null;
@@ -364,9 +379,8 @@ public class ACPManager {
                             LOG.warn("getSessions: null response");
                             return new ArrayList<Session>();
                         }
-                        JsonNode root = objectMapper.readTree(res.traverse());
-                        JsonNode result = root.has("result") ? root.get("result") : root;
-                        JsonNode sessionsNode = result.has("sessions") ? result.get("sessions") : result.has("data") ? result.get("data") : result;
+                        JsonNode root = res;
+                        JsonNode sessionsNode = root.has("sessions") ? root.get("sessions") : root.has("data") ? root.get("data") : root;
                         if (sessionsNode.isArray()) {
                             List<Session> rawSessions = objectMapper.readValue(sessionsNode.traverse(), new TypeReference<List<Session>>() {
                             });
@@ -686,12 +700,28 @@ public class ACPManager {
         sseListeners.remove(listener);
     }
 
-    private void handleDisconnection() {
+    private synchronized void handleDisconnection() {
         if (isClosing) {
             return;
         }
 
-        LOG.log(Level.WARNING, "ACP server disconnected unexpectedly");
+        LOG.log(Level.WARNING, "ACP server disconnected unexpectedly (PID: {0})",
+                serverProcess != null ? serverProcess.pid() : "unknown");
+
+        // Kill stale process if alive but broken pipes
+        if (serverProcess != null && serverProcess.isAlive()) {
+            LOG.log(Level.WARNING, "Stale process PID {0} is still alive but pipes are broken — killing it",
+                    serverProcess.pid());
+            List<ProcessHandle> descendants = serverProcess.descendants().toList();
+            descendants.forEach(h -> { if (h.isAlive()) h.destroyForcibly(); });
+            serverProcess.destroyForcibly();
+            try {
+                serverProcess.waitFor(3, java.util.concurrent.TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+
         this.initialized = false;
 
         long now = System.currentTimeMillis();
@@ -706,7 +736,7 @@ public class ACPManager {
             LOG.log(Level.FINE, "Respawning ACP server in {0}ms (attempt {1}/{2})...",
                     new Object[]{delay, restartCount, MAX_RESTARTS});
 
-            reconnectExecutor.schedule(this::startServer, delay, java.util.concurrent.TimeUnit.MILLISECONDS);
+            this.reconnectFuture = reconnectExecutor.schedule(this::startServer, delay, java.util.concurrent.TimeUnit.MILLISECONDS);
         } else {
             LOG.log(Level.SEVERE, "ACP server crashed {0} times within {1}ms. Giving up.",
                     new Object[]{MAX_RESTARTS, RESTART_RESET_INTERVAL});

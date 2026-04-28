@@ -17,7 +17,6 @@ import java.util.regex.Pattern;
 
 import javax.swing.BoxLayout;
 import javax.swing.Icon;
-import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextPane;
@@ -34,6 +33,7 @@ import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.TextScanner;
 
 import static github.anandb.netbeans.manager.ToolParamsExtractor.extractToolTitle;
+import static org.apache.commons.lang3.ObjectUtils.getIfNull;
 
 public class MessageBubble extends JPanel implements Scrollable {
 
@@ -42,7 +42,15 @@ public class MessageBubble extends JPanel implements Scrollable {
 
     // Static cached Pattern for code block parsing - compiled once
     private static final Pattern CODE_BLOCK_PATTERN = Pattern.compile(
-            "```([\\w\\-\\+\\#\\.]*)\\R?(.*?)(?:```(?=\\R|$)|$)", Pattern.DOTALL);
+        "```([\\w\\-\\+\\#\\.]*)\\R?(.*?)(?:```(?=\\R|$)|$)", Pattern.DOTALL
+    );
+
+    // Table separator row patterns - compiled once, avoid String.matches() per cell
+    private static final Pattern CELL_DASH = Pattern.compile("-+");
+    private static final Pattern CELL_COLON_DASH_PREFIX = Pattern.compile(":-+-.*");
+    private static final Pattern CELL_DASH_COLON_SUFFIX = Pattern.compile(".*:-+");
+    private static final Pattern CELL_DASH_COLON = Pattern.compile("-+:");
+    private static final Pattern CELL_COLON_DASH_COLON = Pattern.compile(":.*-+");
 
     // Static cached Flexmark parser/renderer - created once
     private static final Parser FLEXMARK_PARSER;
@@ -60,6 +68,7 @@ public class MessageBubble extends JPanel implements Scrollable {
     private final StringBuilder text;
     private final String copyableText;
     private final String kind;
+    private String toolTitle;
     private final JPanel segmentsContainer;
     private JPanel bubble;
     private final ArrayList<CollapsibleState> codeStates = new ArrayList<>();
@@ -201,6 +210,7 @@ public class MessageBubble extends JPanel implements Scrollable {
         this.text = new StringBuilder(text);
         this.copyableText = copyableText;
         this.kind = kind;
+        this.toolTitle = "tool".equals(type) ? extractToolTitle(messageId, text, kind) : null;
 
         ColorTheme theme = ThemeManager.getCurrentTheme();
         setLayout(new java.awt.GridBagLayout());
@@ -373,7 +383,8 @@ public class MessageBubble extends JPanel implements Scrollable {
 
             // Try to extract a summary title from the tool call text
             if ("tool".equals(type)) {
-                title = extractToolTitle(messageId, rawText, kind);
+                toolTitle = getIfNull(toolTitle, () -> extractToolTitle(messageId, rawText, kind));
+                title = toolTitle;
             }
 
             // Reuse existing tool pane if possible to preserve expanded state
@@ -645,14 +656,22 @@ public class MessageBubble extends JPanel implements Scrollable {
         String headerBg = theme.toHtmlHex(theme.tableHeaderBackground());
         String borderColor = theme.toHtmlHex(theme.tableBorder());
 
-        html = html.replace("<table>",
-                "<table align='left' border='1' bordercolor='" + borderColor + "' cellspacing='0' cellpadding='8' style='border-collapse: collapse; width: 100%; margin: 8px 0; background-color: " + tableBg + ";'>");
-        html = html.replace("<th>",
-                "<th align='left' bgcolor='" + headerBg + "' style='padding: 8px; border: 1px solid " + borderColor + "; text-align: left;'><b>");
-        html = html.replace("</th>", "</b></th>");
-        html = html.replace("<td>", "<td align='left' style='padding: 8px; border: 1px solid " + borderColor + "; vertical-align: top;'>");
-        html = html.replace("<p>", "<p align='left' style='text-align: left !important;'>");
-        html = html.replace("<div>", "<div align='left' style='text-align: left !important;'>");
+        // Single-pass tag replacement
+        String tableTag = "<table align='left' border='1' bordercolor='" + borderColor
+                + "' cellspacing='0' cellpadding='8' style='border-collapse: collapse; width: 100%; margin: 8px 0; background-color: "
+                + tableBg + ";'>";
+        String thTag = "<th align='left' bgcolor='" + headerBg
+                + "' style='padding: 8px; border: 1px solid " + borderColor + "; text-align: left;'><b>";
+        String tdTag = "<td align='left' style='padding: 8px; border: 1px solid " + borderColor + "; vertical-align: top;'>";
+        String pTag = "<p align='left' style='text-align: left !important;'>";
+        String divTag = "<div align='left' style='text-align: left !important;'>";
+
+        html = html.replace("</th>", "</b></th>")
+                   .replace("<table>", tableTag)
+                   .replace("<th>", thTag)
+                   .replace("<td>", tdTag)
+                   .replace("<p>", pTag)
+                   .replace("<div>", divTag);
 
         // Hack to prevent space collapse in JEditorPane
         // Replace double spaces with space + &nbsp; but ONLY if it's not ASCII art
@@ -831,8 +850,11 @@ public class MessageBubble extends JPanel implements Scrollable {
 
     private boolean isSeparatorRow(List<String> row) {
         for (String cell : row) {
-            if (!cell.matches("-+") && !cell.matches(":-+-.*") && !cell.matches(".*:-+") &&
-                    !cell.matches("-+:") && !cell.matches(":.*-+")) {
+            if (!CELL_DASH.matcher(cell).matches()
+                    && !CELL_COLON_DASH_PREFIX.matcher(cell).matches()
+                    && !CELL_DASH_COLON_SUFFIX.matcher(cell).matches()
+                    && !CELL_DASH_COLON.matcher(cell).matches()
+                    && !CELL_COLON_DASH_COLON.matcher(cell).matches()) {
                 return false;
             }
         }

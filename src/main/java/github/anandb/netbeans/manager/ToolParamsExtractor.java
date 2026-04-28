@@ -80,10 +80,18 @@ public final class ToolParamsExtractor {
         if (isDcpCleanup(text)) {
             return new MessageClassification("tool", "context cleanup");
         }
+        if (isCavemanFiller(text)) {
+            return new MessageClassification("tool", "caveman");
+        }
+
         return new MessageClassification(role, kind);
     }
 
     public static boolean isDcpCleanup(String text) {
         return text != null && (text.contains("▣ DCP") || text.contains("  DCP Sweep  "));
+    }
+
+    public static boolean isCavemanFiller(String text) {
+        return text != null && (text.contains("Respond terse like smart caveman"));
     }
 }

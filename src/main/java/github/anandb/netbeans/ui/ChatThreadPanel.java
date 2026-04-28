@@ -497,11 +497,6 @@ public class ChatThreadPanel extends JPanel {
         c.addMouseWheelListener(e -> {
             scrollPane.dispatchEvent(SwingUtilities.convertMouseEvent(c, e, scrollPane));
         });
-        if (c instanceof java.awt.Container container) {
-            for (Component child : container.getComponents()) {
-                fixMouseWheel(child);
-            }
-        }
     }
 
     @Override

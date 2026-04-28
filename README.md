@@ -53,6 +53,17 @@ The Coding Assistant is a NetBeans IDE plugin designed to provide integrated AI 
 - **Java Development Kit**: JDK 17 or later.
 - **Backend Service**: Opencode (Ideally, any ACP-compliant backend service)
 
+### Compatibility (Tested)
+
+| Component | Details |
+|-----------|---------|
+| **NetBeans** | 29 |
+| **Opencode** | 1.14.24 |
+| **Plugin** | ≥ v1.4.24 |
+| **LLMs** | Big Pickle, GPT 5.4-mini, GPT 5.4-nano, Deepseek V4 Pro, Deepseek V4 Flash |
+
+Qwen Models seem to have some trouble with tool calling, this is still being investigated.
+
 ### Installation from Source
 1. Clone the repository:
    ```bash

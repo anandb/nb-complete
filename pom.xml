@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>github.anandb</groupId>
     <artifactId>beanbot</artifactId>
-    <version>1.4.24</version>
+    <version>1.4.26</version>
     <packaging>nbm</packaging>
 
     <name>Coding Assistant</name>
