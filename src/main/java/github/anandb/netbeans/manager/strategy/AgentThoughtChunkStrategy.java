@@ -1,0 +1,22 @@
+package github.anandb.netbeans.manager.strategy;
+
+import github.anandb.netbeans.model.ProcessedMessage;
+import github.anandb.netbeans.model.SessionUpdate;
+
+public class AgentThoughtChunkStrategy implements DataExtractionStrategy {
+    @Override
+    public boolean canHandle(SessionUpdate update) {
+        return "agent_thought_chunk".equals(update.type());
+    }
+
+    @Override
+    public void extract(SessionUpdate update, ProcessedMessage target, UIHandler handler) {
+        target.setRole("thought");
+        target.setText(AgentMessageChunkStrategy.extractText(update.content()));
+        target.setMessageId(update.messageId());
+        target.setKind(update.kind());
+        target.setRawText(target.text());
+        target.setStreaming(true);
+        handler.displayMessage(target);
+    }
+}

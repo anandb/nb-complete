@@ -81,34 +81,14 @@ public record SessionUpdate(
         return ud != null ? ud.content() : null;
     }
 
-    public List<SessionConfigOption> configOptions() {
-        UpdateData ud = update();
-        return ud != null ? ud.configOptions() : null;
-    }
-
     public String messageId() {
         UpdateData ud = update();
         return ud != null ? ud.messageId() : null;
     }
 
-    public String title() {
-        UpdateData ud = update();
-        return ud != null ? ud.title() : null;
-    }
-
     public String status() {
         UpdateData ud = update();
         return ud != null ? ud.status() : null;
-    }
-
-    public JsonNode rawOutput() {
-        UpdateData ud = update();
-        return ud != null ? ud.rawOutput() : null;
-    }
-
-    public Long used() {
-        UpdateData ud = update();
-        return ud != null ? ud.used() : null;
     }
 
     public String kind() {

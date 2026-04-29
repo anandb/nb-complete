@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>github.anandb</groupId>
     <artifactId>beanbot</artifactId>
-    <version>1.4.27</version>
+    <version>1.4.42</version>
     <packaging>nbm</packaging>
 
     <name>Coding Assistant</name>
@@ -292,7 +292,7 @@
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
-                <version>0.8.12</version>
+                <version>0.8.14</version>
                 <executions>
                     <execution>
                         <goals>

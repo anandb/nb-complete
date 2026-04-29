@@ -82,14 +82,6 @@ public class SessionManager {
         return lastProjectDir;
     }
 
-    public boolean isSessionLoading() {
-        return isSessionLoading;
-    }
-
-    public List<Session> getCachedSessions() {
-        return new ArrayList<>(cachedSessions);
-    }
-
     public void refreshSessions() {
         ACPManager manager = ACPManager.getInstance();
         manager.whenReady()

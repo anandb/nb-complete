@@ -29,10 +29,10 @@ import com.vladsch.flexmark.html.HtmlRenderer;
 import com.vladsch.flexmark.parser.Parser;
 import com.vladsch.flexmark.util.data.MutableDataSet;
 
+import github.anandb.netbeans.manager.ToolMetadataExtractor;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.TextScanner;
 
-import static github.anandb.netbeans.manager.ToolParamsExtractor.extractToolTitle;
 import static org.apache.commons.lang3.ObjectUtils.getIfNull;
 
 public class MessageBubble extends JPanel implements Scrollable {
@@ -205,12 +205,20 @@ public class MessageBubble extends JPanel implements Scrollable {
     }
 
     public MessageBubble(String type, String text, String messageId, String copyableText, String kind) {
+        this(type, text, messageId, copyableText, kind, null);
+    }
+
+    public MessageBubble(String type, String text, String messageId, String copyableText, String kind, String toolTitle) {
         this.type = type;
         this.messageId = messageId;
         this.text = new StringBuilder(text);
         this.copyableText = copyableText;
         this.kind = kind;
-        this.toolTitle = "tool".equals(type) ? extractToolTitle(messageId, text, kind) : null;
+        this.toolTitle = "tool".equals(type)
+            ? (toolTitle != null ? toolTitle : ToolMetadataExtractor.extractToolTitle(messageId, text, kind))
+            : null;
+
+        LOG.info("MessageBubble ctor: type={0}, msgId={1}, textLen={2}, copyableLen={3}", new Object[]{type, messageId, text != null ? text.length() : 0, copyableText != null ? copyableText.length() : 0});
 
         ColorTheme theme = ThemeManager.getCurrentTheme();
         setLayout(new java.awt.GridBagLayout());
@@ -249,15 +257,15 @@ public class MessageBubble extends JPanel implements Scrollable {
         if ("user".equals(type)) {
             gbcInsets = new Insets(4, 12, 4, 12); // Full width, consistent with AI
 
-            JLabel userLabel = new JLabel(ThemeManager.getIcon("user.svg", 32));
+            JLabel userLabel = new JLabel(ThemeManager.getIcon("user.svg", 37));
             userLabel.setBorder(new javax.swing.border.EmptyBorder(6, 8, 0, 10));
             userLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
             userLabel.setToolTipText("Copy to input");
 
             userLabel.addMouseListener(new MouseAdapter() {
-                private final Icon userIcon = ThemeManager.getIcon("user.svg", 32);
-                private final Icon copyIcon = ThemeManager.getIcon("copy.svg", 28);
-                private final Icon checkIcon = ThemeManager.getIcon("check.svg", 28);
+                private final Icon userIcon = ThemeManager.getIcon("user.svg", 37);
+                private final Icon copyIcon = ThemeManager.getIcon("copy.svg", 32);
+                private final Icon checkIcon = ThemeManager.getIcon("check.svg", 32);
 
                 @Override
                 public void mouseEntered(MouseEvent e) {
@@ -271,7 +279,24 @@ public class MessageBubble extends JPanel implements Scrollable {
 
                 @Override
                 public void mousePressed(MouseEvent e) {
-                    AssistantTopComponent.findInstance().setInputText(copyableText);
+                    String textToCopy = copyableText;
+                    if (textToCopy == null || textToCopy.isEmpty()) {
+                        textToCopy = text.toString();
+                        LOG.warn("copyableText empty, falling back, msgId={0}, type={1}, flbkLen={2}", new Object[]{messageId, type, textToCopy.length()});
+                    }
+                    if (textToCopy == null || textToCopy.isEmpty()) {
+                        LOG.warn("No text to copy, msgId={0}, type={1}", new Object[]{messageId, type});
+                        return;
+                    }
+                    LOG.info("Copy: msgId={0}, type={1}, len={2}, EDT={3}", new Object[]{messageId, type, textToCopy.length(), javax.swing.SwingUtilities.isEventDispatchThread()});
+                    AssistantTopComponent.copyToInput(textToCopy);
+                    try {
+                        java.awt.Toolkit.getDefaultToolkit().getSystemClipboard()
+                            .setContents(new java.awt.datatransfer.StringSelection(textToCopy), null);
+                        LOG.info("Copy done: msgId={0}", messageId);
+                    } catch (Exception ex) {
+                        LOG.warn("Clipboard fail: {0}", ex.getMessage());
+                    }
                     userLabel.setIcon(checkIcon);
                     javax.swing.Timer timer = new javax.swing.Timer(1500, ev -> {
                         // Only revert to user icon if mouse has already exited
@@ -381,9 +406,8 @@ public class MessageBubble extends JPanel implements Scrollable {
             String title = "thought".equals(type) ? "Thinking Process" : "Tool";
             String displayContent = rawText;
 
-            // Try to extract a summary title from the tool call text
             if ("tool".equals(type)) {
-                toolTitle = getIfNull(toolTitle, () -> extractToolTitle(messageId, rawText, kind));
+                toolTitle = getIfNull(toolTitle, () -> ToolMetadataExtractor.extractToolTitle(messageId, rawText, kind));
                 title = toolTitle;
             }
 
@@ -754,99 +778,7 @@ public class MessageBubble extends JPanel implements Scrollable {
         return pane;
     }
 
-    private String renderTablesAsHtml(String markdown) {
-        // Fast-path: skip if no table markers present
-        if (!markdown.contains("|")) {
-            return markdown;
-        }
 
-        StringBuilder result = new StringBuilder();
-        String[] lines = markdown.split("\n", -1);
-        boolean inTable = false;
-        boolean headerFound = false;
-        List<String> headerCells = new ArrayList<>();
-        List<List<String>> rows = new ArrayList<>();
-        int i = 0;
-
-        while (i < lines.length) {
-            String line = lines[i];
-
-            if (line == null || line.isEmpty()) {
-                if (inTable && headerFound) {
-                    result.append(convertTableToHtml(headerCells, rows));
-                    headerCells.clear();
-                    rows.clear();
-                    headerFound = false;
-                    inTable = false;
-                }
-                result.append(line).append("\n");
-                i++;
-                continue;
-            }
-
-            if (line.contains("|") && line.trim().startsWith("|") && line.trim().endsWith("|")) {
-                int firstPipe = line.indexOf("|");
-                int lastPipe = line.lastIndexOf("|");
-                if (firstPipe >= lastPipe) {
-                    // Malformed table row (single pipe or empty content)
-                    result.append(line).append("\n");
-                    i++;
-                    continue;
-                }
-                String content = line.substring(firstPipe + 1, lastPipe);
-                // Split by pipes not preceded by a backslash
-                String[] cells = content.split("(?<!\\\\)\\|", -1);
-                List<String> rowCells = new ArrayList<>();
-                for (String cell : cells) {
-                    rowCells.add(cell.replace("\\|", "|"));
-                }
-
-                if (rowCells.isEmpty()) {
-                    if (inTable && headerFound) {
-                        result.append(convertTableToHtml(headerCells, rows));
-                        headerCells.clear();
-                        rows.clear();
-                        headerFound = false;
-                        inTable = false;
-                    }
-                    result.append(line).append("\n");
-                    i++;
-                    continue;
-                }
-
-                if (inTable && isSeparatorRow(rowCells)) {
-                    i++;
-                    continue;
-                }
-
-                if (!inTable) {
-                    inTable = true;
-                    headerCells = rowCells;
-                    headerFound = true;
-                } else if (headerFound) {
-                    rows.add(rowCells);
-                } else {
-                    rows.add(rowCells);
-                }
-            } else {
-                if (inTable && headerFound) {
-                    result.append(convertTableToHtml(headerCells, rows));
-                    headerCells.clear();
-                    rows.clear();
-                    headerFound = false;
-                    inTable = false;
-                }
-                result.append(line).append("\n");
-            }
-            i++;
-        }
-
-        if (inTable && headerFound) {
-            result.append(convertTableToHtml(headerCells, rows));
-        }
-
-        return result.toString();
-    }
 
     private boolean isSeparatorRow(List<String> row) {
         for (String cell : row) {
@@ -861,41 +793,7 @@ public class MessageBubble extends JPanel implements Scrollable {
         return true;
     }
 
-    private String convertTableToHtml(List<String> headers, List<List<String>> rows) {
-        ColorTheme theme = ThemeManager.getCurrentTheme();
-        String borderColor = theme.toHtmlHex(theme.tableBorder());
-        String headerBg = theme.toHtmlHex(theme.tableHeaderBackground());
-        String tableBg = theme.toHtmlHex(theme.tableBackground());
 
-        StringBuilder html = new StringBuilder();
-        html.append("<table border='1' bordercolor='").append(borderColor)
-            .append("' cellspacing='0' cellpadding='8' style='border-collapse: collapse; width: 100%; margin: 8px 0; background-color: ")
-            .append(tableBg).append(";'>\n<thead><tr bgcolor='").append(headerBg).append("'>");
-        for (String h : headers) {
-            html.append("<th style='border: 1px solid ").append(borderColor).append("; text-align: left;'><b>")
-                .append(escapeHtml(h)).append("</b></th>");
-        }
-        html.append("</tr></thead>\n<tbody>");
-        for (List<String> row : rows) {
-            html.append("<tr>");
-            // Ensure row has same columns as header
-            for (int j = 0; j < headers.size(); j++) {
-                String cell = j < row.size() ? row.get(j) : "";
-                html.append("<td style='border: 1px solid ").append(borderColor).append("; vertical-align: top;'>")
-                    .append(escapeHtml(cell)).append("</td>");
-            }
-            html.append("</tr>");
-        }
-        html.append("</tbody></table>\n");
-        return html.toString();
-    }
-
-    private String escapeHtml(String text) {
-        return text.replace("&", "&amp;")
-                .replace("<", "&lt;")
-                .replace(">", "&gt;")
-                .replace("\"", "&quot;");
-    }
 
     @Override
     public boolean getScrollableTracksViewportWidth() {

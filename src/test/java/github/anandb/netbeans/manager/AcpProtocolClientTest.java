@@ -56,7 +56,7 @@ class AcpProtocolClientTest {
     }
 
     @AfterEach
-    void tearDown() {
+    public void tearDown() {
         client.close();
     }
 

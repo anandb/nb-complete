@@ -36,25 +36,6 @@ public class ModelCache {
         return new File(acpDir, MODELS_FILE);
     }
 
-    public static synchronized List<String> getCachedModels() {
-        return new ArrayList<>(cachedModels);
-    }
-
-    public static synchronized void updateModels(List<String> models) {
-        if (models != null && !models.isEmpty()) {
-            cachedModels.clear();
-            cachedModels.addAll(models);
-            save();
-        }
-    }
-
-    public static synchronized void addModel(String model) {
-        if (model != null && !model.isEmpty() && !cachedModels.contains(model)) {
-            cachedModels.add(model);
-            save();
-        }
-    }
-
     public static synchronized void clear() {
         cachedModels.clear();
         File file = getStorageFile();

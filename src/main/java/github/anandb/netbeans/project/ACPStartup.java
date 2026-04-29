@@ -17,7 +17,6 @@ public class ACPStartup implements Runnable {
     public void run() {
         LOG.info("ACP Plugin Startup: Initializing Project Manager...");
         ACPProjectManager.getInstance().start();
-        
         checkVersionAndOpen();
     }
 
@@ -28,7 +27,7 @@ public class ACPStartup implements Runnable {
         if (!currentVersion.equals(lastVersion)) {
             LOG.info("New version detected ({0}), opening Assistant sidebar (docked left)...", currentVersion);
             NbPreferences.forModule(ACPStartup.class).put("lastVersion", currentVersion);
-            
+
             WindowManager.getDefault().invokeWhenUIReady(() -> {
                 AssistantTopComponent sidebar = AssistantTopComponent.findInstance();
                 if (sidebar != null) {

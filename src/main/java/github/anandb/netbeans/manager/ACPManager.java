@@ -53,9 +53,9 @@ public class ACPManager {
                 return t;
             });
 
+    private boolean initialized = false;
     private Process serverProcess;
     private AcpProtocolClient rpcClient;
-    private boolean initialized = false;
     private CompletableFuture<Void> readyFuture = new CompletableFuture<>();
 
     private final List<Consumer<SessionUpdate>> sseListeners = new CopyOnWriteArrayList<>();
@@ -70,7 +70,6 @@ public class ACPManager {
     private boolean shutdownHookAdded = false;
 
     public interface PermissionHandler {
-
         void handlePermissionRequest(String sessionId, JsonNode params, CompletableFuture<String> response);
     }
 
@@ -149,13 +148,6 @@ public class ACPManager {
                         }
                     }
 
-                    // Update session configurations if present
-                    if (update.update() != null && "config_options_update".equals(update.update().type())) {
-                        if (update.update().configOptions() != null) {
-                            notifyListeners(update);
-                        }
-                    }
-
                     notifyListeners(update);
                 } catch (Exception e) {
                     LOG.warn("Failed to parse session/update notification: " + e.getMessage(), e);
@@ -225,13 +217,6 @@ public class ACPManager {
             }
         }
         return false;
-    }
-
-    public CommandLine parseCommand() {
-        boolean isWindows = System.getProperty("os.name").toLowerCase().contains("win");
-        String defaultOcPath = System.getProperty("user.home") + "/.opencode/bin/opencode" + (isWindows ? ".exe" : "");
-        ACPCommandBuilder commandBuilder = new ACPCommandBuilder(NbPreferences.forModule(ACPOptionsPanel.class));
-        return commandBuilder.build(defaultOcPath);
     }
 
     private void initializeProtocol() {
@@ -625,35 +610,6 @@ public class ACPManager {
                 .thenApply(v -> null);
     }
 
-    public CompletableFuture<JsonNode> getCompletions(String sessionId, String text, int line, int column, String prefix, String suffix) {
-        return getCompletionsInline(text, line, column, prefix, suffix);
-    }
-
-    public CompletableFuture<JsonNode> getCompletions(String sessionId, String text, int line, int column) {
-        return getCompletions(sessionId, text, line, column, null, null);
-    }
-
-    public CompletableFuture<JsonNode> getCompletionsInline(String text, int line, int column, String prefix, String suffix) {
-        return getCompletionsInline(text, line, column, prefix, suffix, 0, java.util.concurrent.TimeUnit.SECONDS);
-    }
-
-    public CompletableFuture<JsonNode> getCompletionsInline(String text, int line, int column, String prefix, String suffix, long timeout, java.util.concurrent.TimeUnit unit) {
-        if (!rpcClientReady()) {
-            return CompletableFuture.completedFuture(null);
-        }
-        Map<String, Object> params = new java.util.HashMap<>();
-        params.put("text", text);
-        params.put("line", line);
-        params.put("column", column);
-        if (prefix != null && !prefix.isEmpty()) {
-            params.put("prefix", prefix);
-        }
-        if (suffix != null && !suffix.isEmpty()) {
-            params.put("suffix", suffix);
-        }
-        return rpcClient.sendRequest("completion/inline", params, timeout, unit);
-    }
-
     public CompletableFuture<Void> setSessionConfigOption(String sessionId, String configId, String value) {
         if (!rpcClientReady()) {
             return CompletableFuture.failedFuture(new RuntimeException("Server not started"));
@@ -689,16 +645,8 @@ public class ACPManager {
         return new ArrayList<>(availableCommands);
     }
 
-    public boolean isInitialized() {
-        return initialized;
-    }
-
     public CompletableFuture<Void> whenReady() {
         return readyFuture;
-    }
-
-    public void removeSseListener(Consumer<SessionUpdate> listener) {
-        sseListeners.remove(listener);
     }
 
     private synchronized void handleDisconnection() {

@@ -14,7 +14,7 @@ import javax.swing.border.Border;
 public class UIUtils {
 
     public static JButton createToolbarButton(String iconName, String toolTip, ActionListener l) {
-        return createToolbarButton(iconName, 24, toolTip, l);
+        return createToolbarButton(iconName, 28, toolTip, l);
     }
 
     public static JButton createToolbarButton(String iconName, int iconSize, String toolTip, ActionListener l) {

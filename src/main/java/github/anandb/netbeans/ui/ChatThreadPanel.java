@@ -7,9 +7,11 @@ import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridLayout;
+import java.awt.KeyboardFocusManager;
 import java.awt.Rectangle;
 import java.awt.event.ContainerAdapter;
 import java.awt.event.ContainerEvent;
+import java.awt.event.KeyEvent;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
@@ -31,19 +33,15 @@ import javax.swing.Scrollable;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 
-import com.fasterxml.jackson.databind.JsonNode;
-
 import github.anandb.netbeans.manager.SessionTitleManager;
 import github.anandb.netbeans.manager.ToolParamsExtractor;
 import github.anandb.netbeans.model.Message;
 import github.anandb.netbeans.model.MessageClassification;
+import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.model.Session;
-import github.anandb.netbeans.model.SessionUpdate.UpdateData;
 import github.anandb.netbeans.support.Logger;
 
 import static org.apache.commons.lang3.StringUtils.defaultIfBlank;
-import static org.apache.commons.lang3.StringUtils.defaultString;
-import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.lang3.StringUtils.left;
 
 public class ChatThreadPanel extends JPanel {
@@ -115,6 +113,31 @@ public class ChatThreadPanel extends JPanel {
             messagesContainer.scrollRectToVisible(new Rectangle(0, messagesContainer.getHeight() - 1, 1, 1));
         });
         scrollTimer.setRepeats(false);
+
+        KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(e -> {
+            if (e.getID() == KeyEvent.KEY_PRESSED) {
+                int keyCode = e.getKeyCode();
+                if (keyCode == KeyEvent.VK_PAGE_UP || keyCode == KeyEvent.VK_PAGE_DOWN
+                        || ((e.getModifiersEx() & KeyEvent.CTRL_DOWN_MASK) != 0
+                            && (keyCode == KeyEvent.VK_HOME || keyCode == KeyEvent.VK_END))) {
+                    Component src = e.getComponent();
+                    if (src != null && SwingUtilities.isDescendingFrom(src, ChatThreadPanel.this)) {
+                        JScrollBar vertical = scrollPane.getVerticalScrollBar();
+                        if (keyCode == KeyEvent.VK_PAGE_UP) {
+                            vertical.setValue(vertical.getValue() - vertical.getVisibleAmount());
+                        } else if (keyCode == KeyEvent.VK_PAGE_DOWN) {
+                            vertical.setValue(vertical.getValue() + vertical.getVisibleAmount());
+                        } else if (keyCode == KeyEvent.VK_HOME) {
+                            vertical.setValue(vertical.getMinimum());
+                        } else if (keyCode == KeyEvent.VK_END) {
+                            vertical.setValue(vertical.getMaximum());
+                        }
+                        return true;
+                    }
+                }
+            }
+            return false;
+        });
     }
 
     private static class ScrollablePanel extends JPanel implements Scrollable {
@@ -132,7 +155,7 @@ public class ChatThreadPanel extends JPanel {
         }
         @Override
         public int getScrollableBlockIncrement(Rectangle visibleRect, int orientation, int direction) {
-            return 32;
+            return orientation == SwingConstants.VERTICAL ? visibleRect.height : 16;
         }
         @Override
         public boolean getScrollableTracksViewportWidth() {
@@ -187,7 +210,7 @@ public class ChatThreadPanel extends JPanel {
 
         String text = sb.toString().stripTrailing();
         LOG.fine("addMessage(Message) final text length: {0}", text.length());
-        String copyable = "user".equals(type) && message.prompt() != null ? message.prompt().text().stripTrailing() : text;
+        String copyable = text;
         addMessage(type, text, message.id(), copyable);
     }
 
@@ -205,7 +228,7 @@ public class ChatThreadPanel extends JPanel {
         final String effectiveRole = classification.role();
         final String effectiveKind = classification.kind();
 
-        if (isIgnorableMessage(effectiveRole, text)) {
+        if (ProcessedMessage.isIgnorable(effectiveRole, text)) {
             return;
         }
 
@@ -226,8 +249,6 @@ public class ChatThreadPanel extends JPanel {
                 return;
             }
 
-            finalizeGroup();
-
             MessageBubble bubble = new MessageBubble(effectiveRole, text, messageId, copyableText, effectiveKind);
             if ("tool".equals(effectiveRole)) {
                 bubble.setExpanded(false);
@@ -243,23 +264,32 @@ public class ChatThreadPanel extends JPanel {
         });
     }
 
-    private void finalizeGroup() {
+    public void appendOrAddProcessedMessage(ProcessedMessage pm) {
+        if (pm == null) return;
+        if (pm.isIgnorable()) return;
+        appendOrAddMessage(pm.role(), pm.text(), pm.messageId());
     }
 
-    public void collapseLastThought() {
+    public void addProcessedMessage(ProcessedMessage pm) {
+        if (pm == null) return;
+        if (pm.isIgnorable()) return;
+
         SwingUtilities.invokeLater(() -> {
-            int count = messagesContainer.getComponentCount();
-            for (int i = count - 1; i >= 0; i--) {
-                Component c = messagesContainer.getComponent(i);
-                if (c instanceof MessageBubble messageBubble) {
-                    if ("thought".equals(messageBubble.getType())) {
-                        messageBubble.setExpanded(false);
-                        break;
-                    }
-                }
+            String r = pm.role();
+            MessageBubble bubble = new MessageBubble(r, pm.text(), pm.messageId(), pm.text(), pm.kind(), pm.toolTitle());
+            if ("tool".equals(r)) {
+                bubble.setExpanded(false);
+            } else if ("thought".equals(r)) {
+                bubble.setExpanded(true);
             }
+            messagesContainer.add(bubble);
+            messagesContainer.add(Box.createVerticalStrut(4));
+            messagesContainer.revalidate();
+            messagesContainer.repaint();
+            scrollToBottom(true);
         });
     }
+
 
     public void appendOrAddMessage(String role, String text) {
         appendOrAddMessage(role, text, null);
@@ -296,64 +326,6 @@ public class ChatThreadPanel extends JPanel {
                 addMessage(role, text, messageId, null);
             }
         });
-    }
-
-    public void updateToolCall(UpdateData update) {
-        SwingUtilities.invokeLater(() -> {
-            String role = "tool";
-            String messageId = update.messageId() != null ? update.messageId() : update.toolCallId();
-            String text = defaultIfBlank(extractContentText(update.content()), update.status());
-
-            if (isIgnorableMessage(role, text)) {
-                return;
-            }
-
-            text = defaultIfBlank(text, update.status());
-            int count = messagesContainer.getComponentCount();
-            MessageBubble lastBubble = null;
-            if (count > 0) {
-                Component c = messagesContainer.getComponent(count - 1);
-                if (c instanceof MessageBubble mb) {
-                    lastBubble = mb;
-                }
-            }
-
-            if (lastBubble != null && "tool".equals(lastBubble.getType()) && defaultString(messageId).equals(lastBubble.getMessageId())) {
-                lastBubble.appendText(text);
-                activeStreamBubble = lastBubble;
-                if (!streamFlushTimer.isRunning()) {
-                    streamFlushTimer.start();
-                }
-            } else {
-                addMessage(role, text, defaultString(messageId), text, update.kind());
-            }
-            messagesContainer.revalidate();
-            scrollToBottom(true);
-        });
-    }
-
-    private String extractContentText(JsonNode content) {
-        if (content == null) {
-            return null;
-        }
-        StringBuilder sb = new StringBuilder();
-        if (content.isArray()) {
-            for (JsonNode part : content) {
-                if (part.has("content")) {
-                    JsonNode inner = part.get("content");
-                    if (inner.has("text")) {
-                        sb.append(inner.get("text").asText());
-                    }
-                } else if (part.has("type") && "text".equals(part.get("type").asText())) {
-                    if (part.has("text")) {
-                        sb.append(part.get("text").asText());
-                    }
-                }
-            }
-        } else if (content.has("text")) {
-            sb.append(content.get("text").asText());
-        }
-        return sb.toString();
     }
 
     public void stopStreaming() {
@@ -517,6 +489,19 @@ public class ChatThreadPanel extends JPanel {
         int maximum = vertical.getMaximum();
         // Use a small threshold (e.g., 100 pixels) to be "at the bottom"
         return (value + extent >= maximum - 100);
+    }
+
+    public void scrollByBlock(boolean pageUp) {
+        JScrollBar vertical = scrollPane.getVerticalScrollBar();
+        if (pageUp) {
+            vertical.setValue(vertical.getValue() - vertical.getVisibleAmount());
+        } else {
+            vertical.setValue(vertical.getValue() + vertical.getVisibleAmount());
+        }
+    }
+
+    public void scrollToTop() {
+        scrollPane.getVerticalScrollBar().setValue(0);
     }
 
     public void scrollToBottom() {
@@ -754,29 +739,12 @@ public class ChatThreadPanel extends JPanel {
         return btn;
     }
 
-    private boolean isIgnorableMessage(String role, String text) {
-        if ("assistant".equals(role) && isBlank(text)) {
-            return true;
-        }
-
-        String trimmed = defaultIfBlank(text, "").trim().toLowerCase();
-
-        // Remove trailing punctuation for the check
-        if (trimmed.endsWith(".") || trimmed.endsWith("!")) {
-            trimmed = trimmed.substring(0, trimmed.length() - 1);
-        }
-
-        return "tool".equals(role) && (trimmed.equals("completed") || trimmed.equals("failed") ||
-                trimmed.equals("in-progress") || trimmed.equals("in progress") || trimmed.equals("in_progress") ||
-                trimmed.equals("inprogress") || trimmed.equals("success") || trimmed.equals("done"));
-    }
-
     private MessageBubble findLastNonIgnorableBubble() {
         int count = messagesContainer.getComponentCount();
         for (int i = count - 1; i >= 0; i--) {
             Component c = messagesContainer.getComponent(i);
             if (c instanceof MessageBubble mb) {
-                if (isIgnorableMessage(mb.getType(), mb.getRawText())) {
+                if (ProcessedMessage.isIgnorable(mb.getType(), mb.getRawText())) {
                     LOG.info("findLastNonIgnorableBubble() called. mb={0}, type={1}, text={2}", new Object[]{mb, mb.getType(), mb.getRawText()});
                     continue;
                 }

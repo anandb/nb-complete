@@ -13,36 +13,36 @@ class AgentUtilsTest {
 
     @Test
     void testExtractToolTitleWithSkillContent() {
-        String result = ToolParamsExtractor.extractToolTitle(
+        String result = ToolMetadataExtractor.extractToolTitle(
             "skill_name",
-            "<skill_content name=\"test-skill\">some content</skill_content>"
+            "<skill_content name=\"test-skill\">some content</skill_content>", null
         );
         assertNotNull(result);
     }
 
     @Test
     void testExtractToolTitleWithPath() {
-        String result = ToolParamsExtractor.extractToolTitle(
+        String result = ToolMetadataExtractor.extractToolTitle(
             "path_id",
-            "<path>/some/path/here</path> content"
+            "<path>/some/path/here</path> content", null
         );
         assertNotNull(result);
     }
 
     @Test
     void testExtractToolTitleWithNullMessageId() {
-        String result = ToolParamsExtractor.extractToolTitle(
+        String result = ToolMetadataExtractor.extractToolTitle(
             null,
-            "<skill_content name=\"my-skill\">content</skill_content>"
+            "<skill_content name=\"my-skill\">content</skill_content>", null
         );
         assertNotNull(result);
     }
 
     @Test
     void testExtractToolTitleWithColon() {
-        String result = ToolParamsExtractor.extractToolTitle(
+        String result = ToolMetadataExtractor.extractToolTitle(
             "tool:subtype",
-            "some text here"
+            "some text here", null
         );
         assertNotNull(result);
     }
@@ -50,24 +50,24 @@ class AgentUtilsTest {
     @Test
     void testExtractToolTitleWithLongTag() {
         String longTag = "a".repeat(100);
-        String result = ToolParamsExtractor.extractToolTitle(longTag, "plain text");
+        String result = ToolMetadataExtractor.extractToolTitle(longTag, "plain text", null);
         assertEquals("Tool ", result);
     }
 
     @Test
     void testExtractToolTitleWithPlainText() {
-        String result = ToolParamsExtractor.extractToolTitle(
+        String result = ToolMetadataExtractor.extractToolTitle(
             "plain",
-            "just some plain text with no special tags"
+            "just some plain text with no special tags", null
         );
         assertNotNull(result);
     }
 
     @Test
     void testExtractToolTitleFromRead() {
-        String result = ToolParamsExtractor.extractToolTitle(
+        String result = ToolMetadataExtractor.extractToolTitle(
             "read:322",
-            "<path>/home/user/ab</path>"
+            "<path>/home/user/ab</path>", null
         );
         
         assertEquals("read /home/user/ab", result);
