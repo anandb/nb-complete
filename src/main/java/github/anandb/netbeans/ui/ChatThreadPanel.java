@@ -90,17 +90,23 @@ public class ChatThreadPanel extends JPanel {
             scrollPane.dispatchEvent(SwingUtilities.convertMouseEvent(messagesContainer, e, scrollPane));
         });
 
-        // Automatically fix mouse wheel for any added component
+        // Automatically fix mouse wheel for message bubbles (skip strut spacers)
         messagesContainer.addContainerListener(new ContainerAdapter() {
             @Override
             public void componentAdded(ContainerEvent e) {
-                fixMouseWheel(e.getChild());
+                Component c = e.getChild();
+                if (c instanceof MessageBubble || c instanceof PermissionBubble) {
+                    fixMouseWheel(c);
+                }
             }
         });
 
         add(scrollPane, BorderLayout.CENTER);
 
         streamFlushTimer = new javax.swing.Timer(100, e -> {
+            if (!isShowing()) {
+                return;
+            }
             if (activeStreamBubble != null && activeStreamBubble.flushUpdate()) {
                 activeStreamBubble.revalidate();
                 scrollToBottom();
@@ -363,7 +369,7 @@ public class ChatThreadPanel extends JPanel {
             if (activeStreamBubble != null) {
                 activeStreamBubble.finalizeStreaming();
                 if (activeStreamBubble.flushUpdate(true)) {
-                    messagesContainer.revalidate();
+                    activeStreamBubble.revalidate();
                     scrollToBottom();
                 }
                 activeStreamBubble = null;
@@ -521,8 +527,8 @@ public class ChatThreadPanel extends JPanel {
         int extent = vertical.getModel().getExtent();
         int value = vertical.getValue();
         int maximum = vertical.getMaximum();
-        // Use a small threshold (e.g., 100 pixels) to be "at the bottom"
-        return (value + extent >= maximum - 100);
+        // Use a tight threshold to avoid overriding user scroll intent
+        return (value + extent >= maximum - 20);
     }
 
     public void scrollByBlock(boolean pageUp) {
@@ -684,8 +690,6 @@ public class ChatThreadPanel extends JPanel {
         btn.setContentAreaFilled(false);
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btn.setAlignmentX(Component.LEFT_ALIGNMENT);
-        btn.setMaximumSize(new Dimension(Integer.MAX_VALUE, Math.max(btn.getPreferredSize().height, 60)));
-
         JPanel textPanel = new JPanel(new GridLayout(subtext != null ? 2 : 1, 1));
         textPanel.setOpaque(false);
 
@@ -702,6 +706,7 @@ public class ChatThreadPanel extends JPanel {
         }
 
         btn.add(textPanel, BorderLayout.CENTER);
+        btn.setMaximumSize(new Dimension(Integer.MAX_VALUE, Math.max(btn.getPreferredSize().height, 60)));
 
         btn.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
@@ -733,8 +738,6 @@ public class ChatThreadPanel extends JPanel {
         btn.setContentAreaFilled(false);
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btn.setAlignmentX(Component.LEFT_ALIGNMENT);
-        btn.setMaximumSize(new Dimension(Integer.MAX_VALUE, Math.max(btn.getPreferredSize().height, 60)));
-
         JPanel leftPanel = new JPanel();
         leftPanel.setOpaque(false);
 
@@ -751,6 +754,7 @@ public class ChatThreadPanel extends JPanel {
         leftPanel.add(mainLabel);
 
         btn.add(leftPanel, BorderLayout.CENTER);
+        btn.setMaximumSize(new Dimension(Integer.MAX_VALUE, Math.max(btn.getPreferredSize().height, 60)));
 
         if (fullPath != null && !fullPath.isEmpty()) {
             btn.setToolTipText(fullPath);
