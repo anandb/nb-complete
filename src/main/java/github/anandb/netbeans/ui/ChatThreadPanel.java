@@ -268,8 +268,12 @@ public class ChatThreadPanel extends JPanel {
             bubble.setExpanded(true);
         }
 
+        boolean visible = !MessageFilterManager.isTypeHidden(role);
+        bubble.setVisible(visible);
+        Component strut = Box.createVerticalStrut(4);
+        strut.setVisible(visible);
         messagesContainer.add(bubble);
-        messagesContainer.add(Box.createVerticalStrut(4));
+        messagesContainer.add(strut);
         messagesContainer.revalidate();
         messagesContainer.repaint();
         scrollToBottom(true);
@@ -611,6 +615,22 @@ public class ChatThreadPanel extends JPanel {
         return sb.toString();
     }
 
+
+    public void applyTypeFilters() {
+        SwingUtilities.invokeLater(() -> {
+            Component[] comps = messagesContainer.getComponents();
+            for (int i = 0; i < comps.length; i++) {
+                if (comps[i] instanceof MessageBubble bubble) {
+                    boolean visible = !MessageFilterManager.isTypeHidden(bubble.getType());
+                    comps[i].setVisible(visible);
+                    if (i + 1 < comps.length) {
+                        comps[i + 1].setVisible(visible);
+                    }
+                }
+            }
+            messagesContainer.revalidate();
+        });
+    }
 
     public void clearMessages() {
         SwingUtilities.invokeLater(() -> {

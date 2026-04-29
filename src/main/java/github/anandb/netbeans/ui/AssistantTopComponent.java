@@ -26,6 +26,7 @@ import java.util.concurrent.CompletableFuture;
 import javax.swing.BorderFactory;
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
+import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JList;
@@ -110,6 +111,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
     private final JButton newSessionBtn;
     private final JButton renameSessionBtn;
     private final JButton toggleBlocksBtn;
+    private final JButton filterBtn;
     private final JButton toggleOptionsBtn;
     private boolean optionsPanelCollapsed = true;
     private final JPanel configPanel;
@@ -249,7 +251,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
         JButton refreshBtn = UIUtils.createToolbarButton("reload.svg", "Reload Conversation", e -> reloadCurrentSession());
 
         JButton exportBtn = UIUtils.createToolbarButton("export.svg", "Export Conversation", e -> exportConversation());
-        JButton restartServerBtn = UIUtils.createToolbarButton("restart.svg", "Restart Server", e -> promptRestartServer());
+        JButton restartServerBtn = UIUtils.createToolbarButton("restart.svg", "Reconnect", e -> promptRestartServer());
 
         JButton tb = UIUtils.createToolbarButton("expand.svg", "Expand All Blocks", null);
         tb.addActionListener(e -> {
@@ -263,10 +265,13 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
         toggleBlocksBtn = tb;
         toggleBlocksBtn.putClientProperty("state", "expand");
 
+        filterBtn = createFilterButton();
+
         sessionControls.add(newSessionBtn);
         sessionControls.add(renameSessionBtn);
         sessionControls.add(refreshBtn);
         sessionControls.add(toggleBlocksBtn);
+        sessionControls.add(filterBtn);
         sessionControls.add(exportBtn);
         sessionControls.add(restartServerBtn);
 
@@ -782,6 +787,24 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
         return SessionTitleManager.getTitle(session.id(), title);
     }
 
+    private JButton createFilterButton() {
+        final JButton[] btnRef = new JButton[1];
+        JButton btn = UIUtils.createToolbarButton("filter.svg", "Filter message types", e -> {
+            JPopupMenu popup = new JPopupMenu();
+            for (String type : MessageFilterManager.getMessageTypes()) {
+                JCheckBoxMenuItem item = new JCheckBoxMenuItem(type, !MessageFilterManager.isTypeHidden(type));
+                item.addActionListener(ev -> {
+                    MessageFilterManager.setTypeHidden(type, !item.isSelected());
+                    chatPanel.applyTypeFilters();
+                });
+                popup.add(item);
+            }
+            popup.show(btnRef[0], 0, btnRef[0].getHeight());
+        });
+        btnRef[0] = btn;
+        return btn;
+    }
+
     private void reloadCurrentSession() {
         String currentId = SessionManager.getInstance().getCurrentSessionId();
         if (currentId != null) {
@@ -811,8 +834,8 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
 
     private void promptRestartServer() {
         int choice = javax.swing.JOptionPane.showConfirmDialog(this,
-                "Are you sure you want to restart the ACP server?\nThis will terminate current operations and relaunch the server.",
-                "Restart Server",
+                "Are you sure you want to reconnect to the ACP server?\nThis will terminate current operations and relaunch the connection.",
+                "Reconnect",
                 javax.swing.JOptionPane.YES_NO_OPTION,
                 javax.swing.JOptionPane.WARNING_MESSAGE);
 
