@@ -165,7 +165,7 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
 
         JPanel codeWrapper = new JPanel(new BorderLayout());
         codeWrapper.setBackground(codeTextArea.getBackground());
-        codeWrapper.setBorder(BorderFactory.createEmptyBorder(8, 40, 8, 12));
+        codeWrapper.setBorder(BorderFactory.createEmptyBorder(8, 20, 8, 6));
         codeWrapper.add(codeTextArea, BorderLayout.CENTER);
 
         contentPanel.add(codeWrapper, BorderLayout.CENTER);

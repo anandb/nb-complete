@@ -8,15 +8,12 @@ import java.awt.Dimension;
 import java.awt.GridBagConstraints;
 import java.awt.Insets;
 import java.awt.Rectangle;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import javax.swing.BoxLayout;
-import javax.swing.Icon;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextPane;
@@ -29,11 +26,14 @@ import com.vladsch.flexmark.html.HtmlRenderer;
 import com.vladsch.flexmark.parser.Parser;
 import com.vladsch.flexmark.util.data.MutableDataSet;
 
+import java.util.UUID;
+
 import github.anandb.netbeans.manager.ToolMetadataExtractor;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.TextScanner;
 
 import static org.apache.commons.lang3.ObjectUtils.getIfNull;
+import static org.apache.commons.lang3.StringUtils.length;
 
 public class MessageBubble extends JPanel implements Scrollable {
 
@@ -66,12 +66,12 @@ public class MessageBubble extends JPanel implements Scrollable {
     private final String type;
     private final String messageId;
     private final StringBuilder text;
-    private final String copyableText;
     private final String kind;
     private String toolTitle;
     private final JPanel segmentsContainer;
     private JPanel bubble;
     private final ArrayList<CollapsibleState> codeStates = new ArrayList<>();
+    private final UUID id = UUID.randomUUID();
 
     private static class CollapsibleState {
         boolean expanded;
@@ -119,7 +119,7 @@ public class MessageBubble extends JPanel implements Scrollable {
 
     @Override
     public Dimension getMaximumSize() {
-        return new Dimension(Integer.MAX_VALUE, super.getMaximumSize().height);
+        return new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE);
     }
 
     private static final class FitEditorPane extends JTextPane {
@@ -145,10 +145,20 @@ public class MessageBubble extends JPanel implements Scrollable {
         @Override
         public Dimension getPreferredSize() {
             Insets insets = getInsets();
+
+            // Prefer width from parent hierarchy to handle wrapping correctly before being fully laid out
             int w = getWidth();
-            if (w <= 0 && getParent() != null) {
-                w = getParent().getWidth();
+            if (w <= 0 || (getParent() != null && getParent().getWidth() > 0 && getParent().getWidth() != w)) {
+                Component p = getParent();
+                while (p != null) {
+                    if (p.getWidth() > 0) {
+                        w = p.getWidth();
+                        break;
+                    }
+                    p = p.getParent();
+                }
             }
+
             if (w <= 0) {
                 w = 500; // Better default for calculation
             }
@@ -163,13 +173,15 @@ public class MessageBubble extends JPanel implements Scrollable {
                 if (root != null) {
                     // Subtract insets to get actual content width for wrapping calculation
                     int contentWidth = Math.max(1, w - insets.left - insets.right);
-                    root.setSize(contentWidth, Short.MAX_VALUE);
+                    root.setSize(contentWidth, Integer.MAX_VALUE);
+
+                    // Tables sometimes need a second pass or a bit more space to resolve layout
                     float h = root.getPreferredSpan(View.Y_AXIS);
                     if (h > 0) {
                         lastComputedHeight = (int) Math.ceil(h);
                         lastComputedWidth = w;
-                        // Add insets back and a 4px safety buffer to prevent clipping
-                        cachedSize = new Dimension(w, lastComputedHeight + insets.top + insets.bottom + 4);
+                        // Add insets back and a 20px safety buffer to prevent clipping (especially for tables)
+                        cachedSize = new Dimension(w, lastComputedHeight + insets.top + insets.bottom + 20);
                         return cachedSize;
                     }
                 }
@@ -177,11 +189,11 @@ public class MessageBubble extends JPanel implements Scrollable {
             }
 
             if (lastComputedHeight > 0) {
-                cachedSize = new Dimension(w, Math.max(30, lastComputedHeight + insets.top + insets.bottom + 4));
+                cachedSize = new Dimension(w, Math.max(30, lastComputedHeight + insets.top + insets.bottom + 20));
                 return cachedSize;
             }
             Dimension superSize = super.getPreferredSize();
-            cachedSize = new Dimension(w, Math.max(30, superSize.height + insets.top + insets.bottom + 4));
+            cachedSize = new Dimension(w, Math.max(30, superSize.height + insets.top + insets.bottom + 20));
             return cachedSize;
         }
 
@@ -196,29 +208,14 @@ public class MessageBubble extends JPanel implements Scrollable {
         }
     }
 
-    public MessageBubble(String type, String text) {
-        this(type, text, null, text, null);
-    }
-
-    public MessageBubble(String type, String text, String messageId) {
-        this(type, text, messageId, text, null);
-    }
-
-    public MessageBubble(String type, String text, String messageId, String copyableText, String kind) {
-        this(type, text, messageId, copyableText, kind, null);
-    }
-
-    public MessageBubble(String type, String text, String messageId, String copyableText, String kind, String toolTitle) {
+    public MessageBubble(String type, String text, String messageId, String kind, String toolTitle) {
         this.type = type;
         this.messageId = messageId;
         this.text = new StringBuilder(text);
-        this.copyableText = copyableText;
         this.kind = kind;
         this.toolTitle = "tool".equals(type)
             ? (toolTitle != null ? toolTitle : ToolMetadataExtractor.extractToolTitle(messageId, text, kind))
             : null;
-
-        LOG.info("MessageBubble ctor: type={0}, msgId={1}, textLen={2}, copyableLen={3}", new Object[]{type, messageId, text != null ? text.length() : 0, copyableText != null ? copyableText.length() : 0});
 
         ColorTheme theme = ThemeManager.getCurrentTheme();
         setLayout(new java.awt.GridBagLayout());
@@ -262,54 +259,13 @@ public class MessageBubble extends JPanel implements Scrollable {
             userLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
             userLabel.setToolTipText("Copy to input");
 
-            userLabel.addMouseListener(new MouseAdapter() {
-                private final Icon userIcon = ThemeManager.getIcon("user.svg", 37);
-                private final Icon copyIcon = ThemeManager.getIcon("copy.svg", 32);
-                private final Icon checkIcon = ThemeManager.getIcon("check.svg", 32);
-
-                @Override
-                public void mouseEntered(MouseEvent e) {
-                    userLabel.setIcon(copyIcon);
-                }
-
-                @Override
-                public void mouseExited(MouseEvent e) {
-                    userLabel.setIcon(userIcon);
-                }
-
-                @Override
-                public void mousePressed(MouseEvent e) {
-                    String textToCopy = copyableText;
-                    if (textToCopy == null || textToCopy.isEmpty()) {
-                        textToCopy = text.toString();
-                        LOG.warn("copyableText empty, falling back, msgId={0}, type={1}, flbkLen={2}", new Object[]{messageId, type, textToCopy.length()});
-                    }
-                    if (textToCopy == null || textToCopy.isEmpty()) {
-                        LOG.warn("No text to copy, msgId={0}, type={1}", new Object[]{messageId, type});
-                        return;
-                    }
-                    LOG.info("Copy: msgId={0}, type={1}, len={2}, EDT={3}", new Object[]{messageId, type, textToCopy.length(), javax.swing.SwingUtilities.isEventDispatchThread()});
-                    AssistantTopComponent.copyToInput(textToCopy);
-                    try {
-                        java.awt.Toolkit.getDefaultToolkit().getSystemClipboard()
-                            .setContents(new java.awt.datatransfer.StringSelection(textToCopy), null);
-                        LOG.info("Copy done: msgId={0}", messageId);
-                    } catch (Exception ex) {
-                        LOG.warn("Clipboard fail: {0}", ex.getMessage());
-                    }
-                    userLabel.setIcon(checkIcon);
-                    javax.swing.Timer timer = new javax.swing.Timer(1500, ev -> {
-                        // Only revert to user icon if mouse has already exited
-                        if (!userLabel.getBounds().contains(e.getPoint())) {
-                            userLabel.setIcon(userIcon);
-                        } else {
-                            userLabel.setIcon(copyIcon);
-                        }
-                    });
-                    timer.setRepeats(false);
-                    timer.start();
-                }
-            });
+            userLabel.addMouseListener(new MessageCopyMouseAdapter(
+                userLabel,
+                ThemeManager.getIcon("user.svg", 37),
+                ThemeManager.getIcon("copy.svg", 32),
+                ThemeManager.getIcon("check.svg", 32),
+                messageId, type, this
+            ));
 
             JPanel rightPanel = UIUtils.createTransparentPanel(new BorderLayout());
             rightPanel.add(userLabel, BorderLayout.NORTH);
@@ -321,7 +277,6 @@ public class MessageBubble extends JPanel implements Scrollable {
         }
 
         add(bubble, UIUtils.createGbc(0, 0, 1.0, 0, fill, anchor, gbcInsets));
-        LOG.info("Created MessageBubble: type={0}, id={1}, textLength={2}", type, messageId, text.length());
     }
 
     private boolean hasPendingTextUpdate = false;
@@ -768,17 +723,16 @@ public class MessageBubble extends JPanel implements Scrollable {
         pane.setContentType("text/html");
         pane.setOpaque(false);
         pane.setBackground(new Color(0, 0, 0, 0));
+        pane.setMargin(new Insets(0, 0, 0, 0));
         pane.setForeground(theme.foreground());
         pane.setDoubleBuffered(true);
         pane.setFont(ThemeManager.getFont());
-        // Default AI text alignment: 8 (bubble) + 40 (pane padding) = 48px
-        pane.setBorder(new EmptyBorder(6, 40, 10, 12));
+        // Default AI text alignment: 8 (bubble) + 20 (pane padding) = 28px
+        pane.setBorder(new EmptyBorder(6, 20, 10, 6));
         pane.setAlignmentX(Component.LEFT_ALIGNMENT);
         pane.setText(styledHtml);
         return pane;
     }
-
-
 
     private boolean isSeparatorRow(List<String> row) {
         for (String cell : row) {
@@ -792,8 +746,6 @@ public class MessageBubble extends JPanel implements Scrollable {
         }
         return true;
     }
-
-
 
     @Override
     public boolean getScrollableTracksViewportWidth() {

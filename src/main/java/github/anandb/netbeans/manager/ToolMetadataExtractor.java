@@ -8,15 +8,31 @@ import github.anandb.netbeans.support.Logger;
 import static org.apache.commons.lang3.StringUtils.abbreviateMiddle;
 import static org.apache.commons.lang3.StringUtils.defaultString;
 import static org.apache.commons.lang3.StringUtils.firstNonBlank;
+import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
 public final class ToolMetadataExtractor {
     private static final Logger LOG = new Logger(ToolMetadataExtractor.class);
+    private static final Pattern[] METADATA_PATTERNS = {
+        Pattern.compile("<!--.*?-->", Pattern.DOTALL),
+        Pattern.compile("<metadata>.*?</metadata>", Pattern.DOTALL),
+    };
     private static final Pattern[] TOOL_CONTENT_PATTERNS = {
         Pattern.compile("<skill_content name=\"([^\"]{2,})\""),
         Pattern.compile("<path>([^<]{10,})</path>")
     };
 
     private ToolMetadataExtractor() {
+    }
+
+    public static String stripMetadata(String text) {
+        String stripped = text;
+        if (isNotBlank(stripped)) {
+            for (Pattern pattern : METADATA_PATTERNS) {
+                stripped = pattern.matcher(stripped).replaceAll("");
+            }
+        }
+
+        return stripped;
     }
 
 

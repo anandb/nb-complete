@@ -54,6 +54,7 @@ public class ChatThreadPanel extends JPanel {
     private MessageBubble activeStreamBubble = null;
     private final javax.swing.Timer streamFlushTimer;
     private final javax.swing.Timer scrollTimer;
+    private java.awt.KeyEventDispatcher keyDispatcher;
 
     public ChatThreadPanel() {
         ColorTheme theme = ThemeManager.getCurrentTheme();
@@ -101,7 +102,7 @@ public class ChatThreadPanel extends JPanel {
 
         streamFlushTimer = new javax.swing.Timer(100, e -> {
             if (activeStreamBubble != null && activeStreamBubble.flushUpdate()) {
-                messagesContainer.revalidate();
+                activeStreamBubble.revalidate();
                 scrollToBottom();
             }
         });
@@ -114,7 +115,7 @@ public class ChatThreadPanel extends JPanel {
         });
         scrollTimer.setRepeats(false);
 
-        KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(e -> {
+        keyDispatcher = e -> {
             if (e.getID() == KeyEvent.KEY_PRESSED) {
                 int keyCode = e.getKeyCode();
                 if (keyCode == KeyEvent.VK_PAGE_UP || keyCode == KeyEvent.VK_PAGE_DOWN
@@ -137,7 +138,8 @@ public class ChatThreadPanel extends JPanel {
                 }
             }
             return false;
-        });
+        };
+        KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(keyDispatcher);
     }
 
     private static class ScrollablePanel extends JPanel implements Scrollable {
@@ -210,8 +212,7 @@ public class ChatThreadPanel extends JPanel {
 
         String text = sb.toString().stripTrailing();
         LOG.fine("addMessage(Message) final text length: {0}", text.length());
-        String copyable = text;
-        addMessage(type, text, message.id(), copyable);
+        addMessage(type, text, message.id(), null);
     }
 
     public void addMessage(String role, String text) {
@@ -219,11 +220,6 @@ public class ChatThreadPanel extends JPanel {
     }
 
     public void addMessage(String role, String text, String messageId, String kind) {
-        addMessage(role, text, messageId, text, kind);
-    }
-
-    public void addMessage(String role, String text, String messageId, String copyableText, String kind) {
-        LOG.info("ADD [{0}] [{1}] {2}", new Object[]{role, messageId, copyableText});
         MessageClassification classification = ToolParamsExtractor.classify(role, text, kind);
         final String effectiveRole = classification.role();
         final String effectiveKind = classification.kind();
@@ -233,35 +229,44 @@ public class ChatThreadPanel extends JPanel {
         }
 
         SwingUtilities.invokeLater(() -> {
-            LOG.info("EDT: Adding bubble for role={0}, id={1}", new Object[]{effectiveRole, messageId});
-            MessageBubble lastBubble = findLastNonIgnorableBubble();
-            boolean canMerge = (lastBubble != null && effectiveRole.equals(lastBubble.getType()));
-            if (canMerge) {
-                // Always merge consecutive thoughts
-                if (!"thought".equals(effectiveRole) && (messageId == null || !messageId.equals(lastBubble.getMessageId()))) {
-                    canMerge = false;
+            String[] parts = text.split("(?m)^---[ \\t]*$");
+            for (String part : parts) {
+                if (part.trim().isEmpty() && parts.length > 1) {
+                    continue;
+                }
+
+                MessageBubble lastBubble = findLastNonIgnorableBubble();
+                boolean canMerge = (lastBubble != null && effectiveRole.equals(lastBubble.getType()));
+                if (canMerge) {
+                    // Always merge consecutive thoughts
+                    if (!"thought".equals(effectiveRole) && (messageId == null || !messageId.equals(lastBubble.getMessageId()))) {
+                        canMerge = false;
+                    }
+                }
+
+                if (canMerge) {
+                    lastBubble.appendText(part);
+                    lastBubble.flushUpdate(true);
+                } else {
+                    addSingleBubble(effectiveRole, part, messageId, effectiveKind, "");
                 }
             }
-
-            if (canMerge) {
-                lastBubble.appendText(text);
-                lastBubble.flushUpdate(true);
-                return;
-            }
-
-            MessageBubble bubble = new MessageBubble(effectiveRole, text, messageId, copyableText, effectiveKind);
-            if ("tool".equals(effectiveRole)) {
-                bubble.setExpanded(false);
-            } else if ("thought".equals(effectiveRole)) {
-                bubble.setExpanded(true);
-            }
-
-            messagesContainer.add(bubble);
-            messagesContainer.add(Box.createVerticalStrut(4));
-            messagesContainer.revalidate();
-            messagesContainer.repaint();
-            scrollToBottom(true);
         });
+    }
+
+    private void addSingleBubble(String role, String text, String messageId, String kind, String toolTitle) {
+        MessageBubble bubble = new MessageBubble(role, text, messageId, kind, toolTitle);
+        if ("tool".equals(role)) {
+            bubble.setExpanded(false);
+        } else if ("thought".equals(role)) {
+            bubble.setExpanded(true);
+        }
+
+        messagesContainer.add(bubble);
+        messagesContainer.add(Box.createVerticalStrut(4));
+        messagesContainer.revalidate();
+        messagesContainer.repaint();
+        scrollToBottom(true);
     }
 
     public void appendOrAddProcessedMessage(ProcessedMessage pm) {
@@ -276,17 +281,15 @@ public class ChatThreadPanel extends JPanel {
 
         SwingUtilities.invokeLater(() -> {
             String r = pm.role();
-            MessageBubble bubble = new MessageBubble(r, pm.text(), pm.messageId(), pm.text(), pm.kind(), pm.toolTitle());
-            if ("tool".equals(r)) {
-                bubble.setExpanded(false);
-            } else if ("thought".equals(r)) {
-                bubble.setExpanded(true);
+            String t = pm.text();
+            String[] parts = t.split("(?m)^---[ \\t]*$");
+
+            for (String part : parts) {
+                if (part.trim().isEmpty() && parts.length > 1) {
+                    continue;
+                }
+                addSingleBubble(r, part, pm.messageId(), pm.kind(), pm.toolTitle());
             }
-            messagesContainer.add(bubble);
-            messagesContainer.add(Box.createVerticalStrut(4));
-            messagesContainer.revalidate();
-            messagesContainer.repaint();
-            scrollToBottom(true);
         });
     }
 
@@ -308,6 +311,33 @@ public class ChatThreadPanel extends JPanel {
             }
 
             if (canAppend) {
+                // Check for split delimiter in the incoming chunk
+                // We handle both \n---\n and start-of-chunk ---\n
+                if (text.contains("\n---") || text.startsWith("---")) {
+                    String[] parts = text.split("(?m)^---[ \\t]*$");
+                    if (parts.length > 1 || text.trim().equals("---")) {
+                        // Finalize current bubble with the first part
+                        if (parts.length > 0 && !parts[0].isEmpty()) {
+                            lastBubble.appendText(parts[0]);
+                        }
+                        lastBubble.finalizeStreaming();
+                        lastBubble.flushUpdate(true);
+
+                        // Create new bubbles for remaining parts
+                        for (int i = 1; i < parts.length; i++) {
+                            String part = parts[i];
+                            if (part.trim().isEmpty() && i < parts.length - 1) continue;
+                            addSingleBubble(role, part, messageId, null, "");
+                            activeStreamBubble = findLastNonIgnorableBubble();
+                        }
+
+                        if (!streamFlushTimer.isRunning()) {
+                            streamFlushTimer.start();
+                        }
+                        return;
+                    }
+                }
+
                 lastBubble.appendText(text);
                 activeStreamBubble = lastBubble;
                 if (!streamFlushTimer.isRunning()) {
@@ -468,12 +498,16 @@ public class ChatThreadPanel extends JPanel {
     private void fixMouseWheel(Component c) {
         c.addMouseWheelListener(e -> {
             scrollPane.dispatchEvent(SwingUtilities.convertMouseEvent(c, e, scrollPane));
+            e.consume();
         });
     }
 
     @Override
     public void removeNotify() {
         super.removeNotify();
+        if (keyDispatcher != null) {
+            KeyboardFocusManager.getCurrentKeyboardFocusManager().removeKeyEventDispatcher(keyDispatcher);
+        }
         if (streamFlushTimer != null && streamFlushTimer.isRunning()) {
             streamFlushTimer.stop();
         }
@@ -650,7 +684,7 @@ public class ChatThreadPanel extends JPanel {
         btn.setContentAreaFilled(false);
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btn.setAlignmentX(Component.LEFT_ALIGNMENT);
-        btn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 60));
+        btn.setMaximumSize(new Dimension(Integer.MAX_VALUE, Math.max(btn.getPreferredSize().height, 60)));
 
         JPanel textPanel = new JPanel(new GridLayout(subtext != null ? 2 : 1, 1));
         textPanel.setOpaque(false);
@@ -699,7 +733,7 @@ public class ChatThreadPanel extends JPanel {
         btn.setContentAreaFilled(false);
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btn.setAlignmentX(Component.LEFT_ALIGNMENT);
-        btn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 60));
+        btn.setMaximumSize(new Dimension(Integer.MAX_VALUE, Math.max(btn.getPreferredSize().height, 60)));
 
         JPanel leftPanel = new JPanel();
         leftPanel.setOpaque(false);
@@ -745,7 +779,6 @@ public class ChatThreadPanel extends JPanel {
             Component c = messagesContainer.getComponent(i);
             if (c instanceof MessageBubble mb) {
                 if (ProcessedMessage.isIgnorable(mb.getType(), mb.getRawText())) {
-                    LOG.info("findLastNonIgnorableBubble() called. mb={0}, type={1}, text={2}", new Object[]{mb, mb.getType(), mb.getRawText()});
                     continue;
                 }
 

@@ -55,6 +55,8 @@ import org.openide.windows.TopComponent;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
+import java.awt.KeyEventDispatcher;
+
 import javax.swing.Timer;
 
 import github.anandb.netbeans.manager.ACPManager;
@@ -98,7 +100,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
 
     private static final Logger LOG = new Logger(AssistantTopComponent.class);
     private static final long serialVersionUID = 1L;
-    private static AssistantTopComponent instance;
+    private static volatile AssistantTopComponent instance;
 
     private final ChatThreadPanel chatPanel;
     private final PlaceholderTextArea inputArea;
@@ -129,6 +131,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
     private boolean isSwitchingSessionDropdown = false;
     private boolean isUpdatingConfigControls = false;
     private Timer thinkingTimer;
+    private transient KeyEventDispatcher pageKeyDispatcher;
     private int thinkingDots = 0;
     private static final String[] DOT_STRINGS = {"", ".", "..", "..."};
 
@@ -154,7 +157,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
         setLayout(new BorderLayout());
         chatPanel = new ChatThreadPanel();
 
-        java.awt.KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(e -> {
+        pageKeyDispatcher = e -> {
             if (e.getID() == java.awt.event.KeyEvent.KEY_PRESSED) {
                 int keyCode = e.getKeyCode();
                 if (keyCode == java.awt.event.KeyEvent.VK_PAGE_UP
@@ -179,7 +182,8 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
                 }
             }
             return false;
-        });
+        };
+        java.awt.KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(pageKeyDispatcher);
 
         configPanel = new JPanel(new java.awt.GridBagLayout());
         configPanel.setVisible(false);
@@ -311,7 +315,8 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
         inputArea.setLineWrap(true);
         inputArea.setWrapStyleWord(true);
         inputArea.setBorder(new EmptyBorder(12, 12, 12, 12));
-        inputArea.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 17));
+        float editorFontSize = (float) ThemeManager.getMonospaceFont().getSize();
+        inputArea.setFont(ThemeManager.getFont().deriveFont(editorFontSize));
 
         inputScrollPane = new JScrollPane(inputArea);
         inputScrollPane.setPreferredSize(new Dimension(100, 100));
@@ -329,7 +334,8 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
         btnCard.add(stopBtn, "STOP");
 
         versionLabel = new JLabel("v" + AgentUtils.getVersion());
-        versionLabel.setFont(versionLabel.getFont().deriveFont(9f));
+        Font labelFont = UIManager.getFont("Label.font");
+        versionLabel.setFont(versionLabel.getFont().deriveFont(labelFont != null ? labelFont.getSize() - 1f : 9f));
         versionLabel.setForeground(Color.GRAY);
         versionLabel.setHorizontalAlignment(SwingConstants.CENTER);
 
@@ -552,6 +558,9 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
                     configPanel.setVisible(true);
                     toggleOptionsBtn.setIcon(ThemeManager.getIcon("arrow-down.svg", 25));
                     setInputEnabled(false);
+                    if (lastSelectedModelId == null && System.getenv("OPENCODE_MODEL") == null && modelCombo.getItemCount() == 0) {
+                        modelCombo.addItem(new ConfigItem("opencode/big-pickle", "opencode/big-pickle"));
+                    }
                 }
             } finally {
                 isSwitchingSessionDropdown = false;
@@ -613,7 +622,6 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
 
     private void sendMessage() {
         String text = inputArea.getText(); // Don't trim user input spaces
-        LOG.info("sendMessage called with text: {0}", text);
         if (text.isEmpty()) {
             return;
         }
@@ -1289,7 +1297,10 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
     private void postProcessModel(JComboBox<ConfigItem> combo, ConfigItem selected) {
         combo.setEditable(false);
         updateTabName(selected != null ? selected.name() : null);
-        updateThinkingComboForModel(((ConfigItem) combo.getSelectedItem()).value());
+        ConfigItem selItem = (ConfigItem) combo.getSelectedItem();
+        if (selItem != null) {
+            updateThinkingComboForModel(selItem.value());
+        }
     }
 
 
@@ -1361,6 +1372,9 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
 
     @Override
     public void componentClosed() {
+        if (pageKeyDispatcher != null) {
+            java.awt.KeyboardFocusManager.getCurrentKeyboardFocusManager().removeKeyEventDispatcher(pageKeyDispatcher);
+        }
         if (thinkingTimer != null && thinkingTimer.isRunning()) {
             thinkingTimer.stop();
         }
@@ -1368,6 +1382,14 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
             chatPanel.clearMessages();
         }
         SessionManager.getInstance().removeSessionListener(this);
+    }
+
+    @Override
+    public void removeNotify() {
+        super.removeNotify();
+        if (pageKeyDispatcher != null) {
+            java.awt.KeyboardFocusManager.getCurrentKeyboardFocusManager().removeKeyEventDispatcher(pageKeyDispatcher);
+        }
     }
 
     void writeProperties(java.util.Properties p) {

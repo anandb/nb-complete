@@ -125,6 +125,7 @@ public class SessionManager {
                 .thenAccept(session -> {
                     this.currentSessionId = session.id();
                     this.lastProjectDir = session.effectiveDirectory();
+                    Logger.setSession(session.id(), session.title());
 
                     SwingUtilities.invokeLater(() -> {
                         notifySessionLoaded(session.id(), session.configOptions(), true);
@@ -155,7 +156,10 @@ public class SessionManager {
             String sessionCwd = sessions.stream()
                     .filter(s -> s.id().equals(sessionId))
                     .findFirst()
-                    .map(s -> s.cwd() != null ? s.cwd() : s.directory())
+                    .map(s -> {
+                        Logger.setSession(s.id(), s.title());
+                        return s.cwd() != null ? s.cwd() : s.directory();
+                    })
                     .orElse(null);
 
             String workingCwd = projectCwd != null ? projectCwd : sessionCwd;

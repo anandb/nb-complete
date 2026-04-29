@@ -50,7 +50,7 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
         textArea.setFont(isThinking
                 ? ThemeManager.getFont().deriveFont(Font.PLAIN)
                 : ThemeManager.getMonospaceFont().deriveFont(Font.PLAIN));
-        textArea.setBorder(BorderFactory.createEmptyBorder(8, 40, 8, 12));
+        textArea.setBorder(BorderFactory.createEmptyBorder(8, 20, 8, 6));
         textArea.setLineWrap(true);
         textArea.setWrapStyleWord(true);
 
