@@ -14,6 +14,7 @@ import java.awt.Font;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.awt.event.ActionEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
@@ -21,6 +22,11 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
+import java.util.Base64;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.util.concurrent.CompletableFuture;
 
 import javax.swing.BorderFactory;
@@ -28,6 +34,7 @@ import javax.swing.DefaultListModel;
 import javax.swing.JButton;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JComboBox;
+import javax.swing.JMenuItem;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JPanel;
@@ -135,12 +142,18 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     private boolean isSwitchingSessionDropdown = false;
     private boolean isUpdatingConfigControls = false;
     private Timer thinkingTimer;
+    private Timer statusResetTimer;
     private transient KeyEventDispatcher pageKeyDispatcher;
     private int thinkingDots = 0;
     private static final String[] DOT_STRINGS = {"", ".", "..", "..."};
 
     private final LinkedHashMap<String, List<ConfigItem>> modelVariants = new LinkedHashMap<>();
     private String currentConfigModelId = null;
+
+    private static final long MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024;
+    private static final int MAX_ATTACHMENTS = 2;
+    private final ArrayList<AttachedFile> attachedFiles = new ArrayList<>();
+    private JButton paperclipBtn;
 
     public AssistantTopComponent() {
         instance = this;
@@ -157,6 +170,13 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                 }
             }
         });
+
+        statusResetTimer = new javax.swing.Timer(1500, e -> {
+            if (statusLabel != null) {
+                statusLabel.setText("Ready");
+            }
+        });
+        statusResetTimer.setRepeats(false);
 
         setLayout(new BorderLayout());
         chatPanel = new ChatThreadPanel();
@@ -314,7 +334,14 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         });
         toggleOptionsBtn = to;
 
-        statusPanel.add(toggleOptionsBtn, BorderLayout.EAST);
+        JPanel rightStatusPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        rightStatusPanel.setOpaque(false);
+
+        paperclipBtn = createPaperclipButton();
+        rightStatusPanel.add(paperclipBtn);
+        rightStatusPanel.add(toggleOptionsBtn);
+
+        statusPanel.add(rightStatusPanel, BorderLayout.EAST);
 
         bottomPanel.add(statusPanel, BorderLayout.NORTH);
 
@@ -620,7 +647,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
     private void sendMessage() {
         String text = inputArea.getText(); // Don't trim user input spaces
-        if (text.isEmpty()) {
+        if (text.isEmpty() && attachedFiles.isEmpty()) {
             return;
         }
 
@@ -643,13 +670,37 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         inputArea.setText("");
         statusLabel.setText("Sending");
         updateButtonState(true);
+
+        // Build file attachment blocks
+        List<Map<String, Object>> fileBlocks = new ArrayList<>();
+        for (AttachedFile af : attachedFiles) {
+            Map<String, Object> block = new HashMap<>();
+            block.put("type", af.mimeType().startsWith("image/") ? "image" : "file");
+            block.put("filename", af.filename());
+            block.put("mimeType", af.mimeType());
+            block.put("data", af.base64Data());
+            fileBlocks.add(block);
+        }
+        attachedFiles.clear();
+        updatePaperclipTooltip();
+
+        // Local echo with file references
         boolean localEcho = NbPreferences.forModule(ACPOptionsPanel.class).getBoolean("echoUserInput", true);
         if (localEcho) {
-            chatPanel.addMessage("user", text);
+            StringBuilder echoBuilder = new StringBuilder(text);
+            if (!fileBlocks.isEmpty()) {
+                if (!text.isBlank()) echoBuilder.append("\n");
+                for (Map<String, Object> block : fileBlocks) {
+                    String type = (String) block.get("type");
+                    String fname = (String) block.get("filename");
+                    echoBuilder.append("\n[").append("image".equals(type) ? "Image" : "File").append(": ").append(fname).append("]");
+                }
+            }
+            chatPanel.addMessage("user", echoBuilder.toString());
         }
 
         Map<String, Object> context = text.trim().startsWith("/") ? null : captureEditorContext();
-        ProcessManager.getInstance().sendMessage(currentSessionId, text, context)
+        ProcessManager.getInstance().sendMessage(currentSessionId, text, context, fileBlocks)
                 .thenAccept(result -> {
                     SwingUtilities.invokeLater(() -> {
                         String currentStatus = statusLabel.getText();
@@ -796,6 +847,77 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         });
         btnRef[0] = btn;
         return btn;
+    }
+
+    private JButton createPaperclipButton() {
+        JButton btn = UIUtils.createToolbarButton("paperclip.svg", "Attach files", null);
+        btn.addActionListener(e -> showPaperclipMenu(e));
+        return btn;
+    }
+
+    private void showPaperclipMenu(ActionEvent e) {
+        JPopupMenu menu = new JPopupMenu();
+        JMenuItem addItem = new JMenuItem("Select File...");
+        addItem.addActionListener(ev -> selectFiles());
+        menu.add(addItem);
+        if (!attachedFiles.isEmpty()) {
+            menu.addSeparator();
+            for (AttachedFile af : attachedFiles) {
+                JCheckBoxMenuItem cb = new JCheckBoxMenuItem(af.filename(), true);
+                cb.setEnabled(false);
+                menu.add(cb);
+            }
+        }
+        menu.show(paperclipBtn, 0, paperclipBtn.getHeight());
+    }
+
+    private void selectFiles() {
+        if (attachedFiles.size() >= MAX_ATTACHMENTS) {
+            if (statusLabel != null) {
+                statusLabel.setText("Max " + MAX_ATTACHMENTS + " files allowed");
+                statusResetTimer.restart();
+            }
+            return;
+        }
+
+        javax.swing.JFileChooser fc = new javax.swing.JFileChooser();
+        fc.setMultiSelectionEnabled(true);
+        if (fc.showOpenDialog(this) == javax.swing.JFileChooser.APPROVE_OPTION) {
+            int added = 0;
+            String lastName = null;
+            for (File f : fc.getSelectedFiles()) {
+                if (attachedFiles.size() >= MAX_ATTACHMENTS) {
+                    break;
+                }
+                if (f.length() > MAX_ATTACHMENT_SIZE) {
+                    continue;
+                }
+                try {
+                    attachedFiles.add(new AttachedFile(f));
+                    added++;
+                    lastName = f.getName();
+                } catch (IOException ex) {
+                    LOG.warn("Failed to attach file: {0}", f.getName(), ex);
+                }
+            }
+            if (added > 0 && statusLabel != null) {
+                if (added == 1) {
+                    statusLabel.setText("Attached: " + lastName);
+                } else {
+                    statusLabel.setText("Attached: " + lastName + " +" + (added - 1) + " more");
+                }
+                statusResetTimer.restart();
+            }
+            updatePaperclipTooltip();
+        }
+    }
+
+    private void updatePaperclipTooltip() {
+        if (attachedFiles.isEmpty()) {
+            paperclipBtn.setToolTipText("Attach files");
+        } else {
+            paperclipBtn.setToolTipText(attachedFiles.size() + " file(s) attached");
+        }
     }
 
     private void reloadCurrentSession() {
@@ -1024,6 +1146,40 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
             autocompletePopup.setVisible(false);
             inputArea.requestFocusInWindow();
+        }
+    }
+
+    private static record AttachedFile(
+        String filename,
+        String mimeType,
+        String base64Data,
+        long size
+    ) {
+        AttachedFile(File f) throws IOException {
+            this(f.getName(), guessMimeType(f.getName()),
+                 Base64.getEncoder().encodeToString(Files.readAllBytes(f.toPath())),
+                 f.length());
+        }
+
+        private static String guessMimeType(String name) {
+            String ext = name.contains(".") ? name.substring(name.lastIndexOf('.') + 1).toLowerCase() : "";
+            return switch (ext) {
+                case "png" -> "image/png";
+                case "jpg", "jpeg" -> "image/jpeg";
+                case "gif" -> "image/gif";
+                case "svg" -> "image/svg+xml";
+                case "webp" -> "image/webp";
+                case "pdf" -> "application/pdf";
+                case "txt" -> "text/plain";
+                case "json" -> "application/json";
+                case "py" -> "text/x-python";
+                case "java" -> "text/x-java";
+                case "md" -> "text/markdown";
+                case "xml", "html", "htm" -> "text/html";
+                case "yaml", "yml" -> "text/yaml";
+                case "toml" -> "text/toml";
+                default -> "application/octet-stream";
+            };
         }
     }
 
@@ -1406,6 +1562,9 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         if (thinkingTimer != null && thinkingTimer.isRunning()) {
             thinkingTimer.stop();
         }
+        if (statusResetTimer != null && statusResetTimer.isRunning()) {
+            statusResetTimer.stop();
+        }
         if (chatPanel != null) {
             chatPanel.clearMessages();
         }
@@ -1417,6 +1576,9 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         super.removeNotify();
         if (pageKeyDispatcher != null) {
             java.awt.KeyboardFocusManager.getCurrentKeyboardFocusManager().removeKeyEventDispatcher(pageKeyDispatcher);
+        }
+        if (statusResetTimer != null && statusResetTimer.isRunning()) {
+            statusResetTimer.stop();
         }
     }
 

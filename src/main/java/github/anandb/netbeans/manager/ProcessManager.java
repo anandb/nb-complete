@@ -500,6 +500,10 @@ public class ProcessManager {
     }
 
     public CompletableFuture<JsonNode> sendMessage(String sessionId, String text, Map<String, Object> context) {
+        return sendMessage(sessionId, text, context, null);
+    }
+
+    public CompletableFuture<JsonNode> sendMessage(String sessionId, String text, Map<String, Object> context, List<Map<String, Object>> additionalBlocks) {
         if (!rpcClientReady()) {
             return CompletableFuture.failedFuture(new RuntimeException("Server not started"));
         }
@@ -558,6 +562,11 @@ public class ProcessManager {
                     promptBlocks.add(selectionPart);
                 }
             }
+        }
+
+        // 1b. Additional blocks (file attachments, etc.)
+        if (additionalBlocks != null) {
+            promptBlocks.addAll(additionalBlocks);
         }
 
         // 2. User Message Block (End with this so model's focus is on the instruction)
