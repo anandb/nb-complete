@@ -55,6 +55,7 @@ public class MessageBubble extends JPanel implements Scrollable {
     // Static cached Flexmark parser/renderer - created once
     private static final Parser FLEXMARK_PARSER;
     private static final HtmlRenderer FLEXMARK_RENDERER;
+    private static final Pattern NEWLINE_SPLIT = Pattern.compile("\n");
     static {
         MutableDataSet options = new MutableDataSet();
         options.set(HtmlRenderer.SOFT_BREAK, "\n");
@@ -556,7 +557,7 @@ public class MessageBubble extends JPanel implements Scrollable {
             return compIdx;
         }
 
-        String[] lines = text.split("\n", -1);
+        String[] lines = NEWLINE_SPLIT.split(text, -1);
         StringBuilder textBuffer = new StringBuilder();
         List<String> tableLines = new ArrayList<>();
         boolean inTable = false;

@@ -71,6 +71,7 @@ import github.anandb.netbeans.manager.ProcessManager;
 import github.anandb.netbeans.manager.AgentUtils;
 import github.anandb.netbeans.manager.SessionManager;
 import github.anandb.netbeans.manager.SessionTitleMapper;
+import github.anandb.netbeans.manager.SlashCommandInterceptor;
 import github.anandb.netbeans.contract.DataExtractionStrategy;
 import github.anandb.netbeans.contract.PermissionHandler;
 import github.anandb.netbeans.contract.SessionListener;
@@ -478,7 +479,16 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         inputArea.addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
-                if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+                if (e.getKeyCode() == KeyEvent.VK_TAB) {
+                    e.consume();
+                    // Trigger same behavior as /agents command
+                    SlashCommandInterceptor interceptor = ProcessManager.getInstance().getSlashCommandInterceptor();
+                    SlashCommandInterceptor.SlashCommandCallback cb = interceptor != null ? interceptor.getCallback() : null;
+                    if (cb != null) {
+                        cb.expandOptionsPanel();
+                        cb.popupAgentCombo();
+                    }
+                } else if (e.getKeyCode() == KeyEvent.VK_ENTER) {
                     if (autocompletePopup.isVisible()) {
                         e.consume();
                         selectCommand();
@@ -1091,9 +1101,24 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         char trigger = text.charAt(start);
         String prefix = text.substring(start + 1, caret).toLowerCase();
 
-        List<SessionUpdate.AvailableCommand> allCommands = trigger == '/'
-            ? ProcessManager.getInstance().getAvailableCommands()
-            : java.util.Collections.emptyList(); // Mentions not yet implemented
+        java.util.List<SessionUpdate.AvailableCommand> allCommands = new java.util.ArrayList<>();
+
+        if (trigger == '/') {
+            // Server-side ACP commands
+            allCommands.addAll(ProcessManager.getInstance().getAvailableCommands());
+
+            // Local slash commands from SlashCommandInterceptor
+            SlashCommandInterceptor interceptor = ProcessManager.getInstance().getSlashCommandInterceptor();
+            if (interceptor != null) {
+                for (Map.Entry<String, SlashCommandInterceptor.CommandInfo> entry : interceptor.getCommands().entrySet()) {
+                    String cmdName = entry.getKey();
+                    SlashCommandInterceptor.CommandInfo info = entry.getValue();
+                    String name = cmdName.startsWith("/") ? cmdName.substring(1) : cmdName;
+                    allCommands.add(new SessionUpdate.AvailableCommand(name, info.description(), null));
+                }
+            }
+        }
+        // @ mentions not yet implemented
 
         List<SessionUpdate.AvailableCommand> filtered = allCommands.stream()
                 .filter(c -> c.name().toLowerCase().startsWith(prefix))
@@ -1528,6 +1553,58 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             String msg = ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName();
             chatPanel.addMessage("error", "Failed to start: " + msg);
         }
+        ProcessManager.getInstance().getSlashCommandInterceptor().setCallback(new SlashCommandInterceptor.SlashCommandCallback() {
+            @Override
+            public void expandOptionsPanel() {
+                if (optionsPanelCollapsed) {
+                    optionsPanelCollapsed = false;
+                    configPanel.setVisible(true);
+                    toggleOptionsBtn.setIcon(ThemeManager.getIcon("arrow-down.svg", 25));
+                    AssistantTopComponent.this.revalidate();
+                    AssistantTopComponent.this.repaint();
+                }
+            }
+
+            @Override
+            public void popupModelCombo() {
+                SwingUtilities.invokeLater(() -> {
+                    modelCombo.requestFocusInWindow();
+                    // Use invokeLater to ensure popup shows after focus is fully applied
+                    SwingUtilities.invokeLater(() -> modelCombo.setPopupVisible(true));
+                });
+            }
+
+            @Override
+            public void popupAgentCombo() {
+                SwingUtilities.invokeLater(() -> {
+                    modeCombo.requestFocusInWindow();
+                    // Use invokeLater to ensure popup shows after focus is fully applied
+                    SwingUtilities.invokeLater(() -> modeCombo.setPopupVisible(true));
+                });
+            }
+        });
+
+        // ESC key handler to close options panel and return focus to input
+        KeyAdapter escHandler = new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
+                    e.consume();
+                    if (!optionsPanelCollapsed) {
+                        optionsPanelCollapsed = true;
+                        configPanel.setVisible(false);
+                        toggleOptionsBtn.setIcon(ThemeManager.getIcon("settings.svg", 25));
+                        AssistantTopComponent.this.revalidate();
+                        AssistantTopComponent.this.repaint();
+                    }
+                    inputArea.requestFocusInWindow();
+                }
+            }
+        };
+        modeCombo.addKeyListener(escHandler);
+        modelCombo.addKeyListener(escHandler);
+        thinkingCombo.addKeyListener(escHandler);
+        configPanel.addKeyListener(escHandler);
         SwingUtilities.invokeLater(() -> {
             if (inputArea != null) {
                 inputArea.requestFocusInWindow();

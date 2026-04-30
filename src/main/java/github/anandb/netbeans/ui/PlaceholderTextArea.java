@@ -5,8 +5,11 @@ import java.awt.Font;
 import java.awt.Graphics;
 import javax.swing.JTextArea;
 
+import java.util.regex.Pattern;
+
 public class PlaceholderTextArea extends JTextArea {
     private static final long serialVersionUID = 1L;
+    private static final Pattern LINE_SPLIT = Pattern.compile("\\R");
     private String placeholder;
 
     public PlaceholderTextArea(String placeholder) {
@@ -39,7 +42,7 @@ public class PlaceholderTextArea extends JTextArea {
             int x = getInsets().left;
             int y = getInsets().top + g.getFontMetrics().getAscent();
             int lineHeight = g.getFontMetrics().getHeight();
-            String[] lines = placeholder.split("\\R", -1);
+            String[] lines = LINE_SPLIT.split(placeholder, -1);
             for (String line : lines) {
                 g.drawString(line, x, y);
                 y += lineHeight;

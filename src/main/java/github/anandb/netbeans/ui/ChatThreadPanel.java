@@ -16,6 +16,7 @@ import java.awt.event.KeyEvent;
 import java.io.File;
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.regex.Pattern;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -48,6 +49,7 @@ import static org.apache.commons.lang3.StringUtils.left;
 public class ChatThreadPanel extends JPanel {
     private static final Logger LOG = new Logger(ChatThreadPanel.class);
     private static final long serialVersionUID = 1L;
+    private static final Pattern SECTION_SPLIT = Pattern.compile("(?m)^---[ \\t]*$");
 
     private final JPanel messagesContainer;
     private final JScrollPane scrollPane;
@@ -234,7 +236,7 @@ public class ChatThreadPanel extends JPanel {
         }
 
         SwingUtilities.invokeLater(() -> {
-            String[] parts = text.split("(?m)^---[ \\t]*$");
+                    String[] parts = SECTION_SPLIT.split(text);
             for (String part : parts) {
                 if (part.trim().isEmpty() && parts.length > 1) {
                     continue;
@@ -290,7 +292,7 @@ public class ChatThreadPanel extends JPanel {
         SwingUtilities.invokeLater(() -> {
             String r = pm.role();
             String t = pm.text();
-            String[] parts = t.split("(?m)^---[ \\t]*$");
+            String[] parts = SECTION_SPLIT.split(t);
 
             for (String part : parts) {
                 if (part.trim().isEmpty() && parts.length > 1) {
@@ -322,7 +324,7 @@ public class ChatThreadPanel extends JPanel {
                 // Check for split delimiter in the incoming chunk
                 // We handle both \n---\n and start-of-chunk ---\n
                 if (text.contains("\n---") || text.startsWith("---")) {
-                    String[] parts = text.split("(?m)^---[ \\t]*$");
+            String[] parts = SECTION_SPLIT.split(text);
                     if (parts.length > 1 || text.trim().equals("---")) {
                         // Finalize current bubble with the first part
                         if (parts.length > 0 && !parts[0].isEmpty()) {

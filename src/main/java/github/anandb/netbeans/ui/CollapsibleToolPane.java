@@ -10,8 +10,11 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextArea;
 
+import java.util.regex.Pattern;
+
 public class CollapsibleToolPane extends BaseCollapsiblePane {
     private static final long serialVersionUID = 1L;
+    private static final Pattern WHITESPACE_SPLIT = Pattern.compile("\\s+", 2);
     private final JTextArea textArea;
     private final JPanel titlePanel;
     private JLabel paramLabel;
@@ -82,7 +85,7 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
             return;
         }
 
-        String[] parts = stripped.split("\\s+", 2);
+        String[] parts = WHITESPACE_SPLIT.split(stripped);
         headerLabel.setText(parts[0]);
 
         if (parts.length > 1) {

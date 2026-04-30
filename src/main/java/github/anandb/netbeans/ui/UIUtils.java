@@ -30,6 +30,7 @@ public class UIUtils {
     private static final Pattern CELL_DASH_COLON_SUFFIX = Pattern.compile(".*:-+");
     private static final Pattern CELL_DASH_COLON = Pattern.compile("-+:");
     private static final Pattern CELL_COLON_DASH_COLON = Pattern.compile(":.*-+");
+    private static final Pattern CELL_SPLIT = Pattern.compile("(?<!\\\\)\\|");
 
     public static JButton createToolbarButton(String iconName, String toolTip, ActionListener l) {
         return createToolbarButton(iconName, 28, toolTip, l);
@@ -141,9 +142,12 @@ public class UIUtils {
     public static boolean isSeparatorRowLine(String line) {
         String content = line.trim();
         if (content.startsWith("|") && content.endsWith("|")) {
+            if (content.length() < 2) {
+                return false;
+            }
             content = content.substring(1, content.length() - 1);
         }
-        String[] cells = content.split("(?<!\\\\)\\|", -1);
+        String[] cells = CELL_SPLIT.split(content, -1);
         List<String> rowCells = new ArrayList<>();
         for (String cell : cells) {
             rowCells.add(cell.replace("\\|", "|"));

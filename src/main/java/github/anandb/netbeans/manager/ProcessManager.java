@@ -11,6 +11,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 import java.util.logging.Level;
+import java.util.regex.Pattern;
 
 import javax.swing.text.Document;
 
@@ -46,7 +47,14 @@ import github.anandb.netbeans.support.MapperSupplier;
 public class ProcessManager {
 
     private static final Logger LOG = new Logger(ProcessManager.class);
+    private static final Pattern PATH_SEPARATOR_SPLIT = Pattern.compile(Pattern.quote(File.pathSeparator));
     private static ProcessManager instance;
+
+    private final SlashCommandInterceptor slashCommandInterceptor = new SlashCommandInterceptor();
+
+    public SlashCommandInterceptor getSlashCommandInterceptor() {
+        return slashCommandInterceptor;
+    }
 
     // Static shared ObjectMapper for all JSON operations
     private final ObjectMapper objectMapper = MapperSupplier.get();
@@ -207,7 +215,7 @@ public class ProcessManager {
             return false;
         }
         String sep = File.pathSeparator;
-        for (String p : pathEnv.split(java.util.regex.Pattern.quote(sep))) {
+        for (String p : PATH_SEPARATOR_SPLIT.split(pathEnv)) {
             File f = new File(p, command);
             if (f.exists() && f.canExecute()) {
                 return true;
@@ -250,7 +258,8 @@ public class ProcessManager {
         LOG.fine("Manual restart of ACP server requested...");
         stopServer();
         // Reset state so startServer() actually proceeds
-        serverStarted = true; // Still marked as started since we want it to run
+        isClosing = false;
+        serverStarted = true;
         startServer();
     }
 
@@ -676,8 +685,8 @@ public class ProcessManager {
         }
 
         // Drain all pending futures so callers (e.g. sendMessage) get their exceptionally() fired
-        if (rpcClient != null) {
-            AcpProtocolClient staleClient = rpcClient;
+        AcpProtocolClient staleClient = rpcClient;
+        if (staleClient != null) {
             rpcClient = null;
             staleClient.close();
         }

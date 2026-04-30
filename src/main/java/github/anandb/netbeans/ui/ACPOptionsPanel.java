@@ -8,6 +8,8 @@ import github.anandb.netbeans.manager.PluginSettings;
 import org.openide.util.NbBundle;
 import org.openide.util.NbPreferences;
 
+import java.util.regex.Pattern;
+
 import java.awt.Color;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -45,8 +47,8 @@ import github.anandb.netbeans.support.Logger;
 })
 public class ACPOptionsPanel extends javax.swing.JPanel {
     private static final Logger LOG = new Logger(ACPOptionsPanel.class);
-
     private static final long serialVersionUID = 1L;
+    private static final Pattern PATH_SPLIT = Pattern.compile(Pattern.quote(File.pathSeparator));
     private final ACPOptionsPanelController controller;
     private JLabel jLabel1;
     private JTextField pathField;
@@ -310,7 +312,7 @@ public class ACPOptionsPanel extends javax.swing.JPanel {
         if (pathEnv == null) {
             return null;
         }
-        for (String dir : pathEnv.split(java.util.regex.Pattern.quote(File.pathSeparator))) {
+        for (String dir : PATH_SPLIT.split(pathEnv)) {
             File f = new File(dir, exeName);
             if (f.exists() && f.canExecute()) {
                 return f.getAbsolutePath();
