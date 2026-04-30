@@ -1,11 +1,13 @@
 package github.anandb.netbeans.project;
 
-import github.anandb.netbeans.manager.ACPManager;
+import github.anandb.netbeans.manager.ProcessManager;
+
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.function.Consumer;
+
 import github.anandb.netbeans.support.Logger;
 import org.netbeans.api.project.Project;
 import org.netbeans.api.project.ui.OpenProjects;
@@ -88,9 +90,9 @@ public class ACPProjectManager implements PropertyChangeListener {
             FileObject dir = active.getProjectDirectory();
             String path = dir.getPath();
             LOG.fine("Active project synchronized: {0}", path);
-            ACPManager.getInstance().setActiveProject(path);
+            ProcessManager.getInstance().setActiveProject(path);
         } else {
-            ACPManager.getInstance().setActiveProject(null);
+            ProcessManager.getInstance().setActiveProject(null);
         }
 
         currentProjects = openProjects;

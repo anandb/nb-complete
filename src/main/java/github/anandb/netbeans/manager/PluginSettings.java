@@ -3,12 +3,12 @@ package github.anandb.netbeans.manager;
 import github.anandb.netbeans.ui.ACPOptionsPanel;
 import org.openide.util.NbPreferences;
 
-public final class ACPSettings {
+public final class PluginSettings {
 
     private static final String KEY_PREAMBLE = "preamble";
     private static final String KEY_CUSTOM_USER_ICON = "customUserIcon";
 
-    private ACPSettings() {
+    private PluginSettings() {
     }
 
     public static String getPreamble() {

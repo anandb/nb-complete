@@ -28,8 +28,13 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+
 import javax.swing.SwingUtilities;
 
+import github.anandb.netbeans.contract.PermissionHandler;
 import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.model.SessionConfigOption;
 import github.anandb.netbeans.model.SessionUpdate;
@@ -38,22 +43,17 @@ import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.LanguageResolver;
 import github.anandb.netbeans.support.MapperSupplier;
 
-public class ACPManager {
+public class ProcessManager {
 
-    private static final Logger LOG = new Logger(ACPManager.class);
-    private static ACPManager instance;
+    private static final Logger LOG = new Logger(ProcessManager.class);
+    private static ProcessManager instance;
 
     // Static shared ObjectMapper for all JSON operations
     private final ObjectMapper objectMapper = MapperSupplier.get();
 
     // Shared ScheduledExecutor for reconnection delays
-    private java.util.concurrent.ScheduledFuture<?> reconnectFuture;
-    private final java.util.concurrent.ScheduledExecutorService reconnectExecutor
-            = java.util.concurrent.Executors.newSingleThreadScheduledExecutor(r -> {
-                Thread t = new Thread(r, "ACP-Reconnect");
-                t.setDaemon(true);
-                return t;
-            });
+    private ScheduledFuture<?> reconnectFuture;
+    private ScheduledExecutorService reconnectExecutor;
 
     private Process serverProcess;
     private AcpProtocolClient rpcClient;
@@ -70,13 +70,9 @@ public class ACPManager {
     private static final long RESTART_RESET_INTERVAL = 300000; // 5 minutes
     private boolean shutdownHookAdded = false;
 
-    public interface PermissionHandler {
-        void handlePermissionRequest(String sessionId, JsonNode params, CompletableFuture<String> response);
-    }
-
     private volatile boolean serverStarted = false;
 
-    private ACPManager() {
+    private ProcessManager() {
     }
 
     public synchronized void ensureStarted() {
@@ -86,9 +82,9 @@ public class ACPManager {
         }
     }
 
-    public static synchronized ACPManager getInstance() {
+    public static synchronized ProcessManager getInstance() {
         if (instance == null) {
-            instance = new ACPManager();
+            instance = new ProcessManager();
         }
         return instance;
     }
@@ -102,6 +98,13 @@ public class ACPManager {
         if (reconnectFuture != null && !reconnectFuture.isDone()) {
             reconnectFuture.cancel(false);
             reconnectFuture = null;
+        }
+        if (reconnectExecutor == null || reconnectExecutor.isShutdown()) {
+            reconnectExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
+                Thread t = new Thread(r, "ACP-Reconnect");
+                t.setDaemon(true);
+                return t;
+            });
         }
         isClosing = false;
         if (readyFuture.isDone()) {
@@ -245,14 +248,13 @@ public class ACPManager {
 
     public synchronized void restartServer() {
         LOG.fine("Manual restart of ACP server requested...");
-        ModelCache.clear();
         stopServer();
         // Reset state so startServer() actually proceeds
         serverStarted = true; // Still marked as started since we want it to run
         startServer();
     }
 
-    private void stopServer() {
+    private synchronized void stopServer() {
         isClosing = true;
 
         // Cancel any pending reconnect future
@@ -260,7 +262,8 @@ public class ACPManager {
             reconnectFuture.cancel(false);
             reconnectFuture = null;
         }
-        reconnectExecutor.shutdownNow();
+        reconnectExecutor.shutdownNow().forEach(task ->
+                LOG.fine("Discarded pending reconnect task on shutdown: {0}", task));
 
         if (rpcClient != null) {
             rpcClient.close();

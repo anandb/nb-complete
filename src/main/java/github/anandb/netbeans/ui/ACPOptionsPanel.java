@@ -4,7 +4,7 @@ import java.io.File;
 
 import javax.swing.JFileChooser;
 
-import github.anandb.netbeans.manager.ACPSettings;
+import github.anandb.netbeans.manager.PluginSettings;
 import org.openide.util.NbBundle;
 import org.openide.util.NbPreferences;
 
@@ -28,6 +28,7 @@ import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 
+import github.anandb.netbeans.manager.SessionManager;
 import github.anandb.netbeans.support.Logger;
 
 @NbBundle.Messages({
@@ -75,16 +76,16 @@ public class ACPOptionsPanel extends javax.swing.JPanel {
         setLayout(new java.awt.GridBagLayout());
 
         jLabel1 = new JLabel();
-        pathField = new JTextField();
+        pathField = new JTextField(40);
         browseButton = new JButton();
         argsLabel = new JLabel();
-        argsField = new JTextField();
+        argsField = new JTextField(40);
         echoCheckbox = new JCheckBox();
         preambleLabel = new JLabel();
         preambleArea = new JTextArea(5, 40);
         preambleScroll = new JScrollPane(preambleArea);
         iconLabel = new JLabel();
-        iconPathField = new JTextField();
+        iconPathField = new JTextField(40);
         iconBrowseButton = new JButton();
         iconPreviewLabel = new JLabel();
 
@@ -296,9 +297,9 @@ public class ACPOptionsPanel extends javax.swing.JPanel {
 
         argsField.setText(NbPreferences.forModule(ACPOptionsPanel.class).get("processArguments", "acp"));
 
-        preambleArea.setText(ACPSettings.getPreamble());
+        preambleArea.setText(PluginSettings.getPreamble());
         echoCheckbox.setSelected(NbPreferences.forModule(ACPOptionsPanel.class).getBoolean("echoUserInput", true));
-        previousIconPath = ACPSettings.getCustomUserIcon();
+        previousIconPath = PluginSettings.getCustomUserIcon();
         iconPathField.setText(previousIconPath);
         updateIconPreview(iconPathField.getText());
     }
@@ -342,9 +343,9 @@ public class ACPOptionsPanel extends javax.swing.JPanel {
         String pathToSave = showingHint ? "" : pathField.getText();
         NbPreferences.forModule(ACPOptionsPanel.class).put("acpExecutablePath", pathToSave);
         NbPreferences.forModule(ACPOptionsPanel.class).put("processArguments", argsField.getText());
-        ACPSettings.setPreamble(preambleArea.getText());
+        PluginSettings.setPreamble(preambleArea.getText());
         NbPreferences.forModule(ACPOptionsPanel.class).putBoolean("echoUserInput", echoCheckbox.isSelected());
-        ACPSettings.setCustomUserIcon(iconPathField.getText());
+        PluginSettings.setCustomUserIcon(iconPathField.getText());
 
         String newIconPath = iconPathField.getText();
         String oldPath = previousIconPath != null ? previousIconPath : "";
@@ -353,7 +354,7 @@ public class ACPOptionsPanel extends javax.swing.JPanel {
             LOG.info("User icon changed: {0} -> {1}", oldPath, newPath);
             previousIconPath = newPath;
             SwingUtilities.invokeLater(() -> {
-                github.anandb.netbeans.manager.SessionManager sm = github.anandb.netbeans.manager.SessionManager.getInstance();
+                SessionManager sm = SessionManager.getInstance();
                 String currentId = sm.getCurrentSessionId();
                 if (currentId != null) {
                     sm.loadSession(currentId);

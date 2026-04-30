@@ -5,6 +5,7 @@ import java.util.Map;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
+import github.anandb.netbeans.contract.DataExtractionStrategy;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.Logger;
 
@@ -21,11 +22,13 @@ public class StrategyRegistry {
         register("agent_thought_chunk", new AgentThoughtChunkStrategy());
         register("user_message_chunk", new UserMessageChunkStrategy());
         register("tool_call_update", new ToolCallUpdateStrategy());
+        register("tool_call", new ToolCallUpdateStrategy());
         register("message", new MessageStrategy());
         register("agent_data_chunk", new DataChunkReclassifyStrategy());
         register("config_options_update", new ConfigOptionsUpdateStrategy());
         register("session_info_update", new SessionInfoUpdateStrategy());
         register("usage_update", new UsageUpdateStrategy());
+        register("plan", new PlanStrategy());
 
         fallbackStrategies = new DataExtractionStrategy[] {
             new DataChunkReclassifyStrategy()
@@ -36,14 +39,11 @@ public class StrategyRegistry {
         return INSTANCE;
     }
 
-    public void register(String type, DataExtractionStrategy strategy) {
-        typeStrategies.put(type, strategy);
-    }
-
     public DataExtractionStrategy select(SessionUpdate update) {
         String type = update.type();
         if (type == null) {
-            return null;
+            LOG.warn("Recieved a message with NULL type {0}", update);
+            return defaultStrategy;
         }
 
         DataExtractionStrategy selected = null;
@@ -88,6 +88,7 @@ public class StrategyRegistry {
     private boolean shouldSkip(JsonNode content) {
         if (content == null || !content.has("annotations")) return false;
         JsonNode annotations = content.get("annotations");
+        if (annotations == null || !annotations.isObject()) return false;
         if (annotations.has("audience") && annotations.get("audience").isArray()) {
             for (JsonNode aud : annotations.get("audience")) {
                 if ("assistant".equals(aud.asText())) return true;
@@ -99,5 +100,9 @@ public class StrategyRegistry {
             }
         }
         return false;
+    }
+
+    final void register(String type, DataExtractionStrategy strategy) {
+        typeStrategies.put(type, strategy);
     }
 }

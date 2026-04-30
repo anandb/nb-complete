@@ -1,4 +1,4 @@
-package github.anandb.netbeans.manager.strategy;
+package github.anandb.netbeans.contract;
 
 import java.util.List;
 

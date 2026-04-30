@@ -34,7 +34,8 @@ public record SessionUpdate(
         List<AvailableCommand> availableCommands,
         List<SessionConfigOption> configOptions,
         Long used,
-        Long size
+        Long size,
+        JsonNode entries
     ) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)

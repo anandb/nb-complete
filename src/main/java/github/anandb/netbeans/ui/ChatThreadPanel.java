@@ -7,13 +7,13 @@ import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridLayout;
+import java.awt.KeyEventDispatcher;
 import java.awt.KeyboardFocusManager;
 import java.awt.Rectangle;
 import java.awt.event.ContainerAdapter;
 import java.awt.event.ContainerEvent;
 import java.awt.event.KeyEvent;
 import java.io.File;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -32,8 +32,9 @@ import javax.swing.ScrollPaneConstants;
 import javax.swing.Scrollable;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
+import javax.swing.Timer;
 
-import github.anandb.netbeans.manager.SessionTitleManager;
+import github.anandb.netbeans.manager.SessionTitleMapper;
 import github.anandb.netbeans.manager.ToolParamsExtractor;
 import github.anandb.netbeans.model.Message;
 import github.anandb.netbeans.model.MessageClassification;
@@ -51,9 +52,9 @@ public class ChatThreadPanel extends JPanel {
     private final JPanel messagesContainer;
     private final JScrollPane scrollPane;
     private MessageBubble activeStreamBubble = null;
-    private final javax.swing.Timer streamFlushTimer;
-    private final javax.swing.Timer scrollTimer;
-    private java.awt.KeyEventDispatcher keyDispatcher;
+    private final Timer streamFlushTimer;
+    private final Timer scrollTimer;
+    private transient final KeyEventDispatcher keyDispatcher;
 
     public ChatThreadPanel() {
         ColorTheme theme = ThemeManager.getCurrentTheme();
@@ -107,7 +108,7 @@ public class ChatThreadPanel extends JPanel {
                 return;
             }
             if (activeStreamBubble != null && activeStreamBubble.flushUpdate()) {
-                activeStreamBubble.revalidate();
+                messagesContainer.revalidate();
                 scrollToBottom();
             }
         });
@@ -369,7 +370,7 @@ public class ChatThreadPanel extends JPanel {
             if (activeStreamBubble != null) {
                 activeStreamBubble.finalizeStreaming();
                 if (activeStreamBubble.flushUpdate(true)) {
-                    activeStreamBubble.revalidate();
+                    messagesContainer.revalidate();
                     scrollToBottom();
                 }
                 activeStreamBubble = null;
@@ -679,7 +680,7 @@ public class ChatThreadPanel extends JPanel {
 
                     for (Session s : sessions) {
                         String title = defaultIfBlank(s.title(), "Chat " + left(s.id(), 8));
-                        String label = SessionTitleManager.getTitle(s.id(), title);
+                        String label = SessionTitleMapper.getTitle(s.id(), title);
                         String dir = s.effectiveDirectory();
                         JButton sessionBtn = createSelectionButtonWithBadge(label, s.projectName(), dir);
                         sessionBtn.addActionListener(e -> onSessionSelected.accept(s.id()));

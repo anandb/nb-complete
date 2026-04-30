@@ -11,8 +11,8 @@ import github.anandb.netbeans.support.Logger;
 
 import org.openide.modules.Places;
 
-public class SessionTitleManager {
-    private static final Logger LOG = new Logger(SessionTitleManager.class);
+public class SessionTitleMapper {
+    private static final Logger LOG = new Logger(SessionTitleMapper.class);
     private static final String TITLES_FILE = "acp_session_titles.properties";
     private static final Properties titles = new Properties();
 

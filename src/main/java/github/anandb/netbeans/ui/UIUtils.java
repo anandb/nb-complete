@@ -11,12 +11,14 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
+
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JPanel;
 import javax.swing.border.Border;
-import github.anandb.netbeans.manager.ACPSettings;
+
+import github.anandb.netbeans.manager.PluginSettings;
 import github.anandb.netbeans.support.Logger;
 
 public class UIUtils {
@@ -48,7 +50,7 @@ public class UIUtils {
         JButton btn = new JButton(text);
         btn.setFocusPainted(false);
         btn.setMargin(new Insets(2, 12, 2, 12));
-        btn.setPreferredSize(new Dimension(65, 32));
+        btn.setPreferredSize(new Dimension(80, 32));
         if (l != null) {
             btn.addActionListener(l);
         }
@@ -97,7 +99,7 @@ public class UIUtils {
     }
 
     public static Icon loadUserIcon() {
-        String path = ACPSettings.getCustomUserIcon();
+        String path = PluginSettings.getCustomUserIcon();
         if (path != null && !path.isEmpty()) {
             File file = new File(path);
             if (file.exists()) {

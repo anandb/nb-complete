@@ -1,4 +1,4 @@
-package github.anandb.netbeans.manager.strategy;
+package github.anandb.netbeans.contract;
 
 import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.model.SessionUpdate;

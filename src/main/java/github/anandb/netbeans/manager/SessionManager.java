@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+import github.anandb.netbeans.contract.SessionListener;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.Logger;
 
@@ -29,23 +30,14 @@ public class SessionManager {
     private volatile boolean isSessionLoading = false;
     private final List<Session> cachedSessions = new CopyOnWriteArrayList<>();
 
-    public interface SessionListener {
-        void onSessionListUpdated(List<Session> sessions);
-        void onSessionStarted(String sessionId);
-        void onSessionLoaded(String sessionId, List<SessionConfigOption> configOptions, boolean isStartup);
-        void onSessionLoading(boolean isLoading);
-        void onSessionError(String message);
-        void onSessionUpdate(SessionUpdate update);
-    }
-
     private SessionManager() {
         // Register for project changes to keep sessions in sync
-        ACPManager.getInstance().addProjectChangeListener(this::handleProjectChanged);
+        ProcessManager.getInstance().addProjectChangeListener(this::handleProjectChanged);
         ACPProjectManager.getInstance().setProjectOpenListener(this::handleProjectOpened);
         ACPProjectManager.getInstance().setProjectCloseListener(this::handleProjectClosed);
 
         // Register for SSE updates to route them to the active session
-        ACPManager.getInstance().addSseListener(this::handleSseUpdate);
+        ProcessManager.getInstance().addSseListener(this::handleSseUpdate);
     }
 
     private void handleSseUpdate(SessionUpdate update) {
@@ -83,7 +75,7 @@ public class SessionManager {
     }
 
     public void refreshSessions() {
-        ACPManager manager = ACPManager.getInstance();
+        ProcessManager manager = ProcessManager.getInstance();
         manager.whenReady()
                 .thenCompose(v -> {
                     Project[] openProjects = ACPProjectManager.getInstance().getAllOpenProjects();
@@ -121,7 +113,7 @@ public class SessionManager {
         setLoading(true);
         notifySessionStarted(null); // Signal that we are starting a new session
 
-        ACPManager.getInstance().createSession(explicitCwd)
+        ProcessManager.getInstance().createSession(explicitCwd)
                 .thenAccept(session -> {
                     this.currentSessionId = session.id();
                     this.lastProjectDir = session.effectiveDirectory();
@@ -151,8 +143,8 @@ public class SessionManager {
         setLoading(true);
         notifySessionStarted(sessionId);
 
-        String projectCwd = ACPManager.getInstance().getActiveProjectDir();
-        ACPManager.getInstance().getSessions(projectCwd).thenAccept(sessions -> {
+        String projectCwd = ProcessManager.getInstance().getActiveProjectDir();
+        ProcessManager.getInstance().getSessions(projectCwd).thenAccept(sessions -> {
             String sessionCwd = sessions.stream()
                     .filter(s -> s.id().equals(sessionId))
                     .findFirst()
@@ -168,7 +160,7 @@ public class SessionManager {
             }
 
             this.lastProjectDir = workingCwd;
-            ACPManager.getInstance().loadSession(sessionId, workingCwd)
+            ProcessManager.getInstance().loadSession(sessionId, workingCwd)
                     .thenAccept(configOptions -> {
                         if (sessionId.equals(this.currentSessionId)) {
                             notifySessionLoaded(sessionId, configOptions, isStartup);
@@ -189,7 +181,7 @@ public class SessionManager {
         if (newTitle == null || newTitle.trim().isEmpty()) {
             return;
         }
-        SessionTitleManager.setTitle(sessionId, newTitle.trim());
+        SessionTitleMapper.setTitle(sessionId, newTitle.trim());
         refreshSessions();
     }
 
@@ -209,19 +201,19 @@ public class SessionManager {
     }
 
     private void handleProjectClosed(String closedDir) {
-        ACPManager.getInstance().getSessions(closedDir)
+        ProcessManager.getInstance().getSessions(closedDir)
                 .thenAccept(closedDirSessions -> {
                     for (Session s : closedDirSessions) {
-                        ACPManager.getInstance().deleteSession(s.id());
+                        ProcessManager.getInstance().deleteSession(s.id());
                     }
                     refreshSessions();
                 });
     }
 
     private void sendPreamble(String sessionId) {
-        String preamble = ACPSettings.getPreamble().trim();
+        String preamble = PluginSettings.getPreamble().trim();
         if (!preamble.isEmpty()) {
-            ACPManager.getInstance().sendMessage(sessionId, preamble, null)
+            ProcessManager.getInstance().sendMessage(sessionId, preamble, null)
                     .exceptionally(ex -> {
                         Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
                         LOG.warn("Failed to send preamble: {0}", cause.getMessage());

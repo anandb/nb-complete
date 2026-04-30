@@ -7,12 +7,12 @@ class ACPSettingsTest {
 
     @Test
     void testPreamblePersistence() {
-        String original = ACPSettings.getPreamble();
+        String original = PluginSettings.getPreamble();
         try {
-            ACPSettings.setPreamble("Test Preamble");
-            assertEquals("Test Preamble", ACPSettings.getPreamble());
+            PluginSettings.setPreamble("Test Preamble");
+            assertEquals("Test Preamble", PluginSettings.getPreamble());
         } finally {
-            ACPSettings.setPreamble(original);
+            PluginSettings.setPreamble(original);
         }
     }
 }

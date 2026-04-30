@@ -60,13 +60,15 @@ import java.awt.KeyEventDispatcher;
 
 import javax.swing.Timer;
 
-import github.anandb.netbeans.manager.ACPManager;
+import github.anandb.netbeans.manager.ProcessManager;
 import github.anandb.netbeans.manager.AgentUtils;
 import github.anandb.netbeans.manager.SessionManager;
-import github.anandb.netbeans.manager.SessionTitleManager;
-import github.anandb.netbeans.manager.strategy.DataExtractionStrategy;
+import github.anandb.netbeans.manager.SessionTitleMapper;
+import github.anandb.netbeans.contract.DataExtractionStrategy;
+import github.anandb.netbeans.contract.PermissionHandler;
+import github.anandb.netbeans.contract.SessionListener;
 import github.anandb.netbeans.manager.strategy.StrategyRegistry;
-import github.anandb.netbeans.manager.strategy.UIHandler;
+import github.anandb.netbeans.contract.UIHandler;
 import github.anandb.netbeans.model.ConfigItem;
 import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.model.Session;
@@ -97,7 +99,7 @@ import github.anandb.netbeans.support.Logger;
     "CTL_AssistantTopComponent=Assistant",
     "HINT_AssistantTopComponent=This is an Assistant window"
 })
-public final class AssistantTopComponent extends TopComponent implements ACPManager.PermissionHandler, SessionManager.SessionListener {
+public final class AssistantTopComponent extends TopComponent implements PermissionHandler, SessionListener {
 
     private static final Logger LOG = new Logger(AssistantTopComponent.class);
     private static final long serialVersionUID = 1L;
@@ -370,7 +372,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
 
         setupListeners();
 
-        ACPManager.getInstance().setPermissionHandler(this);
+        ProcessManager.getInstance().setPermissionHandler(this);
 
         initChat();
         applyInitialTheme();
@@ -509,7 +511,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
                 int selectIdx = -1;
                 for (int i = 0; i < sessions.size(); i++) {
                     Session s = sessions.get(i);
-                    String customTitle = SessionTitleManager.getTitle(s.id(), s.title());
+                    String customTitle = SessionTitleMapper.getTitle(s.id(), s.title());
                     sessionDropdown.addItem(new SessionItem(s, customTitle));
                     if (currentId != null && s.id().equals(currentId)) {
                         selectIdx = i;
@@ -647,7 +649,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
         }
 
         Map<String, Object> context = text.trim().startsWith("/") ? null : captureEditorContext();
-        ACPManager.getInstance().sendMessage(currentSessionId, text, context)
+        ProcessManager.getInstance().sendMessage(currentSessionId, text, context)
                 .thenAccept(result -> {
                     SwingUtilities.invokeLater(() -> {
                         String currentStatus = statusLabel.getText();
@@ -740,7 +742,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
             return;
         }
         SwingUtilities.invokeLater(() -> statusLabel.setText("Stopping..."));
-        ACPManager.getInstance().stopMessage(currentSessionId)
+        ProcessManager.getInstance().stopMessage(currentSessionId)
                 .thenAccept(v -> {
                     SwingUtilities.invokeLater(() -> {
                         statusLabel.setText("Stopped");
@@ -775,7 +777,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
 
     private String selectedIdToTitle(Session session) {
         String title = defaultIfBlank(session.title(), "Chat " + left(session.id(), 8));
-        return SessionTitleManager.getTitle(session.id(), title);
+        return SessionTitleMapper.getTitle(session.id(), title);
     }
 
     private JButton createFilterButton() {
@@ -842,10 +844,10 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
         setInputEnabled(false);
 
         // Perform restart
-        ACPManager.getInstance().restartServer();
+        ProcessManager.getInstance().restartServer();
 
         // Wait for server to be ready and reload session
-        ACPManager.getInstance().whenReady().thenAccept(v -> {
+        ProcessManager.getInstance().whenReady().thenAccept(v -> {
             SwingUtilities.invokeLater(() -> {
                 statusLabel.setText("Server restarted. Reloading session...");
                 if (currentSessionId != null) {
@@ -968,7 +970,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
         String prefix = text.substring(start + 1, caret).toLowerCase();
 
         List<SessionUpdate.AvailableCommand> allCommands = trigger == '/'
-            ? ACPManager.getInstance().getAvailableCommands()
+            ? ProcessManager.getInstance().getAvailableCommands()
             : java.util.Collections.emptyList(); // Mentions not yet implemented
 
         List<SessionUpdate.AvailableCommand> filtered = allCommands.stream()
@@ -1074,7 +1076,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
                 }
 
                 LOG.fine("Config update: {0}={1} for session {2}", new Object[]{configId, item.value(), currentId});
-                ACPManager.getInstance().setSessionConfigOption(currentId, configId, item.value());
+                ProcessManager.getInstance().setSessionConfigOption(currentId, configId, item.value());
             }
         });
     }
@@ -1141,7 +1143,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
                 if (selectedValue != null && !selectedValue.isEmpty() && !selectedValue.equals(currentValue)) {
                     LOG.fine("Applying pre-selected config: {0}={1} (server default was {2})",
                             new Object[]{opt.id(), selectedValue, currentValue});
-                    ACPManager.getInstance().setSessionConfigOption(sessionId, opt.id(), selectedValue);
+                    ProcessManager.getInstance().setSessionConfigOption(sessionId, opt.id(), selectedValue);
                 }
             }
         }
@@ -1247,12 +1249,12 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
                 String match = findModelMatch(opt, envModel);
                 if (match != null) {
                     LOG.fine("Using OPENCODE_MODEL: {0}", new Object[]{match});
-                    ACPManager.getInstance().setSessionConfigOption(currentId, opt.id(), match);
+                    ProcessManager.getInstance().setSessionConfigOption(currentId, opt.id(), match);
                     return match;
                 }
             }
             if (lastSelectedModelId != null && !lastSelectedModelId.equalsIgnoreCase(currentValue)) {
-                ACPManager.getInstance().setSessionConfigOption(currentId, opt.id(), lastSelectedModelId);
+                ProcessManager.getInstance().setSessionConfigOption(currentId, opt.id(), lastSelectedModelId);
                 return lastSelectedModelId;
             }
         }
@@ -1263,7 +1265,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
     private String sendAndReturn(SessionConfigOption opt, String forcedValue, String currentId) {
         if (!forcedValue.equalsIgnoreCase(opt.currentValue()) && currentId != null) {
             LOG.fine("Forcing default: {0}={1} (was {2})", new Object[]{opt.id(), forcedValue, opt.currentValue()});
-            ACPManager.getInstance().setSessionConfigOption(currentId, opt.id(), forcedValue);
+            ProcessManager.getInstance().setSessionConfigOption(currentId, opt.id(), forcedValue);
             return forcedValue;
         }
         return opt.currentValue();
@@ -1333,7 +1335,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
                 effectivePath = SessionManager.getInstance().getCurrentSessionDirectory();
             }
             if (effectivePath == null || effectivePath.isEmpty()) {
-                effectivePath = ACPManager.getInstance().getActiveProjectDir();
+                effectivePath = ProcessManager.getInstance().getActiveProjectDir();
             }
             if (effectivePath == null || effectivePath.isEmpty()) {
                 effectivePath = System.getProperty("user.dir");
@@ -1364,7 +1366,7 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
         instance = this;
         SessionManager.getInstance().addSessionListener(this);
         try {
-            ACPManager.getInstance().ensureStarted();
+            ProcessManager.getInstance().ensureStarted();
         } catch (Exception ex) {
             LOG.severe("Failed to ensure server is started", ex);
             String msg = ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName();

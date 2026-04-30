@@ -6,11 +6,11 @@ import org.apache.commons.exec.CommandLine;
 
 import static org.apache.commons.lang3.StringUtils.defaultIfBlank;
 
-public class ACPCommandBuilder {
+public class CommandBuilder {
 
     private final Preferences prefs;
 
-    public ACPCommandBuilder(Preferences prefs) {
+    public CommandBuilder(Preferences prefs) {
         this.prefs = prefs;
     }
 

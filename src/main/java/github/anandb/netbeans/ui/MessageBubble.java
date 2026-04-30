@@ -296,6 +296,15 @@ public class MessageBubble extends JPanel implements Scrollable {
     }
 
     @Override
+    public void addNotify() {
+        super.addNotify();
+        SwingUtilities.invokeLater(() -> {
+            revalidate();
+            repaint();
+        });
+    }
+
+    @Override
     public void removeNotify() {
         super.removeNotify();
         if (hierarchyListener != null) {

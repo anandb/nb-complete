@@ -19,7 +19,7 @@ import github.anandb.netbeans.model.Session;
 class SessionManagerTest {
 
     @Mock
-    private ACPManager acpManager;
+    private ProcessManager acpManager;
 
     private SessionManager sessionManager;
 
@@ -35,7 +35,7 @@ class SessionManagerTest {
         // Inject mock acpManager via reflection if needed, 
         // but SessionManager.getInstance() calls ACPManager.getInstance().
         // So we need to mock ACPManager singleton first.
-        Field acpInstanceField = ACPManager.class.getDeclaredField("instance");
+        Field acpInstanceField = ProcessManager.class.getDeclaredField("instance");
         acpInstanceField.setAccessible(true);
         acpInstanceField.set(null, acpManager);
         

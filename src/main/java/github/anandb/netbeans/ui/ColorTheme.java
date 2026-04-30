@@ -49,7 +49,7 @@ public record ColorTheme(
                 bubbleUser = Color.decode("#2d2d2d");
             }
         } else {
-            bubbleUser = Color.decode("#CFC6B6");
+            bubbleUser = Color.decode("#E8F0FE");
         }
 
         return new ColorTheme(

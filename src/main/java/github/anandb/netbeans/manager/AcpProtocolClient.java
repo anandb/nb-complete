@@ -19,6 +19,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
+import github.anandb.netbeans.contract.RequestHandler;
 import github.anandb.netbeans.support.Logger;
 
 import github.anandb.netbeans.support.MapperSupplier;
@@ -299,11 +300,6 @@ public class AcpProtocolClient implements Closeable {
         } catch (JsonProcessingException e) {
             LOG.severe("Failed to serialize error response", e);
         }
-    }
-
-    @FunctionalInterface
-    public interface RequestHandler {
-        CompletableFuture<JsonNode> handle(JsonNode params);
     }
 
     private void notifyConnectionError(Throwable t) {

@@ -20,7 +20,7 @@ class ACPCommandBuilderTest {
         Preferences.importPreferences(new ByteArrayInputStream(prefs.getBytes(StandardCharsets.UTF_8)));
 
         String defaultPath = System.getProperty("user.home") + "/.opencode/bin/opencode";
-        CommandLine cmd = new ACPCommandBuilder(Preferences.userRoot()).build(defaultPath);
+        CommandLine cmd = new CommandBuilder(Preferences.userRoot()).build(defaultPath);
         assertNotNull(cmd);
         assertEquals(defaultPath, cmd.getExecutable());
 
@@ -36,7 +36,7 @@ class ACPCommandBuilderTest {
     void testBuildWithCustomArguments() throws Exception {
         String prefs = buildPrefs("/custom/path/opencode", "chat --model claude");
         Preferences.importPreferences(new ByteArrayInputStream(prefs.getBytes(StandardCharsets.UTF_8)));
-        CommandLine cmd = new ACPCommandBuilder(Preferences.userRoot()).build("");
+        CommandLine cmd = new CommandBuilder(Preferences.userRoot()).build("");
         assertEquals("/custom/path/opencode", cmd.getExecutable());
 
         String[] args = cmd.getArguments();
@@ -50,7 +50,7 @@ class ACPCommandBuilderTest {
     void testBuildWithEmptyArguments() throws Exception {
         String prefs = buildPrefs("/path/opencode", "");
         Preferences.importPreferences(new ByteArrayInputStream(prefs.getBytes(StandardCharsets.UTF_8)));
-        CommandLine cmd = new ACPCommandBuilder(Preferences.userRoot()).build("/path/opencode");
+        CommandLine cmd = new CommandBuilder(Preferences.userRoot()).build("/path/opencode");
         assertEquals("/path/opencode", cmd.getExecutable());
 
         String[] args = cmd.getArguments();
@@ -62,7 +62,7 @@ class ACPCommandBuilderTest {
     void testBuildExecutableNotNullOrEmpty() throws Exception {
         String prefs = buildPrefs("/path/somepath", "");
         Preferences.importPreferences(new ByteArrayInputStream(prefs.getBytes(StandardCharsets.UTF_8)));
-        CommandLine cmd = new ACPCommandBuilder(Preferences.userRoot()).build("/path/opencode");
+        CommandLine cmd = new CommandBuilder(Preferences.userRoot()).build("/path/opencode");
         assertNotNull(cmd.getExecutable());
         assertEquals("/path/somepath", cmd.getExecutable());
         assertFalse(cmd.getExecutable().isEmpty());
