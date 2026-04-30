@@ -194,15 +194,8 @@ public class ACPManager {
             return exeName;
         }
 
-        // 3. Default location
-        String defaultPath = System.getProperty("user.home") + File.separator + ".opencode" + File.separator + "bin" + File.separator + exeName;
-        if (new File(defaultPath).exists()) {
-            LOG.log(Level.FINE, "Using default location: {0}", defaultPath);
-            return defaultPath;
-        }
-
-        LOG.log(Level.WARNING, "Binary not found in standard locations, defaulting to {0}", exeName);
-        return exeName;
+        LOG.log(Level.WARNING, "Binary not found: no configured path and not on system PATH");
+        throw new IllegalStateException("opencode binary not found: not configured and not on system PATH");
     }
 
     private boolean isInPath(String command) {

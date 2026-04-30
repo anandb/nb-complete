@@ -8,9 +8,12 @@ import github.anandb.netbeans.manager.ACPSettings;
 import org.openide.util.NbBundle;
 import org.openide.util.NbPreferences;
 
+import java.awt.Color;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
 
 import javax.swing.BorderFactory;
 import javax.swing.ImageIcon;
@@ -58,6 +61,11 @@ public class ACPOptionsPanel extends javax.swing.JPanel {
     private JButton iconBrowseButton;
     private JLabel iconPreviewLabel;
 
+    private String detectedPath;
+    private boolean showingHint;
+
+    private static final Color HINT_COLOR = Color.GRAY;
+
     ACPOptionsPanel(ACPOptionsPanelController controller) {
         this.controller = controller;
         initComponents();
@@ -90,6 +98,16 @@ public class ACPOptionsPanel extends javax.swing.JPanel {
 
         pathField.addKeyListener(new java.awt.event.KeyAdapter() {
             public void keyReleased(java.awt.event.KeyEvent evt) { controller.changed(); }
+        });
+        pathField.addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusGained(FocusEvent e) {
+                clearHint();
+            }
+            @Override
+            public void focusLost(FocusEvent e) {
+                restoreHintIfEmpty();
+            }
         });
         add(pathField, UIUtils.createGbc(1, 1, 1.0, 0, java.awt.GridBagConstraints.HORIZONTAL, java.awt.GridBagConstraints.WEST, new java.awt.Insets(0, 0, 5, 5)));
 
@@ -202,6 +220,7 @@ public class ACPOptionsPanel extends javax.swing.JPanel {
         }
         chooser.setDialogTitle(NbBundle.getMessage(ACPOptionsPanel.class, "TITLE_SelectExecutable"));
         if (chooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
+            clearHint();
             pathField.setText(chooser.getSelectedFile().getAbsolutePath());
             controller.changed();
         }
@@ -258,8 +277,23 @@ public class ACPOptionsPanel extends javax.swing.JPanel {
     private String previousIconPath;
 
     void load() {
-        String defaultPath = System.getProperty("user.home") + "/.opencode/bin/opencode";
-        pathField.setText(NbPreferences.forModule(ACPOptionsPanel.class).get("acpExecutablePath", defaultPath));
+        String savedPath = NbPreferences.forModule(ACPOptionsPanel.class).get("acpExecutablePath", null);
+        detectedPath = detectOpenCodeOnPath();
+
+        if (savedPath != null && !savedPath.isEmpty()) {
+            pathField.setText(savedPath);
+            pathField.setForeground(null);
+            showingHint = false;
+        } else if (detectedPath != null) {
+            pathField.setText(detectedPath);
+            pathField.setForeground(HINT_COLOR);
+            showingHint = true;
+        } else {
+            pathField.setText("opencode not found on PATH");
+            pathField.setForeground(HINT_COLOR);
+            showingHint = true;
+        }
+
         argsField.setText(NbPreferences.forModule(ACPOptionsPanel.class).get("processArguments", "acp"));
 
         preambleArea.setText(ACPSettings.getPreamble());
@@ -269,8 +303,44 @@ public class ACPOptionsPanel extends javax.swing.JPanel {
         updateIconPreview(iconPathField.getText());
     }
 
+    private static String detectOpenCodeOnPath() {
+        String exeName = System.getProperty("os.name", "").toLowerCase().contains("win") ? "opencode.exe" : "opencode";
+        String pathEnv = System.getenv("PATH");
+        if (pathEnv == null) {
+            return null;
+        }
+        for (String dir : pathEnv.split(java.util.regex.Pattern.quote(File.pathSeparator))) {
+            File f = new File(dir, exeName);
+            if (f.exists() && f.canExecute()) {
+                return f.getAbsolutePath();
+            }
+        }
+        return null;
+    }
+
+    private void clearHint() {
+        if (showingHint) {
+            pathField.setText("");
+            pathField.setForeground(null);
+            showingHint = false;
+        }
+    }
+
+    private void restoreHintIfEmpty() {
+        if (pathField.getText().isEmpty()) {
+            if (detectedPath != null) {
+                pathField.setText(detectedPath);
+            } else {
+                pathField.setText("opencode not found on PATH");
+            }
+            pathField.setForeground(HINT_COLOR);
+            showingHint = true;
+        }
+    }
+
     void store() {
-        NbPreferences.forModule(ACPOptionsPanel.class).put("acpExecutablePath", pathField.getText());
+        String pathToSave = showingHint ? "" : pathField.getText();
+        NbPreferences.forModule(ACPOptionsPanel.class).put("acpExecutablePath", pathToSave);
         NbPreferences.forModule(ACPOptionsPanel.class).put("processArguments", argsField.getText());
         ACPSettings.setPreamble(preambleArea.getText());
         NbPreferences.forModule(ACPOptionsPanel.class).putBoolean("echoUserInput", echoCheckbox.isSelected());

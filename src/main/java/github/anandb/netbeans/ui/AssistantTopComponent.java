@@ -856,7 +856,9 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
             });
         }).exceptionally(ex -> {
             SwingUtilities.invokeLater(() -> {
-                statusLabel.setText("Restart failed: " + ex.getMessage());
+                String msg = ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName();
+                statusLabel.setText("Restart failed: " + msg);
+                chatPanel.addMessage("error", "Restart failed: " + msg);
                 setInputEnabled(true);
             });
             return null;
@@ -1365,6 +1367,8 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
             ACPManager.getInstance().ensureStarted();
         } catch (Exception ex) {
             LOG.severe("Failed to ensure server is started", ex);
+            String msg = ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName();
+            chatPanel.addMessage("error", "Failed to start: " + msg);
         }
         SwingUtilities.invokeLater(() -> {
             if (inputArea != null) {
