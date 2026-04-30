@@ -19,6 +19,13 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextPane;
 import javax.swing.Scrollable;
+import javax.swing.event.AncestorEvent;
+import javax.swing.event.AncestorListener;
+import java.awt.event.HierarchyEvent;
+import java.awt.event.HierarchyListener;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
 import javax.swing.text.View;
 
@@ -64,6 +71,7 @@ public class MessageBubble extends JPanel implements Scrollable {
     private final JPanel segmentsContainer;
     private JPanel bubble;
     private final ArrayList<CollapsibleState> codeStates = new ArrayList<>();
+    private HierarchyListener hierarchyListener;
 
     private static class CollapsibleState {
         boolean expanded;
@@ -271,6 +279,29 @@ public class MessageBubble extends JPanel implements Scrollable {
         }
 
         add(bubble, UIUtils.createGbc(0, 0, 1.0, 0, fill, anchor, gbcInsets));
+
+        // Fix for "garbled" text in scroll panes: force a repaint when the component becomes visible
+        if ("user".equals(type)) {
+            this.hierarchyListener = e -> {
+                if ((e.getChangeFlags() & HierarchyEvent.SHOWING_CHANGED) != 0 && isShowing()) {
+                    SwingUtilities.invokeLater(() -> {
+                        repaint();
+                        bubble.repaint();
+                        segmentsContainer.repaint();
+                    });
+                }
+            };
+            addHierarchyListener(this.hierarchyListener);
+        }
+    }
+
+    @Override
+    public void removeNotify() {
+        super.removeNotify();
+        if (hierarchyListener != null) {
+            removeHierarchyListener(hierarchyListener);
+            hierarchyListener = null;
+        }
     }
 
     private boolean hasPendingTextUpdate = false;
@@ -688,8 +719,14 @@ public class MessageBubble extends JPanel implements Scrollable {
         pane.putClientProperty(javax.swing.JTextPane.HONOR_DISPLAY_PROPERTIES, Boolean.TRUE);
         pane.setEditable(false);
         pane.setContentType("text/html");
-        pane.setOpaque(false);
-        pane.setBackground(new Color(0, 0, 0, 0));
+        // Use opaque background for User bubbles to prevent "garbled" text artifacts in scroll panes
+        if ("user".equals(type) && bg != null && bg.getAlpha() > 0) {
+            pane.setOpaque(true);
+            pane.setBackground(bg);
+        } else {
+            pane.setOpaque(false);
+            pane.setBackground(new Color(0, 0, 0, 0));
+        }
         pane.setMargin(new Insets(0, 0, 0, 0));
         pane.setForeground(theme.foreground());
         pane.setDoubleBuffered(true);

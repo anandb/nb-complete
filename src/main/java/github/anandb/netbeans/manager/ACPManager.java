@@ -28,6 +28,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import javax.swing.SwingUtilities;
+
 import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.model.SessionConfigOption;
 import github.anandb.netbeans.model.SessionUpdate;
@@ -53,10 +55,9 @@ public class ACPManager {
                 return t;
             });
 
-    private boolean initialized = false;
     private Process serverProcess;
     private AcpProtocolClient rpcClient;
-    private CompletableFuture<Void> readyFuture = new CompletableFuture<>();
+    private volatile CompletableFuture<Void> readyFuture = new CompletableFuture<>();
 
     private final List<Consumer<SessionUpdate>> sseListeners = new CopyOnWriteArrayList<>();
     private final List<Consumer<String>> projectChangeListeners = new CopyOnWriteArrayList<>();
@@ -230,7 +231,6 @@ public class ACPManager {
         rpcClient.sendRequest("initialize", params)
                 .orTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
                 .thenAccept(res -> {
-                    this.initialized = true;
                     readyFuture.complete(null);
                     LOG.log(Level.FINE, "ACP initialized successfully");
                 })
@@ -256,7 +256,6 @@ public class ACPManager {
         stopServer();
         // Reset state so startServer() actually proceeds
         serverStarted = true; // Still marked as started since we want it to run
-        initialized = false;
         startServer();
     }
 
@@ -678,7 +677,6 @@ public class ACPManager {
             staleClient.close();
         }
 
-        this.initialized = false;
 
         long now = System.currentTimeMillis();
         if (now - lastRestartTime > RESTART_RESET_INTERVAL) {
@@ -711,7 +709,7 @@ public class ACPManager {
         CompletableFuture<String> response = new CompletableFuture<>();
 
         if (permissionHandler != null) {
-            javax.swing.SwingUtilities.invokeLater(() -> {
+            SwingUtilities.invokeLater(() -> {
                 permissionHandler.handlePermissionRequest(sessionId, params, response);
             });
         } else {

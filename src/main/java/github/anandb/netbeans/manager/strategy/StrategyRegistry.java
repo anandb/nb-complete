@@ -14,6 +14,7 @@ public class StrategyRegistry {
 
     private final Map<String, DataExtractionStrategy> typeStrategies = new LinkedHashMap<>();
     private final DataExtractionStrategy[] fallbackStrategies;
+    private final DataExtractionStrategy defaultStrategy = new DefaultStrategy();
 
     private StrategyRegistry() {
         register("agent_message_chunk", new AgentMessageChunkStrategy());
@@ -41,21 +42,39 @@ public class StrategyRegistry {
 
     public DataExtractionStrategy select(SessionUpdate update) {
         String type = update.type();
-        if (type == null) return null;
-
-        DataExtractionStrategy s = typeStrategies.get(type);
-        if (s != null) {
-            if (hasAnnotationFilter(update) && shouldSkip(update.content())) return null;
-            return s;
+        if (type == null) {
+            return null;
         }
 
-        for (DataExtractionStrategy fs : fallbackStrategies) {
-            if (fs.canHandle(update)) {
-                return fs;
+        DataExtractionStrategy selected = null;
+
+        // 1. Try exact match
+        DataExtractionStrategy s = typeStrategies.get(type);
+        if (s != null) {
+            if (hasAnnotationFilter(update) && shouldSkip(update.content())) {
+                LOG.fine("Strategy skipped for {0} due to annotation filter", type);
+                return null;
+            }
+            selected = s;
+        }
+
+        // 2. Try fallbacks (strategies that can handle multiple or reclassified types)
+        if (selected == null) {
+            for (DataExtractionStrategy fs : fallbackStrategies) {
+                if (fs.canHandle(update)) {
+                    selected = fs;
+                    break;
+                }
             }
         }
 
-        return null;
+        // 3. Final default (logs unknown types)
+        if (selected == null) {
+            selected = defaultStrategy;
+        }
+
+        LOG.fine("Strategy selected for {0}: {1}", type, selected.getClass().getSimpleName());
+        return selected;
     }
 
 

@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>github.anandb</groupId>
     <artifactId>beanbot</artifactId>
-    <version>1.4.69</version>
+    <version>1.4.71</version>
     <packaging>nbm</packaging>
 
     <name>Coding Assistant</name>
@@ -306,9 +306,9 @@
                 <configuration>
                     <archive>
                         <manifestFile>${project.build.outputDirectory}/META-INF/MANIFEST.MF</manifestFile>
-                        <manifestEntries>
-                            <OpenIDE-Module-Layer>github/anandb/netbeans/ui/layer.xml</OpenIDE-Module-Layer>
-                        </manifestEntries>
+                            <manifestEntries>
+                                <OpenIDE-Module-Layer>github/anandb/netbeans/ui/layer.xml</OpenIDE-Module-Layer>
+                            </manifestEntries>
                     </archive>
                 </configuration>
             </plugin>

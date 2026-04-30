@@ -6,8 +6,10 @@ import github.anandb.netbeans.manager.ToolParamsExtractor;
 import github.anandb.netbeans.model.MessageClassification;
 import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.model.SessionUpdate;
+import github.anandb.netbeans.support.Logger;
 
 public class AgentMessageChunkStrategy implements DataExtractionStrategy {
+    private static final Logger LOG = new Logger(AgentMessageChunkStrategy.class);
     @Override
     public boolean canHandle(SessionUpdate update) {
         return "agent_message_chunk".equals(update.type());
@@ -47,7 +49,12 @@ public class AgentMessageChunkStrategy implements DataExtractionStrategy {
                 }
             }
         }
-        return sb.toString();
+        
+        String result = sb.toString();
+        if (result.isEmpty()) {
+            LOG.fine("Could not extract non-empty text from content: {0}", content);
+        }
+        return result;
     }
 
 }

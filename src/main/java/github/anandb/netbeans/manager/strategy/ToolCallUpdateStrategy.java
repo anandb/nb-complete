@@ -9,7 +9,7 @@ import github.anandb.netbeans.model.SessionUpdate;
 import static org.apache.commons.lang3.StringUtils.defaultIfBlank;
 import static org.apache.commons.lang3.StringUtils.defaultString;
 
-public class ToolCallUpdateStrategy implements DataExtractionStrategy {
+public class ToolCallUpdateStrategy implements DataExtractionStrategy {    
     @Override
     public boolean canHandle(SessionUpdate update) {
         return "tool_call_update".equals(update.type());

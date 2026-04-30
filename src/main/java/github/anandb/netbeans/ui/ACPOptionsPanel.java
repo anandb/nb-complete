@@ -8,12 +8,31 @@ import github.anandb.netbeans.manager.ACPSettings;
 import org.openide.util.NbBundle;
 import org.openide.util.NbPreferences;
 
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
+
+import javax.swing.BorderFactory;
+import javax.swing.ImageIcon;
+import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.JLabel;
+import javax.swing.JMenuItem;
+import javax.swing.JPopupMenu;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
+import javax.swing.JTextField;
+import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
+
+import github.anandb.netbeans.support.Logger;
+
 @NbBundle.Messages({
-    "LBL_ExecutablePath=Executable Path:",
+    "LBL_ExecutablePath=Path to Opencode Binary:",
     "LBL_ProcessArguments=Process Arguments:",
     "BTN_Browse=Browse...",
     "TITLE_SelectExecutable=Select Assistant Executable",
-    "LBL_Preamble=Session preamble (sent as first user message for new chats):",
+    "LBL_Preamble=Session preamble (sent as first user message for new chats, use '---' as a message separator):",
     "LBL_EchoUserInput=Echo user input immediately (Local Echo)",
     "LBL_UserIcon=Custom User Icon (SVG or PNG):",
     "TITLE_SelectIcon=Select User Icon",
@@ -21,22 +40,23 @@ import org.openide.util.NbPreferences;
     "TIP_ClearIcon=Right-click to clear custom icon"
 })
 public class ACPOptionsPanel extends javax.swing.JPanel {
+    private static final Logger LOG = new Logger(ACPOptionsPanel.class);
 
     private static final long serialVersionUID = 1L;
     private final ACPOptionsPanelController controller;
-    private javax.swing.JLabel jLabel1;
-    private javax.swing.JTextField pathField;
-    private javax.swing.JLabel preambleLabel;
-    private javax.swing.JTextArea preambleArea;
-    private javax.swing.JScrollPane preambleScroll;
-    private javax.swing.JButton browseButton;
-    private javax.swing.JCheckBox echoCheckbox;
-    private javax.swing.JLabel argsLabel;
-    private javax.swing.JTextField argsField;
-    private javax.swing.JLabel iconLabel;
-    private javax.swing.JTextField iconPathField;
-    private javax.swing.JButton iconBrowseButton;
-    private javax.swing.JLabel iconPreviewLabel;
+    private JLabel jLabel1;
+    private JTextField pathField;
+    private JLabel preambleLabel;
+    private JTextArea preambleArea;
+    private JScrollPane preambleScroll;
+    private JButton browseButton;
+    private JCheckBox echoCheckbox;
+    private JLabel argsLabel;
+    private JTextField argsField;
+    private JLabel iconLabel;
+    private JTextField iconPathField;
+    private JButton iconBrowseButton;
+    private JLabel iconPreviewLabel;
 
     ACPOptionsPanel(ACPOptionsPanelController controller) {
         this.controller = controller;
@@ -44,31 +64,92 @@ public class ACPOptionsPanel extends javax.swing.JPanel {
     }
 
     private void initComponents() {
-        jLabel1 = new javax.swing.JLabel();
-        pathField = new javax.swing.JTextField();
-        preambleLabel = new javax.swing.JLabel();
-        preambleArea = new javax.swing.JTextArea(3, 40);
-        preambleScroll = new javax.swing.JScrollPane(preambleArea);
-        browseButton = new javax.swing.JButton();
-        argsLabel = new javax.swing.JLabel();
-        argsField = new javax.swing.JTextField();
-        echoCheckbox = new javax.swing.JCheckBox();
-        iconLabel = new javax.swing.JLabel();
-        iconPathField = new javax.swing.JTextField();
-        iconBrowseButton = new javax.swing.JButton();
-        iconPreviewLabel = new javax.swing.JLabel();
+        setLayout(new java.awt.GridBagLayout());
+
+        jLabel1 = new JLabel();
+        pathField = new JTextField();
+        browseButton = new JButton();
+        argsLabel = new JLabel();
+        argsField = new JTextField();
+        echoCheckbox = new JCheckBox();
+        preambleLabel = new JLabel();
+        preambleArea = new JTextArea(5, 40);
+        preambleScroll = new JScrollPane(preambleArea);
+        iconLabel = new JLabel();
+        iconPathField = new JTextField();
+        iconBrowseButton = new JButton();
+        iconPreviewLabel = new JLabel();
+
+        // --- SECTION: Assistant Service ---
+        JLabel serviceHeader = new JLabel("Assistant Service");
+        serviceHeader.setFont(serviceHeader.getFont().deriveFont(java.awt.Font.BOLD));
+        add(serviceHeader, UIUtils.createGbc(0, 0, 1.0, 0, java.awt.GridBagConstraints.HORIZONTAL, java.awt.GridBagConstraints.WEST, new java.awt.Insets(0, 0, 10, 0)));
 
         jLabel1.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_ExecutablePath"));
-        argsLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_ProcessArguments"));
+        add(jLabel1, UIUtils.createGbc(0, 1, 0.0, 0, java.awt.GridBagConstraints.NONE, java.awt.GridBagConstraints.WEST, new java.awt.Insets(0, 12, 5, 5)));
+
+        pathField.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyReleased(java.awt.event.KeyEvent evt) { controller.changed(); }
+        });
+        add(pathField, UIUtils.createGbc(1, 1, 1.0, 0, java.awt.GridBagConstraints.HORIZONTAL, java.awt.GridBagConstraints.WEST, new java.awt.Insets(0, 0, 5, 5)));
+
         browseButton.setText(NbBundle.getMessage(ACPOptionsPanel.class, "BTN_Browse"));
         browseButton.addActionListener(evt -> browseButtonActionPerformed());
+        add(browseButton, UIUtils.createGbc(2, 1, 0.0, 0, java.awt.GridBagConstraints.NONE, java.awt.GridBagConstraints.WEST, new java.awt.Insets(0, 0, 5, 0)));
+
+        argsLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_ProcessArguments"));
+        add(argsLabel, UIUtils.createGbc(0, 2, 0.0, 0, java.awt.GridBagConstraints.NONE, java.awt.GridBagConstraints.WEST, new java.awt.Insets(0, 12, 15, 5)));
+
+        argsField.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyReleased(java.awt.event.KeyEvent evt) { controller.changed(); }
+        });
+        add(argsField, UIUtils.createGbc(1, 2, 1.0, 0, java.awt.GridBagConstraints.HORIZONTAL, java.awt.GridBagConstraints.WEST, new java.awt.Insets(0, 0, 15, 5)));
+
+        // --- SECTION: Chat Behavior ---
+        JLabel behaviorHeader = new JLabel("Chat Behavior");
+        behaviorHeader.setFont(behaviorHeader.getFont().deriveFont(java.awt.Font.BOLD));
+        add(behaviorHeader, UIUtils.createGbc(0, 3, 1.0, 0, java.awt.GridBagConstraints.HORIZONTAL, java.awt.GridBagConstraints.WEST, new java.awt.Insets(10, 0, 10, 0)));
 
         echoCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_EchoUserInput"));
         echoCheckbox.addActionListener(evt -> controller.changed());
+        add(echoCheckbox, UIUtils.createGbc(0, 4, 1.0, 0, GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST, new Insets(0, 12, 10, 0)));
+
+        // GridBag uses gridwidth to span columns
+        GridBagConstraints gbcHeader = UIUtils.createGbc(0, 3, 1.0, 0, GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST, new Insets(10, 0, 10, 0));
+        gbcHeader.gridwidth = 3;
+        ((GridBagLayout)getLayout()).setConstraints(behaviorHeader, gbcHeader);
+
+        GridBagConstraints gbcServiceHeader = UIUtils.createGbc(0, 0, 1.0, 0, GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST, new Insets(0, 0, 10, 0));
+        gbcServiceHeader.gridwidth = 3;
+        ((GridBagLayout)getLayout()).setConstraints(serviceHeader, gbcServiceHeader);
+
+        preambleLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_Preamble"));
+        add(preambleLabel, UIUtils.createGbc(0, 5, 1.0, 0, GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST, new Insets(0, 12, 5, 0)));
+        GridBagConstraints gbcPreambleLabel = UIUtils.createGbc(0, 5, 1.0, 0, GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST, new Insets(0, 12, 5, 0));
+        gbcPreambleLabel.gridwidth = 3;
+        ((GridBagLayout)getLayout()).setConstraints(preambleLabel, gbcPreambleLabel);
+
+        preambleArea.setLineWrap(true);
+        preambleArea.setWrapStyleWord(true);
+        preambleArea.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyReleased(java.awt.event.KeyEvent evt) { controller.changed(); }
+        });
+        add(preambleScroll, UIUtils.createGbc(0, 6, 1.0, 0.2, GridBagConstraints.BOTH, GridBagConstraints.WEST, new Insets(0, 12, 15, 0)));
+        GridBagConstraints gbcPreambleScroll = UIUtils.createGbc(0, 6, 1.0, 0.2, GridBagConstraints.BOTH, GridBagConstraints.WEST, new Insets(0, 12, 15, 0));
+        gbcPreambleScroll.gridwidth = 3;
+        ((GridBagLayout)getLayout()).setConstraints(preambleScroll, gbcPreambleScroll);
+
+        // --- SECTION: Appearance ---
+        JLabel appearanceHeader = new JLabel("Appearance");
+        appearanceHeader.setFont(appearanceHeader.getFont().deriveFont(java.awt.Font.BOLD));
+        add(appearanceHeader, UIUtils.createGbc(0, 7, 1.0, 0, java.awt.GridBagConstraints.HORIZONTAL, java.awt.GridBagConstraints.WEST, new java.awt.Insets(10, 0, 10, 0)));
+        java.awt.GridBagConstraints gbcAppHeader = UIUtils.createGbc(0, 7, 1.0, 0, java.awt.GridBagConstraints.HORIZONTAL, java.awt.GridBagConstraints.WEST, new java.awt.Insets(10, 0, 10, 0));
+        gbcAppHeader.gridwidth = 3;
+        ((java.awt.GridBagLayout)getLayout()).setConstraints(appearanceHeader, gbcAppHeader);
 
         iconLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_UserIcon"));
-        iconBrowseButton.setText(NbBundle.getMessage(ACPOptionsPanel.class, "BTN_Browse"));
-        iconBrowseButton.addActionListener(evt -> iconBrowseButtonActionPerformed());
+        add(iconLabel, UIUtils.createGbc(0, 8, 0.0, 0, java.awt.GridBagConstraints.NONE, java.awt.GridBagConstraints.WEST, new java.awt.Insets(0, 12, 5, 5)));
+
         iconPathField.addKeyListener(new java.awt.event.KeyAdapter() {
             @Override
             public void keyReleased(java.awt.event.KeyEvent evt) {
@@ -76,29 +157,25 @@ public class ACPOptionsPanel extends javax.swing.JPanel {
                 controller.changed();
             }
         });
-        iconPreviewLabel.setPreferredSize(new java.awt.Dimension(40, 40));
-        iconPreviewLabel.setBorder(javax.swing.BorderFactory.createLineBorder(java.awt.Color.GRAY));
-        iconPreviewLabel.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        add(iconPathField, UIUtils.createGbc(1, 8, 1.0, 0, java.awt.GridBagConstraints.HORIZONTAL, java.awt.GridBagConstraints.WEST, new java.awt.Insets(0, 0, 5, 5)));
+
+        iconBrowseButton.setText(NbBundle.getMessage(ACPOptionsPanel.class, "BTN_Browse"));
+        iconBrowseButton.addActionListener(evt -> iconBrowseButtonActionPerformed());
+        add(iconBrowseButton, UIUtils.createGbc(2, 8, 0.0, 0, java.awt.GridBagConstraints.NONE, java.awt.GridBagConstraints.WEST, new java.awt.Insets(0, 0, 5, 0)));
+
+        iconPreviewLabel.setPreferredSize(new java.awt.Dimension(80, 80));
+        iconPreviewLabel.setBorder(BorderFactory.createLineBorder(java.awt.Color.GRAY));
+        iconPreviewLabel.setHorizontalAlignment(SwingConstants.CENTER);
         iconPreviewLabel.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TIP_ClearIcon"));
         iconPreviewLabel.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
-            public void mousePressed(java.awt.event.MouseEvent e) {
-                if (e.isPopupTrigger()) {
-                    showPopup(e);
-                }
-            }
+            public void mousePressed(java.awt.event.MouseEvent e) { if (e.isPopupTrigger()) showPopup(e); }
             @Override
-            public void mouseReleased(java.awt.event.MouseEvent e) {
-                if (e.isPopupTrigger()) {
-                    showPopup(e);
-                }
-            }
+            public void mouseReleased(java.awt.event.MouseEvent e) { if (e.isPopupTrigger()) showPopup(e); }
             private void showPopup(java.awt.event.MouseEvent e) {
-                if (iconPathField.getText().isEmpty()) {
-                    return;
-                }
-                javax.swing.JPopupMenu popup = new javax.swing.JPopupMenu();
-                javax.swing.JMenuItem clearItem = new javax.swing.JMenuItem(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_Clear"));
+                if (iconPathField.getText().isEmpty()) return;
+                JPopupMenu popup = new JPopupMenu();
+                JMenuItem clearItem = new JMenuItem(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_Clear"));
                 clearItem.addActionListener(evt -> {
                     iconPathField.setText("");
                     updateIconPreview("");
@@ -108,86 +185,10 @@ public class ACPOptionsPanel extends javax.swing.JPanel {
                 popup.show(e.getComponent(), e.getX(), e.getY());
             }
         });
+        add(iconPreviewLabel, UIUtils.createGbc(1, 9, 0.0, 0, java.awt.GridBagConstraints.NONE, java.awt.GridBagConstraints.WEST, new java.awt.Insets(5, 0, 5, 0)));
 
-        argsField.addKeyListener(new java.awt.event.KeyAdapter() {
-            @Override
-            public void keyReleased(java.awt.event.KeyEvent evt) {
-                controller.changed();
-            }
-        });
-
-        preambleLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_Preamble"));
-        preambleArea.setLineWrap(true);
-        preambleArea.setWrapStyleWord(true);
-        preambleArea.addKeyListener(new java.awt.event.KeyAdapter() {
-            @Override
-            public void keyReleased(java.awt.event.KeyEvent evt) {
-                controller.changed();
-            }
-        });
-
-        pathField.addKeyListener(new java.awt.event.KeyAdapter() {
-            public void keyReleased(java.awt.event.KeyEvent evt) {
-                controller.changed();
-            }
-        });
-
-        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
-        this.setLayout(layout);
-        layout.setHorizontalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(layout.createSequentialGroup()
-                .addContainerGap()
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(layout.createSequentialGroup()
-                        .addComponent(jLabel1)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(pathField, javax.swing.GroupLayout.DEFAULT_SIZE, 300, Short.MAX_VALUE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(browseButton))
-                    .addGroup(layout.createSequentialGroup()
-                        .addComponent(argsLabel)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(argsField, javax.swing.GroupLayout.DEFAULT_SIZE, 400, Short.MAX_VALUE))
-                    .addComponent(echoCheckbox)
-                    .addGroup(layout.createSequentialGroup()
-                        .addComponent(iconLabel)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(iconPathField, javax.swing.GroupLayout.DEFAULT_SIZE, 300, Short.MAX_VALUE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(iconBrowseButton)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(iconPreviewLabel, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addComponent(preambleLabel)
-                    .addComponent(preambleScroll))
-                .addContainerGap())
-        );
-        layout.setVerticalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(layout.createSequentialGroup()
-                .addContainerGap()
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLabel1)
-                    .addComponent(pathField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(browseButton))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(argsLabel)
-                    .addComponent(argsField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(echoCheckbox)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.CENTER)
-                    .addComponent(iconLabel)
-                    .addComponent(iconPathField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(iconBrowseButton)
-                    .addComponent(iconPreviewLabel, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addComponent(preambleLabel)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(preambleScroll, javax.swing.GroupLayout.DEFAULT_SIZE, 70, Short.MAX_VALUE)
-                .addContainerGap())
-        );
+        // Spacer at the bottom to push everything up
+        add(new JLabel(), UIUtils.createGbc(0, 10, 1.0, 1.0, java.awt.GridBagConstraints.BOTH, java.awt.GridBagConstraints.NORTHWEST, new java.awt.Insets(0, 0, 0, 0)));
     }
 
     private void browseButtonActionPerformed() {
@@ -238,16 +239,17 @@ public class ACPOptionsPanel extends javax.swing.JPanel {
             return;
         }
         try {
-            javax.swing.ImageIcon icon = new javax.swing.ImageIcon(path);
+            ImageIcon icon = new ImageIcon(path);
             if (icon.getIconWidth() > 0) {
-                iconPreviewLabel.setIcon(new javax.swing.ImageIcon(
-                    icon.getImage().getScaledInstance(36, 36, java.awt.Image.SCALE_SMOOTH)));
+                iconPreviewLabel.setIcon(new ImageIcon(
+                    icon.getImage().getScaledInstance(72, 72, java.awt.Image.SCALE_SMOOTH)));
                 iconPreviewLabel.setText("");
             } else {
                 iconPreviewLabel.setIcon(null);
                 iconPreviewLabel.setText("SVG");
             }
         } catch (Exception e) {
+            LOG.warn("Failed to update icon preview for: {0}", path, e);
             iconPreviewLabel.setIcon(null);
             iconPreviewLabel.setText("?");
         }
@@ -278,8 +280,9 @@ public class ACPOptionsPanel extends javax.swing.JPanel {
         String oldPath = previousIconPath != null ? previousIconPath : "";
         String newPath = newIconPath != null ? newIconPath : "";
         if (!oldPath.equals(newPath)) {
+            LOG.info("User icon changed: {0} -> {1}", oldPath, newPath);
             previousIconPath = newPath;
-            javax.swing.SwingUtilities.invokeLater(() -> {
+            SwingUtilities.invokeLater(() -> {
                 github.anandb.netbeans.manager.SessionManager sm = github.anandb.netbeans.manager.SessionManager.getInstance();
                 String currentId = sm.getCurrentSessionId();
                 if (currentId != null) {

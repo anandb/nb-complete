@@ -9,11 +9,14 @@ import javax.swing.Icon;
 import javax.swing.UIManager;
 
 import org.openide.util.ImageUtilities;
+import github.anandb.netbeans.support.Logger;
 
 /**
  * Handles non-color theme resources (Icons, Fonts) and coordinates with ColorTheme.
  */
 public class ThemeManager {
+
+    private static final Logger LOG = new Logger(ThemeManager.class);
 
     private static final Map<String, Icon> ICON_CACHE = new LinkedHashMap<>(64, 0.75f, true) {
         @Override
@@ -48,6 +51,7 @@ public class ThemeManager {
             }
         }
         if (img == null) {
+            LOG.severe("Failed to load icon: {0}", resourcePath);
             return null;
         }
         if (size > 0 && (img.getWidth(null) != size || img.getHeight(null) != size)) {
@@ -97,6 +101,8 @@ public class ThemeManager {
             Color bg = UIManager.getColor("Panel.background");
             if (bg != null) {
                 result = (bg.getRed() * 0.299 + bg.getGreen() * 0.587 + bg.getBlue() * 0.114) < 128;
+            } else {
+                LOG.severe("Theme detection fallback failed: Panel.background color is missing from UIManager");
             }
         }
         return result;
