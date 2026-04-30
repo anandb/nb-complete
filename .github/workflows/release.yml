@@ -4,6 +4,13 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      dryRun:
+        description: 'Dry run (build and sign, but do not upload)'
+        required: true
+        default: true
+        type: boolean
 
 jobs:
   release:
@@ -25,7 +32,13 @@ jobs:
           gpg-passphrase: GPG_PASSPHRASE
 
       - name: Build and Deploy
-        run: mvn -B deploy -P release
+        run: |
+          if [ "${{ github.event.inputs.dryRun }}" == "true" ]; then
+            echo "Running in dry-run mode. Skipping deployment."
+            mvn -B verify -P release
+          else
+            mvn -B deploy -P release
+          fi
         env:
           MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
           MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
