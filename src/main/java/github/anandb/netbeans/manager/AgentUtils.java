@@ -22,7 +22,7 @@ public final class AgentUtils {
     public static String getVersion() {
         try {
             org.openide.modules.ModuleInfo m = org.openide.modules.Modules.getDefault()
-                    .findCodeNameBase("github.anandb.beanbot");
+                    .findCodeNameBase("io.github.anandb.beanbot");
             if (m != null && m.getSpecificationVersion() != null) {
                 return m.getSpecificationVersion().toString();
             }
