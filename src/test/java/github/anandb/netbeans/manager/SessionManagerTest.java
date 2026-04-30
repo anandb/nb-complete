@@ -38,6 +38,9 @@ class SessionManagerTest {
         Field acpInstanceField = ACPManager.class.getDeclaredField("instance");
         acpInstanceField.setAccessible(true);
         acpInstanceField.set(null, acpManager);
+        
+        // Ensure whenReady() doesn't return null
+        when(acpManager.whenReady()).thenReturn(CompletableFuture.completedFuture(null));
     }
 
     @Test
