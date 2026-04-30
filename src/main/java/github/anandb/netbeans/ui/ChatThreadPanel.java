@@ -50,7 +50,6 @@ public class ChatThreadPanel extends JPanel {
 
     private final JPanel messagesContainer;
     private final JScrollPane scrollPane;
-    private final ArrayList<Message> messageList = new ArrayList<>();
     private MessageBubble activeStreamBubble = null;
     private final javax.swing.Timer streamFlushTimer;
     private final javax.swing.Timer scrollTimer;
@@ -117,7 +116,6 @@ public class ChatThreadPanel extends JPanel {
         scrollTimer = new javax.swing.Timer(100, e -> {
             JScrollBar vertical = scrollPane.getVerticalScrollBar();
             vertical.setValue(vertical.getMaximum());
-            messagesContainer.scrollRectToVisible(new Rectangle(0, messagesContainer.getHeight() - 1, 1, 1));
         });
         scrollTimer.setRepeats(false);
 
@@ -275,7 +273,6 @@ public class ChatThreadPanel extends JPanel {
         messagesContainer.add(bubble);
         messagesContainer.add(strut);
         messagesContainer.revalidate();
-        messagesContainer.repaint();
         scrollToBottom(true);
     }
 
@@ -338,7 +335,6 @@ public class ChatThreadPanel extends JPanel {
                             String part = parts[i];
                             if (part.trim().isEmpty() && i < parts.length - 1) continue;
                             addSingleBubble(role, part, messageId, null, "");
-                            activeStreamBubble = findLastNonIgnorableBubble();
                         }
 
                         if (!streamFlushTimer.isRunning()) {
@@ -476,8 +472,9 @@ public class ChatThreadPanel extends JPanel {
         @Override
         public Dimension getMaximumSize() {
             Dimension pref = getPreferredSize();
-            if (getParent() != null && getParent().getWidth() > 0) {
-                return new Dimension((int) (getParent().getWidth() * 0.8), pref.height);
+            if (getParent() != null) {
+                int pw = Math.max(getParent().getWidth(), 100);
+                return new Dimension((int) (pw * 0.8), pref.height);
             }
             return new Dimension(pref.width, pref.height);
         }
@@ -499,9 +496,10 @@ public class ChatThreadPanel extends JPanel {
 
             revalidate();
             repaint();
-            // Recalculate max size to collapse vertically
-            Dimension pref = getPreferredSize();
-            setMaximumSize(new Dimension(pref.width, pref.height));
+            SwingUtilities.invokeLater(() -> {
+                Dimension pref = getPreferredSize();
+                setMaximumSize(new Dimension(pref.width, pref.height));
+            });
         }
     }
 
@@ -623,6 +621,7 @@ public class ChatThreadPanel extends JPanel {
                 if (comps[i] instanceof MessageBubble bubble) {
                     boolean visible = !MessageFilterManager.isTypeHidden(bubble.getType());
                     comps[i].setVisible(visible);
+                    // Trailing strut is always at i+1 (see addSingleBubble)
                     if (i + 1 < comps.length) {
                         comps[i + 1].setVisible(visible);
                     }
@@ -634,7 +633,6 @@ public class ChatThreadPanel extends JPanel {
 
     public void clearMessages() {
         SwingUtilities.invokeLater(() -> {
-            messageList.clear();
             messagesContainer.removeAll();
             messagesContainer.revalidate();
         });

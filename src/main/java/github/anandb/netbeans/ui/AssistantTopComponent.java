@@ -420,19 +420,19 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
         }
 
         // Status updates
-        if (msgId != null) {
-            Boolean isThinking = update.isThinking();
-            if (isThinking != null) {
-                SwingUtilities.invokeLater(() -> {
-                    if (isThinking) {
-                        statusLabel.setText("Thinking...");
-                    } else {
-                        if ("Thinking...".equals(statusLabel.getText()) || statusLabel.getText().startsWith("Thinking")) {
-                            statusLabel.setText("Responding...");
-                        }
+        Boolean isThinking = update.isThinking();
+        if (isThinking != null) {
+            SwingUtilities.invokeLater(() -> {
+                if (isThinking) {
+                    statusLabel.setText("Thinking...");
+                    thinkingTimer.start();
+                } else {
+                    String current = statusLabel.getText();
+                    if (current != null && current.startsWith("Thinking")) {
+                        statusLabel.setText("Responding...");
                     }
-                });
-            }
+                }
+            });
         }
 
         // End of turn signals
@@ -492,15 +492,6 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
             @Override
             public void mouseClicked(MouseEvent e) {
                 if (e.getClickCount() == 2) {
-                    selectCommand();
-                }
-            }
-        });
-
-        commandList.addKeyListener(new KeyAdapter() {
-            @Override
-            public void keyPressed(KeyEvent e) {
-                if (e.getKeyCode() == KeyEvent.VK_ENTER) {
                     selectCommand();
                 }
             }
@@ -1394,6 +1385,14 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
     }
 
     @Override
+    public void componentDeactivated() {
+        super.componentDeactivated();
+        if (thinkingTimer != null && thinkingTimer.isRunning()) {
+            thinkingTimer.stop();
+        }
+    }
+
+    @Override
     public void componentClosed() {
         if (pageKeyDispatcher != null) {
             java.awt.KeyboardFocusManager.getCurrentKeyboardFocusManager().removeKeyEventDispatcher(pageKeyDispatcher);
@@ -1425,17 +1424,9 @@ public final class AssistantTopComponent extends TopComponent implements ACPMana
     public static synchronized AssistantTopComponent findInstance() {
         TopComponent tc = org.openide.windows.WindowManager.getDefault().findTopComponent("AssistantTopComponent");
         if (tc instanceof AssistantTopComponent assistantTopComponent) {
-            if (instance == null) {
-                instance = assistantTopComponent;
-            }
             return assistantTopComponent;
         }
-
-        if (instance == null) {
-            instance = new AssistantTopComponent();
-        }
-
-        return instance;
+        return null;
     }
 
     private void applyInitialTheme() {

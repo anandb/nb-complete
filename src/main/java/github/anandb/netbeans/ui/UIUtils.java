@@ -7,11 +7,27 @@ import java.awt.GridBagConstraints;
 import java.awt.Insets;
 import java.awt.LayoutManager;
 import java.awt.event.ActionListener;
+import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Pattern;
+import javax.swing.Icon;
+import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JPanel;
 import javax.swing.border.Border;
+import github.anandb.netbeans.manager.ACPSettings;
+import github.anandb.netbeans.support.Logger;
 
 public class UIUtils {
+    private static final Logger LOG = new Logger(UIUtils.class);
+
+    // Table separator row patterns - compiled once, avoid String.matches() per cell
+    private static final Pattern CELL_DASH = Pattern.compile("-+");
+    private static final Pattern CELL_COLON_DASH_PREFIX = Pattern.compile(":-+-.*");
+    private static final Pattern CELL_DASH_COLON_SUFFIX = Pattern.compile(".*:-+");
+    private static final Pattern CELL_DASH_COLON = Pattern.compile("-+:");
+    private static final Pattern CELL_COLON_DASH_COLON = Pattern.compile(":.*-+");
 
     public static JButton createToolbarButton(String iconName, String toolTip, ActionListener l) {
         return createToolbarButton(iconName, 28, toolTip, l);
@@ -78,5 +94,81 @@ public class UIUtils {
         gbc.anchor = anchor;
         gbc.insets = insets != null ? insets : new Insets(0, 0, 0, 0);
         return gbc;
+    }
+
+    public static Icon loadUserIcon() {
+        String path = ACPSettings.getCustomUserIcon();
+        if (path != null && !path.isEmpty()) {
+            File file = new File(path);
+            if (file.exists()) {
+                try {
+                    ImageIcon icon = new ImageIcon(path);
+                    if (icon.getIconWidth() > 0) {
+                        return new ImageIcon(icon.getImage().getScaledInstance(37, 37, java.awt.Image.SCALE_SMOOTH));
+                    }
+                } catch (Exception e) {
+                    LOG.fine("Failed to load custom user icon: {0}", e.getMessage());
+                }
+                return loadSvgIcon(file);
+            }
+        }
+        return ThemeManager.getIcon("user.svg", 37);
+    }
+
+    public static Icon loadSvgIcon(File file) {
+        try {
+            Class<?> transcoderClass = Class.forName("org.apache.batik.transcoder.image.PNGTranscoder");
+            Class<?> inputClass = Class.forName("org.apache.batik.transcoder.TranscoderInput");
+            Class<?> outputClass = Class.forName("org.apache.batik.transcoder.TranscoderOutput");
+            Object transcoder = transcoderClass.getDeclaredConstructor().newInstance();
+            transcoderClass.getMethod("addTranscodingHint", Object.class, Object.class)
+                .invoke(transcoder, transcoderClass.getField("KEY_WIDTH").get(null), 37f);
+            transcoderClass.getMethod("addTranscodingHint", Object.class, Object.class)
+                .invoke(transcoder, transcoderClass.getField("KEY_HEIGHT").get(null), 37f);
+            Object input = inputClass.getConstructor(String.class).newInstance(file.toURI().toURL().toString());
+            java.io.ByteArrayOutputStream ostream = new java.io.ByteArrayOutputStream();
+            Object output = outputClass.getConstructor(java.io.OutputStream.class).newInstance(ostream);
+            transcoderClass.getMethod("transcode", inputClass, outputClass).invoke(transcoder, input, output);
+            return new ImageIcon(ostream.toByteArray());
+        } catch (Exception e) {
+            LOG.fine("Failed to load SVG custom user icon: {0}", e.getMessage());
+            return ThemeManager.getIcon("user.svg", 37);
+        }
+    }
+
+    public static boolean isSeparatorRowLine(String line) {
+        String content = line.trim();
+        if (content.startsWith("|") && content.endsWith("|")) {
+            content = content.substring(1, content.length() - 1);
+        }
+        String[] cells = content.split("(?<!\\\\)\\|", -1);
+        List<String> rowCells = new ArrayList<>();
+        for (String cell : cells) {
+            rowCells.add(cell.replace("\\|", "|"));
+        }
+        return isSeparatorRow(rowCells);
+    }
+
+    public static boolean isSeparatorRow(List<String> row) {
+        for (String cell : row) {
+            if (!CELL_DASH.matcher(cell).matches()
+                    && !CELL_COLON_DASH_PREFIX.matcher(cell).matches()
+                    && !CELL_DASH_COLON_SUFFIX.matcher(cell).matches()
+                    && !CELL_DASH_COLON.matcher(cell).matches()
+                    && !CELL_COLON_DASH_COLON.matcher(cell).matches()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public static Color getBubbleBackground(ColorTheme theme, String type) {
+        if ("user".equals(type)) {
+            return theme.bubbleUser();
+        } else if ("error".equals(type)) {
+            return theme.errorBackground();
+        } else {
+            return theme.sunkenBackground();
+        }
     }
 }

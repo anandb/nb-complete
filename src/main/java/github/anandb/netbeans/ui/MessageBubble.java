@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.swing.Icon;
 import javax.swing.BoxLayout;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -25,8 +26,6 @@ import com.vladsch.flexmark.ext.tables.TablesExtension;
 import com.vladsch.flexmark.html.HtmlRenderer;
 import com.vladsch.flexmark.parser.Parser;
 import com.vladsch.flexmark.util.data.MutableDataSet;
-
-import java.util.UUID;
 
 import github.anandb.netbeans.manager.ToolMetadataExtractor;
 import github.anandb.netbeans.support.Logger;
@@ -45,12 +44,6 @@ public class MessageBubble extends JPanel implements Scrollable {
         "```([\\w\\-\\+\\#\\.]*)\\R?(.*?)(?:```(?=\\R|$)|$)", Pattern.DOTALL
     );
 
-    // Table separator row patterns - compiled once, avoid String.matches() per cell
-    private static final Pattern CELL_DASH = Pattern.compile("-+");
-    private static final Pattern CELL_COLON_DASH_PREFIX = Pattern.compile(":-+-.*");
-    private static final Pattern CELL_DASH_COLON_SUFFIX = Pattern.compile(".*:-+");
-    private static final Pattern CELL_DASH_COLON = Pattern.compile("-+:");
-    private static final Pattern CELL_COLON_DASH_COLON = Pattern.compile(":.*-+");
 
     // Static cached Flexmark parser/renderer - created once
     private static final Parser FLEXMARK_PARSER;
@@ -71,7 +64,6 @@ public class MessageBubble extends JPanel implements Scrollable {
     private final JPanel segmentsContainer;
     private JPanel bubble;
     private final ArrayList<CollapsibleState> codeStates = new ArrayList<>();
-    private final UUID id = UUID.randomUUID();
 
     private static class CollapsibleState {
         boolean expanded;
@@ -185,7 +177,8 @@ public class MessageBubble extends JPanel implements Scrollable {
                         return cachedSize;
                     }
                 }
-            } catch (Exception ignored) {
+            } catch (Exception ex) {
+                LOG.fine("View sizing failed, using fallback: {0}", ex.getMessage());
             }
 
             if (lastComputedHeight > 0) {
@@ -254,14 +247,15 @@ public class MessageBubble extends JPanel implements Scrollable {
         if ("user".equals(type)) {
             gbcInsets = new Insets(4, 12, 4, 12); // Full width, consistent with AI
 
-            JLabel userLabel = new JLabel(ThemeManager.getIcon("user.svg", 37));
+            Icon userIcon = UIUtils.loadUserIcon();
+            JLabel userLabel = new JLabel(userIcon);
             userLabel.setBorder(new javax.swing.border.EmptyBorder(6, 8, 0, 10));
             userLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
             userLabel.setToolTipText("Copy to input");
 
             userLabel.addMouseListener(new MessageCopyMouseAdapter(
                 userLabel,
-                ThemeManager.getIcon("user.svg", 37),
+                userIcon,
                 ThemeManager.getIcon("copy.svg", 32),
                 ThemeManager.getIcon("check.svg", 32),
                 messageId, type, this
@@ -337,6 +331,7 @@ public class MessageBubble extends JPanel implements Scrollable {
             }
         }
     }
+
 
     public String getType() {
         return type;
@@ -488,7 +483,7 @@ public class MessageBubble extends JPanel implements Scrollable {
 
     private void updateOrAddTextSegment(String markdown, ColorTheme theme, int compIdx, boolean incremental) {
         String styledHtml = prepareHtml(markdown, theme, incremental);
-        Color bg = getBubbleBackground(theme);
+        Color bg = UIUtils.getBubbleBackground(theme, type);
 
         if (compIdx < segmentsContainer.getComponentCount()) {
             Component c = segmentsContainer.getComponent(compIdx);
@@ -539,7 +534,7 @@ public class MessageBubble extends JPanel implements Scrollable {
                 } else {
                     tableLines.add(line);
                     if (!headerFound) {
-                        if (isSeparatorRowLine(line)) {
+                        if (UIUtils.isSeparatorRowLine(line)) {
                             headerFound = true;
                             if (textBuffer.length() > 0) {
                                 updateOrAddTextSegment(textBuffer.toString(), theme, currentIdx++, incremental);
@@ -583,18 +578,6 @@ public class MessageBubble extends JPanel implements Scrollable {
         return currentIdx;
     }
 
-    private boolean isSeparatorRowLine(String line) {
-        String content = line.trim();
-        if (content.startsWith("|") && content.endsWith("|")) {
-            content = content.substring(1, content.length() - 1);
-        }
-        String[] cells = content.split("(?<!\\\\)\\|", -1);
-        List<String> rowCells = new ArrayList<>();
-        for (String cell : cells) {
-            rowCells.add(cell.replace("\\|", "|"));
-        }
-        return isSeparatorRow(rowCells);
-    }
 
     private void updateOrAddTableSegment(String tableMarkdown, ColorTheme theme, int compIdx, boolean incremental) {
         String styledHtml = prepareHtml(tableMarkdown, theme, incremental);
@@ -661,14 +644,7 @@ public class MessageBubble extends JPanel implements Scrollable {
             LOG.fine("Contains ASCII art, not replacing spaces");
         }
 
-        Color bg;
-        if ("user".equals(type)) {
-            bg = theme.bubbleUser();
-        } else if ("error".equals(type)) {
-            bg = theme.errorBackground();
-        } else {
-            bg = theme.sunkenBackground();
-        }
+        Color bg = UIUtils.getBubbleBackground(theme, type);
 
         boolean isAssistant = !"user".equals(type) && !"error".equals(type) && !"tool".equals(type);
         String customCss = theme.toCss(null, isAssistant);
@@ -705,15 +681,6 @@ public class MessageBubble extends JPanel implements Scrollable {
                 + "</body></html>";
     }
 
-    private Color getBubbleBackground(ColorTheme theme) {
-        if ("user".equals(type)) {
-            return theme.bubbleUser();
-        } else if ("error".equals(type)) {
-            return theme.errorBackground();
-        } else {
-            return theme.sunkenBackground();
-        }
-    }
 
     private FitEditorPane createHtmlPane(String styledHtml, Color bg) {
         ColorTheme theme = ThemeManager.getCurrentTheme();
@@ -734,18 +701,6 @@ public class MessageBubble extends JPanel implements Scrollable {
         return pane;
     }
 
-    private boolean isSeparatorRow(List<String> row) {
-        for (String cell : row) {
-            if (!CELL_DASH.matcher(cell).matches()
-                    && !CELL_COLON_DASH_PREFIX.matcher(cell).matches()
-                    && !CELL_DASH_COLON_SUFFIX.matcher(cell).matches()
-                    && !CELL_DASH_COLON.matcher(cell).matches()
-                    && !CELL_COLON_DASH_COLON.matcher(cell).matches()) {
-                return false;
-            }
-        }
-        return true;
-    }
 
     @Override
     public boolean getScrollableTracksViewportWidth() {
