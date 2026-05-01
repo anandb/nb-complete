@@ -12,10 +12,10 @@ public class Logger {
     private static String currentSessionId;
     private static String currentSessionName;
 
-    private final java.util.logging.Logger log;
+    private final java.util.logging.Logger acpLogger;
 
     public Logger(Class<?> clazz) {
-        this.log = java.util.logging.Logger.getLogger(clazz.getName());
+        this.acpLogger = java.util.logging.Logger.getLogger(clazz.getName());
     }
 
     public static void setSession(String sessionId, String sessionName) {
@@ -46,22 +46,22 @@ public class Logger {
     }
 
     public void info(String msg, Object... args) {
-        log.log(Level.INFO, prefix() + msg, args);
+        acpLogger.log(Level.INFO, prefix() + msg, args);
     }
 
     public void warn(String msg, Object... args) {
-        log.log(Level.WARNING, prefix() + msg, args);
+        acpLogger.log(Level.WARNING, prefix() + msg, args);
     }
 
     public void severe(String msg, Object... args) {
-        log.log(Level.SEVERE, prefix() + msg, args);
+        acpLogger.log(Level.SEVERE, prefix() + msg, args);
     }
 
     public void fine(String msg, Object... args) {
-        log.log(Level.FINE, prefix() + msg, args);
+        acpLogger.log(Level.FINE, prefix() + msg, args);
     }
 
     public void log(Level level, String msg, Object... args) {
-        log.log(level, prefix() + msg, args);
+        acpLogger.log(level, prefix() + msg, args);
     }
 }

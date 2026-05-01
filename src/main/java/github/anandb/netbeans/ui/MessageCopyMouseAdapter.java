@@ -7,7 +7,6 @@ import java.lang.ref.WeakReference;
 
 import javax.swing.Icon;
 import javax.swing.JLabel;
-import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
 import github.anandb.netbeans.manager.ToolMetadataExtractor;

@@ -5,7 +5,6 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.Dimension;
-import java.awt.GridBagConstraints;
 import java.awt.Insets;
 import java.awt.Rectangle;
 import java.util.ArrayList;
@@ -19,12 +18,11 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextPane;
 import javax.swing.Scrollable;
-import javax.swing.event.AncestorEvent;
-import javax.swing.event.AncestorListener;
+
 import java.awt.event.HierarchyEvent;
 import java.awt.event.HierarchyListener;
 import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
+
 import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
 import javax.swing.text.View;
@@ -39,7 +37,6 @@ import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.TextScanner;
 
 import static org.apache.commons.lang3.ObjectUtils.getIfNull;
-import static org.apache.commons.lang3.StringUtils.length;
 
 public class MessageBubble extends JPanel implements Scrollable {
 
@@ -72,7 +69,7 @@ public class MessageBubble extends JPanel implements Scrollable {
     private final JPanel segmentsContainer;
     private JPanel bubble;
     private final ArrayList<CollapsibleState> codeStates = new ArrayList<>();
-    private HierarchyListener hierarchyListener;
+    private transient HierarchyListener hierarchyListener;
 
     private static class CollapsibleState {
         boolean expanded;
@@ -106,8 +103,7 @@ public class MessageBubble extends JPanel implements Scrollable {
         segmentsContainer.setBackground(bgColor);
         segmentsContainer.setOpaque(false);
 
-        if (bubble instanceof RoundedPanel) {
-            RoundedPanel rp = (RoundedPanel) bubble;
+        if (bubble instanceof RoundedPanel rp) {
             rp.setBaseColor(bgColor);
             rp.setOpaque(false);
         }

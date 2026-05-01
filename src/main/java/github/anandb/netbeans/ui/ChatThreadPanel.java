@@ -150,6 +150,8 @@ public class ChatThreadPanel extends JPanel {
     }
 
     private static class ScrollablePanel extends JPanel implements Scrollable {
+        private static final long serialVersionUID = 1L;
+        
         public ScrollablePanel() {
             setOpaque(false);
             setDoubleBuffered(true);

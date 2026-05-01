@@ -7,7 +7,6 @@ import static org.apache.commons.lang3.StringUtils.split;
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Color;
-import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
@@ -23,11 +22,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
-import java.util.Base64;
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.util.concurrent.CompletableFuture;
+
+import github.anandb.netbeans.model.AttachedFile;
+import github.anandb.netbeans.model.CommandInfo;
 
 import javax.swing.BorderFactory;
 import javax.swing.DefaultListModel;
@@ -75,6 +75,7 @@ import github.anandb.netbeans.manager.SlashCommandInterceptor;
 import github.anandb.netbeans.contract.DataExtractionStrategy;
 import github.anandb.netbeans.contract.PermissionHandler;
 import github.anandb.netbeans.contract.SessionListener;
+import github.anandb.netbeans.contract.SlashCommandCallback;
 import github.anandb.netbeans.manager.strategy.StrategyRegistry;
 import github.anandb.netbeans.contract.UIHandler;
 import github.anandb.netbeans.model.ConfigItem;
@@ -154,7 +155,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     private static final long MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024;
     private static final int MAX_ATTACHMENTS = 2;
     private final ArrayList<AttachedFile> attachedFiles = new ArrayList<>();
-    private JButton paperclipBtn;
+    private final JButton paperclipBtn;
 
     public AssistantTopComponent() {
         instance = this;
@@ -400,8 +401,6 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
         setupListeners();
 
-        ProcessManager.getInstance().setPermissionHandler(this);
-
         initChat();
         applyInitialTheme();
     }
@@ -483,15 +482,14 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                     e.consume();
                     // Trigger same behavior as /agents command
                     SlashCommandInterceptor interceptor = ProcessManager.getInstance().getSlashCommandInterceptor();
-                    SlashCommandInterceptor.SlashCommandCallback cb = interceptor != null ? interceptor.getCallback() : null;
+                    SlashCommandCallback cb = interceptor != null ? interceptor.getCallback() : null;
                     if (cb != null) {
                         cb.expandOptionsPanel();
                         cb.popupAgentCombo();
                     }
                 } else if (e.getKeyCode() == KeyEvent.VK_ENTER) {
                     if (autocompletePopup.isVisible()) {
-                        e.consume();
-                        selectCommand();
+                        handleEnterWithAutocomplete(e);
                     } else if ((e.getModifiersEx() & InputEvent.SHIFT_DOWN_MASK) != 0) {
                         inputArea.append("\n");
                     } else {
@@ -661,15 +659,33 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             return;
         }
 
-        // Add to history
-        if (messageHistory.isEmpty() || !messageHistory.get(messageHistory.size() - 1).equals(text)) {
-            messageHistory.add(text);
-            if (messageHistory.size() > 50) {
-                messageHistory.remove(0);
+        // Intercept local slash commands first
+        boolean isForwardedSlash = text.trim().startsWith("/");
+        if (isForwardedSlash) {
+            SlashCommandInterceptor interceptor = ProcessManager.getInstance().getSlashCommandInterceptor();
+            if (interceptor != null) {
+                CompletableFuture<Boolean> handled = interceptor.intercept(text, null);
+                if (handled != null && handled.isDone() && !handled.isCompletedExceptionally()) {
+                    Boolean result = handled.join();
+                    if (Boolean.TRUE.equals(result)) {
+                        inputArea.setText("");
+                        return;
+                    }
+                }
             }
         }
-        historyIndex = -1;
-        currentDraft = "";
+
+        // Add to history
+        if (!isForwardedSlash) {
+            if (messageHistory.isEmpty() || !messageHistory.get(messageHistory.size() - 1).equals(text)) {
+                messageHistory.add(text);
+                if (messageHistory.size() > 50) {
+                    messageHistory.remove(0);
+                }
+            }
+            historyIndex = -1;
+            currentDraft = "";
+        }
 
         String currentSessionId = SessionManager.getInstance().getCurrentSessionId();
         if (currentSessionId == null) {
@@ -681,35 +697,37 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         statusLabel.setText("Sending");
         updateButtonState(true);
 
-        // Build file attachment blocks
+        // Build file attachment blocks (skip for forwarded slash commands)
         List<Map<String, Object>> fileBlocks = new ArrayList<>();
-        for (AttachedFile af : attachedFiles) {
-            Map<String, Object> block = new HashMap<>();
-            block.put("type", af.mimeType().startsWith("image/") ? "image" : "file");
-            block.put("filename", af.filename());
-            block.put("mimeType", af.mimeType());
-            block.put("data", af.base64Data());
-            fileBlocks.add(block);
-        }
-        attachedFiles.clear();
-        updatePaperclipTooltip();
-
-        // Local echo with file references
-        boolean localEcho = NbPreferences.forModule(ACPOptionsPanel.class).getBoolean("echoUserInput", true);
-        if (localEcho) {
-            StringBuilder echoBuilder = new StringBuilder(text);
-            if (!fileBlocks.isEmpty()) {
-                if (!text.isBlank()) echoBuilder.append("\n");
-                for (Map<String, Object> block : fileBlocks) {
-                    String type = (String) block.get("type");
-                    String fname = (String) block.get("filename");
-                    echoBuilder.append("\n[").append("image".equals(type) ? "Image" : "File").append(": ").append(fname).append("]");
-                }
+        if (!isForwardedSlash) {
+            for (AttachedFile af : attachedFiles) {
+                Map<String, Object> block = new HashMap<>();
+                block.put("type", af.mimeType().startsWith("image/") ? "image" : "file");
+                block.put("filename", af.filename());
+                block.put("mimeType", af.mimeType());
+                block.put("data", af.base64Data());
+                fileBlocks.add(block);
             }
-            chatPanel.addMessage("user", echoBuilder.toString());
+            attachedFiles.clear();
+            updatePaperclipTooltip();
+
+            // Local echo with file references
+            boolean localEcho = NbPreferences.forModule(ACPOptionsPanel.class).getBoolean("echoUserInput", true);
+            if (localEcho) {
+                StringBuilder echoBuilder = new StringBuilder(text);
+                if (!fileBlocks.isEmpty()) {
+                    if (!text.isBlank()) echoBuilder.append("\n");
+                    for (Map<String, Object> block : fileBlocks) {
+                        String type = (String) block.get("type");
+                        String fname = (String) block.get("filename");
+                        echoBuilder.append("\n[").append("image".equals(type) ? "Image" : "File").append(": ").append(fname).append("]");
+                    }
+                }
+                chatPanel.addMessage("user", echoBuilder.toString());
+            }
         }
 
-        Map<String, Object> context = text.trim().startsWith("/") ? null : captureEditorContext();
+        Map<String, Object> context = isForwardedSlash ? null : captureEditorContext();
         ProcessManager.getInstance().sendMessage(currentSessionId, text, context, fileBlocks)
                 .thenAccept(result -> {
                     SwingUtilities.invokeLater(() -> {
@@ -874,7 +892,12 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             menu.addSeparator();
             for (AttachedFile af : attachedFiles) {
                 JCheckBoxMenuItem cb = new JCheckBoxMenuItem(af.filename(), true);
-                cb.setEnabled(false);
+                cb.addActionListener(ev -> {
+                    if (!cb.isSelected()) {
+                        attachedFiles.remove(af);
+                        updatePaperclipTooltip();
+                    }
+                });
                 menu.add(cb);
             }
         }
@@ -925,8 +948,10 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     private void updatePaperclipTooltip() {
         if (attachedFiles.isEmpty()) {
             paperclipBtn.setToolTipText("Attach files");
+            paperclipBtn.setIcon(ThemeManager.getIcon("paperclip.svg", 28));
         } else {
             paperclipBtn.setToolTipText(attachedFiles.size() + " file(s) attached");
+            paperclipBtn.setIcon(ThemeManager.getIcon("paperclip-dot.svg", 28));
         }
     }
 
@@ -1104,19 +1129,19 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         java.util.List<SessionUpdate.AvailableCommand> allCommands = new java.util.ArrayList<>();
 
         if (trigger == '/') {
-            // Server-side ACP commands
-            allCommands.addAll(ProcessManager.getInstance().getAvailableCommands());
-
             // Local slash commands from SlashCommandInterceptor
             SlashCommandInterceptor interceptor = ProcessManager.getInstance().getSlashCommandInterceptor();
             if (interceptor != null) {
-                for (Map.Entry<String, SlashCommandInterceptor.CommandInfo> entry : interceptor.getCommands().entrySet()) {
+                for (Map.Entry<String, CommandInfo> entry : interceptor.getCommands().entrySet()) {
                     String cmdName = entry.getKey();
-                    SlashCommandInterceptor.CommandInfo info = entry.getValue();
+                    CommandInfo info = entry.getValue();
                     String name = cmdName.startsWith("/") ? cmdName.substring(1) : cmdName;
                     allCommands.add(new SessionUpdate.AvailableCommand(name, info.description(), null));
                 }
             }
+
+            // Server-side ACP commands
+            allCommands.addAll(ProcessManager.getInstance().getAvailableCommands());
         }
         // @ mentions not yet implemented
 
@@ -1171,54 +1196,6 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
             autocompletePopup.setVisible(false);
             inputArea.requestFocusInWindow();
-        }
-    }
-
-    private static record AttachedFile(
-        String filename,
-        String mimeType,
-        String base64Data,
-        long size
-    ) {
-        AttachedFile(File f) throws IOException {
-            this(f.getName(), guessMimeType(f.getName()),
-                 Base64.getEncoder().encodeToString(Files.readAllBytes(f.toPath())),
-                 f.length());
-        }
-
-        private static String guessMimeType(String name) {
-            String ext = name.contains(".") ? name.substring(name.lastIndexOf('.') + 1).toLowerCase() : "";
-            return switch (ext) {
-                case "png" -> "image/png";
-                case "jpg", "jpeg" -> "image/jpeg";
-                case "gif" -> "image/gif";
-                case "svg" -> "image/svg+xml";
-                case "webp" -> "image/webp";
-                case "pdf" -> "application/pdf";
-                case "txt" -> "text/plain";
-                case "json" -> "application/json";
-                case "py" -> "text/x-python";
-                case "java" -> "text/x-java";
-                case "md" -> "text/markdown";
-                case "xml", "html", "htm" -> "text/html";
-                case "yaml", "yml" -> "text/yaml";
-                case "toml" -> "text/toml";
-                default -> "application/octet-stream";
-            };
-        }
-    }
-
-    private class AutocompleteRenderer extends javax.swing.DefaultListCellRenderer {
-        private static final long serialVersionUID = 1L;
-        @Override
-        public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
-            super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-            if (value instanceof SessionUpdate.AvailableCommand cmd) {
-                setText(" /" + cmd.name() + (cmd.description() != null ? "  - " + cmd.description() : ""));
-                setFont(ThemeManager.getFont().deriveFont(13f));
-                setBorder(BorderFactory.createEmptyBorder(2, 5, 2, 5));
-            }
-            return this;
         }
     }
 
@@ -1553,7 +1530,10 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             String msg = ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName();
             chatPanel.addMessage("error", "Failed to start: " + msg);
         }
-        ProcessManager.getInstance().getSlashCommandInterceptor().setCallback(new SlashCommandInterceptor.SlashCommandCallback() {
+
+        ProcessManager.getInstance().setPermissionHandler(this);
+
+        ProcessManager.getInstance().getSlashCommandInterceptor().setCallback(new SlashCommandCallback() {
             @Override
             public void expandOptionsPanel() {
                 if (optionsPanelCollapsed) {
@@ -1729,4 +1709,33 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         });
     }
 
+    // When Enter is pressed with autocomplete visible, check if the typed command
+    // after / or @ exactly matches a listed command. If so, send the message instead
+    // of selecting from the popup, so commands like /dcp reach the server directly.
+    private void handleEnterWithAutocomplete(KeyEvent e) {
+        String curText = inputArea.getText();
+        int cr = inputArea.getCaretPosition();
+        int s = cr - 1;
+        while (s >= 0 && !Character.isWhitespace(curText.charAt(s))) {
+            if (curText.charAt(s) == '/' || curText.charAt(s) == '@') {
+                break;
+            }
+            s--;
+        }
+        boolean exactMatch = false;
+        if (s >= 0 && (curText.charAt(s) == '/' || curText.charAt(s) == '@')) {
+            String typedPrefix = curText.substring(s + 1, cr);
+            SessionUpdate.AvailableCommand sel = commandList.getSelectedValue();
+            if (sel != null && sel.name().equals(typedPrefix)) {
+                exactMatch = true;
+            }
+        }
+        if (exactMatch) {
+            autocompletePopup.setVisible(false);
+            sendMessage();
+        } else {
+            e.consume();
+            selectCommand();
+        }
+    }
 }

@@ -20,6 +20,7 @@ import javax.swing.border.Border;
 
 import github.anandb.netbeans.manager.PluginSettings;
 import github.anandb.netbeans.support.Logger;
+import org.openide.util.Utilities;
 
 public class UIUtils {
     private static final Logger LOG = new Logger(UIUtils.class);
@@ -128,7 +129,7 @@ public class UIUtils {
                 .invoke(transcoder, transcoderClass.getField("KEY_WIDTH").get(null), 37f);
             transcoderClass.getMethod("addTranscodingHint", Object.class, Object.class)
                 .invoke(transcoder, transcoderClass.getField("KEY_HEIGHT").get(null), 37f);
-            Object input = inputClass.getConstructor(String.class).newInstance(file.toURI().toURL().toString());
+            Object input = inputClass.getConstructor(String.class).newInstance(Utilities.toURI(file).toURL().toString());
             java.io.ByteArrayOutputStream ostream = new java.io.ByteArrayOutputStream();
             Object output = outputClass.getConstructor(java.io.OutputStream.class).newInstance(ostream);
             transcoderClass.getMethod("transcode", inputClass, outputClass).invoke(transcoder, input, output);

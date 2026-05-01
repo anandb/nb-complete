@@ -1,8 +1,9 @@
 package github.anandb.netbeans.ui;
 
 import org.junit.jupiter.api.Test;
+
 import javax.swing.Icon;
-import java.awt.Color;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 class ThemeManagerTest {

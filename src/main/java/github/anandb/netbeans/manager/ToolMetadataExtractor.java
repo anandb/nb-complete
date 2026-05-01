@@ -47,7 +47,7 @@ public final class ToolMetadataExtractor {
             tag = firstNonBlank(kind, "Tool");
         }
 
-        for (var pattern : TOOL_CONTENT_PATTERNS) {
+        for (Pattern pattern : TOOL_CONTENT_PATTERNS) {
             Matcher m = pattern.matcher(rawText);
             if (m.find()) {
                 identifier = m.group(1);

@@ -39,15 +39,15 @@ public class RoundedPanel extends JPanel {
         invalidateShape();
     }
 
-    public void setBaseColor(Color color) {
+    public final void setBaseColor(Color color) {
         this.baseColor = color;
     }
 
-    public void setShowBorder(boolean showBorder) {
+    public final void setShowBorder(boolean showBorder) {
         this.showBorder = showBorder;
     }
 
-    public void setBorderColor(Color borderColor) {
+    public final void setBorderColor(Color borderColor) {
         this.borderColor = borderColor;
     }
 
