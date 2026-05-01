@@ -14,10 +14,11 @@ The Coding Assistant is a NetBeans IDE plugin designed to provide integrated AI 
 
 ## Quickstart
 
-1. **Installation**: Download the NBM file from [Maven Central](https://central.sonatype.com/artifact/io.github.anandb/beanbot/versions) and add it via Tools > Plugins > Downloaded.
-2. **Access**: Open the assistant interface through Window > Assistant.
-3. **Configuration**: The plugin attempts to locate the OpenCode binary automatically. Manual adjustments can be made in Tools > Options > Advanced > Assistant.
-4. **Environment**: A global system prompt can be defined in the options to maintain consistent context across sessions.
+1. **Opencode**: This is a prerequisite, install [OpenCode](https://opencode.ai/), connect and configure providers.
+2. **Installation**: Download the NBM file from [Maven Central](https://central.sonatype.com/artifact/io.github.anandb/beanbot/versions) and add it via `Tools > Plugins > Downloaded`.
+3. **Access**: Open the assistant interface through `Window > Assistant`.
+4. **Configuration**: The plugin attempts to locate the OpenCode binary automatically from the system path. But it can also be set manually `Options > Assistant`.
+5. **Environment**: A global system prompt can be defined in the options to maintain consistent context across sessions. `Options > Assistant > Preamble`.
 
 ## Core Capabilities
 

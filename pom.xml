@@ -10,7 +10,7 @@
     <description>Coding Assistant for NetBeans using ACP, connect to OpenCode via the Agent Client Protocol.</description>
     <url>https://github.com/anandb/nb-complete</url>
 
-    <licenses>
+   <licenses>
         <license>
             <name>The Unlicense</name>
             <url>http://unlicense.org/</url>
