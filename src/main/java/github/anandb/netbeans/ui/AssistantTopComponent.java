@@ -1663,8 +1663,9 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         cwdLabel.setForeground(theme.foreground());
         cwdLabel.setOpaque(true);
         cwdLabel.setBackground(theme.sunkenBackground());
+        Color bb = theme.bubbleBorder() != null ? theme.bubbleBorder() : Color.LIGHT_GRAY;
         cwdLabel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(theme.bubbleBorder(), 1),
+                BorderFactory.createLineBorder(bb, 1),
                 new EmptyBorder(4, 8, 4, 8)));
 
         versionLabel.setForeground(theme.base1());
@@ -1676,7 +1677,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         inputArea.setForeground(theme.foreground());
         inputArea.setCaretColor(theme.foreground());
 
-        inputScrollPane.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, theme.bubbleBorder()));
+        inputScrollPane.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, theme.bubbleBorder() != null ? theme.bubbleBorder() : Color.LIGHT_GRAY));
 
         revalidate();
         repaint();

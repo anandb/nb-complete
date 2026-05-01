@@ -63,7 +63,7 @@ Current test configuration:
 | **NetBeans** | 29 |
 | **Opencode** | 1.14.24 |
 | **Opencode plugins** | `@franzmoca/opencode-lombok`, `@tarquinen/opencode-dcp@latest`, `@opencode/mcp-git` |
-| **Plugin** | ≥ v1.4.91 |
+| **NBM Version** | ≥ v1.4.91 |
 | **LLMs** | Big Pickle; GPT 5.4-mini, GPT 5.4-nano; DeepSeek V4 Pro, DeepSeek V4 Flash; Kimi K2.5, Kimi K2.6 |
 
 Qwen models currently seem to have some trouble with tool calling; this is still being investigated.

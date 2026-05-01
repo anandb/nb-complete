@@ -46,9 +46,13 @@ public class MessageCopyMouseAdapter extends MouseAdapter {
 
     @Override
     public void mousePressed(MouseEvent e) {
-        String textToCopy = ToolMetadataExtractor.stripMetadata(
-            bubble.get().getRawText()
-        );
+        MessageBubble b = bubble.get();
+        if (b == null) {
+            LOG.warn("Bubble was garbage collected before copy, msgId={0}, type={1}", new Object[]{messageId, type});
+            return;
+        }
+        
+        String textToCopy = ToolMetadataExtractor.stripMetadata(b.getRawText());
 
         if (textToCopy.isEmpty()) {
             LOG.warn("No text to copy, msgId={0}, type={1}", new Object[]{messageId, type});

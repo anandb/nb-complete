@@ -4,6 +4,7 @@ import java.awt.Color;
 import java.awt.Font;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Collections;
 
 import javax.swing.Icon;
 import javax.swing.UIManager;
@@ -18,12 +19,12 @@ public class ThemeManager {
 
     private static final Logger LOG = new Logger(ThemeManager.class);
 
-    private static final Map<String, Icon> ICON_CACHE = new LinkedHashMap<>(64, 0.75f, true) {
+    private static final Map<String, Icon> ICON_CACHE = Collections.synchronizedMap(new LinkedHashMap<>(64, 0.75f, true) {
         @Override
         protected boolean removeEldestEntry(Map.Entry<String, Icon> eldest) {
             return size() > 256;
         }
-    };
+    });
 
     public static void clearIconCache() {
         ICON_CACHE.clear();

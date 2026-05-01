@@ -73,7 +73,7 @@ public class ChatThreadPanel extends JPanel {
 
         scrollPane = new JScrollPane(messagesContainer);
         // Sunken feel border
-        Color shadow = theme.isDark() ? Color.BLACK : theme.bubbleBorder();
+        Color shadow = theme.isDark() ? Color.BLACK : (theme.bubbleBorder() != null ? theme.bubbleBorder() : Color.LIGHT_GRAY);
         scrollPane.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createMatteBorder(1, 0, 1, 0, shadow),
             BorderFactory.createEmptyBorder(0, 0, 0, 0)

@@ -310,7 +310,7 @@ public class MessageBubble extends JPanel implements Scrollable {
         }
     }
 
-    private boolean hasPendingTextUpdate = false;
+    private volatile boolean hasPendingTextUpdate = false;
     private boolean hasSeenFirstNewline = false;
 
     public void appendText(String newText) {
