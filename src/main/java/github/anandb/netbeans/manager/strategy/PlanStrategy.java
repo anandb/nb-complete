@@ -22,7 +22,8 @@ public class PlanStrategy implements DataExtractionStrategy {
     }
 
     @Override
-    public void extract(SessionUpdate update, ProcessedMessage target, UIHandler handler) {
+    public void extract(SessionUpdate update, UIHandler handler) {
+        ProcessedMessage target = new ProcessedMessage();
         JsonNode entriesNode = update.update() != null ? update.update().entries() : null;
         if (entriesNode == null || !entriesNode.isArray()) {
             LOG.fine("Plan update has no entries array");

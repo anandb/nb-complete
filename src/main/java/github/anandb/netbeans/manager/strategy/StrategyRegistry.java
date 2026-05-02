@@ -42,7 +42,7 @@ public class StrategyRegistry {
     public DataExtractionStrategy select(SessionUpdate update) {
         String type = update.type();
         if (type == null) {
-            LOG.warn("Recieved a message with NULL type {0}", update);
+            LOG.warn("Received a message with NULL type {0}", update);
             return defaultStrategy;
         }
 
@@ -86,7 +86,7 @@ public class StrategyRegistry {
     }
 
     private boolean shouldSkip(JsonNode content) {
-        if (content == null || !content.has("annotations")) return false;
+        if (content == null || !content.isObject() || !content.has("annotations")) return false;
         JsonNode annotations = content.get("annotations");
         if (annotations == null || !annotations.isObject()) return false;
         if (annotations.has("audience") && annotations.get("audience").isArray()) {

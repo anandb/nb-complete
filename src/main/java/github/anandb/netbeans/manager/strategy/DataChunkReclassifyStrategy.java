@@ -13,7 +13,8 @@ public class DataChunkReclassifyStrategy implements DataExtractionStrategy {
     }
 
     @Override
-    public void extract(SessionUpdate update, ProcessedMessage target, UIHandler handler) {
+    public void extract(SessionUpdate update, UIHandler handler) {
+        ProcessedMessage target = new ProcessedMessage();
         String msgId = update.messageId();
         String text = AgentMessageChunkStrategy.extractText(update.content());
         String tt = ToolMetadataExtractor.extractToolTitle(msgId, text, update.kind());

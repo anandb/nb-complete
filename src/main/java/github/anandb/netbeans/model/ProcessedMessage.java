@@ -76,4 +76,8 @@ public class ProcessedMessage {
                 trimmed.equals("in-progress") || trimmed.equals("in progress") || trimmed.equals("in_progress") ||
                 trimmed.equals("inprogress") || trimmed.equals("success") || trimmed.equals("done"));
     }
+
+    public static ProcessedMessage createError(String role, String text, String messageId, String kind) {
+        return new ProcessedMessage(role, text, messageId, kind);
+    }
 }

@@ -19,11 +19,12 @@ public class ToolCallUpdateStrategy implements DataExtractionStrategy {
     }
 
     @Override
-    public void extract(SessionUpdate update, ProcessedMessage target, UIHandler handler) {
+    public void extract(SessionUpdate update, UIHandler handler) {
         if (isPlanToolCall(update)) {
             return;
         }
 
+        ProcessedMessage target = new ProcessedMessage();
         String messageId = update.messageId() != null ? update.messageId() : update.toolCallId();
         String text = defaultIfBlank(extractContentText(update.content()), update.status());
         if (text == null) text = "";

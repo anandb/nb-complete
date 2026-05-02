@@ -2,7 +2,6 @@ package github.anandb.netbeans.manager.strategy;
 
 import github.anandb.netbeans.contract.DataExtractionStrategy;
 import github.anandb.netbeans.contract.UIHandler;
-import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.model.SessionUpdate;
 
 public class ConfigOptionsUpdateStrategy implements DataExtractionStrategy {
@@ -12,7 +11,7 @@ public class ConfigOptionsUpdateStrategy implements DataExtractionStrategy {
     }
 
     @Override
-    public void extract(SessionUpdate update, ProcessedMessage target, UIHandler handler) {
+    public void extract(SessionUpdate update, UIHandler handler) {
         handler.updateConfig(update.update().configOptions());
     }
 }

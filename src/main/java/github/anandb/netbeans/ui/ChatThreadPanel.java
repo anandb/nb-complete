@@ -39,6 +39,7 @@ import github.anandb.netbeans.manager.SessionTitleMapper;
 import github.anandb.netbeans.manager.ToolParamsExtractor;
 import github.anandb.netbeans.model.Message;
 import github.anandb.netbeans.model.MessageClassification;
+import github.anandb.netbeans.model.MessageTransformer;
 import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.support.Logger;
@@ -53,10 +54,13 @@ public class ChatThreadPanel extends JPanel {
 
     private final JPanel messagesContainer;
     private final JScrollPane scrollPane;
-    private MessageBubble activeStreamBubble = null;
-    private final Timer streamFlushTimer;
     private final Timer scrollTimer;
+    private final Timer streamFlushTimer;
+
+    private MessageBubble activeStreamBubble = null;
+    private volatile boolean allBlocksExpanded = false;
     private transient final KeyEventDispatcher keyDispatcher;
+    private transient final MessageTransformer messageTransformer;
 
     public ChatThreadPanel() {
         ColorTheme theme = ThemeManager.getCurrentTheme();
@@ -65,6 +69,7 @@ public class ChatThreadPanel extends JPanel {
         setBackground(theme.background());
         setDoubleBuffered(true);
 
+        messageTransformer = new MessageTransformer();
         messagesContainer = new ScrollablePanel();
         messagesContainer.setLayout(new BoxLayout(messagesContainer, BoxLayout.Y_AXIS));
         messagesContainer.setOpaque(true);
@@ -151,7 +156,7 @@ public class ChatThreadPanel extends JPanel {
 
     private static class ScrollablePanel extends JPanel implements Scrollable {
         private static final long serialVersionUID = 1L;
-        
+
         public ScrollablePanel() {
             setOpaque(false);
             setDoubleBuffered(true);
@@ -178,57 +183,11 @@ public class ChatThreadPanel extends JPanel {
         }
     }
 
-    public void addMessage(Message message) {
-        String type = message.type();
-        StringBuilder sb = new StringBuilder();
-        LOG.fine("addMessage(Message) called. type={0}", type);
+    public void addMessage(ProcessedMessage pm) {
+        String role = pm.role();
+        String text = pm.text();
+        String kind = pm.kind();
 
-        if ("user".equals(type)) {
-            if (message.prompt() != null) {
-                if (message.prompt().text() != null) {
-                    sb.append(message.prompt().text());
-                }
-                if (message.prompt().parts() != null) {
-                    for (Message.ContentPart part : message.prompt().parts()) {
-                        String pt = part.getDisplayText();
-                        if (pt != null && !pt.isEmpty()) {
-                            if (sb.length() > 0) {
-                                sb.append("\n");
-                            }
-                            sb.append(pt);
-                        }
-                    }
-                }
-            }
-        } else {
-            if (message.completion() != null) {
-                if (message.completion().text() != null) {
-                    sb.append(message.completion().text());
-                }
-                if (message.completion().parts() != null) {
-                    for (Message.ContentPart part : message.completion().parts()) {
-                        String pt = part.getDisplayText();
-                        if (pt != null && !pt.isEmpty()) {
-                            if (sb.length() > 0) {
-                                sb.append("\n\n");
-                            }
-                            sb.append(pt);
-                        }
-                    }
-                }
-            }
-        }
-
-        String text = sb.toString().stripTrailing();
-        LOG.fine("addMessage(Message) final text length: {0}", text.length());
-        addMessage(type, text, message.id(), null);
-    }
-
-    public void addMessage(String role, String text) {
-        addMessage(role, text, null, null);
-    }
-
-    public void addMessage(String role, String text, String messageId, String kind) {
         MessageClassification classification = ToolParamsExtractor.classify(role, text, kind);
         final String effectiveRole = classification.role();
         final String effectiveKind = classification.kind();
@@ -238,7 +197,7 @@ public class ChatThreadPanel extends JPanel {
         }
 
         SwingUtilities.invokeLater(() -> {
-                    String[] parts = SECTION_SPLIT.split(text);
+            String[] parts = SECTION_SPLIT.split(text);
             for (String part : parts) {
                 if (part.trim().isEmpty() && parts.length > 1) {
                     continue;
@@ -248,7 +207,7 @@ public class ChatThreadPanel extends JPanel {
                 boolean canMerge = (lastBubble != null && effectiveRole.equals(lastBubble.getType()));
                 if (canMerge) {
                     // Always merge consecutive thoughts
-                    if (!"thought".equals(effectiveRole) && (messageId == null || !messageId.equals(lastBubble.getMessageId()))) {
+                    if (!"thought".equals(effectiveRole) && (pm.messageId() == null || !pm.messageId().equals(lastBubble.getMessageId()))) {
                         canMerge = false;
                     }
                 }
@@ -257,7 +216,7 @@ public class ChatThreadPanel extends JPanel {
                     lastBubble.appendText(part);
                     lastBubble.flushUpdate(true);
                 } else {
-                    addSingleBubble(effectiveRole, part, messageId, effectiveKind, "");
+                    addSingleBubble(effectiveRole, part, pm.messageId(), effectiveKind, "");
                 }
             }
         });
@@ -265,10 +224,8 @@ public class ChatThreadPanel extends JPanel {
 
     private void addSingleBubble(String role, String text, String messageId, String kind, String toolTitle) {
         MessageBubble bubble = new MessageBubble(role, text, messageId, kind, toolTitle);
-        if ("tool".equals(role)) {
-            bubble.setExpanded(false);
-        } else if ("thought".equals(role)) {
-            bubble.setExpanded(true);
+        if ("tool".equals(role) || "thought".equals(role)) {
+            bubble.setExpanded(allBlocksExpanded);
         }
 
         boolean visible = !MessageFilterManager.isTypeHidden(role);
@@ -279,12 +236,6 @@ public class ChatThreadPanel extends JPanel {
         messagesContainer.add(strut);
         messagesContainer.revalidate();
         scrollToBottom(true);
-    }
-
-    public void appendOrAddProcessedMessage(ProcessedMessage pm) {
-        if (pm == null) return;
-        if (pm.isIgnorable()) return;
-        appendOrAddMessage(pm.role(), pm.text(), pm.messageId());
     }
 
     public void addProcessedMessage(ProcessedMessage pm) {
@@ -305,12 +256,14 @@ public class ChatThreadPanel extends JPanel {
         });
     }
 
+    public void appendOrAddProcessedMessage(ProcessedMessage pm) {
+        if (pm == null) return;
+        if (pm.isIgnorable()) return;
 
-    public void appendOrAddMessage(String role, String text) {
-        appendOrAddMessage(role, text, null);
-    }
+        final String role = pm.role();
+        final String text = pm.text();
+        final String messageId = pm.messageId();
 
-    public void appendOrAddMessage(String role, String text, String messageId) {
         SwingUtilities.invokeLater(() -> {
             MessageBubble lastBubble = findLastNonIgnorableBubble();
             boolean canAppend = lastBubble != null && lastBubble.getType().equals(role);
@@ -326,14 +279,14 @@ public class ChatThreadPanel extends JPanel {
                 // Check for split delimiter in the incoming chunk
                 // We handle both \n---\n and start-of-chunk ---\n
                 if (text.contains("\n---") || text.startsWith("---")) {
-            String[] parts = SECTION_SPLIT.split(text);
+                    String[] parts = SECTION_SPLIT.split(text);
                     if (parts.length > 1 || text.trim().equals("---")) {
                         // Finalize current bubble with the first part
                         if (parts.length > 0 && !parts[0].isEmpty()) {
                             lastBubble.appendText(parts[0]);
                         }
-                        lastBubble.finalizeStreaming();
                         lastBubble.flushUpdate(true);
+                        lastBubble.finalizeStreaming(allBlocksExpanded);
 
                         // Create new bubbles for remaining parts
                         for (int i = 1; i < parts.length; i++) {
@@ -351,20 +304,28 @@ public class ChatThreadPanel extends JPanel {
 
                 lastBubble.appendText(text);
                 activeStreamBubble = lastBubble;
+                if ("tool".equals(role) || "thought".equals(role)) {
+                    activeStreamBubble.setExpanded(true);
+                }
                 if (!streamFlushTimer.isRunning()) {
                     streamFlushTimer.start();
                 }
             } else {
                 if (activeStreamBubble != null) {
-                    activeStreamBubble.finalizeStreaming();
                     activeStreamBubble.flushUpdate(true);
+                    activeStreamBubble.finalizeStreaming(allBlocksExpanded);
                     activeStreamBubble = null;
+                } else {
+                    MessageBubble bubbleToFinalize = findLastNonIgnorableBubble();
+                    if (bubbleToFinalize != null) {
+                        bubbleToFinalize.finalizeStreaming(allBlocksExpanded);
+                    }
                 }
                 if (streamFlushTimer.isRunning()) {
                     streamFlushTimer.stop();
                 }
 
-                addMessage(role, text, messageId, null);
+                addMessage(pm);
             }
         });
     }
@@ -372,8 +333,8 @@ public class ChatThreadPanel extends JPanel {
     public void stopStreaming() {
         SwingUtilities.invokeLater(() -> {
             if (activeStreamBubble != null) {
-                activeStreamBubble.finalizeStreaming();
-                if (activeStreamBubble.flushUpdate(true)) {
+                boolean didUpdate = activeStreamBubble.flushUpdate(true);
+                if (didUpdate) {
                     messagesContainer.revalidate();
                     scrollToBottom();
                 }
@@ -573,19 +534,22 @@ public class ChatThreadPanel extends JPanel {
     }
 
     public void toggleAllBlocks(boolean expanded) {
-        SwingUtilities.invokeLater(() -> {
-            BaseCollapsiblePane.setBatchMode(true);
-            try {
-                for (Component c : messagesContainer.getComponents()) {
-                    if (c instanceof MessageBubble bubble) {
-                        bubble.toggleAllBlocks(expanded);
-                    }
+        allBlocksExpanded = expanded;
+        BaseCollapsiblePane.setBatchMode(true);
+        try {
+            for (Component c : messagesContainer.getComponents()) {
+                if (c instanceof MessageBubble bubble) {
+                    bubble.toggleAllBlocks(expanded);
                 }
-            } finally {
-                BaseCollapsiblePane.setBatchMode(false);
             }
-            messagesContainer.revalidate();
-        });
+        } finally {
+            BaseCollapsiblePane.setBatchMode(false);
+        }
+        messagesContainer.revalidate();
+    }
+
+    public boolean isAllBlocksExpanded() {
+        return allBlocksExpanded;
     }
 
     public String getConversationAsMarkdown() {
@@ -647,7 +611,7 @@ public class ChatThreadPanel extends JPanel {
         SwingUtilities.invokeLater(() -> {
             clearMessages();
             for (Message m : messages) {
-                addMessage(m);
+                addMessage(messageTransformer.convert(m, m.type()));
             }
         });
     }

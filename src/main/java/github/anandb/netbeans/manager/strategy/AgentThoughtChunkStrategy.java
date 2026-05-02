@@ -12,7 +12,8 @@ public class AgentThoughtChunkStrategy implements DataExtractionStrategy {
     }
 
     @Override
-    public void extract(SessionUpdate update, ProcessedMessage target, UIHandler handler) {
+    public void extract(SessionUpdate update, UIHandler handler) {
+        ProcessedMessage target = new ProcessedMessage();
         target.setRole("thought");
         target.setText(AgentMessageChunkStrategy.extractText(update.content()));
         target.setMessageId(update.messageId());

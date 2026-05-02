@@ -2,7 +2,6 @@ package github.anandb.netbeans.manager.strategy;
 
 import github.anandb.netbeans.contract.DataExtractionStrategy;
 import github.anandb.netbeans.contract.UIHandler;
-import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.Logger;
 
@@ -19,11 +18,11 @@ public class DefaultStrategy implements DataExtractionStrategy {
     }
 
     @Override
-    public void extract(SessionUpdate update, ProcessedMessage target, UIHandler handler) {
+    public void extract(SessionUpdate update, UIHandler handler) {
         LOG.warn("Received unknown ACP session update type: {0}", update.type());
         LOG.fine("Unknown update payload: {0}", update);
-        
-        // We don't display anything to the UI for unknown types by default 
+
+        // We don't display anything to the UI for unknown types by default
         // to avoid cluttering the chat with garbage, but we log it for developers.
     }
 }

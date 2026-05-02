@@ -279,12 +279,12 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
         JButton tb = UIUtils.createToolbarButton("expand.svg", "Expand All Blocks", null);
         tb.addActionListener(e -> {
-            boolean isCollapse = "collapse".equals(tb.getClientProperty("state"));
-            chatPanel.toggleAllBlocks(!isCollapse);
-            String newState = isCollapse ? "expand" : "collapse";
+            boolean expanded = !chatPanel.isAllBlocksExpanded();
+            chatPanel.toggleAllBlocks(expanded);
+            String newState = expanded ? "collapse" : "expand";
             tb.putClientProperty("state", newState);
-            tb.setToolTipText(isCollapse ? "Expand All Blocks" : "Collapse All Blocks");
-            tb.setIcon(ThemeManager.getIcon(isCollapse ? "expand.svg" : "collapse.svg", 28));
+            tb.setToolTipText(expanded ? "Collapse All Blocks" : "Expand All Blocks");
+            tb.setIcon(ThemeManager.getIcon(expanded ? "collapse.svg" : "expand.svg", 28));
         });
         toggleBlocksBtn = tb;
         toggleBlocksBtn.putClientProperty("state", "expand");
@@ -411,10 +411,9 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         String msgId = update.update() != null ? update.update().messageId() : null;
         LOG.info("UI received session update: type={0}, msgId={1}", type, msgId);
 
-        ProcessedMessage pm = new ProcessedMessage();
         DataExtractionStrategy strategy = StrategyRegistry.getInstance().select(update);
         if (strategy != null) {
-            strategy.extract(update, pm, new UIHandler() {
+            strategy.extract(update, new UIHandler() {
                 @Override
                 public void displayMessage(ProcessedMessage msg) {
                     SwingUtilities.invokeLater(() -> {
@@ -645,7 +644,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     public void onSessionError(String message) {
         SwingUtilities.invokeLater(() -> {
             statusLabel.setText("Error: " + message);
-            chatPanel.addMessage("error", message);
+            chatPanel.addMessage(ProcessedMessage.createError("error", message, null, null));
         });
     }
 
@@ -723,7 +722,8 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                         echoBuilder.append("\n[").append("image".equals(type) ? "Image" : "File").append(": ").append(fname).append("]");
                     }
                 }
-                chatPanel.addMessage("user", echoBuilder.toString());
+
+                chatPanel.addMessage(new ProcessedMessage("user", echoBuilder.toString(), null, null));
             }
         }
 
@@ -748,7 +748,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                 .exceptionally(ex -> {
                     SwingUtilities.invokeLater(() -> {
                         statusLabel.setText("Error: " + ex.getMessage());
-                        chatPanel.addMessage("error", "Error: " + ex.getMessage());
+                        chatPanel.addMessage(ProcessedMessage.createError("error", "Error: " + ex.getMessage(), null, null));
                         inputArea.setText(text);
                         updateButtonState(false);
                         inputArea.requestFocusInWindow();
@@ -1017,7 +1017,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             SwingUtilities.invokeLater(() -> {
                 String msg = ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName();
                 statusLabel.setText("Restart failed: " + msg);
-                chatPanel.addMessage("error", "Restart failed: " + msg);
+                chatPanel.addMessage(ProcessedMessage.createError("error", "Restart failed: " + msg, null, null));
                 setInputEnabled(true);
             });
             return null;
@@ -1528,11 +1528,10 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         } catch (Exception ex) {
             LOG.severe("Failed to ensure server is started", ex);
             String msg = ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName();
-            chatPanel.addMessage("error", "Failed to start: " + msg);
+            chatPanel.addMessage(ProcessedMessage.createError("error", "Failed to start: " + msg, null, null));
         }
 
         ProcessManager.getInstance().setPermissionHandler(this);
-
         ProcessManager.getInstance().getSlashCommandInterceptor().setCallback(new SlashCommandCallback() {
             @Override
             public void expandOptionsPanel() {

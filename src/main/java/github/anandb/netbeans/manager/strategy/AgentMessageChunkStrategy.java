@@ -20,10 +20,10 @@ public class AgentMessageChunkStrategy implements DataExtractionStrategy {
     }
 
     @Override
-    public void extract(SessionUpdate update, ProcessedMessage target, UIHandler handler) {
+    public void extract(SessionUpdate update, UIHandler handler) {
         String msgId = update.messageId();
         String text = extractText(update.content());
-
+        ProcessedMessage target = new ProcessedMessage();
         MessageClassification classification = ToolParamsExtractor.classify("assistant", text, update.kind());
         target.setRole(classification.role());
         target.setText(text);
@@ -45,6 +45,7 @@ public class AgentMessageChunkStrategy implements DataExtractionStrategy {
         if (content == null) return "";
         if (content.isTextual()) return content.asText();
         if (content.has("text")) return content.get("text").asText();
+
         StringBuilder sb = new StringBuilder();
         if (content.isArray()) {
             for (JsonNode part : content) {
@@ -53,12 +54,12 @@ public class AgentMessageChunkStrategy implements DataExtractionStrategy {
                 }
             }
         }
-        
+
         String result = sb.toString();
         if (result.isEmpty()) {
             LOG.fine("Could not extract non-empty text from content: {0}", content);
         }
+
         return result;
     }
-
 }

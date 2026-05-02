@@ -66,10 +66,12 @@ public class MessageBubble extends JPanel implements Scrollable {
     private final StringBuilder text;
     private final String kind;
     private String toolTitle;
-    private final JPanel segmentsContainer;
+    private final boolean autoExpandOnFlush;
+    private final JPanel segments;
     private JPanel bubble;
     private final ArrayList<CollapsibleState> codeStates = new ArrayList<>();
     private transient HierarchyListener hierarchyListener;
+//    private boolean expanded = false;
 
     private static class CollapsibleState {
         boolean expanded;
@@ -100,8 +102,8 @@ public class MessageBubble extends JPanel implements Scrollable {
 
         bubble.setBackground(bgColor);
         bubble.setOpaque(true);
-        segmentsContainer.setBackground(bgColor);
-        segmentsContainer.setOpaque(false);
+        segments.setBackground(bgColor);
+        segments.setOpaque(false);
 
         if (bubble instanceof RoundedPanel rp) {
             rp.setBaseColor(bgColor);
@@ -211,6 +213,7 @@ public class MessageBubble extends JPanel implements Scrollable {
         this.messageId = messageId;
         this.text = new StringBuilder(text);
         this.kind = kind;
+        this.autoExpandOnFlush = "thought".equals(type);
         this.toolTitle = "tool".equals(type)
             ? (toolTitle != null ? toolTitle : ToolMetadataExtractor.extractToolTitle(messageId, text, kind))
             : null;
@@ -222,10 +225,10 @@ public class MessageBubble extends JPanel implements Scrollable {
         setDoubleBuffered(true);
         setBorder(new EmptyBorder(2, 8, 2, 8));
 
-        segmentsContainer = new JPanel();
-        segmentsContainer.setLayout(new BoxLayout(segmentsContainer, BoxLayout.Y_AXIS));
-        segmentsContainer.setAlignmentX(Component.LEFT_ALIGNMENT);
-        segmentsContainer.setDoubleBuffered(true);
+        segments = new JPanel();
+        segments.setLayout(new BoxLayout(segments, BoxLayout.Y_AXIS));
+        segments.setAlignmentX(Component.LEFT_ALIGNMENT);
+        segments.setDoubleBuffered(true);
 
         this.bubble = new JPanel(new BorderLayout());
         this.bubble.setDoubleBuffered(true);
@@ -238,9 +241,9 @@ public class MessageBubble extends JPanel implements Scrollable {
         } else {
             this.bubble.setBorder(new EmptyBorder(2, 8, 6, 8));
         }
-        this.bubble.add(segmentsContainer, BorderLayout.CENTER);
+        this.bubble.add(segments, BorderLayout.CENTER);
 
-        updateContent(theme);
+        updateContent(theme, false);
         boolean isAssistant = "assistant".equals(type);
 
         Insets gbcInsets = new Insets(4, 12, 4, 12);
@@ -284,7 +287,7 @@ public class MessageBubble extends JPanel implements Scrollable {
                     SwingUtilities.invokeLater(() -> {
                         repaint();
                         bubble.repaint();
-                        segmentsContainer.repaint();
+                        segments.repaint();
                     });
                 }
             };
@@ -349,18 +352,18 @@ public class MessageBubble extends JPanel implements Scrollable {
             updateContent(ThemeManager.getCurrentTheme(), true);
             return true;
         }
+
         return false;
     }
 
     public void setExpanded(boolean expanded) {
-        if (segmentsContainer.getComponentCount() > 0
-                && segmentsContainer.getComponent(0) instanceof CollapsibleToolPane pane) {
+        if (segments.getComponentCount() > 0 && segments.getComponent(0) instanceof CollapsibleToolPane pane) {
             pane.setExpanded(expanded);
         }
     }
 
     public void toggleAllBlocks(boolean expanded) {
-        for (Component c : segmentsContainer.getComponents()) {
+        for (Component c : segments.getComponents()) {
             if (c instanceof CollapsibleCodePane codePane) {
                 codePane.setExpanded(expanded);
             } else if (c instanceof CollapsibleToolPane toolPane) {
@@ -382,11 +385,7 @@ public class MessageBubble extends JPanel implements Scrollable {
         return text.toString();
     }
 
-    private void updateContent(ColorTheme theme) {
-        updateContent(theme, false);
-    }
-
-    private void updateContent(ColorTheme theme, boolean incremental) {
+    private void updateContent(ColorTheme theme, boolean expanded) {
         // Handle specialized tool rendering
         if ("tool".equals(type) || "thought".equals(type)) {
             String rawText = text.toString();
@@ -398,21 +397,16 @@ public class MessageBubble extends JPanel implements Scrollable {
                 title = toolTitle;
             }
 
-            // Reuse existing tool pane if possible to preserve expanded state
-            if (segmentsContainer.getComponentCount() > 0
-                    && segmentsContainer.getComponent(0) instanceof CollapsibleToolPane existingPane) {
-                existingPane.setTitle(title);
-                existingPane.setContent(displayContent);
-                // Auto-collapse if we are no longer in incremental mode
-                if (!incremental) {
-                    existingPane.setExpanded(false);
+            if (segments.getComponentCount() > 0 && segments.getComponent(0) instanceof CollapsibleToolPane ep) {
+                ep.setTitle(title);
+                ep.setContent(displayContent);
+                if (autoExpandOnFlush) {
+                    ep.setExpanded(expanded);
                 }
             } else {
-                segmentsContainer.removeAll();
-                // Thoughts and Tools expand only during active creation (incremental)
-                boolean defaultExpanded = incremental;
-                CollapsibleToolPane toolPane = new CollapsibleToolPane(title, displayContent, defaultExpanded);
-                segmentsContainer.add(toolPane);
+                segments.removeAll();
+                CollapsibleToolPane toolPane = new CollapsibleToolPane(title, displayContent, autoExpandOnFlush && expanded);
+                segments.add(toolPane);
             }
             // Single revalidate at container level is sufficient
             revalidate();
@@ -422,9 +416,9 @@ public class MessageBubble extends JPanel implements Scrollable {
         // For user messages, we don't need complex code panels.
         // Just render the whole thing as markdown to get simple <pre> blocks.
         if ("user".equals(type)) {
-            updateOrAddTextSegment(text.toString(), theme, 0, incremental);
-            while (segmentsContainer.getComponentCount() > 1) {
-                segmentsContainer.remove(segmentsContainer.getComponentCount() - 1);
+            updateOrAddTextSegment(text.toString(), theme, 0);
+            while (segments.getComponentCount() > 1) {
+                segments.remove(segments.getComponentCount() - 1);
             }
             // Single revalidate at top level cascades to children
             revalidate();
@@ -445,7 +439,7 @@ public class MessageBubble extends JPanel implements Scrollable {
             // Text before code block (may contain tables)
             String textBefore = rawText.substring(lastEnd, matcher.start());
             if (!textBefore.isEmpty()) {
-                currentCompIdx = addTextAndTableSegments(textBefore, theme, currentCompIdx, incremental);
+                currentCompIdx = addTextAndTableSegments(textBefore, theme, currentCompIdx, expanded);
             }
 
             String lang = matcher.group(1);
@@ -471,25 +465,25 @@ public class MessageBubble extends JPanel implements Scrollable {
         if (lastEnd < rawText.length()) {
             String remaining = rawText.substring(lastEnd);
             if (!remaining.isEmpty()) {
-                currentCompIdx = addTextAndTableSegments(remaining, theme, currentCompIdx, incremental);
+                currentCompIdx = addTextAndTableSegments(remaining, theme, currentCompIdx, expanded);
             }
         }
 
         // Remove extra old components
-        while (segmentsContainer.getComponentCount() > currentCompIdx) {
-            segmentsContainer.remove(segmentsContainer.getComponentCount() - 1);
+        while (segments.getComponentCount() > currentCompIdx) {
+            segments.remove(segments.getComponentCount() - 1);
         }
 
         // Single revalidate at top level cascades to all children
         revalidate();
     }
 
-    public void finalizeStreaming() {
-        // When streaming ends, collapse all process blocks (Tools/Thoughts)
-        // but leave Code blocks open
-        for (Component c : segmentsContainer.getComponents()) {
-            if (c instanceof CollapsibleToolPane toolPane) {
-                toolPane.setExpanded(false);
+    public void finalizeStreaming(boolean defaultExpanded) {
+        for (Component c : segments.getComponents()) {
+            if (c instanceof CollapsibleCodePane codePane) {
+                codePane.setExpanded(defaultExpanded);
+            } else if (c instanceof CollapsibleToolPane toolPane) {
+                toolPane.setExpanded(defaultExpanded);
             }
         }
         revalidate();
@@ -497,8 +491,8 @@ public class MessageBubble extends JPanel implements Scrollable {
     }
 
     private void updateOrAddCodeSegment(String lang, String code, boolean expanded, int codeIdx, int compIdx) {
-        if (compIdx < segmentsContainer.getComponentCount()) {
-            Component c = segmentsContainer.getComponent(compIdx);
+        if (compIdx < segments.getComponentCount()) {
+            Component c = segments.getComponent(compIdx);
             if (c instanceof CollapsibleCodePane pane) {
                 pane.updateContent(lang, code);
                 pane.setVisible(code != null && !code.trim().isEmpty());
@@ -510,20 +504,20 @@ public class MessageBubble extends JPanel implements Scrollable {
         // But for simplicity, we'll just insert/replace
         CollapsibleCodePane codePane = new CollapsibleCodePane(lang, code, expanded);
         codePane.setVisible(code != null && !code.trim().isEmpty());
-        if (compIdx < segmentsContainer.getComponentCount()) {
-            segmentsContainer.remove(compIdx);
-            segmentsContainer.add(codePane, compIdx);
+        if (compIdx < segments.getComponentCount()) {
+            segments.remove(compIdx);
+            segments.add(codePane, compIdx);
         } else {
-            segmentsContainer.add(codePane);
+            segments.add(codePane);
         }
     }
 
-    private void updateOrAddTextSegment(String markdown, ColorTheme theme, int compIdx, boolean incremental) {
-        String styledHtml = prepareHtml(markdown, theme, incremental);
+    private void updateOrAddTextSegment(String markdown, ColorTheme theme, int compIdx) {
+        String styledHtml = prepareHtml(markdown, theme);
         Color bg = UIUtils.getBubbleBackground(theme, type);
 
-        if (compIdx < segmentsContainer.getComponentCount()) {
-            Component c = segmentsContainer.getComponent(compIdx);
+        if (compIdx < segments.getComponentCount()) {
+            Component c = segments.getComponent(compIdx);
             if (c instanceof FitEditorPane pane) {
                 pane.setBackground(new Color(0, 0, 0, 0));
                 pane.setOpaque(false);
@@ -534,11 +528,11 @@ public class MessageBubble extends JPanel implements Scrollable {
         }
 
         FitEditorPane pane = createHtmlPane(styledHtml, bg);
-        if (compIdx < segmentsContainer.getComponentCount()) {
-            segmentsContainer.remove(compIdx);
-            segmentsContainer.add(pane, compIdx);
+        if (compIdx < segments.getComponentCount()) {
+            segments.remove(compIdx);
+            segments.add(pane, compIdx);
         } else {
-            segmentsContainer.add(pane);
+            segments.add(pane);
         }
     }
 
@@ -549,7 +543,7 @@ public class MessageBubble extends JPanel implements Scrollable {
 
         // Fast-path for non-table text
         if (!text.contains("|")) {
-            updateOrAddTextSegment(text, theme, compIdx++, incremental);
+            updateOrAddTextSegment(text, theme, compIdx++);
             return compIdx;
         }
 
@@ -574,7 +568,7 @@ public class MessageBubble extends JPanel implements Scrollable {
                         if (UIUtils.isSeparatorRowLine(line)) {
                             headerFound = true;
                             if (textBuffer.length() > 0) {
-                                updateOrAddTextSegment(textBuffer.toString(), theme, currentIdx++, incremental);
+                                updateOrAddTextSegment(textBuffer.toString(), theme, currentIdx++);
                                 textBuffer.setLength(0);
                             }
                         }
@@ -583,7 +577,7 @@ public class MessageBubble extends JPanel implements Scrollable {
             } else {
                 if (inTable) {
                     if (headerFound) {
-                        updateOrAddTableSegment(String.join("\n", tableLines), theme, currentIdx++, incremental);
+                        updateOrAddTableSegment(String.join("\n", tableLines), theme, currentIdx++);
                     } else {
                         for (String l : tableLines) {
                             textBuffer.append(l).append("\n");
@@ -601,7 +595,7 @@ public class MessageBubble extends JPanel implements Scrollable {
         }
 
         if (inTable && headerFound) {
-            updateOrAddTableSegment(String.join("\n", tableLines), theme, currentIdx++, incremental);
+            updateOrAddTableSegment(String.join("\n", tableLines), theme, currentIdx++);
         } else if (inTable) {
             for (String l : tableLines) {
                 textBuffer.append(l).append("\n");
@@ -609,18 +603,18 @@ public class MessageBubble extends JPanel implements Scrollable {
         }
 
         if (textBuffer.length() > 0) {
-            updateOrAddTextSegment(textBuffer.toString(), theme, currentIdx++, incremental);
+            updateOrAddTextSegment(textBuffer.toString(), theme, currentIdx++);
         }
 
         return currentIdx;
     }
 
 
-    private void updateOrAddTableSegment(String tableMarkdown, ColorTheme theme, int compIdx, boolean incremental) {
-        String styledHtml = prepareHtml(tableMarkdown, theme, incremental);
+    private void updateOrAddTableSegment(String tableMarkdown, ColorTheme theme, int compIdx) {
+        String styledHtml = prepareHtml(tableMarkdown, theme);
 
-        if (compIdx < segmentsContainer.getComponentCount()) {
-            Component c = segmentsContainer.getComponent(compIdx);
+        if (compIdx < segments.getComponentCount()) {
+            Component c = segments.getComponent(compIdx);
             if (c instanceof RoundedPanel rp && rp.getComponentCount() > 0 && rp.getComponent(0) instanceof FitEditorPane pane) {
                 rp.setBaseColor(theme.tableBackground());
                 rp.setBorderColor(theme.tableBorder());
@@ -640,15 +634,15 @@ public class MessageBubble extends JPanel implements Scrollable {
         pane.setBorder(new EmptyBorder(8, 8, 8, 8));
         rp.add(pane, BorderLayout.CENTER);
 
-        if (compIdx < segmentsContainer.getComponentCount()) {
-            segmentsContainer.remove(compIdx);
-            segmentsContainer.add(rp, compIdx);
+        if (compIdx < segments.getComponentCount()) {
+            segments.remove(compIdx);
+            segments.add(rp, compIdx);
         } else {
-            segmentsContainer.add(rp);
+            segments.add(rp);
         }
     }
 
-    private String prepareHtml(String markdown, ColorTheme theme, boolean incremental) {
+    private String prepareHtml(String markdown, ColorTheme theme) {
         String html = FLEXMARK_RENDERER.render(FLEXMARK_PARSER.parse(markdown));
 
         String tableBg = theme.toHtmlHex(theme.tableBackground());
@@ -688,7 +682,7 @@ public class MessageBubble extends JPanel implements Scrollable {
         if ("error".equals(type)) {
             customCss += " body { color: #D32F2F; font-weight: bold; }";
         } else if ("user".equals(type)) {
-            customCss += " body { font-weight: 500; }";
+            customCss += " body { font-weight: 300; }";
         }
         // Detect if the content looks like ASCII art (contains box drawing characters)
         String bodyStyle = "margin: 0; padding: 0; text-align: left !important; width: 100%;";
@@ -705,16 +699,8 @@ public class MessageBubble extends JPanel implements Scrollable {
             html = "<div class='ascii-art'>" + html + "</div>";
         }
 
-        // Use a wrapping table for robust alignment
-        String cellStyle = "text-align: left !important;";
-        if ("user".equals(type)) {
-            cellStyle += " font-weight: 300;";
-        }
-
         return "<html><head><style>" + customCss + "</style></head><body style='" + bodyStyle + "'>"
-                + "<table width='100%' cellpadding='0' cellspacing='0' border='0'><tr><td align='left' style='" + cellStyle + "'>"
                 + html
-                + "</td></tr></table>"
                 + "</body></html>";
     }
 
