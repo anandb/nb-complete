@@ -2,7 +2,9 @@
 
 [![Version](https://img.shields.io/badge/version-1.4.1-blue.svg)](pom.xml)
 [![Build Status](https://img.shields.io/badge/build-success-brightgreen.svg)](https://github.com/anandb/nb-complete)
-[![NetBeans](https://img.shields.io/badge/NetBeans-RELEASE210-orange.svg)](https://netbeans.apache.org/download/index.html)
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.anandb/beanbot)](https://central.sonatype.com/artifact/io.github.anandb/beanbot/versions)
+[![NetBeans](https://img.shields.io/badge/NetBeans-RELEASE290-orange.svg)](https://netbeans.apache.org/download/index.html)
+[![License: Unlicense](https://img.shields.io/badge/license-Unlicense-blue.svg)](http://unlicense.org/)
 
 The Coding Assistant is a NetBeans IDE plugin designed to provide integrated AI capabilities through the Agent Client Protocol (ACP). It offers a structured chat interface for technical assistance, including code generation, project analysis, and automated task execution.
 
@@ -50,7 +52,7 @@ The Coding Assistant is a NetBeans IDE plugin designed to provide integrated AI 
 ## Getting Started
 
 ### Prerequisites
-- **NetBeans IDE**: Version RELEASE210 or later.
+- **NetBeans IDE**: Version RELEASE290 or later.
 - **Java Development Kit**: JDK 17 or later.
 - **Backend Service**: Opencode (Ideally, any ACP-compliant backend service)
 

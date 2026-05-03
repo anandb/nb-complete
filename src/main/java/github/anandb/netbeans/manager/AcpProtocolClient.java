@@ -19,18 +19,20 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
+
 import github.anandb.netbeans.contract.RequestHandler;
 import github.anandb.netbeans.support.Logger;
 
 import github.anandb.netbeans.support.MapperSupplier;
+import github.anandb.netbeans.support.WireLogger;
 
 import static github.anandb.netbeans.manager.AgentUtils.closeQuietly;
 
 public class AcpProtocolClient implements Closeable {
-    private static final Logger LOG = new Logger(AcpProtocolClient.class);
-    private static final long DEFAULT_TIMEOUT_SECONDS = 0; // 0 means no timeout by default
 
-    // Static shared ObjectMapper for better performance across all instances
+    private static final Logger LOG = new Logger(AcpProtocolClient.class);
+
+    private static final long DEFAULT_TIMEOUT_SECONDS = 0; // 0 means no timeout by default
     private static final ObjectMapper MAPPER = MapperSupplier.get();
 
     private final PrintWriter writer;
@@ -45,11 +47,13 @@ public class AcpProtocolClient implements Closeable {
     private Thread errorReaderThread;
     private Consumer<Throwable> connectionErrorHandler;
     private Runnable disconnectionHandler;
+    private final WireLogger wireLogger;
 
     public AcpProtocolClient(Process process) {
         this.writer = new PrintWriter(process.getOutputStream(), true);
         this.reader = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8));
         this.errorReader = new BufferedReader(new InputStreamReader(process.getErrorStream(), StandardCharsets.UTF_8));
+        this.wireLogger = new WireLogger();
     }
 
     public void start() {
@@ -95,7 +99,7 @@ public class AcpProtocolClient implements Closeable {
 
         try {
             String json = MAPPER.writeValueAsString(request);
-            LOG.info("[ACP] Sending request: {0}", json);
+            LOG.fine("[ACP] Sending request: {0}", method);
             writer.println(json);
             if (writer.checkError()) {
                 pendingRequests.remove(id);
@@ -103,7 +107,9 @@ public class AcpProtocolClient implements Closeable {
                 future.completeExceptionally(ex);
                 notifyConnectionError(ex);
             }
-        } catch (JsonProcessingException e) {
+
+            wireLogger.log(json);
+        } catch (IOException e) {
             pendingRequests.remove(id);
             future.completeExceptionally(e);
         }
@@ -137,13 +143,15 @@ public class AcpProtocolClient implements Closeable {
 
         try {
             String json = MAPPER.writeValueAsString(notification);
-            LOG.info("[ACP] Sending notification: {0}", json);
+            LOG.fine("[ACP] Sending notification: {0}", method);
             writer.println(json);
             if (writer.checkError()) {
                 LOG.severe("Failed to write notification");
                 notifyConnectionError(new IOException("Failed to write notification"));
             }
-        } catch (JsonProcessingException e) {
+
+            wireLogger.log(json);
+        } catch (IOException e) {
             LOG.severe("Failed to serialize notification", e);
         }
     }
@@ -172,7 +180,7 @@ public class AcpProtocolClient implements Closeable {
                     LOG.fine("Ignoring non-JSON process output: {0}", line);
                     continue;
                 }
-                LOG.info("[ACP] Received: {0}", line);
+
                 try {
                     // Direct readTree is faster than creating JsonParser + MappingIterator
                     JsonNode node = MAPPER.readTree(line);
@@ -208,6 +216,7 @@ public class AcpProtocolClient implements Closeable {
     }
 
     private void handleMessage(JsonNode node) {
+        wireLogger.log(node);
         if (node.has("id")) {
             long id = node.get("id").asLong();
             if (node.has("method")) {
@@ -238,11 +247,10 @@ public class AcpProtocolClient implements Closeable {
             Consumer<JsonNode> listener = notificationListeners.get(method);
             if (listener != null) {
                 try {
-            JsonNode params = node.has("params") ? node.get("params") : MAPPER.createObjectNode();
-                listener.accept(params);
+                    JsonNode params = node.has("params") ? node.get("params") : MAPPER.createObjectNode();
+                    listener.accept(params);
                 } catch (Exception e) {
-                    LOG.warn("Notification handler error for method: {0}", method);
-                    LOG.fine("Handler exception", e);
+                    LOG.warn("Notification handler error for method: {0} {1}", method, e);
                 }
             } else {
                 LOG.fine("No listener for notification method: {0}", method);
@@ -276,7 +284,7 @@ public class AcpProtocolClient implements Closeable {
 
         try {
             String json = MAPPER.writeValueAsString(response);
-            LOG.info("[ACP] Sending response: {0}", json);
+            LOG.fine("[ACP] Sending response: {0}", json);
             writer.println(json);
         } catch (JsonProcessingException e) {
             LOG.severe("Failed to serialize response", e);
@@ -295,7 +303,7 @@ public class AcpProtocolClient implements Closeable {
 
         try {
             String json = MAPPER.writeValueAsString(response);
-            LOG.info("[ACP] Sending error response: {0}", json);
+            LOG.fine("[ACP] Sending error response: {0}", message);
             writer.println(json);
         } catch (JsonProcessingException e) {
             LOG.severe("Failed to serialize error response", e);
@@ -325,6 +333,7 @@ public class AcpProtocolClient implements Closeable {
     @Override
     public void close() {
         running = false;
+        closeQuietly(wireLogger);
 
         pendingRequests.values().forEach(future -> {
             if (!future.isDone()) {

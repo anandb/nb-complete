@@ -3,6 +3,7 @@ package github.anandb.netbeans.manager.strategy;
 import github.anandb.netbeans.contract.DataExtractionStrategy;
 import github.anandb.netbeans.contract.UIHandler;
 import github.anandb.netbeans.model.Message;
+import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.Logger;
@@ -38,7 +39,7 @@ public class MessageStrategy implements DataExtractionStrategy {
                 new Object[]{msg.id(), role});
             return;
         }
-        target.setRole(role);
+        target.setMessageType("user".equals(role) ? MessageType.user_message_chunk : MessageType.agent_message_chunk);
         target.setText(text);
         target.setMessageId(msg.id());
         target.setKind(null);

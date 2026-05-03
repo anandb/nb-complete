@@ -6,6 +6,7 @@ import github.anandb.netbeans.contract.UIHandler;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import github.anandb.netbeans.manager.ToolMetadataExtractor;
+import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.model.SessionUpdate;
 
@@ -29,7 +30,7 @@ public class ToolCallUpdateStrategy implements DataExtractionStrategy {
         String text = defaultIfBlank(extractContentText(update.content()), update.status());
         if (text == null) text = "";
         String tt = ToolMetadataExtractor.extractToolTitle(messageId, text, update.kind());
-        target.setRole("tool");
+        target.setMessageType(MessageType.valueOf(update.type()));
         target.setText(text);
         target.setMessageId(defaultString(messageId));
         target.setKind(update.kind());

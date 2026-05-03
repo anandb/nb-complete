@@ -4,31 +4,39 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.io.IOException;
 
 import github.anandb.netbeans.contract.DataExtractionStrategy;
+import github.anandb.netbeans.manager.ToolParamsExtractor;
+import github.anandb.netbeans.model.MessageClassification;
+import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.MapperSupplier;
 
 public class StrategyRegistry {
     private static final Logger LOG = new Logger(StrategyRegistry.class);
     private static final StrategyRegistry INSTANCE = new StrategyRegistry();
+    private static final ObjectMapper MAPPER = MapperSupplier.get();
 
     private final Map<String, DataExtractionStrategy> typeStrategies = new LinkedHashMap<>();
     private final DataExtractionStrategy[] fallbackStrategies;
     private final DataExtractionStrategy defaultStrategy = new DefaultStrategy();
 
     private StrategyRegistry() {
-        register("agent_message_chunk", new AgentMessageChunkStrategy());
-        register("agent_thought_chunk", new AgentThoughtChunkStrategy());
-        register("user_message_chunk", new UserMessageChunkStrategy());
-        register("tool_call_update", new ToolCallUpdateStrategy());
-        register("tool_call", new ToolCallUpdateStrategy());
-        register("message", new MessageStrategy());
-        register("agent_data_chunk", new DataChunkReclassifyStrategy());
-        register("config_options_update", new ConfigOptionsUpdateStrategy());
-        register("session_info_update", new SessionInfoUpdateStrategy());
-        register("usage_update", new UsageUpdateStrategy());
-        register("plan", new PlanStrategy());
+        register(MessageType.agent_message_chunk, new AgentMessageChunkStrategy());
+        register(MessageType.agent_thought_chunk, new AgentThoughtChunkStrategy());
+        register(MessageType.user_message_chunk, new UserMessageChunkStrategy());
+        register(MessageType.tool_call_update, new ToolCallUpdateStrategy());
+        register(MessageType.tool_call, new ToolCallUpdateStrategy());
+        register(MessageType.message, new MessageStrategy());
+        register(MessageType.agent_data_chunk, new DataChunkReclassifyStrategy());
+        register(MessageType.config_options_update, new ConfigOptionsUpdateStrategy());
+        register(MessageType.session_info_update, new SessionInfoUpdateStrategy());
+        register(MessageType.usage_update, new UsageUpdateStrategy());
+        register(MessageType.plan, new PlanStrategy());
 
         fallbackStrategies = new DataExtractionStrategy[] {
             new DataChunkReclassifyStrategy()
@@ -47,6 +55,24 @@ public class StrategyRegistry {
         }
 
         DataExtractionStrategy selected = null;
+
+        if (update.content() != null) {
+            try {
+                String text = MAPPER.writeValueAsString(update.content());
+                MessageType msgType = null;
+                try { msgType = MessageType.valueOf(type); } catch (IllegalArgumentException e) {}
+                MessageClassification classification = ToolParamsExtractor.classify(msgType, text, update.kind());
+                if (classification.type() != null) {
+                    type = classification.type().name();
+                }
+                SessionUpdate.UpdateData ud = update.update();
+                if (ud != null) {
+                    //todo:
+                    // ud.setKind(classification.kind());
+                }
+            } catch (IOException e) {
+            }
+        }
 
         // 1. Try exact match
         DataExtractionStrategy s = typeStrategies.get(type);
@@ -80,9 +106,9 @@ public class StrategyRegistry {
 
     public boolean hasAnnotationFilter(SessionUpdate update) {
         String t = update.type();
-        return "agent_message_chunk".equals(t)
-            || "agent_thought_chunk".equals(t)
-            || "user_message_chunk".equals(t);
+        return MessageType.agent_message_chunk.name().equals(t)
+            || MessageType.agent_thought_chunk.name().equals(t)
+            || MessageType.user_message_chunk.name().equals(t);
     }
 
     private boolean shouldSkip(JsonNode content) {
@@ -102,7 +128,7 @@ public class StrategyRegistry {
         return false;
     }
 
-    final void register(String type, DataExtractionStrategy strategy) {
-        typeStrategies.put(type, strategy);
+    final void register(MessageType type, DataExtractionStrategy strategy) {
+        typeStrategies.put(type.name(), strategy);
     }
 }

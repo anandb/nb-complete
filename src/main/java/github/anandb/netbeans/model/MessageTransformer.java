@@ -46,7 +46,8 @@ public class MessageTransformer {
             }
         }
 
-        LOG.info("RAW {0} {1} {2}", type, message.id(), sb.toString());
-        return new ProcessedMessage(type, sb.toString(), message.id(), null);
+        LOG.info("RAW {0} {1} {2} {3}", type, message.id(), sb.toString(), type);
+        MessageType msgType = "user".equals(type) ? MessageType.user_message_chunk : MessageType.agent_message_chunk;
+        return new ProcessedMessage(msgType, sb.toString(), message.id(), null);
     }
 }

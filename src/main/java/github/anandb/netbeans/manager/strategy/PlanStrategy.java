@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import github.anandb.netbeans.contract.DataExtractionStrategy;
 import github.anandb.netbeans.contract.UIHandler;
+import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.PlanEntry;
 import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.model.SessionUpdate;
@@ -51,7 +52,7 @@ public class PlanStrategy implements DataExtractionStrategy {
             sb.append("- ").append(statusIcon(entry.status())).append(" ").append(entry.content()).append("\n");
         }
 
-        target.setRole("assistant");
+        target.setMessageType(MessageType.agent_message_chunk);
         target.setText(sb.toString());
         target.setStreaming(false);
         handler.displayMessage(target);

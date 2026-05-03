@@ -19,7 +19,7 @@ public record SessionUpdate(
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record UpdateData(
-        @JsonProperty("sessionUpdate") String type,
+        @JsonProperty("sessionUpdate") MessageType type,
         String title,
         String messageId,
         JsonNode content,
@@ -64,7 +64,7 @@ public record SessionUpdate(
     // Convenience methods to maintain backward compatibility in some logic if needed
     public String type() {
         UpdateData ud = update();
-        return ud != null ? ud.type() : null;
+        return ud != null ? ud.type().name() : null;
     }
 
     public Message message() {
@@ -76,7 +76,7 @@ public record SessionUpdate(
         UpdateData ud = update();
         return ud != null ? ud.isThinking() : null;
     }
-    
+
     public JsonNode content() {
         UpdateData ud = update();
         return ud != null ? ud.content() : null;

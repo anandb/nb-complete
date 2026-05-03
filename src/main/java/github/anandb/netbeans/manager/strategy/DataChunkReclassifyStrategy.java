@@ -3,6 +3,7 @@ package github.anandb.netbeans.manager.strategy;
 import github.anandb.netbeans.contract.DataExtractionStrategy;
 import github.anandb.netbeans.contract.UIHandler;
 import github.anandb.netbeans.manager.ToolMetadataExtractor;
+import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.model.SessionUpdate;
 
@@ -18,7 +19,7 @@ public class DataChunkReclassifyStrategy implements DataExtractionStrategy {
         String msgId = update.messageId();
         String text = AgentMessageChunkStrategy.extractText(update.content());
         String tt = ToolMetadataExtractor.extractToolTitle(msgId, text, update.kind());
-        target.setRole("tool");
+        target.setMessageType(MessageType.tool_call_update);
         target.setText(text);
         target.setMessageId(msgId);
         target.setKind("data_chunk");

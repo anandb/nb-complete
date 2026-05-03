@@ -5,9 +5,7 @@ import github.anandb.netbeans.contract.UIHandler;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
-import github.anandb.netbeans.manager.ToolMetadataExtractor;
-import github.anandb.netbeans.manager.ToolParamsExtractor;
-import github.anandb.netbeans.model.MessageClassification;
+import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.Logger;
@@ -24,17 +22,12 @@ public class AgentMessageChunkStrategy implements DataExtractionStrategy {
         String msgId = update.messageId();
         String text = extractText(update.content());
         ProcessedMessage target = new ProcessedMessage();
-        MessageClassification classification = ToolParamsExtractor.classify("assistant", text, update.kind());
-        target.setRole(classification.role());
+        target.setMessageType(MessageType.valueOf(update.type()));
         target.setText(text);
         target.setMessageId(msgId);
-        target.setKind(classification.kind());
+        target.setKind(update.kind());
         target.setRawText(text);
         target.setStreaming(true);
-
-        if ("tool".equals(classification.role())) {
-            target.setToolTitle(ToolMetadataExtractor.extractToolTitle(msgId, text, update.kind()));
-        }
 
         if (target.role() != null) {
             handler.displayMessage(target);

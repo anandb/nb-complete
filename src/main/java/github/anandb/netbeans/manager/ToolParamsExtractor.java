@@ -3,6 +3,7 @@ package github.anandb.netbeans.manager;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import github.anandb.netbeans.model.MessageClassification;
+import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.support.Logger;
 
 public final class ToolParamsExtractor {
@@ -32,15 +33,15 @@ public final class ToolParamsExtractor {
         return null;
     }
 
-    public static MessageClassification classify(String role, String text, String kind) {
+    public static MessageClassification classify(MessageType type, String text, String kind) {
         if (isDcpCleanup(text)) {
-            return new MessageClassification("tool", "context cleanup");
+            return new MessageClassification(MessageType.tool_call_update, "context cleanup");
         }
         if (isCavemanFiller(text)) {
-            return new MessageClassification("tool", "caveman");
+            return new MessageClassification(MessageType.tool_call_update, "caveman");
         }
 
-        return new MessageClassification(role, kind);
+        return new MessageClassification(type, kind);
     }
 
     public static boolean isDcpCleanup(String text) {

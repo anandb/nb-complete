@@ -79,6 +79,7 @@ import github.anandb.netbeans.contract.SlashCommandCallback;
 import github.anandb.netbeans.manager.strategy.StrategyRegistry;
 import github.anandb.netbeans.contract.UIHandler;
 import github.anandb.netbeans.model.ConfigItem;
+import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.model.SessionConfigOption;
@@ -93,7 +94,7 @@ import github.anandb.netbeans.support.Logger;
 )
 @TopComponent.Description(
     preferredID = "AssistantTopComponent",
-    iconBase = "github/anandb/netbeans/ui/icons/logo.svg",
+    iconBase = "github/anandb/netbeans/ui/icons/logo_window.svg",
     persistenceType = TopComponent.PERSISTENCE_ALWAYS
 )
 @TopComponent.Registration(mode = "properties", openAtStartup = true)
@@ -407,7 +408,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
     @Override
     public void onSessionUpdate(SessionUpdate update) {
-        String type = update.update() != null ? update.update().type() : null;
+        String type = update.update() != null ? update.update().type().name() : null;
         String msgId = update.update() != null ? update.update().messageId() : null;
         LOG.info("UI received session update: type={0}, msgId={1}", type, msgId);
 
@@ -644,7 +645,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     public void onSessionError(String message) {
         SwingUtilities.invokeLater(() -> {
             statusLabel.setText("Error: " + message);
-            chatPanel.addMessage(ProcessedMessage.createError("error", message, null, null));
+            chatPanel.addMessage(ProcessedMessage.createError(MessageType.error_response, message, null, null));
         });
     }
 
@@ -723,7 +724,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                     }
                 }
 
-                chatPanel.addMessage(new ProcessedMessage("user", echoBuilder.toString(), null, null));
+                chatPanel.addMessage(new ProcessedMessage(MessageType.user_message_chunk, echoBuilder.toString(), null, null));
             }
         }
 
@@ -748,7 +749,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                 .exceptionally(ex -> {
                     SwingUtilities.invokeLater(() -> {
                         statusLabel.setText("Error: " + ex.getMessage());
-                        chatPanel.addMessage(ProcessedMessage.createError("error", "Error: " + ex.getMessage(), null, null));
+                        chatPanel.addMessage(ProcessedMessage.createError(MessageType.error_response, "Error: " + ex.getMessage(), null, null));
                         inputArea.setText(text);
                         updateButtonState(false);
                         inputArea.requestFocusInWindow();
@@ -1017,7 +1018,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             SwingUtilities.invokeLater(() -> {
                 String msg = ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName();
                 statusLabel.setText("Restart failed: " + msg);
-                chatPanel.addMessage(ProcessedMessage.createError("error", "Restart failed: " + msg, null, null));
+                chatPanel.addMessage(ProcessedMessage.createError(MessageType.error_response, "Restart failed: " + msg, null, null));
                 setInputEnabled(true);
             });
             return null;
@@ -1528,7 +1529,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         } catch (Exception ex) {
             LOG.severe("Failed to ensure server is started", ex);
             String msg = ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName();
-            chatPanel.addMessage(ProcessedMessage.createError("error", "Failed to start: " + msg, null, null));
+            chatPanel.addMessage(ProcessedMessage.createError(MessageType.error_response, "Failed to start: " + msg, null, null));
         }
 
         ProcessManager.getInstance().setPermissionHandler(this);

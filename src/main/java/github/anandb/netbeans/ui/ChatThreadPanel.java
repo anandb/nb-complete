@@ -184,12 +184,11 @@ public class ChatThreadPanel extends JPanel {
     }
 
     public void addMessage(ProcessedMessage pm) {
-        String role = pm.role();
         String text = pm.text();
         String kind = pm.kind();
 
-        MessageClassification classification = ToolParamsExtractor.classify(role, text, kind);
-        final String effectiveRole = classification.role();
+        MessageClassification classification = ToolParamsExtractor.classify(pm.messageType(), text, kind);
+        final String effectiveRole = classification.type() != null ? classification.type().roleName() : null;
         final String effectiveKind = classification.kind();
 
         if (ProcessedMessage.isIgnorable(effectiveRole, text)) {
@@ -206,10 +205,8 @@ public class ChatThreadPanel extends JPanel {
                 MessageBubble lastBubble = findLastNonIgnorableBubble();
                 boolean canMerge = (lastBubble != null && effectiveRole.equals(lastBubble.getType()));
                 if (canMerge) {
-                    // Always merge consecutive thoughts
-                    if (!"thought".equals(effectiveRole) && (pm.messageId() == null || !pm.messageId().equals(lastBubble.getMessageId()))) {
-                        canMerge = false;
-                    }
+                    // Require matching messageIds (or allow if either is null).
+                    canMerge = "thought".equals(effectiveRole) || canMergeMessages(pm.messageId(), lastBubble.getMessageId());
                 }
 
                 if (canMerge) {
@@ -267,11 +264,11 @@ public class ChatThreadPanel extends JPanel {
         SwingUtilities.invokeLater(() -> {
             MessageBubble lastBubble = findLastNonIgnorableBubble();
             boolean canAppend = lastBubble != null && lastBubble.getType().equals(role);
-            if (canAppend && messageId != null && lastBubble.getMessageId() != null) {
-                // For "thought" segments, we want to group them together even if they have different IDs
-                // if they are consecutive. For other types, we still require matching IDs.
-                if (!role.equals("thought") && !messageId.equals(lastBubble.getMessageId())) {
-                    canAppend = false;
+            if (canAppend) {
+                // Always merge consecutive thoughts during streaming.
+                // For other types, require matching messageIds (or allow if either is null).
+                if ("thought".equals(role) || canMergeMessages(messageId, lastBubble.getMessageId())) {
+                    canAppend = true;
                 }
             }
 
@@ -778,5 +775,13 @@ public class ChatThreadPanel extends JPanel {
         }
 
         return null;
+    }
+
+    private static boolean canMergeMessages(String messageId, String existingMessageId) {
+        if (messageId != null && existingMessageId != null) {
+            return messageId.equals(existingMessageId);
+        }
+
+        return (messageId == null && existingMessageId == null);
     }
 }

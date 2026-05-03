@@ -13,7 +13,7 @@
 - Skip Tests: `mvn package -DskipTests`
 
 ## Key Technologies
-- NetBeans Platform API (RELEASE210)
+- NetBeans Platform API (RELEASE290)
 - Flexmark for markdown processing
 - Jackson for JSON processing
 - RSyntaxTextArea for code block syntax highlighting

@@ -4,7 +4,7 @@ import static org.apache.commons.lang3.StringUtils.defaultIfBlank;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 
 public class ProcessedMessage {
-    private String role;
+    private MessageType messageType;
     private String text;
     private String messageId;
     private String kind;
@@ -18,28 +18,29 @@ public class ProcessedMessage {
     public ProcessedMessage() {
     }
 
-    public ProcessedMessage(String role, String text, String messageId, String kind) {
-        this.role = role;
+    public ProcessedMessage(MessageType messageType, String text, String messageId, String kind) {
+        this.messageType = messageType;
         this.text = text;
         this.messageId = messageId;
         this.kind = kind;
         this.rawText = text;
-        this.classification = new MessageClassification(role, kind);
+        this.classification = new MessageClassification(messageType, kind);
     }
 
-    public ProcessedMessage(String role, String text, String messageId, String kind, String toolTitle) {
-        this.role = role;
+    public ProcessedMessage(MessageType messageType, String text, String messageId, String kind, String toolTitle) {
+        this.messageType = messageType;
         this.text = text;
         this.messageId = messageId;
         this.kind = kind;
         this.toolTitle = toolTitle;
         this.rawText = text;
-        this.classification = new MessageClassification(role, kind);
+        this.classification = new MessageClassification(messageType, kind);
     }
     //</editor-fold>
 
     //<editor-fold defaultstate="collapsed" desc="get/set">
-    public String role() { return role; }
+    public String role() { return messageType != null ? messageType.roleName() : null; }
+    public MessageType messageType() { return messageType; }
     public String text() { return text; }
     public String messageId() { return messageId; }
     public String kind() { return kind; }
@@ -49,7 +50,7 @@ public class ProcessedMessage {
     public boolean streaming() { return streaming; }
 
 
-    public void setRole(String role) { this.role = role; }
+    public void setMessageType(MessageType messageType) { this.messageType = messageType; }
     public void setText(String text) { this.text = text; }
     public void setMessageId(String messageId) { this.messageId = messageId; }
     public void setKind(String kind) { this.kind = kind; }
@@ -61,7 +62,7 @@ public class ProcessedMessage {
 
 
     public boolean isIgnorable() {
-        return isIgnorable(role, text);
+        return isIgnorable(role(), text);
     }
 
     public static boolean isIgnorable(String role, String text) {
@@ -77,7 +78,7 @@ public class ProcessedMessage {
                 trimmed.equals("inprogress") || trimmed.equals("success") || trimmed.equals("done"));
     }
 
-    public static ProcessedMessage createError(String role, String text, String messageId, String kind) {
-        return new ProcessedMessage(role, text, messageId, kind);
+    public static ProcessedMessage createError(MessageType messageType, String text, String messageId, String kind) {
+        return new ProcessedMessage(messageType, text, messageId, kind);
     }
 }

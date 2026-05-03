@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>io.github.anandb</groupId>
     <artifactId>beanbot</artifactId>
-    <version>1.4.95</version>
+    <version>1.4.99</version>
     <packaging>nbm</packaging>
 
     <name>Coding Assistant</name>
@@ -35,7 +35,7 @@
         <properties>
             <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
             <maven.compiler.release>17</maven.compiler.release>
-            <netbeans.version>RELEASE210</netbeans.version>
+            <netbeans.version>RELEASE290</netbeans.version>
             <argLine></argLine>
         </properties>
 

@@ -11,7 +11,7 @@
     - **Language Resolution**: Enhanced the `LanguageResolver` to support a wider range of programming languages for syntax highlighting in `RSyntaxTextArea`.
 - **Maintenance & Branding**:
     - Completed the transition to the "Coding Assistant" brand across all documentation, UI components, and project metadata.
-    - Aligned project requirements with Java 17 and NetBeans RELEASE210 specifications.
+    - Aligned project requirements with Java 17 and NetBeans RELEASE290 specifications.
 
 ## v1.3.38 (2026-04-24)
 - **Model Compatibility & Prompt Optimization**:
