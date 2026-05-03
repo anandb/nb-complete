@@ -61,12 +61,11 @@ public class MessageBubble extends JPanel implements Scrollable {
         FLEXMARK_RENDERER = HtmlRenderer.builder(options).build();
     }
 
-    private final String type;
+    private final String role;
     private final String messageId;
     private final StringBuilder text;
     private final String kind;
     private String toolTitle;
-    private final boolean autoExpandOnFlush;
     private final JPanel segments;
     private JPanel bubble;
     private final ArrayList<CollapsibleState> codeStates = new ArrayList<>();
@@ -208,13 +207,12 @@ public class MessageBubble extends JPanel implements Scrollable {
         }
     }
 
-    public MessageBubble(String type, String text, String messageId, String kind, String toolTitle) {
-        this.type = type;
+    public MessageBubble(String role, String text, String messageId, String kind, String toolTitle) {
+        this.role = role;
         this.messageId = messageId;
         this.text = new StringBuilder(text);
         this.kind = kind;
-        this.autoExpandOnFlush = "thought".equals(type);
-        this.toolTitle = "tool".equals(type)
+        this.toolTitle = "tool".equals(role)
             ? (toolTitle != null ? toolTitle : ToolMetadataExtractor.extractToolTitle(messageId, text, kind))
             : null;
 
@@ -233,7 +231,7 @@ public class MessageBubble extends JPanel implements Scrollable {
         this.bubble = new JPanel(new BorderLayout());
         this.bubble.setDoubleBuffered(true);
         // Only User messages get the prominent global bubble wrapper
-        if ("user".equals(type)) {
+        if ("user".equals(role)) {
             RoundedPanel p = new RoundedPanel(16);
             p.setLayout(new BorderLayout());
             p.setBorder(new EmptyBorder(10, 8, 10, 8));
@@ -244,15 +242,15 @@ public class MessageBubble extends JPanel implements Scrollable {
         this.bubble.add(segments, BorderLayout.CENTER);
 
         updateContent(theme, false);
-        boolean isAssistant = "assistant".equals(type);
+        boolean isAssistant = "assistant".equals(role);
 
         Insets gbcInsets = new Insets(4, 12, 4, 12);
         int anchor = isAssistant ? GridBagConstraints.NORTHWEST : GridBagConstraints.WEST;
         int fill = GridBagConstraints.HORIZONTAL;
 
-        applyBubbleTheme(theme, type);
+        applyBubbleTheme(theme, role);
 
-        if ("user".equals(type)) {
+        if ("user".equals(role)) {
             gbcInsets = new Insets(4, 12, 4, 12); // Full width, consistent with AI
 
             Icon userIcon = UIUtils.loadUserIcon();
@@ -266,7 +264,7 @@ public class MessageBubble extends JPanel implements Scrollable {
                 userIcon,
                 ThemeManager.getIcon("copy.svg", 32),
                 ThemeManager.getIcon("check.svg", 32),
-                messageId, type, this
+                messageId, role, this
             ));
 
             JPanel rightPanel = UIUtils.createTransparentPanel(new BorderLayout());
@@ -281,7 +279,7 @@ public class MessageBubble extends JPanel implements Scrollable {
         add(bubble, UIUtils.createGbc(0, 0, 1.0, 0, fill, anchor, gbcInsets));
 
         // Fix for "garbled" text in scroll panes: force a repaint when the component becomes visible
-        if ("user".equals(type)) {
+        if ("user".equals(role)) {
             this.hierarchyListener = e -> {
                 if ((e.getChangeFlags() & HierarchyEvent.SHOWING_CHANGED) != 0 && isShowing()) {
                     SwingUtilities.invokeLater(() -> {
@@ -344,7 +342,7 @@ public class MessageBubble extends JPanel implements Scrollable {
         if (hasPendingTextUpdate) {
             // Buffer till the first newline before displaying assistant messages
             // This avoids showing partial metadata or transient lines at the start
-            if (!force && !hasSeenFirstNewline && "assistant".equals(type)) {
+            if (!force && !hasSeenFirstNewline && "assistant".equals(role)) {
                 return false;
             }
 
@@ -373,8 +371,8 @@ public class MessageBubble extends JPanel implements Scrollable {
     }
 
 
-    public String getType() {
-        return type;
+    public String getRole() {
+        return role;
     }
 
     public String getMessageId() {
@@ -387,12 +385,12 @@ public class MessageBubble extends JPanel implements Scrollable {
 
     private void updateContent(ColorTheme theme, boolean expanded) {
         // Handle specialized tool rendering
-        if ("tool".equals(type) || "thought".equals(type)) {
+        if ("tool".equals(role) || "thought".equals(role)) {
             String rawText = text.toString();
-            String title = "thought".equals(type) ? "Thinking Process" : "Tool";
+            String title = "thought".equals(role) ? "Thinking Process" : "Tool";
             String displayContent = rawText;
 
-            if ("tool".equals(type)) {
+            if ("tool".equals(role)) {
                 toolTitle = getIfNull(toolTitle, () -> ToolMetadataExtractor.extractToolTitle(messageId, rawText, kind));
                 title = toolTitle;
             }
@@ -400,12 +398,10 @@ public class MessageBubble extends JPanel implements Scrollable {
             if (segments.getComponentCount() > 0 && segments.getComponent(0) instanceof CollapsibleToolPane ep) {
                 ep.setTitle(title);
                 ep.setContent(displayContent);
-                if (autoExpandOnFlush) {
-                    ep.setExpanded(expanded);
-                }
+                ep.setExpanded(expanded);
             } else {
                 segments.removeAll();
-                CollapsibleToolPane toolPane = new CollapsibleToolPane(title, displayContent, autoExpandOnFlush && expanded);
+                CollapsibleToolPane toolPane = new CollapsibleToolPane(title, displayContent, expanded);
                 segments.add(toolPane);
             }
             // Single revalidate at container level is sufficient
@@ -415,7 +411,7 @@ public class MessageBubble extends JPanel implements Scrollable {
 
         // For user messages, we don't need complex code panels.
         // Just render the whole thing as markdown to get simple <pre> blocks.
-        if ("user".equals(type)) {
+        if ("user".equals(role)) {
             updateOrAddTextSegment(text.toString(), theme, 0);
             while (segments.getComponentCount() > 1) {
                 segments.remove(segments.getComponentCount() - 1);
@@ -514,7 +510,7 @@ public class MessageBubble extends JPanel implements Scrollable {
 
     private void updateOrAddTextSegment(String markdown, ColorTheme theme, int compIdx) {
         String styledHtml = prepareHtml(markdown, theme);
-        Color bg = UIUtils.getBubbleBackground(theme, type);
+        Color bg = UIUtils.getBubbleBackground(theme, role);
 
         if (compIdx < segments.getComponentCount()) {
             Component c = segments.getComponent(compIdx);
@@ -538,6 +534,19 @@ public class MessageBubble extends JPanel implements Scrollable {
 
     private int addTextAndTableSegments(String text, ColorTheme theme, int compIdx, boolean incremental) {
         if (text.isEmpty()) {
+            return compIdx;
+        }
+
+        // incremental=true during streaming flushes (updateContent called from flushUpdate).
+        // During incremental updates, table rows arrive in partial chunks — the heuristic
+        // detection (lines starting/ending with "|") would flicker as components swap between
+        // FitEditorPane (text) and RoundedPanel (table). Bypass detection: render as plain
+        // markdown text. Flexmark still produces <table> HTML inside the FitEditorPane, so
+        // tables are visible but without the cosmetic RoundedPanel wrapper. On final render
+        // (incremental=false, from constructor or non-streaming addMessage), the full table
+        // detection + RoundedPanel wrapping runs cleanly.
+        if (incremental) {
+            updateOrAddTextSegment(text, theme, compIdx++);
             return compIdx;
         }
 
@@ -669,19 +678,19 @@ public class MessageBubble extends JPanel implements Scrollable {
         // Hack to prevent space collapse in JEditorPane
         // Replace double spaces with space + &nbsp; but ONLY if it's not ASCII art
         boolean hasArt = TextScanner.containsAsciiArt(markdown);
-        if (!hasArt && !"user".equals(type)) {
+        if (!hasArt && !"user".equals(role)) {
             html = html.replace("  ", " &nbsp;");
         } else if (hasArt) {
             LOG.fine("Contains ASCII art, not replacing spaces");
         }
 
-        Color bg = UIUtils.getBubbleBackground(theme, type);
+        Color bg = UIUtils.getBubbleBackground(theme, role);
 
-        boolean isAssistant = !"user".equals(type) && !"error".equals(type) && !"tool".equals(type);
+        boolean isAssistant = !"user".equals(role) && !"error".equals(role) && !"tool".equals(role);
         String customCss = theme.toCss(null, isAssistant);
-        if ("error".equals(type)) {
+        if ("error".equals(role)) {
             customCss += " body { color: #D32F2F; font-weight: bold; }";
-        } else if ("user".equals(type)) {
+        } else if ("user".equals(role)) {
             customCss += " body { font-weight: 300; }";
         }
         // Detect if the content looks like ASCII art (contains box drawing characters)
@@ -712,7 +721,7 @@ public class MessageBubble extends JPanel implements Scrollable {
         pane.setEditable(false);
         pane.setContentType("text/html");
         // Use opaque background for User bubbles to prevent "garbled" text artifacts in scroll panes
-        if ("user".equals(type) && bg != null && bg.getAlpha() > 0) {
+        if ("user".equals(role) && bg != null && bg.getAlpha() > 0) {
             pane.setOpaque(true);
             pane.setBackground(bg);
         } else {

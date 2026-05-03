@@ -3,7 +3,6 @@ package github.anandb.netbeans.model;
 public enum MessageType {
     agent_message_chunk,
     agent_thought_chunk,
-    agent_data_chunk,
     available_commands_update,
     plan,
     tool_call,
@@ -31,11 +30,18 @@ public enum MessageType {
         return name().contains("agent");
     }
 
+     private boolean isError() {
+        return name().contains("error");
+    }
+
     public String roleName() {
         if (isThought()) return "thought";
         if (isTool()) return "tool";
         if (isUser()) return "user";
         if (isAssistant()) return "assistant";
+        if (isError()) return "error";
         return null;
     }
+
+
 }

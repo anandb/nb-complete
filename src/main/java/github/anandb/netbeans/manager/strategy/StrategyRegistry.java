@@ -6,11 +6,7 @@ import java.util.Map;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import java.io.IOException;
-
 import github.anandb.netbeans.contract.DataExtractionStrategy;
-import github.anandb.netbeans.manager.ToolParamsExtractor;
-import github.anandb.netbeans.model.MessageClassification;
 import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.Logger;
@@ -22,7 +18,6 @@ public class StrategyRegistry {
     private static final ObjectMapper MAPPER = MapperSupplier.get();
 
     private final Map<String, DataExtractionStrategy> typeStrategies = new LinkedHashMap<>();
-    private final DataExtractionStrategy[] fallbackStrategies;
     private final DataExtractionStrategy defaultStrategy = new DefaultStrategy();
 
     private StrategyRegistry() {
@@ -32,15 +27,10 @@ public class StrategyRegistry {
         register(MessageType.tool_call_update, new ToolCallUpdateStrategy());
         register(MessageType.tool_call, new ToolCallUpdateStrategy());
         register(MessageType.message, new MessageStrategy());
-        register(MessageType.agent_data_chunk, new DataChunkReclassifyStrategy());
         register(MessageType.config_options_update, new ConfigOptionsUpdateStrategy());
         register(MessageType.session_info_update, new SessionInfoUpdateStrategy());
         register(MessageType.usage_update, new UsageUpdateStrategy());
         register(MessageType.plan, new PlanStrategy());
-
-        fallbackStrategies = new DataExtractionStrategy[] {
-            new DataChunkReclassifyStrategy()
-        };
     }
 
     public static StrategyRegistry getInstance() {
@@ -55,28 +45,8 @@ public class StrategyRegistry {
         }
 
         DataExtractionStrategy selected = null;
-
-        if (update.content() != null) {
-            try {
-                String text = MAPPER.writeValueAsString(update.content());
-                MessageType msgType = null;
-                try { msgType = MessageType.valueOf(type); } catch (IllegalArgumentException e) {}
-                MessageClassification classification = ToolParamsExtractor.classify(msgType, text, update.kind());
-                if (classification.type() != null) {
-                    type = classification.type().name();
-                }
-                SessionUpdate.UpdateData ud = update.update();
-                if (ud != null) {
-                    //todo:
-                    // ud.setKind(classification.kind());
-                }
-            } catch (IOException e) {
-            }
-        }
-
-        // 1. Try exact match
         DataExtractionStrategy s = typeStrategies.get(type);
-        if (s != null) {
+        if (s != null && s.canHandle(update)) {
             if (hasAnnotationFilter(update) && shouldSkip(update.content())) {
                 LOG.fine("Strategy skipped for {0} due to annotation filter", type);
                 return null;
@@ -84,17 +54,6 @@ public class StrategyRegistry {
             selected = s;
         }
 
-        // 2. Try fallbacks (strategies that can handle multiple or reclassified types)
-        if (selected == null) {
-            for (DataExtractionStrategy fs : fallbackStrategies) {
-                if (fs.canHandle(update)) {
-                    selected = fs;
-                    break;
-                }
-            }
-        }
-
-        // 3. Final default (logs unknown types)
         if (selected == null) {
             selected = defaultStrategy;
         }

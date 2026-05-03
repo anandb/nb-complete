@@ -29,7 +29,7 @@ public class AgentMessageChunkStrategy implements DataExtractionStrategy {
         target.setRawText(text);
         target.setStreaming(true);
 
-        if (target.role() != null) {
+        if (target.messageType() != null) {
             handler.displayMessage(target);
         }
     }

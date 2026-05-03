@@ -10,7 +10,7 @@ import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.model.SessionUpdate;
 
-import static org.apache.commons.lang3.StringUtils.defaultIfBlank;
+import static org.apache.commons.lang3.ObjectUtils.firstNonNull;
 import static org.apache.commons.lang3.StringUtils.defaultString;
 
 public class ToolCallUpdateStrategy implements DataExtractionStrategy {
@@ -27,8 +27,7 @@ public class ToolCallUpdateStrategy implements DataExtractionStrategy {
 
         ProcessedMessage target = new ProcessedMessage();
         String messageId = update.messageId() != null ? update.messageId() : update.toolCallId();
-        String text = defaultIfBlank(extractContentText(update.content()), update.status());
-        if (text == null) text = "";
+        String text = firstNonNull(extractContentText(update.content()), update.status(), "");
         String tt = ToolMetadataExtractor.extractToolTitle(messageId, text, update.kind());
         target.setMessageType(MessageType.valueOf(update.type()));
         target.setText(text);

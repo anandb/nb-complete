@@ -20,8 +20,8 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
     private JLabel paramLabel;
     private boolean isThinking;
 
-    public CollapsibleToolPane(String title, String content, boolean expandedByDefault) {
-        super(12, "", getHeaderIcon(title), expandedByDefault);
+    public CollapsibleToolPane(String title, String content, boolean expandedAtStart) {
+        super(12, "", getHeaderIcon(title), expandedAtStart);
         this.isThinking = title.toUpperCase().contains("THINKING");
 
         ColorTheme theme = ThemeManager.getCurrentTheme();

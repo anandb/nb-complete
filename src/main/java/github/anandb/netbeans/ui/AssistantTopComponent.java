@@ -88,6 +88,8 @@ import github.anandb.netbeans.model.SessionItem;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.Logger;
 
+import static org.apache.commons.lang3.StringUtils.isNotBlank;
+
 @ConvertAsProperties(
     dtd = "-//github.anandb.netbeans.ui//Assistant//EN",
     autostore = false
@@ -418,11 +420,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                 @Override
                 public void displayMessage(ProcessedMessage msg) {
                     SwingUtilities.invokeLater(() -> {
-                        if (msg.streaming()) {
-                            chatPanel.appendOrAddProcessedMessage(msg);
-                        } else {
-                            chatPanel.addProcessedMessage(msg);
-                        }
+                        chatPanel.addMessage(msg);
                         updateButtonState(true);
                     });
                 }
@@ -645,6 +643,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     public void onSessionError(String message) {
         SwingUtilities.invokeLater(() -> {
             statusLabel.setText("Error: " + message);
+            chatPanel.stopStreaming();
             chatPanel.addMessage(ProcessedMessage.createError(MessageType.error_response, message, null, null));
         });
     }
@@ -728,6 +727,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             }
         }
 
+        // Editor Context
         Map<String, Object> context = isForwardedSlash ? null : captureEditorContext();
         ProcessManager.getInstance().sendMessage(currentSessionId, text, context, fileBlocks)
                 .thenAccept(result -> {
@@ -749,6 +749,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                 .exceptionally(ex -> {
                     SwingUtilities.invokeLater(() -> {
                         statusLabel.setText("Error: " + ex.getMessage());
+                        chatPanel.stopStreaming();
                         chatPanel.addMessage(ProcessedMessage.createError(MessageType.error_response, "Error: " + ex.getMessage(), null, null));
                         inputArea.setText(text);
                         updateButtonState(false);
@@ -777,7 +778,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         }
 
         String selection = editor.getSelectedText();
-        if (selection != null && !selection.isEmpty()) {
+        if (isNotBlank(selection)) {
             context.put("selectionContent", selection);
             int selStart = editor.getSelectionStart();
             int selEnd = editor.getSelectionEnd();
@@ -1018,6 +1019,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             SwingUtilities.invokeLater(() -> {
                 String msg = ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName();
                 statusLabel.setText("Restart failed: " + msg);
+                chatPanel.stopStreaming();
                 chatPanel.addMessage(ProcessedMessage.createError(MessageType.error_response, "Restart failed: " + msg, null, null));
                 setInputEnabled(true);
             });
@@ -1529,6 +1531,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         } catch (Exception ex) {
             LOG.severe("Failed to ensure server is started", ex);
             String msg = ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName();
+            chatPanel.stopStreaming();
             chatPanel.addMessage(ProcessedMessage.createError(MessageType.error_response, "Failed to start: " + msg, null, null));
         }
 

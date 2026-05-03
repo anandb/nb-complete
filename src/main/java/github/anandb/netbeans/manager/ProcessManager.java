@@ -355,7 +355,7 @@ public class ProcessManager {
     public CompletableFuture<List<Session>> getSessions(String directory) {
         LOG.log(Level.FINE, "getSessions: called with directory={0}", directory);
         if (!rpcClientReady()) {
-            return CompletableFuture.failedFuture(new RuntimeException("Server not started"));
+            return CompletableFuture.failedFuture(new RuntimeException(operationalError()));
         }
         Map<String, Object> params = new java.util.HashMap<>();
         if (directory != null && !directory.isEmpty()) {
@@ -439,7 +439,7 @@ public class ProcessManager {
 
     public CompletableFuture<Session> createSession(String cwd) {
         if (!rpcClientReady()) {
-            return CompletableFuture.failedFuture(new RuntimeException("Server not started"));
+            return CompletableFuture.failedFuture(new RuntimeException(operationalError()));
         }
 
         String effectiveCwd = cwd;
@@ -480,7 +480,7 @@ public class ProcessManager {
     public CompletableFuture<List<SessionConfigOption>> loadSession(String sessionId, String cwd) {
         LOG.fine("loadSession: called with {0}, cwd={1}", sessionId, cwd);
         if (!rpcClientReady()) {
-            return CompletableFuture.failedFuture(new RuntimeException("Server not started"));
+            return CompletableFuture.failedFuture(new RuntimeException(operationalError()));
         }
         Map<String, Object> params = new java.util.HashMap<>();
         params.put("sessionId", sessionId);
@@ -514,7 +514,7 @@ public class ProcessManager {
 
     public CompletableFuture<JsonNode> sendMessage(String sessionId, String text, Map<String, Object> context, List<Map<String, Object>> additionalBlocks) {
         if (!rpcClientReady()) {
-            return CompletableFuture.failedFuture(new RuntimeException("Server not started"));
+            return CompletableFuture.failedFuture(new RuntimeException(operationalError()));
         }
 
         List<Map<String, Object>> promptBlocks = new ArrayList<>();
@@ -567,7 +567,7 @@ public class ProcessManager {
                 if (selectionContent != null && !selectionContent.isEmpty()) {
                     Map<String, Object> selectionPart = new HashMap<>();
                     selectionPart.put("type", "text");
-                    selectionPart.put("text", "\nSelection from `" + fileName + "`:\n```" + lang + "\n" + selectionContent + "\n```");
+                    selectionPart.put("text", "\nSelection from `" + fileName + "`:\n```" + lang + "\n" + selectionContent + "\n```\n");
                     promptBlocks.add(selectionPart);
                 }
             }
@@ -595,7 +595,7 @@ public class ProcessManager {
 
     public CompletableFuture<Void> stopMessage(String sessionId) {
         if (!rpcClientReady()) {
-            return CompletableFuture.failedFuture(new RuntimeException("Server not started"));
+            return CompletableFuture.failedFuture(new RuntimeException(operationalError()));
         }
         rpcClient.sendNotification("session/cancel", Map.of("sessionId", sessionId));
         return CompletableFuture.completedFuture(null);
@@ -616,7 +616,7 @@ public class ProcessManager {
 
     public CompletableFuture<Void> deleteSession(String sessionId) {
         if (!rpcClientReady()) {
-            return CompletableFuture.failedFuture(new RuntimeException("Server not started"));
+            return CompletableFuture.failedFuture(new RuntimeException(operationalError()));
         }
         // Using session/close as the standard termination method
         return rpcClient.sendRequest("session/delete", Map.of("sessionId", sessionId))
@@ -625,7 +625,7 @@ public class ProcessManager {
 
     public CompletableFuture<Void> setSessionConfigOption(String sessionId, String configId, String value) {
         if (!rpcClientReady()) {
-            return CompletableFuture.failedFuture(new RuntimeException("Server not started"));
+            return CompletableFuture.failedFuture(new RuntimeException(operationalError()));
         }
         Map<String, Object> params = Map.of(
                 "sessionId", sessionId,
@@ -847,4 +847,7 @@ public class ProcessManager {
         });
     }
 
+    private String operationalError() {
+        return "Server not started, Please check if Opencode is installed and available";
+    }
 }

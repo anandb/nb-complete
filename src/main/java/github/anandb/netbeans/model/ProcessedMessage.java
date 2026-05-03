@@ -1,7 +1,6 @@
 package github.anandb.netbeans.model;
 
 import static org.apache.commons.lang3.StringUtils.defaultIfBlank;
-import static org.apache.commons.lang3.StringUtils.isBlank;
 
 public class ProcessedMessage {
     private MessageType messageType;
@@ -39,7 +38,6 @@ public class ProcessedMessage {
     //</editor-fold>
 
     //<editor-fold defaultstate="collapsed" desc="get/set">
-    public String role() { return messageType != null ? messageType.roleName() : null; }
     public MessageType messageType() { return messageType; }
     public String text() { return text; }
     public String messageId() { return messageId; }
@@ -62,17 +60,20 @@ public class ProcessedMessage {
 
 
     public boolean isIgnorable() {
-        return isIgnorable(role(), text);
+        return isIgnorable(messageType.roleName(), text);
     }
 
     public static boolean isIgnorable(String role, String text) {
-        if ("assistant".equals(role) && isBlank(text)) {
-            return true;
-        }
+// Disabled: streaming may send whitespace/partial content before real data arrives
+//        if ("assistant".equals(role) && isBlank(text)) {
+//            return true;
+//        }
+
         String trimmed = defaultIfBlank(text, "").trim().toLowerCase();
         if (trimmed.endsWith(".") || trimmed.endsWith("!")) {
             trimmed = trimmed.substring(0, trimmed.length() - 1);
         }
+
         return "tool".equals(role) && (trimmed.equals("completed") || trimmed.equals("failed") ||
                 trimmed.equals("in-progress") || trimmed.equals("in progress") || trimmed.equals("in_progress") ||
                 trimmed.equals("inprogress") || trimmed.equals("success") || trimmed.equals("done"));

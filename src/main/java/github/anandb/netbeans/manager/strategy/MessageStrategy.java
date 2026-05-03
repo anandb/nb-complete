@@ -46,7 +46,7 @@ public class MessageStrategy implements DataExtractionStrategy {
         target.setRawText(text);
         target.setStreaming(false);
 
-        if (target.role() != null) {
+        if (target.messageType()!= null) {
             handler.displayMessage(target);
         }
     }

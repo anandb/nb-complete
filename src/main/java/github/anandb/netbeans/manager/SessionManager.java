@@ -127,7 +127,7 @@ public class SessionManager {
                 })
                 .exceptionally(ex -> {
                     LOG.severe("Failed to create session", ex);
-                    notifyError("Failed to create session: " + ex.getMessage());
+                    notifyError(ex.getMessage());
                     setLoading(false);
                     return null;
                 });
