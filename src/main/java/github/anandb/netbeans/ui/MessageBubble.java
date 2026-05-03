@@ -32,11 +32,13 @@ import com.vladsch.flexmark.html.HtmlRenderer;
 import com.vladsch.flexmark.parser.Parser;
 import com.vladsch.flexmark.util.data.MutableDataSet;
 
-import github.anandb.netbeans.manager.ToolMetadataExtractor;
+import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.TextScanner;
 
-import static org.apache.commons.lang3.ObjectUtils.getIfNull;
+import static org.apache.commons.lang3.StringUtils.defaultIfBlank;
+import static org.apache.commons.lang3.StringUtils.length;
+
 
 public class MessageBubble extends JPanel implements Scrollable {
 
@@ -61,10 +63,10 @@ public class MessageBubble extends JPanel implements Scrollable {
         FLEXMARK_RENDERER = HtmlRenderer.builder(options).build();
     }
 
+    private final MessageType type;
     private final String role;
     private final String messageId;
     private final StringBuilder text;
-    private final String kind;
     private String toolTitle;
     private final JPanel segments;
     private JPanel bubble;
@@ -207,14 +209,12 @@ public class MessageBubble extends JPanel implements Scrollable {
         }
     }
 
-    public MessageBubble(String role, String text, String messageId, String kind, String toolTitle) {
-        this.role = role;
+    public MessageBubble(MessageType type, String text, String messageId, String toolTitle) {
+        this.type = type;
+        this.role = type.roleName();
         this.messageId = messageId;
         this.text = new StringBuilder(text);
-        this.kind = kind;
-        this.toolTitle = "tool".equals(role)
-            ? (toolTitle != null ? toolTitle : ToolMetadataExtractor.extractToolTitle(messageId, text, kind))
-            : null;
+        this.toolTitle = toolTitle;
 
         ColorTheme theme = ThemeManager.getCurrentTheme();
         setLayout(new java.awt.GridBagLayout());
@@ -315,11 +315,17 @@ public class MessageBubble extends JPanel implements Scrollable {
     private boolean hasSeenFirstNewline = false;
 
     public void appendText(String newText) {
+        appendText(newText, "");
+    }
+
+    public void appendText(String newText, String toolTitle) {
         if (newText == null || newText.isEmpty()) {
             return;
         }
+
         // Preserve all content exactly as it comes from the stream
         this.text.append(newText);
+        this.toolTitle = length(this.toolTitle) < length(toolTitle) ? toolTitle : this.toolTitle;
 
         // Use a more robust check for first content to reveal
         if (!hasSeenFirstNewline) {
@@ -387,13 +393,8 @@ public class MessageBubble extends JPanel implements Scrollable {
         // Handle specialized tool rendering
         if ("tool".equals(role) || "thought".equals(role)) {
             String rawText = text.toString();
-            String title = "thought".equals(role) ? "Thinking Process" : "Tool";
             String displayContent = rawText;
-
-            if ("tool".equals(role)) {
-                toolTitle = getIfNull(toolTitle, () -> ToolMetadataExtractor.extractToolTitle(messageId, rawText, kind));
-                title = toolTitle;
-            }
+            String title = "thought".equals(role) ? "Thinking Process" : defaultIfBlank(toolTitle, "Tool");
 
             if (segments.getComponentCount() > 0 && segments.getComponent(0) instanceof CollapsibleToolPane ep) {
                 ep.setTitle(title);

@@ -148,7 +148,7 @@ public class ProcessManager {
             // Listen for session updates
             rpcClient.onNotification("session/update", params -> {
                 try {
-                    LOG.info("Received session/update notification: {0}", params);
+                    LOG.fine("Received session/update notification: {0}", params);
                     SessionUpdate.Params sessionParams = objectMapper.treeToValue(params, SessionUpdate.Params.class);
                     SessionUpdate update = new SessionUpdate("2.0", "session/update", sessionParams);
 

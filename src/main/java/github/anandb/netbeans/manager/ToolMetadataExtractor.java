@@ -1,9 +1,11 @@
 package github.anandb.netbeans.manager;
 
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import github.anandb.netbeans.support.Logger;
+import org.apache.commons.lang3.tuple.Pair;
 
 import static org.apache.commons.lang3.StringUtils.abbreviateMiddle;
 import static org.apache.commons.lang3.StringUtils.defaultString;
@@ -16,10 +18,11 @@ public final class ToolMetadataExtractor {
         Pattern.compile("<!--.*?-->", Pattern.DOTALL),
         Pattern.compile("<metadata>.*?</metadata>", Pattern.DOTALL),
     };
-    private static final Pattern[] TOOL_CONTENT_PATTERNS = {
-        Pattern.compile("<skill_content name=\"([^\"]{2,})\""),
-        Pattern.compile("<path>([^<]{10,})</path>")
-    };
+
+    private static final List<Pair<String, Pattern>> TOOL_CONTENT_PATTERNS = List.of(
+        Pair.of("skill", Pattern.compile("<skill_content name=\"([^\"]{2,})\"")),
+        Pair.of("", Pattern.compile("<path>([^<]{10,})</path>"))
+    );
 
     private ToolMetadataExtractor() {
     }
@@ -47,10 +50,14 @@ public final class ToolMetadataExtractor {
             tag = firstNonBlank(kind, "Tool");
         }
 
-        for (Pattern pattern : TOOL_CONTENT_PATTERNS) {
-            Matcher m = pattern.matcher(rawText);
+        for (var entry : TOOL_CONTENT_PATTERNS) {
+            Matcher m = entry.getValue().matcher(rawText);
             if (m.find()) {
                 identifier = m.group(1);
+                if (isNotBlank(entry.getKey())) {
+                    tag = entry.getKey();
+                }
+                
                 break;
             }
         }

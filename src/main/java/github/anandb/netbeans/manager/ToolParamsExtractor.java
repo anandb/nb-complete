@@ -37,6 +37,7 @@ public final class ToolParamsExtractor {
         if (isDcpCleanup(text)) {
             return new MessageClassification(MessageType.tool_call_update, "context cleanup");
         }
+        
         if (isCavemanFiller(text)) {
             return new MessageClassification(MessageType.tool_call_update, "caveman");
         }

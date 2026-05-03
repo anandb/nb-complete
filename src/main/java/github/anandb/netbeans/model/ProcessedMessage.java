@@ -1,6 +1,7 @@
 package github.anandb.netbeans.model;
 
 import static org.apache.commons.lang3.StringUtils.defaultIfBlank;
+import static org.apache.commons.lang3.StringUtils.defaultString;
 
 public class ProcessedMessage {
     private MessageType messageType;
@@ -60,14 +61,19 @@ public class ProcessedMessage {
 
 
     public boolean isIgnorable() {
+        // Skip the initial pending tool_call, as the completed message has all the details.
+        if (messageType == MessageType.tool_call && defaultString(text).startsWith("pending")) {
+            return true;
+        }
+
         return isIgnorable(messageType.roleName(), text);
     }
 
     public static boolean isIgnorable(String role, String text) {
-// Disabled: streaming may send whitespace/partial content before real data arrives
-//        if ("assistant".equals(role) && isBlank(text)) {
-//            return true;
-//        }
+        // Disabled: streaming may send whitespace/partial content before real data arrives
+        // if ("assistant".equals(role) && isBlank(text)) {
+        //      return true;
+        //  }
 
         String trimmed = defaultIfBlank(text, "").trim().toLowerCase();
         if (trimmed.endsWith(".") || trimmed.endsWith("!")) {

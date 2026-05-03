@@ -1,6 +1,8 @@
 package github.anandb.netbeans.ui;
 
+import github.anandb.netbeans.model.MessageType;
 import org.junit.jupiter.api.Test;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 class MessageBubbleTest {
@@ -8,7 +10,7 @@ class MessageBubbleTest {
     @Test
     void testAppendTextPreservesNewlinesForStreaming() {
         // Test the scenario where multi-line responses get concatenated incorrectly
-        MessageBubble bubble = new MessageBubble("assistant", "", null, null, null);
+        MessageBubble bubble = new MessageBubble(MessageType.agent_message_chunk, "", null, null);
 
         // First append - leading newline stripped, trailing newline preserved
         bubble.appendText("line1\n");
@@ -26,7 +28,7 @@ class MessageBubbleTest {
     @Test
     void testAppendTextHandlesLeadingNewlines() {
         // Test that leading newlines are preserved exactly as they come from the stream
-        MessageBubble bubble = new MessageBubble("assistant", "", null, null, null);
+        MessageBubble bubble = new MessageBubble(MessageType.agent_message_chunk, "", null, null);
 
         bubble.appendText("\n\nline1\n");
         assertEquals("\n\nline1\n", bubble.getRawText());
@@ -37,7 +39,7 @@ class MessageBubbleTest {
 
     @Test
     void testAppendTextWithEmptyStrings() {
-        MessageBubble bubble = new MessageBubble("assistant", "", null, null, null);
+        MessageBubble bubble = new MessageBubble(MessageType.agent_message_chunk, "", null, null);
 
         bubble.appendText("");
         assertEquals("", bubble.getRawText());
@@ -51,7 +53,7 @@ class MessageBubbleTest {
 
     @Test
     void testAppendTextWithOnlyNewlines() {
-        MessageBubble bubble = new MessageBubble("assistant", "", null, null, null);
+        MessageBubble bubble = new MessageBubble(MessageType.agent_message_chunk, "", null, null);
 
         bubble.appendText("\n\n\n");
         assertEquals("\n\n\n", bubble.getRawText());

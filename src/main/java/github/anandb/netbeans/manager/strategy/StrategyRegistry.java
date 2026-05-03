@@ -1,5 +1,7 @@
 package github.anandb.netbeans.manager.strategy;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -7,6 +9,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import github.anandb.netbeans.contract.DataExtractionStrategy;
+import github.anandb.netbeans.manager.ToolParamsExtractor;
 import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.Logger;
@@ -44,13 +47,15 @@ public class StrategyRegistry {
             return defaultStrategy;
         }
 
+        type = reClassify(update);
+        if (hasAnnotationFilter(update) && shouldSkip(update.content())) {
+            LOG.fine("Strategy skipped for {0} due to annotation filter", type);
+                return null;
+        }
+
         DataExtractionStrategy selected = null;
         DataExtractionStrategy s = typeStrategies.get(type);
         if (s != null && s.canHandle(update)) {
-            if (hasAnnotationFilter(update) && shouldSkip(update.content())) {
-                LOG.fine("Strategy skipped for {0} due to annotation filter", type);
-                return null;
-            }
             selected = s;
         }
 
@@ -61,7 +66,6 @@ public class StrategyRegistry {
         LOG.fine("Strategy selected for {0}: {1}", type, selected.getClass().getSimpleName());
         return selected;
     }
-
 
     public boolean hasAnnotationFilter(SessionUpdate update) {
         String t = update.type();
@@ -89,5 +93,19 @@ public class StrategyRegistry {
 
     final void register(MessageType type, DataExtractionStrategy strategy) {
         typeStrategies.put(type.name(), strategy);
+    }
+
+    private String reClassify(SessionUpdate update) {
+        String type = update.type();
+        try {
+            String text = MAPPER.writeValueAsString(update.content());
+            var meta = ToolParamsExtractor.classify(update.update().type(), text, update.kind());
+            if (meta.type() != update.update().type()) {
+                type = meta.type().name();
+            }
+        } catch (JsonProcessingException e) {
+            LOG.fine("Problem converting node to json {0}", update.messageId());
+        }
+        return type;
     }
 }

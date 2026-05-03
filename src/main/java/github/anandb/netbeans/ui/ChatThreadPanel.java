@@ -183,30 +183,30 @@ public class ChatThreadPanel extends JPanel {
     }
 
     public void addMessage(ProcessedMessage pm) {
-        String text = pm.text();
-        final String effectiveRole = pm.messageType().roleName();
-        final String effectiveKind = pm.kind();
-
-        if (ProcessedMessage.isIgnorable(pm.messageType().roleName(), text)) {
+        if (pm.isIgnorable()) {
             return;
         }
 
+        String text = pm.text();
+        final String role = pm.messageType().roleName();
+
         SwingUtilities.invokeLater(() -> {
             String[] parts = SECTION_SPLIT.split(text);
+            MessageBubble lastBubble = findLastNonIgnorableBubble();
+
             for (String part : parts) {
                 if (part.trim().isEmpty() && parts.length > 1) {
                     continue;
                 }
 
-                MessageBubble lastBubble = findLastNonIgnorableBubble();
-                boolean canMerge = (lastBubble != null && effectiveRole.equals(lastBubble.getRole()));
+                boolean canMerge = (lastBubble != null && role.equals(lastBubble.getRole()));
                 if (canMerge) {
                     // Require matching messageIds (or allow if either is null).
-                    canMerge = "thought".equals(effectiveRole) || canMergeMessages(pm.messageId(), lastBubble.getMessageId());
+                    canMerge = "thought".equals(role) || canMergeMessages(pm.messageId(), lastBubble.getMessageId());
                 }
 
                 if (lastBubble != null && canMerge) {
-                    lastBubble.appendText(part);
+                    lastBubble.appendText(part, pm.toolTitle());
                     lastBubble.flushUpdate(true);
                 } else {
                     if (lastBubble != null) {
@@ -222,14 +222,14 @@ public class ChatThreadPanel extends JPanel {
                         lastBubble.finalizeStreaming(allBlocksExpanded);
                     }
 
-                    addSingleBubble(pm.messageType(), part, pm.messageId(), effectiveKind, "", pm.streaming());
+                    addSingleBubble(pm.messageType(), part, pm.messageId(), pm.toolTitle(), pm.streaming());
                 }
             }
         });
     }
 
-    private void addSingleBubble(MessageType type, String text, String messageId, String kind, String toolTitle, boolean streaming) {
-        MessageBubble bubble = new MessageBubble(type.roleName(), text, messageId, kind, toolTitle);
+    private void addSingleBubble(MessageType type, String text, String messageId, String toolTitle, boolean streaming) {
+        MessageBubble bubble = new MessageBubble(type, text, messageId, toolTitle);
         if (type.isTool() || type.isThought()) {
             bubble.setExpanded(allBlocksExpanded);
         }
@@ -250,7 +250,7 @@ public class ChatThreadPanel extends JPanel {
             streamFlushTimer.start();
         }
     }
-    
+
     public void stopStreaming() {
         SwingUtilities.invokeLater(() -> {
             if (activeStreamBubble != null) {

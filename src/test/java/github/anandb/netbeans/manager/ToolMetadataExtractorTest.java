@@ -70,7 +70,7 @@ class ToolMetadataExtractorTest {
             "skill",
             "<skill_content name=\"test-skill\">some content</skill_content>", null
         );
-        assertEquals("Tool test-skill", result);
+        assertEquals("skill test-skill", result);
     }
 
     @Test
@@ -88,7 +88,7 @@ class ToolMetadataExtractorTest {
             null,
             "<skill_content name=\"my-skill\">content</skill_content>", null
         );
-        assertEquals("Tool my-skill", result);
+        assertEquals("skill my-skill", result);
     }
 
     @Test
@@ -132,7 +132,7 @@ class ToolMetadataExtractorTest {
             "<path>/some/path</path> <skill_content name=\"skill-name\">content</skill_content>",
             null
         );
-        assertEquals("Tool skill-name", result);
+        assertEquals("skill skill-name", result);
     }
 
     @Test

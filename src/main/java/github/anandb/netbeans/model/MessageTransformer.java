@@ -8,7 +8,7 @@ public class MessageTransformer {
     public ProcessedMessage convert(Message message) {
         String type = message.type();
         StringBuilder sb = new StringBuilder();
-        LOG.info("addMessage(Message) called. role={0}", type);
+        LOG.fine("addMessage(Message) called. role={0}", type);
 
         if ("user".equals(type)) {
             if (message.prompt() != null) {

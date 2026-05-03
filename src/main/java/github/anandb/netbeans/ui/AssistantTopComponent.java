@@ -412,7 +412,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     public void onSessionUpdate(SessionUpdate update) {
         String type = update.update() != null ? update.update().type().name() : null;
         String msgId = update.update() != null ? update.update().messageId() : null;
-        LOG.info("UI received session update: type={0}, msgId={1}", type, msgId);
+        LOG.fine("UI received session update: type={0}, msgId={1}", type, msgId);
 
         DataExtractionStrategy strategy = StrategyRegistry.getInstance().select(update);
         if (strategy != null) {

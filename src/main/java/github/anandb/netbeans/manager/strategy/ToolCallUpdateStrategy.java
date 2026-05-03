@@ -6,14 +6,18 @@ import github.anandb.netbeans.contract.UIHandler;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import github.anandb.netbeans.manager.ToolMetadataExtractor;
-import github.anandb.netbeans.model.MessageType;
+import github.anandb.netbeans.manager.ToolParamsExtractor;
+import github.anandb.netbeans.model.MessageClassification;
 import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.model.SessionUpdate;
+import github.anandb.netbeans.support.Logger;
 
 import static org.apache.commons.lang3.ObjectUtils.firstNonNull;
 import static org.apache.commons.lang3.StringUtils.defaultString;
 
 public class ToolCallUpdateStrategy implements DataExtractionStrategy {
+    private static final Logger LOG = new Logger(ToolCallUpdateStrategy.class);
+
     @Override
     public boolean canHandle(SessionUpdate update) {
         return "tool_call_update".equals(update.type()) || "tool_call".equals(update.type());
@@ -28,13 +32,16 @@ public class ToolCallUpdateStrategy implements DataExtractionStrategy {
         ProcessedMessage target = new ProcessedMessage();
         String messageId = update.messageId() != null ? update.messageId() : update.toolCallId();
         String text = firstNonNull(extractContentText(update.content()), update.status(), "");
-        String tt = ToolMetadataExtractor.extractToolTitle(messageId, text, update.kind());
-        target.setMessageType(MessageType.valueOf(update.type()));
+        //todo: avoid calling multiple times.
+        MessageClassification m = ToolParamsExtractor.classify(update.update().type(),
+                                                               text, update.kind());
+        String tt = ToolMetadataExtractor.extractToolTitle(messageId, text, m.kind());
+        target.setToolTitle(tt);
+        target.setMessageType(m.type());
         target.setText(text);
         target.setMessageId(defaultString(messageId));
         target.setKind(update.kind());
         target.setRawText(text);
-        target.setToolTitle(tt);
         target.setStreaming(true);
         handler.displayMessage(target);
     }
