@@ -2,7 +2,6 @@ package github.anandb.netbeans.ui;
 
 import static org.apache.commons.lang3.StringUtils.defaultIfBlank;
 import static org.apache.commons.lang3.StringUtils.left;
-import static org.apache.commons.lang3.StringUtils.split;
 
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
@@ -17,8 +16,6 @@ import java.awt.event.ActionEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
@@ -128,10 +125,6 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     private final JButton filterBtn;
     private final JButton toggleOptionsBtn;
     private boolean optionsPanelCollapsed = true;
-    private final JPanel configPanel;
-    private final JComboBox<ConfigItem> modeCombo;
-    private final JComboBox<ConfigItem> modelCombo;
-    private final JComboBox<ConfigItem> thinkingCombo;
     private JLabel statusLabel;
     private final JLabel versionLabel;
     private final JLabel cwdLabel;
@@ -142,23 +135,18 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     private final ArrayList<String> messageHistory = new ArrayList<>();
     private int historyIndex = -1;
     private String currentDraft = "";
-    private static String lastSelectedModelId;
-
     private boolean isSwitchingSessionDropdown = false;
-    private boolean isUpdatingConfigControls = false;
     private Timer thinkingTimer;
     private Timer statusResetTimer;
     private transient KeyEventDispatcher pageKeyDispatcher;
     private int thinkingDots = 0;
     private static final String[] DOT_STRINGS = {"", ".", "..", "..."};
 
-    private final LinkedHashMap<String, List<ConfigItem>> modelVariants = new LinkedHashMap<>();
-    private String currentConfigModelId = null;
-
     private static final long MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024;
     private static final int MAX_ATTACHMENTS = 2;
     private final ArrayList<AttachedFile> attachedFiles = new ArrayList<>();
     private final JButton paperclipBtn;
+    private final ConfigPanelController configPanelController;
 
     public AssistantTopComponent() {
         instance = this;
@@ -214,44 +202,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         };
         java.awt.KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(pageKeyDispatcher);
 
-        configPanel = new JPanel(new java.awt.GridBagLayout());
-        configPanel.setVisible(false);
-        configPanel.setOpaque(false);
-        configPanel.setBorder(new EmptyBorder(5, 12, 5, 12));
-
-        java.awt.GridBagConstraints gbc = new java.awt.GridBagConstraints();
-        gbc.fill = java.awt.GridBagConstraints.HORIZONTAL;
-        gbc.insets = new java.awt.Insets(2, 0, 2, 8);
-
-        modeCombo = new JComboBox<>();
-        modelCombo = new JComboBox<>();
-        thinkingCombo = new JComboBox<>();
-
-        gbc.gridx = 0; gbc.gridy = 0; gbc.weightx = 0;
-        configPanel.add(new JLabel("Agent:"), gbc);
-        gbc.gridx = 1; gbc.weightx = 0.2;
-        configPanel.add(modeCombo, gbc);
-
-        gbc.gridx = 2; gbc.weightx = 0;
-        configPanel.add(new JLabel("Model:"), gbc);
-        gbc.gridx = 3; gbc.weightx = 0.7;
-        configPanel.add(modelCombo, gbc);
-
-        gbc.gridx = 4; gbc.weightx = 0; gbc.insets = new java.awt.Insets(2, 0, 2, 4);
-        JButton copyModelBtn = UIUtils.createToolbarButton("copy.svg", 20, "Copy Model ID", e -> {
-            ConfigItem selected = (ConfigItem) modelCombo.getSelectedItem();
-            if (selected != null && selected.value() != null) {
-                java.awt.Toolkit.getDefaultToolkit().getSystemClipboard()
-                    .setContents(new java.awt.datatransfer.StringSelection(selected.value()), null);
-            }
-        });
-        configPanel.add(copyModelBtn, gbc);
-        gbc.insets = new java.awt.Insets(2, 0, 2, 8);
-
-        gbc.gridx = 5; gbc.weightx = 0;
-        configPanel.add(new JLabel("Thinking:"), gbc);
-        gbc.gridx = 6; gbc.weightx = 0.1;
-        configPanel.add(thinkingCombo, gbc);
+        configPanelController = new ConfigPanelController(this::updateTabName);
 
         header = new JPanel(new BorderLayout());
         header.setBorder(new EmptyBorder(8, 12, 8, 12));
@@ -332,7 +283,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         JButton to = UIUtils.createToolbarButton("settings.svg", 25, "Options", null);
         to.addActionListener(e -> {
             optionsPanelCollapsed = !optionsPanelCollapsed;
-            configPanel.setVisible(!optionsPanelCollapsed);
+            configPanelController.getComponent().setVisible(!optionsPanelCollapsed);
             to.setIcon(ThemeManager.getIcon(optionsPanelCollapsed ? "settings.svg" : "arrow-down.svg", 25));
             AssistantTopComponent.this.revalidate();
             AssistantTopComponent.this.repaint();
@@ -362,7 +313,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
         JPanel inputMainPanel = new JPanel(new BorderLayout(0, 4));
         inputMainPanel.setOpaque(false);
-        inputMainPanel.add(configPanel, BorderLayout.NORTH);
+        inputMainPanel.add(configPanelController.getComponent(), BorderLayout.NORTH);
         inputMainPanel.add(inputScrollPane, BorderLayout.CENTER);
 
         JPanel btnCard = UIUtils.createTransparentPanel(new CardLayout());
@@ -428,7 +379,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                 @Override
                 public void updateConfig(java.util.List<SessionConfigOption> options) {
                     if (options != null) {
-                        updateConfigControls(options);
+                        configPanelController.updateConfigControls(options);
                     }
                 }
 
@@ -556,14 +507,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                 newSessionBtn.setEnabled(hasProjects);
                 renameSessionBtn.setEnabled(hasSessions);
 
-                isUpdatingConfigControls = true;
-                try {
-                    if (modelCombo.getItemCount() > 0 && modelCombo.getSelectedIndex() < 0) {
-                        modelCombo.setSelectedIndex(0);
-                    }
-                } finally {
-                    isUpdatingConfigControls = false;
-                }
+                configPanelController.ensureDefaultModelSelected();
 
                 if (hasSessions) {
                     if (selectIdx != -1) {
@@ -586,12 +530,10 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                         statusLabel.setText("Click '+ New Chat' to start");
                     }
                     optionsPanelCollapsed = false;
-                    configPanel.setVisible(true);
+                    configPanelController.getComponent().setVisible(true);
                     toggleOptionsBtn.setIcon(ThemeManager.getIcon("arrow-down.svg", 25));
                     setInputEnabled(false);
-                    if (lastSelectedModelId == null && System.getenv("OPENCODE_MODEL") == null && modelCombo.getItemCount() == 0) {
-                        modelCombo.addItem(new ConfigItem("opencode/big-pickle", "opencode/big-pickle"));
-                    }
+                    configPanelController.ensureDefaultModelAdded();
                 }
             } finally {
                 isSwitchingSessionDropdown = false;
@@ -620,12 +562,12 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             statusLabel.setText("Ready");
             updateCwdLabel(null);
             if (configOptions != null) {
-                updateConfigControls(configOptions, isStartup);
+                configPanelController.updateConfigControls(configOptions, isStartup);
             }
             // If this is a new session (isStartup=true), apply any pre-selected config values
             // from the config panel that the user may have set before creating the chat
             if (isStartup) {
-                applyPreSelectedConfigValues(sessionId, configOptions);
+                configPanelController.applyPreSelectedConfigValues(sessionId, configOptions);
             }
 
             setInputEnabled(true);
@@ -1202,74 +1144,6 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         }
     }
 
-    private void setupConfigCombo(JComboBox<ConfigItem> combo, String configId) {
-        Font btnFont = UIManager.getFont("Button.font");
-        if (btnFont != null) {
-            combo.setFont(btnFont);
-        }
-        combo.addActionListener(e -> {
-            if (isUpdatingConfigControls) {
-                return;
-            }
-            Object selected = combo.getSelectedItem();
-            ConfigItem item = null;
-            if (selected instanceof ConfigItem configItem) {
-                item = configItem;
-            } else if (selected instanceof String val) {
-                // Try to find matching item by name or value
-                for (int i = 0; i < combo.getItemCount(); i++) {
-                    ConfigItem current = combo.getItemAt(i);
-                    if (current.value().equalsIgnoreCase(val) || current.name().equalsIgnoreCase(val)) {
-                        item = current;
-                        combo.setSelectedItem(current);
-                        break;
-                    }
-                }
-            }
-
-            if (item != null && SessionManager.getInstance().getCurrentSessionId() != null) {
-                String currentId = SessionManager.getInstance().getCurrentSessionId();
-
-                if (combo == modelCombo) {
-                    lastSelectedModelId = item.value();
-                    updateThinkingComboForModel(item.value());
-                    updateTabName(item.name());
-                }
-
-                LOG.fine("Config update: {0}={1} for session {2}", new Object[]{configId, item.value(), currentId});
-                ProcessManager.getInstance().setSessionConfigOption(currentId, configId, item.value());
-            }
-        });
-    }
-
-    private void updateThinkingComboForModel(String baseId) {
-        boolean alreadyUpdating = isUpdatingConfigControls;
-        isUpdatingConfigControls = true;
-        try {
-            thinkingCombo.removeAllItems();
-            List<ConfigItem> variants = modelVariants.get(baseId);
-            if (variants != null && !variants.isEmpty()) {
-                ConfigItem selectedVariant = null;
-                for (ConfigItem v : variants) {
-                    thinkingCombo.addItem(v);
-                    if (v.value().equalsIgnoreCase(currentConfigModelId)) {
-                        selectedVariant = v;
-                    }
-                }
-                if (selectedVariant != null) {
-                    thinkingCombo.setSelectedItem(selectedVariant);
-                } else {
-                    thinkingCombo.setSelectedIndex(0);
-                }
-                thinkingCombo.setEnabled(true);
-            } else {
-                thinkingCombo.setEnabled(false);
-            }
-        } finally {
-            isUpdatingConfigControls = alreadyUpdating;
-        }
-    }
-
     private void updateTabName(String modelName) {
         SwingUtilities.invokeLater(() -> {
             if (modelName != null && !modelName.isEmpty()) {
@@ -1279,209 +1153,6 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             }
         });
     }
-
-    private void updateConfigControls(List<SessionConfigOption> options) {
-        updateConfigControls(options, false);
-    }
-
-    private void applyPreSelectedConfigValues(String sessionId, List<SessionConfigOption> configOptions) {
-        // Apply any values that were pre-selected in the config panel before creating the session
-        for (SessionConfigOption opt : configOptions) {
-            JComboBox<ConfigItem> combo = null;
-            if ("mode".equals(opt.category())) {
-                combo = modeCombo;
-            } else if ("model".equals(opt.category())) {
-                combo = modelCombo;
-            } else if (opt.category() != null
-                    && (opt.category().contains("thinking") || opt.category().contains("thought"))) {
-                combo = thinkingCombo;
-            }
-
-            if (combo != null && combo.getSelectedItem() instanceof ConfigItem selectedItem) {
-                String selectedValue = selectedItem.value();
-                String currentValue = opt.currentValue();
-                // Only apply if the selected value differs from the server's default
-                if (selectedValue != null && !selectedValue.isEmpty() && !selectedValue.equals(currentValue)) {
-                    LOG.fine("Applying pre-selected config: {0}={1} (server default was {2})",
-                            new Object[]{opt.id(), selectedValue, currentValue});
-                    ProcessManager.getInstance().setSessionConfigOption(sessionId, opt.id(), selectedValue);
-                }
-            }
-        }
-    }
-
-    private void updateConfigControls(List<SessionConfigOption> options, boolean forceStartupDefaults) {
-        SwingUtilities.invokeLater(() -> {
-            isUpdatingConfigControls = true;
-            try {
-                for (SessionConfigOption opt : options) {
-                    JComboBox<ConfigItem> combo = resolveComboTarget(opt.category());
-                    if (combo == null) continue;
-
-                    if ("model".equals(opt.category())) {
-                        parseModelVariants(opt);
-                    }
-
-                    combo.removeAllItems();
-
-                    String valueToSelect = resolveStartupValue(opt, isThinkingCategory(opt.category()), opt.currentValue(), forceStartupDefaults);
-                    ConfigItem selected = populateComboBox(combo, opt.category(), opt.options(), valueToSelect);
-
-                    if (combo.getActionListeners().length == 0) {
-                        setupConfigCombo(combo, opt.id());
-                    }
-
-                    if (selected != null) {
-                        combo.setSelectedItem(selected);
-                    } else if (combo.getItemCount() > 0) {
-                        combo.setSelectedIndex(0);
-                    }
-
-                    if ("model".equals(opt.category())) {
-                        postProcessModel(combo, selected);
-                    }
-                }
-                thinkingCombo.setEnabled(thinkingCombo.getItemCount() > 0);
-            } finally {
-                isUpdatingConfigControls = false;
-            }
-        });
-    }
-
-    private JComboBox<ConfigItem> resolveComboTarget(String category) {
-        if ("mode".equals(category)) return modeCombo;
-        if ("model".equals(category)) return modelCombo;
-        if (category != null && (category.contains("thinking") || category.contains("thought"))) return thinkingCombo;
-        return null;
-    }
-
-    private static boolean isThinkingCategory(String category) {
-        return category != null && (category.contains("thinking") || category.contains("thought"));
-    }
-
-    private void parseModelVariants(SessionConfigOption opt) {
-        this.currentConfigModelId = opt.currentValue();
-        modelVariants.clear();
-        for (SessionConfigSelectOption o : opt.options()) {
-            String value = o.value();
-            String name = o.name();
-            String[] segments = split(value, '/');
-            String baseId;
-            String variantName;
-            if (segments.length >= 3) {
-                baseId = String.join("/", Arrays.copyOfRange(segments, 0, segments.length - 1));
-                variantName = segments[segments.length - 1];
-            } else {
-                baseId = value;
-                variantName = "default";
-            }
-            String displayName = name;
-            int parenIdx = displayName.lastIndexOf("(");
-            if (parenIdx > 0 && displayName.endsWith(")")) {
-                displayName = displayName.substring(0, parenIdx).trim();
-            }
-            modelVariants.computeIfAbsent(baseId, k -> new ArrayList<>())
-                        .add(new ConfigItem(variantName, value, displayName));
-        }
-    }
-
-    private String resolveStartupValue(SessionConfigOption opt, boolean isThinking, String currentValue, boolean force) {
-        if (!force) return currentValue;
-        String currentId = SessionManager.getInstance().getCurrentSessionId();
-
-        if ("mode".equals(opt.category())) {
-            if (opt.options().stream().anyMatch(o -> "build".equalsIgnoreCase(o.value()))) {
-                return sendAndReturn(opt, "build", currentId);
-            }
-            if (opt.options().stream().anyMatch(o -> "plan".equalsIgnoreCase(o.value()))) {
-                return sendAndReturn(opt, "plan", currentId);
-            }
-        }
-
-        if (isThinking) {
-            if (opt.options().stream().anyMatch(o -> "default".equalsIgnoreCase(o.value()))) {
-                return sendAndReturn(opt, "default", currentId);
-            }
-        }
-
-        if ("model".equals(opt.category())) {
-            String envModel = System.getenv("OPENCODE_MODEL");
-            if (envModel != null && !envModel.isEmpty() && currentId != null) {
-                String match = findModelMatch(opt, envModel);
-                if (match != null) {
-                    LOG.fine("Using OPENCODE_MODEL: {0}", new Object[]{match});
-                    ProcessManager.getInstance().setSessionConfigOption(currentId, opt.id(), match);
-                    return match;
-                }
-            }
-            if (lastSelectedModelId != null && !lastSelectedModelId.equalsIgnoreCase(currentValue)) {
-                ProcessManager.getInstance().setSessionConfigOption(currentId, opt.id(), lastSelectedModelId);
-                return lastSelectedModelId;
-            }
-        }
-
-        return currentValue;
-    }
-
-    private String sendAndReturn(SessionConfigOption opt, String forcedValue, String currentId) {
-        if (!forcedValue.equalsIgnoreCase(opt.currentValue()) && currentId != null) {
-            LOG.fine("Forcing default: {0}={1} (was {2})", new Object[]{opt.id(), forcedValue, opt.currentValue()});
-            ProcessManager.getInstance().setSessionConfigOption(currentId, opt.id(), forcedValue);
-            return forcedValue;
-        }
-        return opt.currentValue();
-    }
-
-    private String findModelMatch(SessionConfigOption opt, String envModel) {
-        for (SessionConfigSelectOption o : opt.options()) {
-            if (o.value().equalsIgnoreCase(envModel)) {
-                return o.value();
-            }
-        }
-        for (Map.Entry<String, List<ConfigItem>> entry : modelVariants.entrySet()) {
-            if (entry.getKey().equalsIgnoreCase(envModel)) {
-                return entry.getValue().get(0).value();
-            }
-        }
-        return null;
-    }
-
-    private ConfigItem populateComboBox(JComboBox<ConfigItem> combo, String category, List<SessionConfigSelectOption> options, String valueToSelect) {
-        ConfigItem selected = null;
-        if ("model".equals(category)) {
-            for (Map.Entry<String, List<ConfigItem>> entry : modelVariants.entrySet()) {
-                List<ConfigItem> variants = entry.getValue();
-                ConfigItem baseItem = variants.get(0);
-                ConfigItem item = new ConfigItem(baseItem.baseName(), entry.getKey());
-                combo.addItem(item);
-                for (ConfigItem v : variants) {
-                    if (v.value().equalsIgnoreCase(valueToSelect)) {
-                        selected = item;
-                        break;
-                    }
-                }
-            }
-        } else {
-            for (SessionConfigSelectOption o : options) {
-                ConfigItem item = new ConfigItem(o.name(), o.value());
-                combo.addItem(item);
-                if (o.value() != null && valueToSelect != null && o.value().equalsIgnoreCase(valueToSelect)) {
-                    selected = item;
-                }
-            }
-        }
-        return selected;
-    }
-
-    private void postProcessModel(JComboBox<ConfigItem> combo, ConfigItem selected) {
-        combo.setEditable(false);
-        updateTabName(selected != null ? selected.name() : null);
-        ConfigItem selItem = (ConfigItem) combo.getSelectedItem();
-        if (selItem != null) {
-            updateThinkingComboForModel(selItem.value());
-        }
-    }
-
 
     @Override
     public Dimension getMinimumSize() {
@@ -1541,7 +1212,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             public void expandOptionsPanel() {
                 if (optionsPanelCollapsed) {
                     optionsPanelCollapsed = false;
-                    configPanel.setVisible(true);
+                    configPanelController.getComponent().setVisible(true);
                     toggleOptionsBtn.setIcon(ThemeManager.getIcon("arrow-down.svg", 25));
                     AssistantTopComponent.this.revalidate();
                     AssistantTopComponent.this.repaint();
@@ -1550,20 +1221,12 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
             @Override
             public void popupModelCombo() {
-                SwingUtilities.invokeLater(() -> {
-                    modelCombo.requestFocusInWindow();
-                    // Use invokeLater to ensure popup shows after focus is fully applied
-                    SwingUtilities.invokeLater(() -> modelCombo.setPopupVisible(true));
-                });
+                configPanelController.popupModelCombo();
             }
 
             @Override
             public void popupAgentCombo() {
-                SwingUtilities.invokeLater(() -> {
-                    modeCombo.requestFocusInWindow();
-                    // Use invokeLater to ensure popup shows after focus is fully applied
-                    SwingUtilities.invokeLater(() -> modeCombo.setPopupVisible(true));
-                });
+                configPanelController.popupModeCombo();
             }
         });
 
@@ -1575,7 +1238,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                     e.consume();
                     if (!optionsPanelCollapsed) {
                         optionsPanelCollapsed = true;
-                        configPanel.setVisible(false);
+                        configPanelController.getComponent().setVisible(false);
                         toggleOptionsBtn.setIcon(ThemeManager.getIcon("settings.svg", 25));
                         AssistantTopComponent.this.revalidate();
                         AssistantTopComponent.this.repaint();
@@ -1584,10 +1247,8 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                 }
             }
         };
-        modeCombo.addKeyListener(escHandler);
-        modelCombo.addKeyListener(escHandler);
-        thinkingCombo.addKeyListener(escHandler);
-        configPanel.addKeyListener(escHandler);
+        configPanelController.addKeyListenerToInputs(escHandler);
+        configPanelController.getComponent().addKeyListener(escHandler);
         SwingUtilities.invokeLater(() -> {
             if (inputArea != null) {
                 inputArea.requestFocusInWindow();

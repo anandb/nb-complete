@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.support.Logger;
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -39,9 +40,8 @@ public final class ToolMetadataExtractor {
     }
 
 
-    public static String extractToolTitle(String messageId, String rawText, String kind) {
-        String identifier = "";
-        String tag = defaultString(messageId);
+    public static String extractToolTitle(ProcessedMessage pm, String kind) {
+        String tag = pm.messageId();
 
         int pos = tag.indexOf(':');
         if (pos > 0 && pos < tag.length()) {
@@ -50,20 +50,23 @@ public final class ToolMetadataExtractor {
             tag = firstNonBlank(kind, "Tool");
         }
 
+        String identifier = "";
         for (var entry : TOOL_CONTENT_PATTERNS) {
-            Matcher m = entry.getValue().matcher(rawText);
+            Matcher m = entry.getValue().matcher(pm.rawText());
             if (m.find()) {
                 identifier = m.group(1);
                 if (isNotBlank(entry.getKey())) {
                     tag = entry.getKey();
                 }
-                
+
                 break;
             }
         }
 
-        LOG.fine("Identifier {0}/{1}", identifier, rawText);
+        LOG.info("Title Attributes {0}/{1}/{2}", tag, identifier, pm.rawText());
         tag = tag.length() < 60 ? tag : "Tool";
-        return tag + " " + abbreviateMiddle(identifier, "...", 60);
+        String title = tag + " " + abbreviateMiddle(identifier, "...", 60);
+        LOG.info("Title {0}", title);
+        return title;
     }
 }

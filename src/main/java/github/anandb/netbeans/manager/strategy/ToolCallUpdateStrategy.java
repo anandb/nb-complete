@@ -32,17 +32,17 @@ public class ToolCallUpdateStrategy implements DataExtractionStrategy {
         ProcessedMessage target = new ProcessedMessage();
         String messageId = update.messageId() != null ? update.messageId() : update.toolCallId();
         String text = firstNonNull(extractContentText(update.content()), update.status(), "");
-        //todo: avoid calling multiple times.
-        MessageClassification m = ToolParamsExtractor.classify(update.update().type(),
-                                                               text, update.kind());
-        String tt = ToolMetadataExtractor.extractToolTitle(messageId, text, m.kind());
-        target.setToolTitle(tt);
-        target.setMessageType(m.type());
         target.setText(text);
         target.setMessageId(defaultString(messageId));
         target.setKind(update.kind());
         target.setRawText(text);
         target.setStreaming(true);
+        //todo: avoid calling multiple times.
+        MessageClassification m = ToolParamsExtractor.classify(update.update().type(),
+                                                               text, update.kind());
+        String tt = ToolMetadataExtractor.extractToolTitle(target, m.kind());
+        target.setToolTitle(tt);
+        target.setMessageType(m.type());
         handler.displayMessage(target);
     }
 
