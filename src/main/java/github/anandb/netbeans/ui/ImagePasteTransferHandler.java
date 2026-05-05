@@ -2,6 +2,8 @@ package github.anandb.netbeans.ui;
 
 import java.awt.Image;
 import java.awt.datatransfer.DataFlavor;
+import java.awt.datatransfer.StringSelection;
+import java.awt.datatransfer.Transferable;
 import java.awt.datatransfer.UnsupportedFlavorException;
 import java.awt.image.BufferedImage;
 import java.io.File;
@@ -12,8 +14,10 @@ import java.nio.file.StandardCopyOption;
 import java.util.List;
 import java.util.Random;
 
+import javax.swing.JComponent;
 import javax.swing.TransferHandler;
 import javax.swing.TransferHandler.TransferSupport;
+import javax.swing.text.JTextComponent;
 
 import github.anandb.netbeans.model.AttachedFile;
 
@@ -35,6 +39,29 @@ public class ImagePasteTransferHandler extends TransferHandler {
 
     public ImagePasteTransferHandler(PasteCallback callback) {
         this.callback = callback;
+    }
+
+    @Override
+    public int getSourceActions(JComponent c) {
+        return COPY_OR_MOVE;
+    }
+
+    @Override
+    protected Transferable createTransferable(JComponent c) {
+        if (c instanceof JTextComponent tc) {
+            String text = tc.getSelectedText();
+            if (text != null) {
+                return new StringSelection(text);
+            }
+        }
+        return null;
+    }
+
+    @Override
+    protected void exportDone(JComponent source, Transferable data, int action) {
+        if (source instanceof JTextComponent tc && action == MOVE && data != null) {
+            tc.replaceSelection("");
+        }
     }
 
     @Override
