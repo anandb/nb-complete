@@ -13,8 +13,6 @@ import java.awt.event.InputEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.ActionEvent;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -24,20 +22,16 @@ import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
 
 import github.anandb.netbeans.model.AttachedFile;
-import github.anandb.netbeans.model.CommandInfo;
 
 import javax.swing.BorderFactory;
-import javax.swing.DefaultListModel;
 import javax.swing.JButton;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JComboBox;
 import javax.swing.JMenuItem;
 import javax.swing.JLabel;
-import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
-import javax.swing.ListSelectionModel;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
@@ -75,12 +69,10 @@ import github.anandb.netbeans.contract.SessionListener;
 import github.anandb.netbeans.contract.SlashCommandCallback;
 import github.anandb.netbeans.manager.strategy.StrategyRegistry;
 import github.anandb.netbeans.contract.UIHandler;
-import github.anandb.netbeans.model.ConfigItem;
 import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.model.SessionConfigOption;
-import github.anandb.netbeans.model.SessionConfigSelectOption;
 import github.anandb.netbeans.model.SessionItem;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.Logger;
@@ -130,8 +122,6 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     private final JLabel cwdLabel;
     private final JScrollPane inputScrollPane;
     private final JPanel header;
-    private final JPopupMenu autocompletePopup;
-    private final JList<SessionUpdate.AvailableCommand> commandList;
     private final ArrayList<String> messageHistory = new ArrayList<>();
     private int historyIndex = -1;
     private String currentDraft = "";
@@ -146,7 +136,8 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     private static final int MAX_ATTACHMENTS = 2;
     private final ArrayList<AttachedFile> attachedFiles = new ArrayList<>();
     private final JButton paperclipBtn;
-    private final ConfigPanelController configPanelController;
+    private transient final ConfigPanelController configPanelController;
+    private transient final AutocompleteManager autocompleteManager;
 
     public AssistantTopComponent() {
         instance = this;
@@ -308,6 +299,8 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         float editorFontSize = (float) ThemeManager.getMonospaceFont().getSize();
         inputArea.setFont(ThemeManager.getFont().deriveFont(editorFontSize));
 
+        setupImagePasteHandler();
+
         inputScrollPane = new JScrollPane(inputArea);
         inputScrollPane.setPreferredSize(new Dimension(100, 100));
 
@@ -340,18 +333,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
         add(bottomPanel, BorderLayout.SOUTH);
 
-        autocompletePopup = new JPopupMenu();
-        autocompletePopup.setBorder(BorderFactory.createLineBorder(UIManager.getColor("controlShadow")));
-
-        commandList = new JList<>();
-        commandList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        commandList.setFocusable(false);
-        commandList.setCellRenderer(new AutocompleteRenderer());
-
-        JScrollPane scrollPane = new JScrollPane(commandList);
-        scrollPane.setBorder(null);
-        scrollPane.setPreferredSize(new Dimension(750, 200));
-        autocompletePopup.add(scrollPane);
+        autocompleteManager = new AutocompleteManager(inputArea, this::sendMessage);
 
         setupListeners();
 
@@ -437,8 +419,8 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                         cb.popupAgentCombo();
                     }
                 } else if (e.getKeyCode() == KeyEvent.VK_ENTER) {
-                    if (autocompletePopup.isVisible()) {
-                        handleEnterWithAutocomplete(e);
+                    if (autocompleteManager.handleKeyPressed(e)) {
+                        // handled by autocomplete
                     } else if ((e.getModifiersEx() & InputEvent.SHIFT_DOWN_MASK) != 0) {
                         inputArea.append("\n");
                     } else {
@@ -470,18 +452,60 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
             @Override
             public void keyReleased(KeyEvent e) {
-                checkAutocomplete(e);
+                autocompleteManager.handleKeyReleased(e);
             }
         });
+    }
 
-        commandList.addMouseListener(new MouseAdapter() {
+    private void setupImagePasteHandler() {
+        ImagePasteTransferHandler.PasteCallback callback = new ImagePasteTransferHandler.PasteCallback() {
             @Override
-            public void mouseClicked(MouseEvent e) {
-                if (e.getClickCount() == 2) {
-                    selectCommand();
-                }
+            public boolean canAddAttachment() {
+                return attachedFiles.size() < MAX_ATTACHMENTS;
             }
-        });
+
+            @Override
+            public void onAttachmentAdded(AttachedFile file) {
+                SwingUtilities.invokeLater(() -> {
+                    if (file.size() > MAX_ATTACHMENT_SIZE) {
+                        if (statusLabel != null) {
+                            statusLabel.setText("File too large (max 10MB)");
+                            statusResetTimer.restart();
+                        }
+                        return;
+                    }
+                    attachedFiles.add(file);
+                    updatePaperclipTooltip();
+                    if (statusLabel != null) {
+                        statusLabel.setText("Attached: " + file.filename());
+                        statusResetTimer.restart();
+                    }
+                });
+            }
+
+            @Override
+            public void onError(String message) {
+                SwingUtilities.invokeLater(() -> {
+                    if (statusLabel != null) {
+                        statusLabel.setText(message);
+                        statusResetTimer.restart();
+                    }
+                });
+            }
+
+            @Override
+            public void onAttachmentLimitReached() {
+                SwingUtilities.invokeLater(() -> {
+                    if (statusLabel != null) {
+                        statusLabel.setText("Max " + MAX_ATTACHMENTS + " files allowed");
+                        statusResetTimer.restart();
+                    }
+                });
+            }
+        };
+
+        ImagePasteTransferHandler handler = new ImagePasteTransferHandler(callback);
+        inputArea.setTransferHandler(handler);
     }
 
     @Override
@@ -805,7 +829,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
     private JButton createFilterButton() {
         final JButton[] btnRef = new JButton[1];
-        JButton btn = UIUtils.createToolbarButton("filter.svg", "Filter message types", e -> {
+        JButton btn = UIUtils.createToolbarButton("filter.svg", 25, "Filter message types", e -> {
             JPopupMenu popup = new JPopupMenu();
             for (String type : MessageFilterManager.getMessageTypes()) {
                 JCheckBoxMenuItem item = new JCheckBoxMenuItem(type, !MessageFilterManager.isTypeHidden(type));
@@ -1006,142 +1030,6 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                 inputArea.setBackground(UIManager.getColor("TextArea.background"));
             }
         });
-    }
-
-    private void checkAutocomplete(KeyEvent e) {
-        int keyCode = e.getKeyCode();
-        if (keyCode == KeyEvent.VK_ESCAPE) {
-            autocompletePopup.setVisible(false);
-            return;
-        }
-        if (keyCode == KeyEvent.VK_ENTER) {
-            if (autocompletePopup.isVisible()) {
-                selectCommand();
-            }
-            autocompletePopup.setVisible(false);
-            return;
-        }
-        if (keyCode == KeyEvent.VK_SPACE) {
-            autocompletePopup.setVisible(false);
-            return;
-        }
-
-        if (keyCode == KeyEvent.VK_UP || keyCode == KeyEvent.VK_DOWN) {
-            if (autocompletePopup.isVisible()) {
-                int size = commandList.getModel().getSize();
-                if (size > 0) {
-                    int index = commandList.getSelectedIndex();
-                    if (keyCode == KeyEvent.VK_UP) {
-                        index = (index - 1 + size) % size;
-                    } else {
-                        index = (index + 1) % size;
-                    }
-                    commandList.setSelectedIndex(index);
-                    commandList.ensureIndexIsVisible(index);
-                }
-                return;
-            }
-        }
-
-        showAutocomplete();
-    }
-
-    private void showAutocomplete() {
-        String text = inputArea.getText();
-        int caret = inputArea.getCaretPosition();
-        if (caret <= 0) {
-            autocompletePopup.setVisible(false);
-            return;
-        }
-
-        // Find the trigger character (/ or @) before caret
-        int start = caret - 1;
-        while (start >= 0 && !Character.isWhitespace(text.charAt(start))) {
-            if (text.charAt(start) == '/' || text.charAt(start) == '@') {
-                break;
-            }
-            start--;
-        }
-
-        if (start < 0 || (text.charAt(start) != '/' && text.charAt(start) != '@')) {
-            autocompletePopup.setVisible(false);
-            return;
-        }
-
-        char trigger = text.charAt(start);
-        String prefix = text.substring(start + 1, caret).toLowerCase();
-
-        java.util.List<SessionUpdate.AvailableCommand> allCommands = new java.util.ArrayList<>();
-
-        if (trigger == '/') {
-            // Local slash commands from SlashCommandInterceptor
-            SlashCommandInterceptor interceptor = ProcessManager.getInstance().getSlashCommandInterceptor();
-            if (interceptor != null) {
-                for (Map.Entry<String, CommandInfo> entry : interceptor.getCommands().entrySet()) {
-                    String cmdName = entry.getKey();
-                    CommandInfo info = entry.getValue();
-                    String name = cmdName.startsWith("/") ? cmdName.substring(1) : cmdName;
-                    allCommands.add(new SessionUpdate.AvailableCommand(name, info.description(), null));
-                }
-            }
-
-            // Server-side ACP commands
-            allCommands.addAll(ProcessManager.getInstance().getAvailableCommands());
-        }
-        // @ mentions not yet implemented
-
-        List<SessionUpdate.AvailableCommand> filtered = allCommands.stream()
-                .filter(c -> c.name().toLowerCase().startsWith(prefix))
-                .toList();
-
-        if (filtered.isEmpty()) {
-            autocompletePopup.setVisible(false);
-            return;
-        }
-
-        DefaultListModel<SessionUpdate.AvailableCommand> model = new DefaultListModel<>();
-        for (SessionUpdate.AvailableCommand cmd : filtered) {
-            model.addElement(cmd);
-        }
-        commandList.setModel(model);
-        commandList.setSelectedIndex(0);
-
-        try {
-            java.awt.geom.Rectangle2D rect2d = inputArea.modelToView2D(start);
-            java.awt.Rectangle rect = rect2d.getBounds();
-            int height = autocompletePopup.getPreferredSize().height;
-            // Position above the caret
-            autocompletePopup.show(inputArea, rect.x, rect.y - height - 2);
-        } catch (Exception ex) {
-            autocompletePopup.show(inputArea, 0, 0);
-        }
-
-        inputArea.requestFocusInWindow();
-    }
-
-    private void selectCommand() {
-        SessionUpdate.AvailableCommand selected = commandList.getSelectedValue();
-        if (selected != null) {
-            String text = inputArea.getText();
-            int caret = inputArea.getCaretPosition();
-            int start = caret - 1;
-            while (start >= 0 && !Character.isWhitespace(text.charAt(start))) {
-                if (text.charAt(start) == '/' || text.charAt(start) == '@') {
-                    break;
-                }
-                start--;
-            }
-
-            if (start >= 0) {
-                String before = text.substring(0, start);
-                String after = text.substring(caret);
-                inputArea.setText(before + "/" + selected.name() + " " + after);
-                inputArea.setCaretPosition(before.length() + selected.name().length() + 2);
-            }
-
-            autocompletePopup.setVisible(false);
-            inputArea.requestFocusInWindow();
-        }
     }
 
     private void updateTabName(String modelName) {
@@ -1374,33 +1262,4 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         });
     }
 
-    // When Enter is pressed with autocomplete visible, check if the typed command
-    // after / or @ exactly matches a listed command. If so, send the message instead
-    // of selecting from the popup, so commands like /dcp reach the server directly.
-    private void handleEnterWithAutocomplete(KeyEvent e) {
-        String curText = inputArea.getText();
-        int cr = inputArea.getCaretPosition();
-        int s = cr - 1;
-        while (s >= 0 && !Character.isWhitespace(curText.charAt(s))) {
-            if (curText.charAt(s) == '/' || curText.charAt(s) == '@') {
-                break;
-            }
-            s--;
-        }
-        boolean exactMatch = false;
-        if (s >= 0 && (curText.charAt(s) == '/' || curText.charAt(s) == '@')) {
-            String typedPrefix = curText.substring(s + 1, cr);
-            SessionUpdate.AvailableCommand sel = commandList.getSelectedValue();
-            if (sel != null && sel.name().equals(typedPrefix)) {
-                exactMatch = true;
-            }
-        }
-        if (exactMatch) {
-            autocompletePopup.setVisible(false);
-            sendMessage();
-        } else {
-            e.consume();
-            selectCommand();
-        }
-    }
 }

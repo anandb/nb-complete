@@ -153,10 +153,11 @@ public class ProcessManager {
                     SessionUpdate update = new SessionUpdate("2.0", "session/update", sessionParams);
 
                     // Update available commands if present
-                    if (update.update() != null && "available_commands_update".equals(update.update().type())) {
+                    if (update.update() != null && "available_commands_update".equals(update.type())) {
                         if (update.update().availableCommands() != null) {
                             availableCommands.clear();
                             availableCommands.addAll(update.update().availableCommands());
+                            return;
                         }
                     }
 

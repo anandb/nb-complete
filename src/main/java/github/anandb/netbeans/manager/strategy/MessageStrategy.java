@@ -12,8 +12,8 @@ public class MessageStrategy implements DataExtractionStrategy {
     private static final Logger LOG = new Logger(MessageStrategy.class);
 
     @Override
-    public boolean canHandle(SessionUpdate update) {
-        return "message".equals(update.type());
+    public boolean canHandle(SessionUpdate update, String reclassifiedType) {
+        return "message".equals(reclassifiedType);
     }
 
     @Override

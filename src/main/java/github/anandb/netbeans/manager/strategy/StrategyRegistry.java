@@ -15,6 +15,8 @@ import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.MapperSupplier;
 
+import static org.apache.commons.lang3.StringUtils.defaultIfBlank;
+
 public class StrategyRegistry {
     private static final Logger LOG = new Logger(StrategyRegistry.class);
     private static final StrategyRegistry INSTANCE = new StrategyRegistry();
@@ -47,15 +49,15 @@ public class StrategyRegistry {
             return defaultStrategy;
         }
 
-        type = reClassify(update);
+        type = defaultIfBlank(reClassify(update), update.type());
         if (hasAnnotationFilter(update) && shouldSkip(update.content())) {
             LOG.fine("Strategy skipped for {0} due to annotation filter", type);
-                return null;
+            return null;
         }
 
         DataExtractionStrategy selected = null;
         DataExtractionStrategy s = typeStrategies.get(type);
-        if (s != null && s.canHandle(update)) {
+        if (s != null && s.canHandle(update, type)) {
             selected = s;
         }
 
@@ -88,6 +90,7 @@ public class StrategyRegistry {
                 if ("hidden".equals(tag.asText())) return true;
             }
         }
+
         return false;
     }
 

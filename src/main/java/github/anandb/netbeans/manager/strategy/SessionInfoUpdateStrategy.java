@@ -6,8 +6,8 @@ import github.anandb.netbeans.model.SessionUpdate;
 
 public class SessionInfoUpdateStrategy implements DataExtractionStrategy {
     @Override
-    public boolean canHandle(SessionUpdate update) {
-        return "session_info_update".equals(update.type());
+    public boolean canHandle(SessionUpdate update, String reclassifiedType) {
+        return "session_info_update".equals(reclassifiedType);
     }
 
     @Override

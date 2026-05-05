@@ -6,8 +6,8 @@ import github.anandb.netbeans.model.SessionUpdate;
 
 public class ConfigOptionsUpdateStrategy implements DataExtractionStrategy {
     @Override
-    public boolean canHandle(SessionUpdate update) {
-        return "config_options_update".equals(update.type());
+    public boolean canHandle(SessionUpdate update, String reclassifiedType) {
+        return "config_options_update".equals(reclassifiedType);
     }
 
     @Override

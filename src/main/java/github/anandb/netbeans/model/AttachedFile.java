@@ -25,6 +25,14 @@ public record AttachedFile(
             case "gif" -> "image/gif";
             case "svg" -> "image/svg+xml";
             case "webp" -> "image/webp";
+            case "csv" -> "text/csv";
+            case "odt" -> "application/vnd.oasis.opendocument.text";
+            case "doc" -> "application/msword";
+            case "docx" -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+            case "xls" -> "application/vnd.ms-excel";
+            case "xlsx" -> "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+            case "ppt" -> "application/vnd.ms-powerpoint";
+            case "pptx" -> "application/vnd.openxmlformats-officedocument.presentationml.presentation";
             case "pdf" -> "application/pdf";
             case "txt" -> "text/plain";
             case "json" -> "application/json";

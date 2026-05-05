@@ -36,8 +36,22 @@ public record ColorTheme(
     }
 
     private static ColorTheme createNativeTheme(boolean darkMode) {
+        String userBgProp = System.getProperty("netbeans.beanbot.bubble.user.bg");
+        if (userBgProp != null && !userBgProp.isBlank()) {
+            try {
+                return createNativeTheme(darkMode, Color.decode(userBgProp));
+            } catch (NumberFormatException e) {
+                // fall through to default
+            }
+        }
+        return createNativeTheme(darkMode, null);
+    }
+
+    private static ColorTheme createNativeTheme(boolean darkMode, Color overrideBubbleUser) {
         Color bubbleUser;
-        if (darkMode) {
+        if (overrideBubbleUser != null) {
+            bubbleUser = overrideBubbleUser;
+        } else if (darkMode) {
             bubbleUser = UIManager.getColor("Search.background");
             if (bubbleUser == null) {
                 bubbleUser = UIManager.getColor("Editor.searchBackground");

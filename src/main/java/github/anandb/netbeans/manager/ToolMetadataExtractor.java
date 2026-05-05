@@ -39,9 +39,8 @@ public final class ToolMetadataExtractor {
         return stripped;
     }
 
-
-    public static String extractToolTitle(ProcessedMessage pm, String kind) {
-        String tag = pm.messageId();
+    public static String extractToolTitle(String messageId, String rawText, String kind) {
+        String tag = defaultString(messageId);
 
         int pos = tag.indexOf(':');
         if (pos > 0 && pos < tag.length()) {
@@ -52,7 +51,7 @@ public final class ToolMetadataExtractor {
 
         String identifier = "";
         for (var entry : TOOL_CONTENT_PATTERNS) {
-            Matcher m = entry.getValue().matcher(pm.rawText());
+            Matcher m = entry.getValue().matcher(rawText);
             if (m.find()) {
                 identifier = m.group(1);
                 if (isNotBlank(entry.getKey())) {
@@ -63,10 +62,13 @@ public final class ToolMetadataExtractor {
             }
         }
 
-        LOG.info("Title Attributes {0}/{1}/{2}", tag, identifier, pm.rawText());
         tag = tag.length() < 60 ? tag : "Tool";
         String title = tag + " " + abbreviateMiddle(identifier, "...", 60);
-        LOG.info("Title {0}", title);
+        LOG.fine("Title {0}", title);
         return title;
+    }
+
+    public static String extractToolTitle(ProcessedMessage pm, String kind) {
+        return extractToolTitle(pm.messageId(), pm.rawText(), kind);
     }
 }

@@ -8,8 +8,8 @@ import github.anandb.netbeans.model.SessionUpdate;
 
 public class AgentThoughtChunkStrategy implements DataExtractionStrategy {
     @Override
-    public boolean canHandle(SessionUpdate update) {
-        return "agent_thought_chunk".equals(update.type());
+    public boolean canHandle(SessionUpdate update, String reclassifiedType) {
+        return "agent_thought_chunk".equals(reclassifiedType);
     }
 
     @Override

@@ -19,8 +19,8 @@ public class ToolCallUpdateStrategy implements DataExtractionStrategy {
     private static final Logger LOG = new Logger(ToolCallUpdateStrategy.class);
 
     @Override
-    public boolean canHandle(SessionUpdate update) {
-        return "tool_call_update".equals(update.type()) || "tool_call".equals(update.type());
+    public boolean canHandle(SessionUpdate update, String reclassifiedType) {
+        return "tool_call_update".equals(reclassifiedType) || "tool_call".equals(reclassifiedType);
     }
 
     @Override

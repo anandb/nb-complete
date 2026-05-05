@@ -18,8 +18,8 @@ public class PlanStrategy implements DataExtractionStrategy {
     private static final Logger LOG = new Logger(PlanStrategy.class);
 
     @Override
-    public boolean canHandle(SessionUpdate update) {
-        return "plan".equals(update.type());
+    public boolean canHandle(SessionUpdate update, String reclassifiedType) {
+        return "plan".equals(reclassifiedType);
     }
 
     @Override

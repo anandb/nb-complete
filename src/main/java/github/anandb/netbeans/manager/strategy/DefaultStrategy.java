@@ -13,7 +13,7 @@ public class DefaultStrategy implements DataExtractionStrategy {
     private static final Logger LOG = new Logger(DefaultStrategy.class);
 
     @Override
-    public boolean canHandle(SessionUpdate update) {
+    public boolean canHandle(SessionUpdate update, String reclassifiedType) {
         return true; // Catch-all
     }
 

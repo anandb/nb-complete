@@ -8,8 +8,8 @@ import github.anandb.netbeans.model.SessionUpdate;
 
 public class UserMessageChunkStrategy implements DataExtractionStrategy {
     @Override
-    public boolean canHandle(SessionUpdate update) {
-        return "user_message_chunk".equals(update.type());
+    public boolean canHandle(SessionUpdate update, String reclassifiedType) {
+        return "user_message_chunk".equals(reclassifiedType);
     }
 
     @Override
