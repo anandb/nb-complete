@@ -3,9 +3,9 @@ package github.anandb.netbeans.ui;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics;
+
 import javax.swing.JTextArea;
 import javax.swing.undo.UndoManager;
-import javax.swing.event.UndoableEditListener;
 
 import java.util.regex.Pattern;
 

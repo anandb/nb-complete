@@ -153,7 +153,7 @@ public class ConfigPanelController {
 
     public void ensureDefaultModelAdded() {
         if (lastSelectedModelId == null && System.getenv("OPENCODE_MODEL") == null && modelCombo.getItemCount() == 0) {
-            modelCombo.addItem(new ConfigItem("opencode/big-pickle", "opencode/big-pickle"));
+            modelCombo.addItem(new ConfigItem("OpenCode Zeb/Big Pickle", "opencode/big-pickle"));
         }
     }
 

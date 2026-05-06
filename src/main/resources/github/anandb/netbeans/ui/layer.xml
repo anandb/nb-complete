@@ -7,11 +7,15 @@
                 <attr name="instanceCreate" methodvalue="org.openide.awt.Actions.alwaysEnabled"/>
                 <attr name="delegate" newvalue="github.anandb.netbeans.ui.ToggleAssistantAction"/>
                 <attr name="displayName" bundlevalue="github.anandb.netbeans.ui.Bundle#CTL_ToggleAssistantAction"/>
+                <attr name="iconBase" stringvalue="github/anandb/netbeans/ui/icons/logo_window.svg"/>
             </file>
         </folder>
     </folder>
     <folder name="Menu">
         <folder name="Window">
+            <file name="Assistant.shadow">
+                <attr name="originalFile" stringvalue="Actions/Window/github-anandb-netbeans-ui-ToggleAssistantAction.instance"/>
+            </file>
         </folder>
     </folder>
     <folder name="Shortcuts">

@@ -45,7 +45,6 @@ import org.netbeans.api.project.ui.OpenProjects;
 import org.netbeans.api.settings.ConvertAsProperties;
 import org.netbeans.modules.editor.NbEditorUtilities;
 import org.openide.awt.ActionID;
-import org.openide.awt.ActionReference;
 import org.openide.filesystems.FileObject;
 import org.openide.text.NbDocument;
 import org.openide.util.NbBundle;
@@ -90,7 +89,6 @@ import static org.apache.commons.lang3.StringUtils.isNotBlank;
 )
 @TopComponent.Registration(mode = "properties", openAtStartup = true)
 @ActionID(category = "Window", id = "github.anandb.netbeans.ui.AssistantTopComponent")
-@ActionReference(path = "Menu/Window" /*, position = 333 */)
 @TopComponent.OpenActionRegistration(
     displayName = "#CTL_AssistantAction",
     preferredID = "AssistantTopComponent"

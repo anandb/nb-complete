@@ -3,17 +3,12 @@ package github.anandb.netbeans.ui;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import org.openide.awt.ActionID;
-import org.openide.awt.ActionReferences;
-import org.openide.awt.ActionReference;
 import org.openide.util.NbBundle;
 import org.openide.windows.TopComponent;
 
 @ActionID(category = "Window", id = "github.anandb.netbeans.ui.ToggleAssistantAction")
-@ActionReferences({
-    @ActionReference(path = "Menu/Window", position = 334)
-})
 @NbBundle.Messages({
-    "CTL_ToggleAssistantAction=Toggle Assistant"
+    "CTL_ToggleAssistantAction=Assistant"
 })
 public class ToggleAssistantAction implements ActionListener {
 

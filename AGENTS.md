@@ -5,7 +5,7 @@
 - **Project type**: NetBeans IDE plugin (NBM packaging)
 - **Language**: Java 17
 - **Build tool**: Maven
-- **Current Version**: 1.4.1
+- **Current Version**: 1.5.11
 
 ## Build Commands
 - Build: `mvn package`
@@ -19,7 +19,7 @@
 - RSyntaxTextArea for code block syntax highlighting
 - JUnit 5 for testing
 
-## 📖 The "codex7" (Context7) Protocol
+## 📖 The "context7" (Context7) Protocol
 When working on this codebase, you **must** leverage Context7 for documentation on external libraries.
 
 ## Source Structure

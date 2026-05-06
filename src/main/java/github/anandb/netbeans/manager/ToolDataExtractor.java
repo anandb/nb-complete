@@ -89,7 +89,7 @@ public final class ToolDataExtractor {
         String tag = defaultString(messageId);
 
         int pos = tag.indexOf(':');
-        if (pos > 0 && pos < tag.length()) {
+        if (pos >= 0 && pos < tag.length()) {
             tag = tag.substring(0, pos);
         } else {
             tag = firstNonBlank(kind, "Tool");
