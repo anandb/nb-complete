@@ -113,7 +113,16 @@ public class ImagePasteTransferHandler extends TransferHandler {
             }
         }
 
-        return super.importData(support);
+        if (support.getComponent() instanceof JTextComponent tc) {
+            try {
+                String text = (String) support.getTransferable().getTransferData(DataFlavor.stringFlavor);
+                tc.replaceSelection(text != null ? text : "");
+                return true;
+            } catch (UnsupportedFlavorException | IOException e) {
+                return false;
+            }
+        }
+        return false;
     }
 
     private AttachedFile createAttachedFileFromImage(Image image) {

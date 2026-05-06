@@ -13,7 +13,7 @@ class AgentUtilsTest {
 
     @Test
     void testExtractToolTitleWithSkillContent() {
-        String result = ToolMetadataExtractor.extractToolTitle(
+        String result = ToolDataExtractor.extractToolTitle(
             "skill_name",
             "<skill_content name=\"test-skill\">some content</skill_content>", null
         );
@@ -22,7 +22,7 @@ class AgentUtilsTest {
 
     @Test
     void testExtractToolTitleWithPath() {
-        String result = ToolMetadataExtractor.extractToolTitle(
+        String result = ToolDataExtractor.extractToolTitle(
             "path_id",
             "<path>/some/path/here</path> content", null
         );
@@ -31,7 +31,7 @@ class AgentUtilsTest {
 
     @Test
     void testExtractToolTitleWithNullMessageId() {
-        String result = ToolMetadataExtractor.extractToolTitle(
+        String result = ToolDataExtractor.extractToolTitle(
             null,
             "<skill_content name=\"my-skill\">content</skill_content>", null
         );
@@ -40,7 +40,7 @@ class AgentUtilsTest {
 
     @Test
     void testExtractToolTitleWithColon() {
-        String result = ToolMetadataExtractor.extractToolTitle(
+        String result = ToolDataExtractor.extractToolTitle(
             "tool:subtype",
             "some text here", null
         );
@@ -50,13 +50,13 @@ class AgentUtilsTest {
     @Test
     void testExtractToolTitleWithLongTag() {
         String longTag = "a".repeat(100);
-        String result = ToolMetadataExtractor.extractToolTitle(longTag, "plain text", null);
+        String result = ToolDataExtractor.extractToolTitle(longTag, "plain text", null);
         assertEquals("Tool ", result);
     }
 
     @Test
     void testExtractToolTitleWithPlainText() {
-        String result = ToolMetadataExtractor.extractToolTitle(
+        String result = ToolDataExtractor.extractToolTitle(
             "plain",
             "just some plain text with no special tags", null
         );
@@ -65,7 +65,7 @@ class AgentUtilsTest {
 
     @Test
     void testExtractToolTitleFromRead() {
-        String result = ToolMetadataExtractor.extractToolTitle(
+        String result = ToolDataExtractor.extractToolTitle(
             "read:322",
             "<path>/home/user/ab</path>", null
         );

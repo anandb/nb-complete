@@ -3,11 +3,21 @@
 <filesystem>
     <folder name="Actions">
         <folder name="Window">
+            <file name="github-anandb-netbeans-ui-ToggleAssistantAction.instance">
+                <attr name="instanceCreate" methodvalue="org.openide.awt.Actions.alwaysEnabled"/>
+                <attr name="delegate" newvalue="github.anandb.netbeans.ui.ToggleAssistantAction"/>
+                <attr name="displayName" bundlevalue="github.anandb.netbeans.ui.Bundle#CTL_ToggleAssistantAction"/>
+            </file>
         </folder>
     </folder>
     <folder name="Menu">
         <folder name="Window">
         </folder>
+    </folder>
+    <folder name="Shortcuts">
+        <file name="D-L.shadow">
+            <attr name="originalFile" stringvalue="Actions/Window/github-anandb-netbeans-ui-ToggleAssistantAction.instance"/>
+        </file>
     </folder>
     <folder name="Windows2">
     </folder>

@@ -66,6 +66,9 @@ Thumbs.db
 /tmp/
 /scratch
 
+# Others
+docs/
+
 # Application logs
 spring.log
 /nbactions.xml

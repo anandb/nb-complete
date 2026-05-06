@@ -447,6 +447,12 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                             inputArea.setText(currentDraft);
                         }
                     }
+                } else if ((e.getModifiersEx() & InputEvent.CTRL_DOWN_MASK) != 0 && e.getKeyCode() == KeyEvent.VK_Z) {
+                    e.consume();
+                    inputArea.undo();
+                } else if ((e.getModifiersEx() & InputEvent.CTRL_DOWN_MASK) != 0 && e.getKeyCode() == KeyEvent.VK_Y) {
+                    e.consume();
+                    inputArea.redo();
                 }
             }
 
@@ -1141,7 +1147,12 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             if (inputArea != null) {
                 inputArea.requestFocusInWindow();
             }
-            SessionManager.getInstance().refreshSessions();
+            String currentSessionId = SessionManager.getInstance().getCurrentSessionId();
+            if (currentSessionId != null) {
+                SessionManager.getInstance().loadSession(currentSessionId);
+            } else {
+                SessionManager.getInstance().refreshSessions();
+            }
         });
     }
 

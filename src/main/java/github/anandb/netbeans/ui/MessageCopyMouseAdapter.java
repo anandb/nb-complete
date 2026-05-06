@@ -9,7 +9,7 @@ import javax.swing.Icon;
 import javax.swing.JLabel;
 import javax.swing.Timer;
 
-import github.anandb.netbeans.manager.ToolMetadataExtractor;
+import github.anandb.netbeans.manager.ToolDataExtractor;
 import github.anandb.netbeans.support.Logger;
 
 public class MessageCopyMouseAdapter extends MouseAdapter {
@@ -52,7 +52,7 @@ public class MessageCopyMouseAdapter extends MouseAdapter {
             return;
         }
         
-        String textToCopy = ToolMetadataExtractor.stripMetadata(b.getRawText());
+        String textToCopy = ToolDataExtractor.stripMetadata(b.getRawText());
 
         if (textToCopy.isEmpty()) {
             LOG.warn("No text to copy, msgId={0}, type={1}", new Object[]{messageId, type});

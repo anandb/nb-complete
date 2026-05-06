@@ -9,7 +9,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import github.anandb.netbeans.contract.DataExtractionStrategy;
-import github.anandb.netbeans.manager.ToolParamsExtractor;
+import github.anandb.netbeans.manager.ToolDataExtractor;
 import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.Logger;
@@ -102,7 +102,7 @@ public class StrategyRegistry {
         String type = update.type();
         try {
             String text = MAPPER.writeValueAsString(update.content());
-            var meta = ToolParamsExtractor.classify(update.update().type(), text, update.kind());
+            var meta = ToolDataExtractor.classify(update.update().type(), text, update.kind());
             if (meta.type() != update.update().type()) {
                 type = meta.type().name();
             }

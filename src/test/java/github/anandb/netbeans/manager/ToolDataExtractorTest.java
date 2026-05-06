@@ -4,29 +4,29 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import org.junit.jupiter.api.Test;
 
-class ToolMetadataExtractorTest {
+class ToolDataExtractorTest {
 
     @Test
     void testStripMetadataRemovesComments() {
-        String result = ToolMetadataExtractor.stripMetadata("hello <!-- comment --> world");
+        String result = ToolDataExtractor.stripMetadata("hello <!-- comment --> world");
         assertEquals("hello  world", result);
     }
 
     @Test
     void testStripMetadataRemovesMultilineComments() {
-        String result = ToolMetadataExtractor.stripMetadata("before <!-- line1\nline2\nline3 --> after");
+        String result = ToolDataExtractor.stripMetadata("before <!-- line1\nline2\nline3 --> after");
         assertEquals("before  after", result);
     }
 
     @Test
     void testStripMetadataRemovesMetadataTags() {
-        String result = ToolMetadataExtractor.stripMetadata("text <metadata>some meta</metadata> end");
+        String result = ToolDataExtractor.stripMetadata("text <metadata>some meta</metadata> end");
         assertEquals("text  end", result);
     }
 
     @Test
     void testStripMetadataRemovesBothTypes() {
-        String result = ToolMetadataExtractor.stripMetadata(
+        String result = ToolDataExtractor.stripMetadata(
             "a <!-- comment --> b <metadata>data</metadata> c"
         );
         assertEquals("a  b  c", result);
@@ -34,31 +34,31 @@ class ToolMetadataExtractorTest {
 
     @Test
     void testStripMetadataWithNoMetadata() {
-        String result = ToolMetadataExtractor.stripMetadata("clean text no tags");
+        String result = ToolDataExtractor.stripMetadata("clean text no tags");
         assertEquals("clean text no tags", result);
     }
 
     @Test
     void testStripMetadataWithEmptyString() {
-        String result = ToolMetadataExtractor.stripMetadata("");
+        String result = ToolDataExtractor.stripMetadata("");
         assertEquals("", result);
     }
 
     @Test
     void testStripMetadataWithNullString() {
-        String result = ToolMetadataExtractor.stripMetadata(null);
+        String result = ToolDataExtractor.stripMetadata(null);
         assertNull(result);
     }
 
     @Test
     void testStripMetadataWithOnlyWhitespace() {
-        String result = ToolMetadataExtractor.stripMetadata("   ");
+        String result = ToolDataExtractor.stripMetadata("   ");
         assertEquals("   ", result);
     }
 
     @Test
     void testStripMetadataWithNestedMetadata() {
-        String result = ToolMetadataExtractor.stripMetadata(
+        String result = ToolDataExtractor.stripMetadata(
             "<metadata><!-- inner comment --></metadata>"
         );
         assertEquals("", result);
@@ -66,7 +66,7 @@ class ToolMetadataExtractorTest {
 
     @Test
     void testExtractToolTitleWithSkillContent() {
-        String result = ToolMetadataExtractor.extractToolTitle(
+        String result = ToolDataExtractor.extractToolTitle(
             "skill",
             "<skill_content name=\"test-skill\">some content</skill_content>", null
         );
@@ -75,7 +75,7 @@ class ToolMetadataExtractorTest {
 
     @Test
     void testExtractToolTitleWithPath() {
-        String result = ToolMetadataExtractor.extractToolTitle(
+        String result = ToolDataExtractor.extractToolTitle(
             "path",
             "<path>/some/long/path/here</path> content", null
         );
@@ -84,7 +84,7 @@ class ToolMetadataExtractorTest {
 
     @Test
     void testExtractToolTitleWithNullMessageId() {
-        String result = ToolMetadataExtractor.extractToolTitle(
+        String result = ToolDataExtractor.extractToolTitle(
             null,
             "<skill_content name=\"my-skill\">content</skill_content>", null
         );
@@ -93,7 +93,7 @@ class ToolMetadataExtractorTest {
 
     @Test
     void testExtractToolTitleWithColon() {
-        String result = ToolMetadataExtractor.extractToolTitle(
+        String result = ToolDataExtractor.extractToolTitle(
             "tool:subtype",
             "some text here", null
         );
@@ -103,13 +103,13 @@ class ToolMetadataExtractorTest {
     @Test
     void testExtractToolTitleWithLongTag() {
         String longTag = "a".repeat(100);
-        String result = ToolMetadataExtractor.extractToolTitle(longTag, "plain text", null);
+        String result = ToolDataExtractor.extractToolTitle(longTag, "plain text", null);
         assertEquals("Tool ", result);
     }
 
     @Test
     void testExtractToolTitleWithPlainText() {
-        String result = ToolMetadataExtractor.extractToolTitle(
+        String result = ToolDataExtractor.extractToolTitle(
             "tool",
             "just some plain text with no special tags", null
         );
@@ -118,7 +118,7 @@ class ToolMetadataExtractorTest {
 
     @Test
     void testExtractToolTitleFromRead() {
-        String result = ToolMetadataExtractor.extractToolTitle(
+        String result = ToolDataExtractor.extractToolTitle(
             "read:322",
             "<path>/home/user/ab</path>", null
         );
@@ -127,7 +127,7 @@ class ToolMetadataExtractorTest {
 
     @Test
     void testExtractToolTitlePrefersSkillContentOverPath() {
-        String result = ToolMetadataExtractor.extractToolTitle(
+        String result = ToolDataExtractor.extractToolTitle(
             "skill-name",
             "<path>/some/path</path> <skill_content name=\"skill-name\">content</skill_content>",
             null
@@ -137,7 +137,7 @@ class ToolMetadataExtractorTest {
 
     @Test
     void testExtractToolTitleWithKindFallback() {
-        String result = ToolMetadataExtractor.extractToolTitle(
+        String result = ToolDataExtractor.extractToolTitle(
             null, "plain text", "customKind"
         );
         assertEquals("customKind ", result);
@@ -146,7 +146,7 @@ class ToolMetadataExtractorTest {
     @Test
     void testExtractToolTitleAbbreviatesLongIdentifier() {
         String longIdent = "a".repeat(100);
-        String result = ToolMetadataExtractor.extractToolTitle(
+        String result = ToolDataExtractor.extractToolTitle(
             "tag",
             "<skill_content name=\"" + longIdent + "\">content</skill_content>",
             null

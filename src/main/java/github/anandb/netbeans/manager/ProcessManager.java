@@ -78,6 +78,9 @@ public class ProcessManager {
     private static final long RESTART_RESET_INTERVAL = 300000; // 5 minutes
     private boolean shutdownHookAdded = false;
 
+    private McpServer mcpServer;
+    private volatile boolean mcpDisabled = true;
+
     private volatile boolean serverStarted = false;
 
     private ProcessManager() {
@@ -118,6 +121,19 @@ public class ProcessManager {
         if (readyFuture.isDone()) {
             readyFuture = new CompletableFuture<>();
         }
+
+        // Start MCP weather server
+        if (!mcpDisabled) {
+            if (mcpServer == null) {
+                mcpServer = new McpServer();
+            }
+            try {
+                mcpServer.start();
+            } catch (IOException e) {
+                LOG.warn("Failed to start MCP weather server: {0}", e.getMessage());
+            }
+        }
+
         LOG.info("Starting ACP server...");
         try {
             String executable = resolveExecutablePath();
@@ -236,6 +252,9 @@ public class ProcessManager {
         rpcClient.sendRequest("initialize", params)
                 .orTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
                 .thenAccept(res -> {
+                    if (res != null) {
+                        checkServerMcpSupport(res);
+                    }
                     readyFuture.complete(null);
                     LOG.log(Level.FINE, "ACP initialized successfully");
                 })
@@ -246,6 +265,26 @@ public class ProcessManager {
                     stopServer();
                     return null;
                 });
+    }
+
+    private void checkServerMcpSupport(JsonNode res) {
+        JsonNode caps = res.has("agentCapabilities") ? res.get("agentCapabilities") : null;
+        if (caps == null || !caps.has("mcpCapabilities")) {
+            if (!mcpDisabled) {
+                LOG.info("Server does not advertise MCP support, disabling MCP for this process");
+                disableMcp();
+            }
+            return;
+        }
+        JsonNode mcpCaps = caps.get("mcpCapabilities");
+        boolean supportsMcp = mcpCaps.has("http") && mcpCaps.get("http").asBoolean(false)
+                || mcpCaps.has("sse") && mcpCaps.get("sse").asBoolean(false);
+        if (!supportsMcp && !mcpDisabled) {
+            LOG.info("Server does not advertise MCP support, disabling MCP for this process");
+            disableMcp();
+        } else {
+            LOG.fine("Server advertises MCP support");
+        }
     }
 
     public void shutdown() {
@@ -274,6 +313,11 @@ public class ProcessManager {
         }
         reconnectExecutor.shutdownNow().forEach(task ->
                 LOG.fine("Discarded pending reconnect task on shutdown: {0}", task));
+
+        if (mcpServer != null) {
+            mcpServer.stop();
+            mcpServer = null;
+        }
 
         if (rpcClient != null) {
             rpcClient.close();
@@ -438,6 +482,35 @@ public class ProcessManager {
         return null;
     }
 
+    private List<Map<String, String>> getMcpServerConfig() {
+        if (mcpDisabled || mcpServer == null || !mcpServer.isRunning()) {
+            return List.of();
+        }
+        return List.of(Map.of(
+                "type", "sse",
+                "name", "weather",
+                "url", mcpServer.getUrl()
+        ));
+    }
+
+    private boolean isInvalidParamsError(Throwable t) {
+        if (t == null) {
+            return false;
+        }
+        String msg = t.getMessage();
+        return msg != null && msg.contains("Invalid params");
+    }
+
+    private void disableMcp() {
+        if (!mcpDisabled) {
+            mcpDisabled = true;
+            LOG.warn("Disabling MCP servers for the remainder of this process due to Invalid Params error from server");
+            if (mcpServer != null) {
+                mcpServer.stop();
+            }
+        }
+    }
+
     public CompletableFuture<Session> createSession(String cwd) {
         if (!rpcClientReady()) {
             return CompletableFuture.failedFuture(new RuntimeException(operationalError()));
@@ -459,10 +532,24 @@ public class ProcessManager {
         LOG.log(Level.FINE, "Creating new session with CWD: {0}", effectiveCwd);
         final String finalCwd = effectiveCwd;
 
-        Map<String, Object> params = Map.of(
-                "cwd", finalCwd,
-                "mcpServers", List.of()
-        );
+        return sendCreateSessionRequest(finalCwd).handle((res, ex) -> {
+            if (ex == null) {
+                return CompletableFuture.completedFuture(res);
+            }
+            Throwable cause = (ex instanceof java.util.concurrent.CompletionException) ? ex.getCause() : ex;
+            if (isInvalidParamsError(cause) && !mcpDisabled) {
+                LOG.warn("session/new failed with Invalid Params, retrying without MCP servers");
+                disableMcp();
+                return sendCreateSessionRequest(finalCwd);
+            }
+            return CompletableFuture.<Session>failedFuture(ex);
+        }).thenCompose(f -> f);
+    }
+
+    private CompletableFuture<Session> sendCreateSessionRequest(String finalCwd) {
+        Map<String, Object> params = new HashMap<>();
+        params.put("cwd", finalCwd);
+        params.put("mcpServers", getMcpServerConfig());
         return rpcClient.sendRequest("session/new", params)
                 .thenApply(res -> {
                     try {
@@ -483,12 +570,32 @@ public class ProcessManager {
         if (!rpcClientReady()) {
             return CompletableFuture.failedFuture(new RuntimeException(operationalError()));
         }
+
+        return sendLoadSessionRequest(sessionId, cwd).handle((res, ex) -> {
+            if (ex == null) {
+                return CompletableFuture.completedFuture(res);
+            }
+            Throwable cause = (ex instanceof java.util.concurrent.CompletionException) ? ex.getCause() : ex;
+            if (isInvalidParamsError(cause) && !mcpDisabled) {
+                LOG.warn("session/load failed with Invalid Params, retrying without MCP servers");
+                disableMcp();
+                return sendLoadSessionRequest(sessionId, cwd);
+            }
+            return CompletableFuture.<List<SessionConfigOption>>failedFuture(ex);
+        }).thenCompose(f -> f)
+        .exceptionally(ex -> {
+            LOG.warn("loadSession: error: {0}", ex.getMessage());
+            return null;
+        });
+    }
+
+    private CompletableFuture<List<SessionConfigOption>> sendLoadSessionRequest(String sessionId, String cwd) {
         Map<String, Object> params = new java.util.HashMap<>();
         params.put("sessionId", sessionId);
         if (cwd != null) {
             params.put("cwd", cwd);
         }
-        params.put("mcpServers", List.of());
+        params.put("mcpServers", getMcpServerConfig());
 
         return rpcClient.sendRequest("session/load", params)
                 .thenApply(res -> {
@@ -501,10 +608,6 @@ public class ProcessManager {
                             LOG.warn("Failed to parse configOptions: {0}", e.getMessage());
                         }
                     }
-                    return null;
-                })
-                .exceptionally(ex -> {
-                    LOG.warn("loadSession: error: {0}", ex.getMessage());
                     return null;
                 });
     }
@@ -588,7 +691,7 @@ public class ProcessManager {
         Map<String, Object> params = new HashMap<>();
         params.put("sessionId", sessionId);
         params.put("prompt", promptBlocks);
-        params.put("mcpServers", List.of());
+        params.put("mcpServers", getMcpServerConfig());
 
         return rpcClient.sendRequest("session/prompt", params)
                 .thenApply(v -> null);
@@ -718,7 +821,7 @@ public class ProcessManager {
 
     private CompletableFuture<JsonNode> handleRequestPermission(JsonNode params) {
         String sessionId = params.has("sessionId") ? params.get("sessionId").asText() : null;
-        String toolCallId = ToolParamsExtractor.extractToolCallId(params);
+        String toolCallId = ToolDataExtractor.extractToolCallId(params);
 
         final String extractedId = toolCallId;
         CompletableFuture<String> response = new CompletableFuture<>();
