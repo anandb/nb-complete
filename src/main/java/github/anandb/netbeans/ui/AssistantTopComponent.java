@@ -218,7 +218,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         JButton refreshBtn = UIUtils.createToolbarButton("reload.svg", "Reload Conversation", e -> reloadCurrentSession());
 
         JButton exportBtn = UIUtils.createToolbarButton("export.svg", "Export Conversation", e -> exportConversation());
-        JButton restartServerBtn = UIUtils.createToolbarButton("restart.svg", "Reconnect", e -> promptRestartServer());
+        JButton restartServerBtn = UIUtils.createToolbarButton("restart.svg", "Restart ACP server", e -> promptRestartServer());
 
         JButton tb = UIUtils.createToolbarButton("expand.svg", "Expand All Blocks", null);
         tb.addActionListener(e -> {
@@ -956,8 +956,8 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
     private void promptRestartServer() {
         int choice = javax.swing.JOptionPane.showConfirmDialog(this,
-                "Are you sure you want to reconnect to the ACP server?\nThis will terminate current operations and relaunch the connection.",
-                "Reconnect",
+                "Are you sure you want to restart ACP server ?\nThis will terminate current operations and relaunch the connection.",
+                "Restart ACP server",
                 javax.swing.JOptionPane.YES_NO_OPTION,
                 javax.swing.JOptionPane.WARNING_MESSAGE);
 

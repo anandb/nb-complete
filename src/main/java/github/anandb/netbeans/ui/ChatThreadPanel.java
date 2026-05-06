@@ -6,10 +6,15 @@ import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.GridLayout;
 import java.awt.KeyEventDispatcher;
 import java.awt.KeyboardFocusManager;
 import java.awt.Rectangle;
+import java.awt.RenderingHints;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.awt.event.ContainerAdapter;
 import java.awt.event.ContainerEvent;
 import java.awt.event.KeyEvent;
@@ -24,6 +29,7 @@ import javax.swing.BoxLayout;
 import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.JLabel;
+import javax.swing.JLayeredPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollBar;
 import javax.swing.JScrollPane;
@@ -53,6 +59,8 @@ public class ChatThreadPanel extends JPanel {
 
     private final JPanel messagesContainer;
     private final JScrollPane scrollPane;
+    private final JLayeredPane layeredPane;
+    private final JButton scrollDownBtn;
     private final Timer scrollTimer;
     private final Timer streamFlushTimer;
 
@@ -76,6 +84,7 @@ public class ChatThreadPanel extends JPanel {
         messagesContainer.setBorder(new javax.swing.border.EmptyBorder(0, 0, 40, 0));
 
         scrollPane = new JScrollPane(messagesContainer);
+
         // Sunken feel border
         Color shadow = theme.isDark() ? Color.BLACK : (theme.bubbleBorder() != null ? theme.bubbleBorder() : Color.LIGHT_GRAY);
         scrollPane.setBorder(BorderFactory.createCompoundBorder(
@@ -107,7 +116,54 @@ public class ChatThreadPanel extends JPanel {
             }
         });
 
-        add(scrollPane, BorderLayout.CENTER);
+        layeredPane = new JLayeredPane();
+        add(layeredPane, BorderLayout.CENTER);
+
+        scrollDownBtn = new JButton(ThemeManager.getIcon("scroll-down.svg", 24)) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(new Color(41, 98, 255, 200));
+                g2.fillOval(2, 2, getWidth() - 5, getHeight() - 5);
+                g2.setColor(new Color(41, 98, 255, 240));
+                g2.fillOval(3, 3, getWidth() - 7, getHeight() - 7);
+                g2.dispose();
+                super.paintComponent(g);
+            }
+        };
+        scrollDownBtn.setOpaque(false);
+        scrollDownBtn.setContentAreaFilled(false);
+        scrollDownBtn.setBorderPainted(false);
+        scrollDownBtn.setFocusPainted(false);
+        scrollDownBtn.setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
+        scrollDownBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        scrollDownBtn.setToolTipText("Scroll to bottom");
+        scrollDownBtn.setVisible(false);
+        scrollDownBtn.addActionListener(e -> {
+            scrollToBottom(true);
+            scrollDownBtn.setVisible(false);
+        });
+
+        layeredPane.add(scrollPane, JLayeredPane.DEFAULT_LAYER);
+        layeredPane.add(scrollDownBtn, JLayeredPane.PALETTE_LAYER);
+
+        addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent e) {
+                int w = getWidth();
+                int h = getHeight();
+                layeredPane.setBounds(0, 0, w, h);
+                scrollPane.setBounds(0, 0, w, h);
+                positionScrollDownBtn();
+            }
+        });
+
+        scrollPane.getVerticalScrollBar().addAdjustmentListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                updateScrollDownBtnVisibility();
+            }
+        });
 
         streamFlushTimer = new javax.swing.Timer(100, e -> {
             if (!isShowing()) {
@@ -422,6 +478,21 @@ public class ChatThreadPanel extends JPanel {
         return (value + extent >= maximum - 20);
     }
 
+    private void positionScrollDownBtn() {
+        int btnSize = 36;
+        int margin = 12;
+        scrollDownBtn.setBounds(
+            getWidth() - btnSize - margin,
+            getHeight() - btnSize - 37,
+            btnSize,
+            btnSize
+        );
+    }
+
+    private void updateScrollDownBtnVisibility() {
+        scrollDownBtn.setVisible(!isAtBottom());
+    }
+
     public void scrollByBlock(boolean pageUp) {
         JScrollBar vertical = scrollPane.getVerticalScrollBar();
         if (pageUp) {
@@ -447,6 +518,7 @@ public class ChatThreadPanel extends JPanel {
 
             JScrollBar vertical = scrollPane.getVerticalScrollBar();
             vertical.setValue(vertical.getMaximum());
+            scrollDownBtn.setVisible(false);
 
             if (scrollTimer.isRunning()) {
                 scrollTimer.restart();

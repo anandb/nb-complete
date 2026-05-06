@@ -1,6 +1,6 @@
 # Coding Assistant
 
-[![Version](https://img.shields.io/badge/version-1.5.11-blue.svg)](pom.xml)
+[![Version](https://img.shields.io/badge/version-1.5.12-blue.svg)](pom.xml)
 [![Build Status](https://img.shields.io/badge/build-success-brightgreen.svg)](https://github.com/anandb/nb-complete)
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.anandb/beanbot)](https://central.sonatype.com/artifact/io.github.anandb/beanbot/versions)
 [![NetBeans](https://img.shields.io/badge/NetBeans-RELEASE290-orange.svg)](https://netbeans.apache.org/download/index.html)
@@ -14,13 +14,9 @@ The Coding Assistant is a NetBeans IDE plugin designed to provide integrated AI 
 
 ---
 
-## Quickstart
+## Getting Started
 
-1. **Opencode**: This is a prerequisite, install [OpenCode](https://opencode.ai/), connect and configure providers.
-2. **Installation**: Download the NBM file from [Maven Central](https://central.sonatype.com/artifact/io.github.anandb/beanbot/versions) and add it via `Tools > Plugins > Downloaded`.
-3. **Access**: Open the assistant interface through `Window > Assistant`.
-4. **Configuration**: The plugin attempts to locate the OpenCode binary automatically from the system path. But it can also be set manually `Options > Assistant`.
-5. **Environment**: A global system prompt can be defined in the options to maintain consistent context across sessions. `Options > Assistant > Preamble`.
+Refer the [QuickStart document](QUICKSTART.md)
 
 ## Core Capabilities
 
@@ -56,16 +52,18 @@ The Coding Assistant is a NetBeans IDE plugin designed to provide integrated AI 
 - **Java Development Kit**: JDK 17 or later.
 - **Backend Service**: Opencode (Ideally, any ACP-compliant backend service)
 
-### Compatibility
+### Test configuration:
 
-Current test configuration:
+Due to time constraints, the testing is currently limited to this configuration or slight variations of it,
+the plugin will still work on other versions of Netbeans and Opencode but your experience might be different.
 
 | Component | Details |
 | --- | --- |
+| **OS** | openSUSE Tumbleweed-Slowroll |
 | **NetBeans** | 29 |
-| **Opencode** | 1.14.24 |
+| **Opencode** | 1.14.39 |
 | **Opencode plugins** | `@franzmoca/opencode-lombok`, `@tarquinen/opencode-dcp@latest`, `@opencode/mcp-git` |
-| **NBM Version** | ≥ v1.4.91 |
+| **This Plugin Version** | ≥ v1.5.12 |
 | **LLMs** | Big Pickle; GPT 5.4-mini, GPT 5.4-nano; DeepSeek V4 Pro, DeepSeek V4 Flash; Kimi K2.5, Kimi K2.6 |
 
 Qwen models currently seem to have some trouble with tool calling; this is still being investigated.
