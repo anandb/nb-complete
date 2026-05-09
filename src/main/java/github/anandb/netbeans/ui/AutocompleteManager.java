@@ -1,6 +1,7 @@
 package github.anandb.netbeans.ui;
 
 import java.awt.Dimension;
+import java.awt.Rectangle;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -150,7 +151,8 @@ public class AutocompleteManager {
         int visibleHeight = viewport.getExtentSize().height;
         int rowHeight = commandList.getFixedCellHeight();
         if (rowHeight <= 0) {
-            rowHeight = commandList.getCellBounds(0, 0).height;
+            Rectangle bounds = commandList.getCellBounds(0, 0);
+            rowHeight = bounds != null ? bounds.height : 22;
         }
         return rowHeight > 0 ? visibleHeight / rowHeight : 1;
     }

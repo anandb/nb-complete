@@ -49,7 +49,7 @@ public class SlashCommandInterceptor {
 
         CommandInfo info = commands.get(command);
         if (info != null) {
-            LOG.info("Intercepted local command: " + command);
+            LOG.info("Intercepted local command: {0}", command);
             return info.handler().handle(args, context);
         }
 

@@ -266,7 +266,7 @@ public class AcpProtocolClient implements Closeable {
             handler.handle(params)
                     .thenAccept(result -> sendResponse(id, result))
                     .exceptionally(ex -> {
-                        LOG.severe("Error handling request " + method + " (" + id + ")", ex);
+                        LOG.severe("Error handling request {0} ({1})", method, id, ex);
                         sendError(id, -32603, ex.getMessage());
                         return null;
                     });

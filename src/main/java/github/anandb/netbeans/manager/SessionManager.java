@@ -1,5 +1,6 @@
 package github.anandb.netbeans.manager;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.model.SessionConfigOption;
 import github.anandb.netbeans.project.ACPProjectManager;
@@ -219,13 +220,15 @@ public class SessionManager {
     private void sendPreamble(String sessionId) {
         String preamble = PluginSettings.getPreamble().trim();
         if (!preamble.isEmpty()) {
-            ProcessManager.getInstance().sendMessage(sessionId, preamble, null)
-                    .exceptionally(ex -> {
-                        Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
-                        LOG.warn("Failed to send preamble: {0}", cause.getMessage());
-                        notifyError("Connection lost while sending preamble: " + cause.getMessage());
-                        return null;
-                    });
+            CompletableFuture<JsonNode> future = ProcessManager.getInstance().sendMessage(sessionId, preamble, null);
+            if (future != null) {
+                future.exceptionally(ex -> {
+                    Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
+                    LOG.warn("Failed to send preamble: {0}", cause.getMessage());
+                    notifyError("Connection lost while sending preamble: " + cause.getMessage());
+                    return null;
+                });
+            }
         }
     }
 

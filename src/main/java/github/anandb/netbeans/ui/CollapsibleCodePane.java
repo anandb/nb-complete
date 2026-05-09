@@ -33,8 +33,7 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
         if (theme != null) {
             return theme;
         }
-        try {
-            InputStream in = CollapsibleCodePane.class.getResourceAsStream("/org/fife/ui/rsyntaxtextarea/themes/dark.xml");
+        try (InputStream in = CollapsibleCodePane.class.getResourceAsStream("/org/fife/ui/rsyntaxtextarea/themes/dark.xml")) {
             if (in != null) {
                 theme = Theme.load(in);
                 cachedRTheme = theme;

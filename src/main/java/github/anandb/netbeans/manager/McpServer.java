@@ -17,11 +17,11 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.logging.Level;
-import java.util.logging.Logger;
+import github.anandb.netbeans.support.Logger;
 
 public class McpServer {
 
-    private static final Logger LOG = Logger.getLogger(McpServer.class.getName());
+    private static final Logger LOG = new Logger(McpServer.class);
     private static final int PORT = 8765;
 
     private final ObjectMapper mapper = new ObjectMapper();
@@ -41,7 +41,7 @@ public class McpServer {
             return t;
         }));
         server.start();
-        LOG.info("MCP weather server started on port " + PORT);
+        LOG.info("MCP weather server started on port {0}", PORT);
     }
 
     public synchronized void stop() {
@@ -91,12 +91,13 @@ public class McpServer {
         exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
         exchange.getResponseHeaders().add("Content-Type", "application/json");
         try {
-            BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(exchange.getRequestBody(), StandardCharsets.UTF_8));
             StringBuilder body = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) {
-                body.append(line);
+            try (BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(exchange.getRequestBody(), StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    body.append(line);
+                }
             }
             JsonNode request = mapper.readTree(body.toString());
             String method = request.get("method").asText();
