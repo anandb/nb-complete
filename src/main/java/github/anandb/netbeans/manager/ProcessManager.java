@@ -886,15 +886,34 @@ public class ProcessManager {
                 String content = params.has("content") ? params.get("content").asText() : "";
                 java.io.File file = new java.io.File(filePath);
 
-                // Ensure parent directories exist
                 java.io.File parent = file.getParentFile();
                 if (parent != null && !parent.exists()) {
                     parent.mkdirs();
                 }
 
-                java.nio.file.Files.writeString(file.toPath(), content, java.nio.charset.StandardCharsets.UTF_8);
+                byte[] data = content.getBytes(java.nio.charset.StandardCharsets.UTF_8);
 
-                // Refresh NetBeans filesystem to see the change
+                // Write through NetBeans filesystem to trigger local history
+                try {
+                    FileObject fo;
+                    if (file.exists()) {
+                        fo = FileUtil.toFileObject(file);
+                    } else {
+                        fo = FileUtil.createData(file);
+                    }
+                    if (fo != null) {
+                        try (java.io.OutputStream os = fo.getOutputStream(fo.lock())) {
+                            os.write(data);
+                        }
+                        return objectMapper.createObjectNode().put("success", true);
+                    }
+                } catch (Exception fsEx) {
+                    LOG.log(Level.WARNING, "NetBeans VFS write failed, falling back to java.nio: {0}",
+                            fsEx.getMessage());
+                }
+
+                // Fallback
+                java.nio.file.Files.write(file.toPath(), data);
                 FileObject fo = FileUtil.toFileObject(file);
                 if (fo != null) {
                     fo.refresh();

@@ -1,23 +1,39 @@
 package github.anandb.netbeans.ui;
 
 import java.awt.Color;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import javax.swing.UIManager;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import github.anandb.netbeans.support.MapperSupplier;
 
 /**
  * Centralized color definitions for the ACP NetBeans plugin.
  * Cached singleton refreshed on L&F changes.
  */
 public record ColorTheme(
-    boolean isDark,
-    Color background, Color foreground, Color selection, Color accent,
-    Color ghostBackground, Color sunkenBackground, Color bubbleUser,
-    Color bubbleAssistant, Color bubbleBorder, Color assistantForeground,
-    Color panelHeader, Color panelHeaderHover, Color base1, Color base2, Color base3,
-    Color yellow, Color codeBackground, Color codeForeground, Color codeSelection,
-    Color headerForeground, Color errorBackground, Color codeHeaderBackground,
-    Color codeHeaderForeground, Color codeHeaderBorder, Color thinkingHeaderBackground, Color thinkingHeaderForeground,
-    Color toolForeground, Color permissionBg, Color permissionBorder, Color permissionTitle,
-    Color tableBackground, Color tableHeaderBackground, Color tableBorder
+        boolean isDark,
+        Color background, Color foreground, Color selection, Color accent,
+        Color ghostBackground, Color sunkenBackground, Color bubbleUser,
+        Color bubbleAssistant, Color bubbleBorder, Color assistantForeground,
+        Color panelHeader, Color panelHeaderHover, Color base1, Color base2, Color base3,
+        Color yellow, Color codeBackground, Color codeForeground, Color codeSelection,
+        Color headerForeground, Color errorBackground, Color codeHeaderBackground,
+        Color codeHeaderForeground, Color codeHeaderBorder, Color thinkingHeaderBackground,
+        Color thinkingHeaderForeground,
+        Color toolForeground, Color permissionBg, Color permissionBorder, Color permissionTitle,
+        Color tableBackground, Color tableHeaderBackground, Color tableBorder
 ) {
 
     private static volatile ColorTheme cachedTheme;
@@ -36,90 +52,144 @@ public record ColorTheme(
     }
 
     private static ColorTheme createNativeTheme(boolean darkMode) {
-        String userBgProp = System.getProperty("netbeans.beanbot.bubble.user.bg");
-        if (userBgProp != null && !userBgProp.isBlank()) {
-            try {
-                return createNativeTheme(darkMode, Color.decode(userBgProp));
-            } catch (NumberFormatException e) {
-                // fall through to default
-            }
-        }
-        return createNativeTheme(darkMode, null);
-    }
-
-    private static ColorTheme createNativeTheme(boolean darkMode, Color overrideBubbleUser) {
-        Color bubbleUser;
-        if (overrideBubbleUser != null) {
-            bubbleUser = overrideBubbleUser;
-        } else if (darkMode) {
-            bubbleUser = UIManager.getColor("Search.background");
-            if (bubbleUser == null) {
-                bubbleUser = UIManager.getColor("Editor.searchBackground");
-            }
-            if (bubbleUser == null) {
-                bubbleUser = UIManager.getColor("EditorPane.background");
-            }
-            if (bubbleUser == null) {
-                bubbleUser = Color.decode("#2d2d2d");
-            }
-        } else {
-            bubbleUser = Color.decode("#E8F0FE");
-        }
-
+        List<Color> colors = resolveColors(darkMode);
         return new ColorTheme(
-                darkMode, UIManager.getColor("Panel.background"),
-                UIManager.getColor("Panel.foreground"), UIManager.getColor("TextArea.selectionBackground"),
-                UIManager.getColor("Button.focusColor"), UIManager.getColor("Label.background"),
-                UIManager.getColor("Editor.background"), bubbleUser,
-                null, UIManager.getColor("Button.borderColor"),
-                UIManager.getColor("TextArea.foreground"), UIManager.getColor("Panel.background"),
-                UIManager.getColor("Button.background"), UIManager.getColor("Label.foreground"),
-                UIManager.getColor("controlShadow"), UIManager.getColor("control"),
-                UIManager.getColor("ComboBox.selectionBackground"),
-                UIManager.getColor("Terminal.background") != null ? UIManager.getColor("Terminal.background") : Color.decode("#1e1f22"),
-                UIManager.getColor("Terminal.foreground") != null ? UIManager.getColor("Terminal.foreground") : Color.decode("#bcbec4"),
-                Color.decode("#353739"),
-                UIManager.getColor("Label.foreground"),
-                darkMode ? Color.decode("#401010") : Color.decode("#FFEBEE"),
-                UIManager.getColor("TableHeader.background"), UIManager.getColor("TableHeader.foreground"),
-                darkMode ? Color.decode("#AAAAAA") : Color.decode("#333333"),
-                darkMode ? UIManager.getColor("Panel.background") : Color.decode("#fdf6e3"),
-                UIManager.getColor("Label.foreground"),
-                darkMode ? Color.decode("#9CA3AF") : Color.decode("#777777"),
-                UIManager.getColor("OptionPane.background"),
-                UIManager.getColor("Button.focusColor"),
-                UIManager.getColor("OptionPane.messageForeground"),
-                darkMode ? Color.decode("#2d2d2d") : Color.decode("#fdf6e3"),
-                darkMode ? Color.decode("#383838") : Color.decode("#eee8d5"),
-                darkMode ? Color.decode("#454545") : Color.decode("#e8e0c8")
+                darkMode,
+                colors.get(0), colors.get(1), colors.get(2), colors.get(3),
+                colors.get(4), colors.get(5), colors.get(6),
+                colors.get(7), colors.get(8), colors.get(9),
+                colors.get(10), colors.get(11), colors.get(12), colors.get(13), colors.get(14),
+                colors.get(15), colors.get(16), colors.get(17), colors.get(18),
+                colors.get(19), colors.get(20), colors.get(21),
+                colors.get(22), colors.get(23), colors.get(24),
+                colors.get(25),
+                colors.get(26), colors.get(27), colors.get(28), colors.get(29),
+                colors.get(30), colors.get(31), colors.get(32)
         );
     }
 
-    public String getMonoStack() {
-        return "'MesloLGS NF', 'Source Code Pro', 'JetBrains Mono', Monaco, 'Fira Code', monospace";
+    private static List<Color> resolveColors(boolean darkMode) {
+        JsonNode config = loadColorConfig();
+        List<Color> colors = new ArrayList<>();
+        for (JsonNode entry : config) {
+            String propName = entry.has("property") ? entry.get("property").asText() : null;
+            Color fromProp = resolveFromProperty(propName);
+            if (fromProp != null) {
+                colors.add(fromProp);
+                continue;
+            }
+            Color fromKey = resolveFromKey(entry, darkMode);
+            if (fromKey != null) {
+                colors.add(fromKey);
+                continue;
+            }
+            Color fallback = resolveFallback(entry, darkMode);
+            colors.add(fallback);
+        }
+        return colors;
+    }
+
+    private static Color resolveFromProperty(String propName) {
+        if (propName == null) return null;
+        String value = System.getProperty(propName);
+        if (value != null && !value.isBlank()) {
+            try {
+                return Color.decode(value);
+            } catch (NumberFormatException e) {
+                // fall through
+            }
+        }
+        return null;
+    }
+
+    private static Color resolveFromKey(JsonNode entry, boolean darkMode) {
+        String key = entry.has("key") ? entry.get("key").asText() : null;
+        String keyDark = entry.has("keyDark") ? entry.get("keyDark").asText() : null;
+        String keyLight = entry.has("keyLight") ? entry.get("keyLight").asText() : null;
+        String effectiveKey = null;
+        if (darkMode && keyDark != null) {
+            effectiveKey = keyDark;
+        } else if (!darkMode && keyLight != null) {
+            effectiveKey = keyLight;
+        } else if (key != null) {
+            effectiveKey = key;
+        }
+        if (effectiveKey == null) return null;
+        return UIManager.getColor(effectiveKey);
+    }
+
+    private static Color resolveFallback(JsonNode entry, boolean darkMode) {
+        if (darkMode && entry.has("dark")) {
+            return Color.decode(entry.get("dark").asText());
+        }
+        if (!darkMode && entry.has("light")) {
+            return Color.decode(entry.get("light").asText());
+        }
+        if (entry.has("fallback")) {
+            return Color.decode(entry.get("fallback").asText());
+        }
+        return null;
+    }
+
+    private static JsonNode loadColorConfig() {
+        ObjectMapper mapper = MapperSupplier.get();
+        try (InputStream in = ColorTheme.class.getResourceAsStream("colors.json")) {
+            if (in == null) {
+                throw new IllegalStateException("colors.json not found");
+            }
+            return mapper.readTree(in);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to load colors.json", e);
+        }
     }
 
     public String toCss(Color bubbleBg, boolean isAssistant) {
         String fg = toHtmlHex(isAssistant ? assistantForeground() : foreground());
         String bg = bubbleBg != null ? toHtmlHex(bubbleBg) : "transparent";
         String linkColor = isDark() ? "#589DF6" : "#268BD2";
-
-        // Markdown inline code and blocks are now forced to Dark mode as well
         String codeBg = "rgba(255, 255, 255, 0.1)";
         String preBg = codeBackground() != null ? toHtmlHex(codeBackground()) : "#1e1f22";
         String preFg = codeForeground() != null ? toHtmlHex(codeForeground()) : "#bcbec4";
-        String fontStack = "Dialog, 'Noto Sans', 'Segoe UI', 'Ubuntu', 'Helvetica Neue', Arial, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', sans-serif";
-        String monoStack = getMonoStack();
 
-        return "html, body { font-family: " + fontStack + "; font-size: 13px; color: " + fg + "; background-color: " + bg + "; margin: 0; padding: 0; line-height: 1.4; text-align: left !important; width: 100% !important; }" +
-               "code { background-color: " + codeBg + "; padding: 2px 4px; border-radius: 3px; font-family: " + monoStack + "; font-size: 12px; }" +
-               "pre { background-color: " + preBg + "; color: " + preFg + "; padding: 10px; border-radius: 4px; font-family: " + monoStack + "; font-size: 13px; overflow-x: auto; margin: 6px 0; text-align: left !important; width: 100% !important; }" +
-                 "p, div, h1, h2, h3, h4, h5, h6 { margin: 2px 0; text-align: left !important; width: 100% !important; }" +
-                 "ul, ol { padding-left: 20px; margin: 4px 0; text-align: left !important; }" +
-                 "li { margin: 2px 0; text-align: left !important; }" +
-                 "table { width: 100% !important; border-collapse: collapse; text-align: left !important; }" +
-                 "a { color: " + linkColor + "; text-decoration: none; font-weight: 500; } " +
-                 "a:hover { text-decoration: underline; }";
+        Map<String, String> vars = new HashMap<>();
+        vars.put("fontStack", FontStacks.FONT_STACK);
+        vars.put("fg", fg);
+        vars.put("bg", bg);
+        vars.put("linkColor", linkColor);
+        vars.put("codeBg", codeBg);
+        vars.put("monoStack", FontStacks.MONO_STACK);
+        vars.put("preBg", preBg);
+        vars.put("preFg", preFg);
+
+        Matcher m = CSS_VAR_PATTERN.matcher(loadCssTemplate());
+        StringBuilder sb = new StringBuilder();
+        while (m.find()) {
+            String replacement = vars.getOrDefault(m.group(1), m.group());
+            m.appendReplacement(sb, Matcher.quoteReplacement(replacement));
+        }
+        m.appendTail(sb);
+        return sb.toString();
+    }
+
+    private static final Pattern CSS_VAR_PATTERN = Pattern.compile("\\$(\\w+)");
+
+    private static volatile String cachedCssTemplate;
+
+    private static String loadCssTemplate() {
+        String template = cachedCssTemplate;
+        if (template != null) {
+            return template;
+        }
+        try (InputStream in = ColorTheme.class.getResourceAsStream("chat-style.css")) {
+            if (in == null) {
+                throw new IllegalStateException("chat-style.css not found");
+            }
+            template = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+            cachedCssTemplate = template;
+            return template;
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to load chat-style.css", e);
+        }
     }
 
     public String toHtmlHex(Color color) {

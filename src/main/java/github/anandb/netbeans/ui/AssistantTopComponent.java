@@ -55,6 +55,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 
 import java.awt.KeyEventDispatcher;
 
+import javax.swing.JOptionPane;
 import javax.swing.Timer;
 
 import github.anandb.netbeans.manager.ProcessManager;
@@ -118,6 +119,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     private JLabel statusLabel;
     private final JLabel versionLabel;
     private final JLabel cwdLabel;
+
     private final JScrollPane inputScrollPane;
     private final JPanel header;
     private final ArrayList<String> messageHistory = new ArrayList<>();
@@ -174,6 +176,16 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                     java.awt.Component src = e.getComponent();
                     if (src != null && javax.swing.SwingUtilities.isDescendingFrom(src, AssistantTopComponent.this)
                             && !javax.swing.SwingUtilities.isDescendingFrom(src, chatPanel)) {
+                        if (keyCode == java.awt.event.KeyEvent.VK_PAGE_UP
+                                || keyCode == java.awt.event.KeyEvent.VK_PAGE_DOWN) {
+                            java.awt.Component c = src;
+                            while (c != null) {
+                                if (c instanceof JComboBox) {
+                                    return false;
+                                }
+                                c = c.getParent();
+                            }
+                        }
                         if (keyCode == java.awt.event.KeyEvent.VK_PAGE_UP) {
                             chatPanel.scrollByBlock(true);
                         } else if (keyCode == java.awt.event.KeyEvent.VK_PAGE_DOWN) {
@@ -200,25 +212,58 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         topBar.setOpaque(false);
 
         sessionDropdown = new JComboBox<>();
-        sessionDropdown.addActionListener(e -> {
-            if (isSwitchingSessionDropdown) {
-                return;
+        sessionDropdown.addPopupMenuListener(new javax.swing.event.PopupMenuListener() {
+            private String prePopupSessionId;
+
+            @Override
+            public void popupMenuWillBecomeVisible(javax.swing.event.PopupMenuEvent e) {
+                SessionItem selected = (SessionItem) sessionDropdown.getSelectedItem();
+                prePopupSessionId = selected != null ? selected.getSession().id() : null;
             }
-            SessionItem selected = (SessionItem) sessionDropdown.getSelectedItem();
-            if (selected != null) {
-                SessionManager.getInstance().loadSession(selected.getSession().id());
+            @Override
+            public void popupMenuWillBecomeInvisible(javax.swing.event.PopupMenuEvent e) {
+                SessionItem selected = (SessionItem) sessionDropdown.getSelectedItem();
+                String currentId = selected != null ? selected.getSession().id() : null;
+                if (currentId != null && !currentId.equals(prePopupSessionId)) {
+                    SessionManager.getInstance().loadSession(currentId);
+                }
+                inputArea.requestFocusInWindow();
+            }
+            @Override
+            public void popupMenuCanceled(javax.swing.event.PopupMenuEvent e) {
+                inputArea.requestFocusInWindow();
+            }
+        });
+        sessionDropdown.addPopupMenuListener(new javax.swing.event.PopupMenuListener() {
+            @Override
+            public void popupMenuWillBecomeVisible(javax.swing.event.PopupMenuEvent e) {}
+            @Override
+            public void popupMenuWillBecomeInvisible(javax.swing.event.PopupMenuEvent e) {
+                SwingUtilities.invokeLater(() -> inputArea.requestFocusInWindow());
+            }
+            @Override
+            public void popupMenuCanceled(javax.swing.event.PopupMenuEvent e) {
+                SwingUtilities.invokeLater(() -> inputArea.requestFocusInWindow());
             }
         });
 
         JPanel sessionControls = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         sessionControls.setOpaque(false);
 
-        newSessionBtn = UIUtils.createToolbarButton("new.svg", "New Session", e -> SessionManager.getInstance().createNewSession(null));
+        newSessionBtn = UIUtils.createToolbarButton("new.svg", "New Session", e -> {
+                SessionManager.getInstance().createNewSession(null);
+        });
         renameSessionBtn = UIUtils.createToolbarButton("rename.svg", "Rename Session", e -> renameCurrentSession());
-        JButton refreshBtn = UIUtils.createToolbarButton("reload.svg", "Reload Conversation", e -> reloadCurrentSession());
+        JButton refreshBtn = UIUtils.createToolbarButton("reload.svg", "Reload Conversation", e -> {
+            reloadCurrentSession();
+        });
 
-        JButton exportBtn = UIUtils.createToolbarButton("export.svg", "Export Conversation", e -> exportConversation());
-        JButton restartServerBtn = UIUtils.createToolbarButton("restart.svg", "Restart ACP server", e -> promptRestartServer());
+        JButton exportBtn = UIUtils.createToolbarButton("export.svg", "Export Conversation", e -> {
+            exportConversation();
+        });
+        JButton restartServerBtn = UIUtils.createToolbarButton("restart.svg", "Restart ACP server", e -> {
+            promptRestartServer();
+        });
 
         JButton tb = UIUtils.createToolbarButton("expand.svg", "Expand All Blocks", null);
         tb.addActionListener(e -> {
@@ -248,9 +293,15 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         cwdLabel = new JLabel("");
         cwdLabel.setFont(cwdLabel.getFont().deriveFont(Font.BOLD));
 
+
+
         JPanel headerContent = new JPanel(new BorderLayout(0, 4));
         headerContent.setOpaque(false);
-        headerContent.add(cwdLabel, BorderLayout.NORTH);
+
+        JPanel cwdRow = new JPanel(new BorderLayout(4, 0));
+        cwdRow.setOpaque(false);
+        cwdRow.add(cwdLabel, BorderLayout.CENTER);
+        headerContent.add(cwdRow, BorderLayout.NORTH);
         headerContent.add(topBar, BorderLayout.SOUTH);
 
         header.add(headerContent, BorderLayout.CENTER);
@@ -426,7 +477,9 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                         sendMessage();
                     }
                 } else if (e.getKeyCode() == KeyEvent.VK_UP) {
-                    if (inputArea.getCaretPosition() == 0 && !messageHistory.isEmpty()) {
+                    if (autocompleteManager.isPopupVisible()) {
+                        e.consume();
+                    } else if (inputArea.getCaretPosition() == 0 && !messageHistory.isEmpty()) {
                         if (historyIndex == -1) {
                             currentDraft = inputArea.getText();
                             historyIndex = messageHistory.size() - 1;
@@ -436,7 +489,9 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                         inputArea.setText(messageHistory.get(historyIndex));
                     }
                 } else if (e.getKeyCode() == KeyEvent.VK_DOWN) {
-                    if (inputArea.getCaretPosition() == inputArea.getText().length() && historyIndex != -1) {
+                    if (autocompleteManager.isPopupVisible()) {
+                        e.consume();
+                    } else if (inputArea.getCaretPosition() == inputArea.getText().length() && historyIndex != -1) {
                         if (historyIndex < messageHistory.size() - 1) {
                             historyIndex++;
                             inputArea.setText(messageHistory.get(historyIndex));
@@ -513,8 +568,9 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     }
 
     @Override
-    public void onSessionListUpdated(List<Session> sessions) {
+    public void onSessionListUpdated(List<Session> allSessions) {
         SwingUtilities.invokeLater(() -> {
+            List<Session> sessions = allSessions;
             isSwitchingSessionDropdown = true;
             try {
                 String currentId = SessionManager.getInstance().getCurrentSessionId();
@@ -540,9 +596,12 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                 if (hasSessions) {
                     if (selectIdx != -1) {
                         sessionDropdown.setSelectedIndex(selectIdx);
+                        Session cur = sessions.get(selectIdx);
+                        if (cur != null) {
+                            LOG.fine("Re-loading current session: {0}", cur.id());
+                            SessionManager.getInstance().loadSession(cur.id());
+                        }
                     } else {
-                        // If no current session exists, load the most recent one (index 0)
-                        // Sessions are sorted by timestamp descending, so index 0 is most recent
                         Session mostRecent = sessions.get(0);
                         if (mostRecent != null) {
                             LOG.fine("Loading most recent session: {0}", mostRecent.id());
@@ -599,7 +658,9 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             }
 
             setInputEnabled(true);
-            inputArea.requestFocusInWindow();
+            if (!sessionDropdown.isPopupVisible()) {
+                inputArea.requestFocusInWindow();
+            }
             chatPanel.scrollToBottom();
         });
     }
@@ -689,11 +750,15 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                     for (Map<String, Object> block : fileBlocks) {
                         String type = (String) block.get("type");
                         String fname = (String) block.get("filename");
-                        echoBuilder.append("\n[").append("image".equals(type) ? "Image" : "File").append(": ").append(fname).append("]");
+                        echoBuilder.append("\n[")
+                                .append("image".equals(type) ? "Image" : "File").append(": ")
+                                .append(fname).append("]");
                     }
                 }
 
-                chatPanel.addMessage(new ProcessedMessage(MessageType.user_message_chunk, echoBuilder.toString(), null, null));
+                chatPanel.addMessage(new ProcessedMessage(
+                    MessageType.user_message_chunk, echoBuilder.toString(), null, null
+                ));
             }
         }
 
@@ -720,7 +785,9 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                     SwingUtilities.invokeLater(() -> {
                         statusLabel.setText("Error: " + ex.getMessage());
                         chatPanel.stopStreaming();
-                        chatPanel.addMessage(ProcessedMessage.createError(MessageType.error_response, "Error: " + ex.getMessage(), null, null));
+                        chatPanel.addMessage(ProcessedMessage.createError(
+                                MessageType.error_response, "Error: " + ex.getMessage(), null, null
+                        ));
                         inputArea.setText(text);
                         updateButtonState(false);
                         inputArea.requestFocusInWindow();
@@ -819,7 +886,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         }
 
         String currentTitle = selectedIdToTitle(selectedItem.getSession());
-        String newTitle = javax.swing.JOptionPane.showInputDialog(this, "Enter new title for this session:", currentTitle);
+        String newTitle = JOptionPane.showInputDialog(this, "Enter new title for this session:", currentTitle);
 
         if (newTitle != null && !newTitle.trim().isEmpty()) {
             SessionManager.getInstance().renameSession(currentId, newTitle.trim());
@@ -956,7 +1023,8 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
     private void promptRestartServer() {
         int choice = javax.swing.JOptionPane.showConfirmDialog(this,
-                "Are you sure you want to restart ACP server ?\nThis will terminate current operations and relaunch the connection.",
+                "Are you sure you want to restart ACP server ?\n" +
+                "This will terminate current operations and relaunch the connection.",
                 "Restart ACP server",
                 javax.swing.JOptionPane.YES_NO_OPTION,
                 javax.swing.JOptionPane.WARNING_MESSAGE);
@@ -990,7 +1058,9 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                 String msg = ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName();
                 statusLabel.setText("Restart failed: " + msg);
                 chatPanel.stopStreaming();
-                chatPanel.addMessage(ProcessedMessage.createError(MessageType.error_response, "Restart failed: " + msg, null, null));
+                chatPanel.addMessage(ProcessedMessage.createError(
+                    MessageType.error_response, "Restart failed: " + msg, null, null
+                ));
                 setInputEnabled(true);
             });
             return null;
@@ -1095,11 +1165,20 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             LOG.severe("Failed to ensure server is started", ex);
             String msg = ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName();
             chatPanel.stopStreaming();
-            chatPanel.addMessage(ProcessedMessage.createError(MessageType.error_response, "Failed to start: " + msg, null, null));
+            chatPanel.addMessage(ProcessedMessage.createError(
+                MessageType.error_response, "Failed to start: " + msg, null, null
+            ));
         }
 
         ProcessManager.getInstance().setPermissionHandler(this);
         ProcessManager.getInstance().getSlashCommandInterceptor().setCallback(new SlashCommandCallback() {
+            {
+                Runnable returnFocus = () -> inputArea.requestFocusInWindow();
+                configPanelController.setOnModelSelectedCallback(returnFocus);
+                configPanelController.setOnModeSelectedCallback(returnFocus);
+                configPanelController.setOnThinkingSelectedCallback(returnFocus);
+            }
+
             @Override
             public void expandOptionsPanel() {
                 if (optionsPanelCollapsed) {
@@ -1119,6 +1198,19 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             @Override
             public void popupAgentCombo() {
                 configPanelController.popupModeCombo();
+            }
+
+            @Override
+            public void popupThinkingCombo() {
+                configPanelController.popupThinkingCombo();
+            }
+
+            @Override
+            public void popupSessionCombo() {
+                SwingUtilities.invokeLater(() -> {
+                    sessionDropdown.requestFocusInWindow();
+                    SwingUtilities.invokeLater(() -> sessionDropdown.setPopupVisible(true));
+                });
             }
         });
 
@@ -1238,7 +1330,9 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         inputArea.setForeground(theme.foreground());
         inputArea.setCaretColor(theme.foreground());
 
-        inputScrollPane.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, theme.bubbleBorder() != null ? theme.bubbleBorder() : Color.LIGHT_GRAY));
+        inputScrollPane.setBorder(BorderFactory.createMatteBorder(
+            1, 0, 0, 0, theme.bubbleBorder() != null ? theme.bubbleBorder() : Color.LIGHT_GRAY
+        ));
 
         revalidate();
         repaint();

@@ -12,6 +12,7 @@ import javax.swing.DefaultListModel;
 import javax.swing.JList;
 import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
+import javax.swing.JViewport;
 import javax.swing.ListSelectionModel;
 import javax.swing.UIManager;
 
@@ -24,11 +25,13 @@ import github.anandb.netbeans.support.Logger;
 public class AutocompleteManager {
 
     private static final Logger LOG = new Logger(AutocompleteManager.class);
+    private String lastPrefix;
 
     private final PlaceholderTextArea inputArea;
     private final Runnable sendMessageAction;
     private final JPopupMenu autocompletePopup;
     private final JList<SessionUpdate.AvailableCommand> commandList;
+    private final JViewport viewport;
 
     public AutocompleteManager(PlaceholderTextArea inputArea, Runnable sendMessageAction) {
         this.inputArea = inputArea;
@@ -45,7 +48,10 @@ public class AutocompleteManager {
         JScrollPane scrollPane = new JScrollPane(commandList);
         scrollPane.setBorder(null);
         scrollPane.setPreferredSize(new Dimension(750, 200));
+        viewport = scrollPane.getViewport();
         autocompletePopup.add(scrollPane);
+
+        commandList.setFixedCellHeight(22);
 
         commandList.addMouseListener(new MouseAdapter() {
             @Override
@@ -55,6 +61,10 @@ public class AutocompleteManager {
                 }
             }
         });
+    }
+
+    public boolean isPopupVisible() {
+        return autocompletePopup.isVisible();
     }
 
     public boolean handleKeyPressed(KeyEvent e) {
@@ -69,6 +79,7 @@ public class AutocompleteManager {
         int keyCode = e.getKeyCode();
         if (keyCode == KeyEvent.VK_ESCAPE) {
             autocompletePopup.setVisible(false);
+            lastPrefix = null;
             return;
         }
         if (keyCode == KeyEvent.VK_ENTER) {
@@ -76,21 +87,27 @@ public class AutocompleteManager {
                 selectCommand();
             }
             autocompletePopup.setVisible(false);
+            lastPrefix = null;
             return;
         }
         if (keyCode == KeyEvent.VK_SPACE) {
             autocompletePopup.setVisible(false);
+            lastPrefix = null;
             return;
         }
-        if (keyCode == KeyEvent.VK_UP || keyCode == KeyEvent.VK_DOWN) {
+        if (keyCode == KeyEvent.VK_UP || keyCode == KeyEvent.VK_DOWN
+                || keyCode == KeyEvent.VK_PAGE_UP || keyCode == KeyEvent.VK_PAGE_DOWN) {
             if (autocompletePopup.isVisible()) {
+                e.consume();
                 int size = commandList.getModel().getSize();
                 if (size > 0) {
                     int index = commandList.getSelectedIndex();
-                    if (keyCode == KeyEvent.VK_UP) {
-                        index = (index - 1 + size) % size;
-                    } else {
-                        index = (index + 1) % size;
+                    int pageRows = getVisibleRowCount();
+                    switch (keyCode) {
+                        case KeyEvent.VK_UP -> index = (index - 1 + size) % size;
+                        case KeyEvent.VK_DOWN -> index = (index + 1) % size;
+                        case KeyEvent.VK_PAGE_UP -> index = Math.max(0, index - Math.max(1, pageRows));
+                        case KeyEvent.VK_PAGE_DOWN -> index = Math.min(size - 1, index + Math.max(1, pageRows));
                     }
                     commandList.setSelectedIndex(index);
                     commandList.ensureIndexIsVisible(index);
@@ -125,7 +142,17 @@ public class AutocompleteManager {
         } else {
             e.consume();
             selectCommand();
+            sendMessageAction.run();
         }
+    }
+
+    private int getVisibleRowCount() {
+        int visibleHeight = viewport.getExtentSize().height;
+        int rowHeight = commandList.getFixedCellHeight();
+        if (rowHeight <= 0) {
+            rowHeight = commandList.getCellBounds(0, 0).height;
+        }
+        return rowHeight > 0 ? visibleHeight / rowHeight : 1;
     }
 
     private void showAutocomplete() {
@@ -133,6 +160,7 @@ public class AutocompleteManager {
         int caret = inputArea.getCaretPosition();
         if (caret <= 0) {
             autocompletePopup.setVisible(false);
+            lastPrefix = null;
             return;
         }
 
@@ -146,11 +174,17 @@ public class AutocompleteManager {
 
         if (start < 0 || (text.charAt(start) != '/' && text.charAt(start) != '@')) {
             autocompletePopup.setVisible(false);
+            lastPrefix = null;
             return;
         }
 
         char trigger = text.charAt(start);
         String prefix = text.substring(start + 1, caret).toLowerCase();
+
+        if (prefix.equals(lastPrefix) && autocompletePopup.isVisible()) {
+            return;
+        }
+        lastPrefix = prefix;
 
         java.util.List<SessionUpdate.AvailableCommand> allCommands = new java.util.ArrayList<>();
 
@@ -174,6 +208,7 @@ public class AutocompleteManager {
 
         if (filtered.isEmpty()) {
             autocompletePopup.setVisible(false);
+            lastPrefix = null;
             return;
         }
 
@@ -217,6 +252,7 @@ public class AutocompleteManager {
             }
 
             autocompletePopup.setVisible(false);
+            lastPrefix = null;
             inputArea.requestFocusInWindow();
         }
     }

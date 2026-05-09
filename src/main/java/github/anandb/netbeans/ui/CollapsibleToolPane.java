@@ -126,7 +126,11 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
     }
 
     public void setContent(String content) {
-        if (content != null && content.equals(textArea.getText())) {
+        if (content == null) {
+            textArea.setText("");
+            return;
+        }
+        if (content.equals(textArea.getText())) {
             return;
         }
         textArea.setText(content);

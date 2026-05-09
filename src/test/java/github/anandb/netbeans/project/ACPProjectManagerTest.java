@@ -2,9 +2,11 @@ package github.anandb.netbeans.project;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
 import java.lang.reflect.Field;
 import java.util.concurrent.atomic.AtomicReference;
-import static org.junit.jupiter.api.Assertions.*;
+
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 class ACPProjectManagerTest {
 

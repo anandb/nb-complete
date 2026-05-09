@@ -93,15 +93,9 @@ public class SessionManager {
                 })
                 .thenAccept(sessions -> {
                     List<Session> filteredSessions = new ArrayList<>(sessions);
-                    filteredSessions.sort((s1, s2) -> {
-                        String p1 = s1.projectName() != null ? s1.projectName() : "";
-                        String p2 = s2.projectName() != null ? s2.projectName() : "";
-                        int projectComp = p1.compareTo(p2);
-                        if (projectComp != 0) {
-                            return projectComp;
-                        }
-                        return Long.compare(parseTimestamp(s2.updatedAt()), parseTimestamp(s1.updatedAt()));
-                    });
+                    filteredSessions.sort((s1, s2) ->
+                        Long.compare(parseTimestamp(s2.updatedAt()), parseTimestamp(s1.updatedAt()))
+                    );
 
                     cachedSessions.clear();
                     cachedSessions.addAll(filteredSessions);
@@ -198,6 +192,18 @@ public class SessionManager {
 
     private void handleProjectOpened(String openedDir) {
         refreshSessions();
+        ProcessManager.getInstance().getSessions(openedDir)
+            .thenAccept(sessions -> {
+                Session newest = sessions.stream()
+                    .sorted((s1, s2) -> Long.compare(
+                        parseTimestamp(s2.updatedAt()),
+                        parseTimestamp(s1.updatedAt())))
+                    .findFirst()
+                    .orElse(null);
+                if (newest != null) {
+                    loadSession(newest.id());
+                }
+            });
     }
 
     private void handleProjectClosed(String closedDir) {

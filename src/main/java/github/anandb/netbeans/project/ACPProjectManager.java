@@ -61,6 +61,18 @@ public class ACPProjectManager implements PropertyChangeListener {
         Set<String> oldDirs = dirsOf(currentProjects);
         Set<String> newDirs = dirsOf(openProjects);
 
+        // Set active project before firing open listeners so SessionManager
+        // can use getActiveProjectDir() during project-opened handling
+        Project active = main != null ? main : (openProjects.length > 0 ? openProjects[0] : null);
+        if (active != null) {
+            FileObject dir = active.getProjectDirectory();
+            String path = dir.getPath();
+            LOG.fine("Active project synchronized: {0}", path);
+            ProcessManager.getInstance().setActiveProject(path);
+        } else {
+            ProcessManager.getInstance().setActiveProject(null);
+        }
+
         Set<String> closedDirs = new HashSet<>(oldDirs);
         closedDirs.removeAll(newDirs);
 
@@ -83,16 +95,6 @@ public class ACPProjectManager implements PropertyChangeListener {
                     projectOpenListener.accept(openedDir);
                 }
             }
-        }
-
-        Project active = main != null ? main : (openProjects.length > 0 ? openProjects[0] : null);
-        if (active != null) {
-            FileObject dir = active.getProjectDirectory();
-            String path = dir.getPath();
-            LOG.fine("Active project synchronized: {0}", path);
-            ProcessManager.getInstance().setActiveProject(path);
-        } else {
-            ProcessManager.getInstance().setActiveProject(null);
         }
 
         currentProjects = openProjects;

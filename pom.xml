@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>io.github.anandb</groupId>
     <artifactId>beanbot</artifactId>
-    <version>1.5.12</version>
+    <version>1.5.14</version>
     <packaging>nbm</packaging>
 
     <name>Coding Assistant</name>
@@ -240,6 +240,19 @@
                         <argLine>@{argLine} -Dnet.bytebuddy.experimental=true</argLine>
                     </configuration>
                 </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-checkstyle-plugin</artifactId>
+                    <version>3.6.0</version>
+                    <configuration>
+                        <configLocation>scripts/checkstyle.xml</configLocation>
+                        <suppressionsLocation>scripts/checkstyle-suppressions.xml</suppressionsLocation>
+                        <suppressionsFileExpression>checkstyle.suppressions.file</suppressionsFileExpression>
+                        <includeTestSourceDirectory>true</includeTestSourceDirectory>
+                        <failOnViolation>false</failOnViolation>
+                        <violationSeverity>warning</violationSeverity>
+                    </configuration>
+                </plugin>
             </plugins>
         </pluginManagement>
         <plugins>
@@ -311,6 +324,10 @@
                             </manifestEntries>
                     </archive>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-checkstyle-plugin</artifactId>
             </plugin>
             <plugin>
                 <groupId>org.jacoco</groupId>

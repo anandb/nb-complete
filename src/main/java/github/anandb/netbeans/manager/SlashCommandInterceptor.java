@@ -24,6 +24,9 @@ public class SlashCommandInterceptor {
     private void registerDefaultCommands() {
         commands.put("/models", new CommandInfo(this::handleModels, "Select model"));
         commands.put("/agents", new CommandInfo(this::handleAgents, "Select agent or mode"));
+        commands.put("/level", new CommandInfo(this::handleLevel, "Select thinking level"));
+        commands.put("/sessions", new CommandInfo(this::handleSession, "Select session"));
+        commands.put("/new", new CommandInfo(this::handleNew, "Create new session"));
     }
 
     public void setCallback(SlashCommandCallback callback) {
@@ -68,6 +71,28 @@ public class SlashCommandInterceptor {
             cb.expandOptionsPanel();
             cb.popupAgentCombo();
         }
+        return CompletableFuture.completedFuture(true);
+    }
+
+    private CompletableFuture<Boolean> handleLevel(String args, Lookup context) {
+        SlashCommandCallback cb = callback;
+        if (cb != null) {
+            cb.expandOptionsPanel();
+            cb.popupThinkingCombo();
+        }
+        return CompletableFuture.completedFuture(true);
+    }
+
+    private CompletableFuture<Boolean> handleSession(String args, Lookup context) {
+        SlashCommandCallback cb = callback;
+        if (cb != null) {
+            cb.popupSessionCombo();
+        }
+        return CompletableFuture.completedFuture(true);
+    }
+
+    private CompletableFuture<Boolean> handleNew(String args, Lookup context) {
+        SessionManager.getInstance().createNewSession(null);
         return CompletableFuture.completedFuture(true);
     }
 

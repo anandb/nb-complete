@@ -23,12 +23,14 @@ import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JLabel;
 import javax.swing.JMenuItem;
+import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
+import javax.swing.filechooser.FileNameExtensionFilter;
 
 import github.anandb.netbeans.manager.SessionManager;
 import github.anandb.netbeans.support.Logger;
@@ -45,7 +47,7 @@ import github.anandb.netbeans.support.Logger;
     "LBL_Clear=Clear",
     "TIP_ClearIcon=Right-click to clear custom icon"
 })
-public class ACPOptionsPanel extends javax.swing.JPanel {
+public class ACPOptionsPanel extends JPanel {
     private static final Logger LOG = new Logger(ACPOptionsPanel.class);
     private static final long serialVersionUID = 1L;
     private static final Pattern PATH_SPLIT = Pattern.compile(Pattern.quote(File.pathSeparator));
@@ -234,7 +236,7 @@ public class ACPOptionsPanel extends javax.swing.JPanel {
 
     private void iconBrowseButtonActionPerformed() {
         JFileChooser chooser = new JFileChooser();
-        chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("Image files (SVG, PNG)", "svg", "png"));
+        chooser.setFileFilter(new FileNameExtensionFilter("Image files (SVG, PNG)", "svg", "png"));
         chooser.setDialogTitle(NbBundle.getMessage(ACPOptionsPanel.class, "TITLE_SelectIcon"));
         String currentPath = iconPathField.getText();
         if (!currentPath.isEmpty()) {

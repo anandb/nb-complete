@@ -4,4 +4,6 @@ public interface SlashCommandCallback {
     void expandOptionsPanel();
     void popupModelCombo();
     void popupAgentCombo();
+    void popupThinkingCombo();
+    void popupSessionCombo();
 }

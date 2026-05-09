@@ -16,6 +16,7 @@ import static org.apache.commons.lang3.StringUtils.abbreviateMiddle;
 import static org.apache.commons.lang3.StringUtils.defaultString;
 import static org.apache.commons.lang3.StringUtils.firstNonBlank;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
+import static org.apache.commons.lang3.StringUtils.toRootLowerCase;
 
 public final class ToolDataExtractor {
     private static final Logger LOG = new Logger(ToolDataExtractor.class);
@@ -108,6 +109,12 @@ public final class ToolDataExtractor {
         }
 
         tag = tag.length() < 60 ? tag : "Tool";
+
+        // Some special handling - look for a better way
+        if ("context".equals(tag) && "Compressed".equalsIgnoreCase(identifier)) {
+            identifier = toRootLowerCase(identifier);
+        }
+
         String title = tag + " " + abbreviateMiddle(identifier, "...", 60);
         LOG.fine("Title {0}", title);
         return title;

@@ -46,7 +46,7 @@ When working on this codebase, you **must** leverage Context7 for documentation 
 - `src/main/resources/github/anandb/netbeans/ui/layer.xml` - NetBeans registration for the chat window.
 
 ## Coding Notes
-- **Braces**: Always use braces for `if-else`, `for`, `while`, and `do-while` loops.
+
 - **Logging**: Use index-based placeholders (e.g., `{0}`) for `java.util.logging.Logger`; do not concatenate strings.
 - **Theming**: Use `ThemeManager.getCurrentTheme()` for colors. Icons should have `-dark.svg` variants for high-contrast dark mode support, resolved automatically via `ThemeManager`.
 - **Asynchrony**: Use `SwingUtilities.invokeLater()` for all UI updates coming from background RPC/SSE threads.

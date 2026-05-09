@@ -1,9 +1,13 @@
 package github.anandb.netbeans.ui;
 
 import org.junit.jupiter.api.Test;
+
 import javax.swing.UIManager;
+
 import java.awt.Color;
-import static org.junit.jupiter.api.Assertions.*;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class CollapsibleToolPaneTest {
 
@@ -12,7 +16,7 @@ class CollapsibleToolPaneTest {
         UIManager.put("Panel.background", Color.BLACK);
         UIManager.put("Label.foreground", Color.WHITE);
         UIManager.put("ComboBox.selectionBackground", Color.YELLOW);
-        
+
         CollapsibleToolPane pane = new CollapsibleToolPane("TOOL: run_command", "ls -la", true);
         assertEquals("run_command", pane.headerLabel.getText());
         assertTrue(pane.isExpanded());

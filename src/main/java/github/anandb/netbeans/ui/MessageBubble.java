@@ -699,7 +699,7 @@ public class MessageBubble extends JPanel implements Scrollable {
         if (hasArt) {
             // Avoid pre tag to prevent theme conflicts (black box).
             // Use manual line breaks and nbsp to preserve structure in old renderers.
-            String monoStack = theme.getMonoStack();
+            String monoStack = FontStacks.MONO_STACK;
             customCss += " .ascii-art { font-family: " + monoStack + "; line-height: 1.0; }";
 
             // Flexmark might have already wrapped it in <p> or added other tags.

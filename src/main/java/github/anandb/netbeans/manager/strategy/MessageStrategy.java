@@ -8,6 +8,8 @@ import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.Logger;
 
+import static org.apache.commons.lang3.StringUtils.isBlank;
+
 public class MessageStrategy implements DataExtractionStrategy {
     private static final Logger LOG = new Logger(MessageStrategy.class);
 
@@ -34,11 +36,12 @@ public class MessageStrategy implements DataExtractionStrategy {
         }
 
         String text = sb.toString().stripTrailing();
-        if (text.isEmpty()) {
+        if (isBlank(text)) {
             LOG.warn("MessageStrategy: empty text for msgId={0}, role={1}, skipping display",
                 new Object[]{msg.id(), role});
             return;
         }
+
         target.setMessageType("user".equals(role) ? MessageType.user_message_chunk : MessageType.agent_message_chunk);
         target.setText(text);
         target.setMessageId(msg.id());

@@ -28,6 +28,7 @@ import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.Icon;
 import javax.swing.JButton;
+import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JLayeredPane;
 import javax.swing.JPanel;
@@ -56,6 +57,8 @@ public class ChatThreadPanel extends JPanel {
     private static final Logger LOG = new Logger(ChatThreadPanel.class);
     private static final long serialVersionUID = 1L;
     private static final Pattern SECTION_SPLIT = Pattern.compile("(?m)^---[ \\t]*$");
+    private static final Color SCROLL_BTN_COLOR_A = new Color(41, 98, 255, 200);
+    private static final Color SCROLL_BTN_COLOR_B = new Color(41, 98, 255, 240);
 
     private final JPanel messagesContainer;
     private final JScrollPane scrollPane;
@@ -124,9 +127,9 @@ public class ChatThreadPanel extends JPanel {
             protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(new Color(41, 98, 255, 200));
+                g2.setColor(SCROLL_BTN_COLOR_A);
                 g2.fillOval(2, 2, getWidth() - 5, getHeight() - 5);
-                g2.setColor(new Color(41, 98, 255, 240));
+                g2.setColor(SCROLL_BTN_COLOR_B);
                 g2.fillOval(3, 3, getWidth() - 7, getHeight() - 7);
                 g2.dispose();
                 super.paintComponent(g);
@@ -190,6 +193,15 @@ public class ChatThreadPanel extends JPanel {
                             && (keyCode == KeyEvent.VK_HOME || keyCode == KeyEvent.VK_END))) {
                     Component src = e.getComponent();
                     if (src != null && SwingUtilities.isDescendingFrom(src, ChatThreadPanel.this)) {
+                        if (keyCode == KeyEvent.VK_PAGE_UP || keyCode == KeyEvent.VK_PAGE_DOWN) {
+                            Component c = src;
+                            while (c != null) {
+                                if (c instanceof JComboBox) {
+                                    return false;
+                                }
+                                c = c.getParent();
+                            }
+                        }
                         JScrollBar vertical = scrollPane.getVerticalScrollBar();
                         if (keyCode == KeyEvent.VK_PAGE_UP) {
                             vertical.setValue(vertical.getValue() - vertical.getVisibleAmount());
@@ -258,7 +270,8 @@ public class ChatThreadPanel extends JPanel {
                 boolean canMerge = (lastBubble != null && role.equals(lastBubble.getRole()));
                 if (canMerge) {
                     // Require matching messageIds (or allow if either is null).
-                    canMerge = "thought".equals(role) || canMergeMessages(pm.messageId(), lastBubble.getMessageId());
+                    // Never merge successive user messages.
+                    canMerge = !"user".equals(role) && ("thought".equals(role) || canMergeMessages(pm.messageId(), lastBubble.getMessageId()));
                 }
 
                 if (lastBubble != null && canMerge) {
@@ -474,8 +487,7 @@ public class ChatThreadPanel extends JPanel {
         int extent = vertical.getModel().getExtent();
         int value = vertical.getValue();
         int maximum = vertical.getMaximum();
-        // Use a tight threshold to avoid overriding user scroll intent
-        return (value + extent >= maximum - 20);
+        return (value + extent >= maximum - extent / 5);
     }
 
     private void positionScrollDownBtn() {
@@ -646,7 +658,7 @@ public class ChatThreadPanel extends JPanel {
                         String title = defaultIfBlank(s.title(), "Chat " + left(s.id(), 8));
                         String label = SessionTitleMapper.getTitle(s.id(), title);
                         String dir = s.effectiveDirectory();
-                        JButton sessionBtn = createSelectionButtonWithBadge(label, s.projectName(), dir);
+                        JButton sessionBtn = createSelectionButton(label, dir);
                         sessionBtn.addActionListener(e -> onSessionSelected.accept(s.id()));
                         messagesContainer.add(sessionBtn);
                         messagesContainer.add(Box.createVerticalStrut(4));
@@ -690,58 +702,6 @@ public class ChatThreadPanel extends JPanel {
 
         btn.add(textPanel, BorderLayout.CENTER);
         btn.setMaximumSize(new Dimension(Integer.MAX_VALUE, Math.max(btn.getPreferredSize().height, 60)));
-
-        btn.addMouseListener(new java.awt.event.MouseAdapter() {
-            @Override
-            public void mouseEntered(java.awt.event.MouseEvent e) {
-                btn.setOpaque(false);
-                btn.setBackground(new Color(0, 0, 0, 10));
-                btn.repaint();
-            }
-            @Override
-            public void mouseExited(java.awt.event.MouseEvent e) {
-                btn.setOpaque(false);
-                btn.repaint();
-            }
-        });
-
-        return btn;
-    }
-
-    private JButton createSelectionButtonWithBadge(String text, String projectName, String fullPath) {
-        ColorTheme theme = ThemeManager.getCurrentTheme();
-
-        JButton btn = new JButton();
-        btn.setLayout(new BorderLayout(8, 0));
-        btn.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(theme.bubbleBorder() != null ? theme.bubbleBorder() : Color.LIGHT_GRAY, 1, true),
-            BorderFactory.createEmptyBorder(12, 16, 12, 16)
-        ));
-        btn.setFocusPainted(false);
-        btn.setContentAreaFilled(false);
-        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btn.setAlignmentX(Component.LEFT_ALIGNMENT);
-        JPanel leftPanel = new JPanel();
-        leftPanel.setOpaque(false);
-
-        if (projectName != null && !projectName.isEmpty()) {
-            JLabel badge = new JLabel("[" + projectName + "]");
-            badge.setFont(ThemeManager.getFont().deriveFont(Font.BOLD, 10));
-            badge.setForeground(new Color(100, 100, 100));
-            badge.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 8));
-            leftPanel.add(badge);
-        }
-
-        JLabel mainLabel = new JLabel(text);
-        mainLabel.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
-        leftPanel.add(mainLabel);
-
-        btn.add(leftPanel, BorderLayout.CENTER);
-        btn.setMaximumSize(new Dimension(Integer.MAX_VALUE, Math.max(btn.getPreferredSize().height, 60)));
-
-        if (fullPath != null && !fullPath.isEmpty()) {
-            btn.setToolTipText(fullPath);
-        }
 
         btn.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override

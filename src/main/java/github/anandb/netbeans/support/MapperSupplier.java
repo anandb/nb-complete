@@ -5,12 +5,9 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 
-/**
- *
- * @author anand
- */
 public final class MapperSupplier {
 
+    private MapperSupplier() {}
     private static final class Holder {
         private static final JsonMapper INSTANCE = JsonMapper.builder()
                 .defaultPropertyInclusion(JsonInclude.Value.construct(JsonInclude.Include.NON_NULL, JsonInclude.Include.ALWAYS))

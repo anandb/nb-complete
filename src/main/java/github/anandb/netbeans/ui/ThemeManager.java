@@ -2,6 +2,8 @@ package github.anandb.netbeans.ui;
 
 import java.awt.Color;
 import java.awt.Font;
+import java.awt.RenderingHints;
+import java.awt.image.BufferedImage;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Collections;
@@ -16,8 +18,8 @@ import github.anandb.netbeans.support.Logger;
  * Handles non-color theme resources (Icons, Fonts) and coordinates with ColorTheme.
  */
 public class ThemeManager {
-
     private static final Logger LOG = new Logger(ThemeManager.class);
+    private ThemeManager() {}
 
     private static final Map<String, Icon> ICON_CACHE = Collections.synchronizedMap(new LinkedHashMap<>(64, 0.75f, true) {
         @Override
@@ -56,11 +58,11 @@ public class ThemeManager {
             return null;
         }
         if (size > 0 && (img.getWidth(null) != size || img.getHeight(null) != size)) {
-            java.awt.image.BufferedImage bi = new java.awt.image.BufferedImage(size, size, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+            java.awt.image.BufferedImage bi = new BufferedImage(size, size, java.awt.image.BufferedImage.TYPE_INT_ARGB);
             java.awt.Graphics2D g2 = bi.createGraphics();
-            g2.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION, java.awt.RenderingHints.VALUE_INTERPOLATION_BICUBIC);
-            g2.setRenderingHint(java.awt.RenderingHints.KEY_RENDERING, java.awt.RenderingHints.VALUE_RENDER_QUALITY);
-            g2.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+            g2.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             g2.drawImage(img, 0, 0, size, size, null);
             g2.dispose();
             img = bi;

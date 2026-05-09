@@ -4,6 +4,7 @@ import java.awt.BorderLayout;
 import java.awt.Font;
 import java.awt.Toolkit;
 import java.awt.datatransfer.StringSelection;
+import java.io.InputStream;
 import java.util.Map;
 
 import javax.swing.BorderFactory;
@@ -14,6 +15,7 @@ import javax.swing.SwingUtilities;
 
 import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
 import org.fife.ui.rsyntaxtextarea.SyntaxConstants;
+import org.fife.ui.rsyntaxtextarea.Theme;
 
 public class CollapsibleCodePane extends BaseCollapsiblePane {
 
@@ -27,14 +29,14 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
     private static volatile org.fife.ui.rsyntaxtextarea.Theme cachedRTheme;
 
     private static org.fife.ui.rsyntaxtextarea.Theme loadCodeTheme() {
-        org.fife.ui.rsyntaxtextarea.Theme theme = cachedRTheme;
+        Theme theme = cachedRTheme;
         if (theme != null) {
             return theme;
         }
         try {
-            java.io.InputStream in = CollapsibleCodePane.class.getResourceAsStream("/org/fife/ui/rsyntaxtextarea/themes/dark.xml");
+            InputStream in = CollapsibleCodePane.class.getResourceAsStream("/org/fife/ui/rsyntaxtextarea/themes/dark.xml");
             if (in != null) {
-                theme = org.fife.ui.rsyntaxtextarea.Theme.load(in);
+                theme = Theme.load(in);
                 cachedRTheme = theme;
                 return theme;
             }

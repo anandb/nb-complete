@@ -37,6 +37,9 @@ public class ConfigPanelController {
     private final JComboBox<ConfigItem> modeCombo;
     private final JComboBox<ConfigItem> modelCombo;
     private final JComboBox<ConfigItem> thinkingCombo;
+    private volatile Runnable onModelSelectedCallback;
+    private volatile Runnable onModeSelectedCallback;
+    private volatile Runnable onThinkingSelectedCallback;
     private boolean isUpdatingConfigControls = false;
     private static String lastSelectedModelId;
 
@@ -112,6 +115,13 @@ public class ConfigPanelController {
         });
     }
 
+    public void popupThinkingCombo() {
+        SwingUtilities.invokeLater(() -> {
+            thinkingCombo.requestFocusInWindow();
+            SwingUtilities.invokeLater(() -> thinkingCombo.setPopupVisible(true));
+        });
+    }
+
     public void updateConfigControls(List<SessionConfigOption> options) {
         updateConfigControls(options, false);
     }
@@ -152,8 +162,10 @@ public class ConfigPanelController {
     }
 
     public void ensureDefaultModelAdded() {
-        if (lastSelectedModelId == null && System.getenv("OPENCODE_MODEL") == null && modelCombo.getItemCount() == 0) {
-            modelCombo.addItem(new ConfigItem("OpenCode Zeb/Big Pickle", "opencode/big-pickle"));
+        String envModel = System.getenv("OPENCODE_MODEL");
+        if (lastSelectedModelId == null && envModel != null && !envModel.isEmpty() && modelCombo.getItemCount() == 0) {
+            modelCombo.addItem(new ConfigItem(envModel, envModel));
+            lastSelectedModelId = envModel;
         }
     }
 
@@ -189,6 +201,9 @@ public class ConfigPanelController {
                     }
                 }
                 thinkingCombo.setEnabled(thinkingCombo.getItemCount() > 0);
+                if (thinkingCombo.getActionListeners().length == 0) {
+                    setupConfigCombo(thinkingCombo, "thinking");
+                }
             } finally {
                 isUpdatingConfigControls = false;
             }
@@ -365,6 +380,24 @@ public class ConfigPanelController {
                 LOG.fine("Config update: {0}={1} for session {2}", new Object[]{configId, item.value(), currentId});
                 ProcessManager.getInstance().setSessionConfigOption(currentId, configId, item.value());
             }
+
+        });
+        combo.addPopupMenuListener(new javax.swing.event.PopupMenuListener() {
+            @Override
+            public void popupMenuWillBecomeVisible(javax.swing.event.PopupMenuEvent e) {}
+            @Override
+            public void popupMenuWillBecomeInvisible(javax.swing.event.PopupMenuEvent e) {
+                if (isUpdatingConfigControls) return;
+                if (combo == modelCombo && onModelSelectedCallback != null) {
+                    onModelSelectedCallback.run();
+                } else if (combo == modeCombo && onModeSelectedCallback != null) {
+                    onModeSelectedCallback.run();
+                } else if (combo == thinkingCombo && onThinkingSelectedCallback != null) {
+                    onThinkingSelectedCallback.run();
+                }
+            }
+            @Override
+            public void popupMenuCanceled(javax.swing.event.PopupMenuEvent e) {}
         });
     }
 
@@ -394,5 +427,17 @@ public class ConfigPanelController {
         } finally {
             isUpdatingConfigControls = alreadyUpdating;
         }
+    }
+
+    public void setOnModelSelectedCallback(Runnable r) {
+        this.onModelSelectedCallback = r;
+    }
+
+    public void setOnModeSelectedCallback(Runnable r) {
+        this.onModeSelectedCallback = r;
+    }
+
+    public void setOnThinkingSelectedCallback(Runnable r) {
+        this.onThinkingSelectedCallback = r;
     }
 }
