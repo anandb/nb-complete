@@ -1,5 +1,81 @@
 # Release Notes
 
+## v1.5.15
+
+### Editor Sync & Local History
+- `handleWriteTextFile` now writes through the editor's `Document` and calls `saveDocument()` when file is open, avoiding read-only conflicts
+- Falls back to direct `java.nio.file.Files.write()` when no editor available
+- `writeThroughVFS` simplified to `FileObject.refresh()` — no longer acquires file lock
+- `recordLocalHistory` added: filters by active project directory, skips files modified >2 minutes ago, handles deletes via parent `FileObject.refresh()`
+- Status label flashes warning when local history skipped (file outside project)
+
+### Slash Commands & Session Management
+- New `SlashCommandInterceptor` with extensible callback system
+- `/session new` — create new session, `/session switch <id>` — switch sessions
+- Slash command autocomplete in chat input
+
+### UI
+- Chat bottom padding increased from 40px to 90px to prevent bubble collision with status bar
+- CSS file renamed `chat-style.css` → `chat-style.css.template` to silence NetBeans CSS parser warnings on `$variable` syntax
+- `$fontStack` and `$monoStack` hardcoded directly in CSS template
+- New `FontStacks.java` for programmatic font resolution
+- New `colors.json` for theme color definitions
+- `ColorTheme` refactored with configurable slider-based theme selection
+
+### Rendering Performance
+- `MessageBubble` rendering optimized (early return on unchanged content, reduced repaints)
+
+### Code Quality
+- 25+ fully-qualified class names replaced with imports across `ChatThreadPanel`, `AssistantTopComponent`, and `MessageBubble`
+- Preamble default text extracted to `preamble.md` resource file
+- Checkstyle configuration added with suppressions
+
+### Misc
+- `.gitignore` updated with `*.bak`, build artifacts
+- Maven wrapper properties updated
+- Test imports cleaned up across all test files
+
+## v1.5.12 (2026-05-05)
+
+### UI & UX
+- Redesigned user message bubbles with unified global text alignment across the chat thread
+- New custom user icon and refactored UI utility classes
+- "Restart" button renamed to "Reconnect" with new lightning bolt icon
+- Quick scroll-to-bottom button for navigating long conversations
+- Redesigned preferences layout in Options panel
+- Fixed garbled text rendering in scroll panes
+- Dark mode filter and paperclip icon fixes
+- Sidebar toggle, undo/redo, and level selector for theme configuration
+- Removed duplicate menu entry
+
+### Attachments & Commands
+- Preliminary file attachment support with indicator UI
+- Document upload from editor or file system
+- Image paste support from clipboard
+- Internal slash command handling (`/session new`, `/session switch`)
+- Clipboard fixes for code block copy actions
+
+### Architecture & Protocol
+- Consolidated message handling into a unified `addMessage()` path with streaming-aware bubble creation
+- Stream-aware expand/collapse toggle for long-running tool calls
+- Refactored message rendering and tool metadata extraction
+- Extracted contract interfaces (`PermissionHandler`), fixed critical bugs, added plan strategy support
+- Message type parsed immediately on receipt for faster UI updates
+- Model cache cleared on server restart; pending futures drained on disconnect
+- Treat context cleanup as a tool operation
+
+### Session & Stability
+- MCP server support with SSE transport and capability negotiation
+- Null checks and general stability fixes across RPC communication layer
+- Error display when opencode binary not found
+- Namespace update to `io.github.anandb.beanbot`
+
+### Infrastructure
+- Maven Central deployment setup with GitHub Actions workflow
+- Workflow dispatch and dry-run support for release pipeline
+- Dependency bumps (Jackson Core)
+- NPE fix in `SessionManagerTest`
+
 ## 1.4.1 (2026-04-27)
 - **UI Modernization & Premium Aesthetics**:
     - **Markdown Table Rendering**: Completely redesigned the table rendering engine. Tables are now wrapped in a custom `RoundedPanel` container to achieve 12px rounded corners, overcoming the limitations of standard Swing HTML rendering.
