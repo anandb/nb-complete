@@ -413,7 +413,7 @@ public class MessageBubble extends JPanel implements Scrollable {
         // For user messages, we don't need complex code panels.
         // Just render the whole thing as markdown to get simple <pre> blocks.
         if ("user".equals(role)) {
-            updateOrAddTextSegment(text.toString(), theme, 0);
+            updateOrAddTextSegment(text.toString(), theme, 0, false);
             while (segments.getComponentCount() > 1) {
                 segments.remove(segments.getComponentCount() - 1);
             }
@@ -509,8 +509,8 @@ public class MessageBubble extends JPanel implements Scrollable {
         }
     }
 
-    private void updateOrAddTextSegment(String markdown, ColorTheme theme, int compIdx) {
-        String styledHtml = prepareHtml(markdown, theme);
+    private void updateOrAddTextSegment(String markdown, ColorTheme theme, int compIdx, boolean incremental) {
+        String styledHtml = prepareHtml(markdown, theme, incremental);
         Color bg = UIUtils.getBubbleBackground(theme, role);
 
         if (compIdx < segments.getComponentCount()) {
@@ -547,13 +547,13 @@ public class MessageBubble extends JPanel implements Scrollable {
         // (incremental=false, from constructor or non-streaming addMessage), the full table
         // detection + RoundedPanel wrapping runs cleanly.
         if (incremental) {
-            updateOrAddTextSegment(text, theme, compIdx++);
+            updateOrAddTextSegment(text, theme, compIdx++, true);
             return compIdx;
         }
 
         // Fast-path for non-table text
         if (!text.contains("|")) {
-            updateOrAddTextSegment(text, theme, compIdx++);
+            updateOrAddTextSegment(text, theme, compIdx++, false);
             return compIdx;
         }
 
@@ -578,7 +578,7 @@ public class MessageBubble extends JPanel implements Scrollable {
                         if (UIUtils.isSeparatorRowLine(line)) {
                             headerFound = true;
                             if (textBuffer.length() > 0) {
-                                updateOrAddTextSegment(textBuffer.toString(), theme, currentIdx++);
+                                updateOrAddTextSegment(textBuffer.toString(), theme, currentIdx++, false);
                                 textBuffer.setLength(0);
                             }
                         }
@@ -613,7 +613,7 @@ public class MessageBubble extends JPanel implements Scrollable {
         }
 
         if (textBuffer.length() > 0) {
-            updateOrAddTextSegment(textBuffer.toString(), theme, currentIdx++);
+            updateOrAddTextSegment(textBuffer.toString(), theme, currentIdx++, false);
         }
 
         return currentIdx;
@@ -621,7 +621,7 @@ public class MessageBubble extends JPanel implements Scrollable {
 
 
     private void updateOrAddTableSegment(String tableMarkdown, ColorTheme theme, int compIdx) {
-        String styledHtml = prepareHtml(tableMarkdown, theme);
+        String styledHtml = prepareHtml(tableMarkdown, theme, false);
 
         if (compIdx < segments.getComponentCount()) {
             Component c = segments.getComponent(compIdx);
@@ -652,8 +652,15 @@ public class MessageBubble extends JPanel implements Scrollable {
         }
     }
 
-    private String prepareHtml(String markdown, ColorTheme theme) {
+    private String prepareHtml(String markdown, ColorTheme theme, boolean incremental) {
         String html = FLEXMARK_RENDERER.render(FLEXMARK_PARSER.parse(markdown));
+
+        // During streaming, skip all post-processing — the full render will fix
+        // everything on the final tick. Avoids O(n) replace chain, ASCII art scan,
+        // and space replacement each 100ms.
+        if (incremental) {
+            return html;
+        }
 
         String tableBg = theme.toHtmlHex(theme.tableBackground());
         String headerBg = theme.toHtmlHex(theme.tableHeaderBackground());
