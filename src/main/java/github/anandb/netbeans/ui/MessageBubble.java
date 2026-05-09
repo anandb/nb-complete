@@ -22,6 +22,7 @@ import javax.swing.Scrollable;
 import java.awt.event.HierarchyEvent;
 import java.awt.event.HierarchyListener;
 import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
 
 import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
@@ -217,7 +218,7 @@ public class MessageBubble extends JPanel implements Scrollable {
         this.toolTitle = toolTitle;
 
         ColorTheme theme = ThemeManager.getCurrentTheme();
-        setLayout(new java.awt.GridBagLayout());
+        setLayout(new GridBagLayout());
         setOpaque(true);
         setBackground(theme.sunkenBackground());
         setDoubleBuffered(true);
@@ -725,7 +726,7 @@ public class MessageBubble extends JPanel implements Scrollable {
     private FitEditorPane createHtmlPane(String styledHtml, Color bg) {
         ColorTheme theme = ThemeManager.getCurrentTheme();
         FitEditorPane pane = new FitEditorPane();
-        pane.putClientProperty(javax.swing.JTextPane.HONOR_DISPLAY_PROPERTIES, Boolean.TRUE);
+        pane.putClientProperty(JTextPane.HONOR_DISPLAY_PROPERTIES, Boolean.TRUE);
         pane.setEditable(false);
         pane.setContentType("text/html");
         // Use opaque background for User bubbles to prevent "garbled" text artifacts in scroll panes

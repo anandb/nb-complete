@@ -71,6 +71,7 @@ public class ProcessManager {
     private final List<Consumer<String>> projectChangeListeners = new CopyOnWriteArrayList<>();
     private final List<SessionUpdate.AvailableCommand> availableCommands = new CopyOnWriteArrayList<>();
     private PermissionHandler permissionHandler;
+    private Consumer<String> statusListener;
     private volatile boolean isClosing = false;
     private int restartCount = 0;
     private long lastRestartTime = 0;
@@ -177,6 +178,9 @@ public class ProcessManager {
                         }
                     }
 
+                    // Record local history for completed file-modifying tool calls
+                    recordLocalHistory(params);
+
                     notifyListeners(update);
                 } catch (Exception e) {
                     LOG.warn("Failed to parse session/update notification: " + e.getMessage(), e);
@@ -277,13 +281,13 @@ public class ProcessManager {
             return;
         }
         JsonNode mcpCaps = caps.get("mcpCapabilities");
-        boolean supportsMcp = mcpCaps.has("http") && mcpCaps.get("http").asBoolean(false)
-                || mcpCaps.has("sse") && mcpCaps.get("sse").asBoolean(false);
+        boolean supportsMcp = mcpCaps.has("http") && mcpCaps.get("http").asBoolean(false) ||
+                              mcpCaps.has("sse") && mcpCaps.get("sse").asBoolean(false);
         if (!supportsMcp && !mcpDisabled) {
-            LOG.info("Server does not advertise MCP support, disabling MCP for this process");
+            LOG.info("Server does not advertise MCP support, disabling MCP for this process {0}", mcpCaps.asText());
             disableMcp();
         } else {
-            LOG.fine("Server advertises MCP support");
+            LOG.info("Server advertises MCP support {0}", mcpCaps.asText());
         }
     }
 
@@ -819,6 +823,10 @@ public class ProcessManager {
         this.permissionHandler = handler;
     }
 
+    public void setStatusListener(Consumer<String> listener) {
+        this.statusListener = listener;
+    }
+
     private CompletableFuture<JsonNode> handleRequestPermission(JsonNode params) {
         String sessionId = params.has("sessionId") ? params.get("sessionId").asText() : null;
         String toolCallId = ToolDataExtractor.extractToolCallId(params);
@@ -873,12 +881,91 @@ public class ProcessManager {
         });
     }
 
+    private void recordLocalHistory(JsonNode updateParams) {
+        // Only act on completed tool_call_update messages
+        JsonNode update = updateParams.get("update");
+        if (update == null) return;
+        String type = update.has("sessionUpdate") ? update.get("sessionUpdate").asText() : null;
+        if (!"tool_call_update".equals(type)) return;
+        String status = update.has("status") ? update.get("status").asText() : null;
+        if (!"completed".equals(status)) return;
+        String kind = update.has("kind") ? update.get("kind").asText() : null;
+        if (!"edit".equals(kind) && !"write".equals(kind) && !"delete".equals(kind)) return;
+
+        // Extract file path from rawInput
+        JsonNode rawInput = update.get("rawInput");
+        if (rawInput == null) return;
+        String filePath = rawInput.has("filePath") ? rawInput.get("filePath").asText()
+                : rawInput.has("path") ? rawInput.get("path").asText() : null;
+        if (filePath == null || filePath.isEmpty()) return;
+
+        // Resolve and verify path is within current project directory
+        java.io.File file = new java.io.File(filePath);
+        if (!file.isAbsolute()) {
+            String projectDir = getActiveProjectDir();
+            file = new java.io.File(projectDir, filePath);
+        }
+        String projectDir = getActiveProjectDir();
+        if (projectDir == null || !file.toPath().normalize().startsWith(
+                java.nio.file.Paths.get(projectDir).normalize())) {
+            LOG.fine("Skipping local history: file outside project: {0}", filePath);
+            Consumer<String> listener = statusListener;
+            if (listener != null) {
+                listener.accept("Local history skipped: file outside project");
+            }
+            return;
+        }
+
+        // Skip timestamp check for deletes: file may already be gone
+        if (!"delete".equals(kind)) {
+            long twoMinAgo = System.currentTimeMillis() - 120_000;
+            if (file.exists() && file.lastModified() < twoMinAgo) {
+                LOG.fine("Skipping local history: file not recently modified: {0}", filePath);
+                return;
+            }
+        }
+
+        if ("delete".equals(kind)) {
+            triggerDeleteHistory(file);
+        } else {
+            writeThroughVFS(file);
+        }
+    }
+
+    private void writeThroughVFS(java.io.File file) {
+        try {
+            if (!file.exists()) return;
+            FileObject fo = FileUtil.toFileObject(file);
+            if (fo != null) {
+                fo.refresh();
+                LOG.fine("Notified NetBeans of file change: {0}", file.getAbsolutePath());
+            }
+        } catch (Exception e) {
+            LOG.info("Failed to notify NetBeans of file change: {0}", e.getMessage());
+        }
+    }
+
+    private void triggerDeleteHistory(java.io.File file) {
+        try {
+            java.io.File parentDir = file.getParentFile();
+            if (parentDir == null) return;
+            FileObject parentFo = FileUtil.toFileObject(parentDir);
+            if (parentFo != null) {
+                parentFo.refresh();
+                LOG.fine("Local history recorded for deletion: {0}", file.getAbsolutePath());
+            }
+        } catch (Exception e) {
+            LOG.info("Failed to trigger local history for deletion: {0}", e.getMessage());
+        }
+    }
+
     private CompletableFuture<JsonNode> handleWriteTextFile(JsonNode params) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 String filePath = params.has("path") ? params.get("path").asText()
                         : params.has("filePath") ? params.get("filePath").asText() : null;
 
+                LOG.info("Write {0}", filePath);
                 if (filePath == null) {
                     throw new RuntimeException("Missing path parameter");
                 }
@@ -891,32 +978,36 @@ public class ProcessManager {
                     parent.mkdirs();
                 }
 
-                byte[] data = content.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                boolean written = false;
 
-                // Write through NetBeans filesystem to trigger local history
+                // Try writing through open editor's Document to stay in sync
                 try {
-                    FileObject fo;
-                    if (file.exists()) {
-                        fo = FileUtil.toFileObject(file);
-                    } else {
+                    FileObject fo = FileUtil.toFileObject(file);
+                    if (fo == null && !file.exists()) {
                         fo = FileUtil.createData(file);
                     }
                     if (fo != null) {
-                        try (java.io.OutputStream os = fo.getOutputStream(fo.lock())) {
-                            os.write(data);
+                        DataObject dobj = DataObject.find(fo);
+                        EditorCookie ec = dobj.getLookup().lookup(EditorCookie.class);
+                        if (ec != null) {
+                            javax.swing.text.Document doc = ec.openDocument();
+                            if (doc != null) {
+                                doc.remove(0, doc.getLength());
+                                doc.insertString(0, content, null);
+                                ec.saveDocument();
+                                written = true;
+                                LOG.fine("Write through editor Document: {0}", filePath);
+                            }
                         }
-                        return objectMapper.createObjectNode().put("success", true);
                     }
-                } catch (Exception fsEx) {
-                    LOG.log(Level.WARNING, "NetBeans VFS write failed, falling back to java.nio: {0}",
-                            fsEx.getMessage());
+                } catch (Exception e) {
+                    LOG.fine("Could not write through editor: {0}", e.getMessage());
                 }
 
-                // Fallback
-                java.nio.file.Files.write(file.toPath(), data);
-                FileObject fo = FileUtil.toFileObject(file);
-                if (fo != null) {
-                    fo.refresh();
+                // Fallback to direct disk write
+                if (!written) {
+                    byte[] data = content.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                    java.nio.file.Files.write(file.toPath(), data);
                 }
 
                 return objectMapper.createObjectNode().put("success", true);

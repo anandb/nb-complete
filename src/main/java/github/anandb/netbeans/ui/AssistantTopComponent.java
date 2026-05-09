@@ -6,19 +6,25 @@ import static org.apache.commons.lang3.StringUtils.left;
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.KeyEventDispatcher;
+import java.awt.KeyboardFocusManager;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.ActionEvent;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.HashMap;
-import java.io.File;
-import java.io.IOException;
+import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 
 import github.anandb.netbeans.model.AttachedFile;
@@ -27,13 +33,16 @@ import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JComboBox;
+import javax.swing.JFileChooser;
 import javax.swing.JMenuItem;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
+import javax.swing.Timer;
 import javax.swing.UIManager;
 import javax.swing.border.EmptyBorder;
 import javax.swing.text.Document;
@@ -53,16 +62,12 @@ import org.openide.windows.TopComponent;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
-import java.awt.KeyEventDispatcher;
-
-import javax.swing.JOptionPane;
-import javax.swing.Timer;
-
 import github.anandb.netbeans.manager.ProcessManager;
 import github.anandb.netbeans.manager.AgentUtils;
 import github.anandb.netbeans.manager.SessionManager;
 import github.anandb.netbeans.manager.SessionTitleMapper;
 import github.anandb.netbeans.manager.SlashCommandInterceptor;
+import github.anandb.netbeans.manager.ToolDataExtractor;
 import github.anandb.netbeans.contract.DataExtractionStrategy;
 import github.anandb.netbeans.contract.PermissionHandler;
 import github.anandb.netbeans.contract.SessionListener;
@@ -144,7 +149,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         setName(NbBundle.getMessage(AssistantTopComponent.class, "CTL_AssistantTopComponent"));
         setToolTipText(NbBundle.getMessage(AssistantTopComponent.class, "HINT_AssistantTopComponent"));
 
-        thinkingTimer = new javax.swing.Timer(500, e -> {
+        thinkingTimer = new Timer(500, e -> {
             if (statusLabel != null && statusLabel.getText() != null) {
                 String txt = statusLabel.getText();
                 if (txt.startsWith("Thinking") || txt.startsWith("Responding") || txt.startsWith("Sending")) {
@@ -155,7 +160,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             }
         });
 
-        statusResetTimer = new javax.swing.Timer(1500, e -> {
+        statusResetTimer = new Timer(1500, e -> {
             if (statusLabel != null) {
                 statusLabel.setText("Ready");
             }
@@ -166,19 +171,19 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         chatPanel = new ChatThreadPanel();
 
         pageKeyDispatcher = e -> {
-            if (e.getID() == java.awt.event.KeyEvent.KEY_PRESSED) {
+            if (e.getID() == KeyEvent.KEY_PRESSED) {
                 int keyCode = e.getKeyCode();
-                if (keyCode == java.awt.event.KeyEvent.VK_PAGE_UP
-                        || keyCode == java.awt.event.KeyEvent.VK_PAGE_DOWN
-                        || ((e.getModifiersEx() & java.awt.event.KeyEvent.CTRL_DOWN_MASK) != 0
-                            && (keyCode == java.awt.event.KeyEvent.VK_HOME
-                                || keyCode == java.awt.event.KeyEvent.VK_END))) {
-                    java.awt.Component src = e.getComponent();
-                    if (src != null && javax.swing.SwingUtilities.isDescendingFrom(src, AssistantTopComponent.this)
-                            && !javax.swing.SwingUtilities.isDescendingFrom(src, chatPanel)) {
-                        if (keyCode == java.awt.event.KeyEvent.VK_PAGE_UP
-                                || keyCode == java.awt.event.KeyEvent.VK_PAGE_DOWN) {
-                            java.awt.Component c = src;
+                if (keyCode == KeyEvent.VK_PAGE_UP
+                        || keyCode == KeyEvent.VK_PAGE_DOWN
+                        || ((e.getModifiersEx() & KeyEvent.CTRL_DOWN_MASK) != 0
+                            && (keyCode == KeyEvent.VK_HOME
+                                || keyCode == KeyEvent.VK_END))) {
+                    Component src = e.getComponent();
+                    if (src != null && SwingUtilities.isDescendingFrom(src, AssistantTopComponent.this)
+                            && !SwingUtilities.isDescendingFrom(src, chatPanel)) {
+                        if (keyCode == KeyEvent.VK_PAGE_UP
+                                || keyCode == KeyEvent.VK_PAGE_DOWN) {
+                            Component c = src;
                             while (c != null) {
                                 if (c instanceof JComboBox) {
                                     return false;
@@ -201,7 +206,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             }
             return false;
         };
-        java.awt.KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(pageKeyDispatcher);
+        KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(pageKeyDispatcher);
 
         configPanelController = new ConfigPanelController(this::updateTabName);
 
@@ -408,7 +413,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                 }
 
                 @Override
-                public void updateConfig(java.util.List<SessionConfigOption> options) {
+                public void updateConfig(List<SessionConfigOption> options) {
                     if (options != null) {
                         configPanelController.updateConfigControls(options);
                     }
@@ -703,6 +708,14 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                     }
                 }
             }
+
+            String echoText = ToolDataExtractor.getLocalEchoText(text);
+            if (echoText != null) {
+                chatPanel.addMessage(new ProcessedMessage(
+                    MessageType.tool_call_update, echoText, echoText, "Slash Command", echoText
+                ));
+                inputArea.setText("");
+            }
         }
 
         // Add to history
@@ -807,7 +820,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             return null;
         }
 
-        Map<String, Object> context = new java.util.HashMap<>();
+        Map<String, Object> context = new HashMap<>();
 
         FileObject fo = NbEditorUtilities.getFileObject(doc);
         if (fo != null) {
@@ -952,9 +965,9 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             return;
         }
 
-        javax.swing.JFileChooser fc = new javax.swing.JFileChooser();
+        JFileChooser fc = new JFileChooser();
         fc.setMultiSelectionEnabled(true);
-        if (fc.showOpenDialog(this) == javax.swing.JFileChooser.APPROVE_OPTION) {
+        if (fc.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
             int added = 0;
             String lastName = null;
             for (File f : fc.getSelectedFiles()) {
@@ -1007,29 +1020,29 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             return;
         }
 
-        javax.swing.JFileChooser chooser = new javax.swing.JFileChooser();
+        JFileChooser chooser = new JFileChooser();
         chooser.setDialogTitle("Export Conversation");
-        chooser.setSelectedFile(new java.io.File("conversation.md"));
-        if (chooser.showSaveDialog(this) == javax.swing.JFileChooser.APPROVE_OPTION) {
-            java.io.File file = chooser.getSelectedFile();
-            try (java.io.FileWriter writer = new java.io.FileWriter(file)) {
+        chooser.setSelectedFile(new File("conversation.md"));
+        if (chooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
+            File file = chooser.getSelectedFile();
+            try (FileWriter writer = new FileWriter(file)) {
                 writer.write(markdown);
                 LOG.fine("Conversation exported to {0}", file.getAbsolutePath());
-            } catch (java.io.IOException ex) {
+            } catch (IOException ex) {
                 LOG.warn("Failed to export conversation", ex);
             }
         }
     }
 
     private void promptRestartServer() {
-        int choice = javax.swing.JOptionPane.showConfirmDialog(this,
+        int choice = JOptionPane.showConfirmDialog(this,
                 "Are you sure you want to restart ACP server ?\n" +
                 "This will terminate current operations and relaunch the connection.",
                 "Restart ACP server",
-                javax.swing.JOptionPane.YES_NO_OPTION,
-                javax.swing.JOptionPane.WARNING_MESSAGE);
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE);
 
-        if (choice == javax.swing.JOptionPane.YES_OPTION) {
+        if (choice == JOptionPane.YES_OPTION) {
             restartServer();
         }
     }
@@ -1071,7 +1084,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         SwingUtilities.invokeLater(() -> {
             sendBtn.setEnabled(!isProcessing);
             stopBtn.setEnabled(isProcessing);
-            if (sendBtn.getParent() != null && sendBtn.getParent().getLayout() instanceof java.awt.CardLayout cl) {
+            if (sendBtn.getParent() != null && sendBtn.getParent().getLayout() instanceof CardLayout cl) {
                 cl.show(sendBtn.getParent(), isProcessing ? "STOP" : "SEND");
             }
 
@@ -1139,7 +1152,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                 cwdLabel.setText("");
                 cwdLabel.setToolTipText(null);
             } else {
-                java.awt.FontMetrics fm = cwdLabel.getFontMetrics(cwdLabel.getFont());
+                FontMetrics fm = cwdLabel.getFontMetrics(cwdLabel.getFont());
                 int availableWidth = cwdLabel.getWidth() - 10;
                 String displayPath = effectivePath;
 
@@ -1171,6 +1184,12 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         }
 
         ProcessManager.getInstance().setPermissionHandler(this);
+        ProcessManager.getInstance().setStatusListener(msg -> {
+            SwingUtilities.invokeLater(() -> {
+                statusLabel.setText(msg);
+                statusResetTimer.restart();
+            });
+        });
         ProcessManager.getInstance().getSlashCommandInterceptor().setCallback(new SlashCommandCallback() {
             {
                 Runnable returnFocus = () -> inputArea.requestFocusInWindow();
@@ -1267,7 +1286,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     @Override
     public void componentClosed() {
         if (pageKeyDispatcher != null) {
-            java.awt.KeyboardFocusManager.getCurrentKeyboardFocusManager().removeKeyEventDispatcher(pageKeyDispatcher);
+            KeyboardFocusManager.getCurrentKeyboardFocusManager().removeKeyEventDispatcher(pageKeyDispatcher);
         }
         if (thinkingTimer != null && thinkingTimer.isRunning()) {
             thinkingTimer.stop();
@@ -1285,18 +1304,18 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     public void removeNotify() {
         super.removeNotify();
         if (pageKeyDispatcher != null) {
-            java.awt.KeyboardFocusManager.getCurrentKeyboardFocusManager().removeKeyEventDispatcher(pageKeyDispatcher);
+            KeyboardFocusManager.getCurrentKeyboardFocusManager().removeKeyEventDispatcher(pageKeyDispatcher);
         }
         if (statusResetTimer != null && statusResetTimer.isRunning()) {
             statusResetTimer.stop();
         }
     }
 
-    void writeProperties(java.util.Properties p) {
+    void writeProperties(Properties p) {
         p.setProperty("version", "2.0");
     }
 
-    void readProperties(java.util.Properties p) {
+    void readProperties(Properties p) {
     }
 
     public static synchronized AssistantTopComponent findInstance() {
@@ -1361,7 +1380,8 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         final String finalPrompt = prompt;
         SwingUtilities.invokeLater(() -> {
             chatPanel.addPermissionRequest(finalPrompt, params.get("options"), response);
-            requestActive(); // Bring attention to the chat
+            requestActive();
+            toFront();
         });
     }
 

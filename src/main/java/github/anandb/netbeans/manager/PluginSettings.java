@@ -1,18 +1,37 @@
 package github.anandb.netbeans.manager;
 
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.logging.Level;
+
+import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.ui.ACPOptionsPanel;
 import org.openide.util.NbPreferences;
 
 public final class PluginSettings {
 
+    private static final Logger LOG = new Logger(PluginSettings.class);
     private static final String KEY_PREAMBLE = "preamble";
     private static final String KEY_CUSTOM_USER_ICON = "customUserIcon";
+    private static final String DEFAULT_PREAMBLE;
+
+    static {
+        String preamble = "";
+        try (InputStream in = PluginSettings.class.getResourceAsStream("preamble.md")) {
+            if (in != null) {
+                preamble = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+            }
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "Failed to load preamble.md: {0}", e.getMessage());
+        }
+        DEFAULT_PREAMBLE = preamble;
+    }
 
     private PluginSettings() {
     }
 
     public static String getPreamble() {
-        return NbPreferences.forModule(ACPOptionsPanel.class).get(KEY_PREAMBLE, "");
+        return NbPreferences.forModule(ACPOptionsPanel.class).get(KEY_PREAMBLE, DEFAULT_PREAMBLE);
     }
 
     public static void setPreamble(String preamble) {

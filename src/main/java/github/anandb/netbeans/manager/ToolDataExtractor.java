@@ -111,16 +111,25 @@ public final class ToolDataExtractor {
         tag = tag.length() < 60 ? tag : "Tool";
 
         // Some special handling - look for a better way
-        if ("context".equals(tag) && "Compressed".equalsIgnoreCase(identifier)) {
+        if ("context".equals(tag) && identifier.startsWith("Compressed")) {
             identifier = toRootLowerCase(identifier);
         }
 
         String title = tag + " " + abbreviateMiddle(identifier, "...", 60);
-        LOG.fine("Title {0}", title);
+        LOG.info("Title [{0}]", title);
         return title;
     }
 
     public static String extractToolTitle(ProcessedMessage pm, String kind) {
         return extractToolTitle(pm.messageId(), pm.rawText(), kind);
+    }
+
+    public static String getLocalEchoText(String commandText) {
+        LOG.info("Local echo check for command: {0}", commandText);
+        if (commandText.startsWith("/dcp") || commandText.startsWith("/compact")) {
+            return commandText.replace("/", "");
+        }
+        
+        return null;
     }
 }

@@ -1,12 +1,20 @@
 # Quickstart Guide
 
-This document covers features available in the latest release. You can download the plugin from **Maven Central** or build it from source. While it will eventually be available on the Plugin Portal, currently only key stable versions are published there.
+This document covers features available in the latest release. You can download the plugin from **Maven Central** or
+build it from source. While it will eventually be available on the Plugin Portal, currently only key stable versions
+are published there.
 
 ---
 
+## ⚠️ Heads-up
+
+Keep your files under version control using git, mercurial or another versioning system, should you have to restore any
+changes from an earlier revision. This is all the more important if you are letting an LLM make edits to files.
+
 ## 🛠 Setup
 
-1.  **Prerequisites**: Install [OpenCode](https://opencode.ai/), then connect and configure your providers.
+1.  **Prerequisites**: Install [OpenCode](https://opencode.ai/), then connect and configure your providers. This plugin acts as a client
+    to OpenCode running as an Agent Server.
 2.  **Installation**:
     *   Download the `.nbm` file from [Maven Central](https://central.sonatype.com/artifact/io.github.anandb/beanbot/versions).
     *   In NetBeans, navigate to `Tools > Plugins > Downloaded` to add the file.

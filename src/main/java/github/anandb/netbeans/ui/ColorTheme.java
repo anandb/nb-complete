@@ -152,12 +152,10 @@ public record ColorTheme(
         String preFg = codeForeground() != null ? toHtmlHex(codeForeground()) : "#bcbec4";
 
         Map<String, String> vars = new HashMap<>();
-        vars.put("fontStack", FontStacks.FONT_STACK);
         vars.put("fg", fg);
         vars.put("bg", bg);
         vars.put("linkColor", linkColor);
         vars.put("codeBg", codeBg);
-        vars.put("monoStack", FontStacks.MONO_STACK);
         vars.put("preBg", preBg);
         vars.put("preFg", preFg);
 
@@ -180,15 +178,15 @@ public record ColorTheme(
         if (template != null) {
             return template;
         }
-        try (InputStream in = ColorTheme.class.getResourceAsStream("chat-style.css")) {
+        try (InputStream in = ColorTheme.class.getResourceAsStream("chat-style.css.template")) {
             if (in == null) {
-                throw new IllegalStateException("chat-style.css not found");
+                throw new IllegalStateException("chat-style.css.template not found");
             }
             template = new String(in.readAllBytes(), StandardCharsets.UTF_8);
             cachedCssTemplate = template;
             return template;
         } catch (IOException e) {
-            throw new IllegalStateException("Failed to load chat-style.css", e);
+            throw new IllegalStateException("Failed to load chat-style.css.template", e);
         }
     }
 

@@ -1,6 +1,8 @@
 package github.anandb.netbeans.ui;
 
 import java.awt.BorderLayout;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Cursor;
@@ -20,6 +22,7 @@ import java.awt.event.ContainerEvent;
 import java.awt.event.KeyEvent;
 import java.io.File;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
@@ -41,6 +44,9 @@ import javax.swing.Scrollable;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
+import javax.swing.border.EmptyBorder;
+
+import com.fasterxml.jackson.databind.JsonNode;
 
 import github.anandb.netbeans.manager.SessionTitleMapper;
 import github.anandb.netbeans.model.Message;
@@ -84,7 +90,7 @@ public class ChatThreadPanel extends JPanel {
         messagesContainer.setLayout(new BoxLayout(messagesContainer, BoxLayout.Y_AXIS));
         messagesContainer.setOpaque(true);
         messagesContainer.setBackground(theme.sunkenBackground());
-        messagesContainer.setBorder(new javax.swing.border.EmptyBorder(0, 0, 40, 0));
+        messagesContainer.setBorder(new EmptyBorder(0, 0, 90, 0));
 
         scrollPane = new JScrollPane(messagesContainer);
 
@@ -203,14 +209,12 @@ public class ChatThreadPanel extends JPanel {
                             }
                         }
                         JScrollBar vertical = scrollPane.getVerticalScrollBar();
-                        if (keyCode == KeyEvent.VK_PAGE_UP) {
-                            vertical.setValue(vertical.getValue() - vertical.getVisibleAmount());
-                        } else if (keyCode == KeyEvent.VK_PAGE_DOWN) {
-                            vertical.setValue(vertical.getValue() + vertical.getVisibleAmount());
-                        } else if (keyCode == KeyEvent.VK_HOME) {
-                            vertical.setValue(vertical.getMinimum());
-                        } else if (keyCode == KeyEvent.VK_END) {
-                            vertical.setValue(vertical.getMaximum());
+                        switch (keyCode) {
+                            case KeyEvent.VK_PAGE_UP -> vertical.setValue(vertical.getValue() - vertical.getVisibleAmount());
+                            case KeyEvent.VK_PAGE_DOWN -> vertical.setValue(vertical.getValue() + vertical.getVisibleAmount());
+                            case KeyEvent.VK_HOME -> vertical.setValue(vertical.getMinimum());
+                            case KeyEvent.VK_END -> vertical.setValue(vertical.getMaximum());
+                            default -> {}
                         }
                         return true;
                     }
@@ -338,7 +342,7 @@ public class ChatThreadPanel extends JPanel {
         });
     }
 
-    public void addPermissionRequest(String prompt, com.fasterxml.jackson.databind.JsonNode options, java.util.concurrent.CompletableFuture<String> responseFuture) {
+    public void addPermissionRequest(String prompt, JsonNode options, CompletableFuture<String> responseFuture) {
         SwingUtilities.invokeLater(() -> {
             PermissionBubble bubble = new PermissionBubble(prompt, options, responseFuture);
             messagesContainer.add(bubble);
@@ -350,7 +354,7 @@ public class ChatThreadPanel extends JPanel {
 
     private static class PermissionBubble extends JPanel {
         private static final long serialVersionUID = 1L;
-        public PermissionBubble(String prompt, com.fasterxml.jackson.databind.JsonNode options, java.util.concurrent.CompletableFuture<String> responseFuture) {
+        public PermissionBubble(String prompt, JsonNode options, CompletableFuture<String> responseFuture) {
             setLayout(new BorderLayout());
             setOpaque(false);
             setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
@@ -376,12 +380,12 @@ public class ChatThreadPanel extends JPanel {
             content.add(promptLabel, BorderLayout.CENTER);
 
             int numOptions = (options != null && options.isArray() && options.size() > 0) ? options.size() : 2;
-            JPanel buttons = new JPanel(new java.awt.GridLayout(1, numOptions, 4, 0));
+            JPanel buttons = new JPanel(new GridLayout(1, numOptions, 4, 0));
             buttons.setOpaque(false);
 
             if (options != null && options.isArray() && options.size() > 0) {
                 LOG.fine("PermissionBubble: rendering {0} options", options.size());
-                for (com.fasterxml.jackson.databind.JsonNode opt : options) {
+                for (JsonNode opt : options) {
                     String optionId = opt.has("optionId") ? opt.get("optionId").asText() : "";
                     String name = opt.has("name") ? opt.get("name").asText() : optionId;
                     String kind = opt.has("kind") ? opt.get("kind").asText() : "";
@@ -703,15 +707,15 @@ public class ChatThreadPanel extends JPanel {
         btn.add(textPanel, BorderLayout.CENTER);
         btn.setMaximumSize(new Dimension(Integer.MAX_VALUE, Math.max(btn.getPreferredSize().height, 60)));
 
-        btn.addMouseListener(new java.awt.event.MouseAdapter() {
+        btn.addMouseListener(new MouseAdapter() {
             @Override
-            public void mouseEntered(java.awt.event.MouseEvent e) {
+            public void mouseEntered(MouseEvent e) {
                 btn.setOpaque(false);
                 btn.setBackground(new Color(0, 0, 0, 10));
                 btn.repaint();
             }
             @Override
-            public void mouseExited(java.awt.event.MouseEvent e) {
+            public void mouseExited(MouseEvent e) {
                 btn.setOpaque(false);
                 btn.repaint();
             }

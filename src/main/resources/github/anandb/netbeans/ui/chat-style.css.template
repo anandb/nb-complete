@@ -1,5 +1,5 @@
 html, body {
-    font-family: $fontStack;
+    font-family: 'Dialog', 'Noto Sans', 'Segoe UI', 'Ubuntu', 'Helvetica Neue', 'Arial', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', 'sans-serif';
     font-size: 13px;
     color: $fg;
     background-color: $bg;
@@ -13,7 +13,7 @@ code {
     background-color: $codeBg;
     padding: 2px 4px;
     border-radius: 3px;
-    font-family: $monoStack;
+    font-family: 'MesloLGS NF', 'Source Code Pro', 'JetBrains Mono', 'Monaco', 'Fira Code', 'monospace';
     font-size: 12px;
 }
 pre {
@@ -21,7 +21,7 @@ pre {
     color: $preFg;
     padding: 10px;
     border-radius: 4px;
-    font-family: $monoStack;
+    font-family: 'MesloLGS NF', 'Source Code Pro', 'JetBrains Mono', 'Monaco', 'Fira Code', 'monospace';
     font-size: 13px;
     overflow-x: auto;
     margin: 6px 0;
