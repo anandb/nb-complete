@@ -24,7 +24,6 @@ public class PlanStrategy implements DataExtractionStrategy {
 
     @Override
     public void extract(SessionUpdate update, UIHandler handler) {
-        ProcessedMessage target = new ProcessedMessage();
         JsonNode entriesNode = update.update() != null ? update.update().entries() : null;
         if (entriesNode == null || !entriesNode.isArray()) {
             LOG.fine("Plan update has no entries array");
@@ -52,9 +51,11 @@ public class PlanStrategy implements DataExtractionStrategy {
             sb.append("- ").append(statusIcon(entry.status())).append(" ").append(entry.content()).append("\n");
         }
 
-        target.setMessageType(MessageType.agent_message_chunk);
-        target.setText(sb.toString());
-        target.setStreaming(false);
+        ProcessedMessage target = new ProcessedMessage.Builder()
+                .messageType(MessageType.agent_message_chunk)
+                .text(sb.toString())
+                .streaming(false)
+                .build();
         handler.displayMessage(target);
     }
 

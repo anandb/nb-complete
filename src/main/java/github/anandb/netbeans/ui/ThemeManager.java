@@ -21,6 +21,18 @@ public class ThemeManager {
     private static final Logger LOG = new Logger(ThemeManager.class);
     private ThemeManager() {}
 
+    private static volatile Font cachedFont;
+    private static volatile Font cachedMonospaceFont;
+    private static volatile Boolean cachedIsDark;
+
+    static {
+        UIManager.addPropertyChangeListener(e -> {
+            cachedFont = null;
+            cachedMonospaceFont = null;
+            cachedIsDark = null;
+        });
+    }
+
     private static final Map<String, Icon> ICON_CACHE = Collections.synchronizedMap(new LinkedHashMap<>(64, 0.75f, true) {
         @Override
         protected boolean removeEldestEntry(Map.Entry<String, Icon> eldest) {
@@ -73,32 +85,43 @@ public class ThemeManager {
     }
 
     public static Font getFont() {
-        Font f = UIManager.getFont("Label.font");
+        Font f = cachedFont;
+        if (f != null) return f;
+        f = UIManager.getFont("Label.font");
         if (f == null) {
             f = UIManager.getFont("controlFont");
         }
         if (f == null) {
             f = new Font("Dialog", Font.PLAIN, 12);
         }
+        cachedFont = f;
         return f;
     }
 
     public static Font getMonospaceFont() {
+        Font f = cachedMonospaceFont;
+        if (f != null) return f;
+
         Font editorFont = UIManager.getFont("EditorPane.font");
         int size = (editorFont != null) ? editorFont.getSize() : 13;
 
         // Try MesloLGS NF first as it's the preferred font for Nerd Font support
         Font meslo = new Font("MesloLGS NF", Font.PLAIN, size);
         if (meslo.getFamily().equalsIgnoreCase("MesloLGS NF")) {
+            cachedMonospaceFont = meslo;
             return meslo;
         }
 
-        return (editorFont != null)
+        f = (editorFont != null)
                 ? new Font(editorFont.getName(), editorFont.getStyle(), size)
                 : new Font(Font.MONOSPACED, Font.PLAIN, size);
+        cachedMonospaceFont = f;
+        return f;
     }
 
     public static boolean isDark() {
+        Boolean cached = cachedIsDark;
+        if (cached != null) return cached;
         boolean result = UIManager.getBoolean("nb.dark.theme");
         if (!UIManager.getDefaults().containsKey("nb.dark.theme")) {
             Color bg = UIManager.getColor("Panel.background");
@@ -108,6 +131,7 @@ public class ThemeManager {
                 LOG.severe("Theme detection fallback failed: Panel.background color is missing from UIManager");
             }
         }
+        cachedIsDark = result;
         return result;
     }
 

@@ -21,13 +21,14 @@ public class AgentMessageChunkStrategy implements DataExtractionStrategy {
     public void extract(SessionUpdate update, UIHandler handler) {
         String msgId = update.messageId();
         String text = extractText(update.content());
-        ProcessedMessage target = new ProcessedMessage();
-        target.setMessageType(MessageType.valueOf(update.type()));
-        target.setText(text);
-        target.setMessageId(msgId);
-        target.setKind(update.kind());
-        target.setRawText(text);
-        target.setStreaming(true);
+        ProcessedMessage target = new ProcessedMessage.Builder()
+                .messageType(MessageType.valueOf(update.type()))
+                .text(text)
+                .messageId(msgId)
+                .kind(update.kind())
+                .rawText(text)
+                .streaming(true)
+                .build();
 
         if (target.messageType() != null) {
             handler.displayMessage(target);

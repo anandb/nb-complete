@@ -7,13 +7,15 @@ import java.util.regex.Pattern;
  */
 public class TextScanner {
     private static final Logger LOG = new Logger(TextScanner.class);
-    
+
     // Combined range for Box Drawing (2500-257F) and Block Elements (2580-259F)
     private static final Pattern ASCII_ART_PATTERN = Pattern.compile("[\\u2500-\\u259F]|[-=]{5,}");
 
+    private TextScanner() {}
+
     /**
      * Checks if the given text contains ASCII art or box-drawing characters.
-     * 
+     *
      * @param text the text to scan
      * @return true if ASCII art is detected, false otherwise
      */

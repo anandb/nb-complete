@@ -14,13 +14,15 @@ public class AgentThoughtChunkStrategy implements DataExtractionStrategy {
 
     @Override
     public void extract(SessionUpdate update, UIHandler handler) {
-        ProcessedMessage target = new ProcessedMessage();
-        target.setMessageType(MessageType.valueOf(update.type()));
-        target.setText(AgentMessageChunkStrategy.extractText(update.content()));
-        target.setMessageId(update.messageId());
-        target.setKind(update.kind());
-        target.setRawText(target.text());
-        target.setStreaming(true);
+        String text = AgentMessageChunkStrategy.extractText(update.content());
+        ProcessedMessage target = new ProcessedMessage.Builder()
+                .messageType(MessageType.valueOf(update.type()))
+                .text(text)
+                .messageId(update.messageId())
+                .kind(update.kind())
+                .rawText(text)
+                .streaming(true)
+                .build();
         handler.displayMessage(target);
     }
 }

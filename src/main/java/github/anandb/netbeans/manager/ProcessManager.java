@@ -2,16 +2,21 @@ package github.anandb.netbeans.manager;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.regex.Pattern;
+import java.util.Set;
 
 import javax.swing.text.Document;
 
@@ -79,12 +84,25 @@ public class ProcessManager {
     private static final long RESTART_RESET_INTERVAL = 300000; // 5 minutes
     private boolean shutdownHookAdded = false;
 
-    private McpServer mcpServer;
-    private volatile boolean mcpDisabled = true;
+    private final McpManager mcpManager = new McpManager();
 
     private volatile boolean serverStarted = false;
 
+    private final Set<String> pluginWritingFiles = ConcurrentHashMap.newKeySet();
+
     private ProcessManager() {
+    }
+
+    public McpManager getMcpManager() {
+        return mcpManager;
+    }
+
+    public CompletableFuture<JsonNode> sendRequest(String method, Object params) {
+        return rpcClient.sendRequest(method, params);
+    }
+
+    public void sendNotification(String method, Object params) {
+        rpcClient.sendNotification(method, params);
     }
 
     public synchronized void ensureStarted() {
@@ -124,16 +142,7 @@ public class ProcessManager {
         }
 
         // Start MCP weather server
-        if (!mcpDisabled) {
-            if (mcpServer == null) {
-                mcpServer = new McpServer();
-            }
-            try {
-                mcpServer.start();
-            } catch (IOException e) {
-                LOG.warn("Failed to start MCP weather server: {0}", e.getMessage());
-            }
-        }
+        mcpManager.start();
 
         LOG.info("Starting ACP server...");
         try {
@@ -257,7 +266,7 @@ public class ProcessManager {
                 .orTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
                 .thenAccept(res -> {
                     if (res != null) {
-                        checkServerMcpSupport(res);
+                        mcpManager.checkServerSupport(res);
                     }
                     readyFuture.complete(null);
                     LOG.log(Level.FINE, "ACP initialized successfully");
@@ -271,25 +280,6 @@ public class ProcessManager {
                 });
     }
 
-    private void checkServerMcpSupport(JsonNode res) {
-        JsonNode caps = res.has("agentCapabilities") ? res.get("agentCapabilities") : null;
-        if (caps == null || !caps.has("mcpCapabilities")) {
-            if (!mcpDisabled) {
-                LOG.info("Server does not advertise MCP support, disabling MCP for this process");
-                disableMcp();
-            }
-            return;
-        }
-        JsonNode mcpCaps = caps.get("mcpCapabilities");
-        boolean supportsMcp = mcpCaps.has("http") && mcpCaps.get("http").asBoolean(false) ||
-                              mcpCaps.has("sse") && mcpCaps.get("sse").asBoolean(false);
-        if (!supportsMcp && !mcpDisabled) {
-            LOG.info("Server does not advertise MCP support, disabling MCP for this process {0}", mcpCaps.asText());
-            disableMcp();
-        } else {
-            LOG.info("Server advertises MCP support {0}", mcpCaps.asText());
-        }
-    }
 
     public void shutdown() {
         if (isClosing) {
@@ -318,10 +308,7 @@ public class ProcessManager {
         reconnectExecutor.shutdownNow().forEach(task ->
                 LOG.fine("Discarded pending reconnect task on shutdown: {0}", task));
 
-        if (mcpServer != null) {
-            mcpServer.stop();
-            mcpServer = null;
-        }
+        mcpManager.stop();
 
         if (rpcClient != null) {
             rpcClient.close();
@@ -401,220 +388,6 @@ public class ProcessManager {
         return rpcClient != null;
     }
 
-    public CompletableFuture<List<Session>> getSessions(String directory) {
-        LOG.log(Level.FINE, "getSessions: called with directory={0}", directory);
-        if (!rpcClientReady()) {
-            return CompletableFuture.failedFuture(new RuntimeException(operationalError()));
-        }
-        Map<String, Object> params = new java.util.HashMap<>();
-        if (directory != null && !directory.isEmpty()) {
-            params.put("cwd", directory);
-        }
-        return rpcClient.sendRequest("session/list", params)
-                .thenApply(res -> {
-                    try {
-                        LOG.log(Level.FINE, "getSessions: got response");
-                        if (res == null) {
-                            LOG.warn("getSessions: null response");
-                            return new ArrayList<Session>();
-                        }
-                        JsonNode root = res;
-                        JsonNode sessionsNode = root.has("sessions") ? root.get("sessions") : root.has("data") ? root.get("data") : root;
-                        if (sessionsNode.isArray()) {
-                            List<Session> rawSessions = objectMapper.readValue(sessionsNode.traverse(), new TypeReference<List<Session>>() {
-                            });
-                            List<Session> sessions = new ArrayList<>();
-                            for (Session s : rawSessions) {
-                                // If the server returns a session for this specific directory, but it's missing the directory field, fill it in.
-                                if (s.effectiveDirectory() != null) {
-                                    sessions.add(s);
-                                    continue;
-                                }
-
-                                sessions.add(new Session(s.id(), s.title(), directory, directory, s.parentID(), s.updatedAt(), s.mcpServers(), s.configOptions()));
-                            }
-                            LOG.fine("getSessions: deserialized {0} sessions", sessions.size());
-                            for (Session s : sessions) {
-                                LOG.fine("getSessions: id={0}, title=''{1}'', directory={2}", s.id(), s.title(), s.effectiveDirectory());
-                            }
-                            return sessions;
-                        } else {
-                            LOG.warn("getSessions: sessionsNode is not an array: {0}", sessionsNode);
-                            return new ArrayList<Session>();
-                        }
-                    } catch (IOException e) {
-                        LOG.warn("getSessions: failed to deserialize: {0} {1}", e.getMessage(), e.toString());
-                        return new ArrayList<Session>();
-                    }
-                })
-                .exceptionally(ex -> {
-                    LOG.warn("getSessions: rpc error: {0} {1}", ex.getMessage(), ex.toString());
-                    return new ArrayList<>();
-                });
-    }
-
-    public CompletableFuture<List<Session>> getSessionsForDirectories(List<String> directories) {
-        if (directories == null || directories.isEmpty()) {
-            return CompletableFuture.completedFuture(new ArrayList<>());
-        }
-        LOG.fine("getSessionsForDirectories: querying {0} directories: {1}", directories.size(), directories);
-        List<CompletableFuture<List<Session>>> futures = directories.stream()
-                .map(dir -> getSessions(dir))
-                .toList();
-        return CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new))
-                .thenApply(v -> futures.stream()
-                .flatMap(f -> {
-                    try {
-                        return f.get().stream();
-                    } catch (Exception e) {
-                        LOG.log(Level.WARNING, "Failed to get sessions for directory: {0}", e.getMessage());
-                        return java.util.stream.Stream.empty();
-                    }
-                })
-                .toList());
-    }
-
-    private static String getProjectPath() {
-        Project main = OpenProjects.getDefault().getMainProject();
-        if (main != null && main.getProjectDirectory() != null) {
-            return main.getProjectDirectory().getPath();
-        }
-        Project[] open = OpenProjects.getDefault().getOpenProjects();
-        if (open != null && open.length > 0 && open[0].getProjectDirectory() != null) {
-            return open[0].getProjectDirectory().getPath();
-        }
-        return null;
-    }
-
-    private List<Map<String, String>> getMcpServerConfig() {
-        if (mcpDisabled || mcpServer == null || !mcpServer.isRunning()) {
-            return List.of();
-        }
-        return List.of(Map.of(
-                "type", "sse",
-                "name", "weather",
-                "url", mcpServer.getUrl()
-        ));
-    }
-
-    private boolean isInvalidParamsError(Throwable t) {
-        if (t == null) {
-            return false;
-        }
-        String msg = t.getMessage();
-        return msg != null && msg.contains("Invalid params");
-    }
-
-    private void disableMcp() {
-        if (!mcpDisabled) {
-            mcpDisabled = true;
-            LOG.warn("Disabling MCP servers for the remainder of this process due to Invalid Params error from server");
-            if (mcpServer != null) {
-                mcpServer.stop();
-            }
-        }
-    }
-
-    public CompletableFuture<Session> createSession(String cwd) {
-        if (!rpcClientReady()) {
-            return CompletableFuture.failedFuture(new RuntimeException(operationalError()));
-        }
-
-        String effectiveCwd = cwd;
-
-        // 1. Use provided CWD if given
-        // 2. Query NetBeans APIs directly
-        if (effectiveCwd == null) {
-            effectiveCwd = getProjectPath();
-        }
-
-        // 3. Default to system user dir if all else fails
-        if (effectiveCwd == null) {
-            effectiveCwd = System.getProperty("user.dir");
-        }
-
-        LOG.log(Level.FINE, "Creating new session with CWD: {0}", effectiveCwd);
-        final String finalCwd = effectiveCwd;
-
-        return sendCreateSessionRequest(finalCwd).handle((res, ex) -> {
-            if (ex == null) {
-                return CompletableFuture.completedFuture(res);
-            }
-            Throwable cause = (ex instanceof java.util.concurrent.CompletionException) ? ex.getCause() : ex;
-            if (isInvalidParamsError(cause) && !mcpDisabled) {
-                LOG.warn("session/new failed with Invalid Params, retrying without MCP servers");
-                disableMcp();
-                return sendCreateSessionRequest(finalCwd);
-            }
-            return CompletableFuture.<Session>failedFuture(ex);
-        }).thenCompose(f -> f);
-    }
-
-    private CompletableFuture<Session> sendCreateSessionRequest(String finalCwd) {
-        Map<String, Object> params = new HashMap<>();
-        params.put("cwd", finalCwd);
-        params.put("mcpServers", getMcpServerConfig());
-        return rpcClient.sendRequest("session/new", params)
-                .thenApply(res -> {
-                    try {
-                        Session s = objectMapper.treeToValue(res, Session.class);
-                        // If the server didn't explicitly return the CWD we sent, associate it ourselves
-                        if (s.effectiveDirectory() == null) {
-                            s = new Session(s.id(), s.title(), finalCwd, finalCwd, s.parentID(), s.updatedAt(), s.mcpServers(), s.configOptions());
-                        }
-                        return s;
-                    } catch (Exception e) {
-                        throw new RuntimeException(e);
-                    }
-                });
-    }
-
-    public CompletableFuture<List<SessionConfigOption>> loadSession(String sessionId, String cwd) {
-        LOG.fine("loadSession: called with {0}, cwd={1}", sessionId, cwd);
-        if (!rpcClientReady()) {
-            return CompletableFuture.failedFuture(new RuntimeException(operationalError()));
-        }
-
-        return sendLoadSessionRequest(sessionId, cwd).handle((res, ex) -> {
-            if (ex == null) {
-                return CompletableFuture.completedFuture(res);
-            }
-            Throwable cause = (ex instanceof java.util.concurrent.CompletionException) ? ex.getCause() : ex;
-            if (isInvalidParamsError(cause) && !mcpDisabled) {
-                LOG.warn("session/load failed with Invalid Params, retrying without MCP servers");
-                disableMcp();
-                return sendLoadSessionRequest(sessionId, cwd);
-            }
-            return CompletableFuture.<List<SessionConfigOption>>failedFuture(ex);
-        }).thenCompose(f -> f)
-        .exceptionally(ex -> {
-            LOG.warn("loadSession: error: {0}", ex.getMessage());
-            return null;
-        });
-    }
-
-    private CompletableFuture<List<SessionConfigOption>> sendLoadSessionRequest(String sessionId, String cwd) {
-        Map<String, Object> params = new java.util.HashMap<>();
-        params.put("sessionId", sessionId);
-        if (cwd != null) {
-            params.put("cwd", cwd);
-        }
-        params.put("mcpServers", getMcpServerConfig());
-
-        return rpcClient.sendRequest("session/load", params)
-                .thenApply(res -> {
-                    LOG.fine("loadSession: got response {0}", res);
-                    if (res != null && res.has("configOptions")) {
-                        try {
-                            return objectMapper.convertValue(res.get("configOptions"), new TypeReference<List<SessionConfigOption>>() {
-                            });
-                        } catch (Exception e) {
-                            LOG.warn("Failed to parse configOptions: {0}", e.getMessage());
-                        }
-                    }
-                    return null;
-                });
-    }
 
     public CompletableFuture<JsonNode> sendMessage(String sessionId, String text, Map<String, Object> context) {
         return sendMessage(sessionId, text, context, null);
@@ -695,7 +468,7 @@ public class ProcessManager {
         Map<String, Object> params = new HashMap<>();
         params.put("sessionId", sessionId);
         params.put("prompt", promptBlocks);
-        params.put("mcpServers", getMcpServerConfig());
+        params.put("mcpServers", mcpManager.getServerConfig());
 
         return rpcClient.sendRequest("session/prompt", params)
                 .thenApply(v -> null);
@@ -709,45 +482,23 @@ public class ProcessManager {
         return CompletableFuture.completedFuture(null);
     }
 
-    public CompletableFuture<JsonNode> renameSession(String sessionId, String newTitle) {
-        ObjectNode params = objectMapper.createObjectNode();
-        params.put("sessionId", sessionId);
-
-        ObjectNode update = objectMapper.createObjectNode();
-        update.put("sessionUpdate", "session_info_update");
-        update.put("title", newTitle);
-
-        params.set("update", update);
-
-        return rpcClient.sendRequest("session/update", params);
-    }
-
-    public CompletableFuture<Void> deleteSession(String sessionId) {
-        if (!rpcClientReady()) {
-            return CompletableFuture.failedFuture(new RuntimeException(operationalError()));
-        }
-        // Using session/close as the standard termination method
-        return rpcClient.sendRequest("session/delete", Map.of("sessionId", sessionId))
-                .thenApply(v -> null);
-    }
-
-    public CompletableFuture<Void> setSessionConfigOption(String sessionId, String configId, String value) {
-        if (!rpcClientReady()) {
-            return CompletableFuture.failedFuture(new RuntimeException(operationalError()));
-        }
-        Map<String, Object> params = Map.of(
-                "sessionId", sessionId,
-                "configId", configId,
-                "value", value
-        );
-        return rpcClient.sendRequest("session/set_config_option", params)
-                .thenApply(v -> null);
-    }
 
     public void setActiveProject(String path) {
         for (Consumer<String> listener : projectChangeListeners) {
             listener.accept(path);
         }
+    }
+
+    private static String getProjectPath() {
+        Project main = OpenProjects.getDefault().getMainProject();
+        if (main != null && main.getProjectDirectory() != null) {
+            return main.getProjectDirectory().getPath();
+        }
+        Project[] open = OpenProjects.getDefault().getOpenProjects();
+        if (open != null && open.length > 0 && open[0].getProjectDirectory() != null) {
+            return open[0].getProjectDirectory().getPath();
+        }
+        return null;
     }
 
     public String getActiveProjectDir() {
@@ -760,6 +511,22 @@ public class ProcessManager {
 
     public void addProjectChangeListener(Consumer<String> listener) {
         projectChangeListeners.add(listener);
+    }
+
+    public boolean isPluginWriting(String path) {
+        return path != null && pluginWritingFiles.contains(path);
+    }
+
+    private void markPluginWriting(String path) {
+        if (path != null) {
+            pluginWritingFiles.add(path);
+        }
+    }
+
+    private void unmarkPluginWriting(String path) {
+        if (path != null) {
+            pluginWritingFiles.remove(path);
+        }
     }
 
     public List<SessionUpdate.AvailableCommand> getAvailableCommands() {
@@ -881,6 +648,12 @@ public class ProcessManager {
         });
     }
 
+    private boolean isWithinProject(File file) {
+        String projectDir = getActiveProjectDir();
+        if (projectDir == null) return false;
+        return file.toPath().normalize().startsWith(Paths.get(projectDir).normalize());
+    }
+
     private void recordLocalHistory(JsonNode updateParams) {
         // Only act on completed tool_call_update messages
         JsonNode update = updateParams.get("update");
@@ -894,20 +667,21 @@ public class ProcessManager {
 
         // Extract file path from rawInput
         JsonNode rawInput = update.get("rawInput");
-        if (rawInput == null) return;
+        if (rawInput == null) {
+            LOG.fine("Local history skipped: rawInput is null for kind={0}", kind);
+            return;
+        }
         String filePath = rawInput.has("filePath") ? rawInput.get("filePath").asText()
                 : rawInput.has("path") ? rawInput.get("path").asText() : null;
         if (filePath == null || filePath.isEmpty()) return;
 
         // Resolve and verify path is within current project directory
-        java.io.File file = new java.io.File(filePath);
+        File file = new File(filePath);
         if (!file.isAbsolute()) {
             String projectDir = getActiveProjectDir();
-            file = new java.io.File(projectDir, filePath);
+            file = new File(projectDir, filePath);
         }
-        String projectDir = getActiveProjectDir();
-        if (projectDir == null || !file.toPath().normalize().startsWith(
-                java.nio.file.Paths.get(projectDir).normalize())) {
+        if (!isWithinProject(file)) {
             LOG.fine("Skipping local history: file outside project: {0}", filePath);
             Consumer<String> listener = statusListener;
             if (listener != null) {
@@ -932,22 +706,52 @@ public class ProcessManager {
         }
     }
 
-    private void writeThroughVFS(java.io.File file) {
+    private void writeThroughVFS(File file) {
+        String filePath = file.getAbsolutePath();
+        markPluginWriting(filePath);
         try {
             if (!file.exists()) return;
             FileObject fo = FileUtil.toFileObject(file);
+            if (fo == null) {
+                fo = FileUtil.createData(file);
+            }
             if (fo != null) {
+                byte[] bytes = Files.readAllBytes(file.toPath());
+                String content = new String(bytes, StandardCharsets.UTF_8);
+
+                // Sync the open editor Document to match disk
+                try {
+                    DataObject dobj = DataObject.find(fo);
+                    EditorCookie ec = dobj.getLookup().lookup(EditorCookie.class);
+                    if (ec != null) {
+                        Document doc = ec.openDocument();
+                        if (doc != null) {
+                            doc.remove(0, doc.getLength());
+                            doc.insertString(0, content, null);
+                            ec.saveDocument();
+                            markUnmodifiedAfterWrite(fo);
+                            LOG.fine("Local history triggered via editor Document: {0}", file.getAbsolutePath());
+                            return;
+                        }
+                    }
+                } catch (Exception e) {
+                    LOG.fine("Could not sync editor for local history: {0}", e.getMessage());
+                }
+
+                // Fallback: refresh VFS
                 fo.refresh();
-                LOG.fine("Notified NetBeans of file change: {0}", file.getAbsolutePath());
+                LOG.fine("Notified NetBeans of file change (refresh only): {0}", file.getAbsolutePath());
             }
         } catch (Exception e) {
-            LOG.info("Failed to notify NetBeans of file change: {0}", e.getMessage());
+            LOG.info("Failed to trigger local history: {0}", e.getMessage());
+        } finally {
+            unmarkPluginWriting(filePath);
         }
     }
 
-    private void triggerDeleteHistory(java.io.File file) {
+    private void triggerDeleteHistory(File file) {
         try {
-            java.io.File parentDir = file.getParentFile();
+            File parentDir = file.getParentFile();
             if (parentDir == null) return;
             FileObject parentFo = FileUtil.toFileObject(parentDir);
             if (parentFo != null) {
@@ -961,8 +765,9 @@ public class ProcessManager {
 
     private CompletableFuture<JsonNode> handleWriteTextFile(JsonNode params) {
         return CompletableFuture.supplyAsync(() -> {
+            String filePath = null;
             try {
-                String filePath = params.has("path") ? params.get("path").asText()
+                filePath = params.has("path") ? params.get("path").asText()
                         : params.has("filePath") ? params.get("filePath").asText() : null;
 
                 LOG.info("Write {0}", filePath);
@@ -971,49 +776,59 @@ public class ProcessManager {
                 }
 
                 String content = params.has("content") ? params.get("content").asText() : "";
-                java.io.File file = new java.io.File(filePath);
+                File file = new File(filePath);
 
-                java.io.File parent = file.getParentFile();
+                // Verify path is within project directory
+                if (!isWithinProject(file)) {
+                    LOG.warn("fs/writeTextFile rejected: path outside project: {0}", filePath);
+                    throw new RuntimeException("Refused to write outside project directory: " + filePath);
+                }
+
+                File parent = file.getParentFile();
                 if (parent != null && !parent.exists()) {
                     parent.mkdirs();
                 }
 
                 boolean written = false;
 
-                // Try writing through open editor's Document to stay in sync
+                // Suppress VFS "externally modified" notifications for this file
+                markPluginWriting(filePath);
+
+                // Write to disk first so the FileObject is up-to-date
+                byte[] data = content.getBytes(StandardCharsets.UTF_8);
+                Files.write(file.toPath(), data);
+
+                // Then sync the open editor Document to match disk
                 try {
                     FileObject fo = FileUtil.toFileObject(file);
-                    if (fo == null && !file.exists()) {
-                        fo = FileUtil.createData(file);
-                    }
                     if (fo != null) {
                         DataObject dobj = DataObject.find(fo);
                         EditorCookie ec = dobj.getLookup().lookup(EditorCookie.class);
                         if (ec != null) {
-                            javax.swing.text.Document doc = ec.openDocument();
+                            Document doc = ec.openDocument();
                             if (doc != null) {
                                 doc.remove(0, doc.getLength());
                                 doc.insertString(0, content, null);
                                 ec.saveDocument();
+                                markUnmodifiedAfterWrite(fo);
                                 written = true;
                                 LOG.fine("Write through editor Document: {0}", filePath);
                             }
                         }
                     }
                 } catch (Exception e) {
-                    LOG.fine("Could not write through editor: {0}", e.getMessage());
-                }
-
-                // Fallback to direct disk write
-                if (!written) {
-                    byte[] data = content.getBytes(java.nio.charset.StandardCharsets.UTF_8);
-                    java.nio.file.Files.write(file.toPath(), data);
+                    LOG.fine("Could not sync editor after write: {0}", e.getMessage());
+                    written = true; // disk write succeeded
                 }
 
                 return objectMapper.createObjectNode().put("success", true);
             } catch (Exception e) {
                 LOG.log(Level.SEVERE, "fs/writeTextFile failed", e);
                 throw new RuntimeException("Failed to write file: " + e.getMessage(), e);
+            } finally {
+                if (filePath != null) {
+                    unmarkPluginWriting(filePath);
+                }
             }
         });
     }
@@ -1028,7 +843,7 @@ public class ProcessManager {
                     throw new RuntimeException("Missing filePath parameter");
                 }
 
-                java.io.File file = new java.io.File(filePath);
+                File file = new File(filePath);
                 if (!file.exists()) {
                     throw new RuntimeException("File not found: " + filePath);
                 }
@@ -1051,8 +866,8 @@ public class ProcessManager {
                 }
 
                 // Fallback to disk
-                byte[] bytes = java.nio.file.Files.readAllBytes(file.toPath());
-                String content = new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
+                byte[] bytes = Files.readAllBytes(file.toPath());
+                String content = new String(bytes, StandardCharsets.UTF_8);
                 return objectMapper.createObjectNode().put("content", content);
             } catch (Exception e) {
                 LOG.log(Level.SEVERE, "fs/readTextFile failed", e);
@@ -1063,5 +878,18 @@ public class ProcessManager {
 
     private String operationalError() {
         return "Server not started, Please check if Opencode is installed and available";
+    }
+
+    /**
+     * Registers a temporary FileChangeListener on the given FileObject that
+     * marks the file as unmodified after a plugin-initiated save, preventing
+     * NetBeans' "externally modified" dialog from appearing.
+     */
+    private void markUnmodifiedAfterWrite(FileObject fo) {
+        try {
+            fo.setAttribute("unmodified", true);
+        } catch (IOException e) {
+            LOG.fine("Could not set unmodified attribute: {0}", e.getMessage());
+        }
     }
 }

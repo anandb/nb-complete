@@ -1,5 +1,6 @@
 package github.anandb.netbeans.ui;
 
+import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.StringSelection;
@@ -12,8 +13,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.List;
-import java.util.Random;
+import java.util.UUID;
 
+import javax.imageio.ImageIO;
 import javax.swing.JComponent;
 import javax.swing.TransferHandler;
 import javax.swing.TransferHandler.TransferSupport;
@@ -23,9 +25,10 @@ import github.anandb.netbeans.model.AttachedFile;
 
 public class ImagePasteTransferHandler extends TransferHandler {
 
-    private final PasteCallback callback;
+    private static final long serialVersionUID = 1L;
+
+    private transient final PasteCallback callback;
     private static final long MAX_FILE_SIZE = 10 * 1024 * 1024;
-    private static final Random random = new Random();
 
     public interface PasteCallback {
         boolean canAddAttachment();
@@ -127,50 +130,60 @@ public class ImagePasteTransferHandler extends TransferHandler {
 
     private AttachedFile createAttachedFileFromImage(Image image) {
         try {
-            BufferedImage bufferedImage;
+            BufferedImage bufferedImage = null;
             if (image instanceof BufferedImage) {
                 bufferedImage = (BufferedImage) image;
-            } else {
-                bufferedImage = new BufferedImage(
-                        image.getWidth(null),
-                        image.getHeight(null),
-                        BufferedImage.TYPE_INT_ARGB
-                );
-                java.awt.Graphics2D g2d = bufferedImage.createGraphics();
-                g2d.drawImage(image, 0, 0, null);
-                g2d.dispose();
-            }
-
-            long size = (long) bufferedImage.getWidth() * bufferedImage.getHeight() * 4;
-            if (size > MAX_FILE_SIZE) {
-                if (callback != null) {
-                    callback.onError("File too large (max 10MB)");
+            } else if (image != null) {
+                int w = image.getWidth(null);
+                int h = image.getHeight(null);
+                if (w <= 0 || h <= 0) {
+                    if (callback != null) {
+                        callback.onError("Pasted image has invalid dimensions");
+                    }
+                    return null;
                 }
-                return null;
+
+                bufferedImage = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
             }
 
-            String timestamp = String.valueOf(System.currentTimeMillis());
-            int rand = random.nextInt(10000);
-            String filename = "paste_" + timestamp + "_" + rand + ".png";
-            Path tempDir = Path.of(System.getProperty("java.io.tmpdir"));
-            Path tempFile = tempDir.resolve(filename);
-
-            boolean success = javax.imageio.ImageIO.write(bufferedImage, "png", tempFile.toFile());
-            if (!success) {
-                if (callback != null) {
-                    callback.onError("Failed to save pasted image - no PNG writer available");
-                }
-                return null;
+            if (bufferedImage != null) {
+                return attachImage(bufferedImage, image);
             }
-
-            return new AttachedFile(tempFile.toFile());
-
-        } catch (IOException e) {
+        } catch (IOException | RuntimeException e) {
             if (callback != null) {
                 callback.onError("Failed to save pasted image: " + e.getMessage());
             }
+        }
+
+        return null;
+    }
+
+    private AttachedFile attachImage(BufferedImage bufferedImage, Image image) throws IOException {
+        Graphics2D g2d = bufferedImage.createGraphics();
+        g2d.drawImage(image, 0, 0, null);
+        g2d.dispose();
+
+        long size = (long) bufferedImage.getWidth() * bufferedImage.getHeight() * 4;
+        if (size > MAX_FILE_SIZE) {
+            if (callback != null) {
+                callback.onError("File too large (max 10MB)");
+            }
             return null;
         }
+
+        String filename = "paste_" + UUID.randomUUID().toString() + ".png";
+        Path tempDir = Path.of(System.getProperty("java.io.tmpdir"));
+        Path tempFile = tempDir.resolve(filename);
+
+        boolean success = ImageIO.write(bufferedImage, "png", tempFile.toFile());
+        if (!success) {
+            if (callback != null) {
+                callback.onError("Failed to save pasted image - no PNG writer available");
+            }
+            return null;
+        }
+
+        return new AttachedFile(tempFile.toFile());
     }
 
     private AttachedFile createAttachedFileFromFile(File file) {
@@ -187,13 +200,13 @@ public class ImagePasteTransferHandler extends TransferHandler {
             if (originalName.contains(".")) {
                 extension = originalName.substring(originalName.lastIndexOf('.'));
             }
-            String timestamp = String.valueOf(System.currentTimeMillis());
-            int rand = random.nextInt(10000);
+            
             String baseName = originalName;
             if (baseName.contains(".")) {
                 baseName = baseName.substring(0, baseName.lastIndexOf('.'));
             }
-            String tempFilename = "paste_" + timestamp + "_" + rand + "_" + baseName + extension;
+
+            String tempFilename = "paste_" + UUID.randomUUID().toString() + "_" + baseName + extension;
 
             Path tempDir = Path.of(System.getProperty("java.io.tmpdir"));
             Path tempFile = tempDir.resolve(tempFilename);

@@ -10,6 +10,7 @@ import java.util.Map;
 import javax.swing.BorderFactory;
 import javax.swing.Icon;
 import javax.swing.JButton;
+import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 
@@ -23,8 +24,9 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
 
     private String language;
     private String code;
-    private final RSyntaxTextArea codeTextArea;
+    private RSyntaxTextArea codeTextArea;
     private final JButton copyButton;
+    private boolean codeAreaInitialized;
 
     private static volatile org.fife.ui.rsyntaxtextarea.Theme cachedRTheme;
 
@@ -149,6 +151,33 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
         copyButton.setForeground(theme.codeHeaderForeground());
         header.add(copyButton, BorderLayout.EAST);
 
+        if (expandedByDefault) {
+            initCodeTextArea();
+        } else {
+            JLabel placeholder = new JLabel("  Code block collapsed");
+            placeholder.setForeground(theme.codeHeaderForeground());
+            placeholder.setFont(ThemeManager.getMonospaceFont().deriveFont(Font.PLAIN, 11f));
+            contentPanel.add(placeholder, BorderLayout.CENTER);
+        }
+
+        setBaseColor(theme.codeBackground());
+        setBorderColor(theme.codeHeaderBorder());
+        setShowBorder(true);
+        setAlignmentX(java.awt.Component.LEFT_ALIGNMENT);
+    }
+
+    private void ensureCodeTextArea() {
+        if (!codeAreaInitialized) {
+            contentPanel.removeAll();
+            initCodeTextArea();
+            contentPanel.revalidate();
+            contentPanel.repaint();
+        }
+    }
+
+    private void initCodeTextArea() {
+        codeAreaInitialized = true;
+        ColorTheme theme = ThemeManager.getCurrentTheme();
         codeTextArea = new RSyntaxTextArea();
         codeTextArea.setEditable(false);
         codeTextArea.setHighlightCurrentLine(false);
@@ -170,11 +199,13 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
         codeWrapper.add(codeTextArea, BorderLayout.CENTER);
 
         contentPanel.add(codeWrapper, BorderLayout.CENTER);
+    }
 
-        setBaseColor(theme.codeBackground());
-        setBorderColor(theme.codeHeaderBorder());
-        setShowBorder(true);
-        setAlignmentX(java.awt.Component.LEFT_ALIGNMENT);
+    @Override
+    protected void onToggle(boolean expanded) {
+        if (expanded) {
+            ensureCodeTextArea();
+        }
     }
 
     public void updateContent(String language, String code) {
@@ -182,14 +213,17 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
         if (!code.equals(this.code)) {
             this.code = code;
             this.language = (language != null && !language.isEmpty()) ? language : "Code";
-            codeTextArea.setText(code);
-            codeTextArea.setCaretPosition(0);
+            if (codeAreaInitialized) {
+                codeTextArea.setText(code);
+                codeTextArea.setCaretPosition(0);
+                headerLabel.setText(this.language.toUpperCase());
+                applySyntaxStyle();
+                SwingUtilities.invokeLater(() -> {
+                    revalidate();
+                    repaint();
+                });
+            }
             headerLabel.setText(this.language.toUpperCase());
-            applySyntaxStyle();
-            SwingUtilities.invokeLater(() -> {
-                revalidate();
-                repaint();
-            });
         }
     }
 
@@ -220,6 +254,7 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
     }
 
     private void applySyntaxStyle() {
+        if (codeTextArea == null) return;
         String lang = (language != null) ? language.toLowerCase() : "";
         String style = LANGUAGE_FALLBACK_MAP.get(lang);
         if (style == null) {
@@ -235,6 +270,7 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
     }
 
     private void applySolarizedDarkTheme() {
+        if (codeTextArea == null) return;
         org.fife.ui.rsyntaxtextarea.Theme rTheme = loadCodeTheme();
         if (rTheme != null) {
             try {
@@ -250,6 +286,7 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
     }
 
     private void manualSolarizedDark() {
+        if (codeTextArea == null) return;
         ColorTheme theme = ThemeManager.getCurrentTheme();
         codeTextArea.setBackground(theme.codeBackground());
         codeTextArea.setForeground(theme.codeForeground());

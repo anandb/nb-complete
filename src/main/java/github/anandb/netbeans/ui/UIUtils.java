@@ -7,7 +7,9 @@ import java.awt.GridBagConstraints;
 import java.awt.Insets;
 import java.awt.LayoutManager;
 import java.awt.event.ActionListener;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -130,8 +132,8 @@ public class UIUtils {
             transcoderClass.getMethod("addTranscodingHint", Object.class, Object.class)
                 .invoke(transcoder, transcoderClass.getField("KEY_HEIGHT").get(null), 37f);
             Object input = inputClass.getConstructor(String.class).newInstance(Utilities.toURI(file).toURL().toString());
-            java.io.ByteArrayOutputStream ostream = new java.io.ByteArrayOutputStream();
-            Object output = outputClass.getConstructor(java.io.OutputStream.class).newInstance(ostream);
+            ByteArrayOutputStream ostream = new ByteArrayOutputStream();
+            Object output = outputClass.getConstructor(OutputStream.class).newInstance(ostream);
             transcoderClass.getMethod("transcode", inputClass, outputClass).invoke(transcoder, input, output);
             return new ImageIcon(ostream.toByteArray());
         } catch (Exception e) {

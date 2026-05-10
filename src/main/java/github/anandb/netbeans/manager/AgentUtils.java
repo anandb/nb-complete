@@ -2,6 +2,11 @@ package github.anandb.netbeans.manager;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.io.InputStream;
+import java.util.Properties;
+
+import org.openide.modules.ModuleInfo;
+import org.openide.modules.Modules;
 
 import github.anandb.netbeans.support.Logger;
 
@@ -21,7 +26,7 @@ public final class AgentUtils {
 
     public static String getVersion() {
         try {
-            org.openide.modules.ModuleInfo m = org.openide.modules.Modules.getDefault()
+            ModuleInfo m = Modules.getDefault()
                     .findCodeNameBase("io.github.anandb.beanbot");
             if (m != null && m.getSpecificationVersion() != null) {
                 return m.getSpecificationVersion().toString();
@@ -30,9 +35,9 @@ public final class AgentUtils {
             LOG.fine("Failed to get module version", e);
         }
         try {
-            java.io.InputStream is = AgentUtils.class.getResourceAsStream("/META-INF/MANIFEST.MF");
+            InputStream is = AgentUtils.class.getResourceAsStream("/META-INF/MANIFEST.MF");
             if (is != null) {
-                java.util.Properties p = new java.util.Properties();
+                Properties p = new Properties();
                 p.load(is);
                 String v = p.getProperty("OpenIDE-Module-Specification-Version");
                 if (v != null) {

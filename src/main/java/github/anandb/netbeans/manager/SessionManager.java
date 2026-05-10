@@ -1,6 +1,9 @@
 package github.anandb.netbeans.manager;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.model.SessionConfigOption;
 import github.anandb.netbeans.project.ACPProjectManager;
@@ -8,14 +11,21 @@ import org.netbeans.api.project.Project;
 
 import javax.swing.SwingUtilities;
 
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.logging.Level;
 
 import github.anandb.netbeans.contract.SessionListener;
+import github.anandb.netbeans.model.SessionState;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.MapperSupplier;
+import org.netbeans.api.project.ui.OpenProjects;
 
 /**
  * Manages the state and lifecycle of chat sessions.
@@ -25,10 +35,11 @@ public class SessionManager {
     private static final Logger LOG = new Logger(SessionManager.class);
     private static SessionManager instance;
 
+    private final ObjectMapper objectMapper = MapperSupplier.get();
     private final List<SessionListener> listeners = new CopyOnWriteArrayList<>();
+    private final SessionStateMachine stateMachine = new SessionStateMachine();
     private volatile String currentSessionId;
     private volatile String lastProjectDir;
-    private volatile boolean isSessionLoading = false;
     private final List<Session> cachedSessions = new CopyOnWriteArrayList<>();
 
     private SessionManager() {
@@ -39,6 +50,14 @@ public class SessionManager {
 
         // Register for SSE updates to route them to the active session
         ProcessManager.getInstance().addSseListener(this::handleSseUpdate);
+
+        // Fire onSessionLoading for UI backward compatibility
+        stateMachine.addListener(newState -> {
+            boolean loading = newState == SessionState.LOADING;
+            for (SessionListener l : listeners) {
+                l.onSessionLoading(loading);
+            }
+        });
     }
 
     private void handleSseUpdate(SessionUpdate update) {
@@ -75,9 +94,195 @@ public class SessionManager {
         return lastProjectDir;
     }
 
+    public SessionStateMachine getStateMachine() {
+        return stateMachine;
+    }
+
+    // --- Session CRUD (moved from ProcessManager) ---
+
+    public CompletableFuture<List<Session>> getSessions(String directory) {
+        LOG.log(Level.FINE, "getSessions: called with directory={0}", directory);
+        Map<String, Object> params = new HashMap<>();
+        if (directory != null && !directory.isEmpty()) {
+            params.put("cwd", directory);
+        }
+        return ProcessManager.getInstance().sendRequest("session/list", params)
+                .thenApply(res -> {
+                    try {
+                        LOG.log(Level.FINE, "getSessions: got response");
+                        if (res == null) {
+                            LOG.warn("getSessions: null response");
+                            return new ArrayList<Session>();
+                        }
+                        JsonNode sessionsNode = res.has("sessions") ? res.get("sessions") : res.has("data") ? res.get("data") : res;
+                        if (sessionsNode.isArray()) {
+                            List<Session> rawSessions = objectMapper.readValue(sessionsNode.traverse(), new TypeReference<List<Session>>() {});
+                            List<Session> sessions = new ArrayList<>();
+                            for (Session s : rawSessions) {
+                                if (s.effectiveDirectory() != null) {
+                                    sessions.add(s);
+                                    continue;
+                                }
+                                sessions.add(new Session(s.id(), s.title(), directory, directory, s.parentID(), s.updatedAt(), s.mcpServers(), s.configOptions()));
+                            }
+                            LOG.fine("getSessions: deserialized {0} sessions", sessions.size());
+                            for (Session s : sessions) {
+                                LOG.fine("getSessions: id={0}, title=''{1}'', directory={2}", s.id(), s.title(), s.effectiveDirectory());
+                            }
+                            return sessions;
+                        } else {
+                            LOG.warn("getSessions: sessionsNode is not an array: {0}", sessionsNode);
+                            return new ArrayList<Session>();
+                        }
+                    } catch (IOException e) {
+                        LOG.warn("getSessions: failed to deserialize: {0} {1}", e.getMessage(), e.toString());
+                        return new ArrayList<Session>();
+                    }
+                })
+                .exceptionally(ex -> {
+                    LOG.warn("getSessions: rpc error: {0} {1}", ex.getMessage(), ex.toString());
+                    return new ArrayList<>();
+                });
+    }
+
+    public CompletableFuture<List<Session>> getSessionsForDirectories(List<String> directories) {
+        if (directories == null || directories.isEmpty()) {
+            return CompletableFuture.completedFuture(new ArrayList<>());
+        }
+        LOG.fine("getSessionsForDirectories: querying {0} directories: {1}", directories.size(), directories);
+        List<CompletableFuture<List<Session>>> futures = directories.stream()
+                .map(dir -> getSessions(dir))
+                .toList();
+        return CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new))
+                .thenApply(v -> futures.stream()
+                .flatMap(f -> {
+                    try {
+                        return f.get().stream();
+                    } catch (Exception e) {
+                        LOG.log(Level.WARNING, "Failed to get sessions for directory: {0}", e.getMessage());
+                        return java.util.stream.Stream.empty();
+                    }
+                })
+                .toList());
+    }
+
+    public CompletableFuture<Session> createSession(String cwd) {
+        String effectiveCwd = cwd;
+        if (effectiveCwd == null) {
+            effectiveCwd = getProjectPath();
+        }
+        if (effectiveCwd == null) {
+            effectiveCwd = System.getProperty("user.dir");
+        }
+
+        LOG.log(Level.FINE, "Creating new session with CWD: {0}", effectiveCwd);
+        final String finalCwd = effectiveCwd;
+
+        return sendCreateSessionRequest(finalCwd).handle((res, ex) -> {
+            if (ex == null) {
+                return CompletableFuture.completedFuture(res);
+            }
+            Throwable cause = (ex instanceof java.util.concurrent.CompletionException) ? ex.getCause() : ex;
+            if (isInvalidParamsError(cause) && !ProcessManager.getInstance().getMcpManager().isDisabled()) {
+                LOG.warn("session/new failed with Invalid Params, retrying without MCP servers");
+                ProcessManager.getInstance().getMcpManager().disable();
+                return sendCreateSessionRequest(finalCwd);
+            }
+            return CompletableFuture.<Session>failedFuture(ex);
+        }).thenCompose(f -> f);
+    }
+
+    private CompletableFuture<Session> sendCreateSessionRequest(String finalCwd) {
+        Map<String, Object> params = new HashMap<>();
+        params.put("cwd", finalCwd);
+        params.put("mcpServers", ProcessManager.getInstance().getMcpManager().getServerConfig());
+        return ProcessManager.getInstance().sendRequest("session/new", params)
+                .thenApply(res -> {
+                    try {
+                        Session s = objectMapper.treeToValue(res, Session.class);
+                        if (s.effectiveDirectory() == null) {
+                            s = new Session(s.id(), s.title(), finalCwd, finalCwd, s.parentID(), s.updatedAt(), s.mcpServers(), s.configOptions());
+                        }
+                        return s;
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                });
+    }
+
+    public CompletableFuture<List<SessionConfigOption>> loadSessionFromServer(String sessionId, String cwd) {
+        LOG.fine("loadSessionFromServer: called with {0}, cwd={1}", sessionId, cwd);
+        return sendLoadSessionRequest(sessionId, cwd).handle((res, ex) -> {
+            if (ex == null) {
+                return CompletableFuture.completedFuture(res);
+            }
+            Throwable cause = (ex instanceof java.util.concurrent.CompletionException) ? ex.getCause() : ex;
+            if (isInvalidParamsError(cause) && !ProcessManager.getInstance().getMcpManager().isDisabled()) {
+                LOG.warn("session/load failed with Invalid Params, retrying without MCP servers");
+                ProcessManager.getInstance().getMcpManager().disable();
+                return sendLoadSessionRequest(sessionId, cwd);
+            }
+            return CompletableFuture.<List<SessionConfigOption>>failedFuture(ex);
+        }).thenCompose(f -> f)
+        .exceptionally(ex -> {
+            LOG.warn("loadSessionFromServer: error: {0}", ex.getMessage());
+            return null;
+        });
+    }
+
+    private CompletableFuture<List<SessionConfigOption>> sendLoadSessionRequest(String sessionId, String cwd) {
+        Map<String, Object> params = new HashMap<>();
+        params.put("sessionId", sessionId);
+        if (cwd != null) {
+            params.put("cwd", cwd);
+        }
+        params.put("mcpServers", ProcessManager.getInstance().getMcpManager().getServerConfig());
+
+        return ProcessManager.getInstance().sendRequest("session/load", params)
+                .thenApply(res -> {
+                    LOG.fine("loadSessionFromServer: got response {0}", res);
+                    if (res != null && res.has("configOptions")) {
+                        try {
+                            return objectMapper.convertValue(res.get("configOptions"), new TypeReference<List<SessionConfigOption>>() {});
+                        } catch (Exception e) {
+                            LOG.warn("Failed to parse configOptions: {0}", e.getMessage());
+                        }
+                    }
+                    return null;
+                });
+    }
+
+    public CompletableFuture<Void> deleteSession(String sessionId) {
+        return ProcessManager.getInstance().sendRequest("session/delete", Map.of("sessionId", sessionId))
+                .thenApply(v -> null);
+    }
+
+    public CompletableFuture<Void> setSessionConfigOption(String sessionId, String configId, String value) {
+        Map<String, Object> params = Map.of(
+                "sessionId", sessionId,
+                "configId", configId,
+                "value", value
+        );
+        return ProcessManager.getInstance().sendRequest("session/set_config_option", params)
+                .thenApply(v -> null);
+    }
+
+    public CompletableFuture<JsonNode> renameSessionOnServer(String sessionId, String newTitle) {
+        ObjectNode params = objectMapper.createObjectNode();
+        params.put("sessionId", sessionId);
+
+        ObjectNode update = objectMapper.createObjectNode();
+        update.put("sessionUpdate", "session_info_update");
+        update.put("title", newTitle);
+        params.set("update", update);
+
+        return ProcessManager.getInstance().sendRequest("session/update", params);
+    }
+
+    // --- High-level session operations ---
+
     public void refreshSessions() {
-        ProcessManager manager = ProcessManager.getInstance();
-        manager.whenReady()
+        ProcessManager.getInstance().whenReady()
                 .thenCompose(v -> {
                     Project[] openProjects = ACPProjectManager.getInstance().getAllOpenProjects();
                     List<String> openProjectDirs = new ArrayList<>();
@@ -90,7 +295,7 @@ public class SessionManager {
                     if (openProjectDirs.isEmpty()) {
                         return CompletableFuture.completedFuture(new ArrayList<Session>());
                     }
-                    return manager.getSessionsForDirectories(openProjectDirs);
+                    return getSessionsForDirectories(openProjectDirs);
                 })
                 .thenAccept(sessions -> {
                     List<Session> filteredSessions = new ArrayList<>(sessions);
@@ -105,16 +310,20 @@ public class SessionManager {
     }
 
     public void createNewSession(String explicitCwd) {
-        setLoading(true);
-        notifySessionStarted(null); // Signal that we are starting a new session
+        if (!stateMachine.transitionTo(SessionState.LOADING)) {
+            LOG.warn("Cannot create session in state {0}", stateMachine.getState());
+            return;
+        }
+        notifySessionStarted(null);
 
-        ProcessManager.getInstance().createSession(explicitCwd)
+        createSession(explicitCwd)
                 .thenAccept(session -> {
                     this.currentSessionId = session.id();
                     this.lastProjectDir = session.effectiveDirectory();
                     Logger.setSession(session.id(), session.title());
 
                     SwingUtilities.invokeLater(() -> {
+                        stateMachine.transitionTo(SessionState.STREAMING);
                         notifySessionLoaded(session.id(), session.configOptions(), true);
                         refreshSessions();
                         sendPreamble(session.id());
@@ -122,8 +331,8 @@ public class SessionManager {
                 })
                 .exceptionally(ex -> {
                     LOG.severe("Failed to create session", ex);
+                    stateMachine.transitionTo(SessionState.IDLE);
                     notifyError(ex.getMessage());
-                    setLoading(false);
                     return null;
                 });
     }
@@ -133,13 +342,15 @@ public class SessionManager {
     }
 
     public void loadSession(String sessionId, boolean isStartup) {
-        // Always set the new sessionId and notify UI that we are starting a load
+        if (!stateMachine.transitionTo(SessionState.LOADING)) {
+            LOG.warn("Cannot load session in state {0}", stateMachine.getState());
+            return;
+        }
         this.currentSessionId = sessionId;
-        setLoading(true);
         notifySessionStarted(sessionId);
 
         String projectCwd = ProcessManager.getInstance().getActiveProjectDir();
-        ProcessManager.getInstance().getSessions(projectCwd).thenAccept(sessions -> {
+        getSessions(projectCwd).thenAccept(sessions -> {
             String sessionCwd = sessions.stream()
                     .filter(s -> s.id().equals(sessionId))
                     .findFirst()
@@ -155,17 +366,17 @@ public class SessionManager {
             }
 
             this.lastProjectDir = workingCwd;
-            ProcessManager.getInstance().loadSession(sessionId, workingCwd)
+            loadSessionFromServer(sessionId, workingCwd)
                     .thenAccept(configOptions -> {
                         if (sessionId.equals(this.currentSessionId)) {
+                            stateMachine.transitionTo(SessionState.STREAMING);
                             notifySessionLoaded(sessionId, configOptions, isStartup);
-                            setLoading(false);
                         }
                     })
                     .exceptionally(ex -> {
                         if (sessionId.equals(this.currentSessionId)) {
+                            stateMachine.transitionTo(SessionState.IDLE);
                             notifyError("Failed to load session: " + ex.getMessage());
-                            setLoading(false);
                         }
                         return null;
                     });
@@ -193,7 +404,7 @@ public class SessionManager {
 
     private void handleProjectOpened(String openedDir) {
         refreshSessions();
-        ProcessManager.getInstance().getSessions(openedDir)
+        getSessions(openedDir)
             .thenAccept(sessions -> {
                 Session newest = sessions.stream()
                     .sorted((s1, s2) -> Long.compare(
@@ -208,10 +419,10 @@ public class SessionManager {
     }
 
     private void handleProjectClosed(String closedDir) {
-        ProcessManager.getInstance().getSessions(closedDir)
+        getSessions(closedDir)
                 .thenAccept(closedDirSessions -> {
                     for (Session s : closedDirSessions) {
-                        ProcessManager.getInstance().deleteSession(s.id());
+                        deleteSession(s.id());
                     }
                     refreshSessions();
                 });
@@ -232,10 +443,29 @@ public class SessionManager {
         }
     }
 
-    private void setLoading(boolean loading) {
-        this.isSessionLoading = loading;
-        for (SessionListener l : listeners) {
-            l.onSessionLoading(loading);
+    public void closeSession() {
+        if (stateMachine.transitionTo(SessionState.IDLE)) {
+            this.currentSessionId = null;
+            for (SessionListener l : listeners) {
+                l.onSessionLoading(false);
+            }
+        }
+    }
+
+    public void stopCurrentMessage() {
+        if (!stateMachine.canStopMessage()) {
+            return;
+        }
+        stateMachine.transitionTo(SessionState.STOPPING);
+        String sid = this.currentSessionId;
+        if (sid != null) {
+            ProcessManager.getInstance().stopMessage(sid)
+                    .thenRun(() -> stateMachine.transitionTo(SessionState.STREAMING))
+                    .exceptionally(ex -> {
+                        LOG.warn("Failed to stop message: {0}", ex.getMessage());
+                        stateMachine.transitionTo(SessionState.STREAMING);
+                        return null;
+                    });
         }
     }
 
@@ -270,5 +500,25 @@ public class SessionManager {
         } catch (Exception e) {
             return 0;
         }
+    }
+
+    private static String getProjectPath() {
+        Project main = OpenProjects.getDefault().getMainProject();
+        if (main != null && main.getProjectDirectory() != null) {
+            return main.getProjectDirectory().getPath();
+        }
+        Project[] open = OpenProjects.getDefault().getOpenProjects();
+        if (open != null && open.length > 0 && open[0].getProjectDirectory() != null) {
+            return open[0].getProjectDirectory().getPath();
+        }
+        return null;
+    }
+
+    private boolean isInvalidParamsError(Throwable t) {
+        if (t == null) {
+            return false;
+        }
+        String msg = t.getMessage();
+        return msg != null && msg.contains("Invalid params");
     }
 }

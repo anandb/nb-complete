@@ -47,6 +47,12 @@ public class MessageTransformer {
         }
 
         MessageType msgType = "user".equals(type) ? MessageType.user_message_chunk : MessageType.agent_message_chunk;
-        return new ProcessedMessage(msgType, sb.toString(), message.id(), null);
+        String text = sb.toString();
+        return new ProcessedMessage.Builder()
+                .messageType(msgType)
+                .text(text)
+                .messageId(message.id())
+                .rawText(text)
+                .build();
     }
 }

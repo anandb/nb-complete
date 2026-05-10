@@ -10,6 +10,7 @@ import github.anandb.netbeans.model.MessageClassification;
 import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.MapperSupplier;
 
 import static org.apache.commons.lang3.ObjectUtils.firstNonNull;
 import static org.apache.commons.lang3.StringUtils.defaultString;
@@ -28,20 +29,22 @@ public class ToolCallUpdateStrategy implements DataExtractionStrategy {
             return;
         }
 
-        ProcessedMessage target = new ProcessedMessage();
         String messageId = update.messageId() != null ? update.messageId() : update.toolCallId();
         String text = firstNonNull(extractContentText(update.content()), update.status(), "");
-        target.setText(text);
-        target.setMessageId(defaultString(messageId));
-        target.setKind(update.kind());
-        target.setRawText(text);
-        target.setStreaming(true);
-        //todo: avoid calling multiple times.
-        MessageClassification m = ToolDataExtractor.classify(update.update().type(),
-                                                               text, update.kind());
-        String tt = ToolDataExtractor.extractToolTitle(target, m.kind());
-        target.setToolTitle(tt);
-        target.setMessageType(m.type());
+        String rawText = text;
+
+        MessageClassification m = ToolDataExtractor.classify(update.update().type(), text, update.kind());
+        String tt = ToolDataExtractor.extractToolTitle(defaultString(messageId), rawText, m.kind());
+
+        ProcessedMessage target = new ProcessedMessage.Builder()
+                .messageType(m.type())
+                .text(text)
+                .messageId(defaultString(messageId))
+                .kind(update.kind())
+                .toolTitle(tt)
+                .rawText(rawText)
+                .streaming(true)
+                .build();
         handler.displayMessage(target);
     }
 
@@ -69,8 +72,15 @@ public class ToolCallUpdateStrategy implements DataExtractionStrategy {
         if (rawOutput == null || !rawOutput.has("output")) return false;
         JsonNode output = rawOutput.get("output");
         if (!output.isTextual()) return false;
-        String outText = output.asText().trim();
-        if (!outText.startsWith("[")) return false;
-        return outText.contains("\"content\"") && outText.contains("\"status\"");
+        try {
+            String outText = output.asText().trim();
+            if (!outText.startsWith("[")) return false;
+            JsonNode arr = MapperSupplier.get().readTree(outText);
+            if (!arr.isArray() || arr.isEmpty()) return false;
+            JsonNode first = arr.get(0);
+            return first.has("content") && first.has("status") && first.has("priority");
+        } catch (Exception e) {
+            return false;
+        }
     }
 }

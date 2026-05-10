@@ -20,13 +20,14 @@ public class UserMessageChunkStrategy implements DataExtractionStrategy {
         if (isBlank(text)) {
             return;
         }
-        ProcessedMessage target = new ProcessedMessage();
-        target.setMessageType(MessageType.valueOf(update.type()));
-        target.setText(text);
-        target.setMessageId(update.messageId());
-        target.setKind(update.kind());
-        target.setRawText(text);
-        target.setStreaming(true);
+        ProcessedMessage target = new ProcessedMessage.Builder()
+                .messageType(MessageType.valueOf(update.type()))
+                .text(text)
+                .messageId(update.messageId())
+                .kind(update.kind())
+                .rawText(text)
+                .streaming(true)
+                .build();
         handler.displayMessage(target);
     }
 }

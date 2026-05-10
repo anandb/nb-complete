@@ -56,6 +56,7 @@ public class MessageBubble extends JPanel implements Scrollable {
     private static final Parser FLEXMARK_PARSER;
     private static final HtmlRenderer FLEXMARK_RENDERER;
     private static final Pattern NEWLINE_SPLIT = Pattern.compile("\n");
+    private static final Color TRANSPARENT = new Color(0, 0, 0, 0);
     static {
         MutableDataSet options = new MutableDataSet();
         options.set(HtmlRenderer.SOFT_BREAK, "\n");
@@ -73,6 +74,7 @@ public class MessageBubble extends JPanel implements Scrollable {
     private JPanel bubble;
     private final ArrayList<CollapsibleState> codeStates = new ArrayList<>();
     private transient HierarchyListener hierarchyListener;
+    private long responseTimeMs = -1L;
 //    private boolean expanded = false;
 
     private static class CollapsibleState {
@@ -96,7 +98,7 @@ public class MessageBubble extends JPanel implements Scrollable {
         } else if ("error".equals(type)) {
             bgColor = theme.errorBackground();
         } else {
-            bgColor = new Color(0, 0, 0, 0);
+            bgColor = TRANSPARENT;
         }
 
         setBackground(theme.sunkenBackground());
@@ -313,7 +315,6 @@ public class MessageBubble extends JPanel implements Scrollable {
     }
 
     private volatile boolean hasPendingTextUpdate = false;
-    private boolean hasSeenFirstNewline = false;
 
     public void appendText(String newText) {
         appendText(newText, "");
@@ -324,20 +325,8 @@ public class MessageBubble extends JPanel implements Scrollable {
             return;
         }
 
-        // Preserve all content exactly as it comes from the stream
         this.text.append(newText);
         this.toolTitle = length(this.toolTitle) < length(toolTitle) ? toolTitle : this.toolTitle;
-
-        // Use a more robust check for first content to reveal
-        if (!hasSeenFirstNewline) {
-            if (newText.contains("\n") || text.indexOf("\n") != -1) {
-                hasSeenFirstNewline = true;
-            } else if (text.length() > 60) {
-                // If we've buffered a lot of text without a newline, reveal it anyway
-                hasSeenFirstNewline = true;
-            }
-        }
-
         hasPendingTextUpdate = true;
     }
 
@@ -347,12 +336,6 @@ public class MessageBubble extends JPanel implements Scrollable {
 
     public boolean flushUpdate(boolean force) {
         if (hasPendingTextUpdate) {
-            // Buffer till the first newline before displaying assistant messages
-            // This avoids showing partial metadata or transient lines at the start
-            if (!force && !hasSeenFirstNewline && "assistant".equals(role)) {
-                return false;
-            }
-
             hasPendingTextUpdate = false;
             updateContent(ThemeManager.getCurrentTheme(), true);
             return true;
@@ -388,6 +371,28 @@ public class MessageBubble extends JPanel implements Scrollable {
 
     public String getRawText() {
         return text.toString();
+    }
+
+    public void setResponseTimeMs(long ms) {
+        if (ms <= 0) return;
+        this.responseTimeMs = ms;
+        String label = formatElapsed(ms);
+        JLabel ttftLabel = new JLabel(label);
+        ttftLabel.setFont(ThemeManager.getFont().deriveFont(10f));
+        ttftLabel.setForeground(Color.GRAY);
+        ttftLabel.setBorder(new EmptyBorder(0, 0, 0, 12));
+        add(ttftLabel, UIUtils.createGbc(0, 1, 1.0, 0,
+                GridBagConstraints.NONE, GridBagConstraints.SOUTHEAST,
+                new Insets(0, 12, 2, 12)));
+        revalidate();
+    }
+
+    private static String formatElapsed(long ms) {
+        if (ms < 10000) return String.format("%.1fs", ms / 1000.0);
+        if (ms < 60000) return String.format("%ds", ms / 1000);
+        long mins = ms / 60000;
+        long secs = (ms % 60000) / 1000;
+        return String.format("%dm %ds", mins, secs);
     }
 
     private void updateContent(ColorTheme theme, boolean expanded) {
@@ -517,7 +522,7 @@ public class MessageBubble extends JPanel implements Scrollable {
         if (compIdx < segments.getComponentCount()) {
             Component c = segments.getComponent(compIdx);
             if (c instanceof FitEditorPane pane) {
-                pane.setBackground(new Color(0, 0, 0, 0));
+                pane.setBackground(TRANSPARENT);
                 pane.setOpaque(false);
                 // FitEditorPane.setText now includes a dirty check
                 pane.setText(styledHtml);
@@ -735,7 +740,7 @@ public class MessageBubble extends JPanel implements Scrollable {
             pane.setBackground(bg);
         } else {
             pane.setOpaque(false);
-            pane.setBackground(new Color(0, 0, 0, 0));
+            pane.setBackground(TRANSPARENT);
         }
         pane.setMargin(new Insets(0, 0, 0, 0));
         pane.setForeground(theme.foreground());

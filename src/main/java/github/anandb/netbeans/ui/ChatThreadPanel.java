@@ -65,6 +65,7 @@ public class ChatThreadPanel extends JPanel {
     private static final Pattern SECTION_SPLIT = Pattern.compile("(?m)^---[ \\t]*$");
     private static final Color SCROLL_BTN_COLOR_A = new Color(41, 98, 255, 200);
     private static final Color SCROLL_BTN_COLOR_B = new Color(41, 98, 255, 240);
+    private long lastUserTimestamp = -1L;
 
     private final JPanel messagesContainer;
     private final JScrollPane scrollPane;
@@ -179,7 +180,7 @@ public class ChatThreadPanel extends JPanel {
                 return;
             }
             if (activeStreamBubble != null && activeStreamBubble.flushUpdate()) {
-                messagesContainer.revalidate();
+                activeStreamBubble.revalidate();
                 scrollToBottom();
             }
         });
@@ -232,6 +233,7 @@ public class ChatThreadPanel extends JPanel {
             setOpaque(false);
             setDoubleBuffered(true);
         }
+        
         @Override
         public Dimension getPreferredScrollableViewportSize() {
             return getPreferredSize();
@@ -280,7 +282,6 @@ public class ChatThreadPanel extends JPanel {
 
                 if (lastBubble != null && canMerge) {
                     lastBubble.appendText(part, pm.toolTitle());
-                    lastBubble.flushUpdate(true);
                 } else {
                     if (lastBubble != null) {
                         // Stop timer + clear activeStreamRef when switching away from streaming bubble
@@ -307,6 +308,14 @@ public class ChatThreadPanel extends JPanel {
             bubble.setExpanded(allBlocksExpanded);
         }
 
+        if ("user".equals(type.roleName())) {
+            lastUserTimestamp = System.currentTimeMillis();
+        } else if (lastUserTimestamp > 0) {
+            long elapsed = System.currentTimeMillis() - lastUserTimestamp;
+            bubble.setResponseTimeMs(elapsed);
+            lastUserTimestamp = -1L;
+        }
+
         boolean visible = !MessageFilterManager.isTypeHidden(type.roleName());
         bubble.setVisible(visible);
         Component strut = Box.createVerticalStrut(4);
@@ -315,7 +324,7 @@ public class ChatThreadPanel extends JPanel {
         messagesContainer.add(strut);
         if (!streaming) {
             messagesContainer.revalidate();
-            scrollToBottom(true);
+            scrollToBottom();
         }
         // Set for both streaming and non-streaming: used by stopStreaming() + timer identity check in addMessage()
         activeStreamBubble = bubble;
@@ -491,7 +500,7 @@ public class ChatThreadPanel extends JPanel {
         int extent = vertical.getModel().getExtent();
         int value = vertical.getValue();
         int maximum = vertical.getMaximum();
-        return (value + extent >= maximum - extent / 5);
+        return (value + extent >= maximum - 16);
     }
 
     private void positionScrollDownBtn() {
@@ -615,6 +624,7 @@ public class ChatThreadPanel extends JPanel {
     public void clearMessages() {
         SwingUtilities.invokeLater(() -> {
             messagesContainer.removeAll();
+            lastUserTimestamp = -1L;
             messagesContainer.revalidate();
         });
     }

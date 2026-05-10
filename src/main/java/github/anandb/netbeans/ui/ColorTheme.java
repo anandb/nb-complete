@@ -5,11 +5,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import javax.swing.UIManager;
 
@@ -38,7 +34,11 @@ public record ColorTheme(
 
     private static volatile ColorTheme cachedTheme;
     static {
-        UIManager.addPropertyChangeListener(e -> cachedTheme = null);
+        UIManager.addPropertyChangeListener(e -> {
+            cachedTheme = null;
+            cachedCssAssistant = null;
+            cachedCssUser = null;
+        });
     }
 
     public static ColorTheme getNativeTheme(boolean darkMode) {
@@ -143,33 +143,46 @@ public record ColorTheme(
         }
     }
 
+    private static volatile String cachedCssAssistant;
+    private static volatile String cachedCssAssistantBg;
+    private static volatile String cachedCssUser;
+    private static volatile String cachedCssUserBg;
+
     public String toCss(Color bubbleBg, boolean isAssistant) {
-        String fg = toHtmlHex(isAssistant ? assistantForeground() : foreground());
         String bg = bubbleBg != null ? toHtmlHex(bubbleBg) : "transparent";
+
+        if (isAssistant) {
+            if (bg.equals(cachedCssAssistantBg) && cachedCssAssistant != null) {
+                return cachedCssAssistant;
+            }
+        } else {
+            if (bg.equals(cachedCssUserBg) && cachedCssUser != null) {
+                return cachedCssUser;
+            }
+        }
+
+        String fg = toHtmlHex(isAssistant ? assistantForeground() : foreground());
         String linkColor = isDark() ? "#589DF6" : "#268BD2";
-        String codeBg = "rgba(255, 255, 255, 0.1)";
         String preBg = codeBackground() != null ? toHtmlHex(codeBackground()) : "#1e1f22";
         String preFg = codeForeground() != null ? toHtmlHex(codeForeground()) : "#bcbec4";
 
-        Map<String, String> vars = new HashMap<>();
-        vars.put("fg", fg);
-        vars.put("bg", bg);
-        vars.put("linkColor", linkColor);
-        vars.put("codeBg", codeBg);
-        vars.put("preBg", preBg);
-        vars.put("preFg", preFg);
+        String css = loadCssTemplate()
+                .replace("$fg", fg)
+                .replace("$bg", bg)
+                .replace("$linkColor", linkColor)
+                .replace("$codeBg", "rgba(255, 255, 255, 0.1)")
+                .replace("$preBg", preBg)
+                .replace("$preFg", preFg);
 
-        Matcher m = CSS_VAR_PATTERN.matcher(loadCssTemplate());
-        StringBuilder sb = new StringBuilder();
-        while (m.find()) {
-            String replacement = vars.getOrDefault(m.group(1), m.group());
-            m.appendReplacement(sb, Matcher.quoteReplacement(replacement));
+        if (isAssistant) {
+            cachedCssAssistant = css;
+            cachedCssAssistantBg = bg;
+        } else {
+            cachedCssUser = css;
+            cachedCssUserBg = bg;
         }
-        m.appendTail(sb);
-        return sb.toString();
+        return css;
     }
-
-    private static final Pattern CSS_VAR_PATTERN = Pattern.compile("\\$(\\w+)");
 
     private static volatile String cachedCssTemplate;
 

@@ -21,6 +21,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -59,6 +60,7 @@ import org.openide.text.NbDocument;
 import org.openide.util.NbBundle;
 import org.openide.util.NbPreferences;
 import org.openide.windows.TopComponent;
+import org.openide.windows.WindowManager;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
@@ -689,6 +691,9 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     }
 
     private void sendMessage() {
+        if (!SessionManager.getInstance().getStateMachine().canSendMessage()) {
+            return;
+        }
         String text = inputArea.getText(); // Don't trim user input spaces
         if (text.isEmpty() && attachedFiles.isEmpty()) {
             return;
@@ -711,9 +716,14 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
             String echoText = ToolDataExtractor.getLocalEchoText(text);
             if (echoText != null) {
-                chatPanel.addMessage(new ProcessedMessage(
-                    MessageType.tool_call_update, echoText, echoText, "Slash Command", echoText
-                ));
+                chatPanel.addMessage(new ProcessedMessage.Builder()
+                    .messageType(MessageType.tool_call_update)
+                    .text(echoText)
+                    .messageId(echoText)
+                    .kind("Slash Command")
+                    .toolTitle(echoText)
+                    .rawText(echoText)
+                    .build());
                 inputArea.setText("");
             }
         }
@@ -769,15 +779,29 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                     }
                 }
 
-                chatPanel.addMessage(new ProcessedMessage(
-                    MessageType.user_message_chunk, echoBuilder.toString(), null, null
-                ));
+                chatPanel.addMessage(new ProcessedMessage.Builder()
+                    .messageType(MessageType.user_message_chunk)
+                    .text(echoBuilder.toString())
+                    .rawText(echoBuilder.toString())
+                    .build());
             }
         }
 
         // Editor Context
         Map<String, Object> context = isForwardedSlash ? null : captureEditorContext();
-        ProcessManager.getInstance().sendMessage(currentSessionId, text, context, fileBlocks)
+
+        // @inspector: collect NB Inspector warnings and inject as context
+        boolean wantsInspector = !isForwardedSlash && text.contains("@inspector");
+        if (wantsInspector) {
+            text = text.replace("@inspector", "").trim();
+            Map<String, Object> inspectorBlock = collectInspectorHints();
+            if (inspectorBlock != null) {
+                fileBlocks.add(inspectorBlock);
+            }
+        }
+
+        final String messageText = text;
+        ProcessManager.getInstance().sendMessage(currentSessionId, messageText, context, fileBlocks)
                 .thenAccept(result -> {
                     SwingUtilities.invokeLater(() -> {
                         String currentStatus = statusLabel.getText();
@@ -801,7 +825,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                         chatPanel.addMessage(ProcessedMessage.createError(
                                 MessageType.error_response, "Error: " + ex.getMessage(), null, null
                         ));
-                        inputArea.setText(text);
+                        inputArea.setText(messageText);
                         updateButtonState(false);
                         inputArea.requestFocusInWindow();
                     });
@@ -845,6 +869,42 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         return context;
     }
 
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> collectInspectorHints() {
+        JTextComponent editor = EditorRegistry.lastFocusedComponent();
+        if (editor == null) {
+            return null;
+        }
+        Document doc = editor.getDocument();
+        Object prop = doc.getProperty("org.netbeans.spi.editor.hints.ErrorDescription.HINTS");
+        if (!(prop instanceof Collection<?> hints) || hints.isEmpty()) {
+            return null;
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("<inspector-warnings>\n");
+        int count = 0;
+        for (Object obj : hints) {
+            try {
+                // Use reflection-free approach: toString() contains severity + description
+                String s = obj.toString();
+                sb.append("  ").append(s).append("\n");
+                count++;
+                if (count >= 100) {
+                    sb.append("  ... (truncated)\n");
+                    break;
+                }
+            } catch (Exception ignored) {
+            }
+        }
+        sb.append("</inspector-warnings>\n");
+
+        Map<String, Object> block = new HashMap<>();
+        block.put("type", "text");
+        block.put("text", sb.toString());
+        return block;
+    }
+
     public void setInputText(String text) {
         if (!SwingUtilities.isEventDispatchThread()) {
             SwingUtilities.invokeLater(() -> setInputText(text));
@@ -868,23 +928,16 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     }
 
     private void stopMessage() {
-        String currentSessionId = SessionManager.getInstance().getCurrentSessionId();
-        if (currentSessionId == null) {
+        if (!SessionManager.getInstance().getStateMachine().canStopMessage()) {
             return;
         }
         SwingUtilities.invokeLater(() -> statusLabel.setText("Stopping..."));
-        ProcessManager.getInstance().stopMessage(currentSessionId)
-                .thenAccept(v -> {
-                    SwingUtilities.invokeLater(() -> {
-                        statusLabel.setText("Stopped");
-                        chatPanel.stopStreaming();
-                        updateButtonState(false);
-                    });
-                })
-                .exceptionally(ex -> {
-                    SwingUtilities.invokeLater(() -> statusLabel.setText("Stop failed: " + ex.getMessage()));
-                    return null;
-                });
+        SessionManager.getInstance().stopCurrentMessage();
+        SwingUtilities.invokeLater(() -> {
+            statusLabel.setText("Stopped");
+            chatPanel.stopStreaming();
+            updateButtonState(false);
+        });
     }
 
     private void renameCurrentSession() {
@@ -1319,7 +1372,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     }
 
     public static synchronized AssistantTopComponent findInstance() {
-        TopComponent tc = org.openide.windows.WindowManager.getDefault().findTopComponent("AssistantTopComponent");
+        TopComponent tc = WindowManager.getDefault().findTopComponent("AssistantTopComponent");
         if (tc instanceof AssistantTopComponent assistantTopComponent) {
             return assistantTopComponent;
         }

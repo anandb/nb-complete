@@ -20,7 +20,6 @@ public class MessageStrategy implements DataExtractionStrategy {
 
     @Override
     public void extract(SessionUpdate update, UIHandler handler) {
-        ProcessedMessage target = new ProcessedMessage();
         Message msg = update.message();
         if (msg == null) return;
 
@@ -42,14 +41,16 @@ public class MessageStrategy implements DataExtractionStrategy {
             return;
         }
 
-        target.setMessageType("user".equals(role) ? MessageType.user_message_chunk : MessageType.agent_message_chunk);
-        target.setText(text);
-        target.setMessageId(msg.id());
-        target.setKind(null);
-        target.setRawText(text);
-        target.setStreaming(false);
+        MessageType msgType = "user".equals(role) ? MessageType.user_message_chunk : MessageType.agent_message_chunk;
+        ProcessedMessage target = new ProcessedMessage.Builder()
+                .messageType(msgType)
+                .text(text)
+                .messageId(msg.id())
+                .rawText(text)
+                .streaming(false)
+                .build();
 
-        if (target.messageType()!= null) {
+        if (target.messageType() != null) {
             handler.displayMessage(target);
         }
     }

@@ -144,7 +144,7 @@ public class ConfigPanelController {
                 if (selectedValue != null && !selectedValue.isEmpty() && !selectedValue.equals(currentValue)) {
                     LOG.fine("Applying pre-selected config: {0}={1} (server default was {2})",
                             new Object[]{opt.id(), selectedValue, currentValue});
-                    ProcessManager.getInstance().setSessionConfigOption(sessionId, opt.id(), selectedValue);
+                    SessionManager.getInstance().setSessionConfigOption(sessionId, opt.id(), selectedValue);
                 }
             }
         }
@@ -272,12 +272,12 @@ public class ConfigPanelController {
                 String match = findModelMatch(opt, envModel);
                 if (match != null) {
                     LOG.fine("Using OPENCODE_MODEL: {0}", new Object[]{match});
-                    ProcessManager.getInstance().setSessionConfigOption(currentId, opt.id(), match);
+                    SessionManager.getInstance().setSessionConfigOption(currentId, opt.id(), match);
                     return match;
                 }
             }
             if (lastSelectedModelId != null && !lastSelectedModelId.equalsIgnoreCase(currentValue)) {
-                ProcessManager.getInstance().setSessionConfigOption(currentId, opt.id(), lastSelectedModelId);
+                SessionManager.getInstance().setSessionConfigOption(currentId, opt.id(), lastSelectedModelId);
                 return lastSelectedModelId;
             }
         }
@@ -288,7 +288,7 @@ public class ConfigPanelController {
     private String sendAndReturn(SessionConfigOption opt, String forcedValue, String currentId) {
         if (!forcedValue.equalsIgnoreCase(opt.currentValue()) && currentId != null) {
             LOG.fine("Forcing default: {0}={1} (was {2})", new Object[]{opt.id(), forcedValue, opt.currentValue()});
-            ProcessManager.getInstance().setSessionConfigOption(currentId, opt.id(), forcedValue);
+            SessionManager.getInstance().setSessionConfigOption(currentId, opt.id(), forcedValue);
             return forcedValue;
         }
         return opt.currentValue();
@@ -378,7 +378,7 @@ public class ConfigPanelController {
                 }
 
                 LOG.fine("Config update: {0}={1} for session {2}", new Object[]{configId, item.value(), currentId});
-                ProcessManager.getInstance().setSessionConfigOption(currentId, configId, item.value());
+                SessionManager.getInstance().setSessionConfigOption(currentId, configId, item.value());
             }
 
         });

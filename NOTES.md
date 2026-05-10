@@ -35,7 +35,7 @@
 - Maven wrapper properties updated
 - Test imports cleaned up across all test files
 
-## v1.5.12 (2026-05-05)
+## v1.5.17 (2026-05-09)
 
 ### UI & UX
 - Redesigned user message bubbles with unified global text alignment across the chat thread
