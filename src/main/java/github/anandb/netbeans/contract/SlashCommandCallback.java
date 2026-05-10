@@ -6,4 +6,5 @@ public interface SlashCommandCallback {
     void popupAgentCombo();
     void popupThinkingCombo();
     void popupSessionCombo();
+    void popupNewSession();
 }

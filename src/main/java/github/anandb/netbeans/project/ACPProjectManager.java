@@ -1,7 +1,5 @@
 package github.anandb.netbeans.project;
 
-import github.anandb.netbeans.manager.ProcessManager;
-
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.HashSet;
@@ -11,7 +9,6 @@ import java.util.function.Consumer;
 import github.anandb.netbeans.support.Logger;
 import org.netbeans.api.project.Project;
 import org.netbeans.api.project.ui.OpenProjects;
-import org.openide.filesystems.FileObject;
 
 public class ACPProjectManager implements PropertyChangeListener {
     private static final Logger LOG = new Logger(ACPProjectManager.class);
@@ -56,22 +53,9 @@ public class ACPProjectManager implements PropertyChangeListener {
 
     private void syncActiveProject() {
         Project[] openProjects = OpenProjects.getDefault().getOpenProjects();
-        Project main = OpenProjects.getDefault().getMainProject();
 
         Set<String> oldDirs = dirsOf(currentProjects);
         Set<String> newDirs = dirsOf(openProjects);
-
-        // Set active project before firing open listeners so SessionManager
-        // can use getActiveProjectDir() during project-opened handling
-        Project active = main != null ? main : (openProjects.length > 0 ? openProjects[0] : null);
-        if (active != null) {
-            FileObject dir = active.getProjectDirectory();
-            String path = dir.getPath();
-            LOG.fine("Active project synchronized: {0}", path);
-            ProcessManager.getInstance().setActiveProject(path);
-        } else {
-            ProcessManager.getInstance().setActiveProject(null);
-        }
 
         Set<String> closedDirs = new HashSet<>(oldDirs);
         closedDirs.removeAll(newDirs);

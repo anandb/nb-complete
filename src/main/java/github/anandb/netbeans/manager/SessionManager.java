@@ -10,7 +10,6 @@ import github.anandb.netbeans.project.ACPProjectManager;
 import org.netbeans.api.project.Project;
 
 import javax.swing.SwingUtilities;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -25,7 +24,6 @@ import github.anandb.netbeans.model.SessionState;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.MapperSupplier;
-import org.netbeans.api.project.ui.OpenProjects;
 
 /**
  * Manages the state and lifecycle of chat sessions.
@@ -43,8 +41,6 @@ public class SessionManager {
     private final List<Session> cachedSessions = new CopyOnWriteArrayList<>();
 
     private SessionManager() {
-        // Register for project changes to keep sessions in sync
-        ProcessManager.getInstance().addProjectChangeListener(this::handleProjectChanged);
         ACPProjectManager.getInstance().setProjectOpenListener(this::handleProjectOpened);
         ACPProjectManager.getInstance().setProjectCloseListener(this::handleProjectClosed);
 
@@ -123,7 +119,10 @@ public class SessionManager {
                                     sessions.add(s);
                                     continue;
                                 }
-                                sessions.add(new Session(s.id(), s.title(), directory, directory, s.parentID(), s.updatedAt(), s.mcpServers(), s.configOptions()));
+
+                                sessions.add(new Session(s.id(), s.title(), directory, directory,
+                                                         s.parentID(), s.updatedAt(), s.mcpServers(),
+                                                         s.configOptions()));
                             }
                             LOG.fine("getSessions: deserialized {0} sessions", sessions.size());
                             for (Session s : sessions) {
@@ -167,16 +166,12 @@ public class SessionManager {
     }
 
     public CompletableFuture<Session> createSession(String cwd) {
-        String effectiveCwd = cwd;
-        if (effectiveCwd == null) {
-            effectiveCwd = getProjectPath();
-        }
-        if (effectiveCwd == null) {
-            effectiveCwd = System.getProperty("user.dir");
+        if (cwd == null) {
+            cwd = System.getProperty("user.dir");
         }
 
-        LOG.log(Level.FINE, "Creating new session with CWD: {0}", effectiveCwd);
-        final String finalCwd = effectiveCwd;
+        LOG.log(Level.FINE, "Creating new session with CWD: {0}", cwd);
+        final String finalCwd = cwd;
 
         return sendCreateSessionRequest(finalCwd).handle((res, ex) -> {
             if (ex == null) {
@@ -314,6 +309,12 @@ public class SessionManager {
             LOG.warn("Cannot create session in state {0}", stateMachine.getState());
             return;
         }
+
+        if (explicitCwd == null) {
+            stateMachine.transitionTo(SessionState.IDLE);
+            return;
+        }
+
         notifySessionStarted(null);
 
         createSession(explicitCwd)
@@ -349,38 +350,33 @@ public class SessionManager {
         this.currentSessionId = sessionId;
         notifySessionStarted(sessionId);
 
-        String projectCwd = ProcessManager.getInstance().getActiveProjectDir();
-        getSessions(projectCwd).thenAccept(sessions -> {
-            String sessionCwd = sessions.stream()
-                    .filter(s -> s.id().equals(sessionId))
-                    .findFirst()
-                    .map(s -> {
-                        Logger.setSession(s.id(), s.title());
-                        return s.cwd() != null ? s.cwd() : s.directory();
-                    })
-                    .orElse(null);
+        // Look up session directory from cache
+        String sessionCwd = cachedSessions.stream()
+                .filter(s -> s.id().equals(sessionId))
+                .findFirst()
+                .map(s -> {
+                    Logger.setSession(s.id(), s.title());
+                    return s.cwd() != null ? s.cwd() : s.directory();
+                })
+                .orElse(null);
 
-            String workingCwd = projectCwd != null ? projectCwd : sessionCwd;
-            if (workingCwd == null) {
-                workingCwd = System.getProperty("user.dir");
-            }
+        String workingCwd = sessionCwd != null ? sessionCwd : System.getProperty("user.dir");
 
-            this.lastProjectDir = workingCwd;
-            loadSessionFromServer(sessionId, workingCwd)
-                    .thenAccept(configOptions -> {
-                        if (sessionId.equals(this.currentSessionId)) {
-                            stateMachine.transitionTo(SessionState.STREAMING);
-                            notifySessionLoaded(sessionId, configOptions, isStartup);
-                        }
-                    })
-                    .exceptionally(ex -> {
-                        if (sessionId.equals(this.currentSessionId)) {
-                            stateMachine.transitionTo(SessionState.IDLE);
-                            notifyError("Failed to load session: " + ex.getMessage());
-                        }
-                        return null;
-                    });
-        });
+        this.lastProjectDir = workingCwd;
+        loadSessionFromServer(sessionId, workingCwd)
+                .thenAccept(configOptions -> {
+                    if (sessionId.equals(this.currentSessionId)) {
+                        stateMachine.transitionTo(SessionState.STREAMING);
+                        notifySessionLoaded(sessionId, configOptions, isStartup);
+                    }
+                })
+                .exceptionally(ex -> {
+                    if (sessionId.equals(this.currentSessionId)) {
+                        stateMachine.transitionTo(SessionState.IDLE);
+                        notifyError("Failed to load session: " + ex.getMessage());
+                    }
+                    return null;
+                });
     }
 
     public void renameSession(String sessionId, String newTitle) {
@@ -389,17 +385,6 @@ public class SessionManager {
         }
         SessionTitleMapper.setTitle(sessionId, newTitle.trim());
         refreshSessions();
-    }
-
-    private void handleProjectChanged(String path) {
-        if (path != null && !path.equals(lastProjectDir)) {
-            if (lastProjectDir != null) {
-                LOG.fine("Project changed from {0} to {1}, creating new session",
-                        new Object[]{lastProjectDir, path});
-                createNewSession(path);
-            }
-            lastProjectDir = path;
-        }
     }
 
     private void handleProjectOpened(String openedDir) {
@@ -502,17 +487,6 @@ public class SessionManager {
         }
     }
 
-    private static String getProjectPath() {
-        Project main = OpenProjects.getDefault().getMainProject();
-        if (main != null && main.getProjectDirectory() != null) {
-            return main.getProjectDirectory().getPath();
-        }
-        Project[] open = OpenProjects.getDefault().getOpenProjects();
-        if (open != null && open.length > 0 && open[0].getProjectDirectory() != null) {
-            return open[0].getProjectDirectory().getPath();
-        }
-        return null;
-    }
 
     private boolean isInvalidParamsError(Throwable t) {
         if (t == null) {

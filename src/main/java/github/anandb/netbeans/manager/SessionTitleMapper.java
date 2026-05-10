@@ -20,6 +20,8 @@ public class SessionTitleMapper {
         load();
     }
 
+    private SessionTitleMapper() {}
+    
     private static File getStorageFile() {
         File userDir = Places.getUserDirectory();
         File opencodeDir;

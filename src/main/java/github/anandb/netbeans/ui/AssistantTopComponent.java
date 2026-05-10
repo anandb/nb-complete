@@ -34,6 +34,7 @@ import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JComboBox;
+import javax.swing.JComponent;
 import javax.swing.JFileChooser;
 import javax.swing.JMenuItem;
 import javax.swing.JLabel;
@@ -51,6 +52,7 @@ import javax.swing.text.JTextComponent;
 import javax.swing.text.StyledDocument;
 
 import org.netbeans.api.editor.EditorRegistry;
+import org.netbeans.api.project.Project;
 import org.netbeans.api.project.ui.OpenProjects;
 import org.netbeans.api.settings.ConvertAsProperties;
 import org.netbeans.modules.editor.NbEditorUtilities;
@@ -82,6 +84,7 @@ import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.model.SessionConfigOption;
 import github.anandb.netbeans.model.SessionItem;
 import github.anandb.netbeans.model.SessionUpdate;
+import github.anandb.netbeans.project.ACPProjectManager;
 import github.anandb.netbeans.support.Logger;
 
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
@@ -258,7 +261,15 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         sessionControls.setOpaque(false);
 
         newSessionBtn = UIUtils.createToolbarButton("new.svg", "New Session", e -> {
-                SessionManager.getInstance().createNewSession(null);
+            Project[] projects = ACPProjectManager.getInstance().getAllOpenProjects();
+            if (projects == null || projects.length == 0) {
+                return;
+            }
+            if (projects.length == 1) {
+                SessionManager.getInstance().createNewSession(projects[0].getProjectDirectory().getPath());
+            } else {
+                showProjectPickerPopup((JComponent) e.getSource());
+            }
         });
         renameSessionBtn = UIUtils.createToolbarButton("rename.svg", "Rename Session", e -> renameCurrentSession());
         JButton refreshBtn = UIUtils.createToolbarButton("reload.svg", "Reload Conversation", e -> {
@@ -616,7 +627,17 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                         }
                     }
                 } else {
-                    chatPanel.setSessionList(sessions, id -> SessionManager.getInstance().loadSession(id), () -> SessionManager.getInstance().createNewSession(null));
+                    chatPanel.setSessionList(sessions, id -> SessionManager.getInstance().loadSession(id), () -> {
+                        Project[] projects = ACPProjectManager.getInstance().getAllOpenProjects();
+                        if (projects == null || projects.length == 0) {
+                            return;
+                        }
+                        if (projects.length == 1) {
+                            SessionManager.getInstance().createNewSession(projects[0].getProjectDirectory().getPath());
+                        } else {
+                            showProjectPickerPopup(sessionDropdown);
+                        }
+                    });
                     sessionDropdown.setSelectedIndex(-1);
                     if (!hasProjects) {
                         statusLabel.setText("Open a project to start chatting");
@@ -982,6 +1003,24 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         return btn;
     }
 
+    private void showProjectPickerPopup(JComponent parent) {
+        Project[] projects = ACPProjectManager.getInstance().getAllOpenProjects();
+        if (projects == null || projects.length <= 1) {
+            return;
+        }
+
+        JPopupMenu popup = new JPopupMenu();
+        for (Project project : projects) {
+            String name = project.getProjectDirectory().getName();
+            JMenuItem item = new JMenuItem(name);
+            item.addActionListener(ev -> {
+                SessionManager.getInstance().createNewSession(project.getProjectDirectory().getPath());
+            });
+            popup.add(item);
+        }
+        popup.show(parent, 0, parent.getHeight());
+    }
+
     private JButton createPaperclipButton() {
         JButton btn = UIUtils.createToolbarButton("paperclip.svg", "Attach files", null);
         btn.addActionListener(e -> showPaperclipMenu(e));
@@ -1195,9 +1234,6 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                 effectivePath = SessionManager.getInstance().getCurrentSessionDirectory();
             }
             if (effectivePath == null || effectivePath.isEmpty()) {
-                effectivePath = ProcessManager.getInstance().getActiveProjectDir();
-            }
-            if (effectivePath == null || effectivePath.isEmpty()) {
                 effectivePath = System.getProperty("user.dir");
             }
 
@@ -1282,6 +1318,21 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                 SwingUtilities.invokeLater(() -> {
                     sessionDropdown.requestFocusInWindow();
                     SwingUtilities.invokeLater(() -> sessionDropdown.setPopupVisible(true));
+                });
+            }
+
+            @Override
+            public void popupNewSession() {
+                SwingUtilities.invokeLater(() -> {
+                    Project[] projects = ACPProjectManager.getInstance().getAllOpenProjects();
+                    if (projects == null || projects.length == 0) {
+                        return;
+                    }
+                    if (projects.length == 1) {
+                        SessionManager.getInstance().createNewSession(projects[0].getProjectDirectory().getPath());
+                    } else {
+                        showProjectPickerPopup(inputArea);
+                    }
                 });
             }
         });

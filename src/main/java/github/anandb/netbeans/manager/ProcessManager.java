@@ -1,7 +1,6 @@
 package github.anandb.netbeans.manager;
 
 import java.io.File;
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -11,25 +10,21 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.regex.Pattern;
-import java.util.Set;
 
 import javax.swing.text.Document;
 
 import org.apache.commons.exec.CommandLine;
-import org.netbeans.api.project.Project;
-import org.netbeans.api.project.ui.OpenProjects;
+
 import org.openide.cookies.EditorCookie;
 import org.openide.filesystems.FileObject;
 import org.openide.filesystems.FileUtil;
 import org.openide.loaders.DataObject;
 import org.openide.util.NbPreferences;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -41,8 +36,6 @@ import java.util.concurrent.ScheduledFuture;
 import javax.swing.SwingUtilities;
 
 import github.anandb.netbeans.contract.PermissionHandler;
-import github.anandb.netbeans.model.Session;
-import github.anandb.netbeans.model.SessionConfigOption;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.ui.ACPOptionsPanel;
 import github.anandb.netbeans.support.Logger;
@@ -73,7 +66,6 @@ public class ProcessManager {
     private volatile CompletableFuture<Void> readyFuture = new CompletableFuture<>();
 
     private final List<Consumer<SessionUpdate>> sseListeners = new CopyOnWriteArrayList<>();
-    private final List<Consumer<String>> projectChangeListeners = new CopyOnWriteArrayList<>();
     private final List<SessionUpdate.AvailableCommand> availableCommands = new CopyOnWriteArrayList<>();
     private PermissionHandler permissionHandler;
     private Consumer<String> statusListener;
@@ -88,7 +80,7 @@ public class ProcessManager {
 
     private volatile boolean serverStarted = false;
 
-    private final Set<String> pluginWritingFiles = ConcurrentHashMap.newKeySet();
+
 
     private ProcessManager() {
     }
@@ -186,9 +178,6 @@ public class ProcessManager {
                             return;
                         }
                     }
-
-                    // Record local history for completed file-modifying tool calls
-                    recordLocalHistory(params);
 
                     notifyListeners(update);
                 } catch (Exception e) {
@@ -393,7 +382,8 @@ public class ProcessManager {
         return sendMessage(sessionId, text, context, null);
     }
 
-    public CompletableFuture<JsonNode> sendMessage(String sessionId, String text, Map<String, Object> context, List<Map<String, Object>> additionalBlocks) {
+    public CompletableFuture<JsonNode> sendMessage(String sessionId, String text,  Map<String, Object> context,
+                                                   List<Map<String, Object>> additionalBlocks) {
         if (!rpcClientReady()) {
             return CompletableFuture.failedFuture(new RuntimeException(operationalError()));
         }
@@ -482,51 +472,15 @@ public class ProcessManager {
         return CompletableFuture.completedFuture(null);
     }
 
-
-    public void setActiveProject(String path) {
-        for (Consumer<String> listener : projectChangeListeners) {
-            listener.accept(path);
-        }
-    }
-
     private static String getProjectPath() {
-        Project main = OpenProjects.getDefault().getMainProject();
-        if (main != null && main.getProjectDirectory() != null) {
-            return main.getProjectDirectory().getPath();
-        }
-        Project[] open = OpenProjects.getDefault().getOpenProjects();
-        if (open != null && open.length > 0 && open[0].getProjectDirectory() != null) {
-            return open[0].getProjectDirectory().getPath();
-        }
         return null;
     }
 
     public String getActiveProjectDir() {
-        String path = getProjectPath();
-        if (path == null) {
-            path = System.getProperty("user.dir");
-        }
-        return path;
+        return System.getProperty("user.dir");
     }
 
     public void addProjectChangeListener(Consumer<String> listener) {
-        projectChangeListeners.add(listener);
-    }
-
-    public boolean isPluginWriting(String path) {
-        return path != null && pluginWritingFiles.contains(path);
-    }
-
-    private void markPluginWriting(String path) {
-        if (path != null) {
-            pluginWritingFiles.add(path);
-        }
-    }
-
-    private void unmarkPluginWriting(String path) {
-        if (path != null) {
-            pluginWritingFiles.remove(path);
-        }
     }
 
     public List<SessionUpdate.AvailableCommand> getAvailableCommands() {
@@ -649,118 +603,9 @@ public class ProcessManager {
     }
 
     private boolean isWithinProject(File file) {
-        String projectDir = getActiveProjectDir();
+        String projectDir = SessionManager.getInstance().getCurrentSessionDirectory();
         if (projectDir == null) return false;
         return file.toPath().normalize().startsWith(Paths.get(projectDir).normalize());
-    }
-
-    private void recordLocalHistory(JsonNode updateParams) {
-        // Only act on completed tool_call_update messages
-        JsonNode update = updateParams.get("update");
-        if (update == null) return;
-        String type = update.has("sessionUpdate") ? update.get("sessionUpdate").asText() : null;
-        if (!"tool_call_update".equals(type)) return;
-        String status = update.has("status") ? update.get("status").asText() : null;
-        if (!"completed".equals(status)) return;
-        String kind = update.has("kind") ? update.get("kind").asText() : null;
-        if (!"edit".equals(kind) && !"write".equals(kind) && !"delete".equals(kind)) return;
-
-        // Extract file path from rawInput
-        JsonNode rawInput = update.get("rawInput");
-        if (rawInput == null) {
-            LOG.fine("Local history skipped: rawInput is null for kind={0}", kind);
-            return;
-        }
-        String filePath = rawInput.has("filePath") ? rawInput.get("filePath").asText()
-                : rawInput.has("path") ? rawInput.get("path").asText() : null;
-        if (filePath == null || filePath.isEmpty()) return;
-
-        // Resolve and verify path is within current project directory
-        File file = new File(filePath);
-        if (!file.isAbsolute()) {
-            String projectDir = getActiveProjectDir();
-            file = new File(projectDir, filePath);
-        }
-        if (!isWithinProject(file)) {
-            LOG.fine("Skipping local history: file outside project: {0}", filePath);
-            Consumer<String> listener = statusListener;
-            if (listener != null) {
-                listener.accept("Local history skipped: file outside project");
-            }
-            return;
-        }
-
-        // Skip timestamp check for deletes: file may already be gone
-        if (!"delete".equals(kind)) {
-            long twoMinAgo = System.currentTimeMillis() - 120_000;
-            if (file.exists() && file.lastModified() < twoMinAgo) {
-                LOG.fine("Skipping local history: file not recently modified: {0}", filePath);
-                return;
-            }
-        }
-
-        if ("delete".equals(kind)) {
-            triggerDeleteHistory(file);
-        } else {
-            writeThroughVFS(file);
-        }
-    }
-
-    private void writeThroughVFS(File file) {
-        String filePath = file.getAbsolutePath();
-        markPluginWriting(filePath);
-        try {
-            if (!file.exists()) return;
-            FileObject fo = FileUtil.toFileObject(file);
-            if (fo == null) {
-                fo = FileUtil.createData(file);
-            }
-            if (fo != null) {
-                byte[] bytes = Files.readAllBytes(file.toPath());
-                String content = new String(bytes, StandardCharsets.UTF_8);
-
-                // Sync the open editor Document to match disk
-                try {
-                    DataObject dobj = DataObject.find(fo);
-                    EditorCookie ec = dobj.getLookup().lookup(EditorCookie.class);
-                    if (ec != null) {
-                        Document doc = ec.openDocument();
-                        if (doc != null) {
-                            doc.remove(0, doc.getLength());
-                            doc.insertString(0, content, null);
-                            ec.saveDocument();
-                            markUnmodifiedAfterWrite(fo);
-                            LOG.fine("Local history triggered via editor Document: {0}", file.getAbsolutePath());
-                            return;
-                        }
-                    }
-                } catch (Exception e) {
-                    LOG.fine("Could not sync editor for local history: {0}", e.getMessage());
-                }
-
-                // Fallback: refresh VFS
-                fo.refresh();
-                LOG.fine("Notified NetBeans of file change (refresh only): {0}", file.getAbsolutePath());
-            }
-        } catch (Exception e) {
-            LOG.info("Failed to trigger local history: {0}", e.getMessage());
-        } finally {
-            unmarkPluginWriting(filePath);
-        }
-    }
-
-    private void triggerDeleteHistory(File file) {
-        try {
-            File parentDir = file.getParentFile();
-            if (parentDir == null) return;
-            FileObject parentFo = FileUtil.toFileObject(parentDir);
-            if (parentFo != null) {
-                parentFo.refresh();
-                LOG.fine("Local history recorded for deletion: {0}", file.getAbsolutePath());
-            }
-        } catch (Exception e) {
-            LOG.info("Failed to trigger local history for deletion: {0}", e.getMessage());
-        }
     }
 
     private CompletableFuture<JsonNode> handleWriteTextFile(JsonNode params) {
@@ -789,16 +634,11 @@ public class ProcessManager {
                     parent.mkdirs();
                 }
 
-                boolean written = false;
-
-                // Suppress VFS "externally modified" notifications for this file
-                markPluginWriting(filePath);
-
-                // Write to disk first so the FileObject is up-to-date
+                // Write to disk
                 byte[] data = content.getBytes(StandardCharsets.UTF_8);
                 Files.write(file.toPath(), data);
 
-                // Then sync the open editor Document to match disk
+                // Sync open editor to match disk
                 try {
                     FileObject fo = FileUtil.toFileObject(file);
                     if (fo != null) {
@@ -810,25 +650,18 @@ public class ProcessManager {
                                 doc.remove(0, doc.getLength());
                                 doc.insertString(0, content, null);
                                 ec.saveDocument();
-                                markUnmodifiedAfterWrite(fo);
-                                written = true;
                                 LOG.fine("Write through editor Document: {0}", filePath);
                             }
                         }
                     }
                 } catch (Exception e) {
                     LOG.fine("Could not sync editor after write: {0}", e.getMessage());
-                    written = true; // disk write succeeded
                 }
 
                 return objectMapper.createObjectNode().put("success", true);
             } catch (Exception e) {
                 LOG.log(Level.SEVERE, "fs/writeTextFile failed", e);
                 throw new RuntimeException("Failed to write file: " + e.getMessage(), e);
-            } finally {
-                if (filePath != null) {
-                    unmarkPluginWriting(filePath);
-                }
             }
         });
     }
@@ -878,18 +711,5 @@ public class ProcessManager {
 
     private String operationalError() {
         return "Server not started, Please check if Opencode is installed and available";
-    }
-
-    /**
-     * Registers a temporary FileChangeListener on the given FileObject that
-     * marks the file as unmodified after a plugin-initiated save, preventing
-     * NetBeans' "externally modified" dialog from appearing.
-     */
-    private void markUnmodifiedAfterWrite(FileObject fo) {
-        try {
-            fo.setAttribute("unmodified", true);
-        } catch (IOException e) {
-            LOG.fine("Could not set unmodified attribute: {0}", e.getMessage());
-        }
     }
 }

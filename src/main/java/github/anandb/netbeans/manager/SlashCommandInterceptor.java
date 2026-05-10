@@ -92,7 +92,9 @@ public class SlashCommandInterceptor {
     }
 
     private CompletableFuture<Boolean> handleNew(String args, Lookup context) {
-        SessionManager.getInstance().createNewSession(null);
+        if (callback != null) {
+            callback.popupNewSession();
+        }
         return CompletableFuture.completedFuture(true);
     }
 

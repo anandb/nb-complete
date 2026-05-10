@@ -233,7 +233,7 @@ public class ChatThreadPanel extends JPanel {
             setOpaque(false);
             setDoubleBuffered(true);
         }
-        
+
         @Override
         public Dimension getPreferredScrollableViewportSize() {
             return getPreferredSize();
@@ -422,12 +422,14 @@ public class ChatThreadPanel extends JPanel {
 
                 allowBtn.addActionListener(e -> {
                     responseFuture.complete("allow");
-                    collapse(content, "Permission Granted", ThemeManager.getIcon("check.svg", 16), new Color(46, 125, 50), new Color(232, 245, 233), new Color(76, 175, 80));
+                    collapse(content, "Permission Granted", ThemeManager.getIcon("check.svg", 16),
+                             new Color(46, 125, 50), new Color(232, 245, 233), new Color(76, 175, 80));
                 });
 
                 denyBtn.addActionListener(e -> {
                     responseFuture.complete("reject");
-                    collapse(content, "Permission Denied", ThemeManager.getIcon("x.svg", 16), new Color(198, 40, 40), new Color(255, 235, 238), new Color(244, 67, 54));
+                    collapse(content, "Permission Denied", ThemeManager.getIcon("x.svg", 16),
+                            new Color(198, 40, 40), new Color(255, 235, 238), new Color(244, 67, 54));
                 });
 
                 buttons.add(denyBtn);

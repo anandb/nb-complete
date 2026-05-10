@@ -12,8 +12,10 @@ import java.util.regex.Pattern;
 
 import java.awt.Color;
 import java.awt.GridBagConstraints;
+
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
 
@@ -96,10 +98,12 @@ public class ACPOptionsPanel extends JPanel {
         // --- SECTION: Assistant Service ---
         JLabel serviceHeader = new JLabel("Assistant Service");
         serviceHeader.setFont(serviceHeader.getFont().deriveFont(java.awt.Font.BOLD));
-        add(serviceHeader, UIUtils.createGbc(0, 0, 1.0, 0, java.awt.GridBagConstraints.HORIZONTAL, java.awt.GridBagConstraints.WEST, new java.awt.Insets(0, 0, 10, 0)));
+        add(serviceHeader, UIUtils.createGbc(0, 0, 1.0, 0, GridBagConstraints.HORIZONTAL,
+                                             GridBagConstraints.WEST, new Insets(0, 0, 10, 0)));
 
         jLabel1.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_ExecutablePath"));
-        add(jLabel1, UIUtils.createGbc(0, 1, 0.0, 0, java.awt.GridBagConstraints.NONE, java.awt.GridBagConstraints.WEST, new java.awt.Insets(0, 12, 5, 5)));
+        add(jLabel1, UIUtils.createGbc(0, 1, 0.0, 0, GridBagConstraints.NONE, GridBagConstraints.WEST,
+                                       new Insets(0, 12, 5, 5)));
 
         pathField.addKeyListener(new java.awt.event.KeyAdapter() {
             @Override
@@ -115,42 +119,52 @@ public class ACPOptionsPanel extends JPanel {
                 restoreHintIfEmpty();
             }
         });
-        add(pathField, UIUtils.createGbc(1, 1, 1.0, 0, java.awt.GridBagConstraints.HORIZONTAL, java.awt.GridBagConstraints.WEST, new java.awt.Insets(0, 0, 5, 5)));
+        add(pathField, UIUtils.createGbc(1, 1, 1.0, 0, GridBagConstraints.HORIZONTAL,
+                                         GridBagConstraints.WEST, new Insets(0, 0, 5, 5)));
 
         browseButton.setText(NbBundle.getMessage(ACPOptionsPanel.class, "BTN_Browse"));
         browseButton.addActionListener(evt -> browseButtonActionPerformed());
-        add(browseButton, UIUtils.createGbc(2, 1, 0.0, 0, java.awt.GridBagConstraints.NONE, java.awt.GridBagConstraints.WEST, new java.awt.Insets(0, 0, 5, 0)));
+        add(browseButton, UIUtils.createGbc(2, 1, 0.0, 0, GridBagConstraints.NONE, GridBagConstraints.WEST,
+                                            new Insets(0, 0, 5, 0)));
 
         argsLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_ProcessArguments"));
-        add(argsLabel, UIUtils.createGbc(0, 2, 0.0, 0, java.awt.GridBagConstraints.NONE, java.awt.GridBagConstraints.WEST, new java.awt.Insets(0, 12, 15, 5)));
+        add(argsLabel, UIUtils.createGbc(0, 2, 0.0, 0, GridBagConstraints.NONE, GridBagConstraints.WEST,
+                                         new Insets(0, 12, 15, 5)));
 
         argsField.addKeyListener(new java.awt.event.KeyAdapter() {
             @Override
             public void keyReleased(java.awt.event.KeyEvent evt) { controller.changed(); }
         });
-        add(argsField, UIUtils.createGbc(1, 2, 1.0, 0, java.awt.GridBagConstraints.HORIZONTAL, java.awt.GridBagConstraints.WEST, new java.awt.Insets(0, 0, 15, 5)));
+        add(argsField, UIUtils.createGbc(1, 2, 1.0, 0, GridBagConstraints.HORIZONTAL,
+                                         GridBagConstraints.WEST, new Insets(0, 0, 15, 5)));
 
         // --- SECTION: Chat Behavior ---
         JLabel behaviorHeader = new JLabel("Chat Behavior");
         behaviorHeader.setFont(behaviorHeader.getFont().deriveFont(java.awt.Font.BOLD));
-        add(behaviorHeader, UIUtils.createGbc(0, 3, 1.0, 0, java.awt.GridBagConstraints.HORIZONTAL, java.awt.GridBagConstraints.WEST, new java.awt.Insets(10, 0, 10, 0)));
+        add(behaviorHeader, UIUtils.createGbc(0, 3, 1.0, 0, GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST,
+                new Insets(10, 0, 10, 0)));
 
         echoCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_EchoUserInput"));
         echoCheckbox.addActionListener(evt -> controller.changed());
-        add(echoCheckbox, UIUtils.createGbc(0, 4, 1.0, 0, GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST, new Insets(0, 12, 10, 0)));
+        add(echoCheckbox, UIUtils.createGbc(0, 4, 1.0, 0, GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST,
+                new Insets(0, 12, 10, 0)));
 
         // GridBag uses gridwidth to span columns
-        GridBagConstraints gbcHeader = UIUtils.createGbc(0, 3, 1.0, 0, GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST, new Insets(10, 0, 10, 0));
+        GridBagConstraints gbcHeader = UIUtils.createGbc(0, 3, 1.0, 0, GridBagConstraints.HORIZONTAL,
+                GridBagConstraints.WEST, new Insets(10, 0, 10, 0));
         gbcHeader.gridwidth = 3;
         ((GridBagLayout)getLayout()).setConstraints(behaviorHeader, gbcHeader);
 
-        GridBagConstraints gbcServiceHeader = UIUtils.createGbc(0, 0, 1.0, 0, GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST, new Insets(0, 0, 10, 0));
+        GridBagConstraints gbcServiceHeader = UIUtils.createGbc(0, 0, 1.0, 0, GridBagConstraints.HORIZONTAL,
+                GridBagConstraints.WEST, new Insets(0, 0, 10, 0));
         gbcServiceHeader.gridwidth = 3;
         ((GridBagLayout)getLayout()).setConstraints(serviceHeader, gbcServiceHeader);
 
         preambleLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_Preamble"));
-        add(preambleLabel, UIUtils.createGbc(0, 5, 1.0, 0, GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST, new Insets(0, 12, 5, 0)));
-        GridBagConstraints gbcPreambleLabel = UIUtils.createGbc(0, 5, 1.0, 0, GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST, new Insets(0, 12, 5, 0));
+        add(preambleLabel, UIUtils.createGbc(0, 5, 1.0, 0, GridBagConstraints.HORIZONTAL,
+                GridBagConstraints.WEST, new Insets(0, 12, 5, 0)));
+        GridBagConstraints gbcPreambleLabel = UIUtils.createGbc(0, 5, 1.0, 0, GridBagConstraints.HORIZONTAL,
+                GridBagConstraints.WEST, new Insets(0, 12, 5, 0));
         gbcPreambleLabel.gridwidth = 3;
         ((GridBagLayout)getLayout()).setConstraints(preambleLabel, gbcPreambleLabel);
 
@@ -160,21 +174,26 @@ public class ACPOptionsPanel extends JPanel {
             @Override
             public void keyReleased(java.awt.event.KeyEvent evt) { controller.changed(); }
         });
-        add(preambleScroll, UIUtils.createGbc(0, 6, 1.0, 0.2, GridBagConstraints.BOTH, GridBagConstraints.WEST, new Insets(0, 12, 15, 0)));
-        GridBagConstraints gbcPreambleScroll = UIUtils.createGbc(0, 6, 1.0, 0.2, GridBagConstraints.BOTH, GridBagConstraints.WEST, new Insets(0, 12, 15, 0));
+        add(preambleScroll, UIUtils.createGbc(0, 6, 1.0, 0.2, GridBagConstraints.BOTH,
+                GridBagConstraints.WEST, new Insets(0, 12, 15, 0)));
+        GridBagConstraints gbcPreambleScroll = UIUtils.createGbc(0, 6, 1.0, 0.2, GridBagConstraints.BOTH,
+                GridBagConstraints.WEST, new Insets(0, 12, 15, 0));
         gbcPreambleScroll.gridwidth = 3;
         ((GridBagLayout)getLayout()).setConstraints(preambleScroll, gbcPreambleScroll);
 
         // --- SECTION: Appearance ---
         JLabel appearanceHeader = new JLabel("Appearance");
         appearanceHeader.setFont(appearanceHeader.getFont().deriveFont(java.awt.Font.BOLD));
-        add(appearanceHeader, UIUtils.createGbc(0, 7, 1.0, 0, java.awt.GridBagConstraints.HORIZONTAL, java.awt.GridBagConstraints.WEST, new java.awt.Insets(10, 0, 10, 0)));
-        java.awt.GridBagConstraints gbcAppHeader = UIUtils.createGbc(0, 7, 1.0, 0, java.awt.GridBagConstraints.HORIZONTAL, java.awt.GridBagConstraints.WEST, new java.awt.Insets(10, 0, 10, 0));
+        add(appearanceHeader, UIUtils.createGbc(0, 7, 1.0, 0, GridBagConstraints.HORIZONTAL,
+                GridBagConstraints.WEST, new Insets(10, 0, 10, 0)));
+        GridBagConstraints gbcAppHeader = UIUtils.createGbc(0, 7, 1.0, 0, GridBagConstraints.HORIZONTAL,
+                GridBagConstraints.WEST, new Insets(10, 0, 10, 0));
         gbcAppHeader.gridwidth = 3;
-        ((java.awt.GridBagLayout)getLayout()).setConstraints(appearanceHeader, gbcAppHeader);
+        ((java.awt.GridBagLayout) getLayout()).setConstraints(appearanceHeader, gbcAppHeader);
 
         iconLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_UserIcon"));
-        add(iconLabel, UIUtils.createGbc(0, 8, 0.0, 0, java.awt.GridBagConstraints.NONE, java.awt.GridBagConstraints.WEST, new java.awt.Insets(0, 12, 5, 5)));
+        add(iconLabel, UIUtils.createGbc(0, 8, 0.0, 0, GridBagConstraints.NONE, GridBagConstraints.WEST,
+                new Insets(0, 12, 5, 5)));
 
         iconPathField.addKeyListener(new java.awt.event.KeyAdapter() {
             @Override
@@ -183,11 +202,13 @@ public class ACPOptionsPanel extends JPanel {
                 controller.changed();
             }
         });
-        add(iconPathField, UIUtils.createGbc(1, 8, 1.0, 0, java.awt.GridBagConstraints.HORIZONTAL, java.awt.GridBagConstraints.WEST, new java.awt.Insets(0, 0, 5, 5)));
+        add(iconPathField, UIUtils.createGbc(1, 8, 1.0, 0, GridBagConstraints.HORIZONTAL,
+                                             GridBagConstraints.WEST, new Insets(0, 0, 5, 5)));
 
         iconBrowseButton.setText(NbBundle.getMessage(ACPOptionsPanel.class, "BTN_Browse"));
         iconBrowseButton.addActionListener(evt -> iconBrowseButtonActionPerformed());
-        add(iconBrowseButton, UIUtils.createGbc(2, 8, 0.0, 0, java.awt.GridBagConstraints.NONE, java.awt.GridBagConstraints.WEST, new java.awt.Insets(0, 0, 5, 0)));
+        add(iconBrowseButton, UIUtils.createGbc(2, 8, 0.0, 0, GridBagConstraints.NONE,
+                                                GridBagConstraints.WEST, new Insets(0, 0, 5, 0)));
 
         iconPreviewLabel.setPreferredSize(new java.awt.Dimension(80, 80));
         iconPreviewLabel.setBorder(BorderFactory.createLineBorder(java.awt.Color.GRAY));
@@ -211,10 +232,12 @@ public class ACPOptionsPanel extends JPanel {
                 popup.show(e.getComponent(), e.getX(), e.getY());
             }
         });
-        add(iconPreviewLabel, UIUtils.createGbc(1, 9, 0.0, 0, java.awt.GridBagConstraints.NONE, java.awt.GridBagConstraints.WEST, new java.awt.Insets(5, 0, 5, 0)));
+        add(iconPreviewLabel, UIUtils.createGbc(1, 9, 0.0, 0, GridBagConstraints.NONE,
+                                                GridBagConstraints.WEST, new Insets(5, 0, 5, 0)));
 
         // Spacer at the bottom to push everything up
-        add(new JLabel(), UIUtils.createGbc(0, 10, 1.0, 1.0, java.awt.GridBagConstraints.BOTH, java.awt.GridBagConstraints.NORTHWEST, new java.awt.Insets(0, 0, 0, 0)));
+        add(new JLabel(), UIUtils.createGbc(0, 10, 1.0, 1.0, GridBagConstraints.BOTH,
+                                            GridBagConstraints.NORTHWEST, new Insets(0, 0, 0, 0)));
     }
 
     private void browseButtonActionPerformed() {

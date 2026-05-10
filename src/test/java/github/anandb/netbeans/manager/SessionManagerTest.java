@@ -44,7 +44,6 @@ class SessionManagerTest {
         when(processManager.whenReady()).thenReturn(CompletableFuture.completedFuture(null));
         when(processManager.getMcpManager()).thenReturn(mcpManager);
         when(mcpManager.getServerConfig()).thenReturn(java.util.List.of());
-        when(mcpManager.isDisabled()).thenReturn(false);
 
         sessionManager = SessionManager.getInstance();
     }

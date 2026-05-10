@@ -22,7 +22,6 @@ import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import javax.swing.border.EmptyBorder;
 
-import github.anandb.netbeans.manager.ProcessManager;
 import github.anandb.netbeans.manager.SessionManager;
 import github.anandb.netbeans.model.ConfigItem;
 import github.anandb.netbeans.model.SessionConfigOption;
@@ -64,17 +63,26 @@ public class ConfigPanelController {
         modelCombo = new JComboBox<>();
         thinkingCombo = new JComboBox<>();
 
-        gbc.gridx = 0; gbc.gridy = 0; gbc.weightx = 0;
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.weightx = 0;
         configPanel.add(new JLabel("Agent:"), gbc);
-        gbc.gridx = 1; gbc.weightx = 0.2;
+
+        gbc.gridx = 1;
+        gbc.weightx = 0.2;
         configPanel.add(modeCombo, gbc);
 
-        gbc.gridx = 2; gbc.weightx = 0;
+        gbc.gridx = 2;
+        gbc.weightx = 0;
         configPanel.add(new JLabel("Model:"), gbc);
-        gbc.gridx = 3; gbc.weightx = 0.7;
+
+        gbc.gridx = 3;
+        gbc.weightx = 0.7;
         configPanel.add(modelCombo, gbc);
 
-        gbc.gridx = 4; gbc.weightx = 0; gbc.insets = new Insets(2, 0, 2, 4);
+        gbc.gridx = 4;
+        gbc.weightx = 0;
+        gbc.insets = new Insets(2, 0, 2, 4);
         JButton copyModelBtn = UIUtils.createToolbarButton("copy.svg", 20, "Copy Model ID", e -> {
             ConfigItem selected = (ConfigItem) modelCombo.getSelectedItem();
             if (selected != null && selected.value() != null) {
@@ -85,9 +93,12 @@ public class ConfigPanelController {
         configPanel.add(copyModelBtn, gbc);
         gbc.insets = new Insets(2, 0, 2, 8);
 
-        gbc.gridx = 5; gbc.weightx = 0;
+        gbc.gridx = 5;
+        gbc.weightx = 0;
         configPanel.add(new JLabel("Thinking:"), gbc);
-        gbc.gridx = 6; gbc.weightx = 0.1;
+
+        gbc.gridx = 6;
+        gbc.weightx = 0.1;
         configPanel.add(thinkingCombo, gbc);
     }
 

@@ -27,6 +27,8 @@ import org.openide.util.Utilities;
 public class UIUtils {
     private static final Logger LOG = new Logger(UIUtils.class);
 
+    private UIUtils() {}
+
     // Table separator row patterns - compiled once, avoid String.matches() per cell
     private static final Pattern CELL_DASH = Pattern.compile("-+");
     private static final Pattern CELL_COLON_DASH_PREFIX = Pattern.compile(":-+-.*");
