@@ -47,6 +47,20 @@ public class SessionManager {
         // Register for SSE updates to route them to the active session
         ProcessManager.getInstance().addSseListener(this::handleSseUpdate);
 
+        // Reset state machine and notify UI when server crashes
+        ProcessManager.getInstance().setCrashHandler(() -> {
+            stateMachine.transitionTo(SessionState.IDLE);
+            notifyError("Server disconnected. Reconnecting...");
+        });
+
+        // Auto-reload last session after successful reconnect
+        ProcessManager.getInstance().setReadyHandler(() -> {
+            String sid = currentSessionId;
+            if (sid != null) {
+                SwingUtilities.invokeLater(() -> loadSession(sid));
+            }
+        });
+
         // Fire onSessionLoading for UI backward compatibility
         stateMachine.addListener(newState -> {
             boolean loading = newState == SessionState.LOADING;

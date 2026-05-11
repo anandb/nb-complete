@@ -25,7 +25,7 @@ public class SessionStateMachine {
         listeners.remove(listener);
     }
 
-    public boolean transitionTo(SessionState newState) {
+    public synchronized boolean transitionTo(SessionState newState) {
         SessionState current = this.state;
         if (!current.canTransitionTo(newState)) {
             LOG.warn("Invalid state transition: {0} -> {1}", new Object[]{current, newState});

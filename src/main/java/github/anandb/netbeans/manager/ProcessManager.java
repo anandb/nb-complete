@@ -3,7 +3,6 @@ package github.anandb.netbeans.manager;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -30,6 +29,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 
@@ -69,6 +69,8 @@ public class ProcessManager {
     private final List<SessionUpdate.AvailableCommand> availableCommands = new CopyOnWriteArrayList<>();
     private PermissionHandler permissionHandler;
     private Consumer<String> statusListener;
+    private Runnable crashHandler;
+    private Runnable readyHandler;
     private volatile boolean isClosing = false;
     private int restartCount = 0;
     private long lastRestartTime = 0;
@@ -77,10 +79,7 @@ public class ProcessManager {
     private boolean shutdownHookAdded = false;
 
     private final McpManager mcpManager = new McpManager();
-
     private volatile boolean serverStarted = false;
-
-
 
     private ProcessManager() {
     }
@@ -90,11 +89,20 @@ public class ProcessManager {
     }
 
     public CompletableFuture<JsonNode> sendRequest(String method, Object params) {
-        return rpcClient.sendRequest(method, params);
+        AcpProtocolClient client = rpcClient;
+        if (client == null) {
+            return CompletableFuture.failedFuture(new RuntimeException(operationalError()));
+        }
+        return client.sendRequest(method, params);
     }
 
     public void sendNotification(String method, Object params) {
-        rpcClient.sendNotification(method, params);
+        AcpProtocolClient client = rpcClient;
+        if (client == null) {
+            LOG.warn("sendNotification called with null rpcClient");
+            return;
+        }
+        client.sendNotification(method, params);
     }
 
     public synchronized void ensureStarted() {
@@ -129,9 +137,7 @@ public class ProcessManager {
             });
         }
         isClosing = false;
-        if (readyFuture.isDone()) {
-            readyFuture = new CompletableFuture<>();
-        }
+        readyFuture = new CompletableFuture<>();
 
         // Start MCP weather server
         mcpManager.start();
@@ -160,7 +166,6 @@ public class ProcessManager {
 
             // Register handlers
             rpcClient.onRequest("fs/readTextFile", this::handleReadTextFile);
-            rpcClient.onRequest("fs/writeTextFile", this::handleWriteTextFile);
             rpcClient.onRequest("session/request_permission", this::handleRequestPermission);
 
             // Listen for session updates
@@ -247,7 +252,7 @@ public class ProcessManager {
         Map<String, Object> params = Map.of(
                 "protocolVersion", 1,
                 "clientCapabilities", Map.of(
-                        "fs", Map.of("readTextFile", true, "writeTextFile", true),
+                        "fs", Map.of("readTextFile", true),
                         "terminal", true
                 )
         );
@@ -259,11 +264,20 @@ public class ProcessManager {
                     }
                     readyFuture.complete(null);
                     LOG.log(Level.FINE, "ACP initialized successfully");
+                    if (readyHandler != null) {
+                        try {
+                            readyHandler.run();
+                        } catch (Exception ex) {
+                            LOG.log(Level.WARNING, "Ready handler failed", ex);
+                        }
+                    }
                 })
                 .exceptionally(ex -> {
                     LOG.log(Level.SEVERE, "Failed to initialize ACP", ex);
                     readyFuture.completeExceptionally(ex);
-                    serverStarted = false;
+                    synchronized (ProcessManager.this) {
+                        serverStarted = false;
+                    }
                     stopServer();
                     return null;
                 });
@@ -280,9 +294,10 @@ public class ProcessManager {
     public synchronized void restartServer() {
         LOG.fine("Manual restart of ACP server requested...");
         stopServer();
-        // Reset state so startServer() actually proceeds
+        // Reset all state so startServer() proceeds cleanly
         isClosing = false;
         serverStarted = true;
+        restartCount = 0;
         startServer();
     }
 
@@ -397,13 +412,6 @@ public class ProcessManager {
                 File file = new File(filePath);
                 String lang = LanguageResolver.fromPath(filePath);
                 String fileName = file.getName();
-
-                // Resource Link Block (Visual Breadcrumb)
-                Map<String, Object> resourceLinkPart = new HashMap<>();
-                resourceLinkPart.put("type", "resource_link");
-                resourceLinkPart.put("uri", "file://" + filePath);
-                resourceLinkPart.put("name", fileName);
-                promptBlocks.add(resourceLinkPart);
 
                 // Metadata XML Block (For the AI)
                 StringBuilder xml = new StringBuilder();
@@ -520,6 +528,15 @@ public class ProcessManager {
             staleClient.close();
         }
 
+        // Notify crash handler (e.g. SessionManager) to reset state machine and UI
+        if (crashHandler != null) {
+            try {
+                crashHandler.run();
+            } catch (Exception ex) {
+                LOG.log(Level.WARNING, "Crash handler failed", ex);
+            }
+        }
+
 
         long now = System.currentTimeMillis();
         if (now - lastRestartTime > RESTART_RESET_INTERVAL) {
@@ -533,10 +550,17 @@ public class ProcessManager {
             LOG.log(Level.FINE, "Respawning ACP server in {0}ms (attempt {1}/{2})...",
                     new Object[]{delay, restartCount, MAX_RESTARTS});
 
-            this.reconnectFuture = reconnectExecutor.schedule(this::startServer, delay, java.util.concurrent.TimeUnit.MILLISECONDS);
+            try {
+                this.reconnectFuture = reconnectExecutor.schedule(this::startServer, delay, java.util.concurrent.TimeUnit.MILLISECONDS);
+            } catch (RejectedExecutionException ex) {
+                LOG.log(Level.FINE, "Reconnect executor shut down during restart, skipping auto-reconnect");
+            }
         } else {
             LOG.log(Level.SEVERE, "ACP server crashed {0} times within {1}ms. Giving up.",
                     new Object[]{MAX_RESTARTS, RESTART_RESET_INTERVAL});
+            if (statusListener != null) {
+                statusListener.accept("Server crashed " + MAX_RESTARTS + " times. Restart IDE to reconnect.");
+            }
         }
     }
 
@@ -546,6 +570,14 @@ public class ProcessManager {
 
     public void setStatusListener(Consumer<String> listener) {
         this.statusListener = listener;
+    }
+
+    public void setCrashHandler(Runnable handler) {
+        this.crashHandler = handler;
+    }
+
+    public void setReadyHandler(Runnable handler) {
+        this.readyHandler = handler;
     }
 
     private CompletableFuture<JsonNode> handleRequestPermission(JsonNode params) {
@@ -602,69 +634,6 @@ public class ProcessManager {
         });
     }
 
-    private boolean isWithinProject(File file) {
-        String projectDir = SessionManager.getInstance().getCurrentSessionDirectory();
-        if (projectDir == null) return false;
-        return file.toPath().normalize().startsWith(Paths.get(projectDir).normalize());
-    }
-
-    private CompletableFuture<JsonNode> handleWriteTextFile(JsonNode params) {
-        return CompletableFuture.supplyAsync(() -> {
-            String filePath = null;
-            try {
-                filePath = params.has("path") ? params.get("path").asText()
-                        : params.has("filePath") ? params.get("filePath").asText() : null;
-
-                LOG.info("Write {0}", filePath);
-                if (filePath == null) {
-                    throw new RuntimeException("Missing path parameter");
-                }
-
-                String content = params.has("content") ? params.get("content").asText() : "";
-                File file = new File(filePath);
-
-                // Verify path is within project directory
-                if (!isWithinProject(file)) {
-                    LOG.warn("fs/writeTextFile rejected: path outside project: {0}", filePath);
-                    throw new RuntimeException("Refused to write outside project directory: " + filePath);
-                }
-
-                File parent = file.getParentFile();
-                if (parent != null && !parent.exists()) {
-                    parent.mkdirs();
-                }
-
-                // Write to disk
-                byte[] data = content.getBytes(StandardCharsets.UTF_8);
-                Files.write(file.toPath(), data);
-
-                // Sync open editor to match disk
-                try {
-                    FileObject fo = FileUtil.toFileObject(file);
-                    if (fo != null) {
-                        DataObject dobj = DataObject.find(fo);
-                        EditorCookie ec = dobj.getLookup().lookup(EditorCookie.class);
-                        if (ec != null) {
-                            Document doc = ec.openDocument();
-                            if (doc != null) {
-                                doc.remove(0, doc.getLength());
-                                doc.insertString(0, content, null);
-                                ec.saveDocument();
-                                LOG.fine("Write through editor Document: {0}", filePath);
-                            }
-                        }
-                    }
-                } catch (Exception e) {
-                    LOG.fine("Could not sync editor after write: {0}", e.getMessage());
-                }
-
-                return objectMapper.createObjectNode().put("success", true);
-            } catch (Exception e) {
-                LOG.log(Level.SEVERE, "fs/writeTextFile failed", e);
-                throw new RuntimeException("Failed to write file: " + e.getMessage(), e);
-            }
-        });
-    }
 
     private CompletableFuture<JsonNode> handleReadTextFile(JsonNode params) {
         return CompletableFuture.supplyAsync(() -> {
@@ -684,17 +653,26 @@ public class ProcessManager {
                 FileObject fo = FileUtil.toFileObject(file);
                 if (fo != null) {
                     try {
-                        DataObject dobj = DataObject.find(fo);
-                        EditorCookie ec = dobj.getLookup().lookup(EditorCookie.class);
-                        if (ec != null) {
-                            Document doc = ec.getDocument();
-                            if (doc != null) {
-                                String content = doc.getText(0, doc.getLength());
-                                return objectMapper.createObjectNode().put("content", content);
+                        final String[] editorResult = {null};
+                        SwingUtilities.invokeAndWait(() -> {
+                            try {
+                                DataObject dobj = DataObject.find(fo);
+                                EditorCookie ec = dobj.getLookup().lookup(EditorCookie.class);
+                                if (ec != null) {
+                                    Document doc = ec.getDocument();
+                                    if (doc != null) {
+                                        editorResult[0] = doc.getText(0, doc.getLength());
+                                    }
+                                }
+                            } catch (Exception e) {
+                                LOG.log(Level.FINE, "Could not read from editor for {0}, falling back to disk", filePath);
                             }
+                        });
+                        if (editorResult[0] != null) {
+                            return objectMapper.createObjectNode().put("content", editorResult[0]);
                         }
                     } catch (Exception e) {
-                        LOG.log(Level.FINE, "Could not read from editor for {0}, falling back to disk", filePath);
+                        LOG.log(Level.FINE, "EDT sync interrupted during read: {0}", e.getMessage());
                     }
                 }
 

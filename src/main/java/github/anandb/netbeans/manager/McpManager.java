@@ -1,9 +1,11 @@
 package github.anandb.netbeans.manager;
 
 import com.fasterxml.jackson.databind.JsonNode;
+
 import github.anandb.netbeans.support.Logger;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -23,6 +25,8 @@ public class McpManager {
         } catch (IOException e) {
             LOG.warn("Failed to start MCP server: {0}", e.getMessage());
         }
+
+        LOG.info("MCP Server running at {0}", mcpServer.getUrl());
     }
 
     public void stop() {
@@ -44,15 +48,20 @@ public class McpManager {
         return mcpDisabled;
     }
 
-    public List<Map<String, String>> getServerConfig() {
+    public List<Map<String, Object>> getServerConfig() {
+        List<Map<String, Object>> mcpServerList = new ArrayList<>();
+
         if (mcpDisabled || mcpServer == null || !mcpServer.isRunning()) {
-            return List.of();
+            return mcpServerList;
         }
-        return List.of(Map.of(
+
+        mcpServerList.add(Map.of(
+                "headers", List.of(),
                 "type", "sse",
-                "name", "weather",
+                "name", "netbeans",
                 "url", mcpServer.getUrl()
         ));
+        return mcpServerList;
     }
 
     public void checkServerSupport(JsonNode res) {
@@ -67,6 +76,7 @@ public class McpManager {
         JsonNode mcpCaps = caps.get("mcpCapabilities");
         boolean supportsMcp = mcpCaps.has("http") && mcpCaps.get("http").asBoolean(false) ||
                               mcpCaps.has("sse") && mcpCaps.get("sse").asBoolean(false);
+
         if (!supportsMcp && !mcpDisabled) {
             LOG.info("Server does not advertise MCP support, disabling {0}", mcpCaps.asText());
             disable();

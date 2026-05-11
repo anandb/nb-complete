@@ -26,6 +26,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
+import java.util.HashSet;
 import java.util.concurrent.CompletableFuture;
 
 import github.anandb.netbeans.model.AttachedFile;
@@ -126,6 +128,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     private final JButton filterBtn;
     private final JButton toggleOptionsBtn;
     private boolean optionsPanelCollapsed = true;
+    private Set<String> closedProjectDirs = Set.of();
     private JLabel statusLabel;
     private final JLabel versionLabel;
     private final JLabel cwdLabel;
@@ -1261,6 +1264,16 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     public void componentOpened() {
         instance = this;
         SessionManager.getInstance().addSessionListener(this);
+        Set<String> currentDirs = new HashSet<>();
+        for (var p : ACPProjectManager.getInstance().getAllOpenProjects()) {
+            if (p != null) {
+                currentDirs.add(p.getProjectDirectory().getPath());
+            }
+        }
+        if (!currentDirs.equals(closedProjectDirs)) {
+            SessionManager.getInstance().refreshSessions();
+        }
+        closedProjectDirs = Set.of();
         try {
             ProcessManager.getInstance().ensureStarted();
         } catch (Exception ex) {
@@ -1401,7 +1414,23 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         if (chatPanel != null) {
             chatPanel.clearMessages();
         }
+        closedProjectDirs = new HashSet<>();
+        for (var p : ACPProjectManager.getInstance().getAllOpenProjects()) {
+            if (p != null) {
+                closedProjectDirs.add(p.getProjectDirectory().getPath());
+            }
+        }
         SessionManager.getInstance().removeSessionListener(this);
+
+        // Clear handler references to prevent memory leak (ProcessManager holds these)
+        ProcessManager.getInstance().setPermissionHandler(null);
+        ProcessManager.getInstance().setStatusListener(null);
+        ProcessManager.getInstance().setCrashHandler(null);
+        ProcessManager.getInstance().setReadyHandler(null);
+
+        if (instance == this) {
+            instance = null;
+        }
     }
 
     @Override

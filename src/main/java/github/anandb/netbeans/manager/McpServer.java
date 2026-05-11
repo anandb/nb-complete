@@ -2,6 +2,7 @@ package github.anandb.netbeans.manager;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.sun.net.httpserver.HttpExchange;
@@ -12,10 +13,14 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import github.anandb.netbeans.support.Logger;
 
@@ -23,10 +28,13 @@ public class McpServer {
 
     private static final Logger LOG = new Logger(McpServer.class);
     private static final int PORT = 8765;
+    private static final int MAX_THREADS = 10;
 
-    private final ObjectMapper mapper = new ObjectMapper();
+    private final ObjectMapper mapper = new ObjectMapper()
+            .enable(SerializationFeature.INDENT_OUTPUT);
     private HttpServer server;
     private final List<SseClient> sseClients = new CopyOnWriteArrayList<>();
+    private ScheduledExecutorService heartbeatExecutor;
 
     public synchronized void start() throws IOException {
         if (server != null) {
@@ -35,25 +43,42 @@ public class McpServer {
         server = HttpServer.create(new InetSocketAddress(PORT), 0);
         server.createContext("/sse", this::handleSse);
         server.createContext("/message", this::handleMessage);
-        server.setExecutor(Executors.newCachedThreadPool(r -> {
-            Thread t = new Thread(r, "MCP-Server");
+        server.setExecutor(new ThreadPoolExecutor(
+                2, MAX_THREADS, 60L, TimeUnit.SECONDS,
+                new java.util.concurrent.LinkedBlockingQueue<>(100),
+                r -> {
+                    Thread t = new Thread(r, "MCP-Server");
+                    t.setDaemon(true);
+                    return t;
+                },
+                new ThreadPoolExecutor.AbortPolicy()
+        ));
+        server.start();
+
+        heartbeatExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread t = new Thread(r, "MCP-Heartbeat");
             t.setDaemon(true);
             return t;
-        }));
-        server.start();
-        LOG.info("MCP weather server started on port {0}", PORT);
+        });
+        heartbeatExecutor.scheduleAtFixedRate(this::purgeDeadClients, 5, 5, TimeUnit.SECONDS);
+
+        LOG.info("MCP server started on port {0}", PORT);
     }
 
     public synchronized void stop() {
+        if (heartbeatExecutor != null) {
+            heartbeatExecutor.shutdown();
+            heartbeatExecutor = null;
+        }
         if (server != null) {
-            server.stop(0);
+            server.stop(1);
             server = null;
         }
         for (SseClient c : sseClients) {
             c.close();
         }
         sseClients.clear();
-        LOG.info("MCP weather server stopped");
+        LOG.info("MCP server stopped");
     }
 
     public boolean isRunning() {
@@ -69,28 +94,43 @@ public class McpServer {
         exchange.getResponseHeaders().add("Cache-Control", "no-cache");
         exchange.getResponseHeaders().add("Connection", "keep-alive");
         exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
+        SseClient client = null;
+        CountDownLatch latch = new CountDownLatch(1);
         try {
             exchange.sendResponseHeaders(200, 0);
             OutputStream out = exchange.getResponseBody();
             String endpointEvent = "event: endpoint\ndata: /message\n\n";
             out.write(endpointEvent.getBytes(StandardCharsets.UTF_8));
             out.flush();
-            SseClient client = new SseClient(out);
+            client = new SseClient(out, latch);
             sseClients.add(client);
-            while (!client.isClosed()) {
-                Thread.sleep(1000);
-            }
+            latch.await();
         } catch (IOException | InterruptedException e) {
             // client disconnected
+            Thread.currentThread().interrupt();
         } finally {
-            exchange.close();
+            try (exchange) {
+                if (client != null) {
+                    sseClients.remove(client);
+                }
+            }
+        }
+    }
+
+    private void purgeDeadClients() {
+        Iterator<SseClient> it = sseClients.iterator();
+        while (it.hasNext()) {
+            SseClient c = it.next();
+            if (c.isClosed()) {
+                it.remove();
+            }
         }
     }
 
     private void handleMessage(HttpExchange exchange) {
         exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
         exchange.getResponseHeaders().add("Content-Type", "application/json");
-        try {
+        try (exchange) {
             StringBuilder body = new StringBuilder();
             try (BufferedReader reader = new BufferedReader(
                     new InputStreamReader(exchange.getRequestBody(), StandardCharsets.UTF_8))) {
@@ -111,40 +151,7 @@ public class McpServer {
             switch (method) {
                 case "tools/list" -> {
                     ObjectNode result = mapper.createObjectNode();
-                    ArrayNode tools = mapper.createArrayNode();
-                    ObjectNode tool = mapper.createObjectNode();
-                    tool.put("name", "get_weather");
-                    tool.put("description", "Get the current weather for a location");
-                    ObjectNode schema = mapper.createObjectNode();
-                    schema.put("type", "object");
-                    ObjectNode properties = mapper.createObjectNode();
-                    ObjectNode locationProp = mapper.createObjectNode();
-                    locationProp.put("type", "string");
-                    locationProp.put("description", "City name");
-                    properties.set("location", locationProp);
-                    schema.set("properties", properties);
-                    ArrayNode required = mapper.createArrayNode();
-                    required.add("location");
-                    schema.set("required", required);
-                    tool.set("inputSchema", schema);
-                    tools.add(tool);
-                    result.set("tools", tools);
-                    response.set("result", result);
-                }
-                case "tools/call" -> {
-                    String toolName = params.get("name").asText();
-                    JsonNode args = params.get("arguments");
-                    String location = args.has("location") ? args.get("location").asText() : "Unknown";
-                    int temp = ThreadLocalRandom.current().nextInt(30, 36);
-                    String text = "The weather in " + location + " is sunny with a temperature of " + temp + "°C.";
-                    ObjectNode result = mapper.createObjectNode();
-                    ArrayNode content = mapper.createArrayNode();
-                    ObjectNode textContent = mapper.createObjectNode();
-                    textContent.put("type", "text");
-                    textContent.put("text", text);
-                    content.add(textContent);
-                    result.set("content", content);
-                    result.put("isError", false);
+                    result.set("tools", mapper.createArrayNode());
                     response.set("result", result);
                 }
                 default -> {
@@ -155,7 +162,7 @@ public class McpServer {
                 }
             }
 
-            byte[] bytes = mapper.writerWithDefaultPrettyPrinter().writeValueAsBytes(response);
+            byte[] bytes = mapper.writeValueAsBytes(response);
             exchange.sendResponseHeaders(200, bytes.length);
             exchange.getResponseBody().write(bytes);
         } catch (Exception e) {
@@ -168,28 +175,35 @@ public class McpServer {
             } catch (IOException ex) {
                 // ignore
             }
-        } finally {
-            exchange.close();
         }
     }
 
     private static class SseClient {
         private final OutputStream out;
+        private final CountDownLatch latch;
         private volatile boolean closed;
 
-        SseClient(OutputStream out) {
+        SseClient(OutputStream out, CountDownLatch latch) {
             this.out = out;
+            this.latch = latch;
         }
 
         synchronized void send(String data) throws IOException {
             if (!closed) {
-                out.write(data.getBytes(StandardCharsets.UTF_8));
-                out.flush();
+                try {
+                    out.write(data.getBytes(StandardCharsets.UTF_8));
+                    out.flush();
+                } catch (IOException e) {
+                    closed = true;
+                    latch.countDown();
+                    throw e;
+                }
             }
         }
 
         void close() {
             closed = true;
+            latch.countDown();
             try {
                 out.close();
             } catch (IOException e) {

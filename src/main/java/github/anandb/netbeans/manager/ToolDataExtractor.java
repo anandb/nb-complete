@@ -115,9 +115,7 @@ public final class ToolDataExtractor {
             identifier = toRootLowerCase(identifier);
         }
 
-        String title = tag + " " + abbreviateMiddle(identifier, "...", 60);
-        LOG.info("Title [{0}]", title);
-        return title;
+        return tag + " " + abbreviateMiddle(identifier, "...", 60);
     }
 
     public static String extractToolTitle(ProcessedMessage pm, String kind) {
@@ -129,7 +127,7 @@ public final class ToolDataExtractor {
         if (commandText.startsWith("/dcp") || commandText.startsWith("/compact")) {
             return commandText.replace("/", "");
         }
-        
+
         return null;
     }
 }
