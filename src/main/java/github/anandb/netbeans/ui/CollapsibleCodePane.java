@@ -17,7 +17,13 @@ import javax.swing.SwingUtilities;
 import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
 import org.fife.ui.rsyntaxtextarea.SyntaxConstants;
 import org.fife.ui.rsyntaxtextarea.Theme;
+import org.openide.util.NbBundle;
 
+@NbBundle.Messages({
+    "HINT_CopyCode=Copy code",
+    "LBL_CodeBlockCollapsed=  Code block collapsed",
+    "LBL_CodeFallback=Code"
+})
 public class CollapsibleCodePane extends BaseCollapsiblePane {
 
     private static final long serialVersionUID = 1L;
@@ -130,9 +136,9 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
     }
 
     public CollapsibleCodePane(String language, String code, boolean expandedByDefault) {
-        super(12, (language != null && !language.isEmpty() ? language : "Code").toUpperCase(),
+        super(12, (language != null && !language.isEmpty() ? language : NbBundle.getMessage(CollapsibleCodePane.class, "LBL_CodeFallback")).toUpperCase(),
                 ThemeManager.getIcon("file.svg"), expandedByDefault);
-        this.language = language != null && !language.isEmpty() ? language : "Code";
+        this.language = language != null && !language.isEmpty() ? language : NbBundle.getMessage(CollapsibleCodePane.class, "LBL_CodeFallback");
         this.code = code;
 
         ColorTheme theme = ThemeManager.getCurrentTheme();
@@ -146,7 +152,7 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
         headerLabel.setForeground(theme.codeHeaderForeground());
 
         // Copy button
-        copyButton = UIUtils.createToolbarButton("copy.svg", 20, "Copy code", e -> copyCodeToClipboard());
+        copyButton = UIUtils.createToolbarButton("copy.svg", 20, NbBundle.getMessage(CollapsibleCodePane.class, "HINT_CopyCode"), e -> copyCodeToClipboard());
         copyButton.setBorder(BorderFactory.createEmptyBorder(2, 4, 2, 4));
         copyButton.setForeground(theme.codeHeaderForeground());
         header.add(copyButton, BorderLayout.EAST);
@@ -154,7 +160,7 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
         if (expandedByDefault) {
             initCodeTextArea();
         } else {
-            JLabel placeholder = new JLabel("  Code block collapsed");
+            JLabel placeholder = new JLabel(NbBundle.getMessage(CollapsibleCodePane.class, "LBL_CodeBlockCollapsed"));
             placeholder.setForeground(theme.codeHeaderForeground());
             placeholder.setFont(ThemeManager.getMonospaceFont().deriveFont(Font.PLAIN, 11f));
             contentPanel.add(placeholder, BorderLayout.CENTER);
@@ -212,7 +218,7 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
         if (code == null) code = "";
         if (!code.equals(this.code)) {
             this.code = code;
-            this.language = (language != null && !language.isEmpty()) ? language : "Code";
+            this.language = (language != null && !language.isEmpty()) ? language : NbBundle.getMessage(CollapsibleCodePane.class, "LBL_CodeFallback");
             if (codeAreaInitialized) {
                 codeTextArea.setText(code);
                 codeTextArea.setCaretPosition(0);

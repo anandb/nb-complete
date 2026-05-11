@@ -58,7 +58,22 @@ import github.anandb.netbeans.support.Logger;
 
 import static org.apache.commons.lang3.StringUtils.defaultIfBlank;
 import static org.apache.commons.lang3.StringUtils.left;
+import org.openide.util.NbBundle;
 
+@NbBundle.Messages({
+    "HINT_ScrollToBottom=Scroll to bottom",
+    "BTN_Allow=Allow",
+    "BTN_Deny=Deny",
+    "MSG_PermissionGranted=Permission Granted",
+    "MSG_PermissionDenied=Permission Denied",
+    "LBL_PermissionRequired=Permission Required",
+    "LBL_WelcomeToACP=Welcome to ACP",
+    "LBL_WelcomeBack=Welcome back!",
+    "MSG_NewChatPrompt=Ask questions, generate code, or have me explain anything.",
+    "MSG_ExistingChatPrompt=Continue a recent chat or start a new one.",
+    "BTN_StartNewChat=✨ Start New Chat",
+    "LBL_InFolder=in {0}"
+})
 public class ChatThreadPanel extends JPanel {
     private static final Logger LOG = new Logger(ChatThreadPanel.class);
     private static final long serialVersionUID = 1L;
@@ -148,7 +163,7 @@ public class ChatThreadPanel extends JPanel {
         scrollDownBtn.setFocusPainted(false);
         scrollDownBtn.setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
         scrollDownBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        scrollDownBtn.setToolTipText("Scroll to bottom");
+        scrollDownBtn.setToolTipText(NbBundle.getMessage(ChatThreadPanel.class, "HINT_ScrollToBottom"));
         scrollDownBtn.setVisible(false);
         scrollDownBtn.addActionListener(e -> {
             scrollToBottom(true);
@@ -378,7 +393,7 @@ public class ChatThreadPanel extends JPanel {
                 BorderFactory.createEmptyBorder(12, 16, 12, 16)
             ));
 
-            JLabel titleLabel = new JLabel("Permission Required", ThemeManager.getIcon("shield.svg", 18), SwingConstants.LEFT);
+            JLabel titleLabel = new JLabel(NbBundle.getMessage(ChatThreadPanel.class, "LBL_PermissionRequired"), ThemeManager.getIcon("shield.svg", 18), SwingConstants.LEFT);
             titleLabel.setIconTextGap(8);
             titleLabel.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
             titleLabel.setForeground(theme.permissionTitle());
@@ -414,21 +429,21 @@ public class ChatThreadPanel extends JPanel {
                     buttons.add(btn);
                 }
             } else {
-                JButton allowBtn = new JButton("Allow");
+                JButton allowBtn = new JButton(NbBundle.getMessage(ChatThreadPanel.class, "BTN_Allow"));
                 allowBtn.setFocusPainted(false);
 
-                JButton denyBtn = new JButton("Deny");
+                JButton denyBtn = new JButton(NbBundle.getMessage(ChatThreadPanel.class, "BTN_Deny"));
                 denyBtn.setFocusPainted(false);
 
                 allowBtn.addActionListener(e -> {
                     responseFuture.complete("allow");
-                    collapse(content, "Permission Granted", ThemeManager.getIcon("check.svg", 16),
+                    collapse(content, NbBundle.getMessage(ChatThreadPanel.class, "MSG_PermissionGranted"), ThemeManager.getIcon("check.svg", 16),
                              new Color(46, 125, 50), new Color(232, 245, 233), new Color(76, 175, 80));
                 });
 
                 denyBtn.addActionListener(e -> {
                     responseFuture.complete("reject");
-                    collapse(content, "Permission Denied", ThemeManager.getIcon("x.svg", 16),
+                    collapse(content, NbBundle.getMessage(ChatThreadPanel.class, "MSG_PermissionDenied"), ThemeManager.getIcon("x.svg", 16),
                             new Color(198, 40, 40), new Color(255, 235, 238), new Color(244, 67, 54));
                 });
 
@@ -646,20 +661,22 @@ public class ChatThreadPanel extends JPanel {
             try {
                 clearMessages();
 
-                JLabel titleLabel = new JLabel(sessions.isEmpty() ? "Welcome to ACP" : "Welcome back!");
+                JLabel titleLabel = new JLabel(sessions.isEmpty()
+                    ? NbBundle.getMessage(ChatThreadPanel.class, "LBL_WelcomeToACP")
+                    : NbBundle.getMessage(ChatThreadPanel.class, "LBL_WelcomeBack"));
                 titleLabel.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
                 titleLabel.setBorder(BorderFactory.createEmptyBorder(20, 12, 10, 12));
                 messagesContainer.add(titleLabel);
 
-                JLabel subtitle = new JLabel(sessions.isEmpty() ?
-                    "Ask questions, generate code, or have me explain anything." :
-                    "Continue a recent chat or start a new one.");
+                JLabel subtitle = new JLabel(sessions.isEmpty()
+                    ? NbBundle.getMessage(ChatThreadPanel.class, "MSG_NewChatPrompt")
+                    : NbBundle.getMessage(ChatThreadPanel.class, "MSG_ExistingChatPrompt"));
                 subtitle.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN));
                 subtitle.setForeground(Color.GRAY);
                 subtitle.setBorder(BorderFactory.createEmptyBorder(0, 12, 20, 12));
                 messagesContainer.add(subtitle);
 
-                JButton newChatBtn = createSelectionButton("✨ Start New Chat", null);
+                JButton newChatBtn = createSelectionButton(NbBundle.getMessage(ChatThreadPanel.class, "BTN_StartNewChat"), null);
                 newChatBtn.addActionListener(e -> onNewChat.run());
                 messagesContainer.add(newChatBtn);
                 messagesContainer.add(Box.createVerticalStrut(12));
@@ -710,7 +727,7 @@ public class ChatThreadPanel extends JPanel {
 
         if (subtext != null) {
             String folder = new File(subtext).getName();
-            JLabel subLabel = new JLabel("in " + folder);
+            JLabel subLabel = new JLabel(NbBundle.getMessage(ChatThreadPanel.class, "LBL_InFolder", folder));
             subLabel.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN));
             subLabel.setForeground(Color.GRAY);
             textPanel.add(subLabel);

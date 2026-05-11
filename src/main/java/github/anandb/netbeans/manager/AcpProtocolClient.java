@@ -32,7 +32,6 @@ import github.anandb.netbeans.support.WireLogger;
 import static github.anandb.netbeans.manager.AgentUtils.closeQuietly;
 
 public class AcpProtocolClient implements Closeable {
-
     private static final Logger LOG = new Logger(AcpProtocolClient.class);
 
     private static final long DEFAULT_TIMEOUT_SECONDS = 30; // seconds, applied to all requests
@@ -52,7 +51,6 @@ public class AcpProtocolClient implements Closeable {
     private Runnable disconnectionHandler;
     private final WireLogger wireLogger;
 
-    private static final long IDLE_TIMEOUT_SECONDS = 30;
     private volatile long lastDataTime;
     private ScheduledExecutorService watchdogExecutor;
     private ScheduledFuture<?> watchdogFuture;
@@ -240,8 +238,10 @@ public class AcpProtocolClient implements Closeable {
     private void checkIdleTimeout() {
         if (!running) return;
         if (pendingRequests.isEmpty()) return;
+        long timeout = PluginSettings.getSessionIdleTimeout();
+        if (timeout <= 0) return;
         long idleNanos = System.nanoTime() - lastDataTime;
-        if (idleNanos >= TimeUnit.SECONDS.toNanos(IDLE_TIMEOUT_SECONDS)) {
+        if (idleNanos >= TimeUnit.SECONDS.toNanos(timeout)) {
             LOG.warn("Connection idle for {0}s with pending requests, closing", TimeUnit.NANOSECONDS.toSeconds(idleNanos));
             close();
             notifyDisconnection();

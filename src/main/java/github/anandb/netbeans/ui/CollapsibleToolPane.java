@@ -10,8 +10,23 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextArea;
 
+import java.util.Locale;
 import java.util.regex.Pattern;
+import org.openide.util.NbBundle;
 
+@NbBundle.Messages({
+    "LBL_ThinkingProcess=Thinking Process",
+    "LBL_ToolFallback=Tool",
+    "LBL_TagRead=read",
+    "LBL_TagExecute=execute",
+    "LBL_TagWrite=write",
+    "LBL_TagEdit=edit",
+    "LBL_TagSearch=search",
+    "LBL_TagSkill=skill",
+    "LBL_TagContext=context",
+    "LBL_TagOther=other",
+    "LBL_TagThink=think"
+})
 public class CollapsibleToolPane extends BaseCollapsiblePane {
     private static final long serialVersionUID = 1L;
     private static final Pattern WHITESPACE_SPLIT = Pattern.compile("\\s+", 2);
@@ -74,19 +89,21 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
         titlePanel.add(headerLabel);
 
         if (isThinking) {
-            headerLabel.setText(expanded ? "Thinking Process" : "Thinking Process...");
+            String tp = NbBundle.getMessage(CollapsibleToolPane.class, "LBL_ThinkingProcess");
+            headerLabel.setText(expanded ? tp : tp + "...");
             return;
         }
 
         String stripped = rawTitle.replaceFirst("(?i)TOOL:?\\s*", "").trim();
 
-        if (stripped.isEmpty() || stripped.equalsIgnoreCase("Tool Call")) {
-            headerLabel.setText("Tool");
+        if (stripped.isEmpty() || "Tool".equalsIgnoreCase(stripped) || "Tool Call".equalsIgnoreCase(stripped)) {
+            headerLabel.setText(NbBundle.getMessage(CollapsibleToolPane.class, "LBL_ToolFallback"));
             return;
         }
 
         String[] parts = WHITESPACE_SPLIT.split(stripped);
-        headerLabel.setText(parts[0]);
+        String tag = translateTag(parts[0]);
+        headerLabel.setText(tag != null ? tag : parts[0]);
 
         if (parts.length > 1) {
             if (paramLabel == null) {
@@ -144,7 +161,8 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
     @Override
     protected void onToggle(boolean expanded) {
         if (isThinking) {
-            headerLabel.setText(expanded ? "Thinking Process" : "Thinking Process...");
+            String tp = NbBundle.getMessage(CollapsibleToolPane.class, "LBL_ThinkingProcess");
+            headerLabel.setText(expanded ? tp : tp + "...");
         }
         updateAppearance();
     }
@@ -159,5 +177,21 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
             return ThemeManager.getIcon("brain.svg", 24);
         }
         return ThemeManager.getIcon("tool.svg", 24);
+    }
+
+    private static String translateTag(String tag) {
+        if (tag == null) return null;
+        return switch (tag.toLowerCase(Locale.ROOT)) {
+            case "read" -> NbBundle.getMessage(CollapsibleToolPane.class, "LBL_TagRead");
+            case "execute" -> NbBundle.getMessage(CollapsibleToolPane.class, "LBL_TagExecute");
+            case "write" -> NbBundle.getMessage(CollapsibleToolPane.class, "LBL_TagWrite");
+            case "edit" -> NbBundle.getMessage(CollapsibleToolPane.class, "LBL_TagEdit");
+            case "search" -> NbBundle.getMessage(CollapsibleToolPane.class, "LBL_TagSearch");
+            case "skill" -> NbBundle.getMessage(CollapsibleToolPane.class, "LBL_TagSkill");
+            case "context" -> NbBundle.getMessage(CollapsibleToolPane.class, "LBL_TagContext");
+            case "other" -> NbBundle.getMessage(CollapsibleToolPane.class, "LBL_TagOther");
+            case "think" -> NbBundle.getMessage(CollapsibleToolPane.class, "LBL_TagThink");
+            default -> null;
+        };
     }
 }

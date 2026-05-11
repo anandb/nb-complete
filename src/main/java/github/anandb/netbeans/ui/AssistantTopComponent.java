@@ -109,7 +109,48 @@ import static org.apache.commons.lang3.StringUtils.isNotBlank;
 @NbBundle.Messages({
     "CTL_AssistantAction=Assistant",
     "CTL_AssistantTopComponent=Assistant",
-    "HINT_AssistantTopComponent=This is an Assistant window"
+    "HINT_AssistantTopComponent=This is an Assistant window",
+    "STATUS_Ready=Ready",
+    "STATUS_Thinking=Thinking...",
+    "STATUS_Responding=Responding...",
+    "STATUS_FileTooLarge=File too large (max 10MB)",
+    "STATUS_OpenProject=Open a project to start chatting",
+    "STATUS_NewChat=Click '+ New Chat' to start",
+    "STATUS_CreatingSession=Creating new session...",
+    "STATUS_LoadingChat=Loading chat...",
+    "STATUS_NoSession=Error: No active session.",
+    "STATUS_Sending=Sending",
+    "STATUS_Stopping=Stopping...",
+    "STATUS_Stopped=Stopped",
+    "STATUS_RestartingServer=Restarting server...",
+    "STATUS_ServerRestarted=Server restarted. Reloading session...",
+    "STATUS_RestartFailed=Restart failed: {0}",
+    "STATUS_FailedToStart=Failed to start: {0}",
+    "STATUS_Error=Error: {0}",
+    "STATUS_MaxFiles=Max {0} files allowed",
+    "STATUS_Attached=Attached: {0}",
+    "STATUS_AttachedMore=Attached: {0} +{1} more",
+    "HINT_NewSession=New Session",
+    "HINT_RenameSession=Rename Session",
+    "HINT_ReloadConversation=Reload Conversation",
+    "HINT_ExportConversation=Export Conversation",
+    "HINT_RestartServer=Restart ACP server",
+    "HINT_ExpandAll=Expand All Blocks",
+    "HINT_CollapseAll=Collapse All Blocks",
+    "HINT_Options=Options",
+    "HINT_FilterMessages=Filter message types",
+    "HINT_AttachFiles=Attach files",
+    "HINT_FilesAttached={0} file(s) attached",
+    "HINT_ContextUsage=Context Usage: {0}/{1} tokens",
+    "BTN_SelectFile=Select File...",
+    "BTN_Go=Go",
+    "BTN_Stop=Stop",
+    "MSG_EnterTitle=Enter new title for this session:",
+    "MSG_ConfirmRestart=Are you sure you want to restart ACP server ?\nThis will terminate current operations and relaunch the connection.",
+    "TITLE_RestartServer=Restart ACP server",
+    "TITLE_ExportConv=Export Conversation",
+    "LBL_ChatDefault=Chat {0}",
+    "LBL_TypeMessage= Type Message Here"
 })
 public final class AssistantTopComponent extends TopComponent implements PermissionHandler, SessionListener {
 
@@ -143,6 +184,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     private Timer statusResetTimer;
     private transient KeyEventDispatcher pageKeyDispatcher;
     private int thinkingDots = 0;
+    private volatile boolean animatedStatus = false;
     private static final String[] DOT_STRINGS = {"", ".", "..", "..."};
 
     private static final long MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024;
@@ -158,9 +200,9 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         setToolTipText(NbBundle.getMessage(AssistantTopComponent.class, "HINT_AssistantTopComponent"));
 
         thinkingTimer = new Timer(500, e -> {
-            if (statusLabel != null && statusLabel.getText() != null) {
+            if (statusLabel != null && animatedStatus) {
                 String txt = statusLabel.getText();
-                if (txt.startsWith("Thinking") || txt.startsWith("Responding") || txt.startsWith("Sending")) {
+                if (txt != null) {
                     String base = txt.replace(".", "");
                     thinkingDots = (thinkingDots + 1) % 4;
                     statusLabel.setText(base + DOT_STRINGS[thinkingDots]);
@@ -170,7 +212,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
         statusResetTimer = new Timer(1500, e -> {
             if (statusLabel != null) {
-                statusLabel.setText("Ready");
+                statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Ready"));
             }
         });
         statusResetTimer.setRepeats(false);
@@ -263,7 +305,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         JPanel sessionControls = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         sessionControls.setOpaque(false);
 
-        newSessionBtn = UIUtils.createToolbarButton("new.svg", "New Session", e -> {
+        newSessionBtn = UIUtils.createToolbarButton("new.svg", NbBundle.getMessage(AssistantTopComponent.class, "HINT_NewSession"), e -> {
             Project[] projects = ACPProjectManager.getInstance().getAllOpenProjects();
             if (projects == null || projects.length == 0) {
                 return;
@@ -274,25 +316,27 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                 showProjectPickerPopup((JComponent) e.getSource());
             }
         });
-        renameSessionBtn = UIUtils.createToolbarButton("rename.svg", "Rename Session", e -> renameCurrentSession());
-        JButton refreshBtn = UIUtils.createToolbarButton("reload.svg", "Reload Conversation", e -> {
+        renameSessionBtn = UIUtils.createToolbarButton("rename.svg", NbBundle.getMessage(AssistantTopComponent.class, "HINT_RenameSession"), e -> renameCurrentSession());
+        JButton refreshBtn = UIUtils.createToolbarButton("reload.svg", NbBundle.getMessage(AssistantTopComponent.class, "HINT_ReloadConversation"), e -> {
             reloadCurrentSession();
         });
 
-        JButton exportBtn = UIUtils.createToolbarButton("export.svg", "Export Conversation", e -> {
+        JButton exportBtn = UIUtils.createToolbarButton("export.svg", NbBundle.getMessage(AssistantTopComponent.class, "HINT_ExportConversation"), e -> {
             exportConversation();
         });
-        JButton restartServerBtn = UIUtils.createToolbarButton("restart.svg", "Restart ACP server", e -> {
+        JButton restartServerBtn = UIUtils.createToolbarButton("restart.svg", NbBundle.getMessage(AssistantTopComponent.class, "HINT_RestartServer"), e -> {
             promptRestartServer();
         });
 
-        JButton tb = UIUtils.createToolbarButton("expand.svg", "Expand All Blocks", null);
+        JButton tb = UIUtils.createToolbarButton("expand.svg", NbBundle.getMessage(AssistantTopComponent.class, "HINT_ExpandAll"), null);
         tb.addActionListener(e -> {
             boolean expanded = !chatPanel.isAllBlocksExpanded();
             chatPanel.toggleAllBlocks(expanded);
             String newState = expanded ? "collapse" : "expand";
             tb.putClientProperty("state", newState);
-            tb.setToolTipText(expanded ? "Collapse All Blocks" : "Expand All Blocks");
+            tb.setToolTipText(expanded
+                ? NbBundle.getMessage(AssistantTopComponent.class, "HINT_CollapseAll")
+                : NbBundle.getMessage(AssistantTopComponent.class, "HINT_ExpandAll"));
             tb.setIcon(ThemeManager.getIcon(expanded ? "collapse.svg" : "expand.svg", 28));
         });
         toggleBlocksBtn = tb;
@@ -337,11 +381,11 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         statusPanel.setBorder(new EmptyBorder(4, 12, 4, 12));
         statusPanel.setOpaque(false);
 
-        statusLabel = new JLabel("Ready");
+        statusLabel = new JLabel(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Ready"));
         statusLabel.setFont(statusLabel.getFont().deriveFont(11f));
         statusPanel.add(statusLabel, BorderLayout.WEST);
 
-        JButton to = UIUtils.createToolbarButton("settings.svg", 25, "Options", null);
+        JButton to = UIUtils.createToolbarButton("settings.svg", 25, NbBundle.getMessage(AssistantTopComponent.class, "HINT_Options"), null);
         to.addActionListener(e -> {
             optionsPanelCollapsed = !optionsPanelCollapsed;
             configPanelController.getComponent().setVisible(!optionsPanelCollapsed);
@@ -362,7 +406,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
         bottomPanel.add(statusPanel, BorderLayout.NORTH);
 
-        inputArea = new PlaceholderTextArea(" Type Message Here");
+        inputArea = new PlaceholderTextArea(NbBundle.getMessage(AssistantTopComponent.class, "LBL_TypeMessage"));
         inputArea.setLineWrap(true);
         inputArea.setWrapStyleWord(true);
         inputArea.setBorder(new EmptyBorder(12, 12, 12, 12));
@@ -380,8 +424,8 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         inputMainPanel.add(inputScrollPane, BorderLayout.CENTER);
 
         JPanel btnCard = UIUtils.createTransparentPanel(new CardLayout());
-        sendBtn = UIUtils.createTextButton("Go", e -> sendMessage());
-        stopBtn = UIUtils.createTextButton("Stop", e -> stopMessage());
+        sendBtn = UIUtils.createTextButton(NbBundle.getMessage(AssistantTopComponent.class, "BTN_Go"), e -> sendMessage());
+        stopBtn = UIUtils.createTextButton(NbBundle.getMessage(AssistantTopComponent.class, "BTN_Stop"), e -> stopMessage());
 
         btnCard.add(sendBtn, "SEND");
         btnCard.add(stopBtn, "STOP");
@@ -443,7 +487,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                 @Override
                 public void updateUsage(long used, long size) {
                     SwingUtilities.invokeLater(() ->
-                        statusLabel.setToolTipText("Context Usage: " + used + "/" + size + " tokens")
+                        statusLabel.setToolTipText(NbBundle.getMessage(AssistantTopComponent.class, "HINT_ContextUsage", used, size))
                     );
                 }
             });
@@ -454,12 +498,14 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         if (isThinking != null) {
             SwingUtilities.invokeLater(() -> {
                 if (isThinking) {
-                    statusLabel.setText("Thinking...");
+                    statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Thinking"));
+                    animatedStatus = true;
                     thinkingTimer.start();
                 } else {
                     String current = statusLabel.getText();
-                    if (current != null && current.startsWith("Thinking")) {
-                        statusLabel.setText("Responding...");
+                    String thinking = NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Thinking");
+                    if (current != null && current.contains(thinking.replace(".", "").trim())) {
+                        statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Responding"));
                     }
                 }
             });
@@ -550,7 +596,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                 SwingUtilities.invokeLater(() -> {
                     if (file.size() > MAX_ATTACHMENT_SIZE) {
                         if (statusLabel != null) {
-                            statusLabel.setText("File too large (max 10MB)");
+                            statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_FileTooLarge"));
                             statusResetTimer.restart();
                         }
                         return;
@@ -558,7 +604,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                     attachedFiles.add(file);
                     updatePaperclipTooltip();
                     if (statusLabel != null) {
-                        statusLabel.setText("Attached: " + file.filename());
+                        statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Attached", file.filename()));
                         statusResetTimer.restart();
                     }
                 });
@@ -578,7 +624,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             public void onAttachmentLimitReached() {
                 SwingUtilities.invokeLater(() -> {
                     if (statusLabel != null) {
-                        statusLabel.setText("Max " + MAX_ATTACHMENTS + " files allowed");
+                        statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_MaxFiles", MAX_ATTACHMENTS));
                         statusResetTimer.restart();
                     }
                 });
@@ -644,9 +690,9 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                     });
                     sessionDropdown.setSelectedIndex(-1);
                     if (!hasProjects) {
-                        statusLabel.setText("Open a project to start chatting");
+                        statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_OpenProject"));
                     } else {
-                        statusLabel.setText("Click '+ New Chat' to start");
+                        statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_NewChat"));
                     }
                     optionsPanelCollapsed = false;
                     configPanelController.getComponent().setVisible(true);
@@ -666,19 +712,20 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     public void onSessionStarted(String sessionId) {
         SwingUtilities.invokeLater(() -> {
             chatPanel.clearMessages();
-            if (sessionId == null) {
-                statusLabel.setText("Creating new session...");
-                updateTabName(null);
-            } else {
-                statusLabel.setText("Loading chat...");
-            }
+                if (sessionId == null) {
+                    statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_CreatingSession"));
+                    updateTabName(null);
+                } else {
+                    statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_LoadingChat"));
+                }
         });
     }
 
     @Override
     public void onSessionLoaded(String sessionId, List<SessionConfigOption> configOptions, boolean isStartup) {
         SwingUtilities.invokeLater(() -> {
-            statusLabel.setText("Ready");
+            statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Ready"));
+            animatedStatus = false;
             updateCwdLabel(null);
             if (configOptions != null) {
                 configPanelController.updateConfigControls(configOptions, isStartup);
@@ -705,7 +752,8 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     @Override
     public void onSessionError(String message) {
         SwingUtilities.invokeLater(() -> {
-            statusLabel.setText("Error: " + message);
+            statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Error", message));
+            animatedStatus = false;
             chatPanel.stopStreaming();
             chatPanel.addMessage(ProcessedMessage.createError(MessageType.error_response, message, null, null));
         });
@@ -767,12 +815,13 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
         String currentSessionId = SessionManager.getInstance().getCurrentSessionId();
         if (currentSessionId == null) {
-            statusLabel.setText("Error: No active session.");
+            statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_NoSession"));
             return;
         }
 
         inputArea.setText("");
-        statusLabel.setText("Sending");
+        statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Sending"));
+        animatedStatus = true;
         updateButtonState(true);
 
         // Build file attachment blocks (skip for forwarded slash commands)
@@ -815,23 +864,14 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         // Editor Context
         Map<String, Object> context = isForwardedSlash ? null : captureEditorContext();
 
-        // @inspector: collect NB Inspector warnings and inject as context
-        boolean wantsInspector = !isForwardedSlash && text.contains("@inspector");
-        if (wantsInspector) {
-            text = text.replace("@inspector", "").trim();
-            Map<String, Object> inspectorBlock = collectInspectorHints();
-            if (inspectorBlock != null) {
-                fileBlocks.add(inspectorBlock);
-            }
-        }
-
         final String messageText = text;
         ProcessManager.getInstance().sendMessage(currentSessionId, messageText, context, fileBlocks)
                 .thenAccept(result -> {
                     SwingUtilities.invokeLater(() -> {
                         String currentStatus = statusLabel.getText();
-                        if (currentStatus != null && currentStatus.startsWith("Sending")) {
-                            statusLabel.setText("Ready");
+                        if (currentStatus != null && currentStatus.equals(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Sending"))) {
+                            statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Ready"));
+                            animatedStatus = false;
                             updateButtonState(false);
                             inputArea.requestFocusInWindow();
                         }
@@ -845,10 +885,11 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                 })
                 .exceptionally(ex -> {
                     SwingUtilities.invokeLater(() -> {
-                        statusLabel.setText("Error: " + ex.getMessage());
+                        statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Error", ex.getMessage()));
+                        animatedStatus = false;
                         chatPanel.stopStreaming();
                         chatPanel.addMessage(ProcessedMessage.createError(
-                                MessageType.error_response, "Error: " + ex.getMessage(), null, null
+                                MessageType.error_response, NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Error", ex.getMessage()), null, null
                         ));
                         inputArea.setText(messageText);
                         updateButtonState(false);
@@ -894,42 +935,6 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         return context;
     }
 
-    @SuppressWarnings("unchecked")
-    private Map<String, Object> collectInspectorHints() {
-        JTextComponent editor = EditorRegistry.lastFocusedComponent();
-        if (editor == null) {
-            return null;
-        }
-        Document doc = editor.getDocument();
-        Object prop = doc.getProperty("org.netbeans.spi.editor.hints.ErrorDescription.HINTS");
-        if (!(prop instanceof Collection<?> hints) || hints.isEmpty()) {
-            return null;
-        }
-
-        StringBuilder sb = new StringBuilder();
-        sb.append("<inspector-warnings>\n");
-        int count = 0;
-        for (Object obj : hints) {
-            try {
-                // Use reflection-free approach: toString() contains severity + description
-                String s = obj.toString();
-                sb.append("  ").append(s).append("\n");
-                count++;
-                if (count >= 100) {
-                    sb.append("  ... (truncated)\n");
-                    break;
-                }
-            } catch (Exception ignored) {
-            }
-        }
-        sb.append("</inspector-warnings>\n");
-
-        Map<String, Object> block = new HashMap<>();
-        block.put("type", "text");
-        block.put("text", sb.toString());
-        return block;
-    }
-
     public void setInputText(String text) {
         if (!SwingUtilities.isEventDispatchThread()) {
             SwingUtilities.invokeLater(() -> setInputText(text));
@@ -956,10 +961,14 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         if (!SessionManager.getInstance().getStateMachine().canStopMessage()) {
             return;
         }
-        SwingUtilities.invokeLater(() -> statusLabel.setText("Stopping..."));
+        SwingUtilities.invokeLater(() -> {
+            statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Stopping"));
+            animatedStatus = true;
+        });
         SessionManager.getInstance().stopCurrentMessage();
         SwingUtilities.invokeLater(() -> {
-            statusLabel.setText("Stopped");
+            statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Stopped"));
+            animatedStatus = false;
             chatPanel.stopStreaming();
             updateButtonState(false);
         });
@@ -977,7 +986,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         }
 
         String currentTitle = selectedIdToTitle(selectedItem.getSession());
-        String newTitle = JOptionPane.showInputDialog(this, "Enter new title for this session:", currentTitle);
+        String newTitle = JOptionPane.showInputDialog(this, NbBundle.getMessage(AssistantTopComponent.class, "MSG_EnterTitle"), currentTitle);
 
         if (newTitle != null && !newTitle.trim().isEmpty()) {
             SessionManager.getInstance().renameSession(currentId, newTitle.trim());
@@ -985,13 +994,13 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     }
 
     private String selectedIdToTitle(Session session) {
-        String title = defaultIfBlank(session.title(), "Chat " + left(session.id(), 8));
+        String title = defaultIfBlank(session.title(), NbBundle.getMessage(AssistantTopComponent.class, "LBL_ChatDefault", left(session.id(), 8)));
         return SessionTitleMapper.getTitle(session.id(), title);
     }
 
     private JButton createFilterButton() {
         final JButton[] btnRef = new JButton[1];
-        JButton btn = UIUtils.createToolbarButton("filter.svg", 25, "Filter message types", e -> {
+        JButton btn = UIUtils.createToolbarButton("filter.svg", 25, NbBundle.getMessage(AssistantTopComponent.class, "HINT_FilterMessages"), e -> {
             JPopupMenu popup = new JPopupMenu();
             for (String type : MessageFilterManager.getMessageTypes()) {
                 JCheckBoxMenuItem item = new JCheckBoxMenuItem(type, !MessageFilterManager.isTypeHidden(type));
@@ -1026,14 +1035,14 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     }
 
     private JButton createPaperclipButton() {
-        JButton btn = UIUtils.createToolbarButton("paperclip.svg", "Attach files", null);
+        JButton btn = UIUtils.createToolbarButton("paperclip.svg", NbBundle.getMessage(AssistantTopComponent.class, "HINT_AttachFiles"), null);
         btn.addActionListener(e -> showPaperclipMenu(e));
         return btn;
     }
 
     private void showPaperclipMenu(ActionEvent e) {
         JPopupMenu menu = new JPopupMenu();
-        JMenuItem addItem = new JMenuItem("Select File...");
+        JMenuItem addItem = new JMenuItem(NbBundle.getMessage(AssistantTopComponent.class, "BTN_SelectFile"));
         addItem.addActionListener(ev -> selectFiles());
         menu.add(addItem);
         if (!attachedFiles.isEmpty()) {
@@ -1055,7 +1064,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     private void selectFiles() {
         if (attachedFiles.size() >= MAX_ATTACHMENTS) {
             if (statusLabel != null) {
-                statusLabel.setText("Max " + MAX_ATTACHMENTS + " files allowed");
+                statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_MaxFiles", MAX_ATTACHMENTS));
                 statusResetTimer.restart();
             }
             return;
@@ -1083,9 +1092,9 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             }
             if (added > 0 && statusLabel != null) {
                 if (added == 1) {
-                    statusLabel.setText("Attached: " + lastName);
+                    statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Attached", lastName));
                 } else {
-                    statusLabel.setText("Attached: " + lastName + " +" + (added - 1) + " more");
+                    statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_AttachedMore", lastName, added - 1));
                 }
                 statusResetTimer.restart();
             }
@@ -1095,10 +1104,10 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
     private void updatePaperclipTooltip() {
         if (attachedFiles.isEmpty()) {
-            paperclipBtn.setToolTipText("Attach files");
+            paperclipBtn.setToolTipText(NbBundle.getMessage(AssistantTopComponent.class, "HINT_AttachFiles"));
             paperclipBtn.setIcon(ThemeManager.getIcon("paperclip.svg", 28));
         } else {
-            paperclipBtn.setToolTipText(attachedFiles.size() + " file(s) attached");
+            paperclipBtn.setToolTipText(NbBundle.getMessage(AssistantTopComponent.class, "HINT_FilesAttached", attachedFiles.size()));
             paperclipBtn.setIcon(ThemeManager.getIcon("paperclip-dot.svg", 28));
         }
     }
@@ -1117,7 +1126,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         }
 
         JFileChooser chooser = new JFileChooser();
-        chooser.setDialogTitle("Export Conversation");
+        chooser.setDialogTitle(NbBundle.getMessage(AssistantTopComponent.class, "TITLE_ExportConv"));
         chooser.setSelectedFile(new File("conversation.md"));
         if (chooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
             File file = chooser.getSelectedFile();
@@ -1132,9 +1141,8 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
     private void promptRestartServer() {
         int choice = JOptionPane.showConfirmDialog(this,
-                "Are you sure you want to restart ACP server ?\n" +
-                "This will terminate current operations and relaunch the connection.",
-                "Restart ACP server",
+                NbBundle.getMessage(AssistantTopComponent.class, "MSG_ConfirmRestart"),
+                NbBundle.getMessage(AssistantTopComponent.class, "TITLE_RestartServer"),
                 JOptionPane.YES_NO_OPTION,
                 JOptionPane.WARNING_MESSAGE);
 
@@ -1146,7 +1154,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
     private void restartServer() {
         String currentSessionId = SessionManager.getInstance().getCurrentSessionId();
-        statusLabel.setText("Restarting server...");
+        statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_RestartingServer"));
         setInputEnabled(false);
 
         // Perform restart
@@ -1155,7 +1163,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         // Wait for server to be ready and reload session
         ProcessManager.getInstance().whenReady().thenAccept(v -> {
             SwingUtilities.invokeLater(() -> {
-                statusLabel.setText("Server restarted. Reloading session...");
+                statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_ServerRestarted"));
                 if (currentSessionId != null) {
                     SessionManager.getInstance().loadSession(currentSessionId);
                 } else {
@@ -1165,10 +1173,10 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         }).exceptionally(ex -> {
             SwingUtilities.invokeLater(() -> {
                 String msg = ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName();
-                statusLabel.setText("Restart failed: " + msg);
+                statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_RestartFailed", msg));
                 chatPanel.stopStreaming();
                 chatPanel.addMessage(ProcessedMessage.createError(
-                    MessageType.error_response, "Restart failed: " + msg, null, null
+                    MessageType.error_response, NbBundle.getMessage(AssistantTopComponent.class, "STATUS_RestartFailed", msg), null, null
                 ));
                 setInputEnabled(true);
             });
@@ -1194,7 +1202,8 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
     private void resetStatus() {
         SwingUtilities.invokeLater(() -> {
-            statusLabel.setText("Ready");
+            statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Ready"));
+            animatedStatus = false;
             updateButtonState(false);
             if (SessionManager.getInstance().getCurrentSessionId() != null) {
                 setInputEnabled(true);
@@ -1282,7 +1291,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             String msg = ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName();
             chatPanel.stopStreaming();
             chatPanel.addMessage(ProcessedMessage.createError(
-                MessageType.error_response, "Failed to start: " + msg, null, null
+                MessageType.error_response, NbBundle.getMessage(AssistantTopComponent.class, "STATUS_FailedToStart", msg), null, null
             ));
         }
 

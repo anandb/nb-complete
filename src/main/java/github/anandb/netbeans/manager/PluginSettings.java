@@ -13,6 +13,7 @@ public final class PluginSettings {
     private static final Logger LOG = new Logger(PluginSettings.class);
     private static final String KEY_PREAMBLE = "preamble";
     private static final String KEY_CUSTOM_USER_ICON = "customUserIcon";
+    private static final String KEY_SESSION_IDLE_TIMEOUT = "sessionIdleTimeout";
     private static final String DEFAULT_PREAMBLE;
 
     static {
@@ -44,5 +45,13 @@ public final class PluginSettings {
 
     public static void setCustomUserIcon(String path) {
         NbPreferences.forModule(ACPOptionsPanel.class).put(KEY_CUSTOM_USER_ICON, path == null ? "" : path);
+    }
+
+    public static int getSessionIdleTimeout() {
+        return NbPreferences.forModule(ACPOptionsPanel.class).getInt(KEY_SESSION_IDLE_TIMEOUT, 60);
+    }
+
+    public static void setSessionIdleTimeout(int seconds) {
+        NbPreferences.forModule(ACPOptionsPanel.class).putInt(KEY_SESSION_IDLE_TIMEOUT, seconds);
     }
 }

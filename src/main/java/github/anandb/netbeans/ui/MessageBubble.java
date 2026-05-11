@@ -36,11 +36,13 @@ import com.vladsch.flexmark.util.data.MutableDataSet;
 import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.TextScanner;
+import org.openide.util.NbBundle;
 
 import static org.apache.commons.lang3.StringUtils.defaultIfBlank;
 import static org.apache.commons.lang3.StringUtils.length;
 
 
+@NbBundle.Messages("HINT_CopyToInput=Copy to input")
 public class MessageBubble extends JPanel implements Scrollable {
 
     private static final Logger LOG = new Logger(MessageBubble.class);
@@ -260,7 +262,7 @@ public class MessageBubble extends JPanel implements Scrollable {
             JLabel userLabel = new JLabel(userIcon);
             userLabel.setBorder(new javax.swing.border.EmptyBorder(6, 8, 0, 10));
             userLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-            userLabel.setToolTipText("Copy to input");
+            userLabel.setToolTipText(NbBundle.getMessage(MessageBubble.class, "HINT_CopyToInput"));
 
             userLabel.addMouseListener(new MessageCopyMouseAdapter(
                 userLabel,

@@ -27,7 +27,14 @@ import github.anandb.netbeans.model.ConfigItem;
 import github.anandb.netbeans.model.SessionConfigOption;
 import github.anandb.netbeans.model.SessionConfigSelectOption;
 import github.anandb.netbeans.support.Logger;
+import org.openide.util.NbBundle;
 
+@NbBundle.Messages({
+    "LBL_Agent=Agent:",
+    "LBL_Model=Model:",
+    "LBL_Thinking=Thinking:",
+    "HINT_CopyModelID=Copy Model ID"
+})
 public class ConfigPanelController {
 
     private static final Logger LOG = new Logger(ConfigPanelController.class);
@@ -66,7 +73,7 @@ public class ConfigPanelController {
         gbc.gridx = 0;
         gbc.gridy = 0;
         gbc.weightx = 0;
-        configPanel.add(new JLabel("Agent:"), gbc);
+        configPanel.add(new JLabel(NbBundle.getMessage(ConfigPanelController.class, "LBL_Agent")), gbc);
 
         gbc.gridx = 1;
         gbc.weightx = 0.2;
@@ -74,7 +81,7 @@ public class ConfigPanelController {
 
         gbc.gridx = 2;
         gbc.weightx = 0;
-        configPanel.add(new JLabel("Model:"), gbc);
+        configPanel.add(new JLabel(NbBundle.getMessage(ConfigPanelController.class, "LBL_Model")), gbc);
 
         gbc.gridx = 3;
         gbc.weightx = 0.7;
@@ -83,7 +90,7 @@ public class ConfigPanelController {
         gbc.gridx = 4;
         gbc.weightx = 0;
         gbc.insets = new Insets(2, 0, 2, 4);
-        JButton copyModelBtn = UIUtils.createToolbarButton("copy.svg", 20, "Copy Model ID", e -> {
+        JButton copyModelBtn = UIUtils.createToolbarButton("copy.svg", 20, NbBundle.getMessage(ConfigPanelController.class, "HINT_CopyModelID"), e -> {
             ConfigItem selected = (ConfigItem) modelCombo.getSelectedItem();
             if (selected != null && selected.value() != null) {
                 java.awt.Toolkit.getDefaultToolkit().getSystemClipboard()
@@ -95,7 +102,7 @@ public class ConfigPanelController {
 
         gbc.gridx = 5;
         gbc.weightx = 0;
-        configPanel.add(new JLabel("Thinking:"), gbc);
+        configPanel.add(new JLabel(NbBundle.getMessage(ConfigPanelController.class, "LBL_Thinking")), gbc);
 
         gbc.gridx = 6;
         gbc.weightx = 0.1;
