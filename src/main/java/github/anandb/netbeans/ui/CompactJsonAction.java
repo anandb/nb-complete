@@ -1,8 +1,10 @@
 package github.anandb.netbeans.ui;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.util.Arrays;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.Document;
 import javax.swing.text.JTextComponent;
@@ -12,11 +14,15 @@ import org.openide.awt.ActionReference;
 import org.openide.awt.ActionRegistration;
 import org.openide.util.NbBundle;
 
-@ActionID(category = "Edit", id = "github.anandb.netbeans.ui.SortLinesAction")
-@ActionRegistration(displayName = "#CTL_SortLinesAction")
-@ActionReference(path = "Editors/Popup", position = 300)
-@NbBundle.Messages("CTL_SortLinesAction=Sort Lines Ascending")
-public class SortLinesAction implements ActionListener {
+import github.anandb.netbeans.support.MapperSupplier;
+
+@ActionID(category = "Edit", id = "github.anandb.netbeans.ui.CompactJsonAction")
+@ActionRegistration(displayName = "#CTL_CompactJsonAction")
+@ActionReference(path = "Editors/Popup", position = 400)
+@NbBundle.Messages("CTL_CompactJsonAction=Compact")
+public class CompactJsonAction implements ActionListener {
+
+    private static final ObjectMapper MAPPER = MapperSupplier.get();
 
     @Override
     public void actionPerformed(ActionEvent e) {
@@ -24,6 +30,9 @@ public class SortLinesAction implements ActionListener {
         if (editor == null) return;
 
         Document doc = editor.getDocument();
+        Object mimeType = doc.getProperty("mimeType");
+        if (mimeType == null || !mimeType.toString().toLowerCase().contains("json")) return;
+
         String selection = editor.getSelectedText();
         int start, end;
         if (selection == null || selection.isEmpty()) {
@@ -39,18 +48,14 @@ public class SortLinesAction implements ActionListener {
             end = editor.getSelectionEnd();
         }
 
-        String[] lines = selection.split("\n", -1);
-        for (int i = 0; i < lines.length; i++) {
-            lines[i] = lines[i].stripLeading();
-        }
-        Arrays.sort(lines);
-        String sorted = String.join("\n", lines);
-
         try {
+            JsonNode node = MAPPER.readTree(selection);
+            String compacted = MAPPER.writeValueAsString(node);
+            if (compacted.equals(selection)) return;
             doc.remove(start, end - start);
-            doc.insertString(start, sorted, null);
-        } catch (BadLocationException ex) {
-            // not expected
+            doc.insertString(start, compacted, null);
+        } catch (Exception ex) {
+            // invalid JSON or editor error — do nothing
         }
     }
 }

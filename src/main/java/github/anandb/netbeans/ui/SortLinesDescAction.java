@@ -3,6 +3,7 @@ package github.anandb.netbeans.ui;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.Arrays;
+import java.util.Comparator;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.Document;
 import javax.swing.text.JTextComponent;
@@ -12,11 +13,11 @@ import org.openide.awt.ActionReference;
 import org.openide.awt.ActionRegistration;
 import org.openide.util.NbBundle;
 
-@ActionID(category = "Edit", id = "github.anandb.netbeans.ui.SortLinesAction")
-@ActionRegistration(displayName = "#CTL_SortLinesAction")
-@ActionReference(path = "Editors/Popup", position = 300)
-@NbBundle.Messages("CTL_SortLinesAction=Sort Lines Ascending")
-public class SortLinesAction implements ActionListener {
+@ActionID(category = "Edit", id = "github.anandb.netbeans.ui.SortLinesDescAction")
+@ActionRegistration(displayName = "#CTL_SortLinesDescAction")
+@ActionReference(path = "Editors/Popup", position = 301)
+@NbBundle.Messages("CTL_SortLinesDescAction=Sort Lines Descending")
+public class SortLinesDescAction implements ActionListener {
 
     @Override
     public void actionPerformed(ActionEvent e) {
@@ -43,7 +44,7 @@ public class SortLinesAction implements ActionListener {
         for (int i = 0; i < lines.length; i++) {
             lines[i] = lines[i].stripLeading();
         }
-        Arrays.sort(lines);
+        Arrays.sort(lines, Comparator.reverseOrder());
         String sorted = String.join("\n", lines);
 
         try {

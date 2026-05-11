@@ -381,15 +381,38 @@ public class ConfigPanelController {
 
             if (item != null && SessionManager.getInstance().getCurrentSessionId() != null) {
                 String currentId = SessionManager.getInstance().getCurrentSessionId();
+                String prevValue = null;
 
                 if (combo == modelCombo) {
+                    prevValue = lastSelectedModelId;
                     lastSelectedModelId = item.value();
                     updateThinkingComboForModel(item.value());
                     tabNameUpdater.accept(item.name());
                 }
 
                 LOG.fine("Config update: {0}={1} for session {2}", new Object[]{configId, item.value(), currentId});
-                SessionManager.getInstance().setSessionConfigOption(currentId, configId, item.value());
+                String savedPrev = prevValue;
+                SessionManager.getInstance().setSessionConfigOption(currentId, configId, item.value())
+                    .exceptionally(ex -> {
+                        LOG.warn("Failed to set config {0}: {1}", configId, ex.getMessage());
+                        if (combo == modelCombo && savedPrev != null) {
+                            SwingUtilities.invokeLater(() -> {
+                                isUpdatingConfigControls = true;
+                                try {
+                                    lastSelectedModelId = savedPrev;
+                                    for (int i = 0; i < modelCombo.getItemCount(); i++) {
+                                        if (modelCombo.getItemAt(i).value().equals(savedPrev)) {
+                                            modelCombo.setSelectedItem(modelCombo.getItemAt(i));
+                                            break;
+                                        }
+                                    }
+                                } finally {
+                                    isUpdatingConfigControls = false;
+                                }
+                            });
+                        }
+                        return null;
+                    });
             }
 
         });

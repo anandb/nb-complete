@@ -533,6 +533,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             @Override
             public void keyReleased(KeyEvent e) {
                 autocompleteManager.handleKeyReleased(e);
+                ProcessManager.getInstance().touchConnection();
             }
         });
     }

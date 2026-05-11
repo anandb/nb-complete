@@ -16,6 +16,9 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
@@ -32,7 +35,7 @@ public class AcpProtocolClient implements Closeable {
 
     private static final Logger LOG = new Logger(AcpProtocolClient.class);
 
-    private static final long DEFAULT_TIMEOUT_SECONDS = 0; // 0 means no timeout by default
+    private static final long DEFAULT_TIMEOUT_SECONDS = 30; // seconds, applied to all requests
     private static final ObjectMapper MAPPER = MapperSupplier.get();
 
     private final PrintWriter writer;
@@ -49,6 +52,11 @@ public class AcpProtocolClient implements Closeable {
     private Runnable disconnectionHandler;
     private final WireLogger wireLogger;
 
+    private static final long IDLE_TIMEOUT_SECONDS = 30;
+    private volatile long lastDataTime;
+    private ScheduledExecutorService watchdogExecutor;
+    private ScheduledFuture<?> watchdogFuture;
+
     public AcpProtocolClient(Process process) {
         this.writer = new PrintWriter(process.getOutputStream(), true);
         this.reader = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8));
@@ -64,6 +72,8 @@ public class AcpProtocolClient implements Closeable {
         errorReaderThread = new Thread(this::readErrorLoop, "ACP-JSONRPC-ErrorReader");
         errorReaderThread.setDaemon(true);
         errorReaderThread.start();
+
+        startWatchdog();
     }
 
     public void onNotification(String method, Consumer<JsonNode> listener) {
@@ -160,6 +170,7 @@ public class AcpProtocolClient implements Closeable {
         try {
             String line;
             while (running && (line = reader.readLine()) != null) {
+                lastDataTime = System.nanoTime();
                 // Fast path: skip empty lines without creating trimmed string
                 if (line.isEmpty()) {
                     continue;
@@ -212,6 +223,43 @@ public class AcpProtocolClient implements Closeable {
             if (running) {
                 LOG.fine("Error reader thread error", e);
             }
+        }
+    }
+
+    private void startWatchdog() {
+        lastDataTime = System.nanoTime();
+        watchdogExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread t = new Thread(r, "ACP-IdleWatchdog");
+            t.setDaemon(true);
+            return t;
+        });
+        watchdogFuture = watchdogExecutor.scheduleWithFixedDelay(
+                this::checkIdleTimeout, 5, 5, TimeUnit.SECONDS);
+    }
+
+    private void checkIdleTimeout() {
+        if (!running) return;
+        if (pendingRequests.isEmpty()) return;
+        long idleNanos = System.nanoTime() - lastDataTime;
+        if (idleNanos >= TimeUnit.SECONDS.toNanos(IDLE_TIMEOUT_SECONDS)) {
+            LOG.warn("Connection idle for {0}s with pending requests, closing", TimeUnit.NANOSECONDS.toSeconds(idleNanos));
+            close();
+            notifyDisconnection();
+        }
+    }
+
+    public void touch() {
+        lastDataTime = System.nanoTime();
+    }
+
+    private void stopWatchdog() {
+        if (watchdogFuture != null) {
+            watchdogFuture.cancel(false);
+            watchdogFuture = null;
+        }
+        if (watchdogExecutor != null) {
+            watchdogExecutor.shutdown();
+            watchdogExecutor = null;
         }
     }
 
@@ -333,6 +381,7 @@ public class AcpProtocolClient implements Closeable {
     @Override
     public void close() {
         running = false;
+        stopWatchdog();
         closeQuietly(wireLogger);
 
         pendingRequests.values().forEach(future -> {

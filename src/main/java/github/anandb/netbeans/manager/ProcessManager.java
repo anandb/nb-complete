@@ -392,6 +392,12 @@ public class ProcessManager {
         return rpcClient != null;
     }
 
+    public void touchConnection() {
+        AcpProtocolClient client = rpcClient;
+        if (client != null) {
+            client.touch();
+        }
+    }
 
     public CompletableFuture<JsonNode> sendMessage(String sessionId, String text, Map<String, Object> context) {
         return sendMessage(sessionId, text, context, null);
@@ -468,7 +474,7 @@ public class ProcessManager {
         params.put("prompt", promptBlocks);
         params.put("mcpServers", mcpManager.getServerConfig());
 
-        return rpcClient.sendRequest("session/prompt", params)
+        return rpcClient.sendRequest("session/prompt", params, 0)
                 .thenApply(v -> null);
     }
 

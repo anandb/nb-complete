@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
 import github.anandb.netbeans.contract.SessionListener;
@@ -170,7 +171,7 @@ public class SessionManager {
                 .thenApply(v -> futures.stream()
                 .flatMap(f -> {
                     try {
-                        return f.get().stream();
+                        return f.get(10, TimeUnit.SECONDS).stream();
                     } catch (Exception e) {
                         LOG.log(Level.WARNING, "Failed to get sessions for directory: {0}", e.getMessage());
                         return java.util.stream.Stream.empty();
@@ -458,14 +459,9 @@ public class SessionManager {
         stateMachine.transitionTo(SessionState.STOPPING);
         String sid = this.currentSessionId;
         if (sid != null) {
-            ProcessManager.getInstance().stopMessage(sid)
-                    .thenRun(() -> stateMachine.transitionTo(SessionState.STREAMING))
-                    .exceptionally(ex -> {
-                        LOG.warn("Failed to stop message: {0}", ex.getMessage());
-                        stateMachine.transitionTo(SessionState.STREAMING);
-                        return null;
-                    });
+            ProcessManager.getInstance().stopMessage(sid);
         }
+        stateMachine.transitionTo(SessionState.STREAMING);
     }
 
     private void notifySessionListUpdated(List<Session> sessions) {
