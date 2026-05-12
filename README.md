@@ -1,6 +1,6 @@
 # Coding Assistant
 
-[![Version](https://img.shields.io/badge/version-1.5.17-blue.svg)](pom.xml)
+[![Version](https://img.shields.io/badge/version-1.5.20-blue.svg)](pom.xml)
 [![Build Status](https://img.shields.io/badge/build-success-brightgreen.svg)](https://github.com/anandb/nb-complete)
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.anandb/beanbot)](https://central.sonatype.com/artifact/io.github.anandb/beanbot/versions)
 [![NetBeans](https://img.shields.io/badge/NetBeans-RELEASE290-orange.svg)](https://netbeans.apache.org/download/index.html)
@@ -60,13 +60,13 @@ the plugin will still work on other versions of Netbeans and Opencode but your e
 | Component | Details |
 | --- | --- |
 | **OS** | openSUSE Tumbleweed-Slowroll |
-| **NetBeans** | 29 |
-| **Opencode** | 1.14.39 |
+| **NetBeans** | RELEASE290 |
+| **Opencode** | 1.14.46 |
 | **Opencode plugins** | `@franzmoca/opencode-lombok`, `@tarquinen/opencode-dcp@latest`, `@opencode/mcp-git` |
-| **This Plugin Version** | ≥ v1.5.17 |
-| **LLMs** | Big Pickle; GPT 5.4-mini, GPT 5.4-nano; DeepSeek V4 Pro, DeepSeek V4 Flash; Kimi K2.5, Kimi K2.6; Mimo V2.5 |
+| **This Plugin Version** | ≥ v1.5.20 |
+| **LLMs** | Big Pickle; GPT 5.4-mini, GPT 5.4-nano; DeepSeek V4 Pro, DeepSeek V4 Flash; Kimi K2.5, Kimi K2.6; Mimo V2.5; Qwen3.5, Qwen3.6 |
 
-Qwen models currently seem to have some trouble with tool calling; this is still being investigated.
+Note: Qwen models require `--think=false` if using Ollama, and a `"reasoningEffort": "none"` configuration in `opencode.json`
 
 ### Installation from Source
 1. Clone the repository:
@@ -98,7 +98,6 @@ The project follows an event-driven architecture integrated into the NetBeans Pl
 ## Source Organization
 
 - `src/main/java/github/anandb/netbeans/`
-  - `completion/`: Code completion implementation.
   - `manager/`: Core orchestration and protocol clients.
   - `model/`: Data models compliant with the ACP specification.
   - `project/`: Workspace and project API integration.

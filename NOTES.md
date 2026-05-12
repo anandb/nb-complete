@@ -1,39 +1,58 @@
 # Release Notes
 
-## v1.5.15
+## v1.5.20 (2026-05-12)
 
-### Editor Sync & Local History
-- `handleWriteTextFile` now writes through the editor's `Document` and calls `saveDocument()` when file is open, avoiding read-only conflicts
-- Falls back to direct `java.nio.file.Files.write()` when no editor available
-- `writeThroughVFS` simplified to `FileObject.refresh()` — no longer acquires file lock
-- `recordLocalHistory` added: filters by active project directory, skips files modified >2 minutes ago, handles deletes via parent `FileObject.refresh()`
-- Status label flashes warning when local history skipped (file outside project)
+### Architecture
+- Extracted non-UI responsibilities from `AssistantTopComponent` into dedicated classes:
+  - `AttachmentManager` — manages file/image attachment lifecycle
+  - `EditorContextCapture` — captures editor context for inspector prompts
+  - `MessageHistory` — manages message navigation and history
+- New contract interfaces in `contract/` package:
+  - `DataExtractionStrategy`, `PermissionHandler`, `RequestHandler`
+  - `SessionListener`, `SlashCommandCallback`, `SlashCommandHandler`, `UIHandler`
+- `PluginSettings` — added session timeout configuration parameter
 
-### Slash Commands & Session Management
-- New `SlashCommandInterceptor` with extensible callback system
-- `/session new` — create new session, `/session switch <id>` — switch sessions
-- Slash command autocomplete in chat input
+### UI & i18n
+- All display labels externalized into resource bundle (`Bundle.properties`)
+- `ACPOptionsPanel` refactored for i18n support
+- Collapsible pane tooltips, button labels use bundle keys
+- `ConfigPanelController` cleanup
+
+### Testing
+- Unit tests for `AttachmentManager`, `MessageHistory`
+
+## v1.5.19 (2026-05-12)
+
+### Stability & Connection Management
+- Idle watchdog in `AcpProtocolClient`: 30s timeout closes hung connections with pending requests
+- Crash handler callbacks (`setCrashHandler`, `setReadyHandler`) in `ProcessManager` for server recovery
+- `SessionManager` resets state machine to `IDLE` on crash, auto-reloads last session on reconnect
+- `ProcessManager.stopServer()` notifies crash handler before reconnect loop
+- Null-safe RPC send methods — `sendRequest`/`sendNotification` handle missing client gracefully
+- `SessionStateMachine.transitionTo` made `synchronized` to prevent race conditions
+- Config update failure rolls back model combo selection in UI
+- `SessionManager.stopMessage()` simplified to fire-and-forget (no wait on stop future)
+
+### MCP Server Hardening
+- Thread pool with bounded queue (`MAX_THREADS=10`, `AbortPolicy`) replacing unbounded cached pool
+- Heartbeat executor purges dead SSE clients every 5s
+- Removed stub weather tool implementation (clean tools/list only)
+- Graceful shutdown with `stop(1)` drain timeout
+- `SseClient` uses `CountDownLatch` for clean disconnect detection
+- SSE endpoint renamed from "weather" to "netbeans"
+
+### Editor Tools & Actions
+- Removed `fs/writeTextFile` handler (server handles writes directly)
+- `fs/readTextFile` reads via `SwingUtilities.invokeAndWait` on EDT for editor sync
+- Removed resource link blocks from prompt context
+- New `CompactJsonAction` editor action: minifies JSON selection or full file
+- New `SortLinesDescAction`: sort lines descending (reverse order)
+- `SortLinesAction` enhanced: works on entire file when no selection, ascending rename
 
 ### UI
-- Chat bottom padding increased from 40px to 90px to prevent bubble collision with status bar
-- CSS file renamed `chat-style.css` → `chat-style.css.template` to silence NetBeans CSS parser warnings on `$variable` syntax
-- `$fontStack` and `$monoStack` hardcoded directly in CSS template
-- New `FontStacks.java` for programmatic font resolution
-- New `colors.json` for theme color definitions
-- `ColorTheme` refactored with configurable slider-based theme selection
-
-### Rendering Performance
-- `MessageBubble` rendering optimized (early return on unchanged content, reduced repaints)
-
-### Code Quality
-- 25+ fully-qualified class names replaced with imports across `ChatThreadPanel`, `AssistantTopComponent`, and `MessageBubble`
-- Preamble default text extracted to `preamble.md` resource file
-- Checkstyle configuration added with suppressions
-
-### Misc
-- `.gitignore` updated with `*.bak`, build artifacts
-- Maven wrapper properties updated
-- Test imports cleaned up across all test files
+- Connection touch on key release keeps idle watchdog alive during typing
+- `AssistantTopComponent`: track closed project dirs, refresh sessions on `componentOpened`, clear all handler references on `componentClosed` (memory leak fix)
+- Log noise reduction in `ToolDataExtractor`
 
 ## v1.5.17 (2026-05-09)
 
@@ -75,6 +94,51 @@
 - Workflow dispatch and dry-run support for release pipeline
 - Dependency bumps (Jackson Core)
 - NPE fix in `SessionManagerTest`
+
+## v1.5.16 (2026-05-09)
+
+### Fixes & Cleanup
+- Resource leak fixes: try-with-resources in MCP server HTTP handler and `CollapsibleCodePane` theme loading
+- `SessionManager` null-safety fix for preamble send when process not ready
+- `AutocompleteManager` NPE guard for cell bounds calculation
+- Logger migration in `McpServer` to custom `Logger` with index-based placeholders
+- Logging format fixes across `AcpProtocolClient`, `McpServer`, `SlashCommandInterceptor`
+
+## v1.5.15
+
+### Editor Sync & Local History
+- `handleWriteTextFile` now writes through the editor's `Document` and calls `saveDocument()` when file is open, avoiding read-only conflicts
+- Falls back to direct `java.nio.file.Files.write()` when no editor available
+- `writeThroughVFS` simplified to `FileObject.refresh()` — no longer acquires file lock
+- `recordLocalHistory` added: filters by active project directory, skips files modified >2 minutes ago, handles deletes via parent `FileObject.refresh()`
+- Status label flashes warning when local history skipped (file outside project)
+
+### Slash Commands & Session Management
+- New `SlashCommandInterceptor` with extensible callback system
+- `/session new` — create new session, `/session switch <id>` — switch sessions
+- Slash command autocomplete in chat input
+
+### UI
+- Chat bottom padding increased from 40px to 90px to prevent bubble collision with status bar
+- CSS file renamed `chat-style.css` → `chat-style.css.template` to silence NetBeans CSS parser warnings on `$variable` syntax
+- `$fontStack` and `$monoStack` hardcoded directly in CSS template
+- New `FontStacks.java` for programmatic font resolution
+- New `colors.json` for theme color definitions
+- `ColorTheme` refactored with configurable slider-based theme selection
+
+### Rendering Performance
+- `MessageBubble` rendering optimized (early return on unchanged content, reduced repaints)
+
+### Code Quality
+- 25+ fully-qualified class names replaced with imports across `ChatThreadPanel`, `AssistantTopComponent`, and `MessageBubble`
+- Preamble default text extracted to `preamble.md` resource file
+- Checkstyle configuration added with suppressions
+
+### Misc
+- `.gitignore` updated with `*.bak`, build artifacts
+- Maven wrapper properties updated
+- Test imports cleaned up across all test files
+
 
 ## 1.4.1 (2026-04-27)
 - **UI Modernization & Premium Aesthetics**:
