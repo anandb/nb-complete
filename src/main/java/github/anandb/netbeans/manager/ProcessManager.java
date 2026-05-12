@@ -422,6 +422,8 @@ public class ProcessManager {
                 // Metadata XML Block (For the AI)
                 StringBuilder xml = new StringBuilder();
                 xml.append("<metadata>\n");
+                xml.append("  <purpose>reference</purpose>\n");
+                xml.append("  <note>The file path, cursor, and selection below are reference-only context about the user's editor state. The user's text message that follows is the primary instruction.</note>\n");
                 xml.append("  <language>").append(lang).append("</language>\n");
                 xml.append("  <file_path>").append(filePath).append("</file_path>\n");
 

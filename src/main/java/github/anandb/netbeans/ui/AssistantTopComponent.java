@@ -20,9 +20,7 @@ import java.awt.event.ActionEvent;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -176,9 +174,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
     private final JScrollPane inputScrollPane;
     private final JPanel header;
-    private final ArrayList<String> messageHistory = new ArrayList<>();
-    private int historyIndex = -1;
-    private String currentDraft = "";
+    private final MessageHistory messageHistory = new MessageHistory();
     private boolean isSwitchingSessionDropdown = false;
     private Timer thinkingTimer;
     private Timer statusResetTimer;
@@ -187,9 +183,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     private volatile boolean animatedStatus = false;
     private static final String[] DOT_STRINGS = {"", ".", "..", "..."};
 
-    private static final long MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024;
-    private static final int MAX_ATTACHMENTS = 2;
-    private final ArrayList<AttachedFile> attachedFiles = new ArrayList<>();
+    private final AttachmentManager attachmentManager = new AttachmentManager();
     private final JButton paperclipBtn;
     private transient final ConfigPanelController configPanelController;
     private transient final AutocompleteManager autocompleteManager;
@@ -547,25 +541,13 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                     if (autocompleteManager.isPopupVisible()) {
                         e.consume();
                     } else if (inputArea.getCaretPosition() == 0 && !messageHistory.isEmpty()) {
-                        if (historyIndex == -1) {
-                            currentDraft = inputArea.getText();
-                            historyIndex = messageHistory.size() - 1;
-                        } else if (historyIndex > 0) {
-                            historyIndex--;
-                        }
-                        inputArea.setText(messageHistory.get(historyIndex));
+                        inputArea.setText(messageHistory.navigateUp(inputArea.getText()));
                     }
                 } else if (e.getKeyCode() == KeyEvent.VK_DOWN) {
                     if (autocompleteManager.isPopupVisible()) {
                         e.consume();
-                    } else if (inputArea.getCaretPosition() == inputArea.getText().length() && historyIndex != -1) {
-                        if (historyIndex < messageHistory.size() - 1) {
-                            historyIndex++;
-                            inputArea.setText(messageHistory.get(historyIndex));
-                        } else {
-                            historyIndex = -1;
-                            inputArea.setText(currentDraft);
-                        }
+                    } else if (inputArea.getCaretPosition() == inputArea.getText().length() && messageHistory.isNavigating()) {
+                        inputArea.setText(messageHistory.navigateDown(inputArea.getText()));
                     }
                 } else if ((e.getModifiersEx() & InputEvent.CTRL_DOWN_MASK) != 0 && e.getKeyCode() == KeyEvent.VK_Z) {
                     e.consume();
@@ -588,20 +570,19 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         ImagePasteTransferHandler.PasteCallback callback = new ImagePasteTransferHandler.PasteCallback() {
             @Override
             public boolean canAddAttachment() {
-                return attachedFiles.size() < MAX_ATTACHMENTS;
+                return attachmentManager.canAdd();
             }
 
             @Override
             public void onAttachmentAdded(AttachedFile file) {
                 SwingUtilities.invokeLater(() -> {
-                    if (file.size() > MAX_ATTACHMENT_SIZE) {
+                    if (!attachmentManager.add(file)) {
                         if (statusLabel != null) {
                             statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_FileTooLarge"));
                             statusResetTimer.restart();
                         }
                         return;
                     }
-                    attachedFiles.add(file);
                     updatePaperclipTooltip();
                     if (statusLabel != null) {
                         statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Attached", file.filename()));
@@ -624,7 +605,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             public void onAttachmentLimitReached() {
                 SwingUtilities.invokeLater(() -> {
                     if (statusLabel != null) {
-                        statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_MaxFiles", MAX_ATTACHMENTS));
+                        statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_MaxFiles", AttachmentManager.MAX_ATTACHMENTS));
                         statusResetTimer.restart();
                     }
                 });
@@ -768,7 +749,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             return;
         }
         String text = inputArea.getText(); // Don't trim user input spaces
-        if (text.isEmpty() && attachedFiles.isEmpty()) {
+        if (text.isEmpty() && attachmentManager.getAttachments().isEmpty()) {
             return;
         }
 
@@ -803,14 +784,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
         // Add to history
         if (!isForwardedSlash) {
-            if (messageHistory.isEmpty() || !messageHistory.get(messageHistory.size() - 1).equals(text)) {
-                messageHistory.add(text);
-                if (messageHistory.size() > 50) {
-                    messageHistory.remove(0);
-                }
-            }
-            historyIndex = -1;
-            currentDraft = "";
+            messageHistory.add(text);
         }
 
         String currentSessionId = SessionManager.getInstance().getCurrentSessionId();
@@ -825,17 +799,9 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         updateButtonState(true);
 
         // Build file attachment blocks (skip for forwarded slash commands)
-        List<Map<String, Object>> fileBlocks = new ArrayList<>();
+        List<Map<String, Object>> fileBlocks = isForwardedSlash ? List.of() : attachmentManager.buildFileBlocks();
         if (!isForwardedSlash) {
-            for (AttachedFile af : attachedFiles) {
-                Map<String, Object> block = new HashMap<>();
-                block.put("type", af.mimeType().startsWith("image/") ? "image" : "file");
-                block.put("filename", af.filename());
-                block.put("mimeType", af.mimeType());
-                block.put("data", af.base64Data());
-                fileBlocks.add(block);
-            }
-            attachedFiles.clear();
+            attachmentManager.clear();
             updatePaperclipTooltip();
 
             // Local echo with file references
@@ -862,7 +828,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         }
 
         // Editor Context
-        Map<String, Object> context = isForwardedSlash ? null : captureEditorContext();
+        Map<String, Object> context = isForwardedSlash ? null : EditorContextCapture.capture();
 
         final String messageText = text;
         ProcessManager.getInstance().sendMessage(currentSessionId, messageText, context, fileBlocks)
@@ -897,42 +863,6 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                     });
                     return null;
                 });
-    }
-
-    private Map<String, Object> captureEditorContext() {
-        JTextComponent editor = EditorRegistry.lastFocusedComponent();
-        if (editor == null) {
-            return null;
-        }
-
-        Document doc = editor.getDocument();
-        if (!(doc instanceof StyledDocument styledDoc)) {
-            return null;
-        }
-
-        Map<String, Object> context = new HashMap<>();
-
-        FileObject fo = NbEditorUtilities.getFileObject(doc);
-        if (fo != null) {
-            context.put("filePath", fo.getPath());
-        }
-
-        String selection = editor.getSelectedText();
-        if (isNotBlank(selection)) {
-            context.put("selectionContent", selection);
-            int selStart = editor.getSelectionStart();
-            int selEnd = editor.getSelectionEnd();
-
-            int startLine = NbDocument.findLineNumber(styledDoc, selStart) + 1;
-            int endLine = NbDocument.findLineNumber(styledDoc, selEnd) + 1;
-            context.put("selection", startLine + ":" + endLine);
-        }
-
-        int caretPos = editor.getCaretPosition();
-        int cursorLine = NbDocument.findLineNumber(styledDoc, caretPos) + 1;
-        context.put("cursor", String.valueOf(cursorLine));
-
-        return context;
     }
 
     public void setInputText(String text) {
@@ -1045,13 +975,14 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         JMenuItem addItem = new JMenuItem(NbBundle.getMessage(AssistantTopComponent.class, "BTN_SelectFile"));
         addItem.addActionListener(ev -> selectFiles());
         menu.add(addItem);
-        if (!attachedFiles.isEmpty()) {
+        List<AttachedFile> currentFiles = attachmentManager.getAttachments();
+        if (!currentFiles.isEmpty()) {
             menu.addSeparator();
-            for (AttachedFile af : attachedFiles) {
+            for (AttachedFile af : currentFiles) {
                 JCheckBoxMenuItem cb = new JCheckBoxMenuItem(af.filename(), true);
                 cb.addActionListener(ev -> {
                     if (!cb.isSelected()) {
-                        attachedFiles.remove(af);
+                        attachmentManager.remove(af);
                         updatePaperclipTooltip();
                     }
                 });
@@ -1062,9 +993,9 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     }
 
     private void selectFiles() {
-        if (attachedFiles.size() >= MAX_ATTACHMENTS) {
+        if (!attachmentManager.canAdd()) {
             if (statusLabel != null) {
-                statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_MaxFiles", MAX_ATTACHMENTS));
+                statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_MaxFiles", AttachmentManager.MAX_ATTACHMENTS));
                 statusResetTimer.restart();
             }
             return;
@@ -1073,24 +1004,12 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         JFileChooser fc = new JFileChooser();
         fc.setMultiSelectionEnabled(true);
         if (fc.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
-            int added = 0;
-            String lastName = null;
-            for (File f : fc.getSelectedFiles()) {
-                if (attachedFiles.size() >= MAX_ATTACHMENTS) {
-                    break;
-                }
-                if (f.length() > MAX_ATTACHMENT_SIZE) {
-                    continue;
-                }
-                try {
-                    attachedFiles.add(new AttachedFile(f));
-                    added++;
-                    lastName = f.getName();
-                } catch (IOException ex) {
-                    LOG.warn("Failed to attach file: {0}", f.getName(), ex);
-                }
-            }
+            int oldSize = attachmentManager.size();
+            attachmentManager.addFromFiles(fc.getSelectedFiles());
+            int added = attachmentManager.size() - oldSize;
             if (added > 0 && statusLabel != null) {
+                List<AttachedFile> files = attachmentManager.getAttachments();
+                String lastName = files.get(files.size() - 1).filename();
                 if (added == 1) {
                     statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Attached", lastName));
                 } else {
@@ -1103,11 +1022,11 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     }
 
     private void updatePaperclipTooltip() {
-        if (attachedFiles.isEmpty()) {
+        if (attachmentManager.getAttachments().isEmpty()) {
             paperclipBtn.setToolTipText(NbBundle.getMessage(AssistantTopComponent.class, "HINT_AttachFiles"));
             paperclipBtn.setIcon(ThemeManager.getIcon("paperclip.svg", 28));
         } else {
-            paperclipBtn.setToolTipText(NbBundle.getMessage(AssistantTopComponent.class, "HINT_FilesAttached", attachedFiles.size()));
+            paperclipBtn.setToolTipText(NbBundle.getMessage(AssistantTopComponent.class, "HINT_FilesAttached", attachmentManager.size()));
             paperclipBtn.setIcon(ThemeManager.getIcon("paperclip-dot.svg", 28));
         }
     }

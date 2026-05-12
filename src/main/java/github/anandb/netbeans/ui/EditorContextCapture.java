@@ -1,0 +1,67 @@
+package github.anandb.netbeans.ui;
+
+import static org.apache.commons.lang3.StringUtils.isNotBlank;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import javax.swing.text.Document;
+import javax.swing.text.JTextComponent;
+import javax.swing.text.StyledDocument;
+
+import org.netbeans.api.editor.EditorRegistry;
+import org.netbeans.modules.editor.NbEditorUtilities;
+import org.openide.filesystems.FileObject;
+import org.openide.text.NbDocument;
+
+import github.anandb.netbeans.support.Logger;
+
+public final class EditorContextCapture {
+
+    private static final Logger LOG = new Logger(EditorContextCapture.class);
+
+    private EditorContextCapture() {}
+
+    /**
+     * Captures editor context (file path, selection, cursor position) as
+     * supplementary metadata for the AI. This is reference-only information
+     * to ground the AI in the user's current editor state — it is NOT the
+     * primary prompt content. The actual user message is always the main input.
+     * @return Map of editor context
+     */
+    public static Map<String, Object> capture() {
+        JTextComponent editor = EditorRegistry.lastFocusedComponent();
+        if (editor == null) {
+            return null;
+        }
+
+        Document doc = editor.getDocument();
+        if (!(doc instanceof StyledDocument styledDoc)) {
+            return null;
+        }
+
+        Map<String, Object> context = new HashMap<>();
+
+        FileObject fo = NbEditorUtilities.getFileObject(doc);
+        if (fo != null) {
+            context.put("filePath", fo.getPath());
+        }
+
+        String selection = editor.getSelectedText();
+        if (isNotBlank(selection)) {
+            context.put("selectionContent", selection);
+            int selStart = editor.getSelectionStart();
+            int selEnd = editor.getSelectionEnd();
+
+            int startLine = NbDocument.findLineNumber(styledDoc, selStart) + 1;
+            int endLine = NbDocument.findLineNumber(styledDoc, selEnd) + 1;
+            context.put("selection", startLine + ":" + endLine);
+        }
+
+        int caretPos = editor.getCaretPosition();
+        int cursorLine = NbDocument.findLineNumber(styledDoc, caretPos) + 1;
+        context.put("cursor", String.valueOf(cursorLine));
+
+        return context;
+    }
+}
