@@ -8,13 +8,14 @@ import com.fasterxml.jackson.databind.JsonNode;
 
 import github.anandb.netbeans.model.MessageClassification;
 import github.anandb.netbeans.model.MessageType;
-import github.anandb.netbeans.model.ProcessedMessage;
+import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.Logger;
 import org.apache.commons.lang3.tuple.Pair;
 
 import static org.apache.commons.lang3.StringUtils.abbreviateMiddle;
 import static org.apache.commons.lang3.StringUtils.defaultString;
 import static org.apache.commons.lang3.StringUtils.firstNonBlank;
+import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import static org.apache.commons.lang3.StringUtils.toRootLowerCase;
 
@@ -32,8 +33,7 @@ public final class ToolDataExtractor {
         Pair.of("", Pattern.compile("<path>([^<]{10,})</path>"))
     );
 
-    private ToolDataExtractor() {
-    }
+    private ToolDataExtractor() {}
 
     public static String extractToolCallId(JsonNode params) {
         if (params.has("toolCallId")) {
@@ -86,25 +86,28 @@ public final class ToolDataExtractor {
         return stripped;
     }
 
-    public static String extractToolTitle(String messageId, String rawText, String kind) {
+    public static String extractToolTitle(String messageId, String rawText,
+                                           MessageClassification mc, SessionUpdate update) {
         String tag = defaultString(messageId);
 
         int pos = tag.indexOf(':');
         if (pos >= 0 && pos < tag.length()) {
             tag = tag.substring(0, pos);
         } else {
-            tag = firstNonBlank(kind, "Tool");
+            tag = firstNonBlank(mc.kind(), "Tool");
         }
 
-        String identifier = "";
-        for (var entry : TOOL_CONTENT_PATTERNS) {
-            Matcher m = entry.getValue().matcher(rawText);
-            if (m.find()) {
-                identifier = m.group(1);
-                if (isNotBlank(entry.getKey())) {
-                    tag = entry.getKey();
+        String identifier = firstNonBlank(update.update().title(), "");
+        if (isBlank(identifier)) {
+            for (var entry : TOOL_CONTENT_PATTERNS) {
+                Matcher m = entry.getValue().matcher(rawText);
+                if (m.find()) {
+                    identifier = m.group(1);
+                    if (isNotBlank(entry.getKey())) {
+                        tag = entry.getKey();
+                    }
+                    break;
                 }
-                break;
             }
         }
 
@@ -116,10 +119,6 @@ public final class ToolDataExtractor {
         }
 
         return tag + " " + abbreviateMiddle(identifier, "...", 60);
-    }
-
-    public static String extractToolTitle(ProcessedMessage pm, String kind) {
-        return extractToolTitle(pm.messageId(), pm.rawText(), kind);
     }
 
     public static String getLocalEchoText(String commandText) {

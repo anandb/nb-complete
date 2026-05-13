@@ -51,6 +51,7 @@ import org.openide.util.NbBundle;
     "MSG_NewChatPrompt=Ask questions, generate code, or have me explain anything.",
     "MSG_ExistingChatPrompt=Continue a recent chat or start a new one.",
     "BTN_StartNewChat=\u2728 Start New Chat",
+    "# {0} - folder path",
     "LBL_InFolder=in {0}"
 })
 public class ChatThreadPanel extends JPanel {

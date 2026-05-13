@@ -5,7 +5,7 @@
 - **Project type**: NetBeans IDE plugin (NBM packaging)
 - **Language**: Java 17
 - **Build tool**: Maven
-- **Current Version**: 1.5.20
+- **Current Version**: 1.5.21
 
 ## Build Commands
 - Build: `mvn package`
@@ -18,9 +18,6 @@
 - Jackson for JSON processing
 - RSyntaxTextArea for code block syntax highlighting
 - JUnit 5 for testing
-
-## 📖 The "context7" (Context7) Protocol
-When working on this codebase, you **must** leverage Context7 for documentation on external libraries.
 
 ## Source Structure
 - `src/main/java/github/anandb/netbeans/` - Main source code

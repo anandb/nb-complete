@@ -34,7 +34,7 @@ public class ToolCallUpdateStrategy implements DataExtractionStrategy {
         String rawText = text;
 
         MessageClassification m = ToolDataExtractor.classify(update.update().type(), text, update.kind());
-        String tt = ToolDataExtractor.extractToolTitle(defaultString(messageId), rawText, m.kind());
+        String tt = ToolDataExtractor.extractToolTitle(defaultString(messageId), rawText, m, update);
 
         ProcessedMessage target = new ProcessedMessage.Builder()
                 .messageType(m.type())

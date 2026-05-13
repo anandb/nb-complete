@@ -18,7 +18,7 @@ import org.openide.util.NbBundle;
     "LBL_ThinkingProcess=Thinking Process",
     "LBL_ToolFallback=Tool",
     "LBL_TagRead=read",
-    "LBL_TagExecute=execute",
+    "LBL_TagExecute=shell",
     "LBL_TagWrite=write",
     "LBL_TagEdit=edit",
     "LBL_TagSearch=search",

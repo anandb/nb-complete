@@ -8,7 +8,6 @@ import java.awt.Dimension;
 import java.awt.Insets;
 import java.awt.Rectangle;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -16,7 +15,6 @@ import javax.swing.Icon;
 import javax.swing.BoxLayout;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JTextPane;
 import javax.swing.Scrollable;
 
 import java.awt.event.HierarchyEvent;
@@ -26,20 +24,19 @@ import java.awt.GridBagLayout;
 
 import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
-import javax.swing.text.View;
-
-import com.vladsch.flexmark.ext.tables.TablesExtension;
-import com.vladsch.flexmark.html.HtmlRenderer;
-import com.vladsch.flexmark.parser.Parser;
-import com.vladsch.flexmark.util.data.MutableDataSet;
 
 import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.support.Logger;
-import github.anandb.netbeans.support.TextScanner;
 import org.openide.util.NbBundle;
 
 import static org.apache.commons.lang3.StringUtils.defaultIfBlank;
 import static org.apache.commons.lang3.StringUtils.length;
+
+
+import github.anandb.netbeans.ui.TableDetector.Segment;
+import github.anandb.netbeans.ui.TableDetector.TableResult;
+import github.anandb.netbeans.ui.TableDetector.TextSegment;
+import github.anandb.netbeans.ui.TableDetector.TableSegment;
 
 
 @NbBundle.Messages("HINT_CopyToInput=Copy to input")
@@ -53,19 +50,7 @@ public class MessageBubble extends JPanel implements Scrollable {
         "```([\\w\\-\\+\\#\\.]*)\\R?(.*?)(?:```(?=\\R|$)|$)", Pattern.DOTALL
     );
 
-
-    // Static cached Flexmark parser/renderer - created once
-    private static final Parser FLEXMARK_PARSER;
-    private static final HtmlRenderer FLEXMARK_RENDERER;
-    private static final Pattern NEWLINE_SPLIT = Pattern.compile("\n");
     private static final Color TRANSPARENT = new Color(0, 0, 0, 0);
-    static {
-        MutableDataSet options = new MutableDataSet();
-        options.set(HtmlRenderer.SOFT_BREAK, "\n");
-        options.set(Parser.EXTENSIONS, List.of(TablesExtension.create()));
-        FLEXMARK_PARSER = Parser.builder(options).build();
-        FLEXMARK_RENDERER = HtmlRenderer.builder(options).build();
-    }
 
     private final MessageType type;
     private final String role;
@@ -125,93 +110,6 @@ public class MessageBubble extends JPanel implements Scrollable {
     @Override
     public Dimension getMaximumSize() {
         return new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE);
-    }
-
-    private static final class FitEditorPane extends JTextPane {
-        private static final long serialVersionUID = 1L;
-
-        private int lastComputedHeight = 0;
-        private int lastComputedWidth = 0;
-        private String lastText = null;
-        private Dimension cachedSize = null;
-
-        @Override
-        public void setText(String t) {
-            if (t != null && t.equals(lastText)) {
-                return;
-            }
-            lastText = t;
-            super.setText(t);
-            // Invalidate cached size when text changes
-            lastComputedHeight = 0;
-            cachedSize = null;
-        }
-
-        @Override
-        public Dimension getPreferredSize() {
-            Insets insets = getInsets();
-
-            // Prefer width from parent hierarchy to handle wrapping correctly before being fully laid out
-            int w = getWidth();
-            if (w <= 0 || (getParent() != null && getParent().getWidth() > 0 && getParent().getWidth() != w)) {
-                Component p = getParent();
-                while (p != null) {
-                    if (p.getWidth() > 0) {
-                        w = p.getWidth();
-                        break;
-                    }
-                    p = p.getParent();
-                }
-            }
-
-            if (w <= 0) {
-                w = 500; // Better default for calculation
-            }
-
-            // Fast path: return cached size if dimensions match and cache is valid
-            if (w == lastComputedWidth && lastComputedHeight > 0 && cachedSize != null) {
-                return cachedSize;
-            }
-
-            try {
-                View root = getUI().getRootView(this);
-                if (root != null) {
-                    // Subtract insets to get actual content width for wrapping calculation
-                    int contentWidth = Math.max(1, w - insets.left - insets.right);
-                    root.setSize(contentWidth, Integer.MAX_VALUE);
-
-                    // Tables sometimes need a second pass or a bit more space to resolve layout
-                    float h = root.getPreferredSpan(View.Y_AXIS);
-                    if (h > 0) {
-                        lastComputedHeight = (int) Math.ceil(h);
-                        lastComputedWidth = w;
-                        // Add insets back and a 20px safety buffer to prevent clipping (especially for tables)
-                        cachedSize = new Dimension(w, lastComputedHeight + insets.top + insets.bottom + 20);
-                        return cachedSize;
-                    }
-                }
-            } catch (Exception ex) {
-                LOG.fine("View sizing failed, using fallback: {0}", ex.getMessage());
-            }
-
-            if (lastComputedHeight > 0) {
-                cachedSize = new Dimension(w, Math.max(30, lastComputedHeight + insets.top + insets.bottom + 20));
-                return cachedSize;
-            }
-            Dimension superSize = super.getPreferredSize();
-            cachedSize = new Dimension(w, Math.max(30, superSize.height + insets.top + insets.bottom + 20));
-            return cachedSize;
-        }
-
-        @Override
-        public float getAlignmentX() {
-            return Component.LEFT_ALIGNMENT;
-        }
-
-        @Override
-        public Dimension getMaximumSize() {
-            return new Dimension(Integer.MAX_VALUE, getPreferredSize().height);
-        }
     }
 
     public MessageBubble(MessageType type, String text, String messageId, String toolTitle) {
@@ -518,7 +416,7 @@ public class MessageBubble extends JPanel implements Scrollable {
     }
 
     private void updateOrAddTextSegment(String markdown, ColorTheme theme, int compIdx, boolean incremental) {
-        String styledHtml = prepareHtml(markdown, theme, incremental);
+        String styledHtml = HtmlContentPreparer.prepareHtml(markdown, theme, role, incremental);
         Color bg = UIUtils.getBubbleBackground(theme, role);
 
         if (compIdx < segments.getComponentCount()) {
@@ -526,13 +424,12 @@ public class MessageBubble extends JPanel implements Scrollable {
             if (c instanceof FitEditorPane pane) {
                 pane.setBackground(TRANSPARENT);
                 pane.setOpaque(false);
-                // FitEditorPane.setText now includes a dirty check
                 pane.setText(styledHtml);
                 return;
             }
         }
 
-        FitEditorPane pane = createHtmlPane(styledHtml, bg);
+        FitEditorPane pane = FitEditorPane.createHtmlPane(styledHtml, bg, role, true);
         if (compIdx < segments.getComponentCount()) {
             segments.remove(compIdx);
             segments.add(pane, compIdx);
@@ -542,86 +439,15 @@ public class MessageBubble extends JPanel implements Scrollable {
     }
 
     private int addTextAndTableSegments(String text, ColorTheme theme, int compIdx, boolean incremental) {
-        if (text.isEmpty()) {
-            return compIdx;
-        }
-
-        // incremental=true during streaming flushes (updateContent called from flushUpdate).
-        // During incremental updates, table rows arrive in partial chunks — the heuristic
-        // detection (lines starting/ending with "|") would flicker as components swap between
-        // FitEditorPane (text) and RoundedPanel (table). Bypass detection: render as plain
-        // markdown text. Flexmark still produces <table> HTML inside the FitEditorPane, so
-        // tables are visible but without the cosmetic RoundedPanel wrapper. On final render
-        // (incremental=false, from constructor or non-streaming addMessage), the full table
-        // detection + RoundedPanel wrapping runs cleanly.
-        if (incremental) {
-            updateOrAddTextSegment(text, theme, compIdx++, true);
-            return compIdx;
-        }
-
-        // Fast-path for non-table text
-        if (!text.contains("|")) {
-            updateOrAddTextSegment(text, theme, compIdx++, false);
-            return compIdx;
-        }
-
-        String[] lines = NEWLINE_SPLIT.split(text, -1);
-        StringBuilder textBuffer = new StringBuilder();
-        List<String> tableLines = new ArrayList<>();
-        boolean inTable = false;
-        boolean headerFound = false;
+        TableResult result = TableDetector.detectTables(text, incremental);
         int currentIdx = compIdx;
 
-        for (int i = 0; i < lines.length; i++) {
-            String line = lines[i];
-            boolean isTableRow = line.contains("|") && line.trim().startsWith("|") && line.trim().endsWith("|");
-
-            if (isTableRow) {
-                if (!inTable) {
-                    inTable = true;
-                    tableLines.add(line);
-                } else {
-                    tableLines.add(line);
-                    if (!headerFound) {
-                        if (UIUtils.isSeparatorRowLine(line)) {
-                            headerFound = true;
-                            if (textBuffer.length() > 0) {
-                                updateOrAddTextSegment(textBuffer.toString(), theme, currentIdx++, false);
-                                textBuffer.setLength(0);
-                            }
-                        }
-                    }
-                }
-            } else {
-                if (inTable) {
-                    if (headerFound) {
-                        updateOrAddTableSegment(String.join("\n", tableLines), theme, currentIdx++);
-                    } else {
-                        for (String l : tableLines) {
-                            textBuffer.append(l).append("\n");
-                        }
-                    }
-                    tableLines.clear();
-                    inTable = false;
-                    headerFound = false;
-                }
-                textBuffer.append(line);
-                if (i < lines.length - 1) {
-                    textBuffer.append("\n");
-                }
+        for (Segment seg : result.segments()) {
+            if (seg instanceof TextSegment ts) {
+                updateOrAddTextSegment(ts.text(), theme, currentIdx++, false);
+            } else if (seg instanceof TableSegment tbl) {
+                updateOrAddTableSegment(tbl.markdown(), theme, currentIdx++);
             }
-        }
-
-        if (inTable && headerFound) {
-            updateOrAddTableSegment(String.join("\n", tableLines), theme, currentIdx++);
-        } else if (inTable) {
-            for (String l : tableLines) {
-                textBuffer.append(l).append("\n");
-            }
-        }
-
-        if (textBuffer.length() > 0) {
-            updateOrAddTextSegment(textBuffer.toString(), theme, currentIdx++, false);
         }
 
         return currentIdx;
@@ -629,7 +455,7 @@ public class MessageBubble extends JPanel implements Scrollable {
 
 
     private void updateOrAddTableSegment(String tableMarkdown, ColorTheme theme, int compIdx) {
-        String styledHtml = prepareHtml(tableMarkdown, theme, false);
+        String styledHtml = HtmlContentPreparer.prepareHtml(tableMarkdown, theme, role, false);
 
         if (compIdx < segments.getComponentCount()) {
             Component c = segments.getComponent(compIdx);
@@ -645,10 +471,10 @@ public class MessageBubble extends JPanel implements Scrollable {
         rp.setBaseColor(theme.tableBackground());
         rp.setBorderColor(theme.tableBorder());
         rp.setLayout(new BorderLayout());
-        rp.setBorder(new EmptyBorder(1, 1, 1, 1)); // 1px margin for the rounded border
+        rp.setBorder(new EmptyBorder(1, 1, 1, 1));
 
-        FitEditorPane pane = createHtmlPane(styledHtml, theme.tableBackground());
-        pane.setOpaque(false); // Let RoundedPanel background show through
+        FitEditorPane pane = FitEditorPane.createHtmlPane(styledHtml, theme.tableBackground(), role, false);
+        pane.setOpaque(false);
         pane.setBorder(new EmptyBorder(8, 8, 8, 8));
         rp.add(pane, BorderLayout.CENTER);
 
@@ -658,101 +484,6 @@ public class MessageBubble extends JPanel implements Scrollable {
         } else {
             segments.add(rp);
         }
-    }
-
-    private String prepareHtml(String markdown, ColorTheme theme, boolean incremental) {
-        String html = FLEXMARK_RENDERER.render(FLEXMARK_PARSER.parse(markdown));
-
-        // During streaming, skip all post-processing — the full render will fix
-        // everything on the final tick. Avoids O(n) replace chain, ASCII art scan,
-        // and space replacement each 100ms.
-        if (incremental) {
-            return html;
-        }
-
-        String tableBg = theme.toHtmlHex(theme.tableBackground());
-        String headerBg = theme.toHtmlHex(theme.tableHeaderBackground());
-        String borderColor = theme.toHtmlHex(theme.tableBorder());
-
-        // Single-pass tag replacement
-        String tableTag = "<table align='left' border='1' bordercolor='" + borderColor
-                + "' cellspacing='0' cellpadding='8' style='border-collapse: collapse; width: 100%; margin: 8px 0; background-color: "
-                + tableBg + ";'>";
-        String thTag = "<th align='left' bgcolor='" + headerBg
-                + "' style='padding: 8px; border: 1px solid " + borderColor + "; text-align: left;'><b>";
-        String tdTag = "<td align='left' style='padding: 8px; border: 1px solid " + borderColor + "; vertical-align: top;'>";
-        String pTag = "<p align='left' style='text-align: left !important;'>";
-        String divTag = "<div align='left' style='text-align: left !important;'>";
-
-        html = html.replace("</th>", "</b></th>")
-                   .replace("<table>", tableTag)
-                   .replace("<th>", thTag)
-                   .replace("<td>", tdTag)
-                   .replace("<p>", pTag)
-                   .replace("<div>", divTag);
-
-        // Hack to prevent space collapse in JEditorPane
-        // Replace double spaces with space + &nbsp; but ONLY if it's not ASCII art
-        boolean hasArt = TextScanner.containsAsciiArt(markdown);
-        if (!hasArt && !"user".equals(role)) {
-            html = html.replace("  ", " &nbsp;");
-        } else if (hasArt) {
-            LOG.fine("Contains ASCII art, not replacing spaces");
-        }
-
-        Color bg = UIUtils.getBubbleBackground(theme, role);
-
-        boolean isAssistant = !"user".equals(role) && !"error".equals(role) && !"tool".equals(role);
-        String customCss = theme.toCss(null, isAssistant);
-        if ("error".equals(role)) {
-            customCss += " body { color: #D32F2F; font-weight: bold; }";
-        } else if ("user".equals(role)) {
-            customCss += " body { font-weight: 300; }";
-        }
-        // Detect if the content looks like ASCII art (contains box drawing characters)
-        String bodyStyle = "margin: 0; padding: 0; text-align: left !important; width: 100%;";
-        if (hasArt) {
-            // Avoid pre tag to prevent theme conflicts (black box).
-            // Use manual line breaks and nbsp to preserve structure in old renderers.
-            String monoStack = FontStacks.MONO_STACK;
-            customCss += " .ascii-art { font-family: " + monoStack + "; line-height: 1.0; }";
-
-            // Flexmark might have already wrapped it in <p> or added other tags.
-            // We need to be careful with replacement.
-            html = html.replace("  ", " &nbsp;"); // Replace double spaces at least
-            html = html.replace("\n", "<br/>");
-            html = "<div class='ascii-art'>" + html + "</div>";
-        }
-
-        return "<html><head><style>" + customCss + "</style></head><body style='" + bodyStyle + "'>"
-                + html
-                + "</body></html>";
-    }
-
-
-    private FitEditorPane createHtmlPane(String styledHtml, Color bg) {
-        ColorTheme theme = ThemeManager.getCurrentTheme();
-        FitEditorPane pane = new FitEditorPane();
-        pane.putClientProperty(JTextPane.HONOR_DISPLAY_PROPERTIES, Boolean.TRUE);
-        pane.setEditable(false);
-        pane.setContentType("text/html");
-        // Use opaque background for User bubbles to prevent "garbled" text artifacts in scroll panes
-        if ("user".equals(role) && bg != null && bg.getAlpha() > 0) {
-            pane.setOpaque(true);
-            pane.setBackground(bg);
-        } else {
-            pane.setOpaque(false);
-            pane.setBackground(TRANSPARENT);
-        }
-        pane.setMargin(new Insets(0, 0, 0, 0));
-        pane.setForeground(theme.foreground());
-        pane.setDoubleBuffered(true);
-        pane.setFont(ThemeManager.getFont());
-        // Default AI text alignment: 8 (bubble) + 20 (pane padding) = 28px
-        pane.setBorder(new EmptyBorder(6, 20, 10, 6));
-        pane.setAlignmentX(Component.LEFT_ALIGNMENT);
-        pane.setText(styledHtml);
-        return pane;
     }
 
 
