@@ -24,7 +24,6 @@ When working on this codebase, you **must** leverage Context7 for documentation 
 
 ## Source Structure
 - `src/main/java/github/anandb/netbeans/` - Main source code
-  - `completion/` - Code completion provider
   - `manager/` - ACPManager, AcpProtocolClient
   - `model/` - Message, Session, Agent, SessionUpdate (ACP compliant)
   - `project/` - Project management (startup, project manager)
@@ -46,7 +45,6 @@ When working on this codebase, you **must** leverage Context7 for documentation 
 - `src/main/resources/github/anandb/netbeans/ui/layer.xml` - NetBeans registration for the chat window.
 
 ## Coding Notes
-
-- **Logging**: Use index-based placeholders (e.g., `{0}`) for `java.util.logging.Logger`; do not concatenate strings.
+- **Logging**: Use index-based placeholders (e.g., `{0}`) for `github.anandb.netbeans.support.Logger`; do not concatenate strings.
 - **Theming**: Use `ThemeManager.getCurrentTheme()` for colors. Icons should have `-dark.svg` variants for high-contrast dark mode support, resolved automatically via `ThemeManager`.
 - **Asynchrony**: Use `SwingUtilities.invokeLater()` for all UI updates coming from background RPC/SSE threads.

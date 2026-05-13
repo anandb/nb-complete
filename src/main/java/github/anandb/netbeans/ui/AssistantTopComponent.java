@@ -16,7 +16,6 @@ import java.awt.KeyboardFocusManager;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
-import java.awt.event.ActionEvent;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -27,8 +26,6 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.HashSet;
 import java.util.concurrent.CompletableFuture;
-
-import github.anandb.netbeans.model.AttachedFile;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -150,7 +147,7 @@ import static org.apache.commons.lang3.StringUtils.isNotBlank;
     "LBL_ChatDefault=Chat {0}",
     "LBL_TypeMessage= Type Message Here"
 })
-public final class AssistantTopComponent extends TopComponent implements PermissionHandler, SessionListener {
+public final class AssistantTopComponent extends TopComponent implements PermissionHandler {
 
     private static final Logger LOG = new Logger(AssistantTopComponent.class);
     private static final long serialVersionUID = 1L;
@@ -166,8 +163,6 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     private final JButton toggleBlocksBtn;
     private final JButton filterBtn;
     private final JButton toggleOptionsBtn;
-    private boolean optionsPanelCollapsed = true;
-    private Set<String> closedProjectDirs = Set.of();
     private JLabel statusLabel;
     private final JLabel versionLabel;
     private final JLabel cwdLabel;
@@ -175,16 +170,15 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     private final JScrollPane inputScrollPane;
     private final JPanel header;
     private final MessageHistory messageHistory = new MessageHistory();
-    private boolean isSwitchingSessionDropdown = false;
-    private Timer thinkingTimer;
-    private Timer statusResetTimer;
-    private transient KeyEventDispatcher pageKeyDispatcher;
-    private int thinkingDots = 0;
-    private volatile boolean animatedStatus = false;
-    private static final String[] DOT_STRINGS = {"", ".", "..", "..."};
+    private final StatusController statusController;
+    private final AttachmentUiHandler attachmentUiHandler;
+    private final SessionDropdownHandler sessionDropdownHandler;
+    private ComponentLifecycleHandler componentLifecycleHandler;
+    private final InputHandler inputHandler;
+    private final SessionLifecycleHandler sessionLifecycleHandler;
+    private final MessageSender messageSender;
 
     private final AttachmentManager attachmentManager = new AttachmentManager();
-    private final JButton paperclipBtn;
     private transient final ConfigPanelController configPanelController;
     private transient final AutocompleteManager autocompleteManager;
 
@@ -193,64 +187,8 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         setName(NbBundle.getMessage(AssistantTopComponent.class, "CTL_AssistantTopComponent"));
         setToolTipText(NbBundle.getMessage(AssistantTopComponent.class, "HINT_AssistantTopComponent"));
 
-        thinkingTimer = new Timer(500, e -> {
-            if (statusLabel != null && animatedStatus) {
-                String txt = statusLabel.getText();
-                if (txt != null) {
-                    String base = txt.replace(".", "");
-                    thinkingDots = (thinkingDots + 1) % 4;
-                    statusLabel.setText(base + DOT_STRINGS[thinkingDots]);
-                }
-            }
-        });
-
-        statusResetTimer = new Timer(1500, e -> {
-            if (statusLabel != null) {
-                statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Ready"));
-            }
-        });
-        statusResetTimer.setRepeats(false);
-
         setLayout(new BorderLayout());
         chatPanel = new ChatThreadPanel();
-
-        pageKeyDispatcher = e -> {
-            if (e.getID() == KeyEvent.KEY_PRESSED) {
-                int keyCode = e.getKeyCode();
-                if (keyCode == KeyEvent.VK_PAGE_UP
-                        || keyCode == KeyEvent.VK_PAGE_DOWN
-                        || ((e.getModifiersEx() & KeyEvent.CTRL_DOWN_MASK) != 0
-                            && (keyCode == KeyEvent.VK_HOME
-                                || keyCode == KeyEvent.VK_END))) {
-                    Component src = e.getComponent();
-                    if (src != null && SwingUtilities.isDescendingFrom(src, AssistantTopComponent.this)
-                            && !SwingUtilities.isDescendingFrom(src, chatPanel)) {
-                        if (keyCode == KeyEvent.VK_PAGE_UP
-                                || keyCode == KeyEvent.VK_PAGE_DOWN) {
-                            Component c = src;
-                            while (c != null) {
-                                if (c instanceof JComboBox) {
-                                    return false;
-                                }
-                                c = c.getParent();
-                            }
-                        }
-                        if (keyCode == java.awt.event.KeyEvent.VK_PAGE_UP) {
-                            chatPanel.scrollByBlock(true);
-                        } else if (keyCode == java.awt.event.KeyEvent.VK_PAGE_DOWN) {
-                            chatPanel.scrollByBlock(false);
-                        } else if (keyCode == java.awt.event.KeyEvent.VK_HOME) {
-                            chatPanel.scrollToTop();
-                        } else if (keyCode == java.awt.event.KeyEvent.VK_END) {
-                            chatPanel.scrollToBottom(true);
-                        }
-                        return true;
-                    }
-                }
-            }
-            return false;
-        };
-        KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(pageKeyDispatcher);
 
         configPanelController = new ConfigPanelController(this::updateTabName);
 
@@ -261,40 +199,6 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         topBar.setOpaque(false);
 
         sessionDropdown = new JComboBox<>();
-        sessionDropdown.addPopupMenuListener(new javax.swing.event.PopupMenuListener() {
-            private String prePopupSessionId;
-
-            @Override
-            public void popupMenuWillBecomeVisible(javax.swing.event.PopupMenuEvent e) {
-                SessionItem selected = (SessionItem) sessionDropdown.getSelectedItem();
-                prePopupSessionId = selected != null ? selected.getSession().id() : null;
-            }
-            @Override
-            public void popupMenuWillBecomeInvisible(javax.swing.event.PopupMenuEvent e) {
-                SessionItem selected = (SessionItem) sessionDropdown.getSelectedItem();
-                String currentId = selected != null ? selected.getSession().id() : null;
-                if (currentId != null && !currentId.equals(prePopupSessionId)) {
-                    SessionManager.getInstance().loadSession(currentId);
-                }
-                inputArea.requestFocusInWindow();
-            }
-            @Override
-            public void popupMenuCanceled(javax.swing.event.PopupMenuEvent e) {
-                inputArea.requestFocusInWindow();
-            }
-        });
-        sessionDropdown.addPopupMenuListener(new javax.swing.event.PopupMenuListener() {
-            @Override
-            public void popupMenuWillBecomeVisible(javax.swing.event.PopupMenuEvent e) {}
-            @Override
-            public void popupMenuWillBecomeInvisible(javax.swing.event.PopupMenuEvent e) {
-                SwingUtilities.invokeLater(() -> inputArea.requestFocusInWindow());
-            }
-            @Override
-            public void popupMenuCanceled(javax.swing.event.PopupMenuEvent e) {
-                SwingUtilities.invokeLater(() -> inputArea.requestFocusInWindow());
-            }
-        });
 
         JPanel sessionControls = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         sessionControls.setOpaque(false);
@@ -307,7 +211,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             if (projects.length == 1) {
                 SessionManager.getInstance().createNewSession(projects[0].getProjectDirectory().getPath());
             } else {
-                showProjectPickerPopup((JComponent) e.getSource());
+                componentLifecycleHandler.showProjectPickerPopup((JComponent) e.getSource());
             }
         });
         renameSessionBtn = UIUtils.createToolbarButton("rename.svg", NbBundle.getMessage(AssistantTopComponent.class, "HINT_RenameSession"), e -> renameCurrentSession());
@@ -379,21 +283,11 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         statusLabel.setFont(statusLabel.getFont().deriveFont(11f));
         statusPanel.add(statusLabel, BorderLayout.WEST);
 
-        JButton to = UIUtils.createToolbarButton("settings.svg", 25, NbBundle.getMessage(AssistantTopComponent.class, "HINT_Options"), null);
-        to.addActionListener(e -> {
-            optionsPanelCollapsed = !optionsPanelCollapsed;
-            configPanelController.getComponent().setVisible(!optionsPanelCollapsed);
-            to.setIcon(ThemeManager.getIcon(optionsPanelCollapsed ? "settings.svg" : "arrow-down.svg", 25));
-            AssistantTopComponent.this.revalidate();
-            AssistantTopComponent.this.repaint();
-        });
-        toggleOptionsBtn = to;
+        toggleOptionsBtn = UIUtils.createToolbarButton("settings.svg", 25, NbBundle.getMessage(AssistantTopComponent.class, "HINT_Options"), null);
 
         JPanel rightStatusPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         rightStatusPanel.setOpaque(false);
 
-        paperclipBtn = createPaperclipButton();
-        rightStatusPanel.add(paperclipBtn);
         rightStatusPanel.add(toggleOptionsBtn);
 
         statusPanel.add(rightStatusPanel, BorderLayout.EAST);
@@ -407,8 +301,6 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         float editorFontSize = (float) ThemeManager.getMonospaceFont().getSize();
         inputArea.setFont(ThemeManager.getFont().deriveFont(editorFontSize));
 
-        setupImagePasteHandler();
-
         inputScrollPane = new JScrollPane(inputArea);
         inputScrollPane.setPreferredSize(new Dimension(100, 100));
 
@@ -418,8 +310,8 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         inputMainPanel.add(inputScrollPane, BorderLayout.CENTER);
 
         JPanel btnCard = UIUtils.createTransparentPanel(new CardLayout());
-        sendBtn = UIUtils.createTextButton(NbBundle.getMessage(AssistantTopComponent.class, "BTN_Go"), e -> sendMessage());
-        stopBtn = UIUtils.createTextButton(NbBundle.getMessage(AssistantTopComponent.class, "BTN_Stop"), e -> stopMessage());
+        sendBtn = UIUtils.createTextButton(NbBundle.getMessage(AssistantTopComponent.class, "BTN_Go"), null);
+        stopBtn = UIUtils.createTextButton(NbBundle.getMessage(AssistantTopComponent.class, "BTN_Stop"), null);
 
         btnCard.add(sendBtn, "SEND");
         btnCard.add(stopBtn, "STOP");
@@ -441,428 +333,47 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
         add(bottomPanel, BorderLayout.SOUTH);
 
-        autocompleteManager = new AutocompleteManager(inputArea, this::sendMessage);
+        statusController = new StatusController(statusLabel, sendBtn, stopBtn, inputArea, toggleOptionsBtn);
+        attachmentUiHandler = new AttachmentUiHandler(attachmentManager, statusController, inputArea, AssistantTopComponent.this);
+        rightStatusPanel.add(attachmentUiHandler.getButton(), 0);
+        sessionDropdownHandler = new SessionDropdownHandler(sessionDropdown, inputArea);
+        sessionLifecycleHandler = new SessionLifecycleHandler(
+            chatPanel, sessionDropdown, newSessionBtn, renameSessionBtn,
+            toggleOptionsBtn, configPanelController, inputArea, statusController,
+            this::showProjectPickerPopup, this::updateTabName, this::updateCwdLabel
+        );
+        messageSender = new MessageSender(
+            inputArea, chatPanel, attachmentManager, messageHistory,
+            statusController, attachmentUiHandler::updateTooltip, inputArea::requestFocusInWindow
+        );
 
-        setupListeners();
+        sendBtn.addActionListener(e -> messageSender.sendMessage());
+        stopBtn.addActionListener(e -> messageSender.stopMessage());
+
+        toggleOptionsBtn.addActionListener(e -> {
+            boolean collapsed = !sessionLifecycleHandler.isOptionsPanelCollapsed();
+            sessionLifecycleHandler.setOptionsPanelCollapsed(collapsed);
+            configPanelController.getComponent().setVisible(!collapsed);
+            toggleOptionsBtn.setIcon(ThemeManager.getIcon(collapsed ? "settings.svg" : "arrow-down.svg", 25));
+            AssistantTopComponent.this.revalidate();
+            AssistantTopComponent.this.repaint();
+        });
+
+        autocompleteManager = new AutocompleteManager(inputArea, messageSender::sendMessage);
+
+        componentLifecycleHandler = new ComponentLifecycleHandler(
+            chatPanel, statusController, sessionLifecycleHandler,
+            configPanelController, inputArea, sessionDropdown, toggleOptionsBtn,
+            AssistantTopComponent.this
+        );
+        inputHandler = new InputHandler(inputArea, autocompleteManager, messageSender, messageHistory);
 
         initChat();
         applyInitialTheme();
     }
 
-    @Override
-    public void onSessionUpdate(SessionUpdate update) {
-        String type = update.update() != null ? update.update().type().name() : null;
-        String msgId = update.update() != null ? update.update().messageId() : null;
-        LOG.fine("UI received session update: type={0}, msgId={1}", type, msgId);
-
-        DataExtractionStrategy strategy = StrategyRegistry.getInstance().select(update);
-        if (strategy != null) {
-            strategy.extract(update, new UIHandler() {
-                @Override
-                public void displayMessage(ProcessedMessage msg) {
-                    SwingUtilities.invokeLater(() -> {
-                        chatPanel.addMessage(msg);
-                        updateButtonState(true);
-                    });
-                }
-
-                @Override
-                public void updateConfig(List<SessionConfigOption> options) {
-                    if (options != null) {
-                        configPanelController.updateConfigControls(options);
-                    }
-                }
-
-                @Override
-                public void refreshSessions() {
-                    SessionManager.getInstance().refreshSessions();
-                }
-
-                @Override
-                public void updateUsage(long used, long size) {
-                    SwingUtilities.invokeLater(() ->
-                        statusLabel.setToolTipText(NbBundle.getMessage(AssistantTopComponent.class, "HINT_ContextUsage", used, size))
-                    );
-                }
-            });
-        }
-
-        // Status updates
-        Boolean isThinking = update.isThinking();
-        if (isThinking != null) {
-            SwingUtilities.invokeLater(() -> {
-                if (isThinking) {
-                    statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Thinking"));
-                    animatedStatus = true;
-                    thinkingTimer.start();
-                } else {
-                    String current = statusLabel.getText();
-                    String thinking = NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Thinking");
-                    if (current != null && current.contains(thinking.replace(".", "").trim())) {
-                        statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Responding"));
-                    }
-                }
-            });
-        }
-
-        // End of turn signals
-        if ("responding_finished".equals(type) || "end_turn".equals(type)) {
-            SwingUtilities.invokeLater(() -> {
-                resetStatus();
-                chatPanel.stopStreaming();
-            });
-        }
-    }
-
-
-    private void setupListeners() {
-        inputArea.addKeyListener(new KeyAdapter() {
-            @Override
-            public void keyPressed(KeyEvent e) {
-                if (e.getKeyCode() == KeyEvent.VK_TAB) {
-                    e.consume();
-                    // Trigger same behavior as /agents command
-                    SlashCommandInterceptor interceptor = ProcessManager.getInstance().getSlashCommandInterceptor();
-                    SlashCommandCallback cb = interceptor != null ? interceptor.getCallback() : null;
-                    if (cb != null) {
-                        cb.expandOptionsPanel();
-                        cb.popupAgentCombo();
-                    }
-                } else if (e.getKeyCode() == KeyEvent.VK_ENTER) {
-                    if (autocompleteManager.handleKeyPressed(e)) {
-                        // handled by autocomplete
-                    } else if ((e.getModifiersEx() & InputEvent.SHIFT_DOWN_MASK) != 0) {
-                        inputArea.append("\n");
-                    } else {
-                        e.consume();
-                        sendMessage();
-                    }
-                } else if (e.getKeyCode() == KeyEvent.VK_UP) {
-                    if (autocompleteManager.isPopupVisible()) {
-                        e.consume();
-                    } else if (inputArea.getCaretPosition() == 0 && !messageHistory.isEmpty()) {
-                        inputArea.setText(messageHistory.navigateUp(inputArea.getText()));
-                    }
-                } else if (e.getKeyCode() == KeyEvent.VK_DOWN) {
-                    if (autocompleteManager.isPopupVisible()) {
-                        e.consume();
-                    } else if (inputArea.getCaretPosition() == inputArea.getText().length() && messageHistory.isNavigating()) {
-                        inputArea.setText(messageHistory.navigateDown(inputArea.getText()));
-                    }
-                } else if ((e.getModifiersEx() & InputEvent.CTRL_DOWN_MASK) != 0 && e.getKeyCode() == KeyEvent.VK_Z) {
-                    e.consume();
-                    inputArea.undo();
-                } else if ((e.getModifiersEx() & InputEvent.CTRL_DOWN_MASK) != 0 && e.getKeyCode() == KeyEvent.VK_Y) {
-                    e.consume();
-                    inputArea.redo();
-                }
-            }
-
-            @Override
-            public void keyReleased(KeyEvent e) {
-                autocompleteManager.handleKeyReleased(e);
-                ProcessManager.getInstance().touchConnection();
-            }
-        });
-    }
-
-    private void setupImagePasteHandler() {
-        ImagePasteTransferHandler.PasteCallback callback = new ImagePasteTransferHandler.PasteCallback() {
-            @Override
-            public boolean canAddAttachment() {
-                return attachmentManager.canAdd();
-            }
-
-            @Override
-            public void onAttachmentAdded(AttachedFile file) {
-                SwingUtilities.invokeLater(() -> {
-                    if (!attachmentManager.add(file)) {
-                        if (statusLabel != null) {
-                            statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_FileTooLarge"));
-                            statusResetTimer.restart();
-                        }
-                        return;
-                    }
-                    updatePaperclipTooltip();
-                    if (statusLabel != null) {
-                        statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Attached", file.filename()));
-                        statusResetTimer.restart();
-                    }
-                });
-            }
-
-            @Override
-            public void onError(String message) {
-                SwingUtilities.invokeLater(() -> {
-                    if (statusLabel != null) {
-                        statusLabel.setText(message);
-                        statusResetTimer.restart();
-                    }
-                });
-            }
-
-            @Override
-            public void onAttachmentLimitReached() {
-                SwingUtilities.invokeLater(() -> {
-                    if (statusLabel != null) {
-                        statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_MaxFiles", AttachmentManager.MAX_ATTACHMENTS));
-                        statusResetTimer.restart();
-                    }
-                });
-            }
-        };
-
-        ImagePasteTransferHandler handler = new ImagePasteTransferHandler(callback);
-        inputArea.setTransferHandler(handler);
-    }
-
-    @Override
-    public void onSessionListUpdated(List<Session> allSessions) {
-        SwingUtilities.invokeLater(() -> {
-            List<Session> sessions = allSessions;
-            isSwitchingSessionDropdown = true;
-            try {
-                String currentId = SessionManager.getInstance().getCurrentSessionId();
-                sessionDropdown.removeAllItems();
-                LOG.fine("onSessionListUpdated: adding {0} sessions to dropdown", sessions.size());
-                int selectIdx = -1;
-                for (int i = 0; i < sessions.size(); i++) {
-                    Session s = sessions.get(i);
-                    String customTitle = SessionTitleMapper.getTitle(s.id(), s.title());
-                    sessionDropdown.addItem(new SessionItem(s, customTitle));
-                    if (currentId != null && s.id().equals(currentId)) {
-                        selectIdx = i;
-                    }
-                }
-
-                boolean hasSessions = !sessions.isEmpty();
-                boolean hasProjects = OpenProjects.getDefault().getOpenProjects().length > 0;
-                newSessionBtn.setEnabled(hasProjects);
-                renameSessionBtn.setEnabled(hasSessions);
-
-                configPanelController.ensureDefaultModelSelected();
-
-                if (hasSessions) {
-                    if (selectIdx != -1) {
-                        sessionDropdown.setSelectedIndex(selectIdx);
-                        Session cur = sessions.get(selectIdx);
-                        if (cur != null) {
-                            LOG.fine("Re-loading current session: {0}", cur.id());
-                            SessionManager.getInstance().loadSession(cur.id());
-                        }
-                    } else {
-                        Session mostRecent = sessions.get(0);
-                        if (mostRecent != null) {
-                            LOG.fine("Loading most recent session: {0}", mostRecent.id());
-                            SessionManager.getInstance().loadSession(mostRecent.id());
-                        }
-                    }
-                } else {
-                    chatPanel.setSessionList(sessions, id -> SessionManager.getInstance().loadSession(id), () -> {
-                        Project[] projects = ACPProjectManager.getInstance().getAllOpenProjects();
-                        if (projects == null || projects.length == 0) {
-                            return;
-                        }
-                        if (projects.length == 1) {
-                            SessionManager.getInstance().createNewSession(projects[0].getProjectDirectory().getPath());
-                        } else {
-                            showProjectPickerPopup(sessionDropdown);
-                        }
-                    });
-                    sessionDropdown.setSelectedIndex(-1);
-                    if (!hasProjects) {
-                        statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_OpenProject"));
-                    } else {
-                        statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_NewChat"));
-                    }
-                    optionsPanelCollapsed = false;
-                    configPanelController.getComponent().setVisible(true);
-                    toggleOptionsBtn.setIcon(ThemeManager.getIcon("arrow-down.svg", 25));
-                    setInputEnabled(false);
-                    configPanelController.ensureDefaultModelAdded();
-                }
-            } finally {
-                isSwitchingSessionDropdown = false;
-                sessionDropdown.revalidate();
-                sessionDropdown.repaint();
-            }
-        });
-    }
-
-    @Override
-    public void onSessionStarted(String sessionId) {
-        SwingUtilities.invokeLater(() -> {
-            chatPanel.clearMessages();
-                if (sessionId == null) {
-                    statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_CreatingSession"));
-                    updateTabName(null);
-                } else {
-                    statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_LoadingChat"));
-                }
-        });
-    }
-
-    @Override
-    public void onSessionLoaded(String sessionId, List<SessionConfigOption> configOptions, boolean isStartup) {
-        SwingUtilities.invokeLater(() -> {
-            statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Ready"));
-            animatedStatus = false;
-            updateCwdLabel(null);
-            if (configOptions != null) {
-                configPanelController.updateConfigControls(configOptions, isStartup);
-            }
-            // If this is a new session (isStartup=true), apply any pre-selected config values
-            // from the config panel that the user may have set before creating the chat
-            if (isStartup) {
-                configPanelController.applyPreSelectedConfigValues(sessionId, configOptions);
-            }
-
-            setInputEnabled(true);
-            if (!sessionDropdown.isPopupVisible()) {
-                inputArea.requestFocusInWindow();
-            }
-            chatPanel.scrollToBottom();
-        });
-    }
-
-    @Override
-    public void onSessionLoading(boolean isLoading) {
-        SwingUtilities.invokeLater(() -> setInputEnabled(!isLoading));
-    }
-
-    @Override
-    public void onSessionError(String message) {
-        SwingUtilities.invokeLater(() -> {
-            statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Error", message));
-            animatedStatus = false;
-            chatPanel.stopStreaming();
-            chatPanel.addMessage(ProcessedMessage.createError(MessageType.error_response, message, null, null));
-        });
-    }
-
     private void initChat() {
         SessionManager.getInstance().refreshSessions();
-    }
-
-    private void sendMessage() {
-        if (!SessionManager.getInstance().getStateMachine().canSendMessage()) {
-            return;
-        }
-        String text = inputArea.getText(); // Don't trim user input spaces
-        if (text.isEmpty() && attachmentManager.getAttachments().isEmpty()) {
-            return;
-        }
-
-        // Intercept local slash commands first
-        boolean isForwardedSlash = text.trim().startsWith("/");
-        if (isForwardedSlash) {
-            SlashCommandInterceptor interceptor = ProcessManager.getInstance().getSlashCommandInterceptor();
-            if (interceptor != null) {
-                CompletableFuture<Boolean> handled = interceptor.intercept(text, null);
-                if (handled != null && handled.isDone() && !handled.isCompletedExceptionally()) {
-                    Boolean result = handled.join();
-                    if (Boolean.TRUE.equals(result)) {
-                        inputArea.setText("");
-                        return;
-                    }
-                }
-            }
-
-            String echoText = ToolDataExtractor.getLocalEchoText(text);
-            if (echoText != null) {
-                chatPanel.addMessage(new ProcessedMessage.Builder()
-                    .messageType(MessageType.tool_call_update)
-                    .text(echoText)
-                    .messageId(echoText)
-                    .kind("Slash Command")
-                    .toolTitle(echoText)
-                    .rawText(echoText)
-                    .build());
-                inputArea.setText("");
-            }
-        }
-
-        // Add to history
-        if (!isForwardedSlash) {
-            messageHistory.add(text);
-        }
-
-        String currentSessionId = SessionManager.getInstance().getCurrentSessionId();
-        if (currentSessionId == null) {
-            statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_NoSession"));
-            return;
-        }
-
-        inputArea.setText("");
-        statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Sending"));
-        animatedStatus = true;
-        updateButtonState(true);
-
-        // Build file attachment blocks (skip for forwarded slash commands)
-        List<Map<String, Object>> fileBlocks = isForwardedSlash ? List.of() : attachmentManager.buildFileBlocks();
-        if (!isForwardedSlash) {
-            attachmentManager.clear();
-            updatePaperclipTooltip();
-
-            // Local echo with file references
-            boolean localEcho = NbPreferences.forModule(ACPOptionsPanel.class).getBoolean("echoUserInput", true);
-            if (localEcho) {
-                StringBuilder echoBuilder = new StringBuilder(text);
-                if (!fileBlocks.isEmpty()) {
-                    if (!text.isBlank()) echoBuilder.append("\n");
-                    for (Map<String, Object> block : fileBlocks) {
-                        String type = (String) block.get("type");
-                        String fname = (String) block.get("filename");
-                        echoBuilder.append("\n[")
-                                .append("image".equals(type) ? "Image" : "File").append(": ")
-                                .append(fname).append("]");
-                    }
-                }
-
-                chatPanel.addMessage(new ProcessedMessage.Builder()
-                    .messageType(MessageType.user_message_chunk)
-                    .text(echoBuilder.toString())
-                    .rawText(echoBuilder.toString())
-                    .build());
-            }
-        }
-
-        // Editor Context
-        Map<String, Object> context = isForwardedSlash ? null : EditorContextCapture.capture();
-
-        final String messageText = text;
-        ProcessManager.getInstance().sendMessage(currentSessionId, messageText, context, fileBlocks)
-                .thenAccept(result -> {
-                    SwingUtilities.invokeLater(() -> {
-                        String currentStatus = statusLabel.getText();
-                        if (currentStatus != null && currentStatus.equals(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Sending"))) {
-                            statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Ready"));
-                            animatedStatus = false;
-                            updateButtonState(false);
-                            inputArea.requestFocusInWindow();
-                        }
-
-                        // Handle turn completion from RPC result
-                        if (result != null && result.has("stopReason")) {
-                            LOG.info("Turn finished via RPC result: stopReason={0}", result.get("stopReason").asText());
-                            chatPanel.stopStreaming();
-                        }
-                    });
-                })
-                .exceptionally(ex -> {
-                    SwingUtilities.invokeLater(() -> {
-                        statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Error", ex.getMessage()));
-                        animatedStatus = false;
-                        chatPanel.stopStreaming();
-                        chatPanel.addMessage(ProcessedMessage.createError(
-                                MessageType.error_response, NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Error", ex.getMessage()), null, null
-                        ));
-                        inputArea.setText(messageText);
-                        updateButtonState(false);
-                        inputArea.requestFocusInWindow();
-                    });
-                    return null;
-                });
     }
 
     public void setInputText(String text) {
@@ -885,23 +396,6 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         } else {
             LOG.warn("copyToInput: no instance, cannot copy text to input area");
         }
-    }
-
-    private void stopMessage() {
-        if (!SessionManager.getInstance().getStateMachine().canStopMessage()) {
-            return;
-        }
-        SwingUtilities.invokeLater(() -> {
-            statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Stopping"));
-            animatedStatus = true;
-        });
-        SessionManager.getInstance().stopCurrentMessage();
-        SwingUtilities.invokeLater(() -> {
-            statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Stopped"));
-            animatedStatus = false;
-            chatPanel.stopStreaming();
-            updateButtonState(false);
-        });
     }
 
     private void renameCurrentSession() {
@@ -947,88 +441,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     }
 
     private void showProjectPickerPopup(JComponent parent) {
-        Project[] projects = ACPProjectManager.getInstance().getAllOpenProjects();
-        if (projects == null || projects.length <= 1) {
-            return;
-        }
-
-        JPopupMenu popup = new JPopupMenu();
-        for (Project project : projects) {
-            String name = project.getProjectDirectory().getName();
-            JMenuItem item = new JMenuItem(name);
-            item.addActionListener(ev -> {
-                SessionManager.getInstance().createNewSession(project.getProjectDirectory().getPath());
-            });
-            popup.add(item);
-        }
-        popup.show(parent, 0, parent.getHeight());
-    }
-
-    private JButton createPaperclipButton() {
-        JButton btn = UIUtils.createToolbarButton("paperclip.svg", NbBundle.getMessage(AssistantTopComponent.class, "HINT_AttachFiles"), null);
-        btn.addActionListener(e -> showPaperclipMenu(e));
-        return btn;
-    }
-
-    private void showPaperclipMenu(ActionEvent e) {
-        JPopupMenu menu = new JPopupMenu();
-        JMenuItem addItem = new JMenuItem(NbBundle.getMessage(AssistantTopComponent.class, "BTN_SelectFile"));
-        addItem.addActionListener(ev -> selectFiles());
-        menu.add(addItem);
-        List<AttachedFile> currentFiles = attachmentManager.getAttachments();
-        if (!currentFiles.isEmpty()) {
-            menu.addSeparator();
-            for (AttachedFile af : currentFiles) {
-                JCheckBoxMenuItem cb = new JCheckBoxMenuItem(af.filename(), true);
-                cb.addActionListener(ev -> {
-                    if (!cb.isSelected()) {
-                        attachmentManager.remove(af);
-                        updatePaperclipTooltip();
-                    }
-                });
-                menu.add(cb);
-            }
-        }
-        menu.show(paperclipBtn, 0, paperclipBtn.getHeight());
-    }
-
-    private void selectFiles() {
-        if (!attachmentManager.canAdd()) {
-            if (statusLabel != null) {
-                statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_MaxFiles", AttachmentManager.MAX_ATTACHMENTS));
-                statusResetTimer.restart();
-            }
-            return;
-        }
-
-        JFileChooser fc = new JFileChooser();
-        fc.setMultiSelectionEnabled(true);
-        if (fc.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
-            int oldSize = attachmentManager.size();
-            attachmentManager.addFromFiles(fc.getSelectedFiles());
-            int added = attachmentManager.size() - oldSize;
-            if (added > 0 && statusLabel != null) {
-                List<AttachedFile> files = attachmentManager.getAttachments();
-                String lastName = files.get(files.size() - 1).filename();
-                if (added == 1) {
-                    statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Attached", lastName));
-                } else {
-                    statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_AttachedMore", lastName, added - 1));
-                }
-                statusResetTimer.restart();
-            }
-            updatePaperclipTooltip();
-        }
-    }
-
-    private void updatePaperclipTooltip() {
-        if (attachmentManager.getAttachments().isEmpty()) {
-            paperclipBtn.setToolTipText(NbBundle.getMessage(AssistantTopComponent.class, "HINT_AttachFiles"));
-            paperclipBtn.setIcon(ThemeManager.getIcon("paperclip.svg", 28));
-        } else {
-            paperclipBtn.setToolTipText(NbBundle.getMessage(AssistantTopComponent.class, "HINT_FilesAttached", attachmentManager.size()));
-            paperclipBtn.setIcon(ThemeManager.getIcon("paperclip-dot.svg", 28));
-        }
+        componentLifecycleHandler.showProjectPickerPopup(parent);
     }
 
     private void reloadCurrentSession() {
@@ -1073,8 +486,8 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
     private void restartServer() {
         String currentSessionId = SessionManager.getInstance().getCurrentSessionId();
-        statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_RestartingServer"));
-        setInputEnabled(false);
+        statusController.setStatus("STATUS_RestartingServer");
+        statusController.setInputEnabled(false);
 
         // Perform restart
         ProcessManager.getInstance().restartServer();
@@ -1082,7 +495,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         // Wait for server to be ready and reload session
         ProcessManager.getInstance().whenReady().thenAccept(v -> {
             SwingUtilities.invokeLater(() -> {
-                statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_ServerRestarted"));
+                statusController.setStatus("STATUS_ServerRestarted");
                 if (currentSessionId != null) {
                     SessionManager.getInstance().loadSession(currentSessionId);
                 } else {
@@ -1092,54 +505,14 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         }).exceptionally(ex -> {
             SwingUtilities.invokeLater(() -> {
                 String msg = ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName();
-                statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_RestartFailed", msg));
+                statusController.setStatus("STATUS_RestartFailed", msg);
                 chatPanel.stopStreaming();
                 chatPanel.addMessage(ProcessedMessage.createError(
                     MessageType.error_response, NbBundle.getMessage(AssistantTopComponent.class, "STATUS_RestartFailed", msg), null, null
                 ));
-                setInputEnabled(true);
+                statusController.setInputEnabled(true);
             });
             return null;
-        });
-    }
-
-    private void updateButtonState(boolean isProcessing) {
-        SwingUtilities.invokeLater(() -> {
-            sendBtn.setEnabled(!isProcessing);
-            stopBtn.setEnabled(isProcessing);
-            if (sendBtn.getParent() != null && sendBtn.getParent().getLayout() instanceof CardLayout cl) {
-                cl.show(sendBtn.getParent(), isProcessing ? "STOP" : "SEND");
-            }
-
-            if (isProcessing) {
-                thinkingTimer.start();
-            } else {
-                thinkingTimer.stop();
-            }
-        });
-    }
-
-    private void resetStatus() {
-        SwingUtilities.invokeLater(() -> {
-            statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Ready"));
-            animatedStatus = false;
-            updateButtonState(false);
-            if (SessionManager.getInstance().getCurrentSessionId() != null) {
-                setInputEnabled(true);
-            }
-        });
-    }
-
-    private void setInputEnabled(boolean enabled) {
-        SwingUtilities.invokeLater(() -> {
-            inputArea.setEnabled(enabled);
-            sendBtn.setEnabled(enabled);
-            toggleOptionsBtn.setVisible(enabled);
-            // Keep config panel visible even when input is disabled so users can select
-            // options before starting a new chat
-            if (!enabled) {
-                inputArea.setBackground(UIManager.getColor("TextArea.background"));
-            }
         });
     }
 
@@ -1192,171 +565,24 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     @Override
     public void componentOpened() {
         instance = this;
-        SessionManager.getInstance().addSessionListener(this);
-        Set<String> currentDirs = new HashSet<>();
-        for (var p : ACPProjectManager.getInstance().getAllOpenProjects()) {
-            if (p != null) {
-                currentDirs.add(p.getProjectDirectory().getPath());
-            }
-        }
-        if (!currentDirs.equals(closedProjectDirs)) {
-            SessionManager.getInstance().refreshSessions();
-        }
-        closedProjectDirs = Set.of();
-        try {
-            ProcessManager.getInstance().ensureStarted();
-        } catch (Exception ex) {
-            LOG.severe("Failed to ensure server is started", ex);
-            String msg = ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName();
-            chatPanel.stopStreaming();
-            chatPanel.addMessage(ProcessedMessage.createError(
-                MessageType.error_response, NbBundle.getMessage(AssistantTopComponent.class, "STATUS_FailedToStart", msg), null, null
-            ));
-        }
-
-        ProcessManager.getInstance().setPermissionHandler(this);
-        ProcessManager.getInstance().setStatusListener(msg -> {
-            SwingUtilities.invokeLater(() -> {
-                statusLabel.setText(msg);
-                statusResetTimer.restart();
-            });
-        });
-        ProcessManager.getInstance().getSlashCommandInterceptor().setCallback(new SlashCommandCallback() {
-            {
-                Runnable returnFocus = () -> inputArea.requestFocusInWindow();
-                configPanelController.setOnModelSelectedCallback(returnFocus);
-                configPanelController.setOnModeSelectedCallback(returnFocus);
-                configPanelController.setOnThinkingSelectedCallback(returnFocus);
-            }
-
-            @Override
-            public void expandOptionsPanel() {
-                if (optionsPanelCollapsed) {
-                    optionsPanelCollapsed = false;
-                    configPanelController.getComponent().setVisible(true);
-                    toggleOptionsBtn.setIcon(ThemeManager.getIcon("arrow-down.svg", 25));
-                    AssistantTopComponent.this.revalidate();
-                    AssistantTopComponent.this.repaint();
-                }
-            }
-
-            @Override
-            public void popupModelCombo() {
-                configPanelController.popupModelCombo();
-            }
-
-            @Override
-            public void popupAgentCombo() {
-                configPanelController.popupModeCombo();
-            }
-
-            @Override
-            public void popupThinkingCombo() {
-                configPanelController.popupThinkingCombo();
-            }
-
-            @Override
-            public void popupSessionCombo() {
-                SwingUtilities.invokeLater(() -> {
-                    sessionDropdown.requestFocusInWindow();
-                    SwingUtilities.invokeLater(() -> sessionDropdown.setPopupVisible(true));
-                });
-            }
-
-            @Override
-            public void popupNewSession() {
-                SwingUtilities.invokeLater(() -> {
-                    Project[] projects = ACPProjectManager.getInstance().getAllOpenProjects();
-                    if (projects == null || projects.length == 0) {
-                        return;
-                    }
-                    if (projects.length == 1) {
-                        SessionManager.getInstance().createNewSession(projects[0].getProjectDirectory().getPath());
-                    } else {
-                        showProjectPickerPopup(inputArea);
-                    }
-                });
-            }
-        });
-
-        // ESC key handler to close options panel and return focus to input
-        KeyAdapter escHandler = new KeyAdapter() {
-            @Override
-            public void keyPressed(KeyEvent e) {
-                if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
-                    e.consume();
-                    if (!optionsPanelCollapsed) {
-                        optionsPanelCollapsed = true;
-                        configPanelController.getComponent().setVisible(false);
-                        toggleOptionsBtn.setIcon(ThemeManager.getIcon("settings.svg", 25));
-                        AssistantTopComponent.this.revalidate();
-                        AssistantTopComponent.this.repaint();
-                    }
-                    inputArea.requestFocusInWindow();
-                }
-            }
-        };
-        configPanelController.addKeyListenerToInputs(escHandler);
-        configPanelController.getComponent().addKeyListener(escHandler);
-        SwingUtilities.invokeLater(() -> {
-            if (inputArea != null) {
-                inputArea.requestFocusInWindow();
-            }
-            String currentSessionId = SessionManager.getInstance().getCurrentSessionId();
-            if (currentSessionId != null) {
-                SessionManager.getInstance().loadSession(currentSessionId);
-            } else {
-                SessionManager.getInstance().refreshSessions();
-            }
-        });
+        componentLifecycleHandler.componentOpened();
     }
 
     @Override
     public void componentActivated() {
         instance = this;
-        SwingUtilities.invokeLater(() -> {
-            if (inputArea != null) {
-                inputArea.requestFocusInWindow();
-            }
-        });
+        componentLifecycleHandler.componentActivated();
     }
 
     @Override
     public void componentDeactivated() {
         super.componentDeactivated();
-        if (thinkingTimer != null && thinkingTimer.isRunning()) {
-            thinkingTimer.stop();
-        }
+        componentLifecycleHandler.componentDeactivated();
     }
 
     @Override
     public void componentClosed() {
-        if (pageKeyDispatcher != null) {
-            KeyboardFocusManager.getCurrentKeyboardFocusManager().removeKeyEventDispatcher(pageKeyDispatcher);
-        }
-        if (thinkingTimer != null && thinkingTimer.isRunning()) {
-            thinkingTimer.stop();
-        }
-        if (statusResetTimer != null && statusResetTimer.isRunning()) {
-            statusResetTimer.stop();
-        }
-        if (chatPanel != null) {
-            chatPanel.clearMessages();
-        }
-        closedProjectDirs = new HashSet<>();
-        for (var p : ACPProjectManager.getInstance().getAllOpenProjects()) {
-            if (p != null) {
-                closedProjectDirs.add(p.getProjectDirectory().getPath());
-            }
-        }
-        SessionManager.getInstance().removeSessionListener(this);
-
-        // Clear handler references to prevent memory leak (ProcessManager holds these)
-        ProcessManager.getInstance().setPermissionHandler(null);
-        ProcessManager.getInstance().setStatusListener(null);
-        ProcessManager.getInstance().setCrashHandler(null);
-        ProcessManager.getInstance().setReadyHandler(null);
-
+        componentLifecycleHandler.componentClosed();
         if (instance == this) {
             instance = null;
         }
@@ -1365,12 +591,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     @Override
     public void removeNotify() {
         super.removeNotify();
-        if (pageKeyDispatcher != null) {
-            KeyboardFocusManager.getCurrentKeyboardFocusManager().removeKeyEventDispatcher(pageKeyDispatcher);
-        }
-        if (statusResetTimer != null && statusResetTimer.isRunning()) {
-            statusResetTimer.stop();
-        }
+        componentLifecycleHandler.removeNotify();
     }
 
     void writeProperties(Properties p) {
