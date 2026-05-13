@@ -13,7 +13,9 @@ import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.MapperSupplier;
 
 import static org.apache.commons.lang3.ObjectUtils.firstNonNull;
+import static org.apache.commons.lang3.StringUtils.abbreviate;
 import static org.apache.commons.lang3.StringUtils.defaultString;
+import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
 public class ToolCallUpdateStrategy implements DataExtractionStrategy {
     private static final Logger LOG = new Logger(ToolCallUpdateStrategy.class);
@@ -30,11 +32,16 @@ public class ToolCallUpdateStrategy implements DataExtractionStrategy {
         }
 
         String messageId = update.messageId() != null ? update.messageId() : update.toolCallId();
-        String text = firstNonNull(extractContentText(update.content()), update.status(), "");
-        String rawText = text;
+        String command = update.update().rawInput() != null ? defaultString(update.update().rawInput().command()) : "";
+        String text = new StringBuilder()
+                      .append(abbreviate(command, 80))
+                      .append(isNotBlank(command) ? "$ " : "")
+                      .append(isNotBlank(command) ? "\n\n" : "")
+                      .append(firstNonNull(extractContentText(update.content()), update.status(), ""))
+                      .toString();
 
         MessageClassification m = ToolDataExtractor.classify(update.update().type(), text, update.kind());
-        String tt = ToolDataExtractor.extractToolTitle(defaultString(messageId), rawText, m, update);
+        String tt = ToolDataExtractor.extractToolTitle(defaultString(messageId), text, m, update);
 
         ProcessedMessage target = new ProcessedMessage.Builder()
                 .messageType(m.type())
@@ -42,7 +49,7 @@ public class ToolCallUpdateStrategy implements DataExtractionStrategy {
                 .messageId(defaultString(messageId))
                 .kind(update.kind())
                 .toolTitle(tt)
-                .rawText(rawText)
+                .rawText(text)
                 .streaming(true)
                 .build();
         handler.displayMessage(target);

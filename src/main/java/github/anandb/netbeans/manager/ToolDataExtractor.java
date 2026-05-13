@@ -24,13 +24,14 @@ public final class ToolDataExtractor {
 
     private static final Pattern[] METADATA_PATTERNS = {
         Pattern.compile("<!--.*?-->", Pattern.DOTALL),
-        Pattern.compile("<metadata>.*?</metadata>", Pattern.DOTALL),
+        Pattern.compile("<metadata>.*?</metadata>", Pattern.DOTALL)
     };
 
     private static final List<Pair<String, Pattern>> TOOL_CONTENT_PATTERNS = List.of(
         Pair.of("skill", Pattern.compile("<skill_content name=\"([^\"]{2,})\"")),
         Pair.of("context", Pattern.compile("(Compressed [\\d]+ messages) into")),
-        Pair.of("", Pattern.compile("<path>([^<]{10,})</path>"))
+        Pair.of("", Pattern.compile("<path>([^<]{10,})</path>")),
+        Pair.of("", Pattern.compile("\"filePath\":([^\"]{10,})\""))
     );
 
     private ToolDataExtractor() {}
@@ -89,21 +90,23 @@ public final class ToolDataExtractor {
     public static String extractToolTitle(String messageId, String rawText,
                                            MessageClassification mc, SessionUpdate update) {
         String tag = defaultString(messageId);
-
+        String kind = (mc != null) ? mc.kind() : null;
         int pos = tag.indexOf(':');
         if (pos >= 0 && pos < tag.length()) {
             tag = tag.substring(0, pos);
         } else {
-            tag = firstNonBlank(mc.kind(), "Tool");
+            tag = firstNonBlank(kind, "Tool");
         }
 
-        String identifier = firstNonBlank(update.update().title(), "");
+        String title = update != null ? update.update().title() : null;
+        String identifier = firstNonBlank(title, "");
         if (isBlank(identifier)) {
             for (var entry : TOOL_CONTENT_PATTERNS) {
                 Matcher m = entry.getValue().matcher(rawText);
                 if (m.find()) {
                     identifier = m.group(1);
                     if (isNotBlank(entry.getKey())) {
+                        // Change tag based on content
                         tag = entry.getKey();
                     }
                     break;
@@ -117,8 +120,8 @@ public final class ToolDataExtractor {
         if ("context".equals(tag) && identifier.startsWith("Compressed")) {
             identifier = toRootLowerCase(identifier);
         }
-
-        return tag + " " + abbreviateMiddle(identifier, "...", 60);
+        
+        return tag + " " + abbreviateMiddle(defaultString(identifier), "...", 60);
     }
 
     public static String getLocalEchoText(String commandText) {

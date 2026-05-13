@@ -15,7 +15,7 @@ class AgentUtilsTest {
     void testExtractToolTitleWithSkillContent() {
         String result = ToolDataExtractor.extractToolTitle(
             "skill_name",
-            "<skill_content name=\"test-skill\">some content</skill_content>", null
+            "<skill_content name=\"test-skill\">some content</skill_content>", null, null
         );
         assertNotNull(result);
     }
@@ -24,7 +24,7 @@ class AgentUtilsTest {
     void testExtractToolTitleWithPath() {
         String result = ToolDataExtractor.extractToolTitle(
             "path_id",
-            "<path>/some/path/here</path> content", null
+            "<path>/some/path/here</path> content", null, null
         );
         assertNotNull(result);
     }
@@ -33,7 +33,7 @@ class AgentUtilsTest {
     void testExtractToolTitleWithNullMessageId() {
         String result = ToolDataExtractor.extractToolTitle(
             null,
-            "<skill_content name=\"my-skill\">content</skill_content>", null
+            "<skill_content name=\"my-skill\">content</skill_content>", null, null
         );
         assertNotNull(result);
     }
@@ -42,7 +42,7 @@ class AgentUtilsTest {
     void testExtractToolTitleWithColon() {
         String result = ToolDataExtractor.extractToolTitle(
             "tool:subtype",
-            "some text here", null
+            "some text here", null, null
         );
         assertNotNull(result);
     }
@@ -50,7 +50,7 @@ class AgentUtilsTest {
     @Test
     void testExtractToolTitleWithLongTag() {
         String longTag = "a".repeat(100);
-        String result = ToolDataExtractor.extractToolTitle(longTag, "plain text", null);
+        String result = ToolDataExtractor.extractToolTitle(longTag, "plain text", null, null);
         assertEquals("Tool ", result);
     }
 
@@ -58,7 +58,7 @@ class AgentUtilsTest {
     void testExtractToolTitleWithPlainText() {
         String result = ToolDataExtractor.extractToolTitle(
             "plain",
-            "just some plain text with no special tags", null
+            "just some plain text with no special tags", null, null
         );
         assertNotNull(result);
     }
@@ -67,9 +67,9 @@ class AgentUtilsTest {
     void testExtractToolTitleFromRead() {
         String result = ToolDataExtractor.extractToolTitle(
             "read:322",
-            "<path>/home/user/ab</path>", null
+            "<path>/home/user/ab</path>", null, null
         );
-        
+
         assertEquals("read /home/user/ab", result);
     }
 

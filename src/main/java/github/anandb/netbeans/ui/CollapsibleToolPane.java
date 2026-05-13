@@ -4,6 +4,9 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+
 import javax.swing.BorderFactory;
 import javax.swing.Icon;
 import javax.swing.JLabel;
@@ -12,7 +15,11 @@ import javax.swing.JTextArea;
 
 import java.util.Locale;
 import java.util.regex.Pattern;
+
 import org.openide.util.NbBundle;
+
+import static org.apache.commons.lang3.StringUtils.defaultString;
+import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
 @NbBundle.Messages({
     "LBL_ThinkingProcess=Thinking Process",
@@ -101,11 +108,12 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
             return;
         }
 
-        String[] parts = WHITESPACE_SPLIT.split(stripped);
-        String tag = translateTag(parts[0]);
-        headerLabel.setText(tag != null ? tag : parts[0]);
+        int pos = stripped.indexOf(' ');
+        String tag = (pos > 1) ? translateTag(stripped.substring(0, pos)) : null;
+        String param = (pos > 1) ? stripped.substring(pos + 1) : null;
+        headerLabel.setText(defaultString(tag));
 
-        if (parts.length > 1) {
+        if (isNotBlank(param)) {
             if (paramLabel == null) {
                 paramLabel = new JLabel() {
                     @Override
@@ -114,14 +122,14 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
                     }
                 };
                 paramLabel.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN));
-                paramLabel.addMouseListener(new java.awt.event.MouseAdapter() {
+                paramLabel.addMouseListener(new MouseAdapter() {
                     @Override
-                    public void mousePressed(java.awt.event.MouseEvent e) {
+                    public void mousePressed(MouseEvent e) {
                         toggle();
                     }
                 });
             }
-            paramLabel.setText(" " + parts[1]);
+            paramLabel.setText(" " + param);
             titlePanel.add(paramLabel);
         }
     }

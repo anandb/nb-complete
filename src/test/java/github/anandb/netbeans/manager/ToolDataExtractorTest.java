@@ -1,7 +1,11 @@
 package github.anandb.netbeans.manager;
 
+import github.anandb.netbeans.model.MessageClassification;
+import github.anandb.netbeans.model.MessageType;
+import github.anandb.netbeans.model.SessionUpdate;
 import org.junit.jupiter.api.Test;
 
+import static github.anandb.netbeans.model.MessageType.message;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -70,7 +74,7 @@ class ToolDataExtractorTest {
     void testExtractToolTitleWithSkillContent() {
         String result = ToolDataExtractor.extractToolTitle(
             "skill",
-            "<skill_content name=\"test-skill\">some content</skill_content>", null
+            "<skill_content name=\"test-skill\">some content</skill_content>", null, null
         );
         assertEquals("skill test-skill", result);
     }
@@ -79,7 +83,7 @@ class ToolDataExtractorTest {
     void testExtractToolTitleWithPath() {
         String result = ToolDataExtractor.extractToolTitle(
             "path",
-            "<path>/some/long/path/here</path> content", null
+            "<path>/some/long/path/here</path> content", null, null
         );
         assertEquals("Tool /some/long/path/here", result);
     }
@@ -88,7 +92,7 @@ class ToolDataExtractorTest {
     void testExtractToolTitleWithNullMessageId() {
         String result = ToolDataExtractor.extractToolTitle(
             null,
-            "<skill_content name=\"my-skill\">content</skill_content>", null
+            "<skill_content name=\"my-skill\">content</skill_content>", null, null
         );
         assertEquals("skill my-skill", result);
     }
@@ -97,7 +101,7 @@ class ToolDataExtractorTest {
     void testExtractToolTitleWithColon() {
         String result = ToolDataExtractor.extractToolTitle(
             "tool:subtype",
-            "some text here", null
+            "some text here", null, null
         );
         assertEquals("tool ", result);
     }
@@ -105,7 +109,7 @@ class ToolDataExtractorTest {
     @Test
     void testExtractToolTitleWithLongTag() {
         String longTag = "a".repeat(100);
-        String result = ToolDataExtractor.extractToolTitle(longTag, "plain text", null);
+        String result = ToolDataExtractor.extractToolTitle(longTag, "plain text", null, null);
         assertEquals("Tool ", result);
     }
 
@@ -113,7 +117,7 @@ class ToolDataExtractorTest {
     void testExtractToolTitleWithPlainText() {
         String result = ToolDataExtractor.extractToolTitle(
             "tool",
-            "just some plain text with no special tags", null
+            "just some plain text with no special tags", null, null
         );
         assertEquals("Tool ", result);
     }
@@ -122,7 +126,7 @@ class ToolDataExtractorTest {
     void testExtractToolTitleFromRead() {
         String result = ToolDataExtractor.extractToolTitle(
             "read:322",
-            "<path>/home/user/ab</path>", null
+            "<path>/home/user/ab</path>", null, null
         );
         assertEquals("read /home/user/ab", result);
     }
@@ -132,7 +136,7 @@ class ToolDataExtractorTest {
         String result = ToolDataExtractor.extractToolTitle(
             "skill-name",
             "<path>/some/path</path> <skill_content name=\"skill-name\">content</skill_content>",
-            null
+            null, null
         );
         assertEquals("skill skill-name", result);
     }
@@ -140,9 +144,9 @@ class ToolDataExtractorTest {
     @Test
     void testExtractToolTitleWithKindFallback() {
         String result = ToolDataExtractor.extractToolTitle(
-            null, "plain text", "customKind"
+            null, "plain text", new MessageClassification(MessageType.tool_call, "customKind"), updateWithTitle("Hello")
         );
-        assertEquals("customKind ", result);
+        assertEquals("customKind Hello", result);
     }
 
     @Test
@@ -151,9 +155,33 @@ class ToolDataExtractorTest {
         String result = ToolDataExtractor.extractToolTitle(
             "tag",
             "<skill_content name=\"" + longIdent + "\">content</skill_content>",
-            null
+            null, null
         );
         assertTrue(result.length() < 120);
         assertTrue(result.contains("..."));
+    }
+
+    private SessionUpdate updateWithTitle(String title) {
+        return new SessionUpdate(title, title, new SessionUpdate.Params(
+                title,
+                new SessionUpdate.UpdateData(
+                        MessageType.plan,
+                        title,
+                        null,
+                        "IDWithNoColon",
+                        null,
+                        null,
+                        null,
+                        null,
+                        Boolean.TRUE,
+                        title,
+                        title,
+                        title,
+                        null,
+                        null,
+                        null,
+                        Long.MIN_VALUE,
+                        Long.MIN_VALUE,
+                        null)));
     }
 }

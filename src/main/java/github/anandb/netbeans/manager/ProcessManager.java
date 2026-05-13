@@ -156,7 +156,9 @@ public class ProcessManager {
             pb.redirectError(ProcessBuilder.Redirect.INHERIT);
 
             Map<String, String> env = pb.environment();
-            env.putAll(System.getenv()); // Ensure all system environment variables are propagated
+            for (Map.Entry<String, String> entry : System.getenv().entrySet()) {
+                env.putIfAbsent(entry.getKey(), entry.getValue());
+            }
 
             this.serverProcess = pb.start();
 
@@ -186,7 +188,7 @@ public class ProcessManager {
 
                     notifyListeners(update);
                 } catch (Exception e) {
-                    LOG.warn("Failed to parse session/update notification: " + e.getMessage(), e);
+                    LOG.log(Level.FINE, "Failed to parse session/update notification: " + e.getMessage(), e);
                 }
             });
 
@@ -335,15 +337,15 @@ public class ProcessManager {
             }
 
             // 2. If still alive, or if there are orphaned descendants, send SIGTERM
-            if (serverProcess.isAlive() || descendants.stream().anyMatch(ProcessHandle::isAlive)) {
+            if (serverProcess != null && serverProcess.isAlive()) {
                 LOG.log(Level.FINE, "Terminating process tree (parent + {0} descendants)...", descendants.size());
 
-                descendants.forEach(h -> {
+                for (ProcessHandle h : descendants) {
                     if (h.isAlive()) {
                         LOG.log(Level.FINE, "Sending SIGTERM to descendant PID: {0}", h.pid());
                         h.destroy();
                     }
-                });
+                }
                 if (serverProcess.isAlive()) {
                     serverProcess.destroy();
                 }
@@ -355,7 +357,6 @@ public class ProcessManager {
                 }
             }
 
-            // 3. Final cleanup: Force kill anything remaining in the tree
             if (serverProcess.isAlive() || descendants.stream().anyMatch(ProcessHandle::isAlive)) {
                 LOG.log(Level.WARNING, "Some processes still alive, forcing SIGKILL...");
                 descendants.forEach(h -> {
@@ -520,7 +521,11 @@ public class ProcessManager {
             LOG.log(Level.WARNING, "Stale process PID {0} is still alive but pipes are broken — killing it",
                     serverProcess.pid());
             List<ProcessHandle> descendants = serverProcess.descendants().toList();
-            descendants.forEach(h -> { if (h.isAlive()) h.destroyForcibly(); });
+            for (ProcessHandle h : descendants) {
+                if (h.isAlive()) {
+                    h.destroyForcibly();
+                }
+            }
             serverProcess.destroyForcibly();
             try {
                 serverProcess.waitFor(3, java.util.concurrent.TimeUnit.SECONDS);
@@ -644,47 +649,50 @@ public class ProcessManager {
 
 
     private CompletableFuture<JsonNode> handleReadTextFile(JsonNode params) {
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                String filePath = params.has("filePath") ? params.get("filePath").asText()
-                        : params.has("path") ? params.get("path").asText() : null;
+        String filePath = params.has("filePath") ? params.get("filePath").asText()
+                : params.has("path") ? params.get("path").asText() : null;
 
-                if (filePath == null) {
-                    throw new RuntimeException("Missing filePath parameter");
-                }
+        if (filePath == null) {
+            return CompletableFuture.failedFuture(new RuntimeException("Missing filePath parameter"));
+        }
 
-                File file = new File(filePath);
-                if (!file.exists()) {
-                    throw new RuntimeException("File not found: " + filePath);
-                }
+        File file = new File(filePath);
+        if (!file.exists()) {
+            return CompletableFuture.failedFuture(new RuntimeException("File not found: " + filePath));
+        }
 
-                FileObject fo = FileUtil.toFileObject(file);
-                if (fo != null) {
-                    try {
-                        final String[] editorResult = {null};
-                        SwingUtilities.invokeAndWait(() -> {
-                            try {
-                                DataObject dobj = DataObject.find(fo);
-                                EditorCookie ec = dobj.getLookup().lookup(EditorCookie.class);
-                                if (ec != null) {
-                                    Document doc = ec.getDocument();
-                                    if (doc != null) {
-                                        editorResult[0] = doc.getText(0, doc.getLength());
-                                    }
-                                }
-                            } catch (Exception e) {
-                                LOG.log(Level.FINE, "Could not read from editor for {0}, falling back to disk", filePath);
-                            }
-                        });
-                        if (editorResult[0] != null) {
-                            return objectMapper.createObjectNode().put("content", editorResult[0]);
+        CompletableFuture<JsonNode> resultFuture = new CompletableFuture<>();
+        
+        FileObject fo = FileUtil.toFileObject(file);
+        if (fo != null) {
+            SwingUtilities.invokeLater(() -> {
+                try {
+                    DataObject dobj = DataObject.find(fo);
+                    EditorCookie ec = dobj.getLookup().lookup(EditorCookie.class);
+                    if (ec != null) {
+                        Document doc = ec.getDocument();
+                        if (doc != null) {
+                            String content = doc.getText(0, doc.getLength());
+                            resultFuture.complete(objectMapper.createObjectNode().put("content", content));
+                            return;
                         }
-                    } catch (Exception e) {
-                        LOG.log(Level.FINE, "EDT sync interrupted during read: {0}", e.getMessage());
                     }
+                } catch (Exception e) {
+                    LOG.log(Level.FINE, "Could not read from editor for {0}, falling back to disk", filePath);
                 }
-
-                // Fallback to disk
+                
+                readFromDisk(file, filePath, resultFuture);
+            });
+        } else {
+            readFromDisk(file, filePath, resultFuture);
+        }
+        
+        return resultFuture;
+    }
+    
+    private void readFromDisk(File file, String filePath, CompletableFuture<JsonNode> resultFuture) {
+        CompletableFuture.supplyAsync(() -> {
+            try {
                 byte[] bytes = Files.readAllBytes(file.toPath());
                 String content = new String(bytes, StandardCharsets.UTF_8);
                 return objectMapper.createObjectNode().put("content", content);
@@ -692,7 +700,11 @@ public class ProcessManager {
                 LOG.log(Level.SEVERE, "fs/readTextFile failed", e);
                 throw new RuntimeException("Failed to read file: " + e.getMessage(), e);
             }
-        });
+        }).thenAccept(resultFuture::complete)
+          .exceptionally(ex -> {
+              resultFuture.completeExceptionally(ex);
+              return null;
+          });
     }
 
     private String operationalError() {

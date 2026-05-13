@@ -168,16 +168,14 @@ public class SessionManager {
                 .map(dir -> getSessions(dir))
                 .toList();
         return CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new))
+                .orTimeout(10, TimeUnit.SECONDS)
                 .thenApply(v -> futures.stream()
-                .flatMap(f -> {
-                    try {
-                        return f.get(10, TimeUnit.SECONDS).stream();
-                    } catch (Exception e) {
-                        LOG.log(Level.WARNING, "Failed to get sessions for directory: {0}", e.getMessage());
-                        return java.util.stream.Stream.empty();
-                    }
-                })
-                .toList());
+                .flatMap(f -> f.join().stream())
+                .toList())
+                .exceptionally(ex -> {
+                    LOG.log(Level.WARNING, "Failed to get sessions within timeout: {0}", ex.getMessage());
+                    return new ArrayList<>();
+                });
     }
 
     public CompletableFuture<Session> createSession(String cwd) {

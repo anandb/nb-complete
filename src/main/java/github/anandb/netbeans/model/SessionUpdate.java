@@ -21,6 +21,7 @@ public record SessionUpdate(
     public record UpdateData(
         @JsonProperty("sessionUpdate") MessageType type,
         String title,
+        RawInput rawInput,
         String messageId,
         JsonNode content,
         Message message,
@@ -59,6 +60,12 @@ public record SessionUpdate(
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record AvailableCommandInput(
         String hint
+    ) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record RawInput(
+        String command,
+        String description
     ) {}
 
     // Convenience methods to maintain backward compatibility in some logic if needed
