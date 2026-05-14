@@ -165,7 +165,7 @@ public class MessageSender {
                     });
                 })
                 .exceptionally(ex -> {
-                    javax.swing.SwingUtilities.invokeLater(() -> {
+                    SwingUtilities.invokeLater(() -> {
                         statusController.setStatus("STATUS_Error", ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName());
                         statusController.stopThinking();
                         chatPanel.stopStreaming();
@@ -187,12 +187,12 @@ public class MessageSender {
         if (!SessionManager.getInstance().getStateMachine().canStopMessage()) {
             return;
         }
-        javax.swing.SwingUtilities.invokeLater(() -> {
+        SwingUtilities.invokeLater(() -> {
             statusController.setStatus("STATUS_Stopping");
             statusController.startThinking();
         });
         SessionManager.getInstance().stopCurrentMessage();
-        javax.swing.SwingUtilities.invokeLater(() -> {
+        SwingUtilities.invokeLater(() -> {
             statusController.setStatus("STATUS_Stopped");
             statusController.stopThinking();
             chatPanel.stopStreaming();

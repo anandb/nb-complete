@@ -21,6 +21,8 @@ import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import javax.swing.border.EmptyBorder;
+import javax.swing.event.PopupMenuEvent;
+import javax.swing.event.PopupMenuListener;
 
 import github.anandb.netbeans.manager.SessionManager;
 import github.anandb.netbeans.model.ConfigItem;
@@ -423,11 +425,11 @@ public class ConfigPanelController {
             }
 
         });
-        combo.addPopupMenuListener(new javax.swing.event.PopupMenuListener() {
+        combo.addPopupMenuListener(new PopupMenuListener() {
             @Override
-            public void popupMenuWillBecomeVisible(javax.swing.event.PopupMenuEvent e) {}
+            public void popupMenuWillBecomeVisible(PopupMenuEvent e) {}
             @Override
-            public void popupMenuWillBecomeInvisible(javax.swing.event.PopupMenuEvent e) {
+            public void popupMenuWillBecomeInvisible(PopupMenuEvent e) {
                 if (isUpdatingConfigControls) return;
                 if (combo == modelCombo && onModelSelectedCallback != null) {
                     onModelSelectedCallback.run();
@@ -438,7 +440,7 @@ public class ConfigPanelController {
                 }
             }
             @Override
-            public void popupMenuCanceled(javax.swing.event.PopupMenuEvent e) {}
+            public void popupMenuCanceled(PopupMenuEvent e) {}
         });
     }
 

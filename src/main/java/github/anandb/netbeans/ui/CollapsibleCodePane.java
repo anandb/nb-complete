@@ -13,6 +13,7 @@ import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
+import javax.swing.Timer;
 
 import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
 import org.fife.ui.rsyntaxtextarea.SyntaxConstants;
@@ -241,7 +242,7 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
         Icon checkIcon = ThemeManager.getIcon("check.svg", 20);
         copyButton.setIcon(checkIcon);
 
-        javax.swing.Timer timer = new javax.swing.Timer(2000, e -> {
+       Timer timer = new Timer(2000, e -> {
             copyButton.setIcon(originalIcon);
         });
         timer.setRepeats(false);

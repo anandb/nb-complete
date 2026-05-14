@@ -157,7 +157,7 @@ public class MessageBubble extends JPanel implements Scrollable {
 
             Icon userIcon = UIUtils.loadUserIcon();
             JLabel userLabel = new JLabel(userIcon);
-            userLabel.setBorder(new javax.swing.border.EmptyBorder(6, 8, 0, 10));
+            userLabel.setBorder(new EmptyBorder(6, 8, 0, 10));
             userLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
             userLabel.setToolTipText(NbBundle.getMessage(MessageBubble.class, "HINT_CopyToInput"));
 

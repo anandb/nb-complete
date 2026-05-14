@@ -3,7 +3,10 @@ package github.anandb.netbeans.model;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.JsonNode;
+
 import java.util.List;
+
+import static org.apache.commons.lang3.StringUtils.defaultString;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record SessionUpdate(
@@ -91,7 +94,7 @@ public record SessionUpdate(
 
     public String messageId() {
         UpdateData ud = update();
-        return ud != null ? ud.messageId() : null;
+        return ud.messageId() != null ? ud.messageId() : ud.toolCallId();
     }
 
     public String status() {
@@ -107,6 +110,11 @@ public record SessionUpdate(
     public String toolCallId() {
         UpdateData ud = update();
         return ud != null ? ud.toolCallId() : null;
+    }
+
+    public String command() {
+        UpdateData ud = update();
+        return ud.rawInput() != null ? defaultString(ud.rawInput().command()) : "";
     }
 
     public UpdateData update() {

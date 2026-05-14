@@ -4,21 +4,36 @@ import github.anandb.netbeans.contract.DataExtractionStrategy;
 import github.anandb.netbeans.contract.UIHandler;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+
+import java.util.concurrent.TimeUnit;
 
 import github.anandb.netbeans.manager.ToolDataExtractor;
 import github.anandb.netbeans.model.MessageClassification;
 import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.model.SessionUpdate;
+import github.anandb.netbeans.model.ToolCallData;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.MapperSupplier;
 
 import static org.apache.commons.lang3.ObjectUtils.firstNonNull;
 import static org.apache.commons.lang3.StringUtils.abbreviate;
 import static org.apache.commons.lang3.StringUtils.defaultString;
+import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
 public class ToolCallUpdateStrategy implements DataExtractionStrategy {
     private static final Logger LOG = new Logger(ToolCallUpdateStrategy.class);
+    private static final Cache<String, ToolCallData> TOOL_CALL_CACHE;
+
+    static {
+        TOOL_CALL_CACHE = Caffeine.newBuilder()
+            .expireAfterAccess(5, TimeUnit.MINUTES)
+            .maximumSize(1024)
+            .recordStats()
+            .build();
+    }
 
     @Override
     public boolean canHandle(SessionUpdate update, String reclassifiedType) {
@@ -31,28 +46,16 @@ public class ToolCallUpdateStrategy implements DataExtractionStrategy {
             return;
         }
 
-        String messageId = update.messageId() != null ? update.messageId() : update.toolCallId();
-        String command = update.update().rawInput() != null ? defaultString(update.update().rawInput().command()) : "";
-        String text = new StringBuilder()
-                      .append(isNotBlank(command) ? "$ " : "")
-                      .append(abbreviate(command, 80))
-                      .append(isNotBlank(command) ? "\n\n" : "")
-                      .append(firstNonNull(extractContentText(update.content()), ""))
-                      .toString();
+        final String messageId = update.messageId();
+        if (isBlank(messageId)) {
+            return;
+        }
 
-        MessageClassification m = ToolDataExtractor.classify(update.update().type(), text, update.kind());
-        String tt = ToolDataExtractor.extractToolTitle(defaultString(messageId), text, m, update);
-
-        ProcessedMessage target = new ProcessedMessage.Builder()
-                .messageType(m.type())
-                .text(text)
-                .messageId(defaultString(messageId))
-                .kind(update.kind())
-                .toolTitle(tt)
-                .rawText(text)
-                .streaming(true)
-                .status(defaultString(update.update().status()))
-                .build();
+        final String command = update.command();
+        final String kind = update.kind();
+        
+        ToolCallData data = TOOL_CALL_CACHE.get(messageId, k -> new ToolCallData(k, command));
+        ProcessedMessage target = processToolMessage(data, command, update, kind, messageId);
         handler.displayMessage(target);
     }
 
@@ -90,5 +93,36 @@ public class ToolCallUpdateStrategy implements DataExtractionStrategy {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    private ProcessedMessage processToolMessage(ToolCallData data, final String command, SessionUpdate update,
+                                                 String kind, final String messageId) {
+        String tt;
+        String text;
+        MessageClassification m;
+        synchronized(data) {
+            String effectiveCommand = data.setCommand(command);
+            text = data.setText(new StringBuilder()
+                    .append(isNotBlank(effectiveCommand) ? "$ " : "")
+                    .append(abbreviate(effectiveCommand, 80))
+                    .append(isNotBlank(effectiveCommand) ? "\n\n" : "")
+                    .append(firstNonNull(extractContentText(update.content()), ""))
+                    .toString());
+            kind = data.setKind(kind);
+
+            m = ToolDataExtractor.classify(update.update().type(), text, kind);
+            tt = data.setTitle(ToolDataExtractor.extractToolTitle(defaultString(messageId), text, m, update));
+        }
+
+        return new ProcessedMessage.Builder()
+                .messageType(m.type())
+                .text(text)
+                .messageId(defaultString(messageId))
+                .kind(kind)
+                .toolTitle(tt)
+                .rawText(text)
+                .streaming(true)
+                .status(defaultString(update.update().status()))
+                .build();
     }
 }
