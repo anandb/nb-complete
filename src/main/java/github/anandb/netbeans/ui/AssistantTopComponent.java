@@ -117,6 +117,7 @@ import static org.apache.commons.lang3.StringUtils.isNotBlank;
     "STATUS_Sending=Sending",
     "STATUS_Stopping=Stopping...",
     "STATUS_Stopped=Stopped",
+    "STATUS_McpInitializing=MCP initializing...",
     "STATUS_RestartingServer=Restarting server...",
     "STATUS_ServerRestarted=Server restarted. Reloading session...",
     "# {0} - error message",
@@ -357,6 +358,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             inputArea, chatPanel, attachmentManager, messageHistory,
             statusController, attachmentUiHandler::updateTooltip, inputArea::requestFocusInWindow
         );
+        messageSender.setOnNewMessageCallback(sessionLifecycleHandler::onNewMessageSent);
 
         sendBtn.addActionListener(e -> messageSender.sendMessage());
         stopBtn.addActionListener(e -> messageSender.stopMessage());

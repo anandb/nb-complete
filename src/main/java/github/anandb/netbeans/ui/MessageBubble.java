@@ -300,7 +300,6 @@ public class MessageBubble extends JPanel implements Scrollable {
             String rawText = text.toString();
             String displayContent = rawText;
             String title = "thought".equals(role) ? "Thinking Process" : defaultIfBlank(toolTitle, "Tool");
-            LOG.info("UPD {0} {1}", toolTitle, title);
             if (segments.getComponentCount() > 0 && segments.getComponent(0) instanceof CollapsibleToolPane ep) {
                 ep.setTitle(title);
                 ep.setContent(displayContent);

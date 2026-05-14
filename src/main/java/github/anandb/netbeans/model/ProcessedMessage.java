@@ -1,7 +1,7 @@
 package github.anandb.netbeans.model;
 
 import static org.apache.commons.lang3.StringUtils.defaultIfBlank;
-import static org.apache.commons.lang3.StringUtils.defaultString;
+import static org.apache.commons.lang3.StringUtils.isBlank;
 
 public record ProcessedMessage(
         MessageType messageType,
@@ -10,12 +10,14 @@ public record ProcessedMessage(
         String kind,
         String toolTitle,
         String rawText,
-        boolean streaming) {
+        boolean streaming,
+        String status) {
 
     public boolean isIgnorable() {
-        if (messageType == MessageType.tool_call && defaultString(text).startsWith("pending")) {
-            return true;
+        if (messageType == MessageType.tool_call || messageType == MessageType.tool_call_update) {
+            return isBlank(status) || status.startsWith("pending") || status.startsWith("in_progress");
         }
+        
         return isIgnorable(messageType.roleName(), text);
     }
 
@@ -41,6 +43,7 @@ public record ProcessedMessage(
         private String toolTitle;
         private String rawText;
         private boolean streaming;
+        private String status;
 
         public Builder messageType(MessageType messageType) { this.messageType = messageType; return this; }
         public Builder text(String text) { this.text = text; return this; }
@@ -49,9 +52,10 @@ public record ProcessedMessage(
         public Builder toolTitle(String toolTitle) { this.toolTitle = toolTitle; return this; }
         public Builder rawText(String rawText) { this.rawText = rawText; return this; }
         public Builder streaming(boolean streaming) { this.streaming = streaming; return this; }
+        public Builder status(String status) { this.status = status; return this; }
 
         public ProcessedMessage build() {
-            return new ProcessedMessage(messageType, text, messageId, kind, toolTitle, rawText, streaming);
+            return new ProcessedMessage(messageType, text, messageId, kind, toolTitle, rawText, streaming, status);
         }
     }
 }

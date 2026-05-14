@@ -113,11 +113,15 @@ public class SessionManager {
 
     public CompletableFuture<List<Session>> getSessions(String directory) {
         LOG.log(Level.FINE, "getSessions: called with directory={0}", directory);
-        Map<String, Object> params = new HashMap<>();
-        if (directory != null && !directory.isEmpty()) {
-            params.put("cwd", directory);
-        }
-        return ProcessManager.getInstance().sendRequest("session/list", params)
+        return ProcessManager.getInstance().getMcpManager().waitForReady()
+                .orTimeout(15, TimeUnit.SECONDS)
+                .thenCompose(v -> {
+                    Map<String, Object> params = new HashMap<>();
+                    if (directory != null && !directory.isEmpty()) {
+                        params.put("cwd", directory);
+                    }
+                    return ProcessManager.getInstance().sendRequest("session/list", params);
+                })
                 .thenApply(res -> {
                     try {
                         LOG.log(Level.FINE, "getSessions: got response");
@@ -185,27 +189,40 @@ public class SessionManager {
 
         LOG.log(Level.FINE, "Creating new session with CWD: {0}", cwd);
         final String finalCwd = cwd;
+        final long start = System.nanoTime();
 
-        return sendCreateSessionRequest(finalCwd).handle((res, ex) -> {
+        return sendCreateSessionRequest(finalCwd, start).handle((res, ex) -> {
             if (ex == null) {
                 return CompletableFuture.completedFuture(res);
+            }
+            long durationMs = (System.nanoTime() - start) / 1_000_000;
+            if (ex instanceof java.util.concurrent.TimeoutException) {
+                LOG.warn("session/new timed out after {0}ms", durationMs);
+            } else {
+                LOG.warn("session/new failed after {0}ms with error: {1}", durationMs, ex.getMessage());
             }
             Throwable cause = (ex instanceof java.util.concurrent.CompletionException) ? ex.getCause() : ex;
             if (isInvalidParamsError(cause) && !ProcessManager.getInstance().getMcpManager().isDisabled()) {
                 LOG.warn("session/new failed with Invalid Params, retrying without MCP servers");
                 ProcessManager.getInstance().getMcpManager().disable();
-                return sendCreateSessionRequest(finalCwd);
+                return sendCreateSessionRequest(finalCwd, start);
             }
             return CompletableFuture.<Session>failedFuture(ex);
         }).thenCompose(f -> f);
     }
 
-    private CompletableFuture<Session> sendCreateSessionRequest(String finalCwd) {
-        Map<String, Object> params = new HashMap<>();
-        params.put("cwd", finalCwd);
-        params.put("mcpServers", ProcessManager.getInstance().getMcpManager().getServerConfig());
-        return ProcessManager.getInstance().sendRequest("session/new", params)
+    private CompletableFuture<Session> sendCreateSessionRequest(String finalCwd, long start) {
+        return ProcessManager.getInstance().getMcpManager().waitForReady()
+                .orTimeout(15, TimeUnit.SECONDS)
+                .thenCompose(v -> {
+                    Map<String, Object> params = new HashMap<>();
+                    params.put("cwd", finalCwd);
+                    params.put("mcpServers", ProcessManager.getInstance().getMcpManager().getServerConfig());
+                    return ProcessManager.getInstance().sendRequest("session/new", params, 60, TimeUnit.SECONDS);
+                })
                 .thenApply(res -> {
+                    long durationMs = (System.nanoTime() - start) / 1_000_000;
+                    LOG.info("session/new completed in {0}ms", durationMs);
                     try {
                         Session s = objectMapper.treeToValue(res, Session.class);
                         if (s.effectiveDirectory() == null) {
@@ -220,34 +237,47 @@ public class SessionManager {
 
     public CompletableFuture<List<SessionConfigOption>> loadSessionFromServer(String sessionId, String cwd) {
         LOG.fine("loadSessionFromServer: called with {0}, cwd={1}", sessionId, cwd);
-        return sendLoadSessionRequest(sessionId, cwd).handle((res, ex) -> {
+        final long start = System.nanoTime();
+        return sendLoadSessionRequest(sessionId, cwd, start).handle((res, ex) -> {
             if (ex == null) {
                 return CompletableFuture.completedFuture(res);
+            }
+            long durationMs = (System.nanoTime() - start) / 1_000_000;
+            if (ex instanceof java.util.concurrent.TimeoutException) {
+                LOG.warn("session/load timed out after {0}ms", durationMs);
+            } else {
+                LOG.warn("session/load failed after {0}ms with error: {1}", durationMs, ex.getMessage());
             }
             Throwable cause = (ex instanceof java.util.concurrent.CompletionException) ? ex.getCause() : ex;
             if (isInvalidParamsError(cause) && !ProcessManager.getInstance().getMcpManager().isDisabled()) {
                 LOG.warn("session/load failed with Invalid Params, retrying without MCP servers");
                 ProcessManager.getInstance().getMcpManager().disable();
-                return sendLoadSessionRequest(sessionId, cwd);
+                return sendLoadSessionRequest(sessionId, cwd, start);
             }
             return CompletableFuture.<List<SessionConfigOption>>failedFuture(ex);
         }).thenCompose(f -> f)
         .exceptionally(ex -> {
-            LOG.warn("loadSessionFromServer: error: {0}", ex.getMessage());
+            long durationMs = (System.nanoTime() - start) / 1_000_000;
+            LOG.warn("loadSessionFromServer: error after {0}ms: {1}", durationMs, ex.getMessage());
             return null;
         });
     }
 
-    private CompletableFuture<List<SessionConfigOption>> sendLoadSessionRequest(String sessionId, String cwd) {
-        Map<String, Object> params = new HashMap<>();
-        params.put("sessionId", sessionId);
-        if (cwd != null) {
-            params.put("cwd", cwd);
-        }
-        params.put("mcpServers", ProcessManager.getInstance().getMcpManager().getServerConfig());
-
-        return ProcessManager.getInstance().sendRequest("session/load", params)
+    private CompletableFuture<List<SessionConfigOption>> sendLoadSessionRequest(String sessionId, String cwd, long start) {
+        return ProcessManager.getInstance().getMcpManager().waitForReady()
+                .orTimeout(15, TimeUnit.SECONDS)
+                .thenCompose(v -> {
+                    Map<String, Object> params = new HashMap<>();
+                    params.put("sessionId", sessionId);
+                    if (cwd != null) {
+                        params.put("cwd", cwd);
+                    }
+                    params.put("mcpServers", ProcessManager.getInstance().getMcpManager().getServerConfig());
+                    return ProcessManager.getInstance().sendRequest("session/load", params, 60, TimeUnit.SECONDS);
+                })
                 .thenApply(res -> {
+                    long durationMs = (System.nanoTime() - start) / 1_000_000;
+                    LOG.info("session/load completed in {0}ms", durationMs);
                     LOG.fine("loadSessionFromServer: got response {0}", res);
                     if (res != null && res.has("configOptions")) {
                         try {

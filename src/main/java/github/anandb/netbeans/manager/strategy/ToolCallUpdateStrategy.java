@@ -34,10 +34,10 @@ public class ToolCallUpdateStrategy implements DataExtractionStrategy {
         String messageId = update.messageId() != null ? update.messageId() : update.toolCallId();
         String command = update.update().rawInput() != null ? defaultString(update.update().rawInput().command()) : "";
         String text = new StringBuilder()
-                      .append(abbreviate(command, 80))
                       .append(isNotBlank(command) ? "$ " : "")
+                      .append(abbreviate(command, 80))
                       .append(isNotBlank(command) ? "\n\n" : "")
-                      .append(firstNonNull(extractContentText(update.content()), update.status(), ""))
+                      .append(firstNonNull(extractContentText(update.content()), ""))
                       .toString();
 
         MessageClassification m = ToolDataExtractor.classify(update.update().type(), text, update.kind());
@@ -51,6 +51,7 @@ public class ToolCallUpdateStrategy implements DataExtractionStrategy {
                 .toolTitle(tt)
                 .rawText(text)
                 .streaming(true)
+                .status(defaultString(update.update().status()))
                 .build();
         handler.displayMessage(target);
     }

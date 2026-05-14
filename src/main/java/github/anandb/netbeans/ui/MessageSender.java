@@ -31,6 +31,7 @@ public class MessageSender {
     private final StatusController statusController;
     private final Runnable paperclipUpdater;
     private final Runnable inputFocusRequester;
+    private Runnable onNewMessageCallback;
 
     public MessageSender(
             PlaceholderTextArea inputArea,
@@ -49,6 +50,10 @@ public class MessageSender {
         this.inputFocusRequester = inputFocusRequester;
     }
 
+    public void setOnNewMessageCallback(Runnable callback) {
+        this.onNewMessageCallback = callback;
+    }
+
     /** Sends (or intercepts) the current message text. */
     public void sendMessage() {
         if (!SessionManager.getInstance().getStateMachine().canSendMessage()) {
@@ -57,6 +62,10 @@ public class MessageSender {
         String text = inputArea.getText(); // Don't trim user input spaces
         if (text.isEmpty() && attachmentManager.getAttachments().isEmpty()) {
             return;
+        }
+
+        if (onNewMessageCallback != null) {
+            onNewMessageCallback.run();
         }
 
         // Intercept local slash commands first

@@ -17,6 +17,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import github.anandb.netbeans.mcp.McpManager;
+
 @ExtendWith(MockitoExtension.class)
 class SessionManagerTest {
 

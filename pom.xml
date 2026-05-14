@@ -184,6 +184,23 @@
             <version>3.5.3</version>
         </dependency>
 
+        <!-- Jetty for embedded MCP server -->
+        <dependency>
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-server</artifactId>
+            <version>11.0.24</version>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-servlet</artifactId>
+            <version>11.0.24</version>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-servlets</artifactId>
+            <version>11.0.24</version>
+        </dependency>
+
         <!-- ASM for bytecode manipulation (required by nbm) -->
         <dependency>
             <groupId>org.ow2.asm</groupId>

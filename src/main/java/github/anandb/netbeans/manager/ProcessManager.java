@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.regex.Pattern;
@@ -41,6 +42,7 @@ import github.anandb.netbeans.ui.ACPOptionsPanel;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.LanguageResolver;
 import github.anandb.netbeans.support.MapperSupplier;
+import github.anandb.netbeans.mcp.McpManager;
 
 public class ProcessManager {
 
@@ -82,6 +84,7 @@ public class ProcessManager {
     private volatile boolean serverStarted = false;
 
     private ProcessManager() {
+        mcpManager.start();
     }
 
     public McpManager getMcpManager() {
@@ -94,6 +97,14 @@ public class ProcessManager {
             return CompletableFuture.failedFuture(new RuntimeException(operationalError()));
         }
         return client.sendRequest(method, params);
+    }
+
+    public CompletableFuture<JsonNode> sendRequest(String method, Object params, long timeout, TimeUnit unit) {
+        AcpProtocolClient client = rpcClient;
+        if (client == null) {
+            return CompletableFuture.failedFuture(new RuntimeException(operationalError()));
+        }
+        return client.sendRequest(method, params, timeout, unit);
     }
 
     public void sendNotification(String method, Object params) {
@@ -138,9 +149,6 @@ public class ProcessManager {
         }
         isClosing = false;
         readyFuture = new CompletableFuture<>();
-
-        // Start MCP weather server
-        mcpManager.start();
 
         LOG.info("Starting ACP server...");
         try {

@@ -17,6 +17,7 @@ import org.netbeans.api.project.Project;
 import org.openide.util.NbBundle;
 import github.anandb.netbeans.contract.SlashCommandCallback;
 import github.anandb.netbeans.project.ACPProjectManager;
+import github.anandb.netbeans.mcp.McpManager;
 import github.anandb.netbeans.manager.ProcessManager;
 import github.anandb.netbeans.manager.SessionManager;
 import github.anandb.netbeans.model.MessageType;
@@ -92,6 +93,15 @@ public class ComponentLifecycleHandler {
                         MessageType.error_response, NbBundle.getMessage(AssistantTopComponent.class, "STATUS_FailedToStart", msg), null, null
                 ));
             });
+        }
+
+        // Update status label when MCP server is starting/ready
+        McpManager mcp = ProcessManager.getInstance().getMcpManager();
+        if (!mcp.isDisabled() && !mcp.waitForReady().isDone()) {
+            SwingUtilities.invokeLater(() -> statusController.setStatus("STATUS_McpInitializing"));
+            mcp.waitForReady().thenRun(() ->
+                SwingUtilities.invokeLater(() -> statusController.setStatus("STATUS_Ready"))
+            );
         }
 
         ProcessManager.getInstance().setPermissionHandler(topComponent);

@@ -49,6 +49,7 @@ public class SessionLifecycleHandler implements SessionListener {
     // Shared mutable state
     private boolean optionsPanelCollapsed = true;
     private boolean isSwitchingSessionDropdown = false;
+    private volatile boolean turnEnded = false;
 
     public SessionLifecycleHandler(
             ChatThreadPanel chatPanel,
@@ -83,6 +84,11 @@ public class SessionLifecycleHandler implements SessionListener {
         optionsPanelCollapsed = collapsed;
     }
 
+    /** Reset turn-ended flag when a new message is sent. */
+    public void onNewMessageSent() {
+        turnEnded = false;
+    }
+
     boolean isSwitchingSessionDropdown() {
         return isSwitchingSessionDropdown;
     }
@@ -108,7 +114,9 @@ public class SessionLifecycleHandler implements SessionListener {
                 public void displayMessage(ProcessedMessage msg) {
                     SwingUtilities.invokeLater(() -> {
                         chatPanel.addMessage(msg);
-                        statusController.updateButtonState(true);
+                        if (!turnEnded) {
+                            statusController.updateButtonState(true);
+                        }
                     });
                 }
 
@@ -152,6 +160,7 @@ public class SessionLifecycleHandler implements SessionListener {
 
         // End of turn signals
         if ("responding_finished".equals(type) || "end_turn".equals(type)) {
+            turnEnded = true;
             SwingUtilities.invokeLater(() -> {
                 statusController.resetToReady();
                 chatPanel.stopStreaming();

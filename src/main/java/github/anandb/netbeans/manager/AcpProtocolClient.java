@@ -98,6 +98,8 @@ public class AcpProtocolClient implements Closeable {
         long id = nextId.getAndIncrement();
         CompletableFuture<JsonNode> future = new CompletableFuture<>();
         pendingRequests.put(id, future);
+        
+        long sendStart = System.nanoTime();
 
         ObjectNode request = MAPPER.createObjectNode();
         request.put("jsonrpc", "2.0");
@@ -109,6 +111,9 @@ public class AcpProtocolClient implements Closeable {
             String json = MAPPER.writeValueAsString(request);
             LOG.fine("[ACP] Sending request: {0}", method);
             writer.println(json);
+            long sendEnd = System.nanoTime();
+            long sendMs = (sendEnd - sendStart) / 1_000_000;
+            LOG.info("[ACP] Request {0} (id={1}) sent in {2}ms", method, id, sendMs);
             if (writer.checkError()) {
                 pendingRequests.remove(id);
                 IOException ex = new IOException("Failed to write request");
@@ -127,7 +132,14 @@ public class AcpProtocolClient implements Closeable {
                     .whenComplete((result, error) -> {
                         if (error instanceof java.util.concurrent.TimeoutException) {
                             pendingRequests.remove(id);
-                            LOG.warn("Request timed out: method={0}, id={1}", new Object[]{method, id});
+                            long totalMs = timeoutSeconds * 1000;
+                            LOG.warn("Request timed out: method={0}, id={1} after {2}ms", new Object[]{method, id, totalMs});
+                        } else if (error != null) {
+                            long totalMs = (System.nanoTime() - sendStart) / 1_000_000;
+                            LOG.warn("Request failed: method={0}, id={1} after {2}ms - {3}", new Object[]{method, id, totalMs, error.getMessage()});
+                        } else {
+                            long totalMs = (System.nanoTime() - sendStart) / 1_000_000;
+                            LOG.info("Request completed: method={0}, id={1} in {2}ms", new Object[]{method, id, totalMs});
                         }
                     });
         }
@@ -274,13 +286,16 @@ public class AcpProtocolClient implements Closeable {
                 handleIncomingRequest(id, method, params);
             } else {
                 // Response to Outgoing Request
+                long recvTime = System.nanoTime();
                 CompletableFuture<JsonNode> future = pendingRequests.remove(id);
                 if (future != null) {
                     if (node.has("error")) {
                         JsonNode errNode = node.get("error");
                         String errMsg = errNode.has("message") ? errNode.get("message").asText() : errNode.toString();
+                        LOG.info("[ACP] Received error response for id={0}: {1}", id, errMsg);
                         future.completeExceptionally(new RuntimeException(errMsg));
                     } else if (node.has("result")) {
+                        LOG.fine("[ACP] Received response for id={0}", id);
                         future.complete(node.get("result"));
                     } else {
                         future.complete(null);
