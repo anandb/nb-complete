@@ -279,7 +279,8 @@ public class ComponentLifecycleHandler {
                             && (keyCode == KeyEvent.VK_HOME
                                 || keyCode == KeyEvent.VK_END))) {
                     Component src = e.getComponent();
-                    if (src != null && SwingUtilities.isDescendingFrom(src, topComponent)) {
+                    if (src != null && SwingUtilities.isDescendingFrom(src, topComponent)
+                            && !SwingUtilities.isDescendingFrom(src, chatPanel)) {
                         if (keyCode == KeyEvent.VK_PAGE_UP
                                 || keyCode == KeyEvent.VK_PAGE_DOWN) {
                             Component c = src;

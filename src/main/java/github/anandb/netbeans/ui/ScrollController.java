@@ -5,11 +5,15 @@ import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.KeyEventDispatcher;
+import java.awt.KeyboardFocusManager;
 import java.awt.RenderingHints;
+import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
+import javax.swing.JComboBox;
 import javax.swing.JLayeredPane;
 import javax.swing.JScrollBar;
 import javax.swing.JScrollPane;
@@ -18,7 +22,7 @@ import javax.swing.Timer;
 
 import org.openide.util.NbBundle;
 
-public class ScrollController {
+public class ScrollController implements KeyEventDispatcher {
     private static final Color SCROLL_BTN_COLOR_A = new Color(41, 98, 255, 200);
     private static final Color SCROLL_BTN_COLOR_B = new Color(41, 98, 255, 240);
 
@@ -35,6 +39,8 @@ public class ScrollController {
         this.scrollTimer = createScrollTimer();
 
         layeredPane.add(scrollDownBtn, JLayeredPane.PALETTE_LAYER);
+
+        KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(this);
 
         scrollPane.getVerticalScrollBar().addAdjustmentListener(e -> {
             if (!e.getValueIsAdjusting()) {
@@ -77,17 +83,47 @@ public class ScrollController {
     private Timer createScrollTimer() {
         Timer t = new Timer(100, e -> {
             JScrollBar vertical = scrollPane.getVerticalScrollBar();
-            vertical.setValue(Math.max(0, vertical.getMaximum() - BOTTOM_PADDING));
+            vertical.setValue(vertical.getMaximum());
         });
         t.setRepeats(false);
         return t;
     }
 
+    @Override
+    public boolean dispatchKeyEvent(KeyEvent e) {
+        if (e.getID() == KeyEvent.KEY_PRESSED) {
+            int keyCode = e.getKeyCode();
+            if (keyCode == KeyEvent.VK_PAGE_UP || keyCode == KeyEvent.VK_PAGE_DOWN
+                    || ((e.getModifiersEx() & KeyEvent.CTRL_DOWN_MASK) != 0
+                        && (keyCode == KeyEvent.VK_HOME || keyCode == KeyEvent.VK_END))) {
+                Component src = e.getComponent();
+                if (src != null && SwingUtilities.isDescendingFrom(src, parentComponent)) {
+                    if (keyCode == KeyEvent.VK_PAGE_UP || keyCode == KeyEvent.VK_PAGE_DOWN) {
+                        Component c = src;
+                        while (c != null) {
+                            if (c instanceof JComboBox) {
+                                return false;
+                            }
+                            c = c.getParent();
+                        }
+                    }
+                    switch (keyCode) {
+                        case KeyEvent.VK_PAGE_UP -> scrollByBlock(true);
+                        case KeyEvent.VK_PAGE_DOWN -> scrollByBlock(false);
+                        case KeyEvent.VK_HOME -> scrollToTop();
+                        case KeyEvent.VK_END -> scrollToBottom(true);
+                        default -> {}
+                    }
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     public void redirectMouseWheel(Component source, MouseEvent e) {
         scrollPane.dispatchEvent(SwingUtilities.convertMouseEvent(source, e, scrollPane));
     }
-
-    private static final int BOTTOM_PADDING = 40;
 
     public void fixMouseWheel(Component c) {
         c.addMouseWheelListener(e -> {
@@ -101,7 +137,7 @@ public class ScrollController {
         int extent = vertical.getModel().getExtent();
         int value = vertical.getValue();
         int maximum = vertical.getMaximum();
-        return (value + extent >= maximum - BOTTOM_PADDING);
+        return (value + extent >= maximum - 16);
     }
 
     public void positionScrollDownBtn(int parentWidth, int parentHeight) {
@@ -142,8 +178,7 @@ public class ScrollController {
                 return;
             }
             JScrollBar vertical = scrollPane.getVerticalScrollBar();
-            int target = Math.max(0, vertical.getMaximum() - BOTTOM_PADDING);
-            vertical.setValue(target);
+            vertical.setValue(vertical.getMaximum());
             scrollDownBtn.setVisible(false);
             if (!scrollTimer.isRunning()) {
                 scrollTimer.start();
@@ -152,6 +187,7 @@ public class ScrollController {
     }
 
     public void cleanup() {
+        KeyboardFocusManager.getCurrentKeyboardFocusManager().removeKeyEventDispatcher(this);
         if (scrollTimer.isRunning()) {
             scrollTimer.stop();
         }
