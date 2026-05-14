@@ -7,6 +7,7 @@ import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.SwingUtilities;
+import javax.swing.Timer;
 import github.anandb.netbeans.contract.DataExtractionStrategy;
 import github.anandb.netbeans.contract.SessionListener;
 import github.anandb.netbeans.contract.UIHandler;
@@ -161,13 +162,19 @@ public class SessionLifecycleHandler implements SessionListener {
         // End of turn signals
         if ("responding_finished".equals(type) || "end_turn".equals(type)) {
             turnEnded = true;
-            SwingUtilities.invokeLater(() -> {
-                statusController.resetToReady();
-                chatPanel.stopStreaming();
-                if (SessionManager.getInstance().getCurrentSessionId() != null) {
-                    statusController.setInputEnabled(true);
-                }
+            // Brief delay to allow any in-flight delta notifications to arrive
+            Timer flushTimer = new Timer(150, e -> {
+                SwingUtilities.invokeLater(() -> {
+                    statusController.resetToReady();
+                    chatPanel.stopStreaming();
+                    if (SessionManager.getInstance().getCurrentSessionId() != null) {
+                        statusController.setInputEnabled(true);
+                    }
+                    SessionManager.getInstance().onTurnEnded();
+                });
             });
+            flushTimer.setRepeats(false);
+            flushTimer.start();
         }
     }
 

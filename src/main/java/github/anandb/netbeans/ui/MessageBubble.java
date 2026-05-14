@@ -55,7 +55,7 @@ public class MessageBubble extends JPanel implements Scrollable {
     private final MessageType type;
     private final String role;
     private final String messageId;
-    private final StringBuilder text;
+    private final StringBuffer text;
     private String toolTitle;
     private final JPanel segments;
     private JPanel bubble;
@@ -115,7 +115,7 @@ public class MessageBubble extends JPanel implements Scrollable {
         this.type = type;
         this.role = type.roleName();
         this.messageId = messageId;
-        this.text = new StringBuilder(text);
+        this.text = new StringBuffer(text);
         this.toolTitle = toolTitle;
 
         ColorTheme theme = ThemeManager.getCurrentTheme();

@@ -489,7 +489,12 @@ public class SessionManager {
         if (sid != null) {
             ProcessManager.getInstance().stopMessage(sid);
         }
-        stateMachine.transitionTo(SessionState.STREAMING);
+    }
+
+    public void onTurnEnded() {
+        if (stateMachine.getState() == SessionState.STOPPING) {
+            stateMachine.transitionTo(SessionState.IDLE);
+        }
     }
 
     private void notifySessionListUpdated(List<Session> sessions) {

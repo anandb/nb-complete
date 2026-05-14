@@ -10,6 +10,6 @@ public final class FontStacks {
             "'Noto Color Emoji'", "'sans-serif'");
 
     public static final String MONO_STACK = String.join(", ",
-            "'MesloLGS NF'", "'Source Code Pro'", "'JetBrains Mono'",
-            "'Monaco'", "'Fira Code'", "'monospace'");
+            "'Fira Code'", "'MesloLGS NF'", "'Source Code Pro'",
+            "'JetBrains Mono'", "'Monaco'", "'monospace'");
 }

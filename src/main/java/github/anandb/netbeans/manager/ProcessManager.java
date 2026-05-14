@@ -378,9 +378,9 @@ public class ProcessManager {
                 }
             }
 
-            serverProcess = null;
             LOG.log(Level.FINE, "ACP server shutdown complete.");
         }
+        
         serverProcess = null;
     }
 
@@ -670,7 +670,7 @@ public class ProcessManager {
         }
 
         CompletableFuture<JsonNode> resultFuture = new CompletableFuture<>();
-        
+
         FileObject fo = FileUtil.toFileObject(file);
         if (fo != null) {
             SwingUtilities.invokeLater(() -> {
@@ -688,16 +688,16 @@ public class ProcessManager {
                 } catch (Exception e) {
                     LOG.log(Level.FINE, "Could not read from editor for {0}, falling back to disk", filePath);
                 }
-                
+
                 readFromDisk(file, filePath, resultFuture);
             });
         } else {
             readFromDisk(file, filePath, resultFuture);
         }
-        
+
         return resultFuture;
     }
-    
+
     private void readFromDisk(File file, String filePath, CompletableFuture<JsonNode> resultFuture) {
         CompletableFuture.supplyAsync(() -> {
             try {

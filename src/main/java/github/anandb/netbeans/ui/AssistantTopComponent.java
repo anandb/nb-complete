@@ -593,6 +593,25 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         componentLifecycleHandler.componentDeactivated();
     }
 
+    private boolean allowClose = false;
+
+    @Override
+    public boolean canClose() {
+        return allowClose;
+    }
+
+    public void toggleVisibility() {
+        if (isOpened()) {
+            // Hide by closing, but prevent full dispose
+            allowClose = true;
+            close();
+            allowClose = false;
+        } else {
+            open();
+            requestActive();
+        }
+    }
+
     @Override
     public void componentClosed() {
         componentLifecycleHandler.componentClosed();

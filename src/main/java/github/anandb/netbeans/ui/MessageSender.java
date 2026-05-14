@@ -2,8 +2,14 @@ package github.anandb.netbeans.ui;
 
 import java.util.List;
 import java.util.Map;
+
 import javax.swing.SwingUtilities;
+import javax.swing.Timer;
+
 import com.fasterxml.jackson.databind.JsonNode;
+
+import java.util.concurrent.CompletableFuture;
+
 import github.anandb.netbeans.manager.ProcessManager;
 import github.anandb.netbeans.manager.SessionManager;
 import github.anandb.netbeans.manager.SlashCommandInterceptor;
@@ -68,12 +74,12 @@ public class MessageSender {
             onNewMessageCallback.run();
         }
 
-        // Intercept local slash commands first
+        // Intercept local slash commands first (trim is only to check for '/')
         boolean isForwardedSlash = text.trim().startsWith("/");
         if (isForwardedSlash) {
             SlashCommandInterceptor interceptor = ProcessManager.getInstance().getSlashCommandInterceptor();
             if (interceptor != null) {
-                java.util.concurrent.CompletableFuture<Boolean> handled = interceptor.intercept(text, null);
+                CompletableFuture<Boolean> handled = interceptor.intercept(text, null);
                 if (handled != null && handled.isDone() && !handled.isCompletedExceptionally()) {
                     Boolean result = handled.join();
                     if (Boolean.TRUE.equals(result)) {
@@ -160,7 +166,11 @@ public class MessageSender {
                         // Handle turn completion from RPC result
                         if (result != null && result.has("stopReason")) {
                             LOG.info("Turn finished via RPC result: stopReason={0}", result.get("stopReason").asText());
-                            chatPanel.stopStreaming();
+                            // Brief delay to allow any in-flight delta notifications to arrive
+                            // before finalizing the stream bubble (opencode may send result before last delta)
+                            Timer flushTimer = new Timer(150, e -> chatPanel.stopStreaming());
+                            flushTimer.setRepeats(false);
+                            flushTimer.start();
                         }
                     });
                 })

@@ -139,9 +139,13 @@ public class ChatThreadPanel extends JPanel {
             if (!isShowing()) {
                 return;
             }
-            if (activeStreamBubble != null && activeStreamBubble.flushUpdate()) {
-                activeStreamBubble.revalidate();
-                scrollController.scrollToBottom();
+            if (activeStreamBubble != null) {
+                // Check wasAtBottom BEFORE flushUpdate changes content height
+                boolean wasAtBottom = scrollController.isAtBottom();
+                if (activeStreamBubble.flushUpdate()) {
+                    activeStreamBubble.revalidate();
+                    scrollController.scrollToBottom(wasAtBottom);
+                }
             }
         });
         streamFlushTimer.setRepeats(true);
@@ -243,7 +247,10 @@ public class ChatThreadPanel extends JPanel {
         strut.setVisible(visible);
         messagesContainer.add(bubble);
         messagesContainer.add(strut);
-        if (!streaming) {
+        // Tool updates are discrete (not incremental chunks), so always scroll.
+        // Other streaming types rely on the timer for scroll-to-bottom.
+        boolean shouldScroll = !streaming || type.isTool();
+        if (shouldScroll) {
             messagesContainer.revalidate();
             scrollController.scrollToBottom();
         }

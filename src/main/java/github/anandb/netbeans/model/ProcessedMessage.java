@@ -1,7 +1,7 @@
 package github.anandb.netbeans.model;
 
 import static org.apache.commons.lang3.StringUtils.defaultIfBlank;
-import static org.apache.commons.lang3.StringUtils.isBlank;
+import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
 public record ProcessedMessage(
         MessageType messageType,
@@ -15,9 +15,9 @@ public record ProcessedMessage(
 
     public boolean isIgnorable() {
         if (messageType == MessageType.tool_call || messageType == MessageType.tool_call_update) {
-            return isBlank(status) || status.startsWith("pending") || status.startsWith("in_progress");
+            return isNotBlank(status) && (status.startsWith("pending") || status.startsWith("in_progress"));
         }
-        
+
         return isIgnorable(messageType.roleName(), text);
     }
 

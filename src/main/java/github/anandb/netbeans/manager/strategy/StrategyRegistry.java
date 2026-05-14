@@ -101,7 +101,10 @@ public class StrategyRegistry {
     private String reClassify(SessionUpdate update) {
         String type = update.type();
         try {
-            String text = MAPPER.writeValueAsString(update.content());
+            JsonNode content = update.content();
+            String text = (content != null && content.isObject() && content.has("text"))
+                    ? content.get("text").asText()
+                    : MAPPER.writeValueAsString(content);
             var meta = ToolDataExtractor.classify(update.update().type(), text, update.kind());
             if (meta.type() != update.update().type()) {
                 type = meta.type().name();

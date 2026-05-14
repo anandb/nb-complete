@@ -104,8 +104,8 @@ final class IconResourceManager {
         Font editorFont = UIManager.getFont("EditorPane.font");
         int size = (editorFont != null) ? editorFont.getSize() : 13;
 
-        Font meslo = new Font("MesloLGS NF", Font.PLAIN, size);
-        if (meslo.getFamily().equalsIgnoreCase("MesloLGS NF")) {
+        Font meslo = new Font("Fira Code", Font.PLAIN, size);
+        if (meslo.getFamily().equalsIgnoreCase("Fira Code")) {
             cachedMonospaceFont = meslo;
             return meslo;
         }
