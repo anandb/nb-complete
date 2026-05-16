@@ -37,7 +37,7 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
 
     private static volatile org.fife.ui.rsyntaxtextarea.Theme cachedRTheme;
 
-    private static org.fife.ui.rsyntaxtextarea.Theme loadCodeTheme() {
+    private static synchronized org.fife.ui.rsyntaxtextarea.Theme loadCodeTheme() {
         Theme theme = cachedRTheme;
         if (theme != null) {
             return theme;

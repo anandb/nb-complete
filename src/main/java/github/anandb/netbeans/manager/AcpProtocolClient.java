@@ -194,9 +194,7 @@ public class AcpProtocolClient implements Closeable {
                 notifyConnectionError(e);
             }
         } finally {
-            if (running) {
-                notifyDisconnection();
-            }
+            notifyDisconnection();
         }
     }
 

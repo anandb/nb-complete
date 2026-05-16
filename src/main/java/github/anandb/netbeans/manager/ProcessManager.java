@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.regex.Pattern;
@@ -64,7 +65,7 @@ public class ProcessManager {
     private ScheduledExecutorService reconnectExecutor;
 
     private volatile Process serverProcess;
-    private volatile AcpProtocolClient rpcClient;
+    private final AtomicReference<AcpProtocolClient> rpcClient = new AtomicReference<>();
     private volatile CompletableFuture<Void> readyFuture = new CompletableFuture<>();
 
     private final List<Consumer<SessionUpdate>> sseListeners = new CopyOnWriteArrayList<>();
@@ -92,7 +93,7 @@ public class ProcessManager {
     }
 
     public CompletableFuture<JsonNode> sendRequest(String method, Object params) {
-        AcpProtocolClient client = rpcClient;
+        AcpProtocolClient client = rpcClient.get();
         if (client == null) {
             return CompletableFuture.failedFuture(new RuntimeException(operationalError()));
         }
@@ -100,7 +101,7 @@ public class ProcessManager {
     }
 
     public CompletableFuture<JsonNode> sendRequest(String method, Object params, long timeout, TimeUnit unit) {
-        AcpProtocolClient client = rpcClient;
+        AcpProtocolClient client = rpcClient.get();
         if (client == null) {
             return CompletableFuture.failedFuture(new RuntimeException(operationalError()));
         }
@@ -108,7 +109,7 @@ public class ProcessManager {
     }
 
     public void sendNotification(String method, Object params) {
-        AcpProtocolClient client = rpcClient;
+        AcpProtocolClient client = rpcClient.get();
         if (client == null) {
             LOG.warn("sendNotification called with null rpcClient");
             return;
@@ -170,16 +171,17 @@ public class ProcessManager {
 
             this.serverProcess = pb.start();
 
-            this.rpcClient = new AcpProtocolClient(serverProcess);
-            rpcClient.start();
-            rpcClient.setDisconnectionHandler(this::handleDisconnection);
+            AcpProtocolClient client = new AcpProtocolClient(serverProcess);
+            this.rpcClient.set(client);
+            client.start();
+            client.setDisconnectionHandler(this::handleDisconnection);
 
             // Register handlers
-            rpcClient.onRequest("fs/readTextFile", this::handleReadTextFile);
-            rpcClient.onRequest("session/request_permission", this::handleRequestPermission);
+            client.onRequest("fs/readTextFile", this::handleReadTextFile);
+            client.onRequest("session/request_permission", this::handleRequestPermission);
 
             // Listen for session updates
-            rpcClient.onNotification("session/update", params -> {
+            client.onNotification("session/update", params -> {
                 // Extract raw type before parse (needed in catch block too)
                 String rawType = null;
                 try {
@@ -278,7 +280,7 @@ public class ProcessManager {
                         "terminal", true
                 )
         );
-        rpcClient.sendRequest("initialize", params)
+        rpcClient.get().sendRequest("initialize", params)
                 .orTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
                 .thenAccept(res -> {
                     if (res != null) {
@@ -331,14 +333,16 @@ public class ProcessManager {
             reconnectFuture.cancel(false);
             reconnectFuture = null;
         }
-        reconnectExecutor.shutdownNow().forEach(task ->
-                LOG.fine("Discarded pending reconnect task on shutdown: {0}", task));
+        if (reconnectExecutor != null) {
+            reconnectExecutor.shutdownNow().forEach(task ->
+                    LOG.fine("Discarded pending reconnect task on shutdown: {0}", task));
+        }
 
         mcpManager.stop();
 
-        if (rpcClient != null) {
-            rpcClient.close();
-            rpcClient = null;
+        AcpProtocolClient client = rpcClient.getAndSet(null);
+        if (client != null) {
+            client.close();
         }
 
         if (serverProcess != null && serverProcess.isAlive()) {
@@ -410,11 +414,11 @@ public class ProcessManager {
      * Check if RPC client is initialized. Returns false if not ready.
      */
     private boolean rpcClientReady() {
-        return rpcClient != null;
+        return rpcClient.get() != null;
     }
 
     public void touchConnection() {
-        AcpProtocolClient client = rpcClient;
+        AcpProtocolClient client = rpcClient.get();
         if (client != null) {
             client.touch();
         }
@@ -426,7 +430,8 @@ public class ProcessManager {
 
     public CompletableFuture<JsonNode> sendMessage(String sessionId, String text,  Map<String, Object> context,
                                                    List<Map<String, Object>> additionalBlocks) {
-        if (!rpcClientReady()) {
+        AcpProtocolClient client = rpcClient.get();
+        if (client == null) {
             return CompletableFuture.failedFuture(new RuntimeException(operationalError()));
         }
 
@@ -497,15 +502,16 @@ public class ProcessManager {
         params.put("prompt", promptBlocks);
         params.put("mcpServers", mcpManager.getServerConfig());
 
-        return rpcClient.sendRequest("session/prompt", params, 0)
+        return client.sendRequest("session/prompt", params, 0)
                 .thenApply(v -> null);
     }
 
     public CompletableFuture<Void> stopMessage(String sessionId) {
-        if (!rpcClientReady()) {
+        AcpProtocolClient client = rpcClient.get();
+        if (client == null) {
             return CompletableFuture.failedFuture(new RuntimeException(operationalError()));
         }
-        rpcClient.sendNotification("session/cancel", Map.of("sessionId", sessionId));
+        client.sendNotification("session/cancel", Map.of("sessionId", sessionId));
         return CompletableFuture.completedFuture(null);
     }
 
@@ -555,9 +561,8 @@ public class ProcessManager {
         }
 
         // Drain all pending futures so callers (e.g. sendMessage) get their exceptionally() fired
-        AcpProtocolClient staleClient = rpcClient;
+        AcpProtocolClient staleClient = rpcClient.getAndSet(null);
         if (staleClient != null) {
-            rpcClient = null;
             staleClient.close();
         }
 

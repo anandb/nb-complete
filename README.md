@@ -1,6 +1,6 @@
 # Coding Assistant
 
-[![Version](https://img.shields.io/badge/version-1.5.20-blue.svg)](pom.xml)
+[![Version](https://img.shields.io/badge/version-1.5.22-blue.svg)](pom.xml)
 [![Build Status](https://img.shields.io/badge/build-success-brightgreen.svg)](https://github.com/anandb/nb-complete)
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.anandb/beanbot)](https://central.sonatype.com/artifact/io.github.anandb/beanbot/versions)
 [![NetBeans](https://img.shields.io/badge/NetBeans-RELEASE290-orange.svg)](https://netbeans.apache.org/download/index.html)
@@ -37,6 +37,7 @@ Refer the [QuickStart document](QUICKSTART.md)
 - **Context Awareness**: The assistant maintains awareness of the active project and workspace state.
 - **Standardized Configuration**: Configuration is managed through the native NetBeans options framework.
 - **Security**: Interactive permission handling for sensitive operations, such as direct file system modifications requested by the AI.
+- **Editor Actions**: Adds context menu shortcuts for sorting lines ascending, sorting lines descending, and minifying/compacting JSON selection.
 
 ### Protocol and Communication
 - **Standardized Messaging**: Built on the Agent Client Protocol (ACP) for reliable inter-process communication.
@@ -63,7 +64,7 @@ the plugin will still work on other versions of Netbeans and Opencode but your e
 | **NetBeans** | RELEASE290 |
 | **Opencode** | 1.14.46 |
 | **Opencode plugins** | `@franzmoca/opencode-lombok`, `@tarquinen/opencode-dcp@latest`, `@opencode/mcp-git` |
-| **This Plugin Version** | ≥ v1.5.20 |
+| **This Plugin Version** | ≥ v1.5.22 |
 | **LLMs** | Big Pickle; GPT 5.4-mini, GPT 5.4-nano; DeepSeek V4 Pro, DeepSeek V4 Flash; Kimi K2.5, Kimi K2.6; Mimo V2.5; Qwen3.5, Qwen3.6 |
 
 Note: Qwen models require `--think=false` if using Ollama, and a `"reasoningEffort": "none"` configuration in `opencode.json`

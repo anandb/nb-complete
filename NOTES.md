@@ -1,5 +1,17 @@
 # Release Notes
 
+## v1.5.22 (Changes since v1.5.21)
+
+### Concurrency Hardening
+- **TOCTOU race fix** (`ProcessManager.rpcClient`): Replaced `volatile AcpProtocolClient` with `final AtomicReference<AcpProtocolClient>`. All reads use `.get()`. `handleDisconnection()` and `stopServer()` use `getAndSet(null)` for atomic extract-and-clear, eliminating the null-check-then-dereference window.
+- **Non-atomic lazy init fixes**: `ColorTheme.getNativeTheme()`, `ColorTheme.loadCssTemplate()`, `CollapsibleCodePane.loadCodeTheme()` — added `synchronized` to prevent double-computation under contention.
+- **Static CSS cache race** (`ColorTheme.toCss()`): Wrapped cache read/write in `synchronized (ColorTheme.class)`.
+- **Read loop guard race** (`AcpProtocolClient.readLoop()`): Removed `if (running)` from `finally` block — `notifyDisconnection()` is now always called on loop exit. Safe because `handleDisconnection()` guards with `isClosing`.
+- **NPE guard** (`ProcessManager.stopServer()`): Added null check on `reconnectExecutor` before `shutdownNow()`.
+
+### UI
+- **Non-closable sidebar tab**: Added `putClientProperty("TabDisplayer.Closable", false)` to prevent accidental tab closure via the X button.
+
 ## v1.5.21 (Changes since v1.5.20)
 
 ### Architecture

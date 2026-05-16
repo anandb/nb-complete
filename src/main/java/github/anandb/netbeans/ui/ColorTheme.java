@@ -41,7 +41,7 @@ public record ColorTheme(
         });
     }
 
-    public static ColorTheme getNativeTheme(boolean darkMode) {
+    public static synchronized ColorTheme getNativeTheme(boolean darkMode) {
         ColorTheme theme = cachedTheme;
         if (theme != null) {
             return theme;
@@ -149,44 +149,46 @@ public record ColorTheme(
     private static volatile String cachedCssUserBg;
 
     public String toCss(Color bubbleBg, boolean isAssistant) {
-        String bg = bubbleBg != null ? toHtmlHex(bubbleBg) : "transparent";
+        synchronized (ColorTheme.class) {
+            String bg = bubbleBg != null ? toHtmlHex(bubbleBg) : "transparent";
 
-        if (isAssistant) {
-            if (bg.equals(cachedCssAssistantBg) && cachedCssAssistant != null) {
-                return cachedCssAssistant;
+            if (isAssistant) {
+                if (bg.equals(cachedCssAssistantBg) && cachedCssAssistant != null) {
+                    return cachedCssAssistant;
+                }
+            } else {
+                if (bg.equals(cachedCssUserBg) && cachedCssUser != null) {
+                    return cachedCssUser;
+                }
             }
-        } else {
-            if (bg.equals(cachedCssUserBg) && cachedCssUser != null) {
-                return cachedCssUser;
+
+            String fg = toHtmlHex(isAssistant ? assistantForeground() : foreground());
+            String linkColor = isDark() ? "#589DF6" : "#268BD2";
+            String preBg = codeBackground() != null ? toHtmlHex(codeBackground()) : "#1e1f22";
+            String preFg = codeForeground() != null ? toHtmlHex(codeForeground()) : "#bcbec4";
+
+            String css = loadCssTemplate()
+                    .replace("$fg", fg)
+                    .replace("$bg", bg)
+                    .replace("$linkColor", linkColor)
+                    .replace("$codeBg", "rgba(255, 255, 255, 0.1)")
+                    .replace("$preBg", preBg)
+                    .replace("$preFg", preFg);
+
+            if (isAssistant) {
+                cachedCssAssistant = css;
+                cachedCssAssistantBg = bg;
+            } else {
+                cachedCssUser = css;
+                cachedCssUserBg = bg;
             }
+            return css;
         }
-
-        String fg = toHtmlHex(isAssistant ? assistantForeground() : foreground());
-        String linkColor = isDark() ? "#589DF6" : "#268BD2";
-        String preBg = codeBackground() != null ? toHtmlHex(codeBackground()) : "#1e1f22";
-        String preFg = codeForeground() != null ? toHtmlHex(codeForeground()) : "#bcbec4";
-
-        String css = loadCssTemplate()
-                .replace("$fg", fg)
-                .replace("$bg", bg)
-                .replace("$linkColor", linkColor)
-                .replace("$codeBg", "rgba(255, 255, 255, 0.1)")
-                .replace("$preBg", preBg)
-                .replace("$preFg", preFg);
-
-        if (isAssistant) {
-            cachedCssAssistant = css;
-            cachedCssAssistantBg = bg;
-        } else {
-            cachedCssUser = css;
-            cachedCssUserBg = bg;
-        }
-        return css;
     }
 
     private static volatile String cachedCssTemplate;
 
-    private static String loadCssTemplate() {
+    private static synchronized String loadCssTemplate() {
         String template = cachedCssTemplate;
         if (template != null) {
             return template;

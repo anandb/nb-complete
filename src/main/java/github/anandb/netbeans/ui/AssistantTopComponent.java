@@ -202,6 +202,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         setName(NbBundle.getMessage(AssistantTopComponent.class, "CTL_AssistantTopComponent"));
         setToolTipText(NbBundle.getMessage(AssistantTopComponent.class, "HINT_AssistantTopComponent"));
 
+        putClientProperty("TabDisplayer.Closable", false);
         setLayout(new BorderLayout());
         chatPanel = new ChatThreadPanel();
 
