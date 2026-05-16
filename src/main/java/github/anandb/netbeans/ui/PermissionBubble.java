@@ -26,7 +26,7 @@ class PermissionBubble extends JPanel {
     private static final long serialVersionUID = 1L;
     private static final Logger LOG = new Logger(PermissionBubble.class);
 
-    public PermissionBubble(String prompt, JsonNode options, CompletableFuture<String> responseFuture) {
+    PermissionBubble(String prompt, JsonNode options, CompletableFuture<String> responseFuture) {
         setLayout(new BorderLayout());
         setOpaque(false);
         setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
@@ -41,7 +41,8 @@ class PermissionBubble extends JPanel {
             BorderFactory.createEmptyBorder(12, 16, 12, 16)
         ));
 
-        JLabel titleLabel = new JLabel(NbBundle.getMessage(ChatThreadPanel.class, "LBL_PermissionRequired"), ThemeManager.getIcon("shield.svg", 18), SwingConstants.LEFT);
+        String permTitle = NbBundle.getMessage(ChatThreadPanel.class, "LBL_PermissionRequired");
+        JLabel titleLabel = new JLabel(permTitle, ThemeManager.getIcon("shield.svg", 18), SwingConstants.LEFT);
         titleLabel.setIconTextGap(8);
         titleLabel.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
         titleLabel.setForeground(theme.permissionTitle());

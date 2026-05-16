@@ -27,7 +27,7 @@ public class ImagePasteTransferHandler extends TransferHandler {
 
     private static final long serialVersionUID = 1L;
 
-    private transient final PasteCallback callback;
+    private final transient PasteCallback callback;
     private static final long MAX_FILE_SIZE = 10 * 1024 * 1024;
 
     public interface PasteCallback {

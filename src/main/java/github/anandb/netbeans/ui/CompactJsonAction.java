@@ -34,7 +34,8 @@ public class CompactJsonAction implements ActionListener {
         if (mimeType == null || !mimeType.toString().toLowerCase().contains("json")) return;
 
         String selection = editor.getSelectedText();
-        int start, end;
+        int start;
+        int end;
         if (selection == null || selection.isEmpty()) {
             start = 0;
             end = doc.getLength();

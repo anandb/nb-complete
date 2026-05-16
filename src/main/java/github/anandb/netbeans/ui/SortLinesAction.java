@@ -25,7 +25,8 @@ public class SortLinesAction implements ActionListener {
 
         Document doc = editor.getDocument();
         String selection = editor.getSelectedText();
-        int start, end;
+        int start;
+        int end;
         if (selection == null || selection.isEmpty()) {
             start = 0;
             end = doc.getLength();

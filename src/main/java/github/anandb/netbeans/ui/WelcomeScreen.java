@@ -20,7 +20,6 @@ import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JSeparator;
-import javax.swing.SwingConstants;
 
 import static org.apache.commons.lang3.StringUtils.defaultIfBlank;
 import static org.apache.commons.lang3.StringUtils.left;
@@ -30,7 +29,9 @@ import org.openide.util.NbBundle;
 import github.anandb.netbeans.manager.SessionTitleMapper;
 import github.anandb.netbeans.model.Session;
 
-class WelcomeScreen {
+final class WelcomeScreen {
+
+    private WelcomeScreen() {}
 
     public static void show(JPanel messagesContainer, List<Session> sessions,
                             Consumer<String> onSessionSelected, Runnable onNewChat) {
@@ -115,6 +116,7 @@ class WelcomeScreen {
                 btn.setBackground(new Color(0, 0, 0, 10));
                 btn.repaint();
             }
+
             @Override
             public void mouseExited(MouseEvent e) {
                 btn.setOpaque(false);

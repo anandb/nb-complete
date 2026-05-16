@@ -8,7 +8,7 @@
 - **Current Version**: 1.5.23
 
 ## Build Commands
-- Build: `mvn package`
+- Build: `mvn package` (runs checkstyle + javadoc + tests)
 - Clean: `mvn clean`
 - Skip Tests: `mvn package -DskipTests`
 

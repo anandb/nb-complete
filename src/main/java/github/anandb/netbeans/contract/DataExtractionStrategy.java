@@ -10,7 +10,7 @@ import github.anandb.netbeans.model.SessionUpdate;
  * defined by {@code reclassifiedType}. When a {@code session/update} notification
  * arrives, each registered strategy is asked {@link #canHandle} to determine if
  * it should process the update. If yes, {@link #extract} transforms the raw
- * update data into {@link ProcessedMessage} blocks and passes them to the handler
+ * update data into {@link github.anandb.netbeans.model.ProcessedMessage} blocks and passes them to the handler
  * for UI rendering.
  */
 public interface DataExtractionStrategy {

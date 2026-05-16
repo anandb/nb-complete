@@ -62,10 +62,12 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
             public void mousePressed(MouseEvent e) {
                 toggle();
             }
+
             @Override
             public void mouseEntered(MouseEvent e) {
                 onHeaderHover(true);
             }
+
             @Override
             public void mouseExited(MouseEvent e) {
                 onHeaderHover(false);

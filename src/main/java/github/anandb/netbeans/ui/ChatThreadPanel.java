@@ -71,7 +71,7 @@ public class ChatThreadPanel extends JPanel {
     private MessageBubble activeStreamBubble = null;
     private volatile boolean allBlocksExpanded = false;
     private volatile boolean keepOlderMessages = false;
-    private transient final MessageTransformer messageTransformer;
+    private final transient MessageTransformer messageTransformer;
 
     public ChatThreadPanel() {
         ColorTheme theme = ThemeManager.getCurrentTheme();
@@ -157,7 +157,7 @@ public class ChatThreadPanel extends JPanel {
     private static class ScrollablePanel extends JPanel implements Scrollable {
         private static final long serialVersionUID = 1L;
 
-        public ScrollablePanel() {
+        ScrollablePanel() {
             setOpaque(false);
             setDoubleBuffered(true);
         }
@@ -166,18 +166,22 @@ public class ChatThreadPanel extends JPanel {
         public Dimension getPreferredScrollableViewportSize() {
             return getPreferredSize();
         }
+
         @Override
         public int getScrollableUnitIncrement(Rectangle visibleRect, int orientation, int direction) {
             return 16;
         }
+
         @Override
         public int getScrollableBlockIncrement(Rectangle visibleRect, int orientation, int direction) {
             return orientation == SwingConstants.VERTICAL ? visibleRect.height : 16;
         }
+
         @Override
         public boolean getScrollableTracksViewportWidth() {
             return true;
         }
+
         @Override
         public boolean getScrollableTracksViewportHeight() {
             return false;

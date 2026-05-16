@@ -11,7 +11,7 @@ import org.openide.util.Lookup;
 
 public class SlashCommandInterceptor {
 
-    private final static Logger LOG = new Logger(SlashCommandInterceptor.class);
+    private static final Logger LOG = new Logger(SlashCommandInterceptor.class);
 
     private final Map<String, CommandInfo> commands = new HashMap<>();
 

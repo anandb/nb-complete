@@ -191,7 +191,8 @@ public class MessageSender {
                         chatPanel.stopStreaming();
                         chatPanel.addMessage(ProcessedMessage.createError(
                                 MessageType.error_response,
-                                NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Error", ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName()),
+                                NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Error",
+                                        ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName()),
                                 null, null
                         ));
                         inputArea.setText(messageText);

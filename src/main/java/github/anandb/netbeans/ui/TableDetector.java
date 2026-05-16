@@ -1,13 +1,12 @@
 package github.anandb.netbeans.ui;
 
-import java.awt.BorderLayout;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
-import javax.swing.border.EmptyBorder;
+public final class TableDetector {
 
-public class TableDetector {
+    private TableDetector() {}
 
     private static final Pattern NEWLINE_SPLIT = Pattern.compile("\n");
 
@@ -23,6 +22,7 @@ public class TableDetector {
 
     public record TableSegment(String markdown) implements Segment {
         @Override public String markdown() { return markdown; }
+
         @Override public String content() { return markdown; }
     }
 

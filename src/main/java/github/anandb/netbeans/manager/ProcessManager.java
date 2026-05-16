@@ -307,7 +307,6 @@ public class ProcessManager {
                 });
     }
 
-
     public void shutdown() {
         if (isClosing) {
             return;
@@ -449,7 +448,9 @@ public class ProcessManager {
                 StringBuilder xml = new StringBuilder();
                 xml.append("<metadata>\n");
                 xml.append("  <purpose>reference</purpose>\n");
-                xml.append("  <note>The file path, cursor, and selection below are reference-only context about the user's editor state. The user's text message that follows is the primary instruction.</note>\n");
+                xml.append("  <note>The file path, cursor, and selection below are reference-only")
+                   .append(" context about the user's editor state. The user's text message")
+                   .append(" that follows is the primary instruction.</note>\n");
                 xml.append("  <language>").append(lang).append("</language>\n");
                 xml.append("  <file_path>").append(filePath).append("</file_path>\n");
 
@@ -575,7 +576,6 @@ public class ProcessManager {
             }
         }
 
-
         long now = System.currentTimeMillis();
         if (now - lastRestartTime > RESTART_RESET_INTERVAL) {
             restartCount = 0;
@@ -671,7 +671,6 @@ public class ProcessManager {
             return res;
         });
     }
-
 
     private CompletableFuture<JsonNode> handleReadTextFile(JsonNode params) {
         String filePath = params.has("filePath") ? params.get("filePath").asText()

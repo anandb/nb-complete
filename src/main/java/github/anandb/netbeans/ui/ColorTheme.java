@@ -16,7 +16,7 @@ import github.anandb.netbeans.support.MapperSupplier;
 
 /**
  * Centralized color definitions for the ACP NetBeans plugin.
- * Cached singleton refreshed on L&F changes.
+ * Cached singleton refreshed on L&amp;F changes.
  */
 public record ColorTheme(
         boolean isDark,

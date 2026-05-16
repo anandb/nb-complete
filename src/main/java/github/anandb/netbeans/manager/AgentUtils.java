@@ -14,6 +14,7 @@ public final class AgentUtils {
     private static final Logger LOG = new Logger(AgentUtils.class);
 
     private AgentUtils() {}
+
     public static void closeQuietly(Closeable closeable) {
         if (closeable == null) {
             return;

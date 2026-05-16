@@ -18,7 +18,6 @@ import java.util.regex.Pattern;
 
 import org.openide.util.NbBundle;
 
-import static org.apache.commons.lang3.StringUtils.defaultString;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
 @NbBundle.Messages({

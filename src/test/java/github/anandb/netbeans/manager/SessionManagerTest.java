@@ -8,7 +8,6 @@ import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Field;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

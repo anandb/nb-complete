@@ -5,7 +5,6 @@ import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.SessionUpdate;
 import org.junit.jupiter.api.Test;
 
-import static github.anandb.netbeans.model.MessageType.message;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;

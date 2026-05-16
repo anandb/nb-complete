@@ -547,7 +547,6 @@ public class SessionManager {
         }
     }
 
-
     private boolean isInvalidParamsError(Throwable t) {
         if (t == null) {
             return false;

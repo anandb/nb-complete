@@ -10,7 +10,9 @@ import github.anandb.netbeans.support.TextScanner;
 
 import java.util.List;
 
-public class HtmlContentPreparer {
+public final class HtmlContentPreparer {
+
+    private HtmlContentPreparer() {}
 
     private static final Logger LOG = new Logger(HtmlContentPreparer.class);
 

@@ -49,6 +49,7 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
                 return theme;
             }
         } catch (Exception ignored) {
+            // theme file not found or parse error
         }
         return null;
     }
@@ -137,7 +138,8 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
     }
 
     public CollapsibleCodePane(String language, String code, boolean expandedByDefault) {
-        super(12, (language != null && !language.isEmpty() ? language : NbBundle.getMessage(CollapsibleCodePane.class, "LBL_CodeFallback")).toUpperCase(),
+        super(12, (language != null && !language.isEmpty() ? language
+                : NbBundle.getMessage(CollapsibleCodePane.class, "LBL_CodeFallback")).toUpperCase(),
                 ThemeManager.getIcon("file.svg"), expandedByDefault);
         this.language = language != null && !language.isEmpty() ? language : NbBundle.getMessage(CollapsibleCodePane.class, "LBL_CodeFallback");
         this.code = code;
@@ -153,7 +155,8 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
         headerLabel.setForeground(theme.codeHeaderForeground());
 
         // Copy button
-        copyButton = UIUtils.createToolbarButton("copy.svg", 20, NbBundle.getMessage(CollapsibleCodePane.class, "HINT_CopyCode"), e -> copyCodeToClipboard());
+        String hint = NbBundle.getMessage(CollapsibleCodePane.class, "HINT_CopyCode");
+        copyButton = UIUtils.createToolbarButton("copy.svg", 20, hint, e -> copyCodeToClipboard());
         copyButton.setBorder(BorderFactory.createEmptyBorder(2, 4, 2, 4));
         copyButton.setForeground(theme.codeHeaderForeground());
         header.add(copyButton, BorderLayout.EAST);
@@ -287,6 +290,7 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
                 codeTextArea.setSelectionColor(theme.codeSelection());
                 return;
             } catch (Exception ioe) {
+                // theme apply error, fall through to manual style
             }
         }
         manualSolarizedDark();

@@ -94,7 +94,8 @@ public class ConfigPanelController {
         gbc.gridx = 4;
         gbc.weightx = 0;
         gbc.insets = new Insets(2, 0, 2, 4);
-        JButton copyModelBtn = UIUtils.createToolbarButton("copy.svg", 20, NbBundle.getMessage(ConfigPanelController.class, "HINT_CopyModelID"), e -> {
+        String copyHint = NbBundle.getMessage(ConfigPanelController.class, "HINT_CopyModelID");
+        JButton copyModelBtn = UIUtils.createToolbarButton("copy.svg", 20, copyHint, e -> {
             ConfigItem selected = (ConfigItem) modelCombo.getSelectedItem();
             if (selected != null && selected.value() != null) {
                 java.awt.Toolkit.getDefaultToolkit().getSystemClipboard()
@@ -413,6 +414,7 @@ public class ConfigPanelController {
             public void popupMenuWillBecomeVisible(PopupMenuEvent e) {
                 prePopupSelection[0] = combo.getSelectedItem();
             }
+
             @Override
             public void popupMenuWillBecomeInvisible(PopupMenuEvent e) {
                 if (isUpdatingConfigControls) return;
@@ -448,6 +450,7 @@ public class ConfigPanelController {
                     onThinkingSelectedCallback.run();
                 }
             }
+
             @Override
             public void popupMenuCanceled(PopupMenuEvent e) {
                 if (prePopupSelection[0] != null) {

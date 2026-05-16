@@ -6,25 +6,14 @@ import static org.apache.commons.lang3.StringUtils.left;
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Color;
-import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.FontMetrics;
-import java.awt.KeyEventDispatcher;
-import java.awt.KeyboardFocusManager;
-import java.awt.event.InputEvent;
-import java.awt.event.KeyAdapter;
-import java.awt.event.KeyEvent;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
 import java.util.Properties;
-import java.util.Set;
-import java.util.HashSet;
 import java.util.concurrent.CompletableFuture;
 
 import javax.swing.BorderFactory;
@@ -33,7 +22,6 @@ import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JFileChooser;
-import javax.swing.JMenuItem;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -41,21 +29,12 @@ import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
-import javax.swing.Timer;
 import javax.swing.UIManager;
 import javax.swing.border.EmptyBorder;
-import javax.swing.text.Document;
-import javax.swing.text.JTextComponent;
-import javax.swing.text.StyledDocument;
 
-import org.netbeans.api.editor.EditorRegistry;
 import org.netbeans.api.project.Project;
-import org.netbeans.api.project.ui.OpenProjects;
 import org.netbeans.api.settings.ConvertAsProperties;
-import org.netbeans.modules.editor.NbEditorUtilities;
 import org.openide.awt.ActionID;
-import org.openide.filesystems.FileObject;
-import org.openide.text.NbDocument;
 import org.openide.util.NbBundle;
 import org.openide.util.NbPreferences;
 import org.openide.windows.TopComponent;
@@ -67,24 +46,13 @@ import github.anandb.netbeans.manager.ProcessManager;
 import github.anandb.netbeans.manager.AgentUtils;
 import github.anandb.netbeans.manager.SessionManager;
 import github.anandb.netbeans.manager.SessionTitleMapper;
-import github.anandb.netbeans.manager.SlashCommandInterceptor;
-import github.anandb.netbeans.manager.ToolDataExtractor;
-import github.anandb.netbeans.contract.DataExtractionStrategy;
 import github.anandb.netbeans.contract.PermissionHandler;
-import github.anandb.netbeans.contract.SessionListener;
-import github.anandb.netbeans.contract.SlashCommandCallback;
-import github.anandb.netbeans.manager.strategy.StrategyRegistry;
-import github.anandb.netbeans.contract.UIHandler;
 import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.model.Session;
-import github.anandb.netbeans.model.SessionConfigOption;
 import github.anandb.netbeans.model.SessionItem;
-import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.project.ACPProjectManager;
 import github.anandb.netbeans.support.Logger;
-
-import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
 @ConvertAsProperties(
     dtd = "-//github.anandb.netbeans.ui//Assistant//EN",
@@ -194,8 +162,8 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     private final MessageSender messageSender;
 
     private final AttachmentManager attachmentManager = new AttachmentManager();
-    private transient final ConfigPanelController configPanelController;
-    private transient final AutocompleteManager autocompleteManager;
+    private final transient ConfigPanelController configPanelController;
+    private final transient AutocompleteManager autocompleteManager;
 
     public AssistantTopComponent() {
         instance = this;
@@ -230,15 +198,19 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                 componentLifecycleHandler.showProjectPickerPopup((JComponent) e.getSource());
             }
         });
-        renameSessionBtn = UIUtils.createToolbarButton("rename.svg", NbBundle.getMessage(AssistantTopComponent.class, "HINT_RenameSession"), e -> renameCurrentSession());
-        JButton refreshBtn = UIUtils.createToolbarButton("reload.svg", NbBundle.getMessage(AssistantTopComponent.class, "HINT_ReloadConversation"), e -> {
+        String renameHint = NbBundle.getMessage(AssistantTopComponent.class, "HINT_RenameSession");
+        renameSessionBtn = UIUtils.createToolbarButton("rename.svg", renameHint, e -> renameCurrentSession());
+        JButton refreshBtn = UIUtils.createToolbarButton("reload.svg",
+                NbBundle.getMessage(AssistantTopComponent.class, "HINT_ReloadConversation"), e -> {
             reloadCurrentSession();
         });
 
-        JButton exportBtn = UIUtils.createToolbarButton("export.svg", NbBundle.getMessage(AssistantTopComponent.class, "HINT_ExportConversation"), e -> {
+        String exportHint = NbBundle.getMessage(AssistantTopComponent.class, "HINT_ExportConversation");
+        JButton exportBtn = UIUtils.createToolbarButton("export.svg", exportHint, e -> {
             exportConversation();
         });
-        JButton restartServerBtn = UIUtils.createToolbarButton("restart.svg", NbBundle.getMessage(AssistantTopComponent.class, "HINT_RestartServer"), e -> {
+        String restartHint = NbBundle.getMessage(AssistantTopComponent.class, "HINT_RestartServer");
+        JButton restartServerBtn = UIUtils.createToolbarButton("restart.svg", restartHint, e -> {
             promptRestartServer();
         });
 
@@ -288,8 +260,6 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
         cwdLabel = new JLabel("");
         cwdLabel.setFont(cwdLabel.getFont().deriveFont(Font.BOLD));
-
-
 
         JPanel headerContent = new JPanel(new BorderLayout(0, 4));
         headerContent.setOpaque(false);
@@ -517,7 +487,6 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             restartServer();
         }
     }
-
 
     private void restartServer() {
         String currentSessionId = SessionManager.getInstance().getCurrentSessionId();

@@ -259,7 +259,6 @@ public class MessageBubble extends JPanel implements Scrollable {
         }
     }
 
-
     public String getRole() {
         return role;
     }
@@ -451,7 +450,6 @@ public class MessageBubble extends JPanel implements Scrollable {
         return currentIdx;
     }
 
-
     private void updateOrAddTableSegment(String tableMarkdown, ColorTheme theme, int compIdx) {
         String styledHtml = HtmlContentPreparer.prepareHtml(tableMarkdown, theme, role, false);
 
@@ -483,7 +481,6 @@ public class MessageBubble extends JPanel implements Scrollable {
             segments.add(rp);
         }
     }
-
 
     @Override
     public boolean getScrollableTracksViewportWidth() {

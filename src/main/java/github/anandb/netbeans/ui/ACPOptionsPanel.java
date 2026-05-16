@@ -123,6 +123,7 @@ public class ACPOptionsPanel extends JPanel {
             public void focusGained(FocusEvent e) {
                 clearHint();
             }
+
             @Override
             public void focusLost(FocusEvent e) {
                 restoreHintIfEmpty();
@@ -235,8 +236,10 @@ public class ACPOptionsPanel extends JPanel {
         iconPreviewLabel.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mousePressed(java.awt.event.MouseEvent e) { if (e.isPopupTrigger()) showPopup(e); }
+
             @Override
             public void mouseReleased(java.awt.event.MouseEvent e) { if (e.isPopupTrigger()) showPopup(e); }
+
             private void showPopup(java.awt.event.MouseEvent e) {
                 if (iconPathField.getText().isEmpty()) return;
                 JPopupMenu popup = new JPopupMenu();

@@ -45,14 +45,45 @@ public record ProcessedMessage(
         private boolean streaming;
         private String status;
 
-        public Builder messageType(MessageType messageType) { this.messageType = messageType; return this; }
-        public Builder text(String text) { this.text = text; return this; }
-        public Builder messageId(String messageId) { this.messageId = messageId; return this; }
-        public Builder kind(String kind) { this.kind = kind; return this; }
-        public Builder toolTitle(String toolTitle) { this.toolTitle = toolTitle; return this; }
-        public Builder rawText(String rawText) { this.rawText = rawText; return this; }
-        public Builder streaming(boolean streaming) { this.streaming = streaming; return this; }
-        public Builder status(String status) { this.status = status; return this; }
+        public Builder messageType(MessageType messageType) {
+            this.messageType = messageType;
+            return this;
+        }
+
+        public Builder text(String text) {
+            this.text = text;
+            return this;
+        }
+
+        public Builder messageId(String messageId) {
+            this.messageId = messageId;
+            return this;
+        }
+
+        public Builder kind(String kind) {
+            this.kind = kind;
+            return this;
+        }
+
+        public Builder toolTitle(String toolTitle) {
+            this.toolTitle = toolTitle;
+            return this;
+        }
+
+        public Builder rawText(String rawText) {
+            this.rawText = rawText;
+            return this;
+        }
+
+        public Builder streaming(boolean streaming) {
+            this.streaming = streaming;
+            return this;
+        }
+
+        public Builder status(String status) {
+            this.status = status;
+            return this;
+        }
 
         public ProcessedMessage build() {
             return new ProcessedMessage(messageType, text, messageId, kind, toolTitle, rawText, streaming, status);
