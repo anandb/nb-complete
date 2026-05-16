@@ -1,12 +1,14 @@
 package github.anandb.netbeans.manager;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Field;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -45,6 +47,7 @@ class SessionManagerTest {
         // Mock ProcessManager delegates
         when(processManager.whenReady()).thenReturn(CompletableFuture.completedFuture(null));
         when(processManager.getMcpManager()).thenReturn(mcpManager);
+        when(mcpManager.waitForReady()).thenReturn(CompletableFuture.completedFuture(null));
         when(mcpManager.getServerConfig()).thenReturn(java.util.List.of());
 
         sessionManager = SessionManager.getInstance();
@@ -55,10 +58,10 @@ class SessionManagerTest {
         JsonNode mockResponse = objectMapper.createObjectNode()
                 .put("id", "new-id")
                 .put("title", "New");
-        when(processManager.sendRequest(eq("session/new"), any()))
+        when(processManager.sendRequest(eq("session/new"), any(), anyLong(), any()))
                 .thenReturn(CompletableFuture.completedFuture(mockResponse));
 
         sessionManager.createNewSession("/dir");
-        verify(processManager).sendRequest(eq("session/new"), any());
+        verify(processManager).sendRequest(eq("session/new"), any(), anyLong(), any());
     }
 }

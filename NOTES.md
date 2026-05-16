@@ -1,6 +1,6 @@
 # Release Notes
 
-## v1.5.22 (Changes since v1.5.21)
+## v1.5.22 & v1.5.23 (Changes since v1.5.21)
 
 ### Concurrency Hardening
 - **TOCTOU race fix** (`ProcessManager.rpcClient`): Replaced `volatile AcpProtocolClient` with `final AtomicReference<AcpProtocolClient>`. All reads use `.get()`. `handleDisconnection()` and `stopServer()` use `getAndSet(null)` for atomic extract-and-clear, eliminating the null-check-then-dereference window.

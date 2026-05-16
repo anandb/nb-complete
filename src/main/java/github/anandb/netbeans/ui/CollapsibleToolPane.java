@@ -111,7 +111,12 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
         int pos = stripped.indexOf(' ');
         String tag = (pos > 1) ? translateTag(stripped.substring(0, pos)) : null;
         String param = (pos > 1) ? stripped.substring(pos + 1) : null;
-        headerLabel.setText(defaultString(tag));
+
+        if (tag != null) {
+            headerLabel.setText(tag);
+        } else {
+            headerLabel.setText(stripped.isEmpty() ? NbBundle.getMessage(CollapsibleToolPane.class, "LBL_ToolFallback") : stripped);
+        }
 
         if (isNotBlank(param)) {
             if (paramLabel == null) {
