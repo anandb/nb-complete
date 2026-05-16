@@ -14,7 +14,7 @@ public class McpManager {
     private static final Logger LOG = new Logger(McpManager.class);
 
     private McpServer mcpServer;
-    private volatile boolean mcpDisabled = true;
+    private volatile boolean mcpDisabled = false;
     private CompletableFuture<Void> serverStartFuture;
     private final CompletableFuture<Void> readyFuture = new CompletableFuture<>();
 

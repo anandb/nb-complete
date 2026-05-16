@@ -1,15 +1,12 @@
 package github.anandb.netbeans.mcp;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import java.io.IOException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.logging.Level;
 
-import github.anandb.netbeans.model.WeatherInput;
-import github.anandb.netbeans.model.WeatherOutput;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.MapperSupplier;
 import org.eclipse.jetty.server.Server;
@@ -41,21 +38,8 @@ public class McpServer {
                     return t;
                 });
 
-        ObjectNode weatherSchema = mapper.createObjectNode();
-        ObjectNode locationProp = mapper.createObjectNode();
-        locationProp.put("type", "string");
-        locationProp.put("description", "City or location name");
-        weatherSchema.set("location", locationProp);
-        weatherSchema.put("type", "object");
-        
-        mcpTools.registerTool("weather", "Get current weather for a location",
-                              weatherSchema, new ToolExecutor<WeatherInput, WeatherOutput>(WeatherInput.class) {
-            @Override
-            public WeatherOutput execute(WeatherInput args) throws Exception {
-                String location = args.location() != null ? args.location() : "Unknown";
-                return new WeatherOutput(25.0, "Sunny", 60, location);
-            }
-        });
+        EditorToolProvider editorTools = new EditorToolProvider();
+        editorTools.registerTools(mcpTools);
 
         server = new Server(0);
 
