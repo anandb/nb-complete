@@ -180,8 +180,19 @@ public class ProcessManager {
 
             // Listen for session updates
             rpcClient.onNotification("session/update", params -> {
+                // Extract raw type before parse (needed in catch block too)
+                String rawType = null;
                 try {
                     LOG.fine("Received session/update notification: {0}", params);
+                    // Detect responding_finished/end_turn before Jackson drops them
+                    JsonNode updateNode = params != null ? params.get("sessionUpdate") : null;
+                    if (updateNode != null) {
+                        rawType = updateNode.isTextual() ? updateNode.asText()
+                            : (updateNode.has("type") ? updateNode.get("type").asText() : null);
+                    }
+                    if ("responding_finished".equals(rawType) || "end_turn".equals(rawType)) {
+                        LOG.info("SSE type is NOT a valid MessageType (will fail parsing): {0}", rawType);
+                    }
                     SessionUpdate.Params sessionParams = objectMapper.treeToValue(params, SessionUpdate.Params.class);
                     SessionUpdate update = new SessionUpdate("2.0", "session/update", sessionParams);
 
@@ -196,7 +207,8 @@ public class ProcessManager {
 
                     notifyListeners(update);
                 } catch (Exception e) {
-                    LOG.log(Level.FINE, "Failed to parse session/update notification: " + e.getMessage(), e);
+                    LOG.log(rawType != null ? Level.INFO : Level.FINE,
+                        "Failed to parse session/update notification: " + e.getMessage(), e);
                 }
             });
 

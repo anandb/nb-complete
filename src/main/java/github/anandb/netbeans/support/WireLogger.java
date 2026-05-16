@@ -41,6 +41,7 @@ public final class WireLogger implements Closeable {
             try {
                 wireLogWriter.write(json);
                 wireLogWriter.write("\n");
+                wireLogWriter.flush();
             } catch (Exception e) {
                 LOG.warn("Couldn't write to wire log", e);
             }
@@ -52,6 +53,7 @@ public final class WireLogger implements Closeable {
             try {
                 wireLogWriter.write(MAPPER.writeValueAsString(node));
                 wireLogWriter.write("\n");
+                wireLogWriter.flush();
             } catch (Exception e) {
                 LOG.warn("Couldn't write to wire log", e);
             }

@@ -6,15 +6,12 @@ import java.util.Map;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
-import com.fasterxml.jackson.databind.JsonNode;
-
 import java.util.concurrent.CompletableFuture;
 
 import github.anandb.netbeans.manager.ProcessManager;
 import github.anandb.netbeans.manager.SessionManager;
 import github.anandb.netbeans.manager.SlashCommandInterceptor;
 import github.anandb.netbeans.manager.ToolDataExtractor;
-import github.anandb.netbeans.model.AttachedFile;
 import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.support.Logger;
@@ -38,6 +35,7 @@ public class MessageSender {
     private final Runnable paperclipUpdater;
     private final Runnable inputFocusRequester;
     private Runnable onNewMessageCallback;
+    private Runnable onMessageDoneCallback;
 
     public MessageSender(
             PlaceholderTextArea inputArea,
@@ -58,6 +56,10 @@ public class MessageSender {
 
     public void setOnNewMessageCallback(Runnable callback) {
         this.onNewMessageCallback = callback;
+    }
+
+    public void setOnMessageDoneCallback(Runnable callback) {
+        this.onMessageDoneCallback = callback;
     }
 
     /** Sends (or intercepts) the current message text. */
@@ -155,13 +157,20 @@ public class MessageSender {
         ProcessManager.getInstance().sendMessage(currentSessionId, messageText, context, fileBlocks)
                 .thenAccept(result -> {
                     SwingUtilities.invokeLater(() -> {
-                        String currentStatus = statusController.getStatusText();
-                        if (currentStatus != null && currentStatus.equals(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Sending"))) {
-                            statusController.setStatus("STATUS_Ready");
-                            statusController.stopThinking();
-                            statusController.updateButtonState(false);
-                            inputFocusRequester.run();
+                        LOG.info("RPC thenAccept fired (status during = {0}, hasStopReason = {1})",
+                            statusController.getStatusText(),
+                            result != null && result.has("stopReason"));
+                        // Always reset button/flag on RPC completion — the status text guard
+                        // is unreliable because SSE may have already changed the status away
+                        // from "Sending". Setting turnEnded=true prevents displayMessage()
+                        // from calling updateButtonState(true) on any late SSE messages.
+                        statusController.updateButtonState(false);
+                        statusController.stopThinking();
+                        if (onMessageDoneCallback != null) {
+                            onMessageDoneCallback.run();
                         }
+                        statusController.setStatus("STATUS_Ready");
+                        inputFocusRequester.run();
 
                         // Handle turn completion from RPC result
                         if (result != null && result.has("stopReason")) {
@@ -176,6 +185,7 @@ public class MessageSender {
                 })
                 .exceptionally(ex -> {
                     SwingUtilities.invokeLater(() -> {
+                        LOG.info("RPC exceptionally fired: {0}", ex.getMessage());
                         statusController.setStatus("STATUS_Error", ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName());
                         statusController.stopThinking();
                         chatPanel.stopStreaming();
@@ -186,6 +196,9 @@ public class MessageSender {
                         ));
                         inputArea.setText(messageText);
                         statusController.updateButtonState(false);
+                        if (onMessageDoneCallback != null) {
+                            onMessageDoneCallback.run();
+                        }
                         inputFocusRequester.run();
                     });
                     return null;
@@ -201,7 +214,12 @@ public class MessageSender {
             statusController.setStatus("STATUS_Stopping");
             statusController.startThinking();
         });
-        SessionManager.getInstance().stopCurrentMessage();
+        // stopCurrentMessage may block on pipe I/O (writer.println).
+        // Run off EDT to avoid freezing the UI.
+        CompletableFuture.runAsync(() ->
+            SessionManager.getInstance().stopCurrentMessage()
+        );
+        // Show "Stopped" immediately — don't wait for cancel notification to be sent.
         SwingUtilities.invokeLater(() -> {
             statusController.setStatus("STATUS_Stopped");
             statusController.stopThinking();

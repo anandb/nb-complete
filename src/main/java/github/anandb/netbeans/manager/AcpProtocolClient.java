@@ -1,15 +1,18 @@
 package github.anandb.netbeans.manager;
 
-import org.apache.commons.lang3.StringUtils;
+import com.fasterxml.jackson.core.JsonParser;
+
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.MappingIterator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import java.io.BufferedReader;
 import java.io.Closeable;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
@@ -37,27 +40,28 @@ public class AcpProtocolClient implements Closeable {
     private static final long DEFAULT_TIMEOUT_SECONDS = 30; // seconds, applied to all requests
     private static final ObjectMapper MAPPER = MapperSupplier.get();
 
-    private final PrintWriter writer;
-    private final BufferedReader reader;
-    private final BufferedReader errorReader;
-    private final AtomicLong nextId = new AtomicLong(0);
-    private final Map<Long, CompletableFuture<JsonNode>> pendingRequests = new ConcurrentHashMap<>();
-    private final Map<String, Consumer<JsonNode>> notificationListeners = new ConcurrentHashMap<>();
-    private final Map<String, RequestHandler> requestHandlers = new ConcurrentHashMap<>();
-    private volatile boolean running = true;
-    private Thread readerThread;
-    private Thread errorReaderThread;
     private Consumer<Throwable> connectionErrorHandler;
     private Runnable disconnectionHandler;
-    private final WireLogger wireLogger;
-
-    private volatile long lastDataTime;
+    private Thread errorReaderThread;
+    private Thread readerThread;
     private ScheduledExecutorService watchdogExecutor;
     private ScheduledFuture<?> watchdogFuture;
 
-    public AcpProtocolClient(Process process) {
+    private final AtomicLong nextId = new AtomicLong(0);
+    private final BufferedReader errorReader;
+    private final InputStream inputStream;
+    private final Map<Long, CompletableFuture<JsonNode>> pendingRequests = new ConcurrentHashMap<>();
+    private final Map<String, Consumer<JsonNode>> notificationListeners = new ConcurrentHashMap<>();
+    private final Map<String, RequestHandler> requestHandlers = new ConcurrentHashMap<>();
+    private final PrintWriter writer;
+    private final WireLogger wireLogger;
+
+    private volatile boolean running = true;
+    private volatile long lastDataTime;
+
+    public AcpProtocolClient(Process process) throws IOException {
         this.writer = new PrintWriter(process.getOutputStream(), true);
-        this.reader = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8));
+        this.inputStream = process.getInputStream();
         this.errorReader = new BufferedReader(new InputStreamReader(process.getErrorStream(), StandardCharsets.UTF_8));
         this.wireLogger = new WireLogger();
     }
@@ -98,7 +102,7 @@ public class AcpProtocolClient implements Closeable {
         long id = nextId.getAndIncrement();
         CompletableFuture<JsonNode> future = new CompletableFuture<>();
         pendingRequests.put(id, future);
-        
+
         long sendStart = System.nanoTime();
 
         ObjectNode request = MAPPER.createObjectNode();
@@ -177,41 +181,14 @@ public class AcpProtocolClient implements Closeable {
     }
 
     private void readLoop() {
-        try {
-            String line;
-            while (running && (line = reader.readLine()) != null) {
+        try (JsonParser parser = MAPPER.getFactory().createParser(this.inputStream)) {
+            MappingIterator<JsonNode> iterator = MAPPER.readValues(parser, JsonNode.class);
+            while (running && iterator.hasNext()) {
+                JsonNode node = iterator.next();
                 lastDataTime = System.nanoTime();
-                // Fast path: skip empty lines without creating trimmed string
-                if (line.isEmpty()) {
-                    continue;
-                }
-                // Check raw line first - avoid trim() if possible
-                char firstChar = line.charAt(0);
-                char lastChar = line.charAt(line.length() - 1);
-                // Skip whitespace-only lines by checking first/last char
-                if ((firstChar <= ' ' && StringUtils.isBlank(line)) || (lastChar <= ' ' && StringUtils.isBlank(line))) {
-                    continue;
-                }
-                // Quick check for JSON object start on raw line
-                int idx = 0;
-                while (idx < line.length() && line.charAt(idx) <= ' ') {
-                    idx++;
-                }
-                if (idx >= line.length() || line.charAt(idx) != '{') {
-                    LOG.fine("Ignoring non-JSON process output: {0}", line);
-                    continue;
-                }
-
-                try {
-                    // Direct readTree is faster than creating JsonParser + MappingIterator
-                    JsonNode node = MAPPER.readTree(line);
-                    handleMessage(node);
-                } catch (Exception e) {
-                    LOG.warn("Error parsing JSON-RPC line: {0}", new Object[]{line});
-                    LOG.fine("Parse exception", e);
-                }
+                handleMessage(node);
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
             if (running) {
                 LOG.severe("JSON-RPC reader thread error", e);
                 notifyConnectionError(e);
@@ -414,7 +391,7 @@ public class AcpProtocolClient implements Closeable {
         }
 
         closeQuietly(writer);
-        closeQuietly(reader);
+        closeQuietly(inputStream);
         closeQuietly(errorReader);
     }
 }

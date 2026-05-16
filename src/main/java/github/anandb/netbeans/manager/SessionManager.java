@@ -484,16 +484,33 @@ public class SessionManager {
         if (!stateMachine.canStopMessage()) {
             return;
         }
+        LOG.info("stopCurrentMessage: transitioning STOPPING, scheduling 5s safety timeout");
         stateMachine.transitionTo(SessionState.STOPPING);
         String sid = this.currentSessionId;
+        // Schedule safety timeout BEFORE potentially-blocking I/O, so the state
+        // always recovers even if ProcessManager.stopMessage() blocks on pipe write.
+        scheduleStopRecovery();
         if (sid != null) {
             ProcessManager.getInstance().stopMessage(sid);
         }
     }
 
+    private void scheduleStopRecovery() {
+        CompletableFuture.delayedExecutor(5, TimeUnit.SECONDS)
+            .execute(() -> {
+                if (stateMachine.getState() == SessionState.STOPPING) {
+                    LOG.info("Safety timeout fired: transitioning STOPPING -> STREAMING");
+                    stateMachine.transitionTo(SessionState.STREAMING);
+                }
+            });
+    }
+
     public void onTurnEnded() {
         if (stateMachine.getState() == SessionState.STOPPING) {
-            stateMachine.transitionTo(SessionState.IDLE);
+            LOG.info("onTurnEnded: transitioning STOPPING -> STREAMING");
+            stateMachine.transitionTo(SessionState.STREAMING);
+        } else {
+            LOG.fine("onTurnEnded: current state={0} (no transition needed)", stateMachine.getState());
         }
     }
 

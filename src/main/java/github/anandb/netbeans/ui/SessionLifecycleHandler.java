@@ -90,6 +90,15 @@ public class SessionLifecycleHandler implements SessionListener {
         turnEnded = false;
     }
 
+    /** Signal that the RPC completed (turn ended). Prevents displayMessage
+     *  from overriding the button state with late SSE messages, and
+     *  recovers the state machine if it was stuck at STOPPING. */
+    public void onMessageDone() {
+        LOG.info("onMessageDone called (turnEnded -> true, triggering onTurnEnded)");
+        turnEnded = true;
+        SessionManager.getInstance().onTurnEnded();
+    }
+
     boolean isSwitchingSessionDropdown() {
         return isSwitchingSessionDropdown;
     }
@@ -161,6 +170,7 @@ public class SessionLifecycleHandler implements SessionListener {
 
         // End of turn signals
         if ("responding_finished".equals(type) || "end_turn".equals(type)) {
+            LOG.info("SSE turn-end signal received: type={0} (this confirms SSE path WORKS)", type);
             turnEnded = true;
             // Brief delay to allow any in-flight delta notifications to arrive
             Timer flushTimer = new Timer(150, e -> {
@@ -269,6 +279,7 @@ public class SessionLifecycleHandler implements SessionListener {
         SwingUtilities.invokeLater(() -> {
             statusController.setStatus("STATUS_Ready");
             statusController.stopThinking();
+            statusController.updateButtonState(false);
             cwdLabelUpdater.accept(null);
             if (configOptions != null) {
                 configPanelController.updateConfigControls(configOptions, isStartup);

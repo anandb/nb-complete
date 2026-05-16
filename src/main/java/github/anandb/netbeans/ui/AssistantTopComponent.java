@@ -379,6 +379,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             statusController, attachmentUiHandler::updateTooltip, inputArea::requestFocusInWindow
         );
         messageSender.setOnNewMessageCallback(sessionLifecycleHandler::onNewMessageSent);
+        messageSender.setOnMessageDoneCallback(sessionLifecycleHandler::onMessageDone);
 
         sendBtn.addActionListener(e -> messageSender.sendMessage());
         stopBtn.addActionListener(e -> messageSender.stopMessage());
