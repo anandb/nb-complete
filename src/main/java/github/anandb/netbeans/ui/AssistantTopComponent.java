@@ -145,6 +145,8 @@ import static org.apache.commons.lang3.StringUtils.isNotBlank;
     "HINT_AttachFiles=Attach files",
     "# {0} - file count",
     "HINT_FilesAttached={0} file(s) attached",
+    "HINT_KeepMessages=Pin to keep messages",
+    "HINT_TruncateMessages=Unpin to progressively hide messages",
     "# {0} - used tokens",
     "# {1} - total tokens",
     "HINT_ContextUsage=Context Usage: {0}/{1} tokens",
@@ -173,6 +175,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     private final JButton newSessionBtn;
     private final JButton renameSessionBtn;
     private final JButton toggleBlocksBtn;
+    private final JButton keepBtn;
     private final JButton filterBtn;
     private final JButton toggleOptionsBtn;
     private JLabel statusLabel;
@@ -252,11 +255,28 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         toggleBlocksBtn = tb;
         toggleBlocksBtn.putClientProperty("state", "expand");
 
+        final boolean savedKeepState = NbPreferences.forModule(AssistantTopComponent.class).getBoolean("keepOlderMessages", false);
+        chatPanel.setKeepOlderMessages(savedKeepState);
+        JButton pinBtn = UIUtils.createToolbarButton(savedKeepState ? "pin.svg" : "pin_off.svg",
+                NbBundle.getMessage(AssistantTopComponent.class, savedKeepState ? "HINT_TruncateMessages" : "HINT_KeepMessages"), null);
+        pinBtn.addActionListener(e -> {
+            boolean keep = !chatPanel.isKeepOlderMessages();
+            chatPanel.setKeepOlderMessages(keep);
+            NbPreferences.forModule(AssistantTopComponent.class).putBoolean("keepOlderMessages", keep);
+            pinBtn.setIcon(ThemeManager.getIcon(keep ? "pin.svg" : "pin_off.svg", 28));
+            pinBtn.setToolTipText(keep
+                ? NbBundle.getMessage(AssistantTopComponent.class, "HINT_TruncateMessages")
+                : NbBundle.getMessage(AssistantTopComponent.class, "HINT_KeepMessages"));
+        });
+        keepBtn = pinBtn;
+        keepBtn.putClientProperty("state", savedKeepState ? "pinned" : "unpinned");
+
         filterBtn = createFilterButton();
 
         sessionControls.add(newSessionBtn);
         sessionControls.add(renameSessionBtn);
         sessionControls.add(refreshBtn);
+        sessionControls.add(keepBtn);
         sessionControls.add(toggleBlocksBtn);
         sessionControls.add(filterBtn);
         sessionControls.add(exportBtn);
@@ -618,6 +638,12 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         if (instance == this) {
             instance = null;
         }
+    }
+
+    @Override
+    public void addNotify() {
+        super.addNotify();
+        componentLifecycleHandler.registerKeyEventDispatchers();
     }
 
     @Override

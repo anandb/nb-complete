@@ -63,8 +63,8 @@ public class ProcessManager {
     private ScheduledFuture<?> reconnectFuture;
     private ScheduledExecutorService reconnectExecutor;
 
-    private Process serverProcess;
-    private AcpProtocolClient rpcClient;
+    private volatile Process serverProcess;
+    private volatile AcpProtocolClient rpcClient;
     private volatile CompletableFuture<Void> readyFuture = new CompletableFuture<>();
 
     private final List<Consumer<SessionUpdate>> sseListeners = new CopyOnWriteArrayList<>();

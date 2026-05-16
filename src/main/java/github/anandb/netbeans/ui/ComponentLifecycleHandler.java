@@ -43,6 +43,7 @@ public class ComponentLifecycleHandler {
     private final JButton toggleOptionsBtn;
     private final AssistantTopComponent topComponent;
     private final KeyEventDispatcher pageKeyDispatcher;
+    private KeyAdapter escKeyListener;
 
     private Set<String> closedProjectDirs = Set.of();
 
@@ -65,7 +66,6 @@ public class ComponentLifecycleHandler {
         this.topComponent = topComponent;
 
         this.pageKeyDispatcher = createPageKeyDispatcher();
-        KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(pageKeyDispatcher);
     }
 
     // -- Lifecycle callbacks --
@@ -170,24 +170,26 @@ public class ComponentLifecycleHandler {
         });
 
         // ESC key handler to close options panel and return focus to input
-        KeyAdapter escHandler = new KeyAdapter() {
-            @Override
-            public void keyPressed(KeyEvent e) {
-                if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
-                    e.consume();
-                    if (!sessionLifecycleHandler.isOptionsPanelCollapsed()) {
-                        sessionLifecycleHandler.setOptionsPanelCollapsed(true);
-                        configPanelController.getComponent().setVisible(false);
-                        toggleOptionsBtn.setIcon(ThemeManager.getIcon("settings.svg", 25));
-                        topComponent.revalidate();
-                        topComponent.repaint();
+        if (escKeyListener == null) {
+            escKeyListener = new KeyAdapter() {
+                @Override
+                public void keyPressed(KeyEvent e) {
+                    if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
+                        e.consume();
+                        if (!sessionLifecycleHandler.isOptionsPanelCollapsed()) {
+                            sessionLifecycleHandler.setOptionsPanelCollapsed(true);
+                            configPanelController.getComponent().setVisible(false);
+                            toggleOptionsBtn.setIcon(ThemeManager.getIcon("settings.svg", 25));
+                            topComponent.revalidate();
+                            topComponent.repaint();
+                        }
+                        inputArea.requestFocusInWindow();
                     }
-                    inputArea.requestFocusInWindow();
                 }
-            }
-        };
-        configPanelController.addKeyListenerToInputs(escHandler);
-        configPanelController.getComponent().addKeyListener(escHandler);
+            };
+            configPanelController.addKeyListenerToInputs(escKeyListener);
+            configPanelController.getComponent().addKeyListener(escKeyListener);
+        }
         SwingUtilities.invokeLater(() -> {
             if (inputArea != null) {
                 inputArea.requestFocusInWindow();
@@ -233,7 +235,19 @@ public class ComponentLifecycleHandler {
         ProcessManager.getInstance().setPermissionHandler(null);
         ProcessManager.getInstance().setStatusListener(null);
         ProcessManager.getInstance().setCrashHandler(null);
-        ProcessManager.getInstance().setReadyHandler(null);
+        // Note: readyHandler is intentionally NOT cleared — SessionManager sets it
+        // to reload sessions after reconnect and its lambda captures only singleton references.
+        ProcessManager.getInstance().getSlashCommandInterceptor().setCallback(null);
+
+        if (escKeyListener != null) {
+            configPanelController.removeKeyListenerFromInputs(escKeyListener);
+            configPanelController.getComponent().removeKeyListener(escKeyListener);
+            escKeyListener = null;
+        }
+    }
+
+    public void registerKeyEventDispatchers() {
+        KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(pageKeyDispatcher);
     }
 
     public void removeNotify() {

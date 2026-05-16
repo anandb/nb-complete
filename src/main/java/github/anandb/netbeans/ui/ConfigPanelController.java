@@ -6,6 +6,8 @@ import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -119,6 +121,12 @@ public class ConfigPanelController {
         modeCombo.addKeyListener(listener);
         modelCombo.addKeyListener(listener);
         thinkingCombo.addKeyListener(listener);
+    }
+
+    public void removeKeyListenerFromInputs(KeyListener listener) {
+        modeCombo.removeKeyListener(listener);
+        modelCombo.removeKeyListener(listener);
+        thinkingCombo.removeKeyListener(listener);
     }
 
     public void popupModelCombo() {
@@ -369,68 +377,69 @@ public class ConfigPanelController {
         if (btnFont != null) {
             combo.setFont(btnFont);
         }
+
+        final Object[] prePopupSelection = {null};
+
+        combo.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                if (e.getKeyCode() == KeyEvent.VK_ESCAPE && combo.isPopupVisible()) {
+                    e.consume();
+                    if (prePopupSelection[0] != null) {
+                        combo.setSelectedItem(prePopupSelection[0]);
+                    }
+                    combo.setPopupVisible(false);
+                }
+            }
+        });
+
         combo.addActionListener(e -> {
             if (isUpdatingConfigControls) {
                 return;
             }
             Object selected = combo.getSelectedItem();
-            ConfigItem item = null;
-            if (selected instanceof ConfigItem configItem) {
-                item = configItem;
-            } else if (selected instanceof String val) {
-                for (int i = 0; i < combo.getItemCount(); i++) {
-                    ConfigItem current = combo.getItemAt(i);
-                    if (current.value().equalsIgnoreCase(val) || current.name().equalsIgnoreCase(val)) {
-                        item = current;
-                        combo.setSelectedItem(current);
-                        break;
-                    }
-                }
+            ConfigItem item = resolveComboSelection(combo, selected);
+            if (item == null) return;
+
+            // UI side effects only (no API calls while popup is visible)
+            if (combo == modelCombo) {
+                lastSelectedModelId = item.value();
+                updateThinkingComboForModel(item.value());
+                tabNameUpdater.accept(item.name());
             }
-
-            if (item != null && SessionManager.getInstance().getCurrentSessionId() != null) {
-                String currentId = SessionManager.getInstance().getCurrentSessionId();
-                String prevValue = null;
-
-                if (combo == modelCombo) {
-                    prevValue = lastSelectedModelId;
-                    lastSelectedModelId = item.value();
-                    updateThinkingComboForModel(item.value());
-                    tabNameUpdater.accept(item.name());
-                }
-
-                LOG.fine("Config update: {0}={1} for session {2}", new Object[]{configId, item.value(), currentId});
-                String savedPrev = prevValue;
-                SessionManager.getInstance().setSessionConfigOption(currentId, configId, item.value())
-                    .exceptionally(ex -> {
-                        LOG.warn("Failed to set config {0}: {1}", configId, ex.getMessage());
-                        if (combo == modelCombo && savedPrev != null) {
-                            SwingUtilities.invokeLater(() -> {
-                                isUpdatingConfigControls = true;
-                                try {
-                                    lastSelectedModelId = savedPrev;
-                                    for (int i = 0; i < modelCombo.getItemCount(); i++) {
-                                        if (modelCombo.getItemAt(i).value().equals(savedPrev)) {
-                                            modelCombo.setSelectedItem(modelCombo.getItemAt(i));
-                                            break;
-                                        }
-                                    }
-                                } finally {
-                                    isUpdatingConfigControls = false;
-                                }
-                            });
-                        }
-                        return null;
-                    });
-            }
-
         });
         combo.addPopupMenuListener(new PopupMenuListener() {
             @Override
-            public void popupMenuWillBecomeVisible(PopupMenuEvent e) {}
+            public void popupMenuWillBecomeVisible(PopupMenuEvent e) {
+                prePopupSelection[0] = combo.getSelectedItem();
+            }
             @Override
             public void popupMenuWillBecomeInvisible(PopupMenuEvent e) {
                 if (isUpdatingConfigControls) return;
+
+                ConfigItem selected = resolveComboSelection(combo, combo.getSelectedItem());
+                if (selected != null && SessionManager.getInstance().getCurrentSessionId() != null) {
+                    String currentId = SessionManager.getInstance().getCurrentSessionId();
+                    String prevModelId = combo == modelCombo ? lastSelectedModelId : null;
+                    LOG.fine("Config update: {0}={1} for session {2}", new Object[]{configId, selected.value(), currentId});
+                    SessionManager.getInstance().setSessionConfigOption(currentId, configId, selected.value())
+                        .exceptionally(ex -> {
+                            LOG.warn("Failed to set config {0}: {1}", configId, ex.getMessage());
+                            if (combo == modelCombo && prePopupSelection[0] != null && prevModelId != null) {
+                                SwingUtilities.invokeLater(() -> {
+                                    isUpdatingConfigControls = true;
+                                    try {
+                                        lastSelectedModelId = prevModelId;
+                                        combo.setSelectedItem(prePopupSelection[0]);
+                                    } finally {
+                                        isUpdatingConfigControls = false;
+                                    }
+                                });
+                            }
+                            return null;
+                        });
+                }
+
                 if (combo == modelCombo && onModelSelectedCallback != null) {
                     onModelSelectedCallback.run();
                 } else if (combo == modeCombo && onModeSelectedCallback != null) {
@@ -440,8 +449,27 @@ public class ConfigPanelController {
                 }
             }
             @Override
-            public void popupMenuCanceled(PopupMenuEvent e) {}
+            public void popupMenuCanceled(PopupMenuEvent e) {
+                if (prePopupSelection[0] != null) {
+                    combo.setSelectedItem(prePopupSelection[0]);
+                }
+            }
         });
+    }
+
+    private static ConfigItem resolveComboSelection(JComboBox<ConfigItem> combo, Object selected) {
+        if (selected instanceof ConfigItem item) {
+            return item;
+        } else if (selected instanceof String val) {
+            for (int i = 0; i < combo.getItemCount(); i++) {
+                ConfigItem current = combo.getItemAt(i);
+                if (current.value().equalsIgnoreCase(val) || current.name().equalsIgnoreCase(val)) {
+                    combo.setSelectedItem(current);
+                    return current;
+                }
+            }
+        }
+        return null;
     }
 
     private void updateThinkingComboForModel(String baseId) {

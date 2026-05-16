@@ -1,5 +1,31 @@
 # Release Notes
 
+## v1.5.21 (Changes since v1.5.20)
+
+### Architecture
+- MCP extracted to dedicated package (mcp/)
+- ToolExecutor separated from manager/ package
+- Component extraction from AssistantTopComponent
+
+### Fixes
+- Concurrency/threading: 3 UI handler threading issues fixed
+- Bundle params: missing documentation comments for bundle parameters
+- Tool pane titles: fixed tool pane header display
+- Page up/down: restored key dispatch (scroll refactor regression)
+- Button race condition: stop/send button race fixed with timeout logging
+
+### New models/features
+- ToolCallData (+67) — model class for structured tool call dedup
+- Caffeine cache for tool call deduplication
+- WeatherInput/WeatherOutput — MCP example tool models
+- roundedPanels system property to control panel rendering
+
+### Other
+- Preamble default content updated
+- Caches, imports, and code style cleanup
+- Tests updated for AgentUtils, SessionManager, ToolDataExtractor, SessionUpdate
+- POM updates, README/AGENTS.md/NOTES.md documentation
+
 ## v1.5.20 (2026-05-12)
 
 ### Architecture

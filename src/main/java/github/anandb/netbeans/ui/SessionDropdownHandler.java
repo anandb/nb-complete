@@ -21,20 +21,20 @@ public class SessionDropdownHandler {
     }
 
     private void installListeners(JComboBox<SessionItem> sessionDropdown) {
-        sessionDropdown.addPopupMenuListener(new PopupMenuListener() {
-            private String prePopupSessionId;
+        final Object[] prePopupSession = {null};
 
+        sessionDropdown.addPopupMenuListener(new PopupMenuListener() {
             @Override
             public void popupMenuWillBecomeVisible(PopupMenuEvent e) {
-                SessionItem selected = (SessionItem) sessionDropdown.getSelectedItem();
-                prePopupSessionId = selected != null ? selected.getSession().id() : null;
+                prePopupSession[0] = sessionDropdown.getSelectedItem();
             }
 
             @Override
             public void popupMenuWillBecomeInvisible(PopupMenuEvent e) {
                 SessionItem selected = (SessionItem) sessionDropdown.getSelectedItem();
                 String currentId = selected != null ? selected.getSession().id() : null;
-                if (currentId != null && !currentId.equals(prePopupSessionId)) {
+                String previousId = prePopupSession[0] != null ? ((SessionItem)prePopupSession[0]).getSession().id() : null;
+                if (currentId != null && previousId != null && !currentId.equals(previousId)) {
                     SessionManager.getInstance().loadSession(currentId);
                 }
                 SwingUtilities.invokeLater(() -> inputArea.requestFocusInWindow());
@@ -42,6 +42,9 @@ public class SessionDropdownHandler {
 
             @Override
             public void popupMenuCanceled(PopupMenuEvent e) {
+                if (prePopupSession[0] != null) {
+                    sessionDropdown.setSelectedItem(prePopupSession[0]);
+                }
                 SwingUtilities.invokeLater(() -> inputArea.requestFocusInWindow());
             }
         });

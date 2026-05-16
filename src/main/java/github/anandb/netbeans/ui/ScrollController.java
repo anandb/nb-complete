@@ -40,8 +40,6 @@ public class ScrollController implements KeyEventDispatcher {
 
         layeredPane.add(scrollDownBtn, JLayeredPane.PALETTE_LAYER);
 
-        KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(this);
-
         scrollPane.getVerticalScrollBar().addAdjustmentListener(e -> {
             if (!e.getValueIsAdjusting()) {
                 updateScrollDownBtnVisibility();

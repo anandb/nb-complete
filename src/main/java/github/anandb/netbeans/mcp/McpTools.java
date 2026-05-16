@@ -64,7 +64,6 @@ public class McpTools {
             throw new IllegalArgumentException("Tool not found: " + name);
         }
 
-        LOG.info("REQ {0}", mapper.writerWithDefaultPrettyPrinter().writeValueAsString(arguments));
         return callToolInternal(executor, arguments);
     }
 

@@ -47,7 +47,7 @@ public class McpServer {
         locationProp.put("description", "City or location name");
         weatherSchema.set("location", locationProp);
         weatherSchema.put("type", "object");
-        LOG.info("REQ {0}", mapper.writerWithDefaultPrettyPrinter().writeValueAsString(weatherSchema));
+        
         mcpTools.registerTool("weather", "Get current weather for a location",
                               weatherSchema, new ToolExecutor<WeatherInput, WeatherOutput>(WeatherInput.class) {
             @Override

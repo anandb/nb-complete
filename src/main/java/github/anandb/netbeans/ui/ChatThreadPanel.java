@@ -4,6 +4,7 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
+import java.awt.KeyboardFocusManager;
 import java.awt.Rectangle;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
@@ -58,6 +59,7 @@ public class ChatThreadPanel extends JPanel {
     private static final Logger LOG = new Logger(ChatThreadPanel.class);
     private static final long serialVersionUID = 1L;
     private static final Pattern SECTION_SPLIT = Pattern.compile("(?m)^---[ \\t]*$");
+    private static final int MAX_MESSAGES = 100;
     private long lastUserTimestamp = -1L;
 
     private final JPanel messagesContainer;
@@ -68,6 +70,7 @@ public class ChatThreadPanel extends JPanel {
 
     private MessageBubble activeStreamBubble = null;
     private volatile boolean allBlocksExpanded = false;
+    private volatile boolean keepOlderMessages = false;
     private transient final MessageTransformer messageTransformer;
 
     public ChatThreadPanel() {
@@ -190,41 +193,47 @@ public class ChatThreadPanel extends JPanel {
         final String role = pm.messageType().roleName();
 
         SwingUtilities.invokeLater(() -> {
-            String[] parts = SECTION_SPLIT.split(text);
-            MessageBubble lastBubble = findLastNonIgnorableBubble();
-
-            for (String part : parts) {
-                if (part.trim().isEmpty() && parts.length > 1) {
-                    continue;
-                }
-
-                boolean canMerge = (lastBubble != null && role.equals(lastBubble.getRole()));
-                if (canMerge) {
-                    // Require matching messageIds (or allow if either is null).
-                    // Never merge successive user messages.
-                    canMerge = !"user".equals(role) && ("thought".equals(role) || canMergeMessages(pm.messageId(), lastBubble.getMessageId()));
-                }
-
-                if (lastBubble != null && canMerge) {
-                    lastBubble.appendText(part, pm.toolTitle());
-                } else {
-                    if (lastBubble != null) {
-                        // Stop timer + clear activeStreamRef when switching away from streaming bubble
-                        if (lastBubble == activeStreamBubble) {
-                            activeStreamBubble = null;
-                            if (streamFlushTimer.isRunning()) {
-                                streamFlushTimer.stop();
-                            }
-                        }
-                        lastBubble.flushUpdate(true);
-                        // No-op for non-tool/thought types, restores toolbar default for collapsible panes
-                        lastBubble.finalizeStreaming(allBlocksExpanded);
-                    }
-
-                    addSingleBubble(pm.messageType(), part, pm.messageId(), pm.toolTitle(), pm.streaming());
-                }
-            }
+            processMessageSections(pm, text, role);
+            trimMessages();
         });
+    }
+
+    /** Process message sections on EDT (shared by addMessage and setMessages). */
+    private void processMessageSections(ProcessedMessage pm, String text, String role) {
+        String[] parts = SECTION_SPLIT.split(text);
+        MessageBubble lastBubble = findLastNonIgnorableBubble();
+
+        for (String part : parts) {
+            if (part.trim().isEmpty() && parts.length > 1) {
+                continue;
+            }
+
+            boolean canMerge = (lastBubble != null && role.equals(lastBubble.getRole()));
+            if (canMerge) {
+                // Require matching messageIds (or allow if either is null).
+                // Never merge successive user messages.
+                canMerge = !"user".equals(role) && ("thought".equals(role) || canMergeMessages(pm.messageId(), lastBubble.getMessageId()));
+            }
+
+            if (lastBubble != null && canMerge) {
+                lastBubble.appendText(part, pm.toolTitle());
+            } else {
+                if (lastBubble != null) {
+                    // Stop timer + clear activeStreamRef when switching away from streaming bubble
+                    if (lastBubble == activeStreamBubble) {
+                        activeStreamBubble = null;
+                        if (streamFlushTimer.isRunning()) {
+                            streamFlushTimer.stop();
+                        }
+                    }
+                    lastBubble.flushUpdate(true);
+                    // No-op for non-tool/thought types, restores toolbar default for collapsible panes
+                    lastBubble.finalizeStreaming(allBlocksExpanded);
+                }
+
+                addSingleBubble(pm.messageType(), part, pm.messageId(), pm.toolTitle(), pm.streaming());
+            }
+        }
     }
 
     private void addSingleBubble(MessageType type, String text, String messageId, String toolTitle, boolean streaming) {
@@ -261,6 +270,36 @@ public class ChatThreadPanel extends JPanel {
         }
     }
 
+    private void trimMessages() {
+        if (MAX_MESSAGES <= 0 || keepOlderMessages) return;
+
+        int count = 0;
+        for (Component c : messagesContainer.getComponents()) {
+            if (c instanceof MessageBubble || c instanceof PermissionBubble) {
+                count++;
+            }
+        }
+
+        int excess = count - MAX_MESSAGES;
+        if (excess <= 0) return;
+
+        int removed = 0;
+        for (int i = 0; i < messagesContainer.getComponentCount() && removed < excess; ) {
+            Component c = messagesContainer.getComponent(i);
+            if (c instanceof MessageBubble || c instanceof PermissionBubble) {
+                messagesContainer.remove(i);
+                // Remove trailing strut
+                if (i < messagesContainer.getComponentCount()
+                        && messagesContainer.getComponent(i) instanceof Box.Filler) {
+                    messagesContainer.remove(i);
+                }
+                removed++;
+            } else {
+                i++;
+            }
+        }
+    }
+
     public void stopStreaming() {
         SwingUtilities.invokeLater(() -> {
             if (activeStreamBubble != null) {
@@ -286,7 +325,14 @@ public class ChatThreadPanel extends JPanel {
             messagesContainer.add(Box.createVerticalStrut(4));
             messagesContainer.revalidate();
             scrollController.scrollToBottom(true);
+            trimMessages();
         });
+    }
+
+    @Override
+    public void addNotify() {
+        super.addNotify();
+        KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(scrollController);
     }
 
     @Override
@@ -334,6 +380,14 @@ public class ChatThreadPanel extends JPanel {
 
     public boolean isAllBlocksExpanded() {
         return allBlocksExpanded;
+    }
+
+    public void setKeepOlderMessages(boolean keep) {
+        keepOlderMessages = keep;
+    }
+
+    public boolean isKeepOlderMessages() {
+        return keepOlderMessages;
     }
 
     public String getConversationAsMarkdown() {
