@@ -336,6 +336,9 @@
                         <failOnViolation>false</failOnViolation>
                         <includeTests>true</includeTests>
                         <printFailingErrors>true</printFailingErrors>
+                        <rulesets>
+                            <ruleset>scripts/pmd-ruleset.xml</ruleset>
+                        </rulesets>
                     </configuration>
                     <dependencies>
                         <dependency>
