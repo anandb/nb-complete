@@ -14,6 +14,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.logging.Level;
+import java.util.prefs.Preferences;
 import java.util.regex.Pattern;
 
 import javax.swing.text.Document;
@@ -30,10 +31,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
-import java.util.concurrent.Executors;
-import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
+import org.openide.util.RequestProcessor;
+import org.openide.util.Lookup;
+import org.openide.util.lookup.ServiceProvider;
 
 import javax.swing.SwingUtilities;
 
@@ -44,11 +44,11 @@ import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.MapperSupplier;
 import github.anandb.netbeans.mcp.McpManager;
 
+@ServiceProvider(service = ProcessManager.class)
 public class ProcessManager {
 
     private static final Logger LOG = new Logger(ProcessManager.class);
     private static final Pattern PATH_SEPARATOR_SPLIT = Pattern.compile(Pattern.quote(File.pathSeparator));
-    private static ProcessManager instance;
 
     private final SlashCommandInterceptor slashCommandInterceptor = new SlashCommandInterceptor();
 
@@ -59,9 +59,9 @@ public class ProcessManager {
     // Static shared ObjectMapper for all JSON operations
     private final ObjectMapper objectMapper = MapperSupplier.get();
 
-    // Shared ScheduledExecutor for reconnection delays
-    private ScheduledFuture<?> reconnectFuture;
-    private ScheduledExecutorService reconnectExecutor;
+    // Shared RequestProcessor for reconnection delays
+    private RequestProcessor reconnectRP;
+    private RequestProcessor.Task reconnectTask;
 
     private volatile Process serverProcess;
     private final AtomicReference<AcpProtocolClient> rpcClient = new AtomicReference<>();
@@ -78,17 +78,25 @@ public class ProcessManager {
     private long lastRestartTime = 0;
     private static final int MAX_RESTARTS = 3;
     private static final long RESTART_RESET_INTERVAL = 300000; // 5 minutes
-    private boolean shutdownHookAdded = false;
+
 
     private final McpManager mcpManager = new McpManager();
     private volatile boolean serverStarted = false;
 
-    private ProcessManager() {
+    public ProcessManager() {
         mcpManager.start();
     }
 
     public McpManager getMcpManager() {
         return mcpManager;
+    }
+
+    public static synchronized ProcessManager getInstance() {
+        ProcessManager pm = Lookup.getDefault().lookup(ProcessManager.class);
+        if (pm == null) {
+            pm = new ProcessManager();
+        }
+        return pm;
     }
 
     public CompletableFuture<JsonNode> sendRequest(String method, Object params) {
@@ -123,29 +131,18 @@ public class ProcessManager {
         }
     }
 
-    public static synchronized ProcessManager getInstance() {
-        if (instance == null) {
-            instance = new ProcessManager();
-        }
-        return instance;
-    }
-
     private synchronized void startServer() {
         if (isClosing || (serverProcess != null && serverProcess.isAlive())) {
             return;
         }
 
-        // Cancel any pending reconnect future
-        if (reconnectFuture != null && !reconnectFuture.isDone()) {
-            reconnectFuture.cancel(false);
-            reconnectFuture = null;
+        // Cancel any pending reconnect task
+        if (reconnectTask != null) {
+            reconnectTask.cancel();
+            reconnectTask = null;
         }
-        if (reconnectExecutor == null || reconnectExecutor.isShutdown()) {
-            reconnectExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
-                Thread t = new Thread(r, "ACP-Reconnect");
-                t.setDaemon(true);
-                return t;
-            });
+        if (reconnectRP == null) {
+            reconnectRP = new RequestProcessor("ACP-Reconnect", 1, true);
         }
         isClosing = false;
         readyFuture = new CompletableFuture<>();
@@ -216,11 +213,6 @@ public class ProcessManager {
             // Initialize ACP
             initializeProtocol();
 
-            if (!shutdownHookAdded) {
-                Runtime.getRuntime().addShutdownHook(new Thread(this::shutdown));
-                shutdownHookAdded = true;
-            }
-
             LOG.fine("ACP server process started successfully");
         } catch (Exception e) {
             LOG.severe("CRITICAL: Failed to start ACP server", e);
@@ -230,7 +222,7 @@ public class ProcessManager {
 
     private String resolveExecutablePath() {
         // We use NbPreferences to match the rest of the plugin
-        java.util.prefs.Preferences nbPrefs = NbPreferences.forModule(ACPOptionsPanel.class);
+        Preferences nbPrefs = NbPreferences.forModule(ACPOptionsPanel.class);
         String configuredPath = nbPrefs.get("acpExecutablePath", null);
         boolean isWindows = System.getProperty("os.name").toLowerCase().contains("win");
         String exeName = isWindows ? "opencode.exe" : "opencode";
@@ -326,14 +318,14 @@ public class ProcessManager {
     private synchronized void stopServer() {
         isClosing = true;
 
-        // Cancel any pending reconnect future
-        if (reconnectFuture != null && !reconnectFuture.isDone()) {
-            reconnectFuture.cancel(false);
-            reconnectFuture = null;
+        // Cancel any pending reconnect task
+        if (reconnectTask != null) {
+            reconnectTask.cancel();
+            reconnectTask = null;
         }
-        if (reconnectExecutor != null) {
-            reconnectExecutor.shutdownNow().forEach(task ->
-                    LOG.fine("Discarded pending reconnect task on shutdown: {0}", task));
+        if (reconnectRP != null) {
+            reconnectRP.stop();
+            reconnectRP = null;
         }
 
         mcpManager.stop();
@@ -408,13 +400,6 @@ public class ProcessManager {
         }
     }
 
-    /**
-     * Check if RPC client is initialized. Returns false if not ready.
-     */
-    private boolean rpcClientReady() {
-        return rpcClient.get() != null;
-    }
-
     public void touchConnection() {
         AcpProtocolClient client = rpcClient.get();
         if (client != null) {
@@ -464,15 +449,8 @@ public class ProcessManager {
         return CompletableFuture.completedFuture(null);
     }
 
-    private static String getProjectPath() {
-        return null;
-    }
-
     public String getActiveProjectDir() {
         return System.getProperty("user.dir");
-    }
-
-    public void addProjectChangeListener(Consumer<String> listener) {
     }
 
     public List<SessionUpdate.AvailableCommand> getAvailableCommands() {
@@ -536,10 +514,8 @@ public class ProcessManager {
             LOG.log(Level.FINE, "Respawning ACP server in {0}ms (attempt {1}/{2})...",
                     new Object[]{delay, restartCount, MAX_RESTARTS});
 
-            try {
-                this.reconnectFuture = reconnectExecutor.schedule(this::startServer, delay, java.util.concurrent.TimeUnit.MILLISECONDS);
-            } catch (RejectedExecutionException ex) {
-                LOG.log(Level.FINE, "Reconnect executor shut down during restart, skipping auto-reconnect");
+            if (reconnectRP != null) {
+                reconnectTask = reconnectRP.post(this::startServer, (int) delay);
             }
         } else {
             LOG.log(Level.SEVERE, "ACP server crashed {0} times within {1}ms. Giving up.",

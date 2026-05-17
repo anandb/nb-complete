@@ -13,14 +13,22 @@ import javax.swing.SwingUtilities;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+
+import org.openide.util.RequestProcessor;
+import org.openide.util.Lookup;
+import org.openide.util.lookup.ServiceProvider;
 import java.util.logging.Level;
 
 import github.anandb.netbeans.contract.SessionListener;
+import github.anandb.netbeans.manager.strategy.ToolCallUpdateStrategy;
 import github.anandb.netbeans.model.SessionState;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.Logger;
@@ -30,9 +38,9 @@ import github.anandb.netbeans.support.MapperSupplier;
  * Manages the state and lifecycle of chat sessions.
  * Decouples session logic from the AssistantTopComponent UI.
  */
+@ServiceProvider(service = SessionManager.class)
 public class SessionManager {
     private static final Logger LOG = new Logger(SessionManager.class);
-    private static SessionManager instance;
 
     private final ObjectMapper objectMapper = MapperSupplier.get();
     private final List<SessionListener> listeners = new CopyOnWriteArrayList<>();
@@ -41,7 +49,7 @@ public class SessionManager {
     private volatile String lastProjectDir;
     private final List<Session> cachedSessions = new CopyOnWriteArrayList<>();
 
-    private SessionManager() {
+    public SessionManager() {
         ACPProjectManager.getInstance().setProjectOpenListener(this::handleProjectOpened);
         ACPProjectManager.getInstance().setProjectCloseListener(this::handleProjectClosed);
 
@@ -82,11 +90,12 @@ public class SessionManager {
         }
     }
 
-    public static synchronized SessionManager getInstance() {
-        if (instance == null) {
-            instance = new SessionManager();
+    public static SessionManager getInstance() {
+        SessionManager sm = Lookup.getDefault().lookup(SessionManager.class);
+        if (sm == null) {
+            sm = new SessionManager();
         }
-        return instance;
+        return sm;
     }
 
     public void addSessionListener(SessionListener listener) {
@@ -196,12 +205,12 @@ public class SessionManager {
                 return CompletableFuture.completedFuture(res);
             }
             long durationMs = (System.nanoTime() - start) / 1_000_000;
-            if (ex instanceof java.util.concurrent.TimeoutException) {
+            if (ex instanceof TimeoutException) {
                 LOG.warn("session/new timed out after {0}ms", durationMs);
             } else {
                 LOG.warn("session/new failed after {0}ms with error: {1}", durationMs, ex.getMessage());
             }
-            Throwable cause = (ex instanceof java.util.concurrent.CompletionException) ? ex.getCause() : ex;
+            Throwable cause = (ex instanceof CompletionException) ? ex.getCause() : ex;
             if (isInvalidParamsError(cause) && !ProcessManager.getInstance().getMcpManager().isDisabled()) {
                 LOG.warn("session/new failed with Invalid Params, retrying without MCP servers");
                 ProcessManager.getInstance().getMcpManager().disable();
@@ -243,12 +252,12 @@ public class SessionManager {
                 return CompletableFuture.completedFuture(res);
             }
             long durationMs = (System.nanoTime() - start) / 1_000_000;
-            if (ex instanceof java.util.concurrent.TimeoutException) {
+            if (ex instanceof TimeoutException) {
                 LOG.warn("session/load timed out after {0}ms", durationMs);
             } else {
                 LOG.warn("session/load failed after {0}ms with error: {1}", durationMs, ex.getMessage());
             }
-            Throwable cause = (ex instanceof java.util.concurrent.CompletionException) ? ex.getCause() : ex;
+            Throwable cause = (ex instanceof CompletionException) ? ex.getCause() : ex;
             if (isInvalidParamsError(cause) && !ProcessManager.getInstance().getMcpManager().isDisabled()) {
                 LOG.warn("session/load failed with Invalid Params, retrying without MCP servers");
                 ProcessManager.getInstance().getMcpManager().disable();
@@ -386,6 +395,7 @@ public class SessionManager {
     }
 
     public void loadSession(String sessionId, boolean isStartup) {
+        ToolCallUpdateStrategy.invalidateSession(sessionId);
         if (!stateMachine.transitionTo(SessionState.LOADING)) {
             LOG.warn("Cannot load session in state {0}", stateMachine.getState());
             return;
@@ -496,13 +506,12 @@ public class SessionManager {
     }
 
     private void scheduleStopRecovery() {
-        CompletableFuture.delayedExecutor(5, TimeUnit.SECONDS)
-            .execute(() -> {
-                if (stateMachine.getState() == SessionState.STOPPING) {
-                    LOG.info("Safety timeout fired: transitioning STOPPING -> STREAMING");
-                    stateMachine.transitionTo(SessionState.STREAMING);
-                }
-            });
+        RequestProcessor.getDefault().post(() -> {
+            if (stateMachine.getState() == SessionState.STOPPING) {
+                LOG.info("Safety timeout fired: transitioning STOPPING -> STREAMING");
+                stateMachine.transitionTo(SessionState.STREAMING);
+            }
+        }, 5000);
     }
 
     public void onTurnEnded() {
@@ -541,7 +550,7 @@ public class SessionManager {
     private long parseTimestamp(String ts) {
         if (ts == null) return 0;
         try {
-            return java.time.OffsetDateTime.parse(ts).toInstant().toEpochMilli();
+            return OffsetDateTime.parse(ts).toInstant().toEpochMilli();
         } catch (Exception e) {
             return 0;
         }

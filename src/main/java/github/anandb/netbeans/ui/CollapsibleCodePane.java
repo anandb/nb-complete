@@ -1,10 +1,13 @@
 package github.anandb.netbeans.ui;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
 import java.awt.Font;
 import java.awt.Toolkit;
 import java.awt.datatransfer.StringSelection;
 import java.io.InputStream;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.Map;
 
 import javax.swing.BorderFactory;
@@ -35,9 +38,9 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
     private final JButton copyButton;
     private boolean codeAreaInitialized;
 
-    private static volatile org.fife.ui.rsyntaxtextarea.Theme cachedRTheme;
+    private static volatile Theme cachedRTheme;
 
-    private static synchronized org.fife.ui.rsyntaxtextarea.Theme loadCodeTheme() {
+    private static synchronized Theme loadCodeTheme() {
         Theme theme = cachedRTheme;
         if (theme != null) {
             return theme;
@@ -54,8 +57,8 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
         return null;
     }
 
-    private static final java.util.Map<String, String> LANGUAGE_MAP = new java.util.HashMap<>();
-    private static final java.util.Map<String, String> LANGUAGE_FALLBACK_MAP = new java.util.HashMap<>();
+    private static final Map<String, String> LANGUAGE_MAP = new ConcurrentHashMap<>();
+    private static final Map<String, String> LANGUAGE_FALLBACK_MAP = new ConcurrentHashMap<>();
 
     static {
         // C/C++ / C#
@@ -173,7 +176,7 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
         setBaseColor(theme.codeBackground());
         setBorderColor(theme.codeHeaderBorder());
         setShowBorder(true);
-        setAlignmentX(java.awt.Component.LEFT_ALIGNMENT);
+        setAlignmentX(Component.LEFT_ALIGNMENT);
     }
 
     private void ensureCodeTextArea() {
@@ -259,7 +262,7 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
     }
 
     @Override
-    protected java.awt.Color getDefaultHeaderBackground() {
+    protected Color getDefaultHeaderBackground() {
         return ThemeManager.getCurrentTheme().codeHeaderBackground();
     }
 
@@ -281,7 +284,7 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
 
     private void applySolarizedDarkTheme() {
         if (codeTextArea == null) return;
-        org.fife.ui.rsyntaxtextarea.Theme rTheme = loadCodeTheme();
+        Theme rTheme = loadCodeTheme();
         if (rTheme != null) {
             try {
                 rTheme.apply(codeTextArea);

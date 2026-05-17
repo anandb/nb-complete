@@ -3,6 +3,7 @@ package github.anandb.netbeans.model;
 import org.apache.commons.lang3.StringUtils;
 
 import static org.apache.commons.lang3.StringUtils.defaultString;
+import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import static org.apache.commons.lang3.StringUtils.length;
 
 public class ToolCallData {
@@ -10,6 +11,7 @@ public class ToolCallData {
     private String title;
     private String command;
     private String kind;
+    private String status;
     private String text;
 
     public ToolCallData() {}
@@ -50,8 +52,23 @@ public class ToolCallData {
     }
 
     public String setKind(String kind) {
-        this.kind = length(defaultString(kind)) > length(defaultString(this.kind)) ? kind : this.kind;
+        if (isNotBlank(kind)) {
+            this.kind = kind;
+        }
+        
         return this.kind;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public String setStatus(String status) {
+        if (isNotBlank(status) && !isDone()) {
+            this.status = status;
+        }
+
+        return this.status;
     }
 
     public String getText() {
@@ -63,5 +80,9 @@ public class ToolCallData {
             length(defaultString(text)) > length(defaultString(this.text)) ? text : this.text, 1024
         );
         return this.text;
+    }
+
+    public boolean isDone() {
+        return ("completed".equals(this.status) || "failed".equals(this.status));
     }
 }

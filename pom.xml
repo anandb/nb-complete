@@ -10,7 +10,7 @@
     <description>Coding Assistant for NetBeans using ACP, connect to OpenCode via the Agent Client Protocol.</description>
     <url>https://github.com/anandb/nb-complete</url>
 
-   <licenses>
+    <licenses>
         <license>
             <name>The Unlicense</name>
             <url>http://unlicense.org/</url>
@@ -32,12 +32,12 @@
         <url>https://github.com/anandb/nb-complete/tree/main</url>
     </scm>
 
-        <properties>
-            <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-            <maven.compiler.release>17</maven.compiler.release>
-            <netbeans.version>RELEASE210</netbeans.version>
-            <argLine></argLine>
-        </properties>
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.release>17</maven.compiler.release>
+        <netbeans.version>RELEASE220</netbeans.version>
+        <argLine></argLine>
+    </properties>
 
     <dependencies>
         <!-- NetBeans APIs - automatically provided by IDE -->
@@ -74,6 +74,11 @@
         <dependency>
             <groupId>org.netbeans.api</groupId>
             <artifactId>org-openide-awt</artifactId>
+            <version>${netbeans.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.netbeans.api</groupId>
+            <artifactId>org-openide-dialogs</artifactId>
             <version>${netbeans.version}</version>
         </dependency>
         <dependency>
@@ -142,6 +147,43 @@
             <version>${netbeans.version}</version>
         </dependency>
         <dependency>
+            <groupId>org.netbeans.api</groupId>
+            <artifactId>org-netbeans-api-java</artifactId>
+            <version>${netbeans.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.netbeans.api</groupId>
+            <artifactId>org-netbeans-api-java-classpath</artifactId>
+            <version>${netbeans.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.netbeans.api</groupId>
+            <artifactId>org-netbeans-modules-java-source-base</artifactId>
+            <version>${netbeans.version}</version>
+        </dependency>
+
+        <!-- ========================================== -->
+        <!-- 4. Refactoring, Diagnostics & Code Editing -->
+        <!-- ========================================== -->
+        <!-- Programmatic engine for Rename, Safe Delete, etc. -->
+        <dependency>
+            <groupId>org.netbeans.api</groupId>
+            <artifactId>org-netbeans-modules-refactoring-api</artifactId>
+            <version>${netbeans.version}</version>
+        </dependency>
+        <!-- Access to compiler hints and diagnostics -->
+        <dependency>
+            <groupId>org.netbeans.modules</groupId>
+            <artifactId>org-netbeans-modules-java-hints</artifactId>
+            <version>${netbeans.version}</version>
+        </dependency>
+        <!-- For code formatting and indentation adjustments -->
+        <dependency>
+            <groupId>org.netbeans.api</groupId>
+            <artifactId>org-netbeans-modules-editor-indent</artifactId>
+            <version>${netbeans.version}</version>
+        </dependency>
+        <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
             <version>3.20.0</version>
@@ -165,16 +207,18 @@
             <version>0.64.8</version>
         </dependency>
 
-        <!-- Jackson JSON -->
+        <!-- Jackson JSON (versions managed by jackson-bom 2.18.6) -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-core</artifactId>
-            <version>2.18.6</version>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-            <version>2.17.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
         </dependency>
 
         <!-- RSyntaxTextArea for syntax highlighting -->
@@ -195,17 +239,12 @@
             <artifactId>jetty-servlet</artifactId>
             <version>11.0.24</version>
         </dependency>
-        <dependency>
-            <groupId>org.eclipse.jetty</groupId>
-            <artifactId>jetty-servlets</artifactId>
-            <version>11.0.24</version>
-        </dependency>
-
-        <!-- ASM for bytecode manipulation (required by nbm) -->
+        <!-- ASM for bytecode manipulation (required by nbm-maven-plugin) -->
         <dependency>
             <groupId>org.ow2.asm</groupId>
             <artifactId>asm</artifactId>
             <version>9.7.1</version>
+            <scope>provided</scope>
         </dependency>
 
         <dependency>
@@ -236,6 +275,19 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- Jackson BOM: manages jackson-core, jackson-databind, jackson-annotations versions -->
+            <dependency>
+                <groupId>com.fasterxml.jackson</groupId>
+                <artifactId>jackson-bom</artifactId>
+                <version>2.18.6</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <build>
         <pluginManagement>
@@ -276,6 +328,47 @@
                         <violationSeverity>warning</violationSeverity>
                     </configuration>
                 </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-pmd-plugin</artifactId>
+                    <version>3.26.0</version>
+                    <configuration>
+                        <failOnViolation>false</failOnViolation>
+                        <includeTests>true</includeTests>
+                        <printFailingErrors>true</printFailingErrors>
+                    </configuration>
+                    <dependencies>
+                        <dependency>
+                            <groupId>net.sourceforge.pmd</groupId>
+                            <artifactId>pmd-core</artifactId>
+                            <version>7.24.0</version>
+                        </dependency>
+                        <dependency>
+                            <groupId>net.sourceforge.pmd</groupId>
+                            <artifactId>pmd-java</artifactId>
+                            <version>7.24.0</version>
+                        </dependency>
+                    </dependencies>
+                </plugin>
+                <plugin>
+                    <groupId>com.github.spotbugs</groupId>
+                    <artifactId>spotbugs-maven-plugin</artifactId>
+                    <version>4.9.8.3</version>
+                    <configuration>
+                        <failOnError>false</failOnError>
+                        <includeTests>true</includeTests>
+                        <effort>max</effort>
+                        <threshold>medium</threshold>
+                        <excludeFilterFile>scripts/spotbugs-exclusions.xml</excludeFilterFile>
+                    </configuration>
+                    <dependencies>
+                        <dependency>
+                            <groupId>com.github.spotbugs</groupId>
+                            <artifactId>spotbugs</artifactId>
+                            <version>4.9.8</version>
+                        </dependency>
+                    </dependencies>
+                </plugin>
             </plugins>
         </pluginManagement>
         <plugins>
@@ -285,14 +378,13 @@
                 <version>14.4</version>
                 <extensions>true</extensions>
                 <configuration>
+                    <verifyRuntime>skip</verifyRuntime>
                     <author>Anand</author>
                     <licenseName>The Unlicense</licenseName>
                     <licenseFile>LICENSE</licenseFile>
                     <publicPackages>
-                        <publicPackage>github.anandb.netbeans.manager</publicPackage>
                         <publicPackage>github.anandb.netbeans.model</publicPackage>
-                        <publicPackage>github.anandb.netbeans.project</publicPackage>
-                        <publicPackage>github.anandb.netbeans.ui</publicPackage>
+                        <publicPackage>github.anandb.netbeans.contract</publicPackage>
                     </publicPackages>
                 </configuration>
             </plugin>
@@ -342,9 +434,9 @@
                 <configuration>
                     <archive>
                         <manifestFile>${project.build.outputDirectory}/META-INF/MANIFEST.MF</manifestFile>
-                            <manifestEntries>
-                                <OpenIDE-Module-Layer>github/anandb/netbeans/ui/layer.xml</OpenIDE-Module-Layer>
-                            </manifestEntries>
+                        <manifestEntries>
+                            <OpenIDE-Module-Layer>github/anandb/netbeans/ui/layer.xml</OpenIDE-Module-Layer>
+                        </manifestEntries>
                     </archive>
                 </configuration>
             </plugin>
@@ -355,6 +447,33 @@
                     <execution>
                         <id>verify-style</id>
                         <phase>process-classes</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-pmd-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>verify-pmd</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>pmd</goal>
+                            <goal>cpd</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>com.github.spotbugs</groupId>
+                <artifactId>spotbugs-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>verify-spotbugs</id>
+                        <phase>verify</phase>
                         <goals>
                             <goal>check</goal>
                         </goals>
@@ -429,8 +548,8 @@
                                 </goals>
                             </execution>
                         </executions>
-            </plugin>
-            <plugin>
+                    </plugin>
+                    <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-gpg-plugin</artifactId>
                         <version>3.2.7</version>

@@ -32,7 +32,7 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
         setLayout(new BorderLayout());
         setOpaque(false);
         setDoubleBuffered(true);
-        setAlignmentX(java.awt.Component.LEFT_ALIGNMENT);
+        setAlignmentX(Component.LEFT_ALIGNMENT);
 
         ColorTheme theme = ThemeManager.getCurrentTheme();
 

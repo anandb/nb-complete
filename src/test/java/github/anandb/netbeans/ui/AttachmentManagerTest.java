@@ -18,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class AttachmentManagerTest {
 
     @TempDir
-    Path tempDir;
+    private Path tempDir;
 
     @Test
     void initiallyEmpty() {

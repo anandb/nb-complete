@@ -4,8 +4,8 @@ import java.awt.Color;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import javax.swing.UIManager;
 
@@ -52,39 +52,41 @@ public record ColorTheme(
     }
 
     private static ColorTheme createNativeTheme(boolean darkMode) {
-        List<Color> colors = resolveColors(darkMode);
+        Map<String, Color> colors = resolveColors(darkMode);
         return new ColorTheme(
                 darkMode,
-                colors.get(0), colors.get(1), colors.get(2), colors.get(3),
-                colors.get(4), colors.get(5), colors.get(6),
-                colors.get(7), colors.get(8), colors.get(9),
-                colors.get(10), colors.get(11), colors.get(12), colors.get(13), colors.get(14),
-                colors.get(15), colors.get(16), colors.get(17), colors.get(18),
-                colors.get(19), colors.get(20), colors.get(21),
-                colors.get(22), colors.get(23), colors.get(24),
-                colors.get(25),
-                colors.get(26), colors.get(27), colors.get(28), colors.get(29),
-                colors.get(30), colors.get(31), colors.get(32)
+                colors.get("background"), colors.get("foreground"), colors.get("selection"), colors.get("accent"),
+                colors.get("ghostBackground"), colors.get("sunkenBackground"), colors.get("bubbleUser"),
+                colors.get("bubbleAssistant"), colors.get("bubbleBorder"), colors.get("assistantForeground"),
+                colors.get("panelHeader"), colors.get("panelHeaderHover"), colors.get("base1"), colors.get("base2"), colors.get("base3"),
+                colors.get("yellow"), colors.get("codeBackground"), colors.get("codeForeground"), colors.get("codeSelection"),
+                colors.get("headerForeground"), colors.get("errorBackground"), colors.get("codeHeaderBackground"),
+                colors.get("codeHeaderForeground"), colors.get("codeHeaderBorder"), colors.get("thinkingHeaderBackground"),
+                colors.get("thinkingHeaderForeground"),
+                colors.get("toolForeground"), colors.get("permissionBg"), colors.get("permissionBorder"), colors.get("permissionTitle"),
+                colors.get("tableBackground"), colors.get("tableHeaderBackground"), colors.get("tableBorder")
         );
     }
 
-    private static List<Color> resolveColors(boolean darkMode) {
+    private static Map<String, Color> resolveColors(boolean darkMode) {
         JsonNode config = loadColorConfig();
-        List<Color> colors = new ArrayList<>();
+        Map<String, Color> colors = new LinkedHashMap<>();
         for (JsonNode entry : config) {
+            String name = entry.has("name") ? entry.get("name").asText() : null;
+            if (name == null) continue;
             String propName = entry.has("property") ? entry.get("property").asText() : null;
             Color fromProp = resolveFromProperty(propName);
             if (fromProp != null) {
-                colors.add(fromProp);
+                colors.put(name, fromProp);
                 continue;
             }
             Color fromKey = resolveFromKey(entry, darkMode);
             if (fromKey != null) {
-                colors.add(fromKey);
+                colors.put(name, fromKey);
                 continue;
             }
             Color fallback = resolveFallback(entry, darkMode);
-            colors.add(fallback);
+            colors.put(name, fallback);
         }
         return colors;
     }

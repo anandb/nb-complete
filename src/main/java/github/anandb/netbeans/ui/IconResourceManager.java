@@ -2,12 +2,16 @@ package github.anandb.netbeans.ui;
 
 import java.awt.Color;
 import java.awt.Font;
+import java.awt.Graphics2D;
+import java.awt.Image;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
+import java.net.URL;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import javax.swing.Icon;
+import javax.swing.ImageIcon;
 import javax.swing.UIManager;
 import org.openide.util.ImageUtilities;
 import github.anandb.netbeans.support.Logger;
@@ -57,11 +61,11 @@ final class IconResourceManager {
             return cached;
         }
         String resourcePath = "github/anandb/netbeans/ui/icons/" + getThemeAwareName(name);
-        java.awt.Image img = ImageUtilities.loadImage(resourcePath, true);
+        Image img = ImageUtilities.loadImage(resourcePath, true);
         if (img == null) {
-            java.net.URL url = IconResourceManager.class.getClassLoader().getResource(resourcePath);
+            URL url = IconResourceManager.class.getClassLoader().getResource(resourcePath);
             if (url != null) {
-                img = new javax.swing.ImageIcon(url).getImage();
+                img = new ImageIcon(url).getImage();
             }
         }
         if (img == null) {
@@ -70,7 +74,7 @@ final class IconResourceManager {
         }
         if (size > 0 && (img.getWidth(null) != size || img.getHeight(null) != size)) {
             BufferedImage bi = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
-            java.awt.Graphics2D g2 = bi.createGraphics();
+            Graphics2D g2 = bi.createGraphics();
             g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
             g2.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);

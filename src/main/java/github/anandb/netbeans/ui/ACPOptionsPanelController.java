@@ -25,7 +25,7 @@ import org.openide.util.NbBundle;
 public final class ACPOptionsPanelController extends OptionsPanelController implements Serializable {
 
     private static final long serialVersionUID = 1L;
-    private ACPOptionsPanel panel;
+    private transient ACPOptionsPanel panel;
     private final PropertyChangeSupport pcs = new PropertyChangeSupport(this);
     private boolean changed;
 

@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import github.anandb.netbeans.contract.SlashCommandHandler;
 import github.anandb.netbeans.contract.SlashCommandCallback;
+import github.anandb.netbeans.contract.SlashCommandProvider;
 import github.anandb.netbeans.model.CommandInfo;
 import github.anandb.netbeans.support.Logger;
 import org.openide.util.Lookup;
@@ -19,6 +20,13 @@ public class SlashCommandInterceptor {
 
     public SlashCommandInterceptor() {
         registerDefaultCommands();
+        // Discover additional commands registered via @ServiceProvider
+        for (SlashCommandProvider provider : Lookup.getDefault().lookupAll(SlashCommandProvider.class)) {
+            if (provider.getCommand() != null && provider.getHandler() != null) {
+                commands.put(provider.getCommand(), new CommandInfo(provider.getHandler(), provider.getDescription()));
+                LOG.fine("Registered slash command from provider: {0}", provider.getCommand());
+            }
+        }
     }
 
     private void registerDefaultCommands() {

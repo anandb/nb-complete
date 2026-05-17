@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter
+    xmlns="https://github.com/spotbugs/spotbugs"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="https://github.com/spotbugs/spotbugs https://raw.githubusercontent.com/spotbugs/spotbugs/4.9.8/spotbugs/etc/findbugsfilter.xsd">
+
+    <!-- Swing components exposed via getters — standard UI pattern -->
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2,MS_EXPOSE_REP" />
+    </Match>
+</FindBugsFilter>

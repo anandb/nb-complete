@@ -3,7 +3,6 @@ package github.anandb.netbeans.project;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.lang.reflect.Field;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -13,12 +12,7 @@ class ACPProjectManagerTest {
     private ACPProjectManager projectManager;
 
     @BeforeEach
-    void setUp() throws Exception {
-        // Reset Singleton
-        Field instanceField = ACPProjectManager.class.getDeclaredField("instance");
-        instanceField.setAccessible(true);
-        instanceField.set(null, null);
-
+    void setUp() {
         projectManager = ACPProjectManager.getInstance();
     }
 

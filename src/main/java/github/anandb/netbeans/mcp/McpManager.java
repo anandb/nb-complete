@@ -97,7 +97,7 @@ public class McpManager {
             mcpServerList.add(Map.of(
                     "headers", List.of(),
                     "type", "http",
-                    "name", "netbeans",
+                    "name", "nb",
                     "url", mcpServer.getUrl()
             ));
         }

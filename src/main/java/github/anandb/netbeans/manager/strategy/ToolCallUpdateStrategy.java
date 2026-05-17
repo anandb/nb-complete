@@ -7,6 +7,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 import github.anandb.netbeans.manager.ToolDataExtractor;
@@ -14,22 +16,26 @@ import github.anandb.netbeans.model.MessageClassification;
 import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.model.ToolCallData;
-import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.MapperSupplier;
 
 import static org.apache.commons.lang3.ObjectUtils.firstNonNull;
 import static org.apache.commons.lang3.StringUtils.abbreviate;
+import static org.apache.commons.lang3.StringUtils.defaultIfBlank;
 import static org.apache.commons.lang3.StringUtils.defaultString;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
 public class ToolCallUpdateStrategy implements DataExtractionStrategy {
-    private static final Logger LOG = new Logger(ToolCallUpdateStrategy.class);
-    private static final Cache<String, ToolCallData> TOOL_CALL_CACHE;
+
+    public static void invalidateSession(String sessionId) {
+        TOOL_CALL_CACHE.invalidate(sessionId);
+    }
+
+    private static final Cache<String, Map<String, ToolCallData>> TOOL_CALL_CACHE;
 
     static {
         TOOL_CALL_CACHE = Caffeine.newBuilder()
-            .expireAfterAccess(5, TimeUnit.MINUTES)
+            .expireAfterAccess(60, TimeUnit.MINUTES)
             .maximumSize(1024)
             .recordStats()
             .build();
@@ -46,16 +52,21 @@ public class ToolCallUpdateStrategy implements DataExtractionStrategy {
             return;
         }
 
+        final String sessionId = update.params().sessionId();
         final String messageId = update.messageId();
-        if (isBlank(messageId)) {
+        if (isBlank(messageId) || isBlank(sessionId)) {
             return;
         }
 
         final String command = update.command();
         final String kind = update.kind();
-        
-        ToolCallData data = TOOL_CALL_CACHE.get(messageId, k -> new ToolCallData(k, command));
+
+        Map<String, ToolCallData> sessionMap = TOOL_CALL_CACHE.get(sessionId, k -> new ConcurrentHashMap<>());
+        ToolCallData data = sessionMap.computeIfAbsent(messageId, k -> new ToolCallData(k, command));
         ProcessedMessage target = processToolMessage(data, command, update, kind, messageId);
+        if (data.isDone()) {
+            sessionMap.remove(messageId);
+        }
         handler.displayMessage(target);
     }
 
@@ -102,16 +113,17 @@ public class ToolCallUpdateStrategy implements DataExtractionStrategy {
         MessageClassification m;
         synchronized(data) {
             String effectiveCommand = data.setCommand(command);
+            data.setStatus(defaultIfBlank(update.status(), "completed"));
+
             text = data.setText(new StringBuilder()
                     .append(isNotBlank(effectiveCommand) ? "$ " : "")
                     .append(abbreviate(effectiveCommand, 80))
                     .append(isNotBlank(effectiveCommand) ? "\n\n" : "")
                     .append(firstNonNull(extractContentText(update.content()), ""))
                     .toString());
-            kind = data.setKind(kind);
-
-            m = ToolDataExtractor.classify(update.update().type(), text, kind);
+            m = ToolDataExtractor.classify(update.update().type(), text, kind, update.update().title());
             tt = data.setTitle(ToolDataExtractor.extractToolTitle(defaultString(messageId), text, m, update));
+            kind = data.setKind(kind);
         }
 
         return new ProcessedMessage.Builder()

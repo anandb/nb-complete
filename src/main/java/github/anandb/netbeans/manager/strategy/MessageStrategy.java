@@ -1,5 +1,7 @@
 package github.anandb.netbeans.manager.strategy;
 
+import java.util.List;
+
 import github.anandb.netbeans.contract.DataExtractionStrategy;
 import github.anandb.netbeans.contract.UIHandler;
 import github.anandb.netbeans.model.Message;
@@ -55,7 +57,7 @@ public class MessageStrategy implements DataExtractionStrategy {
         }
     }
 
-    private void appendParts(StringBuilder sb, java.util.List<Message.ContentPart> parts, String separator) {
+    private void appendParts(StringBuilder sb, List<Message.ContentPart> parts, String separator) {
         if (parts == null) return;
         for (Message.ContentPart part : parts) {
             String pt = part.getDisplayText();

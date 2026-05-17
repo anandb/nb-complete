@@ -7,8 +7,9 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.concurrent.ExecutorService;
 import java.util.logging.Level;
+
+import org.openide.util.RequestProcessor;
 
 import github.anandb.netbeans.support.Logger;
 import jakarta.servlet.AsyncContext;
@@ -18,17 +19,18 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 class MessageServlet extends HttpServlet {
+    private static final long serialVersionUID = 1L;
 
     private static final Logger LOG = new Logger(MessageServlet.class);
     private static final String MCP_PROTOCOL_VERSION = "2025-03-26";
-    private static final String SERVER_NAME = "netbeans-mcp";
+    private static final String SERVER_NAME = "nb-mcp";
     private static final String SERVER_VERSION = "1.0.0";
 
     private final ObjectMapper mapper;
-    private final ExecutorService asyncExecutor;
-    private final McpTools mcpTools;
+    private final transient RequestProcessor asyncExecutor;
+    private final transient McpTools mcpTools;
 
-    MessageServlet(ObjectMapper mapper, ExecutorService asyncExecutor, McpTools mcpTools) {
+    MessageServlet(ObjectMapper mapper, RequestProcessor asyncExecutor, McpTools mcpTools) {
         this.mapper = mapper;
         this.asyncExecutor = asyncExecutor;
         this.mcpTools = mcpTools;
@@ -41,7 +43,7 @@ class MessageServlet extends HttpServlet {
         AsyncContext asyncContext = request.startAsync();
         asyncContext.setTimeout(30000);
 
-        asyncExecutor.submit(() -> {
+        asyncExecutor.post(() -> {
             try {
                 StringBuilder body = new StringBuilder();
                 String line;
@@ -61,6 +63,12 @@ class MessageServlet extends HttpServlet {
                     ObjectNode resp = mapper.createObjectNode();
                     resp.put("jsonrpc", "2.0");
                     resp.put("id", id);
+
+                    if ("tools/call".equals(method)) {
+                        // tools/call handles response asynchronously with minimum delay
+                        handleToolsCallAsync(params, resp, asyncContext, start);
+                        return; // response will be sent by handleToolsCallAsync
+                    }
 
                     try {
                         handleRequest(method, params, resp);
@@ -98,11 +106,88 @@ class MessageServlet extends HttpServlet {
         });
     }
 
+    /**
+     * Handles tools/call with a scheduled minimum latency (5000ms) instead of blocking Thread.sleep.
+     * The tool executes immediately on the RequestProcessor thread, but the response is delayed
+     * to ensure a minimum elapsed time. No thread is blocked during the delay.
+     */
+    private void handleToolsCallAsync(JsonNode params, ObjectNode resp, AsyncContext asyncContext, long requestStart) {
+        if (params == null || !params.has("name")) {
+            try {
+                writeError(asyncContext, resp, -32602, "Missing required parameter: name");
+            } catch (IOException e) {
+                LOG.log(Level.SEVERE, "Failed to write error response", e);
+            }
+            return;
+        }
+
+        String name = params.get("name").asText();
+        JsonNode arguments = params.has("arguments") ? params.get("arguments") : mapper.createObjectNode();
+
+        asyncExecutor.post(() -> {
+            try {
+                long toolStart = System.nanoTime();
+                JsonNode toolResponse = mcpTools.callTool(name, arguments);
+                long toolElapsed = (System.nanoTime() - toolStart) / 1_000_000;
+                long totalElapsed = (System.nanoTime() - requestStart) / 1_000_000;
+                long remainingDelay = Math.max(0, 5000 - totalElapsed);
+
+                // Build result (cheap, no blocking)
+                ObjectNode result = mapper.createObjectNode();
+                result.set("structuredContent", toolResponse);
+                ArrayNode contentNode = mapper.createArrayNode();
+                ObjectNode contentElement = mapper.createObjectNode();
+                contentElement.put("type", "text");
+                contentElement.put("text", mapper.writeValueAsString(toolResponse));
+                contentNode.add(contentElement);
+                result.set("content", contentNode);
+                resp.set("result", result);
+
+                Runnable sendResponse = () -> {
+                    try {
+                        writeResponse(asyncContext, resp);
+                        LOG.info("MCP tools/call completed: {0} (tool={1}ms, delay={2}ms)", name, toolElapsed, remainingDelay);
+                    } catch (IOException e) {
+                        LOG.log(Level.SEVERE, "Failed to write tools/call response", e);
+                    }
+                };
+
+                if (remainingDelay > 0) {
+                    asyncExecutor.post(sendResponse, (int) remainingDelay);
+                } else {
+                    sendResponse.run();
+                }
+            } catch (IllegalArgumentException e) {
+                scheduleErrorResponse(resp, asyncContext, -32602, e.getMessage());
+            } catch (Exception e) {
+                LOG.log(Level.SEVERE, "Tool execution failed: {0}", e.getMessage());
+                scheduleErrorResponse(resp, asyncContext, -32603, "Tool execution failed: " + e.getMessage());
+            }
+        });
+    }
+
+    private void scheduleErrorResponse(ObjectNode resp, AsyncContext ctx, int code, String message) {
+        asyncExecutor.post(() -> {
+            try {
+                writeError(ctx, resp, code, message);
+            } catch (IOException e) {
+                LOG.log(Level.SEVERE, "Failed to write error response", e);
+            }
+        });
+    }
+
+    private void writeError(AsyncContext ctx, ObjectNode resp, int code, String message) throws IOException {
+        ObjectNode error = mapper.createObjectNode();
+        error.put("code", code);
+        error.put("message", message);
+        resp.set("error", error);
+        writeResponse(ctx, resp);
+    }
+
     private void handleRequest(String method, JsonNode params, ObjectNode resp) {
         switch (method) {
             case "initialize" -> handleInitialize(params, resp);
             case "tools/list" -> handleToolsList(resp);
-            case "tools/call" -> handleToolsCall(params, resp);
             case "ping" -> resp.set("result", mapper.createObjectNode());
             case "resources/list" -> handleResourcesList(resp);
             case "resources/subscribe" -> resp.set("result", mapper.createObjectNode());
@@ -164,45 +249,6 @@ class MessageServlet extends HttpServlet {
         resp.set("result", result);
         long durationMs = (System.nanoTime() - start) / 1_000_000;
         LOG.info("MCP tools/list completed in {0}ms, tools={1}", durationMs, mcpTools.toolCount());
-    }
-
-    private void handleToolsCall(JsonNode params, ObjectNode resp) {
-        if (params == null || !params.has("name")) {
-            ObjectNode error = mapper.createObjectNode();
-            error.put("code", -32602);
-            error.put("message", "Missing required parameter: name");
-            resp.set("error", error);
-            return;
-        }
-
-        String name = params.get("name").asText();
-        JsonNode arguments = params.has("arguments") ? params.get("arguments") : mapper.createObjectNode();
-
-        try {
-            JsonNode toolResponse = mcpTools.callTool(name, arguments);
-            ObjectNode result = mapper.createObjectNode();
-            result.set("structuredContent", toolResponse);
-
-            ArrayNode contentNode = mapper.createArrayNode();
-            ObjectNode contentElement = mapper.createObjectNode();
-            contentElement.put("type", "text");
-            contentElement.put("text", mapper.writeValueAsString(toolResponse));
-            contentNode.add(contentElement);
-            result.set("content", contentNode);
-
-            resp.set("result", result);
-        } catch (IllegalArgumentException e) {
-            ObjectNode error = mapper.createObjectNode();
-            error.put("code", -32602);
-            error.put("message", e.getMessage());
-            resp.set("error", error);
-        } catch (Exception e) {
-            LOG.log(Level.SEVERE, "Tool execution failed: {0}", e.getMessage());
-            ObjectNode error = mapper.createObjectNode();
-            error.put("code", -32603);
-            error.put("message", "Tool execution failed: " + e.getMessage());
-            resp.set("error", error);
-        }
     }
 
     private void handleResourcesList(ObjectNode resp) {

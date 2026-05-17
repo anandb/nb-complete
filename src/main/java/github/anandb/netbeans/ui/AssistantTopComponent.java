@@ -23,7 +23,6 @@ import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
-import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
@@ -35,6 +34,8 @@ import javax.swing.border.EmptyBorder;
 import org.netbeans.api.project.Project;
 import org.netbeans.api.settings.ConvertAsProperties;
 import org.openide.awt.ActionID;
+import org.openide.DialogDisplayer;
+import org.openide.NotifyDescriptor;
 import org.openide.util.NbBundle;
 import org.openide.util.NbPreferences;
 import org.openide.windows.TopComponent;
@@ -133,8 +134,6 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
     private static final Logger LOG = new Logger(AssistantTopComponent.class);
     private static final long serialVersionUID = 1L;
-    private static volatile AssistantTopComponent instance;
-
     private final ChatThreadPanel chatPanel;
     private final PlaceholderTextArea inputArea;
     private final JButton sendBtn;
@@ -146,27 +145,26 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     private final JButton keepBtn;
     private final JButton filterBtn;
     private final JButton toggleOptionsBtn;
-    private JLabel statusLabel;
+    private final JLabel statusLabel;
     private final JLabel versionLabel;
     private final JLabel cwdLabel;
 
     private final JScrollPane inputScrollPane;
     private final JPanel header;
-    private final MessageHistory messageHistory = new MessageHistory();
-    private final StatusController statusController;
-    private final AttachmentUiHandler attachmentUiHandler;
-    private final SessionDropdownHandler sessionDropdownHandler;
-    private ComponentLifecycleHandler componentLifecycleHandler;
-    private final InputHandler inputHandler;
-    private final SessionLifecycleHandler sessionLifecycleHandler;
-    private final MessageSender messageSender;
+    private final transient MessageHistory messageHistory = new MessageHistory();
+    private final transient StatusController statusController;
+    private final transient AttachmentUiHandler attachmentUiHandler;
+    private final transient SessionDropdownHandler sessionDropdownHandler;
+    private transient ComponentLifecycleHandler componentLifecycleHandler;
+    private final transient InputHandler inputHandler;
+    private final transient SessionLifecycleHandler sessionLifecycleHandler;
+    private final transient MessageSender messageSender;
 
-    private final AttachmentManager attachmentManager = new AttachmentManager();
+    private final transient AttachmentManager attachmentManager = new AttachmentManager();
     private final transient ConfigPanelController configPanelController;
     private final transient AutocompleteManager autocompleteManager;
 
     public AssistantTopComponent() {
-        instance = this;
         setName(NbBundle.getMessage(AssistantTopComponent.class, "CTL_AssistantTopComponent"));
         setToolTipText(NbBundle.getMessage(AssistantTopComponent.class, "HINT_AssistantTopComponent"));
 
@@ -301,7 +299,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         inputArea.setLineWrap(true);
         inputArea.setWrapStyleWord(true);
         inputArea.setBorder(new EmptyBorder(12, 12, 12, 12));
-        float editorFontSize = (float) ThemeManager.getMonospaceFont().getSize();
+        int editorFontSize = ThemeManager.getMonospaceFont().getSize();
         inputArea.setFont(ThemeManager.getFont().deriveFont(editorFontSize));
 
         inputScrollPane = new JScrollPane(inputArea);
@@ -415,10 +413,17 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         }
 
         String currentTitle = selectedIdToTitle(selectedItem.getSession());
-        String newTitle = JOptionPane.showInputDialog(this, NbBundle.getMessage(AssistantTopComponent.class, "MSG_EnterTitle"), currentTitle);
-
-        if (newTitle != null && !newTitle.trim().isEmpty()) {
-            SessionManager.getInstance().renameSession(currentId, newTitle.trim());
+        NotifyDescriptor.InputLine input = new NotifyDescriptor.InputLine(
+            NbBundle.getMessage(AssistantTopComponent.class, "MSG_EnterTitle"),
+            NbBundle.getMessage(AssistantTopComponent.class, "HINT_RenameSession")
+        );
+        input.setInputText(currentTitle);
+        Object result = DialogDisplayer.getDefault().notify(input);
+        if (result == NotifyDescriptor.OK_OPTION) {
+            String newTitle = input.getInputText();
+            if (newTitle != null && !newTitle.trim().isEmpty()) {
+                SessionManager.getInstance().renameSession(currentId, newTitle.trim());
+            }
         }
     }
 
@@ -477,13 +482,14 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     }
 
     private void promptRestartServer() {
-        int choice = JOptionPane.showConfirmDialog(this,
-                NbBundle.getMessage(AssistantTopComponent.class, "MSG_ConfirmRestart"),
-                NbBundle.getMessage(AssistantTopComponent.class, "TITLE_RestartServer"),
-                JOptionPane.YES_NO_OPTION,
-                JOptionPane.WARNING_MESSAGE);
-
-        if (choice == JOptionPane.YES_OPTION) {
+        NotifyDescriptor.Confirmation confirm = new NotifyDescriptor.Confirmation(
+            NbBundle.getMessage(AssistantTopComponent.class, "MSG_ConfirmRestart"),
+            NbBundle.getMessage(AssistantTopComponent.class, "TITLE_RestartServer"),
+            NotifyDescriptor.YES_NO_OPTION,
+            NotifyDescriptor.WARNING_MESSAGE
+        );
+        Object result = DialogDisplayer.getDefault().notify(confirm);
+        if (result == NotifyDescriptor.YES_OPTION) {
             restartServer();
         }
     }
@@ -568,13 +574,11 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
     @Override
     public void componentOpened() {
-        instance = this;
         componentLifecycleHandler.componentOpened();
     }
 
     @Override
     public void componentActivated() {
-        instance = this;
         componentLifecycleHandler.componentActivated();
     }
 
@@ -606,9 +610,6 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     @Override
     public void componentClosed() {
         componentLifecycleHandler.componentClosed();
-        if (instance == this) {
-            instance = null;
-        }
     }
 
     @Override

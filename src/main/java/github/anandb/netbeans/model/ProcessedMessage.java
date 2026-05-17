@@ -14,10 +14,12 @@ public record ProcessedMessage(
         String status) {
 
     public boolean isIgnorable() {
-        if (messageType == MessageType.tool_call || messageType == MessageType.tool_call_update) {
-            return isNotBlank(status) && (status.startsWith("pending") || status.startsWith("in_progress"));
+        boolean isTool = messageType == MessageType.tool_call || messageType == MessageType.tool_call_update;
+        if (isTool) {
+            return isNotBlank(status) && (status.startsWith("pending") || status.startsWith("in_progress")) ||
+                   toolTitle.startsWith("mcp ");
         }
-
+        
         return isIgnorable(messageType.roleName(), text);
     }
 
@@ -26,6 +28,7 @@ public record ProcessedMessage(
         if (trimmed.endsWith(".") || trimmed.endsWith("!")) {
             trimmed = trimmed.substring(0, trimmed.length() - 1);
         }
+
         return "tool".equals(role) && (trimmed.equals("completed") || trimmed.equals("failed") ||
                 trimmed.equals("in-progress") || trimmed.equals("in progress") || trimmed.equals("in_progress") ||
                 trimmed.equals("inprogress") || trimmed.equals("success") || trimmed.equals("done"));

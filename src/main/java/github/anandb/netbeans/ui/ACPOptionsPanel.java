@@ -11,13 +11,18 @@ import org.openide.util.NbPreferences;
 import java.util.regex.Pattern;
 
 import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Font;
 import java.awt.GridBagConstraints;
-
 import java.awt.GridBagLayout;
+import java.awt.Image;
 import java.awt.Insets;
-
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 
 import javax.swing.BorderFactory;
 import javax.swing.ImageIcon;
@@ -88,7 +93,7 @@ public class ACPOptionsPanel extends JPanel {
     }
 
     private void initComponents() {
-        setLayout(new java.awt.GridBagLayout());
+        setLayout(new GridBagLayout());
 
         jLabel1 = new JLabel();
         pathField = new JTextField(40);
@@ -106,7 +111,7 @@ public class ACPOptionsPanel extends JPanel {
 
         // --- SECTION: Assistant Service ---
         JLabel serviceHeader = new JLabel(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_ServiceHeader"));
-        serviceHeader.setFont(serviceHeader.getFont().deriveFont(java.awt.Font.BOLD));
+        serviceHeader.setFont(serviceHeader.getFont().deriveFont(Font.BOLD));
         add(serviceHeader, UIUtils.createGbc(0, 0, 1.0, 0, GridBagConstraints.HORIZONTAL,
                                              GridBagConstraints.WEST, new Insets(0, 0, 10, 0)));
 
@@ -114,9 +119,9 @@ public class ACPOptionsPanel extends JPanel {
         add(jLabel1, UIUtils.createGbc(0, 1, 0.0, 0, GridBagConstraints.NONE, GridBagConstraints.WEST,
                                        new Insets(0, 12, 5, 5)));
 
-        pathField.addKeyListener(new java.awt.event.KeyAdapter() {
+        pathField.addKeyListener(new KeyAdapter() {
             @Override
-            public void keyReleased(java.awt.event.KeyEvent evt) { controller.changed(); }
+            public void keyReleased(KeyEvent evt) { controller.changed(); }
         });
         pathField.addFocusListener(new FocusAdapter() {
             @Override
@@ -141,16 +146,16 @@ public class ACPOptionsPanel extends JPanel {
         add(argsLabel, UIUtils.createGbc(0, 2, 0.0, 0, GridBagConstraints.NONE, GridBagConstraints.WEST,
                                          new Insets(0, 12, 15, 5)));
 
-        argsField.addKeyListener(new java.awt.event.KeyAdapter() {
+        argsField.addKeyListener(new KeyAdapter() {
             @Override
-            public void keyReleased(java.awt.event.KeyEvent evt) { controller.changed(); }
+            public void keyReleased(KeyEvent evt) { controller.changed(); }
         });
         add(argsField, UIUtils.createGbc(1, 2, 1.0, 0, GridBagConstraints.HORIZONTAL,
                                          GridBagConstraints.WEST, new Insets(0, 0, 15, 5)));
 
         // --- SECTION: Chat Behavior ---
         JLabel behaviorHeader = new JLabel(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_BehaviorHeader"));
-        behaviorHeader.setFont(behaviorHeader.getFont().deriveFont(java.awt.Font.BOLD));
+        behaviorHeader.setFont(behaviorHeader.getFont().deriveFont(Font.BOLD));
         add(behaviorHeader, UIUtils.createGbc(0, 3, 1.0, 0, GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST,
                 new Insets(10, 0, 10, 0)));
 
@@ -189,9 +194,9 @@ public class ACPOptionsPanel extends JPanel {
 
         preambleArea.setLineWrap(true);
         preambleArea.setWrapStyleWord(true);
-        preambleArea.addKeyListener(new java.awt.event.KeyAdapter() {
+        preambleArea.addKeyListener(new KeyAdapter() {
             @Override
-            public void keyReleased(java.awt.event.KeyEvent evt) { controller.changed(); }
+            public void keyReleased(KeyEvent evt) { controller.changed(); }
         });
         add(preambleScroll, UIUtils.createGbc(0, 7, 1.0, 0.2, GridBagConstraints.BOTH,
                 GridBagConstraints.WEST, new Insets(0, 12, 15, 0)));
@@ -202,21 +207,21 @@ public class ACPOptionsPanel extends JPanel {
 
         // --- SECTION: Appearance ---
         JLabel appearanceHeader = new JLabel(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_AppearanceHeader"));
-        appearanceHeader.setFont(appearanceHeader.getFont().deriveFont(java.awt.Font.BOLD));
+        appearanceHeader.setFont(appearanceHeader.getFont().deriveFont(Font.BOLD));
         add(appearanceHeader, UIUtils.createGbc(0, 8, 1.0, 0, GridBagConstraints.HORIZONTAL,
                 GridBagConstraints.WEST, new Insets(10, 0, 10, 0)));
         GridBagConstraints gbcAppHeader = UIUtils.createGbc(0, 8, 1.0, 0, GridBagConstraints.HORIZONTAL,
                 GridBagConstraints.WEST, new Insets(10, 0, 10, 0));
         gbcAppHeader.gridwidth = 3;
-        ((java.awt.GridBagLayout) getLayout()).setConstraints(appearanceHeader, gbcAppHeader);
+        ((GridBagLayout) getLayout()).setConstraints(appearanceHeader, gbcAppHeader);
 
         iconLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_UserIcon"));
         add(iconLabel, UIUtils.createGbc(0, 9, 0.0, 0, GridBagConstraints.NONE, GridBagConstraints.WEST,
                 new Insets(0, 12, 5, 5)));
 
-        iconPathField.addKeyListener(new java.awt.event.KeyAdapter() {
+        iconPathField.addKeyListener(new KeyAdapter() {
             @Override
-            public void keyReleased(java.awt.event.KeyEvent evt) {
+            public void keyReleased(KeyEvent evt) {
                 updateIconPreview(iconPathField.getText());
                 controller.changed();
             }
@@ -229,18 +234,18 @@ public class ACPOptionsPanel extends JPanel {
         add(iconBrowseButton, UIUtils.createGbc(2, 9, 0.0, 0, GridBagConstraints.NONE,
                                                 GridBagConstraints.WEST, new Insets(0, 0, 5, 0)));
 
-        iconPreviewLabel.setPreferredSize(new java.awt.Dimension(80, 80));
-        iconPreviewLabel.setBorder(BorderFactory.createLineBorder(java.awt.Color.GRAY));
+        iconPreviewLabel.setPreferredSize(new Dimension(80, 80));
+        iconPreviewLabel.setBorder(BorderFactory.createLineBorder(Color.GRAY));
         iconPreviewLabel.setHorizontalAlignment(SwingConstants.CENTER);
         iconPreviewLabel.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TIP_ClearIcon"));
-        iconPreviewLabel.addMouseListener(new java.awt.event.MouseAdapter() {
+        iconPreviewLabel.addMouseListener(new MouseAdapter() {
             @Override
-            public void mousePressed(java.awt.event.MouseEvent e) { if (e.isPopupTrigger()) showPopup(e); }
+            public void mousePressed(MouseEvent e) { if (e.isPopupTrigger()) showPopup(e); }
 
             @Override
-            public void mouseReleased(java.awt.event.MouseEvent e) { if (e.isPopupTrigger()) showPopup(e); }
+            public void mouseReleased(MouseEvent e) { if (e.isPopupTrigger()) showPopup(e); }
 
-            private void showPopup(java.awt.event.MouseEvent e) {
+            private void showPopup(MouseEvent e) {
                 if (iconPathField.getText().isEmpty()) return;
                 JPopupMenu popup = new JPopupMenu();
                 JMenuItem clearItem = new JMenuItem(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_Clear"));
@@ -313,7 +318,7 @@ public class ACPOptionsPanel extends JPanel {
             ImageIcon icon = new ImageIcon(path);
             if (icon.getIconWidth() > 0) {
                 iconPreviewLabel.setIcon(new ImageIcon(
-                    icon.getImage().getScaledInstance(72, 72, java.awt.Image.SCALE_SMOOTH)));
+                    icon.getImage().getScaledInstance(72, 72, Image.SCALE_SMOOTH)));
                 iconPreviewLabel.setText("");
             } else {
                 iconPreviewLabel.setIcon(null);

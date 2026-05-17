@@ -305,14 +305,13 @@ public class ComponentLifecycleHandler {
                                 c = c.getParent();
                             }
                         }
-                        if (keyCode == KeyEvent.VK_PAGE_UP) {
-                            chatPanel.scrollByBlock(true);
-                        } else if (keyCode == KeyEvent.VK_PAGE_DOWN) {
-                            chatPanel.scrollByBlock(false);
-                        } else if (keyCode == KeyEvent.VK_HOME) {
-                            chatPanel.scrollToTop();
-                        } else if (keyCode == KeyEvent.VK_END) {
-                            chatPanel.scrollToBottom(true);
+                        switch (keyCode) {
+                            case KeyEvent.VK_PAGE_UP -> chatPanel.scrollByBlock(true);
+                            case KeyEvent.VK_PAGE_DOWN -> chatPanel.scrollByBlock(false);
+                            case KeyEvent.VK_HOME -> chatPanel.scrollToTop();
+                            case KeyEvent.VK_END -> chatPanel.scrollToBottom(true);
+                            default -> {
+                            }
                         }
                         return true;
                     }

@@ -1,67 +1,17 @@
 package github.anandb.netbeans.manager;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.util.Properties;
-import github.anandb.netbeans.support.Logger;
-
-import org.openide.modules.Places;
+import org.openide.util.NbPreferences;
 
 public class SessionTitleMapper {
-    private static final Logger LOG = new Logger(SessionTitleMapper.class);
-    private static final String TITLES_FILE = "acp_session_titles.properties";
-    private static final Properties titles = new Properties();
-
-    static {
-        load();
-    }
+    private static final String PREFIX = "session_title_";
 
     private SessionTitleMapper() {}
-    
-    private static File getStorageFile() {
-        File userDir = Places.getUserDirectory();
-        File opencodeDir;
-        if (userDir != null) {
-            opencodeDir = new File(userDir, "acp");
-        } else {
-            opencodeDir = new File(System.getProperty("user.home"), ".opencode");
-        }
-        if (!opencodeDir.exists()) {
-            opencodeDir.mkdirs();
-        }
-        return new File(opencodeDir, TITLES_FILE);
+
+    public static void setTitle(String sessionId, String title) {
+        NbPreferences.forModule(SessionTitleMapper.class).put(PREFIX + sessionId, title);
     }
 
-    public static synchronized void setTitle(String sessionId, String title) {
-        titles.setProperty(sessionId, title);
-        save();
-    }
-
-    public static synchronized String getTitle(String sessionId, String defaultTitle) {
-        return titles.getProperty(sessionId, defaultTitle);
-    }
-
-    private static void load() {
-        File file = getStorageFile();
-        if (file.exists()) {
-            try (InputStream is = new FileInputStream(file)) {
-                titles.load(is);
-            } catch (IOException e) {
-                LOG.warn("Failed to load session titles: {0}", e.getMessage());
-            }
-        }
-    }
-
-    private static void save() {
-        File file = getStorageFile();
-        try (OutputStream os = new FileOutputStream(file)) {
-            titles.store(os, "ACP Session Titles");
-        } catch (IOException e) {
-            LOG.warn("Failed to save session titles: {0}", e.getMessage());
-        }
+    public static String getTitle(String sessionId, String defaultTitle) {
+        return NbPreferences.forModule(SessionTitleMapper.class).get(PREFIX + sessionId, defaultTitle);
     }
 }

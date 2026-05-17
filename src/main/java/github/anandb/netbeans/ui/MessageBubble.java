@@ -55,7 +55,7 @@ public class MessageBubble extends JPanel implements Scrollable {
     private final MessageType type;
     private final String role;
     private final String messageId;
-    private final StringBuffer text;
+    private final StringBuilder text;
     private String toolTitle;
     private final JPanel segments;
     private JPanel bubble;
@@ -79,13 +79,13 @@ public class MessageBubble extends JPanel implements Scrollable {
      */
     private void applyBubbleTheme(ColorTheme theme, String type) {
         Color bgColor;
-        if ("user".equals(type)) {
-            bgColor = theme.bubbleUser();
-        } else if ("error".equals(type)) {
-            bgColor = theme.errorBackground();
-        } else {
+        if (null == type) {
             bgColor = TRANSPARENT;
-        }
+        } else bgColor = switch (type) {
+            case "user" -> theme.bubbleUser();
+            case "error" -> theme.errorBackground();
+            default -> TRANSPARENT;
+        };
 
         setBackground(theme.sunkenBackground());
         setOpaque(true);
@@ -115,7 +115,7 @@ public class MessageBubble extends JPanel implements Scrollable {
         this.type = type;
         this.role = type.roleName();
         this.messageId = messageId;
-        this.text = new StringBuffer(text);
+        this.text = new StringBuilder(text);
         this.toolTitle = toolTitle;
 
         ColorTheme theme = ThemeManager.getCurrentTheme();
@@ -296,8 +296,7 @@ public class MessageBubble extends JPanel implements Scrollable {
     private void updateContent(ColorTheme theme, boolean expanded) {
         // Handle specialized tool rendering
         if ("tool".equals(role) || "thought".equals(role)) {
-            String rawText = text.toString();
-            String displayContent = rawText;
+            String displayContent = text.toString();
             String title = "thought".equals(role) ? "Thinking Process" : defaultIfBlank(toolTitle, "Tool");
             if (segments.getComponentCount() > 0 && segments.getComponent(0) instanceof CollapsibleToolPane ep) {
                 ep.setTitle(title);

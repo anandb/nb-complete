@@ -3,9 +3,9 @@ package github.anandb.netbeans.mcp;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.logging.Level;
+
+import org.openide.util.RequestProcessor;
 
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.MapperSupplier;
@@ -23,20 +23,14 @@ public class McpServer {
     private final McpTools mcpTools = new McpTools(mapper);
     private Server server;
     private ServerConnector connector;
-    private ExecutorService asyncExecutor;
+    private RequestProcessor asyncExecutor;
 
     public synchronized void start() throws IOException {
         if (server != null) {
             return;
         }
 
-        asyncExecutor = Executors.newFixedThreadPool(
-                MAX_THREADS,
-                r -> {
-                    Thread t = new Thread(r, "MCP-Async");
-                    t.setDaemon(true);
-                    return t;
-                });
+        asyncExecutor = new RequestProcessor("MCP-Async", MAX_THREADS, true);
 
         EditorToolProvider editorTools = new EditorToolProvider();
         editorTools.registerTools(mcpTools);
@@ -74,7 +68,7 @@ public class McpServer {
             connector = null;
         }
         if (asyncExecutor != null) {
-            asyncExecutor.shutdown();
+            asyncExecutor.stop();
             asyncExecutor = null;
         }
         LOG.info("MCP server stopped");

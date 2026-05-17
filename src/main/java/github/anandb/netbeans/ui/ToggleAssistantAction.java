@@ -14,10 +14,8 @@ public class ToggleAssistantAction implements ActionListener {
     @Override
     public void actionPerformed(ActionEvent e) {
         AssistantTopComponent assistant = AssistantTopComponent.findInstance();
-
-        if (assistant == null) {
-            assistant = new AssistantTopComponent();
+        if (assistant != null) {
+            assistant.toggleVisibility();
         }
-        assistant.toggleVisibility();
     }
 }

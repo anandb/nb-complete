@@ -57,16 +57,24 @@ public final class ToolDataExtractor {
         return null;
     }
 
-    public static MessageClassification classify(MessageType type, String text, String kind) {
+    public static MessageClassification classify(MessageType type, String text, String kind, String title) {
         if (isDcpCleanup(text)) {
             return new MessageClassification(MessageType.tool_call_update, "context cleanup");
         }
 
         if (isCavemanFiller(text)) {
-            return new MessageClassification(MessageType.tool_call_update, "caveman");
+            return new MessageClassification(MessageType.tool_call_update, "skill");
+        }
+
+        if (defaultString(title).startsWith("nb_")) {
+            kind = "mcp";
         }
 
         return new MessageClassification(type, kind);
+    }
+
+    public static MessageClassification classify(MessageType type, String text, String kind) {
+        return classify(type, text, kind, "");
     }
 
     public static boolean isDcpCleanup(String text) {
@@ -120,7 +128,7 @@ public final class ToolDataExtractor {
         if ("context".equals(tag) && identifier.startsWith("Compressed")) {
             identifier = toRootLowerCase(identifier);
         }
-        
+
         return tag + " " + abbreviateMiddle(defaultString(identifier), "...", 60);
     }
 

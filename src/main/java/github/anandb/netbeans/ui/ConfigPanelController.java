@@ -4,6 +4,8 @@ import static org.apache.commons.lang3.StringUtils.split;
 
 import java.awt.Font;
 import java.awt.GridBagConstraints;
+import java.awt.Toolkit;
+import java.awt.datatransfer.StringSelection;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.event.KeyAdapter;
@@ -98,8 +100,8 @@ public class ConfigPanelController {
         JButton copyModelBtn = UIUtils.createToolbarButton("copy.svg", 20, copyHint, e -> {
             ConfigItem selected = (ConfigItem) modelCombo.getSelectedItem();
             if (selected != null && selected.value() != null) {
-                java.awt.Toolkit.getDefaultToolkit().getSystemClipboard()
-                    .setContents(new java.awt.datatransfer.StringSelection(selected.value()), null);
+                Toolkit.getDefaultToolkit().getSystemClipboard()
+                    .setContents(new StringSelection(selected.value()), null);
             }
         });
         configPanel.add(copyModelBtn, gbc);

@@ -19,12 +19,12 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
+
+import org.openide.util.RequestProcessor;
 
 import github.anandb.netbeans.contract.RequestHandler;
 import github.anandb.netbeans.support.Logger;
@@ -42,14 +42,14 @@ public class AcpProtocolClient implements Closeable {
 
     private Consumer<Throwable> connectionErrorHandler;
     private Runnable disconnectionHandler;
-    private Thread errorReaderThread;
-    private Thread readerThread;
-    private ScheduledExecutorService watchdogExecutor;
-    private ScheduledFuture<?> watchdogFuture;
+    private RequestProcessor.Task readerTask;
+    private RequestProcessor.Task errorReaderTask;
+    private RequestProcessor watchdogRP;
 
     private final AtomicLong nextId = new AtomicLong(0);
     private final BufferedReader errorReader;
     private final InputStream inputStream;
+    private final InputStream errorStream; // raw error stream from process
     private final Map<Long, CompletableFuture<JsonNode>> pendingRequests = new ConcurrentHashMap<>();
     private final Map<String, Consumer<JsonNode>> notificationListeners = new ConcurrentHashMap<>();
     private final Map<String, RequestHandler> requestHandlers = new ConcurrentHashMap<>();
@@ -62,19 +62,14 @@ public class AcpProtocolClient implements Closeable {
     public AcpProtocolClient(Process process) throws IOException {
         this.writer = new PrintWriter(process.getOutputStream(), true);
         this.inputStream = process.getInputStream();
-        this.errorReader = new BufferedReader(new InputStreamReader(process.getErrorStream(), StandardCharsets.UTF_8));
+        this.errorStream = process.getErrorStream();
+        this.errorReader = new BufferedReader(new InputStreamReader(errorStream, StandardCharsets.UTF_8));
         this.wireLogger = new WireLogger();
     }
 
     public void start() {
-        readerThread = new Thread(this::readLoop, "ACP-JSONRPC-Reader");
-        readerThread.setDaemon(true);
-        readerThread.start();
-
-        errorReaderThread = new Thread(this::readErrorLoop, "ACP-JSONRPC-ErrorReader");
-        errorReaderThread.setDaemon(true);
-        errorReaderThread.start();
-
+        readerTask = RequestProcessor.getDefault().post(this::readLoop);
+        errorReaderTask = RequestProcessor.getDefault().post(this::readErrorLoop);
         startWatchdog();
     }
 
@@ -134,7 +129,7 @@ public class AcpProtocolClient implements Closeable {
         if (timeoutSeconds > 0) {
             return future.orTimeout(timeoutSeconds, TimeUnit.SECONDS)
                     .whenComplete((result, error) -> {
-                        if (error instanceof java.util.concurrent.TimeoutException) {
+                        if (error instanceof TimeoutException) {
                             pendingRequests.remove(id);
                             long totalMs = timeoutSeconds * 1000;
                             LOG.warn("Request timed out: method={0}, id={1} after {2}ms", new Object[]{method, id, totalMs});
@@ -213,26 +208,35 @@ public class AcpProtocolClient implements Closeable {
 
     private void startWatchdog() {
         lastDataTime = System.nanoTime();
-        watchdogExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
-            Thread t = new Thread(r, "ACP-IdleWatchdog");
-            t.setDaemon(true);
-            return t;
-        });
-        watchdogFuture = watchdogExecutor.scheduleWithFixedDelay(
-                this::checkIdleTimeout, 5, 5, TimeUnit.SECONDS);
+        watchdogRP = new RequestProcessor("ACP-Watchdog", 1, true);
+        scheduleWatchdogCheck();
+    }
+
+    private void scheduleWatchdogCheck() {
+        if (running && watchdogRP != null) {
+            watchdogRP.post(this::checkIdleTimeout, 5000);
+        }
     }
 
     private void checkIdleTimeout() {
         if (!running) return;
-        if (pendingRequests.isEmpty()) return;
+        if (pendingRequests.isEmpty()) {
+            scheduleWatchdogCheck();
+            return;
+        }
         long timeout = PluginSettings.getSessionIdleTimeout();
-        if (timeout <= 0) return;
+        if (timeout <= 0) {
+            scheduleWatchdogCheck();
+            return;
+        }
         long idleNanos = System.nanoTime() - lastDataTime;
         if (idleNanos >= TimeUnit.SECONDS.toNanos(timeout)) {
             LOG.warn("Connection idle for {0}s with pending requests, closing", TimeUnit.NANOSECONDS.toSeconds(idleNanos));
             close();
             notifyDisconnection();
+            return;
         }
+        scheduleWatchdogCheck();
     }
 
     public void touch() {
@@ -240,13 +244,9 @@ public class AcpProtocolClient implements Closeable {
     }
 
     private void stopWatchdog() {
-        if (watchdogFuture != null) {
-            watchdogFuture.cancel(false);
-            watchdogFuture = null;
-        }
-        if (watchdogExecutor != null) {
-            watchdogExecutor.shutdown();
-            watchdogExecutor = null;
+        if (watchdogRP != null) {
+            watchdogRP.stop();
+            watchdogRP = null;
         }
     }
 
@@ -374,22 +374,26 @@ public class AcpProtocolClient implements Closeable {
         stopWatchdog();
         closeQuietly(wireLogger);
 
+        // Close streams first to unblock reader loops, then cancel tasks.
+        // Order matters: close underlying errorStream before errorReader to
+        // avoid deadlock (readErrorLoop holds BufferedReader lock inside readLine()).
+        closeQuietly(writer);
+        closeQuietly(inputStream);
+        closeQuietly(errorStream);
+        closeQuietly(errorReader);
+
+        if (readerTask != null) {
+            readerTask.cancel();
+        }
+        if (errorReaderTask != null) {
+            errorReaderTask.cancel();
+        }
+
         pendingRequests.values().forEach(future -> {
             if (!future.isDone()) {
                 future.completeExceptionally(new IOException("Client closed"));
             }
         });
         pendingRequests.clear();
-
-        if (readerThread != null) {
-            readerThread.interrupt();
-        }
-        if (errorReaderThread != null) {
-            errorReaderThread.interrupt();
-        }
-
-        closeQuietly(writer);
-        closeQuietly(inputStream);
-        closeQuietly(errorReader);
     }
 }

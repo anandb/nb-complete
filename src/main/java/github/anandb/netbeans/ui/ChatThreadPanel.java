@@ -407,16 +407,20 @@ public class ChatThreadPanel extends JPanel {
                     continue;
                 }
 
-                if ("user".equals(role)) {
-                    sb.append("## USER\n\n");
-                    sb.append(text).append("\n\n");
-                } else if ("thought".equals(role)) {
-                    sb.append("> **Thinking:**\n> ").append(text.replace("\n", "\n> ")).append("\n\n");
-                } else if ("tool".equals(role)) {
-                    sb.append("`Tool Output: ").append(text.replace("`", "'")).append("`\n\n");
-                } else {
+                if (null == role) {
                     sb.append("## ASSISTANT\n\n");
                     sb.append(text).append("\n\n");
+                } else switch (role) {
+                    case "user" -> {
+                        sb.append("## USER\n\n");
+                        sb.append(text).append("\n\n");
+                    }
+                    case "thought" -> sb.append("> **Thinking:**\n> ").append(text.replace("\n", "\n> ")).append("\n\n");
+                    case "tool" -> sb.append("`Tool Output: ").append(text.replace("`", "'")).append("`\n\n");
+                    default -> {
+                        sb.append("## ASSISTANT\n\n");
+                        sb.append(text).append("\n\n");
+                    }
                 }
                 sb.append("---\n\n");
             }

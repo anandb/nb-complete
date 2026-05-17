@@ -9,23 +9,26 @@ import java.util.function.Consumer;
 import github.anandb.netbeans.support.Logger;
 import org.netbeans.api.project.Project;
 import org.netbeans.api.project.ui.OpenProjects;
+import org.openide.util.Lookup;
+import org.openide.util.lookup.ServiceProvider;
 
+@ServiceProvider(service = ACPProjectManager.class)
 public class ACPProjectManager implements PropertyChangeListener {
     private static final Logger LOG = new Logger(ACPProjectManager.class);
-    private static ACPProjectManager instance;
 
     private Project[] currentProjects = new Project[0];
     private Consumer<String> projectCloseListener;
     private Consumer<String> projectOpenListener;
 
-    private ACPProjectManager() {
+    public ACPProjectManager() {
     }
 
-    public static synchronized ACPProjectManager getInstance() {
-        if (instance == null) {
-            instance = new ACPProjectManager();
+    public static ACPProjectManager getInstance() {
+        ACPProjectManager pm = Lookup.getDefault().lookup(ACPProjectManager.class);
+        if (pm == null) {
+            pm = new ACPProjectManager();
         }
-        return instance;
+        return pm;
     }
 
     public void setProjectCloseListener(Consumer<String> listener) {

@@ -3,6 +3,7 @@ package github.anandb.netbeans.ui;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.FlowLayout;
+import java.awt.Component;
 import java.awt.Font;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -14,7 +15,6 @@ import javax.swing.JPanel;
 import javax.swing.JTextArea;
 
 import java.util.Locale;
-import java.util.regex.Pattern;
 
 import org.openide.util.NbBundle;
 
@@ -31,11 +31,11 @@ import static org.apache.commons.lang3.StringUtils.isNotBlank;
     "LBL_TagSkill=skill",
     "LBL_TagContext=context",
     "LBL_TagOther=other",
-    "LBL_TagThink=think"
+    "LBL_TagThink=think",
+    "LBL_TagMcp=mcp"
 })
 public class CollapsibleToolPane extends BaseCollapsiblePane {
     private static final long serialVersionUID = 1L;
-    private static final Pattern WHITESPACE_SPLIT = Pattern.compile("\\s+", 2);
     private final JTextArea textArea;
     private final JPanel titlePanel;
     private JLabel paramLabel;
@@ -82,7 +82,7 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
 
         setupTitleLabels(title);
         updateAppearance();
-        setAlignmentX(java.awt.Component.LEFT_ALIGNMENT);
+        setAlignmentX(Component.LEFT_ALIGNMENT);
     }
 
     private void setupTitleLabels(String rawTitle) {
@@ -201,6 +201,7 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
             case "search" -> NbBundle.getMessage(CollapsibleToolPane.class, "LBL_TagSearch");
             case "skill" -> NbBundle.getMessage(CollapsibleToolPane.class, "LBL_TagSkill");
             case "context" -> NbBundle.getMessage(CollapsibleToolPane.class, "LBL_TagContext");
+            case "mcp" -> NbBundle.getMessage(CollapsibleToolPane.class, "LBL_TagMcp");
             case "other" -> NbBundle.getMessage(CollapsibleToolPane.class, "LBL_TagOther");
             case "think" -> NbBundle.getMessage(CollapsibleToolPane.class, "LBL_TagThink");
             default -> null;

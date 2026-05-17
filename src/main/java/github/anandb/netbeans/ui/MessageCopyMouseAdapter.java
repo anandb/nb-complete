@@ -1,6 +1,7 @@
 package github.anandb.netbeans.ui;
 
 import java.awt.Toolkit;
+import java.awt.datatransfer.StringSelection;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.lang.ref.WeakReference;
@@ -62,7 +63,7 @@ public class MessageCopyMouseAdapter extends MouseAdapter {
         AssistantTopComponent.copyToInput(textToCopy);
 
         try {
-            Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new java.awt.datatransfer.StringSelection(textToCopy), null);
+            Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new StringSelection(textToCopy), null);
         } catch (Exception ex) {
             LOG.warn("Clipboard fail: {0}", ex.getMessage());
         }

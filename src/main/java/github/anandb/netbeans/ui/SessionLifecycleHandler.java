@@ -15,6 +15,7 @@ import github.anandb.netbeans.manager.SessionTitleMapper;
 import github.anandb.netbeans.manager.strategy.StrategyRegistry;
 import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.model.Session;
+import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.SessionConfigOption;
 import github.anandb.netbeans.model.SessionItem;
 import github.anandb.netbeans.model.SessionUpdate;
@@ -309,7 +310,7 @@ public class SessionLifecycleHandler implements SessionListener {
             statusController.stopThinking();
             chatPanel.stopStreaming();
             chatPanel.addMessage(ProcessedMessage.createError(
-                github.anandb.netbeans.model.MessageType.error_response,
+                MessageType.error_response,
                 NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Error", message),
                 null, null
             ));

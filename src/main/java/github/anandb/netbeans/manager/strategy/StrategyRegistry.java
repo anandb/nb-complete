@@ -15,17 +15,20 @@ import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.MapperSupplier;
 
+import org.openide.util.Lookup;
+import org.openide.util.lookup.ServiceProvider;
+
 import static org.apache.commons.lang3.StringUtils.defaultIfBlank;
 
+@ServiceProvider(service = StrategyRegistry.class)
 public class StrategyRegistry {
     private static final Logger LOG = new Logger(StrategyRegistry.class);
-    private static final StrategyRegistry INSTANCE = new StrategyRegistry();
     private static final ObjectMapper MAPPER = MapperSupplier.get();
 
     private final Map<String, DataExtractionStrategy> typeStrategies = new LinkedHashMap<>();
     private final DataExtractionStrategy defaultStrategy = new DefaultStrategy();
 
-    private StrategyRegistry() {
+    public StrategyRegistry() {
         register(MessageType.agent_message_chunk, new AgentMessageChunkStrategy());
         register(MessageType.agent_thought_chunk, new AgentThoughtChunkStrategy());
         register(MessageType.user_message_chunk, new UserMessageChunkStrategy());
@@ -39,7 +42,11 @@ public class StrategyRegistry {
     }
 
     public static StrategyRegistry getInstance() {
-        return INSTANCE;
+        StrategyRegistry reg = Lookup.getDefault().lookup(StrategyRegistry.class);
+        if (reg == null) {
+            reg = new StrategyRegistry();
+        }
+        return reg;
     }
 
     public DataExtractionStrategy select(SessionUpdate update) {
@@ -105,7 +112,7 @@ public class StrategyRegistry {
             String text = (content != null && content.isObject() && content.has("text"))
                     ? content.get("text").asText()
                     : MAPPER.writeValueAsString(content);
-            var meta = ToolDataExtractor.classify(update.update().type(), text, update.kind());
+            var meta = ToolDataExtractor.classify(update.update().type(), text, update.kind(), update.update().title());
             if (meta.type() != update.update().type()) {
                 type = meta.type().name();
             }

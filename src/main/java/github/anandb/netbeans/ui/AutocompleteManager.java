@@ -2,9 +2,11 @@ package github.anandb.netbeans.ui;
 
 import java.awt.Dimension;
 import java.awt.Rectangle;
+import java.awt.geom.Rectangle2D;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -188,7 +190,7 @@ public class AutocompleteManager {
         }
         lastPrefix = prefix;
 
-        java.util.List<SessionUpdate.AvailableCommand> allCommands = new java.util.ArrayList<>();
+        List<SessionUpdate.AvailableCommand> allCommands = new ArrayList<>();
 
         if (trigger == '/') {
             SlashCommandInterceptor interceptor = ProcessManager.getInstance().getSlashCommandInterceptor();
@@ -222,8 +224,8 @@ public class AutocompleteManager {
         commandList.setSelectedIndex(0);
 
         try {
-            java.awt.geom.Rectangle2D rect2d = inputArea.modelToView2D(start);
-            java.awt.Rectangle rect = rect2d.getBounds();
+            Rectangle2D rect2d = inputArea.modelToView2D(start);
+            Rectangle rect = rect2d.getBounds();
             int height = autocompletePopup.getPreferredSize().height;
             autocompletePopup.show(inputArea, rect.x, rect.y - height - 2);
         } catch (Exception ex) {

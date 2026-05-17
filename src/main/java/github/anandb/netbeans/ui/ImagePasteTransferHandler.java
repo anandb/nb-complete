@@ -21,6 +21,8 @@ import javax.swing.TransferHandler;
 import javax.swing.TransferHandler.TransferSupport;
 import javax.swing.text.JTextComponent;
 
+import org.openide.util.RequestProcessor;
+
 import github.anandb.netbeans.model.AttachedFile;
 
 public class ImagePasteTransferHandler extends TransferHandler {
@@ -29,6 +31,7 @@ public class ImagePasteTransferHandler extends TransferHandler {
 
     private final transient PasteCallback callback;
     private static final long MAX_FILE_SIZE = 10 * 1024 * 1024;
+    private static final RequestProcessor IO_RP = new RequestProcessor("ImagePaste-IO", 2, true);
 
     public interface PasteCallback {
         boolean canAddAttachment();
@@ -76,46 +79,40 @@ public class ImagePasteTransferHandler extends TransferHandler {
 
     @Override
     public boolean importData(TransferSupport support) {
-        if (support.isDataFlavorSupported(DataFlavor.imageFlavor)
-                || support.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
-            if (callback != null && !callback.canAddAttachment()) {
-                callback.onAttachmentLimitReached();
-                return false;
-            }
+        boolean hasImage = support.isDataFlavorSupported(DataFlavor.imageFlavor);
+        boolean hasFileList = support.isDataFlavorSupported(DataFlavor.javaFileListFlavor);
+
+        if ((hasImage || hasFileList) && callback != null && !callback.canAddAttachment()) {
+            callback.onAttachmentLimitReached();
+            return false;
         }
 
         try {
-            if (support.isDataFlavorSupported(DataFlavor.imageFlavor)) {
+            if (hasImage) {
                 Image image = (Image) support.getTransferable().getTransferData(DataFlavor.imageFlavor);
                 if (image != null) {
-                    AttachedFile attachedFile = createAttachedFileFromImage(image);
-                    if (attachedFile != null && callback != null) {
-                        callback.onAttachmentAdded(attachedFile);
-                        return true;
-                    }
+                    // Do I/O on background thread, report via callback
+                    IO_RP.post(() -> processImageAsync(image));
+                    return true;
                 }
             }
 
-            if (support.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
+            if (hasFileList) {
                 @SuppressWarnings("unchecked")
                 List<File> files = (List<File>) support.getTransferable().getTransferData(DataFlavor.javaFileListFlavor);
                 if (files != null && !files.isEmpty()) {
                     File file = files.get(0);
                     if (file != null) {
-                        AttachedFile attachedFile = createAttachedFileFromFile(file);
-                        if (attachedFile != null && callback != null) {
-                            callback.onAttachmentAdded(attachedFile);
-                            return true;
-                        }
+                        IO_RP.post(() -> processFileAsync(file));
+                        return true;
                     }
                 }
             }
         } catch (UnsupportedFlavorException | IOException e) {
-            if (callback != null) {
-                callback.onError("Failed to process pasted file: " + e.getMessage());
-            }
+            reportError("Failed to read clipboard: " + e.getMessage());
         }
 
+        // Fallback: text paste on EDT
         if (support.getComponent() instanceof JTextComponent tc) {
             try {
                 String text = (String) support.getTransferable().getTransferData(DataFlavor.stringFlavor);
@@ -126,6 +123,34 @@ public class ImagePasteTransferHandler extends TransferHandler {
             }
         }
         return false;
+    }
+
+    private void processImageAsync(Image image) {
+        try {
+            AttachedFile attachedFile = createAttachedFileFromImage(image);
+            if (attachedFile != null && callback != null) {
+                javax.swing.SwingUtilities.invokeLater(() -> callback.onAttachmentAdded(attachedFile));
+            }
+        } catch (Exception e) {
+            reportError("Failed to save pasted image: " + e.getMessage());
+        }
+    }
+
+    private void processFileAsync(File file) {
+        try {
+            AttachedFile attachedFile = createAttachedFileFromFile(file);
+            if (attachedFile != null && callback != null) {
+                javax.swing.SwingUtilities.invokeLater(() -> callback.onAttachmentAdded(attachedFile));
+            }
+        } catch (Exception e) {
+            reportError("Failed to process pasted file: " + e.getMessage());
+        }
+    }
+
+    private void reportError(String message) {
+        if (callback != null) {
+            javax.swing.SwingUtilities.invokeLater(() -> callback.onError(message));
+        }
     }
 
     private AttachedFile createAttachedFileFromImage(Image image) {

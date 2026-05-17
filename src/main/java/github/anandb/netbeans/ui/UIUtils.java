@@ -174,12 +174,12 @@ public class UIUtils {
     }
 
     public static Color getBubbleBackground(ColorTheme theme, String type) {
-        if ("user".equals(type)) {
-            return theme.bubbleUser();
-        } else if ("error".equals(type)) {
-            return theme.errorBackground();
-        } else {
+        if (null == type) {
             return theme.sunkenBackground();
-        }
+        } else return switch (type) {
+            case "user" -> theme.bubbleUser();
+            case "error" -> theme.errorBackground();
+            default -> theme.sunkenBackground();
+        };
     }
 }
