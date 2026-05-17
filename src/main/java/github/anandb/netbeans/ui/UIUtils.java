@@ -7,6 +7,8 @@ import java.awt.GridBagConstraints;
 import java.awt.Insets;
 import java.awt.LayoutManager;
 import java.awt.event.ActionListener;
+import java.awt.event.KeyEvent;
+import javax.swing.JComboBox;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.OutputStream;
@@ -171,6 +173,37 @@ public class UIUtils {
             }
         }
         return true;
+    }
+
+    /**
+     * Installs a key listener that wraps combo box selection around:
+     * up arrow at the first item goes to the last, down arrow at the last goes to the first.
+     * Only activates when the popup is not visible.
+     */
+    /**
+     * WrappingComboBox wraps selection on up/down arrows:
+     * up at first item → last, down at last item → first.
+     * Overrides {@code processKeyEvent} to intercept before the UI's KeyHandler fires.
+     */
+    public static class WrappingComboBox<E> extends JComboBox<E> {
+        @Override
+        public void processKeyEvent(KeyEvent e) {
+            if (e.getID() == KeyEvent.KEY_PRESSED) {
+                int key = e.getKeyCode();
+                int idx = getSelectedIndex();
+                int count = getItemCount();
+                if (key == KeyEvent.VK_UP && idx <= 0 && count >= 2) {
+                    setSelectedIndex(count - 1);
+                    e.consume();
+                    return;
+                } else if (key == KeyEvent.VK_DOWN && idx >= count - 1 && count >= 2) {
+                    setSelectedIndex(0);
+                    e.consume();
+                    return;
+                }
+            }
+            super.processKeyEvent(e);
+        }
     }
 
     public static Color getBubbleBackground(ColorTheme theme, String type) {

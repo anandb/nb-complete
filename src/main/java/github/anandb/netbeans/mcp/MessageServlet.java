@@ -44,6 +44,7 @@ class MessageServlet extends HttpServlet {
         asyncContext.setTimeout(30000);
 
         asyncExecutor.post(() -> {
+            boolean isToolsCall = false;
             try {
                 StringBuilder body = new StringBuilder();
                 String line;
@@ -59,6 +60,8 @@ class MessageServlet extends HttpServlet {
 
                 LOG.info("MCP method: {0} (id={1})", method, id);
 
+                isToolsCall = !isNotification && "tools/call".equals(method);
+
                 if (!isNotification) {
                     ObjectNode resp = mapper.createObjectNode();
                     resp.put("jsonrpc", "2.0");
@@ -67,7 +70,7 @@ class MessageServlet extends HttpServlet {
                     if ("tools/call".equals(method)) {
                         // tools/call handles response asynchronously with minimum delay
                         handleToolsCallAsync(params, resp, asyncContext, start);
-                        return; // response will be sent by handleToolsCallAsync
+                        return; // response will be sent by handleToolsCallAsync, which must complete the context
                     }
 
                     try {
@@ -101,7 +104,9 @@ class MessageServlet extends HttpServlet {
             } finally {
                 long durationMs = (System.nanoTime() - start) / 1_000_000;
                 LOG.info("MCP request completed in {0}ms", durationMs);
-                asyncContext.complete();
+                if (!isToolsCall) {
+                    asyncContext.complete();
+                }
             }
         });
     }
@@ -149,6 +154,8 @@ class MessageServlet extends HttpServlet {
                         LOG.info("MCP tools/call completed: {0} (tool={1}ms, delay={2}ms)", name, toolElapsed, remainingDelay);
                     } catch (IOException e) {
                         LOG.log(Level.SEVERE, "Failed to write tools/call response", e);
+                    } finally {
+                        asyncContext.complete();
                     }
                 };
 
@@ -182,6 +189,7 @@ class MessageServlet extends HttpServlet {
         error.put("message", message);
         resp.set("error", error);
         writeResponse(ctx, resp);
+        ctx.complete();
     }
 
     private void handleRequest(String method, JsonNode params, ObjectNode resp) {

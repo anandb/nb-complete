@@ -60,7 +60,7 @@ public class AcpProtocolClient implements Closeable {
     private volatile long lastDataTime;
 
     public AcpProtocolClient(Process process) throws IOException {
-        this.writer = new PrintWriter(process.getOutputStream(), true);
+        this.writer = new PrintWriter(process.getOutputStream(), true, StandardCharsets.UTF_8);
         this.inputStream = process.getInputStream();
         this.errorStream = process.getErrorStream();
         this.errorReader = new BufferedReader(new InputStreamReader(errorStream, StandardCharsets.UTF_8));
@@ -261,7 +261,6 @@ public class AcpProtocolClient implements Closeable {
                 handleIncomingRequest(id, method, params);
             } else {
                 // Response to Outgoing Request
-                long recvTime = System.nanoTime();
                 CompletableFuture<JsonNode> future = pendingRequests.remove(id);
                 if (future != null) {
                     if (node.has("error")) {

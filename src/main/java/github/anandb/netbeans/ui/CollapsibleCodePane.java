@@ -190,7 +190,6 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
 
     private void initCodeTextArea() {
         codeAreaInitialized = true;
-        ColorTheme theme = ThemeManager.getCurrentTheme();
         codeTextArea = new RSyntaxTextArea();
         codeTextArea.setEditable(false);
         codeTextArea.setHighlightCurrentLine(false);

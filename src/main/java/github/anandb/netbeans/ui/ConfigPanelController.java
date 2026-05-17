@@ -72,9 +72,9 @@ public class ConfigPanelController {
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.insets = new Insets(2, 0, 2, 8);
 
-        modeCombo = new JComboBox<>();
-        modelCombo = new JComboBox<>();
-        thinkingCombo = new JComboBox<>();
+        modeCombo = new UIUtils.WrappingComboBox<>();
+        modelCombo = new UIUtils.WrappingComboBox<>();
+        thinkingCombo = new UIUtils.WrappingComboBox<>();
 
         gbc.gridx = 0;
         gbc.gridy = 0;

@@ -180,7 +180,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         JPanel topBar = new JPanel(new BorderLayout(8, 0));
         topBar.setOpaque(false);
 
-        sessionDropdown = new JComboBox<>();
+        sessionDropdown = new UIUtils.WrappingComboBox<>();
 
         JPanel sessionControls = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         sessionControls.setOpaque(false);

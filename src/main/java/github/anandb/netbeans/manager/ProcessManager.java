@@ -253,7 +253,7 @@ public class ProcessManager {
         if (pathEnv == null) {
             return false;
         }
-        String sep = File.pathSeparator;
+
         for (String p : PATH_SEPARATOR_SPLIT.split(pathEnv)) {
             File f = new File(p, command);
             if (f.exists() && f.canExecute()) {
@@ -386,7 +386,7 @@ public class ProcessManager {
 
             LOG.log(Level.FINE, "ACP server shutdown complete.");
         }
-        
+
         serverProcess = null;
     }
 
