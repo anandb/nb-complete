@@ -139,7 +139,15 @@ class MessageServlet extends HttpServlet {
 
                 // Build result (cheap, no blocking)
                 ObjectNode result = mapper.createObjectNode();
-                result.set("structuredContent", toolResponse);
+                // structuredContent expects a record (object), not an array.
+                // Wrap array-type tool responses so the content is always an object.
+                if (toolResponse.isArray()) {
+                    ObjectNode wrapped = mapper.createObjectNode();
+                    wrapped.set("items", toolResponse);
+                    result.set("structuredContent", wrapped);
+                } else {
+                    result.set("structuredContent", toolResponse);
+                }
                 ArrayNode contentNode = mapper.createArrayNode();
                 ObjectNode contentElement = mapper.createObjectNode();
                 contentElement.put("type", "text");
