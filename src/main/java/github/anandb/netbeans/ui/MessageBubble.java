@@ -39,7 +39,11 @@ import github.anandb.netbeans.ui.TableDetector.TextSegment;
 import github.anandb.netbeans.ui.TableDetector.TableSegment;
 
 
-@NbBundle.Messages("HINT_CopyToInput=Copy to input")
+@NbBundle.Messages({
+    "HINT_CopyToInput=Copy to input",
+    "TITLE_ThinkingProcess=Thinking Process",
+    "TITLE_Tool=Tool"
+})
 public class MessageBubble extends JPanel implements Scrollable {
 
     private static final Logger LOG = new Logger(MessageBubble.class);
@@ -297,7 +301,9 @@ public class MessageBubble extends JPanel implements Scrollable {
         // Handle specialized tool rendering
         if ("tool".equals(role) || "thought".equals(role)) {
             String displayContent = text.toString();
-            String title = "thought".equals(role) ? "Thinking Process" : defaultIfBlank(toolTitle, "Tool");
+            String thinking = NbBundle.getMessage(MessageBubble.class, "TITLE_ThinkingProcess");
+            String toolLabel = NbBundle.getMessage(MessageBubble.class, "TITLE_Tool");
+            String title = "thought".equals(role) ? thinking : defaultIfBlank(toolTitle, toolLabel);
             if (segments.getComponentCount() > 0 && segments.getComponent(0) instanceof CollapsibleToolPane ep) {
                 ep.setTitle(title);
                 ep.setContent(displayContent);

@@ -64,7 +64,7 @@ final class WelcomeScreen {
             messagesContainer.add(Box.createVerticalStrut(12));
 
             for (Session s : sessions) {
-                String title = defaultIfBlank(s.title(), "Chat " + left(s.id(), 8));
+                String title = defaultIfBlank(s.title(), NbBundle.getMessage(AssistantTopComponent.class, "LBL_ChatDefault", left(s.id(), 8)));
                 String label = SessionTitleMapper.getTitle(s.id(), title);
                 String dir = s.effectiveDirectory();
                 JButton sessionBtn = createSelectionButton(label, dir);

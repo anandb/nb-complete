@@ -13,11 +13,18 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import github.anandb.netbeans.support.MapperSupplier;
+import org.openide.util.NbBundle;
 
 /**
  * Centralized color definitions for the ACP NetBeans plugin.
  * Cached singleton refreshed on L&amp;F changes.
  */
+@NbBundle.Messages({
+    "ERR_ColorsNotFound=colors.json not found",
+    "ERR_LoadColorsFailed=Failed to load colors.json",
+    "ERR_CssTemplateNotFound=chat-style.css.template not found",
+    "ERR_LoadCssTemplateFailed=Failed to load chat-style.css.template"
+})
 public record ColorTheme(
         boolean isDark,
         Color background, Color foreground, Color selection, Color accent,
@@ -137,11 +144,11 @@ public record ColorTheme(
         ObjectMapper mapper = MapperSupplier.get();
         try (InputStream in = ColorTheme.class.getResourceAsStream("colors.json")) {
             if (in == null) {
-                throw new IllegalStateException("colors.json not found");
+                throw new IllegalStateException(NbBundle.getMessage(ColorTheme.class, "ERR_ColorsNotFound"));
             }
             return mapper.readTree(in);
         } catch (IOException e) {
-            throw new IllegalStateException("Failed to load colors.json", e);
+            throw new IllegalStateException(NbBundle.getMessage(ColorTheme.class, "ERR_LoadColorsFailed"), e);
         }
     }
 
@@ -197,13 +204,13 @@ public record ColorTheme(
         }
         try (InputStream in = ColorTheme.class.getResourceAsStream("chat-style.css.template")) {
             if (in == null) {
-                throw new IllegalStateException("chat-style.css.template not found");
+                throw new IllegalStateException(NbBundle.getMessage(ColorTheme.class, "ERR_CssTemplateNotFound"));
             }
             template = new String(in.readAllBytes(), StandardCharsets.UTF_8);
             cachedCssTemplate = template;
             return template;
         } catch (IOException e) {
-            throw new IllegalStateException("Failed to load chat-style.css.template", e);
+            throw new IllegalStateException(NbBundle.getMessage(ColorTheme.class, "ERR_LoadCssTemplateFailed"), e);
         }
     }
 

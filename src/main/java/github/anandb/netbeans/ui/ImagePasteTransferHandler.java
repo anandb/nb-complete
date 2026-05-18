@@ -21,10 +21,19 @@ import javax.swing.TransferHandler;
 import javax.swing.TransferHandler.TransferSupport;
 import javax.swing.text.JTextComponent;
 
+import org.openide.util.NbBundle;
 import org.openide.util.RequestProcessor;
 
 import github.anandb.netbeans.model.AttachedFile;
 
+@NbBundle.Messages({
+    "ERR_ReadClipboard=Failed to read clipboard: {0}",
+    "ERR_SavePastedImage=Failed to save pasted image: {0}",
+    "ERR_ProcessPastedFile=Failed to process pasted file: {0}",
+    "ERR_InvalidDimensions=Pasted image has invalid dimensions",
+    "ERR_FileTooLarge=File too large (max 10MB)",
+    "ERR_NoPngWriter=Failed to save pasted image - no PNG writer available"
+})
 public class ImagePasteTransferHandler extends TransferHandler {
 
     private static final long serialVersionUID = 1L;
@@ -109,7 +118,7 @@ public class ImagePasteTransferHandler extends TransferHandler {
                 }
             }
         } catch (UnsupportedFlavorException | IOException e) {
-            reportError("Failed to read clipboard: " + e.getMessage());
+            reportError(NbBundle.getMessage(ImagePasteTransferHandler.class, "ERR_ReadClipboard", e.getMessage()));
         }
 
         // Fallback: text paste on EDT
@@ -132,7 +141,7 @@ public class ImagePasteTransferHandler extends TransferHandler {
                 javax.swing.SwingUtilities.invokeLater(() -> callback.onAttachmentAdded(attachedFile));
             }
         } catch (Exception e) {
-            reportError("Failed to save pasted image: " + e.getMessage());
+            reportError(NbBundle.getMessage(ImagePasteTransferHandler.class, "ERR_SavePastedImage", e.getMessage()));
         }
     }
 
@@ -143,7 +152,7 @@ public class ImagePasteTransferHandler extends TransferHandler {
                 javax.swing.SwingUtilities.invokeLater(() -> callback.onAttachmentAdded(attachedFile));
             }
         } catch (Exception e) {
-            reportError("Failed to process pasted file: " + e.getMessage());
+            reportError(NbBundle.getMessage(ImagePasteTransferHandler.class, "ERR_ProcessPastedFile", e.getMessage()));
         }
     }
 
@@ -163,7 +172,7 @@ public class ImagePasteTransferHandler extends TransferHandler {
                 int h = image.getHeight(null);
                 if (w <= 0 || h <= 0) {
                     if (callback != null) {
-                        callback.onError("Pasted image has invalid dimensions");
+                        callback.onError(NbBundle.getMessage(ImagePasteTransferHandler.class, "ERR_InvalidDimensions"));
                     }
                     return null;
                 }
@@ -176,7 +185,7 @@ public class ImagePasteTransferHandler extends TransferHandler {
             }
         } catch (IOException | RuntimeException e) {
             if (callback != null) {
-                callback.onError("Failed to save pasted image: " + e.getMessage());
+                callback.onError(NbBundle.getMessage(ImagePasteTransferHandler.class, "ERR_SavePastedImage", e.getMessage()));
             }
         }
 
@@ -191,7 +200,7 @@ public class ImagePasteTransferHandler extends TransferHandler {
         long size = (long) bufferedImage.getWidth() * bufferedImage.getHeight() * 4;
         if (size > MAX_FILE_SIZE) {
             if (callback != null) {
-                callback.onError("File too large (max 10MB)");
+                callback.onError(NbBundle.getMessage(ImagePasteTransferHandler.class, "ERR_FileTooLarge"));
             }
             return null;
         }
@@ -203,7 +212,7 @@ public class ImagePasteTransferHandler extends TransferHandler {
         boolean success = ImageIO.write(bufferedImage, "png", tempFile.toFile());
         if (!success) {
             if (callback != null) {
-                callback.onError("Failed to save pasted image - no PNG writer available");
+                callback.onError(NbBundle.getMessage(ImagePasteTransferHandler.class, "ERR_NoPngWriter"));
             }
             return null;
         }
@@ -215,7 +224,7 @@ public class ImagePasteTransferHandler extends TransferHandler {
         try {
             if (file.length() > MAX_FILE_SIZE) {
                 if (callback != null) {
-                    callback.onError("File too large (max 10MB)");
+                    callback.onError(NbBundle.getMessage(ImagePasteTransferHandler.class, "ERR_FileTooLarge"));
                 }
                 return null;
             }
@@ -242,7 +251,7 @@ public class ImagePasteTransferHandler extends TransferHandler {
 
         } catch (IOException e) {
             if (callback != null) {
-                callback.onError("Failed to process pasted file: " + e.getMessage());
+                callback.onError(NbBundle.getMessage(ImagePasteTransferHandler.class, "ERR_ProcessPastedFile", e.getMessage()));
             }
             return null;
         }

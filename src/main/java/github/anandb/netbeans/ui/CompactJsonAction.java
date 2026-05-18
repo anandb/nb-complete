@@ -20,7 +20,10 @@ import org.openide.awt.StatusDisplayer;
 @ActionID(category = "Edit", id = "github.anandb.netbeans.ui.CompactJsonAction")
 @ActionRegistration(displayName = "#CTL_CompactJsonAction")
 @ActionReference(path = "Editors/Popup", position = 400)
-@NbBundle.Messages("CTL_CompactJsonAction=Compact")
+@NbBundle.Messages({
+    "CTL_CompactJsonAction=Compact",
+    "ERR_InvalidJson=Invalid JSON: {0}"
+})
 public class CompactJsonAction implements ActionListener {
 
     private static final ObjectMapper MAPPER = MapperSupplier.get();
@@ -57,7 +60,7 @@ public class CompactJsonAction implements ActionListener {
             doc.remove(start, end - start);
             doc.insertString(start, compacted, null);
         } catch (Exception ex) {
-            StatusDisplayer.getDefault().setStatusText("Invalid JSON: " + ex.getMessage());
+            StatusDisplayer.getDefault().setStatusText(NbBundle.getMessage(CompactJsonAction.class, "ERR_InvalidJson", ex.getMessage()));
         }
     }
 }

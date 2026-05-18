@@ -25,6 +25,7 @@ import org.openide.cookies.EditorCookie;
 import org.openide.filesystems.FileObject;
 import org.openide.filesystems.FileUtil;
 import org.openide.loaders.DataObject;
+import org.openide.util.NbBundle;
 import org.openide.util.NbPreferences;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -44,6 +45,17 @@ import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.MapperSupplier;
 import github.anandb.netbeans.mcp.McpManager;
 
+@NbBundle.Messages({
+    "ERR_BinaryNotFound=opencode binary not found: not configured and not on system PATH",
+    "# {0} - restart count",
+    "ERR_ServerCrashed=Server crashed {0} times. Restart IDE to reconnect.",
+    "ERR_MissingFilePath=Missing filePath parameter",
+    "# {0} - file path",
+    "ERR_FileNotFound=File not found: {0}",
+    "# {0} - error message",
+    "ERR_ReadFileFailed=Failed to read file: {0}",
+    "ERR_NotStarted=Server not started, Please check if Opencode is installed and available"
+})
 @ServiceProvider(service = ProcessManager.class)
 public class ProcessManager {
 
@@ -245,7 +257,7 @@ public class ProcessManager {
         }
 
         LOG.log(Level.WARNING, "Binary not found: no configured path and not on system PATH");
-        throw new IllegalStateException("opencode binary not found: not configured and not on system PATH");
+        throw new IllegalStateException(NbBundle.getMessage(ProcessManager.class, "ERR_BinaryNotFound"));
     }
 
     private boolean isInPath(String command) {
@@ -521,7 +533,7 @@ public class ProcessManager {
             LOG.log(Level.SEVERE, "ACP server crashed {0} times within {1}ms. Giving up.",
                     new Object[]{MAX_RESTARTS, RESTART_RESET_INTERVAL});
             if (statusListener != null) {
-                statusListener.accept("Server crashed " + MAX_RESTARTS + " times. Restart IDE to reconnect.");
+                statusListener.accept(NbBundle.getMessage(ProcessManager.class, "ERR_ServerCrashed", MAX_RESTARTS));
             }
         }
     }
@@ -601,12 +613,12 @@ public class ProcessManager {
                 : params.has("path") ? params.get("path").asText() : null;
 
         if (filePath == null) {
-            return CompletableFuture.failedFuture(new RuntimeException("Missing filePath parameter"));
+            return CompletableFuture.failedFuture(new RuntimeException(NbBundle.getMessage(ProcessManager.class, "ERR_MissingFilePath")));
         }
 
         File file = new File(filePath);
         if (!file.exists()) {
-            return CompletableFuture.failedFuture(new RuntimeException("File not found: " + filePath));
+            return CompletableFuture.failedFuture(new RuntimeException(NbBundle.getMessage(ProcessManager.class, "ERR_FileNotFound", filePath)));
         }
 
         CompletableFuture<JsonNode> resultFuture = new CompletableFuture<>();
@@ -646,7 +658,7 @@ public class ProcessManager {
                 return objectMapper.createObjectNode().put("content", content);
             } catch (Exception e) {
                 LOG.log(Level.SEVERE, "fs/readTextFile failed", e);
-                throw new RuntimeException("Failed to read file: " + e.getMessage(), e);
+                throw new RuntimeException(NbBundle.getMessage(ProcessManager.class, "ERR_ReadFileFailed", e.getMessage()), e);
             }
         }).thenAccept(resultFuture::complete)
           .exceptionally(ex -> {
@@ -656,6 +668,6 @@ public class ProcessManager {
     }
 
     private String operationalError() {
-        return "Server not started, Please check if Opencode is installed and available";
+        return NbBundle.getMessage(ProcessManager.class, "ERR_NotStarted");
     }
 }

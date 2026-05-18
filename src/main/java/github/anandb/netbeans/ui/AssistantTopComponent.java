@@ -128,7 +128,10 @@ import github.anandb.netbeans.support.Logger;
     "TITLE_ExportConv=Export Conversation",
     "# {0} - session id prefix",
     "LBL_ChatDefault=Chat {0}",
-    "LBL_TypeMessage= Type Message Here"
+    "LBL_TypeMessage= Type Message Here",
+    "MSG_PermissionRequested=Permission requested",
+    "# {0} - tool title",
+    "MSG_PermissionTool=The agent wants to use the tool: ''{0}''. Do you want to allow it?"
 })
 public final class AssistantTopComponent extends TopComponent implements PermissionHandler {
 
@@ -678,7 +681,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                     new Object[] { sessionId, currentId });
         }
 
-        String prompt = "Permission requested";
+        String prompt = NbBundle.getMessage(AssistantTopComponent.class, "MSG_PermissionRequested");
         if (params.has("message")) {
             prompt = params.get("message").asText();
         } else if (params.has("content")) {
@@ -687,7 +690,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             JsonNode tc = params.has("toolCall") ? params.get("toolCall") : params.get("tool_call");
             String title = tc.has("title") ? tc.get("title").asText()
                     : tc.has("name") ? tc.get("name").asText() : "tool";
-            prompt = "The agent wants to use the tool: '" + title + "'. Do you want to allow it?";
+            prompt = NbBundle.getMessage(AssistantTopComponent.class, "MSG_PermissionTool", title);
         }
 
         final String finalPrompt = prompt;

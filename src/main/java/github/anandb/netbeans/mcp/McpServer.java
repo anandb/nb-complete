@@ -9,11 +9,13 @@ import org.openide.util.RequestProcessor;
 
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.MapperSupplier;
+import org.openide.util.NbBundle;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 
+@NbBundle.Messages("ERR_StartJettyFailed=Failed to start Jetty server")
 public class McpServer {
 
     private static final Logger LOG = new Logger(McpServer.class);
@@ -51,7 +53,7 @@ public class McpServer {
         try {
             server.start();
         } catch (Exception e) {
-            throw new IOException("Failed to start Jetty server", e);
+            throw new IOException(NbBundle.getMessage(McpServer.class, "ERR_StartJettyFailed"), e);
         }
         int actualPort = connector.getLocalPort();
         LOG.info("MCP server started on port {0}", actualPort);

@@ -22,6 +22,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import org.openide.util.NbBundle;
 import org.openide.util.RequestProcessor;
 import org.openide.util.Lookup;
 import org.openide.util.lookup.ServiceProvider;
@@ -38,6 +39,11 @@ import github.anandb.netbeans.support.MapperSupplier;
  * Manages the state and lifecycle of chat sessions.
  * Decouples session logic from the AssistantTopComponent UI.
  */
+@NbBundle.Messages({
+    "ERR_ServerDisconnected=Server disconnected. Reconnecting...",
+    "# {0} - error message",
+    "ERR_LoadSessionFailed=Failed to load session: {0}"
+})
 @ServiceProvider(service = SessionManager.class)
 public class SessionManager {
     private static final Logger LOG = new Logger(SessionManager.class);
@@ -59,7 +65,7 @@ public class SessionManager {
         // Reset state machine and notify UI when server crashes
         ProcessManager.getInstance().setCrashHandler(() -> {
             stateMachine.transitionTo(SessionState.IDLE);
-            notifyError("Server disconnected. Reconnecting...");
+            notifyError(NbBundle.getMessage(SessionManager.class, "ERR_ServerDisconnected"));
         });
 
         // Auto-reload last session after successful reconnect
@@ -426,7 +432,7 @@ public class SessionManager {
                 .exceptionally(ex -> {
                     if (sessionId.equals(this.currentSessionId)) {
                         stateMachine.transitionTo(SessionState.IDLE);
-                        notifyError("Failed to load session: " + ex.getMessage());
+                        notifyError(NbBundle.getMessage(SessionManager.class, "ERR_LoadSessionFailed", ex.getMessage()));
                     }
                     return null;
                 });

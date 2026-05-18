@@ -10,7 +10,12 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import github.anandb.netbeans.support.Logger;
+import org.openide.util.NbBundle;
 
+@NbBundle.Messages({
+    "# {0} - tool name",
+    "ERR_ToolNotFound=Tool not found: {0}"
+})
 public class McpTools {
 
     private static final Logger LOG = new Logger(McpTools.class);
@@ -61,7 +66,7 @@ public class McpTools {
     public JsonNode callTool(String name, JsonNode arguments) throws Exception {
         ToolExecutor<?, ?> executor = executors.get(name);
         if (executor == null) {
-            throw new IllegalArgumentException("Tool not found: " + name);
+            throw new IllegalArgumentException(NbBundle.getMessage(McpTools.class, "ERR_ToolNotFound", name));
         }
 
         return callToolInternal(executor, arguments);
