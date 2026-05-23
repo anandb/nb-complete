@@ -124,7 +124,8 @@ public class ProcessManager {
         if (client == null) {
             return CompletableFuture.failedFuture(new RuntimeException(operationalError()));
         }
-        return client.sendRequest(method, params, timeout, unit);
+
+        return client.sendRequest(method, params, unit.toSeconds(timeout));
     }
 
     public void sendNotification(String method, Object params) {

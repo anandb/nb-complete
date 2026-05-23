@@ -9,6 +9,7 @@ import java.awt.Toolkit;
 import java.awt.datatransfer.StringSelection;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.swing.BorderFactory;
 import javax.swing.Icon;
@@ -46,6 +47,7 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
     private final JButton copyButton;
     private JLabel paramLabel;
     private boolean isThinking;
+    private final AtomicBoolean copyHovered = new AtomicBoolean(false);
 
     public CollapsibleToolPane(String title, String content, boolean expandedAtStart) {
         super(12, "", getHeaderIcon(title), expandedAtStart);
@@ -86,11 +88,25 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
 
         contentPanel.add(textArea, BorderLayout.CENTER);
 
-        // Copy button
+        // Copy button — visible only on header hover
         String hint = NbBundle.getMessage(CollapsibleToolPane.class, "HINT_CopyContent");
         copyButton = UIUtils.createToolbarButton("copy.svg", 20, hint, e -> copyContentToClipboard());
         copyButton.setBorder(BorderFactory.createEmptyBorder(2, 4, 2, 4));
         copyButton.setForeground(theme.foreground());
+        copyButton.setVisible(false);
+        copyButton.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                copyHovered.set(true);
+                copyButton.setVisible(true);
+            }
+            
+            @Override
+            public void mouseExited(MouseEvent e) {
+                copyHovered.set(false);
+                copyButton.setVisible(false);
+            }
+        });
         header.add(copyButton, BorderLayout.EAST);
 
         setupTitleLabels(title);
@@ -201,6 +217,7 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
     @Override
     protected void onHeaderHover(boolean hover) {
         updateAppearance();
+        copyButton.setVisible(hover || copyHovered.get());
     }
 
     @Override

@@ -36,8 +36,6 @@ import static github.anandb.netbeans.manager.AgentUtils.closeQuietly;
 
 public class AcpProtocolClient implements Closeable {
     private static final Logger LOG = new Logger(AcpProtocolClient.class);
-
-    private static final long DEFAULT_TIMEOUT_SECONDS = 30; // seconds, applied to all requests
     private static final ObjectMapper MAPPER = MapperSupplier.get();
 
     private Consumer<Throwable> connectionErrorHandler;
@@ -90,7 +88,7 @@ public class AcpProtocolClient implements Closeable {
     }
 
     public CompletableFuture<JsonNode> sendRequest(String method, Object params) {
-        return sendRequest(method, params, DEFAULT_TIMEOUT_SECONDS);
+        return sendRequest(method, params, PluginSettings.getSessionIdleTimeout());
     }
 
     public CompletableFuture<JsonNode> sendRequest(String method, Object params, long timeoutSeconds) {
@@ -144,14 +142,6 @@ public class AcpProtocolClient implements Closeable {
         }
 
         return future;
-    }
-
-    public CompletableFuture<JsonNode> sendRequest(String method, Object params, long timeout, TimeUnit unit) {
-        long timeoutSeconds = unit.toSeconds(timeout);
-        if (timeoutSeconds <= 0) {
-            timeoutSeconds = DEFAULT_TIMEOUT_SECONDS;
-        }
-        return sendRequest(method, params, timeoutSeconds);
     }
 
     public void sendNotification(String method, Object params) {
