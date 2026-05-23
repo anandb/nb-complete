@@ -38,7 +38,7 @@ import static org.apache.commons.lang3.StringUtils.isNotBlank;
     "LBL_TagOther=other",
     "LBL_TagThink=think",
     "LBL_TagMcp=mcp",
-    "HINT_CopyContent=Copy content"
+    "HINT_CopyContent=Copy Content"
 })
 public class CollapsibleToolPane extends BaseCollapsiblePane {
     private static final long serialVersionUID = 1L;

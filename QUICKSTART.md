@@ -1,15 +1,15 @@
 # Quickstart Guide
 
 This document covers features available in the latest release. You can download the plugin from **Maven Central** or
-build it from source. While it will eventually be available on the Plugin Portal, currently only key stable versions
-are published there.
+build it from source. Currently only key stable versions are published on the plugin portal, so there might be a gap
+of time before it's available for download from within the IDE.
 
 ---
 
 ## ⚠️ Heads-up
 
-Keep your files under version control using git, mercurial or another versioning system, should you have to restore any
-changes from an earlier revision. This is all the more important if you are letting an LLM make edits to files.
+Keep your files under version control using git, mercurial or another versioning system. This is important
+if you are letting an LLM make edits to files, and if you ever have to restore content from an earlier revision.
 
 ## 🛠 Setup
 
@@ -27,11 +27,13 @@ changes from an earlier revision. This is all the more important if you are lett
 ## 🚀 Features to Explore
 
 ### Interface & Navigation
-*   **Switch Agents**: Press `TAB` to toggle between 'build', 'plan', or any custom agents defined in OpenCode.
+*   **Switch Agents**: Press `TAB` to toggle between 'build', 'plan', or any custom agents defined in OpenCode. The OpenCode configuration allows you to
+    associate a particular model to every agent, so you could define a Shell agent that executes all commands and then returns a summarized output, and use a
+    cheaper model to do that
 *   **Toggle Views**: Use the **Filter** button to hide tool outputs or "thinking" messages.
-*   **Expand Thoughts**: Only the current "thought bubble" is expanded by default; use the **Expand/Collapse** toolbar button to unfold all blocks.
+*   **Expand Thoughts**: Only the current "thought bubble" is expanded by default; use the **Expand/Collapse** toolbar button to unfold all bubbles.
 *   **Auto-Scroll**: Click the **blue arrow** that appears during scrolling to jump back to the bottom of the thread.
-* **Code** Select a snippet of code and ask the assistant to explain it, or ask the assistant to generate tests.
+*   **Code** Select a snippet of code and ask the assistant to explain it, or ask the assistant to generate tests.
 
 ### Model & Command Control
 *   **Model Selection**: Change models and thinking levels via the dropdown.
@@ -39,12 +41,16 @@ changes from an earlier revision. This is all the more important if you are lett
 *   **Slash Commands**: Type `/` to access a popup list of available commands and skills.
 
 ### Message Management
-*   **Resend Messages**: Hover over your user icon and click the **Copy** icon to move an older message back into the input area.
-*   **Rename Topics**: Click the **Pencil** icon to label a conversation (stored locally).
+*   **Resend Messages**: Hover over the icon on a user message and click the **Copy** icon to copy the text back into the input area.
+*   **Rename Topics**: Click the **Pencil** icon to label a conversation (the name->session mapping is stored locally with the netbeans user directory).
 *   **Export**: Save your entire session, including tool and thinking logs, to a **Markdown** file.
 
 ### Media & Troubleshooting
-*   **Attachments**: Drag and drop images/documents or paste a screenshot directly into the text area (requires a vision-capable model).
-*   **Customization**: Change your user icon in settings to make your messages easier to spot while scrolling.
-*   **Reset Server**: If the assistant is unresponsive or the status stays on "Ready" without responding, try **Restart ACP Server** in the toolbar to refresh the OpenCode process.
+*   **Attachments**: Drag and drop images/documents, or paste a screenshot directly into the text area (requires a vision-capable model). So you can take a screenshot of a well designed UI and
+    then ask the agent to recreate it using thymeleaf or Angular.
+*   **Customization**: Change your user icon in the settings to make your messages easier to spot while scrolling.
+*   **Restart Server**: If the assistant is unresponsive or the status stays on "Ready" without responding, try **Restart ACP Server** in the toolbar to refresh the OpenCode process.
+*   **Pin Messages**: To conserve memory, older messages are gradually removed from the screen, they still persist in the session history but don't show up in the chat panel. Use the Pin button
+    to keep messages in the chat panel indefinitely.
+
 

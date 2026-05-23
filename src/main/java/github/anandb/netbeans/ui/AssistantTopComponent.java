@@ -10,9 +10,12 @@ import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.FontMetrics;
+
+import java.awt.Desktop;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.net.URI;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 
@@ -78,6 +81,7 @@ import github.anandb.netbeans.support.Logger;
     "STATUS_Thinking=Thinking...",
     "STATUS_Responding=Responding...",
     "STATUS_FileTooLarge=File too large (max 10MB)",
+    "HINT_QuickstartGuide=Open Quickstart Guide",
     "STATUS_OpenProject=Open a project to start chatting",
     "STATUS_NewChat=Click '+ New Chat' to start",
     "STATUS_CreatingSession=Creating new session...",
@@ -268,6 +272,18 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         JPanel cwdRow = new JPanel(new BorderLayout(4, 0));
         cwdRow.setOpaque(false);
         cwdRow.add(cwdLabel, BorderLayout.CENTER);
+
+        JButton helpBtn = UIUtils.createToolbarButton("help.svg",
+            NbBundle.getMessage(AssistantTopComponent.class, "HINT_QuickstartGuide"), null);
+        helpBtn.addActionListener(e -> {
+            try {
+                Desktop.getDesktop().browse(new URI("https://github.com/anandb/nb-complete/blob/main/QUICKSTART.md"));
+            } catch (Exception ex) {
+                LOG.warn("Failed to open quickstart URL: {0}", ex.getMessage());
+            }
+        });
+        cwdRow.add(helpBtn, BorderLayout.EAST);
+
         headerContent.add(cwdRow, BorderLayout.NORTH);
         headerContent.add(topBar, BorderLayout.SOUTH);
 
