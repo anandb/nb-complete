@@ -4,12 +4,14 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+
 import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.model.SessionConfigOption;
 import github.anandb.netbeans.project.ACPProjectManager;
 import org.netbeans.api.project.Project;
 
 import javax.swing.SwingUtilities;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -21,11 +23,13 @@ import java.util.concurrent.CompletionException;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Consumer;
 
 import org.openide.util.NbBundle;
 import org.openide.util.RequestProcessor;
 import org.openide.util.Lookup;
 import org.openide.util.lookup.ServiceProvider;
+
 import java.util.logging.Level;
 
 import github.anandb.netbeans.contract.SessionListener;
@@ -54,13 +58,14 @@ public class SessionManager {
     private volatile String currentSessionId;
     private volatile String lastProjectDir;
     private final List<Session> cachedSessions = new CopyOnWriteArrayList<>();
+    private final Consumer<SessionUpdate> sseListener = this::handleSseUpdate;
 
     public SessionManager() {
         ACPProjectManager.getInstance().setProjectOpenListener(this::handleProjectOpened);
         ACPProjectManager.getInstance().setProjectCloseListener(this::handleProjectClosed);
 
         // Register for SSE updates to route them to the active session
-        ProcessManager.getInstance().addSseListener(this::handleSseUpdate);
+        ProcessManager.getInstance().addSseListener(sseListener);
 
         // Reset state machine and notify UI when server crashes
         ProcessManager.getInstance().setCrashHandler(() -> {
@@ -488,12 +493,21 @@ public class SessionManager {
     }
 
     public void closeSession() {
+        String sessionId = this.currentSessionId;
         if (stateMachine.transitionTo(SessionState.IDLE)) {
             this.currentSessionId = null;
             for (SessionListener l : listeners) {
                 l.onSessionLoading(false);
             }
         }
+        if (sessionId != null) {
+            ToolCallUpdateStrategy.invalidateSession(sessionId);
+        }
+    }
+
+    /** Release resources and unregister from ProcessManager SSE stream. */
+    public void dispose() {
+        ProcessManager.getInstance().removeSseListener(sseListener);
     }
 
     public void stopCurrentMessage() {

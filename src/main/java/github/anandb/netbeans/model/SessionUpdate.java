@@ -94,6 +94,7 @@ public record SessionUpdate(
 
     public String messageId() {
         UpdateData ud = update();
+        if (ud == null) return null;
         return ud.messageId() != null ? ud.messageId() : ud.toolCallId();
     }
 
@@ -114,6 +115,7 @@ public record SessionUpdate(
 
     public String command() {
         UpdateData ud = update();
+        if (ud == null) return "";
         return ud.rawInput() != null ? defaultString(ud.rawInput().command()) : "";
     }
 

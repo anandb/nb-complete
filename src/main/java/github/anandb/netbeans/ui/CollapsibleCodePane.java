@@ -248,7 +248,9 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
         copyButton.setIcon(checkIcon);
 
        Timer timer = new Timer(2000, e -> {
-            copyButton.setIcon(originalIcon);
+            if (copyButton.isShowing()) {
+                copyButton.setIcon(originalIcon);
+            }
         });
         timer.setRepeats(false);
         timer.start();

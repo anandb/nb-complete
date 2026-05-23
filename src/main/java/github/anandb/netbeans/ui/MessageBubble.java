@@ -418,7 +418,9 @@ public class MessageBubble extends JPanel implements Scrollable {
         copyBtn.setIcon(checkIcon);
 
         Timer timer = new Timer(2000, e -> {
-            copyBtn.setIcon(originalIcon);
+            if (copyBtn.isShowing()) {
+                copyBtn.setIcon(originalIcon);
+            }
         });
         timer.setRepeats(false);
         timer.start();

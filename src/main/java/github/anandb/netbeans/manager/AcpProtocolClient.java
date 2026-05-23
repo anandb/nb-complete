@@ -384,5 +384,7 @@ public class AcpProtocolClient implements Closeable {
             }
         });
         pendingRequests.clear();
+        notificationListeners.clear();
+        requestHandlers.clear();
     }
 }

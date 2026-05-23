@@ -407,6 +407,10 @@ public class ProcessManager {
         sseListeners.add(listener);
     }
 
+    public void removeSseListener(Consumer<SessionUpdate> listener) {
+        sseListeners.remove(listener);
+    }
+
     private void notifyListeners(SessionUpdate update) {
         for (Consumer<SessionUpdate> listener : sseListeners) {
             listener.accept(update);

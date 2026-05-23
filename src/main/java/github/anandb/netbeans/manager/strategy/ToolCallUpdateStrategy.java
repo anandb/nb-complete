@@ -63,10 +63,12 @@ public class ToolCallUpdateStrategy implements DataExtractionStrategy {
 
         Map<String, ToolCallData> sessionMap = TOOL_CALL_CACHE.get(sessionId, k -> new ConcurrentHashMap<>());
         ToolCallData data = sessionMap.computeIfAbsent(messageId, k -> new ToolCallData(k, command));
-        ProcessedMessage target = processToolMessage(data, command, update, kind, messageId);
+        // If already completed, this is a spurious duplicate — ignore it
         if (data.isDone()) {
-            sessionMap.remove(messageId);
+            return;
         }
+        ProcessedMessage target = processToolMessage(data, command, update, kind, messageId);
+        // Keep the entry in the map as a sentinel so duplicates are caught above
         handler.displayMessage(target);
     }
 

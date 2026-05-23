@@ -105,19 +105,18 @@ public class StatusController {
 
     // -- Button state --
 
+    /** MUST be called on EDT. */
     public void updateButtonState(boolean isProcessing) {
-        SwingUtilities.invokeLater(() -> {
-            sendBtn.setEnabled(!isProcessing);
-            stopBtn.setEnabled(isProcessing);
-            if (sendBtn.getParent() != null && sendBtn.getParent().getLayout() instanceof CardLayout cl) {
-                cl.show(sendBtn.getParent(), isProcessing ? "STOP" : "SEND");
-            }
-            if (isProcessing) {
-                thinkingTimer.start();
-            } else {
-                thinkingTimer.stop();
-            }
-        });
+        sendBtn.setEnabled(!isProcessing);
+        stopBtn.setEnabled(isProcessing);
+        if (sendBtn.getParent() != null && sendBtn.getParent().getLayout() instanceof CardLayout cl) {
+            cl.show(sendBtn.getParent(), isProcessing ? "STOP" : "SEND");
+        }
+        if (isProcessing) {
+            thinkingTimer.start();
+        } else {
+            thinkingTimer.stop();
+        }
     }
 
     // -- Compound actions --
