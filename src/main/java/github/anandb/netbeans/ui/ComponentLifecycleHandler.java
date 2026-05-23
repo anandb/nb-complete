@@ -20,7 +20,9 @@ import github.anandb.netbeans.project.ACPProjectManager;
 import github.anandb.netbeans.mcp.McpManager;
 import github.anandb.netbeans.manager.ProcessManager;
 import github.anandb.netbeans.manager.SessionManager;
+import github.anandb.netbeans.manager.SessionStateMachine;
 import github.anandb.netbeans.model.MessageType;
+import github.anandb.netbeans.model.SessionState;
 import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.model.SessionItem;
 import github.anandb.netbeans.support.Logger;
@@ -71,6 +73,9 @@ public class ComponentLifecycleHandler {
     // -- Lifecycle callbacks --
 
     public void componentOpened() {
+        // Reset turn-ended flag from any prior RPC completion that fired while panel was closed.
+        // Without this, new SSE updates after reopen would be suppressed.
+        sessionLifecycleHandler.onNewMessageSent();
         SessionManager.getInstance().addSessionListener(sessionLifecycleHandler);
         Set<String> currentDirs = new HashSet<>();
         for (var p : ACPProjectManager.getInstance().getAllOpenProjects()) {
@@ -216,6 +221,19 @@ public class ComponentLifecycleHandler {
     }
 
     public void componentClosed() {
+        // Cancel any active message before detaching the listener, so the server
+        // stops processing and doesn't flood stale SSE content on reopen.
+        // We bypass stopCurrentMessage() and go directly to IDLE to avoid the
+        // STOPPING state — loadSession() on reopen needs IDLE→LOADING to work.
+        SessionStateMachine stateMachine = SessionManager.getInstance().getStateMachine();
+        if (stateMachine.canStopMessage()) {
+            String sid = SessionManager.getInstance().getCurrentSessionId();
+            stateMachine.transitionTo(SessionState.IDLE);
+            if (sid != null) {
+                ProcessManager.getInstance().stopMessage(sid);
+            }
+        }
+
         if (pageKeyDispatcher != null) {
             KeyboardFocusManager.getCurrentKeyboardFocusManager().removeKeyEventDispatcher(pageKeyDispatcher);
         }

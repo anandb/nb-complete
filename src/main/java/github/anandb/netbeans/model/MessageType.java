@@ -12,7 +12,9 @@ public enum MessageType {
     config_options_update,
     session_info_update,
     message,
-    error_response;
+    error_response,
+    responding_finished,
+    end_turn;
 
     public boolean isThought() {
         return name().contains("thought");

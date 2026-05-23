@@ -39,6 +39,7 @@ import org.openide.util.lookup.ServiceProvider;
 import javax.swing.SwingUtilities;
 
 import github.anandb.netbeans.contract.PermissionHandler;
+import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.ui.ACPOptionsPanel;
 import github.anandb.netbeans.support.Logger;
@@ -201,9 +202,22 @@ public class ProcessManager {
                         rawType = updateNode.isTextual() ? updateNode.asText()
                             : (updateNode.has("type") ? updateNode.get("type").asText() : null);
                     }
+
+                    // Construct synthetic SessionUpdate for textual turn-end signals
+                    // before Jackson treeToValue drops them (they lack the "update" wrapper object)
                     if ("responding_finished".equals(rawType) || "end_turn".equals(rawType)) {
-                        LOG.info("SSE type is NOT a valid MessageType (will fail parsing): {0}", rawType);
+                        LOG.info("SSE turn-end signal received via textual sessionUpdate: {0}", rawType);
+                        MessageType mt = MessageType.valueOf(rawType);
+                        String ssId = params != null && params.has("sessionId")
+                            ? params.get("sessionId").asText() : null;
+                        SessionUpdate.UpdateData syntheticUpdate = new SessionUpdate.UpdateData(
+                            mt, null, null, null, null, null, null, null, null, null,
+                            null, null, null, null, null, null, null, null);
+                        SessionUpdate.Params p = new SessionUpdate.Params(ssId, syntheticUpdate);
+                        notifyListeners(new SessionUpdate("2.0", "session/update", p));
+                        return;
                     }
+
                     SessionUpdate.Params sessionParams = objectMapper.treeToValue(params, SessionUpdate.Params.class);
                     SessionUpdate update = new SessionUpdate("2.0", "session/update", sessionParams);
 
