@@ -12,10 +12,15 @@ import java.awt.Font;
 import java.awt.FontMetrics;
 
 import java.awt.Desktop;
+import java.awt.Toolkit;
+import java.awt.datatransfer.StringSelection;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 
@@ -82,6 +87,8 @@ import github.anandb.netbeans.support.Logger;
     "STATUS_Responding=Responding...",
     "STATUS_FileTooLarge=File too large (max 10MB)",
     "HINT_QuickstartGuide=Open Quickstart Guide",
+    "# {0} - URL",
+    "STATUS_QuickstartCopied=Quickstart URL copied to clipboard: {0}",
     "STATUS_OpenProject=Open a project to start chatting",
     "STATUS_NewChat=Click '+ New Chat' to start",
     "STATUS_CreatingSession=Creating new session...",
@@ -135,7 +142,10 @@ import github.anandb.netbeans.support.Logger;
     "LBL_TypeMessage= Type Message Here",
     "MSG_PermissionRequested=Permission requested",
     "# {0} - tool title",
-    "MSG_PermissionTool=The agent wants to use the tool: ''{0}''. Do you want to allow it?"
+    "MSG_PermissionTool=The agent wants to use the tool: ''{0}''. Do you want to allow it?",
+    "# {0} - tool title",
+    "# {1} - context (file path, command, etc.)",
+    "MSG_PermissionToolWithContext=The agent wants to use the tool: ''{0}''.\nContext: {1}\nDo you want to allow it?"
 })
 public final class AssistantTopComponent extends TopComponent implements PermissionHandler {
 
@@ -159,7 +169,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     private final JScrollPane inputScrollPane;
     private final JPanel header;
     private final transient MessageHistory messageHistory = new MessageHistory();
-    private final transient StatusController statusController;
+    private transient StatusController statusController;
     private final transient AttachmentUiHandler attachmentUiHandler;
     private final transient SessionDropdownHandler sessionDropdownHandler;
     private transient ComponentLifecycleHandler componentLifecycleHandler;
@@ -273,13 +283,26 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         cwdRow.setOpaque(false);
         cwdRow.add(cwdLabel, BorderLayout.CENTER);
 
+        String quickstartUrl = "https://github.com/anandb/nb-complete/blob/main/QUICKSTART.md";
         JButton helpBtn = UIUtils.createToolbarButton("help.svg",
             NbBundle.getMessage(AssistantTopComponent.class, "HINT_QuickstartGuide"), null);
         helpBtn.addActionListener(e -> {
+            if (Desktop.isDesktopSupported()
+                    && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
+                try {
+                    Desktop.getDesktop().browse(new URI(quickstartUrl));
+                    return;
+                } catch (IOException | URISyntaxException ex) {
+                    LOG.warn("Failed to open quickstart URL: {0}", ex.getMessage());
+                }
+            }
+            // Fallback: copy URL to clipboard
             try {
-                Desktop.getDesktop().browse(new URI("https://github.com/anandb/nb-complete/blob/main/QUICKSTART.md"));
+                Toolkit.getDefaultToolkit().getSystemClipboard()
+                        .setContents(new StringSelection(quickstartUrl), null);
+                statusController.setStatus("STATUS_QuickstartCopied", quickstartUrl);
             } catch (Exception ex) {
-                LOG.warn("Failed to open quickstart URL: {0}", ex.getMessage());
+                LOG.warn("Failed to copy quickstart URL to clipboard: {0}", ex.getMessage());
             }
         });
         cwdRow.add(helpBtn, BorderLayout.EAST);
@@ -706,7 +729,14 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             JsonNode tc = params.has("toolCall") ? params.get("toolCall") : params.get("tool_call");
             String title = tc.has("title") ? tc.get("title").asText()
                     : tc.has("name") ? tc.get("name").asText() : "tool";
-            prompt = NbBundle.getMessage(AssistantTopComponent.class, "MSG_PermissionTool", title);
+
+            // Extract meaningful context from tool call arguments
+            String context = extractToolContext(tc);
+            if (context != null) {
+                prompt = NbBundle.getMessage(AssistantTopComponent.class, "MSG_PermissionToolWithContext", title, context);
+            } else {
+                prompt = NbBundle.getMessage(AssistantTopComponent.class, "MSG_PermissionTool", title);
+            }
         }
 
         final String finalPrompt = prompt;
@@ -715,6 +745,145 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             requestActive();
             toFront();
         });
+    }
+
+    /**
+     * Extracts a human-readable context string from tool call arguments.
+     * Returns key info like file path, command, or URL, or null if no
+     * meaningful context is found.
+     * <p>
+     * Supports multiple formats:
+     * <ul>
+     *   <li>Standard tool call: {@code { args: { filePath: "..." } }}</li>
+     *   <li>ACP permission format: {@code { rawInput: { filePath: "..." }, locations: [...], patterns: [...] }}</li>
+     * </ul>
+     */
+    static String extractToolContext(JsonNode toolCall) {
+        JsonNode args = toolCall.has("args") ? toolCall.get("args")
+                : toolCall.has("arguments") ? toolCall.get("arguments") : null;
+
+        // If no args/arguments, try rawInput (ACP permission metadata)
+        if (args == null || !args.isObject()) {
+            args = toolCall.has("rawInput") ? toolCall.get("rawInput") : null;
+        }
+
+        if (args != null && args.isObject()) {
+            String result = extractContextFromArgs(args);
+            if (result != null) {
+                return result;
+            }
+        }
+
+        // Fallback: try locations array (ACP format)
+        String locPath = extractFirstLocationPath(toolCall);
+        if (locPath != null) {
+            return truncatePath(locPath);
+        }
+
+        // Fallback: try patterns array (ACP format)
+        String pattern = extractFirstPattern(toolCall);
+        if (pattern != null) {
+            if (pattern.contains("/") || pattern.contains(File.separator) || pattern.startsWith(".")) {
+                return truncatePath(pattern);
+            }
+            return truncateCommand(pattern);
+        }
+
+        return null;
+    }
+
+    /**
+     * Extracts context from a JSON object containing argument key-value pairs.
+     * Checks in priority order: filePath, filepath, file_path, path, command,
+     * url, uri, then falls back to the first short string value.
+     */
+    private static String extractContextFromArgs(JsonNode args) {
+        // Priority order: file path, command, URL, fallback to first string arg
+        if (args.has("filePath")) {
+            return truncatePath(args.get("filePath").asText());
+        }
+        if (args.has("filepath")) {
+            return truncatePath(args.get("filepath").asText());
+        }
+        if (args.has("file_path")) {
+            return truncatePath(args.get("file_path").asText());
+        }
+        if (args.has("path")) {
+            return truncatePath(args.get("path").asText());
+        }
+        if (args.has("command")) {
+            return truncateCommand(args.get("command").asText());
+        }
+        if (args.has("url")) {
+            return args.get("url").asText();
+        }
+        if (args.has("uri")) {
+            return args.get("uri").asText();
+        }
+
+        // Fallback: show first string field value as brief context
+        Iterator<Map.Entry<String, JsonNode>> fields = args.fields();
+        while (fields.hasNext()) {
+            Map.Entry<String, JsonNode> entry = fields.next();
+            if (entry.getValue().isTextual()) {
+                String val = entry.getValue().asText();
+                if (val.length() > 5 && val.length() < 120) {
+                    return entry.getKey() + ": " + val;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Extracts the first path from the locations array (ACP permission format).
+     * Locations are structured as {@code [{ path: "/path/to/file" }]}.
+     */
+    private static String extractFirstLocationPath(JsonNode toolCall) {
+        if (toolCall.has("locations") && toolCall.get("locations").isArray()) {
+            JsonNode locs = toolCall.get("locations");
+            for (JsonNode loc : locs) {
+                if (loc.has("path") && loc.get("path").isTextual()) {
+                    return loc.get("path").asText();
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Extracts the first pattern from the patterns array (ACP permission format).
+     */
+    private static String extractFirstPattern(JsonNode toolCall) {
+        if (toolCall.has("patterns") && toolCall.get("patterns").isArray()
+                && toolCall.get("patterns").size() > 0) {
+            JsonNode first = toolCall.get("patterns").get(0);
+            if (first.isTextual()) {
+                return first.asText();
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Truncates a file path for display, keeping the last ~60 chars.
+     */
+    static String truncatePath(String path) {
+        if (path == null || path.length() <= 65) {
+            return path;
+        }
+        return "..." + path.substring(path.length() - 62);
+    }
+
+    /**
+     * Truncates a shell command for display, keeping the first ~80 chars.
+     */
+    static String truncateCommand(String command) {
+        if (command == null || command.length() <= 80) {
+            return command;
+        }
+        return command.substring(0, 77) + "...";
     }
 
 }

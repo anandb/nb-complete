@@ -47,7 +47,7 @@ import github.anandb.netbeans.ui.TableDetector.TableSegment;
 
 @NbBundle.Messages({
     "HINT_CopyToInput=Copy to input",
-
+    "HINT_CopyAssistantMessage=Copy Content",
     "TITLE_ThinkingProcess=Thinking Process",
     "TITLE_Tool=Tool"
 })
@@ -196,7 +196,7 @@ public class MessageBubble extends JPanel implements Scrollable {
 
             final JButton[] copyBtn = new JButton[1];
             copyBtn[0] = UIUtils.createToolbarButton("copy.svg", 14,
-                NbBundle.getMessage(CollapsibleToolPane.class, "HINT_CopyContent"),
+                NbBundle.getMessage(MessageBubble.class, "HINT_CopyAssistantMessage"),
                 e -> copyMessageToClipboard(copyBtn[0]));
             copyBtn[0].setBorder(BorderFactory.createEmptyBorder(0, 4, 0, 4));
             copyBtn[0].setForeground(theme.foreground());
