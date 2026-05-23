@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.util.logging.Level;
 
+import github.anandb.netbeans.manager.PluginSettings;
 import org.openide.util.RequestProcessor;
 
 import github.anandb.netbeans.support.Logger;
@@ -40,7 +41,7 @@ public class McpServer {
         server = new Server(0);
 
         connector = new ServerConnector(server);
-        connector.setIdleTimeout(30000);
+        connector.setIdleTimeout(1000 * PluginSettings.getSessionIdleTimeout());
         connector.setAcceptQueueSize(100);
         server.addConnector(connector);
 

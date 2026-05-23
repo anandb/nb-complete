@@ -3,17 +3,26 @@ package github.anandb.netbeans.ui;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics;
-
+import javax.swing.Action;
+import javax.swing.ActionMap;
+import javax.swing.JPopupMenu;
 import javax.swing.JTextArea;
+import javax.swing.text.DefaultEditorKit;
+import javax.swing.undo.CannotRedoException;
+import javax.swing.undo.CannotUndoException;
 import javax.swing.undo.UndoManager;
 
 import java.util.regex.Pattern;
 
+import github.anandb.netbeans.support.Logger;
+
 public class PlaceholderTextArea extends JTextArea {
     private static final long serialVersionUID = 1L;
     private static final Pattern LINE_SPLIT = Pattern.compile("\\R");
+    private static final Logger LOG = new Logger(PlaceholderTextArea.class);
     private String placeholder;
     private UndoManager undoManager;
+    private transient JPopupMenu contextMenu;
 
     public PlaceholderTextArea(String placeholder) {
         super();
@@ -32,15 +41,49 @@ public class PlaceholderTextArea extends JTextArea {
         getDocument().addUndoableEditListener(undoManager);
     }
 
+    @Override
+    public JPopupMenu getComponentPopupMenu() {
+        if (contextMenu == null) {
+            contextMenu = buildContextMenu();
+        }
+        return contextMenu;
+    }
+
+    private JPopupMenu buildContextMenu() {
+        JPopupMenu menu = new JPopupMenu();
+        ActionMap map = getActionMap();
+        addOpt(menu, map, DefaultEditorKit.cutAction);
+        addOpt(menu, map, DefaultEditorKit.copyAction);
+        addOpt(menu, map, DefaultEditorKit.pasteAction);
+        menu.addSeparator();
+        addOpt(menu, map, DefaultEditorKit.selectAllAction);
+        return menu;
+    }
+
+    private static void addOpt(JPopupMenu menu, ActionMap map, String key) {
+        Action a = map.get(key);
+        if (a != null) {
+            menu.add(a);
+        }
+    }
+
     public void undo() {
-        if (undoManager.canUndo()) {
-            undoManager.undo();
+        try {
+            if (undoManager.canUndo()) {
+                undoManager.undo();
+            }
+        } catch (CannotUndoException e) {
+            LOG.warn("Cannot undo: {0}", e.getMessage());
         }
     }
 
     public void redo() {
-        if (undoManager.canRedo()) {
-            undoManager.redo();
+        try {
+            if (undoManager.canRedo()) {
+                undoManager.redo();
+            }
+        } catch (CannotRedoException e) {
+            LOG.warn("Cannot redo: {0}", e.getMessage());
         }
     }
 

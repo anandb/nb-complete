@@ -5,14 +5,18 @@ import java.awt.Color;
 import java.awt.FlowLayout;
 import java.awt.Component;
 import java.awt.Font;
+import java.awt.Toolkit;
+import java.awt.datatransfer.StringSelection;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 
 import javax.swing.BorderFactory;
 import javax.swing.Icon;
+import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextArea;
+import javax.swing.Timer;
 
 import java.util.Locale;
 
@@ -32,12 +36,14 @@ import static org.apache.commons.lang3.StringUtils.isNotBlank;
     "LBL_TagContext=context",
     "LBL_TagOther=other",
     "LBL_TagThink=think",
-    "LBL_TagMcp=mcp"
+    "LBL_TagMcp=mcp",
+    "HINT_CopyContent=Copy content"
 })
 public class CollapsibleToolPane extends BaseCollapsiblePane {
     private static final long serialVersionUID = 1L;
     private final JTextArea textArea;
     private final JPanel titlePanel;
+    private final JButton copyButton;
     private JLabel paramLabel;
     private boolean isThinking;
 
@@ -50,7 +56,7 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
 
         header.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createMatteBorder(0, 4, 0, 0, yellowAccent),
-            BorderFactory.createEmptyBorder(2, 4, 2, 10)
+            BorderFactory.createEmptyBorder(5, 4, 5, 10)
         ));
         headerLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
 
@@ -79,6 +85,13 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
         textArea.setWrapStyleWord(true);
 
         contentPanel.add(textArea, BorderLayout.CENTER);
+
+        // Copy button
+        String hint = NbBundle.getMessage(CollapsibleToolPane.class, "HINT_CopyContent");
+        copyButton = UIUtils.createToolbarButton("copy.svg", 20, hint, e -> copyContentToClipboard());
+        copyButton.setBorder(BorderFactory.createEmptyBorder(2, 4, 2, 4));
+        copyButton.setForeground(theme.foreground());
+        header.add(copyButton, BorderLayout.EAST);
 
         setupTitleLabels(title);
         updateAppearance();
@@ -147,6 +160,26 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
         if (paramLabel != null) {
             paramLabel.setForeground(expanded ? theme.foreground() : theme.thinkingHeaderForeground());
         }
+        copyButton.setForeground(expanded ? theme.foreground() : theme.thinkingHeaderForeground());
+    }
+
+    private void copyContentToClipboard() {
+        String content = textArea.getText();
+        if (content == null || content.isEmpty()) {
+            return;
+        }
+        StringSelection selection = new StringSelection(content);
+        Toolkit.getDefaultToolkit().getSystemClipboard().setContents(selection, selection);
+
+        Icon originalIcon = copyButton.getIcon();
+        Icon checkIcon = ThemeManager.getIcon("check.svg", 20);
+        copyButton.setIcon(checkIcon);
+
+        Timer timer = new Timer(2000, e -> {
+            copyButton.setIcon(originalIcon);
+        });
+        timer.setRepeats(false);
+        timer.start();
     }
 
     public void setTitle(String title) {

@@ -5,17 +5,23 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.awt.Insets;
 import java.awt.Rectangle;
+import java.awt.Toolkit;
+import java.awt.datatransfer.StringSelection;
 import java.util.ArrayList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import javax.swing.Icon;
+import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
+import javax.swing.Icon;
+import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.Scrollable;
+import javax.swing.Timer;
 
 import java.awt.event.HierarchyEvent;
 import java.awt.event.HierarchyListener;
@@ -180,6 +186,21 @@ public class MessageBubble extends JPanel implements Scrollable {
             // AI messages use full width
             gbcInsets.left = 12;
             gbcInsets.right = 12;
+        }
+
+        // Copy button for assistant messages at bottom right
+        if ("assistant".equals(role)) {
+            JPanel copyPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+            copyPanel.setOpaque(false);
+
+            final JButton[] copyBtn = new JButton[1];
+            copyBtn[0] = UIUtils.createToolbarButton("copy.svg", 14,
+                NbBundle.getMessage(MessageBubble.class, "HINT_CopyToInput"),
+                e -> copyMessageToClipboard(copyBtn[0]));
+            copyBtn[0].setBorder(BorderFactory.createEmptyBorder(0, 4, 0, 4));
+            copyBtn[0].setForeground(theme.foreground());
+            copyPanel.add(copyBtn[0]);
+            bubble.add(copyPanel, BorderLayout.SOUTH);
         }
 
         add(bubble, UIUtils.createGbc(0, 0, 1.0, 0, fill, anchor, gbcInsets));
@@ -381,6 +402,26 @@ public class MessageBubble extends JPanel implements Scrollable {
 
         // Single revalidate at top level cascades to all children
         revalidate();
+    }
+
+    private void copyMessageToClipboard(JButton copyBtn) {
+        String textToCopy = text.toString();
+        if (textToCopy.isEmpty()) {
+            return;
+        }
+
+        StringSelection selection = new StringSelection(textToCopy);
+        Toolkit.getDefaultToolkit().getSystemClipboard().setContents(selection, selection);
+
+        Icon originalIcon = copyBtn.getIcon();
+        Icon checkIcon = ThemeManager.getIcon("check.svg", 14);
+        copyBtn.setIcon(checkIcon);
+
+        Timer timer = new Timer(2000, e -> {
+            copyBtn.setIcon(originalIcon);
+        });
+        timer.setRepeats(false);
+        timer.start();
     }
 
     public void finalizeStreaming(boolean defaultExpanded) {

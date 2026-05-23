@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.logging.Level;
 
+import github.anandb.netbeans.manager.PluginSettings;
 import org.openide.util.RequestProcessor;
 
 import github.anandb.netbeans.support.Logger;
@@ -41,7 +42,7 @@ class MessageServlet extends HttpServlet {
         long start = System.nanoTime();
         LOG.info("MCP request received: {0} {1}", request.getMethod(), request.getRequestURI());
         AsyncContext asyncContext = request.startAsync();
-        asyncContext.setTimeout(30000);
+        asyncContext.setTimeout(PluginSettings.getSessionIdleTimeout() * 1000L);
 
         asyncExecutor.post(() -> {
             boolean isToolsCall = false;

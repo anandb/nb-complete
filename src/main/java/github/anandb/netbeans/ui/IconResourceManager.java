@@ -7,12 +7,13 @@ import java.awt.Image;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.net.URL;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.Map;
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
 import javax.swing.UIManager;
+
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+
 import org.openide.util.ImageUtilities;
 import github.anandb.netbeans.support.Logger;
 
@@ -38,17 +39,12 @@ final class IconResourceManager {
         });
     }
 
-    private static final Map<String, Icon> ICON_CACHE = Collections.synchronizedMap(
-        new LinkedHashMap<String, Icon>(64, 0.75f, true) {
-            @Override
-            protected boolean removeEldestEntry(Map.Entry<String, Icon> eldest) {
-                return size() > 256;
-            }
-        }
-    );
+    private static final Cache<String, Icon> ICON_CACHE = Caffeine.newBuilder()
+            .maximumSize(256)
+            .build();
 
     static void clearIconCache() {
-        ICON_CACHE.clear();
+        ICON_CACHE.invalidateAll();
     }
 
     static Icon getIcon(String name, int size) {
@@ -56,10 +52,10 @@ final class IconResourceManager {
             return null;
         }
         String cacheKey = name + "@" + size;
-        Icon cached = ICON_CACHE.get(cacheKey);
-        if (cached != null) {
-            return cached;
-        }
+        return ICON_CACHE.get(cacheKey, k -> loadAndCreateIcon(name, size));
+    }
+
+    private static Icon loadAndCreateIcon(String name, int size) {
         String resourcePath = "github/anandb/netbeans/ui/icons/" + getThemeAwareName(name);
         Image img = ImageUtilities.loadImage(resourcePath, true);
         if (img == null) {
@@ -82,9 +78,7 @@ final class IconResourceManager {
             g2.dispose();
             img = bi;
         }
-        Icon icon = ImageUtilities.image2Icon(img);
-        ICON_CACHE.put(cacheKey, icon);
-        return icon;
+        return ImageUtilities.image2Icon(img);
     }
 
     static Font getFont() {

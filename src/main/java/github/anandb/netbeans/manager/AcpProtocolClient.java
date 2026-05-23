@@ -128,19 +128,19 @@ public class AcpProtocolClient implements Closeable {
 
         if (timeoutSeconds > 0) {
             return future.orTimeout(timeoutSeconds, TimeUnit.SECONDS)
-                    .whenComplete((result, error) -> {
-                        if (error instanceof TimeoutException) {
-                            pendingRequests.remove(id);
-                            long totalMs = timeoutSeconds * 1000;
-                            LOG.warn("Request timed out: method={0}, id={1} after {2}ms", new Object[]{method, id, totalMs});
-                        } else if (error != null) {
-                            long totalMs = (System.nanoTime() - sendStart) / 1_000_000;
-                            LOG.warn("Request failed: method={0}, id={1} after {2}ms - {3}", new Object[]{method, id, totalMs, error.getMessage()});
-                        } else {
-                            long totalMs = (System.nanoTime() - sendStart) / 1_000_000;
-                            LOG.info("Request completed: method={0}, id={1} in {2}ms", new Object[]{method, id, totalMs});
-                        }
-                    });
+                .whenComplete((result, error) -> {
+                    if (error instanceof TimeoutException) {
+                        pendingRequests.remove(id);
+                        long totalMs = timeoutSeconds * 1000;
+                        LOG.warn("Request timed out: method={0}, id={1} after {2}ms", new Object[]{method, id, totalMs});
+                    } else if (error != null) {
+                        long totalMs = (System.nanoTime() - sendStart) / 1_000_000;
+                        LOG.warn("Request failed: method={0}, id={1} after {2}ms - {3}", new Object[]{method, id, totalMs, error.getMessage()});
+                    } else {
+                        long totalMs = (System.nanoTime() - sendStart) / 1_000_000;
+                        LOG.info("Request completed: method={0}, id={1} in {2}ms", new Object[]{method, id, totalMs});
+                    }
+                });
         }
 
         return future;

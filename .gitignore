@@ -67,6 +67,8 @@ Thumbs.db
 
 # Others
 docs/
+.opencode/
+.vscode/
 
 # Application logs
 spring.log
