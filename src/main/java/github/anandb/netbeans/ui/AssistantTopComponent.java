@@ -286,6 +286,8 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         String quickstartUrl = "https://github.com/anandb/nb-complete/blob/main/QUICKSTART.md";
         JButton helpBtn = UIUtils.createToolbarButton("help.svg",
             NbBundle.getMessage(AssistantTopComponent.class, "HINT_QuickstartGuide"), null);
+        helpBtn.setContentAreaFilled(false);
+        helpBtn.setBorderPainted(false);
         helpBtn.addActionListener(e -> {
             if (Desktop.isDesktopSupported()
                     && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {

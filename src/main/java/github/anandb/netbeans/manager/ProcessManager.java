@@ -42,6 +42,7 @@ import github.anandb.netbeans.contract.PermissionHandler;
 import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.ui.ACPOptionsPanel;
+import github.anandb.netbeans.support.LanguageResolver;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.MapperSupplier;
 import github.anandb.netbeans.mcp.McpManager;
@@ -451,12 +452,63 @@ public class ProcessManager {
 
         List<Map<String, Object>> promptBlocks = new ArrayList<>();
 
-        // 1. Additional blocks (file attachments, etc.)
+        // 1. Context & Metadata (Start with this so model has environment context first)
+        if (context != null) {
+            String filePath = (String) context.get("filePath");
+            if (filePath != null) {
+                File file = new File(filePath);
+                String lang = LanguageResolver.fromPath(filePath);
+                String fileName = file.getName();
+
+                // Metadata XML Block (For the AI)
+                StringBuilder xml = new StringBuilder();
+                xml.append("<metadata>\n");
+                xml.append("  <purpose>reference</purpose>\n");
+                xml.append("  <note>The file path, cursor, and selection below are reference-only")
+                   .append(" context about the user's editor state. The user's text message")
+                   .append(" that follows is the primary instruction.</note>\n");
+                xml.append("  <language>").append(lang).append("</language>\n");
+                xml.append("  <file_path>").append(filePath).append("</file_path>\n");
+
+                Object cursorObj = context.get("cursor");
+                if (cursorObj != null) {
+                    xml.append("  <cursor>").append(cursorObj.toString()).append("</cursor>\n");
+                }
+
+                Object selObj = context.get("selection");
+                if (selObj != null) {
+                    xml.append("  <selection>").append(selObj.toString()).append("</selection>\n");
+                }
+                xml.append("</metadata>");
+
+                Map<String, Object> metadataPart = new HashMap<>();
+                metadataPart.put("type", "text");
+                metadataPart.put("text", xml.toString());
+
+                // Add annotations for assistant audience (OpenCode internal)
+                Map<String, Object> annotations = new HashMap<>();
+                annotations.put("audience", List.of("assistant"));
+                metadataPart.put("annotations", annotations);
+
+                promptBlocks.add(metadataPart);
+
+                // Selection Content Block (if any)
+                String selectionContent = (String) context.get("selectionContent");
+                if (selectionContent != null && !selectionContent.isEmpty()) {
+                    Map<String, Object> selectionPart = new HashMap<>();
+                    selectionPart.put("type", "text");
+                    selectionPart.put("text", "\nSelection from `" + fileName + "`:\n```" + lang + "\n" + selectionContent + "\n```\n");
+                    promptBlocks.add(selectionPart);
+                }
+            }
+        }
+
+        // 2. Additional blocks (file attachments, etc.)
         if (additionalBlocks != null) {
             promptBlocks.addAll(additionalBlocks);
         }
 
-        // 2. User Message Block (End with this so model's focus is on the instruction)
+        // 3. User Message Block (End with this so model's focus is on the instruction)
         Map<String, Object> userTextPart = new HashMap<>();
         userTextPart.put("type", "text");
         userTextPart.put("text", text);

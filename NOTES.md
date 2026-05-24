@@ -1,5 +1,47 @@
 # Release Notes
 
+## v1.5.24 (Changes since v1.5.23)
+
+### MCP & Editor Context
+- **MCP enabled by default** (`McpManager.mcpDisabled: true → false`). The embedded MCP server provides editor tools (`get_opened_files`, `open_file_at_line`) to the AI on demand.
+- **Editor context removed from MCP, restored as auto-inject**: The `get_current_file_context` MCP tool was removed. Editor context (file path, cursor, selection) is now sent with every user message as XML metadata, reverting to the pre-MCP approach.
+
+### Static Analysis & NB API Migration
+- **NB Platform API migration**: Replaced raw `Thread`/`Executor` with `RequestProcessor`, manual singletons with `@ServiceProvider` + `Lookup`, `Properties` with `NbPreferences`, `JOptionPane` with `DialogDisplayer`/`NotifyDescriptor`, and blocking I/O moved off EDT.
+- **SpotBugs fixes**: Addressed `DM_DEFAULT_ENCODING`, `OBL_UNSATISFIED_OBLIGATION`, `IS2_INCONSISTENT_SYNC`, `CT_CONSTRUCTOR_THROW`.
+- **PMD ruleset**: Added with exclusions for `UselessOperationOnImmutableRule`.
+- **Checkstyle compliance**: `structuredContent` array wrapping fixed.
+
+### i18n & Bundle
+- **All hardcoded strings externalized** into `@NbBundle.Messages`/`Bundle.properties` across `AssistantTopComponent`, `MessageBubble`, `CollapsibleToolPane`.
+- **Duplicate-key restriction** worked around by using unique key names per file within the same module.
+
+### UI
+- **Help icon**: Added `help.svg`/`help_dark.svg` (question mark in a circle) with a help button in the CWD row that opens the QUICKSTART guide URL → later changed to outline-only (no fill color).
+- **Copy buttons**: Added to `CollapsibleToolPane` and `MessageBubble` for one-click content copying.
+- **Icon cache**: Migrated to Caffeine for automatic icon resource caching.
+- **Copy content tooltip**: Standardized across code/collapsible panes.
+
+### Fixes
+- **Permission dialog context**: `extractToolContext` now handles ACP permission format — falls back through `rawInput` → `locations` → `patterns` when `args`/`arguments` are absent. Supports lowercase `filepath` key (write/edit tools).
+- **SSE turn-end handling**: Added `responding_finished`/`end_turn` to `MessageType` enum; synthetic `SessionUpdate` construction for textual SSE `session/update` signals.
+- **Panel close cleanup**: Active message cancelled in `componentClosed()` to prevent stale SSE content. `turnEnded` flag reset on `componentOpened()`.
+- **SessionUpdate NPE**: Fixed null pointer in session update processing.
+- **Duplicate tool call dedup**: Addressed redundant tool call display.
+- **EDT redundancy**: Reduced unnecessary `SwingUtilities.invokeLater` wrapping.
+- **Copy timer leak**: Fixed leaked `Timer` instances.
+- **ACP listener cleanup**: Proper listener removal on shutdown.
+- **MCP timeout**: `MessageServlet` async timeout now correctly multiplies by 1000 (seconds → ms).
+- **Request timeout**: Adjusted session/prompt request timeout.
+- **AcpProtocolClient**: Fixed `close()` deadlock caused by `BufferedReader` lock contention.
+- **Log arguments**: Timed-out branch in `AcpProtocolClient` now passes log arguments correctly.
+
+### Other
+- `PlaceholderTextArea` undo/redo logging and context menu additions.
+- `.gitignore` updated with `.opencode/`, `.vscode/`.
+- Jackson BOM for version management.
+- 160 unit tests passing (22 new tests for permission context).
+
 ## v1.5.22 & v1.5.23 (Changes since v1.5.21)
 
 ### Concurrency Hardening

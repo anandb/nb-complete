@@ -1,56 +1,169 @@
 # Quickstart Guide
 
-This document covers features available in the latest release. You can download the plugin from **Maven Central** or
-build it from source. Currently only key stable versions are published on the plugin portal, so there might be a gap
-of time before it's available for download from within the IDE.
+This document covers features available in the latest release. The plugin can be downloaded from
+**Maven Central** or built from source. Due to the release cadence, there may be a delay before
+new versions appear on the NetBeans plugin portal.
 
 ---
 
-## ⚠️ Heads-up
+## Table of Contents
 
-Keep your files under version control using git, mercurial or another versioning system. This is important
-if you are letting an LLM make edits to files, and if you ever have to restore content from an earlier revision.
-
-## 🛠 Setup
-
-1.  **Prerequisites**: Install [OpenCode](https://opencode.ai/), then connect and configure your providers. This plugin acts as a client
-    to OpenCode running as an Agent Server.
-2.  **Installation**:
-    *   Download the `.nbm` file from [Maven Central](https://central.sonatype.com/artifact/io.github.anandb/beanbot/versions).
-    *   In NetBeans, navigate to `Tools > Plugins > Downloaded` to add the file.
-3.  **Access**: Open the interface via `Window > Assistant` or use the shortcut `CTRL + L`.
-4.  **Configuration**: The plugin usually auto-locates the OpenCode binary via your system path. If needed, set it manually under `Options > Assistant`.
-5.  **Environment**: Define a global system prompt in `Options > Assistant > Preamble`. This runs alongside your OpenCode agent prompts to enable specific skills for every new session.
+- [Setup](#setup)
+- [Keyboard & Navigation](#keyboard--navigation)
+- [Input Area](#input-area)
+- [Slash Commands](#slash-commands)
+- [Model & Command Control](#model--command-control)
+- [Message Display](#message-display)
+- [Message Management](#message-management)
+- [Session Management](#session-management)
+- [Settings](#settings)
+- [Media & Troubleshooting](#media--troubleshooting)
 
 ---
 
-## 🚀 Features to Explore
+## Setup
 
-### Interface & Navigation
-*   **Switch Agents**: Press `TAB` to toggle between 'build', 'plan', or any custom agents defined in OpenCode. The OpenCode configuration allows you to
-    associate a particular model to every agent, so you could define a Shell agent that executes all commands and then returns a summarized output, and use a
-    cheaper model to do that
-*   **Toggle Views**: Use the **Filter** button to hide tool outputs or "thinking" messages.
-*   **Expand Thoughts**: Only the current "thought bubble" is expanded by default; use the **Expand/Collapse** toolbar button to unfold all bubbles.
-*   **Auto-Scroll**: Click the **blue arrow** that appears during scrolling to jump back to the bottom of the thread.
-*   **Code** Select a snippet of code and ask the assistant to explain it, or ask the assistant to generate tests.
+1. **Prerequisites** — Install [OpenCode](https://opencode.ai/), then connect and configure your
+   providers. This plugin acts as a client to an OpenCode Agent Server instance.
+2. **Installation** — Download the `.nbm` file from
+   [Maven Central](https://central.sonatype.com/artifact/io.github.anandb/beanbot/versions). In
+   NetBeans, navigate to `Tools > Plugins > Downloaded` and add the file.
+3. **Access** — Open the interface via `Window > Assistant` or the keyboard shortcut `Ctrl + L`.
+4. **Configuration** — The plugin auto-detects the OpenCode binary on your system `PATH`. To
+   override, set the path manually under `Options > Assistant`.
+5. **Preamble** — Define a global system prompt in `Options > Assistant > Preamble`. This is
+   prepended to every new session alongside your OpenCode agent prompts.
 
-### Model & Command Control
-*   **Model Selection**: Change models and thinking levels via the dropdown.
-    *   *Pro Tip*: Set a default by exporting the `OPENCODE_MODEL` environment variable in your shell before launching NetBeans. Use the copy button next to the model list to get the exact name.
-*   **Slash Commands**: Type `/` to access a popup list of available commands and skills.
+---
 
-### Message Management
-*   **Resend Messages**: Hover over the icon on a user message and click the **Copy** icon to copy the text back into the input area.
-*   **Rename Topics**: Click the **Pencil** icon to label a conversation (the name->session mapping is stored locally with the netbeans user directory).
-*   **Export**: Save your entire session, including tool and thinking logs, to a **Markdown** file.
+## Keyboard & Navigation
 
-### Media & Troubleshooting
-*   **Attachments**: Drag and drop images/documents, or paste a screenshot directly into the text area (requires a vision-capable model). So you can take a screenshot of a well designed UI and
-    then ask the agent to recreate it using thymeleaf or Angular.
-*   **Customization**: Change your user icon in the settings to make your messages easier to spot while scrolling.
-*   **Restart Server**: If the assistant is unresponsive or the status stays on "Ready" without responding, try **Restart ACP Server** in the toolbar to refresh the OpenCode process.
-*   **Pin Messages**: To conserve memory, older messages are gradually removed from the screen, they still persist in the session history but don't show up in the chat panel. Use the Pin button
-    to keep messages in the chat panel indefinitely.
+- **Ctrl + L** — Open or switch focus to the assistant panel.
+- **Tab** — Cycle between agents (e.g., `build`, `plan`) defined in your OpenCode configuration.
+  Each agent can be bound to a different model, letting you route low-level shell execution to a
+  cheaper model while reserving reasoning capacity for planning.
+- **Page Up / Page Down** — Scroll the chat thread one message bubble at a time.
+- **Ctrl + Home / Ctrl + End** — Jump to the top or bottom of the chat thread.
+- **Escape** — If the options panel is open, closes it and returns focus to the input area.
+- **Ctrl + W** — Intercepted to prevent the assistant panel from closing accidentally when it has
+  keyboard focus.
 
+---
 
+## Input Area
+
+- **Send** — Click the **send** button or press **Enter** to send the current message.
+- **Stop** — While the assistant is responding, a **stop** button replaces the send button. Click
+  it to cancel the response (the AI is notified immediately).
+- **Newline** — Press **Shift + Enter** to insert a line break without sending.
+- **History** — Press **Up Arrow** / **Down Arrow** to cycle through previously sent messages.
+- **Autocomplete** — Type `/` or `@` to trigger a popup with available commands, agents, and
+  mention suggestions.
+- **Attachments** — Click the **paperclip** icon to open an attachment menu with file checkboxes
+  and a **Select File...** browser. You can also drag and drop files or paste screenshots directly
+  into the input area (requires a vision-capable model).
+
+---
+
+## Slash Commands
+
+Typing `/` opens a popup listing available commands and skills. The following built-in commands are
+handled locally:
+
+| Command | Action |
+|---------|--------|
+| `/new` | Creates a new session |
+| `/models` | Opens the model selector dropdown |
+| `/agents` | Opens the agent selector dropdown |
+| `/level` | Opens the thinking level selector dropdown |
+| `/sessions` | Opens the session switcher dropdown |
+| `/compact` | Prints a placeholder about context compression (local echo only) |
+| `/dcp` | Displays the raw message ID of the last assistant message (debug) |
+
+Skills (e.g., `plan`, `explore`) are delegated to the OpenCode agent.
+
+---
+
+## Model & Command Control
+
+- **Model Selection** — Choose the active model and thinking budget from the dropdown in the inline
+  options panel (toggle via the **settings** button). The **copy button** next to the model name
+  copies the exact identifier to your clipboard for use in prompts or configuration.
+- **Toggle Views** — Use the **Filter** button to hide tool output or "thinking" message types,
+  reducing visual clutter.
+- **Expand Thoughts** — Only the most recent thought bubble is expanded by default. Use the
+  **Expand/Collapse** toolbar button to unfold all bubbles at once.
+
+---
+
+## Message Display
+
+The assistant panel renders responses with structured formatting:
+
+- **Code Blocks** — Code snippets are displayed with syntax highlighting, line numbers, and **copy**
+  / **insert** buttons. The language label is shown in the header.
+- **Tool Output** — Tool results (shell commands, file reads/writes, search results) appear in
+  collapsible panes with a tag icon and language label.
+- **Thinking Process** — The model's reasoning chain is shown in its own collapsible pane.
+- **Tables** — Pipe-delimited ASCII tables in responses are rendered as formatted HTML tables with
+  alternating row colors.
+- **Permission Requests** — When the AI wants to execute a tool (read a file, run a command), a
+  permission bubble appears with Accept/Deny buttons and full context (file path, shell command).
+- **Error Messages** — Server and connection errors are displayed in red-tinted bubbles.
+
+---
+
+## Message Management
+
+- **Resend Messages** — Hover over a user message and click the **Copy** icon to restore its text
+  to the input area for editing or resending.
+- **Rename Sessions** — Click the **Pencil** icon next to the session name to label a conversation.
+  Name-to-session mappings are stored locally in the NetBeans user directory.
+- **Export** — Save the full session transcript (including tool calls and thinking logs) as a
+  **Markdown** file via the **Export** toolbar button.
+- **Pin Messages** — Older messages are gradually evicted from the chat panel to conserve memory
+  (they remain in session history). Use the **Pin** button to keep important messages visible
+  indefinitely.
+
+---
+
+## Session Management
+
+- **Welcome Screen** — When no session is active, a welcome screen shows recent sessions for quick
+  re-opening and a **Start New Chat** button.
+- **Status Bar** — The header shows the current connection status: `Ready`, `Thinking...`,
+  `Responding...`, or `Error` with details.
+- **Reload** — The **Reload Conversation** toolbar button fetches the latest message history from
+  the server without clearing local state.
+- **Session Dropdown** — Switch between active sessions from the dropdown in the header. Each
+  session preserves its own message history independently.
+- **Auto-Open** — On first install or version change, the assistant opens automatically to help you
+  get started.
+
+---
+
+## Settings
+
+The settings panel is accessible via `Tools > Options > Assistant`. Key settings include:
+
+- **OpenCode Binary Path** — Auto-detected from `PATH`; override here if needed.
+- **Process Arguments** — Additional command-line arguments passed to the OpenCode process.
+- **Preamble (System Prompt)** — A global prompt prepended to every new session.
+- **Local Echo** — When enabled, your message appears instantly in the chat panel (before the
+  server responds). Disabled by default.
+- **Session Idle Timeout** — Minutes of inactivity before the session is automatically cleaned up.
+- **User Icon** — Set a custom avatar; the preview area shows the current icon and right-clicking
+  clears it.
+
+---
+
+## Media & Troubleshooting
+
+- **Custom Icon** — Set a custom user avatar in `Options > Assistant` to make your messages easier
+  to identify while scrolling.
+- **Restart Server** — If the assistant becomes unresponsive or the status indicator remains on
+  "Ready" without responding, click **Restart ACP Server** in the toolbar to refresh the OpenCode
+  process.
+- **Version Control** — Keep your project under version control (git, mercurial, etc.) before
+  allowing the LLM to modify files. This ensures you can restore content from an earlier revision if
+  needed.

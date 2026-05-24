@@ -1,6 +1,6 @@
 # Coding Assistant
 
-[![Version](https://img.shields.io/badge/version-1.5.23-blue.svg)](pom.xml)
+[![Version](https://img.shields.io/badge/version-1.5.24-blue.svg)](pom.xml)
 [![Build Status](https://img.shields.io/badge/build-success-brightgreen.svg)](https://github.com/anandb/nb-complete)
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.anandb/beanbot)](https://central.sonatype.com/artifact/io.github.anandb/beanbot/versions)
 [![NetBeans](https://img.shields.io/badge/NetBeans-RELEASE290-orange.svg)](https://netbeans.apache.org/download/index.html)
@@ -16,58 +16,25 @@ The Coding Assistant is a NetBeans IDE plugin designed to provide integrated AI 
 
 ## Getting Started
 
-Refer the [QuickStart document](QUICKSTART.md)
+See the [Quickstart Guide](QUICKSTART.md) for setup, feature details, and usage instructions.
 
-## Core Capabilities
+### Test Configuration
 
-### User Interface and Experience
-- **Theme Integration**: Compatible with standard NetBeans themes, including dedicated support for Solarized and Darcula variants.
-- **Visual Assets**: Optimized high-contrast SVG icons that adjust based on the active IDE theme.
-- **Content Organization**: Support for segmented display of model reasoning, tool interactions, and code blocks.
-- **Syntax Highlighting**: Integrated code block rendering with language-specific highlighting.
-- **Execution Control**: Support for interrupting active streaming responses.
-
-### Session and Data Management
-- **Persistence**: Chat history and session metadata are stored locally, allowing for continuity across IDE restarts.
-- **Organization**: Support for renaming sessions to facilitate better categorization of technical discussions.
-- **Resumption**: A central entry point provides access to recent interactions.
-- **Documentation**: Capabilities for exporting sessions to Markdown format for external reference.
-
-### IDE Integration
-- **Context Awareness**: The assistant maintains awareness of the active project and workspace state.
-- **Standardized Configuration**: Configuration is managed through the native NetBeans options framework.
-- **Security**: Interactive permission handling for sensitive operations, such as direct file system modifications requested by the AI.
-- **Editor Actions**: Adds context menu shortcuts for sorting lines ascending, sorting lines descending, and minifying/compacting JSON selection.
-
-### Protocol and Communication
-- **Standardized Messaging**: Built on the Agent Client Protocol (ACP) for reliable inter-process communication.
-- **Asynchronous Streaming**: Uses Server-Sent Events to provide real-time updates during response generation.
-- **Protocol Compliance**: Support for complex interactions including multi-step tool usage and state synchronization.
-
----
-
-## Getting Started
-
-### Prerequisites
-- **NetBeans IDE**: Version RELEASE290 or later.
-- **Java Development Kit**: JDK 17 or later.
-- **Backend Service**: Opencode (Ideally, any ACP-compliant backend service)
-
-### Test configuration:
-
-Due to time constraints, the testing is currently limited to this configuration or slight variations of it,
-the plugin will still work on other versions of Netbeans and Opencode but your experience might be different.
+Due to time constraints, testing is primarily done on this configuration. The plugin
+should work on other versions, but your experience may vary.
 
 | Component | Details |
 | --- | --- |
 | **OS** | openSUSE Tumbleweed-Slowroll |
 | **NetBeans** | RELEASE290 |
+| **Java** | JDK 17+ |
 | **Opencode** | 1.14.46 |
 | **Opencode plugins** | `@franzmoca/opencode-lombok`, `@tarquinen/opencode-dcp@latest`, `@opencode/mcp-git` |
 | **This Plugin Version** | ≥ v1.5.23 |
 | **LLMs** | Big Pickle; GPT 5.4-mini, GPT 5.4-nano; DeepSeek V4 Pro, DeepSeek V4 Flash; Kimi K2.5, Kimi K2.6; Mimo V2.5; Qwen3.5, Qwen3.6 |
 
-Note: Qwen models require `--think=false` if using Ollama, and a `"reasoningEffort": "none"` configuration in `opencode.json`
+Note: Qwen models require `--think=false` if using Ollama, and a `"reasoningEffort": "none"`
+configuration in `opencode.json`
 
 ### Installation from Source
 1. Clone the repository:

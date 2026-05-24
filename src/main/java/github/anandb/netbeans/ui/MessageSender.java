@@ -150,8 +150,11 @@ public class MessageSender {
             }
         }
 
+        // Editor Context
+        Map<String, Object> context = isForwardedSlash ? null : EditorContextCapture.capture();
+
         final String messageText = text;
-        ProcessManager.getInstance().sendMessage(currentSessionId, messageText, null, fileBlocks)
+        ProcessManager.getInstance().sendMessage(currentSessionId, messageText, context, fileBlocks)
                 .thenAccept(result -> {
                     SwingUtilities.invokeLater(() -> {
                         LOG.info("RPC thenAccept fired (status during = {0}, hasStopReason = {1})",
