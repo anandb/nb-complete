@@ -4,11 +4,10 @@ import java.io.File;
 
 import javax.swing.JFileChooser;
 
+import github.anandb.netbeans.manager.BinaryResolver;
 import github.anandb.netbeans.manager.PluginSettings;
 import org.openide.util.NbBundle;
 import org.openide.util.NbPreferences;
-
-import java.util.regex.Pattern;
 
 import java.awt.Color;
 import java.awt.Dimension;
@@ -44,28 +43,9 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 import github.anandb.netbeans.manager.SessionManager;
 import github.anandb.netbeans.support.Logger;
 
-@NbBundle.Messages({
-    "LBL_ExecutablePath=Path to Opencode Binary:",
-    "LBL_ProcessArguments=Process Arguments:",
-    "BTN_Browse=Browse...",
-    "TITLE_SelectExecutable=Select Assistant Executable",
-    "LBL_Preamble=Session preamble (sent as first user message for new chats, use '---' as a message separator):",
-    "LBL_EchoUserInput=Echo user input immediately (Local Echo)",
-    "LBL_SessionIdleTimeout=Session Idle Timeout (seconds):",
-    "LBL_UserIcon=Custom User Icon (SVG or PNG):",
-    "TITLE_SelectIcon=Select User Icon",
-    "LBL_Clear=Clear",
-    "TIP_ClearIcon=Right-click to clear custom icon",
-    "LBL_ServiceHeader=Assistant Service",
-    "LBL_BehaviorHeader=Chat Behavior",
-    "LBL_AppearanceHeader=Appearance",
-    "HINT_NotFoundOnPath=opencode not found on PATH",
-    "LBL_SVGPreview=SVG"
-})
 public class ACPOptionsPanel extends JPanel {
-    private static final Logger LOG = new Logger(ACPOptionsPanel.class);
+    private static final Logger LOG = Logger.from(ACPOptionsPanel.class);
     private static final long serialVersionUID = 1L;
-    private static final Pattern PATH_SPLIT = Pattern.compile(Pattern.quote(File.pathSeparator));
     private final ACPOptionsPanelController controller;
     private JLabel jLabel1;
     private JTextField pathField;
@@ -335,7 +315,7 @@ public class ACPOptionsPanel extends JPanel {
 
     void load() {
         String savedPath = NbPreferences.forModule(ACPOptionsPanel.class).get("acpExecutablePath", null);
-        detectedPath = detectOpenCodeOnPath();
+        detectedPath = BinaryResolver.findOnPath();
 
         if (savedPath != null && !savedPath.isEmpty()) {
             pathField.setText(savedPath);
@@ -359,21 +339,6 @@ public class ACPOptionsPanel extends JPanel {
         previousIconPath = PluginSettings.getCustomUserIcon();
         iconPathField.setText(previousIconPath);
         updateIconPreview(iconPathField.getText());
-    }
-
-    private static String detectOpenCodeOnPath() {
-        String exeName = System.getProperty("os.name", "").toLowerCase().contains("win") ? "opencode.exe" : "opencode";
-        String pathEnv = System.getenv("PATH");
-        if (pathEnv == null) {
-            return null;
-        }
-        for (String dir : PATH_SPLIT.split(pathEnv)) {
-            File f = new File(dir, exeName);
-            if (f.exists() && f.canExecute()) {
-                return f.getAbsolutePath();
-            }
-        }
-        return null;
     }
 
     private void clearHint() {

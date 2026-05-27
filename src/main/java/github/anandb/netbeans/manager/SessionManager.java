@@ -22,13 +22,14 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 
 import org.openide.util.NbBundle;
+import org.openide.util.NbPreferences;
 import org.openide.util.RequestProcessor;
 import org.openide.util.Lookup;
-import org.openide.util.lookup.ServiceProvider;
 
 import java.util.logging.Level;
 
@@ -43,14 +44,23 @@ import github.anandb.netbeans.support.MapperSupplier;
  * Manages the state and lifecycle of chat sessions.
  * Decouples session logic from the AssistantTopComponent UI.
  */
-@NbBundle.Messages({
-    "ERR_ServerDisconnected=Server disconnected. Reconnecting...",
-    "# {0} - error message",
-    "ERR_LoadSessionFailed=Failed to load session: {0}"
-})
-@ServiceProvider(service = SessionManager.class)
 public class SessionManager {
-    private static final Logger LOG = new Logger(SessionManager.class);
+
+    // --- custom session titles (merged from SessionTitleMapper) --------------
+    private static final String TITLE_PREFIX = "session_title_";
+
+    public static String getCustomTitle(String sessionId, String defaultTitle) {
+        return NbPreferences.forModule(SessionManager.class).get(TITLE_PREFIX + sessionId, defaultTitle);
+    }
+
+    static void setCustomTitle(String sessionId, String title) {
+        NbPreferences.forModule(SessionManager.class).put(TITLE_PREFIX + sessionId, title);
+    }
+    // -------------------------------------------------------------------------
+
+    private static volatile SessionManager INSTANCE;
+
+    private static final Logger LOG = Logger.from(SessionManager.class);
 
     private final ObjectMapper objectMapper = MapperSupplier.get();
     private final List<SessionListener> listeners = new CopyOnWriteArrayList<>();
@@ -102,9 +112,18 @@ public class SessionManager {
     }
 
     public static SessionManager getInstance() {
-        SessionManager sm = Lookup.getDefault().lookup(SessionManager.class);
+        SessionManager sm = INSTANCE;
         if (sm == null) {
-            sm = new SessionManager();
+            synchronized (SessionManager.class) {
+                sm = INSTANCE;
+                if (sm == null) {
+                    sm = Lookup.getDefault().lookup(SessionManager.class);
+                    if (sm == null) {
+                        sm = new SessionManager();
+                    }
+                    INSTANCE = sm;
+                }
+            }
         }
         return sm;
     }
@@ -210,25 +229,8 @@ public class SessionManager {
         LOG.log(Level.FINE, "Creating new session with CWD: {0}", cwd);
         final String finalCwd = cwd;
         final long start = System.nanoTime();
-
-        return sendCreateSessionRequest(finalCwd, start).handle((res, ex) -> {
-            if (ex == null) {
-                return CompletableFuture.completedFuture(res);
-            }
-            long durationMs = (System.nanoTime() - start) / 1_000_000;
-            if (ex instanceof TimeoutException) {
-                LOG.warn("session/new timed out after {0}ms", durationMs);
-            } else {
-                LOG.warn("session/new failed after {0}ms with error: {1}", durationMs, ex.getMessage());
-            }
-            Throwable cause = (ex instanceof CompletionException) ? ex.getCause() : ex;
-            if (isInvalidParamsError(cause) && !ProcessManager.getInstance().getMcpManager().isDisabled()) {
-                LOG.warn("session/new failed with Invalid Params, retrying without MCP servers");
-                ProcessManager.getInstance().getMcpManager().disable();
-                return sendCreateSessionRequest(finalCwd, start);
-            }
-            return CompletableFuture.<Session>failedFuture(ex);
-        }).thenCompose(f -> f);
+        return withMcpFallback("session/new",
+                () -> sendCreateSessionRequest(finalCwd, start), start);
     }
 
     private CompletableFuture<Session> sendCreateSessionRequest(String finalCwd, long start) {
@@ -258,29 +260,12 @@ public class SessionManager {
     public CompletableFuture<List<SessionConfigOption>> loadSessionFromServer(String sessionId, String cwd) {
         LOG.fine("loadSessionFromServer: called with {0}, cwd={1}", sessionId, cwd);
         final long start = System.nanoTime();
-        return sendLoadSessionRequest(sessionId, cwd, start).handle((res, ex) -> {
-            if (ex == null) {
-                return CompletableFuture.completedFuture(res);
-            }
-            long durationMs = (System.nanoTime() - start) / 1_000_000;
-            if (ex instanceof TimeoutException) {
-                LOG.warn("session/load timed out after {0}ms", durationMs);
-            } else {
-                LOG.warn("session/load failed after {0}ms with error: {1}", durationMs, ex.getMessage());
-            }
-            Throwable cause = (ex instanceof CompletionException) ? ex.getCause() : ex;
-            if (isInvalidParamsError(cause) && !ProcessManager.getInstance().getMcpManager().isDisabled()) {
-                LOG.warn("session/load failed with Invalid Params, retrying without MCP servers");
-                ProcessManager.getInstance().getMcpManager().disable();
-                return sendLoadSessionRequest(sessionId, cwd, start);
-            }
-            return CompletableFuture.<List<SessionConfigOption>>failedFuture(ex);
-        }).thenCompose(f -> f)
-        .exceptionally(ex -> {
-            long durationMs = (System.nanoTime() - start) / 1_000_000;
-            LOG.warn("loadSessionFromServer: error after {0}ms: {1}", durationMs, ex.getMessage());
-            return null;
-        });
+        return withMcpFallback("session/load",
+                () -> sendLoadSessionRequest(sessionId, cwd, start), start)
+                .exceptionally(ex -> {
+                    LOG.warn("loadSessionFromServer: error: {0}", ex.getMessage());
+                    return null;
+                });
     }
 
     private CompletableFuture<List<SessionConfigOption>> sendLoadSessionRequest(String sessionId, String cwd, long start) {
@@ -447,7 +432,7 @@ public class SessionManager {
         if (newTitle == null || newTitle.trim().isEmpty()) {
             return;
         }
-        SessionTitleMapper.setTitle(sessionId, newTitle.trim());
+        setCustomTitle(sessionId, newTitle.trim());
         refreshSessions();
     }
 
@@ -565,6 +550,32 @@ public class SessionManager {
         for (SessionListener l : listeners) {
             l.onSessionError(message);
         }
+    }
+
+    /**
+     * Executes a request function with automatic retry on InvalidParams errors
+     * by disabling MCP server support and retrying once.
+     */
+    private <T> CompletableFuture<T> withMcpFallback(
+            String operationName,
+            Supplier<CompletableFuture<T>> requestFn,
+            long startNanos) {
+        return requestFn.get().handle((res, ex) -> {
+            if (ex == null) return CompletableFuture.completedFuture(res);
+            long durationMs = (System.nanoTime() - startNanos) / 1_000_000;
+            if (ex instanceof TimeoutException) {
+                LOG.warn("{0} timed out after {1}ms", operationName, durationMs);
+            } else {
+                LOG.warn("{0} failed after {1}ms: {2}", operationName, durationMs, ex.getMessage());
+            }
+            Throwable cause = (ex instanceof CompletionException) ? ex.getCause() : ex;
+            if (isInvalidParamsError(cause) && !ProcessManager.getInstance().getMcpManager().isDisabled()) {
+                LOG.warn("{0} failed with Invalid Params, retrying without MCP", operationName);
+                ProcessManager.getInstance().getMcpManager().disable();
+                return requestFn.get();
+            }
+            return CompletableFuture.<T>failedFuture(ex);
+        }).thenCompose(f -> f);
     }
 
     private long parseTimestamp(String ts) {

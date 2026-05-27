@@ -3,7 +3,7 @@ package github.anandb.netbeans.model;
 import github.anandb.netbeans.support.Logger;
 
 public class MessageTransformer {
-    private static final Logger LOG = new Logger(MessageTransformer.class);
+    private static final Logger LOG = Logger.from(MessageTransformer.class);
 
     public ProcessedMessage convert(Message message) {
         String type = message.type();

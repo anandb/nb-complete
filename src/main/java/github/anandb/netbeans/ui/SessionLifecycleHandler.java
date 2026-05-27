@@ -11,7 +11,6 @@ import github.anandb.netbeans.contract.DataExtractionStrategy;
 import github.anandb.netbeans.contract.SessionListener;
 import github.anandb.netbeans.contract.UIHandler;
 import github.anandb.netbeans.manager.SessionManager;
-import github.anandb.netbeans.manager.SessionTitleMapper;
 import github.anandb.netbeans.manager.strategy.StrategyRegistry;
 import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.model.Session;
@@ -31,7 +30,7 @@ import org.openide.util.NbBundle;
  */
 public class SessionLifecycleHandler implements SessionListener {
 
-    private static final Logger LOG = new Logger(SessionLifecycleHandler.class);
+    private static final Logger LOG = Logger.from(SessionLifecycleHandler.class);
 
     private final ChatThreadPanel chatPanel;
     private final JComboBox<SessionItem> sessionDropdown;
@@ -200,7 +199,7 @@ public class SessionLifecycleHandler implements SessionListener {
                 int selectIdx = -1;
                 for (int i = 0; i < sessions.size(); i++) {
                     Session s = sessions.get(i);
-                    String customTitle = SessionTitleMapper.getTitle(s.id(), s.title());
+                    String customTitle = SessionManager.getCustomTitle(s.id(), s.title());
                     sessionDropdown.addItem(new SessionItem(s, customTitle));
                     if (currentId != null && s.id().equals(currentId)) {
                         selectIdx = i;

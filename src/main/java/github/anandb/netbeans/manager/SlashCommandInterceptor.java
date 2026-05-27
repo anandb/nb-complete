@@ -6,13 +6,13 @@ import java.util.concurrent.CompletableFuture;
 import github.anandb.netbeans.contract.SlashCommandHandler;
 import github.anandb.netbeans.contract.SlashCommandCallback;
 import github.anandb.netbeans.contract.SlashCommandProvider;
-import github.anandb.netbeans.model.CommandInfo;
+import github.anandb.netbeans.model.ModelRecords.CommandInfo;
 import github.anandb.netbeans.support.Logger;
 import org.openide.util.Lookup;
 
 public class SlashCommandInterceptor {
 
-    private static final Logger LOG = new Logger(SlashCommandInterceptor.class);
+    private static final Logger LOG = Logger.from(SlashCommandInterceptor.class);
 
     private final Map<String, CommandInfo> commands = new HashMap<>();
 

@@ -38,7 +38,7 @@ class MessageTest {
 
     @Test
     void testAgentCreation() {
-        Agent agent = new Agent("bot", "description");
+        ModelRecords.Agent agent = new ModelRecords.Agent("bot", "description");
         assertEquals("bot", agent.name());
         assertEquals("description", agent.description());
     }

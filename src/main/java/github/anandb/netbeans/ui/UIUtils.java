@@ -27,7 +27,19 @@ import github.anandb.netbeans.support.Logger;
 import org.openide.util.Utilities;
 
 public class UIUtils {
-    private static final Logger LOG = new Logger(UIUtils.class);
+
+    // --- font stacks (merged from FontStacks) --------------------------------
+    public static final String FONT_STACK = String.join(", ",
+            "'Segoe UI'", "'Segoe UI This'", "'Segoe UI Emoji'", "'Dialog'", "'Noto Sans'",
+            "'Ubuntu'", "'Helvetica Neue'", "'Arial'", "'Apple Color Emoji'", "'Segoe UI Symbol'",
+            "'Noto Color Emoji'", "'sans-serif'");
+
+    public static final String MONO_STACK = String.join(", ",
+            "'Fira Code'", "'MesloLGS NF'", "'Source Code Pro'",
+            "'JetBrains Mono'", "'Monaco'", "'monospace'");
+    // -------------------------------------------------------------------------
+
+    private static final Logger LOG = Logger.from(UIUtils.class);
 
     private UIUtils() {}
 

@@ -6,7 +6,7 @@ import java.util.regex.Pattern;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
-import github.anandb.netbeans.model.MessageClassification;
+import github.anandb.netbeans.model.ModelRecords.MessageClassification;
 import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.Logger;
@@ -20,7 +20,7 @@ import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import static org.apache.commons.lang3.StringUtils.toRootLowerCase;
 
 public final class ToolDataExtractor {
-    private static final Logger LOG = new Logger(ToolDataExtractor.class);
+    private static final Logger LOG = Logger.from(ToolDataExtractor.class);
 
     private static final Pattern[] METADATA_PATTERNS = {
         Pattern.compile("<!--.*?-->", Pattern.DOTALL),

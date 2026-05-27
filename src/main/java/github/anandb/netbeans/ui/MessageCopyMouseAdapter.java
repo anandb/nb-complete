@@ -14,7 +14,7 @@ import github.anandb.netbeans.manager.ToolDataExtractor;
 import github.anandb.netbeans.support.Logger;
 
 public class MessageCopyMouseAdapter extends MouseAdapter {
-    private static final Logger LOG = new Logger(MessageCopyMouseAdapter.class);
+    private static final Logger LOG = Logger.from(MessageCopyMouseAdapter.class);
 
     private final JLabel iconLabel;
     private final Icon userIcon;

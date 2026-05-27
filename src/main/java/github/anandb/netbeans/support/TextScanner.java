@@ -6,7 +6,7 @@ import java.util.regex.Pattern;
  * Utility class for scanning text for specific patterns like ASCII art.
  */
 public class TextScanner {
-    private static final Logger LOG = new Logger(TextScanner.class);
+    private static final Logger LOG = Logger.from(TextScanner.class);
 
     // Combined range for Box Drawing (2500-257F) and Block Elements (2580-259F)
     private static final Pattern ASCII_ART_PATTERN = Pattern.compile("[\\u2500-\\u259F]|[-=]{5,}");

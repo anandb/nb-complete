@@ -34,7 +34,7 @@ import github.anandb.netbeans.support.Logger;
  */
 public class ComponentLifecycleHandler {
 
-    private static final Logger LOG = new Logger(ComponentLifecycleHandler.class);
+    private static final Logger LOG = Logger.from(ComponentLifecycleHandler.class);
 
     private final ChatThreadPanel chatPanel;
     private final StatusController statusController;
@@ -137,17 +137,17 @@ public class ComponentLifecycleHandler {
 
             @Override
             public void popupModelCombo() {
-                configPanelController.popupModelCombo();
+                configPanelController.popupCombo(configPanelController.getModelCombo());
             }
 
             @Override
             public void popupAgentCombo() {
-                configPanelController.popupModeCombo();
+                configPanelController.popupCombo(configPanelController.getModeCombo());
             }
 
             @Override
             public void popupThinkingCombo() {
-                configPanelController.popupThinkingCombo();
+                configPanelController.popupCombo(configPanelController.getThinkingCombo());
             }
 
             @Override

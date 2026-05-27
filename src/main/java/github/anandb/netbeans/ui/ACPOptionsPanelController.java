@@ -9,7 +9,7 @@ import javax.swing.JComponent;
 import org.netbeans.spi.options.OptionsPanelController;
 import org.openide.util.HelpCtx;
 import org.openide.util.Lookup;
-import org.openide.util.NbBundle;
+
 
 @OptionsPanelController.TopLevelRegistration(
         categoryName = "#OptionsCategory_Name_Assistant",
@@ -18,10 +18,6 @@ import org.openide.util.NbBundle;
         keywordsCategory = "Assistant",
         position = 1100
 )
-@NbBundle.Messages({
-    "OptionsCategory_Name_Assistant=Assistant",
-    "OptionsCategory_Keywords_Assistant=assistant, ai, chatbot, path, acp"
-})
 public final class ACPOptionsPanelController extends OptionsPanelController implements Serializable {
 
     private static final long serialVersionUID = 1L;

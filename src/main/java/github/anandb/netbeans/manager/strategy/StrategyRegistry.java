@@ -22,23 +22,23 @@ import static org.apache.commons.lang3.StringUtils.defaultIfBlank;
 
 @ServiceProvider(service = StrategyRegistry.class)
 public class StrategyRegistry {
-    private static final Logger LOG = new Logger(StrategyRegistry.class);
+    private static final Logger LOG = Logger.from(StrategyRegistry.class);
     private static final ObjectMapper MAPPER = MapperSupplier.get();
 
     private final Map<String, DataExtractionStrategy> typeStrategies = new LinkedHashMap<>();
-    private final DataExtractionStrategy defaultStrategy = new DefaultStrategy();
+    private final DataExtractionStrategy defaultStrategy = SimpleStrategyType.DEFAULT;
 
     public StrategyRegistry() {
         register(MessageType.agent_message_chunk, new AgentMessageChunkStrategy());
-        register(MessageType.agent_thought_chunk, new AgentThoughtChunkStrategy());
-        register(MessageType.user_message_chunk, new UserMessageChunkStrategy());
         register(MessageType.tool_call_update, new ToolCallUpdateStrategy());
         register(MessageType.tool_call, new ToolCallUpdateStrategy());
         register(MessageType.message, new MessageStrategy());
-        register(MessageType.config_options_update, new ConfigOptionsUpdateStrategy());
-        register(MessageType.session_info_update, new SessionInfoUpdateStrategy());
-        register(MessageType.usage_update, new UsageUpdateStrategy());
         register(MessageType.plan, new PlanStrategy());
+        for (SimpleStrategyType sst : SimpleStrategyType.values()) {
+            if (sst != SimpleStrategyType.DEFAULT) {
+                register(sst.messageType(), sst);
+            }
+        }
     }
 
     public static StrategyRegistry getInstance() {

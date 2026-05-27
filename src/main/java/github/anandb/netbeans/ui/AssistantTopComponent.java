@@ -54,7 +54,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import github.anandb.netbeans.manager.ProcessManager;
 import github.anandb.netbeans.manager.AgentUtils;
 import github.anandb.netbeans.manager.SessionManager;
-import github.anandb.netbeans.manager.SessionTitleMapper;
 import github.anandb.netbeans.contract.PermissionHandler;
 import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.ProcessedMessage;
@@ -78,78 +77,9 @@ import github.anandb.netbeans.support.Logger;
     displayName = "#CTL_AssistantAction",
     preferredID = "AssistantTopComponent"
 )
-@NbBundle.Messages({
-    "CTL_AssistantAction=Assistant",
-    "CTL_AssistantTopComponent=Assistant",
-    "HINT_AssistantTopComponent=This is an Assistant window",
-    "STATUS_Ready=Ready",
-    "STATUS_Thinking=Thinking...",
-    "STATUS_Responding=Responding...",
-    "STATUS_FileTooLarge=File too large (max 10MB)",
-    "HINT_QuickstartGuide=Open Quickstart Guide",
-    "# {0} - URL",
-    "STATUS_QuickstartCopied=Quickstart URL copied to clipboard: {0}",
-    "STATUS_OpenProject=Open a project to start chatting",
-    "STATUS_NewChat=Click '+ New Chat' to start",
-    "STATUS_CreatingSession=Creating new session...",
-    "STATUS_LoadingChat=Loading chat...",
-    "STATUS_NoSession=Error: No active session.",
-    "STATUS_Sending=Sending",
-    "STATUS_Stopping=Stopping...",
-    "STATUS_Stopped=Stopped",
-    "STATUS_McpInitializing=MCP initializing...",
-    "STATUS_RestartingServer=Restarting server...",
-    "STATUS_ServerRestarted=Server restarted. Reloading session...",
-    "# {0} - error message",
-    "STATUS_RestartFailed=Restart failed: {0}",
-    "# {0} - error message",
-    "STATUS_FailedToStart=Failed to start: {0}",
-    "# {0} - error message",
-    "STATUS_Error=Error: {0}",
-    "# {0} - max file count",
-    "STATUS_MaxFiles=Max {0} files allowed",
-    "# {0} - filename",
-    "STATUS_Attached=Attached: {0}",
-    "# {0} - filename",
-    "# {1} - additional file count",
-    "STATUS_AttachedMore=Attached: {0} +{1} more",
-    "HINT_NewSession=New Session",
-    "HINT_RenameSession=Rename Session",
-    "HINT_ReloadConversation=Reload Conversation",
-    "HINT_ExportConversation=Export Conversation",
-    "HINT_RestartServer=Restart ACP server",
-    "HINT_ExpandAll=Expand All Blocks",
-    "HINT_CollapseAll=Collapse All Blocks",
-    "HINT_Options=Options",
-    "HINT_FilterMessages=Filter message types",
-    "HINT_AttachFiles=Attach files",
-    "# {0} - file count",
-    "HINT_FilesAttached={0} file(s) attached",
-    "HINT_KeepMessages=Pin to keep messages",
-    "HINT_TruncateMessages=Unpin to progressively hide messages",
-    "# {0} - used tokens",
-    "# {1} - total tokens",
-    "HINT_ContextUsage=Context Usage: {0}/{1} tokens",
-    "BTN_SelectFile=Select File...",
-    "BTN_Go=Go",
-    "BTN_Stop=Stop",
-    "MSG_EnterTitle=Enter new title for this session:",
-    "MSG_ConfirmRestart=Are you sure you want to restart ACP server ?\nThis will terminate current operations and relaunch the connection.",
-    "TITLE_RestartServer=Restart ACP server",
-    "TITLE_ExportConv=Export Conversation",
-    "# {0} - session id prefix",
-    "LBL_ChatDefault=Chat {0}",
-    "LBL_TypeMessage= Type Message Here",
-    "MSG_PermissionRequested=Permission requested",
-    "# {0} - tool title",
-    "MSG_PermissionTool=The agent wants to use the tool: ''{0}''. Do you want to allow it?",
-    "# {0} - tool title",
-    "# {1} - context (file path, command, etc.)",
-    "MSG_PermissionToolWithContext=The agent wants to use the tool: ''{0}''.\nContext: {1}\nDo you want to allow it?"
-})
 public final class AssistantTopComponent extends TopComponent implements PermissionHandler {
 
-    private static final Logger LOG = new Logger(AssistantTopComponent.class);
+    private static final Logger LOG = Logger.from(AssistantTopComponent.class);
     private static final long serialVersionUID = 1L;
     private final ChatThreadPanel chatPanel;
     private final PlaceholderTextArea inputArea;
@@ -161,6 +91,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     private final JButton toggleBlocksBtn;
     private final JButton keepBtn;
     private final JButton filterBtn;
+    private final JButton helpBtn;
     private final JButton toggleOptionsBtn;
     private final JLabel statusLabel;
     private final JLabel versionLabel;
@@ -284,7 +215,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         cwdRow.add(cwdLabel, BorderLayout.CENTER);
 
         String quickstartUrl = "https://github.com/anandb/nb-complete/blob/main/QUICKSTART.md";
-        JButton helpBtn = UIUtils.createToolbarButton("help.svg",
+        helpBtn = UIUtils.createToolbarButton("help.svg",
             NbBundle.getMessage(AssistantTopComponent.class, "HINT_QuickstartGuide"), null);
         helpBtn.setContentAreaFilled(false);
         helpBtn.setBorderPainted(false);
@@ -308,6 +239,8 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             }
         });
         cwdRow.add(helpBtn, BorderLayout.EAST);
+
+        startHelpButtonFlash();
 
         headerContent.add(cwdRow, BorderLayout.NORTH);
         headerContent.add(topBar, BorderLayout.SOUTH);
@@ -473,17 +406,17 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
     private String selectedIdToTitle(Session session) {
         String title = defaultIfBlank(session.title(), NbBundle.getMessage(AssistantTopComponent.class, "LBL_ChatDefault", left(session.id(), 8)));
-        return SessionTitleMapper.getTitle(session.id(), title);
+        return SessionManager.getCustomTitle(session.id(), title);
     }
 
     private JButton createFilterButton() {
         final JButton[] btnRef = new JButton[1];
         JButton btn = UIUtils.createToolbarButton("filter.svg", 25, NbBundle.getMessage(AssistantTopComponent.class, "HINT_FilterMessages"), e -> {
             JPopupMenu popup = new JPopupMenu();
-            for (String type : MessageFilterManager.getMessageTypes()) {
-                JCheckBoxMenuItem item = new JCheckBoxMenuItem(type, !MessageFilterManager.isTypeHidden(type));
+            for (String type : ChatThreadPanel.MessageFilterManager.getMessageTypes()) {
+                JCheckBoxMenuItem item = new JCheckBoxMenuItem(type, !ChatThreadPanel.MessageFilterManager.isTypeHidden(type));
                 item.addActionListener(ev -> {
-                    MessageFilterManager.setTypeHidden(type, !item.isSelected());
+                    ChatThreadPanel.MessageFilterManager.setTypeHidden(type, !item.isSelected());
                     chatPanel.applyTypeFilters();
                 });
                 popup.add(item);
@@ -886,6 +819,39 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             return command;
         }
         return command.substring(0, 77) + "...";
+    }
+
+    /** Flash the help icon for at least 5 seconds on startup for discoverability. */
+    private void startHelpButtonFlash() {
+        java.awt.Color flashBg = ThemeManager.getCurrentTheme().isDark()
+                ? new java.awt.Color(128, 128, 128, 180)
+                : new java.awt.Color(66, 133, 244, 180);
+        javax.swing.Timer timer = new javax.swing.Timer(700, null);
+        timer.addActionListener(new java.awt.event.ActionListener() {
+            int tick = 0;
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                tick++;
+                boolean highlight = tick % 2 == 0;
+                if (highlight) {
+                    helpBtn.setOpaque(true);
+                    helpBtn.setBackground(flashBg);
+                    helpBtn.setContentAreaFilled(true);
+                } else {
+                    helpBtn.setOpaque(false);
+                    helpBtn.setContentAreaFilled(false);
+                }
+                helpBtn.repaint();
+                if (tick >= 8) {
+                    timer.stop();
+                    helpBtn.setOpaque(false);
+                    helpBtn.setContentAreaFilled(false);
+                    helpBtn.repaint();
+                }
+            }
+        });
+        timer.setInitialDelay(800);
+        timer.start();
     }
 
 }

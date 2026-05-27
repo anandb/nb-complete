@@ -13,7 +13,7 @@ import github.anandb.netbeans.support.Logger;
 
 public class FitEditorPane extends JTextPane {
     private static final long serialVersionUID = 1L;
-    private static final Logger LOG = new Logger(FitEditorPane.class);
+    private static final Logger LOG = Logger.from(FitEditorPane.class);
     private static final Color TRANSPARENT = new Color(0, 0, 0, 0);
 
     private int lastComputedHeight = 0;

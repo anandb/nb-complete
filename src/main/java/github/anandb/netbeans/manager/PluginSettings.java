@@ -10,7 +10,7 @@ import org.openide.util.NbPreferences;
 
 public final class PluginSettings {
 
-    private static final Logger LOG = new Logger(PluginSettings.class);
+    private static final Logger LOG = Logger.from(PluginSettings.class);
     private static final String KEY_PREAMBLE = "preamble";
     private static final String KEY_CUSTOM_USER_ICON = "customUserIcon";
     private static final String KEY_SESSION_IDLE_TIMEOUT = "sessionIdleTimeout";

@@ -11,7 +11,7 @@ import org.openide.modules.Modules;
 import github.anandb.netbeans.support.Logger;
 
 public final class AgentUtils {
-    private static final Logger LOG = new Logger(AgentUtils.class);
+    private static final Logger LOG = Logger.from(AgentUtils.class);
 
     private AgentUtils() {}
 

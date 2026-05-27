@@ -15,7 +15,7 @@ import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
 
 public final class WireLogger implements Closeable {
-    private static final Logger LOG = new Logger(WireLogger.class);
+    private static final Logger LOG = Logger.from(WireLogger.class);
     private static final ObjectMapper MAPPER = MapperSupplier.get();
     private final boolean wireLoggingEnabled;
     private BufferedWriter wireLogWriter;

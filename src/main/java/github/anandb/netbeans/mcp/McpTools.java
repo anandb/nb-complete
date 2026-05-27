@@ -12,13 +12,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import github.anandb.netbeans.support.Logger;
 import org.openide.util.NbBundle;
 
-@NbBundle.Messages({
-    "# {0} - tool name",
-    "ERR_ToolNotFound=Tool not found: {0}"
-})
 public class McpTools {
 
-    private static final Logger LOG = new Logger(McpTools.class);
+    private static final Logger LOG = Logger.from(McpTools.class);
     private final Map<String, McpToolDefinition> tools = new ConcurrentHashMap<>();
     private final Map<String, ToolExecutor> executors = new ConcurrentHashMap<>();
     private final ObjectMapper mapper;

@@ -3,6 +3,7 @@ package github.anandb.netbeans.model;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.JsonNode;
+import github.anandb.netbeans.model.ModelRecords.Agent;
 
 import java.util.List;
 

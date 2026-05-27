@@ -11,7 +11,7 @@ import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.Logger;
 
 public class AgentMessageChunkStrategy implements DataExtractionStrategy {
-    private static final Logger LOG = new Logger(AgentMessageChunkStrategy.class);
+    private static final Logger LOG = Logger.from(AgentMessageChunkStrategy.class);
     @Override
     public boolean canHandle(SessionUpdate update, String reclassifiedType) {
         return "agent_message_chunk".equals(reclassifiedType);

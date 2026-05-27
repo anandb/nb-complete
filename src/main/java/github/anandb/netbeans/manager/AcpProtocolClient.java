@@ -35,7 +35,7 @@ import github.anandb.netbeans.support.WireLogger;
 import static github.anandb.netbeans.manager.AgentUtils.closeQuietly;
 
 public class AcpProtocolClient implements Closeable {
-    private static final Logger LOG = new Logger(AcpProtocolClient.class);
+    private static final Logger LOG = Logger.from(AcpProtocolClient.class);
     private static final ObjectMapper MAPPER = MapperSupplier.get();
 
     private Consumer<Throwable> connectionErrorHandler;
@@ -303,38 +303,33 @@ public class AcpProtocolClient implements Closeable {
         }
     }
 
+    private void sendJsonMessage(ObjectNode message) {
+        try {
+            String json = MAPPER.writeValueAsString(message);
+            LOG.fine("[ACP] Sending: {0}", json);
+            writer.println(json);
+        } catch (JsonProcessingException e) {
+            LOG.severe("Failed to serialize message", e);
+        }
+    }
+
     private void sendResponse(long id, JsonNode result) {
         ObjectNode response = MAPPER.createObjectNode();
         response.put("jsonrpc", "2.0");
         response.put("id", id);
         response.set("result", result != null ? result : MAPPER.createObjectNode());
-
-        try {
-            String json = MAPPER.writeValueAsString(response);
-            LOG.fine("[ACP] Sending response: {0}", json);
-            writer.println(json);
-        } catch (JsonProcessingException e) {
-            LOG.severe("Failed to serialize response", e);
-        }
+        sendJsonMessage(response);
     }
 
     private void sendError(long id, int code, String message) {
         ObjectNode response = MAPPER.createObjectNode();
         response.put("jsonrpc", "2.0");
         response.put("id", id);
-
         ObjectNode error = MAPPER.createObjectNode();
         error.put("code", code);
         error.put("message", message);
         response.set("error", error);
-
-        try {
-            String json = MAPPER.writeValueAsString(response);
-            LOG.fine("[ACP] Sending error response: {0}", message);
-            writer.println(json);
-        } catch (JsonProcessingException e) {
-            LOG.severe("Failed to serialize error response", e);
-        }
+        sendJsonMessage(response);
     }
 
     private void notifyConnectionError(Throwable t) {

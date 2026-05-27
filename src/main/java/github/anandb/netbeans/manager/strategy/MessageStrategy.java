@@ -13,7 +13,7 @@ import github.anandb.netbeans.support.Logger;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 
 public class MessageStrategy implements DataExtractionStrategy {
-    private static final Logger LOG = new Logger(MessageStrategy.class);
+    private static final Logger LOG = Logger.from(MessageStrategy.class);
 
     @Override
     public boolean canHandle(SessionUpdate update, String reclassifiedType) {

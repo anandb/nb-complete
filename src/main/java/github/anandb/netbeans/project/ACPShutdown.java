@@ -7,7 +7,7 @@ import org.openide.modules.OnStop;
 
 @OnStop
 public class ACPShutdown implements Runnable {
-    private static final Logger log = new Logger(ACPShutdown.class);
+    private static final Logger log = Logger.from(ACPShutdown.class);
 
     @Override
     public void run() {

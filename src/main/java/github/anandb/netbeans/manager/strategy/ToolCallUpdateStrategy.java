@@ -12,7 +12,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 import github.anandb.netbeans.manager.ToolDataExtractor;
-import github.anandb.netbeans.model.MessageClassification;
+import github.anandb.netbeans.model.ModelRecords.MessageClassification;
 import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.model.ToolCallData;

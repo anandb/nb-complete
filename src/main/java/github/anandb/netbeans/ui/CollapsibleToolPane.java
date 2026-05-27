@@ -2,6 +2,7 @@ package github.anandb.netbeans.ui;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Component;
 import java.awt.Font;
@@ -25,21 +26,6 @@ import org.openide.util.NbBundle;
 
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
-@NbBundle.Messages({
-    "LBL_ThinkingProcess=Thinking Process",
-    "LBL_ToolFallback=Tool",
-    "LBL_TagRead=read",
-    "LBL_TagExecute=shell",
-    "LBL_TagWrite=write",
-    "LBL_TagEdit=edit",
-    "LBL_TagSearch=search",
-    "LBL_TagSkill=skill",
-    "LBL_TagContext=context",
-    "LBL_TagOther=other",
-    "LBL_TagThink=think",
-    "LBL_TagMcp=mcp",
-    "HINT_CopyContent=Copy Content"
-})
 public class CollapsibleToolPane extends BaseCollapsiblePane {
     private static final long serialVersionUID = 1L;
     private final JTextArea textArea;
@@ -107,7 +93,15 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
                 copyButton.setVisible(false);
             }
         });
-        header.add(copyButton, BorderLayout.EAST);
+        // Wrap in fixed-size panel so header height never changes when button visibility toggles
+        JPanel eastPlaceholder = new JPanel(new BorderLayout());
+        eastPlaceholder.setOpaque(false);
+        Dimension btnSize = copyButton.getPreferredSize();
+        eastPlaceholder.setPreferredSize(btnSize);
+        eastPlaceholder.setMinimumSize(btnSize);
+        eastPlaceholder.setMaximumSize(btnSize);
+        eastPlaceholder.add(copyButton, BorderLayout.CENTER);
+        header.add(eastPlaceholder, BorderLayout.EAST);
 
         setupTitleLabels(title);
         updateAppearance();

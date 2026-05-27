@@ -22,7 +22,7 @@ import jakarta.servlet.http.HttpServletResponse;
 class MessageServlet extends HttpServlet {
     private static final long serialVersionUID = 1L;
 
-    private static final Logger LOG = new Logger(MessageServlet.class);
+    private static final Logger LOG = Logger.from(MessageServlet.class);
     private static final String MCP_PROTOCOL_VERSION = "2025-03-26";
     private static final String SERVER_NAME = "nb-mcp";
     private static final String SERVER_VERSION = "1.0.0";
@@ -30,15 +30,27 @@ class MessageServlet extends HttpServlet {
     private final ObjectMapper mapper;
     private final transient RequestProcessor asyncExecutor;
     private final transient McpTools mcpTools;
+    private final String token;
 
-    MessageServlet(ObjectMapper mapper, RequestProcessor asyncExecutor, McpTools mcpTools) {
+    MessageServlet(ObjectMapper mapper, RequestProcessor asyncExecutor, McpTools mcpTools, String token) {
         this.mapper = mapper;
         this.asyncExecutor = asyncExecutor;
         this.mcpTools = mcpTools;
+        this.token = token;
     }
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        // Verify auth token
+        String reqToken = request.getParameter("token");
+        if (reqToken == null || !reqToken.equals(token)) {
+            LOG.warn("MCP request rejected: missing or invalid token");
+            response.setStatus(403);
+            response.setContentType("application/json");
+            response.getWriter().write("{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32001,\"message\":\"Unauthorized\"}}");
+            return;
+        }
+
         long start = System.nanoTime();
         LOG.info("MCP request received: {0} {1}", request.getMethod(), request.getRequestURI());
         AsyncContext asyncContext = request.startAsync();

@@ -10,7 +10,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import java.awt.Component;
 import javax.swing.BorderFactory;
+import javax.swing.DefaultListCellRenderer;
 import javax.swing.DefaultListModel;
 import javax.swing.JList;
 import javax.swing.JPopupMenu;
@@ -21,13 +23,31 @@ import javax.swing.UIManager;
 
 import github.anandb.netbeans.manager.ProcessManager;
 import github.anandb.netbeans.manager.SlashCommandInterceptor;
-import github.anandb.netbeans.model.CommandInfo;
+import github.anandb.netbeans.model.ModelRecords.CommandInfo;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.Logger;
 
 public class AutocompleteManager {
 
-    private static final Logger LOG = new Logger(AutocompleteManager.class);
+    // --- inner class: merged from AutocompleteRenderer -----------------------
+    private static final class AutocompleteRenderer extends DefaultListCellRenderer {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public Component getListCellRendererComponent(JList<?> list, Object value, int index,
+                boolean isSelected, boolean cellHasFocus) {
+            super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+            if (value instanceof SessionUpdate.AvailableCommand cmd) {
+                setText(" /" + cmd.name() + (cmd.description() != null ? "  - " + cmd.description() : ""));
+                setFont(ThemeManager.getFont().deriveFont(13f));
+                setBorder(BorderFactory.createEmptyBorder(2, 5, 2, 5));
+            }
+            return this;
+        }
+    }
+    // -------------------------------------------------------------------------
+
+    private static final Logger LOG = Logger.from(AutocompleteManager.class);
     private String lastPrefix;
 
     private final PlaceholderTextArea inputArea;

@@ -19,12 +19,6 @@ import org.openide.util.NbBundle;
  * Centralized color definitions for the ACP NetBeans plugin.
  * Cached singleton refreshed on L&amp;F changes.
  */
-@NbBundle.Messages({
-    "ERR_ColorsNotFound=colors.json not found",
-    "ERR_LoadColorsFailed=Failed to load colors.json",
-    "ERR_CssTemplateNotFound=chat-style.css.template not found",
-    "ERR_LoadCssTemplateFailed=Failed to load chat-style.css.template"
-})
 public record ColorTheme(
         boolean isDark,
         Color background, Color foreground, Color selection, Color accent,

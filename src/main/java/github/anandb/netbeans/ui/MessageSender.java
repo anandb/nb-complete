@@ -25,7 +25,7 @@ import org.openide.util.NbBundle;
  */
 public class MessageSender {
 
-    private static final Logger LOG = new Logger(MessageSender.class);
+    private static final Logger LOG = Logger.from(MessageSender.class);
 
     private final PlaceholderTextArea inputArea;
     private final ChatThreadPanel chatPanel;

@@ -23,11 +23,6 @@ import org.fife.ui.rsyntaxtextarea.SyntaxConstants;
 import org.fife.ui.rsyntaxtextarea.Theme;
 import org.openide.util.NbBundle;
 
-@NbBundle.Messages({
-    "HINT_CopyCode=Copy code",
-    "LBL_CodeBlockCollapsed=  Code block collapsed",
-    "LBL_CodeFallback=Code"
-})
 public class CollapsibleCodePane extends BaseCollapsiblePane {
 
     private static final long serialVersionUID = 1L;

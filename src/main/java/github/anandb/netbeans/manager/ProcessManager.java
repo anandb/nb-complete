@@ -14,9 +14,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.logging.Level;
-import java.util.prefs.Preferences;
-import java.util.regex.Pattern;
-
 import javax.swing.text.Document;
 
 import org.apache.commons.exec.CommandLine;
@@ -47,22 +44,10 @@ import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.MapperSupplier;
 import github.anandb.netbeans.mcp.McpManager;
 
-@NbBundle.Messages({
-    "ERR_BinaryNotFound=opencode binary not found: not configured and not on system PATH",
-    "# {0} - restart count",
-    "ERR_ServerCrashed=Server crashed {0} times. Restart IDE to reconnect.",
-    "ERR_MissingFilePath=Missing filePath parameter",
-    "# {0} - file path",
-    "ERR_FileNotFound=File not found: {0}",
-    "# {0} - error message",
-    "ERR_ReadFileFailed=Failed to read file: {0}",
-    "ERR_NotStarted=Server not started, Please check if Opencode is installed and available"
-})
 @ServiceProvider(service = ProcessManager.class)
 public class ProcessManager {
 
-    private static final Logger LOG = new Logger(ProcessManager.class);
-    private static final Pattern PATH_SEPARATOR_SPLIT = Pattern.compile(Pattern.quote(File.pathSeparator));
+    private static final Logger LOG = Logger.from(ProcessManager.class);
 
     private final SlashCommandInterceptor slashCommandInterceptor = new SlashCommandInterceptor();
 
@@ -164,7 +149,7 @@ public class ProcessManager {
 
         LOG.info("Starting ACP server...");
         try {
-            String executable = resolveExecutablePath();
+            String executable = BinaryResolver.resolveExecutablePath();
             String args = NbPreferences.forModule(ACPOptionsPanel.class).get("processArguments", "acp");
 
             CommandLine cmd = new CommandLine(executable);
@@ -246,49 +231,6 @@ public class ProcessManager {
             LOG.severe("CRITICAL: Failed to start ACP server", e);
             readyFuture.completeExceptionally(e);
         }
-    }
-
-    private String resolveExecutablePath() {
-        // We use NbPreferences to match the rest of the plugin
-        Preferences nbPrefs = NbPreferences.forModule(ACPOptionsPanel.class);
-        String configuredPath = nbPrefs.get("acpExecutablePath", null);
-        boolean isWindows = System.getProperty("os.name").toLowerCase().contains("win");
-        String exeName = isWindows ? "opencode.exe" : "opencode";
-
-        // 1. Configured absolute path
-        if (configuredPath != null && !configuredPath.trim().isEmpty()) {
-            File f = new File(configuredPath);
-            if (f.isAbsolute() && f.exists()) {
-                LOG.fine("Using configured absolute path: {0}", configuredPath);
-                return configuredPath;
-            } else {
-                LOG.warn("Configured path not found: {0}", configuredPath);
-            }
-        }
-
-        // 2. Search System PATH
-        if (isInPath(exeName)) {
-            LOG.log(Level.FINE, "Using 'opencode' found in system PATH");
-            return exeName;
-        }
-
-        LOG.log(Level.WARNING, "Binary not found: no configured path and not on system PATH");
-        throw new IllegalStateException(NbBundle.getMessage(ProcessManager.class, "ERR_BinaryNotFound"));
-    }
-
-    private boolean isInPath(String command) {
-        String pathEnv = System.getenv("PATH");
-        if (pathEnv == null) {
-            return false;
-        }
-
-        for (String p : PATH_SEPARATOR_SPLIT.split(pathEnv)) {
-            File f = new File(p, command);
-            if (f.exists() && f.canExecute()) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private void initializeProtocol() {

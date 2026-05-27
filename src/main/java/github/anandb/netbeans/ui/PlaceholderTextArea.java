@@ -19,7 +19,7 @@ import github.anandb.netbeans.support.Logger;
 public class PlaceholderTextArea extends JTextArea {
     private static final long serialVersionUID = 1L;
     private static final Pattern LINE_SPLIT = Pattern.compile("\\R");
-    private static final Logger LOG = new Logger(PlaceholderTextArea.class);
+    private static final Logger LOG = Logger.from(PlaceholderTextArea.class);
     private String placeholder;
     private UndoManager undoManager;
     private transient JPopupMenu contextMenu;

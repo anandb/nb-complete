@@ -11,7 +11,7 @@ import github.anandb.netbeans.ui.AssistantTopComponent;
 
 @OnStart
 public class ACPStartup implements Runnable {
-    private static final Logger LOG = new Logger(ACPStartup.class);
+    private static final Logger LOG = Logger.from(ACPStartup.class);
 
     @Override
     public void run() {

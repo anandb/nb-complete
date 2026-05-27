@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import github.anandb.netbeans.contract.DataExtractionStrategy;
 import github.anandb.netbeans.contract.UIHandler;
 import github.anandb.netbeans.model.MessageType;
-import github.anandb.netbeans.model.PlanEntry;
+import github.anandb.netbeans.model.ModelRecords.PlanEntry;
 import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.Logger;
@@ -15,7 +15,7 @@ import java.util.Comparator;
 import java.util.List;
 
 public class PlanStrategy implements DataExtractionStrategy {
-    private static final Logger LOG = new Logger(PlanStrategy.class);
+    private static final Logger LOG = Logger.from(PlanStrategy.class);
 
     @Override
     public boolean canHandle(SessionUpdate update, String reclassifiedType) {

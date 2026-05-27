@@ -45,15 +45,9 @@ import github.anandb.netbeans.ui.TableDetector.TextSegment;
 import github.anandb.netbeans.ui.TableDetector.TableSegment;
 
 
-@NbBundle.Messages({
-    "HINT_CopyToInput=Copy to input",
-    "HINT_CopyAssistantMessage=Copy Content",
-    "TITLE_ThinkingProcess=Thinking Process",
-    "TITLE_Tool=Tool"
-})
 public class MessageBubble extends JPanel implements Scrollable {
 
-    private static final Logger LOG = new Logger(MessageBubble.class);
+    private static final Logger LOG = Logger.from(MessageBubble.class);
     private static final long serialVersionUID = 1L;
 
     // Static cached Pattern for code block parsing - compiled once

@@ -24,7 +24,7 @@ import org.openide.util.NbBundle;
 
 class PermissionBubble extends JPanel {
     private static final long serialVersionUID = 1L;
-    private static final Logger LOG = new Logger(PermissionBubble.class);
+    private static final Logger LOG = Logger.from(PermissionBubble.class);
 
     PermissionBubble(String prompt, JsonNode options, CompletableFuture<String> responseFuture) {
         setLayout(new BorderLayout());

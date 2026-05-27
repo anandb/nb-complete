@@ -11,7 +11,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 public class McpManager {
-    private static final Logger LOG = new Logger(McpManager.class);
+    private static final Logger LOG = Logger.from(McpManager.class);
 
     private McpServer mcpServer;
     private volatile boolean mcpDisabled = false;

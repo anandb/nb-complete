@@ -57,7 +57,7 @@ new versions appear on the NetBeans plugin portal.
   it to cancel the response (the AI is notified immediately).
 - **Newline** — Press **Shift + Enter** to insert a line break without sending.
 - **History** — Press **Up Arrow** / **Down Arrow** to cycle through previously sent messages.
-- **Autocomplete** — Type `/` or `@` to trigger a popup with available commands, agents, and
+- **Autocomplete** — Type `/` to trigger a popup with available commands, agents, and
   mention suggestions.
 - **Attachments** — Click the **paperclip** icon to open an attachment menu with file checkboxes
   and a **Select File...** browser. You can also drag and drop files or paste screenshots directly
@@ -129,8 +129,6 @@ The assistant panel renders responses with structured formatting:
 
 ## Session Management
 
-- **Welcome Screen** — When no session is active, a welcome screen shows recent sessions for quick
-  re-opening and a **Start New Chat** button.
 - **Status Bar** — The header shows the current connection status: `Ready`, `Thinking...`,
   `Responding...`, or `Error` with details.
 - **Reload** — The **Reload Conversation** toolbar button fetches the latest message history from
@@ -151,9 +149,8 @@ The settings panel is accessible via `Tools > Options > Assistant`. Key settings
 - **Preamble (System Prompt)** — A global prompt prepended to every new session.
 - **Local Echo** — When enabled, your message appears instantly in the chat panel (before the
   server responds). Disabled by default.
-- **Session Idle Timeout** — Minutes of inactivity before the session is automatically cleaned up.
-- **User Icon** — Set a custom avatar; the preview area shows the current icon and right-clicking
-  clears it.
+- **Session Idle Timeout** — Minutes of inactivity before the connection is terminated and then re-established.
+- **User Icon** — Set a custom avatar; the preview area shows the current icon and right-clicking clears it.
 
 ---
 

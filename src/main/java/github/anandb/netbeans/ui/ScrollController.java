@@ -20,9 +20,12 @@ import javax.swing.JScrollPane;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
+import github.anandb.netbeans.support.Logger;
 import org.openide.util.NbBundle;
 
 public class ScrollController implements KeyEventDispatcher {
+    private static final Logger LOG = Logger.from(ScrollController.class);
+
     private static final Color SCROLL_BTN_COLOR_A = new Color(41, 98, 255, 200);
     private static final Color SCROLL_BTN_COLOR_B = new Color(41, 98, 255, 240);
 
@@ -135,7 +138,7 @@ public class ScrollController implements KeyEventDispatcher {
         int extent = vertical.getModel().getExtent();
         int value = vertical.getValue();
         int maximum = vertical.getMaximum();
-        return (value + extent >= maximum - 16);
+        return (value + extent >= maximum - 400);
     }
 
     public void positionScrollDownBtn(int parentWidth, int parentHeight) {

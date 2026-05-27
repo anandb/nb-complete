@@ -26,7 +26,7 @@ import static org.apache.commons.lang3.StringUtils.left;
 
 import org.openide.util.NbBundle;
 
-import github.anandb.netbeans.manager.SessionTitleMapper;
+import github.anandb.netbeans.manager.SessionManager;
 import github.anandb.netbeans.model.Session;
 
 final class WelcomeScreen {
@@ -65,7 +65,7 @@ final class WelcomeScreen {
 
             for (Session s : sessions) {
                 String title = defaultIfBlank(s.title(), NbBundle.getMessage(AssistantTopComponent.class, "LBL_ChatDefault", left(s.id(), 8)));
-                String label = SessionTitleMapper.getTitle(s.id(), title);
+                String label = SessionManager.getCustomTitle(s.id(), title);
                 String dir = s.effectiveDirectory();
                 JButton sessionBtn = createSelectionButton(label, dir);
                 sessionBtn.addActionListener(e -> onSessionSelected.accept(s.id()));

@@ -11,12 +11,10 @@ import org.netbeans.api.editor.EditorRegistry;
 import org.openide.awt.ActionID;
 import org.openide.awt.ActionReference;
 import org.openide.awt.ActionRegistration;
-import org.openide.util.NbBundle;
 
 @ActionID(category = "Edit", id = "github.anandb.netbeans.ui.SortLinesDescAction")
 @ActionRegistration(displayName = "#CTL_SortLinesDescAction")
 @ActionReference(path = "Editors/Popup", position = 301)
-@NbBundle.Messages("CTL_SortLinesDescAction=Sort Lines Descending")
 public class SortLinesDescAction implements ActionListener {
 
     @Override

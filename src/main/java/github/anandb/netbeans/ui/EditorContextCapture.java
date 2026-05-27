@@ -18,7 +18,7 @@ import github.anandb.netbeans.support.Logger;
 
 public final class EditorContextCapture {
 
-    private static final Logger LOG = new Logger(EditorContextCapture.class);
+    private static final Logger LOG = Logger.from(EditorContextCapture.class);
 
     private EditorContextCapture() {}
 

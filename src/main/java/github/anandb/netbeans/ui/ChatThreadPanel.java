@@ -37,26 +37,32 @@ import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.support.Logger;
+import org.openide.util.NbPreferences;
 
-import org.openide.util.NbBundle;
 
-@NbBundle.Messages({
-    "HINT_ScrollToBottom=Scroll to bottom",
-    "BTN_Allow=Allow",
-    "BTN_Deny=Deny",
-    "MSG_PermissionGranted=Permission Granted",
-    "MSG_PermissionDenied=Permission Denied",
-    "LBL_PermissionRequired=Permission Required",
-    "LBL_WelcomeToACP=Welcome to ACP",
-    "LBL_WelcomeBack=Welcome back!",
-    "MSG_NewChatPrompt=Ask questions, generate code, or have me explain anything.",
-    "MSG_ExistingChatPrompt=Continue a recent chat or start a new one.",
-    "BTN_StartNewChat=\u2728 Start New Chat",
-    "# {0} - folder path",
-    "LBL_InFolder=in {0}"
-})
 public class ChatThreadPanel extends JPanel {
-    private static final Logger LOG = new Logger(ChatThreadPanel.class);
+
+    // --- inner class: merged from MessageFilterManager -----------------------
+    static final class MessageFilterManager {
+        private static final String PREF_PREFIX = "messageFilter.";
+        private static final String[] MESSAGE_TYPES = {"tool", "thought", "assistant", "user"};
+        private MessageFilterManager() {}
+
+        static String[] getMessageTypes() { return MESSAGE_TYPES.clone(); }
+
+        static boolean isTypeHidden(String type) {
+            if (type == null) return false;
+            return NbPreferences.forModule(ACPOptionsPanel.class).getBoolean(PREF_PREFIX + type, false);
+        }
+
+        static void setTypeHidden(String type, boolean hidden) {
+            if (type == null) return;
+            NbPreferences.forModule(ACPOptionsPanel.class).putBoolean(PREF_PREFIX + type, hidden);
+        }
+    }
+    // -------------------------------------------------------------------------
+
+    private static final Logger LOG = Logger.from(ChatThreadPanel.class);
     private static final long serialVersionUID = 1L;
     private static final Pattern SECTION_SPLIT = Pattern.compile("(?m)^---[ \\t]*$");
     private static final int MAX_MESSAGES = 100;
@@ -85,7 +91,7 @@ public class ChatThreadPanel extends JPanel {
         messagesContainer.setLayout(new BoxLayout(messagesContainer, BoxLayout.Y_AXIS));
         messagesContainer.setOpaque(true);
         messagesContainer.setBackground(theme.sunkenBackground());
-        messagesContainer.setBorder(new EmptyBorder(0, 0, 90, 0));
+        messagesContainer.setBorder(new EmptyBorder(0, 0, 0, 0));
 
         scrollPane = new JScrollPane(messagesContainer);
 
@@ -254,7 +260,7 @@ public class ChatThreadPanel extends JPanel {
             lastUserTimestamp = -1L;
         }
 
-        boolean visible = !MessageFilterManager.isTypeHidden(type.roleName());
+        boolean visible = !ChatThreadPanel.MessageFilterManager.isTypeHidden(type.roleName());
         bubble.setVisible(visible);
         Component strut = Box.createVerticalStrut(4);
         strut.setVisible(visible);
@@ -433,7 +439,7 @@ public class ChatThreadPanel extends JPanel {
             Component[] comps = messagesContainer.getComponents();
             for (int i = 0; i < comps.length; i++) {
                 if (comps[i] instanceof MessageBubble bubble) {
-                    boolean visible = !MessageFilterManager.isTypeHidden(bubble.getRole());
+                    boolean visible = !ChatThreadPanel.MessageFilterManager.isTypeHidden(bubble.getRole());
                     comps[i].setVisible(visible);
                     // Trailing strut is always at i+1 (see addSingleBubble)
                     if (i + 1 < comps.length) {

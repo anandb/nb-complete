@@ -8,7 +8,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 
 public class SessionStateMachine {
-    private static final Logger LOG = new Logger(SessionStateMachine.class);
+    private static final Logger LOG = Logger.from(SessionStateMachine.class);
 
     private volatile SessionState state = SessionState.IDLE;
     private final List<Consumer<SessionState>> listeners = new CopyOnWriteArrayList<>();

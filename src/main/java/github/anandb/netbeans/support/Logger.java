@@ -14,8 +14,12 @@ public class Logger {
 
     private final java.util.logging.Logger acpLogger;
 
-    public Logger(Class<?> clazz) {
+    private Logger(Class<?> clazz) {
         this.acpLogger = java.util.logging.Logger.getLogger(clazz.getName());
+    }
+
+    public static Logger from(Class<?> clazz) {
+        return new Logger(clazz);
     }
 
     public static void setSession(String sessionId, String sessionName) {

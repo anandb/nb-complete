@@ -3,18 +3,9 @@ package github.anandb.netbeans.contract;
 import java.util.concurrent.CompletableFuture;
 import org.openide.util.Lookup;
 
-/**
- * Handles a slash command entered in the chat input.
- * Implementations process commands like /models, /agents, /level, /sessions, /new.
- */
+/** Handles a slash command entered in the chat input. */
 public interface SlashCommandHandler {
 
-    /**
-     * Executes the slash command.
-     *
-     * @param args    the command arguments (may be empty)
-     * @param context the NetBeans lookup context (editor, project, etc.)
-     * @return future resolving to {@code true} if command was handled or executed
-     */
+    /** @return future resolving to true if handled. */
     CompletableFuture<Boolean> handle(String args, Lookup context);
 }

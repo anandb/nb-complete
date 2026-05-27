@@ -7,6 +7,7 @@ import com.vladsch.flexmark.util.data.MutableDataSet;
 
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.TextScanner;
+import static github.anandb.netbeans.ui.UIUtils.MONO_STACK;
 
 import java.util.List;
 
@@ -14,7 +15,7 @@ public final class HtmlContentPreparer {
 
     private HtmlContentPreparer() {}
 
-    private static final Logger LOG = new Logger(HtmlContentPreparer.class);
+    private static final Logger LOG = Logger.from(HtmlContentPreparer.class);
 
     private static final Parser FLEXMARK_PARSER;
     private static final HtmlRenderer FLEXMARK_RENDERER;
@@ -71,7 +72,7 @@ public final class HtmlContentPreparer {
 
         String bodyStyle = "margin: 0; padding: 0; text-align: left !important; width: 100%;";
         if (hasArt) {
-            String monoStack = FontStacks.MONO_STACK;
+            String monoStack = MONO_STACK;
             customCss += " .ascii-art { font-family: " + monoStack + "; line-height: 1.0; }";
             html = html.replace("  ", " &nbsp;");
             html = html.replace("\n", "<br/>");

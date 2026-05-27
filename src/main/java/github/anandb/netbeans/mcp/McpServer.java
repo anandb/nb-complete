@@ -3,6 +3,7 @@ package github.anandb.netbeans.mcp;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
+import java.security.SecureRandom;
 import java.util.logging.Level;
 
 import github.anandb.netbeans.manager.PluginSettings;
@@ -16,17 +17,28 @@ import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 
-@NbBundle.Messages("ERR_StartJettyFailed=Failed to start Jetty server")
 public class McpServer {
 
-    private static final Logger LOG = new Logger(McpServer.class);
+    private static final Logger LOG = Logger.from(McpServer.class);
     private static final int MAX_THREADS = 20;
+    private static final SecureRandom RANDOM = new SecureRandom();
 
     private final ObjectMapper mapper = MapperSupplier.get();
     private final McpTools mcpTools = new McpTools(mapper);
+    private final String token;
     private Server server;
     private ServerConnector connector;
     private RequestProcessor asyncExecutor;
+
+    public McpServer() {
+        byte[] bytes = new byte[16];
+        RANDOM.nextBytes(bytes);
+        StringBuilder sb = new StringBuilder(32);
+        for (byte b : bytes) {
+            sb.append(String.format("%02x", b));
+        }
+        token = sb.toString();
+    }
 
     public synchronized void start() throws IOException {
         if (server != null) {
@@ -41,6 +53,7 @@ public class McpServer {
         server = new Server(0);
 
         connector = new ServerConnector(server);
+        connector.setHost("127.0.0.1");
         connector.setIdleTimeout(1000 * PluginSettings.getSessionIdleTimeout());
         connector.setAcceptQueueSize(100);
         server.addConnector(connector);
@@ -48,7 +61,7 @@ public class McpServer {
         ServletContextHandler context = new ServletContextHandler(ServletContextHandler.NO_SESSIONS);
         context.setContextPath("/");
 
-        context.addServlet(new ServletHolder(new MessageServlet(mapper, asyncExecutor, mcpTools)), "/mcp");
+        context.addServlet(new ServletHolder(new MessageServlet(mapper, asyncExecutor, mcpTools, token)), "/mcp");
 
         server.setHandler(context);
         try {
@@ -85,7 +98,11 @@ public class McpServer {
         if (connector == null) {
             return null;
         }
-        return "http://localhost:" + connector.getLocalPort() + "/mcp";
+        return "http://127.0.0.1:" + connector.getLocalPort() + "/mcp?token=" + token;
+    }
+
+    public String getToken() {
+        return token;
     }
 
     public McpTools getMcpTools() {

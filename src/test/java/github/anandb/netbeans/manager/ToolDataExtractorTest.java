@@ -1,6 +1,6 @@
 package github.anandb.netbeans.manager;
 
-import github.anandb.netbeans.model.MessageClassification;
+import github.anandb.netbeans.model.ModelRecords.MessageClassification;
 import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.SessionUpdate;
 import org.junit.jupiter.api.Test;

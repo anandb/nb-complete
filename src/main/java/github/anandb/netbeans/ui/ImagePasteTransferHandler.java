@@ -26,17 +26,6 @@ import org.openide.util.RequestProcessor;
 
 import github.anandb.netbeans.model.AttachedFile;
 
-@NbBundle.Messages({
-    "# {0} - error message",
-    "ERR_ReadClipboard=Failed to read clipboard: {0}",
-    "# {0} - error message",
-    "ERR_SavePastedImage=Failed to save pasted image: {0}",
-    "# {0} - error message",
-    "ERR_ProcessPastedFile=Failed to process pasted file: {0}",
-    "ERR_InvalidDimensions=Pasted image has invalid dimensions",
-    "ERR_FileTooLarge=File too large (max 10MB)",
-    "ERR_NoPngWriter=Failed to save pasted image - no PNG writer available"
-})
 public class ImagePasteTransferHandler extends TransferHandler {
 
     private static final long serialVersionUID = 1L;

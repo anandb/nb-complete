@@ -29,21 +29,15 @@ import javax.swing.event.PopupMenuEvent;
 import javax.swing.event.PopupMenuListener;
 
 import github.anandb.netbeans.manager.SessionManager;
-import github.anandb.netbeans.model.ConfigItem;
+import github.anandb.netbeans.model.ModelRecords.ConfigItem;
 import github.anandb.netbeans.model.SessionConfigOption;
 import github.anandb.netbeans.model.SessionConfigSelectOption;
 import github.anandb.netbeans.support.Logger;
 import org.openide.util.NbBundle;
 
-@NbBundle.Messages({
-    "LBL_Agent=Agent:",
-    "LBL_Model=Model:",
-    "LBL_Thinking=Thinking:",
-    "HINT_CopyModelID=Copy Model ID"
-})
 public class ConfigPanelController {
 
-    private static final Logger LOG = new Logger(ConfigPanelController.class);
+    private static final Logger LOG = Logger.from(ConfigPanelController.class);
 
     private final JPanel configPanel;
     private final JComboBox<ConfigItem> modeCombo;
@@ -132,26 +126,18 @@ public class ConfigPanelController {
         thinkingCombo.removeKeyListener(listener);
     }
 
-    public void popupModelCombo() {
+    public void popupCombo(JComboBox<ConfigItem> combo) {
         SwingUtilities.invokeLater(() -> {
-            modelCombo.requestFocusInWindow();
-            SwingUtilities.invokeLater(() -> modelCombo.setPopupVisible(true));
+            combo.requestFocusInWindow();
+            SwingUtilities.invokeLater(() -> combo.setPopupVisible(true));
         });
     }
 
-    public void popupModeCombo() {
-        SwingUtilities.invokeLater(() -> {
-            modeCombo.requestFocusInWindow();
-            SwingUtilities.invokeLater(() -> modeCombo.setPopupVisible(true));
-        });
-    }
+    JComboBox<ConfigItem> getModelCombo() { return modelCombo; }
 
-    public void popupThinkingCombo() {
-        SwingUtilities.invokeLater(() -> {
-            thinkingCombo.requestFocusInWindow();
-            SwingUtilities.invokeLater(() -> thinkingCombo.setPopupVisible(true));
-        });
-    }
+    JComboBox<ConfigItem> getModeCombo() { return modeCombo; }
+
+    JComboBox<ConfigItem> getThinkingCombo() { return thinkingCombo; }
 
     public void updateConfigControls(List<SessionConfigOption> options) {
         updateConfigControls(options, false);

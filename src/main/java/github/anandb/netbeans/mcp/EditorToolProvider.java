@@ -26,7 +26,7 @@ import org.openide.text.Line;
 
 public class EditorToolProvider {
 
-    private static final Logger LOG = new Logger(EditorToolProvider.class);
+    private static final Logger LOG = Logger.from(EditorToolProvider.class);
     private final ObjectMapper mapper = MapperSupplier.get();
 
     public void registerTools(McpTools mcpTools) {

@@ -23,7 +23,7 @@ import github.anandb.netbeans.support.Logger;
  */
 final class IconResourceManager {
 
-    private static final Logger LOG = new Logger(IconResourceManager.class);
+    private static final Logger LOG = Logger.from(IconResourceManager.class);
 
     private IconResourceManager() {}
 
