@@ -215,7 +215,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         cwdRow.add(cwdLabel, BorderLayout.CENTER);
 
         String quickstartUrl = "https://github.com/anandb/nb-complete/blob/main/QUICKSTART.md";
-        String feedbackUrl = "https://forms.gle/TzcugfhSEReLcR9Z6";
+        String feedbackUrl = "https://forms.gle/ZQn5Wy2aDSSpkzkaA";
 
         helpBtn = UIUtils.createToolbarButton("help.svg",
             NbBundle.getMessage(AssistantTopComponent.class, "HINT_QuickstartGuide"), null);
