@@ -84,6 +84,17 @@ public class FitEditorPane extends JTextPane {
     }
 
     @Override
+    public void doLayout() {
+        try {
+            super.doLayout();
+        } catch (ArrayIndexOutOfBoundsException e) {
+            // JDK bug: BoxView.getOffset() assumes non-empty view children
+            // during HTML layout when the view tree hasn't been built yet.
+            // Safe to ignore — layout will succeed on the next pass.
+        }
+    }
+
+    @Override
     public float getAlignmentX() {
         return Component.LEFT_ALIGNMENT;
     }

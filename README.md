@@ -65,11 +65,62 @@ The project follows an event-driven architecture integrated into the NetBeans Pl
 
 ## Source Organization
 
-- `src/main/java/github/anandb/netbeans/`
-  - `manager/`: Core orchestration and protocol clients.
-  - `model/`: Data models compliant with the ACP specification.
-  - `project/`: Workspace and project API integration.
-  - `ui/`: Interface components and theme management.
+All source lives under `src/main/java/github/anandb/netbeans/`:
+
+| Package | Files | Role |
+| --- | --- | --- |
+| `contract/` | 8 | Service interfaces (data extraction, UI callbacks, session listeners, permission & request handlers) |
+| `manager/` | 13 | Core orchestration, protocol clients, session management, process lifecycle |
+| `manager/strategy/` | 6 | Strategy pattern classes that dispatch SSE updates by message type |
+| `mcp/` | 9 | MCP server integration (editor tools, tool definitions, message servlet) |
+| `model/` | 13 | ACP-compliant data models (session, messages, updates, config options) |
+| `project/` | 3 | NetBeans lifecycle hooks (`@OnStart`, `@OnStop`) and project manager |
+| `support/` | 4 | Utilities (logging, JSON mapping, text scanning) |
+| `ui/` | 40+ | All Swing components (chat window, message bubbles, theming, options panel) |
+
+---
+
+## Code Reading Path
+
+For a guided walkthrough mapped to the plugin's execution flow, read files in this order:
+
+### Phase 1: Entry & Lifecycle
+1. [`project/ACPStartup.java`](src/main/java/github/anandb/netbeans/project/ACPStartup.java) — NetBeans `@OnStart` hook
+2. [`project/ACPShutdown.java`](src/main/java/github/anandb/netbeans/project/ACPShutdown.java) — `@OnStop` cleanup
+3. [`src/main/resources/github/anandb/netbeans/ui/layer.xml`](src/main/resources/github/anandb/netbeans/ui/layer.xml) — NetBeans registration (window, shortcut, options)
+
+### Phase 2: Server Process
+4. [`manager/ProcessManager.java`](src/main/java/github/anandb/netbeans/manager/ProcessManager.java) — Spawns/owns the `opencode acp` subprocess; central request dispatch
+5. [`manager/BinaryResolver.java`](src/main/java/github/anandb/netbeans/manager/BinaryResolver.java) — Locates the binary on PATH
+6. [`manager/CommandBuilder.java`](src/main/java/github/anandb/netbeans/manager/CommandBuilder.java) — Builds CLI args
+7. [`manager/AcpProtocolClient.java`](src/main/java/github/anandb/netbeans/manager/AcpProtocolClient.java) — JSON-RPC over stdin/stdout, SSE read loop, pending request tracking
+
+### Phase 3: Session Management
+8. [`manager/SessionManager.java`](src/main/java/github/anandb/netbeans/manager/SessionManager.java) — Session CRUD, state machine, SSE routing
+9. [`manager/SessionStateMachine.java`](src/main/java/github/anandb/netbeans/manager/SessionStateMachine.java) — Finite-state machine for session lifecycle
+10. [`model/Session.java`](src/main/java/github/anandb/netbeans/model/Session.java) — Session data record
+11. [`model/SessionUpdate.java`](src/main/java/github/anandb/netbeans/model/SessionUpdate.java) — SSE notification payload model
+12. [`model/Message.java`](src/main/java/github/anandb/netbeans/model/Message.java) — Message model (prompts, tool calls, results)
+
+### Phase 4: Strategy Dispatch (SSE handler chain)
+13. [`contract/DataExtractionStrategy.java`](src/main/java/github/anandb/netbeans/contract/DataExtractionStrategy.java) — Interface for update → UI transform
+14. [`contract/UIHandler.java`](src/main/java/github/anandb/netbeans/contract/UIHandler.java) — Callback interface for rendering
+15. [`manager/strategy/StrategyRegistry.java`](src/main/java/github/anandb/netbeans/manager/strategy/StrategyRegistry.java) — Routes `SessionUpdate` by `MessageType`
+16. [`manager/strategy/SimpleStrategyType.java`](src/main/java/github/anandb/netbeans/manager/strategy/SimpleStrategyType.java) — Enum handling simple chunk types
+
+### Phase 5: UI Rendering
+17. [`ui/AssistantTopComponent.java`](src/main/java/github/anandb/netbeans/ui/AssistantTopComponent.java) — Main chat window (NetBeans TopComponent)
+18. [`ui/ComponentLifecycleHandler.java`](src/main/java/github/anandb/netbeans/ui/ComponentLifecycleHandler.java) — Wires lifecycle events → managers
+19. [`ui/SessionLifecycleHandler.java`](src/main/java/github/anandb/netbeans/ui/SessionLifecycleHandler.java) — Glue: receives SSE updates, calls strategies, invokes UI
+20. [`ui/ChatThreadPanel.java`](src/main/java/github/anandb/netbeans/ui/ChatThreadPanel.java) — Thread of message bubbles with streaming animation
+21. [`ui/MessageBubble.java`](src/main/java/github/anandb/netbeans/ui/MessageBubble.java) — Individual message turn (thought, tool, code segments)
+22. [`ui/MessageSender.java`](src/main/java/github/anandb/netbeans/ui/MessageSender.java) — Send/cancel logic
+
+### Phase 6: Supporting
+23. [`model/ProcessedMessage.java`](src/main/java/github/anandb/netbeans/model/ProcessedMessage.java) — The rendered output model consumed by UI
+24. [`manager/strategy/MessageStrategy.java`](src/main/java/github/anandb/netbeans/manager/strategy/MessageStrategy.java) — Most complex strategy (final message assembly)
+25. [`mcp/McpManager.java`](src/main/java/github/anandb/netbeans/mcp/McpManager.java) — MCP server integration layer
+26. [`contract/RequestHandler.java`](src/main/java/github/anandb/netbeans/contract/RequestHandler.java) — Interface for incoming RPC requests from the server
 
 ---
 

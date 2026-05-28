@@ -5,7 +5,7 @@
 - **Project type**: NetBeans IDE plugin (NBM packaging)
 - **Language**: Java 17
 - **Build tool**: Maven
-- **Current Version**: 1.5.24
+- **Current Version**: 1.5.25
 
 ## Build Commands
 - Build: `mvn package` (runs checkstyle + javadoc + tests)

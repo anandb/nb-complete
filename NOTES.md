@@ -1,5 +1,11 @@
 # Release Notes
 
+## v1.5.25 (Changes since v1.5.24)
+
+### UI Fixes
+- **CollapsibleToolPane header**: Fixed height jitter when copy button visibility toggles — wrapped in fixed-size placeholder panel.
+- **ScrollController**: Increased auto-scroll threshold from 16px to 400px to reduce premature scroll-to-bottom activation.
+
 ## v1.5.24 (Changes since v1.5.23)
 
 ### MCP & Editor Context

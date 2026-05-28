@@ -71,12 +71,12 @@ public class ChatThreadPanel extends JPanel {
     private final JPanel messagesContainer;
     private final JScrollPane scrollPane;
     private final JLayeredPane layeredPane;
-    private final ScrollController scrollController;
     private final Timer streamFlushTimer;
 
     private MessageBubble activeStreamBubble = null;
     private volatile boolean allBlocksExpanded = false;
     private volatile boolean keepOlderMessages = false;
+    private final transient ScrollController scrollController;
     private final transient MessageTransformer messageTransformer;
 
     public ChatThreadPanel() {

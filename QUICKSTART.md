@@ -9,6 +9,7 @@ new versions appear on the NetBeans plugin portal.
 ## Table of Contents
 
 - [Setup](#setup)
+- [Free Models](#free-models)
 - [Keyboard & Navigation](#keyboard--navigation)
 - [Input Area](#input-area)
 - [Slash Commands](#slash-commands)
@@ -33,6 +34,22 @@ new versions appear on the NetBeans plugin portal.
    override, set the path manually under `Options > Assistant`.
 5. **Preamble** — Define a global system prompt in `Options > Assistant > Preamble`. This is
    prepended to every new session alongside your OpenCode agent prompts.
+
+---
+
+## Free Models
+
+The following models are available for free at this time (28-May-2026) via the OpenCode provider:
+
+| Model | ID | Notes |
+|-------|----|-------|
+| **Big Pickle** | `opencode/big-pickle` | General-purpose reasoning model |
+| **Nemotron 3 Super Free** | `opencode/nemotron-3-super-free` | NVIDIA's free-tier model |
+| **DeepSeek V4 Flash Free** | `opencode/deepseek-v4-flash-free` | Fast, lightweight model for quick tasks |
+| **Mimo V2.5 Free** | `opencode/mimo-v2.5-free` | Vision-capable model |
+
+These can be selected from the model dropdown in the options panel. No API key is required for
+these models — they are provided as part of the free OpenCode tier.
 
 ---
 
