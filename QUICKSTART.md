@@ -94,8 +94,8 @@ handled locally:
 | `/agents` | Opens the agent selector dropdown |
 | `/level` | Opens the thinking level selector dropdown |
 | `/sessions` | Opens the session switcher dropdown |
-| `/compact` | Prints a placeholder about context compression (local echo only) |
-| `/dcp` | Displays the raw message ID of the last assistant message (debug) |
+| `/compact` | Sends a context compression signal to the server (summarizes conversation) |
+| `/dcp` | Dynamic Context Pruning - [another compression signal](https://github.com/Opencode-DCP/opencode-dynamic-context-pruning), needs the DCP Skill |
 
 Skills (e.g., `plan`, `explore`) are delegated to the OpenCode agent.
 

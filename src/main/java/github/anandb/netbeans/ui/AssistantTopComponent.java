@@ -215,30 +215,25 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         cwdRow.add(cwdLabel, BorderLayout.CENTER);
 
         String quickstartUrl = "https://github.com/anandb/nb-complete/blob/main/QUICKSTART.md";
+        String feedbackUrl = "https://forms.gle/TzcugfhSEReLcR9Z6";
+
         helpBtn = UIUtils.createToolbarButton("help.svg",
             NbBundle.getMessage(AssistantTopComponent.class, "HINT_QuickstartGuide"), null);
         helpBtn.setContentAreaFilled(false);
         helpBtn.setBorderPainted(false);
-        helpBtn.addActionListener(e -> {
-            if (Desktop.isDesktopSupported()
-                    && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
-                try {
-                    Desktop.getDesktop().browse(new URI(quickstartUrl));
-                    return;
-                } catch (IOException | URISyntaxException ex) {
-                    LOG.warn("Failed to open quickstart URL: {0}", ex.getMessage());
-                }
-            }
-            // Fallback: copy URL to clipboard
-            try {
-                Toolkit.getDefaultToolkit().getSystemClipboard()
-                        .setContents(new StringSelection(quickstartUrl), null);
-                statusController.setStatus("STATUS_QuickstartCopied", quickstartUrl);
-            } catch (Exception ex) {
-                LOG.warn("Failed to copy quickstart URL to clipboard: {0}", ex.getMessage());
-            }
-        });
-        cwdRow.add(helpBtn, BorderLayout.EAST);
+        helpBtn.addActionListener(e -> openOrCopyUrl(quickstartUrl, "STATUS_QuickstartCopied"));
+
+        JButton feedbackBtn = UIUtils.createToolbarButton("feedback.svg",
+            NbBundle.getMessage(AssistantTopComponent.class, "HINT_Feedback"), null);
+        feedbackBtn.setContentAreaFilled(false);
+        feedbackBtn.setBorderPainted(false);
+        feedbackBtn.addActionListener(e -> openOrCopyUrl(feedbackUrl, "STATUS_FeedbackCopied"));
+
+        JPanel rightButtons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 2, 0));
+        rightButtons.setOpaque(false);
+        rightButtons.add(feedbackBtn);
+        rightButtons.add(helpBtn);
+        cwdRow.add(rightButtons, BorderLayout.EAST);
 
         startHelpButtonFlash();
 
@@ -819,6 +814,29 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             return command;
         }
         return command.substring(0, 77) + "...";
+    }
+
+    /** Open a URL in the browser, or copy to clipboard as fallback. */
+    private void openOrCopyUrl(String url, String statusKey) {
+        if (Desktop.isDesktopSupported()
+                && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
+            try {
+                Desktop.getDesktop().browse(new URI(url));
+                return;
+            } catch (IOException | URISyntaxException ex) {
+                LOG.warn("Failed to open URL: {0}", ex.getMessage());
+            }
+        }
+        // Fallback: copy URL to clipboard
+        try {
+            Toolkit.getDefaultToolkit().getSystemClipboard()
+                    .setContents(new StringSelection(url), null);
+            if (statusKey != null) {
+                statusController.setStatus(statusKey, url);
+            }
+        } catch (Exception ex) {
+            LOG.warn("Failed to copy URL to clipboard: {0}", ex.getMessage());
+        }
     }
 
     /** Flash the help icon for at least 5 seconds on startup for discoverability. */
