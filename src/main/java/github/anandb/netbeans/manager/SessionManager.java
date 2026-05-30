@@ -34,7 +34,7 @@ import org.openide.util.Lookup;
 import java.util.logging.Level;
 
 import github.anandb.netbeans.contract.SessionListener;
-import github.anandb.netbeans.manager.strategy.ToolCallUpdateStrategy;
+import github.anandb.netbeans.manager.strategy.StrategyRegistry;
 import github.anandb.netbeans.model.SessionState;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.Logger;
@@ -391,7 +391,7 @@ public class SessionManager {
     }
 
     public void loadSession(String sessionId, boolean isStartup) {
-        ToolCallUpdateStrategy.invalidateSession(sessionId);
+        StrategyRegistry.invalidateSession(sessionId);
         if (!stateMachine.transitionTo(SessionState.LOADING)) {
             LOG.warn("Cannot load session in state {0}", stateMachine.getState());
             return;
@@ -486,7 +486,7 @@ public class SessionManager {
             }
         }
         if (sessionId != null) {
-            ToolCallUpdateStrategy.invalidateSession(sessionId);
+            StrategyRegistry.invalidateSession(sessionId);
         }
     }
 

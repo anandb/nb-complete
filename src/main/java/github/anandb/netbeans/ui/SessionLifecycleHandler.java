@@ -7,7 +7,6 @@ import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
-import github.anandb.netbeans.contract.DataExtractionStrategy;
 import github.anandb.netbeans.contract.SessionListener;
 import github.anandb.netbeans.contract.UIHandler;
 import github.anandb.netbeans.manager.SessionManager;
@@ -116,39 +115,36 @@ public class SessionLifecycleHandler implements SessionListener {
         String msgId = update.update() != null ? update.update().messageId() : null;
         LOG.fine("UI received session update: type={0}, msgId={1}", type, msgId);
 
-        DataExtractionStrategy strategy = StrategyRegistry.getInstance().select(update);
-        if (strategy != null) {
-            strategy.extract(update, new UIHandler() {
-                @Override
-                public void displayMessage(ProcessedMessage msg) {
-                    SwingUtilities.invokeLater(() -> {
-                        chatPanel.addMessage(msg);
-                        if (!turnEnded) {
-                            statusController.updateButtonState(true);
-                        }
-                    });
-                }
-
-                @Override
-                public void updateConfig(List<SessionConfigOption> options) {
-                    if (options != null) {
-                        configPanelController.updateConfigControls(options);
+        StrategyRegistry.getInstance().handle(update, new UIHandler() {
+            @Override
+            public void displayMessage(ProcessedMessage msg) {
+                SwingUtilities.invokeLater(() -> {
+                    chatPanel.addMessage(msg);
+                    if (!turnEnded) {
+                        statusController.updateButtonState(true);
                     }
-                }
+                });
+            }
 
-                @Override
-                public void refreshSessions() {
-                    SessionManager.getInstance().refreshSessions();
+            @Override
+            public void updateConfig(List<SessionConfigOption> options) {
+                if (options != null) {
+                    configPanelController.updateConfigControls(options);
                 }
+            }
 
-                @Override
-                public void updateUsage(long used, long size) {
-                    SwingUtilities.invokeLater(() ->
-                        statusController.setTooltip("HINT_ContextUsage", used, size)
-                    );
-                }
-            });
-        }
+            @Override
+            public void refreshSessions() {
+                SessionManager.getInstance().refreshSessions();
+            }
+
+            @Override
+            public void updateUsage(long used, long size) {
+                SwingUtilities.invokeLater(() ->
+                    statusController.setTooltip("HINT_ContextUsage", used, size)
+                );
+            }
+        });
 
         // Status updates
         Boolean isThinking = update.isThinking();
