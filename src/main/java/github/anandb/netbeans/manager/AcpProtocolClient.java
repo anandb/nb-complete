@@ -108,6 +108,7 @@ public class AcpProtocolClient implements Closeable {
             String json = MAPPER.writeValueAsString(request);
             LOG.fine("[ACP] Sending request: {0}", method);
             writer.println(json);
+            touch();
             long sendEnd = System.nanoTime();
             long sendMs = (sendEnd - sendStart) / 1_000_000;
             LOG.info("[ACP] Request {0} (id={1}) sent in {2}ms", method, id, sendMs);
@@ -154,6 +155,7 @@ public class AcpProtocolClient implements Closeable {
             String json = MAPPER.writeValueAsString(notification);
             LOG.fine("[ACP] Sending notification: {0}", method);
             writer.println(json);
+            touch();
             if (writer.checkError()) {
                 LOG.severe("Failed to write notification");
                 notifyConnectionError(new IOException("Failed to write notification"));

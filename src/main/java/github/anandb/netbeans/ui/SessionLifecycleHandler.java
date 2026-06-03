@@ -111,7 +111,7 @@ public class SessionLifecycleHandler implements SessionListener {
 
     @Override
     public void onSessionUpdate(SessionUpdate update) {
-        String type = update.update() != null ? update.update().type().name() : null;
+        String type = update.update() != null && update.update().type() != null ? update.update().type().name() : null;
         String msgId = update.update() != null ? update.update().messageId() : null;
         LOG.fine("UI received session update: type={0}, msgId={1}", type, msgId);
 

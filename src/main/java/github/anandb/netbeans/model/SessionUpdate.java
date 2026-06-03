@@ -75,7 +75,7 @@ public record SessionUpdate(
     // Convenience methods to maintain backward compatibility in some logic if needed
     public String type() {
         UpdateData ud = update();
-        return ud != null ? ud.type().name() : null;
+        return ud != null && ud.type() != null ? ud.type().name() : null;
     }
 
     public Message message() {

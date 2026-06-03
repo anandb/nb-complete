@@ -230,6 +230,9 @@ public class StrategyRegistry {
 
     private String reClassify(SessionUpdate update) {
         String type = update.type();
+        if (update.update() == null) {
+            return type;
+        }
         try {
             JsonNode content = update.content();
             String text = (content != null && content.isObject() && content.has("text"))
