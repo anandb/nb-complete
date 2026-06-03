@@ -116,7 +116,6 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         setName(NbBundle.getMessage(AssistantTopComponent.class, "CTL_AssistantTopComponent"));
         setToolTipText(NbBundle.getMessage(AssistantTopComponent.class, "HINT_AssistantTopComponent"));
 
-        putClientProperty("TabDisplayer.Closable", false);
         setLayout(new BorderLayout());
         chatPanel = new ChatThreadPanel();
 
@@ -545,11 +544,6 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     }
 
     @Override
-    public void componentOpened() {
-        componentLifecycleHandler.componentOpened();
-    }
-
-    @Override
     public void componentActivated() {
         componentLifecycleHandler.componentActivated();
     }
@@ -560,28 +554,43 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         componentLifecycleHandler.componentDeactivated();
     }
 
-    private boolean allowClose = false;
-
-    @Override
-    public boolean canClose() {
-        return allowClose;
-    }
-
     public void toggleVisibility() {
         if (isOpened()) {
-            // Hide by closing, but prevent full dispose
-            allowClose = true;
             close();
-            allowClose = false;
         } else {
             open();
             requestActive();
         }
     }
 
+    /**
+     * Toggles minimize/restore for the assistant panel.
+     * Resources (listeners, handlers, messages) stay alive across all close/reopen cycles.
+     */
+    public void minimizeToDock() {
+        if (isOpened()) {
+            close();
+        } else {
+            open();
+            requestActive();
+        }
+    }
+
+    /** Tracks whether first-time initialization has run. */
+    private transient boolean initialized = false;
+
     @Override
     public void componentClosed() {
-        componentLifecycleHandler.componentClosed();
+        // Resources (listeners, handlers, messages) stay alive across all close/reopen cycles.
+    }
+
+    @Override
+    public void componentOpened() {
+        if (!initialized) {
+            initialized = true;
+            componentLifecycleHandler.componentOpened();
+        }
+        // On subsequent opens, resources are already alive — no reinit needed.
     }
 
     @Override

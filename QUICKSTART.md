@@ -39,7 +39,8 @@ new versions appear on the NetBeans plugin portal.
 
 ## Free Models
 
-The following models are available for free at this time (28-May-2026) via the OpenCode provider:
+If you don't have an OpenAI, Gemini or other subscription, the following models are available for
+free at this time (28-May-2026) via the OpenCode provider, and might be worth trying.
 
 | Model | ID | Notes |
 |-------|----|-------|

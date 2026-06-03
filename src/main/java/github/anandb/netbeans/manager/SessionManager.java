@@ -371,12 +371,13 @@ public class SessionManager {
                     this.lastProjectDir = session.effectiveDirectory();
                     Logger.setSession(session.id(), session.title());
 
-                    SwingUtilities.invokeLater(() -> {
-                        stateMachine.transitionTo(SessionState.STREAMING);
-                        notifySessionLoaded(session.id(), session.configOptions(), true);
-                        refreshSessions();
-                        sendPreamble(session.id());
-                    });
+                    // Run on the CompletableFuture thread for consistency with loadSession
+                    // The state machine is thread-safe and listeners marshall their own
+                    // UI work onto the EDT, so an explicit invokeLater hop here is unnecessary.
+                    stateMachine.transitionTo(SessionState.STREAMING);
+                    notifySessionLoaded(session.id(), session.configOptions(), true);
+                    refreshSessions();
+                    sendPreamble(session.id());
                 })
                 .exceptionally(ex -> {
                     LOG.severe("Failed to create session", ex);
@@ -512,17 +513,15 @@ public class SessionManager {
 
     private void scheduleStopRecovery() {
         RequestProcessor.getDefault().post(() -> {
-            if (stateMachine.getState() == SessionState.STOPPING) {
+            if (stateMachine.transitionToIf(SessionState.STOPPING, SessionState.STREAMING)) {
                 LOG.info("Safety timeout fired: transitioning STOPPING -> STREAMING");
-                stateMachine.transitionTo(SessionState.STREAMING);
             }
         }, 5000);
     }
 
     public void onTurnEnded() {
-        if (stateMachine.getState() == SessionState.STOPPING) {
+        if (stateMachine.transitionToIf(SessionState.STOPPING, SessionState.STREAMING)) {
             LOG.info("onTurnEnded: transitioning STOPPING -> STREAMING");
-            stateMachine.transitionTo(SessionState.STREAMING);
         } else {
             LOG.fine("onTurnEnded: current state={0} (no transition needed)", stateMachine.getState());
         }

@@ -10,8 +10,9 @@ import java.util.function.Consumer;
 public class SessionStateMachine {
     private static final Logger LOG = Logger.from(SessionStateMachine.class);
 
-    private volatile SessionState state = SessionState.IDLE;
     private final List<Consumer<SessionState>> listeners = new CopyOnWriteArrayList<>();
+    private final Object _lock = new Object();
+    private volatile SessionState state = SessionState.IDLE;
 
     public SessionState getState() {
         return state;
@@ -25,13 +26,34 @@ public class SessionStateMachine {
         listeners.remove(listener);
     }
 
-    public synchronized boolean transitionTo(SessionState newState) {
-        SessionState current = this.state;
-        if (!current.canTransitionTo(newState)) {
-            LOG.warn("Invalid state transition: {0} -> {1}", new Object[]{current, newState});
-            return false;
+    public boolean transitionTo(SessionState newState) {
+        return doTransition(null, newState);
+    }
+
+    public boolean transitionToIf(SessionState expectedCurrent, SessionState newState) {
+        return doTransition(expectedCurrent, newState);
+    }
+
+    public boolean doTransition(SessionState expectedCurrent, SessionState newState) {
+        SessionState current;
+        synchronized(_lock) {
+            current = this.state;
+            if (expectedCurrent != null && current != expectedCurrent) {
+                LOG.fine("Skipping Transition to {0}: expected current {1} but was {2}",
+                        new Object[]{newState, expectedCurrent, current});
+                return false;
+            }
+
+            if (!current.canTransitionTo(newState)) {
+                LOG.warn("Invalid state transition: {0} -> {1}", new Object[]{current, newState});
+                return false;
+            }
+
+            this.state = newState;
         }
-        this.state = newState;
+
+        // Notify outside the monitor: listener callbacks run arbitrary code
+        // (and may acquire other locks, so holding onto the lock here risks deadlock.
         LOG.fine("State transition: {0} -> {1}", new Object[]{current, newState});
         notifyListeners(newState);
         return true;

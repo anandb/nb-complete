@@ -46,9 +46,8 @@ import github.anandb.netbeans.mcp.McpManager;
 
 @ServiceProvider(service = ProcessManager.class)
 public class ProcessManager {
-
     private static final Logger LOG = Logger.from(ProcessManager.class);
-
+    private static volatile ProcessManager INSTANCE;
     private final SlashCommandInterceptor slashCommandInterceptor = new SlashCommandInterceptor();
 
     public SlashCommandInterceptor getSlashCommandInterceptor() {
@@ -67,11 +66,11 @@ public class ProcessManager {
     private volatile CompletableFuture<Void> readyFuture = new CompletableFuture<>();
 
     private final List<Consumer<SessionUpdate>> sseListeners = new CopyOnWriteArrayList<>();
-    private final List<SessionUpdate.AvailableCommand> availableCommands = new CopyOnWriteArrayList<>();
-    private PermissionHandler permissionHandler;
-    private Consumer<String> statusListener;
-    private Runnable crashHandler;
-    private Runnable readyHandler;
+    private volatile List<SessionUpdate.AvailableCommand> availableCommands = List.of();
+    private volatile PermissionHandler permissionHandler;
+    private volatile Consumer<String> statusListener;
+    private volatile Runnable crashHandler;
+    private volatile Runnable readyHandler;
     private volatile boolean isClosing = false;
     private int restartCount = 0;
     private long lastRestartTime = 0;
@@ -91,9 +90,18 @@ public class ProcessManager {
     }
 
     public static synchronized ProcessManager getInstance() {
-        ProcessManager pm = Lookup.getDefault().lookup(ProcessManager.class);
+        ProcessManager pm = INSTANCE;
         if (pm == null) {
-            pm = new ProcessManager();
+            synchronized (ProcessManager.class) {
+                pm = INSTANCE;
+                if (pm == null) {
+                    pm = Lookup.getDefault().lookup(ProcessManager.class);
+                    if (pm == null) {
+                        pm = new ProcessManager();
+                    }
+                    INSTANCE = pm;
+                }
+            }
         }
         return pm;
     }
@@ -209,9 +217,9 @@ public class ProcessManager {
 
                     // Update available commands if present
                     if (update.update() != null && "available_commands_update".equals(update.type())) {
+                        // Single volatile swap so readers never observe a partially populated list.
                         if (update.update().availableCommands() != null) {
-                            availableCommands.clear();
-                            availableCommands.addAll(update.update().availableCommands());
+                            availableCommands = List.copyOf(update.update().availableCommands());
                             return;
                         }
                     }
