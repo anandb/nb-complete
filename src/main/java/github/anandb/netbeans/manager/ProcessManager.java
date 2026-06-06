@@ -238,6 +238,17 @@ public class ProcessManager {
         } catch (Exception e) {
             LOG.severe("CRITICAL: Failed to start ACP server", e);
             readyFuture.completeExceptionally(e);
+
+            // Clean up partially-started process and client to avoid resource leaks.
+            // The process may have been started before the exception was thrown.
+            AcpProtocolClient client = rpcClient.getAndSet(null);
+            if (client != null) {
+                client.close();
+            }
+            if (serverProcess != null && serverProcess.isAlive()) {
+                serverProcess.destroyForcibly();
+                serverProcess = null;
+            }
         }
     }
 

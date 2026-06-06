@@ -40,8 +40,8 @@ public class AcpProtocolClient implements Closeable {
 
     private Consumer<Throwable> connectionErrorHandler;
     private Runnable disconnectionHandler;
-    private RequestProcessor.Task readerTask;
-    private RequestProcessor.Task errorReaderTask;
+    private Thread readerThread;
+    private Thread errorReaderThread;
     private RequestProcessor watchdogRP;
 
     private final AtomicLong nextId = new AtomicLong(0);
@@ -55,6 +55,7 @@ public class AcpProtocolClient implements Closeable {
     private final WireLogger wireLogger;
 
     private volatile boolean running = true;
+    private volatile boolean closed = false;
     private volatile long lastDataTime;
 
     public AcpProtocolClient(Process process) throws IOException {
@@ -66,8 +67,12 @@ public class AcpProtocolClient implements Closeable {
     }
 
     public void start() {
-        readerTask = RequestProcessor.getDefault().post(this::readLoop);
-        errorReaderTask = RequestProcessor.getDefault().post(this::readErrorLoop);
+        readerThread = new Thread(this::readLoop, "ACP-Reader");
+        readerThread.setDaemon(true);
+        readerThread.start();
+        errorReaderThread = new Thread(this::readErrorLoop, "ACP-ErrorReader");
+        errorReaderThread.setDaemon(true);
+        errorReaderThread.start();
         startWatchdog();
     }
 
@@ -117,6 +122,7 @@ public class AcpProtocolClient implements Closeable {
                 IOException ex = new IOException("Failed to write request");
                 future.completeExceptionally(ex);
                 notifyConnectionError(ex);
+                return future;
             }
 
             wireLogger.log(json);
@@ -159,6 +165,7 @@ public class AcpProtocolClient implements Closeable {
             if (writer.checkError()) {
                 LOG.severe("Failed to write notification");
                 notifyConnectionError(new IOException("Failed to write notification"));
+                return;
             }
 
             wireLogger.log(json);
@@ -181,7 +188,9 @@ public class AcpProtocolClient implements Closeable {
                 notifyConnectionError(e);
             }
         } finally {
-            notifyDisconnection();
+            if (!closed) {
+                notifyDisconnection();
+            }
         }
     }
 
@@ -356,11 +365,12 @@ public class AcpProtocolClient implements Closeable {
 
     @Override
     public void close() {
+        closed = true;
         running = false;
         stopWatchdog();
         closeQuietly(wireLogger);
 
-        // Close streams first to unblock reader loops, then cancel tasks.
+        // Close streams first to unblock reader loops, then interrupt threads.
         // Order matters: close underlying errorStream before errorReader to
         // avoid deadlock (readErrorLoop holds BufferedReader lock inside readLine()).
         closeQuietly(writer);
@@ -368,11 +378,13 @@ public class AcpProtocolClient implements Closeable {
         closeQuietly(errorStream);
         closeQuietly(errorReader);
 
-        if (readerTask != null) {
-            readerTask.cancel();
+        // Interrupt reader threads — cancel() on RequestProcessor tasks does not
+        // stop running threads, leaving them hung on blocking I/O indefinitely.
+        if (readerThread != null) {
+            readerThread.interrupt();
         }
-        if (errorReaderTask != null) {
-            errorReaderTask.cancel();
+        if (errorReaderThread != null) {
+            errorReaderThread.interrupt();
         }
 
         pendingRequests.values().forEach(future -> {
