@@ -1,5 +1,27 @@
 # Release Notes
 
+## v1.5.26 (Changes since v1.5.25)
+
+### Reliability & Message Handling
+- **Null-safety for `session/update` processing**: Fixed NPE when server sends a `session/update` notification with a missing or unmapped `sessionUpdate` field. `SessionUpdate.type()`, `SessionLifecycleHandler.onSessionUpdate`, and `StrategyRegistry.reClassify` now guard against null `UpdateData.type` and null `update.update()`, preventing the entire notification from being silently dropped.
+- **Watchdog alive on outbound writes**: `AcpProtocolClient.sendRequest` and `sendNotification` call `touch()` after every write so the idle watchdog resets its timer on outbound traffic. Prevents the watchdog from killing the connection while the server is still processing a request.
+- **Configurable `session/prompt` timeout**: `sendMessage` now uses `beanbot.sessionPromptTimeout` system property (default 300s) instead of hardcoded infinite wait.
+
+### Panel Open/Close Lifecycle
+- **Resources kept alive across open/close cycles**: `componentClosed()` is now a no-op — listeners, handlers, and message state survive panel close/reopen. First-time initialization happens only once in `componentOpened()`.
+- **Toggle shortcut**: Changed from `Ctrl+W` to `Ctrl+L` to avoid conflicting with NetBeans close-tab action.
+- **Panel minimize**: `minimizeToDock()` replaces the old `canClose()`-hack for safe panel toggling.
+
+### State Machine Atomicity
+- **Lock-based synchronization**: `SessionStateMachine` migrated from `synchronized` method to a dedicated lock object (`_lock`). Notification of state listeners happens outside the monitor to prevent deadlock.
+- **Conditional transitions**: New `transitionToIf(expectedCurrent, newState)` method enables safe STOPPING→STREAMING transitions in `onTurnEnded` and `scheduleStopRecovery`, eliminating TOCTOU races between state check and transition.
+- **EDT simplification**: Removed unnecessary `SwingUtilities.invokeLater` in `SessionManager.createNewSession` — the state machine is thread-safe and listeners marshal their own UI work.
+
+### Concurrency
+- **`ProcessManager` singleton**: Added `INSTANCE` field with double-checked locking as fallback when `Lookup` returns null.
+- **`availableCommands` safe publication**: Changed from `CopyOnWriteArrayList` to volatile `List.of()` swap for atomic reader visibility.
+- **Volatile fields**: `permissionHandler`, `statusListener`, `crashHandler`, `readyHandler` marked `volatile`.
+
 ## v1.5.25 (Changes since v1.5.24)
 
 ### UI Fixes
