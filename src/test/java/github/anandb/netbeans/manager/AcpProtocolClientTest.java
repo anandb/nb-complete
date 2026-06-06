@@ -37,8 +37,6 @@ class AcpProtocolClientTest {
 
     private PipedOutputStream processInput;
     private PipedInputStream processOutput;
-    private PipedInputStream processError;
-    private PipedOutputStream processErrorWriter; // write end of processError, stored for cleanup
 
     private PipedOutputStream clientInputEmulator; // What the client reads from
     private PipedInputStream clientOutputEmulator; // What the client writes to
@@ -54,12 +52,8 @@ class AcpProtocolClientTest {
         clientInputEmulator = new PipedOutputStream();
         processOutput = new PipedInputStream(clientInputEmulator);
 
-        processErrorWriter = new PipedOutputStream();
-        processError = new PipedInputStream(processErrorWriter);
-
         when(process.getOutputStream()).thenReturn(processInput);
         when(process.getInputStream()).thenReturn(processOutput);
-        when(process.getErrorStream()).thenReturn(processError);
 
         client = new AcpProtocolClient(process);
         client.start();
@@ -69,7 +63,6 @@ class AcpProtocolClientTest {
     public void tearDown() throws IOException {
         // Close write ends first so PipedInputStream detects EOF and unblocks reader loops
         clientInputEmulator.close();
-        processErrorWriter.close();
         client.close();
     }
 

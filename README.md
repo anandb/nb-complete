@@ -31,7 +31,7 @@ should work on other versions, but your experience may vary.
 | **Opencode** | 1.14.46 |
 | **Opencode plugins** | `@franzmoca/opencode-lombok`, `@tarquinen/opencode-dcp@latest`, `@opencode/mcp-git` |
 | **This Plugin Version** | ≥ v1.5.23 |
-| **LLMs** | Big Pickle; GPT 5.4-mini, GPT 5.4-nano; DeepSeek V4 Pro, DeepSeek V4 Flash; Kimi K2.5, Kimi K2.6; Mimo V2.5; Qwen3.5, Qwen3.6 |
+| **LLMs** | Big Pickle; GPT 5.4-mini, GPT 5.4-nano; DeepSeek V4 Pro, DeepSeek V4 Flash; Kimi K2.5, Kimi K2.6; Mimo V2.5; Qwen3.5, Qwen3.6; Gemma4 |
 
 Note: Qwen models require `--think=false` if using Ollama, and a `"reasoningEffort": "none"`
 configuration in `opencode.json`

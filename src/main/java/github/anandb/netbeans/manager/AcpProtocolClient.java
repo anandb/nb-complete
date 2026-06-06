@@ -9,11 +9,9 @@ import com.fasterxml.jackson.databind.MappingIterator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
-import java.io.BufferedReader;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
@@ -41,13 +39,10 @@ public class AcpProtocolClient implements Closeable {
     private Consumer<Throwable> connectionErrorHandler;
     private Runnable disconnectionHandler;
     private Thread readerThread;
-    private Thread errorReaderThread;
     private RequestProcessor watchdogRP;
 
     private final AtomicLong nextId = new AtomicLong(0);
-    private final BufferedReader errorReader;
     private final InputStream inputStream;
-    private final InputStream errorStream; // raw error stream from process
     private final Map<Long, CompletableFuture<JsonNode>> pendingRequests = new ConcurrentHashMap<>();
     private final Map<String, Consumer<JsonNode>> notificationListeners = new ConcurrentHashMap<>();
     private final Map<String, RequestHandler> requestHandlers = new ConcurrentHashMap<>();
@@ -61,8 +56,6 @@ public class AcpProtocolClient implements Closeable {
     public AcpProtocolClient(Process process) throws IOException {
         this.writer = new PrintWriter(process.getOutputStream(), true, StandardCharsets.UTF_8);
         this.inputStream = process.getInputStream();
-        this.errorStream = process.getErrorStream();
-        this.errorReader = new BufferedReader(new InputStreamReader(errorStream, StandardCharsets.UTF_8));
         this.wireLogger = new WireLogger();
     }
 
@@ -70,9 +63,6 @@ public class AcpProtocolClient implements Closeable {
         readerThread = new Thread(this::readLoop, "ACP-Reader");
         readerThread.setDaemon(true);
         readerThread.start();
-        errorReaderThread = new Thread(this::readErrorLoop, "ACP-ErrorReader");
-        errorReaderThread.setDaemon(true);
-        errorReaderThread.start();
         startWatchdog();
     }
 
@@ -190,19 +180,6 @@ public class AcpProtocolClient implements Closeable {
         } finally {
             if (!closed) {
                 notifyDisconnection();
-            }
-        }
-    }
-
-    private void readErrorLoop() {
-        try {
-            String line;
-            while (running && (line = errorReader.readLine()) != null) {
-                LOG.warn("Process stderr: {0}", line);
-            }
-        } catch (IOException e) {
-            if (running) {
-                LOG.fine("Error reader thread error", e);
             }
         }
     }
@@ -375,16 +352,11 @@ public class AcpProtocolClient implements Closeable {
         // avoid deadlock (readErrorLoop holds BufferedReader lock inside readLine()).
         closeQuietly(writer);
         closeQuietly(inputStream);
-        closeQuietly(errorStream);
-        closeQuietly(errorReader);
 
-        // Interrupt reader threads — cancel() on RequestProcessor tasks does not
+        // Interrupt reader thread — cancel() on RequestProcessor tasks does not
         // stop running threads, leaving them hung on blocking I/O indefinitely.
         if (readerThread != null) {
             readerThread.interrupt();
-        }
-        if (errorReaderThread != null) {
-            errorReaderThread.interrupt();
         }
 
         pendingRequests.values().forEach(future -> {

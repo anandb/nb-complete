@@ -89,7 +89,7 @@ public class ProcessManager {
         return mcpManager;
     }
 
-    public static synchronized ProcessManager getInstance() {
+    public static ProcessManager getInstance() {
         ProcessManager pm = INSTANCE;
         if (pm == null) {
             synchronized (ProcessManager.class) {
@@ -154,6 +154,9 @@ public class ProcessManager {
         }
         isClosing = false;
         readyFuture = new CompletableFuture<>();
+
+        // Ensure MCP server is running (idempotent - start() returns early if already running/disabled)
+        mcpManager.start();
 
         LOG.info("Starting ACP server...");
         try {
