@@ -10,6 +10,7 @@ import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.event.ContainerAdapter;
 import java.awt.event.ContainerEvent;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
@@ -67,6 +68,10 @@ public class ChatThreadPanel extends JPanel {
     private static final Pattern SECTION_SPLIT = Pattern.compile("(?m)^---[ \\t]*$");
     private static final int MAX_MESSAGES = 100;
     private long lastUserTimestamp = -1L;
+    private int userMessageCount = 0;
+
+    /** A single tool or thought chunk accumulated during streaming (internal). */
+    private record RawChunk(String text, boolean isThought) {}
 
     private final JPanel messagesContainer;
     private final JScrollPane scrollPane;
@@ -78,6 +83,10 @@ public class ChatThreadPanel extends JPanel {
     private volatile boolean keepOlderMessages = false;
     private final transient ScrollController scrollController;
     private final transient MessageTransformer messageTransformer;
+    /** Accumulated tool/thought chunks for the current turn. */
+    private final List<RawChunk> pendingChunks = new ArrayList<>();
+    /** Title for the accumulated tool/thought pane (most recent non-empty toolTitle). */
+    private String pendingToolTitle = null;
 
     public ChatThreadPanel() {
         ColorTheme theme = ThemeManager.getCurrentTheme();
@@ -220,8 +229,6 @@ public class ChatThreadPanel extends JPanel {
 
             boolean canMerge = (lastBubble != null && role.equals(lastBubble.getRole()));
             if (canMerge) {
-                // Require matching messageIds (or allow if either is null).
-                // Never merge successive user messages.
                 canMerge = !"user".equals(role) && ("thought".equals(role) || canMergeMessages(pm.messageId(), lastBubble.getMessageId()));
             }
 
@@ -229,7 +236,6 @@ public class ChatThreadPanel extends JPanel {
                 lastBubble.appendText(part, pm.toolTitle());
             } else {
                 if (lastBubble != null) {
-                    // Stop timer + clear activeStreamRef when switching away from streaming bubble
                     if (lastBubble == activeStreamBubble) {
                         activeStreamBubble = null;
                         if (streamFlushTimer.isRunning()) {
@@ -237,20 +243,79 @@ public class ChatThreadPanel extends JPanel {
                         }
                     }
                     lastBubble.flushUpdate(true);
-                    // No-op for non-tool/thought types, restores toolbar default for collapsible panes
                     lastBubble.finalizeStreaming(allBlocksExpanded);
                 }
 
                 addSingleBubble(pm.messageType(), part, pm.messageId(), pm.toolTitle(), pm.streaming());
+                lastBubble = findLastNonIgnorableBubble();
             }
         }
     }
 
-    private void addSingleBubble(MessageType type, String text, String messageId, String toolTitle, boolean streaming) {
-        MessageBubble bubble = new MessageBubble(type, text, messageId, toolTitle);
-        if (type.isTool() || type.isThought()) {
-            bubble.setExpanded(allBlocksExpanded);
+    /** Flushes accumulated tool/thought chunks as a single MessageBubble. */
+    private void flushPendingToolBubble() {
+        if (pendingChunks.isEmpty()) return;
+
+        // Merge consecutive same-type chunks into blocks
+        List<CollapsibleToolPane.ToolSegment> blocks = new ArrayList<>();
+        StringBuilder buf = new StringBuilder();
+        boolean currentType = pendingChunks.get(0).isThought;
+        buf.append(pendingChunks.get(0).text);
+        for (int i = 1; i < pendingChunks.size(); i++) {
+            RawChunk chunk = pendingChunks.get(i);
+            if (chunk.isThought == currentType) {
+                buf.append("\n\n").append(chunk.text);
+            } else {
+                blocks.add(new CollapsibleToolPane.ToolSegment(buf.toString(), currentType));
+                buf = new StringBuilder(chunk.text);
+                currentType = chunk.isThought;
+            }
         }
+        blocks.add(new CollapsibleToolPane.ToolSegment(buf.toString(), currentType));
+
+        String title = "Execution Steps (" + pendingChunks.size() + ")";
+        MessageBubble bubble = new MessageBubble(MessageType.tool_call, "", null, title, MessageBubble.AvatarPosition.NONE);
+        bubble.setSegmentedToolContent(blocks);
+        bubble.setExpanded(allBlocksExpanded);
+
+        boolean visible = !ChatThreadPanel.MessageFilterManager.isTypeHidden("tool");
+        bubble.setVisible(visible);
+        Component strut = Box.createVerticalStrut(4);
+        strut.setVisible(visible);
+        messagesContainer.add(bubble);
+        messagesContainer.add(strut);
+        messagesContainer.revalidate();
+        scrollController.scrollToBottom();
+
+        pendingChunks.clear();
+        pendingToolTitle = null;
+    }
+
+    private void addSingleBubble(MessageType type, String text, String messageId, String toolTitle, boolean streaming) {
+        // Tool/thought messages accumulate as typed chunks, merged at flush time.
+        if (type.isTool() || type.isThought()) {
+            pendingChunks.add(new RawChunk(text, type.isThought()));
+            // Use the longest non-empty title
+            if (toolTitle != null && toolTitle.length() > (pendingToolTitle != null ? pendingToolTitle.length() : 0)) {
+                pendingToolTitle = toolTitle;
+            }
+            return;
+        }
+
+        // Flush accumulated tool/thought panes before a new message type
+        if (type.isUser() || type.isAssistant()) {
+            flushPendingToolBubble();
+        }
+
+        // Reset turn state for new user message
+        if (type.isUser()) {
+            userMessageCount++;
+        }
+
+        MessageBubble.AvatarPosition avatarPos = "user".equals(type.roleName())
+                ? (userMessageCount % 2 == 1 ? MessageBubble.AvatarPosition.LEFT : MessageBubble.AvatarPosition.RIGHT)
+                : MessageBubble.AvatarPosition.NONE;
+        MessageBubble bubble = new MessageBubble(type, text, messageId, toolTitle, avatarPos);
 
         if ("user".equals(type.roleName())) {
             lastUserTimestamp = System.currentTimeMillis();
@@ -266,14 +331,11 @@ public class ChatThreadPanel extends JPanel {
         strut.setVisible(visible);
         messagesContainer.add(bubble);
         messagesContainer.add(strut);
-        // Tool updates are discrete (not incremental chunks), so always scroll.
-        // Other streaming types rely on the timer for scroll-to-bottom.
         boolean shouldScroll = !streaming || type.isTool();
         if (shouldScroll) {
             messagesContainer.revalidate();
             scrollController.scrollToBottom();
         }
-        // Set for both streaming and non-streaming: used by stopStreaming() + timer identity check in addMessage()
         activeStreamBubble = bubble;
         if (streaming) {
             streamFlushTimer.start();
@@ -455,6 +517,9 @@ public class ChatThreadPanel extends JPanel {
         SwingUtilities.invokeLater(() -> {
             messagesContainer.removeAll();
             lastUserTimestamp = -1L;
+            userMessageCount = 0;
+            pendingChunks.clear();
+            pendingToolTitle = null;
             messagesContainer.revalidate();
         });
     }

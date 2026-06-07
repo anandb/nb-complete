@@ -124,7 +124,9 @@ public class StrategyRegistry {
                 ToolCallData data = sessionMap.computeIfAbsent(messageId, k -> new ToolCallData(k, command));
                 if (data.isDone()) return;
                 ProcessedMessage target = processToolMessage(data, command, update, kind, messageId);
-                handler.displayMessage(target);
+                if (data.shouldDisplay(target.text())) {
+                    handler.displayMessage(target);
+                }
             }
 
             case "message" -> {

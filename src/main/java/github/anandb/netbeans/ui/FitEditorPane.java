@@ -100,8 +100,35 @@ public class FitEditorPane extends JTextPane {
     }
 
     @Override
+    public void setBounds(int x, int y, int width, int height) {
+        boolean widthChanged = width > 0 && width != lastComputedWidth;
+        super.setBounds(x, y, width, height);
+        if (widthChanged) {
+            // Invalidate cached preferred size so that getPreferredSize()
+            // recomputes the height for the new width. This ensures the HTML
+            // view reflows when the component is resized by the layout manager.
+            lastComputedWidth = 0;
+            cachedSize = null;
+            // Force the HTML view to reformat at the new width.
+            View root = getUI().getRootView(this);
+            if (root != null) {
+                Insets ins = getInsets();
+                int cw = Math.max(1, width - ins.left - ins.right);
+                root.setSize(cw, Integer.MAX_VALUE);
+            }
+        }
+    }
+
+    @Override
     public Dimension getMaximumSize() {
-        return new Dimension(Integer.MAX_VALUE, getPreferredSize().height);
+        // Return a width sufficient for BoxLayout(Y_AXIS) to stretch this
+        // component to the full container width. The preferred size height
+        // is used for the returned height; width is set to a large finite
+        // value so that BoxLayout does not clip the component to a small
+        // preferred width (which would prevent text from wrapping to the
+        // sidebar width).
+        Dimension pref = getPreferredSize();
+        return new Dimension(Short.MAX_VALUE, pref.height);
     }
 
     public static FitEditorPane createHtmlPane(String styledHtml, Color bg, String role, boolean opaqueUser) {

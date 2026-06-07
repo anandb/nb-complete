@@ -11,6 +11,7 @@ import java.awt.Rectangle;
 import java.awt.Toolkit;
 import java.awt.datatransfer.StringSelection;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -35,7 +36,6 @@ import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.support.Logger;
 import org.openide.util.NbBundle;
 
-import static org.apache.commons.lang3.StringUtils.defaultIfBlank;
 import static org.apache.commons.lang3.StringUtils.length;
 
 
@@ -49,6 +49,9 @@ public class MessageBubble extends JPanel implements Scrollable {
 
     private static final Logger LOG = Logger.from(MessageBubble.class);
     private static final long serialVersionUID = 1L;
+
+    /** Determines where the user avatar is positioned relative to the message bubble. */
+    enum AvatarPosition { LEFT, RIGHT, NONE }
 
     // Static cached Pattern for code block parsing - compiled once
     private static final Pattern CODE_BLOCK_PATTERN = Pattern.compile(
@@ -116,7 +119,7 @@ public class MessageBubble extends JPanel implements Scrollable {
         return new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE);
     }
 
-    public MessageBubble(MessageType type, String text, String messageId, String toolTitle) {
+    public MessageBubble(MessageType type, String text, String messageId, String toolTitle, AvatarPosition avatarPosition) {
         this.type = type;
         this.role = type.roleName();
         this.messageId = messageId;
@@ -157,27 +160,7 @@ public class MessageBubble extends JPanel implements Scrollable {
 
         applyBubbleTheme(theme, role);
 
-        if ("user".equals(role)) {
-            gbcInsets = new Insets(4, 12, 4, 12); // Full width, consistent with AI
-
-            Icon userIcon = UIUtils.loadUserIcon();
-            JLabel userLabel = new JLabel(userIcon);
-            userLabel.setBorder(new EmptyBorder(6, 8, 0, 10));
-            userLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-            userLabel.setToolTipText(NbBundle.getMessage(MessageBubble.class, "HINT_CopyToInput"));
-
-            userLabel.addMouseListener(new MessageCopyMouseAdapter(
-                userLabel,
-                userIcon,
-                ThemeManager.getIcon("copy.svg", 32),
-                ThemeManager.getIcon("check.svg", 32),
-                messageId, role, this
-            ));
-
-            JPanel rightPanel = UIUtils.createTransparentPanel(new BorderLayout());
-            rightPanel.add(userLabel, BorderLayout.NORTH);
-            bubble.add(rightPanel, BorderLayout.EAST);
-        } else {
+        if (!"user".equals(role)) {
             // AI messages use full width
             gbcInsets.left = 12;
             gbcInsets.right = 12;
@@ -198,7 +181,26 @@ public class MessageBubble extends JPanel implements Scrollable {
             bubble.add(copyPanel, BorderLayout.SOUTH);
         }
 
-        add(bubble, UIUtils.createGbc(0, 0, 1.0, 0, fill, anchor, gbcInsets));
+        if ("user".equals(role) && avatarPosition != AvatarPosition.NONE) {
+            // Wrap bubble + external avatar in a content row
+            JPanel contentRow = new JPanel(new BorderLayout());
+            contentRow.setOpaque(false);
+            contentRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+            JLabel userLabel = createUserAvatar();
+            JPanel avatarWrapper = UIUtils.createTransparentPanel(new BorderLayout());
+            avatarWrapper.add(userLabel, BorderLayout.NORTH);
+
+            if (avatarPosition == AvatarPosition.LEFT) {
+                contentRow.add(avatarWrapper, BorderLayout.WEST);
+            } else {
+                contentRow.add(avatarWrapper, BorderLayout.EAST);
+            }
+            contentRow.add(bubble, BorderLayout.CENTER);
+            add(contentRow, UIUtils.createGbc(0, 0, 1.0, 0, fill, anchor, gbcInsets));
+        } else {
+            add(bubble, UIUtils.createGbc(0, 0, 1.0, 0, fill, anchor, gbcInsets));
+        }
 
         // Fix for "garbled" text in scroll panes: force a repaint when the component becomes visible
         if ("user".equals(role)) {
@@ -213,6 +215,27 @@ public class MessageBubble extends JPanel implements Scrollable {
             };
             addHierarchyListener(this.hierarchyListener);
         }
+    }
+
+    /**
+     * Creates the user avatar label with click-to-copy behavior.
+     * Used when the avatar is positioned outside the bubble (LEFT or RIGHT).
+     */
+    private JLabel createUserAvatar() {
+        Icon userIcon = UIUtils.loadUserIcon(44);
+        JLabel userLabel = new JLabel(userIcon);
+        userLabel.setBorder(new EmptyBorder(10, 8, 0, 10));
+        userLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        userLabel.setToolTipText(NbBundle.getMessage(MessageBubble.class, "HINT_CopyToInput"));
+
+        userLabel.addMouseListener(new MessageCopyMouseAdapter(
+            userLabel,
+            userIcon,
+            ThemeManager.getIcon("copy.svg", 32),
+            ThemeManager.getIcon("check.svg", 32),
+            messageId, role, this
+        ));
+        return userLabel;
     }
 
     @Override
@@ -263,9 +286,30 @@ public class MessageBubble extends JPanel implements Scrollable {
         return false;
     }
 
+    /**
+     * Registers the tool/activity pane inside this bubble with an accordion group,
+     * so it participates in cross-bubble accordion behavior.
+     * No-op if this bubble does not contain a tool/thought pane.
+     */
+    public void registerWithAccordionGroup(AccordionGroup group) {
+        if (segments.getComponentCount() > 0) {
+            Component first = segments.getComponent(0);
+            if (first instanceof CollapsibleToolPane toolPane) {
+                toolPane.setAccordionGroup(group);
+            } else if (first instanceof CollapsibleActivityPane activityPane) {
+                activityPane.setAccordionGroup(group);
+            }
+        }
+    }
+
     public void setExpanded(boolean expanded) {
-        if (segments.getComponentCount() > 0 && segments.getComponent(0) instanceof CollapsibleToolPane pane) {
-            pane.setExpanded(expanded);
+        if (segments.getComponentCount() > 0) {
+            Component first = segments.getComponent(0);
+            if (first instanceof CollapsibleToolPane pane) {
+                pane.setExpanded(expanded);
+            } else if (first instanceof CollapsibleActivityPane pane) {
+                pane.setExpanded(expanded);
+            }
         }
     }
 
@@ -275,6 +319,8 @@ public class MessageBubble extends JPanel implements Scrollable {
                 codePane.setExpanded(expanded);
             } else if (c instanceof CollapsibleToolPane toolPane) {
                 toolPane.setExpanded(expanded);
+            } else if (c instanceof CollapsibleActivityPane activityPane) {
+                activityPane.setExpanded(expanded);
             }
         }
     }
@@ -317,17 +363,25 @@ public class MessageBubble extends JPanel implements Scrollable {
         // Handle specialized tool rendering
         if ("tool".equals(role) || "thought".equals(role)) {
             String displayContent = text.toString();
-            String thinking = NbBundle.getMessage(MessageBubble.class, "TITLE_ThinkingProcess");
-            String toolLabel = NbBundle.getMessage(MessageBubble.class, "TITLE_Tool");
-            String title = "thought".equals(role) ? thinking : defaultIfBlank(toolTitle, toolLabel);
-            if (segments.getComponentCount() > 0 && segments.getComponent(0) instanceof CollapsibleToolPane ep) {
-                ep.setTitle(title);
-                ep.setContent(displayContent);
-                ep.setExpanded(expanded);
+            // ChatThreadPanel passes title as toolTitle = "Execution Steps (N)".
+            // Use toolTitle when set (preserves the chunk count), fall back to
+            // "Execution Steps" for standalone tool/thought content.
+            String title = toolTitle != null ? toolTitle : "Execution Steps";
+            if (segments.getComponentCount() > 0) {
+                Component first = segments.getComponent(0);
+                if (first instanceof CollapsibleActivityPane ep) {
+                    ep.setTitle(title);
+                    ep.setContent(displayContent);
+                    ep.setExpanded(expanded);
+                } else if (first instanceof CollapsibleToolPane ep) {
+                    ep.setTitle(title);
+                    ep.setContent(displayContent);
+                    ep.setExpanded(expanded);
+                }
             } else {
                 segments.removeAll();
-                CollapsibleToolPane toolPane = new CollapsibleToolPane(title, displayContent, expanded);
-                segments.add(toolPane);
+                CollapsibleActivityPane activityPane = new CollapsibleActivityPane(title, displayContent, expanded);
+                segments.add(activityPane);
             }
             // Single revalidate at container level is sufficient
             revalidate();
@@ -427,10 +481,28 @@ public class MessageBubble extends JPanel implements Scrollable {
                 codePane.setExpanded(defaultExpanded);
             } else if (c instanceof CollapsibleToolPane toolPane) {
                 toolPane.setExpanded(defaultExpanded);
+            } else if (c instanceof CollapsibleActivityPane activityPane) {
+                activityPane.setExpanded(defaultExpanded);
             }
         }
         revalidate();
         repaint();
+    }
+
+    /**
+     * Replaces the tool/thought content with segmented (markdown-rendered) blocks.
+     * Each block is a consecutive run of same-type chunks with a distinct background.
+     */
+    public void setSegmentedToolContent(List<CollapsibleToolPane.ToolSegment> blocks) {
+        for (Component c : segments.getComponents()) {
+            if (c instanceof CollapsibleActivityPane pane) {
+                pane.setSegmentedContent(blocks);
+                return;
+            } else if (c instanceof CollapsibleToolPane pane) {
+                pane.setSegmentedContent(blocks);
+                return;
+            }
+        }
     }
 
     private void updateOrAddCodeSegment(String lang, String code, boolean expanded, int codeIdx, int compIdx) {

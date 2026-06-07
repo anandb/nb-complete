@@ -82,6 +82,21 @@ public class ToolCallData {
         return this.text;
     }
 
+    private String lastDisplayedText;
+
+    /**
+     * Returns true if the given text differs from the last displayed text,
+     * and updates the tracked value. Used to suppress redundant display
+     * updates when the server sends repeated tool_call_update notifications.
+     */
+    public boolean shouldDisplay(String newText) {
+        if (lastDisplayedText == null || !lastDisplayedText.equals(newText)) {
+            lastDisplayedText = newText;
+            return true;
+        }
+        return false;
+    }
+
     public boolean isDone() {
         return ("completed".equals(this.status) || "failed".equals(this.status));
     }

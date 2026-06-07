@@ -229,6 +229,8 @@ public class AcpProtocolClient implements Closeable {
     }
 
     private void handleMessage(JsonNode node) {
+        // Any incoming message proves the connection is alive
+        touch();
         wireLogger.log(node);
         if (node.has("id")) {
             long id = node.get("id").asLong();

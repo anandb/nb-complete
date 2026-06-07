@@ -121,6 +121,28 @@ For a guided walkthrough mapped to the plugin's execution flow, read files in th
 
 ---
 
+## System Properties
+
+The plugin reads the following system properties and environment variables:
+
+| Property | Type | Default | Used In | Purpose |
+|---|---|---|---|---|
+| `user.dir` | System property | — | `ProcessManager`, `SessionManager`, `AssistantTopComponent` | Working directory for session/project |
+| `user.home` | System property | — | `ACPCommandBuilderTest` | Default path to opencode binary |
+| `java.io.tmpdir` | System property | — | `ImagePasteTransferHandler` | Temp directory for pasted images |
+| `os.name` | System property | — | `BinaryResolver` | Detect Windows for binary resolution |
+| `beanbot.sessionPromptTimeout` | System property | `300` | `ProcessManager` | Prompt timeout (seconds) for session |
+| `netbeans.codingassistant.roundedPanels` | System property | `true` | `RoundedPanel` | Toggle rounded panel corners |
+| `netbeans.codingassistant.color.*` (31 color properties) | System property | varies | `ColorTheme` (via `colors.json`) | Override any UI color |
+| `nb.dark.theme` | UIManager property | — | `IconResourceManager` | Detect dark theme for icon resolution |
+| `ACP_WIRE_LOG` | Environment variable | — | `WireLogger` | Path for ACP wire protocol log file |
+| `OPENCODE_MODEL` | Environment variable | — | `ConfigPanelController` | Default model override in config |
+| `PATH` | Environment variable | — | `BinaryResolver` | Search path for opencode binary |
+
+The color properties are declared in [`colors.json`](src/main/resources/github/anandb/netbeans/ui/colors.json) and cover: background, foreground, selection, accent, ghost background, sunken background, bubble (user/assistant), code, table, header, thinking, tool, permission, and error colors — each with light and dark variants.
+
+---
+
 ## Contributing
 
 Development follows standard NetBeans Platform patterns. Contributors are expected to maintain consistency with existing styling and logging conventions. New components must be validated against both light and dark IDE themes.

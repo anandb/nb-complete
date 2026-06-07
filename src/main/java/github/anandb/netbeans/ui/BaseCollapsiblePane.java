@@ -13,17 +13,40 @@ import javax.swing.Icon;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 
+import github.anandb.netbeans.support.Logger;
+
 /**
  * Base class for collapsible UI components in the chat.
  * Provides a standardized header, toggle behavior, and layout.
  */
 public abstract class BaseCollapsiblePane extends RoundedPanel {
 
+    private static final Logger LOG = Logger.from(BaseCollapsiblePane.class);
     private static final long serialVersionUID = 1L;
     protected final JPanel header;
     protected final JLabel headerLabel;
     protected final JPanel contentPanel;
     protected boolean expanded;
+    private AccordionGroup accordionGroup;
+
+    /**
+     * Associates an accordion group with this pane and registers this pane
+     * with the group. When a user clicks to expand this pane, the group will
+     * collapse all other panes registered in the same group.
+     */
+    /**
+     * Returns the accordion group this pane belongs to, or null.
+     */
+    public AccordionGroup getAccordionGroup() {
+        return accordionGroup;
+    }
+
+    public void setAccordionGroup(AccordionGroup group) {
+        this.accordionGroup = group;
+        if (group != null) {
+            group.register(this);
+        }
+    }
 
     public BaseCollapsiblePane(int radius, String title, Icon icon, boolean expandedByDefault) {
         super(radius);
@@ -60,7 +83,17 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
         MouseAdapter toggleListener = new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {
-                toggle();
+                if (!expanded && accordionGroup != null) {
+                    LOG.info("Collapsible: click on collapsed pane with accordion group, delegating to accordion");
+                    accordionGroup.expandPane(BaseCollapsiblePane.this);
+                } else {
+                    if (accordionGroup == null) {
+                        LOG.info("Collapsible: click on pane (expanded={0}), accordionGroup=null, toggling directly", expanded);
+                    } else {
+                        LOG.info("Collapsible: click on expanded pane with accordionGroup, toggling to collapse");
+                    }
+                    toggle();
+                }
             }
 
             @Override

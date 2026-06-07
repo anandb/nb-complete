@@ -119,6 +119,10 @@ public class UIUtils {
     }
 
     public static Icon loadUserIcon() {
+        return loadUserIcon(37);
+    }
+
+    public static Icon loadUserIcon(int size) {
         String path = PluginSettings.getCustomUserIcon();
         if (path != null && !path.isEmpty()) {
             File file = new File(path);
@@ -126,7 +130,7 @@ public class UIUtils {
                 try {
                     ImageIcon icon = new ImageIcon(path);
                     if (icon.getIconWidth() > 0) {
-                        return new ImageIcon(icon.getImage().getScaledInstance(37, 37, java.awt.Image.SCALE_SMOOTH));
+                        return new ImageIcon(icon.getImage().getScaledInstance(size, size, java.awt.Image.SCALE_SMOOTH));
                     }
                 } catch (Exception e) {
                     LOG.fine("Failed to load custom user icon: {0}", e.getMessage());
@@ -134,7 +138,7 @@ public class UIUtils {
                 return loadSvgIcon(file);
             }
         }
-        return ThemeManager.getIcon("user.svg", 37);
+        return ThemeManager.getIcon("user.svg", size);
     }
 
     public static Icon loadSvgIcon(File file) {

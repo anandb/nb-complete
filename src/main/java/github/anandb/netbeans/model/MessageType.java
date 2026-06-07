@@ -29,7 +29,7 @@ public enum MessageType {
     }
 
     public boolean isAssistant() {
-        return name().contains("agent");
+        return name().startsWith("agent") && !name().contains("thought");
     }
 
      private boolean isError() {

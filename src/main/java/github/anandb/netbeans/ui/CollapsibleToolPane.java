@@ -10,9 +10,12 @@ import java.awt.Toolkit;
 import java.awt.datatransfer.StringSelection;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
 import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.JLabel;
@@ -28,9 +31,18 @@ import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
 public class CollapsibleToolPane extends BaseCollapsiblePane {
     private static final long serialVersionUID = 1L;
-    private final JTextArea textArea;
+    private JTextArea textArea;
+    /** Plain text of the current content (used by copy button). */
+    private String combinedPlainText = "";
     private final JPanel titlePanel;
     private final JButton copyButton;
+    /** Toggle button for collapsing/expanding the entire accordion group. */
+    private final JButton groupToggleBtn;
+    /**
+     * The default accent color for the left border. Kept for restoring
+     * when the pane is not part of an accordion group.
+     */
+    private final Color defaultAccent;
     private JLabel paramLabel;
     private boolean isThinking;
     private final AtomicBoolean copyHovered = new AtomicBoolean(false);
@@ -41,6 +53,7 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
 
         ColorTheme theme = ThemeManager.getCurrentTheme();
         Color yellowAccent = theme.yellow();
+        this.defaultAccent = yellowAccent;
 
         header.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createMatteBorder(0, 4, 0, 0, yellowAccent),
@@ -103,9 +116,147 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
         eastPlaceholder.add(copyButton, BorderLayout.CENTER);
         header.add(eastPlaceholder, BorderLayout.EAST);
 
+        // Collapse/expand button for the accordion group
+        groupToggleBtn = new JButton("+");
+        groupToggleBtn.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN, 14f));
+        groupToggleBtn.setBorder(BorderFactory.createEmptyBorder(0, 4, 0, 4));
+        groupToggleBtn.setContentAreaFilled(false);
+        groupToggleBtn.setFocusPainted(false);
+        groupToggleBtn.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        groupToggleBtn.setToolTipText("Collapse/expand all tool/thought panes");
+        groupToggleBtn.setVisible(false);
+        groupToggleBtn.addActionListener(e -> {
+            AccordionGroup g = getAccordionGroup();
+            if (g != null) g.toggleAll();
+        });
+        header.add(groupToggleBtn, BorderLayout.WEST);
+
         setupTitleLabels(title);
         updateAppearance();
         setAlignmentX(Component.LEFT_ALIGNMENT);
+    }
+
+    /**
+     * Creates a tool pane without a text area. Use this for the combined
+     * activity bubble where content will be supplied later via
+     * {@link #setSegmentedContent(List)}.
+     */
+    public CollapsibleToolPane(String title, boolean expandedAtStart) {
+        super(12, "", getHeaderIcon(title), expandedAtStart);
+        this.isThinking = title.toUpperCase().contains("THINKING");
+
+        ColorTheme theme = ThemeManager.getCurrentTheme();
+        Color yellowAccent = theme.yellow();
+        this.defaultAccent = yellowAccent;
+
+        header.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createMatteBorder(0, 4, 0, 0, yellowAccent),
+            BorderFactory.createEmptyBorder(5, 4, 5, 10)
+        ));
+        headerLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
+
+        titlePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0)) {
+            @Override
+            public boolean contains(int x, int y) {
+                return false;
+            }
+        };
+        titlePanel.setOpaque(false);
+        header.remove(headerLabel);
+        header.add(titlePanel, BorderLayout.CENTER);
+
+        contentPanel.setOpaque(true);
+        contentPanel.setBorder(BorderFactory.createMatteBorder(0, 4, 0, 0, yellowAccent));
+
+        // No textArea for combined bubble — content added via setSegmentedContent()
+
+        // Copy button — visible only on header hover
+        String hint = NbBundle.getMessage(CollapsibleToolPane.class, "HINT_CopyContent");
+        copyButton = UIUtils.createToolbarButton("copy.svg", 20, hint, e -> copyContentToClipboard());
+        copyButton.setBorder(BorderFactory.createEmptyBorder(2, 4, 2, 4));
+        copyButton.setForeground(theme.foreground());
+        copyButton.setVisible(false);
+        copyButton.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                copyHovered.set(true);
+                copyButton.setVisible(true);
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                copyHovered.set(false);
+                copyButton.setVisible(false);
+            }
+        });
+        // Wrap in fixed-size panel so header height never changes when button visibility toggles
+        JPanel eastPlaceholder = new JPanel(new BorderLayout());
+        eastPlaceholder.setOpaque(false);
+        Dimension btnSize = copyButton.getPreferredSize();
+        eastPlaceholder.setPreferredSize(btnSize);
+        eastPlaceholder.setMinimumSize(btnSize);
+        eastPlaceholder.setMaximumSize(btnSize);
+        eastPlaceholder.add(copyButton, BorderLayout.CENTER);
+        header.add(eastPlaceholder, BorderLayout.EAST);
+
+        // Collapse/expand button for the accordion group
+        groupToggleBtn = new JButton("+");
+        groupToggleBtn.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN, 14f));
+        groupToggleBtn.setBorder(BorderFactory.createEmptyBorder(0, 4, 0, 4));
+        groupToggleBtn.setContentAreaFilled(false);
+        groupToggleBtn.setFocusPainted(false);
+        groupToggleBtn.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        groupToggleBtn.setToolTipText("Collapse/expand all tool/thought panes");
+        groupToggleBtn.setVisible(false);
+        groupToggleBtn.addActionListener(e -> {
+            AccordionGroup g = getAccordionGroup();
+            if (g != null) g.toggleAll();
+        });
+        header.add(groupToggleBtn, BorderLayout.WEST);
+
+        setupTitleLabels(title);
+        updateAppearance();
+        setAlignmentX(Component.LEFT_ALIGNMENT);
+    }
+
+    @Override
+    public void setAccordionGroup(AccordionGroup group) {
+        super.setAccordionGroup(group);
+        // Visually distinguish panes when part of an accordion group
+        // by changing the left border from the default accent to a
+        // shared "grouped" color.
+        boolean isGrouped = group != null;
+        Color borderColor = isGrouped
+                ? ThemeManager.getCurrentTheme().base1()
+                : defaultAccent;
+        header.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 4, 0, 0, borderColor),
+                BorderFactory.createEmptyBorder(5, 4, 5, 10)));
+        contentPanel.setBorder(BorderFactory.createMatteBorder(0, 4, 0, 0, borderColor));
+        // Show/hide the group collapse/expand toggle button
+        groupToggleBtn.setVisible(isGrouped);
+        if (isGrouped) {
+            updateGroupToggleIcon();
+        }
+    }
+
+    /** Updates the group toggle button icon to reflect current group state. */
+    private void updateGroupToggleIcon() {
+        AccordionGroup g = getAccordionGroup();
+        if (g == null) return;
+        boolean allExpanded = g.allExpanded();
+        groupToggleBtn.setText(allExpanded ? "-" : "+");
+    }
+
+    @Override
+    protected void onToggle(boolean expanded) {
+        if (isThinking) {
+            String tp = NbBundle.getMessage(CollapsibleToolPane.class, "LBL_ThinkingProcess");
+            headerLabel.setText(expanded ? tp : tp + "...");
+        }
+        updateAppearance();
+        // Keep group toggle icon consistent when individual panes toggle
+        updateGroupToggleIcon();
     }
 
     private void setupTitleLabels(String rawTitle) {
@@ -165,7 +316,9 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
         ColorTheme theme = ThemeManager.getCurrentTheme();
         header.setBackground(expanded ? theme.base2() : theme.thinkingHeaderBackground());
         contentPanel.setBackground(expanded ? theme.thinkingHeaderBackground() : theme.base2());
-        textArea.setForeground(expanded ? theme.thinkingHeaderForeground() : theme.foreground());
+        if (textArea != null) {
+            textArea.setForeground(expanded ? theme.thinkingHeaderForeground() : theme.foreground());
+        }
         headerLabel.setForeground(expanded ? theme.foreground() : theme.thinkingHeaderForeground());
         if (paramLabel != null) {
             paramLabel.setForeground(expanded ? theme.foreground() : theme.thinkingHeaderForeground());
@@ -174,7 +327,9 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
     }
 
     private void copyContentToClipboard() {
-        String content = textArea.getText();
+        String content = combinedPlainText.isEmpty()
+                ? (textArea != null ? textArea.getText() : "")
+                : combinedPlainText;
         if (content == null || content.isEmpty()) {
             return;
         }
@@ -198,6 +353,9 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
     }
 
     public void setContent(String content) {
+        if (textArea == null) {
+            return;
+        }
         if (content == null) {
             textArea.setText("");
             return;
@@ -212,15 +370,6 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
     protected void onHeaderHover(boolean hover) {
         updateAppearance();
         copyButton.setVisible(hover || copyHovered.get());
-    }
-
-    @Override
-    protected void onToggle(boolean expanded) {
-        if (isThinking) {
-            String tp = NbBundle.getMessage(CollapsibleToolPane.class, "LBL_ThinkingProcess");
-            headerLabel.setText(expanded ? tp : tp + "...");
-        }
-        updateAppearance();
     }
 
     @Override
@@ -250,5 +399,58 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
             case "think" -> NbBundle.getMessage(CollapsibleToolPane.class, "LBL_TagThink");
             default -> null;
         };
+    }
+
+    /** A segment of tool/thought content to render with an appropriate background. */
+    public record ToolSegment(String text, boolean isThought) {}
+
+    /**
+     * Replaces the content area with a panel of colored segments, one per
+     * consecutive same-type block. Each segment renders its text as markdown
+     * via {@link FitEditorPane}.
+     */
+    public void setSegmentedContent(List<ToolSegment> blocks) {
+        contentPanel.removeAll();
+
+        // Build combined plain text for copy button
+        StringBuilder plainText = new StringBuilder();
+        JPanel multiPanel = new JPanel();
+        multiPanel.setLayout(new BoxLayout(multiPanel, BoxLayout.Y_AXIS));
+        multiPanel.setOpaque(false);
+        multiPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        ColorTheme theme = ThemeManager.getCurrentTheme();
+
+        for (int i = 0; i < blocks.size(); i++) {
+            ToolSegment block = blocks.get(i);
+            if (i > 0) {
+                multiPanel.add(Box.createVerticalStrut(6));
+                plainText.append("\n\n");
+            }
+            multiPanel.add(createSegmentPane(block.text(), block.isThought(), theme));
+            plainText.append(block.text());
+        }
+
+        combinedPlainText = plainText.toString();
+        contentPanel.add(multiPanel, BorderLayout.CENTER);
+        // Do NOT revalidate here — the pane may not yet be in a validated
+        // container. Let the caller’s revalidate (e.g. messagesContainer)
+        // lay everything out with proper widths.
+    }
+
+    private JPanel createSegmentPane(String text, boolean isThought, ColorTheme theme) {
+        JPanel wrapper = new JPanel(new BorderLayout());
+        wrapper.setOpaque(true);
+        wrapper.setAlignmentX(Component.LEFT_ALIGNMENT);
+        // Same background for both; differentiate by left border accent only
+        wrapper.setBackground(theme.thinkingHeaderBackground());
+        wrapper.setBorder(BorderFactory.createMatteBorder(0, 4, 0, 0,
+                isThought ? theme.yellow() : theme.accent()));
+
+        String html = HtmlContentPreparer.prepareHtml(text, theme, "assistant", false);
+        FitEditorPane pane = FitEditorPane.createHtmlPane(html, null, "assistant", false);
+        wrapper.add(pane, BorderLayout.CENTER);
+
+        return wrapper;
     }
 }

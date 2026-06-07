@@ -8,13 +8,10 @@ html, body {
     line-height: 1.4;
     text-align: left !important;
     width: 100% !important;
-}
-code {
-    background-color: $codeBg;
-    padding: 2px 4px;
-    border-radius: 3px;
-    font-family: 'MesloLGS NF', 'Source Code Pro', 'JetBrains Mono', 'Monaco', 'Fira Code', 'monospace';
-    font-size: 12px;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    -ms-word-break: break-word;
 }
 pre {
     background-color: $preBg;
@@ -27,6 +24,16 @@ pre {
     margin: 6px 0;
     text-align: left !important;
     width: 100% !important;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+code {
+    background-color: $codeBg;
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-family: 'MesloLGS NF', 'Source Code Pro', 'JetBrains Mono', 'Monaco', 'Fira Code', 'monospace';
+    font-size: 12px;
 }
 p, div, h1, h2, h3, h4, h5, h6 {
     margin: 2px 0;
