@@ -116,6 +116,12 @@ public class FitEditorPane extends JTextPane {
                 int cw = Math.max(1, width - ins.left - ins.right);
                 root.setSize(cw, Integer.MAX_VALUE);
             }
+            // The preferred height depends on the width (HTML text reflow).
+            // After the layout manager assigns the real width, revalidate so
+            // ancestors re-layout with the corrected preferred size. This avoids
+            // the empty-space bug where the pane was sized for the fallback
+            // 500 px width and then left oversized when the sidebar is wider.
+            javax.swing.SwingUtilities.invokeLater(this::revalidate);
         }
     }
 
