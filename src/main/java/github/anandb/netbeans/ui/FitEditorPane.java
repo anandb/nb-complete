@@ -20,6 +20,7 @@ public class FitEditorPane extends JTextPane {
     private int lastComputedWidth = 0;
     private String lastText = null;
     private Dimension cachedSize = null;
+    private volatile boolean revalidatePending = false;
 
     @Override
     public void setText(String t) {
@@ -66,7 +67,7 @@ public class FitEditorPane extends JTextPane {
                 if (h > 0) {
                     lastComputedHeight = (int) Math.ceil(h);
                     lastComputedWidth = w;
-                    cachedSize = new Dimension(w, lastComputedHeight + insets.top + insets.bottom + 20);
+                    cachedSize = new Dimension(w, lastComputedHeight + insets.top + insets.bottom + 2);
                     return cachedSize;
                 }
             }
@@ -75,11 +76,11 @@ public class FitEditorPane extends JTextPane {
         }
 
         if (lastComputedHeight > 0) {
-            cachedSize = new Dimension(w, Math.max(30, lastComputedHeight + insets.top + insets.bottom + 20));
+            cachedSize = new Dimension(w, Math.max(30, lastComputedHeight + insets.top + insets.bottom + 2));
             return cachedSize;
         }
         Dimension superSize = super.getPreferredSize();
-        cachedSize = new Dimension(w, Math.max(30, superSize.height + insets.top + insets.bottom + 20));
+        cachedSize = new Dimension(w, Math.max(30, superSize.height + insets.top + insets.bottom + 2));
         return cachedSize;
     }
 
@@ -121,7 +122,13 @@ public class FitEditorPane extends JTextPane {
             // ancestors re-layout with the corrected preferred size. This avoids
             // the empty-space bug where the pane was sized for the fallback
             // 500 px width and then left oversized when the sidebar is wider.
-            javax.swing.SwingUtilities.invokeLater(this::revalidate);
+            if (!revalidatePending) {
+                revalidatePending = true;
+                javax.swing.SwingUtilities.invokeLater(() -> {
+                    revalidatePending = false;
+                    revalidate();
+                });
+            }
         }
     }
 
@@ -154,7 +161,7 @@ public class FitEditorPane extends JTextPane {
         pane.setForeground(theme.foreground());
         pane.setDoubleBuffered(true);
         pane.setFont(ThemeManager.getFont());
-        pane.setBorder(new EmptyBorder(6, 20, 10, 6));
+        pane.setBorder(new EmptyBorder(4, 20, 4, 6));
         pane.setAlignmentX(Component.LEFT_ALIGNMENT);
         pane.setText(styledHtml);
         return pane;

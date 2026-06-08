@@ -14,7 +14,6 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.swing.BorderFactory;
-import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.Icon;
 import javax.swing.JButton;
@@ -45,6 +44,7 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
     private final Color defaultAccent;
     private JLabel paramLabel;
     private boolean isThinking;
+    private boolean isSegmented;
     private final AtomicBoolean copyHovered = new AtomicBoolean(false);
 
     public CollapsibleToolPane(String title, String content, boolean expandedAtStart) {
@@ -299,7 +299,9 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
                         return false;
                     }
                 };
-                paramLabel.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN));
+                paramLabel.setFont(isSegmented
+                        ? ThemeManager.getMonospaceFont().deriveFont(Font.PLAIN)
+                        : ThemeManager.getFont().deriveFont(Font.PLAIN));
                 paramLabel.addMouseListener(new MouseAdapter() {
                     @Override
                     public void mousePressed(MouseEvent e) {
@@ -366,6 +368,17 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
         textArea.setText(content);
     }
 
+    /**
+     * Appends text to the existing content without replacing the entire text.
+     * Used for streaming to avoid flicker from full text replacement.
+     */
+    public void appendContent(String text) {
+        if (text == null || text.isEmpty() || textArea == null) {
+            return;
+        }
+        textArea.append(text);
+    }
+
     @Override
     protected void onHeaderHover(boolean hover) {
         updateAppearance();
@@ -401,15 +414,16 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
         };
     }
 
-    /** A segment of tool/thought content to render with an appropriate background. */
-    public record ToolSegment(String text, boolean isThought) {}
+    /** A segment of tool/thought content with an optional title and background indicator. */
+    public record ToolSegment(String text, boolean isThought, String title) {}
 
     /**
      * Replaces the content area with a panel of colored segments, one per
      * consecutive same-type block. Each segment renders its text as markdown
-     * via {@link FitEditorPane}.
+     * via {@link JTextArea}.
      */
     public void setSegmentedContent(List<ToolSegment> blocks) {
+        isSegmented = true;
         contentPanel.removeAll();
 
         // Build combined plain text for copy button
@@ -424,13 +438,11 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
         for (int i = 0; i < blocks.size(); i++) {
             ToolSegment block = blocks.get(i);
             if (i > 0) {
-                multiPanel.add(Box.createVerticalStrut(6));
                 plainText.append("\n\n");
             }
-            multiPanel.add(createSegmentPane(block.text(), block.isThought(), theme));
+            multiPanel.add(createSegmentPane(block.text(), block.isThought(), block.title(), theme, i));
             plainText.append(block.text());
         }
-
         combinedPlainText = plainText.toString();
         contentPanel.add(multiPanel, BorderLayout.CENTER);
         // Do NOT revalidate here — the pane may not yet be in a validated
@@ -438,19 +450,80 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
         // lay everything out with proper widths.
     }
 
-    private JPanel createSegmentPane(String text, boolean isThought, ColorTheme theme) {
+    private JPanel createSegmentPane(String text, boolean isThought, String title, ColorTheme theme, int index) {
         JPanel wrapper = new JPanel(new BorderLayout());
         wrapper.setOpaque(true);
-        wrapper.setAlignmentX(Component.LEFT_ALIGNMENT);
-        // Same background for both; differentiate by left border accent only
         wrapper.setBackground(theme.thinkingHeaderBackground());
-        wrapper.setBorder(BorderFactory.createMatteBorder(0, 4, 0, 0,
+        wrapper.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        // Title bar sits directly on wrapper so it spans full width (no left border indent)
+        if (title != null && !title.isEmpty()) {
+            JPanel headerPanel = new JPanel(new BorderLayout());
+            headerPanel.setOpaque(true);
+            headerPanel.setBackground(theme.base2());
+            int leftPad = isThought ? 0 : 4;
+            headerPanel.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createMatteBorder(0, 0, 1, 0, theme.isDark() ? theme.base1() : theme.bubbleBorder()),
+                    BorderFactory.createEmptyBorder(5, leftPad, 5, 0)));
+
+            Icon icon = isThought
+                    ? ThemeManager.getIcon("brain.svg", 16)
+                    : ThemeManager.getIcon("tool.svg", 16);
+
+            String displayTitle = formatInnerTitle(title);
+            JLabel titleLabel = new JLabel(displayTitle, icon, JLabel.LEFT);
+            titleLabel.setIconTextGap(8);
+            titleLabel.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
+            titleLabel.setForeground(theme.foreground());
+            headerPanel.add(titleLabel, BorderLayout.CENTER);
+            wrapper.add(headerPanel, BorderLayout.NORTH);
+        }
+
+        // Body panel wraps the text area with a left accent border
+        JPanel bodyPanel = new JPanel(new BorderLayout());
+        bodyPanel.setOpaque(false);
+        bodyPanel.setBorder(BorderFactory.createMatteBorder(0, 4, 0, 0,
                 isThought ? theme.yellow() : theme.accent()));
 
-        String html = HtmlContentPreparer.prepareHtml(text, theme, "assistant", false);
-        FitEditorPane pane = FitEditorPane.createHtmlPane(html, null, "assistant", false);
-        wrapper.add(pane, BorderLayout.CENTER);
-
+        JTextArea textArea = createActivityTextArea(text);
+        bodyPanel.add(textArea, BorderLayout.CENTER);
+        wrapper.add(bodyPanel, BorderLayout.CENTER);
         return wrapper;
+    }
+
+    private static String formatInnerTitle(String rawTitle) {
+        if (rawTitle.toUpperCase().contains("THINKING")) {
+            return NbBundle.getMessage(CollapsibleToolPane.class, "LBL_ThinkingProcess");
+        }
+
+        String stripped = rawTitle.replaceFirst("(?i)TOOL:?\\s*", "").trim();
+
+        if (stripped.isEmpty() || "Tool".equalsIgnoreCase(stripped) || "Tool Call".equalsIgnoreCase(stripped)) {
+            return NbBundle.getMessage(CollapsibleToolPane.class, "LBL_ToolFallback");
+        }
+
+        int pos = stripped.indexOf(' ');
+        String tag = (pos > 1) ? translateTag(stripped.substring(0, pos)) : null;
+        String param = (pos > 1) ? stripped.substring(pos + 1) : null;
+
+        if (tag != null && isNotBlank(param)) {
+            return tag + " " + param;
+        } else if (tag != null) {
+            return tag;
+        } else {
+            return stripped;
+        }
+    }
+
+    private static JTextArea createActivityTextArea(String text) {
+        JTextArea textArea = new JTextArea(text);
+        textArea.setEditable(false);
+        textArea.setOpaque(false);
+        textArea.setBackground(null);
+        textArea.setFont(ThemeManager.getFont());
+        textArea.setBorder(BorderFactory.createEmptyBorder(8, 20, 8, 6));
+        textArea.setLineWrap(true);
+        textArea.setWrapStyleWord(true);
+        return textArea;
     }
 }

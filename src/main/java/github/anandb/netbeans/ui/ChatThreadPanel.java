@@ -38,6 +38,7 @@ import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.support.Logger;
+import org.openide.util.NbBundle;
 import org.openide.util.NbPreferences;
 
 
@@ -70,9 +71,6 @@ public class ChatThreadPanel extends JPanel {
     private long lastUserTimestamp = -1L;
     private int userMessageCount = 0;
 
-    /** A single tool or thought chunk accumulated during streaming (internal). */
-    private record RawChunk(String text, boolean isThought) {}
-
     private final JPanel messagesContainer;
     private final JScrollPane scrollPane;
     private final JLayeredPane layeredPane;
@@ -83,10 +81,6 @@ public class ChatThreadPanel extends JPanel {
     private volatile boolean keepOlderMessages = false;
     private final transient ScrollController scrollController;
     private final transient MessageTransformer messageTransformer;
-    /** Accumulated tool/thought chunks for the current turn. */
-    private final List<RawChunk> pendingChunks = new ArrayList<>();
-    /** Title for the accumulated tool/thought pane (most recent non-empty toolTitle). */
-    private String pendingToolTitle = null;
 
     public ChatThreadPanel() {
         ColorTheme theme = ThemeManager.getCurrentTheme();
@@ -153,7 +147,7 @@ public class ChatThreadPanel extends JPanel {
             }
         });
 
-        streamFlushTimer = new Timer(100, e -> {
+        streamFlushTimer = new Timer(150, e -> {
             if (!isShowing()) {
                 return;
             }
@@ -212,7 +206,12 @@ public class ChatThreadPanel extends JPanel {
         final String role = pm.messageType().roleName();
 
         SwingUtilities.invokeLater(() -> {
-            processMessageSections(pm, text, role);
+            if (pm.streaming()) {
+                processMessageSections(pm, text, role);
+            } else {
+                // Non-streaming messages are complete — create a single bubble
+                addSingleBubble(pm.messageType(), text, pm.messageId(), pm.toolTitle(), false);
+            }
             trimMessages();
         });
     }
@@ -229,11 +228,30 @@ public class ChatThreadPanel extends JPanel {
 
             boolean canMerge = (lastBubble != null && role.equals(lastBubble.getRole()));
             if (canMerge) {
-                canMerge = !"user".equals(role) && ("thought".equals(role) || canMergeMessages(pm.messageId(), lastBubble.getMessageId()));
+                if ("thought".equals(role)) {
+                    canMerge = true;
+                } else if ("tool".equals(role)) {
+                    // Merge if message IDs match (incl. streaming prefixes) OR
+                    // if the toolTitle is the same (same tool call in flight).
+                    // Also merge when the current fragment has a title but the
+                    // last bubble didn't (first fragment lacked a toolTitle).
+                    String lastTitle = lastBubble.getToolTitle();
+                    canMerge = canMergeMessages(pm.messageId(), lastBubble.getMessageId())
+                            || (pm.toolTitle() != null && pm.toolTitle().equals(lastTitle))
+                            || (pm.toolTitle() != null && pm.streaming()
+                                    && (lastTitle == null || lastTitle.isEmpty()));
+                } else {
+                    canMerge = !"user".equals(role) && canMergeMessages(pm.messageId(), lastBubble.getMessageId());
+                }
             }
 
             if (lastBubble != null && canMerge) {
                 lastBubble.appendText(part, pm.toolTitle());
+                // If the bubble was already finalized (not streaming), re-render
+                // immediately so late deltas are reflected in the HTML content.
+                if (!lastBubble.isStreaming()) {
+                    lastBubble.flushUpdate(true);
+                }
             } else {
                 if (lastBubble != null) {
                     if (lastBubble == activeStreamBubble) {
@@ -252,59 +270,36 @@ public class ChatThreadPanel extends JPanel {
         }
     }
 
-    /** Flushes accumulated tool/thought chunks as a single MessageBubble. */
-    private void flushPendingToolBubble() {
-        if (pendingChunks.isEmpty()) return;
-
-        // Merge consecutive same-type chunks into blocks
-        List<CollapsibleToolPane.ToolSegment> blocks = new ArrayList<>();
-        StringBuilder buf = new StringBuilder();
-        boolean currentType = pendingChunks.get(0).isThought;
-        buf.append(pendingChunks.get(0).text);
-        for (int i = 1; i < pendingChunks.size(); i++) {
-            RawChunk chunk = pendingChunks.get(i);
-            if (chunk.isThought == currentType) {
-                buf.append("\n\n").append(chunk.text);
-            } else {
-                blocks.add(new CollapsibleToolPane.ToolSegment(buf.toString(), currentType));
-                buf = new StringBuilder(chunk.text);
-                currentType = chunk.isThought;
-            }
-        }
-        blocks.add(new CollapsibleToolPane.ToolSegment(buf.toString(), currentType));
-
-        String title = "Execution Steps (" + pendingChunks.size() + ")";
-        MessageBubble bubble = new MessageBubble(MessageType.tool_call, "", null, title, MessageBubble.AvatarPosition.NONE);
-        bubble.setSegmentedToolContent(blocks);
-        bubble.setExpanded(allBlocksExpanded);
-
-        boolean visible = !ChatThreadPanel.MessageFilterManager.isTypeHidden("tool");
-        bubble.setVisible(visible);
-        Component strut = Box.createVerticalStrut(4);
-        strut.setVisible(visible);
-        messagesContainer.add(bubble);
-        messagesContainer.add(strut);
-        messagesContainer.revalidate();
-        scrollController.scrollToBottom();
-
-        pendingChunks.clear();
-        pendingToolTitle = null;
-    }
-
     private void addSingleBubble(MessageType type, String text, String messageId, String toolTitle, boolean streaming) {
-        // Tool/thought messages accumulate as typed chunks, merged at flush time.
+        // Tool/thought messages create individual bubbles immediately (not accumulated)
         if (type.isTool() || type.isThought()) {
-            pendingChunks.add(new RawChunk(text, type.isThought()));
-            // Use the longest non-empty title
-            if (toolTitle != null && toolTitle.length() > (pendingToolTitle != null ? pendingToolTitle.length() : 0)) {
-                pendingToolTitle = toolTitle;
+            // Use "Thinking Process" title for thought bubbles so they show brain icon
+            if (type.isThought() && (toolTitle == null || toolTitle.isEmpty())) {
+                toolTitle = NbBundle.getMessage(CollapsibleToolPane.class, "LBL_ThinkingProcess");
+            }
+            MessageBubble.AvatarPosition avatarPos = MessageBubble.AvatarPosition.NONE;
+            MessageBubble bubble = new MessageBubble(type, text, messageId, toolTitle, avatarPos, streaming);
+
+            boolean visible = !ChatThreadPanel.MessageFilterManager.isTypeHidden(type.roleName());
+            bubble.setVisible(visible);
+            Component strut = Box.createVerticalStrut(4);
+            strut.setVisible(visible);
+            messagesContainer.add(bubble);
+            messagesContainer.add(strut);
+
+            messagesContainer.revalidate();
+            scrollController.scrollToBottom();
+
+            if (streaming) {
+                activeStreamBubble = bubble;
+                streamFlushTimer.start();
             }
             return;
         }
 
-        // Flush accumulated tool/thought panes before a new message type
+        // Combine individual tool/thought bubbles before user/assistant messages
         if (type.isUser() || type.isAssistant()) {
-            flushPendingToolBubble();
+            combineToolThoughtBubbles();
         }
 
         // Reset turn state for new user message
@@ -315,7 +310,7 @@ public class ChatThreadPanel extends JPanel {
         MessageBubble.AvatarPosition avatarPos = "user".equals(type.roleName())
                 ? (userMessageCount % 2 == 1 ? MessageBubble.AvatarPosition.LEFT : MessageBubble.AvatarPosition.RIGHT)
                 : MessageBubble.AvatarPosition.NONE;
-        MessageBubble bubble = new MessageBubble(type, text, messageId, toolTitle, avatarPos);
+        MessageBubble bubble = new MessageBubble(type, text, messageId, toolTitle, avatarPos, streaming);
 
         if ("user".equals(type.roleName())) {
             lastUserTimestamp = System.currentTimeMillis();
@@ -340,6 +335,107 @@ public class ChatThreadPanel extends JPanel {
         if (streaming) {
             streamFlushTimer.start();
         }
+    }
+
+    /**
+     * Combines all individual tool/thought bubbles into a single "Execution Steps"
+     * activity panel. Called before a user/assistant message is added or when
+     * streaming ends. Individual bubbles are removed to free memory.
+     */
+    private void combineToolThoughtBubbles() {
+        // Find all individual tool/thought bubbles (skip already-combined ones)
+        List<Component> toRemove = new ArrayList<>();
+        List<CollapsibleToolPane.ToolSegment> allSegments = new ArrayList<>();
+        int insertIndex = -1;
+
+        Component[] comps = messagesContainer.getComponents();
+        for (int i = 0; i < comps.length; i++) {
+            Component c = comps[i];
+            if (c instanceof MessageBubble mb) {
+                String role = mb.getRole();
+                if (("tool".equals(role) || "thought".equals(role))
+                        && !Boolean.TRUE.equals(mb.getClientProperty("nb-complete.combined"))) {
+                    if (insertIndex < 0) {
+                        insertIndex = i;
+                    }
+                    String text = mb.getRawText();
+                    if (text != null && !text.isEmpty()) {
+                        String segTitle = mb.getToolTitle();
+                        if ("thought".equals(role) && (segTitle == null || segTitle.isEmpty())) {
+                            segTitle = NbBundle.getMessage(CollapsibleToolPane.class, "LBL_ThinkingProcess");
+                        } else if ("tool".equals(role) && (segTitle == null || segTitle.isEmpty())) {
+                            segTitle = NbBundle.getMessage(CollapsibleToolPane.class, "LBL_ToolFallback");
+                        }
+                        // For "read" tool segments, skip body content — show header only
+                        if ("tool".equals(role) && segTitle != null) {
+                            String stripped = segTitle.replaceFirst("(?i)TOOL:?\\s*", "").trim();
+                            int pos = stripped.indexOf(' ');
+                            String firstWord = (pos > 1) ? stripped.substring(0, pos) : stripped;
+                            if ("read".equalsIgnoreCase(firstWord)) {
+                                text = "";
+                            }
+                        }
+                        allSegments.add(new CollapsibleToolPane.ToolSegment(
+                                text, "thought".equals(role), segTitle));
+                    }
+                    toRemove.add(c);
+                    // Remove trailing strut as well
+                    if (i + 1 < comps.length && comps[i + 1] instanceof Box.Filler) {
+                        toRemove.add(comps[i + 1]);
+                        i++; // skip strut in next iteration
+                    }
+                }
+            }
+        }
+
+        if (allSegments.isEmpty()) return;
+
+        // Filter segments by current type visibility so the combined pane
+        // only contains what the user wants to see.
+        boolean toolHidden = MessageFilterManager.isTypeHidden("tool");
+        boolean thoughtHidden = MessageFilterManager.isTypeHidden("thought");
+        List<CollapsibleToolPane.ToolSegment> visibleSegments = new ArrayList<>();
+        for (CollapsibleToolPane.ToolSegment seg : allSegments) {
+            if ((seg.isThought() && !thoughtHidden) || (!seg.isThought() && !toolHidden)) {
+                visibleSegments.add(seg);
+            }
+        }
+
+        if (visibleSegments.isEmpty()) {
+            // All segments hidden — remove individual bubbles but create no combined pane
+            for (int i = toRemove.size() - 1; i >= 0; i--) {
+                messagesContainer.remove(toRemove.get(i));
+            }
+            messagesContainer.revalidate();
+            return;
+        }
+
+        // Remove from back to front to keep indices valid
+        for (int i = toRemove.size() - 1; i >= 0; i--) {
+            messagesContainer.remove(toRemove.get(i));
+        }
+
+        // Create combined bubble with only the visible segments
+        String title = visibleSegments.size() == 1
+                ? "Execution Steps"
+                : "Execution Steps (" + visibleSegments.size() + ")";
+        MessageBubble combined = new MessageBubble(
+                MessageType.tool_call, "", null, title, MessageBubble.AvatarPosition.NONE);
+        combined.setSegmentedToolContent(visibleSegments);
+        combined.setExpanded(allBlocksExpanded);
+        combined.putClientProperty("nb-complete.combined", Boolean.TRUE);
+        // Store ALL segments (unfiltered) for later re-filtering by applyTypeFilters()
+        combined.putClientProperty("nb-complete.segments", allSegments);
+
+        boolean combinedVisible = !(toolHidden && thoughtHidden);
+        combined.setVisible(combinedVisible);
+        Component strut = Box.createVerticalStrut(4);
+        strut.setVisible(combinedVisible);
+
+        int safeIdx = Math.max(0, Math.min(insertIndex, messagesContainer.getComponentCount()));
+        messagesContainer.add(combined, safeIdx);
+        messagesContainer.add(strut, safeIdx + 1);
+        messagesContainer.revalidate();
     }
 
     private void trimMessages() {
@@ -384,9 +480,21 @@ public class ChatThreadPanel extends JPanel {
                 }
                 activeStreamBubble = null;
             }
+            // Scan for any remaining streaming bubbles missed by the
+            // activeStreamBubble path (e.g. interrupted by tool/thought
+            // chunks that reset activeStreamBubble, or late SSE deltas
+            // arriving after the responding_finished timer fired).
+            for (Component c : messagesContainer.getComponents()) {
+                if (c instanceof MessageBubble mb && mb.isStreaming()) {
+                    mb.flushUpdate(true);
+                    mb.finalizeStreaming(allBlocksExpanded);
+                }
+            }
             if (streamFlushTimer.isRunning()) {
                 streamFlushTimer.stop();
             }
+            // Combine any remaining individual tool/thought bubbles
+            combineToolThoughtBubbles();
         });
     }
 
@@ -498,12 +606,42 @@ public class ChatThreadPanel extends JPanel {
 
     public void applyTypeFilters() {
         SwingUtilities.invokeLater(() -> {
+            boolean toolHidden = MessageFilterManager.isTypeHidden("tool");
+            boolean thoughtHidden = MessageFilterManager.isTypeHidden("thought");
+
             Component[] comps = messagesContainer.getComponents();
             for (int i = 0; i < comps.length; i++) {
                 if (comps[i] instanceof MessageBubble bubble) {
-                    boolean visible = !ChatThreadPanel.MessageFilterManager.isTypeHidden(bubble.getRole());
+                    // Combined bubbles need segment-level re-filtering
+                    if (Boolean.TRUE.equals(bubble.getClientProperty("nb-complete.combined"))) {
+                        @SuppressWarnings("unchecked")
+                        List<CollapsibleToolPane.ToolSegment> allSegments =
+                                (List<CollapsibleToolPane.ToolSegment>) bubble.getClientProperty("nb-complete.segments");
+                        if (allSegments != null) {
+                            List<CollapsibleToolPane.ToolSegment> visibleSegments = new ArrayList<>();
+                            for (CollapsibleToolPane.ToolSegment seg : allSegments) {
+                                if ((seg.isThought() && !thoughtHidden)
+                                        || (!seg.isThought() && !toolHidden)) {
+                                    visibleSegments.add(seg);
+                                }
+                            }
+                            if (visibleSegments.isEmpty()) {
+                                bubble.setVisible(false);
+                                if (i + 1 < comps.length) comps[i + 1].setVisible(false);
+                            } else {
+                                String newTitle = visibleSegments.size() == 1
+                                        ? "Execution Steps"
+                                        : "Execution Steps (" + visibleSegments.size() + ")";
+                                bubble.updateCombinedContent(visibleSegments, newTitle);
+                                bubble.setVisible(true);
+                                if (i + 1 < comps.length) comps[i + 1].setVisible(true);
+                            }
+                            continue;
+                        }
+                    }
+                    // Normal (non-combined) bubble visibility
+                    boolean visible = !MessageFilterManager.isTypeHidden(bubble.getRole());
                     comps[i].setVisible(visible);
-                    // Trailing strut is always at i+1 (see addSingleBubble)
                     if (i + 1 < comps.length) {
                         comps[i + 1].setVisible(visible);
                     }
@@ -518,8 +656,6 @@ public class ChatThreadPanel extends JPanel {
             messagesContainer.removeAll();
             lastUserTimestamp = -1L;
             userMessageCount = 0;
-            pendingChunks.clear();
-            pendingToolTitle = null;
             messagesContainer.revalidate();
         });
     }
@@ -562,10 +698,15 @@ public class ChatThreadPanel extends JPanel {
     }
 
     private static boolean canMergeMessages(String messageId, String existingMessageId) {
-        if (messageId != null && existingMessageId != null) {
-            return messageId.equals(existingMessageId);
+        if (messageId == null || existingMessageId == null) {
+            return (messageId == null && existingMessageId == null);
         }
-
-        return (messageId == null && existingMessageId == null);
+        if (messageId.equals(existingMessageId)) {
+            return true;
+        }
+        // Handle streaming suffix IDs like "msg1_0"/"msg1_1" or "msg1-0"/"msg1-1".
+        // If one is a strict prefix of the other followed by a separator, merge.
+        return messageId.startsWith(existingMessageId + "-") || existingMessageId.startsWith(messageId + "-")
+            || messageId.startsWith(existingMessageId + "_") || existingMessageId.startsWith(messageId + "_");
     }
 }

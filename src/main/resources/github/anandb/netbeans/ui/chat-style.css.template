@@ -1,5 +1,5 @@
 html, body {
-    font-family: 'Dialog', 'Noto Sans', 'Segoe UI', 'Ubuntu', 'Helvetica Neue', 'Arial', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', 'sans-serif';
+    font-family: 'Apple Color Emoji', 'Noto Color Emoji', 'Dialog', 'Noto Sans', 'Segoe UI', 'Ubuntu', 'Helvetica Neue', 'Arial', 'Segoe UI Emoji', 'Segoe UI Symbol', 'sans-serif';
     font-size: 13px;
     color: $fg;
     background-color: $bg;

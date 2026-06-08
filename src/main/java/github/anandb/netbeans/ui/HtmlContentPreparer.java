@@ -48,12 +48,13 @@ public final class HtmlContentPreparer {
         String pTag = "<p align='left' style='text-align: left !important;'>";
         String divTag = "<div align='left' style='text-align: left !important;'>";
 
-        html = html.replace("</th>", "</b></th>")
-                   .replace("<table>", tableTag)
-                   .replace("<th>", thTag)
-                   .replace("<td>", tdTag)
-                   .replace("<p>", pTag)
-                   .replace("<div>", divTag);
+        html = batchReplace(html,
+                "</th>", "</b></th>",
+                "<table>", tableTag,
+                "<th>", thTag,
+                "<td>", tdTag,
+                "<p>", pTag,
+                "<div>", divTag);
 
         boolean hasArt = TextScanner.containsAsciiArt(markdown);
         if (!hasArt && !"user".equals(role)) {
@@ -86,5 +87,32 @@ public final class HtmlContentPreparer {
 
     public static boolean containsAsciiArt(String markdown) {
         return TextScanner.containsAsciiArt(markdown);
+    }
+
+    /**
+     * Single-pass replacement of multiple literal strings.
+     * Faster than chaining {@link String#replace} for large HTML because
+     * each target is scanned once instead of re-scanning the entire
+     * result string after every replacement.
+     */
+    private static String batchReplace(String source, String... pairs) {
+        if (pairs.length == 0 || pairs.length % 2 != 0) {
+            return source;
+        }
+        StringBuilder sb = new StringBuilder(source.length() + 256);
+        outer:
+        for (int i = 0; i < source.length(); ) {
+            for (int p = 0; p < pairs.length; p += 2) {
+                String target = pairs[p];
+                if (source.startsWith(target, i)) {
+                    sb.append(pairs[p + 1]);
+                    i += target.length();
+                    continue outer;
+                }
+            }
+            sb.append(source.charAt(i));
+            i++;
+        }
+        return sb.toString();
     }
 }

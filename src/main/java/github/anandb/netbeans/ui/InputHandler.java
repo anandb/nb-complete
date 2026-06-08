@@ -47,7 +47,8 @@ public class InputHandler {
                     if (autocompleteManager.handleKeyPressed(e)) {
                         // handled by autocomplete
                     } else if ((e.getModifiersEx() & InputEvent.SHIFT_DOWN_MASK) != 0) {
-                        inputArea.append("\n");
+                        e.consume();
+                        inputArea.insert("\n", inputArea.getCaretPosition());
                     } else {
                         e.consume();
                         messageSender.sendMessage();

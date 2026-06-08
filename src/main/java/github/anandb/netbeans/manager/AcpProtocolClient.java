@@ -83,7 +83,7 @@ public class AcpProtocolClient implements Closeable {
     }
 
     public CompletableFuture<JsonNode> sendRequest(String method, Object params) {
-        return sendRequest(method, params, PluginSettings.getSessionIdleTimeout());
+        return sendRequest(method, params, 0);
     }
 
     public CompletableFuture<JsonNode> sendRequest(String method, Object params, long timeoutSeconds) {

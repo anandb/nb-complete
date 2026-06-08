@@ -22,6 +22,7 @@ import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.Scrollable;
+import javax.swing.JTextArea;
 import javax.swing.Timer;
 
 import java.awt.event.HierarchyEvent;
@@ -70,6 +71,10 @@ public class MessageBubble extends JPanel implements Scrollable {
     private final ArrayList<CollapsibleState> codeStates = new ArrayList<>();
     private transient HierarchyListener hierarchyListener;
     private long responseTimeMs = -1L;
+    /** Tracks how much of the text has already been displayed (for incremental streaming updates). */
+    private int lastDisplayedLength = 0;
+    private boolean isStreaming = false;
+    private JTextArea streamingTextArea;
 
     private static class CollapsibleState {
         boolean expanded;
@@ -120,6 +125,10 @@ public class MessageBubble extends JPanel implements Scrollable {
     }
 
     public MessageBubble(MessageType type, String text, String messageId, String toolTitle, AvatarPosition avatarPosition) {
+        this(type, text, messageId, toolTitle, avatarPosition, false);
+    }
+
+    public MessageBubble(MessageType type, String text, String messageId, String toolTitle, AvatarPosition avatarPosition, boolean streaming) {
         this.type = type;
         this.role = type.roleName();
         this.messageId = messageId;
@@ -147,11 +156,18 @@ public class MessageBubble extends JPanel implements Scrollable {
             p.setBorder(new EmptyBorder(10, 8, 10, 8));
             this.bubble = p;
         } else {
-            this.bubble.setBorder(new EmptyBorder(2, 8, 6, 8));
+            this.bubble.setBorder(new EmptyBorder(2, 8, 2, 8));
         }
         this.bubble.add(segments, BorderLayout.CENTER);
 
-        updateContent(theme, false);
+        this.isStreaming = "assistant".equals(role) && streaming;
+        if (this.isStreaming) {
+            streamingTextArea = createStreamingTextArea(theme, text);
+            segments.add(streamingTextArea);
+            lastDisplayedLength = this.text.length();
+        } else {
+            updateContent(theme, false);
+        }
         boolean isAssistant = "assistant".equals(role);
 
         Insets gbcInsets = new Insets(4, 12, 4, 12);
@@ -172,10 +188,14 @@ public class MessageBubble extends JPanel implements Scrollable {
             copyPanel.setOpaque(false);
 
             final JButton[] copyBtn = new JButton[1];
-            copyBtn[0] = UIUtils.createToolbarButton("copy.svg", 14,
+            copyBtn[0] = UIUtils.createToolbarButton("copy.svg", 20,
                 NbBundle.getMessage(MessageBubble.class, "HINT_CopyAssistantMessage"),
                 e -> copyMessageToClipboard(copyBtn[0]));
-            copyBtn[0].setBorder(BorderFactory.createEmptyBorder(0, 4, 0, 4));
+            copyBtn[0].setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(theme.bubbleBorder()),
+                    BorderFactory.createEmptyBorder(1, 2, 1, 2)));
+            copyBtn[0].setContentAreaFilled(false);
+            copyBtn[0].setOpaque(false);
             copyBtn[0].setForeground(theme.foreground());
             copyPanel.add(copyBtn[0]);
             bubble.add(copyPanel, BorderLayout.SOUTH);
@@ -231,8 +251,8 @@ public class MessageBubble extends JPanel implements Scrollable {
         userLabel.addMouseListener(new MessageCopyMouseAdapter(
             userLabel,
             userIcon,
-            ThemeManager.getIcon("copy.svg", 32),
-            ThemeManager.getIcon("check.svg", 32),
+            ThemeManager.getIcon("copy.svg", 44),
+            ThemeManager.getIcon("check.svg", 44),
             messageId, role, this
         ));
         return userLabel;
@@ -277,13 +297,23 @@ public class MessageBubble extends JPanel implements Scrollable {
     }
 
     public boolean flushUpdate(boolean force) {
-        if (hasPendingTextUpdate) {
-            hasPendingTextUpdate = false;
-            updateContent(ThemeManager.getCurrentTheme(), true);
-            return true;
+        if (!hasPendingTextUpdate && !force) {
+            return false;
+        }
+        hasPendingTextUpdate = false;
+
+        if (isStreaming) {
+            if (streamingTextArea != null && text.length() > lastDisplayedLength) {
+                String delta = text.substring(lastDisplayedLength);
+                streamingTextArea.append(delta);
+                lastDisplayedLength = text.length();
+                return true;
+            }
+            return false;
         }
 
-        return false;
+        updateContent(ThemeManager.getCurrentTheme(), true);
+        return true;
     }
 
     /**
@@ -333,8 +363,17 @@ public class MessageBubble extends JPanel implements Scrollable {
         return messageId;
     }
 
+    public String getToolTitle() {
+        return toolTitle;
+    }
+
     public String getRawText() {
         return text.toString();
+    }
+
+    /** Returns true if this bubble is still in streaming mode (not yet converted to HTML). */
+    public boolean isStreaming() {
+        return isStreaming;
     }
 
     public void setResponseTimeMs(long ms) {
@@ -359,6 +398,31 @@ public class MessageBubble extends JPanel implements Scrollable {
         return String.format("%dm %ds", mins, secs);
     }
 
+    private JTextArea createStreamingTextArea(ColorTheme theme, String initialText) {
+        JTextArea ta = new JTextArea(initialText) {
+            @Override
+            public Dimension getMaximumSize() {
+                Dimension pref = getPreferredSize();
+                return new Dimension(Short.MAX_VALUE, pref.height);
+            }
+
+            @Override
+            public float getAlignmentX() {
+                return Component.LEFT_ALIGNMENT;
+            }
+        };
+        ta.setEditable(false);
+        ta.setLineWrap(true);
+        ta.setWrapStyleWord(true);
+        ta.setOpaque(false);
+        ta.setBackground(TRANSPARENT);
+        ta.setForeground(theme.assistantForeground());
+        ta.setFont(ThemeManager.getFont());
+        ta.setBorder(new EmptyBorder(4, 20, 4, 6));
+        ta.setCaretPosition(ta.getDocument().getLength());
+        return ta;
+    }
+
     private void updateContent(ColorTheme theme, boolean expanded) {
         // Handle specialized tool rendering
         if ("tool".equals(role) || "thought".equals(role)) {
@@ -371,17 +435,30 @@ public class MessageBubble extends JPanel implements Scrollable {
                 Component first = segments.getComponent(0);
                 if (first instanceof CollapsibleActivityPane ep) {
                     ep.setTitle(title);
-                    ep.setContent(displayContent);
+                    if (displayContent.length() > lastDisplayedLength) {
+                        ep.appendContent(displayContent.substring(lastDisplayedLength));
+                        lastDisplayedLength = displayContent.length();
+                    } else if (displayContent.length() < lastDisplayedLength) {
+                        ep.setContent(displayContent);
+                        lastDisplayedLength = displayContent.length();
+                    }
                     ep.setExpanded(expanded);
                 } else if (first instanceof CollapsibleToolPane ep) {
                     ep.setTitle(title);
-                    ep.setContent(displayContent);
+                    if (displayContent.length() > lastDisplayedLength) {
+                        ep.appendContent(displayContent.substring(lastDisplayedLength));
+                        lastDisplayedLength = displayContent.length();
+                    } else if (displayContent.length() < lastDisplayedLength) {
+                        ep.setContent(displayContent);
+                        lastDisplayedLength = displayContent.length();
+                    }
                     ep.setExpanded(expanded);
                 }
             } else {
                 segments.removeAll();
                 CollapsibleActivityPane activityPane = new CollapsibleActivityPane(title, displayContent, expanded);
                 segments.add(activityPane);
+                lastDisplayedLength = displayContent.length();
             }
             // Single revalidate at container level is sufficient
             revalidate();
@@ -476,6 +553,18 @@ public class MessageBubble extends JPanel implements Scrollable {
     }
 
     public void finalizeStreaming(boolean defaultExpanded) {
+        if (isStreaming) {
+            isStreaming = false;
+            if (streamingTextArea != null) {
+                segments.remove(streamingTextArea);
+                streamingTextArea = null;
+            }
+            updateContent(ThemeManager.getCurrentTheme(), defaultExpanded);
+            revalidate();
+            repaint();
+            return;
+        }
+
         for (Component c : segments.getComponents()) {
             if (c instanceof CollapsibleCodePane codePane) {
                 codePane.setExpanded(defaultExpanded);
@@ -499,6 +588,25 @@ public class MessageBubble extends JPanel implements Scrollable {
                 pane.setSegmentedContent(blocks);
                 return;
             } else if (c instanceof CollapsibleToolPane pane) {
+                pane.setSegmentedContent(blocks);
+                return;
+            }
+        }
+    }
+
+    /**
+     * Updates both the title and segmented content of the combined activity pane.
+     * Used by applyTypeFilters() when re-filtering changes the visible count.
+     */
+    public void updateCombinedContent(List<CollapsibleToolPane.ToolSegment> blocks, String title) {
+        this.toolTitle = title;
+        for (Component c : segments.getComponents()) {
+            if (c instanceof CollapsibleActivityPane pane) {
+                pane.setTitle(title);
+                pane.setSegmentedContent(blocks);
+                return;
+            } else if (c instanceof CollapsibleToolPane pane) {
+                pane.setTitle(title);
                 pane.setSegmentedContent(blocks);
                 return;
             }

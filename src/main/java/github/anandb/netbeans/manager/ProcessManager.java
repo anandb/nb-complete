@@ -483,8 +483,7 @@ public class ProcessManager {
         params.put("prompt", promptBlocks);
         params.put("mcpServers", mcpManager.getServerConfig());
 
-        int timeout = Integer.getInteger("beanbot.sessionPromptTimeout", 300);
-        return client.sendRequest("session/prompt", params, timeout)
+        return client.sendRequest("session/prompt", params)
                 .thenApply(v -> null);
     }
 
