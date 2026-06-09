@@ -67,7 +67,8 @@ public class FitEditorPane extends JTextPane {
                 if (h > 0) {
                     lastComputedHeight = (int) Math.ceil(h);
                     lastComputedWidth = w;
-                    cachedSize = new Dimension(w, lastComputedHeight + insets.top + insets.bottom + 2);
+                    // +5 fudge prevents last text line from being clipped
+                    cachedSize = new Dimension(w, lastComputedHeight + insets.top + insets.bottom + 5);
                     return cachedSize;
                 }
             }
@@ -76,7 +77,8 @@ public class FitEditorPane extends JTextPane {
         }
 
         if (lastComputedHeight > 0) {
-            cachedSize = new Dimension(w, Math.max(30, lastComputedHeight + insets.top + insets.bottom + 2));
+            // +5 fudge prevents last text line from being clipped
+            cachedSize = new Dimension(w, Math.max(30, lastComputedHeight + insets.top + insets.bottom + 5));
             return cachedSize;
         }
         Dimension superSize = super.getPreferredSize();
@@ -160,8 +162,9 @@ public class FitEditorPane extends JTextPane {
         pane.setMargin(new Insets(0, 0, 0, 0));
         pane.setForeground(theme.foreground());
         pane.setDoubleBuffered(true);
-        pane.setFont(ThemeManager.getFont());
-        pane.setBorder(new EmptyBorder(4, 20, 4, 6));
+
+        // Bottom padding extra generous to prevent last line from being clipped
+        pane.setBorder(new EmptyBorder(4, 20, 8, 6));
         pane.setAlignmentX(Component.LEFT_ALIGNMENT);
         pane.setText(styledHtml);
         return pane;

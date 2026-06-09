@@ -10,6 +10,8 @@ import java.awt.Insets;
 import java.awt.Rectangle;
 import java.awt.Toolkit;
 import java.awt.datatransfer.StringSelection;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -95,6 +97,7 @@ public class MessageBubble extends JPanel implements Scrollable {
         if (null == type) {
             bgColor = TRANSPARENT;
         } else bgColor = switch (type) {
+            case "assistant" -> theme.bubbleAssistant();
             case "user" -> theme.bubbleUser();
             case "error" -> theme.errorBackground();
             default -> TRANSPARENT;
@@ -149,11 +152,16 @@ public class MessageBubble extends JPanel implements Scrollable {
 
         this.bubble = new JPanel(new BorderLayout());
         this.bubble.setDoubleBuffered(true);
-        // Only User messages get the prominent global bubble wrapper
         if ("user".equals(role)) {
             RoundedPanel p = new RoundedPanel(16);
             p.setLayout(new BorderLayout());
             p.setBorder(new EmptyBorder(10, 8, 10, 8));
+            this.bubble = p;
+        } else if ("assistant".equals(role)) {
+            // Assistant bubble gets rounded corners + bg, same radius as tool panels
+            RoundedPanel p = new RoundedPanel(12);
+            p.setLayout(new BorderLayout());
+            p.setBorder(new EmptyBorder(8, 10, 8, 10));
             this.bubble = p;
         } else {
             this.bubble.setBorder(new EmptyBorder(2, 8, 2, 8));
@@ -182,11 +190,8 @@ public class MessageBubble extends JPanel implements Scrollable {
             gbcInsets.right = 12;
         }
 
-        // Copy button for assistant messages at bottom right
+        // Copy button for assistant messages at bottom right — visible only on hover
         if ("assistant".equals(role)) {
-            JPanel copyPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
-            copyPanel.setOpaque(false);
-
             final JButton[] copyBtn = new JButton[1];
             copyBtn[0] = UIUtils.createToolbarButton("copy.svg", 20,
                 NbBundle.getMessage(MessageBubble.class, "HINT_CopyAssistantMessage"),
@@ -197,8 +202,35 @@ public class MessageBubble extends JPanel implements Scrollable {
             copyBtn[0].setContentAreaFilled(false);
             copyBtn[0].setOpaque(false);
             copyBtn[0].setForeground(theme.foreground());
-            copyPanel.add(copyBtn[0]);
-            bubble.add(copyPanel, BorderLayout.SOUTH);
+            copyBtn[0].setVisible(false);
+
+            // Reserve space in SOUTH with a fixed-size placeholder so the
+            // layout never shifts when toggling button visibility (avoids jitter).
+            JPanel copyPlaceholder = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+            copyPlaceholder.setOpaque(false);
+            Dimension btnSize = copyBtn[0].getPreferredSize();
+            copyPlaceholder.setPreferredSize(btnSize);
+            copyPlaceholder.setMinimumSize(btnSize);
+            copyPlaceholder.setMaximumSize(btnSize);
+            copyPlaceholder.add(copyBtn[0]);
+            bubble.add(copyPlaceholder, BorderLayout.SOUTH);
+
+            // Show copy button + frame on hover over the bubble.
+            // mouseExited only hides when truly leaving the bubble, not when
+            // entering a child (otherwise the button vanishes on approach).
+            bubble.addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseEntered(MouseEvent e) {
+                    copyBtn[0].setVisible(true);
+                }
+
+                @Override
+                public void mouseExited(MouseEvent e) {
+                    if (!bubble.contains(e.getPoint())) {
+                        copyBtn[0].setVisible(false);
+                    }
+                }
+            });
         }
 
         if ("user".equals(role) && avatarPosition != AvatarPosition.NONE) {
@@ -290,6 +322,37 @@ public class MessageBubble extends JPanel implements Scrollable {
         this.text.append(newText);
         this.toolTitle = length(this.toolTitle) < length(toolTitle) ? toolTitle : this.toolTitle;
         hasPendingTextUpdate = true;
+        // Detect finalization signal immediately. If found, flush and finalize
+        // so the streaming JTextArea is replaced with a FitEditorPane right away.
+        if (stripFinalizationSignal()) {
+            if (isStreaming) {
+                // Flush any pending delta to the streaming text area first,
+                // then finalize (removes JTextArea, renders HTML via updateContent).
+                if (streamingTextArea != null && lastDisplayedLength < text.length()) {
+                    String delta = text.substring(lastDisplayedLength);
+                    streamingTextArea.append(delta);
+                    lastDisplayedLength = text.length();
+                }
+                finalizeStreaming(false);
+            } else {
+                hasPendingTextUpdate = true;
+            }
+        }
+    }
+
+    /** Strip the {@code \n\n<\n\n<} finalization signal from end of text if present.
+     *  Adjusts lastDisplayedLength so future flushUpdate() operates on the
+     *  correct range. Returns true if the signal was stripped. */
+    public boolean stripFinalizationSignal() {
+        String raw = text.toString();
+        if (raw.endsWith("\n\n<\n\n<")) {
+            text.setLength(text.length() - 6);
+            if (lastDisplayedLength > text.length()) {
+                lastDisplayedLength = text.length();
+            }
+            return true;
+        }
+        return false;
     }
 
     public boolean flushUpdate() {
@@ -307,6 +370,18 @@ public class MessageBubble extends JPanel implements Scrollable {
                 String delta = text.substring(lastDisplayedLength);
                 streamingTextArea.append(delta);
                 lastDisplayedLength = text.length();
+                // Signal to finalize: text ends with "\n\n<\n\n<"
+                String rawText = text.toString();
+                if (rawText.endsWith("\n\n<\n\n<")) {
+                    text.setLength(text.length() - 6);
+                    String taText = streamingTextArea.getText();
+                    if (taText.endsWith("\n\n<\n\n<")) {
+                        streamingTextArea.setText(taText.substring(0, taText.length() - 6));
+                    }
+                    lastDisplayedLength = text.length();
+                    finalizeStreaming(false);
+                    return true;
+                }
                 return true;
             }
             return false;
@@ -381,6 +456,7 @@ public class MessageBubble extends JPanel implements Scrollable {
         this.responseTimeMs = ms;
         String label = formatElapsed(ms);
         JLabel ttftLabel = new JLabel(label);
+        ttftLabel.setToolTipText("Time to First Token: " + label);
         ttftLabel.setFont(ThemeManager.getFont().deriveFont(10f));
         ttftLabel.setForeground(Color.GRAY);
         ttftLabel.setBorder(new EmptyBorder(0, 0, 0, 12));

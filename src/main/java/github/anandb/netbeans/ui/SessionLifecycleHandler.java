@@ -168,16 +168,8 @@ public class SessionLifecycleHandler implements SessionListener {
             LOG.info("SSE turn-end signal received: type={0} (this confirms SSE path WORKS)", type);
             turnEnded = true;
             // Brief delay to allow any in-flight delta notifications to arrive
-            Timer flushTimer = new Timer(150, e -> {
-                SwingUtilities.invokeLater(() -> {
-                    statusController.resetToReady();
-                    chatPanel.stopStreaming();
-                    if (SessionManager.getInstance().getCurrentSessionId() != null) {
-                        statusController.setInputEnabled(true);
-                    }
-                    SessionManager.getInstance().onTurnEnded();
-                });
-            });
+            // before finalizing the stream bubble.
+            Timer flushTimer = new Timer(150, e -> chatPanel.stopStreaming());
             flushTimer.setRepeats(false);
             flushTimer.start();
         }
@@ -272,6 +264,9 @@ public class SessionLifecycleHandler implements SessionListener {
     @Override
     public void onSessionLoaded(String sessionId, List<SessionConfigOption> configOptions, boolean isStartup) {
         SwingUtilities.invokeLater(() -> {
+            // Finalize any in-flight streaming bubble (open code may send
+            // session/configure result before last SSE delta notification)
+            chatPanel.stopStreaming();
             statusController.setStatus("STATUS_Ready");
             statusController.stopThinking();
             statusController.updateButtonState(false);

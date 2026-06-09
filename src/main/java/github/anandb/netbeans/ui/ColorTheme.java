@@ -151,26 +151,29 @@ public record ColorTheme(
     private static volatile String cachedCssUser;
     private static volatile String cachedCssUserBg;
 
-    public String toCss(Color bubbleBg, boolean isAssistant) {
+    public String toCss(Color bubbleBg, boolean isAssistant, int fontSize) {
         synchronized (ColorTheme.class) {
             String bg = bubbleBg != null ? toHtmlHex(bubbleBg) : "transparent";
 
             if (isAssistant) {
                 if (bg.equals(cachedCssAssistantBg) && cachedCssAssistant != null) {
-                    return cachedCssAssistant;
+                    return cachedCssAssistant.replace("$fontSize", fontSize + "px");
                 }
             } else {
                 if (bg.equals(cachedCssUserBg) && cachedCssUser != null) {
-                    return cachedCssUser;
+                    return cachedCssUser.replace("$fontSize", fontSize + "px");
                 }
             }
 
-            String fg = toHtmlHex(isAssistant ? assistantForeground() : foreground());
+            String fg = toHtmlHex(assistantForeground());
             String linkColor = isDark() ? "#589DF6" : "#268BD2";
             String preBg = codeBackground() != null ? toHtmlHex(codeBackground()) : "#1e1f22";
             String preFg = codeForeground() != null ? toHtmlHex(codeForeground()) : "#bcbec4";
 
             String css = loadCssTemplate()
+                    .replace("$fontFamily", UIUtils.fontStackWithActual())
+                    .replace("$monoFamily", UIUtils.MONO_STACK)
+                    .replace("$fontSize", fontSize + "px")
                     .replace("$fg", fg)
                     .replace("$bg", bg)
                     .replace("$linkColor", linkColor)

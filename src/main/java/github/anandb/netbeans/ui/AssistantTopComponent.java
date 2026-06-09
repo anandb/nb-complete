@@ -407,7 +407,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         final JButton[] btnRef = new JButton[1];
         JButton btn = UIUtils.createToolbarButton("filter.svg", 25, NbBundle.getMessage(AssistantTopComponent.class, "HINT_FilterMessages"), e -> {
             JPopupMenu popup = new JPopupMenu();
-            for (String type : ChatThreadPanel.MessageFilterManager.getMessageTypes()) {
+            for (String type : ChatThreadPanel.MessageFilterManager.getEffectiveMessageTypes()) {
                 JCheckBoxMenuItem item = new JCheckBoxMenuItem(type, !ChatThreadPanel.MessageFilterManager.isTypeHidden(type));
                 item.addActionListener(ev -> {
                     ChatThreadPanel.MessageFilterManager.setTypeHidden(type, !item.isSelected());

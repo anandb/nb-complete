@@ -6,6 +6,7 @@ import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Component;
 import java.awt.Font;
+import java.awt.FontMetrics;
 import java.awt.Toolkit;
 import java.awt.datatransfer.StringSelection;
 import java.awt.event.MouseAdapter;
@@ -25,6 +26,8 @@ import javax.swing.Timer;
 import java.util.Locale;
 
 import org.openide.util.NbBundle;
+
+import github.anandb.netbeans.manager.ToolDataExtractor;
 
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
@@ -79,8 +82,8 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
         textArea.setEditable(false);
         textArea.setOpaque(false);
         textArea.setFont(isThinking
-                ? ThemeManager.getFont().deriveFont(Font.PLAIN)
-                : ThemeManager.getMonospaceFont().deriveFont(Font.PLAIN));
+                ? ThemeManager.getFont().deriveFont(Font.PLAIN, ThemeManager.getFont().getSize() - 1f)
+                : ThemeManager.getMonospaceFont().deriveFont(Font.PLAIN, ThemeManager.getMonospaceFont().getSize() - 1f));
         textArea.setBorder(BorderFactory.createEmptyBorder(8, 20, 8, 6));
         textArea.setLineWrap(true);
         textArea.setWrapStyleWord(true);
@@ -265,7 +268,7 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
 
         headerLabel.setIcon(icon);
         headerLabel.setIconTextGap(8);
-        headerLabel.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
+        headerLabel.setFont(ThemeManager.getFont().deriveFont(Font.BOLD, ThemeManager.getFont().getSize() - 1f));
         titlePanel.add(headerLabel);
 
         if (isThinking) {
@@ -352,6 +355,21 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
     public void setTitle(String title) {
         this.isThinking = title.toUpperCase().contains("THINKING");
         setupTitleLabels(title);
+        updateMaxTitleLength();
+    }
+
+    /** Compute and set the global tool-title max length from this pane's width
+     *  and font metrics, so ToolDataExtractor truncates at the right point. */
+    private void updateMaxTitleLength() {
+        int w = getWidth();
+        if (w <= 0) return;
+        FontMetrics fm = getFontMetrics(ThemeManager.getFont());
+        int avgCharWidth = fm.stringWidth("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz") / 52;
+        if (avgCharWidth <= 0) avgCharWidth = fm.stringWidth("W");
+        // Account for padding/icons/gap on each side ≈ 90px
+        int usable = Math.max(50, w - 90);
+        int chars = usable / avgCharWidth;
+        ToolDataExtractor.setMaxTitleLength(chars);
     }
 
     public void setContent(String content) {
@@ -520,7 +538,7 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
         textArea.setEditable(false);
         textArea.setOpaque(false);
         textArea.setBackground(null);
-        textArea.setFont(ThemeManager.getFont());
+        textArea.setFont(ThemeManager.getFont().deriveFont(ThemeManager.getFont().getSize() - 1f));
         textArea.setBorder(BorderFactory.createEmptyBorder(8, 20, 8, 6));
         textArea.setLineWrap(true);
         textArea.setWrapStyleWord(true);

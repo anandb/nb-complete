@@ -64,7 +64,7 @@ public final class HtmlContentPreparer {
         }
 
         boolean isAssistant = !"user".equals(role) && !"error".equals(role) && !"tool".equals(role);
-        String customCss = theme.toCss(null, isAssistant);
+        String customCss = theme.toCss(null, isAssistant, ThemeManager.getFont().getSize() - 2);
         if ("error".equals(role)) {
             customCss += " body { color: #D32F2F; font-weight: bold; }";
         } else if ("user".equals(role)) {

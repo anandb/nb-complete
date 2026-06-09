@@ -7,6 +7,7 @@ import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.FontMetrics;
 import java.awt.Toolkit;
 import java.awt.datatransfer.StringSelection;
 import java.awt.event.MouseAdapter;
@@ -30,6 +31,8 @@ import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
 
 import org.openide.util.NbBundle;
+
+import github.anandb.netbeans.manager.ToolDataExtractor;
 
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
@@ -222,7 +225,7 @@ public class CollapsibleActivityPane extends BaseCollapsiblePane {
 
         headerLabel.setIcon(icon);
         headerLabel.setIconTextGap(8);
-        headerLabel.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
+        headerLabel.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN, ThemeManager.getFont().getSize() - 1f));
         titlePanel.add(headerLabel);
 
         if (isThinking) {
@@ -279,6 +282,21 @@ public class CollapsibleActivityPane extends BaseCollapsiblePane {
     public void setTitle(String title) {
         this.isThinking = title.toUpperCase().contains("THINKING");
         setupTitleLabels(title);
+        updateMaxTitleLength();
+    }
+
+    /** Compute and set the global tool-title max length from this pane's width
+     *  and font metrics, so ToolDataExtractor truncates at the right point. */
+    private void updateMaxTitleLength() {
+        int w = getWidth();
+        if (w <= 0) return;
+        FontMetrics fm = getFontMetrics(ThemeManager.getFont());
+        int avgCharWidth = fm.stringWidth("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz") / 52;
+        if (avgCharWidth <= 0) avgCharWidth = fm.stringWidth("W");
+        // Account for padding/icons/gap on each side ≈ 90px
+        int usable = Math.max(50, w - 90);
+        int chars = usable / avgCharWidth;
+        ToolDataExtractor.setMaxTitleLength(chars);
     }
 
     // ────────────────────────────────────────────────────────
@@ -371,13 +389,15 @@ public class CollapsibleActivityPane extends BaseCollapsiblePane {
 
     private void updateAppearance() {
         ColorTheme theme = ThemeManager.getCurrentTheme();
-        header.setBackground(expanded ? theme.base2() : theme.thinkingHeaderBackground());
+        header.setBackground(expanded ? theme.base2() : theme.sunkenBackground());
         contentPanel.setBackground(expanded ? theme.thinkingHeaderBackground() : theme.base2());
-        headerLabel.setForeground(expanded ? theme.foreground() : theme.thinkingHeaderForeground());
+        // 50% gray — distinct from normal text but readable in both themes
+        Color grayFg = new Color(96, 96, 96);
+        headerLabel.setForeground(grayFg);
         if (paramLabel != null) {
-            paramLabel.setForeground(expanded ? theme.foreground() : theme.thinkingHeaderForeground());
+            paramLabel.setForeground(grayFg);
         }
-        copyButton.setForeground(expanded ? theme.foreground() : theme.thinkingHeaderForeground());
+        copyButton.setForeground(grayFg);
     }
 
     @Override
@@ -388,7 +408,7 @@ public class CollapsibleActivityPane extends BaseCollapsiblePane {
 
     @Override
     protected Color getDefaultHeaderBackground() {
-        return expanded ? ThemeManager.getCurrentTheme().base2() : ThemeManager.getCurrentTheme().thinkingHeaderBackground();
+        return expanded ? ThemeManager.getCurrentTheme().base2() : ThemeManager.getCurrentTheme().sunkenBackground();
     }
 
     // ────────────────────────────────────────────────────────
@@ -503,11 +523,17 @@ public class CollapsibleActivityPane extends BaseCollapsiblePane {
      * {@link JEditorPane}.
      */
     private static JTextPane createSegmentStyledPane(String markdown, ColorTheme theme) {
-        JTextPane pane = new JTextPane();
+        JTextPane pane = new JTextPane() {
+            @Override
+            public Dimension getMaximumSize() {
+                Dimension pref = getPreferredSize();
+                return new Dimension(Short.MAX_VALUE, pref.height);
+            }
+        };
         pane.setEditable(false);
         pane.setOpaque(false);
         pane.setBackground(null);
-        pane.setFont(ThemeManager.getFont());
+        pane.setFont(ThemeManager.getFont().deriveFont(ThemeManager.getFont().getSize() - 1f));
         pane.setBorder(BorderFactory.createEmptyBorder(8, 20, 8, 6));
 
         StyledDocument doc = pane.getStyledDocument();
@@ -517,7 +543,7 @@ public class CollapsibleActivityPane extends BaseCollapsiblePane {
 
         SimpleAttributeSet base = new SimpleAttributeSet();
         StyleConstants.setFontFamily(base, baseFont.getFamily());
-        StyleConstants.setFontSize(base, baseFont.getSize() + 1);
+        StyleConstants.setFontSize(base, baseFont.getSize() - 1);
         StyleConstants.setForeground(base, fg);
         StyleConstants.setSpaceAbove(base, 4);
         StyleConstants.setSpaceBelow(base, 4);
@@ -802,7 +828,7 @@ public class CollapsibleActivityPane extends BaseCollapsiblePane {
         textArea.setEditable(false);
         textArea.setOpaque(false);
         textArea.setBackground(null);
-        textArea.setFont(ThemeManager.getFont());
+        textArea.setFont(ThemeManager.getFont().deriveFont(ThemeManager.getFont().getSize() - 1f));
         textArea.setBorder(BorderFactory.createEmptyBorder(8, 20, 8, 6));
         textArea.setLineWrap(true);
         textArea.setWrapStyleWord(true);

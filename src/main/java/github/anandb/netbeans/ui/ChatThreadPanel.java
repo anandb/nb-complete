@@ -52,13 +52,35 @@ public class ChatThreadPanel extends JPanel {
 
         static String[] getMessageTypes() { return MESSAGE_TYPES.clone(); }
 
+        /** Return filter types shown in the UI menu. When combine is on, "activity"
+         *  replaces separate "tool" and "thought" entries. */
+        static String[] getEffectiveMessageTypes() {
+            if (NbPreferences.forModule(ACPOptionsPanel.class).getBoolean("combineToolThought", true)) {
+                return new String[]{"activity", "assistant", "user"};
+            }
+            return MESSAGE_TYPES.clone();
+        }
+
         static boolean isTypeHidden(String type) {
             if (type == null) return false;
+            // "activity" is a virtual type — hidden if either tool or thought is hidden
+            if ("activity".equals(type)) {
+                return NbPreferences.forModule(ACPOptionsPanel.class)
+                        .getBoolean(PREF_PREFIX + "tool", false)
+                    || NbPreferences.forModule(ACPOptionsPanel.class)
+                        .getBoolean(PREF_PREFIX + "thought", false);
+            }
             return NbPreferences.forModule(ACPOptionsPanel.class).getBoolean(PREF_PREFIX + type, false);
         }
 
         static void setTypeHidden(String type, boolean hidden) {
             if (type == null) return;
+            // "activity" toggles both tool and thought together
+            if ("activity".equals(type)) {
+                NbPreferences.forModule(ACPOptionsPanel.class).putBoolean(PREF_PREFIX + "tool", hidden);
+                NbPreferences.forModule(ACPOptionsPanel.class).putBoolean(PREF_PREFIX + "thought", hidden);
+                return;
+            }
             NbPreferences.forModule(ACPOptionsPanel.class).putBoolean(PREF_PREFIX + type, hidden);
         }
     }
@@ -425,9 +447,7 @@ public class ChatThreadPanel extends JPanel {
         }
 
         // Create combined bubble with only the visible segments
-        String title = visibleSegments.size() == 1
-                ? "Execution Steps"
-                : "Execution Steps (" + visibleSegments.size() + ")";
+        String title = "Execution Steps (" + visibleSegments.size() + ")";
         MessageBubble combined = new MessageBubble(
                 MessageType.tool_call, "", null, title, MessageBubble.AvatarPosition.NONE);
         combined.setSegmentedToolContent(visibleSegments);
@@ -638,9 +658,7 @@ public class ChatThreadPanel extends JPanel {
                                 bubble.setVisible(false);
                                 if (i + 1 < comps.length) comps[i + 1].setVisible(false);
                             } else {
-                                String newTitle = visibleSegments.size() == 1
-                                        ? "Execution Steps"
-                                        : "Execution Steps (" + visibleSegments.size() + ")";
+                                String newTitle = "Execution Steps (" + visibleSegments.size() + ")";
                                 bubble.updateCombinedContent(visibleSegments, newTitle);
                                 bubble.setVisible(true);
                                 if (i + 1 < comps.length) comps[i + 1].setVisible(true);

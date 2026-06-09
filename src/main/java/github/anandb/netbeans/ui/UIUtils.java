@@ -29,16 +29,32 @@ import org.openide.util.Utilities;
 public class UIUtils {
 
     // --- font stacks (merged from FontStacks) --------------------------------
-    public static final String FONT_STACK = String.join(", ",
-            "'Apple Color Emoji'", "'Noto Color Emoji'", "'Dialog'", "'Noto Sans'",
-            "'Segoe UI'", "'Segoe UI This'", "Calibri", "'Ubuntu'",
-            "'Helvetica Neue'", "'Arial'", "'Segoe UI Emoji'", "'Segoe UI Symbol'",
-            "'sans-serif'");
+    // Override via system properties (aligned with existing netbeans.codingassistant.* namespace)
+    private static final String FONT_OVERRIDE = System.getProperty("netbeans.codingassistant.font.family");
+    private static final String MONO_OVERRIDE = System.getProperty("netbeans.codingassistant.mono.font.family");
 
-    public static final String MONO_STACK = String.join(", ",
-            "'MesloLGS NF'", "'Source Code Pro'", "'JetBrains Mono'", "'Monaco'",
-            "'Fira Code'", "'monospace'");
+    public static final String FONT_STACK = FONT_OVERRIDE != null
+            ? "'" + FONT_OVERRIDE + "'"
+            : "sans-serif";
+
+    public static final String MONO_STACK = MONO_OVERRIDE != null
+            ? "'" + MONO_OVERRIDE + "'"
+            : "monospace";
     // -------------------------------------------------------------------------
+
+    /** CSS font-family stack that respects the system-property override, then
+     *  the NetBeans LAF font, then the generic fallback. */
+    public static String fontStackWithActual() {
+        String actual = ThemeManager.getFont().getFamily();
+        if (actual == null || actual.isEmpty()) {
+            return FONT_STACK;
+        }
+        String quoted = actual.contains(" ") ? "'" + actual + "'" : actual;
+        // System-property override > NetBeans font > generic fallback
+        return FONT_OVERRIDE != null
+                ? FONT_STACK
+                : quoted + ", " + FONT_STACK;
+    }
 
     private static final Logger LOG = Logger.from(UIUtils.class);
 
@@ -228,6 +244,7 @@ public class UIUtils {
         if (null == type) {
             return theme.sunkenBackground();
         } else return switch (type) {
+            case "assistant" -> theme.bubbleAssistant();
             case "user" -> theme.bubbleUser();
             case "error" -> theme.errorBackground();
             default -> theme.sunkenBackground();

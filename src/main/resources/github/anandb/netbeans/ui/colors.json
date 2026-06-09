@@ -38,7 +38,9 @@
   },
   {
     "name": "bubbleAssistant",
-    "property": "netbeans.codingassistant.color.bubbleAssistant"
+    "property": "netbeans.codingassistant.color.bubbleAssistant",
+    "keyDark": "Panel.background",
+    "light": "#fdf6e3"
   },
   {
     "name": "bubbleBorder",

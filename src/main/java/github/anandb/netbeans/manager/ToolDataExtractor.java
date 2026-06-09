@@ -22,6 +22,18 @@ import static org.apache.commons.lang3.StringUtils.toRootLowerCase;
 public final class ToolDataExtractor {
     private static final Logger LOG = Logger.from(ToolDataExtractor.class);
 
+    /** Max chars for tool title before truncation.
+     *  Updated by UI panes based on their actual width and font metrics. */
+    private static volatile int maxTitleLength = 60;
+
+    public static int getMaxTitleLength() { return maxTitleLength; }
+
+    /** Set max tool-title characters, derived from pane width and font size.
+     *  Call from UI when pane is resized. */
+    public static void setMaxTitleLength(int max) {
+        maxTitleLength = Math.max(20, max);
+    }
+
     private static final Pattern[] METADATA_PATTERNS = {
         Pattern.compile("<!--.*?-->", Pattern.DOTALL),
         Pattern.compile("<metadata>.*?</metadata>", Pattern.DOTALL)
@@ -68,6 +80,10 @@ public final class ToolDataExtractor {
 
         if (defaultString(title).startsWith("nb_")) {
             kind = "mcp";
+        }
+
+        if ("think".equals(kind)) {
+            kind = "tool";
         }
 
         return new MessageClassification(type, kind);
@@ -122,14 +138,15 @@ public final class ToolDataExtractor {
             }
         }
 
-        tag = tag.length() < 60 ? tag : "Tool";
+        int maxLen = getMaxTitleLength();
+        tag = tag.length() < maxLen ? tag : "Tool";
 
         // Some special handling - look for a better way
         if ("context".equals(tag) && identifier.startsWith("Compressed")) {
             identifier = toRootLowerCase(identifier);
         }
 
-        return tag + " " + abbreviateMiddle(defaultString(identifier), "...", 60);
+        return tag + " " + abbreviateMiddle(defaultString(identifier), "...", maxLen);
     }
 
     public static String getLocalEchoText(String commandText) {
