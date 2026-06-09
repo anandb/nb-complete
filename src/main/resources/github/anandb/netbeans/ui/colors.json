@@ -170,15 +170,12 @@
   {
     "name": "tableBackground",
     "property": "netbeans.codingassistant.color.tableBackground",
-    "keyDark": "List.selectionBackground",
-    "keyLight": "List.selectionBackground",
     "dark": "#3A3028",
     "light": "#FBF4E1"
   },
   {
     "name": "tableHeaderBackground",
     "property": "netbeans.codingassistant.color.tableHeaderBackground",
-    "key": "TableHeader.background",
     "dark": "#201C18",
     "light": "#E0DAD0"
   },

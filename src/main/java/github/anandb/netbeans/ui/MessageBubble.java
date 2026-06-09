@@ -165,8 +165,7 @@ public class MessageBubble extends JPanel implements Scrollable {
             p.setBorder(new EmptyBorder(10, 8, 10, 8));
             this.bubble = p;
         } else if ("assistant".equals(role)) {
-            // Assistant bubble gets rounded corners + bg, same radius as tool panels
-            RoundedPanel p = new RoundedPanel(12);
+            RoundedPanel p = new RoundedPanel(16);
             p.setLayout(new BorderLayout());
             p.setBorder(new EmptyBorder(8, 10, 8, 10));
             this.bubble = p;

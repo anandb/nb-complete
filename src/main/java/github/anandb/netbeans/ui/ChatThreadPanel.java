@@ -98,11 +98,14 @@ public class ChatThreadPanel extends JPanel {
     private final JLayeredPane layeredPane;
     private final Timer streamFlushTimer;
 
-    private MessageBubble activeStreamBubble = null;
+    /** Cached full message list so filter/preference changes can re-render
+     *  the conversation without a server round-trip. */
+    private volatile List<Message> cachedMessages;
     private volatile boolean allBlocksExpanded = false;
     private volatile boolean keepOlderMessages = false;
     private final transient ScrollController scrollController;
     private final transient MessageTransformer messageTransformer;
+    private MessageBubble activeStreamBubble;
 
     public ChatThreadPanel() {
         ColorTheme theme = ThemeManager.getCurrentTheme();
@@ -637,6 +640,14 @@ public class ChatThreadPanel extends JPanel {
     }
 
     public void applyTypeFilters() {
+        // Re-render from cached messages when available — avoids subtle
+        // visibility/revalidation bugs with hidden-shown combined bubbles.
+        List<Message> msgs = cachedMessages;
+        if (msgs != null && !msgs.isEmpty()) {
+            setMessages(msgs);
+            return;
+        }
+        // Fallback: visibility-only toggle (legacy path when cache not populated).
         SwingUtilities.invokeLater(() -> {
             boolean toolHidden = MessageFilterManager.isTypeHidden("tool");
             boolean thoughtHidden = MessageFilterManager.isTypeHidden("thought");
@@ -662,18 +673,25 @@ public class ChatThreadPanel extends JPanel {
                                 if (i + 1 < comps.length) comps[i + 1].setVisible(false);
                             } else {
                                 String newTitle = "Execution Steps (" + visibleSegments.size() + ")";
-                                bubble.updateCombinedContent(visibleSegments, newTitle);
                                 bubble.setVisible(true);
                                 if (i + 1 < comps.length) comps[i + 1].setVisible(true);
+                                bubble.updateCombinedContent(visibleSegments, newTitle);
+                                bubble.revalidate();
                             }
                             continue;
                         }
                     }
                     // Normal (non-combined) bubble visibility
                     boolean visible = !MessageFilterManager.isTypeHidden(bubble.getRole());
+                    boolean wasHidden = !comps[i].isVisible();
                     comps[i].setVisible(visible);
                     if (i + 1 < comps.length) {
                         comps[i + 1].setVisible(visible);
+                    }
+                    // Re-shown bubbles need revalidation so internal layout
+                    // (GridBagLayout, BoxLayout, etc.) recomputes child bounds.
+                    if (wasHidden && visible) {
+                        comps[i].revalidate();
                     }
                 }
             }
@@ -682,6 +700,7 @@ public class ChatThreadPanel extends JPanel {
     }
 
     public void clearMessages() {
+        cachedMessages = null;
         SwingUtilities.invokeLater(() -> {
             messagesContainer.removeAll();
             lastUserTimestamp = -1L;
@@ -691,10 +710,13 @@ public class ChatThreadPanel extends JPanel {
     }
 
     public void setMessages(List<Message> messages) {
+        cachedMessages = (messages != null) ? new ArrayList<>(messages) : null;
         SwingUtilities.invokeLater(() -> {
             clearMessages();
-            for (Message m : messages) {
-                addMessage(messageTransformer.convert(m));
+            if (messages != null) {
+                for (Message m : messages) {
+                    addMessage(messageTransformer.convert(m));
+                }
             }
         });
     }
