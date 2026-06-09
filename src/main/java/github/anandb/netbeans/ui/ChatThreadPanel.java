@@ -154,7 +154,8 @@ public class ChatThreadPanel extends JPanel {
             if (activeStreamBubble != null) {
                 // Check wasAtBottom BEFORE flushUpdate changes content height
                 boolean wasAtBottom = scrollController.isAtBottom();
-                if (activeStreamBubble.flushUpdate()) {
+                boolean didUpdate = activeStreamBubble.flushUpdate();
+                if (didUpdate) {
                     activeStreamBubble.revalidate();
                     scrollController.scrollToBottom(wasAtBottom);
                 }
@@ -251,6 +252,7 @@ public class ChatThreadPanel extends JPanel {
                 // immediately so late deltas are reflected in the HTML content.
                 if (!lastBubble.isStreaming()) {
                     lastBubble.flushUpdate(true);
+                    scrollController.scrollToBottom();
                 }
             } else {
                 if (lastBubble != null) {
@@ -343,6 +345,11 @@ public class ChatThreadPanel extends JPanel {
      * streaming ends. Individual bubbles are removed to free memory.
      */
     private void combineToolThoughtBubbles() {
+        // Respect user preference: if unchecked, skip combining
+        if (!NbPreferences.forModule(ACPOptionsPanel.class).getBoolean("combineToolThought", true)) {
+            return;
+        }
+
         // Find all individual tool/thought bubbles (skip already-combined ones)
         List<Component> toRemove = new ArrayList<>();
         List<CollapsibleToolPane.ToolSegment> allSegments = new ArrayList<>();
@@ -371,7 +378,9 @@ public class ChatThreadPanel extends JPanel {
                             String stripped = segTitle.replaceFirst("(?i)TOOL:?\\s*", "").trim();
                             int pos = stripped.indexOf(' ');
                             String firstWord = (pos > 1) ? stripped.substring(0, pos) : stripped;
-                            if ("read".equalsIgnoreCase(firstWord)) {
+                            if ("read".equalsIgnoreCase(firstWord)
+                                    || "functions.read".equalsIgnoreCase(firstWord)
+                                    || "functions.webfetch".equalsIgnoreCase(firstWord)) {
                                 text = "";
                             }
                         }

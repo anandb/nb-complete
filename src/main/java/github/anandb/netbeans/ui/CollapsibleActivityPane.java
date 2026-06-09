@@ -19,19 +19,17 @@ import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.Icon;
 import javax.swing.JButton;
-import javax.swing.JEditorPane;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextArea;
+import javax.swing.JTextPane;
 import javax.swing.Timer;
-import javax.swing.text.View;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.SimpleAttributeSet;
+import javax.swing.text.StyleConstants;
+import javax.swing.text.StyledDocument;
 
 import org.openide.util.NbBundle;
-
-import com.vladsch.flexmark.ext.tables.TablesExtension;
-import com.vladsch.flexmark.html.HtmlRenderer;
-import com.vladsch.flexmark.parser.Parser;
-import com.vladsch.flexmark.util.data.MutableDataSet;
 
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
@@ -321,6 +319,8 @@ public class CollapsibleActivityPane extends BaseCollapsiblePane {
         if (contentPanel.getComponentCount() > 0
                 && contentPanel.getComponent(0) instanceof JTextArea existing) {
             existing.append(text);
+            contentPanel.revalidate();
+            contentPanel.repaint();
             return;
         }
         contentPanel.removeAll();
@@ -489,7 +489,7 @@ public class CollapsibleActivityPane extends BaseCollapsiblePane {
             bodyPanel.setBorder(BorderFactory.createMatteBorder(0, 4, 0, 0,
                     isThought ? theme.yellow() : theme.accent()));
 
-            JEditorPane editorPane = createSegmentHtmlPane(text, theme);
+            JTextPane editorPane = createSegmentStyledPane(text, theme);
             bodyPanel.add(editorPane, BorderLayout.CENTER);
             wrapper.add(bodyPanel, BorderLayout.CENTER);
         }
@@ -497,112 +497,279 @@ public class CollapsibleActivityPane extends BaseCollapsiblePane {
     }
 
     /**
-     * Creates a JEditorPane that renders markdown as styled HTML for inner
-     * segments in the combined view. Uses Flexmark directly for conversion
-     * and places CSS in the &lt;head&gt;. Overrides getPreferredSize() to fix the
-     * height-clipping bug by computing height from the root view at the
-     * constrained width.
+     * Creates a {@link JTextPane} with a {@link StyledDocument} that renders
+     * markdown content directly.  Avoids the Swing HTML renderer entirely,
+     * eliminating the reflow and width-calculation bugs that plague
+     * {@link JEditorPane}.
      */
-    private static JEditorPane createSegmentHtmlPane(String markdown, ColorTheme theme) {
-        MutableDataSet options = new MutableDataSet();
-        options.set(HtmlRenderer.SOFT_BREAK, "\n");
-        options.set(Parser.EXTENSIONS, List.of(TablesExtension.create()));
-        Parser parser = Parser.builder(options).build();
-        HtmlRenderer renderer = HtmlRenderer.builder(options).build();
-        String bodyHtml = renderer.render(parser.parse(markdown));
-        // Insert zero-width spaces after common break characters to enable
-        // wrapping of long words (URLs, paths, identifiers) that Swing's
-        // HTMLEditorKit would otherwise overflow. Skip HTML tags.
-        bodyHtml = bodyHtml.replaceAll("(?<=[/_.])(?![^<]*>)", "&#8203;");
-
-        String fontFamily = ThemeManager.getFont().getFamily();
-        int fontSize = ThemeManager.getFont().getSize() + 1;
-        String fg = theme.toHtmlHex(theme.foreground());
-        String tableBg = theme.toHtmlHex(theme.tableBackground());
-        String headerBg = theme.toHtmlHex(theme.tableHeaderBackground());
-        String borderColor = theme.toHtmlHex(theme.tableBorder());
-
-        String html = "<html><head><style>"
-                + "body{margin:0;padding:0;text-align:left;width:100%;"
-                + "font-family:'Segoe UI','Noto Sans','Ubuntu','Helvetica Neue','Arial',"
-                + "'Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol','Noto Color Emoji',sans-serif;"
-                + "font-size:" + fontSize + "pt;color:" + fg + ";}"
-                + "pre{white-space:pre-wrap;font-family:monospace;font-size:100%;"
-                + "background:rgba(0,0,0,0.05);padding:8px;border-radius:3px;}"
-                + "code{font-family:monospace;font-size:100%;}"
-                + "table{border-collapse:collapse;table-layout:fixed;width:100%;margin:8px 0;background:" + tableBg + ";}"
-                + "th{padding:8px;border:1px solid " + borderColor + ";text-align:left;font-weight:bold;"
-                + "background:" + headerBg + ";}"
-                + "td{padding:8px;border:1px solid " + borderColor + ";vertical-align:top;overflow-wrap:break-word;}"
-                + "p{margin:4px 0;text-align:left !important;}"
-                + "h1,h2,h3,h4,h5,h6{margin:8px 0;font-weight:bold;text-align:left;}"
-                + "h1{font-size:140%;}h2{font-size:130%;}h3{font-size:120%;}"
-                + "strong{font-weight:bold;}"
-                + "</style></head><body>"
-                + bodyHtml
-                + "</body></html>";
-
-        JEditorPane pane = new JEditorPane() {
-            private int lastW = 0;
-
-            @Override
-            public java.awt.Dimension getPreferredSize() {
-                java.awt.Insets ins = getInsets();
-                int w = getWidth();
-                if (w <= 0) {
-                    java.awt.Component p = getParent();
-                    while (p != null) {
-                        if (p.getWidth() > 0) {
-                            w = p.getWidth();
-                            break;
-                        }
-                        p = p.getParent();
-                    }
-                }
-                if (w <= 0) {
-                    w = 500;
-                }
-                View root = getUI().getRootView(this);
-                if (root != null) {
-                    int cw = Math.max(1, w - ins.left - ins.right);
-                    root.setSize(cw, Integer.MAX_VALUE);
-                    float h = root.getPreferredSpan(View.Y_AXIS);
-                    return new java.awt.Dimension(w, (int) Math.ceil(h) + ins.top + ins.bottom + 20);
-                }
-                return super.getPreferredSize();
-            }
-
-            @Override
-            public void setBounds(int x, int y, int w, int h) {
-                boolean changed = w > 0 && w != lastW;
-                super.setBounds(x, y, w, h);
-                if (changed) {
-                    lastW = w;
-                    View root = getUI().getRootView(this);
-                    if (root != null) {
-                        java.awt.Insets ins = getInsets();
-                        int cw = Math.max(1, w - ins.left - ins.right);
-                        root.setSize(cw, Integer.MAX_VALUE);
-                    }
-                    javax.swing.SwingUtilities.invokeLater(this::revalidate);
-                }
-            }
-
-            @Override
-            public java.awt.Dimension getMaximumSize() {
-                java.awt.Dimension pref = getPreferredSize();
-                return new java.awt.Dimension(Short.MAX_VALUE, pref.height);
-            }
-        };
-        pane.setContentType("text/html");
-        pane.setText(html);
+    private static JTextPane createSegmentStyledPane(String markdown, ColorTheme theme) {
+        JTextPane pane = new JTextPane();
         pane.setEditable(false);
         pane.setOpaque(false);
         pane.setBackground(null);
-        pane.putClientProperty(JEditorPane.HONOR_DISPLAY_PROPERTIES, Boolean.TRUE);
-        pane.setBorder(BorderFactory.createEmptyBorder(8, 20, 8, 6));
         pane.setFont(ThemeManager.getFont());
+        pane.setBorder(BorderFactory.createEmptyBorder(8, 20, 8, 6));
+
+        StyledDocument doc = pane.getStyledDocument();
+        Font baseFont = ThemeManager.getFont();
+        Color fg = theme.foreground();
+        Color codeFg = theme.isDark() ? Color.WHITE : Color.BLACK;
+
+        SimpleAttributeSet base = new SimpleAttributeSet();
+        StyleConstants.setFontFamily(base, baseFont.getFamily());
+        StyleConstants.setFontSize(base, baseFont.getSize() + 1);
+        StyleConstants.setForeground(base, fg);
+        StyleConstants.setSpaceAbove(base, 4);
+        StyleConstants.setSpaceBelow(base, 4);
+        doc.setParagraphAttributes(0, doc.getLength(), base, true);
+
+        String[] lines = markdown.split("\n");
+        boolean inCodeBlock = false;
+        StringBuilder codeBuffer = new StringBuilder();
+        java.util.List<String> tableBuffer = new java.util.ArrayList<>();
+
+        try {
+            for (int i = 0; i < lines.length; i++) {
+                String line = lines[i];
+
+                if (line.startsWith("```")) {
+                    if (inCodeBlock) {
+                        // End of code block
+                        SimpleAttributeSet codeAttr = new SimpleAttributeSet();
+                        StyleConstants.setFontFamily(codeAttr, "monospace");
+                        StyleConstants.setFontSize(codeAttr, baseFont.getSize());
+                        StyleConstants.setForeground(codeAttr, codeFg);
+                        StyleConstants.setSpaceAbove(codeAttr, 8);
+                        StyleConstants.setSpaceBelow(codeAttr, 8);
+                        String code = codeBuffer.toString();
+                        if (code.endsWith("\n")) {
+                            code = code.substring(0, code.length() - 1);
+                        }
+                        doc.insertString(doc.getLength(), code + "\n", codeAttr);
+                        codeBuffer.setLength(0);
+                        inCodeBlock = false;
+                    } else {
+                        inCodeBlock = true;
+                    }
+                    continue;
+                }
+
+                if (inCodeBlock) {
+                    codeBuffer.append(line).append("\n");
+                    continue;
+                }
+
+                // Table detection
+                if (line.trim().startsWith("|")) {
+                    tableBuffer.add(line);
+                    continue;
+                } else if (!tableBuffer.isEmpty()) {
+                    // End of table — flush it
+                    insertTable(doc, tableBuffer, base, codeFg);
+                    tableBuffer.clear();
+                }
+
+                // Headers
+                int headerLevel = 0;
+                while (line.startsWith("#") && headerLevel < 6) {
+                    headerLevel++;
+                    line = line.substring(1);
+                }
+                if (headerLevel > 0) {
+                    line = line.trim();
+                    SimpleAttributeSet hAttr = new SimpleAttributeSet(base);
+                    StyleConstants.setBold(hAttr, true);
+                    int size = baseFont.getSize() + 1;
+                    if (headerLevel == 1) size += 6;
+                    else if (headerLevel == 2) size += 4;
+                    else if (headerLevel == 3) size += 2;
+                    StyleConstants.setFontSize(hAttr, size);
+                    StyleConstants.setSpaceAbove(hAttr, 8);
+                    StyleConstants.setSpaceBelow(hAttr, 4);
+                    doc.insertString(doc.getLength(), line + "\n", hAttr);
+                    continue;
+                }
+
+                // Inline formatting
+                line = line + "\n";
+                int idx = 0;
+                while (idx < line.length()) {
+                    // Bold **text**
+                    int boldStart = line.indexOf("**", idx);
+                    int italicStart = line.indexOf("*", idx);
+                    int codeStart = line.indexOf("`", idx);
+
+                    int nextSpecial = Integer.MAX_VALUE;
+                    String specialType = null;
+                    if (boldStart != -1 && boldStart < nextSpecial) {
+                        nextSpecial = boldStart;
+                        specialType = "BOLD";
+                    }
+                    if (italicStart != -1 && italicStart < nextSpecial && italicStart != boldStart) {
+                        nextSpecial = italicStart;
+                        specialType = "ITALIC";
+                    }
+                    if (codeStart != -1 && codeStart < nextSpecial) {
+                        nextSpecial = codeStart;
+                        specialType = "CODE";
+                    }
+
+                    if (specialType == null) {
+                        // No more formatting — insert rest as plain text
+                        if (idx < line.length()) {
+                            doc.insertString(doc.getLength(), line.substring(idx), base);
+                        }
+                        break;
+                    }
+
+                    // Insert plain text before the special marker
+                    if (nextSpecial > idx) {
+                        doc.insertString(doc.getLength(), line.substring(idx, nextSpecial), base);
+                    }
+
+                    // Find the closing marker
+                    int end = -1;
+                    if ("BOLD".equals(specialType)) {
+                        end = line.indexOf("**", nextSpecial + 2);
+                        if (end != -1) {
+                            SimpleAttributeSet b = new SimpleAttributeSet(base);
+                            StyleConstants.setBold(b, true);
+                            doc.insertString(doc.getLength(), line.substring(nextSpecial + 2, end), b);
+                            idx = end + 2;
+                        }
+                    } else if ("ITALIC".equals(specialType)) {
+                        end = line.indexOf("*", nextSpecial + 1);
+                        if (end != -1) {
+                            SimpleAttributeSet italicAttr = new SimpleAttributeSet(base);
+                            StyleConstants.setItalic(italicAttr, true);
+                            doc.insertString(doc.getLength(), line.substring(nextSpecial + 1, end), italicAttr);
+                            idx = end + 1;
+                        }
+                    } else if ("CODE".equals(specialType)) {
+                        end = line.indexOf("`", nextSpecial + 1);
+                        if (end != -1) {
+                            SimpleAttributeSet c = new SimpleAttributeSet();
+                            StyleConstants.setFontFamily(c, "monospace");
+                            StyleConstants.setFontSize(c, baseFont.getSize());
+                            StyleConstants.setForeground(c, codeFg);
+                            doc.insertString(doc.getLength(), line.substring(nextSpecial + 1, end), c);
+                            idx = end + 1;
+                        }
+                    }
+
+                    if (end == -1) {
+                        // No closing marker found — insert the marker as plain text
+                        doc.insertString(doc.getLength(), line.substring(nextSpecial, nextSpecial + 1), base);
+                        idx = nextSpecial + 1;
+                    }
+                }
+            }
+
+            // Flush remaining table at end of document
+            if (!tableBuffer.isEmpty()) {
+                insertTable(doc, tableBuffer, base, codeFg);
+            }
+        } catch (BadLocationException e) {
+            // Should never happen with valid indices
+            throw new RuntimeException(e);
+        }
+
         return pane;
+    }
+
+    /**
+     * Formats a markdown table as monospaced text with column alignment and
+     * inserts it into the document.  The separator row (e.g. |---|---|) is
+     * skipped; headers are bolded.
+     */
+    private static void insertTable(StyledDocument doc, java.util.List<String> tableBuffer,
+                                      SimpleAttributeSet base, Color codeFg) throws BadLocationException {
+        if (tableBuffer.isEmpty()) {
+            return;
+        }
+
+        // Determine max column widths
+        java.util.List<java.util.List<String>> rows = new java.util.ArrayList<>();
+        int maxCols = 0;
+        for (String line : tableBuffer) {
+            String[] cells = line.split("\\|");
+            java.util.List<String> row = new java.util.ArrayList<>();
+            for (int i = 0; i < cells.length; i++) {
+                if (i == 0 || i == cells.length - 1) {
+                    // Skip leading/trailing empty cells caused by outer pipes
+                    if (cells[i].trim().isEmpty()) {
+                        continue;
+                    }
+                }
+                row.add(cells[i].trim());
+            }
+            if (!row.isEmpty()) {
+                rows.add(row);
+                maxCols = Math.max(maxCols, row.size());
+            }
+        }
+
+        if (rows.isEmpty()) {
+            return;
+        }
+
+        // Check if second row is a separator (contains only dashes and colons)
+        boolean hasHeader = false;
+        if (rows.size() >= 2 && isSeparatorRow(rows.get(1))) {
+            hasHeader = true;
+        }
+
+        // Calculate column widths
+        int[] widths = new int[maxCols];
+        for (java.util.List<String> row : rows) {
+            for (int i = 0; i < row.size(); i++) {
+                widths[i] = Math.max(widths[i], row.get(i).length());
+            }
+        }
+        // Ensure minimum width for readability
+        for (int i = 0; i < widths.length; i++) {
+            widths[i] = Math.max(widths[i], 3);
+        }
+
+        // Build formatted table string
+        StringBuilder sb = new StringBuilder();
+        for (int r = 0; r < rows.size(); r++) {
+            if (hasHeader && r == 1) {
+                continue; // Skip separator row
+            }
+            java.util.List<String> row = rows.get(r);
+            for (int i = 0; i < row.size(); i++) {
+                String cell = row.get(i);
+                sb.append(cell);
+                // Pad to column width
+                for (int j = cell.length(); j < widths[i]; j++) {
+                    sb.append(' ');
+                }
+                if (i < row.size() - 1) {
+                    sb.append("  "); // 2-space gap between columns
+                }
+            }
+            sb.append("\n");
+        }
+
+        // Insert as monospaced block
+        SimpleAttributeSet tableAttr = new SimpleAttributeSet();
+        StyleConstants.setFontFamily(tableAttr, "monospace");
+        StyleConstants.setFontSize(tableAttr, StyleConstants.getFontSize(base) - 1);
+        StyleConstants.setForeground(tableAttr, codeFg);
+        StyleConstants.setSpaceAbove(tableAttr, 4);
+        StyleConstants.setSpaceBelow(tableAttr, 4);
+        doc.insertString(doc.getLength(), sb.toString(), tableAttr);
+    }
+
+    private static boolean isSeparatorRow(java.util.List<String> row) {
+        for (String cell : row) {
+            String trimmed = cell.trim();
+            if (!trimmed.isEmpty() && !trimmed.matches("^:?-+.*")) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static String formatInnerTitle(String rawTitle) {
