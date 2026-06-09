@@ -79,9 +79,12 @@ public class CollapsibleActivityPane extends BaseCollapsiblePane {
      * Creates an activity pane with initial plain-text content.
      * The text is rendered as markdown HTML via {@link FitEditorPane}.
      */
+    private final Icon headerIcon; // saved for toggle on collapse/expand
+
     public CollapsibleActivityPane(String title, String content, boolean expandedAtStart) {
         super(12, "", getHeaderIcon(title), expandedAtStart);
         this.isThinking = title.toUpperCase().contains("THINKING");
+        this.headerIcon = headerLabel.getIcon(); // save before label is removed from header
 
         ColorTheme theme = ThemeManager.getCurrentTheme();
         Color blueAccent = Color.decode(theme.isDark() ? "#589DF6" : "#268BD2");
@@ -180,9 +183,7 @@ public class CollapsibleActivityPane extends BaseCollapsiblePane {
         Color borderColor = isGrouped
                 ? ThemeManager.getCurrentTheme().base1()
                 : defaultAccent;
-        header.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(0, 4, 0, 0, borderColor),
-                BorderFactory.createEmptyBorder(5, 4, 5, 10)));
+        updateAppearance();
         contentPanel.setBorder(BorderFactory.createMatteBorder(0, 4, 0, 0, borderColor));
         groupToggleBtn.setVisible(isGrouped);
         if (isGrouped) {
@@ -390,14 +391,25 @@ public class CollapsibleActivityPane extends BaseCollapsiblePane {
     private void updateAppearance() {
         ColorTheme theme = ThemeManager.getCurrentTheme();
         header.setBackground(expanded ? theme.base2() : theme.sunkenBackground());
-        contentPanel.setBackground(expanded ? theme.thinkingHeaderBackground() : theme.base2());
-        // 50% gray — distinct from normal text but readable in both themes
-        Color grayFg = new Color(96, 96, 96);
-        headerLabel.setForeground(grayFg);
+        contentPanel.setBackground(null);
+        // Brighter foreground when expanded (base2 bg), muted when collapsed (sunken bg)
+        Color fg = expanded ? theme.foreground() : new Color(96, 96, 96);
+        headerLabel.setForeground(fg);
         if (paramLabel != null) {
-            paramLabel.setForeground(grayFg);
+            paramLabel.setForeground(fg);
         }
-        copyButton.setForeground(grayFg);
+        copyButton.setForeground(fg);
+
+        // Always show the header icon
+        headerLabel.setIcon(headerIcon);
+        if (expanded) {
+            Color accentColor = getAccordionGroup() != null ? theme.base1() : defaultAccent;
+            header.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 4, 0, 0, accentColor),
+                BorderFactory.createEmptyBorder(5, 4, 5, 10)));
+        } else {
+            header.setBorder(BorderFactory.createEmptyBorder(5, 4, 5, 10));
+        }
     }
 
     @Override
@@ -464,8 +476,8 @@ public class CollapsibleActivityPane extends BaseCollapsiblePane {
 
     private static JPanel createSegmentPane(String text, boolean isThought, String title, ColorTheme theme, int index, Runnable toggleCallback) {
         JPanel wrapper = new JPanel(new BorderLayout());
-        wrapper.setOpaque(true);
-        wrapper.setBackground(theme.thinkingHeaderBackground());
+        wrapper.setOpaque(false);
+        wrapper.setBackground(null);
         wrapper.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         // Title bar sits directly on wrapper so it spans full width (no left border indent)

@@ -4,9 +4,11 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Insets;
+import java.io.StringReader;
 
 import javax.swing.JTextPane;
 import javax.swing.border.EmptyBorder;
+import javax.swing.text.BadLocationException;
 import javax.swing.text.View;
 
 import github.anandb.netbeans.support.Logger;
@@ -28,7 +30,29 @@ public class FitEditorPane extends JTextPane {
             return;
         }
         lastText = t;
-        super.setText(t);
+
+        // Reuse the existing Document so the HTML view tree is updated
+        // in-place rather than torn down and rebuilt from scratch.
+        // JTextComponent.setText always obtains the EditorKit again,
+        // opens a new StringReader, and dispatches separate remove +
+        // insert DocumentEvents.  This path collapses those steps into
+        // a single bulk operation on the existing document.
+        javax.swing.text.Document doc = getDocument();
+        if (doc == null) {
+            super.setText(t);
+        } else {
+            try {
+                if (doc.getLength() > 0) {
+                    doc.remove(0, doc.getLength());
+                }
+                if (t != null && !t.isEmpty()) {
+                    getEditorKit().read(new StringReader(t), doc, 0);
+                }
+            } catch (BadLocationException | java.io.IOException ex) {
+                super.setText(t);
+            }
+        }
+
         lastComputedHeight = 0;
         cachedSize = null;
     }

@@ -9,7 +9,9 @@ import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.TextScanner;
 import static github.anandb.netbeans.ui.UIUtils.MONO_STACK;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 public final class HtmlContentPreparer {
 
@@ -20,6 +22,16 @@ public final class HtmlContentPreparer {
     private static final Parser FLEXMARK_PARSER;
     private static final HtmlRenderer FLEXMARK_RENDERER;
 
+    /** LRU cache for markdown→HTML output. Bounded to 256 entries to cap memory. */
+    private static final Map<String, String> MARKDOWN_HTML_CACHE = new LinkedHashMap<>() {
+        private static final int MAX_ENTRIES = 256;
+
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<String, String> eldest) {
+            return size() > MAX_ENTRIES;
+        }
+    };
+
     static {
         MutableDataSet options = new MutableDataSet();
         options.set(HtmlRenderer.SOFT_BREAK, "\n");
@@ -29,7 +41,7 @@ public final class HtmlContentPreparer {
     }
 
     public static String prepareHtml(String markdown, ColorTheme theme, String role, boolean incremental) {
-        String html = FLEXMARK_RENDERER.render(FLEXMARK_PARSER.parse(markdown));
+        String html = computeOrGetCachedHtml(markdown);
 
         if (incremental) {
             return html;
@@ -87,6 +99,28 @@ public final class HtmlContentPreparer {
 
     public static boolean containsAsciiArt(String markdown) {
         return TextScanner.containsAsciiArt(markdown);
+    }
+
+    /**
+     * Returns cached HTML for markdown input, or parses + caches on miss.
+     * The cache is bounded to 256 entries.  Text longer than 32 KB is not
+     * cached (avoid holding large strings for rare long messages).
+     */
+    private static String computeOrGetCachedHtml(String markdown) {
+        if (markdown.length() > 32768) {
+            return FLEXMARK_RENDERER.render(FLEXMARK_PARSER.parse(markdown));
+        }
+        synchronized (MARKDOWN_HTML_CACHE) {
+            return MARKDOWN_HTML_CACHE.computeIfAbsent(markdown,
+                    md -> FLEXMARK_RENDERER.render(FLEXMARK_PARSER.parse(md)));
+        }
+    }
+
+    /** Evict all cached HTML (called on theme switch to force reparse). */
+    public static void clearCache() {
+        synchronized (MARKDOWN_HTML_CACHE) {
+            MARKDOWN_HTML_CACHE.clear();
+        }
     }
 
     /**

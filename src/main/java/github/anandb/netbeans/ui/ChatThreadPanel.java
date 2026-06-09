@@ -232,7 +232,10 @@ public class ChatThreadPanel extends JPanel {
             if (pm.streaming()) {
                 processMessageSections(pm, text, role);
             } else {
-                // Non-streaming messages are complete — create a single bubble
+                // Non-streaming messages are complete — finalize any in-flight
+                // streaming bubble before creating a new one, otherwise the old
+                // streaming bubble is orphaned without a FitEditorPane.
+                stopStreaming();
                 addSingleBubble(pm.messageType(), text, pm.messageId(), pm.toolTitle(), false);
             }
             trimMessages();
@@ -498,33 +501,33 @@ public class ChatThreadPanel extends JPanel {
     }
 
     public void stopStreaming() {
-        SwingUtilities.invokeLater(() -> {
-            if (activeStreamBubble != null) {
-                boolean didUpdate = activeStreamBubble.flushUpdate(true);
-                // Restore tool/thought panes to toolbar default after streaming ends
-                activeStreamBubble.finalizeStreaming(allBlocksExpanded);
-                if (didUpdate) {
-                    messagesContainer.revalidate();
-                    scrollController.scrollToBottom();
-                }
-                activeStreamBubble = null;
+        // Already on EDT — all callers (Timer, SessionLifecycleHandler) invoke via EDT.
+        // Do NOT wrap in SwingUtilities.invokeLater: that defers execution, creating a
+        // race where late SSE deltas can clear activeStreamBubble before we finalize it.
+        if (activeStreamBubble != null) {
+            activeStreamBubble.flushUpdate(true);
+            activeStreamBubble.finalizeStreaming(allBlocksExpanded, true);
+            activeStreamBubble = null;
+            messagesContainer.revalidate();
+            scrollController.scrollToBottom();
+        }
+        // Scan for any remaining streaming bubbles missed by the
+        // activeStreamBubble path (e.g. interrupted by tool/thought
+        // chunks that reset activeStreamBubble, or late SSE deltas
+        // arriving after the responding_finished timer fired).
+        for (Component c : messagesContainer.getComponents()) {
+            if (c instanceof MessageBubble mb && mb.isStreaming()) {
+                mb.flushUpdate(true);
+                mb.finalizeStreaming(allBlocksExpanded, true);
+                messagesContainer.revalidate();
+                scrollController.scrollToBottom();
             }
-            // Scan for any remaining streaming bubbles missed by the
-            // activeStreamBubble path (e.g. interrupted by tool/thought
-            // chunks that reset activeStreamBubble, or late SSE deltas
-            // arriving after the responding_finished timer fired).
-            for (Component c : messagesContainer.getComponents()) {
-                if (c instanceof MessageBubble mb && mb.isStreaming()) {
-                    mb.flushUpdate(true);
-                    mb.finalizeStreaming(allBlocksExpanded);
-                }
-            }
-            if (streamFlushTimer.isRunning()) {
-                streamFlushTimer.stop();
-            }
-            // Combine any remaining individual tool/thought bubbles
-            combineToolThoughtBubbles();
-        });
+        }
+        if (streamFlushTimer.isRunning()) {
+            streamFlushTimer.stop();
+        }
+        // Combine any remaining individual tool/thought bubbles
+        combineToolThoughtBubbles();
     }
 
     public void addPermissionRequest(String prompt, JsonNode options, CompletableFuture<String> responseFuture) {

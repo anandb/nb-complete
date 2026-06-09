@@ -12,6 +12,15 @@ class ColorThemeTest {
 
     @Test
     void testColorThemeGetters() {
+        // Clear the static cache in ColorTheme using reflection to avoid flakiness
+        try {
+            java.lang.reflect.Field field = ColorTheme.class.getDeclaredField("cachedTheme");
+            field.setAccessible(true);
+            field.set(null, null);
+        } catch (Exception e) {
+            // fall through
+        }
+
         // Initialize UIManager defaults for the test environment
         UIManager.put("Panel.background", Color.BLACK);
         UIManager.put("Panel.foreground", Color.WHITE);
@@ -28,11 +37,13 @@ class ColorThemeTest {
         UIManager.put("ComboBox.selectionBackground", Color.YELLOW);
         UIManager.put("OptionPane.background", Color.BLACK);
         UIManager.put("OptionPane.messageForeground", Color.WHITE);
+        UIManager.put("TabbedPane.unselectedBackground", Color.GRAY);
 
         ColorTheme theme = ThemeManager.getCurrentTheme();
         assertNotNull(theme.background());
         assertNotNull(theme.foreground());
         assertNotNull(theme.bubbleUser());
         assertNotNull(theme.assistantForeground());
+        assertNotNull(theme.headerForeground());
     }
 }

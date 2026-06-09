@@ -320,7 +320,7 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
     private void updateAppearance() {
         ColorTheme theme = ThemeManager.getCurrentTheme();
         header.setBackground(expanded ? theme.base2() : theme.thinkingHeaderBackground());
-        contentPanel.setBackground(expanded ? theme.thinkingHeaderBackground() : theme.base2());
+        contentPanel.setBackground(null);
         if (textArea != null) {
             textArea.setForeground(expanded ? theme.thinkingHeaderForeground() : theme.foreground());
         }
@@ -470,8 +470,8 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
 
     private JPanel createSegmentPane(String text, boolean isThought, String title, ColorTheme theme, int index) {
         JPanel wrapper = new JPanel(new BorderLayout());
-        wrapper.setOpaque(true);
-        wrapper.setBackground(theme.thinkingHeaderBackground());
+        wrapper.setOpaque(false);
+        wrapper.setBackground(null);
         wrapper.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         // Title bar sits directly on wrapper so it spans full width (no left border indent)

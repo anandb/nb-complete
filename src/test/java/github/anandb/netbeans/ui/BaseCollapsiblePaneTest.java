@@ -9,7 +9,17 @@ class BaseCollapsiblePaneTest {
 
     @Test
     void testToggleCollapse() {
-        BaseCollapsiblePane pane = new BaseCollapsiblePane(10, "Title", null, true) {};
+        BaseCollapsiblePane pane = new BaseCollapsiblePane(10, "Title", null, true) {
+
+            @Override
+            public void setTitle(String title) {}
+
+            @Override
+            public void setContent(String content) {}
+
+            @Override
+            public void appendContent(String text) {}
+        };
         assertTrue(pane.isExpanded());
 
         pane.setExpanded(false);

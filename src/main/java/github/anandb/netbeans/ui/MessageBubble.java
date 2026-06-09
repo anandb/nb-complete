@@ -77,6 +77,13 @@ public class MessageBubble extends JPanel implements Scrollable {
     private int lastDisplayedLength = 0;
     private boolean isStreaming = false;
     private JTextArea streamingTextArea;
+    /** True when finalizeStreaming() was called but HTML rebuild is deferred
+     *  (waiting for more deltas).  The streaming text area is still visible. */
+    private boolean isFinalizingDeferred = false;
+    private Timer deferredFinalizeTimer;
+    /** Saved expanded state for when deferred finalization fires after the
+     *  caller's scope has exited. */
+    private boolean savedCollapseState;
 
     private static class CollapsibleState {
         boolean expanded;
@@ -322,37 +329,12 @@ public class MessageBubble extends JPanel implements Scrollable {
         this.text.append(newText);
         this.toolTitle = length(this.toolTitle) < length(toolTitle) ? toolTitle : this.toolTitle;
         hasPendingTextUpdate = true;
-        // Detect finalization signal immediately. If found, flush and finalize
-        // so the streaming JTextArea is replaced with a FitEditorPane right away.
-        if (stripFinalizationSignal()) {
-            if (isStreaming) {
-                // Flush any pending delta to the streaming text area first,
-                // then finalize (removes JTextArea, renders HTML via updateContent).
-                if (streamingTextArea != null && lastDisplayedLength < text.length()) {
-                    String delta = text.substring(lastDisplayedLength);
-                    streamingTextArea.append(delta);
-                    lastDisplayedLength = text.length();
-                }
-                finalizeStreaming(false);
-            } else {
-                hasPendingTextUpdate = true;
-            }
-        }
-    }
 
-    /** Strip the {@code \n\n<\n\n<} finalization signal from end of text if present.
-     *  Adjusts lastDisplayedLength so future flushUpdate() operates on the
-     *  correct range. Returns true if the signal was stripped. */
-    public boolean stripFinalizationSignal() {
-        String raw = text.toString();
-        if (raw.endsWith("\n\n<\n\n<")) {
-            text.setLength(text.length() - 6);
-            if (lastDisplayedLength > text.length()) {
-                lastDisplayedLength = text.length();
-            }
-            return true;
+        // Deferred finalization is in flight — new data arrived, so keep
+        // the bubble in streaming mode and reset the cooldown timer.
+        if (isFinalizingDeferred && deferredFinalizeTimer != null) {
+            deferredFinalizeTimer.restart();
         }
-        return false;
     }
 
     public boolean flushUpdate() {
@@ -365,23 +347,18 @@ public class MessageBubble extends JPanel implements Scrollable {
         }
         hasPendingTextUpdate = false;
 
-        if (isStreaming) {
+        // Use the fast streaming path for both actively-streaming bubbles
+        // and deferred-finalization bubbles (still have a visible JTextArea).
+        if (isStreaming || isFinalizingDeferred) {
             if (streamingTextArea != null && text.length() > lastDisplayedLength) {
                 String delta = text.substring(lastDisplayedLength);
-                streamingTextArea.append(delta);
-                lastDisplayedLength = text.length();
-                // Signal to finalize: text ends with "\n\n<\n\n<"
-                String rawText = text.toString();
-                if (rawText.endsWith("\n\n<\n\n<")) {
-                    text.setLength(text.length() - 6);
-                    String taText = streamingTextArea.getText();
-                    if (taText.endsWith("\n\n<\n\n<")) {
-                        streamingTextArea.setText(taText.substring(0, taText.length() - 6));
-                    }
-                    lastDisplayedLength = text.length();
-                    finalizeStreaming(false);
-                    return true;
+                javax.swing.text.Document doc = streamingTextArea.getDocument();
+                try {
+                    doc.insertString(doc.getLength(), delta, null);
+                } catch (javax.swing.text.BadLocationException ignored) {
+                    streamingTextArea.append(delta);
                 }
+                lastDisplayedLength = text.length();
                 return true;
             }
             return false;
@@ -446,9 +423,10 @@ public class MessageBubble extends JPanel implements Scrollable {
         return text.toString();
     }
 
-    /** Returns true if this bubble is still in streaming mode (not yet converted to HTML). */
+    /** Returns true if this bubble is still in streaming mode (not yet converted to HTML)
+     *  or if finalization has been deferred pending a cooldown period. */
     public boolean isStreaming() {
-        return isStreaming;
+        return isStreaming || isFinalizingDeferred;
     }
 
     public void setResponseTimeMs(long ms) {
@@ -499,45 +477,41 @@ public class MessageBubble extends JPanel implements Scrollable {
         return ta;
     }
 
-    private void updateContent(ColorTheme theme, boolean expanded) {
-        // Handle specialized tool rendering
-        if ("tool".equals(role) || "thought".equals(role)) {
-            String displayContent = text.toString();
-            // ChatThreadPanel passes title as toolTitle = "Execution Steps (N)".
-            // Use toolTitle when set (preserves the chunk count), fall back to
-            // "Execution Steps" for standalone tool/thought content.
-            String title = toolTitle != null ? toolTitle : "Execution Steps";
-            if (segments.getComponentCount() > 0) {
-                Component first = segments.getComponent(0);
-                if (first instanceof CollapsibleActivityPane ep) {
-                    ep.setTitle(title);
-                    if (displayContent.length() > lastDisplayedLength) {
-                        ep.appendContent(displayContent.substring(lastDisplayedLength));
-                        lastDisplayedLength = displayContent.length();
-                    } else if (displayContent.length() < lastDisplayedLength) {
-                        ep.setContent(displayContent);
-                        lastDisplayedLength = displayContent.length();
-                    }
-                    ep.setExpanded(expanded);
-                } else if (first instanceof CollapsibleToolPane ep) {
-                    ep.setTitle(title);
-                    if (displayContent.length() > lastDisplayedLength) {
-                        ep.appendContent(displayContent.substring(lastDisplayedLength));
-                        lastDisplayedLength = displayContent.length();
-                    } else if (displayContent.length() < lastDisplayedLength) {
-                        ep.setContent(displayContent);
-                        lastDisplayedLength = displayContent.length();
-                    }
-                    ep.setExpanded(expanded);
-                }
-            } else {
-                segments.removeAll();
-                CollapsibleActivityPane activityPane = new CollapsibleActivityPane(title, displayContent, expanded);
-                segments.add(activityPane);
-                lastDisplayedLength = displayContent.length();
+    /**
+     * Handles incremental update of tool/thought content in the activity pane.
+     * Reuses existing CollapsibleActivityPane or CollapsibleToolPane if present,
+     * otherwise creates a new CollapsibleActivityPane.
+     */
+    private void handleToolThoughtContent(ColorTheme theme, boolean expanded) {
+        String displayContent = text.toString();
+        String title = toolTitle != null ? toolTitle : "Execution Steps";
+        if (segments.getComponentCount() > 0) {
+            Component first = segments.getComponent(0);
+            if (first instanceof BaseCollapsiblePane pane) {
+                updatePaneContent(pane, title, displayContent, expanded);
             }
-            // Single revalidate at container level is sufficient
-            revalidate();
+        } else {
+            segments.removeAll();
+            segments.add(new CollapsibleActivityPane(title, displayContent, expanded));
+            lastDisplayedLength = displayContent.length();
+        }
+        revalidate();
+    }
+
+    private void updatePaneContent(BaseCollapsiblePane pane, String title, String content, boolean expanded) {
+        pane.setTitle(title);
+        if (content.length() > lastDisplayedLength) {
+            pane.appendContent(content.substring(lastDisplayedLength));
+        } else if (content.length() < lastDisplayedLength) {
+            pane.setContent(content);
+        }
+        lastDisplayedLength = content.length();
+        pane.setExpanded(expanded);
+    }
+
+    private void updateContent(ColorTheme theme, boolean expanded) {
+        if ("tool".equals(role) || "thought".equals(role)) {
+            handleToolThoughtContent(theme, expanded);
             return;
         }
 
@@ -628,28 +602,66 @@ public class MessageBubble extends JPanel implements Scrollable {
         timer.start();
     }
 
-    public void finalizeStreaming(boolean defaultExpanded) {
-        if (isStreaming) {
-            isStreaming = false;
-            if (streamingTextArea != null) {
-                segments.remove(streamingTextArea);
-                streamingTextArea = null;
+    /**
+     * Finalizes streaming, converting from JTextArea to rich HTML.
+     * @param expanded initial collapse state for code/tool panes
+     */
+    public void finalizeStreaming(boolean expanded) {
+        finalizeStreaming(expanded, false);
+    }
+
+    /**
+     * Finalizes streaming.
+     * @param expanded  initial collapse state for code/tool panes
+     * @param immediate if true, build HTML now; if false, defer for 300 ms
+     *                  to let additional deltas accumulate (avoids repeated
+     *                  expensive rebuilds during section splits).
+     */
+    public void finalizeStreaming(boolean expanded, boolean immediate) {
+        // If neither streaming nor deferred—just toggle child panes
+        if (!isStreaming && !isFinalizingDeferred) {
+            for (Component c : segments.getComponents()) {
+                if (c instanceof CollapsibleCodePane codePane) {
+                    codePane.setExpanded(expanded);
+                } else if (c instanceof CollapsibleToolPane toolPane) {
+                    toolPane.setExpanded(expanded);
+                } else if (c instanceof CollapsibleActivityPane activityPane) {
+                    activityPane.setExpanded(expanded);
+                }
             }
-            updateContent(ThemeManager.getCurrentTheme(), defaultExpanded);
             revalidate();
             repaint();
             return;
         }
 
-        for (Component c : segments.getComponents()) {
-            if (c instanceof CollapsibleCodePane codePane) {
-                codePane.setExpanded(defaultExpanded);
-            } else if (c instanceof CollapsibleToolPane toolPane) {
-                toolPane.setExpanded(defaultExpanded);
-            } else if (c instanceof CollapsibleActivityPane activityPane) {
-                activityPane.setExpanded(defaultExpanded);
+        savedCollapseState = expanded;
+
+        if (immediate) {
+            performFinalization();
+        } else {
+            // Defer: start a 300ms cooldown timer. If appendText() is
+            // called before it fires, the timer resets.
+            isFinalizingDeferred = true;
+            if (deferredFinalizeTimer == null) {
+                deferredFinalizeTimer = new Timer(300, e -> performFinalization());
+                deferredFinalizeTimer.setRepeats(false);
             }
+            deferredFinalizeTimer.restart();
         }
+    }
+
+    /** Actually removes the streaming JTextArea and builds the rich HTML content. */
+    private void performFinalization() {
+        isStreaming = false;
+        isFinalizingDeferred = false;
+        if (deferredFinalizeTimer != null) {
+            deferredFinalizeTimer.stop();
+        }
+        if (streamingTextArea != null) {
+            segments.remove(streamingTextArea);
+            streamingTextArea = null;
+        }
+        updateContent(ThemeManager.getCurrentTheme(), savedCollapseState);
         revalidate();
         repaint();
     }

@@ -483,8 +483,7 @@ public class ProcessManager {
         params.put("prompt", promptBlocks);
         params.put("mcpServers", mcpManager.getServerConfig());
 
-        return client.sendRequest("session/prompt", params)
-                .thenApply(v -> null);
+        return client.sendRequest("session/prompt", params);
     }
 
     public CompletableFuture<Void> stopMessage(String sessionId) {

@@ -302,4 +302,29 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
         codeTextArea.setForeground(theme.codeForeground());
         codeTextArea.setSelectionColor(theme.codeSelection());
     }
+
+    // ────────────────────────────────────────────────────────────────
+    // BaseCollapsiblePane abstract method implementations
+    // (not typically used for code panes, but required by the base class)
+    // ────────────────────────────────────────────────────────────────
+
+    @Override
+    public void setTitle(String title) {
+        headerLabel.setText(title);
+    }
+
+    @Override
+    public void setContent(String content) {
+        if (codeTextArea != null) {
+            codeTextArea.setText(content);
+            codeTextArea.setCaretPosition(0);
+        }
+    }
+
+    @Override
+    public void appendContent(String text) {
+        if (codeTextArea != null) {
+            codeTextArea.append(text);
+        }
+    }
 }

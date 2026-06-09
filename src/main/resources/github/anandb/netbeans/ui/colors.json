@@ -32,15 +32,14 @@
   {
     "name": "bubbleUser",
     "property": "netbeans.codingassistant.color.bubbleUserBackground",
-    "keysDark": ["Search.background", "Editor.searchBackground", "EditorPane.background"],
-    "dark": "#2d2d2d",
-    "light": "#E8F0FE"
+    "dark": "#2D2A23",
+    "light": "#E9E8E2"
   },
   {
     "name": "bubbleAssistant",
     "property": "netbeans.codingassistant.color.bubbleAssistant",
-    "keyDark": "Panel.background",
-    "light": "#fdf6e3"
+    "dark": "#2d2d2d",
+    "light": "#FBF4E1"
   },
   {
     "name": "bubbleBorder",
@@ -50,7 +49,9 @@
   {
     "name": "assistantForeground",
     "property": "netbeans.codingassistant.color.assistantForeground",
-    "key": "TextArea.foreground"
+    "key": "TextArea.foreground",
+    "dark": "#E0E0E0",
+    "light": "#1A1A1A"
   },
   {
     "name": "panelHeader",
@@ -97,16 +98,21 @@
   {
     "name": "codeSelection",
     "property": "netbeans.codingassistant.color.codeSelection",
+    "key": "TextArea.selectionBackground",
     "fallback": "#353739"
   },
   {
     "name": "headerForeground",
     "property": "netbeans.codingassistant.color.headerForeground",
-    "key": "Label.foreground"
+    "key": "Label.foreground",
+    "dark": "#E0E0E0",
+    "light": "#1A1A1A"
   },
   {
     "name": "errorBackground",
     "property": "netbeans.codingassistant.color.errorBackground",
+    "keyDark": "OptionPane.errorBackground",
+    "keyLight": "OptionPane.warningBackground",
     "dark": "#401010",
     "light": "#FFEBEE"
   },
@@ -123,6 +129,7 @@
   {
     "name": "codeHeaderBorder",
     "property": "netbeans.codingassistant.color.codeHeaderBorder",
+    "key": "Button.borderColor",
     "dark": "#AAAAAA",
     "light": "#333333"
   },
@@ -130,6 +137,7 @@
     "name": "thinkingHeaderBackground",
     "property": "netbeans.codingassistant.color.thinkingHeaderBackground",
     "keyDark": "Panel.background",
+    "keyLight": "Panel.background",
     "light": "#fdf6e3"
   },
   {
@@ -140,6 +148,7 @@
   {
     "name": "toolForeground",
     "property": "netbeans.codingassistant.color.toolForeground",
+    "key": "Label.disabledForeground",
     "dark": "#9CA3AF",
     "light": "#777777"
   },
@@ -161,19 +170,23 @@
   {
     "name": "tableBackground",
     "property": "netbeans.codingassistant.color.tableBackground",
-    "dark": "#2d2d2d",
-    "light": "#fdf6e3"
+    "keyDark": "List.selectionBackground",
+    "keyLight": "List.selectionBackground",
+    "dark": "#3A3028",
+    "light": "#FBF4E1"
   },
   {
     "name": "tableHeaderBackground",
     "property": "netbeans.codingassistant.color.tableHeaderBackground",
-    "dark": "#383838",
-    "light": "#eee8d5"
+    "key": "TableHeader.background",
+    "dark": "#201C18",
+    "light": "#E0DAD0"
   },
   {
     "name": "tableBorder",
     "property": "netbeans.codingassistant.color.tableBorder",
-    "dark": "#454545",
-    "light": "#e8e0c8"
+    "key": "controlShadow",
+    "dark": "#3A2C20",
+    "light": "#B8B0A0"
   }
 ]

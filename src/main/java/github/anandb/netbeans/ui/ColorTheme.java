@@ -212,6 +212,9 @@ public record ColorTheme(
     }
 
     public String toHtmlHex(Color color) {
+        if (color == null) {
+            return "#000000";
+        }
         return String.format("#%02x%02x%02x", color.getRed(), color.getGreen(), color.getBlue());
     }
 }

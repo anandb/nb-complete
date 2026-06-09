@@ -176,4 +176,17 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
         return ThemeManager.getCurrentTheme().panelHeader();
     }
 
+    // ────────────────────────────────────────────────────────────────
+    // Abstract content management methods (must be implemented by subclasses)
+    // ────────────────────────────────────────────────────────────────
+
+    /** Sets the title displayed in the header. */
+    public abstract void setTitle(String title);
+
+    /** Replaces the content with the given text. */
+    public abstract void setContent(String content);
+
+    /** Appends text to the existing content (used for streaming). */
+    public abstract void appendContent(String text);
+
 }
