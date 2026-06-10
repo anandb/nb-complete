@@ -82,7 +82,7 @@ public class EditorToolProvider {
                 "open_file_at_line",
                 "Opens a file at the specified line number in the editor. Only works for files within the current project. " +
                 "Call when you see phrases like 'Show me where this happens in the code, or 'open the files where we use this'" +
-                "'Where all do we have this kind of pattern'",
+                "'Where all do we have this kind of pattern', 'Show me the code where XXX'",
                 schema,
                 new ToolExecutor<OpenFileInput, Map<String, Object>>(OpenFileInput.class) {
                     @Override

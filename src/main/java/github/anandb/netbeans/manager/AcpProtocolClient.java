@@ -110,6 +110,7 @@ public class AcpProtocolClient implements Closeable {
             if (writer.checkError()) {
                 pendingRequests.remove(id);
                 IOException ex = new IOException("Failed to write request");
+                LOG.severe("Failed to write request method={0}, id={1}", method, id);
                 future.completeExceptionally(ex);
                 notifyConnectionError(ex);
                 return future;
@@ -118,6 +119,7 @@ public class AcpProtocolClient implements Closeable {
             wireLogger.log(json);
         } catch (IOException e) {
             pendingRequests.remove(id);
+            LOG.severe("IOException sending request method={0}, id={1}", method, id, e);
             future.completeExceptionally(e);
         }
 
@@ -176,6 +178,8 @@ public class AcpProtocolClient implements Closeable {
             if (running) {
                 LOG.severe("JSON-RPC reader thread error", e);
                 notifyConnectionError(e);
+            } else {
+                LOG.warn("JSON-RPC reader thread error after close: {0}", e.getMessage());
             }
         } finally {
             if (!closed) {
@@ -202,6 +206,7 @@ public class AcpProtocolClient implements Closeable {
             scheduleWatchdogCheck();
             return;
         }
+        
         long timeout = PluginSettings.getSessionIdleTimeout();
         if (timeout <= 0) {
             scheduleWatchdogCheck();
@@ -209,7 +214,8 @@ public class AcpProtocolClient implements Closeable {
         }
         long idleNanos = System.nanoTime() - lastDataTime;
         if (idleNanos >= TimeUnit.SECONDS.toNanos(timeout)) {
-            LOG.warn("Connection idle for {0}s with pending requests, closing", TimeUnit.NANOSECONDS.toSeconds(idleNanos));
+            LOG.warn("Connection idle for {0}s with {1} pending request(s), closing",
+                    TimeUnit.NANOSECONDS.toSeconds(idleNanos), pendingRequests.size());
             close();
             notifyDisconnection();
             return;
@@ -361,6 +367,10 @@ public class AcpProtocolClient implements Closeable {
             readerThread.interrupt();
         }
 
+        int drainCount = (int) pendingRequests.values().stream().filter(f -> !f.isDone()).count();
+        if (drainCount > 0) {
+            LOG.warn("Closing client with {0} pending request(s)", drainCount);
+        }
         pendingRequests.values().forEach(future -> {
             if (!future.isDone()) {
                 future.completeExceptionally(new IOException("Client closed"));

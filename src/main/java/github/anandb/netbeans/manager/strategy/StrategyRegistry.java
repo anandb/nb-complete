@@ -94,6 +94,11 @@ public class StrategyRegistry {
             case "session_info_update" ->
                 handler.refreshSessions();
 
+            case "available_commands_update" -> {
+                // Already handled by ProcessManager notification handler;
+                // nothing to display or update here.
+            }
+
             case "agent_thought_chunk" -> {
                 String text = extractText(update.content());
                 handler.displayMessage(buildStreamingMessage(update, text));

@@ -218,13 +218,13 @@ public class ProcessManager {
                     SessionUpdate.Params sessionParams = objectMapper.treeToValue(params, SessionUpdate.Params.class);
                     SessionUpdate update = new SessionUpdate("2.0", "session/update", sessionParams);
 
-                    // Update available commands if present
+                    // Update available commands if present, then propagate to listeners
                     if (update.update() != null && "available_commands_update".equals(update.type())) {
                         // Single volatile swap so readers never observe a partially populated list.
                         if (update.update().availableCommands() != null) {
                             availableCommands = List.copyOf(update.update().availableCommands());
-                            return;
                         }
+                        // Fall through to notifyListeners so UI can treat this as an end_turn signal
                     }
 
                     notifyListeners(update);
@@ -270,17 +270,17 @@ public class ProcessManager {
                         mcpManager.checkServerSupport(res);
                     }
                     readyFuture.complete(null);
-                    LOG.log(Level.FINE, "ACP initialized successfully");
+                    LOG.fine("ACP initialized successfully");
                     if (readyHandler != null) {
                         try {
                             readyHandler.run();
                         } catch (Exception ex) {
-                            LOG.log(Level.WARNING, "Ready handler failed", ex);
+                            LOG.warn("Ready handler failed", ex);
                         }
                     }
                 })
                 .exceptionally(ex -> {
-                    LOG.log(Level.SEVERE, "Failed to initialize ACP", ex);
+                    LOG.severe("Failed to initialize ACP", ex);
                     readyFuture.completeExceptionally(ex);
                     synchronized (ProcessManager.this) {
                         serverStarted = false;
@@ -328,7 +328,7 @@ public class ProcessManager {
         }
 
         if (serverProcess != null && serverProcess.isAlive()) {
-            LOG.log(Level.FINE, "Stopping ACP server (PID: {0})...", serverProcess.pid());
+            LOG.fine("Stopping ACP server (PID: {0})...", serverProcess.pid());
 
             // Capture descendants before the parent process potentially disappears
             List<ProcessHandle> descendants = serverProcess.descendants().toList();
@@ -336,7 +336,7 @@ public class ProcessManager {
             // 1. Try graceful exit via closed stdin (already triggered by rpcClient.close())
             try {
                 if (serverProcess.waitFor(2, java.util.concurrent.TimeUnit.SECONDS)) {
-                    LOG.log(Level.FINE, "ACP server exited gracefully.");
+                    LOG.info("ACP server exited gracefully.");
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
@@ -344,11 +344,11 @@ public class ProcessManager {
 
             // 2. If still alive, or if there are orphaned descendants, send SIGTERM
             if (serverProcess != null && serverProcess.isAlive()) {
-                LOG.log(Level.FINE, "Terminating process tree (parent + {0} descendants)...", descendants.size());
+                LOG.warn("Terminating process tree (parent + {0} descendants)...", descendants.size());
 
                 for (ProcessHandle h : descendants) {
                     if (h.isAlive()) {
-                        LOG.log(Level.FINE, "Sending SIGTERM to descendant PID: {0}", h.pid());
+                        LOG.info("Sending SIGTERM to descendant PID: {0}", h.pid());
                         h.destroy();
                     }
                 }
@@ -364,10 +364,10 @@ public class ProcessManager {
             }
 
             if (serverProcess.isAlive() || descendants.stream().anyMatch(ProcessHandle::isAlive)) {
-                LOG.log(Level.WARNING, "Some processes still alive, forcing SIGKILL...");
+                LOG.warn("Some processes still alive, forcing SIGKILL...");
                 descendants.forEach(h -> {
                     if (h.isAlive()) {
-                        LOG.log(Level.WARNING, "Killing descendant PID: {0}", h.pid());
+                        LOG.warn("Killing descendant PID: {0}", h.pid());
                         h.destroyForcibly();
                     }
                 });
@@ -376,7 +376,7 @@ public class ProcessManager {
                 }
             }
 
-            LOG.log(Level.FINE, "ACP server shutdown complete.");
+            LOG.info("ACP server shutdown complete.");
         }
 
         serverProcess = null;
@@ -509,15 +509,17 @@ public class ProcessManager {
 
     private synchronized void handleDisconnection() {
         if (isClosing) {
+            LOG.warn("handleDisconnection called while closing — returning early (PID: {0})",
+                    serverProcess != null ? serverProcess.pid() : "unknown");
             return;
         }
 
-        LOG.log(Level.WARNING, "ACP server disconnected unexpectedly (PID: {0})",
+        LOG.warn("ACP server disconnected unexpectedly (PID: {0})",
                 serverProcess != null ? serverProcess.pid() : "unknown");
 
         // Kill stale process if alive but broken pipes
         if (serverProcess != null && serverProcess.isAlive()) {
-            LOG.log(Level.WARNING, "Stale process PID {0} is still alive but pipes are broken — killing it",
+            LOG.warn("Stale process PID {0} is still alive but pipes are broken — killing it",
                     serverProcess.pid());
             List<ProcessHandle> descendants = serverProcess.descendants().toList();
             for (ProcessHandle h : descendants) {
@@ -537,6 +539,8 @@ public class ProcessManager {
         AcpProtocolClient staleClient = rpcClient.getAndSet(null);
         if (staleClient != null) {
             staleClient.close();
+        } else {
+            LOG.warn("rpcClient was already null in handleDisconnection — pending futures will never complete");
         }
 
         // Notify crash handler (e.g. SessionManager) to reset state machine and UI
@@ -544,7 +548,7 @@ public class ProcessManager {
             try {
                 crashHandler.run();
             } catch (Exception ex) {
-                LOG.log(Level.WARNING, "Crash handler failed", ex);
+                LOG.warn("Crash handler failed", ex);
             }
         }
 
@@ -557,15 +561,15 @@ public class ProcessManager {
             restartCount++;
             lastRestartTime = now;
             long delay = restartCount * 2000L; // Exponential backoff: 2s, 4s, 6s...
-            LOG.log(Level.FINE, "Respawning ACP server in {0}ms (attempt {1}/{2})...",
+            LOG.fine("Respawning ACP server in {0}ms (attempt {1}/{2})...",
                     new Object[]{delay, restartCount, MAX_RESTARTS});
 
             if (reconnectRP != null) {
                 reconnectTask = reconnectRP.post(this::startServer, (int) delay);
             }
         } else {
-            LOG.log(Level.SEVERE, "ACP server crashed {0} times within {1}ms. Giving up.",
-                    new Object[]{MAX_RESTARTS, RESTART_RESET_INTERVAL});
+            LOG.severe("ACP server crashed {0} times within {1}ms. Giving up.",
+                       new Object[]{MAX_RESTARTS, RESTART_RESET_INTERVAL});
             if (statusListener != null) {
                 statusListener.accept(NbBundle.getMessage(ProcessManager.class, "ERR_ServerCrashed", MAX_RESTARTS));
             }
@@ -672,7 +676,7 @@ public class ProcessManager {
                         }
                     }
                 } catch (Exception e) {
-                    LOG.log(Level.FINE, "Could not read from editor for {0}, falling back to disk", filePath);
+                    LOG.warn("Could not read from editor for {0}, falling back to disk", filePath);
                 }
 
                 readFromDisk(file, filePath, resultFuture);
@@ -691,7 +695,7 @@ public class ProcessManager {
                 String content = new String(bytes, StandardCharsets.UTF_8);
                 return objectMapper.createObjectNode().put("content", content);
             } catch (Exception e) {
-                LOG.log(Level.SEVERE, "fs/readTextFile failed", e);
+                LOG.severe("fs/readTextFile failed", e);
                 throw new RuntimeException(NbBundle.getMessage(ProcessManager.class, "ERR_ReadFileFailed", e.getMessage()), e);
             }
         }).thenAccept(resultFuture::complete)

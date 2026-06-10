@@ -77,28 +77,35 @@ public class ComponentLifecycleHandler {
         // Without this, new SSE updates after reopen would be suppressed.
         sessionLifecycleHandler.onNewMessageSent();
         SessionManager.getInstance().addSessionListener(sessionLifecycleHandler);
-        Set<String> currentDirs = new HashSet<>();
-        for (var p : ACPProjectManager.getInstance().getAllOpenProjects()) {
-            if (p != null) {
-                currentDirs.add(p.getProjectDirectory().getPath());
+
+        // Defer session refresh and server start so the component opens immediately.
+        // During plugin installation the @OnStart handler opens this component while
+        // the module installer wizard is still active; deferring prevents the installation
+        // dialog from being blocked by server/session initialization.
+        SwingUtilities.invokeLater(() -> {
+            Set<String> currentDirs = new HashSet<>();
+            for (var p : ACPProjectManager.getInstance().getAllOpenProjects()) {
+                if (p != null) {
+                    currentDirs.add(p.getProjectDirectory().getPath());
+                }
             }
-        }
-        if (!currentDirs.equals(closedProjectDirs)) {
-            SessionManager.getInstance().refreshSessions();
-        }
-        closedProjectDirs = Set.of();
-        try {
-            ProcessManager.getInstance().ensureStarted();
-        } catch (Exception ex) {
-            LOG.severe("Failed to ensure server is started", ex);
-            String msg = ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName();
-            SwingUtilities.invokeLater(() -> {
-                chatPanel.stopStreaming();
-                chatPanel.addMessage(ProcessedMessage.createError(
-                        MessageType.error_response, NbBundle.getMessage(AssistantTopComponent.class, "STATUS_FailedToStart", msg), null, null
-                ));
-            });
-        }
+            if (!currentDirs.equals(closedProjectDirs)) {
+                SessionManager.getInstance().refreshSessions();
+            }
+            closedProjectDirs = Set.of();
+            try {
+                ProcessManager.getInstance().ensureStarted();
+            } catch (Exception ex) {
+                LOG.severe("Failed to ensure server is started", ex);
+                String msg = ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName();
+                SwingUtilities.invokeLater(() -> {
+                    chatPanel.stopStreaming();
+                    chatPanel.addMessage(ProcessedMessage.createError(
+                            MessageType.error_response, NbBundle.getMessage(AssistantTopComponent.class, "STATUS_FailedToStart", msg), null, null
+                    ));
+                });
+            }
+        });
 
         // Update status label when MCP server is starting/ready
         McpManager mcp = ProcessManager.getInstance().getMcpManager();
