@@ -329,7 +329,7 @@ public class ChatThreadPanel extends JPanel {
 
         // Combine individual tool/thought bubbles before user/assistant messages
         if (type.isUser() || type.isAssistant()) {
-            combineToolThoughtBubbles();
+            ToolThoughtCombiner.combine(messagesContainer, allBlocksExpanded);
         }
 
         // Reset turn state for new user message
@@ -365,112 +365,6 @@ public class ChatThreadPanel extends JPanel {
         if (streaming) {
             streamFlushTimer.start();
         }
-    }
-
-    /**
-     * Combines all individual tool/thought bubbles into a single "Execution Steps"
-     * activity panel. Called before a user/assistant message is added or when
-     * streaming ends. Individual bubbles are removed to free memory.
-     */
-    private void combineToolThoughtBubbles() {
-        // Respect user preference: if unchecked, skip combining
-        if (!NbPreferences.forModule(ACPOptionsPanel.class).getBoolean("combineToolThought", true)) {
-            return;
-        }
-
-        // Find all individual tool/thought bubbles (skip already-combined ones)
-        List<Component> toRemove = new ArrayList<>();
-        List<CollapsibleToolPane.ToolSegment> allSegments = new ArrayList<>();
-        int insertIndex = -1;
-
-        Component[] comps = messagesContainer.getComponents();
-        for (int i = 0; i < comps.length; i++) {
-            Component c = comps[i];
-            if (c instanceof MessageBubble mb) {
-                String role = mb.getRole();
-                if (("tool".equals(role) || "thought".equals(role))
-                        && !Boolean.TRUE.equals(mb.getClientProperty("nb-complete.combined"))) {
-                    if (insertIndex < 0) {
-                        insertIndex = i;
-                    }
-                    String text = mb.getRawText();
-                    if (text != null && !text.isEmpty()) {
-                        String segTitle = mb.getToolTitle();
-                        if ("thought".equals(role) && (segTitle == null || segTitle.isEmpty())) {
-                            segTitle = NbBundle.getMessage(CollapsibleToolPane.class, "LBL_ThinkingProcess");
-                        } else if ("tool".equals(role) && (segTitle == null || segTitle.isEmpty())) {
-                            segTitle = NbBundle.getMessage(CollapsibleToolPane.class, "LBL_ToolFallback");
-                        }
-                        // For "read" tool segments, skip body content — show header only
-                        if ("tool".equals(role) && segTitle != null) {
-                            String stripped = segTitle.replaceFirst("(?i)TOOL:?\\s*", "").trim();
-                            int pos = stripped.indexOf(' ');
-                            String firstWord = (pos > 1) ? stripped.substring(0, pos) : stripped;
-                            if ("read".equalsIgnoreCase(firstWord)
-                                    || "functions.read".equalsIgnoreCase(firstWord)
-                                    || "functions.webfetch".equalsIgnoreCase(firstWord)) {
-                                text = "";
-                            }
-                        }
-                        allSegments.add(new CollapsibleToolPane.ToolSegment(
-                                text, "thought".equals(role), segTitle));
-                    }
-                    toRemove.add(c);
-                    // Remove trailing strut as well
-                    if (i + 1 < comps.length && comps[i + 1] instanceof Box.Filler) {
-                        toRemove.add(comps[i + 1]);
-                        i++; // skip strut in next iteration
-                    }
-                }
-            }
-        }
-
-        if (allSegments.isEmpty()) return;
-
-        // Filter segments by current type visibility so the combined pane
-        // only contains what the user wants to see.
-        boolean toolHidden = MessageFilterManager.isTypeHidden("tool");
-        boolean thoughtHidden = MessageFilterManager.isTypeHidden("thought");
-        List<CollapsibleToolPane.ToolSegment> visibleSegments = new ArrayList<>();
-        for (CollapsibleToolPane.ToolSegment seg : allSegments) {
-            if ((seg.isThought() && !thoughtHidden) || (!seg.isThought() && !toolHidden)) {
-                visibleSegments.add(seg);
-            }
-        }
-
-        if (visibleSegments.isEmpty()) {
-            // All segments hidden — remove individual bubbles but create no combined pane
-            for (int i = toRemove.size() - 1; i >= 0; i--) {
-                messagesContainer.remove(toRemove.get(i));
-            }
-            messagesContainer.revalidate();
-            return;
-        }
-
-        // Remove from back to front to keep indices valid
-        for (int i = toRemove.size() - 1; i >= 0; i--) {
-            messagesContainer.remove(toRemove.get(i));
-        }
-
-        // Create combined bubble with only the visible segments
-        String title = "Execution Steps (" + visibleSegments.size() + ")";
-        MessageBubble combined = new MessageBubble(
-                MessageType.tool_call, "", null, title, MessageBubble.AvatarPosition.NONE);
-        combined.setSegmentedToolContent(visibleSegments);
-        combined.setExpanded(allBlocksExpanded);
-        combined.putClientProperty("nb-complete.combined", Boolean.TRUE);
-        // Store ALL segments (unfiltered) for later re-filtering by applyTypeFilters()
-        combined.putClientProperty("nb-complete.segments", allSegments);
-
-        boolean combinedVisible = !(toolHidden && thoughtHidden);
-        combined.setVisible(combinedVisible);
-        Component strut = Box.createVerticalStrut(4);
-        strut.setVisible(combinedVisible);
-
-        int safeIdx = Math.max(0, Math.min(insertIndex, messagesContainer.getComponentCount()));
-        messagesContainer.add(combined, safeIdx);
-        messagesContainer.add(strut, safeIdx + 1);
-        messagesContainer.revalidate();
     }
 
     private void trimMessages() {
@@ -530,7 +424,7 @@ public class ChatThreadPanel extends JPanel {
             streamFlushTimer.stop();
         }
         // Combine any remaining individual tool/thought bubbles
-        combineToolThoughtBubbles();
+        ToolThoughtCombiner.combine(messagesContainer, allBlocksExpanded);
     }
 
     public void addPermissionRequest(String prompt, JsonNode options, CompletableFuture<String> responseFuture) {
