@@ -68,6 +68,9 @@
   streaming to prevent memory leaks.
 - Clamping: `McpServer` connector idle timeout is clamped to a minimum of 30s.
 
+### Auto-Scroll Contract
+`ScrollController.isAtBottom()` uses a 50px tolerance (not 400px). All content-modifying calls in `ChatThreadPanel` (`addSingleBubble`, `processMessageSections`, `stopStreaming`, stream timer) capture `wasAtBottom` BEFORE touching content. Auto-scroll only fires when `wasAtBottom` is true. The stream timer path (`Timer 300ms`) already captured `wasAtBottom` before `flushUpdate()` — this is the correct pattern; new callers must follow it.
+
 ### Renderer Selection
 - `MarkdownStyledRenderer` bypasses the Swing HTML engine entirely by inserting text ranges
   with `SimpleAttributeSet` into a `JTextPane`. Fast and lightweight; use for streaming

@@ -172,7 +172,7 @@ public class ChatThreadPanel extends JPanel {
             }
         });
 
-        streamFlushTimer = new Timer(150, e -> {
+        streamFlushTimer = new Timer(300, e -> {
             if (!isShowing()) {
                 return;
             }
@@ -279,8 +279,11 @@ public class ChatThreadPanel extends JPanel {
                 // If the bubble was already finalized (not streaming), re-render
                 // immediately so late deltas are reflected in the HTML content.
                 if (!lastBubble.isStreaming()) {
+                    boolean wasAtBottom = scrollController.isAtBottom();
                     lastBubble.flushUpdate(true);
-                    scrollController.scrollToBottom();
+                    if (wasAtBottom) {
+                        scrollController.scrollToBottom(true);
+                    }
                 }
             } else {
                 if (lastBubble != null) {
@@ -301,6 +304,9 @@ public class ChatThreadPanel extends JPanel {
     }
 
     private void addSingleBubble(MessageType type, String text, String messageId, String toolTitle, boolean streaming) {
+        // Capture scroll state BEFORE modifying content
+        boolean wasAtBottom = scrollController.isAtBottom();
+
         // Tool/thought messages create individual bubbles immediately (not accumulated)
         if (type.isTool() || type.isThought()) {
             // Use "Thinking Process" title for thought bubbles so they show brain icon
@@ -318,7 +324,9 @@ public class ChatThreadPanel extends JPanel {
             messagesContainer.add(strut);
 
             messagesContainer.revalidate();
-            scrollController.scrollToBottom();
+            if (wasAtBottom) {
+                scrollController.scrollToBottom(true);
+            }
 
             if (streaming) {
                 activeStreamBubble = bubble;
@@ -359,7 +367,9 @@ public class ChatThreadPanel extends JPanel {
         boolean shouldScroll = !streaming || type.isTool();
         if (shouldScroll) {
             messagesContainer.revalidate();
-            scrollController.scrollToBottom();
+            if (wasAtBottom) {
+                scrollController.scrollToBottom(true);
+            }
         }
         activeStreamBubble = bubble;
         if (streaming) {
@@ -402,11 +412,14 @@ public class ChatThreadPanel extends JPanel {
         // Do NOT wrap in SwingUtilities.invokeLater: that defers execution, creating a
         // race where late SSE deltas can clear activeStreamBubble before we finalize it.
         if (activeStreamBubble != null) {
+            boolean wasAtBottom = scrollController.isAtBottom();
             activeStreamBubble.flushUpdate(true);
             activeStreamBubble.finalizeStreaming(allBlocksExpanded, true);
             activeStreamBubble = null;
             messagesContainer.revalidate();
-            scrollController.scrollToBottom();
+            if (wasAtBottom) {
+                scrollController.scrollToBottom(true);
+            }
         }
         // Scan for any remaining streaming bubbles missed by the
         // activeStreamBubble path (e.g. interrupted by tool/thought
@@ -414,10 +427,13 @@ public class ChatThreadPanel extends JPanel {
         // arriving after the responding_finished timer fired).
         for (Component c : messagesContainer.getComponents()) {
             if (c instanceof MessageBubble mb && mb.isStreaming()) {
+                boolean wasAtBottom = scrollController.isAtBottom();
                 mb.flushUpdate(true);
                 mb.finalizeStreaming(allBlocksExpanded, true);
                 messagesContainer.revalidate();
-                scrollController.scrollToBottom();
+                if (wasAtBottom) {
+                    scrollController.scrollToBottom(true);
+                }
             }
         }
         if (streamFlushTimer.isRunning()) {

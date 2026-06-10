@@ -138,7 +138,8 @@ public class ScrollController implements KeyEventDispatcher {
         int extent = vertical.getModel().getExtent();
         int value = vertical.getValue();
         int maximum = vertical.getMaximum();
-        return (value + extent >= maximum - 400);
+        // Small tolerance for rounding errors, but no big sticky zone
+        return (value + extent >= maximum - 50);
     }
 
     public void positionScrollDownBtn(int parentWidth, int parentHeight) {
