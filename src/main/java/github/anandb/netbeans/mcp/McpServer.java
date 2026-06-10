@@ -54,7 +54,10 @@ public class McpServer {
 
         connector = new ServerConnector(server);
         connector.setHost("127.0.0.1");
-        connector.setIdleTimeout(1000 * PluginSettings.getSessionIdleTimeout());
+        // Clamp idle timeout: 0 or negative disables idle detection, which
+        // leaks connections under load.  Minimum 30 s avoids undefined behaviour.
+        int idleSec = PluginSettings.getSessionIdleTimeout();
+        connector.setIdleTimeout(1000 * Math.max(30, idleSec));
         connector.setAcceptQueueSize(100);
         server.addConnector(connector);
 

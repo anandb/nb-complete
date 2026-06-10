@@ -552,6 +552,12 @@ public class ChatThreadPanel extends JPanel {
 
     @Override
     public void removeNotify() {
+        // Finalize any in-flight streaming bubble before tearing down —
+        // otherwise the bubble stays as a plain JTextArea indefinitely.
+        if (activeStreamBubble != null) {
+            activeStreamBubble.finalizeStreaming(allBlocksExpanded, true);
+            activeStreamBubble = null;
+        }
         super.removeNotify();
         if (streamFlushTimer != null && streamFlushTimer.isRunning()) {
             streamFlushTimer.stop();

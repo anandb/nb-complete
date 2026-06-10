@@ -177,7 +177,11 @@ public class MessageSender {
                             LOG.info("Turn finished via RPC result: stopReason={0}", result.get("stopReason").asText());
                             // Brief delay to allow any in-flight delta notifications to arrive
                             // before finalizing the stream bubble (opencode may send result before last delta)
-                            Timer flushTimer = new Timer(150, e -> chatPanel.stopStreaming());
+                            Timer flushTimer = new Timer(150, e -> {
+                                if (chatPanel.isDisplayable()) {
+                                    chatPanel.stopStreaming();
+                                }
+                            });
                             flushTimer.setRepeats(false);
                             flushTimer.start();
                         }

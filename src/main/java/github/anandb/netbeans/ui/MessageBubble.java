@@ -312,6 +312,11 @@ public class MessageBubble extends JPanel implements Scrollable {
             removeHierarchyListener(hierarchyListener);
             hierarchyListener = null;
         }
+        // Stop deferred finalization timer to prevent phantom UI updates
+        // after the bubble is removed from the component tree.
+        if (deferredFinalizeTimer != null && deferredFinalizeTimer.isRunning()) {
+            deferredFinalizeTimer.stop();
+        }
     }
 
     private volatile boolean hasPendingTextUpdate = false;

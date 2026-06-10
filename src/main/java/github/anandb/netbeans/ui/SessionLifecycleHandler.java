@@ -169,7 +169,11 @@ public class SessionLifecycleHandler implements SessionListener {
             turnEnded = true;
             // Brief delay to allow any in-flight delta notifications to arrive
             // before finalizing the stream bubble.
-            Timer flushTimer = new Timer(150, e -> chatPanel.stopStreaming());
+            Timer flushTimer = new Timer(150, e -> {
+                if (chatPanel.isDisplayable()) {
+                    chatPanel.stopStreaming();
+                }
+            });
             flushTimer.setRepeats(false);
             flushTimer.start();
         }
