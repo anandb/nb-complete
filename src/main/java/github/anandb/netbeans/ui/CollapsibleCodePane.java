@@ -4,19 +4,15 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Font;
-import java.awt.Toolkit;
-import java.awt.datatransfer.StringSelection;
 import java.io.InputStream;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.Map;
 
 import javax.swing.BorderFactory;
 import javax.swing.Icon;
-import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
-import javax.swing.Timer;
 
 import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
 import org.fife.ui.rsyntaxtextarea.SyntaxConstants;
@@ -30,7 +26,7 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
     private String language;
     private String code;
     private RSyntaxTextArea codeTextArea;
-    private final JButton copyButton;
+
     private boolean codeAreaInitialized;
 
     private static volatile Theme cachedRTheme;
@@ -138,7 +134,7 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
     public CollapsibleCodePane(String language, String code, boolean expandedByDefault) {
         super(12, (language != null && !language.isEmpty() ? language
                 : NbBundle.getMessage(CollapsibleCodePane.class, "LBL_CodeFallback")).toUpperCase(),
-                ThemeManager.getIcon("file.svg"), expandedByDefault);
+                ThemeManager.getCurrentTheme().codeHeaderBorder(), expandedByDefault);
         this.language = language != null && !language.isEmpty() ? language : NbBundle.getMessage(CollapsibleCodePane.class, "LBL_CodeFallback");
         this.code = code;
 
@@ -152,12 +148,14 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
         headerLabel.setIconTextGap(8);
         headerLabel.setForeground(theme.codeHeaderForeground());
 
-        // Copy button
-        String hint = NbBundle.getMessage(CollapsibleCodePane.class, "HINT_CopyCode");
-        copyButton = UIUtils.createToolbarButton("copy.svg", 20, hint, e -> copyCodeToClipboard());
+        // Configure copy button inherited from base class
+        for (java.awt.event.MouseListener l : copyButton.getMouseListeners()) {
+            copyButton.removeMouseListener(l);
+        }
+        copyButton.setToolTipText(NbBundle.getMessage(CollapsibleCodePane.class, "HINT_CopyCode"));
         copyButton.setBorder(BorderFactory.createEmptyBorder(2, 4, 2, 4));
         copyButton.setForeground(theme.codeHeaderForeground());
-        header.add(copyButton, BorderLayout.EAST);
+        copyButton.setVisible(true);
 
         if (expandedByDefault) {
             initCodeTextArea();
@@ -232,23 +230,6 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
             }
             headerLabel.setText(this.language.toUpperCase());
         }
-    }
-
-    private void copyCodeToClipboard() {
-        StringSelection selection = new StringSelection(code);
-        Toolkit.getDefaultToolkit().getSystemClipboard().setContents(selection, selection);
-
-        Icon originalIcon = copyButton.getIcon();
-        Icon checkIcon = ThemeManager.getIcon("check.svg", 20);
-        copyButton.setIcon(checkIcon);
-
-       Timer timer = new Timer(2000, e -> {
-            if (copyButton.isShowing()) {
-                copyButton.setIcon(originalIcon);
-            }
-        });
-        timer.setRepeats(false);
-        timer.start();
     }
 
     @Override
@@ -326,5 +307,15 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
         if (codeTextArea != null) {
             codeTextArea.append(text);
         }
+    }
+
+    @Override
+    protected Icon getDefaultIcon() {
+        return ThemeManager.getIcon("file.svg", 24);
+    }
+
+    @Override
+    protected String getContentToCopy() {
+        return code;
     }
 }

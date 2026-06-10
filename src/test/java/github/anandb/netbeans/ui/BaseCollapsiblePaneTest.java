@@ -19,6 +19,16 @@ class BaseCollapsiblePaneTest {
 
             @Override
             public void appendContent(String text) {}
+
+            @Override
+            protected String getContentToCopy() {
+                return "";
+            }
+
+            @Override
+            protected javax.swing.Icon getDefaultIcon() {
+                return null;
+            }
         };
         assertTrue(pane.isExpanded());
 

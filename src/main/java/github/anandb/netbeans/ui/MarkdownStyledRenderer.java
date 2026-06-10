@@ -20,6 +20,9 @@ import javax.swing.text.StyledDocument;
  */
 public final class MarkdownStyledRenderer {
 
+    /** Max characters per table cell. Longer content truncated with '…'. */
+    private static final int MAX_CELL_WIDTH = 55;
+
     private MarkdownStyledRenderer() {
     }
 
@@ -327,6 +330,10 @@ public final class MarkdownStyledRenderer {
         for (int i = 0; i < widths.length; i++) {
             widths[i] = Math.max(widths[i], 3);
         }
+        // Cap max width to prevent overflow — long cells truncated later
+        for (int i = 0; i < widths.length; i++) {
+            widths[i] = Math.min(widths[i], MAX_CELL_WIDTH);
+        }
 
         // Insert as monospaced block
         SimpleAttributeSet tableAttr = new SimpleAttributeSet();
@@ -344,6 +351,9 @@ public final class MarkdownStyledRenderer {
             StringBuilder rowSb = new StringBuilder();
             for (int i = 0; i < row.size(); i++) {
                 String cell = row.get(i);
+                if (cell.length() > widths[i]) {
+                    cell = cell.substring(0, Math.max(1, widths[i] - 1)) + "\u2026";
+                }
                 rowSb.append(cell);
                 // Pad to column width
                 for (int j = cell.length(); j < widths[i]; j++) {
