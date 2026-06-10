@@ -17,11 +17,24 @@ public class McpToolAdapter implements ToolExecutor {
         this.delegate = delegate;
     }
 
-    @Override public void start() { delegate.start(); }
-    @Override public void stop() { delegate.stop(); }
-    @Override public CompletableFuture<Void> waitForReady() { return delegate.waitForReady(); }
-    @Override public void disable() { delegate.disable(); }
-    @Override public boolean isDisabled() { return delegate.isDisabled(); }
-    @Override public void checkServerSupport(JsonNode res) { delegate.checkServerSupport(res); }
-    @Override public List<Map<String, Object>> getServerConfig() { return delegate.getServerConfig(); }
+    @Override
+    public void start() { delegate.start(); }
+
+    @Override
+    public void stop() { delegate.stop(); }
+
+    @Override
+    public CompletableFuture<Void> waitForReady() { return delegate.waitForReady(); }
+
+    @Override
+    public void disable() { delegate.disable(); }
+
+    @Override
+    public boolean isDisabled() { return delegate.isDisabled(); }
+
+    @Override
+    public void checkServerSupport(JsonNode res) { delegate.checkServerSupport(res); }
+
+    @Override
+    public List<Map<String, Object>> getServerConfig() { return delegate.getServerConfig(); }
 }

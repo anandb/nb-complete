@@ -38,6 +38,7 @@ import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.TimingConstants;
 import org.openide.util.NbBundle;
 import org.openide.util.NbPreferences;
 
@@ -172,7 +173,7 @@ public class ChatThreadPanel extends JPanel {
             }
         });
 
-        streamFlushTimer = new Timer(300, e -> {
+        streamFlushTimer = new Timer(TimingConstants.STREAM_FLUSH_MS, e -> {
             if (!isShowing()) {
                 return;
             }

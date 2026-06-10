@@ -34,6 +34,11 @@ public class ImagePasteTransferHandler extends TransferHandler {
     private static final long MAX_FILE_SIZE = 10 * 1024 * 1024;
     private static final RequestProcessor IO_RP = new RequestProcessor("ImagePaste-IO", 2, true);
 
+    /** Shuts down the background I/O thread pool. Called at IDE shutdown. */
+    public static void shutdownIoProcessor() {
+        IO_RP.stop();
+    }
+
     public interface PasteCallback {
         boolean canAddAttachment();
 

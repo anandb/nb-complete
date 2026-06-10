@@ -47,7 +47,7 @@ import github.anandb.netbeans.contract.ToolExecutor;
 import github.anandb.netbeans.mcp.McpToolAdapter;
 import github.anandb.netbeans.mcp.McpManager;
 
-@ServiceProvider(service = ProcessManager.class)
+@ServiceProvider(service = ProcessControl.class)
 public class ProcessManager implements ProcessControl {
     private static final Logger LOG = Logger.from(ProcessManager.class);
     private static volatile ProcessManager INSTANCE;

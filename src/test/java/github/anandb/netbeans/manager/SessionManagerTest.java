@@ -22,7 +22,7 @@ import org.mockito.quality.Strictness;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import github.anandb.netbeans.mcp.McpManager;
+import github.anandb.netbeans.contract.ToolExecutor;
 import github.anandb.netbeans.support.MapperSupplier;
 
 @ExtendWith(MockitoExtension.class)
@@ -33,7 +33,7 @@ class SessionManagerTest {
     private ProcessManager processManager;
 
     @Mock
-    private McpManager mcpManager;
+    private ToolExecutor toolExecutor;
 
     private SessionManager sessionManager;
     private final ObjectMapper mapper = MapperSupplier.get();
@@ -47,9 +47,9 @@ class SessionManagerTest {
 
         // Configure mock delegates
         when(processManager.whenReady()).thenReturn(CompletableFuture.completedFuture(null));
-        when(processManager.getMcpManager()).thenReturn(mcpManager);
-        when(mcpManager.waitForReady()).thenReturn(CompletableFuture.completedFuture(null));
-        when(mcpManager.getServerConfig()).thenReturn(java.util.List.of());
+        when(processManager.getToolExecutor()).thenReturn(toolExecutor);
+        when(toolExecutor.waitForReady()).thenReturn(CompletableFuture.completedFuture(null));
+        when(toolExecutor.getServerConfig()).thenReturn(java.util.List.of());
 
         sessionManager = SessionManager.getInstance();
     }

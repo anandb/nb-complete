@@ -8,13 +8,15 @@ import javax.swing.Timer;
 
 import java.util.concurrent.CompletableFuture;
 
-import github.anandb.netbeans.manager.ProcessManager;
-import github.anandb.netbeans.manager.SessionManager;
+import github.anandb.netbeans.contract.ProcessControl;
+import github.anandb.netbeans.contract.SessionControl;
 import github.anandb.netbeans.manager.SlashCommandInterceptor;
 import github.anandb.netbeans.manager.ToolDataExtractor;
 import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.TimingConstants;
+import org.openide.util.Lookup;
 import org.openide.util.NbPreferences;
 import org.openide.util.NbBundle;
 
@@ -64,7 +66,7 @@ public class MessageSender {
 
     /** Sends (or intercepts) the current message text. */
     public void sendMessage() {
-        if (!SessionManager.getInstance().canSendMessage()) {
+        if (!Lookup.getDefault().lookup(SessionControl.class).canSendMessage()) {
             return;
         }
         String text = inputArea.getText(); // Don't trim user input spaces
@@ -79,7 +81,7 @@ public class MessageSender {
         // Intercept local slash commands first (trim is only to check for '/')
         boolean isForwardedSlash = text.trim().startsWith("/");
         if (isForwardedSlash) {
-            SlashCommandInterceptor interceptor = ProcessManager.getInstance().getSlashCommandInterceptor();
+            SlashCommandInterceptor interceptor = Lookup.getDefault().lookup(ProcessControl.class).getSlashCommandInterceptor();
             if (interceptor != null) {
                 CompletableFuture<Boolean> handled = interceptor.intercept(text, null);
                 if (handled != null && handled.isDone() && !handled.isCompletedExceptionally()) {
@@ -110,7 +112,7 @@ public class MessageSender {
             messageHistory.add(text);
         }
 
-        String currentSessionId = SessionManager.getInstance().getCurrentSessionId();
+        String currentSessionId = Lookup.getDefault().lookup(SessionControl.class).getCurrentSessionId();
         if (currentSessionId == null) {
             statusController.setStatus("STATUS_NoSession");
             return;
@@ -154,7 +156,7 @@ public class MessageSender {
         Map<String, Object> context = isForwardedSlash ? null : EditorContextCapture.capture();
 
         final String messageText = text;
-        ProcessManager.getInstance().sendMessage(currentSessionId, messageText, context, fileBlocks)
+        Lookup.getDefault().lookup(ProcessControl.class).sendMessage(currentSessionId, messageText, context, fileBlocks)
                 .thenAccept(result -> {
                     SwingUtilities.invokeLater(() -> {
                         LOG.info("RPC thenAccept fired (status during = {0}, hasStopReason = {1})",
@@ -177,7 +179,7 @@ public class MessageSender {
                             LOG.info("Turn finished via RPC result: stopReason={0}", result.get("stopReason").asText());
                             // Brief delay to allow any in-flight delta notifications to arrive
                             // before finalizing the stream bubble (opencode may send result before last delta)
-                            Timer flushTimer = new Timer(150, e -> {
+                            Timer flushTimer = new Timer(TimingConstants.STREAM_FLUSH_MS, e -> {
                                 if (chatPanel.isDisplayable()) {
                                     chatPanel.stopStreaming();
                                 }
@@ -212,7 +214,7 @@ public class MessageSender {
 
     /** Stops the currently processing message. */
     public void stopMessage() {
-        if (!SessionManager.getInstance().canStopMessage()) {
+        if (!Lookup.getDefault().lookup(SessionControl.class).canStopMessage()) {
             return;
         }
         SwingUtilities.invokeLater(() -> {
@@ -222,7 +224,7 @@ public class MessageSender {
         // stopCurrentMessage may block on pipe I/O (writer.println).
         // Run off EDT to avoid freezing the UI.
         CompletableFuture.runAsync(() ->
-            SessionManager.getInstance().stopCurrentMessage()
+            Lookup.getDefault().lookup(SessionControl.class).stopCurrentMessage()
         );
         // Show "Stopped" immediately — don't wait for cancel notification to be sent.
         SwingUtilities.invokeLater(() -> {

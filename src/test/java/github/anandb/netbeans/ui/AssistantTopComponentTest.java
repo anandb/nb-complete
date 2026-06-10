@@ -11,8 +11,10 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import github.anandb.netbeans.support.ToolContextExtractor;
+
 /**
- * Unit tests for the package-private utility methods in AssistantTopComponent:
+ * Unit tests for ToolContextExtractor:
  * truncatePath, truncateCommand, and extractToolContext.
  */
 class AssistantTopComponentTest {
@@ -25,31 +27,31 @@ class AssistantTopComponentTest {
 
     @Test
     void testTruncatePathNull() {
-        assertNull(AssistantTopComponent.truncatePath(null));
+        assertNull(ToolContextExtractor.truncatePath(null));
     }
 
     @Test
     void testTruncatePathEmpty() {
-        assertEquals("", AssistantTopComponent.truncatePath(""));
+        assertEquals("", ToolContextExtractor.truncatePath(""));
     }
 
     @Test
     void testTruncatePathShort() {
         String shortPath = "/home/user/file.txt";
-        assertSame(shortPath, AssistantTopComponent.truncatePath(shortPath));
+        assertSame(shortPath, ToolContextExtractor.truncatePath(shortPath));
     }
 
     @Test
     void testTruncatePathAtBoundary() {
         String path = "a".repeat(65);
-        assertEquals(path, AssistantTopComponent.truncatePath(path));
+        assertEquals(path, ToolContextExtractor.truncatePath(path));
     }
 
     @Test
     void testTruncatePathJustOverBoundary() {
         // 66 chars → "..." + last 62 chars = 65 chars total
         String path = "a".repeat(66);
-        String result = AssistantTopComponent.truncatePath(path);
+        String result = ToolContextExtractor.truncatePath(path);
         assertEquals(65, result.length());
         assertTrue(result.startsWith("..."));
         assertEquals(path.substring(4), result.substring(3));
@@ -58,7 +60,7 @@ class AssistantTopComponentTest {
     @Test
     void testTruncatePathLong() {
         String path = "a".repeat(100);
-        String result = AssistantTopComponent.truncatePath(path);
+        String result = ToolContextExtractor.truncatePath(path);
         assertEquals(65, result.length());
         assertTrue(result.startsWith("..."));
         assertEquals(path.substring(38), result.substring(3));
@@ -67,7 +69,7 @@ class AssistantTopComponentTest {
     @Test
     void testTruncatePathWithSpaces() {
         String path = "/home/user/projects/my important document.txt";
-        assertEquals(path, AssistantTopComponent.truncatePath(path));
+        assertEquals(path, ToolContextExtractor.truncatePath(path));
     }
 
     // -----------------------------------------------------------------------
@@ -76,31 +78,31 @@ class AssistantTopComponentTest {
 
     @Test
     void testTruncateCommandNull() {
-        assertNull(AssistantTopComponent.truncateCommand(null));
+        assertNull(ToolContextExtractor.truncateCommand(null));
     }
 
     @Test
     void testTruncateCommandEmpty() {
-        assertEquals("", AssistantTopComponent.truncateCommand(""));
+        assertEquals("", ToolContextExtractor.truncateCommand(""));
     }
 
     @Test
     void testTruncateCommandShort() {
         String cmd = "ls -la";
-        assertSame(cmd, AssistantTopComponent.truncateCommand(cmd));
+        assertSame(cmd, ToolContextExtractor.truncateCommand(cmd));
     }
 
     @Test
     void testTruncateCommandAtBoundary() {
         String cmd = "a".repeat(80);
-        assertEquals(cmd, AssistantTopComponent.truncateCommand(cmd));
+        assertEquals(cmd, ToolContextExtractor.truncateCommand(cmd));
     }
 
     @Test
     void testTruncateCommandJustOverBoundary() {
         // 81 chars → first 77 chars + "..."
         String cmd = "a".repeat(81);
-        String result = AssistantTopComponent.truncateCommand(cmd);
+        String result = ToolContextExtractor.truncateCommand(cmd);
         assertEquals(80, result.length());
         assertTrue(result.endsWith("..."));
         assertEquals(cmd.substring(0, 77), result.substring(0, 77));
@@ -109,7 +111,7 @@ class AssistantTopComponentTest {
     @Test
     void testTruncateCommandLong() {
         String cmd = "a".repeat(100);
-        String result = AssistantTopComponent.truncateCommand(cmd);
+        String result = ToolContextExtractor.truncateCommand(cmd);
         assertEquals(80, result.length());
         assertTrue(result.endsWith("..."));
         assertEquals(cmd.substring(0, 77), result.substring(0, 77));
@@ -118,7 +120,7 @@ class AssistantTopComponentTest {
     @Test
     void testTruncateCommandWithSpecialChars() {
         String cmd = "echo 'hello world' | grep hello && npm test -- --coverage";
-        assertEquals(cmd, AssistantTopComponent.truncateCommand(cmd));
+        assertEquals(cmd, ToolContextExtractor.truncateCommand(cmd));
     }
 
     // -----------------------------------------------------------------------
@@ -129,14 +131,14 @@ class AssistantTopComponentTest {
     void testExtractContextNullArgs() {
         // toolCall with no "args" or "arguments" key
         JsonNode tc = MAPPER.createObjectNode();
-        assertNull(AssistantTopComponent.extractToolContext(tc));
+        assertNull(ToolContextExtractor.extractToolContext(tc));
     }
 
     @Test
     void testExtractContextNonObjectArgs() {
         JsonNode tc = MAPPER.createObjectNode()
                 .set("args", MAPPER.createArrayNode());
-        assertNull(AssistantTopComponent.extractToolContext(tc));
+        assertNull(ToolContextExtractor.extractToolContext(tc));
     }
 
     @Test
@@ -144,7 +146,7 @@ class AssistantTopComponentTest {
         JsonNode tc = MAPPER.createObjectNode()
                 .set("args", MAPPER.createObjectNode()
                         .put("filePath", "/home/user/project/src/main/java/Test.java"));
-        String result = AssistantTopComponent.extractToolContext(tc);
+        String result = ToolContextExtractor.extractToolContext(tc);
         assertEquals("/home/user/project/src/main/java/Test.java", result);
     }
 
@@ -153,7 +155,7 @@ class AssistantTopComponentTest {
         JsonNode tc = MAPPER.createObjectNode()
                 .set("args", MAPPER.createObjectNode()
                         .put("file_path", "/home/user/data.txt"));
-        String result = AssistantTopComponent.extractToolContext(tc);
+        String result = ToolContextExtractor.extractToolContext(tc);
         assertEquals("/home/user/data.txt", result);
     }
 
@@ -162,7 +164,7 @@ class AssistantTopComponentTest {
         JsonNode tc = MAPPER.createObjectNode()
                 .set("args", MAPPER.createObjectNode()
                         .put("path", "/some/directory"));
-        String result = AssistantTopComponent.extractToolContext(tc);
+        String result = ToolContextExtractor.extractToolContext(tc);
         assertEquals("/some/directory", result);
     }
 
@@ -171,7 +173,7 @@ class AssistantTopComponentTest {
         JsonNode tc = MAPPER.createObjectNode()
                 .set("args", MAPPER.createObjectNode()
                         .put("command", "npm test -- --coverage"));
-        String result = AssistantTopComponent.extractToolContext(tc);
+        String result = ToolContextExtractor.extractToolContext(tc);
         assertEquals("npm test -- --coverage", result);
     }
 
@@ -180,7 +182,7 @@ class AssistantTopComponentTest {
         JsonNode tc = MAPPER.createObjectNode()
                 .set("args", MAPPER.createObjectNode()
                         .put("url", "https://example.com/api"));
-        String result = AssistantTopComponent.extractToolContext(tc);
+        String result = ToolContextExtractor.extractToolContext(tc);
         assertEquals("https://example.com/api", result);
     }
 
@@ -189,7 +191,7 @@ class AssistantTopComponentTest {
         JsonNode tc = MAPPER.createObjectNode()
                 .set("args", MAPPER.createObjectNode()
                         .put("uri", "file:///tmp/test"));
-        String result = AssistantTopComponent.extractToolContext(tc);
+        String result = ToolContextExtractor.extractToolContext(tc);
         assertEquals("file:///tmp/test", result);
     }
 
@@ -199,7 +201,7 @@ class AssistantTopComponentTest {
                 .set("args", MAPPER.createObjectNode()
                         .put("filePath", "/path/to/file.java")
                         .put("command", "rm -rf /"));
-        String result = AssistantTopComponent.extractToolContext(tc);
+        String result = ToolContextExtractor.extractToolContext(tc);
         assertEquals("/path/to/file.java", result);
     }
 
@@ -209,7 +211,7 @@ class AssistantTopComponentTest {
                 .set("args", MAPPER.createObjectNode()
                         .put("filePath", "/important/file.txt")
                         .put("url", "https://example.com"));
-        String result = AssistantTopComponent.extractToolContext(tc);
+        String result = ToolContextExtractor.extractToolContext(tc);
         assertEquals("/important/file.txt", result);
     }
 
@@ -219,7 +221,7 @@ class AssistantTopComponentTest {
                 .set("args", MAPPER.createObjectNode()
                         .put("query", "find all java files")
                         .put("count", 42));
-        String result = AssistantTopComponent.extractToolContext(tc);
+        String result = ToolContextExtractor.extractToolContext(tc);
         assertEquals("query: find all java files", result);
     }
 
@@ -230,7 +232,7 @@ class AssistantTopComponentTest {
                 .set("args", MAPPER.createObjectNode()
                         .put("short", "abc")
                         .put("longEnough", "abcdef"));
-        String result = AssistantTopComponent.extractToolContext(tc);
+        String result = ToolContextExtractor.extractToolContext(tc);
         assertEquals("longEnough: abcdef", result);
     }
 
@@ -242,7 +244,7 @@ class AssistantTopComponentTest {
                 .set("args", MAPPER.createObjectNode()
                         .put("tooLong", longVal)
                         .put("ok", "reasonable value"));
-        String result = AssistantTopComponent.extractToolContext(tc);
+        String result = ToolContextExtractor.extractToolContext(tc);
         assertEquals("ok: reasonable value", result);
     }
 
@@ -252,7 +254,7 @@ class AssistantTopComponentTest {
                 .set("args", MAPPER.createObjectNode()
                         .put("count", 42)
                         .put("flag", true));
-        assertNull(AssistantTopComponent.extractToolContext(tc));
+        assertNull(ToolContextExtractor.extractToolContext(tc));
     }
 
     @Test
@@ -261,7 +263,7 @@ class AssistantTopComponentTest {
         JsonNode tc = MAPPER.createObjectNode()
                 .set("arguments", MAPPER.createObjectNode()
                         .put("filePath", "/alt/path.txt"));
-        String result = AssistantTopComponent.extractToolContext(tc);
+        String result = ToolContextExtractor.extractToolContext(tc);
         assertEquals("/alt/path.txt", result);
     }
 
@@ -271,7 +273,7 @@ class AssistantTopComponentTest {
         JsonNode tc = MAPPER.createObjectNode()
                 .set("args", MAPPER.createObjectNode()
                         .put("filePath", longPath));
-        String result = AssistantTopComponent.extractToolContext(tc);
+        String result = ToolContextExtractor.extractToolContext(tc);
         assertTrue(result.length() <= 65, "Truncated path should be ≤ 65 chars");
         assertTrue(result.startsWith("..."), "Truncated path should start with ellipsis");
         assertTrue(result.endsWith(longPath.substring(longPath.length() - 62)),
@@ -284,7 +286,7 @@ class AssistantTopComponentTest {
         JsonNode tc = MAPPER.createObjectNode()
                 .set("args", MAPPER.createObjectNode()
                         .put("command", longCmd));
-        String result = AssistantTopComponent.extractToolContext(tc);
+        String result = ToolContextExtractor.extractToolContext(tc);
         assertTrue(result.length() <= 80, "Truncated command should be ≤ 80 chars");
         assertTrue(result.endsWith("..."), "Truncated command should end with ellipsis");
     }
@@ -295,7 +297,7 @@ class AssistantTopComponentTest {
         JsonNode tc = MAPPER.createObjectNode()
                 .set("args", MAPPER.createObjectNode()
                         .put("content", "some meaningful text here"));
-        String result = AssistantTopComponent.extractToolContext(tc);
+        String result = ToolContextExtractor.extractToolContext(tc);
         assertEquals("content: some meaningful text here", result);
     }
 
@@ -309,7 +311,7 @@ class AssistantTopComponentTest {
         JsonNode tc = MAPPER.createObjectNode()
                 .set("rawInput", MAPPER.createObjectNode()
                         .put("filePath", "/home/user/project/src/main.java"));
-        String result = AssistantTopComponent.extractToolContext(tc);
+        String result = ToolContextExtractor.extractToolContext(tc);
         assertEquals("/home/user/project/src/main.java", result);
     }
 
@@ -319,7 +321,7 @@ class AssistantTopComponentTest {
         JsonNode tc = MAPPER.createObjectNode()
                 .set("rawInput", MAPPER.createObjectNode()
                         .put("filepath", "/home/user/output.log"));
-        String result = AssistantTopComponent.extractToolContext(tc);
+        String result = ToolContextExtractor.extractToolContext(tc);
         assertEquals("/home/user/output.log", result);
     }
 
@@ -329,7 +331,7 @@ class AssistantTopComponentTest {
         JsonNode tc = MAPPER.createObjectNode()
                 .set("rawInput", MAPPER.createObjectNode()
                         .put("file_path", "/home/user/data.csv"));
-        String result = AssistantTopComponent.extractToolContext(tc);
+        String result = ToolContextExtractor.extractToolContext(tc);
         assertEquals("/home/user/data.csv", result);
     }
 
@@ -340,7 +342,7 @@ class AssistantTopComponentTest {
                 .set("rawInput", MAPPER.createObjectNode()
                         .put("filePath", "/primary/path.txt")
                         .put("filepath", "/secondary/path.txt"));
-        String result = AssistantTopComponent.extractToolContext(tc);
+        String result = ToolContextExtractor.extractToolContext(tc);
         assertEquals("/primary/path.txt", result);
     }
 
@@ -350,7 +352,7 @@ class AssistantTopComponentTest {
         JsonNode tc = MAPPER.createObjectNode()
                 .set("rawInput", MAPPER.createObjectNode()
                         .put("path", "/some/directory"));
-        String result = AssistantTopComponent.extractToolContext(tc);
+        String result = ToolContextExtractor.extractToolContext(tc);
         assertEquals("/some/directory", result);
     }
 
@@ -360,7 +362,7 @@ class AssistantTopComponentTest {
         JsonNode tc = MAPPER.createObjectNode()
                 .set("rawInput", MAPPER.createObjectNode()
                         .put("command", "ls -la /home/user"));
-        String result = AssistantTopComponent.extractToolContext(tc);
+        String result = ToolContextExtractor.extractToolContext(tc);
         assertEquals("ls -la /home/user", result);
     }
 
@@ -370,7 +372,7 @@ class AssistantTopComponentTest {
         JsonNode tc = MAPPER.createObjectNode()
                 .set("rawInput", MAPPER.createObjectNode()
                         .put("url", "https://example.com/api"));
-        String result = AssistantTopComponent.extractToolContext(tc);
+        String result = ToolContextExtractor.extractToolContext(tc);
         assertEquals("https://example.com/api", result);
     }
 
@@ -380,7 +382,7 @@ class AssistantTopComponentTest {
         JsonNode tc = MAPPER.createObjectNode()
                 .set("rawInput", MAPPER.createObjectNode()
                         .put("uri", "file:///tmp/test"));
-        String result = AssistantTopComponent.extractToolContext(tc);
+        String result = ToolContextExtractor.extractToolContext(tc);
         assertEquals("file:///tmp/test", result);
     }
 
@@ -391,7 +393,7 @@ class AssistantTopComponentTest {
                 .set("rawInput", MAPPER.createObjectNode()
                         .put("query", "find all java files")
                         .put("count", 42));
-        String result = AssistantTopComponent.extractToolContext(tc);
+        String result = ToolContextExtractor.extractToolContext(tc);
         assertEquals("query: find all java files", result);
     }
 
@@ -403,7 +405,7 @@ class AssistantTopComponentTest {
         ArrayNode locs = MAPPER.createArrayNode();
         locs.add(MAPPER.createObjectNode().put("path", "/from/locations/file.txt"));
         tc.set("locations", locs);
-        String result = AssistantTopComponent.extractToolContext(tc);
+        String result = ToolContextExtractor.extractToolContext(tc);
         assertEquals("/from/locations/file.txt", result);
     }
 
@@ -415,7 +417,7 @@ class AssistantTopComponentTest {
         ArrayNode pats = MAPPER.createArrayNode();
         pats.add("/from/patterns/path.txt");
         tc.set("patterns", pats);
-        String result = AssistantTopComponent.extractToolContext(tc);
+        String result = ToolContextExtractor.extractToolContext(tc);
         assertEquals("/from/patterns/path.txt", result);
     }
 
@@ -426,7 +428,7 @@ class AssistantTopComponentTest {
         ArrayNode locs = MAPPER.createArrayNode();
         locs.add(MAPPER.createObjectNode().put("path", "/location/path.txt"));
         tc.set("locations", locs);
-        String result = AssistantTopComponent.extractToolContext(tc);
+        String result = ToolContextExtractor.extractToolContext(tc);
         assertEquals("/location/path.txt", result);
     }
 
@@ -438,7 +440,7 @@ class AssistantTopComponentTest {
         locs.add(MAPPER.createObjectNode().put("path", "/first/path.txt"));
         locs.add(MAPPER.createObjectNode().put("path", "/second/path.txt"));
         tc.set("locations", locs);
-        String result = AssistantTopComponent.extractToolContext(tc);
+        String result = ToolContextExtractor.extractToolContext(tc);
         assertEquals("/first/path.txt", result);
     }
 
@@ -449,7 +451,7 @@ class AssistantTopComponentTest {
         ArrayNode pats = MAPPER.createArrayNode();
         pats.add("/home/user/from/patterns.txt");
         tc.set("patterns", pats);
-        String result = AssistantTopComponent.extractToolContext(tc);
+        String result = ToolContextExtractor.extractToolContext(tc);
         assertEquals("/home/user/from/patterns.txt", result);
     }
 
@@ -460,7 +462,7 @@ class AssistantTopComponentTest {
         ArrayNode pats = MAPPER.createArrayNode();
         pats.add("npm run build");
         tc.set("patterns", pats);
-        String result = AssistantTopComponent.extractToolContext(tc);
+        String result = ToolContextExtractor.extractToolContext(tc);
         assertEquals("npm run build", result);
     }
 
@@ -471,7 +473,7 @@ class AssistantTopComponentTest {
         ArrayNode pats = MAPPER.createArrayNode();
         pats.add("ls");
         tc.set("patterns", pats);
-        String result = AssistantTopComponent.extractToolContext(tc);
+        String result = ToolContextExtractor.extractToolContext(tc);
         assertEquals("ls", result);
     }
 
@@ -484,7 +486,7 @@ class AssistantTopComponentTest {
         ArrayNode locs = MAPPER.createArrayNode();
         locs.add(MAPPER.createObjectNode().put("path", "/from/locations/file.txt"));
         tc.set("locations", locs);
-        String result = AssistantTopComponent.extractToolContext(tc);
+        String result = ToolContextExtractor.extractToolContext(tc);
         assertEquals("/from/rawInput/file.txt", result);
     }
 
@@ -497,7 +499,7 @@ class AssistantTopComponentTest {
         ArrayNode pats = MAPPER.createArrayNode();
         pats.add("/from/patterns/file.txt");
         tc.set("patterns", pats);
-        String result = AssistantTopComponent.extractToolContext(tc);
+        String result = ToolContextExtractor.extractToolContext(tc);
         assertEquals("/from/rawInput/file.txt", result);
     }
 
@@ -505,7 +507,7 @@ class AssistantTopComponentTest {
     void testExtractContextNoArgsNoRawInputNoLocationsNoPatterns() {
         // No context available at all
         JsonNode tc = MAPPER.createObjectNode();
-        assertNull(AssistantTopComponent.extractToolContext(tc));
+        assertNull(ToolContextExtractor.extractToolContext(tc));
     }
 
     @Test
@@ -513,7 +515,7 @@ class AssistantTopComponentTest {
         // Empty locations array should not match
         ObjectNode tc = MAPPER.createObjectNode();
         tc.set("locations", MAPPER.createArrayNode());
-        assertNull(AssistantTopComponent.extractToolContext(tc));
+        assertNull(ToolContextExtractor.extractToolContext(tc));
     }
 
     @Test
@@ -521,7 +523,7 @@ class AssistantTopComponentTest {
         // Empty patterns array should not match
         ObjectNode tc = MAPPER.createObjectNode();
         tc.set("patterns", MAPPER.createArrayNode());
-        assertNull(AssistantTopComponent.extractToolContext(tc));
+        assertNull(ToolContextExtractor.extractToolContext(tc));
     }
 
     @Test
@@ -532,7 +534,7 @@ class AssistantTopComponentTest {
                 .put("filePath", "/from/args/file.txt"));
         tc.set("rawInput", MAPPER.createObjectNode()
                 .put("filePath", "/from/rawInput/file.txt"));
-        String result = AssistantTopComponent.extractToolContext(tc);
+        String result = ToolContextExtractor.extractToolContext(tc);
         assertEquals("/from/args/file.txt", result);
     }
 }

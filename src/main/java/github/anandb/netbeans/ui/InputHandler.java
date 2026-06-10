@@ -3,7 +3,8 @@ package github.anandb.netbeans.ui;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
-import github.anandb.netbeans.manager.ProcessManager;
+import github.anandb.netbeans.contract.ProcessControl;
+import org.openide.util.Lookup;
 import github.anandb.netbeans.manager.SlashCommandInterceptor;
 import github.anandb.netbeans.contract.SlashCommandCallback;
 
@@ -37,7 +38,7 @@ public class InputHandler {
             public void keyPressed(KeyEvent e) {
                 if (e.getKeyCode() == KeyEvent.VK_TAB) {
                     e.consume();
-                    SlashCommandInterceptor interceptor = ProcessManager.getInstance().getSlashCommandInterceptor();
+                    SlashCommandInterceptor interceptor = Lookup.getDefault().lookup(ProcessControl.class).getSlashCommandInterceptor();
                     SlashCommandCallback cb = interceptor != null ? interceptor.getCallback() : null;
                     if (cb != null) {
                         cb.expandOptionsPanel();
@@ -77,7 +78,7 @@ public class InputHandler {
             @Override
             public void keyReleased(KeyEvent e) {
                 autocompleteManager.handleKeyReleased(e);
-                ProcessManager.getInstance().touchConnection();
+                Lookup.getDefault().lookup(ProcessControl.class).touchConnection();
             }
         });
     }

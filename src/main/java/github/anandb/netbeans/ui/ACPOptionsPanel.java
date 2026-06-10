@@ -40,7 +40,8 @@ import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
-import github.anandb.netbeans.manager.SessionManager;
+import github.anandb.netbeans.contract.SessionControl;
+import org.openide.util.Lookup;
 import github.anandb.netbeans.support.Logger;
 
 public class ACPOptionsPanel extends JPanel {
@@ -383,9 +384,9 @@ public class ACPOptionsPanel extends JPanel {
         // Reload session if combine preference changed
         if (changedCombine) {
             LOG.info("Combine tool/thought toggled to {0}", combineCheckbox.isSelected());
-            String currentId = SessionManager.getInstance().getCurrentSessionId();
+            String currentId = Lookup.getDefault().lookup(SessionControl.class).getCurrentSessionId();
             if (currentId != null) {
-                SwingUtilities.invokeLater(() -> SessionManager.getInstance().loadSession(currentId));
+                SwingUtilities.invokeLater(() -> Lookup.getDefault().lookup(SessionControl.class).loadSession(currentId));
             }
         }
         PluginSettings.setCustomUserIcon(iconPathField.getText());
@@ -397,7 +398,7 @@ public class ACPOptionsPanel extends JPanel {
             LOG.info("User icon changed: {0} -> {1}", oldPath, newPath);
             previousIconPath = newPath;
             SwingUtilities.invokeLater(() -> {
-                SessionManager sm = SessionManager.getInstance();
+                SessionControl sm = Lookup.getDefault().lookup(SessionControl.class);
                 String currentId = sm.getCurrentSessionId();
                 if (currentId != null) {
                     sm.loadSession(currentId);

@@ -21,7 +21,8 @@ import javax.swing.JViewport;
 import javax.swing.ListSelectionModel;
 import javax.swing.UIManager;
 
-import github.anandb.netbeans.manager.ProcessManager;
+import github.anandb.netbeans.contract.ProcessControl;
+import org.openide.util.Lookup;
 import github.anandb.netbeans.manager.SlashCommandInterceptor;
 import github.anandb.netbeans.model.ModelRecords.CommandInfo;
 import github.anandb.netbeans.model.SessionUpdate;
@@ -213,7 +214,7 @@ public class AutocompleteManager {
         List<SessionUpdate.AvailableCommand> allCommands = new ArrayList<>();
 
         if (trigger == '/') {
-            SlashCommandInterceptor interceptor = ProcessManager.getInstance().getSlashCommandInterceptor();
+            SlashCommandInterceptor interceptor = Lookup.getDefault().lookup(ProcessControl.class).getSlashCommandInterceptor();
             if (interceptor != null) {
                 for (Map.Entry<String, CommandInfo> entry : interceptor.getCommands().entrySet()) {
                     String cmdName = entry.getKey();
@@ -223,7 +224,7 @@ public class AutocompleteManager {
                 }
             }
 
-            allCommands.addAll(ProcessManager.getInstance().getAvailableCommands());
+            allCommands.addAll(Lookup.getDefault().lookup(ProcessControl.class).getAvailableCommands());
         }
 
         List<SessionUpdate.AvailableCommand> filtered = allCommands.stream()

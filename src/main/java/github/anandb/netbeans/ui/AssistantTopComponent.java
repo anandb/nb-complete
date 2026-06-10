@@ -11,16 +11,9 @@ import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.FontMetrics;
 
-import java.awt.Desktop;
-import java.awt.Toolkit;
-import java.awt.datatransfer.StringSelection;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.Iterator;
-import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 
@@ -46,21 +39,21 @@ import org.openide.DialogDisplayer;
 import org.openide.NotifyDescriptor;
 import org.openide.util.NbBundle;
 import org.openide.util.NbPreferences;
+import org.openide.util.Lookup;
 import org.openide.windows.TopComponent;
 import org.openide.windows.WindowManager;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
-import github.anandb.netbeans.manager.ProcessManager;
 import github.anandb.netbeans.manager.AgentUtils;
-import github.anandb.netbeans.manager.SessionManager;
+import github.anandb.netbeans.contract.SessionControl;
 import github.anandb.netbeans.contract.PermissionHandler;
-import github.anandb.netbeans.model.MessageType;
-import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.model.SessionItem;
 import github.anandb.netbeans.project.ACPProjectManager;
+import github.anandb.netbeans.support.BrowserUtils;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.ToolContextExtractor;
 
 @ConvertAsProperties(
     dtd = "-//github.anandb.netbeans.ui//Assistant//EN",
@@ -138,7 +131,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                 return;
             }
             if (projects.length == 1) {
-                SessionManager.getInstance().createNewSession(projects[0].getProjectDirectory().getPath());
+                Lookup.getDefault().lookup(SessionControl.class).createNewSession(projects[0].getProjectDirectory().getPath());
             } else {
                 componentLifecycleHandler.showProjectPickerPopup((JComponent) e.getSource());
             }
@@ -156,7 +149,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         });
         String restartHint = NbBundle.getMessage(AssistantTopComponent.class, "HINT_RestartServer");
         JButton restartServerBtn = UIUtils.createToolbarButton("restart.svg", restartHint, e -> {
-            promptRestartServer();
+            componentLifecycleHandler.promptRestartServer();
         });
 
         JButton tb = UIUtils.createToolbarButton("expand.svg", NbBundle.getMessage(AssistantTopComponent.class, "HINT_ExpandAll"), null);
@@ -220,13 +213,15 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             NbBundle.getMessage(AssistantTopComponent.class, "HINT_QuickstartGuide"), null);
         helpBtn.setContentAreaFilled(false);
         helpBtn.setBorderPainted(false);
-        helpBtn.addActionListener(e -> openOrCopyUrl(quickstartUrl, "STATUS_QuickstartCopied"));
+        helpBtn.addActionListener(e -> BrowserUtils.openOrCopyUrl(quickstartUrl, "STATUS_QuickstartCopied",
+            (url, key) -> statusController.setStatus(key, url)));
 
         JButton feedbackBtn = UIUtils.createToolbarButton("feedback.svg",
             NbBundle.getMessage(AssistantTopComponent.class, "HINT_Feedback"), null);
         feedbackBtn.setContentAreaFilled(false);
         feedbackBtn.setBorderPainted(false);
-        feedbackBtn.addActionListener(e -> openOrCopyUrl(feedbackUrl, "STATUS_FeedbackCopied"));
+        feedbackBtn.addActionListener(e -> BrowserUtils.openOrCopyUrl(feedbackUrl, "STATUS_FeedbackCopied",
+            (url, key) -> statusController.setStatus(key, url)));
 
         JPanel rightButtons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 2, 0));
         rightButtons.setOpaque(false);
@@ -234,7 +229,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         rightButtons.add(helpBtn);
         cwdRow.add(rightButtons, BorderLayout.EAST);
 
-        startHelpButtonFlash();
+        HelpButtonFlash.flash(helpBtn);
 
         headerContent.add(cwdRow, BorderLayout.NORTH);
         headerContent.add(topBar, BorderLayout.SOUTH);
@@ -347,7 +342,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     }
 
     private void initChat() {
-        SessionManager.getInstance().refreshSessions();
+        Lookup.getDefault().lookup(SessionControl.class).refreshSessions();
     }
 
     public void setInputText(String text) {
@@ -373,7 +368,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     }
 
     private void renameCurrentSession() {
-        String currentId = SessionManager.getInstance().getCurrentSessionId();
+        String currentId = Lookup.getDefault().lookup(SessionControl.class).getCurrentSessionId();
         if (currentId == null) {
             return;
         }
@@ -393,14 +388,14 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         if (result == NotifyDescriptor.OK_OPTION) {
             String newTitle = input.getInputText();
             if (newTitle != null && !newTitle.trim().isEmpty()) {
-                SessionManager.getInstance().renameSession(currentId, newTitle.trim());
+                Lookup.getDefault().lookup(SessionControl.class).renameSession(currentId, newTitle.trim());
             }
         }
     }
 
     private String selectedIdToTitle(Session session) {
         String title = defaultIfBlank(session.title(), NbBundle.getMessage(AssistantTopComponent.class, "LBL_ChatDefault", left(session.id(), 8)));
-        return SessionManager.getInstance().getCustomTitle(session.id(), title);
+        return Lookup.getDefault().lookup(SessionControl.class).getCustomTitle(session.id(), title);
     }
 
     private JButton createFilterButton() {
@@ -426,9 +421,9 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     }
 
     private void reloadCurrentSession() {
-        String currentId = SessionManager.getInstance().getCurrentSessionId();
+        String currentId = Lookup.getDefault().lookup(SessionControl.class).getCurrentSessionId();
         if (currentId != null) {
-            SessionManager.getInstance().loadSession(currentId);
+            Lookup.getDefault().lookup(SessionControl.class).loadSession(currentId);
         }
     }
 
@@ -452,51 +447,6 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         }
     }
 
-    private void promptRestartServer() {
-        NotifyDescriptor.Confirmation confirm = new NotifyDescriptor.Confirmation(
-            NbBundle.getMessage(AssistantTopComponent.class, "MSG_ConfirmRestart"),
-            NbBundle.getMessage(AssistantTopComponent.class, "TITLE_RestartServer"),
-            NotifyDescriptor.YES_NO_OPTION,
-            NotifyDescriptor.WARNING_MESSAGE
-        );
-        Object result = DialogDisplayer.getDefault().notify(confirm);
-        if (result == NotifyDescriptor.YES_OPTION) {
-            restartServer();
-        }
-    }
-
-    private void restartServer() {
-        String currentSessionId = SessionManager.getInstance().getCurrentSessionId();
-        statusController.setStatus("STATUS_RestartingServer");
-        statusController.setInputEnabled(false);
-
-        // Perform restart
-        ProcessManager.getInstance().restartServer();
-
-        // Wait for server to be ready and reload session
-        ProcessManager.getInstance().whenReady().thenAccept(v -> {
-            SwingUtilities.invokeLater(() -> {
-                statusController.setStatus("STATUS_ServerRestarted");
-                if (currentSessionId != null) {
-                    SessionManager.getInstance().loadSession(currentSessionId);
-                } else {
-                    SessionManager.getInstance().refreshSessions();
-                }
-            });
-        }).exceptionally(ex -> {
-            SwingUtilities.invokeLater(() -> {
-                String msg = ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName();
-                statusController.setStatus("STATUS_RestartFailed", msg);
-                chatPanel.stopStreaming();
-                chatPanel.addMessage(ProcessedMessage.createError(
-                    MessageType.error_response, NbBundle.getMessage(AssistantTopComponent.class, "STATUS_RestartFailed", msg), null, null
-                ));
-                statusController.setInputEnabled(true);
-            });
-            return null;
-        });
-    }
-
     private void updateTabName(String modelName) {
         SwingUtilities.invokeLater(() -> {
             if (modelName != null && !modelName.isEmpty()) {
@@ -517,7 +467,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             String effectivePath = path;
 
             if (effectivePath == null || effectivePath.isEmpty()) {
-                effectivePath = SessionManager.getInstance().getCurrentSessionDirectory();
+                effectivePath = Lookup.getDefault().lookup(SessionControl.class).getCurrentSessionDirectory();
             }
             if (effectivePath == null || effectivePath.isEmpty()) {
                 effectivePath = System.getProperty("user.dir");
@@ -653,7 +603,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
     @Override
     public void handlePermissionRequest(String sessionId, JsonNode params, CompletableFuture<String> response) {
-        String currentId = SessionManager.getInstance().getCurrentSessionId();
+        String currentId = Lookup.getDefault().lookup(SessionControl.class).getCurrentSessionId();
         if (currentId == null || !currentId.equals(sessionId)) {
             LOG.fine("Received permission request for session {0}, but current is {1}",
                     new Object[] { sessionId, currentId });
@@ -670,7 +620,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                     : tc.has("name") ? tc.get("name").asText() : "tool";
 
             // Extract meaningful context from tool call arguments
-            String context = extractToolContext(tc);
+            String context = ToolContextExtractor.extractToolContext(tc);
             if (context != null) {
                 prompt = NbBundle.getMessage(AssistantTopComponent.class, "MSG_PermissionToolWithContext", title, context);
             } else {
@@ -684,201 +634,6 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             requestActive();
             toFront();
         });
-    }
-
-    /**
-     * Extracts a human-readable context string from tool call arguments.
-     * Returns key info like file path, command, or URL, or null if no
-     * meaningful context is found.
-     * <p>
-     * Supports multiple formats:
-     * <ul>
-     *   <li>Standard tool call: {@code { args: { filePath: "..." } }}</li>
-     *   <li>ACP permission format: {@code { rawInput: { filePath: "..." }, locations: [...], patterns: [...] }}</li>
-     * </ul>
-     */
-    static String extractToolContext(JsonNode toolCall) {
-        JsonNode args = toolCall.has("args") ? toolCall.get("args")
-                : toolCall.has("arguments") ? toolCall.get("arguments") : null;
-
-        // If no args/arguments, try rawInput (ACP permission metadata)
-        if (args == null || !args.isObject()) {
-            args = toolCall.has("rawInput") ? toolCall.get("rawInput") : null;
-        }
-
-        if (args != null && args.isObject()) {
-            String result = extractContextFromArgs(args);
-            if (result != null) {
-                return result;
-            }
-        }
-
-        // Fallback: try locations array (ACP format)
-        String locPath = extractFirstLocationPath(toolCall);
-        if (locPath != null) {
-            return truncatePath(locPath);
-        }
-
-        // Fallback: try patterns array (ACP format)
-        String pattern = extractFirstPattern(toolCall);
-        if (pattern != null) {
-            if (pattern.contains("/") || pattern.contains(File.separator) || pattern.startsWith(".")) {
-                return truncatePath(pattern);
-            }
-            return truncateCommand(pattern);
-        }
-
-        return null;
-    }
-
-    /**
-     * Extracts context from a JSON object containing argument key-value pairs.
-     * Checks in priority order: filePath, filepath, file_path, path, command,
-     * url, uri, then falls back to the first short string value.
-     */
-    private static String extractContextFromArgs(JsonNode args) {
-        // Priority order: file path, command, URL, fallback to first string arg
-        if (args.has("filePath")) {
-            return truncatePath(args.get("filePath").asText());
-        }
-        if (args.has("filepath")) {
-            return truncatePath(args.get("filepath").asText());
-        }
-        if (args.has("file_path")) {
-            return truncatePath(args.get("file_path").asText());
-        }
-        if (args.has("path")) {
-            return truncatePath(args.get("path").asText());
-        }
-        if (args.has("command")) {
-            return truncateCommand(args.get("command").asText());
-        }
-        if (args.has("url")) {
-            return args.get("url").asText();
-        }
-        if (args.has("uri")) {
-            return args.get("uri").asText();
-        }
-
-        // Fallback: show first string field value as brief context
-        Iterator<Map.Entry<String, JsonNode>> fields = args.fields();
-        while (fields.hasNext()) {
-            Map.Entry<String, JsonNode> entry = fields.next();
-            if (entry.getValue().isTextual()) {
-                String val = entry.getValue().asText();
-                if (val.length() > 5 && val.length() < 120) {
-                    return entry.getKey() + ": " + val;
-                }
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * Extracts the first path from the locations array (ACP permission format).
-     * Locations are structured as {@code [{ path: "/path/to/file" }]}.
-     */
-    private static String extractFirstLocationPath(JsonNode toolCall) {
-        if (toolCall.has("locations") && toolCall.get("locations").isArray()) {
-            JsonNode locs = toolCall.get("locations");
-            for (JsonNode loc : locs) {
-                if (loc.has("path") && loc.get("path").isTextual()) {
-                    return loc.get("path").asText();
-                }
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Extracts the first pattern from the patterns array (ACP permission format).
-     */
-    private static String extractFirstPattern(JsonNode toolCall) {
-        if (toolCall.has("patterns") && toolCall.get("patterns").isArray()
-                && toolCall.get("patterns").size() > 0) {
-            JsonNode first = toolCall.get("patterns").get(0);
-            if (first.isTextual()) {
-                return first.asText();
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Truncates a file path for display, keeping the last ~60 chars.
-     */
-    static String truncatePath(String path) {
-        if (path == null || path.length() <= 65) {
-            return path;
-        }
-        return "..." + path.substring(path.length() - 62);
-    }
-
-    /**
-     * Truncates a shell command for display, keeping the first ~80 chars.
-     */
-    static String truncateCommand(String command) {
-        if (command == null || command.length() <= 80) {
-            return command;
-        }
-        return command.substring(0, 77) + "...";
-    }
-
-    /** Open a URL in the browser, or copy to clipboard as fallback. */
-    private void openOrCopyUrl(String url, String statusKey) {
-        if (Desktop.isDesktopSupported()
-                && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
-            try {
-                Desktop.getDesktop().browse(new URI(url));
-                return;
-            } catch (IOException | URISyntaxException ex) {
-                LOG.warn("Failed to open URL: {0}", ex.getMessage());
-            }
-        }
-        // Fallback: copy URL to clipboard
-        try {
-            Toolkit.getDefaultToolkit().getSystemClipboard()
-                    .setContents(new StringSelection(url), null);
-            if (statusKey != null) {
-                statusController.setStatus(statusKey, url);
-            }
-        } catch (Exception ex) {
-            LOG.warn("Failed to copy URL to clipboard: {0}", ex.getMessage());
-        }
-    }
-
-    /** Flash the help icon for at least 5 seconds on startup for discoverability. */
-    private void startHelpButtonFlash() {
-        java.awt.Color flashBg = ThemeManager.getCurrentTheme().isDark()
-                ? new java.awt.Color(128, 128, 128, 180)
-                : new java.awt.Color(66, 133, 244, 180);
-        javax.swing.Timer timer = new javax.swing.Timer(700, null);
-        timer.addActionListener(new java.awt.event.ActionListener() {
-            int tick = 0;
-            @Override
-            public void actionPerformed(java.awt.event.ActionEvent e) {
-                tick++;
-                boolean highlight = tick % 2 == 0;
-                if (highlight) {
-                    helpBtn.setOpaque(true);
-                    helpBtn.setBackground(flashBg);
-                    helpBtn.setContentAreaFilled(true);
-                } else {
-                    helpBtn.setOpaque(false);
-                    helpBtn.setContentAreaFilled(false);
-                }
-                helpBtn.repaint();
-                if (tick >= 8) {
-                    timer.stop();
-                    helpBtn.setOpaque(false);
-                    helpBtn.setContentAreaFilled(false);
-                    helpBtn.repaint();
-                }
-            }
-        });
-        timer.setInitialDelay(800);
-        timer.start();
     }
 
 }

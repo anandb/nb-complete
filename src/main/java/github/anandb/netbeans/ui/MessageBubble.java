@@ -37,6 +37,7 @@ import javax.swing.border.EmptyBorder;
 
 import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.TimingConstants;
 import org.openide.util.NbBundle;
 
 import static org.apache.commons.lang3.StringUtils.length;
@@ -647,7 +648,7 @@ public class MessageBubble extends JPanel implements Scrollable {
             // called before it fires, the timer resets.
             isFinalizingDeferred = true;
             if (deferredFinalizeTimer == null) {
-                deferredFinalizeTimer = new Timer(300, e -> performFinalization());
+                deferredFinalizeTimer = new Timer(TimingConstants.STREAM_FLUSH_MS, e -> performFinalization());
                 deferredFinalizeTimer.setRepeats(false);
             }
             deferredFinalizeTimer.restart();

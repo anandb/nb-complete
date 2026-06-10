@@ -1,14 +1,19 @@
 package github.anandb.netbeans.contract;
 
 import github.anandb.netbeans.model.Session;
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 /**
  * Write operations for session lifecycle management.
  * UI layer should depend on this interface rather than the concrete SessionManager.
  */
-public interface SessionControl {
+public interface SessionControl extends SessionQuery {
+
+    /** Registers a session lifecycle listener. */
+    void addSessionListener(SessionListener listener);
+
+    /** Unregisters a session lifecycle listener. */
+    void removeSessionListener(SessionListener listener);
 
     /** Creates a new session in the given directory. */
     CompletableFuture<Session> createSession(String cwd);

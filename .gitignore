@@ -74,3 +74,4 @@ docs/
 spring.log
 /nbactions.xml
 .agent-trace/
+.opencode-trace/

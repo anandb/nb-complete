@@ -9,7 +9,8 @@ import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import github.anandb.netbeans.contract.SessionListener;
 import github.anandb.netbeans.contract.UIHandler;
-import github.anandb.netbeans.manager.SessionManager;
+import github.anandb.netbeans.contract.SessionControl;
+import org.openide.util.Lookup;
 import github.anandb.netbeans.manager.strategy.StrategyRegistry;
 import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.model.Session;
@@ -19,6 +20,7 @@ import github.anandb.netbeans.model.SessionItem;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.project.ACPProjectManager;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.TimingConstants;
 import org.netbeans.api.project.Project;
 import org.netbeans.api.project.ui.OpenProjects;
 import org.openide.util.NbBundle;
@@ -94,7 +96,7 @@ public class SessionLifecycleHandler implements SessionListener {
     public void onMessageDone() {
         LOG.info("onMessageDone called (turnEnded -> true, triggering onTurnEnded)");
         turnEnded = true;
-        SessionManager.getInstance().onTurnEnded();
+        Lookup.getDefault().lookup(SessionControl.class).onTurnEnded();
     }
 
     boolean isSwitchingSessionDropdown() {
@@ -135,7 +137,7 @@ public class SessionLifecycleHandler implements SessionListener {
 
             @Override
             public void refreshSessions() {
-                SessionManager.getInstance().refreshSessions();
+                Lookup.getDefault().lookup(SessionControl.class).refreshSessions();
             }
 
             @Override
@@ -170,7 +172,7 @@ public class SessionLifecycleHandler implements SessionListener {
             turnEnded = true;
             // Brief delay to allow any in-flight delta notifications to arrive
             // before finalizing the stream bubble.
-            Timer flushTimer = new Timer(150, e -> {
+            Timer flushTimer = new Timer(TimingConstants.STREAM_FLUSH_MS, e -> {
                 if (chatPanel.isDisplayable()) {
                     chatPanel.stopStreaming();
                 }
@@ -186,13 +188,13 @@ public class SessionLifecycleHandler implements SessionListener {
             List<Session> sessions = allSessions;
             isSwitchingSessionDropdown = true;
             try {
-                String currentId = SessionManager.getInstance().getCurrentSessionId();
+                String currentId = Lookup.getDefault().lookup(SessionControl.class).getCurrentSessionId();
                 sessionDropdown.removeAllItems();
                 LOG.fine("onSessionListUpdated: adding {0} sessions to dropdown", sessions.size());
                 int selectIdx = -1;
                 for (int i = 0; i < sessions.size(); i++) {
                     Session s = sessions.get(i);
-                    String customTitle = SessionManager.getInstance().getCustomTitle(s.id(), s.title());
+                    String customTitle = Lookup.getDefault().lookup(SessionControl.class).getCustomTitle(s.id(), s.title());
                     sessionDropdown.addItem(new SessionItem(s, customTitle));
                     if (currentId != null && s.id().equals(currentId)) {
                         selectIdx = i;
@@ -212,23 +214,23 @@ public class SessionLifecycleHandler implements SessionListener {
                         Session cur = sessions.get(selectIdx);
                         if (cur != null) {
                             LOG.fine("Re-loading current session: {0}", cur.id());
-                            SessionManager.getInstance().loadSession(cur.id());
+                            Lookup.getDefault().lookup(SessionControl.class).loadSession(cur.id());
                         }
                     } else {
                         Session mostRecent = sessions.get(0);
                         if (mostRecent != null) {
                             LOG.fine("Loading most recent session: {0}", mostRecent.id());
-                            SessionManager.getInstance().loadSession(mostRecent.id());
+                            Lookup.getDefault().lookup(SessionControl.class).loadSession(mostRecent.id());
                         }
                     }
                 } else {
-                    chatPanel.setSessionList(sessions, id -> SessionManager.getInstance().loadSession(id), () -> {
+                    chatPanel.setSessionList(sessions, id -> Lookup.getDefault().lookup(SessionControl.class).loadSession(id), () -> {
                         Project[] projects = ACPProjectManager.getInstance().getAllOpenProjects();
                         if (projects == null || projects.length == 0) {
                             return;
                         }
                         if (projects.length == 1) {
-                            SessionManager.getInstance().createNewSession(projects[0].getProjectDirectory().getPath());
+                            Lookup.getDefault().lookup(SessionControl.class).createNewSession(projects[0].getProjectDirectory().getPath());
                         } else {
                             projectPickerShower.accept(sessionDropdown);
                         }
@@ -274,7 +276,7 @@ public class SessionLifecycleHandler implements SessionListener {
             // updateButtonState(true), but defer stopStreaming via a flush timer
             // to allow any in-flight SSE delta to arrive first.
             turnEnded = true;
-            Timer flushTimer = new Timer(150, e -> {
+            Timer flushTimer = new Timer(TimingConstants.STREAM_FLUSH_MS, e -> {
                 if (chatPanel.isDisplayable()) {
                     chatPanel.stopStreaming();
                 }

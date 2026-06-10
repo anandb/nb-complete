@@ -28,7 +28,8 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.event.PopupMenuEvent;
 import javax.swing.event.PopupMenuListener;
 
-import github.anandb.netbeans.manager.SessionManager;
+import github.anandb.netbeans.contract.SessionControl;
+import org.openide.util.Lookup;
 import github.anandb.netbeans.model.ModelRecords.ConfigItem;
 import github.anandb.netbeans.model.SessionConfigOption;
 import github.anandb.netbeans.model.SessionConfigSelectOption;
@@ -161,7 +162,7 @@ public class ConfigPanelController {
                 if (selectedValue != null && !selectedValue.isEmpty() && !selectedValue.equals(currentValue)) {
                     LOG.fine("Applying pre-selected config: {0}={1} (server default was {2})",
                             new Object[]{opt.id(), selectedValue, currentValue});
-                    SessionManager.getInstance().setSessionConfigOption(sessionId, opt.id(), selectedValue);
+                    Lookup.getDefault().lookup(SessionControl.class).setSessionConfigOption(sessionId, opt.id(), selectedValue);
                 }
             }
         }
@@ -266,7 +267,7 @@ public class ConfigPanelController {
 
     private String resolveStartupValue(SessionConfigOption opt, boolean isThinking, String currentValue, boolean force) {
         if (!force) return currentValue;
-        String currentId = SessionManager.getInstance().getCurrentSessionId();
+        String currentId = Lookup.getDefault().lookup(SessionControl.class).getCurrentSessionId();
 
         if ("mode".equals(opt.category())) {
             if (opt.options().stream().anyMatch(o -> "build".equalsIgnoreCase(o.value()))) {
@@ -289,12 +290,12 @@ public class ConfigPanelController {
                 String match = findModelMatch(opt, envModel);
                 if (match != null) {
                     LOG.fine("Using OPENCODE_MODEL: {0}", new Object[]{match});
-                    SessionManager.getInstance().setSessionConfigOption(currentId, opt.id(), match);
+                    Lookup.getDefault().lookup(SessionControl.class).setSessionConfigOption(currentId, opt.id(), match);
                     return match;
                 }
             }
             if (lastSelectedModelId != null && !lastSelectedModelId.equalsIgnoreCase(currentValue)) {
-                SessionManager.getInstance().setSessionConfigOption(currentId, opt.id(), lastSelectedModelId);
+                Lookup.getDefault().lookup(SessionControl.class).setSessionConfigOption(currentId, opt.id(), lastSelectedModelId);
                 return lastSelectedModelId;
             }
         }
@@ -305,7 +306,7 @@ public class ConfigPanelController {
     private String sendAndReturn(SessionConfigOption opt, String forcedValue, String currentId) {
         if (!forcedValue.equalsIgnoreCase(opt.currentValue()) && currentId != null) {
             LOG.fine("Forcing default: {0}={1} (was {2})", new Object[]{opt.id(), forcedValue, opt.currentValue()});
-            SessionManager.getInstance().setSessionConfigOption(currentId, opt.id(), forcedValue);
+            Lookup.getDefault().lookup(SessionControl.class).setSessionConfigOption(currentId, opt.id(), forcedValue);
             return forcedValue;
         }
         return opt.currentValue();
@@ -408,11 +409,11 @@ public class ConfigPanelController {
                 if (isUpdatingConfigControls) return;
 
                 ConfigItem selected = resolveComboSelection(combo, combo.getSelectedItem());
-                if (selected != null && SessionManager.getInstance().getCurrentSessionId() != null) {
-                    String currentId = SessionManager.getInstance().getCurrentSessionId();
+                if (selected != null && Lookup.getDefault().lookup(SessionControl.class).getCurrentSessionId() != null) {
+                    String currentId = Lookup.getDefault().lookup(SessionControl.class).getCurrentSessionId();
                     String prevModelId = combo == modelCombo ? lastSelectedModelId : null;
                     LOG.fine("Config update: {0}={1} for session {2}", new Object[]{configId, selected.value(), currentId});
-                    SessionManager.getInstance().setSessionConfigOption(currentId, configId, selected.value())
+                    Lookup.getDefault().lookup(SessionControl.class).setSessionConfigOption(currentId, configId, selected.value())
                         .exceptionally(ex -> {
                             LOG.warn("Failed to set config {0}: {1}", configId, ex.getMessage());
                             if (combo == modelCombo && prePopupSelection[0] != null && prevModelId != null) {

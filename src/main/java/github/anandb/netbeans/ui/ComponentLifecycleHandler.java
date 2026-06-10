@@ -14,12 +14,15 @@ import javax.swing.JMenuItem;
 import javax.swing.JPopupMenu;
 import javax.swing.SwingUtilities;
 import org.netbeans.api.project.Project;
+import org.openide.DialogDisplayer;
+import org.openide.NotifyDescriptor;
 import org.openide.util.NbBundle;
 import github.anandb.netbeans.contract.SlashCommandCallback;
 import github.anandb.netbeans.project.ACPProjectManager;
 import github.anandb.netbeans.contract.ToolExecutor;
-import github.anandb.netbeans.manager.ProcessManager;
-import github.anandb.netbeans.manager.SessionManager;
+import github.anandb.netbeans.contract.ProcessControl;
+import github.anandb.netbeans.contract.SessionControl;
+import org.openide.util.Lookup;
 import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.model.SessionItem;
@@ -74,7 +77,7 @@ public class ComponentLifecycleHandler {
         // Reset turn-ended flag from any prior RPC completion that fired while panel was closed.
         // Without this, new SSE updates after reopen would be suppressed.
         sessionLifecycleHandler.onNewMessageSent();
-        SessionManager.getInstance().addSessionListener(sessionLifecycleHandler);
+        Lookup.getDefault().lookup(SessionControl.class).addSessionListener(sessionLifecycleHandler);
 
         // Defer session refresh and server start so the component opens immediately.
         // During plugin installation the @OnStart handler opens this component while
@@ -88,11 +91,11 @@ public class ComponentLifecycleHandler {
                 }
             }
             if (!currentDirs.equals(closedProjectDirs)) {
-                SessionManager.getInstance().refreshSessions();
+                Lookup.getDefault().lookup(SessionControl.class).refreshSessions();
             }
             closedProjectDirs = Set.of();
             try {
-                ProcessManager.getInstance().ensureStarted();
+                Lookup.getDefault().lookup(ProcessControl.class).ensureStarted();
             } catch (Exception ex) {
                 LOG.severe("Failed to ensure server is started", ex);
                 String msg = ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName();
@@ -106,7 +109,7 @@ public class ComponentLifecycleHandler {
         });
 
         // Update status label when MCP server is starting/ready
-        ToolExecutor mcp = ProcessManager.getInstance().getToolExecutor();
+        ToolExecutor mcp = Lookup.getDefault().lookup(ProcessControl.class).getToolExecutor();
         if (!mcp.isDisabled() && !mcp.waitForReady().isDone()) {
             SwingUtilities.invokeLater(() -> statusController.setStatus("STATUS_McpInitializing"));
             mcp.waitForReady().thenRun(() ->
@@ -114,14 +117,14 @@ public class ComponentLifecycleHandler {
             );
         }
 
-        ProcessManager.getInstance().setPermissionHandler(topComponent);
-        ProcessManager.getInstance().setStatusListener(msg -> {
+        Lookup.getDefault().lookup(ProcessControl.class).setPermissionHandler(topComponent);
+        Lookup.getDefault().lookup(ProcessControl.class).setStatusListener(msg -> {
             SwingUtilities.invokeLater(() -> {
                 statusController.setStatusText(msg);
                 statusController.scheduleReset();
             });
         });
-        ProcessManager.getInstance().getSlashCommandInterceptor().setCallback(new SlashCommandCallback() {
+        Lookup.getDefault().lookup(ProcessControl.class).getSlashCommandInterceptor().setCallback(new SlashCommandCallback() {
             {
                 Runnable returnFocus = () -> inputArea.requestFocusInWindow();
                 configPanelController.setOnModelSelectedCallback(returnFocus);
@@ -171,7 +174,7 @@ public class ComponentLifecycleHandler {
                         return;
                     }
                     if (projects.length == 1) {
-                        SessionManager.getInstance().createNewSession(projects[0].getProjectDirectory().getPath());
+                        Lookup.getDefault().lookup(SessionControl.class).createNewSession(projects[0].getProjectDirectory().getPath());
                     } else {
                         showProjectPickerPopup(inputArea);
                     }
@@ -204,11 +207,11 @@ public class ComponentLifecycleHandler {
             if (inputArea != null) {
                 inputArea.requestFocusInWindow();
             }
-            String currentSessionId = SessionManager.getInstance().getCurrentSessionId();
+            String currentSessionId = Lookup.getDefault().lookup(SessionControl.class).getCurrentSessionId();
             if (currentSessionId != null) {
-                SessionManager.getInstance().loadSession(currentSessionId);
+                Lookup.getDefault().lookup(SessionControl.class).loadSession(currentSessionId);
             } else {
-                SessionManager.getInstance().refreshSessions();
+                Lookup.getDefault().lookup(SessionControl.class).refreshSessions();
             }
         });
     }
@@ -230,7 +233,7 @@ public class ComponentLifecycleHandler {
         // stops processing and doesn't flood stale SSE content on reopen.
         // We bypass stopCurrentMessage() and go directly to IDLE to avoid the
         // STOPPING state — loadSession() on reopen needs IDLE→LOADING to work.
-        SessionManager.getInstance().forceCancelCurrentMessage();
+        Lookup.getDefault().lookup(SessionControl.class).forceCancelCurrentMessage();
 
         if (pageKeyDispatcher != null) {
             KeyboardFocusManager.getCurrentKeyboardFocusManager().removeKeyEventDispatcher(pageKeyDispatcher);
@@ -245,15 +248,15 @@ public class ComponentLifecycleHandler {
                 closedProjectDirs.add(p.getProjectDirectory().getPath());
             }
         }
-        SessionManager.getInstance().removeSessionListener(sessionLifecycleHandler);
+        Lookup.getDefault().lookup(SessionControl.class).removeSessionListener(sessionLifecycleHandler);
 
         // Clear handler references to prevent memory leak (ProcessManager holds these)
-        ProcessManager.getInstance().setPermissionHandler(null);
-        ProcessManager.getInstance().setStatusListener(null);
-        ProcessManager.getInstance().setCrashHandler(null);
+        Lookup.getDefault().lookup(ProcessControl.class).setPermissionHandler(null);
+        Lookup.getDefault().lookup(ProcessControl.class).setStatusListener(null);
+        Lookup.getDefault().lookup(ProcessControl.class).setCrashHandler(null);
         // Note: readyHandler is intentionally NOT cleared — SessionManager sets it
         // to reload sessions after reconnect and its lambda captures only singleton references.
-        ProcessManager.getInstance().getSlashCommandInterceptor().setCallback(null);
+        Lookup.getDefault().lookup(ProcessControl.class).getSlashCommandInterceptor().setCallback(null);
 
         if (escKeyListener != null) {
             configPanelController.removeKeyListenerFromInputs(escKeyListener);
@@ -276,6 +279,51 @@ public class ComponentLifecycleHandler {
     // -- Public helpers --
 
     /** Shows a popup listing all open projects to pick which one to create a session for. */
+    // -- Server restart --
+
+    public void promptRestartServer() {
+        NotifyDescriptor.Confirmation confirm = new NotifyDescriptor.Confirmation(
+            NbBundle.getMessage(AssistantTopComponent.class, "MSG_ConfirmRestart"),
+            NbBundle.getMessage(AssistantTopComponent.class, "TITLE_RestartServer"),
+            NotifyDescriptor.YES_NO_OPTION,
+            NotifyDescriptor.WARNING_MESSAGE
+        );
+        Object result = DialogDisplayer.getDefault().notify(confirm);
+        if (result == NotifyDescriptor.YES_OPTION) {
+            restartServer();
+        }
+    }
+
+    public void restartServer() {
+        String currentSessionId = Lookup.getDefault().lookup(SessionControl.class).getCurrentSessionId();
+        statusController.setStatus("STATUS_RestartingServer");
+        statusController.setInputEnabled(false);
+
+        Lookup.getDefault().lookup(ProcessControl.class).restartServer();
+
+        Lookup.getDefault().lookup(ProcessControl.class).whenReady().thenAccept(v -> {
+            SwingUtilities.invokeLater(() -> {
+                statusController.setStatus("STATUS_ServerRestarted");
+                if (currentSessionId != null) {
+                    Lookup.getDefault().lookup(SessionControl.class).loadSession(currentSessionId);
+                } else {
+                    Lookup.getDefault().lookup(SessionControl.class).refreshSessions();
+                }
+            });
+        }).exceptionally(ex -> {
+            SwingUtilities.invokeLater(() -> {
+                String msg = ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName();
+                statusController.setStatus("STATUS_RestartFailed", msg);
+                chatPanel.stopStreaming();
+                chatPanel.addMessage(ProcessedMessage.createError(
+                    MessageType.error_response, NbBundle.getMessage(AssistantTopComponent.class, "STATUS_RestartFailed", msg), null, null
+                ));
+                statusController.setInputEnabled(true);
+            });
+            return null;
+        });
+    }
+
     public void showProjectPickerPopup(JComponent parent) {
         Project[] projects = ACPProjectManager.getInstance().getAllOpenProjects();
         if (projects == null || projects.length <= 1) {
@@ -285,7 +333,7 @@ public class ComponentLifecycleHandler {
         for (Project project : projects) {
             String projectDir = project.getProjectDirectory().getPath();
             JMenuItem item = new JMenuItem(project.getProjectDirectory().getName());
-            item.addActionListener(ev -> SessionManager.getInstance().createNewSession(projectDir));
+            item.addActionListener(ev -> Lookup.getDefault().lookup(SessionControl.class).createNewSession(projectDir));
             popup.add(item);
         }
         popup.show(parent, 0, parent.getHeight());

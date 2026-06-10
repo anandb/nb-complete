@@ -30,6 +30,7 @@ import org.openide.util.NbBundle;
 import org.openide.util.NbPreferences;
 import org.openide.util.RequestProcessor;
 import org.openide.util.Lookup;
+import org.openide.util.lookup.ServiceProvider;
 
 import java.util.logging.Level;
 
@@ -46,6 +47,7 @@ import github.anandb.netbeans.support.MapperSupplier;
  * Manages the state and lifecycle of chat sessions.
  * Decouples session logic from the AssistantTopComponent UI.
  */
+@ServiceProvider(service = SessionControl.class)
 public class SessionManager implements SessionQuery, SessionControl {
 
     // --- custom session titles (merged from SessionTitleMapper) --------------

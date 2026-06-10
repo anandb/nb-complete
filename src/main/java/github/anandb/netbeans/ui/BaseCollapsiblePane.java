@@ -52,6 +52,7 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
     protected boolean isThinking;
     protected boolean isSegmented;
     protected String combinedPlainText = "";
+    private transient Timer copyFeedbackTimer;
     protected final AtomicBoolean copyHovered = new AtomicBoolean(false);
 
     public BaseCollapsiblePane(int radius, String title, Color defaultAccent, boolean expandedByDefault) {
@@ -356,11 +357,14 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
         Icon checkIcon = ThemeManager.getIcon("check.svg", 20);
         copyButton.setIcon(checkIcon);
 
-        Timer timer = new Timer(2000, e -> {
+        if (copyFeedbackTimer != null && copyFeedbackTimer.isRunning()) {
+            copyFeedbackTimer.stop();
+        }
+        copyFeedbackTimer = new Timer(2000, e -> {
             copyButton.setIcon(originalIcon);
         });
-        timer.setRepeats(false);
-        timer.start();
+        copyFeedbackTimer.setRepeats(false);
+        copyFeedbackTimer.start();
     }
 
     protected void updateAppearance() {
@@ -499,5 +503,13 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
             wrapper.add(bodyPanel, BorderLayout.CENTER);
         }
         return wrapper;
+    }
+
+    @Override
+    public void removeNotify() {
+        super.removeNotify();
+        if (copyFeedbackTimer != null && copyFeedbackTimer.isRunning()) {
+            copyFeedbackTimer.stop();
+        }
     }
 }

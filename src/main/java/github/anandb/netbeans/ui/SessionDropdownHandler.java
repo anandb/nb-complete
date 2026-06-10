@@ -4,7 +4,8 @@ import javax.swing.JComboBox;
 import javax.swing.SwingUtilities;
 import javax.swing.event.PopupMenuEvent;
 import javax.swing.event.PopupMenuListener;
-import github.anandb.netbeans.manager.SessionManager;
+import github.anandb.netbeans.contract.SessionControl;
+import org.openide.util.Lookup;
 import github.anandb.netbeans.model.SessionItem;
 
 /**
@@ -35,7 +36,7 @@ public class SessionDropdownHandler {
                 String currentId = selected != null ? selected.getSession().id() : null;
                 String previousId = prePopupSession[0] != null ? ((SessionItem)prePopupSession[0]).getSession().id() : null;
                 if (currentId != null && previousId != null && !currentId.equals(previousId)) {
-                    SessionManager.getInstance().loadSession(currentId);
+                    Lookup.getDefault().lookup(SessionControl.class).loadSession(currentId);
                 }
                 SwingUtilities.invokeLater(() -> inputArea.requestFocusInWindow());
             }

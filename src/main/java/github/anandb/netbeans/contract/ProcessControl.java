@@ -1,10 +1,12 @@
 package github.anandb.netbeans.contract;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import github.anandb.netbeans.contract.ToolExecutor;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
+import github.anandb.netbeans.manager.SlashCommandInterceptor;
+import github.anandb.netbeans.model.SessionUpdate;
 
 /**
  * Control interface for the ACP process and message sending.
@@ -35,4 +37,19 @@ public interface ProcessControl {
 
     /** Returns the tool executor for MCP operations. */
     ToolExecutor getToolExecutor();
+
+    /** Returns the slash command interceptor. */
+    SlashCommandInterceptor getSlashCommandInterceptor();
+
+    /** Sets the permission handler for file access permissions. */
+    void setPermissionHandler(PermissionHandler handler);
+
+    /** Sets the status listener for status messages. */
+    void setStatusListener(Consumer<String> listener);
+
+    /** Sets the crash handler for server crash notifications. */
+    void setCrashHandler(Runnable handler);
+
+    /** Returns the list of available slash commands. */
+    List<SessionUpdate.AvailableCommand> getAvailableCommands();
 }
