@@ -64,7 +64,7 @@ public class MessageSender {
 
     /** Sends (or intercepts) the current message text. */
     public void sendMessage() {
-        if (!SessionManager.getInstance().getStateMachine().canSendMessage()) {
+        if (!SessionManager.getInstance().canSendMessage()) {
             return;
         }
         String text = inputArea.getText(); // Don't trim user input spaces
@@ -212,7 +212,7 @@ public class MessageSender {
 
     /** Stops the currently processing message. */
     public void stopMessage() {
-        if (!SessionManager.getInstance().getStateMachine().canStopMessage()) {
+        if (!SessionManager.getInstance().canStopMessage()) {
             return;
         }
         SwingUtilities.invokeLater(() -> {

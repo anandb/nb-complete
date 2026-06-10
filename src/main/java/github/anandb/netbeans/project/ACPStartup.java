@@ -7,7 +7,7 @@ import org.openide.windows.WindowManager;
 
 import github.anandb.netbeans.manager.AgentUtils;
 import github.anandb.netbeans.support.Logger;
-import github.anandb.netbeans.ui.AssistantTopComponent;
+import org.openide.windows.TopComponent;
 
 @OnStart
 public class ACPStartup implements Runnable {
@@ -29,7 +29,7 @@ public class ACPStartup implements Runnable {
             NbPreferences.forModule(ACPStartup.class).put("lastVersion", currentVersion);
 
             WindowManager.getDefault().invokeWhenUIReady(() -> {
-                AssistantTopComponent sidebar = AssistantTopComponent.findInstance();
+                TopComponent sidebar = WindowManager.getDefault().findTopComponent("AssistantTopComponent");
                 if (sidebar != null) {
                     Mode explorer = WindowManager.getDefault().findMode("explorer");
                     if (explorer != null) {

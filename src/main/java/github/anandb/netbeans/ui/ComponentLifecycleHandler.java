@@ -17,12 +17,10 @@ import org.netbeans.api.project.Project;
 import org.openide.util.NbBundle;
 import github.anandb.netbeans.contract.SlashCommandCallback;
 import github.anandb.netbeans.project.ACPProjectManager;
-import github.anandb.netbeans.mcp.McpManager;
+import github.anandb.netbeans.contract.ToolExecutor;
 import github.anandb.netbeans.manager.ProcessManager;
 import github.anandb.netbeans.manager.SessionManager;
-import github.anandb.netbeans.manager.SessionStateMachine;
 import github.anandb.netbeans.model.MessageType;
-import github.anandb.netbeans.model.SessionState;
 import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.model.SessionItem;
 import github.anandb.netbeans.support.Logger;
@@ -108,7 +106,7 @@ public class ComponentLifecycleHandler {
         });
 
         // Update status label when MCP server is starting/ready
-        McpManager mcp = ProcessManager.getInstance().getMcpManager();
+        ToolExecutor mcp = ProcessManager.getInstance().getToolExecutor();
         if (!mcp.isDisabled() && !mcp.waitForReady().isDone()) {
             SwingUtilities.invokeLater(() -> statusController.setStatus("STATUS_McpInitializing"));
             mcp.waitForReady().thenRun(() ->
@@ -232,14 +230,7 @@ public class ComponentLifecycleHandler {
         // stops processing and doesn't flood stale SSE content on reopen.
         // We bypass stopCurrentMessage() and go directly to IDLE to avoid the
         // STOPPING state — loadSession() on reopen needs IDLE→LOADING to work.
-        SessionStateMachine stateMachine = SessionManager.getInstance().getStateMachine();
-        if (stateMachine.canStopMessage()) {
-            String sid = SessionManager.getInstance().getCurrentSessionId();
-            stateMachine.transitionTo(SessionState.IDLE);
-            if (sid != null) {
-                ProcessManager.getInstance().stopMessage(sid);
-            }
-        }
+        SessionManager.getInstance().forceCancelCurrentMessage();
 
         if (pageKeyDispatcher != null) {
             KeyboardFocusManager.getCurrentKeyboardFocusManager().removeKeyEventDispatcher(pageKeyDispatcher);

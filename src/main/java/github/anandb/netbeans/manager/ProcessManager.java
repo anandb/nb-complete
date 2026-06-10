@@ -38,14 +38,17 @@ import javax.swing.SwingUtilities;
 import github.anandb.netbeans.contract.PermissionHandler;
 import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.SessionUpdate;
-import github.anandb.netbeans.ui.ACPOptionsPanel;
+import github.anandb.netbeans.support.PreferenceKeys;
 import github.anandb.netbeans.support.LanguageResolver;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.MapperSupplier;
+import github.anandb.netbeans.contract.ProcessControl;
+import github.anandb.netbeans.contract.ToolExecutor;
+import github.anandb.netbeans.mcp.McpToolAdapter;
 import github.anandb.netbeans.mcp.McpManager;
 
 @ServiceProvider(service = ProcessManager.class)
-public class ProcessManager {
+public class ProcessManager implements ProcessControl {
     private static final Logger LOG = Logger.from(ProcessManager.class);
     private static volatile ProcessManager INSTANCE;
     private final SlashCommandInterceptor slashCommandInterceptor = new SlashCommandInterceptor();
@@ -78,15 +81,15 @@ public class ProcessManager {
     private static final long RESTART_RESET_INTERVAL = 300000; // 5 minutes
 
 
-    private final McpManager mcpManager = new McpManager();
+    private final ToolExecutor toolExecutor = new McpToolAdapter(new McpManager());
     private volatile boolean serverStarted = false;
 
     public ProcessManager() {
-        mcpManager.start();
+        toolExecutor.start();
     }
 
-    public McpManager getMcpManager() {
-        return mcpManager;
+    public ToolExecutor getToolExecutor() {
+        return toolExecutor;
     }
 
     public static ProcessManager getInstance() {
@@ -156,12 +159,12 @@ public class ProcessManager {
         readyFuture = new CompletableFuture<>();
 
         // Ensure MCP server is running (idempotent - start() returns early if already running/disabled)
-        mcpManager.start();
+        toolExecutor.start();
 
         LOG.info("Starting ACP server...");
         try {
             String executable = BinaryResolver.resolveExecutablePath();
-            String args = NbPreferences.forModule(ACPOptionsPanel.class).get("processArguments", "acp");
+            String args = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).get("processArguments", "acp");
 
             CommandLine cmd = new CommandLine(executable);
             cmd.addArguments(args, true);
@@ -267,7 +270,7 @@ public class ProcessManager {
                 .orTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
                 .thenAccept(res -> {
                     if (res != null) {
-                        mcpManager.checkServerSupport(res);
+                        toolExecutor.checkServerSupport(res);
                     }
                     readyFuture.complete(null);
                     LOG.fine("ACP initialized successfully");
@@ -320,7 +323,7 @@ public class ProcessManager {
             reconnectRP = null;
         }
 
-        mcpManager.stop();
+        toolExecutor.stop();
 
         AcpProtocolClient client = rpcClient.getAndSet(null);
         if (client != null) {
@@ -481,7 +484,7 @@ public class ProcessManager {
         Map<String, Object> params = new HashMap<>();
         params.put("sessionId", sessionId);
         params.put("prompt", promptBlocks);
-        params.put("mcpServers", mcpManager.getServerConfig());
+        params.put("mcpServers", toolExecutor.getServerConfig());
 
         return client.sendRequest("session/prompt", params);
     }

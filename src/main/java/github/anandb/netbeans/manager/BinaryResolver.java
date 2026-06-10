@@ -8,7 +8,7 @@ import org.openide.util.NbBundle;
 import org.openide.util.NbPreferences;
 
 import github.anandb.netbeans.support.Logger;
-import github.anandb.netbeans.ui.ACPOptionsPanel;
+import github.anandb.netbeans.support.PreferenceKeys;
 
 public final class BinaryResolver {
 
@@ -22,7 +22,7 @@ public final class BinaryResolver {
      * then searches system PATH. Throws IllegalStateException if not found.
      */
     public static String resolveExecutablePath() {
-        Preferences nbPrefs = NbPreferences.forModule(ACPOptionsPanel.class);
+        Preferences nbPrefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
         String configuredPath = nbPrefs.get("acpExecutablePath", null);
         boolean isWindows = System.getProperty("os.name").toLowerCase().contains("win");
         String exeName = isWindows ? "opencode.exe" : "opencode";

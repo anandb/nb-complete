@@ -33,7 +33,9 @@ import org.openide.util.Lookup;
 
 import java.util.logging.Level;
 
+import github.anandb.netbeans.contract.SessionControl;
 import github.anandb.netbeans.contract.SessionListener;
+import github.anandb.netbeans.contract.SessionQuery;
 import github.anandb.netbeans.manager.strategy.StrategyRegistry;
 import github.anandb.netbeans.model.SessionState;
 import github.anandb.netbeans.model.SessionUpdate;
@@ -44,12 +46,18 @@ import github.anandb.netbeans.support.MapperSupplier;
  * Manages the state and lifecycle of chat sessions.
  * Decouples session logic from the AssistantTopComponent UI.
  */
-public class SessionManager {
+public class SessionManager implements SessionQuery, SessionControl {
 
     // --- custom session titles (merged from SessionTitleMapper) --------------
     private static final String TITLE_PREFIX = "session_title_";
 
-    public static String getCustomTitle(String sessionId, String defaultTitle) {
+    /** @see SessionQuery#getCustomTitle(String, String) */
+    @Override
+    public String getCustomTitle(String sessionId, String defaultTitle) {
+        return resolveCustomTitle(sessionId, defaultTitle);
+    }
+
+    private static String resolveCustomTitle(String sessionId, String defaultTitle) {
         return NbPreferences.forModule(SessionManager.class).get(TITLE_PREFIX + sessionId, defaultTitle);
     }
 
@@ -144,15 +152,42 @@ public class SessionManager {
         return lastProjectDir;
     }
 
+    @Override
+    public SessionState getCurrentState() {
+        return stateMachine.getState();
+    }
+
     public SessionStateMachine getStateMachine() {
         return stateMachine;
+    }
+
+    @Override
+    public boolean canSendMessage() {
+        return stateMachine.canSendMessage();
+    }
+
+    @Override
+    public boolean canStopMessage() {
+        return stateMachine.canStopMessage();
+    }
+
+    @Override
+    public void forceCancelCurrentMessage() {
+        if (!stateMachine.canStopMessage()) {
+            return;
+        }
+        stateMachine.transitionTo(SessionState.IDLE);
+        String sid = this.currentSessionId;
+        if (sid != null) {
+            ProcessManager.getInstance().stopMessage(sid);
+        }
     }
 
     // --- Session CRUD (moved from ProcessManager) ---
 
     public CompletableFuture<List<Session>> getSessions(String directory) {
         LOG.log(Level.FINE, "getSessions: called with directory={0}", directory);
-        return ProcessManager.getInstance().getMcpManager().waitForReady()
+        return ProcessManager.getInstance().getToolExecutor().waitForReady()
                 .orTimeout(15, TimeUnit.SECONDS)
                 .thenCompose(v -> {
                     Map<String, Object> params = new HashMap<>();
@@ -234,12 +269,12 @@ public class SessionManager {
     }
 
     private CompletableFuture<Session> sendCreateSessionRequest(String finalCwd, long start) {
-        return ProcessManager.getInstance().getMcpManager().waitForReady()
+        return ProcessManager.getInstance().getToolExecutor().waitForReady()
                 .orTimeout(15, TimeUnit.SECONDS)
                 .thenCompose(v -> {
                     Map<String, Object> params = new HashMap<>();
                     params.put("cwd", finalCwd);
-                    params.put("mcpServers", ProcessManager.getInstance().getMcpManager().getServerConfig());
+                    params.put("mcpServers", ProcessManager.getInstance().getToolExecutor().getServerConfig());
                     return ProcessManager.getInstance().sendRequest("session/new", params, 60, TimeUnit.SECONDS);
                 })
                 .thenApply(res -> {
@@ -269,7 +304,7 @@ public class SessionManager {
     }
 
     private CompletableFuture<List<SessionConfigOption>> sendLoadSessionRequest(String sessionId, String cwd, long start) {
-        return ProcessManager.getInstance().getMcpManager().waitForReady()
+        return ProcessManager.getInstance().getToolExecutor().waitForReady()
                 .orTimeout(15, TimeUnit.SECONDS)
                 .thenCompose(v -> {
                     Map<String, Object> params = new HashMap<>();
@@ -277,7 +312,7 @@ public class SessionManager {
                     if (cwd != null) {
                         params.put("cwd", cwd);
                     }
-                    params.put("mcpServers", ProcessManager.getInstance().getMcpManager().getServerConfig());
+                    params.put("mcpServers", ProcessManager.getInstance().getToolExecutor().getServerConfig());
                     return ProcessManager.getInstance().sendRequest("session/load", params, 60, TimeUnit.SECONDS);
                 })
                 .thenApply(res -> {
@@ -568,9 +603,9 @@ public class SessionManager {
                 LOG.warn("{0} failed after {1}ms: {2}", operationName, durationMs, ex.getMessage());
             }
             Throwable cause = (ex instanceof CompletionException) ? ex.getCause() : ex;
-            if (isInvalidParamsError(cause) && !ProcessManager.getInstance().getMcpManager().isDisabled()) {
+            if (isInvalidParamsError(cause) && !ProcessManager.getInstance().getToolExecutor().isDisabled()) {
                 LOG.warn("{0} failed with Invalid Params, retrying without MCP", operationName);
-                ProcessManager.getInstance().getMcpManager().disable();
+                ProcessManager.getInstance().getToolExecutor().disable();
                 return requestFn.get();
             }
             return CompletableFuture.<T>failedFuture(ex);

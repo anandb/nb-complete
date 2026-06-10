@@ -5,7 +5,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.logging.Level;
 
 import github.anandb.netbeans.support.Logger;
-import github.anandb.netbeans.ui.ACPOptionsPanel;
+import github.anandb.netbeans.support.PreferenceKeys;
 import org.openide.util.NbPreferences;
 
 public final class PluginSettings {
@@ -32,26 +32,26 @@ public final class PluginSettings {
     }
 
     public static String getPreamble() {
-        return NbPreferences.forModule(ACPOptionsPanel.class).get(KEY_PREAMBLE, DEFAULT_PREAMBLE);
+        return NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).get(KEY_PREAMBLE, DEFAULT_PREAMBLE);
     }
 
     public static void setPreamble(String preamble) {
-        NbPreferences.forModule(ACPOptionsPanel.class).put(KEY_PREAMBLE, preamble == null ? "" : preamble);
+        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).put(KEY_PREAMBLE, preamble == null ? "" : preamble);
     }
 
     public static String getCustomUserIcon() {
-        return NbPreferences.forModule(ACPOptionsPanel.class).get(KEY_CUSTOM_USER_ICON, "");
+        return NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).get(KEY_CUSTOM_USER_ICON, "");
     }
 
     public static void setCustomUserIcon(String path) {
-        NbPreferences.forModule(ACPOptionsPanel.class).put(KEY_CUSTOM_USER_ICON, path == null ? "" : path);
+        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).put(KEY_CUSTOM_USER_ICON, path == null ? "" : path);
     }
 
     public static int getSessionIdleTimeout() {
-        return NbPreferences.forModule(ACPOptionsPanel.class).getInt(KEY_SESSION_IDLE_TIMEOUT, 60);
+        return NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getInt(KEY_SESSION_IDLE_TIMEOUT, 60);
     }
 
     public static void setSessionIdleTimeout(int seconds) {
-        NbPreferences.forModule(ACPOptionsPanel.class).putInt(KEY_SESSION_IDLE_TIMEOUT, seconds);
+        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putInt(KEY_SESSION_IDLE_TIMEOUT, seconds);
     }
 }

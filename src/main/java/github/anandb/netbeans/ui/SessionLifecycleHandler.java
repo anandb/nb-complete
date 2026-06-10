@@ -192,7 +192,7 @@ public class SessionLifecycleHandler implements SessionListener {
                 int selectIdx = -1;
                 for (int i = 0; i < sessions.size(); i++) {
                     Session s = sessions.get(i);
-                    String customTitle = SessionManager.getCustomTitle(s.id(), s.title());
+                    String customTitle = SessionManager.getInstance().getCustomTitle(s.id(), s.title());
                     sessionDropdown.addItem(new SessionItem(s, customTitle));
                     if (currentId != null && s.id().equals(currentId)) {
                         selectIdx = i;

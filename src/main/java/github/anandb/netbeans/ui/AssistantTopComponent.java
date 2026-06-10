@@ -400,7 +400,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
     private String selectedIdToTitle(Session session) {
         String title = defaultIfBlank(session.title(), NbBundle.getMessage(AssistantTopComponent.class, "LBL_ChatDefault", left(session.id(), 8)));
-        return SessionManager.getCustomTitle(session.id(), title);
+        return SessionManager.getInstance().getCustomTitle(session.id(), title);
     }
 
     private JButton createFilterButton() {
