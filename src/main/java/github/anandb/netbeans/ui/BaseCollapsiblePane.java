@@ -22,6 +22,8 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextArea;
 import javax.swing.Timer;
+import javax.swing.JMenuItem;
+import javax.swing.JPopupMenu;
 
 import org.openide.util.NbBundle;
 import org.apache.commons.lang3.StringUtils;
@@ -164,7 +166,7 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
         groupToggleBtn.setContentAreaFilled(false);
         groupToggleBtn.setFocusPainted(false);
         groupToggleBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        groupToggleBtn.setToolTipText("Collapse/expand all panes");
+        groupToggleBtn.setToolTipText(NbBundle.getMessage(BaseCollapsiblePane.class, "HINT_CollapseExpandAll"));
         groupToggleBtn.setVisible(false);
         groupToggleBtn.addActionListener(e -> {
             AccordionGroup g = getAccordionGroup();
@@ -441,7 +443,23 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
     }
 
     protected static JTextArea createActivityTextArea(String text) {
-        JTextArea textArea = new JTextArea(text);
+        JTextArea textArea = new JTextArea(text) {
+            @Override
+            public JPopupMenu getComponentPopupMenu() {
+                JPopupMenu menu = new JPopupMenu();
+                JMenuItem copyItem = new JMenuItem(NbBundle.getMessage(BaseCollapsiblePane.class, "LBL_Copy"));
+                copyItem.setEnabled(getSelectedText() != null);
+                copyItem.addActionListener(e -> {
+                    String sel = getSelectedText();
+                    if (sel != null && !sel.isEmpty()) {
+                        java.awt.Toolkit.getDefaultToolkit().getSystemClipboard()
+                                .setContents(new StringSelection(sel), null);
+                    }
+                });
+                menu.add(copyItem);
+                return menu;
+            }
+        };
         textArea.setEditable(false);
         textArea.setOpaque(false);
         textArea.setBackground(null);

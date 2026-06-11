@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import github.anandb.netbeans.project.ACPProjectManager;
 import github.anandb.netbeans.support.Logger;
+import org.openide.util.NbBundle;
 import github.anandb.netbeans.support.MapperSupplier;
 
 import java.io.File;
@@ -68,11 +69,11 @@ public class EditorToolProvider {
 
         ObjectNode filePathProp = properties.putObject("filePath");
         filePathProp.put("type", "string");
-        filePathProp.put("description", "Absolute path to the file to open");
+        filePathProp.put("description", NbBundle.getMessage(EditorToolProvider.class, "DESC_FilePath"));
 
         ObjectNode lineProp = properties.putObject("line");
         lineProp.put("type", "number");
-        lineProp.put("description", "Line number to navigate to (1-indexed)");
+        lineProp.put("description", NbBundle.getMessage(EditorToolProvider.class, "DESC_LineNumber"));
 
         ArrayNode required = schema.putArray("required");
         required.add("filePath");

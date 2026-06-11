@@ -43,6 +43,7 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 import github.anandb.netbeans.contract.SessionControl;
 import org.openide.util.Lookup;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.PreferenceKeys;
 
 public class ACPOptionsPanel extends JPanel {
     private static final Logger LOG = Logger.from(ACPOptionsPanel.class);
@@ -322,7 +323,7 @@ public class ACPOptionsPanel extends JPanel {
     private String previousIconPath;
 
     void load() {
-        String savedPath = NbPreferences.forModule(ACPOptionsPanel.class).get("acpExecutablePath", null);
+        String savedPath = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).get(PreferenceKeys.ACP_EXECUTABLE_PATH, null);
         detectedPath = BinaryResolver.findOnPath();
 
         if (savedPath != null && !savedPath.isEmpty()) {
@@ -339,7 +340,7 @@ public class ACPOptionsPanel extends JPanel {
             showingHint = true;
         }
 
-        argsField.setText(NbPreferences.forModule(ACPOptionsPanel.class).get("processArguments", "acp"));
+        argsField.setText(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).get(PreferenceKeys.PROCESS_ARGUMENTS, "acp"));
 
         preambleArea.setText(PluginSettings.getPreamble());
         echoCheckbox.setSelected(NbPreferences.forModule(ACPOptionsPanel.class).getBoolean("echoUserInput", true));
@@ -372,8 +373,8 @@ public class ACPOptionsPanel extends JPanel {
 
     void store() {
         String pathToSave = showingHint ? "" : pathField.getText();
-        NbPreferences.forModule(ACPOptionsPanel.class).put("acpExecutablePath", pathToSave);
-        NbPreferences.forModule(ACPOptionsPanel.class).put("processArguments", argsField.getText());
+        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).put(PreferenceKeys.ACP_EXECUTABLE_PATH, pathToSave);
+        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).put(PreferenceKeys.PROCESS_ARGUMENTS, argsField.getText());
         PluginSettings.setPreamble(preambleArea.getText());
         boolean changedCombine = combineCheckbox.isSelected()
                 != NbPreferences.forModule(ACPOptionsPanel.class).getBoolean("combineToolThought", true);

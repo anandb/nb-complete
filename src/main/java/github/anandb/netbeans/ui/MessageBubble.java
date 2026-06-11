@@ -26,6 +26,8 @@ import javax.swing.JPanel;
 import javax.swing.Scrollable;
 import javax.swing.JTextArea;
 import javax.swing.Timer;
+import javax.swing.JMenuItem;
+import javax.swing.JPopupMenu;
 
 import java.awt.event.HierarchyEvent;
 import java.awt.event.HierarchyListener;
@@ -439,7 +441,7 @@ public class MessageBubble extends JPanel implements Scrollable {
         this.responseTimeMs = ms;
         String label = formatElapsed(ms);
         JLabel ttftLabel = new JLabel(label);
-        ttftLabel.setToolTipText("Time to First Token: " + label);
+        ttftLabel.setToolTipText(NbBundle.getMessage(MessageBubble.class, "HINT_TimeToFirstToken", label));
         ttftLabel.setFont(ThemeManager.getFont().deriveFont(10f));
         ttftLabel.setForeground(Color.GRAY);
         ttftLabel.setBorder(new EmptyBorder(0, 0, 0, 12));
@@ -468,6 +470,22 @@ public class MessageBubble extends JPanel implements Scrollable {
             @Override
             public float getAlignmentX() {
                 return Component.LEFT_ALIGNMENT;
+            }
+
+            @Override
+            public JPopupMenu getComponentPopupMenu() {
+                JPopupMenu menu = new JPopupMenu();
+                JMenuItem copyItem = new JMenuItem(NbBundle.getMessage(MessageBubble.class, "LBL_Copy"));
+                copyItem.setEnabled(getSelectedText() != null);
+                copyItem.addActionListener(e -> {
+                    String text = getSelectedText();
+                    if (text != null && !text.isEmpty()) {
+                        Toolkit.getDefaultToolkit().getSystemClipboard()
+                                .setContents(new StringSelection(text), null);
+                    }
+                });
+                menu.add(copyItem);
+                return menu;
             }
         };
         ta.setEditable(false);

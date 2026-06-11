@@ -13,6 +13,9 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
+import java.util.prefs.PreferenceChangeEvent;
+import java.util.prefs.PreferenceChangeListener;
+import java.util.prefs.Preferences;
 import java.util.logging.Level;
 import javax.swing.text.Document;
 
@@ -53,10 +56,6 @@ public class ProcessManager implements ProcessControl {
     private static volatile ProcessManager INSTANCE;
     private final SlashCommandInterceptor slashCommandInterceptor = new SlashCommandInterceptor();
 
-    public SlashCommandInterceptor getSlashCommandInterceptor() {
-        return slashCommandInterceptor;
-    }
-
     // Static shared ObjectMapper for all JSON operations
     private final ObjectMapper objectMapper = MapperSupplier.get();
 
@@ -64,30 +63,51 @@ public class ProcessManager implements ProcessControl {
     private RequestProcessor reconnectRP;
     private RequestProcessor.Task reconnectTask;
 
-    private volatile Process serverProcess;
     private final AtomicReference<AcpProtocolClient> rpcClient = new AtomicReference<>();
-    private volatile CompletableFuture<Void> readyFuture = new CompletableFuture<>();
-
     private final List<Consumer<SessionUpdate>> sseListeners = new CopyOnWriteArrayList<>();
-    private volatile List<SessionUpdate.AvailableCommand> availableCommands = List.of();
-    private volatile PermissionHandler permissionHandler;
-    private volatile Consumer<String> statusListener;
-    private volatile Runnable crashHandler;
-    private volatile Runnable readyHandler;
-    private volatile boolean isClosing = false;
+    private final PreferenceChangeListener preferenceChangeListener;
+    private final ToolExecutor toolExecutor = new McpToolAdapter(new McpManager());
+    
     private int restartCount = 0;
     private long lastRestartTime = 0;
     private static final int MAX_RESTARTS = 3;
     private static final long RESTART_RESET_INTERVAL = 300000; // 5 minutes
 
-
-    private final ToolExecutor toolExecutor = new McpToolAdapter(new McpManager());
+    private volatile CompletableFuture<Void> readyFuture = new CompletableFuture<>();
+    private volatile Consumer<String> statusListener;
+    private volatile List<SessionUpdate.AvailableCommand> availableCommands = List.of();
+    private volatile PermissionHandler permissionHandler;
+    private volatile Process serverProcess;
+    private volatile Runnable crashHandler;
+    private volatile Runnable readyHandler;
+    private volatile boolean isClosing = false;
     private volatile boolean serverStarted = false;
 
     public ProcessManager() {
         toolExecutor.start();
+        Preferences prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
+        preferenceChangeListener = this::onPreferenceChanged;
+        prefs.addPreferenceChangeListener(preferenceChangeListener);
     }
 
+    @Override
+    public SlashCommandInterceptor getSlashCommandInterceptor() {
+        return slashCommandInterceptor;
+    }
+
+    private void onPreferenceChanged(PreferenceChangeEvent evt) {
+        String key = evt.getKey();
+        if (!PreferenceKeys.ACP_EXECUTABLE_PATH.equals(key)
+                && !PreferenceKeys.PROCESS_ARGUMENTS.equals(key)) {
+            return;
+        }
+        LOG.fine("Preference changed: {0} — triggering server restart", key);
+        if (serverStarted && serverProcess != null && serverProcess.isAlive()) {
+            restartServer();
+        }
+    }
+
+    @Override
     public ToolExecutor getToolExecutor() {
         return toolExecutor;
     }
@@ -135,6 +155,7 @@ public class ProcessManager implements ProcessControl {
         client.sendNotification(method, params);
     }
 
+    @Override
     public synchronized void ensureStarted() {
         if (!serverStarted) {
             serverStarted = true;
@@ -297,9 +318,12 @@ public class ProcessManager implements ProcessControl {
         if (isClosing) {
             return;
         }
+        Preferences prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
+        prefs.removePreferenceChangeListener(preferenceChangeListener);
         stopServer();
     }
 
+    @Override
     public synchronized void restartServer() {
         LOG.fine("Manual restart of ACP server requested...");
         stopServer();
@@ -399,6 +423,7 @@ public class ProcessManager implements ProcessControl {
         }
     }
 
+    @Override
     public void touchConnection() {
         AcpProtocolClient client = rpcClient.get();
         if (client != null) {
@@ -406,10 +431,12 @@ public class ProcessManager implements ProcessControl {
         }
     }
 
+    @Override
     public CompletableFuture<JsonNode> sendMessage(String sessionId, String text, Map<String, Object> context) {
         return sendMessage(sessionId, text, context, null);
     }
 
+    @Override
     public CompletableFuture<JsonNode> sendMessage(String sessionId, String text,  Map<String, Object> context,
                                                    List<Map<String, Object>> additionalBlocks) {
         AcpProtocolClient client = rpcClient.get();
@@ -489,6 +516,7 @@ public class ProcessManager implements ProcessControl {
         return client.sendRequest("session/prompt", params);
     }
 
+    @Override
     public CompletableFuture<Void> stopMessage(String sessionId) {
         AcpProtocolClient client = rpcClient.get();
         if (client == null) {
@@ -502,10 +530,12 @@ public class ProcessManager implements ProcessControl {
         return System.getProperty("user.dir");
     }
 
+    @Override
     public List<SessionUpdate.AvailableCommand> getAvailableCommands() {
         return new ArrayList<>(availableCommands);
     }
 
+    @Override
     public CompletableFuture<Void> whenReady() {
         return readyFuture;
     }
@@ -579,14 +609,17 @@ public class ProcessManager implements ProcessControl {
         }
     }
 
+    @Override
     public void setPermissionHandler(PermissionHandler handler) {
         this.permissionHandler = handler;
     }
 
+    @Override
     public void setStatusListener(Consumer<String> listener) {
         this.statusListener = listener;
     }
 
+    @Override
     public void setCrashHandler(Runnable handler) {
         this.crashHandler = handler;
     }

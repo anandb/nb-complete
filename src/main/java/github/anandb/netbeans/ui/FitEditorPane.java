@@ -4,13 +4,19 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Insets;
+import java.awt.Toolkit;
+import java.awt.datatransfer.StringSelection;
+import java.awt.event.ActionEvent;
 import java.io.StringReader;
 
+import javax.swing.JMenuItem;
+import javax.swing.JPopupMenu;
 import javax.swing.JTextPane;
 import javax.swing.border.EmptyBorder;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.View;
 
+import org.openide.util.NbBundle;
 import github.anandb.netbeans.support.Logger;
 
 public class FitEditorPane extends JTextPane {
@@ -192,5 +198,21 @@ public class FitEditorPane extends JTextPane {
         pane.setAlignmentX(Component.LEFT_ALIGNMENT);
         pane.setText(styledHtml);
         return pane;
+    }
+
+    @Override
+    public JPopupMenu getComponentPopupMenu() {
+        JPopupMenu menu = new JPopupMenu();
+        JMenuItem copyItem = new JMenuItem(NbBundle.getMessage(FitEditorPane.class, "LBL_Copy"));
+        copyItem.setEnabled(getSelectedText() != null);
+        copyItem.addActionListener((ActionEvent e) -> {
+            String text = getSelectedText();
+            if (text != null && !text.isEmpty()) {
+                Toolkit.getDefaultToolkit().getSystemClipboard()
+                        .setContents(new StringSelection(text), null);
+            }
+        });
+        menu.add(copyItem);
+        return menu;
     }
 }

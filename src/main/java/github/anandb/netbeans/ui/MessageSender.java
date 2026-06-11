@@ -139,7 +139,9 @@ public class MessageSender {
                         String type = (String) block.get("type");
                         String fname = (String) block.get("filename");
                         echoBuilder.append("\n[")
-                                .append("image".equals(type) ? "Image" : "File").append(": ")
+                                .append("image".equals(type)
+                                        ? NbBundle.getMessage(MessageSender.class, "LBL_Image")
+                                        : NbBundle.getMessage(MessageSender.class, "LBL_File")).append(": ")
                                 .append(fname).append("]");
                     }
                 }

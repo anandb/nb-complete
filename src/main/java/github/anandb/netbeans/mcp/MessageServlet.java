@@ -10,6 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.logging.Level;
 
 import github.anandb.netbeans.manager.PluginSettings;
+import org.openide.util.NbBundle;
 import org.openide.util.RequestProcessor;
 
 import github.anandb.netbeans.support.Logger;
@@ -93,7 +94,7 @@ class MessageServlet extends HttpServlet {
                         LOG.log(Level.SEVERE, "Exception: {0}", e.getMessage());
                         ObjectNode error = mapper.createObjectNode();
                         error.put("code", -32603);
-                        error.put("message", "Internal error: " + e.getMessage());
+                        error.put("message", NbBundle.getMessage(MessageServlet.class, "MSG_InternalError", e.getMessage()));
                         resp.set("error", error);
                     }
 
@@ -224,7 +225,7 @@ class MessageServlet extends HttpServlet {
             default -> {
                 ObjectNode error = mapper.createObjectNode();
                 error.put("code", -32601);
-                error.put("message", "Method not found: " + method);
+                error.put("message", NbBundle.getMessage(MessageServlet.class, "MSG_MethodNotFound", method));
                 resp.set("error", error);
             }
         }
