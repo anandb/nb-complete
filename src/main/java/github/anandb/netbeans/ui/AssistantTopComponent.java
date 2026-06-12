@@ -10,6 +10,7 @@ import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.FontMetrics;
+import java.awt.Desktop;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -598,11 +599,13 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     private void openCwdInSystemBrowser(String path) {
         try {
             File dir = new File(path);
-            if (dir.exists() && dir.isDirectory()) {
-                java.awt.Desktop.getDesktop().open(dir);
+            if (dir.exists() && dir.isDirectory()
+                    && Desktop.isDesktopSupported()
+                    && Desktop.getDesktop().isSupported(Desktop.Action.OPEN)) {
+                Desktop.getDesktop().open(dir);
             }
         } catch (Exception ex) {
-            LOG.log(Level.WARNING, "Failed to open directory in system browser: {0}", path);
+            LOG.log(Level.WARNING, "Failed to open directory in system browser: {0}", ex);
         }
     }
 

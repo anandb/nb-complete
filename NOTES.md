@@ -1,5 +1,43 @@
 # Release Notes
 
+## v1.6.0 (Changes since v1.5.26)
+
+### Wayland Support
+- **Image paste on Wayland**: Added `wl-paste` fallback in `ImagePasteTransferHandler` for pasting screenshots/images when AWT's `DataFlavor.imageFlavor` fails on Wayland. Probes `wl-paste --list-types` for correct MIME type detection.
+- **Wayland detection**: `isWayland()` now checks `os.name` for Linux before checking `XDG_SESSION_TYPE`.
+- **Missing wl-clipboard error**: Shows clear status message if `wl-paste` is not installed.
+
+### UI Improvements
+- **CWD context menu**: Right-click on the CWD label shows "Locate in System" to open the directory in the system file browser.
+- **Tab label format**: Sidebar tab now displays `model (agent/level)` instead of `agent (model/level)`.
+- **Activity pane streaming fix**: Deferred bubble finalization, cached markdown HTML to reduce redundant re-renders during streaming.
+- **Bubble finalization timer**: Increased flush interval and reduced scroll margin to prevent premature scroll-to-bottom during streaming.
+- **Text wrapping fix**: Replaced `JEditorPane` HTML with `JTextPane` StyledDocument for reliable text reflow on resize; added options toggle for combined tool/thought bubbles.
+- **FitEditorPane revalidation**: Fixed empty space after width change by triggering revalidation.
+
+### Architecture & Refactoring
+- **Hexagonal architecture enforcement**: Eliminated upward dependency violations (`ui/` → `manager/` singletons). UI now accesses services via `Lookup.getDefault().lookup(SessionControl.class)` and `ProcessControl.class`.
+- **Contract interfaces**: Added `SessionControl`, `SessionQuery`, `ProcessControl` interfaces in `contract/` package for cleaner dependency injection.
+- **Base component extraction**: Eliminated duplicate code by extracting `BaseCollapsiblePane` and test utilities.
+- **Markdown renderer extraction**: Separated `MarkdownStyledRenderer` from `ChatThreadPanel` for independent reuse.
+- **Timing constants**: Centralized timing values (`STREAM_FLUSH_MS`, `AUTO_SCROLL_TOLERANCE`) in `TimingConstants` class.
+- **Tool-thought combiner**: Extracted logic for merging consecutive tool/thought updates into a single accordion.
+
+### Internationalization
+- **All hardcoded strings externalized**: User-facing strings moved to `NbBundle.Messages`/`Bundle.properties` across `AssistantTopComponent`, `MessageBubble`, `CollapsibleToolPane`, `WelcomeScreen`.
+
+### Reliability
+- **Timer cleanup**: Stopped leaked `javax.swing.Timer` instances in `removeNotify()` to prevent memory leaks.
+- **Idle clamp**: `McpServer` connector idle timeout clamped to minimum 30s.
+- **isDisplayable guards**: Added checks before UI operations to prevent exceptions on disposed components.
+- **Process leak fix**: Cleaned up leaked process on startup failure, early return on write failure.
+- **DCL fix**: Corrected double-checked locking in `ProcessManager.getInstance()`.
+
+### Documentation
+- **README accuracy**: Fixed manager/ file count (11→10), removed fabricated `beanbot.sessionPromptTimeout` property, corrected color properties count (31→33).
+- **QUICKSTART update**: Added wl-clipboard prerequisite for Wayland image paste support.
+- **AGENTS.md learnings**: Added critical architectural decisions and known violations to agent instructions.
+
 ## v1.5.26 (Changes since v1.5.25)
 
 ### Reliability & Message Handling

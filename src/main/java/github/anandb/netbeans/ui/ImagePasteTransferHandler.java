@@ -242,55 +242,64 @@ public class ImagePasteTransferHandler extends TransferHandler {
     }
 
     private static boolean isWlPasteAvailable() {
+        Process proc = null;
         try {
-            Process proc = new ProcessBuilder("which", "wl-paste")
+            proc = new ProcessBuilder("which", "wl-paste")
                     .redirectErrorStream(true).start();
-            int exit = proc.waitFor();
-            return exit == 0;
+            proc.getInputStream().readAllBytes();
+            return proc.waitFor() == 0;
         } catch (Exception e) {
             return false;
+        } finally {
+            if (proc != null) proc.destroy();
         }
-    }
-
-    private void processWaylandClipboardImage() {
-        // Replaced by fetchWaylandClipboardImage — kept for future use if needed.
     }
 
     private AttachedFile fetchWaylandClipboardImage() throws Exception {
         // Probe actual MIME types on clipboard
-        Process listProc = new ProcessBuilder("wl-paste", "--list-types")
-                .redirectErrorStream(true).start();
-        String types = new String(listProc.getInputStream().readAllBytes()).strip();
-        int listExit = listProc.waitFor();
-        if (listExit != 0 || types.isEmpty()) {
-            return null;
-        }
-
-        // Find first image/* type
-        String imageType = null;
-        for (String line : types.split("\n")) {
-            String t = line.strip();
-            if (t.startsWith("image/")) {
-                imageType = t;
-                break;
+        Process listProc = null;
+        try {
+            listProc = new ProcessBuilder("wl-paste", "--list-types")
+                    .redirectErrorStream(true).start();
+            String types = new String(listProc.getInputStream().readAllBytes()).strip();
+            int listExit = listProc.waitFor();
+            if (listExit != 0 || types.isEmpty()) {
+                return null;
             }
-        }
-        if (imageType == null) {
-            return null;
-        }
 
-        Process proc = new ProcessBuilder("wl-paste", "-t", imageType)
-                .redirectErrorStream(true).start();
-        byte[] data = proc.getInputStream().readAllBytes();
-        int exitCode = proc.waitFor();
-        if (exitCode != 0 || data.length == 0) {
-            return null;
-        }
+            // Find first image/* type
+            String imageType = null;
+            for (String line : types.split("\n")) {
+                String t = line.strip();
+                if (t.startsWith("image/")) {
+                    imageType = t;
+                    break;
+                }
+            }
+            if (imageType == null) {
+                return null;
+            }
 
-        Path tempFile = Path.of(System.getProperty("java.io.tmpdir"),
-                "paste_" + UUID.randomUUID().toString() + ".png");
-        Files.write(tempFile, data);
-        return new AttachedFile(tempFile.toFile());
+            Process proc = null;
+            try {
+                proc = new ProcessBuilder("wl-paste", "-t", imageType)
+                        .redirectErrorStream(true).start();
+                byte[] data = proc.getInputStream().readAllBytes();
+                int exitCode = proc.waitFor();
+                if (exitCode != 0 || data.length == 0) {
+                    return null;
+                }
+
+                Path tempFile = Path.of(System.getProperty("java.io.tmpdir"),
+                        "paste_" + UUID.randomUUID().toString() + ".png");
+                Files.write(tempFile, data);
+                return new AttachedFile(tempFile.toFile());
+            } finally {
+                if (proc != null) proc.destroy();
+            }
+        } finally {
+            if (listProc != null) listProc.destroy();
+        }
     }
 
     private AttachedFile createAttachedFileFromFile(File file) {
