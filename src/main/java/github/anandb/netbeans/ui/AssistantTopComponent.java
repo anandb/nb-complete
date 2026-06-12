@@ -16,6 +16,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
+import java.util.logging.Level;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -198,6 +199,18 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
         cwdLabel = new JLabel("");
         cwdLabel.setFont(cwdLabel.getFont().deriveFont(Font.BOLD));
+
+        cwdLabel.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mousePressed(java.awt.event.MouseEvent e) {
+                showCwdContextMenu(e);
+            }
+            
+            @Override
+            public void mouseReleased(java.awt.event.MouseEvent e) {
+                showCwdContextMenu(e);
+            }
+        });
 
         JPanel headerContent = new JPanel(new BorderLayout(0, 4));
         headerContent.setOpaque(false);
@@ -568,6 +581,29 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             return assistantTopComponent;
         }
         return null;
+    }
+
+    private void showCwdContextMenu(java.awt.event.MouseEvent e) {
+        if (!e.isPopupTrigger()) return;
+        String cwd = cwdLabel.getToolTipText();
+        if (cwd == null || cwd.isEmpty()) return;
+
+        JPopupMenu popup = new JPopupMenu();
+        javax.swing.JMenuItem locateItem = new javax.swing.JMenuItem("Locate in System");
+        locateItem.addActionListener(ev -> openCwdInSystemBrowser(cwd));
+        popup.add(locateItem);
+        popup.show(cwdLabel, e.getX(), e.getY());
+    }
+
+    private void openCwdInSystemBrowser(String path) {
+        try {
+            File dir = new File(path);
+            if (dir.exists() && dir.isDirectory()) {
+                java.awt.Desktop.getDesktop().open(dir);
+            }
+        } catch (Exception ex) {
+            LOG.log(Level.WARNING, "Failed to open directory in system browser: {0}", path);
+        }
     }
 
     private void applyInitialTheme() {

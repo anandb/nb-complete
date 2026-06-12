@@ -219,6 +219,7 @@ public class ConfigPanelController {
                     }
                 }
                 thinkingCombo.setEnabled(thinkingCombo.getItemCount() > 0);
+                SwingUtilities.invokeLater(() -> tabNameUpdater.accept(buildTabLabel()));
                 if (thinkingCombo.getActionListeners().length == 0) {
                     setupConfigCombo(thinkingCombo, "thinking");
                 }
@@ -355,7 +356,7 @@ public class ConfigPanelController {
 
     private void postProcessModel(JComboBox<ConfigItem> combo, ConfigItem selected) {
         combo.setEditable(false);
-        tabNameUpdater.accept(selected != null ? selected.name() : null);
+        tabNameUpdater.accept(buildTabLabel());
         ConfigItem selItem = (ConfigItem) combo.getSelectedItem();
         if (selItem != null) {
             updateThinkingComboForModel(selItem.value());
@@ -395,8 +396,8 @@ public class ConfigPanelController {
             if (combo == modelCombo) {
                 lastSelectedModelId = item.value();
                 updateThinkingComboForModel(item.value());
-                tabNameUpdater.accept(item.name());
             }
+            tabNameUpdater.accept(buildTabLabel());
         });
         combo.addPopupMenuListener(new PopupMenuListener() {
             @Override
@@ -462,6 +463,34 @@ public class ConfigPanelController {
             }
         }
         return null;
+    }
+
+    /**
+     * Builds the tab label from current combo selections.
+     * Format: "model (agent/level)" or just "model" if agent/level unavailable.
+     */
+    private String buildTabLabel() {
+        String model = null;
+        String agent = null;
+        String level = null;
+
+        if (modelCombo.getSelectedItem() instanceof ConfigItem m) {
+            model = m.name();
+        }
+        if (modeCombo.getSelectedItem() instanceof ConfigItem a) {
+            agent = a.name();
+        }
+        if (thinkingCombo.getSelectedItem() instanceof ConfigItem t) {
+            level = t.name();
+        }
+
+        if (model == null) return null;
+        if (agent != null && level != null) {
+            return model + " (" + agent + "/" + level + ")";
+        } else if (agent != null) {
+            return model + " (" + agent + ")";
+        }
+        return model;
     }
 
     private void updateThinkingComboForModel(String baseId) {

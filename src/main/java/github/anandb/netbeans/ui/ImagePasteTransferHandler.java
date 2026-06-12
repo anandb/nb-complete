@@ -13,6 +13,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 import javax.imageio.ImageIO;
@@ -125,7 +126,24 @@ public class ImagePasteTransferHandler extends TransferHandler {
                 tc.replaceSelection(text != null ? text : "");
                 return true;
             } catch (UnsupportedFlavorException | IOException e) {
-                return false;
+                // text not available, continue
+            }
+        }
+
+        // Wayland fallback: AWT imageFlavor broken, read via wl-paste CLI
+        if (isWayland() && callback != null && callback.canAddAttachment()) {
+            if (!isWlPasteAvailable()) {
+                reportError(NbBundle.getMessage(ImagePasteTransferHandler.class, "ERR_WlPasteNotFound"));
+            } else {
+                try {
+                    AttachedFile attachedFile = fetchWaylandClipboardImage();
+                    if (attachedFile != null) {
+                        javax.swing.SwingUtilities.invokeLater(() -> callback.onAttachmentAdded(attachedFile));
+                        return true;
+                    }
+                } catch (Exception e) {
+                    reportError(NbBundle.getMessage(ImagePasteTransferHandler.class, "ERR_ReadClipboard", e.getMessage()));
+                }
             }
         }
         return false;
@@ -217,6 +235,64 @@ public class ImagePasteTransferHandler extends TransferHandler {
         return new AttachedFile(tempFile.toFile());
     }
 
+    private static boolean isWayland() {
+        String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
+        String sessionType = System.getenv("XDG_SESSION_TYPE");
+        return os.contains("linux") && "wayland".equals(sessionType);
+    }
+
+    private static boolean isWlPasteAvailable() {
+        try {
+            Process proc = new ProcessBuilder("which", "wl-paste")
+                    .redirectErrorStream(true).start();
+            int exit = proc.waitFor();
+            return exit == 0;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private void processWaylandClipboardImage() {
+        // Replaced by fetchWaylandClipboardImage — kept for future use if needed.
+    }
+
+    private AttachedFile fetchWaylandClipboardImage() throws Exception {
+        // Probe actual MIME types on clipboard
+        Process listProc = new ProcessBuilder("wl-paste", "--list-types")
+                .redirectErrorStream(true).start();
+        String types = new String(listProc.getInputStream().readAllBytes()).strip();
+        int listExit = listProc.waitFor();
+        if (listExit != 0 || types.isEmpty()) {
+            return null;
+        }
+
+        // Find first image/* type
+        String imageType = null;
+        for (String line : types.split("\n")) {
+            String t = line.strip();
+            if (t.startsWith("image/")) {
+                imageType = t;
+                break;
+            }
+        }
+        if (imageType == null) {
+            return null;
+        }
+
+        Process proc = new ProcessBuilder("wl-paste", "-t", imageType)
+                .redirectErrorStream(true).start();
+        byte[] data = proc.getInputStream().readAllBytes();
+        int exitCode = proc.waitFor();
+        if (exitCode != 0 || data.length == 0) {
+            return null;
+        }
+
+        Path tempFile = Path.of(System.getProperty("java.io.tmpdir"),
+                "paste_" + UUID.randomUUID().toString() + ".png");
+        Files.write(tempFile, data);
+        return new AttachedFile(tempFile.toFile());
+    }
+
     private AttachedFile createAttachedFileFromFile(File file) {
         try {
             if (file.length() > MAX_FILE_SIZE) {
@@ -231,7 +307,7 @@ public class ImagePasteTransferHandler extends TransferHandler {
             if (originalName.contains(".")) {
                 extension = originalName.substring(originalName.lastIndexOf('.'));
             }
-            
+
             String baseName = originalName;
             if (baseName.contains(".")) {
                 baseName = baseName.substring(0, baseName.lastIndexOf('.'));
