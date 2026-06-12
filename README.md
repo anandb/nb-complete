@@ -70,7 +70,7 @@ All source lives under `src/main/java/github/anandb/netbeans/`:
 | Package | Files | Role |
 | --- | --- | --- |
 | `contract/` | 11 | Service interfaces (UI callbacks, session & process control, permission & request handlers) |
-| `manager/` | 11 | Core orchestration, protocol clients, session management, process lifecycle |
+| `manager/` | 10 | Core orchestration, protocol clients, session management, process lifecycle |
 | `manager/strategy/` | 1 | Single dispatch class routing SSE updates by message type via a rule switch |
 | `mcp/` | 10 | MCP server integration (editor tools, tool definitions, message servlet) |
 | `model/` | 13 | ACP-compliant data models (session, messages, updates, config options) |
@@ -131,9 +131,8 @@ The plugin reads the following system properties and environment variables:
 | `user.home` | System property | — | `ACPCommandBuilderTest` | Default path to opencode binary |
 | `java.io.tmpdir` | System property | — | `ImagePasteTransferHandler` | Temp directory for pasted images |
 | `os.name` | System property | — | `BinaryResolver` | Detect Windows for binary resolution |
-| `beanbot.sessionPromptTimeout` | System property | `300` | `ProcessManager` | Prompt timeout (seconds) for session |
 | `netbeans.codingassistant.roundedPanels` | System property | `true` | `RoundedPanel` | Toggle rounded panel corners |
-| `netbeans.codingassistant.color.*` (31 color properties) | System property | varies | `ColorTheme` (via `colors.json`) | Override any UI color |
+| `netbeans.codingassistant.color.*` (33 color properties) | System property | varies | `ColorTheme` (via `colors.json`) | Override any UI color |
 | `nb.dark.theme` | UIManager property | — | `IconResourceManager` | Detect dark theme for icon resolution |
 | `ACP_WIRE_LOG` | Environment variable | — | `WireLogger` | Path for ACP wire protocol log file |
 | `OPENCODE_MODEL` | Environment variable | — | `ConfigPanelController` | Default model override in config |

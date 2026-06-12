@@ -26,6 +26,7 @@ new versions appear on the NetBeans plugin portal.
 
 1. **Prerequisites** — Install [OpenCode](https://opencode.ai/), then connect and configure your
    providers. This plugin acts as a client to an OpenCode process running as an agent server.
+   On Wayland, install the `wl-clipboard` package for image paste support.
 2. **Installation** — Download the `.nbm` file from
    [Maven Central](https://central.sonatype.com/artifact/io.github.anandb/beanbot/versions). In
    NetBeans, navigate to `Tools > Plugins > Downloaded` and add the file.
