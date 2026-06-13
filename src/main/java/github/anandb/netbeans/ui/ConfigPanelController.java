@@ -467,8 +467,8 @@ public class ConfigPanelController {
 
     /**
      * Builds the tab label from current combo selections.
-     * Format: "model (agent/level)" or just "model" if agent/level unavailable.
-     * The agent name is rendered in blue using HTML.
+     * Format: "model/level | agent" or just "model" if agent/level unavailable.
+     * The agent name is rendered in bold blue using HTML.
      */
     private String buildTabLabel() {
         String model = null;
@@ -486,12 +486,18 @@ public class ConfigPanelController {
         }
 
         if (model == null) return null;
-        if (agent != null && level != null) {
-            return "<html>" + model + " (<font color='#3A7FBF'>" + agent + "</font>/" + level + ")";
-        } else if (agent != null) {
-            return "<html>" + model + " (<font color='#3A7FBF'>" + agent + "</font>)";
+        String agentDisplay = agent != null ? capitalize(agent) : null;
+        if (agentDisplay != null && level != null) {
+            return "<html>" + model + "/" + level + " | <font color='#3A7FBF'><b>" + agentDisplay + "</b></font>";
+        } else if (agentDisplay != null) {
+            return "<html>" + model + " | <font color='#3A7FBF'><b>" + agentDisplay + "</b></font>";
         }
         return model;
+    }
+
+    private static String capitalize(String s) {
+        if (s == null || s.isEmpty()) return s;
+        return s.substring(0, 1).toUpperCase() + s.substring(1).toLowerCase();
     }
 
     private void updateThinkingComboForModel(String baseId) {
