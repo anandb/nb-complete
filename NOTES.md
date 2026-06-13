@@ -1,5 +1,10 @@
 # Release Notes
 
+## v1.6.1 (Changes since v1.6.0)
+
+### UI Fixes
+- **FitEditorPane layout loop fix**: Removed `revalidate()` scheduling in `setBounds()` that caused BoxLayout to repeatedly recompute heights, leading to high CPU usage. Also fixed `getPreferredSize()` to prefer the pane's own assigned width over parent width fallback, preventing width/height feedback loops.
+
 ## v1.6.0 (Changes since v1.5.26)
 
 ### Wayland Support
