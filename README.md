@@ -3,8 +3,9 @@
 [![Version](https://img.shields.io/badge/version-1.6.1-blue.svg)](pom.xml)
 [![Build Status](https://img.shields.io/badge/build-success-brightgreen.svg)](https://github.com/anandb/nb-complete)
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.anandb/beanbot)](https://central.sonatype.com/artifact/io.github.anandb/beanbot/versions)
-[![NetBeans](https://img.shields.io/badge/NetBeans-RELEASE290-orange.svg)](https://netbeans.apache.org/download/index.html)
+[![NetBeans](https://img.shields.io/badge/NetBeans-RELEASE290-blue.svg)](https://netbeans.apache.org/download/index.html)
 [![License: Unlicense](https://img.shields.io/badge/license-Unlicense-blue.svg)](http://unlicense.org/)
+[![Support this project](https://img.shields.io/badge/OpenCode-Referral-FF6C37?style=flat&logo=openai&logoColor=white)](https://opencode.ai/go?ref=DWTNHGN9KX)
 
 The Coding Assistant is a NetBeans IDE plugin designed to provide integrated AI capabilities through the Agent Client Protocol (ACP). It offers a structured chat interface for technical assistance, including code generation, project analysis, and automated task execution.
 
@@ -151,3 +152,9 @@ Development follows standard NetBeans Platform patterns. Contributors are expect
 ## License
 
 This software is released under the UNLICENSE. Further details can be found in the LICENSE file.
+
+## Support this Project
+
+Support this project by signing up for [OpenCode Go](https://opencode.ai/go?ref=DWTNHGN9KX) 🚀
+
+---

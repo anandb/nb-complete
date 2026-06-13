@@ -468,6 +468,7 @@ public class ConfigPanelController {
     /**
      * Builds the tab label from current combo selections.
      * Format: "model (agent/level)" or just "model" if agent/level unavailable.
+     * The agent name is rendered in blue using HTML.
      */
     private String buildTabLabel() {
         String model = null;
@@ -486,9 +487,9 @@ public class ConfigPanelController {
 
         if (model == null) return null;
         if (agent != null && level != null) {
-            return model + " (" + agent + "/" + level + ")";
+            return "<html>" + model + " (<font color='#3A7FBF'>" + agent + "</font>/" + level + ")";
         } else if (agent != null) {
-            return model + " (" + agent + ")";
+            return "<html>" + model + " (<font color='#3A7FBF'>" + agent + "</font>)";
         }
         return model;
     }
