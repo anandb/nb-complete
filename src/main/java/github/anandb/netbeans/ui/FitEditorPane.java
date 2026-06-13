@@ -28,7 +28,6 @@ public class FitEditorPane extends JTextPane {
     private int lastComputedWidth = 0;
     private String lastText = null;
     private Dimension cachedSize = null;
-    private volatile boolean revalidatePending = false;
 
     @Override
     public void setText(String t) {
@@ -67,8 +66,12 @@ public class FitEditorPane extends JTextPane {
     public Dimension getPreferredSize() {
         Insets insets = getInsets();
 
+        // Prefer the width the layout manager actually assigned to this pane.
+        // Falling back to the parent width only before this component has been
+        // sized avoids the empty-space bug and prevents a width/height feedback
+        // loop with BoxLayout.
         int w = getWidth();
-        if (w <= 0 || (getParent() != null && getParent().getWidth() > 0 && getParent().getWidth() != w)) {
+        if (w <= 0) {
             Component p = getParent();
             while (p != null) {
                 if (p.getWidth() > 0) {
@@ -140,7 +143,7 @@ public class FitEditorPane extends JTextPane {
             // Invalidate cached preferred size so that getPreferredSize()
             // recomputes the height for the new width. This ensures the HTML
             // view reflows when the component is resized by the layout manager.
-            lastComputedWidth = 0;
+            lastComputedWidth = width;
             cachedSize = null;
             // Force the HTML view to reformat at the new width.
             View root = getUI().getRootView(this);
@@ -149,18 +152,9 @@ public class FitEditorPane extends JTextPane {
                 int cw = Math.max(1, width - ins.left - ins.right);
                 root.setSize(cw, Integer.MAX_VALUE);
             }
-            // The preferred height depends on the width (HTML text reflow).
-            // After the layout manager assigns the real width, revalidate so
-            // ancestors re-layout with the corrected preferred size. This avoids
-            // the empty-space bug where the pane was sized for the fallback
-            // 500 px width and then left oversized when the sidebar is wider.
-            if (!revalidatePending) {
-                revalidatePending = true;
-                javax.swing.SwingUtilities.invokeLater(() -> {
-                    revalidatePending = false;
-                    revalidate();
-                });
-            }
+            // Do NOT revalidate here. getPreferredSize() now uses the pane's
+            // own assigned width, so the next layout pass already gets the
+            // correct height. Scheduling revalidate() caused a layout loop.
         }
     }
 
