@@ -15,6 +15,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 import github.anandb.netbeans.contract.UIHandler;
+import github.anandb.netbeans.contract.SessionControl;
 import github.anandb.netbeans.manager.ToolDataExtractor;
 import github.anandb.netbeans.model.Message;
 import github.anandb.netbeans.model.MessageType;
@@ -101,7 +102,29 @@ public class StrategyRegistry {
 
             case "agent_thought_chunk" -> {
                 String text = extractText(update.content());
-                handler.displayMessage(buildStreamingMessage(update, text));
+                String tTitle = null;
+                SessionControl sessionControl = Lookup.getDefault().lookup(SessionControl.class);
+                if (sessionControl != null) {
+                    String currentId = sessionControl.getCurrentSessionId();
+                    String sessionId = update.params() != null ? update.params().sessionId() : null;
+                    if (sessionId != null && !sessionId.equals(currentId) && sessionControl.isDescendantOfCurrent(sessionId)) {
+                        String subAgentTitle = sessionControl.getCustomTitle(sessionId, null);
+                        if (subAgentTitle != null && !subAgentTitle.isEmpty()) {
+                            tTitle = subAgentTitle + " - Thinking Process";
+                        } else {
+                            tTitle = "Sub-Agent - Thinking Process";
+                        }
+                    }
+                }
+                handler.displayMessage(new ProcessedMessage.Builder()
+                        .messageType(MessageType.valueOf(update.type()))
+                        .text(text)
+                        .messageId(update.messageId())
+                        .kind(update.kind())
+                        .toolTitle(tTitle)
+                        .rawText(text)
+                        .streaming(true)
+                        .build());
             }
 
             case "user_message_chunk" -> {
@@ -348,7 +371,21 @@ public class StrategyRegistry {
                     .append(firstNonNull(extractContentText(update.content()), ""))
                     .toString());
             m = ToolDataExtractor.classify(update.update().type(), text, kind, update.update().title());
-            tt = data.setTitle(ToolDataExtractor.extractToolTitle(defaultString(messageId), text, m, update));
+            String extractedTitle = ToolDataExtractor.extractToolTitle(defaultString(messageId), text, m, update);
+            SessionControl sessionControl = Lookup.getDefault().lookup(SessionControl.class);
+            if (sessionControl != null) {
+                String currentId = sessionControl.getCurrentSessionId();
+                String sessionId = update.params() != null ? update.params().sessionId() : null;
+                if (sessionId != null && !sessionId.equals(currentId) && sessionControl.isDescendantOfCurrent(sessionId)) {
+                    String subAgentTitle = sessionControl.getCustomTitle(sessionId, null);
+                    if (subAgentTitle != null && !subAgentTitle.isEmpty()) {
+                        extractedTitle = subAgentTitle + " - " + extractedTitle;
+                    } else {
+                        extractedTitle = "Sub-Agent - " + extractedTitle;
+                    }
+                }
+            }
+            tt = data.setTitle(extractedTitle);
             kind = data.setKind(kind);
         }
 

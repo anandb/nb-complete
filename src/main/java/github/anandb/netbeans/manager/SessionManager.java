@@ -78,6 +78,7 @@ public class SessionManager implements SessionQuery, SessionControl {
     private volatile String currentSessionId;
     private volatile String lastProjectDir;
     private final List<Session> cachedSessions = new CopyOnWriteArrayList<>();
+    private final Map<String, Session> sessionCacheMap = new java.util.concurrent.ConcurrentHashMap<>();
     private final Consumer<SessionUpdate> sseListener = this::handleSseUpdate;
 
     public SessionManager() {
@@ -111,14 +112,43 @@ public class SessionManager implements SessionQuery, SessionControl {
     }
 
     private void handleSseUpdate(SessionUpdate update) {
+        if (update.update() != null && update.update().sessions() != null) {
+            for (Session s : update.update().sessions()) {
+                if (s.id() != null) {
+                    sessionCacheMap.put(s.id(), s);
+                }
+            }
+        }
+
         String updateSessionId = update.params() != null ? update.params().sessionId() : null;
-        if (updateSessionId != null && updateSessionId.equals(currentSessionId)) {
+        if (updateSessionId != null && (updateSessionId.equals(currentSessionId) || isDescendantOfCurrent(updateSessionId))) {
             for (SessionListener l : listeners) {
                 l.onSessionUpdate(update);
             }
         } else {
             LOG.fine("Ignoring update for background session: {0}", updateSessionId);
         }
+    }
+
+    @Override
+    public boolean isDescendantOfCurrent(String sessionId) {
+        if (sessionId == null || currentSessionId == null) {
+            return false;
+        }
+        Session s = sessionCacheMap.get(sessionId);
+        int depth = 0;
+        while (s != null && depth < 20) {
+            String parentId = s.parentID();
+            if (parentId == null) {
+                break;
+            }
+            if (parentId.equals(currentSessionId)) {
+                return true;
+            }
+            s = sessionCacheMap.get(parentId);
+            depth++;
+        }
+        return false;
     }
 
     public static SessionManager getInstance() {
@@ -210,14 +240,16 @@ public class SessionManager implements SessionQuery, SessionControl {
                             List<Session> rawSessions = objectMapper.readValue(sessionsNode.traverse(), new TypeReference<List<Session>>() {});
                             List<Session> sessions = new ArrayList<>();
                             for (Session s : rawSessions) {
-                                if (s.effectiveDirectory() != null) {
-                                    sessions.add(s);
-                                    continue;
+                                Session resolved = s;
+                                if (s.effectiveDirectory() == null) {
+                                    resolved = new Session(s.id(), s.title(), directory, directory,
+                                                           s.parentID(), s.updatedAt(), s.mcpServers(),
+                                                           s.configOptions());
                                 }
-
-                                sessions.add(new Session(s.id(), s.title(), directory, directory,
-                                                         s.parentID(), s.updatedAt(), s.mcpServers(),
-                                                         s.configOptions()));
+                                sessions.add(resolved);
+                                if (resolved.id() != null) {
+                                    sessionCacheMap.put(resolved.id(), resolved);
+                                }
                             }
                             LOG.fine("getSessions: deserialized {0} sessions", sessions.size());
                             for (Session s : sessions) {
@@ -286,6 +318,9 @@ public class SessionManager implements SessionQuery, SessionControl {
                         Session s = objectMapper.treeToValue(res, Session.class);
                         if (s.effectiveDirectory() == null) {
                             s = new Session(s.id(), s.title(), finalCwd, finalCwd, s.parentID(), s.updatedAt(), s.mcpServers(), s.configOptions());
+                        }
+                        if (s.id() != null) {
+                            sessionCacheMap.put(s.id(), s);
                         }
                         return s;
                     } catch (Exception e) {
