@@ -1,0 +1,313 @@
+package github.anandb.netbeans.manager;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
+import java.util.logging.Level;
+
+import org.apache.commons.exec.CommandLine;
+import org.openide.util.NbPreferences;
+import org.openide.util.RequestProcessor;
+
+import com.fasterxml.jackson.databind.JsonNode;
+
+import github.anandb.netbeans.contract.RequestHandler;
+import github.anandb.netbeans.contract.ToolExecutor;
+import github.anandb.netbeans.model.MessageType;
+import github.anandb.netbeans.model.SessionUpdate;
+import github.anandb.netbeans.support.PreferenceKeys;
+import github.anandb.netbeans.support.Logger;
+
+/**
+ * Extracted server lifecycle methods from ProcessManager.
+ * Manages start, stop, restart, and protocol initialization of the ACP server process.
+ */
+class ServerProcessLifecycle {
+    private static final Logger LOG = Logger.from(ServerProcessLifecycle.class);
+
+    private final AtomicReference<AcpProtocolClient> rpcClient;
+    private final ToolExecutor toolExecutor;
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+    private final Runnable onReady;
+    private final Consumer<SessionUpdate> onNotify;
+    private final Runnable onDisconnection;
+    private final RequestHandler onReadTextFile;
+    private final RequestHandler onRequestPermission;
+
+    private volatile Process serverProcess;
+    private volatile CompletableFuture<Void> readyFuture = new CompletableFuture<>();
+    private volatile boolean isClosing = false;
+    private volatile boolean serverStarted = false;
+    private RequestProcessor reconnectRP;
+    private RequestProcessor.Task reconnectTask;
+
+    ServerProcessLifecycle(AtomicReference<AcpProtocolClient> rpcClient,
+                           ToolExecutor toolExecutor,
+                           com.fasterxml.jackson.databind.ObjectMapper objectMapper,
+                           Runnable onReady,
+                           Consumer<SessionUpdate> onNotify,
+                           Runnable onDisconnection,
+                           RequestHandler onReadTextFile,
+                           RequestHandler onRequestPermission) {
+        this.rpcClient = rpcClient;
+        this.toolExecutor = toolExecutor;
+        this.objectMapper = objectMapper;
+        this.onReady = onReady;
+        this.onNotify = onNotify;
+        this.onDisconnection = onDisconnection;
+        this.onReadTextFile = onReadTextFile;
+        this.onRequestPermission = onRequestPermission;
+    }
+
+    synchronized void ensureStarted() {
+        if (!serverStarted) {
+            serverStarted = true;
+            startServer();
+        }
+    }
+
+    synchronized void startServer() {
+        if (isClosing || (serverProcess != null && serverProcess.isAlive())) {
+            return;
+        }
+
+        // Cancel any pending reconnect task
+        if (reconnectTask != null) {
+            reconnectTask.cancel();
+            reconnectTask = null;
+        }
+        if (reconnectRP == null) {
+            reconnectRP = new RequestProcessor("ACP-Reconnect", 1, true);
+        }
+        isClosing = false;
+        readyFuture = new CompletableFuture<>();
+
+        // Ensure MCP server is running (idempotent - start() returns early if already running/disabled)
+        toolExecutor.start();
+
+        LOG.info("Starting ACP server...");
+        try {
+            String executable = BinaryResolver.resolveExecutablePath();
+            String args = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).get("processArguments", "acp");
+
+            CommandLine cmd = new CommandLine(executable);
+            cmd.addArguments(args, true);
+
+            LOG.info("Executing: {0}", cmd);
+
+            ProcessBuilder pb = new ProcessBuilder(Arrays.asList(cmd.toStrings()));
+            pb.redirectError(ProcessBuilder.Redirect.INHERIT);
+
+            Map<String, String> env = pb.environment();
+            for (Map.Entry<String, String> entry : System.getenv().entrySet()) {
+                env.putIfAbsent(entry.getKey(), entry.getValue());
+            }
+
+            this.serverProcess = pb.start();
+
+            AcpProtocolClient client = new AcpProtocolClient(serverProcess);
+            this.rpcClient.set(client);
+            client.start();
+            client.setDisconnectionHandler(onDisconnection);
+
+            // Register handlers
+            client.onRequest("fs/readTextFile", onReadTextFile);
+            client.onRequest("session/request_permission", onRequestPermission);
+
+            // Listen for session updates
+            client.onNotification("session/update", params -> {
+                // Extract raw type before parse (needed in catch block too)
+                String rawType = null;
+                try {
+                    LOG.fine("Received session/update notification: {0}", params);
+                    // Detect responding_finished/end_turn before Jackson drops them
+                    JsonNode updateNode = params != null ? params.get("sessionUpdate") : null;
+                    if (updateNode != null) {
+                        rawType = updateNode.isTextual() ? updateNode.asText()
+                            : (updateNode.has("type") ? updateNode.get("type").asText() : null);
+                    }
+
+                    // Construct synthetic SessionUpdate for textual turn-end signals
+                    // before Jackson treeToValue drops them (they lack the "update" wrapper object)
+                    if ("responding_finished".equals(rawType) || "end_turn".equals(rawType)) {
+                        LOG.info("SSE turn-end signal received via textual sessionUpdate: {0}", rawType);
+                        MessageType mt = MessageType.valueOf(rawType);
+                        String ssId = params != null && params.has("sessionId")
+                            ? params.get("sessionId").asText() : null;
+                        SessionUpdate.UpdateData syntheticUpdate = new SessionUpdate.UpdateData(
+                            mt, null, null, null, null, null, null, null, null, null,
+                            null, null, null, null, null, null, null, null);
+                        SessionUpdate.Params p = new SessionUpdate.Params(ssId, syntheticUpdate);
+                        onNotify.accept(new SessionUpdate("2.0", "session/update", p));
+                        return;
+                    }
+
+                    SessionUpdate.Params sessionParams = objectMapper.treeToValue(params, SessionUpdate.Params.class);
+                    SessionUpdate update = new SessionUpdate("2.0", "session/update", sessionParams);
+
+                    onNotify.accept(update);
+                } catch (Exception e) {
+                    LOG.log(rawType != null ? Level.INFO : Level.FINE,
+                        "Failed to parse session/update notification: " + e.getMessage(), e);
+                }
+            });
+
+            // Initialize ACP
+            initializeProtocol();
+
+            LOG.fine("ACP server process started successfully");
+        } catch (Exception e) {
+            LOG.severe("CRITICAL: Failed to start ACP server", e);
+            readyFuture.completeExceptionally(e);
+
+            // Clean up partially-started process and client to avoid resource leaks.
+            AcpProtocolClient client = rpcClient.getAndSet(null);
+            if (client != null) {
+                client.close();
+            }
+            if (serverProcess != null && serverProcess.isAlive()) {
+                serverProcess.destroyForcibly();
+                serverProcess = null;
+            }
+        }
+    }
+
+    private void initializeProtocol() {
+        Map<String, Object> params = Map.of(
+                "protocolVersion", 1,
+                "clientCapabilities", Map.of(
+                        "fs", Map.of("readTextFile", true),
+                        "terminal", true
+                )
+        );
+        rpcClient.get().sendRequest("initialize", params)
+                .orTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+                .thenAccept(res -> {
+                    if (res != null) {
+                        toolExecutor.checkServerSupport(res);
+                    }
+                    readyFuture.complete(null);
+                    LOG.fine("ACP initialized successfully");
+                    if (onReady != null) {
+                        try {
+                            onReady.run();
+                        } catch (Exception ex) {
+                            LOG.warn("Ready handler failed", ex);
+                        }
+                    }
+                })
+                .exceptionally(ex -> {
+                    LOG.severe("Failed to initialize ACP", ex);
+                    readyFuture.completeExceptionally(ex);
+                    synchronized (ServerProcessLifecycle.this) {
+                        serverStarted = false;
+                    }
+                    stopServer();
+                    return null;
+                });
+    }
+
+    synchronized void restartServer() {
+        LOG.fine("Manual restart of ACP server requested...");
+        stopServer();
+        // Reset all state so startServer() proceeds cleanly
+        isClosing = false;
+        serverStarted = true;
+        startServer();
+    }
+
+    synchronized void stopServer() {
+        isClosing = true;
+
+        // Cancel any pending reconnect task
+        if (reconnectTask != null) {
+            reconnectTask.cancel();
+            reconnectTask = null;
+        }
+        if (reconnectRP != null) {
+            reconnectRP.stop();
+            reconnectRP = null;
+        }
+
+        toolExecutor.stop();
+
+        AcpProtocolClient client = rpcClient.getAndSet(null);
+        if (client != null) {
+            client.close();
+        }
+
+        if (serverProcess != null && serverProcess.isAlive()) {
+            LOG.fine("Stopping ACP server (PID: {0})...", serverProcess.pid());
+
+            // Capture descendants before the parent process potentially disappears
+            List<ProcessHandle> descendants = serverProcess.descendants().toList();
+
+            // 1. Try graceful exit via closed stdin (already triggered by rpcClient.close())
+            try {
+                if (serverProcess.waitFor(2, java.util.concurrent.TimeUnit.SECONDS)) {
+                    LOG.info("ACP server exited gracefully.");
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+
+            // 2. If still alive, or if there are orphaned descendants, send SIGTERM
+            if (serverProcess != null && serverProcess.isAlive()) {
+                LOG.warn("Terminating process tree (parent + {0} descendants)...", descendants.size());
+
+                for (ProcessHandle h : descendants) {
+                    if (h.isAlive()) {
+                        LOG.info("Sending SIGTERM to descendant PID: {0}", h.pid());
+                        h.destroy();
+                    }
+                }
+                if (serverProcess.isAlive()) {
+                    serverProcess.destroy();
+                }
+
+                try {
+                    serverProcess.waitFor(3, java.util.concurrent.TimeUnit.SECONDS);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+
+            if (serverProcess.isAlive() || descendants.stream().anyMatch(ProcessHandle::isAlive)) {
+                LOG.warn("Some processes still alive, forcing SIGKILL...");
+                descendants.forEach(h -> {
+                    if (h.isAlive()) {
+                        LOG.warn("Killing descendant PID: {0}", h.pid());
+                        h.destroyForcibly();
+                    }
+                });
+                if (serverProcess.isAlive()) {
+                    serverProcess.destroyForcibly();
+                }
+            }
+
+            LOG.info("ACP server shutdown complete.");
+        }
+
+        serverProcess = null;
+    }
+
+    // Getters for fields ProcessManager still needs
+    Process serverProcess() { return serverProcess; }
+
+    boolean isClosing() { return isClosing; }
+
+    boolean serverStarted() { return serverStarted; }
+
+    CompletableFuture<Void> readyFuture() { return readyFuture; }
+
+    RequestProcessor reconnectRP() { return reconnectRP; }
+
+    RequestProcessor.Task reconnectTask() { return reconnectTask; }
+
+    void setReconnectRP(RequestProcessor rp) { this.reconnectRP = rp; }
+
+    void setReconnectTask(RequestProcessor.Task t) { this.reconnectTask = t; }
+}

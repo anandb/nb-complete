@@ -86,8 +86,8 @@ public final class ToolThoughtCombiner {
 
         // Filter segments by current type visibility so the combined pane
         // only contains what the user wants to see.
-        boolean toolHidden = ChatThreadPanel.MessageFilterManager.isTypeHidden("tool");
-        boolean thoughtHidden = ChatThreadPanel.MessageFilterManager.isTypeHidden("thought");
+        boolean toolHidden = MessageFilterManager.isTypeHidden("tool");
+        boolean thoughtHidden = MessageFilterManager.isTypeHidden("thought");
         List<CollapsibleToolPane.ToolSegment> visibleSegments = new ArrayList<>();
         for (CollapsibleToolPane.ToolSegment seg : allSegments) {
             if ((seg.isThought() && !thoughtHidden) || (!seg.isThought() && !toolHidden)) {

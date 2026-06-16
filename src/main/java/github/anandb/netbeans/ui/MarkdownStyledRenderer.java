@@ -20,7 +20,7 @@ import javax.swing.text.StyledDocument;
  */
 public final class MarkdownStyledRenderer {
 
-    /** Max characters per table cell. Longer content truncated with '…'. */
+    /** Max characters per table cell. Longer content truncated with '\u2026'. */
     private static final int MAX_CELL_WIDTH = 55;
 
     private MarkdownStyledRenderer() {
@@ -48,12 +48,7 @@ public final class MarkdownStyledRenderer {
         Color fg = theme.foreground();
         Color codeFg = theme.isDark() ? Color.WHITE : Color.BLACK;
 
-        SimpleAttributeSet base = new SimpleAttributeSet();
-        StyleConstants.setFontFamily(base, baseFont.getFamily());
-        StyleConstants.setFontSize(base, baseFont.getSize() - 1);
-        StyleConstants.setForeground(base, fg);
-        StyleConstants.setSpaceAbove(base, 4);
-        StyleConstants.setSpaceBelow(base, 4);
+        SimpleAttributeSet base = StyleResolver.baseStyle(baseFont, fg);
         doc.setParagraphAttributes(0, doc.getLength(), base, true);
 
         String[] lines = markdown.split("\n");
@@ -67,13 +62,7 @@ public final class MarkdownStyledRenderer {
 
                 if (line.startsWith("```")) {
                     if (inCodeBlock) {
-                        // End of code block
-                        SimpleAttributeSet codeAttr = new SimpleAttributeSet();
-                        StyleConstants.setFontFamily(codeAttr, "monospace");
-                        StyleConstants.setFontSize(codeAttr, baseFont.getSize());
-                        StyleConstants.setForeground(codeAttr, codeFg);
-                        StyleConstants.setSpaceAbove(codeAttr, 8);
-                        StyleConstants.setSpaceBelow(codeAttr, 8);
+                        SimpleAttributeSet codeAttr = StyleResolver.codeBlockStyle(baseFont, codeFg);
                         String code = codeBuffer.toString();
                         if (code.endsWith("\n")) {
                             code = code.substring(0, code.length() - 1);
@@ -97,7 +86,6 @@ public final class MarkdownStyledRenderer {
                     tableBuffer.add(line);
                     continue;
                 } else if (!tableBuffer.isEmpty()) {
-                    // End of table — flush it
                     insertTable(doc, tableBuffer, base, codeFg);
                     tableBuffer.clear();
                 }
@@ -111,19 +99,7 @@ public final class MarkdownStyledRenderer {
                 }
                 if (headerLevel > 0 && (tempLine.isEmpty() || tempLine.startsWith(" "))) {
                     line = tempLine.trim();
-                    SimpleAttributeSet hAttr = new SimpleAttributeSet(base);
-                    StyleConstants.setBold(hAttr, true);
-                    int size = baseFont.getSize() + 1;
-                    if (headerLevel == 1) {
-                        size += 6;
-                    } else if (headerLevel == 2) {
-                        size += 4;
-                    } else if (headerLevel == 3) {
-                        size += 2;
-                    }
-                    StyleConstants.setFontSize(hAttr, size);
-                    StyleConstants.setSpaceAbove(hAttr, 8);
-                    StyleConstants.setSpaceBelow(hAttr, 4);
+                    SimpleAttributeSet hAttr = StyleResolver.headerStyle(base, baseFont, headerLevel);
                     doc.insertString(doc.getLength(), line + "\n", hAttr);
                     continue;
                 }
@@ -138,9 +114,7 @@ public final class MarkdownStyledRenderer {
                     if (line.startsWith(" ")) {
                         line = line.substring(1);
                     }
-                    currentBase = new SimpleAttributeSet(base);
-                    StyleConstants.setItalic(currentBase, true);
-                    StyleConstants.setLeftIndent(currentBase, 16f);
+                    currentBase = StyleResolver.blockquoteStyle(base);
                 }
 
                 int startOffset = doc.getLength();
@@ -149,114 +123,31 @@ public final class MarkdownStyledRenderer {
                 line = line + "\n";
                 int idx = 0;
                 while (idx < line.length()) {
-                    // Bold **text**
-                    int boldStart = line.indexOf("**", idx);
-                    while (boldStart != -1 && isEscaped(line, boldStart)) {
-                        boldStart = line.indexOf("**", boldStart + 2);
-                    }
-                    // Italic *text*
-                    int italicStart = line.indexOf("*", idx);
-                    while (italicStart != -1 && isEscaped(line, italicStart)) {
-                        italicStart = line.indexOf("*", italicStart + 1);
-                    }
-                    // Strikethrough ~~text~~
-                    int strikeStart = line.indexOf("~~", idx);
-                    while (strikeStart != -1 && isEscaped(line, strikeStart)) {
-                        strikeStart = line.indexOf("~~", strikeStart + 2);
-                    }
-                    // Code `text`
-                    int codeStart = line.indexOf("`", idx);
-                    while (codeStart != -1 && isEscaped(line, codeStart)) {
-                        codeStart = line.indexOf("`", codeStart + 1);
-                    }
+                    MarkdownTokenizer.FormatMatch match = MarkdownTokenizer.nextFormatMarker(line, idx);
 
-                    int nextSpecial = Integer.MAX_VALUE;
-                    String specialType = null;
-                    if (boldStart != -1 && boldStart < nextSpecial) {
-                        nextSpecial = boldStart;
-                        specialType = "BOLD";
-                    }
-                    if (italicStart != -1 && italicStart < nextSpecial && italicStart != boldStart) {
-                        nextSpecial = italicStart;
-                        specialType = "ITALIC";
-                    }
-                    if (strikeStart != -1 && strikeStart < nextSpecial) {
-                        nextSpecial = strikeStart;
-                        specialType = "STRIKE";
-                    }
-                    if (codeStart != -1 && codeStart < nextSpecial) {
-                        nextSpecial = codeStart;
-                        specialType = "CODE";
-                    }
-
-                    if (specialType == null) {
-                        // No more formatting — insert rest as plain text
+                    if (match == null) {
                         if (idx < line.length()) {
-                            doc.insertString(doc.getLength(), unescape(line.substring(idx)), currentBase);
+                            doc.insertString(doc.getLength(), MarkdownTokenizer.unescape(line.substring(idx)), currentBase);
                         }
                         break;
                     }
 
-                    // Insert plain text before the special marker
-                    if (nextSpecial > idx) {
-                        doc.insertString(doc.getLength(), unescape(line.substring(idx, nextSpecial)), currentBase);
+                    // Insert plain text before the marker
+                    if (match.position() > idx) {
+                        doc.insertString(doc.getLength(), MarkdownTokenizer.unescape(line.substring(idx, match.position())), currentBase);
                     }
 
-                    // Find the closing marker
-                    int end = -1;
-                    if ("BOLD".equals(specialType)) {
-                        end = line.indexOf("**", nextSpecial + 2);
-                        while (end != -1 && isEscaped(line, end)) {
-                            end = line.indexOf("**", end + 2);
-                        }
-                        if (end != -1) {
-                            SimpleAttributeSet b = new SimpleAttributeSet(currentBase);
-                            StyleConstants.setBold(b, true);
-                            doc.insertString(doc.getLength(), unescape(line.substring(nextSpecial + 2, end)), b);
-                            idx = end + 2;
-                        }
-                    } else if ("ITALIC".equals(specialType)) {
-                        end = line.indexOf("*", nextSpecial + 1);
-                        while (end != -1 && isEscaped(line, end)) {
-                            end = line.indexOf("*", end + 1);
-                        }
-                        if (end != -1) {
-                            SimpleAttributeSet italicAttr = new SimpleAttributeSet(currentBase);
-                            StyleConstants.setItalic(italicAttr, true);
-                            doc.insertString(doc.getLength(), unescape(line.substring(nextSpecial + 1, end)), italicAttr);
-                            idx = end + 1;
-                        }
-                    } else if ("STRIKE".equals(specialType)) {
-                        end = line.indexOf("~~", nextSpecial + 2);
-                        while (end != -1 && isEscaped(line, end)) {
-                            end = line.indexOf("~~", end + 2);
-                        }
-                        if (end != -1) {
-                            SimpleAttributeSet sAttr = new SimpleAttributeSet(currentBase);
-                            StyleConstants.setStrikeThrough(sAttr, true);
-                            doc.insertString(doc.getLength(), unescape(line.substring(nextSpecial + 2, end)), sAttr);
-                            idx = end + 2;
-                        }
-                    } else if ("CODE".equals(specialType)) {
-                        end = line.indexOf("`", nextSpecial + 1);
-                        while (end != -1 && isEscaped(line, end)) {
-                            end = line.indexOf("`", end + 1);
-                        }
-                        if (end != -1) {
-                            SimpleAttributeSet c = new SimpleAttributeSet(currentBase);
-                            StyleConstants.setFontFamily(c, "monospace");
-                            StyleConstants.setFontSize(c, baseFont.getSize());
-                            StyleConstants.setForeground(c, codeFg);
-                            doc.insertString(doc.getLength(), unescape(line.substring(nextSpecial + 1, end)), c);
-                            idx = end + 1;
-                        }
-                    }
+                    int end = MarkdownTokenizer.findClosingMarker(line, match.type(), match.position());
+                    int markerLen = MarkdownTokenizer.markerLength(match.type());
 
-                    if (end == -1) {
-                        // No closing marker found — insert the marker as plain text
-                        int markerLen = "BOLD".equals(specialType) || "STRIKE".equals(specialType) ? 2 : 1;
-                        doc.insertString(doc.getLength(), line.substring(nextSpecial, nextSpecial + markerLen), currentBase);
-                        idx = nextSpecial + markerLen;
+                    if (end != -1) {
+                        String content = MarkdownTokenizer.unescape(line.substring(match.position() + markerLen, end));
+                        SimpleAttributeSet fmtAttr = resolveStyle(match.type(), currentBase, baseFont, codeFg);
+                        doc.insertString(doc.getLength(), content, fmtAttr);
+                        idx = end + markerLen;
+                    } else {
+                        doc.insertString(doc.getLength(), line.substring(match.position(), match.position() + markerLen), currentBase);
+                        idx = match.position() + markerLen;
                     }
                 }
 
@@ -270,25 +161,29 @@ public final class MarkdownStyledRenderer {
                 insertTable(doc, tableBuffer, base, codeFg);
             }
         } catch (BadLocationException e) {
-            // Should never happen with valid indices
             throw new RuntimeException(e);
         }
 
         return pane;
     }
 
-    /**
-     * Formats a markdown table as monospaced text with column alignment and
-     * inserts it into the document.  The separator row (e.g. |---|---|) is
-     * skipped; headers are bolded.
-     */
+    private static SimpleAttributeSet resolveStyle(String type, SimpleAttributeSet base,
+                                                    Font baseFont, Color codeFg) {
+        return switch (type) {
+            case "BOLD" -> StyleResolver.boldStyle(base);
+            case "ITALIC" -> StyleResolver.italicStyle(base);
+            case "STRIKE" -> StyleResolver.strikethroughStyle(base);
+            case "CODE" -> StyleResolver.inlineCodeStyle(base, baseFont, codeFg);
+            default -> base;
+        };
+    }
+
     private static void insertTable(StyledDocument doc, List<String> tableBuffer,
                                      SimpleAttributeSet base, Color codeFg) throws BadLocationException {
         if (tableBuffer.isEmpty()) {
             return;
         }
 
-        // Determine max column widths
         List<List<String>> rows = new ArrayList<>();
         int maxCols = 0;
         for (String line : tableBuffer) {
@@ -296,12 +191,11 @@ public final class MarkdownStyledRenderer {
             List<String> row = new ArrayList<>();
             for (int i = 0; i < cells.length; i++) {
                 if (i == 0 || i == cells.length - 1) {
-                    // Skip leading/trailing empty cells caused by outer pipes
                     if (cells[i].trim().isEmpty()) {
                         continue;
                     }
                 }
-                row.add(unescape(cells[i].trim()));
+                row.add(MarkdownTokenizer.unescape(cells[i].trim()));
             }
             if (!row.isEmpty()) {
                 rows.add(row);
@@ -313,39 +207,29 @@ public final class MarkdownStyledRenderer {
             return;
         }
 
-        // Check if second row is a separator (contains only dashes and colons)
         boolean hasHeader = false;
         if (rows.size() >= 2 && isSeparatorRow(rows.get(1))) {
             hasHeader = true;
         }
 
-        // Calculate column widths
         int[] widths = new int[maxCols];
         for (List<String> row : rows) {
             for (int i = 0; i < row.size(); i++) {
                 widths[i] = Math.max(widths[i], row.get(i).length());
             }
         }
-        // Ensure minimum width for readability
         for (int i = 0; i < widths.length; i++) {
             widths[i] = Math.max(widths[i], 3);
         }
-        // Cap max width to prevent overflow — long cells truncated later
         for (int i = 0; i < widths.length; i++) {
             widths[i] = Math.min(widths[i], MAX_CELL_WIDTH);
         }
 
-        // Insert as monospaced block
-        SimpleAttributeSet tableAttr = new SimpleAttributeSet();
-        StyleConstants.setFontFamily(tableAttr, "monospace");
-        StyleConstants.setFontSize(tableAttr, StyleConstants.getFontSize(base) - 1);
-        StyleConstants.setForeground(tableAttr, codeFg);
-        StyleConstants.setSpaceAbove(tableAttr, 4);
-        StyleConstants.setSpaceBelow(tableAttr, 4);
+        SimpleAttributeSet tableAttr = StyleResolver.tableStyle(base, codeFg);
 
         for (int r = 0; r < rows.size(); r++) {
             if (hasHeader && r == 1) {
-                continue; // Skip separator row
+                continue;
             }
             List<String> row = rows.get(r);
             StringBuilder rowSb = new StringBuilder();
@@ -355,12 +239,11 @@ public final class MarkdownStyledRenderer {
                     cell = cell.substring(0, Math.max(1, widths[i] - 1)) + "\u2026";
                 }
                 rowSb.append(cell);
-                // Pad to column width
                 for (int j = cell.length(); j < widths[i]; j++) {
                     rowSb.append(' ');
                 }
                 if (i < row.size() - 1) {
-                    rowSb.append("  "); // 2-space gap between columns
+                    rowSb.append("  ");
                 }
             }
             rowSb.append("\n");
@@ -381,35 +264,5 @@ public final class MarkdownStyledRenderer {
             }
         }
         return true;
-    }
-
-    private static boolean isEscaped(String s, int index) {
-        int count = 0;
-        int i = index - 1;
-        while (i >= 0 && s.charAt(i) == '\\') {
-            count++;
-            i--;
-        }
-        return count % 2 != 0;
-    }
-
-    private static String unescape(String s) {
-        if (s == null || !s.contains("\\")) {
-            return s;
-        }
-        StringBuilder sb = new StringBuilder(s.length());
-        for (int i = 0; i < s.length(); i++) {
-            char c = s.charAt(i);
-            if (c == '\\' && i + 1 < s.length()) {
-                char next = s.charAt(i + 1);
-                if (next == '\\' || next == '*' || next == '`' || next == '~' || next == '|') {
-                    sb.append(next);
-                    i++; // skip next character
-                    continue;
-                }
-            }
-            sb.append(c);
-        }
-        return sb.toString();
     }
 }

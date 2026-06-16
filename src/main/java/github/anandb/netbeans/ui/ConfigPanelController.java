@@ -1,7 +1,5 @@
 package github.anandb.netbeans.ui;
 
-import static org.apache.commons.lang3.StringUtils.split;
-
 import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.Toolkit;
@@ -11,9 +9,6 @@ import java.awt.Insets;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -48,10 +43,8 @@ public class ConfigPanelController {
     private volatile Runnable onModeSelectedCallback;
     private volatile Runnable onThinkingSelectedCallback;
     private boolean isUpdatingConfigControls = false;
-    private static String lastSelectedModelId;
 
-    private final LinkedHashMap<String, List<ConfigItem>> modelVariants = new LinkedHashMap<>();
-    private String currentConfigModelId = null;
+    private final ModelVariantResolver modelResolver = new ModelVariantResolver();
 
     private final Consumer<String> tabNameUpdater;
 
@@ -181,9 +174,9 @@ public class ConfigPanelController {
 
     public void ensureDefaultModelAdded() {
         String envModel = System.getenv("OPENCODE_MODEL");
-        if (lastSelectedModelId == null && envModel != null && !envModel.isEmpty() && modelCombo.getItemCount() == 0) {
+        if (modelResolver.getLastSelectedModelId() == null && envModel != null && !envModel.isEmpty() && modelCombo.getItemCount() == 0) {
             modelCombo.addItem(new ConfigItem(envModel, envModel));
-            lastSelectedModelId = envModel;
+            modelResolver.setLastSelectedModelId(envModel);
         }
     }
 
@@ -196,12 +189,14 @@ public class ConfigPanelController {
                     if (combo == null) continue;
 
                     if ("model".equals(opt.category())) {
-                        parseModelVariants(opt);
+                        modelResolver.parseModelVariants(opt);
                     }
 
                     combo.removeAllItems();
 
-                    String valueToSelect = resolveStartupValue(opt, isThinkingCategory(opt.category()), opt.currentValue(), forceStartupDefaults);
+                    String valueToSelect = modelResolver.resolveStartupValue(
+                            opt, isThinkingCategory(opt.category()),
+                            opt.currentValue(), forceStartupDefaults);
                     ConfigItem selected = populateComboBox(combo, opt.category(), opt.options(), valueToSelect);
 
                     if (combo.getActionListeners().length == 0) {
@@ -240,97 +235,10 @@ public class ConfigPanelController {
         return category != null && (category.contains("thinking") || category.contains("thought"));
     }
 
-    private void parseModelVariants(SessionConfigOption opt) {
-        this.currentConfigModelId = opt.currentValue();
-        modelVariants.clear();
-        for (SessionConfigSelectOption o : opt.options()) {
-            String value = o.value();
-            String name = o.name();
-            String[] segments = split(value, '/');
-            String baseId;
-            String variantName;
-            if (segments.length >= 3) {
-                baseId = String.join("/", Arrays.copyOfRange(segments, 0, segments.length - 1));
-                variantName = segments[segments.length - 1];
-            } else {
-                baseId = value;
-                variantName = "default";
-            }
-            String displayName = name;
-            int parenIdx = displayName.lastIndexOf("(");
-            if (parenIdx > 0 && displayName.endsWith(")")) {
-                displayName = displayName.substring(0, parenIdx).trim();
-            }
-            modelVariants.computeIfAbsent(baseId, k -> new ArrayList<>())
-                        .add(new ConfigItem(variantName, value, displayName));
-        }
-    }
-
-    private String resolveStartupValue(SessionConfigOption opt, boolean isThinking, String currentValue, boolean force) {
-        if (!force) return currentValue;
-        String currentId = Lookup.getDefault().lookup(SessionControl.class).getCurrentSessionId();
-
-        if ("mode".equals(opt.category())) {
-            if (opt.options().stream().anyMatch(o -> "build".equalsIgnoreCase(o.value()))) {
-                return sendAndReturn(opt, "build", currentId);
-            }
-            if (opt.options().stream().anyMatch(o -> "plan".equalsIgnoreCase(o.value()))) {
-                return sendAndReturn(opt, "plan", currentId);
-            }
-        }
-
-        if (isThinking) {
-            if (opt.options().stream().anyMatch(o -> "default".equalsIgnoreCase(o.value()))) {
-                return sendAndReturn(opt, "default", currentId);
-            }
-        }
-
-        if ("model".equals(opt.category())) {
-            String envModel = System.getenv("OPENCODE_MODEL");
-            if (envModel != null && !envModel.isEmpty() && currentId != null) {
-                String match = findModelMatch(opt, envModel);
-                if (match != null) {
-                    LOG.fine("Using OPENCODE_MODEL: {0}", new Object[]{match});
-                    Lookup.getDefault().lookup(SessionControl.class).setSessionConfigOption(currentId, opt.id(), match);
-                    return match;
-                }
-            }
-            if (lastSelectedModelId != null && !lastSelectedModelId.equalsIgnoreCase(currentValue)) {
-                Lookup.getDefault().lookup(SessionControl.class).setSessionConfigOption(currentId, opt.id(), lastSelectedModelId);
-                return lastSelectedModelId;
-            }
-        }
-
-        return currentValue;
-    }
-
-    private String sendAndReturn(SessionConfigOption opt, String forcedValue, String currentId) {
-        if (!forcedValue.equalsIgnoreCase(opt.currentValue()) && currentId != null) {
-            LOG.fine("Forcing default: {0}={1} (was {2})", new Object[]{opt.id(), forcedValue, opt.currentValue()});
-            Lookup.getDefault().lookup(SessionControl.class).setSessionConfigOption(currentId, opt.id(), forcedValue);
-            return forcedValue;
-        }
-        return opt.currentValue();
-    }
-
-    private String findModelMatch(SessionConfigOption opt, String envModel) {
-        for (SessionConfigSelectOption o : opt.options()) {
-            if (o.value().equalsIgnoreCase(envModel)) {
-                return o.value();
-            }
-        }
-        for (Map.Entry<String, List<ConfigItem>> entry : modelVariants.entrySet()) {
-            if (entry.getKey().equalsIgnoreCase(envModel)) {
-                return entry.getValue().get(0).value();
-            }
-        }
-        return null;
-    }
-
     private ConfigItem populateComboBox(JComboBox<ConfigItem> combo, String category, List<SessionConfigSelectOption> options, String valueToSelect) {
         ConfigItem selected = null;
         if ("model".equals(category)) {
-            for (Map.Entry<String, List<ConfigItem>> entry : modelVariants.entrySet()) {
+            for (Map.Entry<String, List<ConfigItem>> entry : modelResolver.getModelVariants().entrySet()) {
                 List<ConfigItem> variants = entry.getValue();
                 ConfigItem baseItem = variants.get(0);
                 ConfigItem item = new ConfigItem(baseItem.baseName(), entry.getKey());
@@ -394,7 +302,7 @@ public class ConfigPanelController {
 
             // UI side effects only (no API calls while popup is visible)
             if (combo == modelCombo) {
-                lastSelectedModelId = item.value();
+                modelResolver.setLastSelectedModelId(item.value());
                 updateThinkingComboForModel(item.value());
             }
             tabNameUpdater.accept(buildTabLabel());
@@ -412,7 +320,7 @@ public class ConfigPanelController {
                 ConfigItem selected = resolveComboSelection(combo, combo.getSelectedItem());
                 if (selected != null && Lookup.getDefault().lookup(SessionControl.class).getCurrentSessionId() != null) {
                     String currentId = Lookup.getDefault().lookup(SessionControl.class).getCurrentSessionId();
-                    String prevModelId = combo == modelCombo ? lastSelectedModelId : null;
+                    String prevModelId = combo == modelCombo ? modelResolver.getLastSelectedModelId() : null;
                     LOG.fine("Config update: {0}={1} for session {2}", new Object[]{configId, selected.value(), currentId});
                     Lookup.getDefault().lookup(SessionControl.class).setSessionConfigOption(currentId, configId, selected.value())
                         .exceptionally(ex -> {
@@ -421,7 +329,7 @@ public class ConfigPanelController {
                                 SwingUtilities.invokeLater(() -> {
                                     isUpdatingConfigControls = true;
                                     try {
-                                        lastSelectedModelId = prevModelId;
+                                        modelResolver.setLastSelectedModelId(prevModelId);
                                         combo.setSelectedItem(prePopupSelection[0]);
                                     } finally {
                                         isUpdatingConfigControls = false;
@@ -505,12 +413,12 @@ public class ConfigPanelController {
         isUpdatingConfigControls = true;
         try {
             thinkingCombo.removeAllItems();
-            List<ConfigItem> variants = modelVariants.get(baseId);
+            List<ConfigItem> variants = modelResolver.getModelVariants().get(baseId);
             if (variants != null && !variants.isEmpty()) {
                 ConfigItem selectedVariant = null;
                 for (ConfigItem v : variants) {
                     thinkingCombo.addItem(v);
-                    if (v.value().equalsIgnoreCase(currentConfigModelId)) {
+                    if (v.value().equalsIgnoreCase(modelResolver.getCurrentConfigModelId())) {
                         selectedVariant = v;
                     }
                 }

@@ -1,9 +1,7 @@
 package github.anandb.netbeans.ui;
 
 import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.Component;
-import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Insets;
@@ -14,8 +12,6 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
@@ -26,8 +22,6 @@ import javax.swing.JPanel;
 import javax.swing.Scrollable;
 import javax.swing.JTextArea;
 import javax.swing.Timer;
-import javax.swing.JMenuItem;
-import javax.swing.JPopupMenu;
 
 import java.awt.event.HierarchyEvent;
 import java.awt.event.HierarchyListener;
@@ -39,16 +33,9 @@ import javax.swing.border.EmptyBorder;
 
 import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.support.Logger;
-import github.anandb.netbeans.support.TimingConstants;
 import org.openide.util.NbBundle;
 
 import static org.apache.commons.lang3.StringUtils.length;
-
-
-import github.anandb.netbeans.ui.TableDetector.Segment;
-import github.anandb.netbeans.ui.TableDetector.TableResult;
-import github.anandb.netbeans.ui.TableDetector.TextSegment;
-import github.anandb.netbeans.ui.TableDetector.TableSegment;
 
 
 public class MessageBubble extends JPanel implements Scrollable {
@@ -59,13 +46,6 @@ public class MessageBubble extends JPanel implements Scrollable {
     /** Determines where the user avatar is positioned relative to the message bubble. */
     enum AvatarPosition { LEFT, RIGHT, NONE }
 
-    // Static cached Pattern for code block parsing - compiled once
-    private static final Pattern CODE_BLOCK_PATTERN = Pattern.compile(
-        "```([\\w\\-\\+\\#\\.]*)\\R?(.*?)(?:```(?=\\R|$)|$)", Pattern.DOTALL
-    );
-
-    private static final Color TRANSPARENT = new Color(0, 0, 0, 0);
-
     private final MessageType type;
     private final String role;
     private final String messageId;
@@ -73,59 +53,12 @@ public class MessageBubble extends JPanel implements Scrollable {
     private String toolTitle;
     private final JPanel segments;
     private JPanel bubble;
-    private final ArrayList<CollapsibleState> codeStates = new ArrayList<>();
+    private final BubbleThemeApplier themeApplier;
+    private final ArrayList<BubbleContentRenderer.CollapsibleState> codeStates = new ArrayList<>();
     private transient HierarchyListener hierarchyListener;
-    private long responseTimeMs = -1L;
-    /** Tracks how much of the text has already been displayed (for incremental streaming updates). */
-    private int lastDisplayedLength = 0;
-    private boolean isStreaming = false;
-    private JTextArea streamingTextArea;
-    /** True when finalizeStreaming() was called but HTML rebuild is deferred
-     *  (waiting for more deltas).  The streaming text area is still visible. */
-    private boolean isFinalizingDeferred = false;
-    private Timer deferredFinalizeTimer;
-    /** Saved expanded state for when deferred finalization fires after the
-     *  caller's scope has exited. */
-    private boolean savedCollapseState;
-
-    private static class CollapsibleState {
-        boolean expanded;
-
-        CollapsibleState(boolean expanded) {
-            this.expanded = expanded;
-        }
-    }
-
-    /**
-     * Apply background color and RoundedPanel base color for a message bubble.
-     *
-     * @param theme the current theme
-     * @param type  the message type (user, error, assistant, tool, thought)
-     */
-    private void applyBubbleTheme(ColorTheme theme, String type) {
-        Color bgColor;
-        if (null == type) {
-            bgColor = TRANSPARENT;
-        } else bgColor = switch (type) {
-            case "assistant" -> theme.bubbleAssistant();
-            case "user" -> theme.bubbleUser();
-            case "error" -> theme.errorBackground();
-            default -> TRANSPARENT;
-        };
-
-        setBackground(theme.sunkenBackground());
-        setOpaque(true);
-
-        bubble.setBackground(bgColor);
-        bubble.setOpaque(true);
-        segments.setBackground(bgColor);
-        segments.setOpaque(false);
-
-        if (bubble instanceof RoundedPanel rp) {
-            rp.setBaseColor(bgColor);
-            rp.setOpaque(false);
-        }
-    }
+    private final BubbleStreamer streamer;
+    private final BubbleAccordionManager accordionManager;
+    private final BubbleContentRenderer contentRenderer;
 
     @Override
     public float getAlignmentX() {
@@ -176,12 +109,40 @@ public class MessageBubble extends JPanel implements Scrollable {
             this.bubble.setBorder(new EmptyBorder(2, 8, 2, 8));
         }
         this.bubble.add(segments, BorderLayout.CENTER);
+        this.themeApplier = new BubbleThemeApplier(this, segments, bubble, messageId, role);
 
-        this.isStreaming = "assistant".equals(role) && streaming;
-        if (this.isStreaming) {
-            streamingTextArea = createStreamingTextArea(theme, text);
-            segments.add(streamingTextArea);
-            lastDisplayedLength = this.text.length();
+        this.streamer = new BubbleStreamer(
+            (t, e) -> {
+                updateContent(t, e);
+                revalidate();
+                repaint();
+            },
+            (expanded, full) -> {
+                if (!full) {
+                    for (java.awt.Component c : segments.getComponents()) {
+                        if (c instanceof CollapsibleCodePane codePane) {
+                            codePane.setExpanded(expanded);
+                        } else if (c instanceof CollapsibleToolPane toolPane) {
+                            toolPane.setExpanded(expanded);
+                        } else if (c instanceof CollapsibleActivityPane activityPane) {
+                            activityPane.setExpanded(expanded);
+                        }
+                    }
+                    revalidate();
+                    repaint();
+                }
+            },
+            segments, this.text
+        );
+
+        this.contentRenderer = new BubbleContentRenderer(segments, this.text, role, codeStates, this.streamer);
+        this.accordionManager = new BubbleAccordionManager(segments);
+
+        if ("assistant".equals(role) && streaming) {
+            JTextArea ta = streamer.createStreamingTextArea(theme, text);
+            streamer.setStreamingTextArea(ta);
+            segments.add(ta);
+            streamer.setLastDisplayedLength(this.text.length());
         } else {
             updateContent(theme, false);
         }
@@ -191,7 +152,7 @@ public class MessageBubble extends JPanel implements Scrollable {
         int anchor = isAssistant ? GridBagConstraints.NORTHWEST : GridBagConstraints.WEST;
         int fill = GridBagConstraints.HORIZONTAL;
 
-        applyBubbleTheme(theme, role);
+        themeApplier.applyBubbleTheme(theme, role);
 
         if (!"user".equals(role)) {
             // AI messages use full width
@@ -248,7 +209,7 @@ public class MessageBubble extends JPanel implements Scrollable {
             contentRow.setOpaque(false);
             contentRow.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-            JLabel userLabel = createUserAvatar();
+            JLabel userLabel = themeApplier.createUserAvatar();
             JPanel avatarWrapper = UIUtils.createTransparentPanel(new BorderLayout());
             avatarWrapper.add(userLabel, BorderLayout.NORTH);
 
@@ -278,27 +239,6 @@ public class MessageBubble extends JPanel implements Scrollable {
         }
     }
 
-    /**
-     * Creates the user avatar label with click-to-copy behavior.
-     * Used when the avatar is positioned outside the bubble (LEFT or RIGHT).
-     */
-    private JLabel createUserAvatar() {
-        Icon userIcon = UIUtils.loadUserIcon(44);
-        JLabel userLabel = new JLabel(userIcon);
-        userLabel.setBorder(new EmptyBorder(10, 8, 0, 10));
-        userLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        userLabel.setToolTipText(NbBundle.getMessage(MessageBubble.class, "HINT_CopyToInput"));
-
-        userLabel.addMouseListener(new MessageCopyMouseAdapter(
-            userLabel,
-            userIcon,
-            ThemeManager.getIcon("copy.svg", 44),
-            ThemeManager.getIcon("check.svg", 44),
-            messageId, role, this
-        ));
-        return userLabel;
-    }
-
     @Override
     public void addNotify() {
         super.addNotify();
@@ -315,14 +255,8 @@ public class MessageBubble extends JPanel implements Scrollable {
             removeHierarchyListener(hierarchyListener);
             hierarchyListener = null;
         }
-        // Stop deferred finalization timer to prevent phantom UI updates
-        // after the bubble is removed from the component tree.
-        if (deferredFinalizeTimer != null && deferredFinalizeTimer.isRunning()) {
-            deferredFinalizeTimer.stop();
-        }
+        streamer.stopTimer();
     }
-
-    private volatile boolean hasPendingTextUpdate = false;
 
     public void appendText(String newText) {
         appendText(newText, "");
@@ -332,47 +266,16 @@ public class MessageBubble extends JPanel implements Scrollable {
         if (newText == null || newText.isEmpty()) {
             return;
         }
-
-        this.text.append(newText);
         this.toolTitle = length(this.toolTitle) < length(toolTitle) ? toolTitle : this.toolTitle;
-        hasPendingTextUpdate = true;
-
-        // Deferred finalization is in flight — new data arrived, so keep
-        // the bubble in streaming mode and reset the cooldown timer.
-        if (isFinalizingDeferred && deferredFinalizeTimer != null) {
-            deferredFinalizeTimer.restart();
-        }
+        streamer.appendText(newText);
     }
 
     public boolean flushUpdate() {
-        return flushUpdate(false);
+        return streamer.flushUpdate(false);
     }
 
     public boolean flushUpdate(boolean force) {
-        if (!hasPendingTextUpdate && !force) {
-            return false;
-        }
-        hasPendingTextUpdate = false;
-
-        // Use the fast streaming path for both actively-streaming bubbles
-        // and deferred-finalization bubbles (still have a visible JTextArea).
-        if (isStreaming || isFinalizingDeferred) {
-            if (streamingTextArea != null && text.length() > lastDisplayedLength) {
-                String delta = text.substring(lastDisplayedLength);
-                javax.swing.text.Document doc = streamingTextArea.getDocument();
-                try {
-                    doc.insertString(doc.getLength(), delta, null);
-                } catch (javax.swing.text.BadLocationException ignored) {
-                    streamingTextArea.append(delta);
-                }
-                lastDisplayedLength = text.length();
-                return true;
-            }
-            return false;
-        }
-
-        updateContent(ThemeManager.getCurrentTheme(), true);
-        return true;
+        return streamer.flushUpdate(force);
     }
 
     /**
@@ -381,37 +284,15 @@ public class MessageBubble extends JPanel implements Scrollable {
      * No-op if this bubble does not contain a tool/thought pane.
      */
     public void registerWithAccordionGroup(AccordionGroup group) {
-        if (segments.getComponentCount() > 0) {
-            Component first = segments.getComponent(0);
-            if (first instanceof CollapsibleToolPane toolPane) {
-                toolPane.setAccordionGroup(group);
-            } else if (first instanceof CollapsibleActivityPane activityPane) {
-                activityPane.setAccordionGroup(group);
-            }
-        }
+        accordionManager.registerWithAccordionGroup(group);
     }
 
     public void setExpanded(boolean expanded) {
-        if (segments.getComponentCount() > 0) {
-            Component first = segments.getComponent(0);
-            if (first instanceof CollapsibleToolPane pane) {
-                pane.setExpanded(expanded);
-            } else if (first instanceof CollapsibleActivityPane pane) {
-                pane.setExpanded(expanded);
-            }
-        }
+        accordionManager.setExpanded(expanded);
     }
 
     public void toggleAllBlocks(boolean expanded) {
-        for (Component c : segments.getComponents()) {
-            if (c instanceof CollapsibleCodePane codePane) {
-                codePane.setExpanded(expanded);
-            } else if (c instanceof CollapsibleToolPane toolPane) {
-                toolPane.setExpanded(expanded);
-            } else if (c instanceof CollapsibleActivityPane activityPane) {
-                activityPane.setExpanded(expanded);
-            }
-        }
+        accordionManager.toggleAllBlocks(expanded);
     }
 
     public String getRole() {
@@ -433,174 +314,19 @@ public class MessageBubble extends JPanel implements Scrollable {
     /** Returns true if this bubble is still in streaming mode (not yet converted to HTML)
      *  or if finalization has been deferred pending a cooldown period. */
     public boolean isStreaming() {
-        return isStreaming || isFinalizingDeferred;
+        return streamer.isStreaming();
     }
 
     public void setResponseTimeMs(long ms) {
-        if (ms <= 0) return;
-        this.responseTimeMs = ms;
-        String label = formatElapsed(ms);
-        JLabel ttftLabel = new JLabel(label);
-        ttftLabel.setToolTipText(NbBundle.getMessage(MessageBubble.class, "HINT_TimeToFirstToken", label));
-        ttftLabel.setFont(ThemeManager.getFont().deriveFont(10f));
-        ttftLabel.setForeground(Color.GRAY);
-        ttftLabel.setBorder(new EmptyBorder(0, 0, 0, 12));
-        add(ttftLabel, UIUtils.createGbc(0, 1, 1.0, 0,
-                GridBagConstraints.NONE, GridBagConstraints.SOUTHEAST,
-                new Insets(0, 12, 2, 12)));
-        revalidate();
+        themeApplier.setResponseTimeMs(ms);
     }
 
-    private static String formatElapsed(long ms) {
-        if (ms < 10000) return String.format("%.1fs", ms / 1000.0);
-        if (ms < 60000) return String.format("%ds", ms / 1000);
-        long mins = ms / 60000;
-        long secs = (ms % 60000) / 1000;
-        return String.format("%dm %ds", mins, secs);
-    }
-
-    private JTextArea createStreamingTextArea(ColorTheme theme, String initialText) {
-        JTextArea ta = new JTextArea(initialText) {
-            @Override
-            public Dimension getMaximumSize() {
-                Dimension pref = getPreferredSize();
-                return new Dimension(Short.MAX_VALUE, pref.height);
-            }
-
-            @Override
-            public float getAlignmentX() {
-                return Component.LEFT_ALIGNMENT;
-            }
-
-            @Override
-            public JPopupMenu getComponentPopupMenu() {
-                JPopupMenu menu = new JPopupMenu();
-                JMenuItem copyItem = new JMenuItem(NbBundle.getMessage(MessageBubble.class, "LBL_Copy"));
-                copyItem.setEnabled(getSelectedText() != null);
-                copyItem.addActionListener(e -> {
-                    String text = getSelectedText();
-                    if (text != null && !text.isEmpty()) {
-                        Toolkit.getDefaultToolkit().getSystemClipboard()
-                                .setContents(new StringSelection(text), null);
-                    }
-                });
-                menu.add(copyItem);
-                return menu;
-            }
-        };
-        ta.setEditable(false);
-        ta.setLineWrap(true);
-        ta.setWrapStyleWord(true);
-        ta.setOpaque(false);
-        ta.setBackground(TRANSPARENT);
-        ta.setForeground(theme.assistantForeground());
-        ta.setFont(ThemeManager.getFont());
-        ta.setBorder(new EmptyBorder(4, 20, 4, 6));
-        ta.setCaretPosition(ta.getDocument().getLength());
-        return ta;
-    }
-
-    /**
-     * Handles incremental update of tool/thought content in the activity pane.
-     * Reuses existing CollapsibleActivityPane or CollapsibleToolPane if present,
-     * otherwise creates a new CollapsibleActivityPane.
-     */
     private void handleToolThoughtContent(ColorTheme theme, boolean expanded) {
-        String displayContent = text.toString();
-        String title = toolTitle != null ? toolTitle : "Execution Steps";
-        if (segments.getComponentCount() > 0) {
-            Component first = segments.getComponent(0);
-            if (first instanceof BaseCollapsiblePane pane) {
-                updatePaneContent(pane, title, displayContent, expanded);
-            }
-        } else {
-            segments.removeAll();
-            segments.add(new CollapsibleActivityPane(title, displayContent, expanded));
-            lastDisplayedLength = displayContent.length();
-        }
-        revalidate();
-    }
-
-    private void updatePaneContent(BaseCollapsiblePane pane, String title, String content, boolean expanded) {
-        pane.setTitle(title);
-        if (content.length() > lastDisplayedLength) {
-            pane.appendContent(content.substring(lastDisplayedLength));
-        } else if (content.length() < lastDisplayedLength) {
-            pane.setContent(content);
-        }
-        lastDisplayedLength = content.length();
-        pane.setExpanded(expanded);
+        contentRenderer.updateContent(theme, expanded, toolTitle);
     }
 
     private void updateContent(ColorTheme theme, boolean expanded) {
-        if ("tool".equals(role) || "thought".equals(role)) {
-            handleToolThoughtContent(theme, expanded);
-            return;
-        }
-
-        // For user messages, we don't need complex code panels.
-        // Just render the whole thing as markdown to get simple <pre> blocks.
-        if ("user".equals(role)) {
-            updateOrAddTextSegment(text.toString(), theme, 0, false);
-            while (segments.getComponentCount() > 1) {
-                segments.remove(segments.getComponentCount() - 1);
-            }
-            // Single revalidate at top level cascades to children
-            revalidate();
-            return;
-        }
-
-        // Simple markdown splitting for code blocks: ```[lang]\n<code>```
-        String rawText = text.toString();
-
-        Matcher matcher = CODE_BLOCK_PATTERN.matcher(rawText);
-
-        // Track current components to reuse them
-        int currentCompIdx = 0;
-
-        int lastEnd = 0;
-        int codeIdx = 0;
-        while (matcher.find()) {
-            // Text before code block (may contain tables)
-            String textBefore = rawText.substring(lastEnd, matcher.start());
-            if (!textBefore.isEmpty()) {
-                currentCompIdx = addTextAndTableSegments(textBefore, theme, currentCompIdx, expanded);
-            }
-
-            String lang = matcher.group(1);
-            String code = matcher.group(2);
-
-            // Code blocks collapsed by default to avoid flicker from syntax highlighting
-            boolean defaultExpanded = false;
-
-            // Persist expanded state if we already had it for this index
-            if (codeIdx < codeStates.size()) {
-                defaultExpanded = codeStates.get(codeIdx).expanded;
-            } else {
-                codeStates.add(new CollapsibleState(defaultExpanded));
-            }
-
-            updateOrAddCodeSegment(lang, code, defaultExpanded, codeIdx, currentCompIdx++);
-
-            lastEnd = matcher.end();
-            codeIdx++;
-        }
-
-        // Remaining text after last code block
-        if (lastEnd < rawText.length()) {
-            String remaining = rawText.substring(lastEnd);
-            if (!remaining.isEmpty()) {
-                currentCompIdx = addTextAndTableSegments(remaining, theme, currentCompIdx, expanded);
-            }
-        }
-
-        // Remove extra old components
-        while (segments.getComponentCount() > currentCompIdx) {
-            segments.remove(segments.getComponentCount() - 1);
-        }
-
-        // Single revalidate at top level cascades to all children
-        revalidate();
+        contentRenderer.updateContent(theme, expanded, toolTitle);
     }
 
     private void copyMessageToClipboard(JButton copyBtn) {
@@ -630,7 +356,7 @@ public class MessageBubble extends JPanel implements Scrollable {
      * @param expanded initial collapse state for code/tool panes
      */
     public void finalizeStreaming(boolean expanded) {
-        finalizeStreaming(expanded, false);
+        streamer.finalizeStreaming(expanded, false);
     }
 
     /**
@@ -641,52 +367,7 @@ public class MessageBubble extends JPanel implements Scrollable {
      *                  expensive rebuilds during section splits).
      */
     public void finalizeStreaming(boolean expanded, boolean immediate) {
-        // If neither streaming nor deferred—just toggle child panes
-        if (!isStreaming && !isFinalizingDeferred) {
-            for (Component c : segments.getComponents()) {
-                if (c instanceof CollapsibleCodePane codePane) {
-                    codePane.setExpanded(expanded);
-                } else if (c instanceof CollapsibleToolPane toolPane) {
-                    toolPane.setExpanded(expanded);
-                } else if (c instanceof CollapsibleActivityPane activityPane) {
-                    activityPane.setExpanded(expanded);
-                }
-            }
-            revalidate();
-            repaint();
-            return;
-        }
-
-        savedCollapseState = expanded;
-
-        if (immediate) {
-            performFinalization();
-        } else {
-            // Defer: start a 300ms cooldown timer. If appendText() is
-            // called before it fires, the timer resets.
-            isFinalizingDeferred = true;
-            if (deferredFinalizeTimer == null) {
-                deferredFinalizeTimer = new Timer(TimingConstants.STREAM_FLUSH_MS, e -> performFinalization());
-                deferredFinalizeTimer.setRepeats(false);
-            }
-            deferredFinalizeTimer.restart();
-        }
-    }
-
-    /** Actually removes the streaming JTextArea and builds the rich HTML content. */
-    private void performFinalization() {
-        isStreaming = false;
-        isFinalizingDeferred = false;
-        if (deferredFinalizeTimer != null) {
-            deferredFinalizeTimer.stop();
-        }
-        if (streamingTextArea != null) {
-            segments.remove(streamingTextArea);
-            streamingTextArea = null;
-        }
-        updateContent(ThemeManager.getCurrentTheme(), savedCollapseState);
-        revalidate();
-        repaint();
+        streamer.finalizeStreaming(expanded, immediate);
     }
 
     /**
@@ -694,15 +375,7 @@ public class MessageBubble extends JPanel implements Scrollable {
      * Each block is a consecutive run of same-type chunks with a distinct background.
      */
     public void setSegmentedToolContent(List<CollapsibleToolPane.ToolSegment> blocks) {
-        for (Component c : segments.getComponents()) {
-            if (c instanceof CollapsibleActivityPane pane) {
-                pane.setSegmentedContent(blocks);
-                return;
-            } else if (c instanceof CollapsibleToolPane pane) {
-                pane.setSegmentedContent(blocks);
-                return;
-            }
-        }
+        contentRenderer.setSegmentedToolContent(blocks);
     }
 
     /**
@@ -711,109 +384,7 @@ public class MessageBubble extends JPanel implements Scrollable {
      */
     public void updateCombinedContent(List<CollapsibleToolPane.ToolSegment> blocks, String title) {
         this.toolTitle = title;
-        for (Component c : segments.getComponents()) {
-            if (c instanceof CollapsibleActivityPane pane) {
-                pane.setTitle(title);
-                pane.setSegmentedContent(blocks);
-                return;
-            } else if (c instanceof CollapsibleToolPane pane) {
-                pane.setTitle(title);
-                pane.setSegmentedContent(blocks);
-                return;
-            }
-        }
-    }
-
-    private void updateOrAddCodeSegment(String lang, String code, boolean expanded, int codeIdx, int compIdx) {
-        if (compIdx < segments.getComponentCount()) {
-            Component c = segments.getComponent(compIdx);
-            if (c instanceof CollapsibleCodePane pane) {
-                pane.updateContent(lang, code);
-                pane.setVisible(code != null && !code.trim().isEmpty());
-                return;
-            }
-        }
-
-        // If we can't reuse, we have to rebuild from here down to be safe
-        // But for simplicity, we'll just insert/replace
-        CollapsibleCodePane codePane = new CollapsibleCodePane(lang, code, expanded);
-        codePane.setVisible(code != null && !code.trim().isEmpty());
-        if (compIdx < segments.getComponentCount()) {
-            segments.remove(compIdx);
-            segments.add(codePane, compIdx);
-        } else {
-            segments.add(codePane);
-        }
-    }
-
-    private void updateOrAddTextSegment(String markdown, ColorTheme theme, int compIdx, boolean incremental) {
-        String styledHtml = HtmlContentPreparer.prepareHtml(markdown, theme, role, incremental);
-        Color bg = UIUtils.getBubbleBackground(theme, role);
-
-        if (compIdx < segments.getComponentCount()) {
-            Component c = segments.getComponent(compIdx);
-            if (c instanceof FitEditorPane pane) {
-                pane.setBackground(TRANSPARENT);
-                pane.setOpaque(false);
-                pane.setText(styledHtml);
-                return;
-            }
-        }
-
-        FitEditorPane pane = FitEditorPane.createHtmlPane(styledHtml, bg, role, true);
-        if (compIdx < segments.getComponentCount()) {
-            segments.remove(compIdx);
-            segments.add(pane, compIdx);
-        } else {
-            segments.add(pane);
-        }
-    }
-
-    private int addTextAndTableSegments(String text, ColorTheme theme, int compIdx, boolean incremental) {
-        TableResult result = TableDetector.detectTables(text, incremental);
-        int currentIdx = compIdx;
-
-        for (Segment seg : result.segments()) {
-            if (seg instanceof TextSegment ts) {
-                updateOrAddTextSegment(ts.text(), theme, currentIdx++, false);
-            } else if (seg instanceof TableSegment tbl) {
-                updateOrAddTableSegment(tbl.markdown(), theme, currentIdx++);
-            }
-        }
-
-        return currentIdx;
-    }
-
-    private void updateOrAddTableSegment(String tableMarkdown, ColorTheme theme, int compIdx) {
-        String styledHtml = HtmlContentPreparer.prepareHtml(tableMarkdown, theme, role, false);
-
-        if (compIdx < segments.getComponentCount()) {
-            Component c = segments.getComponent(compIdx);
-            if (c instanceof RoundedPanel rp && rp.getComponentCount() > 0 && rp.getComponent(0) instanceof FitEditorPane pane) {
-                rp.setBaseColor(theme.tableBackground());
-                rp.setBorderColor(theme.tableBorder());
-                pane.setText(styledHtml);
-                return;
-            }
-        }
-
-        RoundedPanel rp = new RoundedPanel(12);
-        rp.setBaseColor(theme.tableBackground());
-        rp.setBorderColor(theme.tableBorder());
-        rp.setLayout(new BorderLayout());
-        rp.setBorder(new EmptyBorder(1, 1, 1, 1));
-
-        FitEditorPane pane = FitEditorPane.createHtmlPane(styledHtml, theme.tableBackground(), role, false);
-        pane.setOpaque(false);
-        pane.setBorder(new EmptyBorder(8, 8, 8, 8));
-        rp.add(pane, BorderLayout.CENTER);
-
-        if (compIdx < segments.getComponentCount()) {
-            segments.remove(compIdx);
-            segments.add(rp, compIdx);
-        } else {
-            segments.add(rp);
-        }
+        contentRenderer.updateCombinedContent(blocks, title);
     }
 
     @Override

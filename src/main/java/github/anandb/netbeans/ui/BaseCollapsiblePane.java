@@ -12,7 +12,6 @@ import java.awt.Toolkit;
 import java.awt.datatransfer.StringSelection;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.swing.BorderFactory;
@@ -39,12 +38,11 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
 
     private static final Logger LOG = Logger.from(BaseCollapsiblePane.class);
     private static final long serialVersionUID = 1L;
-    
+
     protected final JPanel header;
     protected final JLabel headerLabel;
     protected final JPanel contentPanel;
     protected boolean expanded;
-    private AccordionGroup accordionGroup;
 
     protected final JPanel titlePanel;
     protected final JButton copyButton;
@@ -55,6 +53,7 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
     protected boolean isSegmented;
     protected String combinedPlainText = "";
     private transient Timer copyFeedbackTimer;
+    private transient AccordionGroup accordionGroup;
     protected final AtomicBoolean copyHovered = new AtomicBoolean(false);
 
     public BaseCollapsiblePane(int radius, String title, Color defaultAccent, boolean expandedByDefault) {
@@ -148,7 +147,7 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
                 copyButton.setVisible(false);
             }
         });
-        
+
         // Wrap in fixed-size panel so header height never changes when button visibility toggles
         JPanel eastPlaceholder = new JPanel(new BorderLayout());
         eastPlaceholder.setOpaque(false);
@@ -259,8 +258,7 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
 
     protected void onToggle(boolean expanded) {
         if (isThinking) {
-            String tp = NbBundle.getMessage(BaseCollapsiblePane.class, "LBL_ThinkingProcess");
-            headerLabel.setText(expanded ? tp : tp + "...");
+            headerLabel.setText(CollapsibleHeaderRenderer.thinkingLabel(expanded));
         }
         updateAppearance();
         updateGroupToggleIcon();
@@ -285,21 +283,20 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
         titlePanel.add(headerLabel);
 
         if (isThinking) {
-            String tp = NbBundle.getMessage(BaseCollapsiblePane.class, "LBL_ThinkingProcess");
-            headerLabel.setText(expanded ? tp : tp + "...");
+            headerLabel.setText(CollapsibleHeaderRenderer.thinkingLabel(expanded));
             return;
         }
 
         String stripped = rawTitle.replaceFirst("(?i)TOOL:?\\s*", "").trim();
 
         if (stripped.isEmpty() || "Tool".equalsIgnoreCase(stripped) || "Tool Call".equalsIgnoreCase(stripped)) {
-            headerLabel.setText(NbBundle.getMessage(BaseCollapsiblePane.class, "LBL_ToolFallback"));
+            headerLabel.setText(CollapsibleHeaderRenderer.formatTitle(rawTitle));
             return;
         }
 
         int pos = stripped.indexOf(' ');
         String firstWord = (pos > 1) ? stripped.substring(0, pos) : null;
-        String tag = firstWord != null ? translateTag(firstWord) : null;
+        String tag = firstWord != null ? CollapsibleHeaderRenderer.translateTag(firstWord) : null;
 
         if (tag != null) {
             headerLabel.setText(tag);
@@ -386,10 +383,7 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
     }
 
     protected Icon getHeaderIcon(String title) {
-        if (title.toUpperCase(Locale.ROOT).contains("THINKING")) {
-            return ThemeManager.getIcon("brain.svg", 24);
-        }
-        return getDefaultIcon();
+        return CollapsibleHeaderRenderer.getHeaderIcon(title);
     }
 
     protected abstract Icon getDefaultIcon();
@@ -401,45 +395,11 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
     public abstract void appendContent(String text);
 
     protected static String translateTag(String tag) {
-        if (tag == null) return null;
-        return switch (tag.toLowerCase(Locale.ROOT)) {
-            case "read" -> NbBundle.getMessage(BaseCollapsiblePane.class, "LBL_TagRead");
-            case "execute" -> NbBundle.getMessage(BaseCollapsiblePane.class, "LBL_TagExecute");
-            case "write" -> NbBundle.getMessage(BaseCollapsiblePane.class, "LBL_TagWrite");
-            case "edit" -> NbBundle.getMessage(BaseCollapsiblePane.class, "LBL_TagEdit");
-            case "search" -> NbBundle.getMessage(BaseCollapsiblePane.class, "LBL_TagSearch");
-            case "skill" -> NbBundle.getMessage(BaseCollapsiblePane.class, "LBL_TagSkill");
-            case "context" -> NbBundle.getMessage(BaseCollapsiblePane.class, "LBL_TagContext");
-            case "mcp" -> NbBundle.getMessage(BaseCollapsiblePane.class, "LBL_TagMcp");
-            case "other" -> NbBundle.getMessage(BaseCollapsiblePane.class, "LBL_TagOther");
-            case "think" -> NbBundle.getMessage(BaseCollapsiblePane.class, "LBL_TagThink");
-            default -> null;
-        };
+        return CollapsibleHeaderRenderer.translateTag(tag);
     }
 
     protected static String formatInnerTitle(String rawTitle) {
-        if (rawTitle.toUpperCase().contains("THINKING")) {
-            return NbBundle.getMessage(BaseCollapsiblePane.class, "LBL_ThinkingProcess");
-        }
-
-        String stripped = rawTitle.replaceFirst("(?i)TOOL:?\\s*", "").trim();
-
-        if (stripped.isEmpty() || "Tool".equalsIgnoreCase(stripped) || "Tool Call".equalsIgnoreCase(stripped)) {
-            return NbBundle.getMessage(BaseCollapsiblePane.class, "LBL_ToolFallback");
-        }
-
-        int pos = stripped.indexOf(' ');
-        String firstWord = (pos > 1) ? stripped.substring(0, pos) : null;
-        String tag = firstWord != null ? translateTag(firstWord) : null;
-        String param = (pos > 1) ? stripped.substring(pos + 1) : null;
-
-        if (tag != null && StringUtils.isNotBlank(param)) {
-            return tag + " " + param;
-        } else if (tag != null) {
-            return tag;
-        } else {
-            return stripped;
-        }
+        return CollapsibleHeaderRenderer.formatTitle(rawTitle);
     }
 
     protected static JTextArea createActivityTextArea(String text) {

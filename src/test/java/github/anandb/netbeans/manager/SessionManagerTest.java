@@ -1,7 +1,6 @@
 package github.anandb.netbeans.manager;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
@@ -66,10 +65,10 @@ class SessionManagerTest {
         JsonNode mockResponse = mapper.createObjectNode()
                 .put("id", "new-id")
                 .put("title", "New");
-        when(processManager.sendRequest(eq("session/new"), any(), anyLong(), any()))
+        when(processManager.sendRequest(eq("session/new"), any()))
                 .thenReturn(CompletableFuture.completedFuture(mockResponse));
 
         sessionManager.createNewSession("/dir");
-        verify(processManager).sendRequest(eq("session/new"), any(), anyLong(), any());
+        verify(processManager).sendRequest(eq("session/new"), any());
     }
 }

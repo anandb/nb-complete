@@ -27,7 +27,6 @@ import javax.swing.ScrollPaneConstants;
 import javax.swing.Scrollable;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
-import javax.swing.Timer;
 import javax.swing.border.EmptyBorder;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -39,53 +38,9 @@ import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.TimingConstants;
-import org.openide.util.NbBundle;
-import org.openide.util.NbPreferences;
 
 
 public class ChatThreadPanel extends JPanel {
-
-    // --- inner class: merged from MessageFilterManager -----------------------
-    static final class MessageFilterManager {
-        private static final String PREF_PREFIX = "messageFilter.";
-        private static final String[] MESSAGE_TYPES = {"tool", "thought", "assistant", "user"};
-        private MessageFilterManager() {}
-
-        static String[] getMessageTypes() { return MESSAGE_TYPES.clone(); }
-
-        /** Return filter types shown in the UI menu. When combine is on, "activity"
-         *  replaces separate "tool" and "thought" entries. */
-        static String[] getEffectiveMessageTypes() {
-            if (NbPreferences.forModule(ACPOptionsPanel.class).getBoolean("combineToolThought", true)) {
-                return new String[]{"activity", "assistant", "user"};
-            }
-            return MESSAGE_TYPES.clone();
-        }
-
-        static boolean isTypeHidden(String type) {
-            if (type == null) return false;
-            // "activity" is a virtual type — hidden if either tool or thought is hidden
-            if ("activity".equals(type)) {
-                return NbPreferences.forModule(ACPOptionsPanel.class)
-                        .getBoolean(PREF_PREFIX + "tool", false)
-                    || NbPreferences.forModule(ACPOptionsPanel.class)
-                        .getBoolean(PREF_PREFIX + "thought", false);
-            }
-            return NbPreferences.forModule(ACPOptionsPanel.class).getBoolean(PREF_PREFIX + type, false);
-        }
-
-        static void setTypeHidden(String type, boolean hidden) {
-            if (type == null) return;
-            // "activity" toggles both tool and thought together
-            if ("activity".equals(type)) {
-                NbPreferences.forModule(ACPOptionsPanel.class).putBoolean(PREF_PREFIX + "tool", hidden);
-                NbPreferences.forModule(ACPOptionsPanel.class).putBoolean(PREF_PREFIX + "thought", hidden);
-                return;
-            }
-            NbPreferences.forModule(ACPOptionsPanel.class).putBoolean(PREF_PREFIX + type, hidden);
-        }
-    }
-    // -------------------------------------------------------------------------
 
     private static final Logger LOG = Logger.from(ChatThreadPanel.class);
     private static final long serialVersionUID = 1L;
@@ -97,7 +52,7 @@ public class ChatThreadPanel extends JPanel {
     private final JPanel messagesContainer;
     private final JScrollPane scrollPane;
     private final JLayeredPane layeredPane;
-    private final Timer streamFlushTimer;
+    private final StreamingCoordinator streamingCoordinator;
 
     /** Cached full message list so filter/preference changes can re-render
      *  the conversation without a server round-trip. */
@@ -106,7 +61,6 @@ public class ChatThreadPanel extends JPanel {
     private volatile boolean keepOlderMessages = false;
     private final transient ScrollController scrollController;
     private final transient MessageTransformer messageTransformer;
-    private MessageBubble activeStreamBubble;
 
     public ChatThreadPanel() {
         ColorTheme theme = ThemeManager.getCurrentTheme();
@@ -173,21 +127,18 @@ public class ChatThreadPanel extends JPanel {
             }
         });
 
-        streamFlushTimer = new Timer(TimingConstants.STREAM_FLUSH_MS, e -> {
-            if (!isShowing()) {
+        streamingCoordinator = new StreamingCoordinator(bubble -> {
+            if (!isShowing() || bubble == null) {
                 return;
             }
-            if (activeStreamBubble != null) {
-                // Check wasAtBottom BEFORE flushUpdate changes content height
-                boolean wasAtBottom = scrollController.isAtBottom();
-                boolean didUpdate = activeStreamBubble.flushUpdate();
-                if (didUpdate) {
-                    activeStreamBubble.revalidate();
-                    scrollController.scrollToBottom(wasAtBottom);
-                }
+            // Check wasAtBottom BEFORE flushUpdate changes content height
+            boolean wasAtBottom = scrollController.isAtBottom();
+            boolean didUpdate = bubble.flushUpdate();
+            if (didUpdate) {
+                bubble.revalidate();
+                scrollController.scrollToBottom(wasAtBottom);
             }
-        });
-        streamFlushTimer.setRepeats(true);
+        }, TimingConstants.STREAM_FLUSH_MS);
     }
 
     private static class ScrollablePanel extends JPanel implements Scrollable {
@@ -288,11 +239,8 @@ public class ChatThreadPanel extends JPanel {
                 }
             } else {
                 if (lastBubble != null) {
-                    if (lastBubble == activeStreamBubble) {
-                        activeStreamBubble = null;
-                        if (streamFlushTimer.isRunning()) {
-                            streamFlushTimer.stop();
-                        }
+                    if (lastBubble == streamingCoordinator.getActiveStreamBubble()) {
+                        streamingCoordinator.stopStreaming();
                     }
                     lastBubble.flushUpdate(true);
                     lastBubble.finalizeStreaming(allBlocksExpanded);
@@ -310,14 +258,9 @@ public class ChatThreadPanel extends JPanel {
 
         // Tool/thought messages create individual bubbles immediately (not accumulated)
         if (type.isTool() || type.isThought()) {
-            // Use "Thinking Process" title for thought bubbles so they show brain icon
-            if (type.isThought() && (toolTitle == null || toolTitle.isEmpty())) {
-                toolTitle = NbBundle.getMessage(CollapsibleToolPane.class, "LBL_ThinkingProcess");
-            }
-            MessageBubble.AvatarPosition avatarPos = MessageBubble.AvatarPosition.NONE;
-            MessageBubble bubble = new MessageBubble(type, text, messageId, toolTitle, avatarPos, streaming);
+            MessageBubble bubble = BubbleFactory.createToolThoughtBubble(type, text, messageId, toolTitle, streaming);
 
-            boolean visible = !ChatThreadPanel.MessageFilterManager.isTypeHidden(type.roleName());
+            boolean visible = !MessageFilterManager.isTypeHidden(type.roleName());
             bubble.setVisible(visible);
             Component strut = Box.createVerticalStrut(4);
             strut.setVisible(visible);
@@ -330,8 +273,7 @@ public class ChatThreadPanel extends JPanel {
             }
 
             if (streaming) {
-                activeStreamBubble = bubble;
-                streamFlushTimer.start();
+                streamingCoordinator.startStreaming(bubble);
             }
             return;
         }
@@ -346,10 +288,7 @@ public class ChatThreadPanel extends JPanel {
             userMessageCount++;
         }
 
-        MessageBubble.AvatarPosition avatarPos = "user".equals(type.roleName())
-                ? (userMessageCount % 2 == 1 ? MessageBubble.AvatarPosition.LEFT : MessageBubble.AvatarPosition.RIGHT)
-                : MessageBubble.AvatarPosition.NONE;
-        MessageBubble bubble = new MessageBubble(type, text, messageId, toolTitle, avatarPos, streaming);
+        MessageBubble bubble = BubbleFactory.createRoleBubble(type, text, messageId, toolTitle, streaming, userMessageCount);
 
         if ("user".equals(type.roleName())) {
             lastUserTimestamp = System.currentTimeMillis();
@@ -359,7 +298,7 @@ public class ChatThreadPanel extends JPanel {
             lastUserTimestamp = -1L;
         }
 
-        boolean visible = !ChatThreadPanel.MessageFilterManager.isTypeHidden(type.roleName());
+        boolean visible = !MessageFilterManager.isTypeHidden(type.roleName());
         bubble.setVisible(visible);
         Component strut = Box.createVerticalStrut(4);
         strut.setVisible(visible);
@@ -372,9 +311,8 @@ public class ChatThreadPanel extends JPanel {
                 scrollController.scrollToBottom(true);
             }
         }
-        activeStreamBubble = bubble;
         if (streaming) {
-            streamFlushTimer.start();
+            streamingCoordinator.startStreaming(bubble);
         }
     }
 
@@ -412,11 +350,11 @@ public class ChatThreadPanel extends JPanel {
         // Already on EDT — all callers (Timer, SessionLifecycleHandler) invoke via EDT.
         // Do NOT wrap in SwingUtilities.invokeLater: that defers execution, creating a
         // race where late SSE deltas can clear activeStreamBubble before we finalize it.
-        if (activeStreamBubble != null) {
+        MessageBubble activeBubble = streamingCoordinator.stopStreaming();
+        if (activeBubble != null) {
             boolean wasAtBottom = scrollController.isAtBottom();
-            activeStreamBubble.flushUpdate(true);
-            activeStreamBubble.finalizeStreaming(allBlocksExpanded, true);
-            activeStreamBubble = null;
+            activeBubble.flushUpdate(true);
+            activeBubble.finalizeStreaming(allBlocksExpanded, true);
             messagesContainer.revalidate();
             if (wasAtBottom) {
                 scrollController.scrollToBottom(true);
@@ -436,9 +374,6 @@ public class ChatThreadPanel extends JPanel {
                     scrollController.scrollToBottom(true);
                 }
             }
-        }
-        if (streamFlushTimer.isRunning()) {
-            streamFlushTimer.stop();
         }
         // Combine any remaining individual tool/thought bubbles
         ToolThoughtCombiner.combine(messagesContainer, allBlocksExpanded);
@@ -465,14 +400,12 @@ public class ChatThreadPanel extends JPanel {
     public void removeNotify() {
         // Finalize any in-flight streaming bubble before tearing down —
         // otherwise the bubble stays as a plain JTextArea indefinitely.
-        if (activeStreamBubble != null) {
-            activeStreamBubble.finalizeStreaming(allBlocksExpanded, true);
-            activeStreamBubble = null;
+        MessageBubble activeBubble = streamingCoordinator.getActiveStreamBubble();
+        if (activeBubble != null) {
+            activeBubble.finalizeStreaming(allBlocksExpanded, true);
         }
         super.removeNotify();
-        if (streamFlushTimer != null && streamFlushTimer.isRunning()) {
-            streamFlushTimer.stop();
-        }
+        streamingCoordinator.cleanup();
         if (scrollController != null) {
             scrollController.cleanup();
         }

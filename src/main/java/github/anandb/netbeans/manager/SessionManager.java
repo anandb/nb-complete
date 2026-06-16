@@ -3,8 +3,6 @@ package github.anandb.netbeans.manager;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-
 import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.model.SessionConfigOption;
 import github.anandb.netbeans.project.ACPProjectManager;
@@ -14,10 +12,8 @@ import javax.swing.SwingUtilities;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.time.OffsetDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -77,9 +73,9 @@ public class SessionManager implements SessionQuery, SessionControl {
     private final SessionStateMachine stateMachine = new SessionStateMachine();
     private volatile String currentSessionId;
     private volatile String lastProjectDir;
-    private final List<Session> cachedSessions = new CopyOnWriteArrayList<>();
-    private final Map<String, Session> sessionCacheMap = new java.util.concurrent.ConcurrentHashMap<>();
+    private final SessionCacheManager cacheManager = new SessionCacheManager();
     private final Consumer<SessionUpdate> sseListener = this::handleSseUpdate;
+    private final SessionRpcClient rpcClient;
 
     public SessionManager() {
         ACPProjectManager.getInstance().setProjectOpenListener(this::handleProjectOpened);
@@ -87,6 +83,7 @@ public class SessionManager implements SessionQuery, SessionControl {
 
         // Register for SSE updates to route them to the active session
         ProcessManager.getInstance().addSseListener(sseListener);
+        this.rpcClient = new SessionRpcClient(ProcessManager.getInstance());
 
         // Reset state machine and notify UI when server crashes
         ProcessManager.getInstance().setCrashHandler(() -> {
@@ -114,14 +111,14 @@ public class SessionManager implements SessionQuery, SessionControl {
     private void handleSseUpdate(SessionUpdate update) {
         if (update.update() != null && update.update().sessions() != null) {
             for (Session s : update.update().sessions()) {
-                if (s.id() != null) {
-                    sessionCacheMap.put(s.id(), s);
-                }
+                cacheManager.cacheSession(s);
             }
         }
 
         String updateSessionId = update.params() != null ? update.params().sessionId() : null;
-        if (updateSessionId != null && (updateSessionId.equals(currentSessionId) || isDescendantOfCurrent(updateSessionId))) {
+        if (updateSessionId != null
+                && (updateSessionId.equals(currentSessionId)
+                    || cacheManager.isDescendantOfCurrent(updateSessionId, currentSessionId))) {
             for (SessionListener l : listeners) {
                 l.onSessionUpdate(update);
             }
@@ -132,23 +129,7 @@ public class SessionManager implements SessionQuery, SessionControl {
 
     @Override
     public boolean isDescendantOfCurrent(String sessionId) {
-        if (sessionId == null || currentSessionId == null) {
-            return false;
-        }
-        Session s = sessionCacheMap.get(sessionId);
-        int depth = 0;
-        while (s != null && depth < 20) {
-            String parentId = s.parentID();
-            if (parentId == null) {
-                break;
-            }
-            if (parentId.equals(currentSessionId)) {
-                return true;
-            }
-            s = sessionCacheMap.get(parentId);
-            depth++;
-        }
-        return false;
+        return cacheManager.isDescendantOfCurrent(sessionId, currentSessionId);
     }
 
     public static SessionManager getInstance() {
@@ -222,11 +203,7 @@ public class SessionManager implements SessionQuery, SessionControl {
         return ProcessManager.getInstance().getToolExecutor().waitForReady()
                 .orTimeout(15, TimeUnit.SECONDS)
                 .thenCompose(v -> {
-                    Map<String, Object> params = new HashMap<>();
-                    if (directory != null && !directory.isEmpty()) {
-                        params.put("cwd", directory);
-                    }
-                    return ProcessManager.getInstance().sendRequest("session/list", params);
+                    return rpcClient.getSessions(directory);
                 })
                 .thenApply(res -> {
                     try {
@@ -247,9 +224,7 @@ public class SessionManager implements SessionQuery, SessionControl {
                                                            s.configOptions());
                                 }
                                 sessions.add(resolved);
-                                if (resolved.id() != null) {
-                                    sessionCacheMap.put(resolved.id(), resolved);
-                                }
+                                cacheManager.cacheSession(resolved);
                             }
                             LOG.fine("getSessions: deserialized {0} sessions", sessions.size());
                             for (Session s : sessions) {
@@ -306,10 +281,7 @@ public class SessionManager implements SessionQuery, SessionControl {
         return ProcessManager.getInstance().getToolExecutor().waitForReady()
                 .orTimeout(15, TimeUnit.SECONDS)
                 .thenCompose(v -> {
-                    Map<String, Object> params = new HashMap<>();
-                    params.put("cwd", finalCwd);
-                    params.put("mcpServers", ProcessManager.getInstance().getToolExecutor().getServerConfig());
-                    return ProcessManager.getInstance().sendRequest("session/new", params, 60, TimeUnit.SECONDS);
+                    return rpcClient.createSession(finalCwd);
                 })
                 .thenApply(res -> {
                     long durationMs = (System.nanoTime() - start) / 1_000_000;
@@ -319,9 +291,7 @@ public class SessionManager implements SessionQuery, SessionControl {
                         if (s.effectiveDirectory() == null) {
                             s = new Session(s.id(), s.title(), finalCwd, finalCwd, s.parentID(), s.updatedAt(), s.mcpServers(), s.configOptions());
                         }
-                        if (s.id() != null) {
-                            sessionCacheMap.put(s.id(), s);
-                        }
+                        cacheManager.cacheSession(s);
                         return s;
                     } catch (Exception e) {
                         throw new RuntimeException(e);
@@ -344,13 +314,7 @@ public class SessionManager implements SessionQuery, SessionControl {
         return ProcessManager.getInstance().getToolExecutor().waitForReady()
                 .orTimeout(15, TimeUnit.SECONDS)
                 .thenCompose(v -> {
-                    Map<String, Object> params = new HashMap<>();
-                    params.put("sessionId", sessionId);
-                    if (cwd != null) {
-                        params.put("cwd", cwd);
-                    }
-                    params.put("mcpServers", ProcessManager.getInstance().getToolExecutor().getServerConfig());
-                    return ProcessManager.getInstance().sendRequest("session/load", params, 60, TimeUnit.SECONDS);
+                    return rpcClient.loadSessionFromServer(sessionId, cwd);
                 })
                 .thenApply(res -> {
                     long durationMs = (System.nanoTime() - start) / 1_000_000;
@@ -368,30 +332,16 @@ public class SessionManager implements SessionQuery, SessionControl {
     }
 
     public CompletableFuture<Void> deleteSession(String sessionId) {
-        return ProcessManager.getInstance().sendRequest("session/delete", Map.of("sessionId", sessionId))
-                .thenApply(v -> null);
+        return rpcClient.deleteSession(sessionId);
     }
 
     public CompletableFuture<Void> setSessionConfigOption(String sessionId, String configId, String value) {
-        Map<String, Object> params = Map.of(
-                "sessionId", sessionId,
-                "configId", configId,
-                "value", value
-        );
-        return ProcessManager.getInstance().sendRequest("session/set_config_option", params)
-                .thenApply(v -> null);
+        return rpcClient.setSessionConfigOption(sessionId, configId, value);
     }
 
     public CompletableFuture<JsonNode> renameSessionOnServer(String sessionId, String newTitle) {
-        ObjectNode params = objectMapper.createObjectNode();
-        params.put("sessionId", sessionId);
-
-        ObjectNode update = objectMapper.createObjectNode();
-        update.put("sessionUpdate", "session_info_update");
-        update.put("title", newTitle);
-        params.set("update", update);
-
-        return ProcessManager.getInstance().sendRequest("session/update", params);
+        return rpcClient.renameSessionOnServer(sessionId, newTitle)
+                .thenApply(v -> objectMapper.createObjectNode());
     }
 
     // --- High-level session operations ---
@@ -418,8 +368,7 @@ public class SessionManager implements SessionQuery, SessionControl {
                         Long.compare(parseTimestamp(s2.updatedAt()), parseTimestamp(s1.updatedAt()))
                     );
 
-                    cachedSessions.clear();
-                    cachedSessions.addAll(filteredSessions);
+                    cacheManager.setCachedSessions(filteredSessions);
                     notifySessionListUpdated(filteredSessions);
                 });
     }
@@ -473,7 +422,7 @@ public class SessionManager implements SessionQuery, SessionControl {
         notifySessionStarted(sessionId);
 
         // Look up session directory from cache
-        String sessionCwd = cachedSessions.stream()
+        String sessionCwd = cacheManager.getCachedSessions().stream()
                 .filter(s -> s.id().equals(sessionId))
                 .findFirst()
                 .map(s -> {
