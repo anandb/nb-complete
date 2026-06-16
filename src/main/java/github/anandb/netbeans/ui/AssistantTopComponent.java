@@ -131,6 +131,10 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
         statusController = new StatusController(statusLabel, sendBtn, stopBtn, inputArea, toggleOptionsBtn);
         attachmentUiHandler = new AttachmentUiHandler(attachmentManager, statusController, inputArea, AssistantTopComponent.this);
+
+        // Add attachment button to the right status panel (before settings button)
+        layoutBuilder.getRightStatusPanel().add(attachmentUiHandler.getButton(), 0);
+
         sessionDropdownHandler = new SessionDropdownHandler(sessionDropdown, inputArea);
         sessionLifecycleHandler = new SessionLifecycleHandler(
             chatPanel, sessionDropdown, newSessionBtn, renameSessionBtn,

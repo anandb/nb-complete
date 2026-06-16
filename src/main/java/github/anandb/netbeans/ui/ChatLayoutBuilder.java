@@ -44,6 +44,7 @@ final class ChatLayoutBuilder {
     private JPanel header;
     private JButton sendBtn;
     private JButton stopBtn;
+    private JPanel rightStatusPanel;
 
     ChatLayoutBuilder(AssistantTopComponent topComponent, ChatThreadPanel chatPanel,
             ConfigPanelController configPanelController) {
@@ -205,7 +206,7 @@ final class ChatLayoutBuilder {
 
         toggleOptionsBtn = UIUtils.createToolbarButton("settings.svg", 25, NbBundle.getMessage(AssistantTopComponent.class, "HINT_Options"), null);
 
-        JPanel rightStatusPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        rightStatusPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         rightStatusPanel.setOpaque(false);
 
         rightStatusPanel.add(toggleOptionsBtn);
@@ -306,4 +307,6 @@ final class ChatLayoutBuilder {
     JButton getSendBtn() { return sendBtn; }
 
     JButton getStopBtn() { return stopBtn; }
+
+    JPanel getRightStatusPanel() { return rightStatusPanel; }
 }

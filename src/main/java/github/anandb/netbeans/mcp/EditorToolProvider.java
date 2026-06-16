@@ -4,8 +4,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import github.anandb.netbeans.contract.SessionControl;
 import github.anandb.netbeans.project.ACPProjectManager;
 import github.anandb.netbeans.support.Logger;
+import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
 import github.anandb.netbeans.support.MapperSupplier;
 
@@ -33,6 +35,7 @@ public class EditorToolProvider {
     public void registerTools(McpTools mcpTools) {
         registerGetOpenedFiles(mcpTools);
         registerOpenFileAtLine(mcpTools);
+        registerRenameSession(mcpTools);
     }
 
     private void registerGetOpenedFiles(McpTools mcpTools) {
@@ -117,6 +120,51 @@ public class EditorToolProvider {
                             } catch (Exception e) {
                                 LOG.warn("Failed to open file at line: {0}", e.getMessage());
                             }
+                        });
+                        return Map.of("status", "ok");
+                    }
+                });
+    }
+
+    private void registerRenameSession(McpTools mcpTools) {
+        ObjectNode schema = mapper.createObjectNode();
+        schema.put("type", "object");
+        ObjectNode properties = schema.putObject("properties");
+
+        ObjectNode sessionIdProp = properties.putObject("sessionId");
+        sessionIdProp.put("type", "string");
+        sessionIdProp.put("description", "The ID of the session to rename. Omit to rename the current session.");
+
+        ObjectNode titleProp = properties.putObject("title");
+        titleProp.put("type", "string");
+        titleProp.put("description", "The new custom title for the session");
+
+        ArrayNode required = schema.putArray("required");
+        required.add("title");
+
+        mcpTools.registerTool(
+                "rename_session",
+                "Sets a custom title for a chat session. Use this to give sessions meaningful names. " +
+                "Omit sessionId to rename the current active session.",
+                schema,
+                new ToolExecutor<RenameSessionInput, Map<String, Object>>(RenameSessionInput.class) {
+                    @Override
+                    public Map<String, Object> execute(RenameSessionInput args) throws Exception {
+                        if (args.title() == null) {
+                            return Map.of("status", "error", "message", "title is required");
+                        }
+                        SwingUtilities.invokeLater(() -> {
+                            SessionControl sc = Lookup.getDefault().lookup(SessionControl.class);
+                            if (sc == null) {
+                                return;
+                            }
+                            String sessionId = args.sessionId() != null
+                                    ? args.sessionId()
+                                    : sc.getCurrentSessionId();
+                            if (sessionId == null) {
+                                return;
+                            }
+                            sc.renameSession(sessionId, args.title());
                         });
                         return Map.of("status", "ok");
                     }
