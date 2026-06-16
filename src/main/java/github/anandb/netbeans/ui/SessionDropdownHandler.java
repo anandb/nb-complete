@@ -23,6 +23,7 @@ public class SessionDropdownHandler {
 
     private void installListeners(JComboBox<SessionItem> sessionDropdown) {
         final Object[] prePopupSession = {null};
+        final long[] lastSessionSwitch = {0L};
 
         sessionDropdown.addPopupMenuListener(new PopupMenuListener() {
             @Override
@@ -32,10 +33,13 @@ public class SessionDropdownHandler {
 
             @Override
             public void popupMenuWillBecomeInvisible(PopupMenuEvent e) {
+                long now = System.currentTimeMillis();
                 SessionItem selected = (SessionItem) sessionDropdown.getSelectedItem();
                 String currentId = selected != null ? selected.getSession().id() : null;
                 String previousId = prePopupSession[0] != null ? ((SessionItem)prePopupSession[0]).getSession().id() : null;
                 if (currentId != null && previousId != null && !currentId.equals(previousId)) {
+                    if (now - lastSessionSwitch[0] < 500) return;
+                    lastSessionSwitch[0] = now;
                     Lookup.getDefault().lookup(SessionControl.class).loadSession(currentId);
                 }
                 SwingUtilities.invokeLater(() -> inputArea.requestFocusInWindow());

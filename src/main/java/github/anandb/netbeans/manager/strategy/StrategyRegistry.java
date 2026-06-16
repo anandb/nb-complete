@@ -76,7 +76,7 @@ public class StrategyRegistry implements UpdateDispatcher {
 
         type = defaultIfBlank(reClassify(update), update.type());
         if (hasAnnotationFilter(update) && shouldSkip(update.content())) {
-            LOG.fine("Strategy skipped for {0} due to annotation filter", type);
+            LOG.info("Ignoring message type={0}: annotation filter matched, update={1}", type, update);
             return;
         }
 
@@ -118,7 +118,10 @@ public class StrategyRegistry implements UpdateDispatcher {
 
             case "user_message_chunk" -> {
                 String text = extractText(update.content());
-                if (isBlank(text)) return;
+                if (isBlank(text)) {
+                    LOG.info("Ignoring user_message_chunk: empty text, update={0}", update);
+                    return;
+                }
                 handler.displayMessage(buildStreamingMessage(update, text));
             }
 
@@ -131,15 +134,24 @@ public class StrategyRegistry implements UpdateDispatcher {
             }
 
             case "tool_call_update", "tool_call" -> {
-                if (isPlanToolCall(update)) return;
+                if (isPlanToolCall(update)) {
+                    LOG.info("Ignoring tool_call: plan tool call, update={0}", update);
+                    return;
+                }
                 final String sessionId = update.params().sessionId();
                 final String messageId = update.messageId();
-                if (isBlank(messageId) || isBlank(sessionId)) return;
+                if (isBlank(messageId) || isBlank(sessionId)) {
+                    LOG.info("Ignoring tool_call: blank messageId or sessionId, update={0}", update);
+                    return;
+                }
                 final String command = update.command();
                 final String kind = update.kind();
                 Map<String, ToolCallData> sessionMap = TOOL_CALL_CACHE.get(sessionId, k -> new ConcurrentHashMap<>());
                 ToolCallData data = sessionMap.computeIfAbsent(messageId, k -> new ToolCallData(k, command));
-                if (data.isDone()) return;
+                if (data.isDone()) {
+                    LOG.info("Ignoring tool_call: already completed, update={0}", update);
+                    return;
+                }
                 ProcessedMessage target = processToolMessage(data, command, update, kind, messageId);
                 if (data.shouldDisplay(target.text())) {
                     handler.displayMessage(target);
@@ -148,7 +160,10 @@ public class StrategyRegistry implements UpdateDispatcher {
 
             case "message" -> {
                 Message msg = update.message();
-                if (msg == null) return;
+                if (msg == null) {
+                    LOG.info("Ignoring message: null message object, update={0}", update);
+                    return;
+                }
                 String role = msg.type() != null ? msg.type() : "assistant";
                 StringBuilder sb = new StringBuilder();
                 if ("user".equals(role) && msg.prompt() != null) {
@@ -182,7 +197,7 @@ public class StrategyRegistry implements UpdateDispatcher {
             case "plan" -> {
                 JsonNode entriesNode = update.update() != null ? update.update().entries() : null;
                 if (entriesNode == null || !entriesNode.isArray()) {
-                    LOG.fine("Plan update has no entries array");
+                    LOG.info("Ignoring plan update: no entries array, update={0}", update);
                     return;
                 }
                 List<PlanEntry> entries;
@@ -192,7 +207,10 @@ public class StrategyRegistry implements UpdateDispatcher {
                     LOG.warn("Failed to deserialize plan entries: {0}", e.getMessage());
                     return;
                 }
-                if (entries.isEmpty()) return;
+                if (entries.isEmpty()) {
+                    LOG.info("Ignoring plan update: empty entries, update={0}", update);
+                    return;
+                }
                 entries = new ArrayList<>(entries);
                 entries.sort(Comparator.comparingInt(e -> priorityWeight(e.priority())));
                 StringBuilder sb = new StringBuilder();
@@ -229,17 +247,22 @@ public class StrategyRegistry implements UpdateDispatcher {
     private boolean shouldSkip(JsonNode content) {
         if (content == null || !content.isObject() || !content.has("annotations")) return false;
         JsonNode annotations = content.get("annotations");
+
         if (annotations == null || !annotations.isObject()) return false;
         if (annotations.has("audience") && annotations.get("audience").isArray()) {
             for (JsonNode aud : annotations.get("audience")) {
-                if ("assistant".equals(aud.asText())) return true;
+                if ("assistant".equals(aud.asText()))
+                    return true;
             }
         }
+
         if (annotations.has("tags") && annotations.get("tags").isArray()) {
             for (JsonNode tag : annotations.get("tags")) {
-                if ("hidden".equals(tag.asText())) return true;
+                if ("hidden".equals(tag.asText()))
+                    return true;
             }
         }
+        
         return false;
     }
 

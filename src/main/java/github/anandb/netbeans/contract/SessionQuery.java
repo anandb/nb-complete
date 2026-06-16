@@ -28,5 +28,8 @@ public interface SessionQuery {
 
     /** Returns true if the given sessionId is a sub-agent/descendant of the current active session. */
     boolean isDescendantOfCurrent(String sessionId);
+
+    /** Returns true if the session is marked as hidden locally. */
+    boolean isHidden(String sessionId);
 }
 

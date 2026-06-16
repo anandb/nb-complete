@@ -18,5 +18,5 @@ public final class TimingConstants {
     public static final int HELP_FLASH_INITIAL_DELAY_MS = 800;
 
     /** Number of flash toggle ticks for the help button. */
-    public static final int HELP_FLASH_TICKS = 16;
+    public static final int HELP_FLASH_TICKS = 32;
 }

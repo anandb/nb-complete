@@ -32,6 +32,7 @@ public class SlashCommandInterceptor {
         commands.put("/level", new CommandInfo(this::handleLevel, "Select thinking level"));
         commands.put("/sessions", new CommandInfo(this::handleSession, "Select session"));
         commands.put("/new", new CommandInfo(this::handleNew, "Create new session"));
+        commands.put("/title", new CommandInfo(this::handleTitle, "Generate session title"));
     }
 
     public void setCallback(SlashCommandCallback callback) {
@@ -100,6 +101,29 @@ public class SlashCommandInterceptor {
         if (callback != null) {
             callback.popupNewSession();
         }
+        return CompletableFuture.completedFuture(true);
+    }
+
+    private CompletableFuture<Boolean> handleTitle(String args, Lookup context) {
+        SessionControl sc = Lookup.getDefault().lookup(SessionControl.class);
+        if (sc == null) {
+            return CompletableFuture.completedFuture(false);
+        }
+        String sessionId = sc.getCurrentSessionId();
+        if (sessionId == null) {
+            return CompletableFuture.completedFuture(false);
+        }
+
+        // Show simulated tool_call_update in chat
+        SlashCommandCallback cb = callback;
+        if (cb != null) {
+            cb.displayToolMessage("title", "Updating title...");
+        }
+
+        // Send as regular message — AI needs conversation context to suggest a title
+        String prompt = "Suggest a title for this session and call the nb_rename_session tool to rename the session.";
+        github.anandb.netbeans.manager.ProcessManager.getInstance()
+                .sendMessage(sessionId, prompt, null);
         return CompletableFuture.completedFuture(true);
     }
 

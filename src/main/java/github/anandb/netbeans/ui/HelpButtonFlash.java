@@ -3,6 +3,8 @@ package github.anandb.netbeans.ui;
 import java.awt.Color;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import javax.swing.JButton;
 import javax.swing.Timer;
 import github.anandb.netbeans.support.TimingConstants;
@@ -27,6 +29,7 @@ final class HelpButtonFlash {
                 ? new Color(128, 128, 128, 180)
                 : new Color(66, 133, 244, 180);
 
+        Timer[] timerHolder = new Timer[1];
         Timer timer = new Timer(TimingConstants.HELP_FLASH_INTERVAL_MS, new ActionListener() {
             int tick = 0;
 
@@ -44,14 +47,27 @@ final class HelpButtonFlash {
                 }
                 button.repaint();
                 if (tick >= TimingConstants.HELP_FLASH_TICKS) {
-                    ((Timer) e.getSource()).stop();
-                    button.setOpaque(false);
-                    button.setContentAreaFilled(false);
-                    button.repaint();
+                    stop(button, timerHolder[0]);
                 }
+            }
+        });
+        timerHolder[0] = timer;
+        button.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) {
+                stop(button, timerHolder[0]);
             }
         });
         timer.setInitialDelay(TimingConstants.HELP_FLASH_INITIAL_DELAY_MS);
         timer.start();
+    }
+
+    private static void stop(JButton button, Timer timer) {
+        if (timer.isRunning()) {
+            timer.stop();
+            button.setOpaque(false);
+            button.setContentAreaFilled(false);
+            button.repaint();
+        }
     }
 }

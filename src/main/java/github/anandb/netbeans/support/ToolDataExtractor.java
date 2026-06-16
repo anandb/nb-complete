@@ -93,7 +93,13 @@ public final class ToolDataExtractor {
     }
 
     public static boolean isDcpCleanup(String text) {
-        return text != null && (text.contains("▣ DCP") || text.contains("  DCP Sweep  "));
+        return text != null && (
+            text.contains("▣ DCP") ||
+            text.contains("DCP Sweep") ||
+            text.contains("DCP Commands") ||
+            text.contains("DCP Context Analysis") ||
+            text.contains("DCP Statistics")
+        );
     }
 
     public static boolean isCavemanFiller(String text) {
@@ -107,6 +113,7 @@ public final class ToolDataExtractor {
                 stripped = pattern.matcher(stripped).replaceAll("");
             }
         }
+        
         return stripped;
     }
 

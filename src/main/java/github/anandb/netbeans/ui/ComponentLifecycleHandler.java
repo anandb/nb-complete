@@ -180,6 +180,15 @@ public class ComponentLifecycleHandler {
                     }
                 });
             }
+
+            @Override
+            public void displayToolMessage(String title, String text) {
+                SwingUtilities.invokeLater(() -> {
+                    chatPanel.addMessage(new github.anandb.netbeans.model.ProcessedMessage(
+                        github.anandb.netbeans.model.MessageType.tool_call_update,
+                        text, null, null, title, text, false, "completed"));
+                });
+            }
         });
 
         // ESC key handler to close options panel and return focus to input

@@ -29,6 +29,8 @@ final class ChatLayoutBuilder {
     private final ConfigPanelController configPanelController;
 
     private JComboBox<?> sessionDropdown;
+    private JButton hideBtn;
+    private JButton showHiddenBtn;
     private JButton newSessionBtn;
     private JButton renameSessionBtn;
     private JButton toggleBlocksBtn;
@@ -64,6 +66,41 @@ final class ChatLayoutBuilder {
 
         JPanel sessionControls = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         sessionControls.setOpaque(false);
+
+        // Archive/Unarchive toggle for current session (debounced to prevent accidental double-click)
+        final long[] lastArchiveClick = {0L};
+        JButton hb = UIUtils.createToolbarButton("archive.svg", NbBundle.getMessage(AssistantTopComponent.class, "HINT_ArchiveSession"), e -> {
+            long now = System.currentTimeMillis();
+            if (now - lastArchiveClick[0] < 500) return;
+            lastArchiveClick[0] = now;
+            String sid = Lookup.getDefault().lookup(github.anandb.netbeans.contract.SessionControl.class).getCurrentSessionId();
+            if (sid != null) {
+                boolean currentlyHidden = Lookup.getDefault().lookup(github.anandb.netbeans.contract.SessionControl.class).isHidden(sid);
+                Lookup.getDefault().lookup(github.anandb.netbeans.contract.SessionControl.class).setHidden(sid, !currentlyHidden);
+                updateHideButtonIcon(!currentlyHidden);
+                Lookup.getDefault().lookup(github.anandb.netbeans.contract.SessionControl.class).refreshSessions();
+            }
+        });
+        hideBtn = hb;
+
+        // Show/hidden sessions filter toggle
+        final JButton[] shbRef = new JButton[1];
+        JButton shb = UIUtils.createToolbarButton("show.svg", NbBundle.getMessage(AssistantTopComponent.class, "HINT_ShowArchivedSessions"), e -> {
+            boolean showing = !isShowingHidden();
+            NbPreferences.forModule(AssistantTopComponent.class).putBoolean("showHiddenSessions", showing);
+            shbRef[0].setIcon(ThemeManager.getIcon(showing ? "hide.svg" : "show.svg", 28));
+            shbRef[0].setToolTipText(showing
+                ? NbBundle.getMessage(AssistantTopComponent.class, "HINT_HideArchivedSessions")
+                : NbBundle.getMessage(AssistantTopComponent.class, "HINT_ShowArchivedSessions"));
+            Lookup.getDefault().lookup(github.anandb.netbeans.contract.SessionControl.class).refreshSessionList();
+        });
+        shbRef[0] = shb;
+        showHiddenBtn = shb;
+        // Restore icon state from preference
+        if (isShowingHidden()) {
+            shb.setIcon(ThemeManager.getIcon("hide.svg", 28));
+            shb.setToolTipText(NbBundle.getMessage(AssistantTopComponent.class, "HINT_HideArchivedSessions"));
+        }
 
         newSessionBtn = UIUtils.createToolbarButton("new.svg", NbBundle.getMessage(AssistantTopComponent.class, "HINT_NewSession"), e -> {
             org.netbeans.api.project.Project[] projects = github.anandb.netbeans.project.ACPProjectManager.getInstance().getAllOpenProjects();
@@ -110,13 +147,13 @@ final class ChatLayoutBuilder {
 
         final boolean savedKeepState = NbPreferences.forModule(AssistantTopComponent.class).getBoolean("keepOlderMessages", false);
         chatPanel.setKeepOlderMessages(savedKeepState);
-        JButton pinBtn = UIUtils.createToolbarButton(savedKeepState ? "pin.svg" : "pin_off.svg",
+        JButton pinBtn = UIUtils.createToolbarButton(savedKeepState ? "pin_off.svg" : "pin.svg",
                 NbBundle.getMessage(AssistantTopComponent.class, savedKeepState ? "HINT_TruncateMessages" : "HINT_KeepMessages"), null);
         pinBtn.addActionListener(e -> {
             boolean keep = !chatPanel.isKeepOlderMessages();
             chatPanel.setKeepOlderMessages(keep);
             NbPreferences.forModule(AssistantTopComponent.class).putBoolean("keepOlderMessages", keep);
-            pinBtn.setIcon(ThemeManager.getIcon(keep ? "pin.svg" : "pin_off.svg", 28));
+            pinBtn.setIcon(ThemeManager.getIcon(keep ? "pin_off.svg" : "pin.svg", 28));
             pinBtn.setToolTipText(keep
                 ? NbBundle.getMessage(AssistantTopComponent.class, "HINT_TruncateMessages")
                 : NbBundle.getMessage(AssistantTopComponent.class, "HINT_KeepMessages"));
@@ -127,6 +164,7 @@ final class ChatLayoutBuilder {
         filterBtn = createFilterButton();
 
         sessionControls.add(newSessionBtn);
+        sessionControls.add(hideBtn);
         sessionControls.add(renameSessionBtn);
         sessionControls.add(refreshBtn);
         sessionControls.add(keepBtn);
@@ -135,7 +173,12 @@ final class ChatLayoutBuilder {
         sessionControls.add(exportBtn);
         sessionControls.add(restartServerBtn);
 
-        topBar.add(sessionDropdown, BorderLayout.CENTER);
+        JPanel dropdownWrapper = new JPanel(new BorderLayout(4, 0));
+        dropdownWrapper.setOpaque(false);
+        dropdownWrapper.add(showHiddenBtn, BorderLayout.WEST);
+        dropdownWrapper.add(sessionDropdown, BorderLayout.CENTER);
+
+        topBar.add(dropdownWrapper, BorderLayout.CENTER);
         topBar.add(sessionControls, BorderLayout.EAST);
 
         cwdLabel = new JLabel("");
@@ -278,6 +321,10 @@ final class ChatLayoutBuilder {
         return (JComboBox<github.anandb.netbeans.model.SessionItem>) sessionDropdown;
     }
 
+    JButton getHideBtn() { return hideBtn; }
+
+    JButton getShowHiddenBtn() { return showHiddenBtn; }
+
     JButton getNewSessionBtn() { return newSessionBtn; }
 
     JButton getRenameSessionBtn() { return renameSessionBtn; }
@@ -309,4 +356,17 @@ final class ChatLayoutBuilder {
     JButton getStopBtn() { return stopBtn; }
 
     JPanel getRightStatusPanel() { return rightStatusPanel; }
+
+    void updateHideButtonIcon(boolean hidden) {
+        if (hideBtn != null) {
+            hideBtn.setIcon(ThemeManager.getIcon(hidden ? "unarchive.svg" : "archive.svg", 28));
+            hideBtn.setToolTipText(hidden
+                ? NbBundle.getMessage(AssistantTopComponent.class, "HINT_UnarchiveSession")
+                : NbBundle.getMessage(AssistantTopComponent.class, "HINT_ArchiveSession"));
+        }
+    }
+
+    static boolean isShowingHidden() {
+        return NbPreferences.forModule(AssistantTopComponent.class).getBoolean("showHiddenSessions", false);
+    }
 }

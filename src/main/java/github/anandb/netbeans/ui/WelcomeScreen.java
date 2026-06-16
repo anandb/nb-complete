@@ -64,7 +64,11 @@ final class WelcomeScreen {
             messagesContainer.add(sep);
             messagesContainer.add(Box.createVerticalStrut(12));
 
+            boolean showHidden = ChatLayoutBuilder.isShowingHidden();
             for (Session s : sessions) {
+                if (!showHidden && Lookup.getDefault().lookup(SessionControl.class).isHidden(s.id())) {
+                    continue;
+                }
                 String title = defaultIfBlank(s.title(), NbBundle.getMessage(AssistantTopComponent.class, "LBL_ChatDefault", left(s.id(), 8)));
                 String label = Lookup.getDefault().lookup(SessionControl.class).getCustomTitle(s.id(), title);
                 String dir = s.effectiveDirectory();

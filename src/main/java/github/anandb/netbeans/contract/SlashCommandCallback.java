@@ -14,4 +14,7 @@ public interface SlashCommandCallback {
     void popupSessionCombo();
 
     void popupNewSession();
+
+    /** Displays a simulated tool message in the chat thread. */
+    void displayToolMessage(String title, String text);
 }

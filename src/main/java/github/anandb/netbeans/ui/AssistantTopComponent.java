@@ -67,6 +67,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     private final JButton sendBtn;
     private final JButton stopBtn;
     private final JComboBox<SessionItem> sessionDropdown;
+    private final JButton hideBtn;
     private final JButton newSessionBtn;
     private final JButton renameSessionBtn;
     private final JButton toggleBlocksBtn;
@@ -110,6 +111,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         JPanel bottomPanel = layoutBuilder.buildBottomPanel();
 
         sessionDropdown = layoutBuilder.getSessionDropdown();
+        hideBtn = layoutBuilder.getHideBtn();
         newSessionBtn = layoutBuilder.getNewSessionBtn();
         renameSessionBtn = layoutBuilder.getRenameSessionBtn();
         toggleBlocksBtn = layoutBuilder.getToggleBlocksBtn();
@@ -137,7 +139,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
         sessionDropdownHandler = new SessionDropdownHandler(sessionDropdown, inputArea);
         sessionLifecycleHandler = new SessionLifecycleHandler(
-            chatPanel, sessionDropdown, newSessionBtn, renameSessionBtn,
+            chatPanel, sessionDropdown, hideBtn, newSessionBtn, renameSessionBtn,
             toggleOptionsBtn, configPanelController, inputArea, statusController,
             this::showProjectPickerPopup, this::updateTabName, this::updateCwdLabel
         );

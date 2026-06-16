@@ -63,6 +63,18 @@ public class SessionManager implements SessionQuery, SessionControl {
     static void setCustomTitle(String sessionId, String title) {
         NbPreferences.forModule(SessionManager.class).put(TITLE_PREFIX + sessionId, title);
     }
+
+    // --- hidden session flag (stored locally) -------------------------------
+    private static final String HIDDEN_PREFIX = "session_hidden_";
+
+    @Override
+    public boolean isHidden(String sessionId) {
+        return NbPreferences.forModule(SessionManager.class).getBoolean(HIDDEN_PREFIX + sessionId, false);
+    }
+
+    public void setHidden(String sessionId, boolean hidden) {
+        NbPreferences.forModule(SessionManager.class).putBoolean(HIDDEN_PREFIX + sessionId, hidden);
+    }
     // -------------------------------------------------------------------------
 
     private static volatile SessionManager INSTANCE;
@@ -372,6 +384,14 @@ public class SessionManager implements SessionQuery, SessionControl {
                     cacheManager.setCachedSessions(filteredSessions);
                     notifySessionListUpdated(filteredSessions);
                 });
+    }
+
+    @Override
+    public void refreshSessionList() {
+        List<Session> cached = cacheManager.getCachedSessions();
+        if (!cached.isEmpty()) {
+            notifySessionListUpdated(cached);
+        }
     }
 
     public void createNewSession(String explicitCwd) {

@@ -100,6 +100,7 @@ handled locally:
 | `/sessions` | Opens the session switcher dropdown |
 | `/compact` | Sends a context compression signal to the server (summarizes conversation) |
 | `/dcp` | Dynamic Context Pruning - [another compression signal](https://github.com/Opencode-DCP/opencode-dynamic-context-pruning), needs the DCP Skill |
+| `/title` | Prompts the AI to suggest a session title and rename it via the `nb_rename_session` tool |
 
 Skills (e.g., `plan`, `explore`) are delegated to the OpenCode agent.
 
@@ -156,6 +157,11 @@ The assistant panel renders responses with structured formatting:
   the server without clearing local state.
 - **Session Dropdown** — Switch between active sessions from the dropdown in the header. Each
   session preserves its own message history independently.
+- **Session Archiving** — The **Archive** button on the toolbar hides the current session from the
+  dropdown without deleting it from the server. A **Show/Hide archived** toggle (eye icon) next to
+  the dropdown controls visibility of archived sessions. The hidden flag is stored client-side only
+  — it is not passed to the opencode server via ACP, so archiving is purely a local UI filter.
+  The session remains fully intact on the server and can be unarchived at any time.
 - **Auto-Open** — On first install or version change, the assistant opens automatically to help you
   get started.
 

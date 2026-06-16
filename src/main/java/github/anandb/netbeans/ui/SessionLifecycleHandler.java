@@ -35,6 +35,7 @@ public class SessionLifecycleHandler implements SessionListener {
 
     private final ChatThreadPanel chatPanel;
     private final JComboBox<SessionItem> sessionDropdown;
+    private final JButton hideBtn;
     private final JButton newSessionBtn;
     private final JButton renameSessionBtn;
     private final JButton toggleOptionsBtn;
@@ -55,6 +56,7 @@ public class SessionLifecycleHandler implements SessionListener {
     public SessionLifecycleHandler(
             ChatThreadPanel chatPanel,
             JComboBox<SessionItem> sessionDropdown,
+            JButton hideBtn,
             JButton newSessionBtn,
             JButton renameSessionBtn,
             JButton toggleOptionsBtn,
@@ -66,6 +68,7 @@ public class SessionLifecycleHandler implements SessionListener {
             Consumer<String> cwdLabelUpdater) {
         this.chatPanel = chatPanel;
         this.sessionDropdown = sessionDropdown;
+        this.hideBtn = hideBtn;
         this.newSessionBtn = newSessionBtn;
         this.renameSessionBtn = renameSessionBtn;
         this.toggleOptionsBtn = toggleOptionsBtn;
@@ -192,17 +195,32 @@ public class SessionLifecycleHandler implements SessionListener {
                 sessionDropdown.removeAllItems();
                 LOG.fine("onSessionListUpdated: adding {0} sessions to dropdown", sessions.size());
                 int selectIdx = -1;
+                int itemIdx = 0;
+                boolean showHidden = ChatLayoutBuilder.isShowingHidden();
                 for (int i = 0; i < sessions.size(); i++) {
                     Session s = sessions.get(i);
+                    // Filter hidden sessions unless show-hidden toggle is active
+                    if (!showHidden && Lookup.getDefault().lookup(SessionControl.class).isHidden(s.id())) {
+                        continue;
+                    }
                     String customTitle = Lookup.getDefault().lookup(SessionControl.class).getCustomTitle(s.id(), s.title());
                     sessionDropdown.addItem(new SessionItem(s, customTitle));
                     if (currentId != null && s.id().equals(currentId)) {
-                        selectIdx = i;
+                        selectIdx = itemIdx;
                     }
+                    itemIdx++;
                 }
 
-                boolean hasSessions = !sessions.isEmpty();
+                boolean hasSessions = sessionDropdown.getItemCount() > 0;
                 boolean hasProjects = OpenProjects.getDefault().getOpenProjects().length > 0;
+                hideBtn.setEnabled(currentId != null);
+                if (currentId != null) {
+                    boolean hidden = Lookup.getDefault().lookup(SessionControl.class).isHidden(currentId);
+                    hideBtn.setIcon(ThemeManager.getIcon(hidden ? "unarchive.svg" : "archive.svg", 28));
+                    hideBtn.setToolTipText(hidden
+                        ? NbBundle.getMessage(AssistantTopComponent.class, "HINT_UnarchiveSession")
+                        : NbBundle.getMessage(AssistantTopComponent.class, "HINT_ArchiveSession"));
+                }
                 newSessionBtn.setEnabled(hasProjects);
                 renameSessionBtn.setEnabled(hasSessions);
 
@@ -211,20 +229,25 @@ public class SessionLifecycleHandler implements SessionListener {
                 if (hasSessions) {
                     if (selectIdx != -1) {
                         sessionDropdown.setSelectedIndex(selectIdx);
-                        Session cur = sessions.get(selectIdx);
+                        SessionItem cur = sessionDropdown.getItemAt(selectIdx);
                         if (cur != null) {
-                            LOG.fine("Re-loading current session: {0}", cur.id());
-                            Lookup.getDefault().lookup(SessionControl.class).loadSession(cur.id());
+                            LOG.fine("Re-loading current session: {0}", cur.getSession().id());
+                            Lookup.getDefault().lookup(SessionControl.class).loadSession(cur.getSession().id());
                         }
                     } else {
-                        Session mostRecent = sessions.get(0);
+                        SessionItem mostRecent = sessionDropdown.getItemAt(0);
                         if (mostRecent != null) {
-                            LOG.fine("Loading most recent session: {0}", mostRecent.id());
-                            Lookup.getDefault().lookup(SessionControl.class).loadSession(mostRecent.id());
+                            LOG.fine("Loading most recent session: {0}", mostRecent.getSession().id());
+                            Lookup.getDefault().lookup(SessionControl.class).loadSession(mostRecent.getSession().id());
                         }
                     }
                 } else {
-                    chatPanel.setSessionList(sessions, id -> Lookup.getDefault().lookup(SessionControl.class).loadSession(id), () -> {
+                    // Filter hidden sessions for WelcomeScreen too
+                    List<Session> visibleSessions = showHidden ? sessions
+                        : sessions.stream()
+                            .filter(s -> !Lookup.getDefault().lookup(SessionControl.class).isHidden(s.id()))
+                            .toList();
+                    chatPanel.setSessionList(visibleSessions, id -> Lookup.getDefault().lookup(SessionControl.class).loadSession(id), () -> {
                         Project[] projects = ACPProjectManager.getInstance().getAllOpenProjects();
                         if (projects == null || projects.length == 0) {
                             return;
@@ -297,6 +320,12 @@ public class SessionLifecycleHandler implements SessionListener {
             }
 
             statusController.setInputEnabled(true);
+            hideBtn.setEnabled(true);
+            boolean hidden = Lookup.getDefault().lookup(SessionControl.class).isHidden(sessionId);
+            hideBtn.setIcon(ThemeManager.getIcon(hidden ? "unarchive.svg" : "archive.svg", 28));
+            hideBtn.setToolTipText(hidden
+                ? NbBundle.getMessage(AssistantTopComponent.class, "HINT_UnarchiveSession")
+                : NbBundle.getMessage(AssistantTopComponent.class, "HINT_ArchiveSession"));
             if (!sessionDropdown.isPopupVisible()) {
                 inputArea.requestFocusInWindow();
             }

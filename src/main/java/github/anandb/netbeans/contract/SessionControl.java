@@ -42,6 +42,9 @@ public interface SessionControl extends SessionQuery {
     /** Refreshes the session list from the server. */
     void refreshSessions();
 
+    /** Re-filters the cached session list into the dropdown without querying server or reloading. */
+    void refreshSessionList();
+
     /** Stops the current message stream. */
     void stopCurrentMessage();
 
@@ -56,4 +59,7 @@ public interface SessionControl extends SessionQuery {
 
     /** Forces the current message to cancel, transitioning directly to IDLE. */
     void forceCancelCurrentMessage();
+
+    /** Toggles the hidden attribute for a session in local storage. */
+    void setHidden(String sessionId, boolean hidden);
 }
