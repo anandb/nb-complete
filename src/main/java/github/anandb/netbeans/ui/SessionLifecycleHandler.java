@@ -47,6 +47,7 @@ public class SessionLifecycleHandler implements SessionListener {
     private final Consumer<JComponent> projectPickerShower;
     private final Consumer<String> tabNameUpdater;
     private final Consumer<String> cwdLabelUpdater;
+    private final Consumer<Boolean> sessionStateHandler;
 
     // Shared mutable state
     private boolean optionsPanelCollapsed = true;
@@ -65,7 +66,8 @@ public class SessionLifecycleHandler implements SessionListener {
             StatusController statusController,
             Consumer<JComponent> projectPickerShower,
             Consumer<String> tabNameUpdater,
-            Consumer<String> cwdLabelUpdater) {
+            Consumer<String> cwdLabelUpdater,
+            Consumer<Boolean> sessionStateHandler) {
         this.chatPanel = chatPanel;
         this.sessionDropdown = sessionDropdown;
         this.hideBtn = hideBtn;
@@ -78,6 +80,7 @@ public class SessionLifecycleHandler implements SessionListener {
         this.projectPickerShower = projectPickerShower;
         this.tabNameUpdater = tabNameUpdater;
         this.cwdLabelUpdater = cwdLabelUpdater;
+        this.sessionStateHandler = sessionStateHandler;
     }
 
     boolean isOptionsPanelCollapsed() {
@@ -268,6 +271,7 @@ public class SessionLifecycleHandler implements SessionListener {
                     configPanelController.getComponent().setVisible(true);
                     toggleOptionsBtn.setIcon(ThemeManager.getIcon("arrow-down.svg", 25));
                     statusController.setInputEnabled(false);
+                    sessionStateHandler.accept(false);
                     configPanelController.ensureDefaultModelAdded();
                 }
             } finally {
@@ -320,6 +324,7 @@ public class SessionLifecycleHandler implements SessionListener {
             }
 
             statusController.setInputEnabled(true);
+            sessionStateHandler.accept(true);
             hideBtn.setEnabled(true);
             boolean hidden = Lookup.getDefault().lookup(SessionControl.class).isHidden(sessionId);
             hideBtn.setIcon(ThemeManager.getIcon(hidden ? "unarchive.svg" : "archive.svg", 28));

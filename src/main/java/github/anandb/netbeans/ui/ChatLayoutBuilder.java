@@ -46,6 +46,7 @@ final class ChatLayoutBuilder {
     private JPanel header;
     private JButton sendBtn;
     private JButton stopBtn;
+    private JButton restartServerBtn;
     private JPanel rightStatusPanel;
 
     ChatLayoutBuilder(AssistantTopComponent topComponent, ChatThreadPanel chatPanel,
@@ -63,24 +64,38 @@ final class ChatLayoutBuilder {
         topBar.setOpaque(false);
 
         sessionDropdown = new UIUtils.WrappingComboBox<>();
+        sessionDropdown.addActionListener(e -> {
+            if (!sessionDropdown.isPopupVisible()) {
+                Object sel = sessionDropdown.getSelectedItem();
+                if (sel instanceof github.anandb.netbeans.model.SessionItem item) {
+                    sessionDropdown.setToolTipText(item.getTitle());
+                }
+            }
+        });
 
         JPanel sessionControls = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         sessionControls.setOpaque(false);
 
         // Archive/Unarchive toggle for current session (debounced to prevent accidental double-click)
-        final long[] lastArchiveClick = {0L};
+        final JButton[] hbRef = new JButton[1];
         JButton hb = UIUtils.createToolbarButton("archive.svg", NbBundle.getMessage(AssistantTopComponent.class, "HINT_ArchiveSession"), e -> {
-            long now = System.currentTimeMillis();
-            if (now - lastArchiveClick[0] < 500) return;
-            lastArchiveClick[0] = now;
+            JButton btn = hbRef[0];
+            btn.setEnabled(false);
+            javax.swing.Timer timer = new javax.swing.Timer(500, ev -> {
+                btn.setEnabled(true);
+            });
+            timer.setRepeats(false);
+            timer.start();
             String sid = Lookup.getDefault().lookup(github.anandb.netbeans.contract.SessionControl.class).getCurrentSessionId();
             if (sid != null) {
                 boolean currentlyHidden = Lookup.getDefault().lookup(github.anandb.netbeans.contract.SessionControl.class).isHidden(sid);
                 Lookup.getDefault().lookup(github.anandb.netbeans.contract.SessionControl.class).setHidden(sid, !currentlyHidden);
-                updateHideButtonIcon(!currentlyHidden);
                 Lookup.getDefault().lookup(github.anandb.netbeans.contract.SessionControl.class).refreshSessions();
+            } else {
+                btn.setEnabled(true);
             }
         });
+        hbRef[0] = hb;
         hideBtn = hb;
 
         // Show/hidden sessions filter toggle
@@ -127,7 +142,7 @@ final class ChatLayoutBuilder {
             topComponent.exportConversation();
         });
         String restartHint = NbBundle.getMessage(AssistantTopComponent.class, "HINT_RestartServer");
-        JButton restartServerBtn = UIUtils.createToolbarButton("restart.svg", restartHint, e -> {
+        restartServerBtn = UIUtils.createToolbarButton("restart.svg", restartHint, e -> {
             topComponent.componentLifecycleHandler.promptRestartServer();
         });
 
@@ -163,8 +178,8 @@ final class ChatLayoutBuilder {
 
         filterBtn = createFilterButton();
 
-        sessionControls.add(newSessionBtn);
         sessionControls.add(hideBtn);
+        sessionControls.add(newSessionBtn);
         sessionControls.add(renameSessionBtn);
         sessionControls.add(refreshBtn);
         sessionControls.add(keepBtn);
@@ -356,6 +371,8 @@ final class ChatLayoutBuilder {
     JButton getStopBtn() { return stopBtn; }
 
     JPanel getRightStatusPanel() { return rightStatusPanel; }
+
+    JButton getRestartServerBtn() { return restartServerBtn; }
 
     void updateHideButtonIcon(boolean hidden) {
         if (hideBtn != null) {

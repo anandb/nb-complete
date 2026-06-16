@@ -75,6 +75,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     private final JButton filterBtn;
     private final JButton helpBtn;
     private final JButton toggleOptionsBtn;
+    private final JButton restartServerBtn;
     private final JLabel statusLabel;
     private final JLabel versionLabel;
     private final JLabel cwdLabel;
@@ -119,6 +120,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         filterBtn = layoutBuilder.getFilterBtn();
         helpBtn = layoutBuilder.getHelpBtn();
         toggleOptionsBtn = layoutBuilder.getToggleOptionsBtn();
+        restartServerBtn = layoutBuilder.getRestartServerBtn();
         statusLabel = layoutBuilder.getStatusLabel();
         versionLabel = layoutBuilder.getVersionLabel();
         cwdLabel = layoutBuilder.getCwdLabel();
@@ -141,7 +143,18 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         sessionLifecycleHandler = new SessionLifecycleHandler(
             chatPanel, sessionDropdown, hideBtn, newSessionBtn, renameSessionBtn,
             toggleOptionsBtn, configPanelController, inputArea, statusController,
-            this::showProjectPickerPopup, this::updateTabName, this::updateCwdLabel
+            this::showProjectPickerPopup, this::updateTabName, this::updateCwdLabel,
+            sessionActive -> {
+                sessionDropdown.setEnabled(sessionActive);
+                hideBtn.setEnabled(sessionActive);
+                renameSessionBtn.setEnabled(sessionActive);
+                toggleBlocksBtn.setEnabled(sessionActive);
+                keepBtn.setEnabled(sessionActive);
+                filterBtn.setEnabled(sessionActive);
+                helpBtn.setEnabled(sessionActive);
+                restartServerBtn.setEnabled(true);
+                newSessionBtn.setEnabled(true);
+            }
         );
         messageSender = new MessageSender(
             inputArea, chatPanel, attachmentManager, messageHistory,

@@ -13,6 +13,10 @@ public class SessionItem {
         return session;
     }
 
+    public String getTitle() {
+        return title;
+    }
+
     @Override
     public String toString() {
         String projectName = session.projectName();
