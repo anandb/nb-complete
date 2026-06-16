@@ -5,7 +5,7 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import github.anandb.netbeans.contract.ProcessControl;
 import org.openide.util.Lookup;
-import github.anandb.netbeans.manager.SlashCommandInterceptor;
+import github.anandb.netbeans.contract.SlashCommandInterceptor;
 import github.anandb.netbeans.contract.SlashCommandCallback;
 
 /**

@@ -26,11 +26,11 @@ import org.openide.util.RequestProcessor;
 
 import github.anandb.netbeans.contract.RequestHandler;
 import github.anandb.netbeans.support.Logger;
-
 import github.anandb.netbeans.support.MapperSupplier;
+import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.WireLogger;
 
-import static github.anandb.netbeans.manager.AgentUtils.closeQuietly;
+import static github.anandb.netbeans.support.AgentUtils.closeQuietly;
 
 public class AcpProtocolClient implements Closeable {
     private static final Logger LOG = Logger.from(AcpProtocolClient.class);

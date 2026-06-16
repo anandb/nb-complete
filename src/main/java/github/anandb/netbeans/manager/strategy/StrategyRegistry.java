@@ -15,7 +15,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 import github.anandb.netbeans.contract.UIHandler;
-import github.anandb.netbeans.manager.ToolDataExtractor;
+import github.anandb.netbeans.contract.UpdateDispatcher;
+import github.anandb.netbeans.support.ToolDataExtractor;
 import github.anandb.netbeans.model.Message;
 import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.ModelRecords.MessageClassification;
@@ -36,8 +37,8 @@ import static org.apache.commons.lang3.StringUtils.defaultString;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
-@ServiceProvider(service = StrategyRegistry.class)
-public class StrategyRegistry {
+@ServiceProvider(service = UpdateDispatcher.class)
+public class StrategyRegistry implements UpdateDispatcher {
     private static final Logger LOG = Logger.from(StrategyRegistry.class);
     private static final ObjectMapper MAPPER = MapperSupplier.get();
 
@@ -52,11 +53,11 @@ public class StrategyRegistry {
     }
 
     public static StrategyRegistry getInstance() {
-        StrategyRegistry reg = Lookup.getDefault().lookup(StrategyRegistry.class);
-        if (reg == null) {
-            reg = new StrategyRegistry();
+        UpdateDispatcher dispatcher = Lookup.getDefault().lookup(UpdateDispatcher.class);
+        if (dispatcher instanceof StrategyRegistry reg) {
+            return reg;
         }
-        return reg;
+        return new StrategyRegistry();
     }
 
     /** Invalidates the tool-call deduplication cache for a given session. */

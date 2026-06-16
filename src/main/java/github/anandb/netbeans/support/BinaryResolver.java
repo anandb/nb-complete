@@ -1,4 +1,4 @@
-package github.anandb.netbeans.manager;
+package github.anandb.netbeans.support;
 
 import java.io.File;
 import java.util.prefs.Preferences;
@@ -6,9 +6,6 @@ import java.util.regex.Pattern;
 
 import org.openide.util.NbBundle;
 import org.openide.util.NbPreferences;
-
-import github.anandb.netbeans.support.Logger;
-import github.anandb.netbeans.support.PreferenceKeys;
 
 public final class BinaryResolver {
 

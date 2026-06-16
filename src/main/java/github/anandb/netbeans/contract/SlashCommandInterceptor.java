@@ -1,11 +1,8 @@
-package github.anandb.netbeans.manager;
+package github.anandb.netbeans.contract;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import github.anandb.netbeans.contract.SlashCommandHandler;
-import github.anandb.netbeans.contract.SlashCommandCallback;
-import github.anandb.netbeans.contract.SlashCommandProvider;
 import github.anandb.netbeans.model.ModelRecords.CommandInfo;
 import github.anandb.netbeans.support.Logger;
 import org.openide.util.Lookup;

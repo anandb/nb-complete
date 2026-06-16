@@ -24,6 +24,7 @@ import org.openide.util.Lookup;
 import org.openide.util.lookup.ServiceProvider;
 
 import github.anandb.netbeans.contract.PermissionHandler;
+import github.anandb.netbeans.contract.SlashCommandInterceptor;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.PreferenceKeys;
 import github.anandb.netbeans.support.LanguageResolver;

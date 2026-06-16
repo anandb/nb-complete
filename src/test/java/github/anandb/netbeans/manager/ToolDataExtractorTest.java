@@ -3,6 +3,7 @@ package github.anandb.netbeans.manager;
 import github.anandb.netbeans.model.ModelRecords.MessageClassification;
 import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.SessionUpdate;
+import github.anandb.netbeans.support.ToolDataExtractor;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

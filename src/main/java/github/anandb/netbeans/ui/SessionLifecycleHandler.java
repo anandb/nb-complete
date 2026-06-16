@@ -11,7 +11,7 @@ import github.anandb.netbeans.contract.SessionListener;
 import github.anandb.netbeans.contract.UIHandler;
 import github.anandb.netbeans.contract.SessionControl;
 import org.openide.util.Lookup;
-import github.anandb.netbeans.manager.strategy.StrategyRegistry;
+import github.anandb.netbeans.contract.UpdateDispatcher;
 import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.model.MessageType;
@@ -117,7 +117,7 @@ public class SessionLifecycleHandler implements SessionListener {
         String msgId = update.update() != null ? update.update().messageId() : null;
         LOG.fine("UI received session update: type={0}, msgId={1}", type, msgId);
 
-        StrategyRegistry.getInstance().handle(update, new UIHandler() {
+        Lookup.getDefault().lookup(UpdateDispatcher.class).handle(update, new UIHandler() {
             @Override
             public void displayMessage(ProcessedMessage msg) {
                 SwingUtilities.invokeLater(() -> {

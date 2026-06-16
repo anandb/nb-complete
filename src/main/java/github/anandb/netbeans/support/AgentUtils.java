@@ -1,4 +1,4 @@
-package github.anandb.netbeans.manager;
+package github.anandb.netbeans.support;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -7,8 +7,6 @@ import java.util.Properties;
 
 import org.openide.modules.ModuleInfo;
 import org.openide.modules.Modules;
-
-import github.anandb.netbeans.support.Logger;
 
 public final class AgentUtils {
     private static final Logger LOG = Logger.from(AgentUtils.class);

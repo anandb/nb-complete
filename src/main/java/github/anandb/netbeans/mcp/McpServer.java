@@ -6,7 +6,7 @@ import java.io.IOException;
 import java.security.SecureRandom;
 import java.util.logging.Level;
 
-import github.anandb.netbeans.manager.PluginSettings;
+import github.anandb.netbeans.support.PluginSettings;
 import org.openide.util.RequestProcessor;
 
 import github.anandb.netbeans.support.Logger;

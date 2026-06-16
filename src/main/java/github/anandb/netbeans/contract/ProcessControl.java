@@ -5,7 +5,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
-import github.anandb.netbeans.manager.SlashCommandInterceptor;
 import github.anandb.netbeans.model.SessionUpdate;
 
 /**

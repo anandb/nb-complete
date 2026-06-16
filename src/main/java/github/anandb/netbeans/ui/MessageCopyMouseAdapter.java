@@ -10,7 +10,7 @@ import javax.swing.Icon;
 import javax.swing.JLabel;
 import javax.swing.Timer;
 
-import github.anandb.netbeans.manager.ToolDataExtractor;
+import github.anandb.netbeans.support.ToolDataExtractor;
 import github.anandb.netbeans.support.Logger;
 
 public class MessageCopyMouseAdapter extends MouseAdapter {

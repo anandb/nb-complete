@@ -20,7 +20,7 @@ import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
 import org.openide.util.NbPreferences;
 
-import github.anandb.netbeans.manager.AgentUtils;
+import github.anandb.netbeans.support.AgentUtils;
 
 final class ChatLayoutBuilder {
 

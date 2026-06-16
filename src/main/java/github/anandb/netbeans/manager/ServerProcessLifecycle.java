@@ -20,6 +20,7 @@ import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.PreferenceKeys;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.BinaryResolver;
 
 /**
  * Extracted server lifecycle methods from ProcessManager.

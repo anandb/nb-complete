@@ -9,7 +9,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.logging.Level;
 
-import github.anandb.netbeans.manager.PluginSettings;
+import github.anandb.netbeans.support.PluginSettings;
 import org.openide.util.NbBundle;
 import org.openide.util.RequestProcessor;
 

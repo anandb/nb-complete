@@ -1,4 +1,4 @@
-package github.anandb.netbeans.manager;
+package github.anandb.netbeans.support;
 
 import java.util.List;
 import java.util.regex.Matcher;
@@ -9,7 +9,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import github.anandb.netbeans.model.ModelRecords.MessageClassification;
 import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.SessionUpdate;
-import github.anandb.netbeans.support.Logger;
 import org.apache.commons.lang3.tuple.Pair;
 
 import static org.apache.commons.lang3.StringUtils.abbreviateMiddle;

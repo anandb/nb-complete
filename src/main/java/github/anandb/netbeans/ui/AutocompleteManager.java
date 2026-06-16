@@ -23,7 +23,7 @@ import javax.swing.UIManager;
 
 import github.anandb.netbeans.contract.ProcessControl;
 import org.openide.util.Lookup;
-import github.anandb.netbeans.manager.SlashCommandInterceptor;
+import github.anandb.netbeans.contract.SlashCommandInterceptor;
 import github.anandb.netbeans.model.ModelRecords.CommandInfo;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.Logger;

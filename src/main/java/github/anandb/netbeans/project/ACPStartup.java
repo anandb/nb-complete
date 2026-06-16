@@ -5,7 +5,7 @@ import org.openide.util.NbPreferences;
 import org.openide.windows.Mode;
 import org.openide.windows.WindowManager;
 
-import github.anandb.netbeans.manager.AgentUtils;
+import github.anandb.netbeans.support.AgentUtils;
 import github.anandb.netbeans.support.Logger;
 import org.openide.windows.TopComponent;
 

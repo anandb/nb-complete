@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.model.SessionConfigOption;
+import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.project.ACPProjectManager;
 import org.netbeans.api.project.Project;
 

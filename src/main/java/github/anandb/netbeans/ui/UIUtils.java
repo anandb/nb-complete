@@ -22,7 +22,7 @@ import javax.swing.JButton;
 import javax.swing.JPanel;
 import javax.swing.border.Border;
 
-import github.anandb.netbeans.manager.PluginSettings;
+import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.Logger;
 import org.openide.util.Utilities;
 

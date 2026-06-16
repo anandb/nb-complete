@@ -4,8 +4,8 @@ import java.io.File;
 
 import javax.swing.JFileChooser;
 
-import github.anandb.netbeans.manager.BinaryResolver;
-import github.anandb.netbeans.manager.PluginSettings;
+import github.anandb.netbeans.support.BinaryResolver;
+import github.anandb.netbeans.support.PluginSettings;
 import org.openide.util.NbBundle;
 import org.openide.util.NbPreferences;
 

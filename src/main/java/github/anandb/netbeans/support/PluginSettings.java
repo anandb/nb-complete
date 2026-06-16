@@ -1,11 +1,9 @@
-package github.anandb.netbeans.manager;
+package github.anandb.netbeans.support;
 
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.logging.Level;
 
-import github.anandb.netbeans.support.Logger;
-import github.anandb.netbeans.support.PreferenceKeys;
 import org.openide.util.NbPreferences;
 
 public final class PluginSettings {

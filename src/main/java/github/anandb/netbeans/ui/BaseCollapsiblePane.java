@@ -27,7 +27,7 @@ import javax.swing.JPopupMenu;
 import org.openide.util.NbBundle;
 import org.apache.commons.lang3.StringUtils;
 import github.anandb.netbeans.support.Logger;
-import github.anandb.netbeans.manager.ToolDataExtractor;
+import github.anandb.netbeans.support.ToolDataExtractor;
 
 /**
  * Abstract base class for collapsible UI panes (such as tool, activity, and code panes).

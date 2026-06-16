@@ -6,6 +6,8 @@ import java.nio.file.Files;
 import java.util.concurrent.CompletableFuture;
 import javax.swing.text.Document;
 
+import github.anandb.netbeans.support.ToolDataExtractor;
+
 import org.openide.cookies.EditorCookie;
 import org.openide.filesystems.FileObject;
 import org.openide.filesystems.FileUtil;
