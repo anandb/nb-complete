@@ -16,7 +16,7 @@ final class SessionCacheManager {
 
     private static final Logger LOG = Logger.from(SessionCacheManager.class);
 
-    private final List<Session> cachedSessions = new CopyOnWriteArrayList<>();
+    private List<Session> cachedSessions = new CopyOnWriteArrayList<>();
     private final Map<String, Session> sessionCacheMap = new ConcurrentHashMap<>();
 
     SessionCacheManager() {
@@ -27,10 +27,9 @@ final class SessionCacheManager {
         return cachedSessions;
     }
 
-    /** Replaces the cached session list. */
+    /** Replaces the cached session list atomically. */
     void setCachedSessions(List<Session> sessions) {
-        cachedSessions.clear();
-        cachedSessions.addAll(sessions);
+        cachedSessions = new CopyOnWriteArrayList<>(sessions);
     }
 
     /** Puts a session into the ID-keyed cache map. */

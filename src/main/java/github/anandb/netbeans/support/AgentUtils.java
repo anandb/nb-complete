@@ -4,6 +4,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
+import java.util.logging.Level;
 
 import org.openide.modules.ModuleInfo;
 import org.openide.modules.Modules;
@@ -20,7 +21,7 @@ public final class AgentUtils {
         try {
             closeable.close();
         } catch (IOException e) {
-            LOG.fine("Failed to close", e);
+            LOG.log(Level.WARNING, "Failed to close", e);
         }
     }
 
@@ -32,7 +33,7 @@ public final class AgentUtils {
                 return m.getSpecificationVersion().toString();
             }
         } catch (Exception e) {
-            LOG.fine("Failed to get module version", e);
+            LOG.log(Level.WARNING, "Failed to get module version", e);
         }
         
         try (InputStream is = AgentUtils.class.getResourceAsStream("/META-INF/MANIFEST.MF")) {
@@ -45,7 +46,7 @@ public final class AgentUtils {
                 }
             }
         } catch (Exception e) {
-            LOG.fine("Failed to get version from manifest", e);
+            LOG.log(Level.WARNING, "Failed to get version from manifest", e);
         }
 
         return "0.0.0";

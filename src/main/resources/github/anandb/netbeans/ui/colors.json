@@ -44,7 +44,9 @@
   {
     "name": "bubbleBorder",
     "property": "netbeans.codingassistant.color.bubbleBorder",
-    "key": "Button.borderColor"
+    "key": "Button.borderColor",
+    "dark": "#555555",
+    "light": "#C0B8A8"
   },
   {
     "name": "assistantForeground",

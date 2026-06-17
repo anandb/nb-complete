@@ -8,6 +8,7 @@ import java.awt.Toolkit;
 import java.awt.datatransfer.StringSelection;
 import java.awt.event.ActionEvent;
 import java.io.StringReader;
+import java.util.logging.Level;
 
 import javax.swing.JMenuItem;
 import javax.swing.JPopupMenu;
@@ -106,7 +107,7 @@ public class FitEditorPane extends JTextPane {
                 }
             }
         } catch (Exception ex) {
-            LOG.fine("View sizing failed, using fallback: {0}", ex.getMessage());
+            LOG.log(Level.WARNING, "View sizing failed, using fallback", ex);
         }
 
         if (lastComputedHeight > 0) {

@@ -119,7 +119,7 @@ class AcpRequestRouter {
                         }
                     }
                 } catch (Exception e) {
-                    LOG.warn("Could not read from editor for {0}, falling back to disk", filePath);
+                    LOG.warn("Could not read from editor for {0}, falling back to disk", filePath, e);
                 }
 
                 readFromDisk(file, filePath, resultFuture);

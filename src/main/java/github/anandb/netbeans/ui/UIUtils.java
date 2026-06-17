@@ -14,6 +14,7 @@ import java.io.File;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
 import java.util.regex.Pattern;
 
 import javax.swing.Icon;
@@ -150,7 +151,7 @@ public class UIUtils {
                         return new ImageIcon(icon.getImage().getScaledInstance(size, size, java.awt.Image.SCALE_SMOOTH));
                     }
                 } catch (Exception e) {
-                    LOG.fine("Failed to load custom user icon: {0}", e.getMessage());
+                    LOG.log(Level.WARNING, "Failed to load custom user icon", e);
                 }
                 return loadSvgIcon(file);
             }
@@ -174,7 +175,7 @@ public class UIUtils {
             transcoderClass.getMethod("transcode", inputClass, outputClass).invoke(transcoder, input, output);
             return new ImageIcon(ostream.toByteArray());
         } catch (Exception e) {
-            LOG.fine("Failed to load SVG custom user icon: {0}", e.getMessage());
+            LOG.log(Level.WARNING, "Failed to load SVG custom user icon", e);
             return ThemeManager.getIcon("user.svg", 37);
         }
     }

@@ -36,8 +36,8 @@ public class AcpProtocolClient implements Closeable {
     private static final Logger LOG = Logger.from(AcpProtocolClient.class);
     private static final ObjectMapper MAPPER = MapperSupplier.get();
 
-    private Consumer<Throwable> connectionErrorHandler;
-    private Runnable disconnectionHandler;
+    private volatile Consumer<Throwable> connectionErrorHandler;
+    private volatile Runnable disconnectionHandler;
     private Thread readerThread;
     private RequestProcessor watchdogRP;
 

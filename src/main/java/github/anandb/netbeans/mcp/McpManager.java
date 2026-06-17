@@ -9,9 +9,17 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class McpManager {
     private static final Logger LOG = Logger.from(McpManager.class);
+
+    private final ExecutorService mcpStartExecutor = Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "McpStart");
+        t.setDaemon(true);
+        return t;
+    });
 
     private McpServer mcpServer;
     private volatile boolean mcpDisabled = false;
@@ -32,9 +40,10 @@ public class McpManager {
             }
             LOG.info("Starting MCP server asynchronously...");
             serverStartFuture = CompletableFuture.runAsync(() -> {
+                McpServer server = null;
                 try {
                     LOG.info("Creating new McpServer instance...");
-                    McpServer server = new McpServer();
+                    server = new McpServer();
                     LOG.info("Starting MCP server...");
                     server.start();
                     synchronized (McpManager.this) {
@@ -46,12 +55,15 @@ public class McpManager {
                     readyFuture.complete(null);
                 } catch (IOException e) {
                     LOG.warn("Failed to start MCP server: {0}", e.getMessage());
+                    if (server != null) {
+                        server.stop();
+                    }
                     synchronized (McpManager.this) {
                         serverStartFuture = null;
                     }
                     readyFuture.complete(null);
                 }
-            });
+            }, mcpStartExecutor);
             LOG.info("MCP server start task submitted to async executor");
         }
     }
@@ -71,6 +83,7 @@ public class McpManager {
                 mcpServer = null;
             }
         }
+        mcpStartExecutor.shutdownNow();
     }
 
     public void disable() {
@@ -104,7 +117,7 @@ public class McpManager {
         return mcpServerList;
     }
 
-    public McpTools getMcpTools() {
+    public synchronized McpTools getMcpTools() {
         if (mcpServer == null) {
             return null;
         }

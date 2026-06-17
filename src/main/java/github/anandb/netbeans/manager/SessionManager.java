@@ -74,6 +74,7 @@ public class SessionManager implements SessionQuery, SessionControl {
         return NbPreferences.forModule(SessionManager.class).getBoolean(HIDDEN_PREFIX + sessionId, false);
     }
 
+    @Override
     public void setHidden(String sessionId, boolean hidden) {
         NbPreferences.forModule(SessionManager.class).putBoolean(HIDDEN_PREFIX + sessionId, hidden);
     }
@@ -166,18 +167,22 @@ public class SessionManager implements SessionQuery, SessionControl {
         return sm;
     }
 
+    @Override
     public void addSessionListener(SessionListener listener) {
         listeners.add(listener);
     }
 
+    @Override
     public void removeSessionListener(SessionListener listener) {
         listeners.remove(listener);
     }
 
+    @Override
     public String getCurrentSessionId() {
         return currentSessionId;
     }
 
+    @Override
     public String getCurrentSessionDirectory() {
         return lastProjectDir;
     }
@@ -282,6 +287,7 @@ public class SessionManager implements SessionQuery, SessionControl {
                 });
     }
 
+    @Override
     public CompletableFuture<Session> createSession(String cwd) {
         if (cwd == null) {
             cwd = System.getProperty("user.dir");
@@ -316,6 +322,7 @@ public class SessionManager implements SessionQuery, SessionControl {
                 });
     }
 
+    @Override
     public CompletableFuture<List<SessionConfigOption>> loadSessionFromServer(String sessionId, String cwd) {
         LOG.fine("loadSessionFromServer: called with {0}, cwd={1}", sessionId, cwd);
         final long start = System.nanoTime();
@@ -348,10 +355,12 @@ public class SessionManager implements SessionQuery, SessionControl {
                 });
     }
 
+    @Override
     public CompletableFuture<Void> deleteSession(String sessionId) {
         return rpcClient.deleteSession(sessionId);
     }
 
+    @Override
     public CompletableFuture<Void> setSessionConfigOption(String sessionId, String configId, String value) {
         return rpcClient.setSessionConfigOption(sessionId, configId, value);
     }
@@ -363,6 +372,7 @@ public class SessionManager implements SessionQuery, SessionControl {
 
     // --- High-level session operations ---
 
+    @Override
     public void refreshSessions() {
         ProcessManager.getInstance().whenReady()
                 .thenCompose(v -> {
@@ -398,6 +408,7 @@ public class SessionManager implements SessionQuery, SessionControl {
         }
     }
 
+    @Override
     public void createNewSession(String explicitCwd) {
         if (!stateMachine.transitionTo(SessionState.LOADING)) {
             LOG.warn("Cannot create session in state {0}", stateMachine.getState());
@@ -433,10 +444,12 @@ public class SessionManager implements SessionQuery, SessionControl {
                 });
     }
 
+    @Override
     public void loadSession(String sessionId) {
         loadSession(sessionId, false);
     }
 
+    @Override
     public void loadSession(String sessionId, boolean isStartup) {
         StrategyRegistry.invalidateSession(sessionId);
         if (!stateMachine.transitionTo(SessionState.LOADING)) {
@@ -482,6 +495,7 @@ public class SessionManager implements SessionQuery, SessionControl {
                 });
     }
 
+    @Override
     public void renameSession(String sessionId, String newTitle) {
         if (newTitle == null || newTitle.trim().isEmpty()) {
             return;
@@ -519,15 +533,7 @@ public class SessionManager implements SessionQuery, SessionControl {
     private void sendPreamble(String sessionId) {
         String preamble = PluginSettings.getPreamble().trim();
         if (!preamble.isEmpty()) {
-            CompletableFuture<JsonNode> future = ProcessManager.getInstance().sendMessage(sessionId, preamble, null);
-            if (future != null) {
-                future.exceptionally(ex -> {
-                    Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
-                    LOG.warn("Failed to send preamble: {0}", cause.getMessage());
-                    notifyError("Connection lost while sending preamble: " + cause.getMessage());
-                    return null;
-                });
-            }
+            sendAssistantPrompt(sessionId, preamble, "preamble");
         }
     }
 
@@ -537,9 +543,13 @@ public class SessionManager implements SessionQuery, SessionControl {
      * UI does not render it as a user message.
      */
     private void sendResumePrompt(String sessionId) {
+        sendAssistantPrompt(sessionId, "Proceed", "resume prompt");
+    }
+
+    private void sendAssistantPrompt(String sessionId, String text, String label) {
         Map<String, Object> textBlock = new HashMap<>();
         textBlock.put("type", "text");
-        textBlock.put("text", "Proceed");
+        textBlock.put("text", text);
         Map<String, Object> annotations = new HashMap<>();
         annotations.put("audience", List.of("assistant"));
         textBlock.put("annotations", annotations);
@@ -552,11 +562,13 @@ public class SessionManager implements SessionQuery, SessionControl {
         ProcessManager.getInstance().sendRequest("session/prompt", params)
                 .exceptionally(ex -> {
                     Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
-                    LOG.warn("Failed to send resume prompt: {0}", cause.getMessage());
+                    LOG.warn("Failed to send {0}: {1}", label, cause.getMessage());
+                    notifyError("Connection lost while sending " + label + ": " + cause.getMessage());
                     return null;
                 });
     }
 
+    @Override
     public void closeSession() {
         String sessionId = this.currentSessionId;
         if (stateMachine.transitionTo(SessionState.IDLE)) {
@@ -575,6 +587,7 @@ public class SessionManager implements SessionQuery, SessionControl {
         ProcessManager.getInstance().removeSseListener(sseListener);
     }
 
+    @Override
     public void stopCurrentMessage() {
         if (!stateMachine.canStopMessage()) {
             return;
@@ -598,6 +611,7 @@ public class SessionManager implements SessionQuery, SessionControl {
         }, 5000);
     }
 
+    @Override
     public void onTurnEnded() {
         if (stateMachine.transitionToIf(SessionState.STOPPING, SessionState.STREAMING)) {
             LOG.info("onTurnEnded: transitioning STOPPING -> STREAMING");

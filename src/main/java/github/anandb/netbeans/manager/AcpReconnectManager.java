@@ -30,6 +30,7 @@ class AcpReconnectManager {
     private final Supplier<Consumer<String>> statusListener;
     private final Supplier<RequestProcessor> reconnectRP;
     private final Consumer<RequestProcessor.Task> setReconnectTask;
+    private volatile String lastDisconnectReason;
 
     AcpReconnectManager(
             BooleanSupplier isClosing,
@@ -92,10 +93,13 @@ class AcpReconnectManager {
         }
 
         SwingUtilities.invokeLater(() -> {
+            String reason = lastDisconnectReason;
+            lastDisconnectReason = null;
+            String detail = (reason != null && !reason.isEmpty()) ? reason : "Unknown error";
             NotificationDisplayer.getDefault().notify(
                 "ACP Server Disconnected",
                 NotificationDisplayer.Priority.HIGH.getIcon(),
-                "Connection lost. Attempting to reconnect...",
+                detail + " — Attempting to reconnect...",
                 null,
                 NotificationDisplayer.Priority.HIGH
             );
@@ -128,8 +132,12 @@ class AcpReconnectManager {
         }
     }
 
-    void resetThrottle() {
+    synchronized void resetThrottle() {
         restartCount = 0;
         lastRestartTime = 0;
+    }
+
+    void setLastDisconnectReason(String reason) {
+        this.lastDisconnectReason = reason;
     }
 }

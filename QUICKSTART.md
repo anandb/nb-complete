@@ -191,3 +191,7 @@ The settings panel is accessible via `Tools > Options > Assistant`. Key settings
 - **Version Control** — Keep your project under version control (git, mercurial, etc.) before
   allowing the LLM to modify files. This ensures you can restore content from an earlier revision if
   needed.
+
+---
+
+Sign up for [OpenCode Go](https://opencode.ai/go?ref=DWTNHGN9KX) 🚀

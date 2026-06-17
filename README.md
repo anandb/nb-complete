@@ -153,8 +153,7 @@ Development follows standard NetBeans Platform patterns. Contributors are expect
 
 This software is released under the UNLICENSE. Further details can be found in the LICENSE file.
 
-## Support the Author
-
-Support the Author of this project by signing up for [OpenCode Go](https://opencode.ai/go?ref=DWTNHGN9KX) 🚀
-
 ---
+
+Sign up for [OpenCode Go](https://opencode.ai/go?ref=DWTNHGN9KX) 🚀
+

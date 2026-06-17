@@ -99,13 +99,11 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
     public AssistantTopComponent() {
         setName(NbBundle.getMessage(AssistantTopComponent.class, "CTL_AssistantTopComponent"));
-        setToolTipText(NbBundle.getMessage(AssistantTopComponent.class, "HINT_AssistantTopComponent"));
 
         setLayout(new BorderLayout());
         chatPanel = new ChatThreadPanel();
 
         configPanelController = new ConfigPanelController(this::updateTabName);
-
         ChatLayoutBuilder layoutBuilder = new ChatLayoutBuilder(this, chatPanel, configPanelController);
 
         header = layoutBuilder.buildHeader();

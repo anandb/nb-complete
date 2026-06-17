@@ -46,7 +46,7 @@ public final class PluginSettings {
     }
 
     public static int getSessionIdleTimeout() {
-        return NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getInt(KEY_SESSION_IDLE_TIMEOUT, 60);
+        return NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getInt(KEY_SESSION_IDLE_TIMEOUT, 300);
     }
 
     public static void setSessionIdleTimeout(int seconds) {

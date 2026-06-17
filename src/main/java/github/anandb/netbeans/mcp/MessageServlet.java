@@ -91,7 +91,7 @@ class MessageServlet extends HttpServlet {
                         handleRequest(method, params, resp);
                     } catch (Exception e) {
                         LOG.log(Level.SEVERE, "Error handling MCP method: {0}", method);
-                        LOG.log(Level.SEVERE, "Exception: {0}", e.getMessage());
+                        LOG.log(Level.SEVERE, "Exception: {0}", e.getMessage(), e);
                         ObjectNode error = mapper.createObjectNode();
                         error.put("code", -32603);
                         error.put("message", NbBundle.getMessage(MessageServlet.class, "MSG_InternalError", e.getMessage()));
@@ -113,7 +113,7 @@ class MessageServlet extends HttpServlet {
                     httpResp.setStatus(500);
                     httpResp.getWriter().write("{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32603,\"message\":\"Internal error\"}}");
                 } catch (IOException ex) {
-                    // ignore
+                    LOG.log(Level.WARNING, "Failed to write error response", ex);
                 }
             } finally {
                 long durationMs = (System.nanoTime() - start) / 1_000_000;

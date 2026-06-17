@@ -76,7 +76,7 @@ public class SessionStateMachine {
             try {
                 listener.accept(newState);
             } catch (Exception e) {
-                LOG.warn("State listener threw exception: {0}", e.getMessage());
+                LOG.warn("State listener threw exception: {0}", e.getMessage(), e);
             }
         }
     }

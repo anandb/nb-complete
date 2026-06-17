@@ -35,6 +35,7 @@ class ServerProcessLifecycle {
     private final Runnable onReady;
     private final Consumer<SessionUpdate> onNotify;
     private final Runnable onDisconnection;
+    private final Consumer<String> onConnectionError;
     private final RequestHandler onReadTextFile;
     private final RequestHandler onRequestPermission;
 
@@ -51,6 +52,7 @@ class ServerProcessLifecycle {
                            Runnable onReady,
                            Consumer<SessionUpdate> onNotify,
                            Runnable onDisconnection,
+                           Consumer<String> onConnectionError,
                            RequestHandler onReadTextFile,
                            RequestHandler onRequestPermission) {
         this.rpcClient = rpcClient;
@@ -59,6 +61,7 @@ class ServerProcessLifecycle {
         this.onReady = onReady;
         this.onNotify = onNotify;
         this.onDisconnection = onDisconnection;
+        this.onConnectionError = onConnectionError;
         this.onReadTextFile = onReadTextFile;
         this.onRequestPermission = onRequestPermission;
     }
@@ -120,6 +123,9 @@ class ServerProcessLifecycle {
                 // reconnection during intentional shutdown.
                 if (!isClosing) {
                     LOG.warn("Connection error detected, triggering reconnection: {0}", t.getMessage());
+                    if (onConnectionError != null) {
+                        onConnectionError.accept(t.getMessage());
+                    }
                     onDisconnection.run();
                 }
             });

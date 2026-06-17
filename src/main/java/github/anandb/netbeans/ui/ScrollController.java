@@ -10,6 +10,9 @@ import java.awt.KeyboardFocusManager;
 import java.awt.RenderingHints;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
+import java.awt.event.MouseWheelListener;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -33,6 +36,7 @@ public class ScrollController implements KeyEventDispatcher {
     private final Component parentComponent;
     private final JButton scrollDownBtn;
     private final Timer scrollTimer;
+    private final Map<Component, MouseWheelListener> wheelListeners = new ConcurrentHashMap<>();
 
     public ScrollController(JScrollPane scrollPane, Component parentComponent, JLayeredPane layeredPane) {
         this.scrollPane = scrollPane;
@@ -127,10 +131,12 @@ public class ScrollController implements KeyEventDispatcher {
     }
 
     public void fixMouseWheel(Component c) {
-        c.addMouseWheelListener(e -> {
+        MouseWheelListener listener = e -> {
             scrollPane.dispatchEvent(SwingUtilities.convertMouseEvent(c, e, scrollPane));
             e.consume();
-        });
+        };
+        c.addMouseWheelListener(listener);
+        wheelListeners.put(c, listener);
     }
 
     public boolean isAtBottom() {
@@ -190,6 +196,8 @@ public class ScrollController implements KeyEventDispatcher {
 
     public void cleanup() {
         KeyboardFocusManager.getCurrentKeyboardFocusManager().removeKeyEventDispatcher(this);
+        wheelListeners.forEach((c, l) -> c.removeMouseWheelListener(l));
+        wheelListeners.clear();
         if (scrollTimer.isRunning()) {
             scrollTimer.stop();
         }

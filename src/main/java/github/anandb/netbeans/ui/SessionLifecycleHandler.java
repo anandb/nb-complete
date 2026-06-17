@@ -178,13 +178,15 @@ public class SessionLifecycleHandler implements SessionListener {
             turnEnded = true;
             // Brief delay to allow any in-flight delta notifications to arrive
             // before finalizing the stream bubble.
-            Timer flushTimer = new Timer(TimingConstants.STREAM_FLUSH_MS, e -> {
-                if (chatPanel.isDisplayable()) {
-                    chatPanel.stopStreaming();
-                }
+            SwingUtilities.invokeLater(() -> {
+                Timer flushTimer = new Timer(TimingConstants.STREAM_FLUSH_MS, e -> {
+                    if (chatPanel.isDisplayable()) {
+                        chatPanel.stopStreaming();
+                    }
+                });
+                flushTimer.setRepeats(false);
+                flushTimer.start();
             });
-            flushTimer.setRepeats(false);
-            flushTimer.start();
         }
     }
 
@@ -217,7 +219,10 @@ public class SessionLifecycleHandler implements SessionListener {
                 boolean hasSessions = sessionDropdown.getItemCount() > 0;
                 boolean hasProjects = OpenProjects.getDefault().getOpenProjects().length > 0;
                 hideBtn.setEnabled(currentId != null);
-                if (currentId != null) {
+                // Only update icon here when the current session stays selected (selectIdx != -1).
+                // When the session is being filtered out (archived), onSessionLoaded will set the
+                // correct icon for the replacement session — updating here causes a brief icon flip.
+                if (currentId != null && selectIdx != -1) {
                     boolean hidden = Lookup.getDefault().lookup(SessionControl.class).isHidden(currentId);
                     hideBtn.setIcon(ThemeManager.getIcon(hidden ? "unarchive.svg" : "archive.svg", 28));
                     hideBtn.setToolTipText(hidden

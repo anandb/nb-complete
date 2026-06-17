@@ -54,7 +54,7 @@ public class ACPOptionsPanel extends JPanel {
     private JTextField iconPathField;
     private JButton iconBrowseButton;
     private JLabel iconPreviewLabel;
-    private IconPreviewManager iconPreviewManager;
+    private transient IconPreviewManager iconPreviewManager;
 
     private String detectedPath;
     private boolean showingHint;
@@ -149,7 +149,7 @@ public class ACPOptionsPanel extends JPanel {
         JLabel idleTimeoutLabel = new JLabel(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_SessionIdleTimeout"));
         add(idleTimeoutLabel, UIUtils.createGbc(0, 6, 0.0, 0, GridBagConstraints.NONE,
                 GridBagConstraints.WEST, new Insets(0, 12, 10, 5)));
-        SpinnerNumberModel spinnerModel = new SpinnerNumberModel(60, 0, 3600, 5);
+        SpinnerNumberModel spinnerModel = new SpinnerNumberModel(300, 0, 3600, 5);
         idleTimeoutSpinner = new JSpinner(spinnerModel);
         idleTimeoutSpinner.addChangeListener(evt -> controller.changed());
         add(idleTimeoutSpinner, UIUtils.createGbc(1, 6, 0.0, 0, GridBagConstraints.NONE,

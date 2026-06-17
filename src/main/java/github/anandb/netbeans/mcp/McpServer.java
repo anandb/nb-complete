@@ -93,11 +93,11 @@ public class McpServer {
         LOG.info("MCP server stopped");
     }
 
-    public boolean isRunning() {
+    public synchronized boolean isRunning() {
         return server != null && server.isRunning();
     }
 
-    public String getUrl() {
+    public synchronized String getUrl() {
         if (connector == null) {
             return null;
         }
