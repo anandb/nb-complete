@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.logging.Level;
 
@@ -220,6 +221,7 @@ class MessageServlet extends HttpServlet {
             case "tools/list" -> handleToolsList(resp);
             case "ping" -> resp.set("result", mapper.createObjectNode());
             case "resources/list" -> handleResourcesList(resp);
+            case "resources/read" -> handleResourcesRead(params, resp);
             case "resources/subscribe" -> resp.set("result", mapper.createObjectNode());
             case "resources/unsubscribe" -> resp.set("result", mapper.createObjectNode());
             default -> {
@@ -261,6 +263,9 @@ class MessageServlet extends HttpServlet {
         ObjectNode tools = mapper.createObjectNode();
         tools.put("listChanged", true);
         capabilities.set("tools", tools);
+        ObjectNode resources = mapper.createObjectNode();
+        resources.put("listChanged", false);
+        capabilities.set("resources", resources);
         result.set("capabilities", capabilities);
 
         ObjectNode serverInfo = mapper.createObjectNode();
@@ -283,8 +288,60 @@ class MessageServlet extends HttpServlet {
 
     private void handleResourcesList(ObjectNode resp) {
         ObjectNode result = mapper.createObjectNode();
-        result.set("resources", mapper.createArrayNode());
+        ArrayNode resources = mapper.createArrayNode();
+
+        ObjectNode caveman = mapper.createObjectNode();
+        caveman.put("uri", "nb-resource://caveman");
+        caveman.put("name", "caveman");
+        caveman.put("description", "Ultra-compressed communication mode skill for token-efficient responses");
+        caveman.put("mimeType", "text/markdown");
+        resources.add(caveman);
+
+        result.set("resources", resources);
         resp.set("result", result);
+    }
+
+    private void handleResourcesRead(JsonNode params, ObjectNode resp) {
+        if (params == null || !params.has("uri")) {
+            ObjectNode error = mapper.createObjectNode();
+            error.put("code", -32602);
+            error.put("message", "Missing required parameter: uri");
+            resp.set("error", error);
+            return;
+        }
+
+        String uri = params.get("uri").asText();
+        if ("nb-resource://caveman".equals(uri)) {
+            try (InputStream in = getClass().getResourceAsStream("/github/anandb/netbeans/mcp/caveman.md")) {
+                if (in == null) {
+                    ObjectNode error = mapper.createObjectNode();
+                    error.put("code", -32602);
+                    error.put("message", "Resource not found: caveman.md");
+                    resp.set("error", error);
+                    return;
+                }
+                String text = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+                ObjectNode result = mapper.createObjectNode();
+                ArrayNode contents = mapper.createArrayNode();
+                ObjectNode content = mapper.createObjectNode();
+                content.put("uri", uri);
+                content.put("mimeType", "text/markdown");
+                content.put("text", text);
+                contents.add(content);
+                result.set("contents", contents);
+                resp.set("result", result);
+            } catch (IOException e) {
+                ObjectNode error = mapper.createObjectNode();
+                error.put("code", -32603);
+                error.put("message", "Failed to read resource: " + e.getMessage());
+                resp.set("error", error);
+            }
+        } else {
+            ObjectNode error = mapper.createObjectNode();
+            error.put("code", -32602);
+            error.put("message", "Unknown resource: " + uri);
+            resp.set("error", error);
+        }
     }
 
     private void writeResponse(AsyncContext asyncContext, ObjectNode resp) throws IOException {
