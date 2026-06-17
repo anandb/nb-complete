@@ -113,6 +113,16 @@ class ServerProcessLifecycle {
             this.rpcClient.set(client);
             client.start();
             client.setDisconnectionHandler(onDisconnection);
+            client.setConnectionErrorHandler(t -> {
+                // Write failures (broken pipe) should also trigger reconnection.
+                // The reader thread may be stuck on blocking I/O and not detect
+                // the server death promptly. Guard with isClosing to avoid
+                // reconnection during intentional shutdown.
+                if (!isClosing) {
+                    LOG.warn("Connection error detected, triggering reconnection: {0}", t.getMessage());
+                    onDisconnection.run();
+                }
+            });
 
             // Register handlers
             client.onRequest("fs/readTextFile", onReadTextFile);

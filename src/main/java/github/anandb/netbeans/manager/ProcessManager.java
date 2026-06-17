@@ -69,7 +69,12 @@ public class ProcessManager implements ProcessControl {
 
         serverLifecycle = new ServerProcessLifecycle(
             rpcClient, toolExecutor, objectMapper,
-            () -> { /* onReady — handled via readyHandler below */ },
+            () -> {
+                Runnable handler = readyHandler;
+                if (handler != null) {
+                    handler.run();
+                }
+            },
             this::notifyListeners,
             () -> reconnectManager.handleDisconnection(serverLifecycle::startServer),
             requestRouter::handleReadTextFile,
@@ -81,8 +86,8 @@ public class ProcessManager implements ProcessControl {
             serverLifecycle::serverProcess,
             rpcClient,
             () -> { if (crashHandler != null) crashHandler.run(); },
-            statusListener,
-            serverLifecycle.reconnectRP(),
+            () -> statusListener,
+            serverLifecycle::reconnectRP,
             serverLifecycle::setReconnectTask
         );
     }

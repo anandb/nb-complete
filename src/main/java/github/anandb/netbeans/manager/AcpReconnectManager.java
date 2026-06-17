@@ -27,8 +27,8 @@ class AcpReconnectManager {
     private final Supplier<Process> serverProcess;
     private final AtomicReference<AcpProtocolClient> rpcClient;
     private final Runnable crashHandler;
-    private final Consumer<String> statusListener;
-    private final RequestProcessor reconnectRP;
+    private final Supplier<Consumer<String>> statusListener;
+    private final Supplier<RequestProcessor> reconnectRP;
     private final Consumer<RequestProcessor.Task> setReconnectTask;
 
     AcpReconnectManager(
@@ -36,8 +36,8 @@ class AcpReconnectManager {
             Supplier<Process> serverProcess,
             AtomicReference<AcpProtocolClient> rpcClient,
             Runnable crashHandler,
-            Consumer<String> statusListener,
-            RequestProcessor reconnectRP,
+            Supplier<Consumer<String>> statusListener,
+            Supplier<RequestProcessor> reconnectRP,
             Consumer<RequestProcessor.Task> setReconnectTask) {
         this.isClosing = isClosing;
         this.serverProcess = serverProcess;
@@ -109,19 +109,21 @@ class AcpReconnectManager {
         if (restartCount < MAX_RESTARTS) {
             restartCount++;
             lastRestartTime = now;
-            long delay = restartCount * 2000L;
+            long delay = restartCount * 3000L;
             LOG.fine("Respawning ACP server in {0}ms (attempt {1}/{2})...",
                     new Object[]{delay, restartCount, MAX_RESTARTS});
 
-            if (reconnectRP != null) {
-                RequestProcessor.Task task = reconnectRP.post(onStartServer, (int) delay);
+            RequestProcessor rp = reconnectRP.get();
+            if (rp != null) {
+                RequestProcessor.Task task = rp.post(onStartServer, (int) delay);
                 setReconnectTask.accept(task);
             }
         } else {
             LOG.severe("ACP server crashed {0} times within {1}ms. Giving up.",
                        new Object[]{MAX_RESTARTS, RESTART_RESET_INTERVAL});
-            if (statusListener != null) {
-                statusListener.accept(NbBundle.getMessage(ProcessManager.class, "ERR_ServerCrashed", MAX_RESTARTS));
+            Consumer<String> listener = statusListener.get();
+            if (listener != null) {
+                listener.accept(NbBundle.getMessage(ProcessManager.class, "ERR_ServerCrashed", MAX_RESTARTS));
             }
         }
     }
