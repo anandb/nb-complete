@@ -13,8 +13,10 @@ import javax.swing.SwingUtilities;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -89,6 +91,7 @@ public class SessionManager implements SessionQuery, SessionControl {
     private final SessionCacheManager cacheManager = new SessionCacheManager();
     private final Consumer<SessionUpdate> sseListener = this::handleSseUpdate;
     private final SessionRpcClient rpcClient;
+    private volatile boolean sendResumeOnLoad;
 
     public SessionManager() {
         ACPProjectManager.getInstance().setProjectOpenListener(this::handleProjectOpened);
@@ -108,6 +111,7 @@ public class SessionManager implements SessionQuery, SessionControl {
         ProcessManager.getInstance().setReadyHandler(() -> {
             String sid = currentSessionId;
             if (sid != null) {
+                sendResumeOnLoad = true;
                 SwingUtilities.invokeLater(() -> loadSession(sid));
             }
         });
@@ -460,6 +464,13 @@ public class SessionManager implements SessionQuery, SessionControl {
                     if (sessionId.equals(this.currentSessionId)) {
                         stateMachine.transitionTo(SessionState.STREAMING);
                         notifySessionLoaded(sessionId, configOptions, isStartup);
+
+                        // After reconnect, send an invisible "Proceed" prompt so the
+                        // agent resumes execution from where it left off.
+                        if (sendResumeOnLoad) {
+                            sendResumeOnLoad = false;
+                            sendResumePrompt(sessionId);
+                        }
                     }
                 })
                 .exceptionally(ex -> {
@@ -518,6 +529,32 @@ public class SessionManager implements SessionQuery, SessionControl {
                 });
             }
         }
+    }
+
+    /**
+     * Sends an invisible "Proceed" prompt after reconnect so the agent resumes
+     * execution. The audience annotation marks it as assistant-directed, so the
+     * UI does not render it as a user message.
+     */
+    private void sendResumePrompt(String sessionId) {
+        Map<String, Object> textBlock = new HashMap<>();
+        textBlock.put("type", "text");
+        textBlock.put("text", "Proceed");
+        Map<String, Object> annotations = new HashMap<>();
+        annotations.put("audience", List.of("assistant"));
+        textBlock.put("annotations", annotations);
+
+        Map<String, Object> params = new HashMap<>();
+        params.put("sessionId", sessionId);
+        params.put("prompt", List.of(textBlock));
+        params.put("mcpServers", ProcessManager.getInstance().getToolExecutor().getServerConfig());
+
+        ProcessManager.getInstance().sendRequest("session/prompt", params)
+                .exceptionally(ex -> {
+                    Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
+                    LOG.warn("Failed to send resume prompt: {0}", cause.getMessage());
+                    return null;
+                });
     }
 
     public void closeSession() {
