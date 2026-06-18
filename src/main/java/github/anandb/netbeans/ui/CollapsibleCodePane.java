@@ -150,7 +150,7 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
                 BorderFactory.createMatteBorder(0, 0, 1, 0, theme.codeHeaderBorder()),
                 BorderFactory.createEmptyBorder(6, 8, 6, 3)
         ));
-        headerLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
+        headerLabel.setBorder(UIUtils.EMPTY_BORDER);
         headerLabel.setIconTextGap(8);
         headerLabel.setForeground(theme.codeHeaderForeground());
 
@@ -159,7 +159,7 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
             copyButton.removeMouseListener(l);
         }
         copyButton.setToolTipText(NbBundle.getMessage(CollapsibleCodePane.class, "HINT_CopyCode"));
-        copyButton.setBorder(BorderFactory.createEmptyBorder(2, 4, 2, 4));
+        copyButton.setBorder(UIUtils.COPY_BUTTON_BORDER);
         copyButton.setForeground(theme.codeHeaderForeground());
         copyButton.setVisible(true);
 
@@ -238,7 +238,7 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
 
         JPanel codeWrapper = new JPanel(new BorderLayout());
         codeWrapper.setBackground(codeTextArea.getBackground());
-        codeWrapper.setBorder(BorderFactory.createEmptyBorder(8, 20, 8, 6));
+        codeWrapper.setBorder(UIUtils.CODE_WRAPPER_BORDER);
         codeWrapper.add(codeTextArea, BorderLayout.CENTER);
 
         contentPanel.add(codeWrapper, BorderLayout.CENTER);
@@ -254,19 +254,29 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
     public void updateContent(String language, String code) {
         if (code == null) code = "";
         if (!code.equals(this.code)) {
+            String prevLanguage = this.language;
             this.code = code;
             this.language = (language != null && !language.isEmpty()) ? language : NbBundle.getMessage(CollapsibleCodePane.class, "LBL_CodeFallback");
+            boolean languageChanged = !java.util.Objects.equals(prevLanguage, this.language);
             if (codeAreaInitialized) {
                 codeTextArea.setText(code);
                 codeTextArea.setCaretPosition(0);
-                headerLabel.setText(this.language.toUpperCase());
-                applySyntaxStyle();
+                if (languageChanged) {
+                    headerLabel.setText(this.language.toUpperCase());
+                    // applySyntaxStyle forces a full re-tokenize via
+                    // RSyntaxTextArea.setSyntaxEditingStyle. Only run it when
+                    // the language actually changes — pure code-body updates
+                    // are re-tokenized incrementally inside RSyntaxTextArea.
+                    applySyntaxStyle();
+                }
                 SwingUtilities.invokeLater(() -> {
                     revalidate();
                     repaint();
                 });
             }
-            headerLabel.setText(this.language.toUpperCase());
+            if (languageChanged) {
+                headerLabel.setText(this.language.toUpperCase());
+            }
         }
     }
 

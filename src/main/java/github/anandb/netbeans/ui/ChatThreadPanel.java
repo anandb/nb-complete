@@ -267,8 +267,15 @@ public class ChatThreadPanel extends JPanel {
             messagesContainer.add(bubble);
             messagesContainer.add(strut);
 
-            messagesContainer.revalidate();
-            if (wasAtBottom) {
+            // Streaming bubbles revalidate via the streamer's deferred-finalize
+            // path; revalidating here would force a layout pass for each tool
+            // chunk before its content is even known to be visible.
+            if (!streaming) {
+                messagesContainer.revalidate();
+                if (wasAtBottom) {
+                    scrollController.scrollToBottom(true);
+                }
+            } else if (wasAtBottom) {
                 scrollController.scrollToBottom(true);
             }
 
@@ -304,12 +311,15 @@ public class ChatThreadPanel extends JPanel {
         strut.setVisible(visible);
         messagesContainer.add(bubble);
         messagesContainer.add(strut);
-        boolean shouldScroll = !streaming || type.isTool();
-        if (shouldScroll) {
+        // For non-streaming messages, force revalidation so the bubble is laid out.
+        // For streaming bubbles, addNotify() revalidates the bubble itself, and
+        // the streamer's deferred-finalize path revalidates the container on flush —
+        // skipping revalidate here avoids forcing a layout pass per initial chunk.
+        if (!streaming) {
             messagesContainer.revalidate();
-            if (wasAtBottom) {
-                scrollController.scrollToBottom(true);
-            }
+        }
+        if (wasAtBottom) {
+            scrollController.scrollToBottom(true);
         }
         if (streaming) {
             streamingCoordinator.startStreaming(bubble);

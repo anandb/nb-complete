@@ -160,17 +160,17 @@ final class KeyboardShortcutsDialog extends JDialog {
           .append(" style='border-collapse:collapse;width:100%;")
           .append("background:").append(bg).append(";'>");
         sb.append("<tr><th align='left' bgcolor='").append(hdrBg)
-          .append("' style='padding:6px 8px;border:1px solid ")
+          .append("' style='padding:6px 12px 6px 8px;border:1px solid ")
           .append(border).append(";'>Key</th>");
         sb.append("<th align='left' bgcolor='").append(hdrBg)
-          .append("' style='padding:6px 8px;border:1px solid ")
+          .append("' style='padding:6px 8px 6px 12px;border:1px solid ")
           .append(border).append(";'>Action</th></tr>");
         for (String[] row : rows) {
             sb.append("<tr>");
-            sb.append("<td style='padding:6px 8px;border:1px solid ")
+            sb.append("<td style='padding:6px 12px 6px 8px;border:1px solid ")
               .append(border).append(";font-family:monospace;font-size:11px;'>")
               .append(row[0]).append("</td>");
-            sb.append("<td style='padding:6px 8px;border:1px solid ")
+            sb.append("<td style='padding:6px 8px 6px 12px;border:1px solid ")
               .append(border).append(";'>").append(row[1]).append("</td>");
             sb.append("</tr>");
         }

@@ -2,15 +2,74 @@ package github.anandb.netbeans.ui;
 
 import java.awt.Color;
 import java.awt.Font;
+import java.util.concurrent.ConcurrentHashMap;
 import javax.swing.text.SimpleAttributeSet;
 import javax.swing.text.StyleConstants;
 
 /**
  * Resolves markdown token types to {@link SimpleAttributeSet} styles.
+ *
+ * <p>Style derivations are cached per (base, derived-type) keyed by base
+ * identity. This avoids recreating a new SimpleAttributeSet for every inline
+ * token when rendering large markdown.
  */
 final class StyleResolver {
 
     private StyleResolver() {
+    }
+
+    /** Per-base derived-style cache. Keyed on base identity hash; values hold
+     *  the resolved styles for that specific base. The cache is bounded and
+     *  cleared on theme switch (see {@link #clearCache()}). */
+    private static final ConcurrentHashMap<Integer, DerivedStyles> DERIVED_CACHE = new ConcurrentHashMap<>();
+
+    private static class DerivedStyles {
+        final SimpleAttributeSet bold;
+        final SimpleAttributeSet italic;
+        final SimpleAttributeSet strike;
+        final SimpleAttributeSet blockquote;
+        final SimpleAttributeSet inlineCode;
+
+        DerivedStyles(SimpleAttributeSet base, Font baseFont, Color codeFg) {
+            this.bold = makeBold(base);
+            this.italic = makeItalic(base);
+            this.strike = makeStrike(base);
+            this.blockquote = makeBlockquote(base);
+            this.inlineCode = makeInlineCode(base, baseFont, codeFg);
+        }
+    }
+
+    private static SimpleAttributeSet makeBold(SimpleAttributeSet base) {
+        SimpleAttributeSet attr = new SimpleAttributeSet(base);
+        StyleConstants.setBold(attr, true);
+        return attr;
+    }
+
+    private static SimpleAttributeSet makeItalic(SimpleAttributeSet base) {
+        SimpleAttributeSet attr = new SimpleAttributeSet(base);
+        StyleConstants.setItalic(attr, true);
+        return attr;
+    }
+
+    private static SimpleAttributeSet makeStrike(SimpleAttributeSet base) {
+        SimpleAttributeSet attr = new SimpleAttributeSet(base);
+        StyleConstants.setStrikeThrough(attr, true);
+        return attr;
+    }
+
+    private static SimpleAttributeSet makeBlockquote(SimpleAttributeSet base) {
+        SimpleAttributeSet attr = new SimpleAttributeSet(base);
+        StyleConstants.setItalic(attr, true);
+        StyleConstants.setLeftIndent(attr, 16f);
+        return attr;
+    }
+
+    private static SimpleAttributeSet makeInlineCode(SimpleAttributeSet base, Font baseFont, Color codeFg) {
+        SimpleAttributeSet attr = new SimpleAttributeSet(base);
+        StyleConstants.setFontFamily(attr, "monospace");
+        StyleConstants.setFontSize(attr, baseFont.getSize());
+        StyleConstants.setForeground(attr, codeFg);
+        return attr;
     }
 
     /**
@@ -55,52 +114,91 @@ final class StyleResolver {
         return attr;
     }
 
+    /** Returns the cached derived styles for the given base. The base must
+     *  have been created by {@link #baseStyle} (or by a previous derivation
+     *  that shares identity with one). Identity-based caching means each
+     *  render gets a fresh cache entry tied to its own base instance, which
+     *  is cheap because typical renders only create one base. */
+    private static DerivedStyles derivedFor(SimpleAttributeSet base, Font baseFont, Color codeFg) {
+        Integer key = System.identityHashCode(base);
+        DerivedStyles existing = DERIVED_CACHE.get(key);
+        if (existing != null) {
+            return existing;
+        }
+        DerivedStyles created = new DerivedStyles(base, baseFont, codeFg);
+        DerivedStyles prev = DERIVED_CACHE.putIfAbsent(key, created);
+        // Cap the cache; clear if growing beyond limit.
+        if (prev == null && DERIVED_CACHE.size() > 32) {
+            DERIVED_CACHE.clear();
+        }
+        return prev != null ? prev : created;
+    }
+
     /**
      * Creates attributes for inline bold text.
      */
     static SimpleAttributeSet boldStyle(SimpleAttributeSet base) {
-        SimpleAttributeSet attr = new SimpleAttributeSet(base);
-        StyleConstants.setBold(attr, true);
-        return attr;
+        return boldStyle(base, null, null);
+    }
+
+    /** Variant of {@link #boldStyle} that participates in the derived cache
+     *  only when baseFont and codeFg are non-null. The plain call site keeps
+     *  its existing semantics; the renderer uses the parameterized form so
+     *  one pass populates all derived styles for the base. */
+    static SimpleAttributeSet boldStyle(SimpleAttributeSet base, Font baseFont, Color codeFg) {
+        if (baseFont != null && codeFg != null) {
+            return derivedFor(base, baseFont, codeFg).bold;
+        }
+        return makeBold(base);
     }
 
     /**
      * Creates attributes for inline italic text.
      */
     static SimpleAttributeSet italicStyle(SimpleAttributeSet base) {
-        SimpleAttributeSet attr = new SimpleAttributeSet(base);
-        StyleConstants.setItalic(attr, true);
-        return attr;
+        return italicStyle(base, null, null);
+    }
+
+    static SimpleAttributeSet italicStyle(SimpleAttributeSet base, Font baseFont, Color codeFg) {
+        if (baseFont != null && codeFg != null) {
+            return derivedFor(base, baseFont, codeFg).italic;
+        }
+        return makeItalic(base);
     }
 
     /**
      * Creates attributes for inline strikethrough text.
      */
     static SimpleAttributeSet strikethroughStyle(SimpleAttributeSet base) {
-        SimpleAttributeSet attr = new SimpleAttributeSet(base);
-        StyleConstants.setStrikeThrough(attr, true);
-        return attr;
+        return strikethroughStyle(base, null, null);
+    }
+
+    static SimpleAttributeSet strikethroughStyle(SimpleAttributeSet base, Font baseFont, Color codeFg) {
+        if (baseFont != null && codeFg != null) {
+            return derivedFor(base, baseFont, codeFg).strike;
+        }
+        return makeStrike(base);
     }
 
     /**
      * Creates attributes for inline code text.
      */
     static SimpleAttributeSet inlineCodeStyle(SimpleAttributeSet base, Font baseFont, Color codeFg) {
-        SimpleAttributeSet attr = new SimpleAttributeSet(base);
-        StyleConstants.setFontFamily(attr, "monospace");
-        StyleConstants.setFontSize(attr, baseFont.getSize());
-        StyleConstants.setForeground(attr, codeFg);
-        return attr;
+        return derivedFor(base, baseFont, codeFg).inlineCode;
     }
 
     /**
      * Creates attributes for a blockquote paragraph.
      */
     static SimpleAttributeSet blockquoteStyle(SimpleAttributeSet base) {
-        SimpleAttributeSet attr = new SimpleAttributeSet(base);
-        StyleConstants.setItalic(attr, true);
-        StyleConstants.setLeftIndent(attr, 16f);
-        return attr;
+        return blockquoteStyle(base, null, null);
+    }
+
+    static SimpleAttributeSet blockquoteStyle(SimpleAttributeSet base, Font baseFont, Color codeFg) {
+        if (baseFont != null && codeFg != null) {
+            return derivedFor(base, baseFont, codeFg).blockquote;
+        }
+        return makeBlockquote(base);
     }
 
     /**
@@ -114,5 +212,10 @@ final class StyleResolver {
         StyleConstants.setSpaceAbove(attr, 4);
         StyleConstants.setSpaceBelow(attr, 4);
         return attr;
+    }
+
+    /** Clears the derived style cache. Call on theme switch. */
+    static void clearCache() {
+        DERIVED_CACHE.clear();
     }
 }

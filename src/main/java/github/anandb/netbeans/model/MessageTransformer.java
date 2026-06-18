@@ -8,7 +8,7 @@ public class MessageTransformer {
     public ProcessedMessage convert(Message message) {
         String type = message.type();
         StringBuilder sb = new StringBuilder();
-        LOG.fine("addMessage(Message) called. role={0}", type);
+        LOG.fine("addMessage(Message) called. role={0}, state={1}", new Object[]{type, message.state()});
 
         if ("user".equals(type)) {
             if (message.prompt() != null) {
@@ -46,7 +46,20 @@ public class MessageTransformer {
             }
         }
 
-        MessageType msgType = "user".equals(type) ? MessageType.user_message_chunk : MessageType.agent_message_chunk;
+        // Map the stored message type to the runtime MessageType. A non-user
+        // message whose state is "thinking" carries the model's reasoning text
+        // and must be routed as a thought (not a regular assistant response),
+        // otherwise it would render as an assistant bubble when loading a
+        // session. Tools are also stored under type="assistant"; they are
+        // distinguished by the presence of a toolCalls field.
+        MessageType msgType;
+        if ("user".equals(type)) {
+            msgType = MessageType.user_message_chunk;
+        } else if ("thinking".equals(message.state())) {
+            msgType = MessageType.agent_thought_chunk;
+        } else {
+            msgType = MessageType.agent_message_chunk;
+        }
         String text = sb.toString();
         return new ProcessedMessage.Builder()
                 .messageType(msgType)

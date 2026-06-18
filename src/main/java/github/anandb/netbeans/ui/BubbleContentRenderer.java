@@ -21,6 +21,15 @@ class BubbleContentRenderer {
     private final String role;
     private final ArrayList<CollapsibleState> codeStates;
     private final BubbleStreamer streamer;
+    /** Last text length we rendered. Used to short-circuit re-renders when text
+     *  is unchanged (e.g. toggleAllBlocks calls updateContent without text delta). */
+    private int lastRenderedTextLength = -1;
+    private int lastRenderedTextHash = 0;
+    /** Segments set via {@link #setSegmentedToolContent} before the initial
+     *  render (which is deferred to addNotify() to avoid redundant work).
+     *  Held here so the activity pane can be created with the segmented
+     *  content on the first render. */
+    private List<CollapsibleToolPane.ToolSegment> pendingSegmentedContent;
 
     static class CollapsibleState {
         boolean expanded;
@@ -49,8 +58,26 @@ class BubbleContentRenderer {
             }
         } else {
             segments.removeAll();
-            segments.add(new CollapsibleActivityPane(title, displayContent, expanded));
-            streamer.setLastDisplayedLength(displayContent.length());
+            // If setSegmentedToolContent was called before the initial render
+            // (e.g. ToolThoughtCombiner constructs the bubble, calls
+            // setSegmentedToolContent, then adds it to the tree — only at
+            // addNotify() does the initial render run), the segments panel is
+            // empty and the segmented content was captured in the pending
+            // field. Create the activity pane with segmented content; if no
+            // segments are pending, fall back to the raw text.
+            CollapsibleActivityPane pane;
+            if (pendingSegmentedContent != null) {
+                pane = new CollapsibleActivityPane(title, expanded);
+                pane.setSegmentedContent(pendingSegmentedContent);
+                pendingSegmentedContent = null;
+                // The pane now owns its own content; track length 0 since
+                // the text StringBuilder is empty for the combined bubble.
+                streamer.setLastDisplayedLength(0);
+            } else {
+                pane = new CollapsibleActivityPane(title, displayContent, expanded);
+                streamer.setLastDisplayedLength(displayContent.length());
+            }
+            segments.add(pane);
         }
         segments.revalidate();
     }
@@ -74,7 +101,15 @@ class BubbleContentRenderer {
         }
 
         if ("user".equals(role)) {
-            updateOrAddTextSegment(text.toString(), theme, 0, false);
+            int userLen = text.length();
+            int userHash = text.hashCode();
+            if (userLen == lastRenderedTextLength && userHash == lastRenderedTextHash) {
+                return; // no change
+            }
+            lastRenderedTextLength = userLen;
+            lastRenderedTextHash = userHash;
+            String userText = text.toString();
+            updateOrAddTextSegment(userText, theme, 0, false);
             while (segments.getComponentCount() > 1) {
                 segments.remove(segments.getComponentCount() - 1);
             }
@@ -82,17 +117,27 @@ class BubbleContentRenderer {
             return;
         }
 
-        String rawText = text.toString();
+        // Use StringBuilder directly to avoid one full-text copy. Matcher works on
+        // any CharSequence, and the helper methods we delegate to only need the
+        // substring when actually needed.
+        int currentLen = text.length();
+        int currentHash = text.hashCode();
+        if (currentLen == lastRenderedTextLength && currentHash == lastRenderedTextHash) {
+            return; // no change
+        }
+        lastRenderedTextLength = currentLen;
+        lastRenderedTextHash = currentHash;
 
-        Matcher matcher = CODE_BLOCK_PATTERN.matcher(rawText);
+        Matcher matcher = CODE_BLOCK_PATTERN.matcher(text);
 
         int currentCompIdx = 0;
 
         int lastEnd = 0;
         int codeIdx = 0;
         while (matcher.find()) {
-            String textBefore = rawText.substring(lastEnd, matcher.start());
-            if (!textBefore.isEmpty()) {
+            int beforeStart = matcher.start();
+            if (beforeStart > lastEnd) {
+                String textBefore = text.substring(lastEnd, beforeStart);
                 currentCompIdx = addTextAndTableSegments(textBefore, theme, currentCompIdx, expanded);
             }
 
@@ -113,8 +158,8 @@ class BubbleContentRenderer {
             codeIdx++;
         }
 
-        if (lastEnd < rawText.length()) {
-            String remaining = rawText.substring(lastEnd);
+        if (lastEnd < currentLen) {
+            String remaining = text.substring(lastEnd);
             if (!remaining.isEmpty()) {
                 currentCompIdx = addTextAndTableSegments(remaining, theme, currentCompIdx, expanded);
             }
@@ -137,6 +182,9 @@ class BubbleContentRenderer {
                 return;
             }
         }
+        // No activity pane yet (initial render is deferred to addNotify()).
+        // Stash the segments so they can be applied when the pane is created.
+        pendingSegmentedContent = blocks;
     }
 
     void updateCombinedContent(List<CollapsibleToolPane.ToolSegment> blocks, String title) {
@@ -151,6 +199,10 @@ class BubbleContentRenderer {
                 return;
             }
         }
+        // No pane yet — stash both.
+        pendingSegmentedContent = blocks;
+        // Title is taken from the constructor's toolTitle arg; if needed,
+        // callers should set it explicitly via setTitle after the pane is created.
     }
 
     private void updateOrAddCodeSegment(String lang, String code, boolean expanded, int codeIdx, int compIdx) {

@@ -21,6 +21,27 @@ public final class ToolThoughtCombiner {
     }
 
     /**
+     * Walks the container backwards and returns true if any individual (non-combined)
+     * tool/thought bubble exists. Used as a fast-path early exit before the full
+     * combine scan, which would otherwise touch every component in the container
+     * even when there's nothing to combine.
+     */
+    private static boolean hasPendingIndividualToolThought(JPanel messagesContainer) {
+        Component[] comps = messagesContainer.getComponents();
+        for (int i = comps.length - 1; i >= 0; i--) {
+            Component c = comps[i];
+            if (c instanceof MessageBubble mb) {
+                String role = mb.getRole();
+                if (("tool".equals(role) || "thought".equals(role))
+                        && !Boolean.TRUE.equals(mb.getClientProperty("nb-complete.combined"))) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
      * Scans the container for individual tool/thought bubbles, merges them
      * into one combined bubble, and updates the container.
      *
@@ -30,6 +51,14 @@ public final class ToolThoughtCombiner {
     public static void combine(JPanel messagesContainer, boolean allBlocksExpanded) {
         // Respect user preference: if unchecked, skip combining
         if (!NbPreferences.forModule(ACPOptionsPanel.class).getBoolean("combineToolThought", true)) {
+            return;
+        }
+
+        // Fast path: scan the tail of the container to detect whether there is
+        // actually a run of individual tool/thought bubbles to combine. If the
+        // last components are already a combined bubble, a non-tool/thought
+        // bubble, or empty, skip the full scan.
+        if (!hasPendingIndividualToolThought(messagesContainer)) {
             return;
         }
 

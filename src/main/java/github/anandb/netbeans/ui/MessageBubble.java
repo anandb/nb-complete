@@ -83,6 +83,7 @@ public class MessageBubble extends JPanel implements Scrollable {
 
         ColorTheme theme = ThemeManager.getCurrentTheme();
         setLayout(new GridBagLayout());
+        setAlignmentY(Component.CENTER_ALIGNMENT);
         setOpaque(true);
         setBackground(theme.sunkenBackground());
         setDoubleBuffered(true);
@@ -113,9 +114,11 @@ public class MessageBubble extends JPanel implements Scrollable {
 
         this.streamer = new BubbleStreamer(
             (t, e) -> {
+                // updateContent triggers segments.revalidate() internally; the
+                // call site (ChatThreadPanel / BubbleStreamer.performFinalization)
+                // handles parent revalidation. Avoid redundant revalidate+repaint
+                // here — this lambda fires on every deferred-finalize tick.
                 updateContent(t, e);
-                revalidate();
-                repaint();
             },
             (expanded, full) -> {
                 if (!full) {

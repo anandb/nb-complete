@@ -51,14 +51,21 @@ public final class MarkdownStyledRenderer {
         SimpleAttributeSet base = StyleResolver.baseStyle(baseFont, fg);
         doc.setParagraphAttributes(0, doc.getLength(), base, true);
 
-        String[] lines = markdown.split("\n");
+        // Walk newlines via indexOf('\n') to avoid allocating a String[] for
+        // the entire document. Each iteration extracts the next line as a
+        // substring view; trim/code/table operations downstream still work
+        // on the line String.
+        int docLen = markdown.length();
+        int lineStart = 0;
         boolean inCodeBlock = false;
         StringBuilder codeBuffer = new StringBuilder();
         List<String> tableBuffer = new ArrayList<>();
 
         try {
-            for (int i = 0; i < lines.length; i++) {
-                String line = lines[i];
+            while (lineStart <= docLen) {
+                int nl = markdown.indexOf('\n', lineStart);
+                String line = (nl < 0) ? markdown.substring(lineStart) : markdown.substring(lineStart, nl);
+                lineStart = (nl < 0) ? docLen + 1 : nl + 1;
 
                 if (line.startsWith("```")) {
                     if (inCodeBlock) {
@@ -114,27 +121,32 @@ public final class MarkdownStyledRenderer {
                     if (line.startsWith(" ")) {
                         line = line.substring(1);
                     }
-                    currentBase = StyleResolver.blockquoteStyle(base);
+                    currentBase = StyleResolver.blockquoteStyle(base, baseFont, codeFg);
                 }
 
                 int startOffset = doc.getLength();
 
-                // Inline formatting
+                // Inline formatting — batch adjacent same-style runs into a single
+                // insertString call to avoid firing a DocumentEvent per token.
                 line = line + "\n";
                 int idx = 0;
+                StringBuilder runBuf = new StringBuilder();
+                SimpleAttributeSet runAttr = currentBase;
                 while (idx < line.length()) {
                     MarkdownTokenizer.FormatMatch match = MarkdownTokenizer.nextFormatMarker(line, idx);
 
                     if (match == null) {
                         if (idx < line.length()) {
-                            doc.insertString(doc.getLength(), MarkdownTokenizer.unescape(line.substring(idx)), currentBase);
+                            String tail = MarkdownTokenizer.unescape(line.substring(idx));
+                            runAttr = appendRun(doc, runBuf, runAttr, tail, currentBase);
                         }
                         break;
                     }
 
                     // Insert plain text before the marker
                     if (match.position() > idx) {
-                        doc.insertString(doc.getLength(), MarkdownTokenizer.unescape(line.substring(idx, match.position())), currentBase);
+                        String plain = MarkdownTokenizer.unescape(line.substring(idx, match.position()));
+                        runAttr = appendRun(doc, runBuf, runAttr, plain, currentBase);
                     }
 
                     int end = MarkdownTokenizer.findClosingMarker(line, match.type(), match.position());
@@ -143,13 +155,15 @@ public final class MarkdownStyledRenderer {
                     if (end != -1) {
                         String content = MarkdownTokenizer.unescape(line.substring(match.position() + markerLen, end));
                         SimpleAttributeSet fmtAttr = resolveStyle(match.type(), currentBase, baseFont, codeFg);
-                        doc.insertString(doc.getLength(), content, fmtAttr);
+                        runAttr = appendRun(doc, runBuf, runAttr, content, fmtAttr);
                         idx = end + markerLen;
                     } else {
-                        doc.insertString(doc.getLength(), line.substring(match.position(), match.position() + markerLen), currentBase);
+                        String marker = line.substring(match.position(), match.position() + markerLen);
+                        runAttr = appendRun(doc, runBuf, runAttr, marker, currentBase);
                         idx = match.position() + markerLen;
                     }
                 }
+                flushRun(doc, runBuf, runAttr);
 
                 if (isBlockquote) {
                     doc.setParagraphAttributes(startOffset, doc.getLength() - startOffset, currentBase, false);
@@ -170,12 +184,46 @@ public final class MarkdownStyledRenderer {
     private static SimpleAttributeSet resolveStyle(String type, SimpleAttributeSet base,
                                                     Font baseFont, Color codeFg) {
         return switch (type) {
-            case "BOLD" -> StyleResolver.boldStyle(base);
-            case "ITALIC" -> StyleResolver.italicStyle(base);
-            case "STRIKE" -> StyleResolver.strikethroughStyle(base);
+            case "BOLD" -> StyleResolver.boldStyle(base, baseFont, codeFg);
+            case "ITALIC" -> StyleResolver.italicStyle(base, baseFont, codeFg);
+            case "STRIKE" -> StyleResolver.strikethroughStyle(base, baseFont, codeFg);
             case "CODE" -> StyleResolver.inlineCodeStyle(base, baseFont, codeFg);
             default -> base;
         };
+    }
+
+    /**
+     * Appends {@code text} to the run buffer. If the attribute set matches the
+     * current run, the text is buffered for a single batched insertString.
+     * Otherwise, the existing run is flushed and a new one starts. Returns
+     * the (possibly updated) run attribute so the caller can keep the local
+     * variable in sync.
+     */
+    private static SimpleAttributeSet appendRun(StyledDocument doc, StringBuilder runBuf,
+                                                SimpleAttributeSet runAttr, String text, SimpleAttributeSet newAttr) {
+        if (text.isEmpty()) {
+            return runAttr;
+        }
+        if (runAttr == newAttr || (runAttr != null && runAttr.equals(newAttr))) {
+            runBuf.append(text);
+            return runAttr;
+        }
+        flushRun(doc, runBuf, runAttr);
+        runBuf.append(text);
+        return newAttr;
+    }
+
+    /** Flushes the pending run buffer to the document in a single insertString call. */
+    private static void flushRun(StyledDocument doc, StringBuilder runBuf, SimpleAttributeSet runAttr) {
+        if (runBuf.length() == 0) {
+            return;
+        }
+        try {
+            doc.insertString(doc.getLength(), runBuf.toString(), runAttr);
+        } catch (BadLocationException e) {
+            throw new RuntimeException(e);
+        }
+        runBuf.setLength(0);
     }
 
     private static void insertTable(StyledDocument doc, List<String> tableBuffer,

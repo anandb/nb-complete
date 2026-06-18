@@ -12,6 +12,7 @@ import static github.anandb.netbeans.ui.UIUtils.MONO_STACK;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class HtmlContentPreparer {
 
@@ -22,15 +23,12 @@ public final class HtmlContentPreparer {
     private static final Parser FLEXMARK_PARSER;
     private static final HtmlRenderer FLEXMARK_RENDERER;
 
-    /** LRU cache for markdown→HTML output. Bounded to 256 entries to cap memory. */
-    private static final Map<String, String> MARKDOWN_HTML_CACHE = new LinkedHashMap<>() {
-        private static final int MAX_ENTRIES = 256;
-
-        @Override
-        protected boolean removeEldestEntry(Map.Entry<String, String> eldest) {
-            return size() > MAX_ENTRIES;
-        }
-    };
+    /** Bounded cache for markdown→HTML output. ConcurrentHashMap for lock-free
+     *  reads on the EDT hot path; size is checked on insert and the cache is
+     *  cleared wholesale if it grows beyond the cap (rare; only happens when
+     *  many distinct messages are rendered in one session). */
+    private static final int MARKDOWN_CACHE_MAX = 256;
+    private static final Map<String, String> MARKDOWN_HTML_CACHE = new ConcurrentHashMap<>(64, 0.75f, 1);
 
     static {
         MutableDataSet options = new MutableDataSet();
@@ -39,6 +37,17 @@ public final class HtmlContentPreparer {
         FLEXMARK_PARSER = Parser.builder(options).build();
         FLEXMARK_RENDERER = HtmlRenderer.builder(options).build();
     }
+
+    /** Cache key for the static HTML wrapper (head+style). Keyed on (role, fontSize, theme-identity)
+     *  since CSS depends on these. Invalidated when the L&amp;F changes (theme switch). */
+    private static final Map<String, String> HTML_WRAPPER_CACHE = new LinkedHashMap<>() {
+        private static final int MAX_ENTRIES = 32;
+
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<String, String> eldest) {
+            return size() > MAX_ENTRIES;
+        }
+    };
 
     public static String prepareHtml(String markdown, ColorTheme theme, String role, boolean incremental) {
         String html = computeOrGetCachedHtml(markdown);
@@ -76,25 +85,56 @@ public final class HtmlContentPreparer {
         }
 
         boolean isAssistant = !"user".equals(role) && !"error".equals(role) && !"tool".equals(role);
-        String customCss = theme.toCss(null, isAssistant, ThemeManager.getFont().getSize() - 2);
-        if ("error".equals(role)) {
-            customCss += " body { color: #D32F2F; font-weight: bold; }";
-        } else if ("user".equals(role)) {
-            customCss += " body { font-weight: 300; }";
-        }
 
-        String bodyStyle = "margin: 0; padding: 0; text-align: left !important; width: 100%;";
+        String wrapper = getCachedWrapper(theme, role, isAssistant);
+        String headOpen = wrapper.substring(0, wrapper.indexOf("__BODY__"));
+        String headCloseAndBodyOpen = wrapper.substring(wrapper.indexOf("__BODY__") + "__BODY__".length());
+
         if (hasArt) {
             String monoStack = MONO_STACK;
-            customCss += " .ascii-art { font-family: " + monoStack + "; line-height: 1.0; }";
+            String asciiCss = headOpen + " .ascii-art { font-family: " + monoStack + "; line-height: 1.0; }";
             html = html.replace("  ", " &nbsp;");
             html = html.replace("\n", "<br/>");
             html = "<div class='ascii-art'>" + html + "</div>";
+            return asciiCss + headCloseAndBodyOpen + html + "</body></html>";
         }
 
-        return "<html><head><style>" + customCss + "</style></head><body style='" + bodyStyle + "'>"
-                + html
-                + "</body></html>";
+        return headOpen + headCloseAndBodyOpen + html + "</body></html>";
+    }
+
+    /**
+     * Returns the cached HTML document head (including &lt;style&gt;) for the given
+     * (theme, role) combination. The cache sentinel "__BODY__" marks where the
+     * variable body content is inserted. Includes the &lt;body style='...'&gt; opener
+     * so the body is properly opened after the sentinel.
+     */
+    private static String getCachedWrapper(ColorTheme theme, String role, boolean isAssistant) {
+        int fontSize = ThemeManager.getFont().getSize() - 2;
+        String cacheKey = role + "|" + fontSize + "|" + System.identityHashCode(theme);
+        synchronized (HTML_WRAPPER_CACHE) {
+            String cached = HTML_WRAPPER_CACHE.get(cacheKey);
+            if (cached != null) {
+                return cached;
+            }
+            String customCss = theme.toCss(null, isAssistant, fontSize);
+            if ("error".equals(role)) {
+                customCss += " body { color: #D32F2F; font-weight: bold; }";
+            } else if ("user".equals(role)) {
+                customCss += " body { font-weight: 300; }";
+            }
+            String bodyStyle = "margin: 0; padding: 0; text-align: left !important; width: 100%;";
+            String wrapper = "<html><head><style>" + customCss + "</style></head><body style='" + bodyStyle + "'>__BODY__";
+            HTML_WRAPPER_CACHE.put(cacheKey, wrapper);
+            return wrapper;
+        }
+    }
+
+    /** Evict all cached HTML (called on theme switch to force reparse). */
+    public static void clearCache() {
+        MARKDOWN_HTML_CACHE.clear();
+        synchronized (HTML_WRAPPER_CACHE) {
+            HTML_WRAPPER_CACHE.clear();
+        }
     }
 
     public static boolean containsAsciiArt(String markdown) {
@@ -110,17 +150,19 @@ public final class HtmlContentPreparer {
         if (markdown.length() > 32768) {
             return FLEXMARK_RENDERER.render(FLEXMARK_PARSER.parse(markdown));
         }
-        synchronized (MARKDOWN_HTML_CACHE) {
-            return MARKDOWN_HTML_CACHE.computeIfAbsent(markdown,
-                    md -> FLEXMARK_RENDERER.render(FLEXMARK_PARSER.parse(md)));
+        String cached = MARKDOWN_HTML_CACHE.get(markdown);
+        if (cached != null) {
+            return cached;
         }
-    }
-
-    /** Evict all cached HTML (called on theme switch to force reparse). */
-    public static void clearCache() {
-        synchronized (MARKDOWN_HTML_CACHE) {
+        String rendered = FLEXMARK_RENDERER.render(FLEXMARK_PARSER.parse(markdown));
+        // Cap the cache; if we exceed the limit, just drop the whole cache.
+        // Simpler than LRU eviction and the streaming hot path always hits
+        // the same key until finalization, so LRU has no benefit here.
+        if (MARKDOWN_HTML_CACHE.size() >= MARKDOWN_CACHE_MAX) {
             MARKDOWN_HTML_CACHE.clear();
         }
+        MARKDOWN_HTML_CACHE.put(markdown, rendered);
+        return rendered;
     }
 
     /**

@@ -8,7 +8,7 @@ import java.awt.Toolkit;
 import java.awt.datatransfer.StringSelection;
 import java.awt.event.ActionEvent;
 import java.io.StringReader;
-import java.util.logging.Level;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.swing.JMenuItem;
 import javax.swing.JPopupMenu;
@@ -29,6 +29,10 @@ public class FitEditorPane extends JTextPane {
     private int lastComputedWidth = 0;
     private String lastText = null;
     private Dimension cachedSize = null;
+    private volatile boolean revalidatePending = false;
+
+    /** Prevents cascading revalidates across multiple FitEditorPane instances. */
+    private static final AtomicBoolean GLOBAL_REVALIDATE_QUEUED = new AtomicBoolean(false);
 
     @Override
     public void setText(String t) {
@@ -67,12 +71,8 @@ public class FitEditorPane extends JTextPane {
     public Dimension getPreferredSize() {
         Insets insets = getInsets();
 
-        // Prefer the width the layout manager actually assigned to this pane.
-        // Falling back to the parent width only before this component has been
-        // sized avoids the empty-space bug and prevents a width/height feedback
-        // loop with BoxLayout.
         int w = getWidth();
-        if (w <= 0) {
+        if (w <= 0 || (getParent() != null && getParent().getWidth() > 0 && getParent().getWidth() != w)) {
             Component p = getParent();
             while (p != null) {
                 if (p.getWidth() > 0) {
@@ -107,7 +107,7 @@ public class FitEditorPane extends JTextPane {
                 }
             }
         } catch (Exception ex) {
-            LOG.log(Level.WARNING, "View sizing failed, using fallback", ex);
+            LOG.fine("View sizing failed, using fallback: {0}", ex.getMessage());
         }
 
         if (lastComputedHeight > 0) {
@@ -153,9 +153,21 @@ public class FitEditorPane extends JTextPane {
                 int cw = Math.max(1, width - ins.left - ins.right);
                 root.setSize(cw, Integer.MAX_VALUE);
             }
-            // Do NOT revalidate here. getPreferredSize() now uses the pane's
-            // own assigned width, so the next layout pass already gets the
-            // correct height. Scheduling revalidate() caused a layout loop.
+            // The preferred height depends on the width (HTML text reflow).
+            // After the layout manager assigns the real width, revalidate so
+            // ancestors re-layout with the corrected preferred size. This avoids
+            // the empty-space bug where the pane was sized for the fallback
+            // 500 px width and then left oversized when the sidebar is wider.
+            // Guard against revalidate cascade: only one global revalidate may
+            // be queued at a time to prevent an infinite layout-resize-revalidate loop.
+            if (!revalidatePending && GLOBAL_REVALIDATE_QUEUED.compareAndSet(false, true)) {
+                revalidatePending = true;
+                javax.swing.SwingUtilities.invokeLater(() -> {
+                    revalidatePending = false;
+                    GLOBAL_REVALIDATE_QUEUED.set(false);
+                    revalidate();
+                });
+            }
         }
     }
 
@@ -191,6 +203,7 @@ public class FitEditorPane extends JTextPane {
         // Bottom padding extra generous to prevent last line from being clipped
         pane.setBorder(new EmptyBorder(4, 20, 8, 6));
         pane.setAlignmentX(Component.LEFT_ALIGNMENT);
+        pane.setAlignmentY(Component.CENTER_ALIGNMENT);
         pane.setText(styledHtml);
         return pane;
     }

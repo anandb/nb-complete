@@ -112,7 +112,8 @@ public class CollapsibleActivityPane extends BaseCollapsiblePane {
             Component bodyComp = (block.text() != null && !block.text().trim().isEmpty())
                     ? MarkdownStyledRenderer.render(block.text(), theme)
                     : null;
-            multiPanel.add(createSegmentPane(block.text(), block.isThought(), block.title(), theme, bodyComp, this::toggle));
+            JPanel segPane = createSegmentPane(block.text(), block.isThought(), block.title(), theme, bodyComp, this::toggle);
+            multiPanel.add(segPane);
             plainText.append(block.text());
         }
         combinedPlainText = plainText.toString();

@@ -2,6 +2,7 @@ package github.anandb.netbeans.ui;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridLayout;
@@ -28,6 +29,7 @@ class PermissionBubble extends JPanel {
 
     PermissionBubble(String prompt, JsonNode options, CompletableFuture<String> responseFuture) {
         setLayout(new BorderLayout());
+        setAlignmentY(Component.CENTER_ALIGNMENT);
         setOpaque(false);
         setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
 

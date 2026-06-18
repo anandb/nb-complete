@@ -96,18 +96,22 @@ public class RoundedPanel extends JPanel {
         if (baseColor == null) {
             return;
         }
-        Graphics2D g2 = (Graphics2D) g.create();
-        g2.setColor(baseColor);
         if (ROUNDED_ENABLED && radius > 0) {
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            g2.fill(getShape());
+            Graphics2D g2 = (Graphics2D) g.create();
+            try {
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(baseColor);
+                g2.fill(getShape());
+            } finally {
+                g2.dispose();
+            }
         } else {
             Insets ins = getInsets();
-            g2.fillRect(ins.left, ins.top,
+            g.setColor(baseColor);
+            g.fillRect(ins.left, ins.top,
                     getWidth() - ins.left - ins.right,
                     getHeight() - ins.top - ins.bottom);
         }
-        g2.dispose();
     }
 
     @Override
@@ -116,33 +120,39 @@ public class RoundedPanel extends JPanel {
         int w = getWidth() - ins.left - ins.right;
         int h = getHeight() - ins.top - ins.bottom;
 
+        // Resolve border color once for this paint pass.
+        Color resolvedBorder = borderColor != null ? borderColor : ThemeManager.getCurrentTheme().bubbleBorder();
+        boolean drawBorder = showBorder && resolvedBorder != null && resolvedBorder.getAlpha() > 0;
+
         if (ROUNDED_ENABLED && radius > 0) {
             Graphics2D g2 = (Graphics2D) g.create();
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            RoundRectangle2D.Float shape = getShape();
-            g2.clip(shape);
-            super.paintChildren(g2);
-            g2.dispose();
+            try {
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.clip(getShape());
+                super.paintChildren(g2);
+            } finally {
+                g2.dispose();
+            }
 
             // Draw rounded border AFTER children
-            Color border = borderColor != null ? borderColor : ThemeManager.getCurrentTheme().bubbleBorder();
-            if (showBorder && border != null && border.getAlpha() > 0) {
+            if (drawBorder) {
                 Graphics2D g3 = (Graphics2D) g.create();
-                g3.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g3.setColor(border);
-                g3.draw(new RoundRectangle2D.Float(
-                        ins.left + 0.5f, ins.top + 0.5f,
-                        w - 1.0f, h - 1.0f,
-                        radius, radius));
-                g3.dispose();
+                try {
+                    g3.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                    g3.setColor(resolvedBorder);
+                    g3.draw(new RoundRectangle2D.Float(
+                            ins.left + 0.5f, ins.top + 0.5f,
+                            w - 1.0f, h - 1.0f,
+                            radius, radius));
+                } finally {
+                    g3.dispose();
+                }
             }
         } else {
             super.paintChildren(g);
 
-            // Draw plain rect border
-            Color border = borderColor != null ? borderColor : ThemeManager.getCurrentTheme().bubbleBorder();
-            if (showBorder && border != null && border.getAlpha() > 0) {
-                g.setColor(border);
+            if (drawBorder) {
+                g.setColor(resolvedBorder);
                 g.drawRect(ins.left, ins.top, w - 1, h - 1);
             }
         }

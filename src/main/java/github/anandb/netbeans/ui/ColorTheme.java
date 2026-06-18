@@ -4,6 +4,7 @@ import java.awt.Color;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -39,11 +40,22 @@ public record ColorTheme(
 ) {
 
     private static volatile ColorTheme cachedTheme;
+
+    /** Cache for {@link #toHtmlHex(Color)} results. Identity-based so distinct
+     *  Color instances (even with same RGB) don't collide. Cleared on theme
+     *  switch via the UIManager property change listener below. */
+    private static final Map<Color, String> HEX_CACHE = new IdentityHashMap<>();
+
     static {
         UIManager.addPropertyChangeListener(e -> {
             cachedTheme = null;
             cachedCssAssistant = null;
             cachedCssUser = null;
+            synchronized (ColorTheme.class) {
+                HEX_CACHE.clear();
+            }
+            StyleResolver.clearCache();
+            HtmlContentPreparer.clearCache();
         });
     }
 
@@ -158,20 +170,23 @@ public record ColorTheme(
 
     private static volatile String cachedCssAssistant;
     private static volatile String cachedCssAssistantBg;
+    private static volatile String cachedCssAssistantFontSize;
     private static volatile String cachedCssUser;
     private static volatile String cachedCssUserBg;
+    private static volatile String cachedCssUserFontSize;
 
     public String toCss(Color bubbleBg, boolean isAssistant, int fontSize) {
         synchronized (ColorTheme.class) {
             String bg = bubbleBg != null ? toHtmlHex(bubbleBg) : "transparent";
+            String fontSizeStr = fontSize + "px";
 
             if (isAssistant) {
-                if (bg.equals(cachedCssAssistantBg) && cachedCssAssistant != null) {
-                    return cachedCssAssistant.replace("$fontSize", fontSize + "px");
+                if (bg.equals(cachedCssAssistantBg) && fontSizeStr.equals(cachedCssAssistantFontSize) && cachedCssAssistant != null) {
+                    return cachedCssAssistant;
                 }
             } else {
-                if (bg.equals(cachedCssUserBg) && cachedCssUser != null) {
-                    return cachedCssUser.replace("$fontSize", fontSize + "px");
+                if (bg.equals(cachedCssUserBg) && fontSizeStr.equals(cachedCssUserFontSize) && cachedCssUser != null) {
+                    return cachedCssUser;
                 }
             }
 
@@ -183,7 +198,7 @@ public record ColorTheme(
             String css = loadCssTemplate()
                     .replace("$fontFamily", UIUtils.fontStackWithActual())
                     .replace("$monoFamily", UIUtils.MONO_STACK)
-                    .replace("$fontSize", fontSize + "px")
+                    .replace("$fontSize", fontSizeStr)
                     .replace("$fg", fg)
                     .replace("$bg", bg)
                     .replace("$linkColor", linkColor)
@@ -194,9 +209,11 @@ public record ColorTheme(
             if (isAssistant) {
                 cachedCssAssistant = css;
                 cachedCssAssistantBg = bg;
+                cachedCssAssistantFontSize = fontSizeStr;
             } else {
                 cachedCssUser = css;
                 cachedCssUserBg = bg;
+                cachedCssUserFontSize = fontSizeStr;
             }
             return css;
         }
@@ -225,6 +242,15 @@ public record ColorTheme(
         if (color == null) {
             return "#000000";
         }
-        return String.format("#%02x%02x%02x", color.getRed(), color.getGreen(), color.getBlue());
+        String cached = HEX_CACHE.get(color);
+        if (cached != null) {
+            return cached;
+        }
+        String hex = String.format("#%02x%02x%02x", color.getRed(), color.getGreen(), color.getBlue());
+        // Only cache if cache is reasonably small to avoid unbounded growth
+        if (HEX_CACHE.size() < 128) {
+            HEX_CACHE.put(color, hex);
+        }
+        return hex;
     }
 }

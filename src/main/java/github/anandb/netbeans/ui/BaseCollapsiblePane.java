@@ -66,6 +66,7 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
         setOpaque(false);
         setDoubleBuffered(true);
         setAlignmentX(Component.LEFT_ALIGNMENT);
+        setAlignmentY(Component.CENTER_ALIGNMENT);
 
         ColorTheme theme = ThemeManager.getCurrentTheme();
 
@@ -436,6 +437,7 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
         wrapper.setOpaque(false);
         wrapper.setBackground(null);
         wrapper.setAlignmentX(Component.LEFT_ALIGNMENT);
+        wrapper.setAlignmentY(Component.CENTER_ALIGNMENT);
 
         if (title != null && !title.isEmpty()) {
             // Title bar sits directly on wrapper so it spans full width (no left border indent)

@@ -2,13 +2,10 @@ package github.anandb.netbeans.ui;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Pattern;
 
 public final class TableDetector {
 
     private TableDetector() {}
-
-    private static final Pattern NEWLINE_SPLIT = Pattern.compile("\n");
 
     public record TableResult(List<Segment> segments, int componentCount) {}
 
@@ -39,16 +36,27 @@ public final class TableDetector {
             return new TableResult(List.of(new TextSegment(text)), 1);
         }
 
-        String[] lines = NEWLINE_SPLIT.split(text, -1);
+        // Walk newlines via indexOf('\n') to avoid allocating a String[] for
+        // the entire document.
         List<Segment> segments = new ArrayList<>();
         StringBuilder textBuffer = new StringBuilder();
         List<String> tableLines = new ArrayList<>();
         boolean inTable = false;
         boolean headerFound = false;
 
-        for (int i = 0; i < lines.length; i++) {
-            String line = lines[i];
-            boolean isTableRow = line.contains("|") && line.trim().startsWith("|") && line.trim().endsWith("|");
+        int lineStart = 0;
+        int docLen = text.length();
+        int lineIdx = 0;
+        while (lineStart <= docLen) {
+            int nl = text.indexOf('\n', lineStart);
+            boolean hasMore = nl >= 0;
+            String line = hasMore ? text.substring(lineStart, nl) : text.substring(lineStart);
+            lineStart = hasMore ? nl + 1 : docLen + 1;
+            // Determine whether this is the last line (no trailing newline).
+            boolean isLast = !hasMore;
+            String trimmed = line.trim();
+            boolean isTableRow = !trimmed.isEmpty() && trimmed.charAt(0) == '|'
+                    && trimmed.charAt(trimmed.length() - 1) == '|';
 
             if (isTableRow) {
                 if (!inTable) {
@@ -72,7 +80,7 @@ public final class TableDetector {
                         segments.add(new TableSegment(String.join("\n", tableLines)));
                     } else {
                         for (String l : tableLines) {
-                            textBuffer.append(l).append("\n");
+                            textBuffer.append(l).append('\n');
                         }
                     }
                     tableLines.clear();
@@ -80,17 +88,18 @@ public final class TableDetector {
                     headerFound = false;
                 }
                 textBuffer.append(line);
-                if (i < lines.length - 1) {
-                    textBuffer.append("\n");
+                if (!isLast) {
+                    textBuffer.append('\n');
                 }
             }
+            lineIdx++;
         }
 
         if (inTable && headerFound) {
             segments.add(new TableSegment(String.join("\n", tableLines)));
         } else if (inTable) {
             for (String l : tableLines) {
-                textBuffer.append(l).append("\n");
+                textBuffer.append(l).append('\n');
             }
         }
 

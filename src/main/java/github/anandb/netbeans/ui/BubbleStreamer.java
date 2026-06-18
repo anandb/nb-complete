@@ -120,15 +120,20 @@ class BubbleStreamer {
         hasPendingTextUpdate = false;
 
         if (isStreaming || isFinalizingDeferred) {
-            if (streamingTextArea != null && text.length() > lastDisplayedLength) {
-                String delta = text.substring(lastDisplayedLength);
+            int totalLen = text.length();
+            if (streamingTextArea != null && totalLen > lastDisplayedLength) {
+                // Use subSequence to get a CharSequence view; String.valueOf
+                // of a CharSequence creates a String without copying the
+                // already-rendered prefix of the StringBuilder's char array.
+                CharSequence tail = text.subSequence(lastDisplayedLength, totalLen);
+                String delta = tail.toString();
                 javax.swing.text.Document doc = streamingTextArea.getDocument();
                 try {
                     doc.insertString(doc.getLength(), delta, null);
                 } catch (javax.swing.text.BadLocationException ignored) {
                     streamingTextArea.append(delta);
                 }
-                lastDisplayedLength = text.length();
+                lastDisplayedLength = totalLen;
                 return true;
             }
             return false;
