@@ -30,13 +30,19 @@ public class CollapsibleActivityPane extends BaseCollapsiblePane {
 
     private static final long serialVersionUID = 1L;
 
+    /** Backing store for streamed tool/thought content. Avoids O(n^2) String
+     *  concatenation on long streams. Materialized to a String lazily in
+     *  {@link #getContentToCopy()}. */
+    private final StringBuilder combinedPlainTextBuilder = new StringBuilder();
+
     public CollapsibleActivityPane(String title, String content, boolean expandedAtStart) {
-        super(12, title, 
-              ThemeManager.getCurrentTheme().activityAccent(), 
+        super(12, title,
+              ThemeManager.getCurrentTheme().activityAccent(),
               expandedAtStart);
 
-        combinedPlainText = content != null ? content : "";
-        JTextArea textArea = createActivityTextArea(combinedPlainText);
+        String initial = content != null ? content : "";
+        combinedPlainTextBuilder.append(initial);
+        JTextArea textArea = createActivityTextArea(initial);
         contentPanel.add(textArea, BorderLayout.CENTER);
 
         updateAppearance();
@@ -57,16 +63,17 @@ public class CollapsibleActivityPane extends BaseCollapsiblePane {
 
     @Override
     public void setContent(String content) {
-        combinedPlainText = content != null ? content : "";
+        combinedPlainTextBuilder.setLength(0);
+        combinedPlainTextBuilder.append(content != null ? content : "");
 
         if (contentPanel.getComponentCount() > 0
                 && contentPanel.getComponent(0) instanceof JTextArea existing) {
-            existing.setText(combinedPlainText);
+            existing.setText(combinedPlainTextBuilder.toString());
             return;
         }
 
         contentPanel.removeAll();
-        JTextArea textArea = createActivityTextArea(combinedPlainText);
+        JTextArea textArea = createActivityTextArea(combinedPlainTextBuilder.toString());
         contentPanel.add(textArea, BorderLayout.CENTER);
         contentPanel.revalidate();
         contentPanel.repaint();
@@ -77,16 +84,16 @@ public class CollapsibleActivityPane extends BaseCollapsiblePane {
         if (text == null || text.isEmpty()) {
             return;
         }
-        combinedPlainText += text;
+        combinedPlainTextBuilder.append(text);
         if (contentPanel.getComponentCount() > 0
                 && contentPanel.getComponent(0) instanceof JTextArea existing) {
+            // JTextArea.append already invalidates itself — no need to
+            // revalidate/repaint the wrapping panel on every streaming chunk.
             existing.append(text);
-            contentPanel.revalidate();
-            contentPanel.repaint();
             return;
         }
         contentPanel.removeAll();
-        JTextArea textArea = createActivityTextArea(combinedPlainText);
+        JTextArea textArea = createActivityTextArea(combinedPlainTextBuilder.toString());
         contentPanel.add(textArea, BorderLayout.CENTER);
         contentPanel.revalidate();
         contentPanel.repaint();
@@ -96,7 +103,7 @@ public class CollapsibleActivityPane extends BaseCollapsiblePane {
         isSegmented = true;
         contentPanel.removeAll();
 
-        StringBuilder plainText = new StringBuilder();
+        combinedPlainTextBuilder.setLength(0);
         JPanel multiPanel = new JPanel();
         multiPanel.setLayout(new BoxLayout(multiPanel, BoxLayout.Y_AXIS));
         multiPanel.setOpaque(false);
@@ -107,16 +114,15 @@ public class CollapsibleActivityPane extends BaseCollapsiblePane {
         for (int i = 0; i < blocks.size(); i++) {
             CollapsibleToolPane.ToolSegment block = blocks.get(i);
             if (i > 0) {
-                plainText.append("\n\n");
+                combinedPlainTextBuilder.append("\n\n");
             }
             Component bodyComp = (block.text() != null && !block.text().trim().isEmpty())
                     ? MarkdownStyledRenderer.render(block.text(), theme)
                     : null;
             JPanel segPane = createSegmentPane(block.text(), block.isThought(), block.title(), theme, bodyComp, this::toggle);
             multiPanel.add(segPane);
-            plainText.append(block.text());
+            combinedPlainTextBuilder.append(block.text());
         }
-        combinedPlainText = plainText.toString();
         contentPanel.add(multiPanel, BorderLayout.CENTER);
 
         // When expanded and segmented, hide the main header so segment headers
@@ -150,6 +156,6 @@ public class CollapsibleActivityPane extends BaseCollapsiblePane {
 
     @Override
     protected String getContentToCopy() {
-        return combinedPlainText;
+        return combinedPlainTextBuilder.toString();
     }
 }

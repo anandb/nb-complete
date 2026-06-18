@@ -91,8 +91,10 @@ public final class HtmlContentPreparer {
         String headCloseAndBodyOpen = wrapper.substring(wrapper.indexOf("__BODY__") + "__BODY__".length());
 
         if (hasArt) {
-            String monoStack = MONO_STACK;
-            String asciiCss = headOpen + " .ascii-art { font-family: " + monoStack + "; line-height: 1.0; }";
+            // Inject .ascii-art rule inside the <style> block (headOpen ends at the
+            // <body> opener, so we splice the rule just before </style>).
+            String asciiRule = ".ascii-art { font-family: " + MONO_STACK + "; line-height: 1.0; }";
+            String asciiCss = headOpen.replace("</style>", asciiRule + "</style>");
             html = html.replace("  ", " &nbsp;");
             html = html.replace("\n", "<br/>");
             html = "<div class='ascii-art'>" + html + "</div>";

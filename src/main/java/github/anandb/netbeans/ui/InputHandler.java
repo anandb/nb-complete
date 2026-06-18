@@ -19,6 +19,8 @@ public class InputHandler {
     private final AutocompleteManager autocompleteManager;
     private final MessageSender messageSender;
     private final MessageHistory messageHistory;
+    /** Cached so keyReleased doesn't hit Lookup on every keystroke. */
+    private final ProcessControl processControl = Lookup.getDefault().lookup(ProcessControl.class);
 
     public InputHandler(
             PlaceholderTextArea inputArea,
@@ -38,7 +40,7 @@ public class InputHandler {
             public void keyPressed(KeyEvent e) {
                 if (e.getKeyCode() == KeyEvent.VK_TAB) {
                     e.consume();
-                    SlashCommandInterceptor interceptor = Lookup.getDefault().lookup(ProcessControl.class).getSlashCommandInterceptor();
+                    SlashCommandInterceptor interceptor = processControl.getSlashCommandInterceptor();
                     SlashCommandCallback cb = interceptor != null ? interceptor.getCallback() : null;
                     if (cb != null) {
                         cb.expandOptionsPanel();
@@ -80,7 +82,7 @@ public class InputHandler {
             @Override
             public void keyReleased(KeyEvent e) {
                 autocompleteManager.handleKeyReleased(e);
-                Lookup.getDefault().lookup(ProcessControl.class).touchConnection();
+                processControl.touchConnection();
             }
         });
     }

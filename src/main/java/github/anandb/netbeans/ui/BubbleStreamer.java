@@ -136,6 +136,13 @@ class BubbleStreamer {
                 lastDisplayedLength = totalLen;
                 return true;
             }
+            // Tool/thought streaming: no streaming text area — update via
+            // contentUpdater so new text chunks are flushed to the pane.
+            if (totalLen > lastDisplayedLength) {
+                contentUpdater.update(ThemeManager.getCurrentTheme(), true);
+                lastDisplayedLength = totalLen;
+                return true;
+            }
             return false;
         }
 

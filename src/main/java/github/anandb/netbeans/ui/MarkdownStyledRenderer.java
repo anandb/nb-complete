@@ -40,11 +40,11 @@ public final class MarkdownStyledRenderer {
         pane.setEditable(false);
         pane.setOpaque(false);
         pane.setBackground(null);
-        pane.setFont(ThemeManager.getFont().deriveFont(ThemeManager.getFont().getSize() - 1f));
+        Font baseFont = ThemeManager.getFont();
+        pane.setFont(baseFont.deriveFont(baseFont.getSize() - 1f));
         pane.setBorder(javax.swing.BorderFactory.createEmptyBorder(8, 20, 8, 6));
 
         StyledDocument doc = pane.getStyledDocument();
-        Font baseFont = ThemeManager.getFont();
         Color fg = theme.foreground();
         Color codeFg = theme.inlineCodeForeground();
 
@@ -296,11 +296,15 @@ public final class MarkdownStyledRenderer {
             }
             rowSb.append("\n");
 
-            SimpleAttributeSet rowAttr = new SimpleAttributeSet(tableAttr);
+            // Share tableAttr for non-header rows to avoid allocating a
+            // SimpleAttributeSet per row (matters for large tables).
             if (hasHeader && r == 0) {
-                StyleConstants.setBold(rowAttr, true);
+                SimpleAttributeSet headerRowAttr = new SimpleAttributeSet(tableAttr);
+                StyleConstants.setBold(headerRowAttr, true);
+                doc.insertString(doc.getLength(), rowSb.toString(), headerRowAttr);
+            } else {
+                doc.insertString(doc.getLength(), rowSb.toString(), tableAttr);
             }
-            doc.insertString(doc.getLength(), rowSb.toString(), rowAttr);
         }
     }
 
