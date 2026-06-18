@@ -19,7 +19,7 @@ final class SubAgentTitleResolver {
      * @param title          the original tool/thought title
      * @param sessionId      the session ID from the update
      * @param defaultPrefix  fallback prefix when no custom title exists (e.g. "Sub-Agent")
-     * @param suffix         suffix to append (e.g. " - Thinking Process", " - ReadFile")
+     * @param suffix         suffix to append (e.g. " - Thinking", " - ReadFile")
      * @return the prefixed title, or the original title if not a sub-agent
      */
     static String resolve(String title, String sessionId, String defaultPrefix, String suffix) {

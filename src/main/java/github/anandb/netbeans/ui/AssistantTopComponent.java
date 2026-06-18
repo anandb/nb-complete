@@ -245,7 +245,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         return Lookup.getDefault().lookup(SessionControl.class).getCustomTitle(session.id(), title);
     }
 
-    private void showProjectPickerPopup(JComponent parent) {
+    void showProjectPickerPopup(JComponent parent) {
         componentLifecycleHandler.showProjectPickerPopup(parent);
     }
 
@@ -494,6 +494,10 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
         revalidate();
         repaint();
+    }
+
+    void promptRestartServer() {
+        componentLifecycleHandler.promptRestartServer();
     }
 
     @Override

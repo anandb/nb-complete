@@ -10,7 +10,7 @@ import github.anandb.netbeans.contract.SlashCommandCallback;
 
 /**
  * Handles keyboard input for the chat input area: Tab (switch agent),
- * Enter (send), Shift+Enter (newline), Up/Down (history navigation),
+ * Enter (send), Shift+Enter (newline), Alt+Up/Down (history navigation),
  * Ctrl+Z/Y (undo/redo), and autocomplete integration.
  */
 public class InputHandler {

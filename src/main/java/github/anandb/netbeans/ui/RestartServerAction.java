@@ -15,7 +15,7 @@ public class RestartServerAction implements ActionListener {
     public void actionPerformed(ActionEvent e) {
         AssistantTopComponent tc = AssistantTopComponent.findInstance();
         if (tc != null) {
-            tc.componentLifecycleHandler.promptRestartServer();
+            tc.promptRestartServer();
         }
     }
 }

@@ -169,7 +169,7 @@ final class ChatLayoutBuilder {
                     .lookup(github.anandb.netbeans.contract.SessionControl.class)
                     .createNewSession(projects[0].getProjectDirectory().getPath());
             } else {
-                topComponent.componentLifecycleHandler.showProjectPickerPopup((javax.swing.JComponent) e.getSource());
+                topComponent.showProjectPickerPopup((javax.swing.JComponent) e.getSource());
             }
         });
         String renameHint = NbBundle.getMessage(AssistantTopComponent.class, "HINT_RenameSession");
@@ -185,7 +185,7 @@ final class ChatLayoutBuilder {
         });
         String restartHint = NbBundle.getMessage(AssistantTopComponent.class, "HINT_RestartServer");
         restartServerBtn = UIUtils.createToolbarButton("restart.svg", restartHint, e -> {
-            topComponent.componentLifecycleHandler.promptRestartServer();
+            topComponent.promptRestartServer();
         });
 
         JButton tb = UIUtils.createToolbarButton("expand.svg", NbBundle.getMessage(AssistantTopComponent.class, "HINT_ExpandAll"), null);

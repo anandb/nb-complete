@@ -79,8 +79,8 @@ public class MessageSender {
         }
 
         // Intercept local slash commands first (trim is only to check for '/')
-        boolean isForwardedSlash = text.trim().startsWith("/");
-        if (isForwardedSlash) {
+        boolean isForwardedSlash = false;
+        if (text.trim().startsWith("/")) {
             SlashCommandInterceptor interceptor = Lookup.getDefault().lookup(ProcessControl.class).getSlashCommandInterceptor();
             if (interceptor != null) {
                 CompletableFuture<Boolean> handled = interceptor.intercept(text, null);
@@ -104,6 +104,7 @@ public class MessageSender {
                     .rawText(echoText)
                     .build());
                 inputArea.setText("");
+                isForwardedSlash = true;
             }
         }
 

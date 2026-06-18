@@ -29,6 +29,6 @@ class CollapsibleToolPaneTest {
         UIManager.put("ComboBox.selectionBackground", Color.YELLOW);
 
         CollapsibleToolPane pane = new CollapsibleToolPane("THINKING", "Searching...", true);
-        assertEquals("Thinking Process", pane.headerLabel.getText());
+        assertEquals("Thinking", pane.headerLabel.getText());
     }
 }

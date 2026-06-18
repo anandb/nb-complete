@@ -356,8 +356,6 @@ public class ComponentLifecycleHandler {
                 int keyCode = e.getKeyCode();
                 if ((e.getModifiersEx() & KeyEvent.CTRL_DOWN_MASK) != 0 && keyCode == KeyEvent.VK_L) {
                     Component src = e.getComponent();
-                    // Restore from minimized state works globally; minimize only when
-                    // the source component is within the assistant panel.
                     if (!topComponent.isOpened()
                             || (src != null && SwingUtilities.isDescendingFrom(src, topComponent))) {
                         topComponent.minimizeToDock();

@@ -71,7 +71,7 @@ final class CollapsibleHeaderRenderer {
         }
     }
 
-    /** Returns the "Thinking Process" label for thinking panes. */
+    /** Returns the "Thinking" label for thinking panes. */
     static String thinkingLabel(boolean expanded) {
         String tp = NbBundle.getMessage(CollapsibleHeaderRenderer.class, "LBL_ThinkingProcess");
         return expanded ? tp : tp + "...";

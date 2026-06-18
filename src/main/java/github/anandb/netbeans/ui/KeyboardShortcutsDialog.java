@@ -105,29 +105,25 @@ final class KeyboardShortcutsDialog extends JDialog {
         sb.append("<html><body style='font-family:sans-serif;font-size:12px;")
           .append("margin:0;padding:0;'>");
 
-        table(sb, border, bg, hdrBg, "Input Area", new String[][]{
+        // Fixed shortcuts — all in one table, two per row
+        tableTwoCol(sb, border, bg, hdrBg, "Fixed Shortcuts", new String[][]{
             {"Enter", "Send message"},
             {"Shift + Enter", "Insert newline"},
-            {"Tab", "Switch agent / open options panel"},
-            {"Alt + Up", "Previous message in history"},
-            {"Alt + Down", "Next message in history"},
-            {"/", "Trigger slash command autocomplete"},
+            {"/", "Slash command autocomplete"},
+            {"Tab", "Switch agent / open options"},
+            {"Alt + Up", "Previous in history"},
+            {"Alt + Down", "Next in history"},
             {mod + " + Z", "Undo"},
             {mod + " + Y", "Redo"},
-        });
-
-        table(sb, border, bg, hdrBg, "Chat Panel", new String[][]{
             {"Page Up", "Scroll up one page"},
             {"Page Down", "Scroll down one page"},
             {mod + " + Home", "Scroll to top"},
             {mod + " + End", "Scroll to bottom"},
-        });
-
-        table(sb, border, bg, hdrBg, "Global", new String[][]{
             {mod + " + L", "Toggle assistant panel"},
         });
 
-        table(sb, border, bg, hdrBg, "Assignable Shortcuts (Tools > Keymap)", new String[][]{
+        // Assignable shortcuts — all in one table, two per row
+        tableTwoCol(sb, border, bg, hdrBg, "Assignable Shortcuts (Tools > Keymap)", new String[][]{
             {resolveShortcut("Actions/Assistant/github-anandb-netbeans-ui-NewSessionAction"), "New Session"},
             {resolveShortcut("Actions/Assistant/github-anandb-netbeans-ui-ReloadSessionAction"), "Reload Conversation"},
             {resolveShortcut("Actions/Assistant/github-anandb-netbeans-ui-RenameSessionAction"), "Rename Session"},
@@ -176,6 +172,40 @@ final class KeyboardShortcutsDialog extends JDialog {
               .append(row[0]).append("</td>");
             sb.append("<td style='padding:6px 8px;border:1px solid ")
               .append(border).append(";'>").append(row[1]).append("</td>");
+            sb.append("</tr>");
+        }
+        sb.append("</table>");
+    }
+
+    private static void tableTwoCol(StringBuilder sb, String border, String bg,
+            String hdrBg, String title, String[][] rows) {
+        String tdStyle = "padding:6px 8px;border:1px solid " + border;
+        String keyStyle = tdStyle + ";font-family:monospace;font-size:11px;";
+        String hdrTh = " align='left' bgcolor='" + hdrBg
+                + "' style='padding:6px 8px;border:1px solid " + border + ";'";
+
+        sb.append("<p style='font-weight:bold;font-size:13px;margin:12px 0 4px;'>")
+          .append(title).append("</p>");
+        sb.append("<table border='1' bordercolor='").append(border)
+          .append("' cellspacing='0' cellpadding='0'")
+          .append(" style='border-collapse:collapse;width:100%;")
+          .append("background:").append(bg).append(";'>");
+        sb.append("<tr>")
+          .append("<th").append(hdrTh).append(">Key</th>")
+          .append("<th").append(hdrTh).append(">Action</th>")
+          .append("<th").append(hdrTh).append(">Key</th>")
+          .append("<th").append(hdrTh).append(">Action</th>")
+          .append("</tr>");
+
+        int len = rows.length;
+        for (int i = 0; i < len; i += 2) {
+            String[] left = rows[i];
+            String[] right = (i + 1 < len) ? rows[i + 1] : new String[]{"", ""};
+            sb.append("<tr>");
+            sb.append("<td style='").append(keyStyle).append(";'>").append(left[0]).append("</td>");
+            sb.append("<td style='").append(tdStyle).append(";'>").append(left[1]).append("</td>");
+            sb.append("<td style='").append(keyStyle).append(";'>").append(right[0]).append("</td>");
+            sb.append("<td style='").append(tdStyle).append(";'>").append(right[1]).append("</td>");
             sb.append("</tr>");
         }
         sb.append("</table>");

@@ -104,7 +104,7 @@ public class StrategyRegistry implements UpdateDispatcher {
                 String text = extractText(update.content());
                 String tTitle = SubAgentTitleResolver.resolve(null,
                         update.params() != null ? update.params().sessionId() : null,
-                        "Sub-Agent", "Thinking Process");
+                        "Sub-Agent", "Thinking");
                 handler.displayMessage(new ProcessedMessage.Builder()
                         .messageType(MessageType.valueOf(update.type()))
                         .text(text)

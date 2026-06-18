@@ -28,6 +28,7 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
+import javax.swing.UIManager;
 import javax.swing.SwingUtilities;
 
 import github.anandb.netbeans.contract.SessionControl;
@@ -41,6 +42,7 @@ public class ACPOptionsPanel extends JPanel {
     private final ACPOptionsPanelController controller;
     private JLabel jLabel1;
     private JTextField pathField;
+    private JLabel pathErrorLabel;
     private JLabel preambleLabel;
     private JTextArea preambleArea;
     private JScrollPane preambleScroll;
@@ -58,6 +60,7 @@ public class ACPOptionsPanel extends JPanel {
 
     private String detectedPath;
     private boolean showingHint;
+    private boolean userEditedPath;
 
     private static final Color HINT_COLOR = ThemeManager.getCurrentTheme().mutedForeground();
 
@@ -100,7 +103,10 @@ public class ACPOptionsPanel extends JPanel {
 
         pathField.addKeyListener(new KeyAdapter() {
             @Override
-            public void keyReleased(KeyEvent evt) { controller.changed(); }
+            public void keyReleased(KeyEvent evt) {
+                userEditedPath = true;
+                controller.changed();
+            }
         });
         pathField.addFocusListener(new FocusAdapter() {
             @Override
@@ -110,7 +116,15 @@ public class ACPOptionsPanel extends JPanel {
             public void focusLost(FocusEvent e) { restoreHintIfEmpty(); }
         });
         add(pathField, UIUtils.createGbc(1, 1, 1.0, 0, GridBagConstraints.HORIZONTAL,
-                                         GridBagConstraints.WEST, new Insets(0, 0, 5, 5)));
+                                         GridBagConstraints.WEST, new Insets(0, 0, 0, 5)));
+
+        pathErrorLabel = new JLabel(" ");
+        pathErrorLabel.setForeground(UIManager.getColor("Panel.foreground"));
+        pathErrorLabel.setFont(pathErrorLabel.getFont().deriveFont(Font.ITALIC, pathErrorLabel.getFont().getSize() - 1f));
+        GridBagConstraints errGbc = UIUtils.createGbc(1, 2, 1.0, 0, GridBagConstraints.HORIZONTAL,
+                                         GridBagConstraints.WEST, new Insets(0, 0, 5, 5));
+        errGbc.gridwidth = 2;
+        add(pathErrorLabel, errGbc);
 
         browseButton.setText(NbBundle.getMessage(ACPOptionsPanel.class, "BTN_Browse"));
         browseButton.addActionListener(evt -> browseButtonActionPerformed());
@@ -118,45 +132,45 @@ public class ACPOptionsPanel extends JPanel {
                                             new Insets(0, 0, 5, 0)));
 
         argsLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_ProcessArguments"));
-        add(argsLabel, UIUtils.createGbc(0, 2, 0.0, 0, GridBagConstraints.NONE, GridBagConstraints.WEST,
+        add(argsLabel, UIUtils.createGbc(0, 3, 0.0, 0, GridBagConstraints.NONE, GridBagConstraints.WEST,
                                          new Insets(0, 12, 15, 5)));
 
         argsField.addKeyListener(new KeyAdapter() {
             @Override
             public void keyReleased(KeyEvent evt) { controller.changed(); }
         });
-        add(argsField, UIUtils.createGbc(1, 2, 1.0, 0, GridBagConstraints.HORIZONTAL,
+        add(argsField, UIUtils.createGbc(1, 3, 1.0, 0, GridBagConstraints.HORIZONTAL,
                                          GridBagConstraints.WEST, new Insets(0, 0, 15, 5)));
 
         // --- SECTION: Chat Behavior ---
         JLabel behaviorHeader = new JLabel(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_BehaviorHeader"));
         behaviorHeader.setFont(behaviorHeader.getFont().deriveFont(Font.BOLD));
-        GridBagConstraints gbcHeader = UIUtils.createGbc(0, 3, 1.0, 0, GridBagConstraints.HORIZONTAL,
+        GridBagConstraints gbcHeader = UIUtils.createGbc(0, 4, 1.0, 0, GridBagConstraints.HORIZONTAL,
                 GridBagConstraints.WEST, new Insets(10, 0, 10, 0));
         gbcHeader.gridwidth = 3;
         add(behaviorHeader, gbcHeader);
 
         echoCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_EchoUserInput"));
         echoCheckbox.addActionListener(evt -> controller.changed());
-        add(echoCheckbox, UIUtils.createGbc(0, 4, 1.0, 0, GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST,
+        add(echoCheckbox, UIUtils.createGbc(0, 5, 1.0, 0, GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST,
                 new Insets(0, 12, 5, 0)));
 
         combineCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_CombineToolThought"));
         combineCheckbox.addActionListener(evt -> controller.changed());
-        add(combineCheckbox, UIUtils.createGbc(0, 5, 1.0, 0, GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST,
+        add(combineCheckbox, UIUtils.createGbc(0, 6, 1.0, 0, GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST,
                 new Insets(0, 12, 10, 0)));
 
         JLabel idleTimeoutLabel = new JLabel(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_SessionIdleTimeout"));
-        add(idleTimeoutLabel, UIUtils.createGbc(0, 6, 0.0, 0, GridBagConstraints.NONE,
+        add(idleTimeoutLabel, UIUtils.createGbc(0, 7, 0.0, 0, GridBagConstraints.NONE,
                 GridBagConstraints.WEST, new Insets(0, 12, 10, 5)));
         SpinnerNumberModel spinnerModel = new SpinnerNumberModel(300, 0, 3600, 5);
         idleTimeoutSpinner = new JSpinner(spinnerModel);
         idleTimeoutSpinner.addChangeListener(evt -> controller.changed());
-        add(idleTimeoutSpinner, UIUtils.createGbc(1, 6, 0.0, 0, GridBagConstraints.NONE,
+        add(idleTimeoutSpinner, UIUtils.createGbc(1, 7, 0.0, 0, GridBagConstraints.NONE,
                 GridBagConstraints.WEST, new Insets(0, 0, 10, 0)));
 
         preambleLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_Preamble"));
-        GridBagConstraints gbcPreambleLabel = UIUtils.createGbc(0, 7, 1.0, 0, GridBagConstraints.HORIZONTAL,
+        GridBagConstraints gbcPreambleLabel = UIUtils.createGbc(0, 8, 1.0, 0, GridBagConstraints.HORIZONTAL,
                 GridBagConstraints.WEST, new Insets(0, 12, 5, 0));
         gbcPreambleLabel.gridwidth = 3;
         add(preambleLabel, gbcPreambleLabel);
@@ -167,7 +181,7 @@ public class ACPOptionsPanel extends JPanel {
             @Override
             public void keyReleased(KeyEvent evt) { controller.changed(); }
         });
-        GridBagConstraints gbcPreambleScroll = UIUtils.createGbc(0, 8, 1.0, 0.2, GridBagConstraints.BOTH,
+        GridBagConstraints gbcPreambleScroll = UIUtils.createGbc(0, 9, 1.0, 0.2, GridBagConstraints.BOTH,
                 GridBagConstraints.WEST, new Insets(0, 12, 15, 0));
         gbcPreambleScroll.gridwidth = 3;
         add(preambleScroll, gbcPreambleScroll);
@@ -175,13 +189,13 @@ public class ACPOptionsPanel extends JPanel {
         // --- SECTION: Appearance ---
         JLabel appearanceHeader = new JLabel(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_AppearanceHeader"));
         appearanceHeader.setFont(appearanceHeader.getFont().deriveFont(Font.BOLD));
-        GridBagConstraints gbcAppHeader = UIUtils.createGbc(0, 9, 1.0, 0, GridBagConstraints.HORIZONTAL,
+        GridBagConstraints gbcAppHeader = UIUtils.createGbc(0, 10, 1.0, 0, GridBagConstraints.HORIZONTAL,
                 GridBagConstraints.WEST, new Insets(10, 0, 10, 0));
         gbcAppHeader.gridwidth = 3;
         add(appearanceHeader, gbcAppHeader);
 
         iconLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_UserIcon"));
-        add(iconLabel, UIUtils.createGbc(0, 10, 0.0, 0, GridBagConstraints.NONE, GridBagConstraints.WEST,
+        add(iconLabel, UIUtils.createGbc(0, 11, 0.0, 0, GridBagConstraints.NONE, GridBagConstraints.WEST,
                 new Insets(0, 12, 5, 5)));
 
         iconPathField.addKeyListener(new KeyAdapter() {
@@ -191,19 +205,19 @@ public class ACPOptionsPanel extends JPanel {
                 controller.changed();
             }
         });
-        add(iconPathField, UIUtils.createGbc(1, 10, 1.0, 0, GridBagConstraints.HORIZONTAL,
+        add(iconPathField, UIUtils.createGbc(1, 11, 1.0, 0, GridBagConstraints.HORIZONTAL,
                                              GridBagConstraints.WEST, new Insets(0, 0, 5, 5)));
 
         iconBrowseButton.setText(NbBundle.getMessage(ACPOptionsPanel.class, "BTN_Browse"));
         iconBrowseButton.addActionListener(evt -> iconBrowseButtonActionPerformed());
-        add(iconBrowseButton, UIUtils.createGbc(2, 10, 0.0, 0, GridBagConstraints.NONE,
+        add(iconBrowseButton, UIUtils.createGbc(2, 11, 0.0, 0, GridBagConstraints.NONE,
                                                 GridBagConstraints.WEST, new Insets(0, 0, 5, 0)));
 
-        add(iconPreviewLabel, UIUtils.createGbc(1, 11, 0.0, 0, GridBagConstraints.NONE,
+        add(iconPreviewLabel, UIUtils.createGbc(1, 12, 0.0, 0, GridBagConstraints.NONE,
                                                 GridBagConstraints.WEST, new Insets(5, 0, 5, 0)));
 
         // Spacer at the bottom to push everything up
-        add(new JLabel(), UIUtils.createGbc(0, 12, 1.0, 1.0, GridBagConstraints.BOTH,
+        add(new JLabel(), UIUtils.createGbc(0, 13, 1.0, 1.0, GridBagConstraints.BOTH,
                                             GridBagConstraints.NORTHWEST, new Insets(0, 0, 0, 0)));
     }
 
@@ -219,6 +233,7 @@ public class ACPOptionsPanel extends JPanel {
         chooser.setDialogTitle(NbBundle.getMessage(ACPOptionsPanel.class, "TITLE_SelectExecutable"));
         if (chooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
             clearHint();
+            userEditedPath = true;
             pathField.setText(chooser.getSelectedFile().getAbsolutePath());
             controller.changed();
         }
@@ -245,6 +260,7 @@ public class ACPOptionsPanel extends JPanel {
     private String previousIconPath;
 
     void load() {
+        userEditedPath = false;
         String savedPath = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).get(PreferenceKeys.ACP_EXECUTABLE_PATH, null);
         detectedPath = BinaryResolver.findOnPath();
 
@@ -330,6 +346,39 @@ public class ACPOptionsPanel extends JPanel {
     }
 
     boolean valid() {
+        if (!userEditedPath) {
+            pathErrorLabel.setText(" ");
+            return true;
+        }
+        String path = pathField.getText();
+        if (path == null || path.trim().isEmpty()) {
+            pathErrorLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "ERR_EmptyPath"));
+            pathErrorLabel.setForeground(UIManager.getColor("Label.errorForeground"));
+            return false;
+        }
+        File f = new File(path.trim());
+        if (!f.exists()) {
+            pathErrorLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "ERR_PathNotFound"));
+            pathErrorLabel.setForeground(UIManager.getColor("Label.errorForeground"));
+            return false;
+        }
+        if (!f.isFile()) {
+            pathErrorLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "ERR_PathNotFile"));
+            pathErrorLabel.setForeground(UIManager.getColor("Label.errorForeground"));
+            return false;
+        }
+        if (!f.canExecute()) {
+            pathErrorLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "ERR_PathNotExecutable"));
+            pathErrorLabel.setForeground(UIManager.getColor("Label.errorForeground"));
+            return false;
+        }
+        boolean isWindows = System.getProperty("os.name", "").toLowerCase().contains("win");
+        if (isWindows && !path.toLowerCase().endsWith(".exe")) {
+            pathErrorLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "ERR_MissingExeExtension"));
+            pathErrorLabel.setForeground(UIManager.getColor("Label.errorForeground"));
+            return false;
+        }
+        pathErrorLabel.setText(" ");
         return true;
     }
 }
