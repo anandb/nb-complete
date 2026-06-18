@@ -187,5 +187,78 @@
     "key": "controlShadow",
     "dark": "#3A2C20",
     "light": "#B8B0A0"
+  },
+  {
+    "name": "mutedForeground",
+    "property": "netbeans.codingassistant.color.mutedForeground",
+    "key": "Label.disabledForeground",
+    "dark": "#888888",
+    "light": "#888888"
+  },
+  {
+    "name": "placeholderForeground",
+    "property": "netbeans.codingassistant.color.placeholderForeground",
+    "dark": "#969696",
+    "light": "#969696"
+  },
+  {
+    "name": "collapsedHeaderForeground",
+    "property": "netbeans.codingassistant.color.collapsedHeaderForeground",
+    "dark": "#969696",
+    "light": "#969696"
+  },
+  {
+    "name": "inlineCodeForeground",
+    "property": "netbeans.codingassistant.color.inlineCodeForeground",
+    "dark": "#FFFFFF",
+    "light": "#000000"
+  },
+  {
+    "name": "permissionGrantFg",
+    "property": "netbeans.codingassistant.color.permissionGrantFg",
+    "dark": "#81C784",
+    "light": "#2E7D32"
+  },
+  {
+    "name": "permissionGrantBg",
+    "property": "netbeans.codingassistant.color.permissionGrantBg",
+    "dark": "#1B3A1D",
+    "light": "#E8F5E9"
+  },
+  {
+    "name": "permissionGrantBorder",
+    "property": "netbeans.codingassistant.color.permissionGrantBorder",
+    "dark": "#66BB6A",
+    "light": "#4CAF50"
+  },
+  {
+    "name": "permissionDenyFg",
+    "property": "netbeans.codingassistant.color.permissionDenyFg",
+    "dark": "#EF5350",
+    "light": "#C62828"
+  },
+  {
+    "name": "permissionDenyBg",
+    "property": "netbeans.codingassistant.color.permissionDenyBg",
+    "dark": "#3A1517",
+    "light": "#FFEBEE"
+  },
+  {
+    "name": "permissionDenyBorder",
+    "property": "netbeans.codingassistant.color.permissionDenyBorder",
+    "dark": "#EF5350",
+    "light": "#F44336"
+  },
+  {
+    "name": "activityAccent",
+    "property": "netbeans.codingassistant.color.activityAccent",
+    "dark": "#589DF6",
+    "light": "#268BD2"
+  },
+  {
+    "name": "scrollButtonColor",
+    "property": "netbeans.codingassistant.color.scrollButtonColor",
+    "dark": "#2962FF",
+    "light": "#2962FF"
   }
 ]

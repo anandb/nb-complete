@@ -32,7 +32,7 @@ public class CollapsibleActivityPane extends BaseCollapsiblePane {
 
     public CollapsibleActivityPane(String title, String content, boolean expandedAtStart) {
         super(12, title, 
-              Color.decode(ThemeManager.getCurrentTheme().isDark() ? "#589DF6" : "#268BD2"), 
+              ThemeManager.getCurrentTheme().activityAccent(), 
               expandedAtStart);
 
         combinedPlainText = content != null ? content : "";

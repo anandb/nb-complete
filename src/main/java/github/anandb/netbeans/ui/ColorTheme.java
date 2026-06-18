@@ -30,7 +30,12 @@ public record ColorTheme(
         Color codeHeaderForeground, Color codeHeaderBorder, Color thinkingHeaderBackground,
         Color thinkingHeaderForeground,
         Color toolForeground, Color permissionBg, Color permissionBorder, Color permissionTitle,
-        Color tableBackground, Color tableHeaderBackground, Color tableBorder
+        Color tableBackground, Color tableHeaderBackground, Color tableBorder,
+        Color mutedForeground, Color placeholderForeground, Color collapsedHeaderForeground,
+        Color inlineCodeForeground,
+        Color permissionGrantFg, Color permissionGrantBg, Color permissionGrantBorder,
+        Color permissionDenyFg, Color permissionDenyBg, Color permissionDenyBorder,
+        Color activityAccent, Color scrollButtonColor
 ) {
 
     private static volatile ColorTheme cachedTheme;
@@ -65,7 +70,12 @@ public record ColorTheme(
                 colors.get("codeHeaderForeground"), colors.get("codeHeaderBorder"), colors.get("thinkingHeaderBackground"),
                 colors.get("thinkingHeaderForeground"),
                 colors.get("toolForeground"), colors.get("permissionBg"), colors.get("permissionBorder"), colors.get("permissionTitle"),
-                colors.get("tableBackground"), colors.get("tableHeaderBackground"), colors.get("tableBorder")
+                colors.get("tableBackground"), colors.get("tableHeaderBackground"), colors.get("tableBorder"),
+                colors.get("mutedForeground"), colors.get("placeholderForeground"), colors.get("collapsedHeaderForeground"),
+                colors.get("inlineCodeForeground"),
+                colors.get("permissionGrantFg"), colors.get("permissionGrantBg"), colors.get("permissionGrantBorder"),
+                colors.get("permissionDenyFg"), colors.get("permissionDenyBg"), colors.get("permissionDenyBorder"),
+                colors.get("activityAccent"), colors.get("scrollButtonColor")
         );
     }
 

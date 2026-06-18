@@ -4,7 +4,9 @@ import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Font;
 import java.awt.Frame;
+import java.util.List;
 
+import javax.swing.Action;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -15,6 +17,7 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.text.html.HTMLEditorKit;
 
 import org.openide.util.NbBundle;
+import org.openide.util.Utilities;
 
 /**
  * Modal dialog listing all keyboard shortcuts supported by the plugin.
@@ -23,6 +26,7 @@ import org.openide.util.NbBundle;
 final class KeyboardShortcutsDialog extends JDialog {
 
     private static final long serialVersionUID = 1L;
+    private static KeyboardShortcutsDialog currentInstance;
 
     private KeyboardShortcutsDialog(Frame owner) {
         super(owner, NbBundle.getMessage(KeyboardShortcutsDialog.class, "TITLE_KeyboardShortcuts"), false);
@@ -31,13 +35,25 @@ final class KeyboardShortcutsDialog extends JDialog {
         pack();
         setMinimumSize(getPreferredSize());
         setLocationRelativeTo(owner);
+        addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowClosed(java.awt.event.WindowEvent e) {
+                if (currentInstance == KeyboardShortcutsDialog.this) {
+                    currentInstance = null;
+                }
+            }
+        });
     }
 
     static void show(Component parent) {
+        if (currentInstance != null && currentInstance.isVisible()) {
+            currentInstance.dispose();
+            return;
+        }
         Frame owner = parent instanceof Frame ? (Frame) parent
                 : (Frame) javax.swing.SwingUtilities.getWindowAncestor(parent);
-        KeyboardShortcutsDialog dialog = new KeyboardShortcutsDialog(owner);
-        dialog.setVisible(true);
+        currentInstance = new KeyboardShortcutsDialog(owner);
+        currentInstance.setVisible(true);
     }
 
     private void initComponents() {
@@ -93,8 +109,8 @@ final class KeyboardShortcutsDialog extends JDialog {
             {"Enter", "Send message"},
             {"Shift + Enter", "Insert newline"},
             {"Tab", "Switch agent / open options panel"},
-            {"Up Arrow", "Previous message in history"},
-            {"Down Arrow", "Next message in history"},
+            {"Alt + Up", "Previous message in history"},
+            {"Alt + Down", "Next message in history"},
             {"/", "Trigger slash command autocomplete"},
             {mod + " + Z", "Undo"},
             {mod + " + Y", "Redo"},
@@ -111,8 +127,32 @@ final class KeyboardShortcutsDialog extends JDialog {
             {mod + " + L", "Toggle assistant panel"},
         });
 
+        table(sb, border, bg, hdrBg, "Assignable Shortcuts (Tools > Keymap)", new String[][]{
+            {resolveShortcut("Actions/Assistant/github-anandb-netbeans-ui-NewSessionAction"), "New Session"},
+            {resolveShortcut("Actions/Assistant/github-anandb-netbeans-ui-ReloadSessionAction"), "Reload Conversation"},
+            {resolveShortcut("Actions/Assistant/github-anandb-netbeans-ui-RenameSessionAction"), "Rename Session"},
+            {resolveShortcut("Actions/Assistant/github-anandb-netbeans-ui-ArchiveSessionAction"), "Archive Session"},
+            {resolveShortcut("Actions/Assistant/github-anandb-netbeans-ui-RestartServerAction"), "Restart Server"},
+            {resolveShortcut("Actions/Assistant/github-anandb-netbeans-ui-SendMessageAction"), "Send Message"},
+            {resolveShortcut("Actions/Assistant/github-anandb-netbeans-ui-StopMessageAction"), "Stop Message"},
+            {resolveShortcut("Actions/Assistant/github-anandb-netbeans-ui-ToggleOptionsAction"), "Toggle Options"},
+            {resolveShortcut("Actions/Assistant/github-anandb-netbeans-ui-ExportConversationAction"), "Export Conversation"},
+            {resolveShortcut("Actions/Assistant/github-anandb-netbeans-ui-ToggleBlocksAction"), "Toggle Expand/Collapse All"},
+        });
+
         sb.append("</body></html>");
         return sb.toString();
+    }
+
+    private static String resolveShortcut(String actionPath) {
+        List<? extends Action> actions = Utilities.actionsForPath(actionPath);
+        if (actions != null && !actions.isEmpty()) {
+            KeyStroke ks = (KeyStroke) actions.get(0).getValue(Action.ACCELERATOR_KEY);
+            if (ks != null) {
+                return ks.toString().replace("pressed ", "").replace("Released ", "");
+            }
+        }
+        return "None";
     }
 
     private static void table(StringBuilder sb, String border, String bg,

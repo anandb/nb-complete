@@ -1,6 +1,5 @@
 package github.anandb.netbeans.ui;
 
-import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Image;
 import java.io.File;
@@ -36,7 +35,7 @@ final class IconPreviewManager {
 
     private void initPreviewLabel() {
         previewLabel.setPreferredSize(new Dimension(80, 80));
-        previewLabel.setBorder(BorderFactory.createLineBorder(Color.GRAY));
+        previewLabel.setBorder(BorderFactory.createLineBorder(ThemeManager.getCurrentTheme().mutedForeground()));
         previewLabel.setHorizontalAlignment(SwingConstants.CENTER);
         previewLabel.setToolTipText("Right-click to clear icon");
         previewLabel.addMouseListener(new MouseAdapter() {

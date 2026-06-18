@@ -49,7 +49,7 @@ final class WelcomeScreen {
             ? NbBundle.getMessage(ChatThreadPanel.class, "MSG_NewChatPrompt")
             : NbBundle.getMessage(ChatThreadPanel.class, "MSG_ExistingChatPrompt"));
         subtitle.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN));
-        subtitle.setForeground(Color.GRAY);
+        subtitle.setForeground(ThemeManager.getCurrentTheme().mutedForeground());
         subtitle.setBorder(BorderFactory.createEmptyBorder(0, 12, 20, 12));
         messagesContainer.add(subtitle);
 
@@ -107,7 +107,7 @@ final class WelcomeScreen {
             String folder = new File(subtext).getName();
             JLabel subLabel = new JLabel(NbBundle.getMessage(ChatThreadPanel.class, "LBL_InFolder", folder));
             subLabel.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN));
-            subLabel.setForeground(Color.GRAY);
+            subLabel.setForeground(ThemeManager.getCurrentTheme().mutedForeground());
             textPanel.add(subLabel);
         }
 

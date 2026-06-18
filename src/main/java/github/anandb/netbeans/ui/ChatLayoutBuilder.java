@@ -2,12 +2,12 @@ package github.anandb.netbeans.ui;
 
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
-import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 
 import javax.swing.JButton;
+import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JMenuItem;
@@ -23,6 +23,7 @@ import org.openide.util.NbBundle;
 import org.openide.util.NbPreferences;
 
 import github.anandb.netbeans.support.AgentUtils;
+import github.anandb.netbeans.support.PreferenceKeys;
 
 final class ChatLayoutBuilder {
 
@@ -49,6 +50,8 @@ final class ChatLayoutBuilder {
     private JButton sendBtn;
     private JButton stopBtn;
     private JButton restartServerBtn;
+    private JButton refreshBtn;
+    private JButton exportBtn;
     private JPanel rightStatusPanel;
 
     ChatLayoutBuilder(AssistantTopComponent topComponent, ChatThreadPanel chatPanel,
@@ -171,13 +174,13 @@ final class ChatLayoutBuilder {
         });
         String renameHint = NbBundle.getMessage(AssistantTopComponent.class, "HINT_RenameSession");
         renameSessionBtn = UIUtils.createToolbarButton("rename.svg", renameHint, e -> topComponent.renameCurrentSession());
-        JButton refreshBtn = UIUtils.createToolbarButton("reload.svg",
+        refreshBtn = UIUtils.createToolbarButton("reload.svg",
                 NbBundle.getMessage(AssistantTopComponent.class, "HINT_ReloadConversation"), e -> {
             topComponent.reloadCurrentSession();
         });
 
         String exportHint = NbBundle.getMessage(AssistantTopComponent.class, "HINT_ExportConversation");
-        JButton exportBtn = UIUtils.createToolbarButton("export.svg", exportHint, e -> {
+        exportBtn = UIUtils.createToolbarButton("export.svg", exportHint, e -> {
             topComponent.exportConversation();
         });
         String restartHint = NbBundle.getMessage(AssistantTopComponent.class, "HINT_RestartServer");
@@ -226,6 +229,17 @@ final class ChatLayoutBuilder {
         sessionControls.add(filterBtn);
         sessionControls.add(exportBtn);
         sessionControls.add(restartServerBtn);
+
+        // Apply saved toolbar visibility
+        applyToolbarVisibility();
+
+        // Right-click context menu for toolbar customization — install on panel and all buttons
+        sessionControls.setComponentPopupMenu(newToolBarPopup());
+        for (java.awt.Component c : sessionControls.getComponents()) {
+            if (c instanceof javax.swing.JComponent jc) {
+                jc.setComponentPopupMenu(newToolBarPopup());
+            }
+        }
 
         JPanel dropdownWrapper = new JPanel(new BorderLayout(4, 0));
         dropdownWrapper.setOpaque(false);
@@ -340,7 +354,11 @@ final class ChatLayoutBuilder {
 
         JPanel btnCard = UIUtils.createTransparentPanel(new CardLayout());
         sendBtn = UIUtils.createTextButton(NbBundle.getMessage(AssistantTopComponent.class, "BTN_Go"), null);
+        sendBtn.setMnemonic(java.awt.event.KeyEvent.VK_G);
+        sendBtn.setDisplayedMnemonicIndex(0);
         stopBtn = UIUtils.createTextButton(NbBundle.getMessage(AssistantTopComponent.class, "BTN_Stop"), null);
+        stopBtn.setMnemonic(java.awt.event.KeyEvent.VK_S);
+        stopBtn.setDisplayedMnemonicIndex(0);
 
         btnCard.add(sendBtn, "SEND");
         btnCard.add(stopBtn, "STOP");
@@ -348,7 +366,7 @@ final class ChatLayoutBuilder {
         versionLabel = new JLabel("v" + AgentUtils.getVersion());
         Font labelFont = UIManager.getFont("Label.font");
         versionLabel.setFont(versionLabel.getFont().deriveFont(labelFont != null ? labelFont.getSize() - 1f : 9f));
-        versionLabel.setForeground(Color.GRAY);
+        versionLabel.setForeground(ThemeManager.getCurrentTheme().mutedForeground());
         versionLabel.setHorizontalAlignment(SwingConstants.CENTER);
 
         JPanel rightPanel = new JPanel(new BorderLayout(0, 4));
@@ -379,6 +397,67 @@ final class ChatLayoutBuilder {
         });
         btnRef[0] = btn;
         return btn;
+    }
+
+    private static boolean isDefaultVisible(String key) {
+        return !PreferenceKeys.TOOLBAR_ARCHIVE.equals(key)
+                && !PreferenceKeys.TOOLBAR_EXPAND_COLLAPSE.equals(key);
+    }
+
+    private JPopupMenu newToolBarPopup() {
+        JPopupMenu popup = new JPopupMenu();
+        JCheckBoxMenuItem editItem = new JCheckBoxMenuItem("Edit ToolBar", true);
+        editItem.setEnabled(false);
+        popup.add(editItem);
+        popup.addSeparator();
+
+        Object[][] buttons = {
+            {hideBtn, PreferenceKeys.TOOLBAR_ARCHIVE, "Archive"},
+            {newSessionBtn, PreferenceKeys.TOOLBAR_NEW_SESSION, "New Session"},
+            {renameSessionBtn, PreferenceKeys.TOOLBAR_RENAME_SESSION, "Rename Session"},
+            {refreshBtn, PreferenceKeys.TOOLBAR_RELOAD, "Reload"},
+            {keepBtn, PreferenceKeys.TOOLBAR_KEEP, "Keep Messages"},
+            {toggleBlocksBtn, PreferenceKeys.TOOLBAR_EXPAND_COLLAPSE, "Expand/Collapse All"},
+            {filterBtn, PreferenceKeys.TOOLBAR_FILTER, "Filter"},
+            {exportBtn, PreferenceKeys.TOOLBAR_EXPORT, "Export"},
+            {restartServerBtn, PreferenceKeys.TOOLBAR_RESTART, "Restart Server"},
+        };
+
+        for (Object[] entry : buttons) {
+            JButton btn = (JButton) entry[0];
+            String key = (String) entry[1];
+            String label = (String) entry[2];
+            boolean visible = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                    .getBoolean(key, isDefaultVisible(key));
+            JCheckBoxMenuItem item = new JCheckBoxMenuItem(label, visible);
+            item.addActionListener(e -> {
+                NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                        .putBoolean(key, item.isSelected());
+                btn.setVisible(item.isSelected());
+            });
+            popup.add(item);
+        }
+
+        return popup;
+    }
+
+    private void applyToolbarVisibility() {
+        Object[][] btns = {
+            {hideBtn, PreferenceKeys.TOOLBAR_ARCHIVE},
+            {newSessionBtn, PreferenceKeys.TOOLBAR_NEW_SESSION},
+            {renameSessionBtn, PreferenceKeys.TOOLBAR_RENAME_SESSION},
+            {refreshBtn, PreferenceKeys.TOOLBAR_RELOAD},
+            {keepBtn, PreferenceKeys.TOOLBAR_KEEP},
+            {toggleBlocksBtn, PreferenceKeys.TOOLBAR_EXPAND_COLLAPSE},
+            {filterBtn, PreferenceKeys.TOOLBAR_FILTER},
+            {exportBtn, PreferenceKeys.TOOLBAR_EXPORT},
+            {restartServerBtn, PreferenceKeys.TOOLBAR_RESTART},
+        };
+        for (Object[] pair : btns) {
+            boolean visible = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                    .getBoolean((String) pair[1], isDefaultVisible((String) pair[1]));
+            ((JButton) pair[0]).setVisible(visible);
+        }
     }
 
     @SuppressWarnings("unchecked")

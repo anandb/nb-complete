@@ -46,7 +46,7 @@ public final class MarkdownStyledRenderer {
         StyledDocument doc = pane.getStyledDocument();
         Font baseFont = ThemeManager.getFont();
         Color fg = theme.foreground();
-        Color codeFg = theme.isDark() ? Color.WHITE : Color.BLACK;
+        Color codeFg = theme.inlineCodeForeground();
 
         SimpleAttributeSet base = StyleResolver.baseStyle(baseFont, fg);
         doc.setParagraphAttributes(0, doc.getLength(), base, true);

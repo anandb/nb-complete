@@ -29,8 +29,13 @@ import org.openide.util.NbBundle;
 public class ScrollController implements KeyEventDispatcher {
     private static final Logger LOG = Logger.from(ScrollController.class);
 
-    private static final Color SCROLL_BTN_COLOR_A = new Color(41, 98, 255, 200);
-    private static final Color SCROLL_BTN_COLOR_B = new Color(41, 98, 255, 240);
+    private static final Color SCROLL_BTN_COLOR_A;
+    private static final Color SCROLL_BTN_COLOR_B;
+    static {
+        Color base = ThemeManager.getCurrentTheme().scrollButtonColor();
+        SCROLL_BTN_COLOR_A = new Color(base.getRed(), base.getGreen(), base.getBlue(), 200);
+        SCROLL_BTN_COLOR_B = new Color(base.getRed(), base.getGreen(), base.getBlue(), 240);
+    }
 
     private final JScrollPane scrollPane;
     private final Component parentComponent;

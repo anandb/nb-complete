@@ -77,6 +77,8 @@ public class UIUtils {
         JButton btn = new JButton();
         btn.setIcon(ThemeManager.getIcon(iconName, iconSize));
         btn.setToolTipText(toolTip);
+        btn.getAccessibleContext().setAccessibleName(toolTip);
+        btn.getAccessibleContext().setAccessibleDescription(toolTip);
         styleToolbarButton(btn);
         if (l != null) {
             btn.addActionListener(l);
@@ -89,6 +91,8 @@ public class UIUtils {
         btn.setFocusPainted(false);
         btn.setMargin(new Insets(2, 12, 2, 12));
         btn.setPreferredSize(new Dimension(80, 32));
+        btn.getAccessibleContext().setAccessibleName(text);
+        btn.getAccessibleContext().setAccessibleDescription(text);
         if (l != null) {
             btn.addActionListener(l);
         }

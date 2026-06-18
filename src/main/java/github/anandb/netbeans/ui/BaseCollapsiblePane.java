@@ -379,7 +379,7 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
     }
 
     protected Color getHeaderForeground(ColorTheme theme) {
-        return expanded ? theme.foreground() : new Color(96, 96, 96);
+        return expanded ? theme.foreground() : theme.collapsedHeaderForeground();
     }
 
     protected Icon getHeaderIcon(String title) {

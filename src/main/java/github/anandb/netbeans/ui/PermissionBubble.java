@@ -70,9 +70,9 @@ class PermissionBubble extends JPanel {
                     boolean allowed = kind.contains("allow");
                     Icon statusIcon = ThemeManager.getIcon(allowed ? "check.svg" : "x.svg", 16);
                     String statusText = name;
-                    Color fg = allowed ? new Color(46, 125, 50) : new Color(198, 40, 40);
-                    Color bg = allowed ? new Color(232, 245, 233) : new Color(255, 235, 238);
-                    Color border = allowed ? new Color(76, 175, 80) : new Color(244, 67, 54);
+                    Color fg = allowed ? theme.permissionGrantFg() : theme.permissionDenyFg();
+                    Color bg = allowed ? theme.permissionGrantBg() : theme.permissionDenyBg();
+                    Color border = allowed ? theme.permissionGrantBorder() : theme.permissionDenyBorder();
                     collapse(content, statusText, statusIcon, fg, bg, border);
                 });
                 buttons.add(btn);
@@ -87,13 +87,13 @@ class PermissionBubble extends JPanel {
             allowBtn.addActionListener(e -> {
                 responseFuture.complete("allow");
                 collapse(content, NbBundle.getMessage(ChatThreadPanel.class, "MSG_PermissionGranted"), ThemeManager.getIcon("check.svg", 16),
-                         new Color(46, 125, 50), new Color(232, 245, 233), new Color(76, 175, 80));
+                         theme.permissionGrantFg(), theme.permissionGrantBg(), theme.permissionGrantBorder());
             });
 
             denyBtn.addActionListener(e -> {
                 responseFuture.complete("reject");
                 collapse(content, NbBundle.getMessage(ChatThreadPanel.class, "MSG_PermissionDenied"), ThemeManager.getIcon("x.svg", 16),
-                        new Color(198, 40, 40), new Color(255, 235, 238), new Color(244, 67, 54));
+                        theme.permissionDenyFg(), theme.permissionDenyBg(), theme.permissionDenyBorder());
             });
 
             buttons.add(denyBtn);

@@ -54,16 +54,18 @@ public class InputHandler {
                         e.consume();
                         messageSender.sendMessage();
                     }
-                } else if (e.getKeyCode() == KeyEvent.VK_UP) {
+                } else if (e.getKeyCode() == KeyEvent.VK_UP
+                        && (e.getModifiersEx() & InputEvent.ALT_DOWN_MASK) != 0) {
                     if (autocompleteManager.isPopupVisible()) {
                         e.consume();
-                    } else if (inputArea.getCaretPosition() == 0 && !messageHistory.isEmpty()) {
+                    } else if (!messageHistory.isEmpty()) {
                         inputArea.setText(messageHistory.navigateUp(inputArea.getText()));
                     }
-                } else if (e.getKeyCode() == KeyEvent.VK_DOWN) {
+                } else if (e.getKeyCode() == KeyEvent.VK_DOWN
+                        && (e.getModifiersEx() & InputEvent.ALT_DOWN_MASK) != 0) {
                     if (autocompleteManager.isPopupVisible()) {
                         e.consume();
-                    } else if (inputArea.getCaretPosition() == inputArea.getText().length() && messageHistory.isNavigating()) {
+                    } else if (messageHistory.isNavigating()) {
                         inputArea.setText(messageHistory.navigateDown(inputArea.getText()));
                     }
                 } else if ((e.getModifiersEx() & InputEvent.CTRL_DOWN_MASK) != 0 && e.getKeyCode() == KeyEvent.VK_Z) {

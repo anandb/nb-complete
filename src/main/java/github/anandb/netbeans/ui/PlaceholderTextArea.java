@@ -28,12 +28,16 @@ public class PlaceholderTextArea extends JTextArea {
         super();
         this.placeholder = placeholder;
         initUndoManager();
+        getAccessibleContext().setAccessibleName("Chat input");
+        getAccessibleContext().setAccessibleDescription("Type your message here");
     }
 
     public PlaceholderTextArea(int rows, int cols, String placeholder) {
         super(rows, cols);
         this.placeholder = placeholder;
         initUndoManager();
+        getAccessibleContext().setAccessibleName("Chat input");
+        getAccessibleContext().setAccessibleDescription("Type your message here");
     }
 
     private void initUndoManager() {
@@ -110,7 +114,7 @@ public class PlaceholderTextArea extends JTextArea {
         if (placeholder != null && !placeholder.isEmpty() && getText().isEmpty() && !hasFocus()) {
             Color oldColor = g.getColor();
             Font oldFont = g.getFont();
-            g.setColor(new Color(150, 150, 150));
+            g.setColor(ThemeManager.getCurrentTheme().placeholderForeground());
             g.setFont(oldFont.deriveFont(Font.PLAIN));
             int x = getInsets().left;
             int y = getInsets().top + g.getFontMetrics().getAscent();

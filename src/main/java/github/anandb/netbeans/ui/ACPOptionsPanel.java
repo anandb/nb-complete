@@ -59,7 +59,7 @@ public class ACPOptionsPanel extends JPanel {
     private String detectedPath;
     private boolean showingHint;
 
-    private static final Color HINT_COLOR = Color.GRAY;
+    private static final Color HINT_COLOR = ThemeManager.getCurrentTheme().mutedForeground();
 
     ACPOptionsPanel(ACPOptionsPanelController controller) {
         this.controller = controller;

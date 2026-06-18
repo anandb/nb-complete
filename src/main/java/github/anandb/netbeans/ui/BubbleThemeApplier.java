@@ -95,7 +95,7 @@ class BubbleThemeApplier {
         JLabel ttftLabel = new JLabel(label);
         ttftLabel.setToolTipText(NbBundle.getMessage(MessageBubble.class, "HINT_TimeToFirstToken", label));
         ttftLabel.setFont(ThemeManager.getFont().deriveFont(10f));
-        ttftLabel.setForeground(Color.GRAY);
+        ttftLabel.setForeground(ThemeManager.getCurrentTheme().mutedForeground());
         ttftLabel.setBorder(new EmptyBorder(0, 0, 0, 12));
         owner.add(ttftLabel, UIUtils.createGbc(0, 1, 1.0, 0,
                 GridBagConstraints.NONE, GridBagConstraints.SOUTHEAST,

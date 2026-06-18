@@ -249,6 +249,50 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         componentLifecycleHandler.showProjectPickerPopup(parent);
     }
 
+    void createNewSession() {
+        org.netbeans.api.project.Project[] projects = github.anandb.netbeans.project.ACPProjectManager.getInstance().getAllOpenProjects();
+        if (projects == null || projects.length == 0) {
+            return;
+        }
+        if (projects.length == 1) {
+            Lookup.getDefault()
+                .lookup(SessionControl.class)
+                .createNewSession(projects[0].getProjectDirectory().getPath());
+        } else {
+            componentLifecycleHandler.showProjectPickerPopup(newSessionBtn);
+        }
+    }
+
+    void sendMessage() {
+        if (messageSender != null) {
+            messageSender.sendMessage();
+        }
+    }
+
+    void stopMessage() {
+        if (messageSender != null) {
+            messageSender.stopMessage();
+        }
+    }
+
+    void toggleOptions() {
+        if (sessionLifecycleHandler != null) {
+            boolean collapsed = !sessionLifecycleHandler.isOptionsPanelCollapsed();
+            sessionLifecycleHandler.setOptionsPanelCollapsed(collapsed);
+            configPanelController.getComponent().setVisible(!collapsed);
+            toggleOptionsBtn.setIcon(ThemeManager.getIcon(collapsed ? "settings.svg" : "arrow-down.svg", 25));
+            revalidate();
+            repaint();
+        }
+    }
+
+    void toggleAllBlocks() {
+        if (chatPanel != null) {
+            boolean expanded = !chatPanel.isAllBlocksExpanded();
+            chatPanel.toggleAllBlocks(expanded);
+        }
+    }
+
     void reloadCurrentSession() {
         String currentId = Lookup.getDefault().lookup(SessionControl.class).getCurrentSessionId();
         if (currentId != null) {
