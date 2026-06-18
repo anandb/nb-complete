@@ -4,6 +4,10 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Font;
+import java.awt.Toolkit;
+import java.awt.datatransfer.StringSelection;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.io.InputStream;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.Map;
@@ -11,7 +15,9 @@ import java.util.Map;
 import javax.swing.BorderFactory;
 import javax.swing.Icon;
 import javax.swing.JLabel;
+import javax.swing.JMenuItem;
 import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
 import javax.swing.SwingUtilities;
 
 import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
@@ -198,6 +204,38 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
         codeTextArea.setText(code);
         codeTextArea.setCaretPosition(0);
 
+        // Right-click context menu on code area
+        codeTextArea.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) {
+                showContextMenu(e);
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                showContextMenu(e);
+            }
+
+            private void showContextMenu(MouseEvent e) {
+                if (!e.isPopupTrigger()) return;
+                JPopupMenu menu = new JPopupMenu();
+
+                JMenuItem copyItem = new JMenuItem("Copy");
+                copyItem.addActionListener(ev -> copySelectedOrAll());
+                menu.add(copyItem);
+
+                JMenuItem copyAllItem = new JMenuItem("Copy All");
+                copyAllItem.addActionListener(ev -> copyAll());
+                menu.add(copyAllItem);
+
+                JMenuItem copyMdItem = new JMenuItem("Copy as Markdown");
+                copyMdItem.addActionListener(ev -> copyAsMarkdown());
+                menu.add(copyMdItem);
+
+                menu.show(codeTextArea, e.getX(), e.getY());
+            }
+        });
+
         JPanel codeWrapper = new JPanel(new BorderLayout());
         codeWrapper.setBackground(codeTextArea.getBackground());
         codeWrapper.setBorder(BorderFactory.createEmptyBorder(8, 20, 8, 6));
@@ -317,5 +355,32 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
     @Override
     protected String getContentToCopy() {
         return code;
+    }
+
+    /** Copy selected text if any, otherwise copy all code. */
+    private void copySelectedOrAll() {
+        String selected = (codeTextArea != null) ? codeTextArea.getSelectedText() : null;
+        String toCopy = (selected != null && !selected.isEmpty()) ? selected : code;
+        if (toCopy != null && !toCopy.isEmpty()) {
+            StringSelection sel = new StringSelection(toCopy);
+            Toolkit.getDefaultToolkit().getSystemClipboard().setContents(sel, sel);
+        }
+    }
+
+    /** Copy all code text. */
+    private void copyAll() {
+        if (code != null && !code.isEmpty()) {
+            StringSelection sel = new StringSelection(code);
+            Toolkit.getDefaultToolkit().getSystemClipboard().setContents(sel, sel);
+        }
+    }
+
+    /** Copy code wrapped in a markdown fenced code block. */
+    private void copyAsMarkdown() {
+        if (code == null || code.isEmpty()) return;
+        String lang = (language != null) ? language : "";
+        String md = "```" + lang + "\n" + code + "\n```";
+        StringSelection sel = new StringSelection(md);
+        Toolkit.getDefaultToolkit().getSystemClipboard().setContents(sel, sel);
     }
 }

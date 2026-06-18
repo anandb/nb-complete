@@ -237,6 +237,7 @@ public class MessageBubble extends JPanel implements Scrollable {
             };
             addHierarchyListener(this.hierarchyListener);
         }
+
     }
 
     @Override

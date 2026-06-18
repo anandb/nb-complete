@@ -10,7 +10,9 @@ import java.awt.Font;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
+import javax.swing.JMenuItem;
 import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.SwingConstants;
 import javax.swing.UIManager;
@@ -28,7 +30,7 @@ final class ChatLayoutBuilder {
     private final ChatThreadPanel chatPanel;
     private final ConfigPanelController configPanelController;
 
-    private JComboBox<?> sessionDropdown;
+    private UIUtils.WrappingComboBox<?> sessionDropdown;
     private JButton hideBtn;
     private JButton showHiddenBtn;
     private JButton newSessionBtn;
@@ -70,6 +72,43 @@ final class ChatLayoutBuilder {
                 if (sel instanceof github.anandb.netbeans.model.SessionItem item) {
                     sessionDropdown.setToolTipText(item.getTitle());
                 }
+            }
+        });
+
+        // Right-click context menu on session dropdown — install via
+        // componentPopupMenu so Swing's JComponent handles popup trigger
+        sessionDropdown.setComponentPopupMenu(new JPopupMenu() {
+            @Override
+            public void show(java.awt.Component invoker, int x, int y) {
+                removeAll();
+                Object sel = sessionDropdown.getSelectedItem();
+                if (sel instanceof github.anandb.netbeans.model.SessionItem item) {
+                    String sessionId = item.getSession().id();
+                    boolean hidden = Lookup.getDefault()
+                        .lookup(github.anandb.netbeans.contract.SessionControl.class)
+                        .isHidden(sessionId);
+
+                    JMenuItem rename = new JMenuItem("Rename");
+                    rename.addActionListener(ev -> topComponent.renameCurrentSession());
+                    add(rename);
+
+                    JMenuItem archive = new JMenuItem(hidden ? "Unarchive" : "Archive");
+                    archive.addActionListener(ev -> {
+                        github.anandb.netbeans.contract.SessionControl sc =
+                            Lookup.getDefault().lookup(
+                                github.anandb.netbeans.contract.SessionControl.class);
+                        sc.setHidden(sessionId, !hidden);
+                        sc.refreshSessions();
+                    });
+                    add(archive);
+
+                    addSeparator();
+
+                    JMenuItem reload = new JMenuItem("Reload");
+                    reload.addActionListener(ev -> topComponent.reloadCurrentSession());
+                    add(reload);
+                }
+                super.show(invoker, x, y);
             }
         });
 
@@ -235,8 +274,19 @@ final class ChatLayoutBuilder {
         feedbackBtn.addActionListener(e -> github.anandb.netbeans.support.BrowserUtils.openOrCopyUrl(feedbackUrl, "STATUS_FeedbackCopied",
             (url, key) -> topComponent.statusController.setStatus(key, url)));
 
+        JButton keyboardShortcutsBtn = UIUtils.createToolbarButton("keyboard.svg",
+            NbBundle.getMessage(AssistantTopComponent.class, "HINT_KeyboardShortcuts"), null);
+        keyboardShortcutsBtn.setContentAreaFilled(false);
+        keyboardShortcutsBtn.setBorderPainted(false);
+        if (keyboardShortcutsBtn.getIcon() == null) {
+            keyboardShortcutsBtn.setText("\u2328");
+            keyboardShortcutsBtn.setFont(keyboardShortcutsBtn.getFont().deriveFont(16f));
+        }
+        keyboardShortcutsBtn.addActionListener(e -> KeyboardShortcutsDialog.show(topComponent));
+
         JPanel rightButtons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 2, 0));
         rightButtons.setOpaque(false);
+        rightButtons.add(keyboardShortcutsBtn);
         rightButtons.add(feedbackBtn);
         rightButtons.add(helpBtn);
         cwdRow.add(rightButtons, BorderLayout.EAST);
