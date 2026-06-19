@@ -3,6 +3,7 @@ package github.anandb.netbeans.ui;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -38,5 +39,17 @@ class HtmlContentPreparerAsciiArtTest {
         String afterStyle = html.substring(styleClose);
         assertFalse(afterStyle.contains(".ascii-art"),
                 ".ascii-art rule should not appear after </style>\nAfter </style>:" + afterStyle);
+    }
+
+    @Test
+    void newlinesToBrOutsidePre_convertsPlainNewlines() {
+        assertEquals("a<br/>b<br/>c", HtmlContentPreparer.newlinesToBrOutsidePre("a\nb\nc"));
+    }
+
+    @Test
+    void newlinesToBrOutsidePre_preservesPreNewlines() {
+        String input = "intro\n<pre>line1\nline2</pre>\noutro";
+        assertEquals("intro<br/><pre>line1\nline2</pre><br/>outro",
+                HtmlContentPreparer.newlinesToBrOutsidePre(input));
     }
 }

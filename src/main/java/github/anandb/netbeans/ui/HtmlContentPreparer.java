@@ -86,6 +86,12 @@ public final class HtmlContentPreparer {
 
         boolean isAssistant = !"user".equals(role) && !"error".equals(role) && !"tool".equals(role);
 
+        // User messages are typically plain text; preserve explicit line breaks
+        // by converting newlines to <br/> outside of <pre> blocks.
+        if ("user".equals(role)) {
+            html = newlinesToBrOutsidePre(html);
+        }
+
         String wrapper = getCachedWrapper(theme, role, isAssistant);
         String headOpen = wrapper.substring(0, wrapper.indexOf("__BODY__"));
         String headCloseAndBodyOpen = wrapper.substring(wrapper.indexOf("__BODY__") + "__BODY__".length());
@@ -192,5 +198,33 @@ public final class HtmlContentPreparer {
             i++;
         }
         return sb.toString();
+    }
+
+    /**
+     * Converts plain '\n' characters to '&lt;br/&gt;' only outside of &lt;pre&gt; blocks.
+     * Used for user messages so typed line breaks survive HTML whitespace collapsing.
+     */
+    static String newlinesToBrOutsidePre(String html) {
+        StringBuilder out = new StringBuilder(html.length() + 64);
+        int i = 0;
+        while (i < html.length()) {
+            int preStart = html.indexOf("<pre", i);
+            if (preStart < 0) {
+                out.append(html.substring(i).replace("\n", "<br/>"));
+                break;
+            }
+            // Replace newlines in the plain-text segment before <pre>.
+            out.append(html.substring(i, preStart).replace("\n", "<br/>"));
+            int preEnd = html.indexOf("</pre>", preStart);
+            if (preEnd < 0) {
+                // Malformed HTML: append the rest unchanged.
+                out.append(html.substring(preStart));
+                break;
+            }
+            preEnd += "</pre>".length();
+            out.append(html, preStart, preEnd);
+            i = preEnd;
+        }
+        return out.toString();
     }
 }
