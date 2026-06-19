@@ -5,6 +5,7 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 import javax.swing.JTextPane;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.SimpleAttributeSet;
@@ -19,6 +20,8 @@ import javax.swing.text.StyledDocument;
  * width-calculation bugs that plague {@link javax.swing.JEditorPane}.
  */
 public final class MarkdownStyledRenderer {
+
+    private static final Pattern SEPARATOR_PATTERN = Pattern.compile("^:?-+:?$");
 
     /** Max characters per table cell. Longer content truncated with '\u2026'. */
     private static final int MAX_CELL_WIDTH = 55;
@@ -310,7 +313,7 @@ public final class MarkdownStyledRenderer {
     private static boolean isSeparatorRow(List<String> row) {
         for (String cell : row) {
             String trimmed = cell.trim();
-            if (!trimmed.isEmpty() && !trimmed.matches("^:?-+:?$")) {
+            if (!trimmed.isEmpty() && !SEPARATOR_PATTERN.matcher(trimmed).matches()) {
                 return false;
             }
         }

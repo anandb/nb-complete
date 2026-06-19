@@ -17,6 +17,19 @@ import github.anandb.netbeans.model.MessageType;
  */
 public final class ToolThoughtCombiner {
 
+    private static volatile boolean combineEnabled = true;
+
+    static {
+        NbPreferences.forModule(ACPOptionsPanel.class)
+            .addPreferenceChangeListener(e -> {
+                if ("combineToolThought".equals(e.getKey())) {
+                    combineEnabled = Boolean.parseBoolean(e.getNewValue());
+                }
+            });
+        combineEnabled = NbPreferences.forModule(ACPOptionsPanel.class)
+            .getBoolean("combineToolThought", true);
+    }
+
     private ToolThoughtCombiner() {
     }
 
@@ -50,7 +63,7 @@ public final class ToolThoughtCombiner {
      */
     public static void combine(JPanel messagesContainer, boolean allBlocksExpanded) {
         // Respect user preference: if unchecked, skip combining
-        if (!NbPreferences.forModule(ACPOptionsPanel.class).getBoolean("combineToolThought", true)) {
+        if (!combineEnabled) {
             return;
         }
 

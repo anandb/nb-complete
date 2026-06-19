@@ -122,11 +122,8 @@ class BubbleStreamer {
         if (isStreaming || isFinalizingDeferred) {
             int totalLen = text.length();
             if (streamingTextArea != null && totalLen > lastDisplayedLength) {
-                // Use subSequence to get a CharSequence view; String.valueOf
-                // of a CharSequence creates a String without copying the
-                // already-rendered prefix of the StringBuilder's char array.
-                CharSequence tail = text.subSequence(lastDisplayedLength, totalLen);
-                String delta = tail.toString();
+                // Use substring to get a copy of only the new delta.
+                String delta = text.substring(lastDisplayedLength, totalLen);
                 javax.swing.text.Document doc = streamingTextArea.getDocument();
                 try {
                     doc.insertString(doc.getLength(), delta, null);

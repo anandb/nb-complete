@@ -20,10 +20,12 @@ public class TextScanner {
      * @return true if ASCII art is detected, false otherwise
      */
     public static boolean containsAsciiArt(String text) {
-        if (text == null) {
+        if (text == null || text.length() < 10) {
             return false;
         }
-        boolean match = ASCII_ART_PATTERN.matcher(text).find();
+        // Scan only first 2000 chars — ASCII art appears at start, avoids O(n) on full text
+        int limit = Math.min(text.length(), 512);
+        boolean match = ASCII_ART_PATTERN.matcher(text.subSequence(0, limit)).find();
         if (match) {
             LOG.fine("ASCII Art detected in text (length: {0})", text.length());
         }

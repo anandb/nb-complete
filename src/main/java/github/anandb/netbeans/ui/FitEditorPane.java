@@ -175,8 +175,10 @@ public class FitEditorPane extends JTextPane {
         // preferred width (which would prevent text from wrapping to the
         // sidebar width).
         Dimension pref = getPreferredSize();
-        if (cachedMaxSize == null || cachedMaxSize.height != pref.height) {
+        if (cachedMaxSize == null) {
             cachedMaxSize = new Dimension(Short.MAX_VALUE, pref.height);
+        } else {
+            cachedMaxSize.height = pref.height;
         }
         return cachedMaxSize;
     }
