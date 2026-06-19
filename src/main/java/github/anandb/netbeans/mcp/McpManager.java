@@ -24,7 +24,7 @@ public class McpManager {
     private McpServer mcpServer;
     private volatile boolean mcpDisabled = false;
     private CompletableFuture<Void> serverStartFuture;
-    private final CompletableFuture<Void> readyFuture = new CompletableFuture<>();
+    private volatile CompletableFuture<Void> readyFuture = new CompletableFuture<>();
 
     public void start() {
         LOG.info("McpManager.start() called, disabled={0}", mcpDisabled);
@@ -38,6 +38,7 @@ public class McpManager {
                 LOG.info("MCP server already starting or started");
                 return;
             }
+            readyFuture = new CompletableFuture<>();
             LOG.info("Starting MCP server asynchronously...");
             serverStartFuture = CompletableFuture.runAsync(() -> {
                 McpServer server = null;
@@ -83,7 +84,8 @@ public class McpManager {
                 mcpServer = null;
             }
         }
-        mcpStartExecutor.shutdownNow();
+        // Do NOT shut down mcpStartExecutor — it uses daemon threads and
+        // must remain alive for restartServer() to submit new tasks.
     }
 
     public void disable() {

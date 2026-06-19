@@ -31,6 +31,7 @@ public class ScrollController implements KeyEventDispatcher {
 
     private static final Color SCROLL_BTN_COLOR_A;
     private static final Color SCROLL_BTN_COLOR_B;
+    
     static {
         Color base = ThemeManager.getCurrentTheme().scrollButtonColor();
         SCROLL_BTN_COLOR_A = new Color(base.getRed(), base.getGreen(), base.getBlue(), 200);

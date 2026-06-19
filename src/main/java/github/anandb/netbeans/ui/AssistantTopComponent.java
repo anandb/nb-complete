@@ -178,7 +178,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         componentLifecycleHandler = new ComponentLifecycleHandler(
             chatPanel, statusController, sessionLifecycleHandler,
             configPanelController, inputArea, sessionDropdown, toggleOptionsBtn,
-            AssistantTopComponent.this
+            restartServerBtn, AssistantTopComponent.this
         );
         inputHandler = new InputHandler(inputArea, autocompleteManager, messageSender, messageHistory);
 
@@ -421,8 +421,8 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
     @Override
     public void removeNotify() {
-        super.removeNotify();
         componentLifecycleHandler.removeNotify();
+        super.removeNotify();
     }
 
     void writeProperties(Properties p) {

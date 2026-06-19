@@ -1,15 +1,26 @@
 package github.anandb.netbeans.ui;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.prefs.BackingStoreException;
+import java.util.prefs.Preferences;
+import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.PreferenceKeys;
+import org.openide.util.NbPreferences;
 
 public class MessageHistory {
 
-    private static final int MAX_SIZE = 50;
+    private static final Logger LOG = Logger.from(MessageHistory.class);
+    private static final int MAX_SIZE = 1024;
 
     private final List<String> history = new ArrayList<>();
     private int index = -1;
     private String draft = "";
+
+    public MessageHistory() {
+        load();
+    }
 
     public void add(String text) {
         if (text == null || text.isEmpty()) return;
@@ -19,6 +30,7 @@ public class MessageHistory {
             history.remove(0);
         }
         resetNavigation();
+        save();
     }
 
     public String navigateUp(String currentInputText) {
@@ -57,7 +69,48 @@ public class MessageHistory {
         return history.isEmpty();
     }
 
+    /** Returns history entries, newest first. */
+    public ArrayList<String> getEntries() {
+        var copy = new ArrayList<>(history);
+        Collections.reverse(copy);
+        return copy;
+    }
+
     int size() {
         return history.size();
+    }
+
+    private void load() {
+        Preferences prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
+        int count = prefs.getInt(PreferenceKeys.INPUT_HISTORY_COUNT, 0);
+        history.clear();
+        for (int i = 0; i < count; i++) {
+            String entry = prefs.get(PreferenceKeys.INPUT_HISTORY_PREFIX + i, null);
+            if (entry != null) {
+                history.add(entry);
+            }
+        }
+        // Trim to MAX_SIZE in case persisted config had more
+        while (history.size() > MAX_SIZE) {
+            history.remove(0);
+        }
+    }
+
+    private void save() {
+        Preferences prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
+        // Clear stale keys
+        try {
+            for (String key : prefs.keys()) {
+                if (key.startsWith(PreferenceKeys.INPUT_HISTORY_PREFIX)) {
+                    prefs.remove(key);
+                }
+            }
+        } catch (BackingStoreException e) {
+            LOG.warn("Failed to clear stale history keys: {0}", e.getMessage());
+        }
+        prefs.putInt(PreferenceKeys.INPUT_HISTORY_COUNT, history.size());
+        for (int i = 0; i < history.size(); i++) {
+            prefs.put(PreferenceKeys.INPUT_HISTORY_PREFIX + i, history.get(i));
+        }
     }
 }

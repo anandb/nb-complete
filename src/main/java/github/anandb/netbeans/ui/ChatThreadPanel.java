@@ -418,11 +418,11 @@ public class ChatThreadPanel extends JPanel {
         if (activeBubble != null) {
             activeBubble.finalizeStreaming(allBlocksExpanded, true);
         }
-        super.removeNotify();
         streamingCoordinator.cleanup();
         if (scrollController != null) {
             scrollController.cleanup();
         }
+        super.removeNotify();
     }
 
     public void scrollByBlock(boolean pageUp) {

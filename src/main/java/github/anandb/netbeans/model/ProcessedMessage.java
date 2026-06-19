@@ -19,7 +19,7 @@ public record ProcessedMessage(
             return isNotBlank(status) && (status.startsWith("pending") || status.startsWith("in_progress")) ||
                    toolTitle.startsWith("mcp ");
         }
-        
+
         return isIgnorable(messageType.roleName(), text);
     }
 

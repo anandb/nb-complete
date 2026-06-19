@@ -44,13 +44,6 @@
             <property name="format" value="(TODO|FIXME|HACK)"/>
         </module>
 
-        <module name="EmptyLineSeparator">
-            <property name="tokens" value="METHOD_DEF, CTOR_DEF"/>
-            <property name="allowNoEmptyLineBetweenFields" value="true"/>
-            <property name="allowMultipleEmptyLines" value="false"/>
-            <property name="allowMultipleEmptyLinesInsideClassMembers" value="false"/>
-        </module>
-
         <module name="SuppressWarningsHolder"/>
     </module>
 

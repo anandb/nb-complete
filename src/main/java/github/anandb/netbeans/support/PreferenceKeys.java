@@ -21,6 +21,10 @@ public final class PreferenceKeys {
     public static final String ECHO_USER_INPUT = "echoUserInput";
     public static final String COMBINE_TOOL_THOUGHT = "combineToolThought";
 
+    // Input history keys
+    public static final String INPUT_HISTORY_COUNT = "inputHistory.count";
+    public static final String INPUT_HISTORY_PREFIX = "inputHistory.";
+
     // Toolbar button visibility keys
     public static final String TOOLBAR_ARCHIVE = "toolbar.archive";
     public static final String TOOLBAR_NEW_SESSION = "toolbar.newSession";

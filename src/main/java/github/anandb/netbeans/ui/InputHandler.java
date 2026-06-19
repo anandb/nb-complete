@@ -76,6 +76,9 @@ public class InputHandler {
                 } else if ((e.getModifiersEx() & InputEvent.CTRL_DOWN_MASK) != 0 && e.getKeyCode() == KeyEvent.VK_Y) {
                     e.consume();
                     inputArea.redo();
+                } else if ((e.getModifiersEx() & InputEvent.CTRL_DOWN_MASK) != 0 && e.getKeyCode() == KeyEvent.VK_R) {
+                    e.consume();
+                    HistorySearchDialog.show(inputArea, messageHistory);
                 }
             }
 

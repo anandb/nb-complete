@@ -13,6 +13,7 @@ import javax.swing.JComponent;
 import javax.swing.JMenuItem;
 import javax.swing.JPopupMenu;
 import javax.swing.SwingUtilities;
+import javax.swing.Timer;
 import org.netbeans.api.project.Project;
 import org.openide.DialogDisplayer;
 import org.openide.NotifyDescriptor;
@@ -44,6 +45,7 @@ public class ComponentLifecycleHandler {
     private final PlaceholderTextArea inputArea;
     private final JComboBox<SessionItem> sessionDropdown;
     private final JButton toggleOptionsBtn;
+    private final JButton restartServerBtn;
     private final AssistantTopComponent topComponent;
     private final KeyEventDispatcher pageKeyDispatcher;
     private KeyAdapter escKeyListener;
@@ -58,6 +60,7 @@ public class ComponentLifecycleHandler {
             PlaceholderTextArea inputArea,
             JComboBox<SessionItem> sessionDropdown,
             JButton toggleOptionsBtn,
+            JButton restartServerBtn,
             AssistantTopComponent topComponent) {
         this.chatPanel = chatPanel;
         this.statusController = statusController;
@@ -66,6 +69,7 @@ public class ComponentLifecycleHandler {
         this.inputArea = inputArea;
         this.sessionDropdown = sessionDropdown;
         this.toggleOptionsBtn = toggleOptionsBtn;
+        this.restartServerBtn = restartServerBtn;
         this.topComponent = topComponent;
 
         this.pageKeyDispatcher = createPageKeyDispatcher();
@@ -307,11 +311,21 @@ public class ComponentLifecycleHandler {
         String currentSessionId = Lookup.getDefault().lookup(SessionControl.class).getCurrentSessionId();
         statusController.setStatus("STATUS_RestartingServer");
         statusController.setInputEnabled(false);
+        restartServerBtn.setEnabled(false);
+
+        // Safety timeout: re-enable after 10 seconds regardless
+        Timer safetyTimeout = new Timer(10_000, e -> restartServerBtn.setEnabled(true));
+        safetyTimeout.setRepeats(false);
+        safetyTimeout.start();
 
         Lookup.getDefault().lookup(ProcessControl.class).restartServer();
 
         Lookup.getDefault().lookup(ProcessControl.class).whenReady().thenAccept(v -> {
             SwingUtilities.invokeLater(() -> {
+                // After server ready, wait 5 more seconds before re-enabling
+                Timer cooldown = new Timer(5_000, e -> restartServerBtn.setEnabled(true));
+                cooldown.setRepeats(false);
+                cooldown.start();
                 statusController.setStatus("STATUS_ServerRestarted");
                 if (currentSessionId != null) {
                     Lookup.getDefault().lookup(SessionControl.class).loadSession(currentSessionId);
@@ -321,6 +335,8 @@ public class ComponentLifecycleHandler {
             });
         }).exceptionally(ex -> {
             SwingUtilities.invokeLater(() -> {
+                safetyTimeout.stop();
+                restartServerBtn.setEnabled(true);
                 String msg = ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName();
                 statusController.setStatus("STATUS_RestartFailed", msg);
                 chatPanel.stopStreaming();

@@ -115,6 +115,7 @@ final class KeyboardShortcutsDialog extends JDialog {
             {"Alt + Down", "Next in history"},
             {mod + " + Z", "Undo"},
             {mod + " + Y", "Redo"},
+            {mod + " + R", "Search history"},
             {"Page Up", "Scroll up one page"},
             {"Page Down", "Scroll down one page"},
             {mod + " + Home", "Scroll to top"},

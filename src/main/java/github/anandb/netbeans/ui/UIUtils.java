@@ -229,6 +229,7 @@ public class UIUtils {
      */
     public static class WrappingComboBox<E> extends JComboBox<E> {
         private static final long serialVersionUID = 1L;
+        
         @Override
         public void processKeyEvent(KeyEvent e) {
             if (e.getID() == KeyEvent.KEY_PRESSED) {
