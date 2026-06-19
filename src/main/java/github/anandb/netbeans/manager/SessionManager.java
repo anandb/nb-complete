@@ -445,16 +445,16 @@ public class SessionManager implements SessionQuery, SessionControl {
     }
 
     @Override
-    public void loadSession(String sessionId) {
-        loadSession(sessionId, false);
+    public boolean loadSession(String sessionId) {
+        return loadSession(sessionId, false);
     }
 
     @Override
-    public void loadSession(String sessionId, boolean isStartup) {
+    public boolean loadSession(String sessionId, boolean isStartup) {
         StrategyRegistry.invalidateSession(sessionId);
         if (!stateMachine.transitionTo(SessionState.LOADING)) {
             LOG.warn("Cannot load session in state {0}", stateMachine.getState());
-            return;
+            return false;
         }
         this.currentSessionId = sessionId;
         notifySessionStarted(sessionId);
@@ -493,6 +493,7 @@ public class SessionManager implements SessionQuery, SessionControl {
                     }
                     return null;
                 });
+        return true;
     }
 
     @Override

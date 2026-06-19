@@ -40,7 +40,10 @@ public class SessionDropdownHandler {
                 if (currentId != null && previousId != null && !currentId.equals(previousId)) {
                     if (now - lastSessionSwitch[0] < 500) return;
                     lastSessionSwitch[0] = now;
-                    Lookup.getDefault().lookup(SessionControl.class).loadSession(currentId);
+                    boolean success = Lookup.getDefault().lookup(SessionControl.class).loadSession(currentId);
+                    if (!success) {
+                        SwingUtilities.invokeLater(() -> sessionDropdown.setSelectedItem(prePopupSession[0]));
+                    }
                 }
                 SwingUtilities.invokeLater(() -> inputArea.requestFocusInWindow());
             }

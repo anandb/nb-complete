@@ -18,11 +18,11 @@ public interface SessionControl extends SessionQuery {
     /** Creates a new session in the given directory. */
     CompletableFuture<Session> createSession(String cwd);
 
-    /** Loads an existing session by ID. */
-    void loadSession(String sessionId);
+    /** Loads an existing session by ID. Returns true if load starts successfully. */
+    boolean loadSession(String sessionId);
 
-    /** Loads an existing session, optionally marking it as a startup load. */
-    void loadSession(String sessionId, boolean isStartup);
+    /** Loads an existing session, optionally marking it as a startup load. Returns true if load starts successfully. */
+    boolean loadSession(String sessionId, boolean isStartup);
 
     /** Deletes a session by ID. */
     CompletableFuture<Void> deleteSession(String sessionId);
