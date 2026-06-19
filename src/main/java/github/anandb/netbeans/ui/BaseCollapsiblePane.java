@@ -248,15 +248,19 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
     }
 
     protected void updateParentLayout() {
+        // Walk to the topmost relevant ancestor and revalidate only that.
+        // Revalidating every ancestor causes redundant layout passes.
         Component parent = getParent();
+        Component top = this;
         while (parent != null) {
-            parent.revalidate();
-            parent.repaint();
+            top = parent;
             if (parent instanceof ChatThreadPanel) {
                 break;
             }
             parent = parent.getParent();
         }
+        top.revalidate();
+        top.repaint();
     }
 
     public boolean isExpanded() {

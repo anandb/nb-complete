@@ -176,10 +176,22 @@ public record ColorTheme(
     private static volatile String cachedCssUserFontSize;
 
     public String toCss(Color bubbleBg, boolean isAssistant, int fontSize) {
-        synchronized (ColorTheme.class) {
-            String bg = bubbleBg != null ? toHtmlHex(bubbleBg) : "transparent";
-            String fontSizeStr = fontSize + "px";
+        String bg = bubbleBg != null ? toHtmlHex(bubbleBg) : "transparent";
+        String fontSizeStr = fontSize + "px";
 
+        // Fast path: check cached CSS outside the synchronized block.
+        if (isAssistant) {
+            if (bg.equals(cachedCssAssistantBg) && fontSizeStr.equals(cachedCssAssistantFontSize) && cachedCssAssistant != null) {
+                return cachedCssAssistant;
+            }
+        } else {
+            if (bg.equals(cachedCssUserBg) && fontSizeStr.equals(cachedCssUserFontSize) && cachedCssUser != null) {
+                return cachedCssUser;
+            }
+        }
+
+        synchronized (ColorTheme.class) {
+            // Recheck under lock in case another thread computed it.
             if (isAssistant) {
                 if (bg.equals(cachedCssAssistantBg) && fontSizeStr.equals(cachedCssAssistantFontSize) && cachedCssAssistant != null) {
                     return cachedCssAssistant;
