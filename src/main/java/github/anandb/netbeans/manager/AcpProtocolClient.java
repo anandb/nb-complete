@@ -52,6 +52,7 @@ public class AcpProtocolClient implements Closeable {
     private volatile boolean running = true;
     private volatile boolean closed = false;
     private volatile long lastDataTime;
+    private volatile String closeReason;
 
     public AcpProtocolClient(Process process) throws IOException {
         this.writer = new PrintWriter(process.getOutputStream(), true, StandardCharsets.UTF_8);
@@ -214,8 +215,12 @@ public class AcpProtocolClient implements Closeable {
         }
         long idleNanos = System.nanoTime() - lastDataTime;
         if (idleNanos >= TimeUnit.SECONDS.toNanos(timeout)) {
+            long idleSecs = TimeUnit.NANOSECONDS.toSeconds(idleNanos);
+            int pending = pendingRequests.size();
             LOG.warn("Connection idle for {0}s with {1} pending request(s), closing",
-                    TimeUnit.NANOSECONDS.toSeconds(idleNanos), pendingRequests.size());
+                    idleSecs, pending);
+            closeReason = "Connection idle for " + idleSecs + "s with "
+                    + pending + " pending request(s)";
             close();
             notifyDisconnection();
             return;
@@ -367,13 +372,15 @@ public class AcpProtocolClient implements Closeable {
             readerThread.interrupt();
         }
 
+        String reason = closeReason;
         int drainCount = (int) pendingRequests.values().stream().filter(f -> !f.isDone()).count();
         if (drainCount > 0) {
             LOG.warn("Closing client with {0} pending request(s)", drainCount);
         }
         pendingRequests.values().forEach(future -> {
             if (!future.isDone()) {
-                future.completeExceptionally(new IOException("Client closed"));
+                future.completeExceptionally(new IOException(
+                        reason != null ? reason : "Client closed"));
             }
         });
         pendingRequests.clear();

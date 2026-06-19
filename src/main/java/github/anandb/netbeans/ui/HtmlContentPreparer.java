@@ -151,25 +151,28 @@ public final class HtmlContentPreparer {
 
     /**
      * Returns cached HTML for markdown input, or parses + caches on miss.
-     * The cache is bounded to 256 entries.  Text longer than 32 KB is not
+     * The cache is bounded to 256 entries.  Text longer than 32 KB is not
      * cached (avoid holding large strings for rare long messages).
      */
     private static String computeOrGetCachedHtml(String markdown) {
         if (markdown.length() > 32768) {
             return FLEXMARK_RENDERER.render(FLEXMARK_PARSER.parse(markdown));
         }
+        // Fast path: cache hit (lock-free read)
         String cached = MARKDOWN_HTML_CACHE.get(markdown);
         if (cached != null) {
             return cached;
         }
         String rendered = FLEXMARK_RENDERER.render(FLEXMARK_PARSER.parse(markdown));
-        // Cap the cache; if we exceed the limit, just drop the whole cache.
-        // Simpler than LRU eviction and the streaming hot path always hits
-        // the same key until finalization, so LRU has no benefit here.
-        if (MARKDOWN_HTML_CACHE.size() >= MARKDOWN_CACHE_MAX) {
-            MARKDOWN_HTML_CACHE.clear();
+        // Synchronise the size-check + clear + put so two threads cannot
+        // both see the cap exceeded, both clear, and both put (benign but
+        // wasteful).  ConcurrentHashMap.clear() is not atomic with put().
+        synchronized (MARKDOWN_HTML_CACHE) {
+            if (MARKDOWN_HTML_CACHE.size() >= MARKDOWN_CACHE_MAX) {
+                MARKDOWN_HTML_CACHE.clear();
+            }
+            MARKDOWN_HTML_CACHE.put(markdown, rendered);
         }
-        MARKDOWN_HTML_CACHE.put(markdown, rendered);
         return rendered;
     }
 

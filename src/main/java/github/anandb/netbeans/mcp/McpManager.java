@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class McpManager {
     private static final Logger LOG = Logger.from(McpManager.class);
@@ -22,13 +23,13 @@ public class McpManager {
     });
 
     private McpServer mcpServer;
-    private volatile boolean mcpDisabled = false;
+    private final AtomicBoolean mcpDisabled = new AtomicBoolean(false);
     private CompletableFuture<Void> serverStartFuture;
     private volatile CompletableFuture<Void> readyFuture = new CompletableFuture<>();
 
     public void start() {
-        LOG.info("McpManager.start() called, disabled={0}", mcpDisabled);
-        if (mcpDisabled) {
+        LOG.info("McpManager.start() called, disabled={0}", mcpDisabled.get());
+        if (mcpDisabled.get()) {
             LOG.info("MCP disabled, completing ready future immediately");
             readyFuture.complete(null);
             return;
@@ -89,8 +90,7 @@ public class McpManager {
     }
 
     public void disable() {
-        if (!mcpDisabled) {
-            mcpDisabled = true;
+        if (mcpDisabled.compareAndSet(false, true)) {
             LOG.warn("Disabling MCP servers for remainder of this process");
             stop();
             readyFuture.complete(null);
@@ -98,12 +98,12 @@ public class McpManager {
     }
 
     public boolean isDisabled() {
-        return mcpDisabled;
+        return mcpDisabled.get();
     }
 
     public List<Map<String, Object>> getServerConfig() {
         List<Map<String, Object>> mcpServerList = new ArrayList<>();
-        if (mcpDisabled) return mcpServerList;
+        if (mcpDisabled.get()) return mcpServerList;
 
         synchronized (this) {
             if (mcpServer == null || !mcpServer.isRunning()) {
@@ -129,7 +129,7 @@ public class McpManager {
     public void checkServerSupport(JsonNode res) {
         JsonNode caps = res.has("agentCapabilities") ? res.get("agentCapabilities") : null;
         if (caps == null || !caps.has("mcpCapabilities")) {
-            if (!mcpDisabled) {
+            if (!mcpDisabled.get()) {
                 LOG.info("Server does not advertise MCP support, disabling");
                 disable();
             }
@@ -139,7 +139,7 @@ public class McpManager {
         boolean supportsMcp = mcpCaps.has("http") && mcpCaps.get("http").asBoolean(false) ||
                               mcpCaps.has("sse") && mcpCaps.get("sse").asBoolean(false);
 
-        if (!supportsMcp && !mcpDisabled) {
+        if (!supportsMcp && !mcpDisabled.get()) {
             LOG.info("Server does not advertise MCP support, disabling {0}", mcpCaps.asText());
             disable();
         } else {

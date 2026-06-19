@@ -3,6 +3,9 @@ package github.anandb.netbeans.support;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.logging.Level;
+import java.util.prefs.PreferenceChangeEvent;
+import java.util.prefs.PreferenceChangeListener;
+import java.util.prefs.Preferences;
 
 import org.openide.util.NbPreferences;
 
@@ -12,7 +15,13 @@ public final class PluginSettings {
     private static final String KEY_PREAMBLE = "preamble";
     private static final String KEY_CUSTOM_USER_ICON = "customUserIcon";
     private static final String KEY_SESSION_IDLE_TIMEOUT = "sessionIdleTimeout";
+    private static final int DEFAULT_SESSION_IDLE_TIMEOUT = 300;
     private static final String DEFAULT_PREAMBLE;
+
+    /** Cached session idle timeout in seconds — volatile for cross-thread visibility. */
+    private static volatile int cachedSessionIdleTimeout = DEFAULT_SESSION_IDLE_TIMEOUT;
+
+    private static final PreferenceChangeListener listener = PluginSettings::onPreferenceChanged;
 
     static {
         String preamble = "";
@@ -24,6 +33,11 @@ public final class PluginSettings {
             LOG.log(Level.WARNING, "Failed to load preamble.md: {0}", e.getMessage());
         }
         DEFAULT_PREAMBLE = preamble;
+
+        // Seed cached value and register listener
+        Preferences prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
+        cachedSessionIdleTimeout = prefs.getInt(KEY_SESSION_IDLE_TIMEOUT, DEFAULT_SESSION_IDLE_TIMEOUT);
+        prefs.addPreferenceChangeListener(listener);
     }
 
     private PluginSettings() {
@@ -46,10 +60,20 @@ public final class PluginSettings {
     }
 
     public static int getSessionIdleTimeout() {
-        return NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getInt(KEY_SESSION_IDLE_TIMEOUT, 300);
+        return cachedSessionIdleTimeout;
     }
 
     public static void setSessionIdleTimeout(int seconds) {
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putInt(KEY_SESSION_IDLE_TIMEOUT, seconds);
+    }
+
+    private static void onPreferenceChanged(PreferenceChangeEvent evt) {
+        if (KEY_SESSION_IDLE_TIMEOUT.equals(evt.getKey())) {
+            try {
+                cachedSessionIdleTimeout = Integer.parseInt(evt.getNewValue());
+            } catch (NumberFormatException e) {
+                cachedSessionIdleTimeout = DEFAULT_SESSION_IDLE_TIMEOUT;
+            }
+        }
     }
 }

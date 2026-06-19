@@ -128,7 +128,12 @@ public class SessionLifecycleHandler implements SessionListener {
             public void displayMessage(ProcessedMessage msg) {
                 SwingUtilities.invokeLater(() -> {
                     chatPanel.addMessage(msg);
-                    if (!turnEnded) {
+                    // Capture turnEnded once to avoid TOCTOU: the volatile
+                    // field can be set to true by onMessageDone() or an SSE
+                    // turn-end signal between our read and the button update,
+                    // causing a brief flicker (button → responding → idle).
+                    boolean ended = turnEnded;
+                    if (!ended) {
                         statusController.updateButtonState(true);
                     }
                 });

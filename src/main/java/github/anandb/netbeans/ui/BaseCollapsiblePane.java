@@ -61,8 +61,8 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
     private transient AccordionGroup accordionGroup;
     protected final AtomicBoolean copyHovered = new AtomicBoolean(false);
     /** Listener references for clean removal in removeNotify(). */
-    private transient MouseAdapter toggleListener;
-    private transient MouseAdapter copyButtonHoverListener;
+    private final transient MouseAdapter toggleListener;
+    private final transient MouseAdapter copyButtonHoverListener;
     private transient MouseAdapter paramLabelToggleListener;
 
     public BaseCollapsiblePane(int radius, String title, Color defaultAccent, boolean expandedByDefault) {
@@ -359,7 +359,7 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
         if (w <= 0) return;
         FontMetrics fm = getFontMetrics(ThemeManager.getFont());
         int avgCharWidth = fm.stringWidth("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz") / 52;
-        if (avgCharWidth <= 0) avgCharWidth = fm.stringWidth("W");
+        if (avgCharWidth <= 0) avgCharWidth = fm.stringWidth("M");
         int usable = Math.max(50, w - 90);
         int chars = usable / avgCharWidth;
         ToolDataExtractor.setMaxTitleLength(chars);
