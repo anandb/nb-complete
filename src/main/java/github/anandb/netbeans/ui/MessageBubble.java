@@ -100,12 +100,12 @@ public class MessageBubble extends JPanel implements Scrollable {
         this.bubble = new JPanel(new BorderLayout());
         this.bubble.setDoubleBuffered(true);
         if ("user".equals(role)) {
-            RoundedPanel p = new RoundedPanel(16);
+            RoundedPanel p = new RoundedPanel(32);
             p.setLayout(new BorderLayout());
             p.setBorder(new EmptyBorder(10, 8, 10, 8));
             this.bubble = p;
         } else if ("assistant".equals(role)) {
-            RoundedPanel p = new RoundedPanel(16);
+            RoundedPanel p = new RoundedPanel(32);
             p.setLayout(new BorderLayout());
             p.setBorder(new EmptyBorder(8, 10, 8, 10));
             this.bubble = p;

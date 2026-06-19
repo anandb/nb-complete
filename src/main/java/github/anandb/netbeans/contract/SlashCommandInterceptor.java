@@ -123,8 +123,10 @@ public class SlashCommandInterceptor {
 
         // Send as regular message — AI needs conversation context to suggest a title
         String prompt = "Suggest a title for this session and call the nb_rename_session tool to rename the session.";
-        github.anandb.netbeans.manager.ProcessManager.getInstance()
-                .sendMessage(sessionId, prompt, null);
+        ProcessControl pc = Lookup.getDefault().lookup(ProcessControl.class);
+        if (pc != null) {
+            pc.sendMessage(sessionId, prompt, null);
+        }
         return CompletableFuture.completedFuture(true);
     }
 
