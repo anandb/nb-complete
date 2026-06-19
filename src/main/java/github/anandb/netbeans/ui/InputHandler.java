@@ -56,6 +56,10 @@ public class InputHandler {
                         e.consume();
                         messageSender.sendMessage();
                     }
+                } else if ((e.getKeyCode() == KeyEvent.VK_PAGE_UP || e.getKeyCode() == KeyEvent.VK_PAGE_DOWN)
+                        && autocompleteManager.isPopupVisible()) {
+                    e.consume();
+                    autocompleteManager.handleKeyPressed(e);
                 } else if (e.getKeyCode() == KeyEvent.VK_UP
                         && (e.getModifiersEx() & InputEvent.ALT_DOWN_MASK) != 0) {
                     if (autocompleteManager.isPopupVisible()) {

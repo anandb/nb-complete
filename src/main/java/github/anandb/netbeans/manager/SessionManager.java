@@ -551,9 +551,7 @@ public class SessionManager implements SessionQuery, SessionControl {
         Map<String, Object> textBlock = new HashMap<>();
         textBlock.put("type", "text");
         textBlock.put("text", text);
-        Map<String, Object> annotations = new HashMap<>();
-        annotations.put("audience", List.of("assistant"));
-        textBlock.put("annotations", annotations);
+        textBlock.put("annotations", Map.of("audience", List.of("assistant")));
 
         Map<String, Object> params = new HashMap<>();
         params.put("sessionId", sessionId);

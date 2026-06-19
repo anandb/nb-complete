@@ -13,6 +13,7 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseWheelListener;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BooleanSupplier;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -43,6 +44,7 @@ public class ScrollController implements KeyEventDispatcher {
     private final JButton scrollDownBtn;
     private final Timer scrollTimer;
     private final Map<Component, MouseWheelListener> wheelListeners = new ConcurrentHashMap<>();
+    private BooleanSupplier scrollBlocker;
 
     public ScrollController(JScrollPane scrollPane, Component parentComponent, JLayeredPane layeredPane) {
         this.scrollPane = scrollPane;
@@ -100,6 +102,10 @@ public class ScrollController implements KeyEventDispatcher {
         return t;
     }
 
+    public void setScrollBlocker(BooleanSupplier scrollBlocker) {
+        this.scrollBlocker = scrollBlocker;
+    }
+
     @Override
     public boolean dispatchKeyEvent(KeyEvent e) {
         if (e.getID() == KeyEvent.KEY_PRESSED) {
@@ -107,6 +113,13 @@ public class ScrollController implements KeyEventDispatcher {
             if (keyCode == KeyEvent.VK_PAGE_UP || keyCode == KeyEvent.VK_PAGE_DOWN
                     || ((e.getModifiersEx() & KeyEvent.CTRL_DOWN_MASK) != 0
                         && (keyCode == KeyEvent.VK_HOME || keyCode == KeyEvent.VK_END))) {
+                // External components (e.g. slash command autocomplete popup) can
+                // request that Page Up/Down be left for their own navigation.
+                if (keyCode == KeyEvent.VK_PAGE_UP || keyCode == KeyEvent.VK_PAGE_DOWN) {
+                    if (scrollBlocker != null && scrollBlocker.getAsBoolean()) {
+                        return false;
+                    }
+                }
                 Component src = e.getComponent();
                 if (src != null && SwingUtilities.isDescendingFrom(src, parentComponent)) {
                     if (keyCode == KeyEvent.VK_PAGE_UP || keyCode == KeyEvent.VK_PAGE_DOWN) {

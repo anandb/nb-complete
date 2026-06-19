@@ -178,6 +178,10 @@ public class ChatThreadPanel extends JPanel {
         }
     }
 
+    public void setScrollBlocker(java.util.function.BooleanSupplier scrollBlocker) {
+        scrollController.setScrollBlocker(scrollBlocker);
+    }
+
     public void addMessage(ProcessedMessage pm) {
         if (pm.isIgnorable()) {
             return;

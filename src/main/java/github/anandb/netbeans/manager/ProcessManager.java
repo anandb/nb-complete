@@ -258,10 +258,7 @@ public class ProcessManager implements ProcessControl {
                 Map<String, Object> metadataPart = new HashMap<>();
                 metadataPart.put("type", "text");
                 metadataPart.put("text", xml.toString());
-
-                Map<String, Object> annotations = new HashMap<>();
-                annotations.put("audience", List.of("assistant"));
-                metadataPart.put("annotations", annotations);
+                metadataPart.put("annotations", Map.of("audience", List.of("assistant")));
 
                 promptBlocks.add(metadataPart);
 
@@ -270,6 +267,7 @@ public class ProcessManager implements ProcessControl {
                     Map<String, Object> selectionPart = new HashMap<>();
                     selectionPart.put("type", "text");
                     selectionPart.put("text", "\nSelection from `" + fileName + "`:\n```" + lang + "\n" + selectionContent + "\n```\n");
+                    selectionPart.put("annotations", Map.of("audience", List.of("assistant")));
                     promptBlocks.add(selectionPart);
                 }
             }

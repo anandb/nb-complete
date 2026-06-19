@@ -174,6 +174,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         });
 
         autocompleteManager = new AutocompleteManager(inputArea, messageSender::sendMessage);
+        chatPanel.setScrollBlocker(autocompleteManager::isPopupVisible);
 
         componentLifecycleHandler = new ComponentLifecycleHandler(
             chatPanel, statusController, sessionLifecycleHandler,
