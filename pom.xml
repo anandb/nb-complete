@@ -3,11 +3,11 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>io.github.anandb</groupId>
     <artifactId>beanbot</artifactId>
-    <version>1.6.2-SNAPSHOT</version>
+    <version>1.7.0-SNAPSHOT</version>
     <packaging>nbm</packaging>
 
-    <name>Coding Assistant</name>
-    <description>Coding Assistant for NetBeans using ACP, connect to OpenCode via the Agent Client Protocol.</description>
+    <name>BeanBot</name>
+    <description>BeanBot — AI coding assistant for NetBeans using ACP, connect to OpenCode via the Agent Client Protocol.</description>
     <url>https://github.com/anandb/nb-complete</url>
 
     <licenses>

@@ -53,12 +53,15 @@ final class ChatLayoutBuilder {
     private JButton refreshBtn;
     private JButton exportBtn;
     private JPanel rightStatusPanel;
+    private final javax.swing.Timer newSessionDebounceTimer;
 
     ChatLayoutBuilder(AssistantTopComponent topComponent, ChatThreadPanel chatPanel,
             ConfigPanelController configPanelController) {
         this.topComponent = topComponent;
         this.chatPanel = chatPanel;
         this.configPanelController = configPanelController;
+        this.newSessionDebounceTimer = new javax.swing.Timer(2000, e -> fireNewSession());
+        this.newSessionDebounceTimer.setRepeats(false);
     }
 
     JPanel buildHeader() {
@@ -160,17 +163,7 @@ final class ChatLayoutBuilder {
         }
 
         newSessionBtn = UIUtils.createToolbarButton("new.svg", NbBundle.getMessage(AssistantTopComponent.class, "HINT_NewSession"), e -> {
-            org.netbeans.api.project.Project[] projects = github.anandb.netbeans.project.ACPProjectManager.getInstance().getAllOpenProjects();
-            if (projects == null || projects.length == 0) {
-                return;
-            }
-            if (projects.length == 1) {
-                Lookup.getDefault()
-                    .lookup(github.anandb.netbeans.contract.SessionControl.class)
-                    .createNewSession(projects[0].getProjectDirectory().getPath());
-            } else {
-                topComponent.showProjectPickerPopup((javax.swing.JComponent) e.getSource());
-            }
+            newSessionDebounceTimer.restart();
         });
         String renameHint = NbBundle.getMessage(AssistantTopComponent.class, "HINT_RenameSession");
         renameSessionBtn = UIUtils.createToolbarButton("rename.svg", renameHint, e -> topComponent.renameCurrentSession());
@@ -468,6 +461,20 @@ final class ChatLayoutBuilder {
     JButton getHideBtn() { return hideBtn; }
 
     JButton getShowHiddenBtn() { return showHiddenBtn; }
+
+    private void fireNewSession() {
+        org.netbeans.api.project.Project[] projects = github.anandb.netbeans.project.ACPProjectManager.getInstance().getAllOpenProjects();
+        if (projects == null || projects.length == 0) {
+            return;
+        }
+        if (projects.length == 1) {
+            Lookup.getDefault()
+                .lookup(github.anandb.netbeans.contract.SessionControl.class)
+                .createNewSession(projects[0].getProjectDirectory().getPath());
+        } else {
+            topComponent.showProjectPickerPopup(newSessionBtn);
+        }
+    }
 
     JButton getNewSessionBtn() { return newSessionBtn; }
 
