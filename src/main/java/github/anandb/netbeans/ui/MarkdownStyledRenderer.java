@@ -97,15 +97,14 @@ public final class MarkdownStyledRenderer {
                     tableBuffer.clear();
                 }
 
-                // Headers
+                // Headers (count leading '#'s without creating substring views)
                 int headerLevel = 0;
-                String tempLine = line;
-                while (tempLine.startsWith("#") && headerLevel < 6) {
+                while (headerLevel < 6 && line.startsWith("#", headerLevel)) {
                     headerLevel++;
-                    tempLine = tempLine.substring(1);
                 }
-                if (headerLevel > 0 && (tempLine.isEmpty() || tempLine.startsWith(" "))) {
-                    line = tempLine.trim();
+                if (headerLevel > 0
+                        && (headerLevel == line.length() || line.charAt(headerLevel) == ' ')) {
+                    line = line.substring(headerLevel).trim();
                     SimpleAttributeSet hAttr = StyleResolver.headerStyle(base, baseFont, headerLevel);
                     doc.insertString(doc.getLength(), line + "\n", hAttr);
                     continue;

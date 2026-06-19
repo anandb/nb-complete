@@ -44,6 +44,10 @@ public class UIUtils {
             : "monospace";
     // -------------------------------------------------------------------------
 
+    /** Cached font stack; invalidated when the LAF font family changes. */
+    private static String cachedFontStack;
+    private static String cachedFontFamily;
+
     /** CSS font-family stack that respects the system-property override, then
      *  the NetBeans LAF font, then the generic fallback. */
     public static String fontStackWithActual() {
@@ -51,11 +55,16 @@ public class UIUtils {
         if (actual == null || actual.isEmpty()) {
             return FONT_STACK;
         }
+        if (actual.equals(cachedFontFamily) && cachedFontStack != null) {
+            return cachedFontStack;
+        }
         String quoted = actual.contains(" ") ? "'" + actual + "'" : actual;
         // System-property override > NetBeans font > generic fallback
-        return FONT_OVERRIDE != null
+        cachedFontFamily = actual;
+        cachedFontStack = FONT_OVERRIDE != null
                 ? FONT_STACK
                 : quoted + ", " + FONT_STACK;
+        return cachedFontStack;
     }
 
     private static final Logger LOG = Logger.from(UIUtils.class);
@@ -63,11 +72,9 @@ public class UIUtils {
     private UIUtils() {}
 
     // Table separator row patterns - compiled once, avoid String.matches() per cell
-    private static final Pattern CELL_DASH = Pattern.compile("-+");
-    private static final Pattern CELL_COLON_DASH_PREFIX = Pattern.compile(":-+-.*");
-    private static final Pattern CELL_DASH_COLON_SUFFIX = Pattern.compile(".*:-+");
-    private static final Pattern CELL_DASH_COLON = Pattern.compile("-+:");
-    private static final Pattern CELL_COLON_DASH_COLON = Pattern.compile(":.*-+");
+    /** Standard Markdown table separator cell: optional leading colon, one or
+     *  more dashes, optional trailing colon. Replaces five separate patterns. */
+    private static final Pattern CELL_SEPARATOR = Pattern.compile("^:?-+:?$");
     private static final Pattern CELL_SPLIT = Pattern.compile("(?<!\\\\)\\|");
 
     public static JButton createToolbarButton(String iconName, String toolTip, ActionListener l) {
@@ -203,11 +210,7 @@ public class UIUtils {
 
     public static boolean isSeparatorRow(List<String> row) {
         for (String cell : row) {
-            if (!CELL_DASH.matcher(cell).matches()
-                    && !CELL_COLON_DASH_PREFIX.matcher(cell).matches()
-                    && !CELL_DASH_COLON_SUFFIX.matcher(cell).matches()
-                    && !CELL_DASH_COLON.matcher(cell).matches()
-                    && !CELL_COLON_DASH_COLON.matcher(cell).matches()) {
+            if (!CELL_SEPARATOR.matcher(cell).matches()) {
                 return false;
             }
         }

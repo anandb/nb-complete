@@ -60,6 +60,10 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
     private transient Timer copyFeedbackTimer;
     private transient AccordionGroup accordionGroup;
     protected final AtomicBoolean copyHovered = new AtomicBoolean(false);
+    /** Listener references for clean removal in removeNotify(). */
+    private transient MouseAdapter toggleListener;
+    private transient MouseAdapter copyButtonHoverListener;
+    private transient MouseAdapter paramLabelToggleListener;
 
     public BaseCollapsiblePane(int radius, String title, Color defaultAccent, boolean expandedByDefault) {
         super(radius);
@@ -106,7 +110,7 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
         add(contentPanel, BorderLayout.CENTER);
 
         // Toggle listener
-        MouseAdapter toggleListener = new MouseAdapter() {
+        toggleListener = new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {
                 if (!expanded && accordionGroup != null) {
@@ -140,7 +144,7 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
         copyButton.setBorder(BorderFactory.createEmptyBorder(2, 4, 2, 4));
         copyButton.setForeground(theme.foreground());
         copyButton.setVisible(false);
-        copyButton.addMouseListener(new MouseAdapter() {
+        copyButtonHoverListener = new MouseAdapter() {
             @Override
             public void mouseEntered(MouseEvent e) {
                 copyHovered.set(true);
@@ -152,7 +156,8 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
                 copyHovered.set(false);
                 copyButton.setVisible(false);
             }
-        });
+        };
+        copyButton.addMouseListener(copyButtonHoverListener);
 
         // Wrap in fixed-size panel so header height never changes when button visibility toggles
         JPanel eastPlaceholder = new JPanel(new BorderLayout());
@@ -318,12 +323,13 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
                     paramLabel.setFont(isSegmented
                             ? ThemeManager.getMonospaceFont().deriveFont(Font.PLAIN)
                             : ThemeManager.getFont().deriveFont(Font.PLAIN));
-                    paramLabel.addMouseListener(new MouseAdapter() {
+                    paramLabelToggleListener = new MouseAdapter() {
                         @Override
                         public void mousePressed(MouseEvent e) {
                             toggle();
                         }
-                    });
+                    };
+                    paramLabel.addMouseListener(paramLabelToggleListener);
                 }
                 paramLabel.setText(" " + param);
                 titlePanel.add(paramLabel);
@@ -508,6 +514,13 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
         super.removeNotify();
         if (copyFeedbackTimer != null && copyFeedbackTimer.isRunning()) {
             copyFeedbackTimer.stop();
+        }
+        header.removeMouseListener(toggleListener);
+        if (copyButtonHoverListener != null) {
+            copyButton.removeMouseListener(copyButtonHoverListener);
+        }
+        if (paramLabelToggleListener != null && paramLabel != null) {
+            paramLabel.removeMouseListener(paramLabelToggleListener);
         }
     }
 }
