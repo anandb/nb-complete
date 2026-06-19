@@ -23,6 +23,16 @@
   `LOG.log(Level.WARNING, ...)` or `severe/warn/info/fine`). Pass exceptions as the LAST argument.
 - **Theming**: Use `ThemeManager.getCurrentTheme()`. Dark mode icons require `_dark.svg` suffix.
 - **Asynchrony / EDT**: Wrap all background thread UI updates in `SwingUtilities.invokeLater()`.
+- **Regex in hot paths**: NEVER use `String.matches()` or `String.replaceAll()` in loops or
+  per-tick callbacks. Pre-compile with `static final Pattern` and reuse via `matcher()`.
+- **NbPreferences caching**: If a preference is read in a hot path, cache it in a `static volatile`
+  field and register a `PreferenceChangeListener` to update on change. Do NOT call
+  `NbPreferences.forModule().getBoolean()` on every invocation.
+- **Scan ranges**: When scanning large strings for patterns (e.g. ASCII art detection), limit
+  the scan to a bounded prefix (e.g. first 512 chars) instead of the full string.
+- **contract/ → manager/ singletons**: `contract/` classes must use `Lookup.getDefault().lookup()`
+  to access services, never direct `Manager.getInstance()` calls. The `SlashCommandInterceptor`
+  violation was fixed by injecting `ProcessControl` via Lookup.
 
 ## Token Efficiency Rules
 - **Targeted File Reads**: NEVER read full files unless they are <100 lines. Use `view_file`
@@ -141,6 +151,10 @@ NbPreferences.forModule(PreferenceKeys.class)
   tables/tool blocks.
 - `removeNotify()` in UI components MUST stop `javax.swing.Timer` instances and finalize
   streaming to prevent memory leaks.
+- `BaseCollapsiblePane` does NOT remove its MouseListeners (`toggleListener`, `copyButtonHoverListener`)
+  in `removeNotify()`. These listeners only capture `this` (the component itself) — they die with the
+  component tree. Removing and re-adding them caused duplicate listeners (click fired toggle twice).
+  Do NOT add matching `removeMouseListener` calls here.
 - Clamping: `McpServer` connector idle timeout is clamped to a minimum of 30s.
 
 ### Auto-Scroll Contract

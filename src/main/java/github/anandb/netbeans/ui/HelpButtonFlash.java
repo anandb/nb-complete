@@ -30,6 +30,7 @@ final class HelpButtonFlash {
                 : new Color(66, 133, 244, 180);
 
         Timer[] timerHolder = new Timer[1];
+        MouseAdapter[] listenerHolder = new MouseAdapter[1];
         Timer timer = new Timer(TimingConstants.HELP_FLASH_INTERVAL_MS, new ActionListener() {
             int tick = 0;
 
@@ -47,27 +48,32 @@ final class HelpButtonFlash {
                 }
                 button.repaint();
                 if (tick >= TimingConstants.HELP_FLASH_TICKS) {
-                    stop(button, timerHolder[0]);
+                    stop(button, timerHolder[0], listenerHolder[0]);
                 }
             }
         });
         timerHolder[0] = timer;
-        button.addMouseListener(new MouseAdapter() {
+        MouseAdapter listener = new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {
-                stop(button, timerHolder[0]);
+                stop(button, timerHolder[0], listenerHolder[0]);
             }
-        });
+        };
+        listenerHolder[0] = listener;
+        button.addMouseListener(listener);
         timer.setInitialDelay(TimingConstants.HELP_FLASH_INITIAL_DELAY_MS);
         timer.start();
     }
 
-    private static void stop(JButton button, Timer timer) {
+    private static void stop(JButton button, Timer timer, MouseAdapter listener) {
         if (timer.isRunning()) {
             timer.stop();
             button.setOpaque(false);
             button.setContentAreaFilled(false);
             button.repaint();
+        }
+        if (listener != null) {
+            button.removeMouseListener(listener);
         }
     }
 }

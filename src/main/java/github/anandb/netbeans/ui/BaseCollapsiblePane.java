@@ -524,12 +524,5 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
         if (copyFeedbackTimer != null && copyFeedbackTimer.isRunning()) {
             copyFeedbackTimer.stop();
         }
-        header.removeMouseListener(toggleListener);
-        if (copyButtonHoverListener != null) {
-            copyButton.removeMouseListener(copyButtonHoverListener);
-        }
-        if (paramLabelToggleListener != null && paramLabel != null) {
-            paramLabel.removeMouseListener(paramLabelToggleListener);
-        }
     }
 }

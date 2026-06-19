@@ -258,6 +258,10 @@ public class MessageBubble extends JPanel implements Scrollable {
             hierarchyListener = null;
         }
         streamer.stopTimer();
+        if (copyRevertTimer != null) {
+            copyRevertTimer.stop();
+            copyRevertTimer = null;
+        }
     }
 
     public void appendText(String newText) {
