@@ -136,7 +136,9 @@ public class ChatThreadPanel extends JPanel {
             boolean wasAtBottom = scrollController.isAtBottom();
             boolean didUpdate = bubble.flushUpdate();
             if (didUpdate) {
-                bubble.revalidate();
+                // No explicit bubble.revalidate() here — the container's
+                // layout pass (triggered by scrollToBottom → revalidate)
+                // will lay out this bubble. Avoids a redundant layout tick.
                 scrollController.scrollToBottom(wasAtBottom);
             }
         }, TimingConstants.STREAM_FLUSH_MS);
@@ -361,15 +363,14 @@ public class ChatThreadPanel extends JPanel {
         // Already on EDT — all callers (Timer, SessionLifecycleHandler) invoke via EDT.
         // Do NOT wrap in SwingUtilities.invokeLater: that defers execution, creating a
         // race where late SSE deltas can clear activeStreamBubble before we finalize it.
+        boolean anyFinalized = false;
+        boolean wasAtBottom = scrollController.isAtBottom();
+
         MessageBubble activeBubble = streamingCoordinator.stopStreaming();
         if (activeBubble != null) {
-            boolean wasAtBottom = scrollController.isAtBottom();
             activeBubble.flushUpdate(true);
             activeBubble.finalizeStreaming(allBlocksExpanded, true);
-            messagesContainer.revalidate();
-            if (wasAtBottom) {
-                scrollController.scrollToBottom(true);
-            }
+            anyFinalized = true;
         }
         // Scan for any remaining streaming bubbles missed by the
         // activeStreamBubble path (e.g. interrupted by tool/thought
@@ -377,13 +378,15 @@ public class ChatThreadPanel extends JPanel {
         // arriving after the responding_finished timer fired).
         for (Component c : messagesContainer.getComponents()) {
             if (c instanceof MessageBubble mb && mb.isStreaming()) {
-                boolean wasAtBottom = scrollController.isAtBottom();
                 mb.flushUpdate(true);
                 mb.finalizeStreaming(allBlocksExpanded, true);
-                messagesContainer.revalidate();
-                if (wasAtBottom) {
-                    scrollController.scrollToBottom(true);
-                }
+                anyFinalized = true;
+            }
+        }
+        if (anyFinalized) {
+            messagesContainer.revalidate();
+            if (wasAtBottom) {
+                scrollController.scrollToBottom(true);
             }
         }
         // Combine any remaining individual tool/thought bubbles
@@ -573,12 +576,28 @@ public class ChatThreadPanel extends JPanel {
     public void setMessages(List<Message> messages) {
         cachedMessages = (messages != null) ? new ArrayList<>(messages) : null;
         SwingUtilities.invokeLater(() -> {
-            clearMessages();
+            // Clear synchronously — avoid clearMessages()'s own invokeLater
+            // which would add an extra EDT tick.
+            messagesContainer.removeAll();
+            lastUserTimestamp = -1L;
+            userMessageCount = 0;
+
             if (messages != null) {
                 for (Message m : messages) {
-                    addMessage(messageTransformer.convert(m));
+                    ProcessedMessage pm = messageTransformer.convert(m);
+                    if (pm.isIgnorable()) {
+                        continue;
+                    }
+                    // Bypass addMessage()'s invokeLater — we are already on EDT.
+                    if (pm.streaming()) {
+                        processMessageSections(pm, pm.text(), pm.messageType().roleName());
+                    } else {
+                        addSingleBubble(pm.messageType(), pm.text(), pm.messageId(), pm.toolTitle(), false);
+                    }
                 }
             }
+            trimMessages();
+            messagesContainer.revalidate();
         });
     }
 

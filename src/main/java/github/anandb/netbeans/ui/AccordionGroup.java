@@ -83,8 +83,5 @@ public class AccordionGroup {
         }
         // Walk up parent chain invalidating all ancestors
         target.updateParentLayout();
-        // Also mark target pane invalid so its layout recalculates
-        target.revalidate();
-        target.repaint();
     }
 }

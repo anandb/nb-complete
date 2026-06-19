@@ -137,25 +137,18 @@ public class RoundedPanel extends JPanel {
         boolean drawBorder = showBorder && resolvedBorder != null && resolvedBorder.getAlpha() > 0;
 
         if (ROUNDED_ENABLED && radius > 0) {
+            // Single Graphics2D pass: clip, paint children, draw border.
             Graphics2D g2 = (Graphics2D) g.create();
             try {
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.clip(getShape());
                 super.paintChildren(g2);
+                if (drawBorder) {
+                    g2.setColor(resolvedBorder);
+                    g2.draw(getBorderShape(ins, w, h));
+                }
             } finally {
                 g2.dispose();
-            }
-
-            // Draw rounded border AFTER children, reusing the cached border shape.
-            if (drawBorder) {
-                Graphics2D g3 = (Graphics2D) g.create();
-                try {
-                    g3.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                    g3.setColor(resolvedBorder);
-                    g3.draw(getBorderShape(ins, w, h));
-                } finally {
-                    g3.dispose();
-                }
             }
         } else {
             super.paintChildren(g);

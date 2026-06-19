@@ -141,27 +141,20 @@ public class FitEditorPane extends JTextPane {
         boolean widthChanged = width > 0 && width != lastComputedWidth;
         super.setBounds(x, y, width, height);
         if (widthChanged) {
-            // Invalidate cached preferred size so that getPreferredSize()
-            // recomputes the height for the new width. This ensures the HTML
-            // view reflows when the component is resized by the layout manager.
             lastComputedWidth = width;
             cachedSize = null;
-            // Force the HTML view to reformat at the new width.
-            View root = getUI().getRootView(this);
-            if (root != null) {
-                Insets ins = getInsets();
-                int cw = Math.max(1, width - ins.left - ins.right);
-                root.setSize(cw, Integer.MAX_VALUE);
-            }
-            // The preferred height depends on the width (HTML text reflow).
-            // After the layout manager assigns the real width, revalidate so
-            // ancestors re-layout with the corrected preferred size. This avoids
-            // the empty-space bug where the pane was sized for the fallback
-            // 500 px width and then left oversized when the sidebar is wider.
-            // Guard against revalidate cascade: only one global revalidate may
-            // be queued at a time to prevent an infinite layout-resize-revalidate loop.
+            // Only one FitEditorPane per layout pass may reflow its HTML.
+            // Others skip the expensive root.setSize() and will recompute
+            // their cached size on the next layout pass when they win the lock.
             if (!revalidatePending && GLOBAL_REVALIDATE_QUEUED.compareAndSet(false, true)) {
                 revalidatePending = true;
+                // Force the HTML view to reformat at the new width.
+                View root = getUI().getRootView(this);
+                if (root != null) {
+                    Insets ins = getInsets();
+                    int cw = Math.max(1, width - ins.left - ins.right);
+                    root.setSize(cw, Integer.MAX_VALUE);
+                }
                 javax.swing.SwingUtilities.invokeLater(() -> {
                     revalidatePending = false;
                     GLOBAL_REVALIDATE_QUEUED.set(false);
@@ -170,6 +163,8 @@ public class FitEditorPane extends JTextPane {
             }
         }
     }
+
+    private Dimension cachedMaxSize;
 
     @Override
     public Dimension getMaximumSize() {
@@ -180,7 +175,10 @@ public class FitEditorPane extends JTextPane {
         // preferred width (which would prevent text from wrapping to the
         // sidebar width).
         Dimension pref = getPreferredSize();
-        return new Dimension(Short.MAX_VALUE, pref.height);
+        if (cachedMaxSize == null || cachedMaxSize.height != pref.height) {
+            cachedMaxSize = new Dimension(Short.MAX_VALUE, pref.height);
+        }
+        return cachedMaxSize;
     }
 
     public static FitEditorPane createHtmlPane(String styledHtml, Color bg, String role, boolean opaqueUser) {

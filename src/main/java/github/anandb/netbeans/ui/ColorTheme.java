@@ -45,6 +45,12 @@ public record ColorTheme(
      *  Color instances (even with same RGB) don't collide. Cleared on theme
      *  switch via the UIManager property change listener below. */
     private static final Map<Color, String> HEX_CACHE = new IdentityHashMap<>();
+    private static volatile String cachedCssAssistant;
+    private static volatile String cachedCssAssistantBg;
+    private static volatile String cachedCssAssistantFontSize;
+    private static volatile String cachedCssUser;
+    private static volatile String cachedCssUserBg;
+    private static volatile String cachedCssUserFontSize;
 
     static {
         UIManager.addPropertyChangeListener(e -> {
@@ -167,13 +173,6 @@ public record ColorTheme(
             throw new IllegalStateException(NbBundle.getMessage(ColorTheme.class, "ERR_LoadColorsFailed"), e);
         }
     }
-
-    private static volatile String cachedCssAssistant;
-    private static volatile String cachedCssAssistantBg;
-    private static volatile String cachedCssAssistantFontSize;
-    private static volatile String cachedCssUser;
-    private static volatile String cachedCssUserBg;
-    private static volatile String cachedCssUserFontSize;
 
     public String toCss(Color bubbleBg, boolean isAssistant, int fontSize) {
         String bg = bubbleBg != null ? toHtmlHex(bubbleBg) : "transparent";

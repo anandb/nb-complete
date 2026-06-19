@@ -241,10 +241,15 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
         return inBatch;
     }
 
+    private Dimension cachedMaxSize;
+
     @Override
     public Dimension getMaximumSize() {
         Dimension pref = getPreferredSize();
-        return new Dimension(Integer.MAX_VALUE, pref.height);
+        if (cachedMaxSize == null || cachedMaxSize.height != pref.height) {
+            cachedMaxSize = new Dimension(Integer.MAX_VALUE, pref.height);
+        }
+        return cachedMaxSize;
     }
 
     protected void updateParentLayout() {

@@ -56,6 +56,7 @@ public class MessageBubble extends JPanel implements Scrollable {
     private final BubbleThemeApplier themeApplier;
     private final ArrayList<BubbleContentRenderer.CollapsibleState> codeStates = new ArrayList<>();
     private transient HierarchyListener hierarchyListener;
+    private Timer copyRevertTimer;
     private final BubbleStreamer streamer;
     private final BubbleAccordionManager accordionManager;
     private final BubbleContentRenderer contentRenderer;
@@ -65,9 +66,11 @@ public class MessageBubble extends JPanel implements Scrollable {
         return Component.LEFT_ALIGNMENT;
     }
 
+    private static final Dimension MAX_SIZE = new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE);
+
     @Override
     public Dimension getMaximumSize() {
-        return new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE);
+        return MAX_SIZE;
     }
 
     public MessageBubble(MessageType type, String text, String messageId, String toolTitle, AvatarPosition avatarPosition) {
@@ -227,15 +230,12 @@ public class MessageBubble extends JPanel implements Scrollable {
             add(bubble, UIUtils.createGbc(0, 0, 1.0, 0, fill, anchor, gbcInsets));
         }
 
-        // Fix for "garbled" text in scroll panes: force a repaint when the component becomes visible
+        // Fix for "garbled" text in scroll panes: force a repaint when the component becomes visible.
+        // Only repaint the outermost component — Swing's repaint manager handles children.
         if ("user".equals(role)) {
             this.hierarchyListener = e -> {
                 if ((e.getChangeFlags() & HierarchyEvent.SHOWING_CHANGED) != 0 && isShowing()) {
-                    SwingUtilities.invokeLater(() -> {
-                        repaint();
-                        bubble.repaint();
-                        segments.repaint();
-                    });
+                    SwingUtilities.invokeLater(() -> repaint());
                 }
             };
             addHierarchyListener(this.hierarchyListener);
@@ -246,10 +246,8 @@ public class MessageBubble extends JPanel implements Scrollable {
     @Override
     public void addNotify() {
         super.addNotify();
-        SwingUtilities.invokeLater(() -> {
-            revalidate();
-            repaint();
-        });
+        // Parent container's revalidate handles layout; no per-bubble
+        // revalidate/repaint needed here.
     }
 
     @Override
@@ -346,13 +344,17 @@ public class MessageBubble extends JPanel implements Scrollable {
         Icon checkIcon = ThemeManager.getIcon("check.svg", 14);
         copyBtn.setIcon(checkIcon);
 
-        Timer timer = new Timer(2000, e -> {
+        // Cancel any previous revert timer to avoid leaking timers on rapid clicks.
+        if (copyRevertTimer != null) {
+            copyRevertTimer.stop();
+        }
+        copyRevertTimer = new Timer(2000, e -> {
             if (copyBtn.isShowing()) {
                 copyBtn.setIcon(originalIcon);
             }
         });
-        timer.setRepeats(false);
-        timer.start();
+        copyRevertTimer.setRepeats(false);
+        copyRevertTimer.start();
     }
 
     /**
