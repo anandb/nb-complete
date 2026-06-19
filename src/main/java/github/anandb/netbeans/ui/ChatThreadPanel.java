@@ -75,6 +75,7 @@ public class ChatThreadPanel extends JPanel {
         messagesContainer.setOpaque(true);
         messagesContainer.setBackground(theme.sunkenBackground());
         messagesContainer.setBorder(new EmptyBorder(0, 0, 0, 0));
+        messagesContainer.setDoubleBuffered(true);
 
         scrollPane = new JScrollPane(messagesContainer);
 

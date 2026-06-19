@@ -52,6 +52,11 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
     protected boolean isThinking;
     protected boolean isSegmented;
     protected String combinedPlainText = "";
+    /** Cached appearance state to avoid re-setting colors on every hover. */
+    private Color lastHeaderBg;
+    private Color lastFg;
+    private boolean lastExpanded;
+    private boolean lastHadParamLabel;
     private transient Timer copyFeedbackTimer;
     private transient AccordionGroup accordionGroup;
     protected final AtomicBoolean copyHovered = new AtomicBoolean(false);
@@ -369,14 +374,27 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
 
     protected void updateAppearance() {
         ColorTheme theme = ThemeManager.getCurrentTheme();
-        header.setBackground(expanded ? theme.base2() : getDefaultHeaderBackground());
-        contentPanel.setBackground(null);
-        Color fg = getHeaderForeground(theme);
-        headerLabel.setForeground(fg);
-        if (paramLabel != null) {
-            paramLabel.setForeground(fg);
+        Color newBg = expanded ? theme.base2() : getDefaultHeaderBackground();
+        Color newFg = getHeaderForeground(theme);
+        boolean hasParamLabel = paramLabel != null;
+
+        if (java.util.Objects.equals(newBg, lastHeaderBg) && java.util.Objects.equals(newFg, lastFg)
+                && expanded == lastExpanded && hasParamLabel == lastHadParamLabel) {
+            return;
         }
-        copyButton.setForeground(fg);
+
+        lastHeaderBg = newBg;
+        lastFg = newFg;
+        lastExpanded = expanded;
+        lastHadParamLabel = hasParamLabel;
+
+        header.setBackground(newBg);
+        contentPanel.setBackground(null);
+        headerLabel.setForeground(newFg);
+        if (paramLabel != null) {
+            paramLabel.setForeground(newFg);
+        }
+        copyButton.setForeground(newFg);
     }
 
     protected Color getHeaderForeground(ColorTheme theme) {

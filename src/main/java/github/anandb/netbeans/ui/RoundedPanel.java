@@ -31,9 +31,13 @@ public class RoundedPanel extends JPanel {
     private Color baseColor; // null = transparent (children fill their own backgrounds)
     private Color borderColor; // null = use theme's bubbleBorder
     private boolean showBorder = true;
-    private volatile RoundRectangle2D.Float cachedShape;
+    private RoundRectangle2D.Float cachedShape;
+    private RoundRectangle2D.Float cachedBorderShape;
     private int cachedWidth = -1;
     private int cachedHeight = -1;
+    /** Cached theme-derived border color; invalidated when theme changes. */
+    private Color cachedResolvedBorder;
+    private ColorTheme cachedBorderTheme;
 
     public RoundedPanel(int radius) {
         this.radius = radius;
@@ -57,12 +61,19 @@ public class RoundedPanel extends JPanel {
 
     public final void setBorderColor(Color borderColor) {
         this.borderColor = borderColor;
+        invalidateResolvedBorder();
     }
 
     private void invalidateShape() {
         cachedShape = null;
+        cachedBorderShape = null;
         cachedWidth = -1;
         cachedHeight = -1;
+    }
+
+    private void invalidateResolvedBorder() {
+        cachedResolvedBorder = null;
+        cachedBorderTheme = null;
     }
 
     @Override
@@ -120,8 +131,9 @@ public class RoundedPanel extends JPanel {
         int w = getWidth() - ins.left - ins.right;
         int h = getHeight() - ins.top - ins.bottom;
 
-        // Resolve border color once for this paint pass.
-        Color resolvedBorder = borderColor != null ? borderColor : ThemeManager.getCurrentTheme().bubbleBorder();
+        // Resolve border color once and cache it; re-resolve only when the
+        // explicit borderColor changes or the theme changes.
+        Color resolvedBorder = borderColor != null ? borderColor : resolveThemeBorder();
         boolean drawBorder = showBorder && resolvedBorder != null && resolvedBorder.getAlpha() > 0;
 
         if (ROUNDED_ENABLED && radius > 0) {
@@ -134,16 +146,13 @@ public class RoundedPanel extends JPanel {
                 g2.dispose();
             }
 
-            // Draw rounded border AFTER children
+            // Draw rounded border AFTER children, reusing the cached border shape.
             if (drawBorder) {
                 Graphics2D g3 = (Graphics2D) g.create();
                 try {
                     g3.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                     g3.setColor(resolvedBorder);
-                    g3.draw(new RoundRectangle2D.Float(
-                            ins.left + 0.5f, ins.top + 0.5f,
-                            w - 1.0f, h - 1.0f,
-                            radius, radius));
+                    g3.draw(getBorderShape(ins, w, h));
                 } finally {
                     g3.dispose();
                 }
@@ -156,6 +165,29 @@ public class RoundedPanel extends JPanel {
                 g.drawRect(ins.left, ins.top, w - 1, h - 1);
             }
         }
+    }
+
+    private Color resolveThemeBorder() {
+        ColorTheme theme = ThemeManager.getCurrentTheme();
+        if (cachedBorderTheme == theme && cachedResolvedBorder != null) {
+            return cachedResolvedBorder;
+        }
+        cachedBorderTheme = theme;
+        cachedResolvedBorder = theme.bubbleBorder();
+        return cachedResolvedBorder;
+    }
+
+    private RoundRectangle2D.Float getBorderShape(Insets ins, int w, int h) {
+        RoundRectangle2D.Float shape = cachedBorderShape;
+        if (shape != null) {
+            return shape;
+        }
+        shape = new RoundRectangle2D.Float(
+                ins.left + 0.5f, ins.top + 0.5f,
+                w - 1.0f, h - 1.0f,
+                radius, radius);
+        cachedBorderShape = shape;
+        return shape;
     }
 
     @Override
