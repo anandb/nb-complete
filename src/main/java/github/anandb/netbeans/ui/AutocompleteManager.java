@@ -119,19 +119,15 @@ public class AutocompleteManager {
             lastPrefix = null;
             return;
         }
-        if (keyCode == KeyEvent.VK_UP || keyCode == KeyEvent.VK_DOWN
-                || keyCode == KeyEvent.VK_PAGE_UP || keyCode == KeyEvent.VK_PAGE_DOWN) {
+        if (keyCode == KeyEvent.VK_UP || keyCode == KeyEvent.VK_DOWN) {
             if (autocompletePopup.isVisible()) {
                 e.consume();
                 int size = commandList.getModel().getSize();
                 if (size > 0) {
                     int index = commandList.getSelectedIndex();
-                    int pageRows = getVisibleRowCount();
                     switch (keyCode) {
                         case KeyEvent.VK_UP -> index = (index - 1 + size) % size;
                         case KeyEvent.VK_DOWN -> index = (index + 1) % size;
-                        case KeyEvent.VK_PAGE_UP -> index = Math.max(0, index - Math.max(1, pageRows));
-                        case KeyEvent.VK_PAGE_DOWN -> index = Math.min(size - 1, index + Math.max(1, pageRows));
                     }
                     commandList.setSelectedIndex(index);
                     commandList.ensureIndexIsVisible(index);
@@ -168,16 +164,6 @@ public class AutocompleteManager {
             selectCommand();
             sendMessageAction.run();
         }
-    }
-
-    private int getVisibleRowCount() {
-        int visibleHeight = viewport.getExtentSize().height;
-        int rowHeight = commandList.getFixedCellHeight();
-        if (rowHeight <= 0) {
-            Rectangle bounds = commandList.getCellBounds(0, 0);
-            rowHeight = bounds != null ? bounds.height : 22;
-        }
-        return rowHeight > 0 ? visibleHeight / rowHeight : 1;
     }
 
     private void showAutocomplete() {
