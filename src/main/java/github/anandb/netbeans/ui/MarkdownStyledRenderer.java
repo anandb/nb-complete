@@ -23,6 +23,10 @@ public final class MarkdownStyledRenderer {
 
     private static final Pattern SEPARATOR_PATTERN = Pattern.compile("^:?-+:?$");
 
+    /** Splits a markdown table row on unescaped `|`. Pre-compiled to avoid
+     *  Pattern compilation on every row of every rendered table (AGENTS.md). */
+    private static final Pattern CELL_SPLIT = Pattern.compile("(?<!\\\\)\\|");
+
     /** Max characters per table cell. Longer content truncated with '\u2026'. */
     private static final int MAX_CELL_WIDTH = 55;
 
@@ -237,7 +241,7 @@ public final class MarkdownStyledRenderer {
         List<List<String>> rows = new ArrayList<>();
         int maxCols = 0;
         for (String line : tableBuffer) {
-            String[] cells = line.split("(?<!\\\\)\\|");
+            String[] cells = CELL_SPLIT.split(line, -1);
             List<String> row = new ArrayList<>();
             for (int i = 0; i < cells.length; i++) {
                 if (i == 0 || i == cells.length - 1) {
