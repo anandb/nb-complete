@@ -16,8 +16,10 @@ public record ProcessedMessage(
     public boolean isIgnorable() {
         boolean isTool = messageType == MessageType.tool_call || messageType == MessageType.tool_call_update;
         if (isTool) {
-            return isNotBlank(status) && (status.startsWith("pending") || status.startsWith("in_progress")) ||
-                   toolTitle.startsWith("mcp ");
+            boolean pendingStatus = isNotBlank(status)
+                    && (status.startsWith("pending") || status.startsWith("in_progress"));
+            boolean mcpTool = toolTitle != null && toolTitle.startsWith("mcp ");
+            return pendingStatus || mcpTool;
         }
 
         return isIgnorable(messageType.roleName(), text);
