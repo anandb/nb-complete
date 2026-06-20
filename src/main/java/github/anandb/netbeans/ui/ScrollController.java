@@ -161,6 +161,26 @@ public class ScrollController implements KeyEventDispatcher {
         wheelListeners.put(c, listener);
     }
 
+    /** Removes the wheel-redirect listener installed by {@link #fixMouseWheel}
+     *  and drops the entry from the tracking map. Callers that remove a bubble
+     *  from the container MUST call this so the bubble (and its component
+     *  subtree) is not retained by the strong-keyed {@code wheelListeners} map
+     *  until panel teardown (memory leak). */
+    public void unfixMouseWheel(Component c) {
+        MouseWheelListener listener = wheelListeners.remove(c);
+        if (listener != null) {
+            c.removeMouseWheelListener(listener);
+        }
+    }
+
+    /** Removes wheel-redirect listeners from every tracked component and clears
+     *  the map. Used by {@link #cleanup()} and by bulk-content replacement
+     *  paths ({@code clearMessages}/{@code setMessages}). */
+    public void unfixAllMouseWheel() {
+        wheelListeners.forEach((c, l) -> c.removeMouseWheelListener(l));
+        wheelListeners.clear();
+    }
+
     public boolean isAtBottom() {
         JScrollBar vertical = scrollPane.getVerticalScrollBar();
         int extent = vertical.getModel().getExtent();
@@ -218,8 +238,7 @@ public class ScrollController implements KeyEventDispatcher {
 
     public void cleanup() {
         KeyboardFocusManager.getCurrentKeyboardFocusManager().removeKeyEventDispatcher(this);
-        wheelListeners.forEach((c, l) -> c.removeMouseWheelListener(l));
-        wheelListeners.clear();
+        unfixAllMouseWheel();
         if (scrollTimer.isRunning()) {
             scrollTimer.stop();
         }

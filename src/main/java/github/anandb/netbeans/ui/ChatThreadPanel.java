@@ -294,7 +294,7 @@ public class ChatThreadPanel extends JPanel {
 
         // Combine individual tool/thought bubbles before user/assistant messages
         if (type.isUser() || type.isAssistant()) {
-            ToolThoughtCombiner.combine(messagesContainer, allBlocksExpanded);
+            ToolThoughtCombiner.combine(messagesContainer, allBlocksExpanded, scrollController);
         }
 
         // Reset turn state for new user message
@@ -351,6 +351,10 @@ public class ChatThreadPanel extends JPanel {
             Component c = messagesContainer.getComponent(i);
             if (c instanceof MessageBubble || c instanceof PermissionBubble) {
                 messagesContainer.remove(i);
+                // Drop the wheel-redirect listener so the removed bubble (and
+                // its component subtree) is not retained by ScrollController's
+                // strong-keyed map until panel teardown.
+                scrollController.unfixMouseWheel(c);
                 // Remove trailing strut
                 if (i < messagesContainer.getComponentCount()
                         && messagesContainer.getComponent(i) instanceof Box.Filler) {
@@ -394,7 +398,7 @@ public class ChatThreadPanel extends JPanel {
             }
         }
         // Combine any remaining individual tool/thought bubbles
-        ToolThoughtCombiner.combine(messagesContainer, allBlocksExpanded);
+        ToolThoughtCombiner.combine(messagesContainer, allBlocksExpanded, scrollController);
     }
 
     public void addPermissionRequest(String prompt, JsonNode options, CompletableFuture<String> responseFuture) {
@@ -571,6 +575,7 @@ public class ChatThreadPanel extends JPanel {
         cachedMessages = null;
         SwingUtilities.invokeLater(() -> {
             messagesContainer.removeAll();
+            scrollController.unfixAllMouseWheel();
             lastUserTimestamp = -1L;
             userMessageCount = 0;
             messagesContainer.revalidate();
@@ -583,6 +588,7 @@ public class ChatThreadPanel extends JPanel {
             // Clear synchronously — avoid clearMessages()'s own invokeLater
             // which would add an extra EDT tick.
             messagesContainer.removeAll();
+            scrollController.unfixAllMouseWheel();
             lastUserTimestamp = -1L;
             userMessageCount = 0;
 

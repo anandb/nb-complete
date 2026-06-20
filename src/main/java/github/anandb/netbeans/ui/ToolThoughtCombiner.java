@@ -60,8 +60,12 @@ public final class ToolThoughtCombiner {
      *
      * @param messagesContainer the container holding message bubbles
      * @param allBlocksExpanded whether combined blocks should start expanded
+     * @param scrollController   used to release wheel-redirect listeners on
+     *                           removed bubbles so they are not retained by the
+     *                           controller's strong-keyed map (memory leak)
      */
-    public static void combine(JPanel messagesContainer, boolean allBlocksExpanded) {
+    public static void combine(JPanel messagesContainer, boolean allBlocksExpanded,
+                               ScrollController scrollController) {
         // Respect user preference: if unchecked, skip combining
         if (!combineEnabled) {
             return;
@@ -140,7 +144,11 @@ public final class ToolThoughtCombiner {
         if (visibleSegments.isEmpty()) {
             // All segments hidden — remove individual bubbles but create no combined pane
             for (int i = toRemove.size() - 1; i >= 0; i--) {
-                messagesContainer.remove(toRemove.get(i));
+                Component removed = toRemove.get(i);
+                messagesContainer.remove(removed);
+                if (scrollController != null) {
+                    scrollController.unfixMouseWheel(removed);
+                }
             }
             messagesContainer.revalidate();
             return;
@@ -148,7 +156,11 @@ public final class ToolThoughtCombiner {
 
         // Remove from back to front to keep indices valid
         for (int i = toRemove.size() - 1; i >= 0; i--) {
-            messagesContainer.remove(toRemove.get(i));
+            Component removed = toRemove.get(i);
+            messagesContainer.remove(removed);
+            if (scrollController != null) {
+                scrollController.unfixMouseWheel(removed);
+            }
         }
 
         // Create combined bubble with only the visible segments
