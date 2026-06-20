@@ -116,6 +116,14 @@ class MessageServlet extends HttpServlet {
                 } catch (IOException ex) {
                     LOG.log(Level.WARNING, "Failed to write error response", ex);
                 }
+                // If the tools/call path threw before scheduling its own response,
+                // handleToolsCallAsync will never complete the context. Complete it
+                // here so the request does not hang until the async timeout. The
+                // finally block below skips complete() when isToolsCall is true, so
+                // there is no double completion.
+                if (isToolsCall) {
+                    asyncContext.complete();
+                }
             } finally {
                 long durationMs = (System.nanoTime() - start) / 1_000_000;
                 LOG.info("MCP request completed in {0}ms", durationMs);
