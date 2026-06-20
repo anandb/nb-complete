@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.logging.Level;
 
 import github.anandb.netbeans.support.PluginSettings;
@@ -43,9 +44,11 @@ class MessageServlet extends HttpServlet {
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        // Verify auth token
+        // Verify auth token (constant-time comparison to prevent timing attacks)
         String reqToken = request.getParameter("token");
-        if (reqToken == null || !reqToken.equals(token)) {
+        if (reqToken == null || !MessageDigest.isEqual(
+                reqToken.getBytes(StandardCharsets.UTF_8),
+                token.getBytes(StandardCharsets.UTF_8))) {
             LOG.warn("MCP request rejected: missing or invalid token");
             response.setStatus(403);
             response.setContentType("application/json");
@@ -78,16 +81,19 @@ class MessageServlet extends HttpServlet {
                 String method = req.get("method").asText();
                 JsonNode params = req.get("params");
                 boolean isNotification = !req.has("id");
-                long id = isNotification ? -1 : req.get("id").asLong();
+                // Preserve the original id node (may be string or number per
+                // JSON-RPC spec). Converting to long would silently turn string
+                // ids into 0, breaking client response correlation.
+                JsonNode idNode = isNotification ? null : req.get("id");
 
-                LOG.info("MCP method: {0} (id={1})", method, id);
+                LOG.info("MCP method: {0} (id={1})", method, idNode);
 
                 isToolsCall = !isNotification && "tools/call".equals(method);
 
                 if (!isNotification) {
                     ObjectNode resp = mapper.createObjectNode();
                     resp.put("jsonrpc", "2.0");
-                    resp.put("id", id);
+                    resp.set("id", idNode);
 
                     if ("tools/call".equals(method)) {
                         // tools/call handles response asynchronously with minimum delay
@@ -363,14 +369,30 @@ class MessageServlet extends HttpServlet {
         HttpServletResponse httpResp = (HttpServletResponse) asyncContext.getResponse();
         httpResp.setContentType("application/json");
         httpResp.setCharacterEncoding(StandardCharsets.UTF_8.name());
-        httpResp.setHeader("Access-Control-Allow-Origin", "*");
+        applyCorsHeaders((HttpServletRequest) asyncContext.getRequest(), httpResp);
         httpResp.getWriter().write(mapper.writeValueAsString(resp));
     }
 
     @Override
     protected void doOptions(HttpServletRequest request, HttpServletResponse response) {
-        response.setHeader("Access-Control-Allow-Origin", "*");
+        applyCorsHeaders(request, response);
         response.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
         response.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    }
+
+    /** Applies CORS headers restricted to localhost origins. The MCP server
+     *  only serves the local IDE plugin, so cross-origin requests from remote
+     *  sites must be rejected. Requests without an Origin header (same-origin
+     *  or non-browser clients) are always allowed. */
+    private void applyCorsHeaders(HttpServletRequest request, HttpServletResponse response) {
+        String origin = request.getHeader("Origin");
+        if (origin == null) {
+            // Same-origin or non-browser client (e.g. the IDE plugin) — allow.
+            response.setHeader("Access-Control-Allow-Origin", "*");
+        } else if (origin.startsWith("http://localhost:") || origin.startsWith("http://127.0.0.1:")
+                || origin.startsWith("https://localhost:") || origin.startsWith("https://127.0.0.1:")) {
+            response.setHeader("Access-Control-Allow-Origin", origin);
+        }
+        // Otherwise: no CORS header → browser blocks the response.
     }
 }
