@@ -12,8 +12,8 @@
 
     <licenses>
         <license>
-            <name>The Unlicense</name>
-            <url>http://unlicense.org/</url>
+            <name>Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
             <distribution>repo</distribution>
         </license>
     </licenses>
@@ -377,7 +377,7 @@
                 <configuration>
                     <verifyRuntime>skip</verifyRuntime>
                     <author>Anand</author>
-                    <licenseName>The Unlicense</licenseName>
+                    <licenseName>Apache License, Version 2.0</licenseName>
                     <licenseFile>LICENSE</licenseFile>
                     <publicPackages>
                         <publicPackage>github.anandb.netbeans.model</publicPackage>
