@@ -130,21 +130,13 @@ public class ImagePasteTransferHandler extends TransferHandler {
             }
         }
 
-        // Wayland fallback: AWT imageFlavor broken, read via wl-paste CLI
+        // Wayland fallback: AWT imageFlavor broken, read via wl-paste CLI.
+        // Both wl-paste probes call Process.waitFor(), so they MUST run off the
+        // EDT to avoid blocking the UI for hundreds of ms. Optimistically return
+        // true (matching the image/file async paths) and report via the callback.
         if (isWayland() && callback != null && callback.canAddAttachment()) {
-            if (!isWlPasteAvailable()) {
-                reportError(NbBundle.getMessage(ImagePasteTransferHandler.class, "ERR_WlPasteNotFound"));
-            } else {
-                try {
-                    AttachedFile attachedFile = fetchWaylandClipboardImage();
-                    if (attachedFile != null) {
-                        javax.swing.SwingUtilities.invokeLater(() -> callback.onAttachmentAdded(attachedFile));
-                        return true;
-                    }
-                } catch (Exception e) {
-                    reportError(NbBundle.getMessage(ImagePasteTransferHandler.class, "ERR_ReadClipboard", e.getMessage()));
-                }
-            }
+            IO_RP.post(this::processWaylandClipboardAsync);
+            return true;
         }
         return false;
     }
@@ -168,6 +160,21 @@ public class ImagePasteTransferHandler extends TransferHandler {
             }
         } catch (Exception e) {
             reportError(NbBundle.getMessage(ImagePasteTransferHandler.class, "ERR_ProcessPastedFile", e.getMessage()));
+        }
+    }
+
+    private void processWaylandClipboardAsync() {
+        try {
+            if (!isWlPasteAvailable()) {
+                reportError(NbBundle.getMessage(ImagePasteTransferHandler.class, "ERR_WlPasteNotFound"));
+                return;
+            }
+            AttachedFile attachedFile = fetchWaylandClipboardImage();
+            if (attachedFile != null) {
+                javax.swing.SwingUtilities.invokeLater(() -> callback.onAttachmentAdded(attachedFile));
+            }
+        } catch (Exception e) {
+            reportError(NbBundle.getMessage(ImagePasteTransferHandler.class, "ERR_ReadClipboard", e.getMessage()));
         }
     }
 
