@@ -171,12 +171,6 @@
             <artifactId>org-netbeans-modules-refactoring-api</artifactId>
             <version>${netbeans.version}</version>
         </dependency>
-        <!-- Access to compiler hints and diagnostics -->
-        <dependency>
-            <groupId>org.netbeans.modules</groupId>
-            <artifactId>org-netbeans-modules-java-hints</artifactId>
-            <version>${netbeans.version}</version>
-        </dependency>
         <!-- For code formatting and indentation adjustments -->
         <dependency>
             <groupId>org.netbeans.api</groupId>
