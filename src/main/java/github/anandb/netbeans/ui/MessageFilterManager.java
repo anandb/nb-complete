@@ -6,8 +6,6 @@ import java.util.prefs.Preferences;
 
 import org.openide.util.NbPreferences;
 
-import github.anandb.netbeans.support.PreferenceKeys;
-
 /**
  * Manages message type visibility filters via NbPreferences.
  * Extracted from ChatThreadPanel.
@@ -31,7 +29,7 @@ final class MessageFilterManager {
     private static final PreferenceChangeListener listener = MessageFilterManager::onPreferenceChanged;
 
     static {
-        Preferences prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
+        Preferences prefs = NbPreferences.forModule(ACPOptionsPanel.class);
         // Seed initial values
         combineToolThought = prefs.getBoolean("combineToolThought", true);
         filterTool        = prefs.getBoolean(PREF_PREFIX + "tool", false);
@@ -73,11 +71,11 @@ final class MessageFilterManager {
         if (type == null) return;
         // "activity" toggles both tool and thought together
         if ("activity".equals(type)) {
-            NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean(PREF_PREFIX + "tool", hidden);
-            NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean(PREF_PREFIX + "thought", hidden);
+            NbPreferences.forModule(ACPOptionsPanel.class).putBoolean(PREF_PREFIX + "tool", hidden);
+            NbPreferences.forModule(ACPOptionsPanel.class).putBoolean(PREF_PREFIX + "thought", hidden);
             return;
         }
-        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean(PREF_PREFIX + type, hidden);
+        NbPreferences.forModule(ACPOptionsPanel.class).putBoolean(PREF_PREFIX + type, hidden);
     }
 
     /** Refreshes cached values when any preference changes. */
