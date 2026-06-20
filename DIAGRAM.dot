@@ -1,0 +1,713 @@
+digraph BeanBot {
+    rankdir=LR
+    bgcolor="white"
+    fontname="Helvetica"
+    node [shape=none fontname="Helvetica" fontsize=9]
+    edge [fontname="Helvetica" fontsize=7 color="#555555"]
+    ranksep=1.2
+    nodesep=0.4
+    splines=true
+    compound=true
+
+    /* ================================================================ */
+    /* Contract Layer — Interfaces & Ports                               */
+    /* ================================================================ */
+    subgraph cluster_contract {
+        label="Contract Layer"
+        style=solid
+        color="#888888"
+        fontcolor="#666666"
+        fontsize=11
+
+    SessionQuery [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD><FONT COLOR="gray"><I>&lt;&lt;interface&gt;&gt;</I></FONT></TD></TR>
+        <TR><TD ALIGN="LEFT"><B>SessionQuery</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">+getCurrentSessionId() : String<BR/>+getCurrentSessionDirectory() : String<BR/>+getCurrentState() : SessionState<BR/>+loadSessionFromServer(String, String) : CompletableFuture&lt;List&lt;SessionConfigOption&gt;&gt;<BR/>+getCustomTitle(String, String) : String<BR/>+isDescendantOfCurrent(String) : boolean<BR/>+isHidden(String) : boolean</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    SessionControl [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD><FONT COLOR="gray"><I>&lt;&lt;interface&gt;&gt;</I></FONT></TD></TR>
+        <TR><TD ALIGN="LEFT"><B>SessionControl</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">+addSessionListener(SessionListener)<BR/>+removeSessionListener(SessionListener)<BR/>+createSession(String) : CompletableFuture&lt;Session&gt;<BR/>+loadSession(String) : boolean<BR/>+deleteSession(String) : CompletableFuture&lt;Void&gt;<BR/>+setSessionConfigOption(String, String, String) : CompletableFuture&lt;Void&gt;<BR/>+renameSession(String, String)<BR/>+createNewSession(String)<BR/>+closeSession()<BR/>+refreshSessions()<BR/>+refreshSessionList()<BR/>+stopCurrentMessage()<BR/>+onTurnEnded()<BR/>+canSendMessage() : boolean<BR/>+canStopMessage() : boolean<BR/>+forceCancelCurrentMessage()<BR/>+setHidden(String, boolean)</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    ProcessControl [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD><FONT COLOR="gray"><I>&lt;&lt;interface&gt;&gt;</I></FONT></TD></TR>
+        <TR><TD ALIGN="LEFT"><B>ProcessControl</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">+ensureStarted()<BR/>+restartServer()<BR/>+sendMessage(String, String, Map, List) : CompletableFuture&lt;JsonNode&gt;<BR/>+stopMessage(String) : CompletableFuture&lt;Void&gt;<BR/>+whenReady() : CompletableFuture&lt;Void&gt;<BR/>+touchConnection()<BR/>+getToolExecutor() : ToolExecutor<BR/>+getSlashCommandInterceptor() : SlashCommandInterceptor<BR/>+setPermissionHandler(PermissionHandler)<BR/>+setStatusListener(Consumer&lt;String&gt;)<BR/>+setCrashHandler(Runnable)<BR/>+getAvailableCommands() : List&lt;AvailableCommand&gt;<BR/>+shutdown()</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    ToolExecutor [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD><FONT COLOR="gray"><I>&lt;&lt;interface&gt;&gt;</I></FONT></TD></TR>
+        <TR><TD ALIGN="LEFT"><B>ToolExecutor</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">+start()<BR/>+stop()<BR/>+waitForReady() : CompletableFuture&lt;Void&gt;<BR/>+disable()<BR/>+isDisabled() : boolean<BR/>+checkServerSupport(JsonNode)<BR/>+getServerConfig() : List&lt;Map&gt;</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    SessionListener [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD><FONT COLOR="gray"><I>&lt;&lt;interface&gt;&gt;</I></FONT></TD></TR>
+        <TR><TD ALIGN="LEFT"><B>SessionListener</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">+onSessionListUpdated(List&lt;Session&gt;)<BR/>+onSessionStarted(String)<BR/>+onSessionLoaded(String, List&lt;SessionConfigOption&gt;, boolean)<BR/>+onSessionLoading(boolean)<BR/>+onSessionError(String)<BR/>+onSessionUpdate(SessionUpdate)</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    UpdateDispatcher [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD><FONT COLOR="gray"><I>&lt;&lt;interface&gt;&gt;</I></FONT></TD></TR>
+        <TR><TD ALIGN="LEFT"><B>UpdateDispatcher</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">+handle(SessionUpdate, UIHandler)</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    PermissionHandler [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD><FONT COLOR="gray"><I>&lt;&lt;interface&gt;&gt;</I></FONT></TD></TR>
+        <TR><TD ALIGN="LEFT"><B>PermissionHandler</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">+handlePermissionRequest(String, JsonNode, CompletableFuture&lt;String&gt;)</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    SlashCommandHandler [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD><FONT COLOR="gray"><I>&lt;&lt;interface&gt;&gt;</I></FONT></TD></TR>
+        <TR><TD ALIGN="LEFT"><B>SlashCommandHandler</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">+handle(String, Lookup) : CompletableFuture&lt;Boolean&gt;</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    SlashCommandCallback [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD><FONT COLOR="gray"><I>&lt;&lt;interface&gt;&gt;</I></FONT></TD></TR>
+        <TR><TD ALIGN="LEFT"><B>SlashCommandCallback</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">+expandOptionsPanel()<BR/>+popupModelCombo()<BR/>+popupAgentCombo()<BR/>+popupThinkingCombo()<BR/>+popupSessionCombo()<BR/>+popupNewSession()<BR/>+displayToolMessage(String, String)</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    SlashCommandInterceptor [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD ALIGN="LEFT"><B>SlashCommandInterceptor</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">-Map&lt;String,CommandInfo&gt; commands<BR/>-SlashCommandCallback callback<BR/>+intercept(String, Lookup) : boolean<BR/>+setCallback(SlashCommandCallback)<BR/>+registerCommand(String, CommandInfo)<BR/>+getCommands() : Map</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    }  /* end cluster_contract */
+
+    /* ================================================================ */
+    /* Model Layer — Data Classes & Records                              */
+    /* ================================================================ */
+    subgraph cluster_model {
+        label="Model Layer"
+        style=solid
+        color="#888888"
+        fontcolor="#666666"
+        fontsize=11
+
+    }  /* end cluster_model */
+
+    /* ================================================================ */
+    /* Support Layer — Utilities & Constants                             */
+    /* ================================================================ */
+    subgraph cluster_support {
+        label="Support Layer"
+        style=solid
+        color="#888888"
+        fontcolor="#666666"
+        fontsize=11
+
+    PreferenceKeys [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD><FONT COLOR="gray"><I>&lt;&lt;constants&gt;&gt;</I></FONT></TD></TR>
+        <TR><TD ALIGN="LEFT"><B>PreferenceKeys</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">+MODULE_ANCHOR$<BR/>+ACP_EXECUTABLE_PATH$<BR/>+PROCESS_ARGUMENTS$<BR/>+COMBINE_TOOL_THOUGHT$<BR/>+TOOLBAR_*$</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    PluginSettings [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD><FONT COLOR="gray"><I>&lt;&lt;singleton&gt;&gt;</I></FONT></TD></TR>
+        <TR><TD ALIGN="LEFT"><B>PluginSettings</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">+getPreamble() : String$<BR/>+setPreamble(String)$<BR/>+getCustomUserIcon() : String$<BR/>+getSessionIdleTimeout() : long$</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    ToolDataExtractor [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD><FONT COLOR="gray"><I>&lt;&lt;utility&gt;&gt;</I></FONT></TD></TR>
+        <TR><TD ALIGN="LEFT"><B>ToolDataExtractor</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">+extractToolCallId(JsonNode) : String$<BR/>+classify(JsonNode) : MessageClassification$<BR/>+stripMetadata(String) : String$<BR/>+extractToolTitle(JsonNode) : String$</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    TimingConstants [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD><FONT COLOR="gray"><I>&lt;&lt;constants&gt;&gt;</I></FONT></TD></TR>
+        <TR><TD ALIGN="LEFT"><B>TimingConstants</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">+STREAM_FLUSH_MS$ int<BR/>+HELP_FLASH_INTERVAL_MS$ int</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    TimingConstants
+
+    }  /* end cluster_support */
+
+    /* ================================================================ */
+    /* Manager Layer — Business Logic                                   */
+    /* ================================================================ */
+    subgraph cluster_manager {
+        label="Manager Layer"
+        style=solid
+        color="#888888"
+        fontcolor="#666666"
+        fontsize=11
+
+    SessionManager [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD><FONT COLOR="gray"><I>&lt;&lt;SessionControl, SessionQuery&gt;&gt;</I></FONT></TD></TR>
+        <TR><TD ALIGN="LEFT"><B>SessionManager</B> <FONT COLOR="gray">(SessionControl, SessionQuery)</FONT></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">-ObjectMapper objectMapper<BR/>-CopyOnWriteArrayList&lt;SessionListener&gt; listeners<BR/>-SessionStateMachine stateMachine<BR/>-String currentSessionId<BR/>-SessionCacheManager cacheManager<BR/>-SessionRpcClient rpcClient<BR/>+getInstance() : SessionManager$<BR/>+createSession(String) : CompletableFuture&lt;Session&gt;<BR/>+loadSession(String) : boolean<BR/>+deleteSession(String) : CompletableFuture&lt;Void&gt;<BR/>+renameSession(String, String)<BR/>+refreshSessions()<BR/>+createNewSession(String)<BR/>+stopCurrentMessage()<BR/>+onTurnEnded()<BR/>+closeSession()<BR/>+setHidden(String, boolean)</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    ProcessManager [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD><FONT COLOR="gray"><I>&lt;&lt;ProcessControl&gt;&gt;</I></FONT></TD></TR>
+        <TR><TD ALIGN="LEFT"><B>ProcessManager</B> <FONT COLOR="gray">(ProcessControl)</FONT></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">-AtomicReference&lt;AcpProtocolClient&gt; rpcClient<BR/>-ServerProcessLifecycle serverLifecycle<BR/>-AcpReconnectManager reconnectMgr<BR/>-AcpRequestRouter requestRouter<BR/>-McpToolAdapter toolExecutor<BR/>-SlashCommandInterceptor slashCmdInterceptor<BR/>+getInstance() : ProcessManager$<BR/>+ensureStarted()<BR/>+restartServer()<BR/>+shutdown()<BR/>+sendMessage(String, String, Map, List) : CompletableFuture&lt;JsonNode&gt;<BR/>+stopMessage(String) : CompletableFuture&lt;Void&gt;<BR/>+sendRequest(String, Object) : CompletableFuture&lt;JsonNode&gt;</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    AcpProtocolClient [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD><FONT COLOR="gray"><I>&lt;&lt;Closeable&gt;&gt;</I></FONT></TD></TR>
+        <TR><TD ALIGN="LEFT"><B>AcpProtocolClient</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">-AtomicLong nextId<BR/>-InputStream input<BR/>-PrintWriter output<BR/>-Map&lt;Long,CompletableFuture&gt; pendingRequests<BR/>-Map&lt;String,Consumer&gt; notificationListeners<BR/>-Map&lt;String,RequestHandler&gt; requestHandlers<BR/>+sendRequest(String, Object) : CompletableFuture&lt;JsonNode&gt;<BR/>+sendNotification(String, Object)<BR/>+onNotification(String, Consumer)<BR/>+onRequest(String, RequestHandler)<BR/>+connect()<BR/>+close()</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    SessionStateMachine [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD ALIGN="LEFT"><B>SessionStateMachine</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">-SessionState state<BR/>-List&lt;Consumer&gt; listeners<BR/>+getState() : SessionState<BR/>+transitionTo(SessionState)<BR/>+canSendMessage() : boolean<BR/>+canStopMessage() : boolean</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    ServerProcessLifecycle [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD ALIGN="LEFT"><B>ServerProcessLifecycle</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">-Process serverProcess<BR/>-AtomicReference&lt;AcpProtocolClient&gt; rpcClient<BR/>-ToolExecutor toolExecutor<BR/>+ensureStarted()<BR/>+startServer() : CompletableFuture&lt;Void&gt;<BR/>+stopServer()<BR/>+restartServer()</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    AcpReconnectManager [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD ALIGN="LEFT"><B>AcpReconnectManager</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">-int restartCount<BR/>-long lastRestartTime<BR/>+handleDisconnection(Runnable)<BR/>+resetThrottle()</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    AcpRequestRouter [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD ALIGN="LEFT"><B>AcpRequestRouter</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">-ObjectMapper objectMapper<BR/>-PermissionHandler permissionHandler<BR/>+handleReadTextFile(JsonNode) : CompletableFuture&lt;JsonNode&gt;<BR/>+handleRequestPermission(JsonNode) : CompletableFuture&lt;JsonNode&gt;</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    SessionRpcClient [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD ALIGN="LEFT"><B>SessionRpcClient</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">-ProcessManager processManager<BR/>+getSessions(String) : CompletableFuture&lt;JsonNode&gt;<BR/>+createSession(String) : CompletableFuture&lt;JsonNode&gt;<BR/>+loadSessionFromServer(String) : CompletableFuture&lt;JsonNode&gt;<BR/>+deleteSession(String) : CompletableFuture&lt;Void&gt;<BR/>+renameSessionOnServer(String, String) : CompletableFuture&lt;Void&gt;</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    SessionCacheManager [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD ALIGN="LEFT"><B>SessionCacheManager</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">-List&lt;Session&gt; cachedSessions<BR/>-Map&lt;String,Session&gt; sessionCacheMap<BR/>+getCachedSessions() : List&lt;Session&gt;<BR/>+cacheSession(Session)<BR/>+isDescendantOfCurrent(String) : boolean</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    StrategyRegistry [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD><FONT COLOR="gray"><I>&lt;&lt;UpdateDispatcher&gt;&gt;</I></FONT></TD></TR>
+        <TR><TD ALIGN="LEFT"><B>StrategyRegistry</B> <FONT COLOR="gray">(UpdateDispatcher)</FONT></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">-Cache&lt;String,Map&gt; toolCallCache<BR/>+handle(SessionUpdate, UIHandler)</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    SubAgentTitleResolver [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD><FONT COLOR="gray"><I>&lt;&lt;utility&gt;&gt;</I></FONT></TD></TR>
+        <TR><TD ALIGN="LEFT"><B>SubAgentTitleResolver</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">+resolve(String, String, String, String) : String$</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    }  /* end cluster_manager */
+
+    /* ================================================================ */
+    /* MCP Layer — Tool Server                                          */
+    /* ================================================================ */
+    subgraph cluster_mcp {
+        label="MCP Layer"
+        style=solid
+        color="#888888"
+        fontcolor="#666666"
+        fontsize=11
+
+    McpManager [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD ALIGN="LEFT"><B>McpManager</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">+start() : CompletableFuture&lt;Void&gt;<BR/>+stop()<BR/>+waitForReady() : CompletableFuture&lt;Void&gt;<BR/>+disable()<BR/>+isDisabled() : boolean<BR/>+checkServerSupport(JsonNode)<BR/>+getServerConfig() : List&lt;Map&gt;</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    McpToolAdapter [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD><FONT COLOR="gray"><I>&lt;&lt;ToolExecutor&gt;&gt;</I></FONT></TD></TR>
+        <TR><TD ALIGN="LEFT"><B>McpToolAdapter</B> <FONT COLOR="gray">(ToolExecutor)</FONT></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">-McpManager mcpManager<BR/>+start()<BR/>+stop()<BR/>+waitForReady() : CompletableFuture&lt;Void&gt;</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    McpServer [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD ALIGN="LEFT"><B>McpServer</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">-int port<BR/>+start() : CompletableFuture&lt;Void&gt;<BR/>+stop()<BR/>+getPort() : int</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    McpTools [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD ALIGN="LEFT"><B>McpTools</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">+registerTool(McpToolDefinition, ToolExecutor)<BR/>+getTools() : List<BR/>+callTool(String, JsonNode) : JsonNode</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    }  /* end cluster_mcp */
+
+    /* ================================================================ */
+    /* UI Layer — Presentation                                          */
+    /* ================================================================ */
+    subgraph cluster_ui {
+        label="UI Layer"
+        style=solid
+        color="#888888"
+        fontcolor="#666666"
+        fontsize=11
+
+    AssistantTopComponent [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD><FONT COLOR="gray"><I>&lt;&lt;TopComponent, PermissionHandler&gt;&gt;</I></FONT></TD></TR>
+        <TR><TD ALIGN="LEFT"><B>AssistantTopComponent</B> <FONT COLOR="gray">(TopComponent, PermissionHandler)</FONT></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">-ChatThreadPanel chatPanel<BR/>-ConfigPanelController configCtrl<BR/>-SessionLifecycleHandler sessionLifecycleHandler<BR/>-ComponentLifecycleHandler componentLifecycleHandler<BR/>-MessageSender messageSender<BR/>-InputHandler inputHandler<BR/>-StatusController statusController<BR/>+componentOpened()<BR/>+onUserMessage(String)<BR/>+stopGeneration()</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    ChatThreadPanel [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD><FONT COLOR="gray"><I>&lt;&lt;JPanel, Scrollable&gt;&gt;</I></FONT></TD></TR>
+        <TR><TD ALIGN="LEFT"><B>ChatThreadPanel</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">-StreamingCoordinator streamingCoord<BR/>-MessageFilterManager filterMgr<BR/>-BubbleFactory bubbleFactory<BR/>-ScrollController scrollCtrl<BR/>+addMessage(MessageType, String, String)<BR/>+stopStreaming()<BR/>+clearMessages()<BR/>+setMessages(List&lt;ProcessedMessage&gt;)<BR/>+applyTypeFilters()</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    MessageBubble [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD><FONT COLOR="gray"><I>&lt;&lt;JPanel, Scrollable&gt;&gt;</I></FONT></TD></TR>
+        <TR><TD ALIGN="LEFT"><B>MessageBubble</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">-BubbleStreamer streamer<BR/>-BubbleContentRenderer contentRenderer<BR/>-BubbleAccordionManager accordionMgr<BR/>-BubbleThemeApplier themeApplier<BR/>+appendText(String)<BR/>+flushUpdate()<BR/>+finalizeStreaming(boolean, boolean)<BR/>+setSegmentedToolContent(List&lt;ToolSegment&gt;)</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    BaseCollapsiblePane [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD><FONT COLOR="gray"><I>&lt;&lt;abstract RoundedPanel&gt;&gt;</I></FONT></TD></TR>
+        <TR><TD ALIGN="LEFT"><B>BaseCollapsiblePane</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">#JPanel header<BR/>#JLabel headerLabel<BR/>#JPanel contentPanel<BR/>#boolean expanded<BR/>+setExpanded(boolean)<BR/>+toggle()<BR/>+setTitle(String)<BR/>+setContent(String)<BR/>+appendContent(String)</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    CollapsibleActivityPane [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD><FONT COLOR="gray"><I>&lt;&lt;BaseCollapsiblePane&gt;&gt;</I></FONT></TD></TR>
+        <TR><TD ALIGN="LEFT"><B>CollapsibleActivityPane</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">-JTextArea contentArea<BR/>-List&lt;ToolSegment&gt; segments<BR/>+setContent(String)<BR/>+setSegmentedContent(List&lt;ToolSegment&gt;)</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    CollapsibleToolPane [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD><FONT COLOR="gray"><I>&lt;&lt;BaseCollapsiblePane&gt;&gt;</I></FONT></TD></TR>
+        <TR><TD ALIGN="LEFT"><B>CollapsibleToolPane</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">-JTextArea textArea<BR/>-List&lt;ToolSegment&gt; segments<BR/>+setContent(String)<BR/>+setSegmentedContent(List&lt;ToolSegment&gt;)</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    CollapsibleCodePane [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD><FONT COLOR="gray"><I>&lt;&lt;BaseCollapsiblePane&gt;&gt;</I></FONT></TD></TR>
+        <TR><TD ALIGN="LEFT"><B>CollapsibleCodePane</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">-RSyntaxTextArea codeTextArea<BR/>-String language<BR/>+setCode(String, String)</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    AccordionGroup [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD ALIGN="LEFT"><B>AccordionGroup</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">-List&lt;BaseCollapsiblePane&gt; panes<BR/>+register(BaseCollapsiblePane)<BR/>+toggleAll()<BR/>+setAllExpanded(boolean)</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    StreamingCoordinator [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD ALIGN="LEFT"><B>StreamingCoordinator</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">-MessageBubble activeStreamBubble<BR/>-Timer streamFlushTimer<BR/>+startStreaming(MessageBubble)<BR/>+stopStreaming() : MessageBubble<BR/>+cleanup()</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    BubbleStreamer [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD ALIGN="LEFT"><B>BubbleStreamer</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">-JTextArea streamingTextArea<BR/>-Timer deferredFinalizeTimer<BR/>+appendText(String)<BR/>+flushUpdate()<BR/>+finalizeStreaming(boolean, boolean)</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    BubbleContentRenderer [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD ALIGN="LEFT"><B>BubbleContentRenderer</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">-JPanel segments<BR/>-StringBuilder text<BR/>+handleToolThoughtContent(ColorTheme, boolean, String)<BR/>+handleAssistantContent(ColorTheme, boolean)<BR/>+buildCodePanes(String, ColorTheme)</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    BubbleAccordionManager [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD ALIGN="LEFT"><B>BubbleAccordionManager</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">-JPanel segments<BR/>+registerWithAccordionGroup(AccordionGroup)<BR/>+toggleAllBlocks(boolean)</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    BubbleThemeApplier [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD ALIGN="LEFT"><B>BubbleThemeApplier</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">-MessageBubble owner<BR/>-JPanel bubblePanel<BR/>+applyBubbleTheme(ColorTheme, String)<BR/>+buildHeaderPanel(String, String, ColorTheme)</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    BubbleFactory [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD><FONT COLOR="gray"><I>&lt;&lt;utility&gt;&gt;</I></FONT></TD></TR>
+        <TR><TD ALIGN="LEFT"><B>BubbleFactory</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">+createToolThoughtBubble(...) MessageBubble$<BR/>+createRoleBubble(...) MessageBubble$<BR/>+resolveAvatarPosition(...) : AvatarPosition$</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    MarkdownStyledRenderer [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD><FONT COLOR="gray"><I>&lt;&lt;utility&gt;&gt;</I></FONT></TD></TR>
+        <TR><TD ALIGN="LEFT"><B>MarkdownStyledRenderer</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">+render(String, ColorTheme) : JTextPane$</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    MarkdownTokenizer [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD><FONT COLOR="gray"><I>&lt;&lt;utility&gt;&gt;</I></FONT></TD></TR>
+        <TR><TD ALIGN="LEFT"><B>MarkdownTokenizer</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">+nextFormatMarker(String, int) : FormatMatch$</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    StyleResolver [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD><FONT COLOR="gray"><I>&lt;&lt;utility&gt;&gt;</I></FONT></TD></TR>
+        <TR><TD ALIGN="LEFT"><B>StyleResolver</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">+baseStyle(Font, Color) : SimpleAttributeSet$<BR/>+headerStyle(...) : SimpleAttributeSet$<BR/>+codeBlockStyle(...) : SimpleAttributeSet$</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    HtmlContentPreparer [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD><FONT COLOR="gray"><I>&lt;&lt;utility&gt;&gt;</I></FONT></TD></TR>
+        <TR><TD ALIGN="LEFT"><B>HtmlContentPreparer</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">+prepareHtml(String) : String$</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    FitEditorPane [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD><FONT COLOR="gray"><I>&lt;&lt;JTextPane&gt;&gt;</I></FONT></TD></TR>
+        <TR><TD ALIGN="LEFT"><B>FitEditorPane</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">+createHtmlPane() : FitEditorPane$<BR/>+setText(String)</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    ScrollController [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD><FONT COLOR="gray"><I>&lt;&lt;KeyEventDispatcher&gt;&gt;</I></FONT></TD></TR>
+        <TR><TD ALIGN="LEFT"><B>ScrollController</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">+isAtBottom() : boolean<BR/>+scrollToBottom()</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    MessageFilterManager [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD><FONT COLOR="gray"><I>&lt;&lt;utility&gt;&gt;</I></FONT></TD></TR>
+        <TR><TD ALIGN="LEFT"><B>MessageFilterManager</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">+isTypeHidden(String) : boolean$<BR/>+setTypeHidden(String, boolean)$<BR/>+getEffectiveMessageTypes() : String[]$</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    ThemeManager [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD><FONT COLOR="gray"><I>&lt;&lt;singleton&gt;&gt;</I></FONT></TD></TR>
+        <TR><TD ALIGN="LEFT"><B>ThemeManager</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">+getCurrentTheme() : ColorTheme$<BR/>+getFont() : Font$<BR/>+getIcon(String, int) : Icon$</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    ColorTheme [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD><FONT COLOR="gray"><I>&lt;&lt;record&gt;&gt;</I></FONT></TD></TR>
+        <TR><TD ALIGN="LEFT"><B>ColorTheme</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">+isDark boolean<BR/>+background() : Color<BR/>+foreground() : Color<BR/>+bubbleUser() : Color<BR/>+bubbleAssistant() : Color<BR/>+sunkenBackground() : Color</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    IconResourceManager [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD><FONT COLOR="gray"><I>&lt;&lt;singleton&gt;&gt;</I></FONT></TD></TR>
+        <TR><TD ALIGN="LEFT"><B>IconResourceManager</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">+getIcon(String, int) : Icon$<BR/>+getFont() : Font$</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    ChatLayoutBuilder [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD ALIGN="LEFT"><B>ChatLayoutBuilder</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">+buildHeaderPanel() : JPanel<BR/>+buildBottomPanel() : JPanel<BR/>+getRightStatusPanel() : JPanel</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    SessionLifecycleHandler [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD><FONT COLOR="gray"><I>&lt;&lt;SessionListener&gt;&gt;</I></FONT></TD></TR>
+        <TR><TD ALIGN="LEFT"><B>SessionLifecycleHandler</B> <FONT COLOR="gray">(SessionListener)</FONT></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">+onSessionListUpdated(List&lt;Session&gt;)<BR/>+onSessionLoaded(String, List, boolean)<BR/>+onSessionUpdate(SessionUpdate)<BR/>+onSessionError(String)</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    ComponentLifecycleHandler [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD ALIGN="LEFT"><B>ComponentLifecycleHandler</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">+componentOpened()<BR/>+componentActivated()<BR/>+componentClosed()</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    MessageSender [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD ALIGN="LEFT"><B>MessageSender</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">+sendUserMessage(String)<BR/>+stopMessage()</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    InputHandler [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD ALIGN="LEFT"><B>InputHandler</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">+keyPressed(KeyEvent)<BR/>+install(JTextArea)</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    StatusController [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD ALIGN="LEFT"><B>StatusController</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">+setStatus(String)<BR/>+setThinking(boolean)<BR/>+setEnabled(boolean)</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    ConfigPanelController [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD ALIGN="LEFT"><B>ConfigPanelController</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">-ModelVariantResolver modelResolver<BR/>-JComboBox&lt;ConfigItem&gt; modelCombo<BR/>+updateConfigOptions(List&lt;SessionConfigOption&gt;)</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    ModelVariantResolver [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD ALIGN="LEFT"><B>ModelVariantResolver</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">-LinkedHashMap modelVariants<BR/>+parseModelVariants(SessionConfigOption)<BR/>+resolveModelId(String, String) : String<BR/>+getStartupDefaults(...) : Map</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    AttachmentManager [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD ALIGN="LEFT"><B>AttachmentManager</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">+addAttachment(AttachedFile)<BR/>+getAttachments() : List&lt;AttachedFile&gt;<BR/>+clear()</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    AttachmentUiHandler [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD ALIGN="LEFT"><B>AttachmentUiHandler</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">+getButton() : JButton</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    PermissionDialogManager [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD ALIGN="LEFT"><B>PermissionDialogManager</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">+handleRequest(String, JsonNode, CompletableFuture)</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    PermissionBubble [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD><FONT COLOR="gray"><I>&lt;&lt;JPanel&gt;&gt;</I></FONT></TD></TR>
+        <TR><TD ALIGN="LEFT"><B>PermissionBubble</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">+setText(String)</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    SessionDropdownHandler [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD ALIGN="LEFT"><B>SessionDropdownHandler</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">+sessionSelected(String)</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    UIUtils [label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
+        <TR><TD><FONT COLOR="gray"><I>&lt;&lt;utility&gt;&gt;</I></FONT></TD></TR>
+        <TR><TD ALIGN="LEFT"><B>UIUtils</B></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">+createToolbarButton(String, int, String, ActionListener) : JButton$<BR/>+createRoundedComboBox(...) : JComboBox$</FONT></TD></TR>
+        </TABLE>
+    >]
+
+    }  /* end cluster_ui */
+
+    /* ================================================================ */
+    /* Relationships — Contract Implementations                         */
+    /* ================================================================ */
+
+    SessionControl -> SessionQuery [arrowhead=empty label="extends"]
+
+    SlashCommandInterceptor -> SlashCommandCallback [style=solid label="uses"]
+    SlashCommandInterceptor -> SlashCommandHandler [style=solid label="uses"]
+
+    /* ================================================================ */
+    /* Relationships — Manager Compositions                             */
+    /* ================================================================ */
+
+    SessionManager -> SessionStateMachine [arrowhead=diamond label="manages state"]
+    SessionManager -> SessionCacheManager [arrowhead=diamond label="delegates caching"]
+    SessionManager -> SessionRpcClient [arrowhead=diamond label="delegates RPC"]
+    ProcessManager -> ServerProcessLifecycle [arrowhead=diamond label="delegates start/stop"]
+    ProcessManager -> AcpReconnectManager [arrowhead=diamond label="handles reconnect"]
+    ProcessManager -> AcpRequestRouter [arrowhead=diamond label="routes requests"]
+    ProcessManager -> AcpProtocolClient [arrowhead=diamond label="owns RPC transport"]
+    ProcessManager -> McpToolAdapter [arrowhead=diamond label="delegates tool execution"]
+    ProcessManager -> SlashCommandInterceptor [arrowhead=diamond label="intercepts commands"]
+
+    ServerProcessLifecycle -> AcpProtocolClient [style=solid label="initializes"]
+    AcpReconnectManager -> AcpProtocolClient [style=solid label="reconnects"]
+    AcpRequestRouter -> PermissionHandler [style=solid label="delegates permissions"]
+
+    SessionRpcClient -> ProcessManager [style=solid label="calls sendRequest"]
+
+    StrategyRegistry -> SubAgentTitleResolver [style=solid label="resolves titles"]
+    StrategyRegistry -> ToolDataExtractor [style=solid label="extracts tool data"]
+
+    /* ================================================================ */
+    /* Relationships — MCP Compositions                                 */
+    /* ================================================================ */
+
+    McpManager -> McpServer [arrowhead=diamond label="manages server"]
+    McpManager -> McpTools [arrowhead=diamond label="manages tools"]
+    McpToolAdapter -> McpManager [arrowhead=diamond label="adapts"]
+
+    /* ================================================================ */
+    /* Relationships — UI Compositions                                  */
+    /* ================================================================ */
+
+    AssistantTopComponent -> ChatThreadPanel [arrowhead=diamond label="creates & owns"]
+    AssistantTopComponent -> ConfigPanelController [arrowhead=diamond label="creates & owns"]
+    AssistantTopComponent -> SessionLifecycleHandler [arrowhead=diamond label="creates & owns"]
+    AssistantTopComponent -> ComponentLifecycleHandler [arrowhead=diamond label="creates & owns"]
+    AssistantTopComponent -> MessageSender [arrowhead=diamond label="creates & owns"]
+    AssistantTopComponent -> InputHandler [arrowhead=diamond label="creates & owns"]
+    AssistantTopComponent -> StatusController [arrowhead=diamond label="creates & owns"]
+    AssistantTopComponent -> AttachmentUiHandler [arrowhead=diamond label="uses"]
+
+    ChatThreadPanel -> StreamingCoordinator [arrowhead=diamond label="delegates streaming"]
+    ChatThreadPanel -> BubbleFactory [style=solid label="creates bubbles via"]
+    ChatThreadPanel -> MessageFilterManager [style=solid label="queries visibility"]
+    ChatThreadPanel -> ScrollController [style=solid label="auto-scroll control"]
+
+    MessageBubble -> BubbleStreamer [arrowhead=diamond label="delegates streaming append"]
+    MessageBubble -> BubbleContentRenderer [arrowhead=diamond label="delegates render update"]
+    MessageBubble -> BubbleAccordionManager [arrowhead=diamond label="delegates expand/collapse"]
+    MessageBubble -> BubbleThemeApplier [arrowhead=diamond label="delegates theme colors"]
+
+    BubbleContentRenderer -> CollapsibleActivityPane [style=solid label="creates"]
+    BubbleContentRenderer -> CollapsibleCodePane [style=solid label="creates"]
+    BubbleContentRenderer -> CollapsibleToolPane [style=solid label="creates"]
+    BubbleContentRenderer -> FitEditorPane [style=solid label="creates"]
+    BubbleContentRenderer -> HtmlContentPreparer [style=solid label="converts markdown"]
+
+    BubbleAccordionManager -> AccordionGroup [style=solid label="registers with"]
+
+    BubbleThemeApplier -> MessageBubble [style=solid label="updates owner background"]
+
+    BaseCollapsiblePane -> CollapsibleActivityPane [arrowhead=empty label="extends"]
+    BaseCollapsiblePane -> CollapsibleCodePane [arrowhead=empty label="extends"]
+    BaseCollapsiblePane -> CollapsibleToolPane [arrowhead=empty label="extends"]
+
+    AccordionGroup -> BaseCollapsiblePane [arrowhead=diamond label="manages panes"]
+
+    MarkdownStyledRenderer -> MarkdownTokenizer [style=solid label="tokenizes inline markup"]
+    MarkdownStyledRenderer -> StyleResolver [style=solid label="resolves token→attributes"]
+
+    ChatLayoutBuilder -> AssistantTopComponent [style=solid label="builds layout for"]
+    ChatLayoutBuilder -> UIUtils [style=solid label="uses utilities"]
+
+    SessionLifecycleHandler -> ChatThreadPanel [style=solid label="updates chat"]
+    SessionLifecycleHandler -> ConfigPanelController [style=solid label="updates config"]
+
+    MessageSender -> SlashCommandInterceptor [style=solid label="intercepts commands"]
+
+    PermissionDialogManager -> PermissionHandler [style=solid label="routes requests"]
+    PermissionDialogManager -> PermissionBubble [arrowhead=diamond label="displays bubble"]
+
+    ConfigPanelController -> ModelVariantResolver [arrowhead=diamond label="resolves models"]
+    AttachmentManager -> AttachmentUiHandler [arrowhead=diamond label="manages state"]
+
+    /* ================================================================ */
+    /* Relationships — Theme & Rendering                                */
+    /* ================================================================ */
+
+    ThemeManager -> ColorTheme [style=solid label="provides"]
+    ThemeManager -> IconResourceManager [style=solid label="delegates icons/fonts"]
+
+    BaseCollapsiblePane -> ThemeManager [style=solid label="reads icons & fonts"]
+    CollapsibleCodePane -> ThemeManager [style=solid label="reads fonts"]
+    BubbleStreamer -> ColorTheme [style=solid label="reads"]
+    BubbleContentRenderer -> ColorTheme [style=solid label="reads"]
+    BubbleThemeApplier -> ColorTheme [style=solid label="reads"]
+    MarkdownStyledRenderer -> ColorTheme [style=solid label="reads"]
+
+    /* ================================================================ */
+    /* Relationships — Constants Usage                                  */
+    /* ================================================================ */
+
+    MessageBubble -> TimingConstants [style=solid label="stream flush timing"]
+    StreamingCoordinator -> TimingConstants [style=solid label="stream flush timing"]
+
+    PreferenceKeys -> PluginSettings [style=solid label="preference constants"]
+}
