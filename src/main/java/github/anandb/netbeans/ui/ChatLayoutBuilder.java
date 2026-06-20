@@ -374,11 +374,7 @@ final class ChatLayoutBuilder {
         versionLabel.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                try {
-                    Desktop.getDesktop().browse(new URI(releasesUrl));
-                } catch (Exception ex) {
-                    // ignore
-                }
+                github.anandb.netbeans.support.BrowserUtils.openOrCopyUrl(releasesUrl, null, null);
             }
         });
 
