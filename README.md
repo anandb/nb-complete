@@ -126,18 +126,18 @@ For a guided walkthrough mapped to the plugin's execution flow, read files in th
 
 The plugin reads the following system properties and environment variables:
 
-| Property | Type | Default | Used In | Purpose |
-|---|---|---|---|---|
-| `user.dir` | System property | — | `ProcessManager`, `SessionManager`, `AssistantTopComponent` | Working directory for session/project |
-| `user.home` | System property | — | `ACPCommandBuilderTest` | Default path to opencode binary |
-| `java.io.tmpdir` | System property | — | `ImagePasteTransferHandler` | Temp directory for pasted images |
-| `os.name` | System property | — | `BinaryResolver` | Detect Windows for binary resolution |
-| `netbeans.codingassistant.roundedPanels` | System property | `true` | `RoundedPanel` | Toggle rounded panel corners |
-| `netbeans.codingassistant.color.*` (33 color properties) | System property | varies | `ColorTheme` (via `colors.json`) | Override any UI color |
-| `nb.dark.theme` | UIManager property | — | `IconResourceManager` | Detect dark theme for icon resolution |
-| `ACP_WIRE_LOG` | Environment variable | — | `WireLogger` | Path for ACP wire protocol log file |
-| `OPENCODE_MODEL` | Environment variable | — | `ConfigPanelController` | Default model override in config |
-| `PATH` | Environment variable | — | `BinaryResolver` | Search path for opencode binary |
+| Property | System | Description |
+|---|---|---|
+| `user.dir` | System | Working directory for session/project (`ProcessManager`, `SessionManager`, `AssistantTopComponent`) |
+| `user.home` | System | Default path to opencode binary (`ACPCommandBuilderTest`) |
+| `java.io.tmpdir` | System | Temp directory for pasted images (`ImagePasteTransferHandler`) |
+| `os.name` | System | Detect Windows for binary resolution (`BinaryResolver`) |
+| `netbeans.codingassistant.roundedPanels` | System (`true`) | Toggle rounded panel corners (`RoundedPanel`) |
+| `netbeans.codingassistant.color.*` | System (varies) | Override any UI color (`ColorTheme`) |
+| `nb.dark.theme` | UIManager | Detect dark theme for icon resolution (`IconResourceManager`) |
+| `ACP_WIRE_LOG` | Env | Path for ACP wire protocol log file (`WireLogger`) |
+| `OPENCODE_MODEL` | Env | Default model override in config (`ConfigPanelController`) |
+| `PATH` | Env | Search path for opencode binary (`BinaryResolver`) |
 
 The color properties are declared in [`colors.json`](src/main/resources/github/anandb/netbeans/ui/colors.json) and cover: background, foreground, selection, accent, ghost background, sunken background, bubble (user/assistant), code, table, header, thinking, tool, permission, and error colors — each with light and dark variants.
 
