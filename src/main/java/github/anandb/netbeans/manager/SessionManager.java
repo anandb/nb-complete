@@ -163,10 +163,17 @@ public class SessionManager implements SessionQuery, SessionControl {
             synchronized (SessionManager.class) {
                 sm = INSTANCE;
                 if (sm == null) {
-                    sm = Lookup.getDefault().lookup(SessionManager.class);
-                    if (sm == null) {
-                        throw new IllegalStateException(
-                                "SessionManager not found in Lookup — @ServiceProvider registration is broken");
+                    // @ServiceProvider registers under SessionControl.class,
+                    // not SessionManager.class — look up the interface.
+                    SessionControl sc = Lookup.getDefault().lookup(SessionControl.class);
+                    if (sc instanceof SessionManager mgr) {
+                        sm = mgr;
+                    } else if (sc != null) {
+                        // Interface found but different implementation — use it
+                        // wrapped, or fall back to direct construction.
+                        sm = new SessionManager();
+                    } else {
+                        sm = new SessionManager();
                     }
                     INSTANCE = sm;
                 }

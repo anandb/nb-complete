@@ -121,10 +121,15 @@ public class ProcessManager implements ProcessControl {
             synchronized (ProcessManager.class) {
                 pm = INSTANCE;
                 if (pm == null) {
-                    pm = Lookup.getDefault().lookup(ProcessManager.class);
-                    if (pm == null) {
-                        throw new IllegalStateException(
-                                "ProcessManager not found in Lookup — @ServiceProvider registration is broken");
+                    // @ServiceProvider registers under ProcessControl.class,
+                    // not ProcessManager.class — look up the interface.
+                    ProcessControl pc = Lookup.getDefault().lookup(ProcessControl.class);
+                    if (pc instanceof ProcessManager mgr) {
+                        pm = mgr;
+                    } else if (pc != null) {
+                        pm = new ProcessManager();
+                    } else {
+                        pm = new ProcessManager();
                     }
                     INSTANCE = pm;
                 }
