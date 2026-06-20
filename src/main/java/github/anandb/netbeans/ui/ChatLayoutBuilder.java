@@ -153,7 +153,7 @@ final class ChatLayoutBuilder {
         final JButton[] shbRef = new JButton[1];
         JButton shb = UIUtils.createToolbarButton("show.svg", NbBundle.getMessage(AssistantTopComponent.class, "HINT_ShowArchivedSessions"), e -> {
             boolean showing = !isShowingHidden();
-            NbPreferences.forModule(AssistantTopComponent.class).putBoolean("showHiddenSessions", showing);
+            NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean("showHiddenSessions", showing);
             shbRef[0].setIcon(ThemeManager.getIcon(showing ? "hide.svg" : "show.svg", 28));
             shbRef[0].setToolTipText(showing
                 ? NbBundle.getMessage(AssistantTopComponent.class, "HINT_HideArchivedSessions")
@@ -201,14 +201,14 @@ final class ChatLayoutBuilder {
         toggleBlocksBtn = tb;
         toggleBlocksBtn.putClientProperty("state", "expand");
 
-        final boolean savedKeepState = NbPreferences.forModule(AssistantTopComponent.class).getBoolean("keepOlderMessages", false);
+        final boolean savedKeepState = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean("keepOlderMessages", false);
         chatPanel.setKeepOlderMessages(savedKeepState);
         JButton pinBtn = UIUtils.createToolbarButton(savedKeepState ? "pin_off.svg" : "pin.svg",
                 NbBundle.getMessage(AssistantTopComponent.class, savedKeepState ? "HINT_TruncateMessages" : "HINT_KeepMessages"), null);
         pinBtn.addActionListener(e -> {
             boolean keep = !chatPanel.isKeepOlderMessages();
             chatPanel.setKeepOlderMessages(keep);
-            NbPreferences.forModule(AssistantTopComponent.class).putBoolean("keepOlderMessages", keep);
+            NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean("keepOlderMessages", keep);
             pinBtn.setIcon(ThemeManager.getIcon(keep ? "pin_off.svg" : "pin.svg", 28));
             pinBtn.setToolTipText(keep
                 ? NbBundle.getMessage(AssistantTopComponent.class, "HINT_TruncateMessages")
@@ -536,6 +536,6 @@ final class ChatLayoutBuilder {
     }
 
     static boolean isShowingHidden() {
-        return NbPreferences.forModule(AssistantTopComponent.class).getBoolean("showHiddenSessions", false);
+        return NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean("showHiddenSessions", false);
     }
 }
