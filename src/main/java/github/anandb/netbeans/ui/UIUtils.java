@@ -25,7 +25,9 @@ import javax.swing.border.Border;
 import javax.swing.border.EmptyBorder;
 
 import github.anandb.netbeans.support.PluginSettings;
+import github.anandb.netbeans.support.PreferenceKeys;
 import github.anandb.netbeans.support.Logger;
+import org.openide.util.NbPreferences;
 import org.openide.util.Utilities;
 
 public class UIUtils {
@@ -47,6 +49,20 @@ public class UIUtils {
     /** Cached font stack; invalidated when the LAF font family changes. */
     private static String cachedFontStack;
     private static String cachedFontFamily;
+
+    /** Cached custom user icon — avoids disk load + scale per user bubble.
+     *  Invalidated by a PreferenceChangeListener on KEY_CUSTOM_USER_ICON. */
+    private static volatile String cachedUserIconPath = "";
+    private static volatile Icon cachedUserIcon;
+
+    static {
+        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).addPreferenceChangeListener(evt -> {
+            if ("customUserIcon".equals(evt.getKey())) {
+                cachedUserIconPath = "";
+                cachedUserIcon = null;
+            }
+        });
+    }
 
     /** CSS font-family stack that respects the system-property override, then
      *  the NetBeans LAF font, then the generic fallback. */
@@ -155,12 +171,20 @@ public class UIUtils {
     public static Icon loadUserIcon(int size) {
         String path = PluginSettings.getCustomUserIcon();
         if (path != null && !path.isEmpty()) {
+            // Return cached icon if the path hasn't changed (avoids disk load
+            // + scale per user bubble on the EDT hot path).
+            if (path.equals(cachedUserIconPath) && cachedUserIcon != null) {
+                return cachedUserIcon;
+            }
             File file = new File(path);
             if (file.exists()) {
                 try {
                     ImageIcon icon = new ImageIcon(path);
                     if (icon.getIconWidth() > 0) {
-                        return new ImageIcon(icon.getImage().getScaledInstance(size, size, java.awt.Image.SCALE_SMOOTH));
+                        Icon scaled = new ImageIcon(icon.getImage().getScaledInstance(size, size, java.awt.Image.SCALE_SMOOTH));
+                        cachedUserIconPath = path;
+                        cachedUserIcon = scaled;
+                        return scaled;
                     }
                 } catch (Exception e) {
                     LOG.log(Level.WARNING, "Failed to load custom user icon", e);

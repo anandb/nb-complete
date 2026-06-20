@@ -26,6 +26,10 @@ public class McpManager {
     private final AtomicBoolean mcpDisabled = new AtomicBoolean(false);
     private CompletableFuture<Void> serverStartFuture;
     private volatile CompletableFuture<Void> readyFuture = new CompletableFuture<>();
+    /** Thread running the server start task — used for explicit interruption
+     *  on stop(), since CompletableFuture.cancel(true) only completes the
+     *  future exceptionally without interrupting the running task. */
+    private volatile Thread startThread;
 
     public void start() {
         LOG.info("McpManager.start() called, disabled={0}", mcpDisabled.get());
@@ -42,32 +46,37 @@ public class McpManager {
             readyFuture = new CompletableFuture<>();
             LOG.info("Starting MCP server asynchronously...");
             serverStartFuture = CompletableFuture.runAsync(() -> {
-                McpServer server = null;
+                startThread = Thread.currentThread();
                 try {
-                    LOG.info("Creating new McpServer instance...");
-                    server = new McpServer();
-                    LOG.info("Starting MCP server...");
-                    server.start();
-                    synchronized (McpManager.this) {
-                        mcpServer = server;
-                        serverStartFuture = null;
-                    }
-                    LOG.info("MCP Server running at {0}", server.getUrl());
-                    LOG.info("Completing MCP ready future");
-                    readyFuture.complete(null);
-                } catch (IOException e) {
-                    LOG.warn("Failed to start MCP server: {0}", e.getMessage());
-                    if (server != null) {
-                        server.stop();
-                    }
-                    synchronized (McpManager.this) {
-                        serverStartFuture = null;
-                        // Complete inside the synchronized block to prevent a
-                        // race where a concurrent start() replaces readyFuture
-                        // between our null-out and the complete, which would
-                        // prematurely complete the NEW future.
+                    McpServer server = null;
+                    try {
+                        LOG.info("Creating new McpServer instance...");
+                        server = new McpServer();
+                        LOG.info("Starting MCP server...");
+                        server.start();
+                        synchronized (McpManager.this) {
+                            mcpServer = server;
+                            serverStartFuture = null;
+                        }
+                        LOG.info("MCP Server running at {0}", server.getUrl());
+                        LOG.info("Completing MCP ready future");
                         readyFuture.complete(null);
+                    } catch (IOException e) {
+                        LOG.warn("Failed to start MCP server: {0}", e.getMessage());
+                        if (server != null) {
+                            server.stop();
+                        }
+                        synchronized (McpManager.this) {
+                            serverStartFuture = null;
+                            // Complete inside the synchronized block to prevent a
+                            // race where a concurrent start() replaces readyFuture
+                            // between our null-out and the complete, which would
+                            // prematurely complete the NEW future.
+                            readyFuture.complete(null);
+                        }
                     }
+                } finally {
+                    startThread = null;
                 }
             }, mcpStartExecutor);
             LOG.info("MCP server start task submitted to async executor");
@@ -81,6 +90,12 @@ public class McpManager {
     public void stop() {
         synchronized (this) {
             if (serverStartFuture != null) {
+                // Interrupt the running start thread — CompletableFuture.cancel(true)
+                // only completes the future exceptionally without interrupting.
+                Thread t = startThread;
+                if (t != null) {
+                    t.interrupt();
+                }
                 serverStartFuture.cancel(true);
                 serverStartFuture = null;
             }

@@ -49,18 +49,23 @@ public class EditorToolProvider {
                 new ToolExecutor<EmptyToolInput, List<String>>(EmptyToolInput.class) {
                     @Override
                     public List<String> execute(EmptyToolInput args) throws Exception {
-                        List<String>[] result = new List[1];
-                        SwingUtilities.invokeAndWait(() -> {
-                            List<String> paths = new ArrayList<>();
-                            for (var editor : EditorRegistry.componentList()) {
-                                FileObject fo = NbEditorUtilities.getFileObject(editor.getDocument());
-                                if (fo != null) {
-                                    paths.add(fo.getPath());
+                        java.util.concurrent.CompletableFuture<List<String>> future =
+                                new java.util.concurrent.CompletableFuture<>();
+                        SwingUtilities.invokeLater(() -> {
+                            try {
+                                List<String> paths = new ArrayList<>();
+                                for (var editor : EditorRegistry.componentList()) {
+                                    FileObject fo = NbEditorUtilities.getFileObject(editor.getDocument());
+                                    if (fo != null) {
+                                        paths.add(fo.getPath());
+                                    }
                                 }
+                                future.complete(paths);
+                            } catch (Exception e) {
+                                future.completeExceptionally(e);
                             }
-                            result[0] = paths;
                         });
-                        return result[0];
+                        return future.get(5, java.util.concurrent.TimeUnit.SECONDS);
                     }
                 });
     }
