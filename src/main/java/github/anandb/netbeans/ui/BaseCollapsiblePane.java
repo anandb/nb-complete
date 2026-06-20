@@ -87,9 +87,13 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
             BorderFactory.createMatteBorder(0, 4, 0, 0, defaultAccent),
             BorderFactory.createEmptyBorder(5, 4, 5, 10)
         ));
+        header.getAccessibleContext().setAccessibleName("Collapsible pane header");
+        header.getAccessibleContext().setAccessibleDescription("Click to expand or collapse");
 
         headerLabel = new JLabel("");
         headerLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
+        headerLabel.getAccessibleContext().setAccessibleName("Pane title");
+        headerLabel.getAccessibleContext().setAccessibleDescription("Click to expand or collapse this pane");
 
         titlePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0)) {
             @Override
@@ -170,13 +174,15 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
         header.add(eastPlaceholder, BorderLayout.EAST);
 
         // Collapse/expand button for the accordion group
-        groupToggleBtn = new JButton("+");
-        groupToggleBtn.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN, 14f));
+        groupToggleBtn = new JButton(ThemeManager.getIcon("expand.svg", 14));
         groupToggleBtn.setBorder(BorderFactory.createEmptyBorder(0, 4, 0, 4));
         groupToggleBtn.setContentAreaFilled(false);
         groupToggleBtn.setFocusPainted(false);
         groupToggleBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
         groupToggleBtn.setToolTipText(NbBundle.getMessage(BaseCollapsiblePane.class, "HINT_CollapseExpandAll"));
+        groupToggleBtn.getAccessibleContext().setAccessibleName("Collapse or expand all panes");
+        groupToggleBtn.getAccessibleContext().setAccessibleDescription(
+                NbBundle.getMessage(BaseCollapsiblePane.class, "HINT_CollapseExpandAll"));
         groupToggleBtn.setVisible(false);
         groupToggleBtn.addActionListener(e -> {
             AccordionGroup g = getAccordionGroup();
@@ -215,7 +221,7 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
         AccordionGroup g = getAccordionGroup();
         if (g == null) return;
         boolean allExpanded = g.allExpanded();
-        groupToggleBtn.setText(allExpanded ? "-" : "+");
+        groupToggleBtn.setIcon(ThemeManager.getIcon(allExpanded ? "collapse.svg" : "expand.svg", 14));
     }
 
     public void setExpanded(boolean expanded) {

@@ -117,8 +117,8 @@ final class WelcomeScreen {
         btn.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseEntered(MouseEvent e) {
-                btn.setOpaque(false);
-                btn.setBackground(new Color(0, 0, 0, 10));
+                btn.setOpaque(true);
+                btn.setBackground(ThemeManager.getCurrentTheme().panelHeader());
                 btn.repaint();
             }
 

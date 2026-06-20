@@ -1,12 +1,15 @@
 package github.anandb.netbeans.ui;
 
 import java.awt.Color;
+import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Graphics;
+import java.awt.Rectangle;
 import javax.swing.Action;
 import javax.swing.ActionMap;
 import javax.swing.JPopupMenu;
 import javax.swing.JTextArea;
+import javax.swing.Scrollable;
 import javax.swing.text.DefaultEditorKit;
 import javax.swing.undo.CannotRedoException;
 import javax.swing.undo.CannotUndoException;
@@ -16,7 +19,7 @@ import java.util.regex.Pattern;
 
 import github.anandb.netbeans.support.Logger;
 
-public class PlaceholderTextArea extends JTextArea {
+public class PlaceholderTextArea extends JTextArea implements Scrollable {
     private static final long serialVersionUID = 1L;
     private static final Pattern LINE_SPLIT = Pattern.compile("\\R");
     private static final Logger LOG = Logger.from(PlaceholderTextArea.class);
@@ -127,5 +130,34 @@ public class PlaceholderTextArea extends JTextArea {
             g.setColor(oldColor);
             g.setFont(oldFont);
         }
+    }
+
+    // --- Scrollable implementation ---
+
+    @Override
+    public Dimension getPreferredScrollableViewportSize() {
+        // Let JTextArea compute its natural preferred size based on content.
+        // Starts at ~2 lines when empty, grows as user types.
+        return super.getPreferredSize();
+    }
+
+    @Override
+    public int getScrollableUnitIncrement(Rectangle visibleRect, int orientation, int direction) {
+        return getFontMetrics(getFont()).getHeight();
+    }
+
+    @Override
+    public int getScrollableBlockIncrement(Rectangle visibleRect, int orientation, int direction) {
+        return visibleRect.height;
+    }
+
+    @Override
+    public boolean getScrollableTracksViewportWidth() {
+        return true; // Always fill the scroll pane width — text wraps
+    }
+
+    @Override
+    public boolean getScrollableTracksViewportHeight() {
+        return false; // Let the scroll pane grow vertically as content grows
     }
 }

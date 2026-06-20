@@ -68,6 +68,9 @@ these models — they are provided as part of the free OpenCode tier.
 - **Escape** — If the options panel is open, closes it and returns focus to the input area.
 - **Ctrl + W** — Intercepted to prevent the assistant panel from closing accidentally when it has
   keyboard focus.
+- **Keyboard Shortcuts Dialog** — Click the **?** toolbar button to open a reference dialog
+  listing all fixed and assignable shortcuts. Assignable shortcuts can be customized via
+  `Tools > Keymap > Actions > Assistant`.
 
 ---
 
@@ -146,6 +149,9 @@ The assistant panel renders responses with structured formatting:
 - **Pin Messages** — Older messages are gradually evicted from the chat panel to conserve memory
   (they remain in session history). Use the **Pin** button to keep important messages visible
   indefinitely.
+- **Toolbar Customization** — Right-click the toolbar to show/hide individual buttons. Toggle
+  visibility of Archive, New Session, Rename, Reload, Keep, Expand/Collapse, Filter, Export, and
+  Restart Server buttons. Preferences are saved automatically.
 
 ---
 
@@ -157,6 +163,8 @@ The assistant panel renders responses with structured formatting:
   the server without clearing local state.
 - **Session Dropdown** — Switch between active sessions from the dropdown in the header. Each
   session preserves its own message history independently.
+- **Session Dropdown Right-Click** — Right-click the session dropdown to access quick actions:
+  **Rename**, **Archive/Unarchive**, and **Reload** for the currently selected session.
 - **Session Archiving** — The **Archive** button on the toolbar hides the current session from the
   dropdown without deleting it from the server. A **Show/Hide archived** toggle (eye icon) next to
   the dropdown controls visibility of archived sessions. The hidden flag is stored client-side only

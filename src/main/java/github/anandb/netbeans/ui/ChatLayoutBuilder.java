@@ -2,7 +2,6 @@ package github.anandb.netbeans.ui;
 
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
-import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 
@@ -72,6 +71,8 @@ final class ChatLayoutBuilder {
         topBar.setOpaque(false);
 
         sessionDropdown = new UIUtils.WrappingComboBox<>();
+        sessionDropdown.getAccessibleContext().setAccessibleName("Session selector");
+        sessionDropdown.getAccessibleContext().setAccessibleDescription("Select a chat session");
         sessionDropdown.addActionListener(e -> {
             if (!sessionDropdown.isPopupVisible()) {
                 Object sel = sessionDropdown.getSelectedItem();
@@ -334,11 +335,11 @@ final class ChatLayoutBuilder {
         inputArea.setLineWrap(true);
         inputArea.setWrapStyleWord(true);
         inputArea.setBorder(new EmptyBorder(12, 12, 12, 12));
+        inputArea.setRows(2);
         int editorFontSize = ThemeManager.getMonospaceFont().getSize();
         inputArea.setFont(ThemeManager.getFont().deriveFont(editorFontSize));
 
         inputScrollPane = new JScrollPane(inputArea);
-        inputScrollPane.setPreferredSize(new Dimension(100, 100));
 
         JPanel inputMainPanel = new JPanel(new BorderLayout(0, 4));
         inputMainPanel.setOpaque(false);
