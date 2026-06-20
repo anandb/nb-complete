@@ -57,7 +57,8 @@ public class StrategyRegistry implements UpdateDispatcher {
         if (dispatcher instanceof StrategyRegistry reg) {
             return reg;
         }
-        return new StrategyRegistry();
+        throw new IllegalStateException(
+                "StrategyRegistry not found in Lookup — @ServiceProvider registration is broken");
     }
 
     /** Invalidates the tool-call deduplication cache for a given session. */

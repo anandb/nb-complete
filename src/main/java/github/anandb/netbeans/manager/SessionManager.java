@@ -165,7 +165,8 @@ public class SessionManager implements SessionQuery, SessionControl {
                 if (sm == null) {
                     sm = Lookup.getDefault().lookup(SessionManager.class);
                     if (sm == null) {
-                        sm = new SessionManager();
+                        throw new IllegalStateException(
+                                "SessionManager not found in Lookup — @ServiceProvider registration is broken");
                     }
                     INSTANCE = sm;
                 }

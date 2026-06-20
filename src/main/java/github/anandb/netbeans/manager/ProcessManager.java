@@ -123,7 +123,8 @@ public class ProcessManager implements ProcessControl {
                 if (pm == null) {
                     pm = Lookup.getDefault().lookup(ProcessManager.class);
                     if (pm == null) {
-                        pm = new ProcessManager();
+                        throw new IllegalStateException(
+                                "ProcessManager not found in Lookup — @ServiceProvider registration is broken");
                     }
                     INSTANCE = pm;
                 }
