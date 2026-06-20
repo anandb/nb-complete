@@ -13,6 +13,7 @@ import java.awt.datatransfer.StringSelection;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.regex.Pattern;
 
 import javax.swing.BorderFactory;
 import javax.swing.Icon;
@@ -35,7 +36,7 @@ import github.anandb.netbeans.support.ToolDataExtractor;
  * copy buttons, and segmented panel builders to eliminate code duplication and maintain visual consistency.
  */
 public abstract class BaseCollapsiblePane extends RoundedPanel {
-
+    private static final Pattern TOOL_PREFIX = Pattern.compile("(?i)TOOL:?\\s*");
     private static final Logger LOG = Logger.from(BaseCollapsiblePane.class);
     private static final long serialVersionUID = 1L;
 
@@ -313,7 +314,7 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
             return;
         }
 
-        String stripped = rawTitle.replaceFirst("(?i)TOOL:?\\s*", "").trim();
+        String stripped = TOOL_PREFIX.matcher(rawTitle).replaceFirst("").trim();
 
         if (stripped.isEmpty() || "Tool".equalsIgnoreCase(stripped) || "Tool Call".equalsIgnoreCase(stripped)) {
             headerLabel.setText(CollapsibleHeaderRenderer.formatTitle(rawTitle));

@@ -42,7 +42,7 @@ public final class ToolDataExtractor {
         Pair.of("skill", Pattern.compile("<skill_content name=\"([^\"]{2,})\"")),
         Pair.of("context", Pattern.compile("(Compressed [\\d]+ messages) into")),
         Pair.of("", Pattern.compile("<path>([^<]{10,})</path>")),
-        Pair.of("", Pattern.compile("\"filePath\":([^\"]{10,})\""))
+        Pair.of("", Pattern.compile("\"filePath\"\\s*:\\s*\"([^\"]{10,})\""))
     );
 
     private ToolDataExtractor() {}

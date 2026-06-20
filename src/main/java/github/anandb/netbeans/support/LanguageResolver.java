@@ -1,7 +1,7 @@
 package github.anandb.netbeans.support;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Resolves file extensions to language identifiers.
@@ -9,7 +9,7 @@ import java.util.Map;
  */
 public final class LanguageResolver {
 
-    private static final Map<String, String> EXT_TO_LANGUAGE = new HashMap<>();
+    private static final Map<String, String> EXT_TO_LANGUAGE = new ConcurrentHashMap<>();
 
     static {
         // Common language keywords

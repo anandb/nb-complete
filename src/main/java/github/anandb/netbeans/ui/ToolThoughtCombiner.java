@@ -3,6 +3,7 @@ package github.anandb.netbeans.ui;
 import java.awt.Component;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 import javax.swing.Box;
 import javax.swing.JPanel;
 import org.openide.util.NbBundle;
@@ -18,6 +19,7 @@ import github.anandb.netbeans.model.MessageType;
 public final class ToolThoughtCombiner {
 
     private static volatile boolean combineEnabled = true;
+    private static final Pattern TOOL_PREFIX = Pattern.compile("(?i)TOOL:?\\s*");
 
     static {
         NbPreferences.forModule(ACPOptionsPanel.class)
@@ -104,7 +106,7 @@ public final class ToolThoughtCombiner {
                         }
                         // For "read" tool segments, skip body content — show header only
                         if ("tool".equals(role) && segTitle != null) {
-                            String stripped = segTitle.replaceFirst("(?i)TOOL:?\\s*", "").trim();
+                            String stripped = TOOL_PREFIX.matcher(segTitle).replaceFirst("").trim();
                             int pos = stripped.indexOf(' ');
                             String firstWord = (pos > 1) ? stripped.substring(0, pos) : stripped;
                             if ("read".equalsIgnoreCase(firstWord)

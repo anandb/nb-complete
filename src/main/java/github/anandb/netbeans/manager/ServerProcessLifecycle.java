@@ -179,6 +179,8 @@ class ServerProcessLifecycle {
         } catch (Exception e) {
             LOG.severe("CRITICAL: Failed to start ACP server", e);
             readyFuture.completeExceptionally(e);
+            // Reset so ensureStarted() can retry.
+            serverStarted = false;
 
             // Clean up partially-started process and client to avoid resource leaks.
             AcpProtocolClient client = rpcClient.getAndSet(null);

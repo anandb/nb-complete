@@ -1,6 +1,7 @@
 package github.anandb.netbeans.ui;
 
 import java.util.Locale;
+import java.util.regex.Pattern;
 import javax.swing.Icon;
 import org.openide.util.NbBundle;
 import org.apache.commons.lang3.StringUtils;
@@ -10,6 +11,8 @@ import org.apache.commons.lang3.StringUtils;
  * Extracted from BaseCollapsiblePane to isolate title/icon logic.
  */
 final class CollapsibleHeaderRenderer {
+
+    private static final Pattern TOOL_PREFIX = Pattern.compile("(?i)TOOL:?\\s*");
 
     private CollapsibleHeaderRenderer() {
     }
@@ -51,7 +54,7 @@ final class CollapsibleHeaderRenderer {
             return NbBundle.getMessage(CollapsibleHeaderRenderer.class, "LBL_ThinkingProcess");
         }
 
-        String stripped = rawTitle.replaceFirst("(?i)TOOL:?\\s*", "").trim();
+        String stripped = TOOL_PREFIX.matcher(rawTitle).replaceFirst("").trim();
 
         if (stripped.isEmpty() || "Tool".equalsIgnoreCase(stripped) || "Tool Call".equalsIgnoreCase(stripped)) {
             return NbBundle.getMessage(CollapsibleHeaderRenderer.class, "LBL_ToolFallback");

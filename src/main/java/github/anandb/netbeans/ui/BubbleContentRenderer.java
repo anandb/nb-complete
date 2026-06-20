@@ -138,7 +138,7 @@ class BubbleContentRenderer {
             int beforeStart = matcher.start();
             if (beforeStart > lastEnd) {
                 String textBefore = text.substring(lastEnd, beforeStart);
-                currentCompIdx = addTextAndTableSegments(textBefore, theme, currentCompIdx, expanded);
+                currentCompIdx = addTextAndTableSegments(textBefore, theme, currentCompIdx, false);
             }
 
             String lang = matcher.group(1);
@@ -161,7 +161,7 @@ class BubbleContentRenderer {
         if (lastEnd < currentLen) {
             String remaining = text.substring(lastEnd);
             if (!remaining.isEmpty()) {
-                currentCompIdx = addTextAndTableSegments(remaining, theme, currentCompIdx, expanded);
+                currentCompIdx = addTextAndTableSegments(remaining, theme, currentCompIdx, false);
             }
         }
 

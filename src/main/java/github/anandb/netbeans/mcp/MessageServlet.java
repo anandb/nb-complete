@@ -68,6 +68,13 @@ class MessageServlet extends HttpServlet {
                 }
 
                 JsonNode req = mapper.readTree(body.toString());
+                if (!req.has("method")) {
+                    HttpServletResponse httpResp = (HttpServletResponse) asyncContext.getResponse();
+                    httpResp.setContentType("application/json");
+                    httpResp.setStatus(400);
+                    httpResp.getWriter().write("{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32600,\"message\":\"Missing required field: method\"}}");
+                    return;
+                }
                 String method = req.get("method").asText();
                 JsonNode params = req.get("params");
                 boolean isNotification = !req.has("id");

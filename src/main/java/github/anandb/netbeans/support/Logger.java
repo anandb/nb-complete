@@ -11,8 +11,8 @@ import java.util.logging.LogRecord;
  */
 public class Logger {
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm:ss.SSS");
-    private static String currentSessionId;
-    private static String currentSessionName;
+    private static volatile String currentSessionId;
+    private static volatile String currentSessionName;
 
     private final java.util.logging.Logger acpLogger;
 
