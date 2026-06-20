@@ -137,6 +137,16 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         // Add attachment button to the right status panel (before settings button)
         layoutBuilder.getRightStatusPanel().add(attachmentUiHandler.getButton(), 0);
 
+        // Add rocket (OpenCode Go) button to the left of the attachment button
+        JButton rocketBtn = UIUtils.createToolbarButton("rocket.svg", 25, "Sign up for OpenCode Go (Referral Link)", e -> {
+            try {
+                Desktop.getDesktop().browse(new java.net.URI("https://opencode.ai/go?ref=DWTNHGN9KX"));
+            } catch (Exception ex) {
+                // ignore
+            }
+        });
+        layoutBuilder.getRightStatusPanel().add(rocketBtn, 0);
+
         sessionDropdownHandler = new SessionDropdownHandler(sessionDropdown, inputArea);
         sessionLifecycleHandler = new SessionLifecycleHandler(
             chatPanel, sessionDropdown, hideBtn, newSessionBtn, renameSessionBtn,

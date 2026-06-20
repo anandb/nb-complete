@@ -2,8 +2,13 @@ package github.anandb.netbeans.ui;
 
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
+import java.awt.Cursor;
+import java.awt.Desktop;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.net.URI;
 
 import javax.swing.JButton;
 import javax.swing.JCheckBoxMenuItem;
@@ -357,11 +362,25 @@ final class ChatLayoutBuilder {
         btnCard.add(sendBtn, "SEND");
         btnCard.add(stopBtn, "STOP");
 
-        versionLabel = new JLabel("v" + AgentUtils.getVersion());
+        String version = AgentUtils.getVersion();
+        String releasesUrl = "https://github.com/anandb/nb-complete/releases/tag/v" + version;
+        versionLabel = new JLabel("<html><u>v" + version + "</u></html>");
         Font labelFont = UIManager.getFont("Label.font");
         versionLabel.setFont(versionLabel.getFont().deriveFont(labelFont != null ? labelFont.getSize() - 1f : 9f));
         versionLabel.setForeground(ThemeManager.getCurrentTheme().mutedForeground());
         versionLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        versionLabel.setToolTipText("View Release Notes");
+        versionLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        versionLabel.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                try {
+                    Desktop.getDesktop().browse(new URI(releasesUrl));
+                } catch (Exception ex) {
+                    // ignore
+                }
+            }
+        });
 
         JPanel rightPanel = new JPanel(new BorderLayout(0, 4));
         rightPanel.setOpaque(false);

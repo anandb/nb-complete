@@ -1,5 +1,67 @@
 # Release Notes
 
+## v1.7.0 (Changes since v1.6.1)
+
+### Features
+- **Session archiving**: Archive/unarchive sessions with toggle in toolbar; show/hide archived sessions next to session dropdown (client-side only). Right-click session dropdown for quick archive/rename/reload.
+- **`/title` slash command**: Generate session titles via AI.
+- **Sub-agent session hierarchy**: Track parent-child sessions; prefix sub-agent thought chunks and tool steps with agent title; permission requests for descendant sessions.
+- **Session rename**: Rename sessions via MCP editor tool, input dialog, or right-click session dropdown.
+- **History search dialog**: Searchable message history with 1024-entry store.
+- **Keyboard shortcuts dialog**: Two-column layout with dynamic shortcut resolution; toggle open/close on click.
+- **Toolbar customization**: 10 NetBeans action classes for toolbar buttons (assignable shortcuts, no defaults). Right-click toolbar to toggle button visibility via checkbox menu.
+- **MCP resources**: Expose caveman skill as MCP resource; implement `resources/list` and `resources/read` in `MessageServlet`.
+- **Resume after reconnect**: Sends invisible 'Proceed' prompt with `audience: assistant` after ACP reconnection so the agent resumes from where it left off.
+
+### UI & Accessibility
+- **Accessible components**: Added `Accessible` context to `MessageBubble`, `BaseCollapsiblePane`, `ScrollController`, and session dropdown for screen reader navigation.
+- **PlaceholderTextArea implements Scrollable**: Input area starts at 2 lines, grows with content — no more hardcoded 100×100 size.
+- **Group toggle icons**: `groupToggleBtn` uses `expand.svg`/`collapse.svg` instead of `+`/`-` text.
+- **Mnemonics**: Added mnemonics to Go/Stop buttons.
+- **History navigation**: Changed from Up/Down to Alt+Up/Alt+Down to avoid conflicts.
+- **Reconnect crash details**: ACP server disconnection notification now includes exception details.
+- **Tab label format**: Sidebar tab displays `model/level | Agent` with bold blue agent name.
+
+### Performance
+- **Swing rendering optimizations**: Batched `stopStreaming()` revalidates (single pass); single `invokeLater` for all messages in `setMessages()`; removed redundant `revalidate()` calls in stream flush.
+- **RoundedPanel paint cache**: Cached resolved theme border color and shape across paint passes; avoid `ThemeManager` lookup and shape allocation every repaint.
+- **BaseCollapsiblePane short-circuit**: `updateAppearance` skips when colors/expanded state unchanged.
+- **MarkdownStyledRenderer**: Index arithmetic for `#` counting; hoisted `ThemeManager.getFont()`; shared `tableAttr` for non-header rows.
+- **CollapsibleActivityPane**: `StringBuilder` for streamed text; dropped redundant `revalidate()`/`repaint()` after `JTextArea.append()`.
+- **UIUtils**: Single compiled pattern for Markdown table separator rows; cached `fontStackWithActual` result.
+- **HtmlContentPreparer**: Synchronised cache overflow check+clear+put; LRU cache (256 entries) for markdown→HTML.
+- **TextScanner**: Limit `containsAsciiArt` scan to first 512 chars.
+
+### Concurrency & Stability
+- **Race condition fixes**: Cache `NbPreferences` reads in static volatile fields with `PreferenceChangeListener` for hot-path reads (`MessageFilterManager`, `PluginSettings`, `ToolThoughtCombiner`).
+- **HtmlContentPreparer**: Synchronised cache overflow.
+- **McpManager/McpServer/SessionCacheManager**: Thread safety fixes.
+- **ScrollController cleanup**: Proper removal of mouse wheel listeners.
+- **MCP server cleanup on failed startup**.
+
+### Fixes
+- **Memory leaks**: Stop `copyRevertTimer` in `MessageBubble.removeNotify()`; remove `MouseListener` from `HelpButtonFlash` after flash completes.
+- **Activity pane toggle bug**: Fixed duplicate toggle events caused by re-adding listeners in `removeNotify()`; listeners only capture `this` and die with the component.
+- **Hex architecture violation**: Replaced `ProcessManager.getInstance()` with `Lookup`-based `ProcessControl` injection in `SlashCommandInterceptor`.
+- **Double bubble radius**: Increased `RoundedPanel` radius from 16 to 32 for user/assistant bubbles.
+- **Newlines preserved** in user messages.
+- **BubbleContentRenderer race**: Store `pendingSegmentedContent` for create-on-addNotify instead of silent no-op.
+- **Page Up/Down conflicts**: Scroll blocker check moved before `isDescendingFrom()` so autocomplete popup navigation works correctly.
+- **Unknown slash commands**: Fixed being sent as literal user prompts.
+- **ACPOptionsPanel**: Validate executable path with inline error display.
+- **Reconnect after crash**: Fixed `ProcessManager.onReady` callback being empty lambda; session now reloads and respawns correctly.
+- **Crash resume guard**: Only sends Resume prompt on reconnect-after-crash, not manual restart.
+- **Activity pane rendering**: Fixed deferred rendering race in `BubbleContentRenderer`.
+- **Column gap**: Fixed keyboard shortcuts dialog layout.
+- **Reconnect notification**: Now includes disconnection exception details.
+- **TextScanner**: Lowered length threshold from 10 to 5 so short valid patterns like `"-----"` aren't rejected.
+- **MessageHistory**: Added package-private constructor to skip `NbPreferences` loading in tests.
+
+### Refactoring
+- **Class extraction**: Extracted dedicated classes from monolithic components to enforce hexagonal architecture.
+- **Hexagonal architecture violations fixed**: Eliminated upward dependency violations across multiple files.
+- **BeanBot rebranding**: Updated branding across all documentation, UI, and project metadata.
+
 ## v1.6.1 (Changes since v1.6.0)
 
 ### UI Fixes

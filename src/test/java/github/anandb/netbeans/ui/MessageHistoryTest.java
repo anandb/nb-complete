@@ -9,14 +9,14 @@ class MessageHistoryTest {
 
     @Test
     void addStoresMessage() {
-        MessageHistory mh = new MessageHistory();
+        MessageHistory mh = new MessageHistory(false);
         mh.add("hello");
         assertFalse(mh.isEmpty());
     }
 
     @Test
     void navigateUpSavesDraftAndReturnsLastMessage() {
-        MessageHistory mh = new MessageHistory();
+        MessageHistory mh = new MessageHistory(false);
         mh.add("first");
         mh.add("second");
         String result = mh.navigateUp("current draft");
@@ -26,7 +26,7 @@ class MessageHistoryTest {
 
     @Test
     void navigateDownReturnsToDraft() {
-        MessageHistory mh = new MessageHistory();
+        MessageHistory mh = new MessageHistory(false);
         mh.add("first");
         mh.navigateUp("draft");
         String result = mh.navigateDown("first");
@@ -36,7 +36,7 @@ class MessageHistoryTest {
 
     @Test
     void navigateDownWithinHistoryMovesForward() {
-        MessageHistory mh = new MessageHistory();
+        MessageHistory mh = new MessageHistory(false);
         mh.add("first");
         mh.add("second");
         mh.add("third");
@@ -54,7 +54,7 @@ class MessageHistoryTest {
 
     @Test
     void navigateUpOnEmptyReturnsSameText() {
-        MessageHistory mh = new MessageHistory();
+        MessageHistory mh = new MessageHistory(false);
         String result = mh.navigateUp("typing");
         assertEquals("typing", result);
         assertFalse(mh.isNavigating());
@@ -62,7 +62,7 @@ class MessageHistoryTest {
 
     @Test
     void addSkipsDuplicateConsecutive() {
-        MessageHistory mh = new MessageHistory();
+        MessageHistory mh = new MessageHistory(false);
         mh.add("msg");
         mh.add("msg");
         assertEquals(1, mh.size());
@@ -70,7 +70,7 @@ class MessageHistoryTest {
 
     @Test
     void addLimitsTo50() {
-        MessageHistory mh = new MessageHistory();
+        MessageHistory mh = new MessageHistory(false);
         for (int i = 0; i < 60; i++) {
             mh.add("msg" + i);
         }
@@ -80,7 +80,7 @@ class MessageHistoryTest {
 
     @Test
     void resetNavigationClearsState() {
-        MessageHistory mh = new MessageHistory();
+        MessageHistory mh = new MessageHistory(false);
         mh.add("msg");
         mh.navigateUp("draft");
         assertTrue(mh.isNavigating());
@@ -90,14 +90,14 @@ class MessageHistoryTest {
 
     @Test
     void addDoesNotStoreNull() {
-        MessageHistory mh = new MessageHistory();
+        MessageHistory mh = new MessageHistory(false);
         mh.add(null);
         assertTrue(mh.isEmpty());
     }
 
     @Test
     void addDoesNotStoreEmpty() {
-        MessageHistory mh = new MessageHistory();
+        MessageHistory mh = new MessageHistory(false);
         mh.add("");
         assertTrue(mh.isEmpty());
     }

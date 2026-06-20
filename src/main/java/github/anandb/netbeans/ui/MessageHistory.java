@@ -22,6 +22,13 @@ public class MessageHistory {
         load();
     }
 
+    /** Package-private constructor for unit tests — skips NbPreferences load. */
+    MessageHistory(boolean loadFromPrefs) {
+        if (loadFromPrefs) {
+            load();
+        }
+    }
+
     public void add(String text) {
         if (text == null || text.isEmpty()) return;
         if (!history.isEmpty() && history.get(history.size() - 1).equals(text)) return;

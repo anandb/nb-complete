@@ -20,7 +20,7 @@ public class TextScanner {
      * @return true if ASCII art is detected, false otherwise
      */
     public static boolean containsAsciiArt(String text) {
-        if (text == null || text.length() < 10) {
+        if (text == null || text.length() < 5) {
             return false;
         }
         // Scan only first 2000 chars — ASCII art appears at start, avoids O(n) on full text
