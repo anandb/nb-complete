@@ -54,8 +54,8 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
         return null;
     }
 
-    private static final Map<String, String> LANGUAGE_MAP = new ConcurrentHashMap<>();
-    private static final Map<String, String> LANGUAGE_FALLBACK_MAP = new ConcurrentHashMap<>();
+    static final Map<String, String> LANGUAGE_MAP = new ConcurrentHashMap<>();
+    static final Map<String, String> LANGUAGE_FALLBACK_MAP = new ConcurrentHashMap<>();
 
     static {
         // C/C++ / C#

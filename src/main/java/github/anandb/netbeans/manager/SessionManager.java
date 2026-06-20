@@ -93,6 +93,8 @@ public class SessionManager implements SessionQuery, SessionControl {
     private final Consumer<SessionUpdate> sseListener = this::handleSseUpdate;
     private final SessionRpcClient rpcClient;
     private volatile boolean sendResumeOnLoad;
+    /** True when the server crashed and we're waiting for reconnect to resume. */
+    private volatile boolean crashedBeforeReconnect;
 
     public SessionManager() {
         ACPProjectManager.getInstance().setProjectOpenListener(this::handleProjectOpened);
@@ -104,6 +106,7 @@ public class SessionManager implements SessionQuery, SessionControl {
 
         // Reset state machine and notify UI when server crashes
         ProcessManager.getInstance().setCrashHandler(() -> {
+            crashedBeforeReconnect = true;
             stateMachine.transitionTo(SessionState.IDLE);
             notifyError(NbBundle.getMessage(SessionManager.class, "ERR_ServerDisconnected"));
         });
@@ -112,7 +115,11 @@ public class SessionManager implements SessionQuery, SessionControl {
         ProcessManager.getInstance().setReadyHandler(() -> {
             String sid = currentSessionId;
             if (sid != null) {
-                sendResumeOnLoad = true;
+                // Only send "Proceed" on reconnect after a crash — not on manual restart.
+                if (crashedBeforeReconnect) {
+                    crashedBeforeReconnect = false;
+                    sendResumeOnLoad = true;
+                }
                 SwingUtilities.invokeLater(() -> loadSession(sid));
             }
         });
