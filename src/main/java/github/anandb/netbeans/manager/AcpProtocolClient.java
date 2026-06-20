@@ -278,7 +278,7 @@ public class AcpProtocolClient implements Closeable {
                     JsonNode params = node.has("params") ? node.get("params") : MAPPER.createObjectNode();
                     listener.accept(params);
                 } catch (Exception e) {
-                    LOG.warn("Notification handler error for method: {0} {1}", method, e);
+                    LOG.warn("Notification handler error for method: {0}", method, e);
                 }
             } else {
                 LOG.fine("No listener for notification method: {0}", method);

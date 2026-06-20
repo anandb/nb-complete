@@ -46,7 +46,6 @@ public final class TableDetector {
 
         int lineStart = 0;
         int docLen = text.length();
-        int lineIdx = 0;
         while (lineStart <= docLen) {
             int nl = text.indexOf('\n', lineStart);
             boolean hasMore = nl >= 0;
@@ -92,7 +91,6 @@ public final class TableDetector {
                     textBuffer.append('\n');
                 }
             }
-            lineIdx++;
         }
 
         if (inTable && headerFound) {

@@ -23,7 +23,7 @@ public class TextScanner {
         if (text == null || text.length() < 5) {
             return false;
         }
-        // Scan only first 2000 chars — ASCII art appears at start, avoids O(n) on full text
+        // Scan only first 512 chars — ASCII art appears at start, avoids O(n) on full text
         int limit = Math.min(text.length(), 512);
         boolean match = ASCII_ART_PATTERN.matcher(text.subSequence(0, limit)).find();
         if (match) {

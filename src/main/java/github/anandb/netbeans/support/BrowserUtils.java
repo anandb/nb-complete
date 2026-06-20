@@ -13,6 +13,7 @@ import java.util.function.BiConsumer;
  * Pure utility with no Swing or application-layer dependencies.
  */
 public final class BrowserUtils {
+    private static final Logger LOG = Logger.from(BrowserUtils.class);
 
     private BrowserUtils() {}
 
@@ -31,6 +32,7 @@ public final class BrowserUtils {
                 Desktop.getDesktop().browse(new URI(url));
                 return;
             } catch (IOException | URISyntaxException ex) {
+                LOG.fine("Browser open failed, falling back to clipboard: {0}", ex.getMessage());
                 // fall through to clipboard
             }
         }
@@ -42,7 +44,7 @@ public final class BrowserUtils {
                 onFallback.accept(url, statusKey);
             }
         } catch (Exception ex) {
-            // Clipboard access may fail in restricted environments — silently ignore
+            LOG.fine("Clipboard access failed: {0}", ex.getMessage());
         }
     }
 }

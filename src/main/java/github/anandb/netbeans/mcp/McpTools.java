@@ -24,7 +24,7 @@ public class McpTools {
     }
 
     public McpTools() {
-        this(new ObjectMapper());
+        this(github.anandb.netbeans.support.MapperSupplier.get());
     }
 
     public <T, R> void registerTool(String name, String description, ObjectNode inputSchema, ToolExecutor<T, R> executor) {

@@ -21,7 +21,7 @@ public final class BinaryResolver {
     public static String resolveExecutablePath() {
         Preferences nbPrefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
         String configuredPath = nbPrefs.get("acpExecutablePath", null);
-        boolean isWindows = System.getProperty("os.name").toLowerCase().contains("win");
+        boolean isWindows = System.getProperty("os.name", "").toLowerCase().contains("win");
         String exeName = isWindows ? "opencode.exe" : "opencode";
 
         // 1. Configured absolute path

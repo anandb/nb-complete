@@ -51,4 +51,7 @@ public interface ProcessControl {
 
     /** Returns the list of available slash commands. */
     List<SessionUpdate.AvailableCommand> getAvailableCommands();
+
+    /** Shuts down the server process and releases resources. */
+    void shutdown();
 }
