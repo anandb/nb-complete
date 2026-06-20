@@ -245,6 +245,13 @@ public class ChatThreadPanel extends JPanel {
                     }
                 }
             } else {
+                // Capture scroll state BEFORE touching content — the finalize
+                // below can shrink the bubble (JTextArea→HTML), moving the
+                // viewport off-bottom before addSingleBubble captures its own
+                // wasAtBottom. Per the auto-scroll contract (AGENTS.md),
+                // processMessageSections must capture wasAtBottom before any
+                // content mutation.
+                boolean wasAtBottomBeforeFinalize = scrollController.isAtBottom();
                 if (lastBubble != null) {
                     if (lastBubble == streamingCoordinator.getActiveStreamBubble()) {
                         streamingCoordinator.stopStreaming();
@@ -255,6 +262,12 @@ public class ChatThreadPanel extends JPanel {
 
                 addSingleBubble(pm.messageType(), part, pm.messageId(), pm.toolTitle(), pm.streaming());
                 lastBubble = findLastNonIgnorableBubble();
+                // Force-scroll if the user was at bottom before the finalize;
+                // addSingleBubble's internal check may have seen a post-shrink
+                // viewport that is no longer at bottom.
+                if (wasAtBottomBeforeFinalize) {
+                    scrollController.scrollToBottom(true);
+                }
             }
         }
     }
@@ -416,16 +429,28 @@ public class ChatThreadPanel extends JPanel {
     public void addNotify() {
         super.addNotify();
         KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(scrollController);
+        // Re-register wheel-redirect listeners for bubbles that survived a
+        // close/reopen cycle. removeNotify → cleanup() clears the wheel map
+        // and removes listeners; the ContainerListener only fires for NEW
+        // components, so existing bubbles would otherwise have no wheel
+        // redirect after restore. Re-adding is safe: the map is empty here.
+        for (Component c : messagesContainer.getComponents()) {
+            if (c instanceof MessageBubble || c instanceof PermissionBubble) {
+                scrollController.fixMouseWheel(c);
+            }
+        }
     }
 
     @Override
     public void removeNotify() {
-        // Finalize any in-flight streaming bubble before tearing down —
-        // otherwise the bubble stays as a plain JTextArea indefinitely.
-        MessageBubble activeBubble = streamingCoordinator.getActiveStreamBubble();
-        if (activeBubble != null) {
-            activeBubble.finalizeStreaming(allBlocksExpanded, true);
-        }
+        // Finalize ALL in-flight streaming bubbles before tearing down —
+        // otherwise non-active streaming bubbles (interrupted by tool/thought
+        // chunks that reset activeStreamBubble, or late SSE deltas) stay as
+        // plain JTextArea indefinitely after a close/reopen. stopStreaming()
+        // finalizes the active bubble AND scans for any remaining streaming
+        // bubbles. Must run before streamingCoordinator.cleanup() stops the
+        // flush timer.
+        stopStreaming();
         streamingCoordinator.cleanup();
         if (scrollController != null) {
             scrollController.cleanup();
