@@ -1,7 +1,10 @@
 package github.anandb.netbeans.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import github.anandb.netbeans.contract.SlashCommandHandler;
+
+import java.util.concurrent.CompletableFuture;
+import java.util.function.BiFunction;
+import org.openide.util.Lookup;
 
 /**
  * Container for small model records.
@@ -13,7 +16,9 @@ public final class ModelRecords {
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record Agent(String name, String description) {}
 
-    public record CommandInfo(SlashCommandHandler handler, String description) {}
+    /** Uses a JDK BiFunction instead of the contract/ SlashCommandHandler
+     *  interface to avoid a model/→contract/ circular dependency. */
+    public record CommandInfo(BiFunction<String, Lookup, CompletableFuture<Boolean>> handler, String description) {}
 
     public record ConfigItem(String name, String value, String baseName) {
         public ConfigItem(String name, String value) {

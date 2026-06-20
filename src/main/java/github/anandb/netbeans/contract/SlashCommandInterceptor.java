@@ -3,13 +3,14 @@ package github.anandb.netbeans.contract;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.logging.Level;
 import github.anandb.netbeans.model.ModelRecords.CommandInfo;
-import github.anandb.netbeans.support.Logger;
 import org.openide.util.Lookup;
 
 public class SlashCommandInterceptor {
 
-    private static final Logger LOG = Logger.from(SlashCommandInterceptor.class);
+    private static final java.util.logging.Logger LOG =
+            java.util.logging.Logger.getLogger(SlashCommandInterceptor.class.getName());
 
     private final Map<String, CommandInfo> commands = new HashMap<>();
 
@@ -20,8 +21,10 @@ public class SlashCommandInterceptor {
         // Discover additional commands registered via @ServiceProvider
         for (SlashCommandProvider provider : Lookup.getDefault().lookupAll(SlashCommandProvider.class)) {
             if (provider.getCommand() != null && provider.getHandler() != null) {
-                commands.put(provider.getCommand(), new CommandInfo(provider.getHandler(), provider.getDescription()));
-                LOG.fine("Registered slash command from provider: {0}", provider.getCommand());
+                // Wrap SlashCommandHandler → BiFunction to match CommandInfo type
+                SlashCommandHandler h = provider.getHandler();
+                commands.put(provider.getCommand(), new CommandInfo(h::handle, provider.getDescription()));
+                LOG.log(Level.FINE, "Registered slash command from provider: {0}", provider.getCommand());
             }
         }
     }
@@ -55,8 +58,8 @@ public class SlashCommandInterceptor {
 
         CommandInfo info = commands.get(command);
         if (info != null) {
-            LOG.info("Intercepted local command: {0}", command);
-            return info.handler().handle(args, context);
+            LOG.log(Level.INFO, "Intercepted local command: {0}", command);
+            return info.handler().apply(args, context);
         }
 
         return CompletableFuture.completedFuture(false);
@@ -131,7 +134,7 @@ public class SlashCommandInterceptor {
     }
 
     public void registerCommand(String command, SlashCommandHandler handler, String description) {
-        commands.put(command, new CommandInfo(handler, description));
+        commands.put(command, new CommandInfo(handler::handle, description));
     }
 
     public Map<String, CommandInfo> getCommands() {
