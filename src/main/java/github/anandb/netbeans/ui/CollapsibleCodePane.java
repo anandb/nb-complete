@@ -154,10 +154,9 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
         headerLabel.setIconTextGap(8);
         headerLabel.setForeground(theme.codeHeaderForeground());
 
-        // Configure copy button inherited from base class
-        for (java.awt.event.MouseListener l : copyButton.getMouseListeners()) {
-            copyButton.removeMouseListener(l);
-        }
+        // Remove only the base class hover listener — not all MouseListeners,
+        // which would also strip L&F-installed ones (e.g. BasicButtonListener).
+        copyButton.removeMouseListener(copyButtonHoverListener);
         copyButton.setToolTipText(NbBundle.getMessage(CollapsibleCodePane.class, "HINT_CopyCode"));
         copyButton.setBorder(UIUtils.COPY_BUTTON_BORDER);
         copyButton.setForeground(theme.codeHeaderForeground());

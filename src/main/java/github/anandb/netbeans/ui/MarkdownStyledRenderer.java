@@ -287,16 +287,20 @@ public final class MarkdownStyledRenderer {
             }
             List<String> row = rows.get(r);
             StringBuilder rowSb = new StringBuilder();
-            for (int i = 0; i < row.size(); i++) {
-                String cell = row.get(i);
-                if (cell.length() > widths[i]) {
-                    cell = cell.substring(0, Math.max(1, widths[i] - 1)) + "\u2026";
+            // Iterate up to maxCols (widths.length), not row.size(), so
+            // shorter rows are padded with empty cells to match the widest.
+            int cols = Math.max(row.size(), widths.length);
+            for (int i = 0; i < cols; i++) {
+                String cell = i < row.size() ? row.get(i) : "";
+                int w = i < widths.length ? widths[i] : 3;
+                if (cell.length() > w) {
+                    cell = cell.substring(0, Math.max(1, w - 1)) + "\u2026";
                 }
                 rowSb.append(cell);
-                for (int j = cell.length(); j < widths[i]; j++) {
+                for (int j = cell.length(); j < w; j++) {
                     rowSb.append(' ');
                 }
-                if (i < row.size() - 1) {
+                if (i < cols - 1) {
                     rowSb.append("  ");
                 }
             }

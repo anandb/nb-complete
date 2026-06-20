@@ -63,7 +63,7 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
     protected final AtomicBoolean copyHovered = new AtomicBoolean(false);
     /** Listener references for clean removal in removeNotify(). */
     private final transient MouseAdapter toggleListener;
-    private final transient MouseAdapter copyButtonHoverListener;
+    protected final transient MouseAdapter copyButtonHoverListener;
     private transient MouseAdapter paramLabelToggleListener;
 
     public BaseCollapsiblePane(int radius, String title, Color defaultAccent, boolean expandedByDefault) {
