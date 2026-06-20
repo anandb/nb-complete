@@ -431,6 +431,15 @@ public class SessionManager implements SessionQuery, SessionControl {
 
         createSession(explicitCwd)
                 .thenAccept(session -> {
+                    // Guard: if closeSession() ran during the async window, the
+                    // state machine is no longer LOADING. Discard the orphaned
+                    // session to avoid setting currentSessionId while IDLE.
+                    if (stateMachine.getState() != SessionState.LOADING) {
+                        LOG.fine("createNewSession: discarding session {0}, state is {1}",
+                                session.id(), stateMachine.getState());
+                        deleteSession(session.id());
+                        return;
+                    }
                     this.currentSessionId = session.id();
                     this.lastProjectDir = session.effectiveDirectory();
                     Logger.setSession(session.id(), session.title());
@@ -530,11 +539,18 @@ public class SessionManager implements SessionQuery, SessionControl {
 
     private void handleProjectClosed(String closedDir) {
         getSessions(closedDir)
-                .thenAccept(closedDirSessions -> {
-                    for (Session s : closedDirSessions) {
-                        deleteSession(s.id());
+                .thenCompose(closedDirSessions -> {
+                    if (closedDirSessions.isEmpty()) {
+                        refreshSessions();
+                        return CompletableFuture.completedFuture(null);
                     }
-                    refreshSessions();
+                    // Wait for all deletes to complete before refreshing, so the
+                    // refreshed list does not contain sessions that are still being
+                    // deleted on the server.
+                    CompletableFuture<?>[] deletes = closedDirSessions.stream()
+                            .map(s -> deleteSession(s.id()))
+                            .toArray(CompletableFuture[]::new);
+                    return CompletableFuture.allOf(deletes).thenRun(this::refreshSessions);
                 });
     }
 

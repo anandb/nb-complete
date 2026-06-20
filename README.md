@@ -3,7 +3,7 @@
 [![Version](https://img.shields.io/badge/version-1.7.0-blue.svg)](pom.xml)
 [![Build Status](https://img.shields.io/badge/build-success-brightgreen.svg)](https://github.com/anandb/nb-complete)
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.anandb/beanbot)](https://central.sonatype.com/artifact/io.github.anandb/beanbot/versions)
-[![NetBeans](https://img.shields.io/badge/NetBeans-RELEASE290-blue.svg)](https://netbeans.apache.org/download/index.html)
+[![NetBeans](https://img.shields.io/badge/NetBeans-RELEASE220-blue.svg)](https://netbeans.apache.org/download/index.html)
 [![License: Unlicense](https://img.shields.io/badge/license-Unlicense-blue.svg)](http://unlicense.org/)
 [![Support this project](https://img.shields.io/badge/OpenCode-Referral-FF6C37?style=flat&logo=openai&logoColor=white)](https://opencode.ai/go?ref=DWTNHGN9KX)
 
@@ -27,7 +27,7 @@ should work on other versions, but your experience may vary.
 | Component | Details |
 | --- | --- |
 | **OS** | openSUSE Tumbleweed-Slowroll |
-| **NetBeans** | RELEASE290 |
+| **NetBeans** | RELEASE220 |
 | **Java** | JDK 17+ |
 | **Opencode** | 1.17.3 |
 | **Opencode plugins** | `@franzmoca/opencode-lombok`, `@tarquinen/opencode-dcp@latest`, `@opencode/mcp-git` |

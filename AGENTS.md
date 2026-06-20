@@ -3,7 +3,7 @@
 ## Project Overview
 - **Project**: BeanBot (NetBeans IDE plugin, Java 17, Maven)
 - **Current Stable Version**: 1.7.0
-- **Key Tech**: NetBeans API (RELEASE290), Flexmark, Jackson, RSyntaxTextArea, JUnit 5.
+- **Key Tech**: NetBeans API (RELEASE220), Flexmark, Jackson, RSyntaxTextArea, JUnit 5.
 
 ## Build Commands
 - Build: `mvn package` (runs checks & tests) | Clean: `mvn clean` | Quick: `mvn package -DskipTests`

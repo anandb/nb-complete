@@ -62,8 +62,12 @@ public class McpManager {
                     }
                     synchronized (McpManager.this) {
                         serverStartFuture = null;
+                        // Complete inside the synchronized block to prevent a
+                        // race where a concurrent start() replaces readyFuture
+                        // between our null-out and the complete, which would
+                        // prematurely complete the NEW future.
+                        readyFuture.complete(null);
                     }
-                    readyFuture.complete(null);
                 }
             }, mcpStartExecutor);
             LOG.info("MCP server start task submitted to async executor");

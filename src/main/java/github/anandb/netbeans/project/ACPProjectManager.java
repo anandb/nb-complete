@@ -16,9 +16,9 @@ import org.openide.util.lookup.ServiceProvider;
 public class ACPProjectManager implements PropertyChangeListener {
     private static final Logger LOG = Logger.from(ACPProjectManager.class);
 
-    private Project[] currentProjects = new Project[0];
-    private Consumer<String> projectCloseListener;
-    private Consumer<String> projectOpenListener;
+    private volatile Project[] currentProjects = new Project[0];
+    private volatile Consumer<String> projectCloseListener;
+    private volatile Consumer<String> projectOpenListener;
 
     public ACPProjectManager() {
     }

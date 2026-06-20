@@ -12,7 +12,6 @@ import static github.anandb.netbeans.ui.UIUtils.MONO_STACK;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 public final class HtmlContentPreparer {
 
@@ -23,12 +22,18 @@ public final class HtmlContentPreparer {
     private static final Parser FLEXMARK_PARSER;
     private static final HtmlRenderer FLEXMARK_RENDERER;
 
-    /** Bounded cache for markdown→HTML output. ConcurrentHashMap for lock-free
-     *  reads on the EDT hot path; size is checked on insert and the cache is
-     *  cleared wholesale if it grows beyond the cap (rare; only happens when
-     *  many distinct messages are rendered in one session). */
+    /** Bounded LRU cache for markdown→HTML output. Uses a LinkedHashMap with
+     *  removeEldestEntry for true LRU eviction instead of wholesale clear,
+     *  which would cause a burst of N synchronous Flexmark re-parses. */
     private static final int MARKDOWN_CACHE_MAX = 256;
-    private static final Map<String, String> MARKDOWN_HTML_CACHE = new ConcurrentHashMap<>(64, 0.75f, 1);
+    private static final Map<String, String> MARKDOWN_HTML_CACHE =
+            java.util.Collections.synchronizedMap(
+                    new LinkedHashMap<String, String>(64, 0.75f, true) {
+                        @Override
+                        protected boolean removeEldestEntry(Map.Entry<String, String> eldest) {
+                            return size() > MARKDOWN_CACHE_MAX;
+                        }
+                    });
 
     static {
         MutableDataSet options = new MutableDataSet();
@@ -164,15 +169,10 @@ public final class HtmlContentPreparer {
             return cached;
         }
         String rendered = FLEXMARK_RENDERER.render(FLEXMARK_PARSER.parse(markdown));
-        // Synchronise the size-check + clear + put so two threads cannot
-        // both see the cap exceeded, both clear, and both put (benign but
-        // wasteful).  ConcurrentHashMap.clear() is not atomic with put().
-        synchronized (MARKDOWN_HTML_CACHE) {
-            if (MARKDOWN_HTML_CACHE.size() >= MARKDOWN_CACHE_MAX) {
-                MARKDOWN_HTML_CACHE.clear();
-            }
-            MARKDOWN_HTML_CACHE.put(markdown, rendered);
-        }
+        // LinkedHashMap with removeEldestEntry handles LRU eviction
+        // automatically on put(). Collections.synchronizedMap provides
+        // the thread-safety wrapper.
+        MARKDOWN_HTML_CACHE.put(markdown, rendered);
         return rendered;
     }
 

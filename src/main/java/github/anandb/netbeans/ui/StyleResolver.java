@@ -24,6 +24,9 @@ final class StyleResolver {
     private static final ConcurrentHashMap<Integer, DerivedStyles> DERIVED_CACHE = new ConcurrentHashMap<>();
 
     private static class DerivedStyles {
+        /** The base instance this was derived from — used to detect
+         *  identityHashCode collisions in the cache. */
+        final SimpleAttributeSet base;
         final SimpleAttributeSet bold;
         final SimpleAttributeSet italic;
         final SimpleAttributeSet strike;
@@ -31,6 +34,7 @@ final class StyleResolver {
         final SimpleAttributeSet inlineCode;
 
         DerivedStyles(SimpleAttributeSet base, Font baseFont, Color codeFg) {
+            this.base = base;
             this.bold = makeBold(base);
             this.italic = makeItalic(base);
             this.strike = makeStrike(base);
@@ -122,16 +126,22 @@ final class StyleResolver {
     private static DerivedStyles derivedFor(SimpleAttributeSet base, Font baseFont, Color codeFg) {
         Integer key = System.identityHashCode(base);
         DerivedStyles existing = DERIVED_CACHE.get(key);
-        if (existing != null) {
+        // Verify the cached entry is actually for THIS base instance, not a
+        // hash collision from a different SimpleAttributeSet instance.
+        if (existing != null && existing.base == base) {
             return existing;
         }
         DerivedStyles created = new DerivedStyles(base, baseFont, codeFg);
-        DerivedStyles prev = DERIVED_CACHE.putIfAbsent(key, created);
-        // Cap the cache; clear if growing beyond limit.
-        if (prev == null && DERIVED_CACHE.size() > 32) {
-            DERIVED_CACHE.clear();
+        if (existing == null) {
+            DERIVED_CACHE.putIfAbsent(key, created);
+            if (DERIVED_CACHE.size() > 32) {
+                DERIVED_CACHE.clear();
+            }
+            return created;
         }
-        return prev != null ? prev : created;
+        // Hash collision — overwrite the stale entry for the different base.
+        DERIVED_CACHE.put(key, created);
+        return created;
     }
 
     /**

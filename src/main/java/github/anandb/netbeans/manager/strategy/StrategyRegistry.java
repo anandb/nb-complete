@@ -148,13 +148,21 @@ public class StrategyRegistry implements UpdateDispatcher {
                 final String kind = update.kind();
                 Map<String, ToolCallData> sessionMap = TOOL_CALL_CACHE.get(sessionId, k -> new ConcurrentHashMap<>());
                 ToolCallData data = sessionMap.computeIfAbsent(messageId, k -> new ToolCallData(k, command));
-                if (data.isDone()) {
-                    LOG.info("Ignoring tool_call: already completed, update={0}", update);
-                    return;
-                }
-                ProcessedMessage target = processToolMessage(data, command, update, kind, messageId);
-                if (data.shouldDisplay(target.text())) {
-                    handler.displayMessage(target);
+                // Wrap isDone() check + process + shouldDisplay under the same
+                // lock to prevent TOCTOU: a concurrent update could set status
+                // to "completed" between the isDone() guard and the process call,
+                // and shouldDisplay() reads lastDisplayedText unsynchronized.
+                // Java's synchronized is reentrant, so the nested lock inside
+                // processToolMessage is safe.
+                synchronized (data) {
+                    if (data.isDone()) {
+                        LOG.info("Ignoring tool_call: already completed, update={0}", update);
+                        return;
+                    }
+                    ProcessedMessage target = processToolMessage(data, command, update, kind, messageId);
+                    if (data.shouldDisplay(target.text())) {
+                        handler.displayMessage(target);
+                    }
                 }
             }
 
