@@ -24,9 +24,6 @@ public interface SessionControl extends SessionQuery {
     /** Loads an existing session, optionally marking it as a startup load. Returns true if load starts successfully. */
     boolean loadSession(String sessionId, boolean isStartup);
 
-    /** Deletes a session by ID. */
-    CompletableFuture<Void> deleteSession(String sessionId);
-
     /** Sets a configuration option for a session. */
     CompletableFuture<Void> setSessionConfigOption(String sessionId, String configId, String value);
 

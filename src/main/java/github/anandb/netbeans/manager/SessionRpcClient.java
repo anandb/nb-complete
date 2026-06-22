@@ -51,11 +51,6 @@ final class SessionRpcClient {
         return processManager.sendRequest("session/load", params);
     }
 
-    CompletableFuture<Void> deleteSession(String sessionId) {
-        return processManager.sendRequest("session/delete", Map.of("sessionId", sessionId))
-                .thenApply(r -> null);
-    }
-
     CompletableFuture<Void> renameSessionOnServer(String sessionId, String title) {
         ObjectNode params = MAPPER.createObjectNode();
         params.put("sessionId", sessionId);

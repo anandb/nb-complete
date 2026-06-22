@@ -371,11 +371,6 @@ public class SessionManager implements SessionQuery, SessionControl {
     }
 
     @Override
-    public CompletableFuture<Void> deleteSession(String sessionId) {
-        return rpcClient.deleteSession(sessionId);
-    }
-
-    @Override
     public CompletableFuture<Void> setSessionConfigOption(String sessionId, String configId, String value) {
         return rpcClient.setSessionConfigOption(sessionId, configId, value);
     }
@@ -445,7 +440,6 @@ public class SessionManager implements SessionQuery, SessionControl {
                     if (stateMachine.getState() != SessionState.LOADING) {
                         LOG.fine("createNewSession: discarding session {0}, state is {1}",
                                 session.id(), stateMachine.getState());
-                        deleteSession(session.id());
                         return;
                     }
                     this.currentSessionId = session.id();
@@ -546,20 +540,14 @@ public class SessionManager implements SessionQuery, SessionControl {
     }
 
     private void handleProjectClosed(String closedDir) {
-        getSessions(closedDir)
-                .thenCompose(closedDirSessions -> {
-                    if (closedDirSessions.isEmpty()) {
-                        refreshSessions();
-                        return CompletableFuture.completedFuture(null);
-                    }
-                    // Wait for all deletes to complete before refreshing, so the
-                    // refreshed list does not contain sessions that are still being
-                    // deleted on the server.
-                    CompletableFuture<?>[] deletes = closedDirSessions.stream()
-                            .map(s -> deleteSession(s.id()))
-                            .toArray(CompletableFuture[]::new);
-                    return CompletableFuture.allOf(deletes).thenRun(this::refreshSessions);
-                });
+        // If the active session belongs to the closed project, close it first
+        // so the UI and state machine are reset.
+        if (closedDir.equals(lastProjectDir)) {
+            closeSession();
+        }
+        // Refresh the session list — it only shows sessions for open projects,
+        // so sessions for the closed project will disappear from the dropdown.
+        refreshSessions();
     }
 
     private void sendPreamble(String sessionId) {
