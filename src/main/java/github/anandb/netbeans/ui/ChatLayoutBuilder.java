@@ -230,11 +230,13 @@ final class ChatLayoutBuilder {
         // Apply saved toolbar visibility
         applyToolbarVisibility();
 
-        // Right-click context menu for toolbar customization — install on panel and all buttons
-        sessionControls.setComponentPopupMenu(newToolBarPopup());
+        // Right-click context menu for toolbar customization — single shared
+        // popup, rebuilt on each show so checkbox state syncs with prefs.
+        JPopupMenu sharedPopup = newToolBarPopup();
+        sessionControls.setComponentPopupMenu(sharedPopup);
         for (java.awt.Component c : sessionControls.getComponents()) {
             if (c instanceof javax.swing.JComponent jc) {
-                jc.setComponentPopupMenu(newToolBarPopup());
+                jc.setComponentPopupMenu(sharedPopup);
             }
         }
 
@@ -412,7 +414,18 @@ final class ChatLayoutBuilder {
     }
 
     private JPopupMenu newToolBarPopup() {
-        JPopupMenu popup = new JPopupMenu();
+        JPopupMenu popup = new JPopupMenu() {
+            @Override
+            public void show(java.awt.Component invoker, int x, int y) {
+                removeAll();
+                buildToolBarItems(this);
+                super.show(invoker, x, y);
+            }
+        };
+        return popup;
+    }
+
+    private void buildToolBarItems(JPopupMenu popup) {
         JCheckBoxMenuItem editItem = new JCheckBoxMenuItem("Edit ToolBar", true);
         editItem.setEnabled(false);
         popup.add(editItem);
@@ -444,8 +457,6 @@ final class ChatLayoutBuilder {
             });
             popup.add(item);
         }
-
-        return popup;
     }
 
     private void applyToolbarVisibility() {
