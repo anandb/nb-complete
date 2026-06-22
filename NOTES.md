@@ -5,7 +5,6 @@
 ### Features
 - **Session archiving**: Archive/unarchive sessions with toggle in toolbar; show/hide archived sessions next to session dropdown (client-side only). Right-click session dropdown for quick archive/rename/reload.
 - **`/title` slash command**: Generate session titles via AI.
-- **Sub-agent session hierarchy**: Track parent-child sessions; prefix sub-agent thought chunks and tool steps with agent title; permission requests for descendant sessions.
 - **Session rename**: Rename sessions via MCP editor tool, input dialog, or right-click session dropdown.
 - **History search dialog**: Searchable message history with 1024-entry store.
 - **Keyboard shortcuts dialog**: Two-column layout with dynamic shortcut resolution; toggle open/close on click.
@@ -56,11 +55,13 @@
 - **Reconnect notification**: Now includes disconnection exception details.
 - **TextScanner**: Lowered length threshold from 10 to 5 so short valid patterns like `"-----"` aren't rejected.
 - **MessageHistory**: Added package-private constructor to skip `NbPreferences` loading in tests.
+- **Toolbar popup sync**: Toolbar customization popup now rebuilds on each show so checkbox states always reflect current preferences; shared single popup instance across all buttons.
 
 ### Refactoring
 - **Class extraction**: Extracted dedicated classes from monolithic components to enforce hexagonal architecture.
 - **Hexagonal architecture violations fixed**: Eliminated upward dependency violations across multiple files.
-- **BeanBot rebranding**: Updated branding across all documentation, UI, and project metadata.
+- **License**: Changed from Unlicense to Apache License 2.0 across `pom.xml`, `README.md`.
+- **Font family init log**: `ThemeManager` now logs font family and monospace font on first theme resolution.
 
 ## v1.6.1 (Changes since v1.6.0)
 
@@ -363,7 +364,7 @@
     - **Tool Parameter Extraction**: Added specialized logic to extract and sanitize tool parameters from complex model outputs.
     - **Language Resolution**: Enhanced the `LanguageResolver` to support a wider range of programming languages for syntax highlighting in `RSyntaxTextArea`.
 - **Maintenance & Branding**:
-    - Completed the transition to the "BeanBot" brand across all documentation, UI components, and project metadata.
+    - Completed the transition to the "Coding Assistant" brand across all documentation, UI components, and project metadata.
     - Aligned project requirements with Java 17 and NetBeans RELEASE290 specifications.
 
 ## v1.3.38 (2026-04-24)

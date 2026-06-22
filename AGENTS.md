@@ -1,7 +1,7 @@
-# Agent Instructions for beanbot
+# Agent Instructions for coding-assistant
 
 ## Project Overview
-- **Project**: BeanBot (NetBeans IDE plugin, Java 17, Maven)
+- **Project**: Coding Assistant (NetBeans IDE plugin, Java 17, Maven)
 - **Current Stable Version**: 1.7.0
 - **Key Tech**: NetBeans API (RELEASE220), Flexmark, Jackson, RSyntaxTextArea, JUnit 5.
 

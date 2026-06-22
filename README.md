@@ -1,4 +1,4 @@
-# BeanBot
+# Coding Assistant
 
 [![Version](https://img.shields.io/badge/version-1.7.0-blue.svg)](pom.xml)
 [![Build Status](https://img.shields.io/badge/build-success-brightgreen.svg)](https://github.com/anandb/nb-complete)
@@ -7,7 +7,7 @@
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](http://www.apache.org/licenses/LICENSE-2.0)
 [![Support this project](https://img.shields.io/badge/OpenCode-Referral-FF6C37?style=flat&logo=openai&logoColor=white)](https://opencode.ai/go?ref=DWTNHGN9KX)
 
-BeanBot is a NetBeans IDE plugin designed to provide integrated AI capabilities through the Agent Client Protocol (ACP). It offers a structured chat interface for technical assistance, including code generation, project analysis, and automated task execution.
+Coding Assistant is a NetBeans IDE plugin designed to provide integrated AI capabilities through the Agent Client Protocol (ACP). It offers a structured chat interface for technical assistance, including code generation, project analysis, and automated task execution.
 
 | | |
 | :---: | :---: |

@@ -1,4 +1,4 @@
-digraph BeanBot {
+digraph CodingAssistant {
     rankdir=LR
     bgcolor="white"
     fontname="Helvetica"
