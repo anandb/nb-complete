@@ -2,7 +2,7 @@
 
 ## Project Overview
 - **Project**: Coding Assistant (NetBeans IDE plugin, Java 17, Maven)
-- **Current Stable Version**: 1.7.0
+- **Current Stable Version**: 1.7.2
 - **Key Tech**: NetBeans API (RELEASE220), Flexmark, Jackson, RSyntaxTextArea, JUnit 5.
 
 ## Build Commands
@@ -156,6 +156,13 @@ NbPreferences.forModule(PreferenceKeys.class)
   component tree. Removing and re-adding them caused duplicate listeners (click fired toggle twice).
   Do NOT add matching `removeMouseListener` calls here.
 - Clamping: `McpServer` connector idle timeout is clamped to a minimum of 30s.
+- MCP tools/call: Response is sent immediately after tool execution (no artificial delay). The old 5,000ms minimum latency was removed in v1.7.2 because it caused client abort errors on macOS.
+
+### SSE → EDT Session Race Guard
+`SessionLifecycleHandler.displayMessage()` captures `update.params().sessionId()` before scheduling the EDT callback via `invokeLater`. Inside the runnable, it re-checks against `SessionControl.getCurrentSessionId()` and silently drops the message if the session no longer matches. This prevents stale SSE messages from appearing in the wrong session's chat panel when the user switches sessions during streaming.
+
+### Editor Context Capture
+`EditorContextCapture.capture()` returns `null` when no real file is open (no `FileObject` associated with the editor document). This prevents phantom paths like `/tmp/xxx` from being sent to the AI as context. The return value is passed as `Map<String, Object> context` in `MessageSender`, where `null` means "no editor context available" — the caller skips attaching context entirely.
 
 ### Auto-Scroll Contract
 `ScrollController.isAtBottom()` uses a 50px tolerance (not 400px). All content-modifying calls in `ChatThreadPanel` (`addSingleBubble`, `processMessageSections`, `stopStreaming`, stream timer) capture `wasAtBottom` BEFORE touching content. Auto-scroll only fires when `wasAtBottom` is true. The stream timer path (`Timer TimingConstants.STREAM_FLUSH_MS` ms) already captured `wasAtBottom` before `flushUpdate()` — this is the correct pattern; new callers must follow it.

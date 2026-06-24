@@ -148,9 +148,8 @@ class MessageServlet extends HttpServlet {
     }
 
     /**
-     * Handles tools/call with a scheduled minimum latency (5000ms) instead of blocking Thread.sleep.
-     * The tool executes immediately on the RequestProcessor thread, but the response is delayed
-     * to ensure a minimum elapsed time. No thread is blocked during the delay.
+     * Handles tools/call asynchronously on the RequestProcessor thread.
+     * The response is sent immediately after tool execution completes.
      */
     private void handleToolsCallAsync(JsonNode params, ObjectNode resp, AsyncContext asyncContext, long requestStart) {
         if (params == null || !params.has("name")) {
@@ -171,7 +170,6 @@ class MessageServlet extends HttpServlet {
                 JsonNode toolResponse = mcpTools.callTool(name, arguments);
                 long toolElapsed = (System.nanoTime() - toolStart) / 1_000_000;
                 long totalElapsed = (System.nanoTime() - requestStart) / 1_000_000;
-                long remainingDelay = Math.max(0, 5000 - totalElapsed);
 
                 // Build result (cheap, no blocking)
                 ObjectNode result = mapper.createObjectNode();
@@ -192,21 +190,13 @@ class MessageServlet extends HttpServlet {
                 result.set("content", contentNode);
                 resp.set("result", result);
 
-                Runnable sendResponse = () -> {
-                    try {
-                        writeResponse(asyncContext, resp);
-                        LOG.info("MCP tools/call completed: {0} (tool={1}ms, delay={2}ms)", name, toolElapsed, remainingDelay);
-                    } catch (IOException e) {
-                        LOG.log(Level.SEVERE, "Failed to write tools/call response", e);
-                    } finally {
-                        asyncContext.complete();
-                    }
-                };
-
-                if (remainingDelay > 0) {
-                    asyncExecutor.post(sendResponse, (int) remainingDelay);
-                } else {
-                    sendResponse.run();
+                try {
+                    writeResponse(asyncContext, resp);
+                    LOG.info("MCP tools/call completed: {0} (tool={1}ms, total={2}ms)", name, toolElapsed, totalElapsed);
+                } catch (IOException e) {
+                    LOG.log(Level.SEVERE, "Failed to write tools/call response", e);
+                } finally {
+                    asyncContext.complete();
                 }
             } catch (IllegalArgumentException e) {
                 scheduleErrorResponse(resp, asyncContext, -32602, e.getMessage());

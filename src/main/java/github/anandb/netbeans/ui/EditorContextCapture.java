@@ -40,12 +40,15 @@ public final class EditorContextCapture {
             return null;
         }
 
-        Map<String, Object> context = new HashMap<>();
-
         FileObject fo = NbEditorUtilities.getFileObject(doc);
-        if (fo != null) {
-            context.put("filePath", fo.getPath());
+        if (fo == null) {
+            // No actual file open (e.g. empty editor, temp document) — sending
+            // a phantom path like /tmp/xxx would confuse the AI. Skip context.
+            return null;
         }
+
+        Map<String, Object> context = new HashMap<>();
+        context.put("filePath", fo.getPath());
 
         String selection = editor.getSelectedText();
         if (isNotBlank(selection)) {

@@ -1,6 +1,6 @@
 # Coding Assistant
 
-[![Version](https://img.shields.io/badge/version-1.7.0-blue.svg)](pom.xml)
+[![Version](https://img.shields.io/badge/version-1.7.2-blue.svg)](pom.xml)
 [![Build Status](https://img.shields.io/badge/build-success-brightgreen.svg)](https://github.com/anandb/nb-complete)
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.anandb/beanbot)](https://central.sonatype.com/artifact/io.github.anandb/beanbot/versions)
 [![NetBeans](https://img.shields.io/badge/NetBeans-RELEASE220-blue.svg)](https://netbeans.apache.org/download/index.html)
@@ -70,14 +70,14 @@ All source lives under `src/main/java/github/anandb/netbeans/`:
 
 | Package | Files | Role |
 | --- | --- | --- |
-| `contract/` | 11 | Service interfaces (UI callbacks, session & process control, permission & request handlers) |
+| `contract/` | 13 | Service interfaces (UI callbacks, session & process control, permission & request handlers) |
 | `manager/` | 10 | Core orchestration, protocol clients, session management, process lifecycle |
-| `manager/strategy/` | 1 | Single dispatch class routing SSE updates by message type via a rule switch |
-| `mcp/` | 10 | MCP server integration (editor tools, tool definitions, message servlet) |
+| `manager/strategy/` | 2 | Strategy dispatch and sub-agent title resolution |
+| `mcp/` | 11 | MCP server integration (editor tools, tool definitions, message servlet) |
 | `model/` | 13 | ACP-compliant data models (session, messages, updates, config options) |
 | `project/` | 3 | NetBeans lifecycle hooks (`@OnStart`, `@OnStop`) and project manager |
-| `support/` | 9 | Utilities (logging, JSON mapping, text scanning, constants, browser helpers) |
-| `ui/` | 44 | All Swing components (chat window, message bubbles, theming, options panel) |
+| `support/` | 14 | Utilities (logging, JSON mapping, text scanning, constants, browser helpers) |
+| `ui/` | 70 | All Swing components (chat window, message bubbles, theming, options panel) |
 
 ---
 
@@ -143,6 +143,14 @@ The color properties are declared in [`colors.json`](src/main/resources/github/a
 
 ---
 
+## Known Issues
+
+- The plugin sometimes doesn't respond when using nested agents.
+- Switching sessions or reloading the conversation while awaiting a response can cancel the current request.
+- On macOS, MCP clients with short HTTP timeouts could abort `tools/call` requests — fixed in v1.7.2 by removing the artificial 5s minimum latency.
+
+---
+
 ## Contributing
 
 Development follows standard NetBeans Platform patterns. Contributors are expected to maintain consistency with existing styling and logging conventions. New components must be validated against both light and dark IDE themes.
@@ -151,7 +159,7 @@ Development follows standard NetBeans Platform patterns. Contributors are expect
 
 ## License
 
-This software is released under the UNLICENSE. Further details can be found in the LICENSE file.
+This software is released under the Apache License, Version 2.0. Further details can be found in the LICENSE file.
 
 ---
 

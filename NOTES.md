@@ -1,5 +1,18 @@
 # Release Notes
 
+## v1.7.2 (Changes since v1.7.0)
+
+### Fixes
+- **MCP client abort on macOS**: Removed artificial 5,000ms minimum latency from `handleToolsCallAsync`. Tool responses now stream back immediately instead of being delayed, preventing HTTP timeout aborts (`AbortError: The operation was aborted`) from MCP clients on macOS.
+- **Phantom editor context**: `EditorContextCapture` now returns `null` when no real file is open (e.g. empty editor, temp document), preventing `/tmp/xxx` paths from being sent to the AI.
+- **Session race condition**: Added guarded session ID check in `displayMessage` EDT callback. If the user switches sessions between the SSE filter check and the EDT execution, late messages are silently dropped instead of appearing in the wrong session's chat panel.
+- **Slash commands excluded from history**: Removed the `isForwardedSlash` guard in `MessageSender` so slash commands are recorded in navigation history alongside regular messages.
+- **`session/delete` removed**: The unsupported `session/delete` method has been removed from the codebase.
+
+### Documentation
+- **Known Issues section**: Added to README documenting known limitations with nested agents and session switching during active requests.
+- **Version bumps**: `pom.xml`, `README.md`, and `AGENTS.md` updated to v1.7.2.
+
 ## v1.7.0 (Changes since v1.6.1)
 
 ### Features

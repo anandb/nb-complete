@@ -126,7 +126,18 @@ public class SessionLifecycleHandler implements SessionListener {
         Lookup.getDefault().lookup(UpdateDispatcher.class).handle(update, new UIHandler() {
             @Override
             public void displayMessage(ProcessedMessage msg) {
+                String msgSessionId = update.params() != null ? update.params().sessionId() : null;
                 SwingUtilities.invokeLater(() -> {
+                    // Guard: user may have switched sessions between the SSE
+                    // check in handleSseUpdate and EDT execution. Dropping a
+                    // late message is safe; showing it in the wrong session is
+                    // a visible data corruption.
+                    if (msgSessionId != null) {
+                        String currentId = Lookup.getDefault().lookup(SessionControl.class).getCurrentSessionId();
+                        if (!msgSessionId.equals(currentId)) {
+                            return;
+                        }
+                    }
                     chatPanel.addMessage(msg);
                     // Capture turnEnded once to avoid TOCTOU: the volatile
                     // field can be set to true by onMessageDone() or an SSE

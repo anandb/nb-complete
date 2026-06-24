@@ -108,10 +108,8 @@ public class MessageSender {
             }
         }
 
-        // Add to history
-        if (!isForwardedSlash) {
-            messageHistory.add(text);
-        }
+        // Add to history (including slash commands)
+        messageHistory.add(text);
 
         String currentSessionId = Lookup.getDefault().lookup(SessionControl.class).getCurrentSessionId();
         if (currentSessionId == null) {
