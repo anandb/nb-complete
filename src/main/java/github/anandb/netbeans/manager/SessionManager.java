@@ -431,7 +431,9 @@ public class SessionManager implements SessionQuery, SessionControl {
         }
 
         notifySessionStarted(null);
+        notifySessionProgress(10);
 
+        notifySessionProgress(30);
         createSession(explicitCwd)
                 .thenAccept(session -> {
                     // Guard: if closeSession() ran during the async window, the
@@ -445,6 +447,8 @@ public class SessionManager implements SessionQuery, SessionControl {
                     this.currentSessionId = session.id();
                     this.lastProjectDir = session.effectiveDirectory();
                     Logger.setSession(session.id(), session.title());
+
+                    notifySessionProgress(60);
 
                     // Run on the CompletableFuture thread for consistency with loadSession
                     // The state machine is thread-safe and listeners marshall their own
@@ -476,6 +480,7 @@ public class SessionManager implements SessionQuery, SessionControl {
         }
         this.currentSessionId = sessionId;
         notifySessionStarted(sessionId);
+        notifySessionProgress(10);
 
         // Look up session directory from cache
         String sessionCwd = cacheManager.getCachedSessions().stream()
@@ -490,9 +495,11 @@ public class SessionManager implements SessionQuery, SessionControl {
         String workingCwd = sessionCwd != null ? sessionCwd : System.getProperty("user.dir");
 
         this.lastProjectDir = workingCwd;
+        notifySessionProgress(30);
         loadSessionFromServer(sessionId, workingCwd)
                 .thenAccept(configOptions -> {
                     if (sessionId.equals(this.currentSessionId)) {
+                        notifySessionProgress(60);
                         stateMachine.transitionTo(SessionState.STREAMING);
                         notifySessionLoaded(sessionId, configOptions, isStartup);
 
@@ -653,6 +660,12 @@ public class SessionManager implements SessionQuery, SessionControl {
     private void notifySessionLoaded(String sessionId, List<SessionConfigOption> options, boolean isStartup) {
         for (SessionListener l : listeners) {
             l.onSessionLoaded(sessionId, options, isStartup);
+        }
+    }
+
+    private void notifySessionProgress(int percent) {
+        for (SessionListener l : listeners) {
+            l.onSessionProgress(percent);
         }
     }
 

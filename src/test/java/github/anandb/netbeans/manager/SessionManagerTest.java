@@ -51,6 +51,8 @@ class SessionManagerTest {
         when(processManager.getToolExecutor()).thenReturn(toolExecutor);
         when(toolExecutor.waitForReady()).thenReturn(CompletableFuture.completedFuture(null));
         when(toolExecutor.getServerConfig()).thenReturn(java.util.List.of());
+        // Default stub for 2-param sendRequest (e.g. session/prompt from sendPreamble)
+        when(processManager.sendRequest(any(), any())).thenReturn(CompletableFuture.completedFuture(null));
 
         sessionManager = SessionManager.getInstance();
     }

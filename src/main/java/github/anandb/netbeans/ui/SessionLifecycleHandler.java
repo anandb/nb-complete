@@ -1,12 +1,10 @@
 package github.anandb.netbeans.ui;
 
-import java.awt.Cursor;
 import java.util.List;
 import java.util.function.Consumer;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
-import javax.swing.JRootPane;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import github.anandb.netbeans.contract.SessionListener;
@@ -309,6 +307,8 @@ public class SessionLifecycleHandler implements SessionListener {
     public void onSessionStarted(String sessionId) {
         SwingUtilities.invokeLater(() -> {
             chatPanel.clearMessages();
+            chatPanel.setSessionLoading(true);
+            chatPanel.setSessionProgress(10);
             if (sessionId == null) {
                 statusController.setStatus("STATUS_CreatingSession");
                 tabNameUpdater.accept(null);
@@ -316,6 +316,11 @@ public class SessionLifecycleHandler implements SessionListener {
                 statusController.setStatus("STATUS_LoadingChat");
             }
         });
+    }
+
+    @Override
+    public void onSessionProgress(int percent) {
+        chatPanel.setSessionProgress(percent);
     }
 
     @Override
@@ -358,11 +363,7 @@ public class SessionLifecycleHandler implements SessionListener {
                 inputArea.requestFocusInWindow();
             }
             chatPanel.scrollToBottom();
-            // Restore default cursor after session creation completes
-            JRootPane rootPane = chatPanel.getRootPane();
-            if (rootPane != null) {
-                rootPane.setCursor(Cursor.getDefaultCursor());
-            }
+            chatPanel.setSessionLoading(false);
         });
     }
 
@@ -376,16 +377,13 @@ public class SessionLifecycleHandler implements SessionListener {
         SwingUtilities.invokeLater(() -> {
             statusController.setStatus("STATUS_Error", message);
             statusController.stopThinking();
+            chatPanel.setSessionLoading(false);
             chatPanel.stopStreaming();
             chatPanel.addMessage(ProcessedMessage.createError(
                 MessageType.error_response,
                 NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Error", message),
                 null, null
             ));
-            JRootPane rootPane = chatPanel.getRootPane();
-            if (rootPane != null) {
-                rootPane.setCursor(Cursor.getDefaultCursor());
-            }
         });
     }
 }

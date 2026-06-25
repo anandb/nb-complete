@@ -21,6 +21,7 @@ import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JLayeredPane;
 import javax.swing.JPanel;
+import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
 import javax.swing.JViewport;
 import javax.swing.ScrollPaneConstants;
@@ -61,6 +62,7 @@ public class ChatThreadPanel extends JPanel {
     private volatile boolean keepOlderMessages = false;
     private final transient ScrollController scrollController;
     private final transient MessageTransformer messageTransformer;
+    private final JProgressBar sessionProgressBar;
 
     public ChatThreadPanel() {
         ColorTheme theme = ThemeManager.getCurrentTheme();
@@ -100,6 +102,18 @@ public class ChatThreadPanel extends JPanel {
 
         layeredPane.add(scrollPane, JLayeredPane.DEFAULT_LAYER);
 
+        // Determinate progress bar for session creation/load (4px tall, full width at top)
+        sessionProgressBar = new JProgressBar(0, 100);
+        sessionProgressBar.setValue(0);
+        sessionProgressBar.setBorderPainted(false);
+        sessionProgressBar.setStringPainted(false);
+        sessionProgressBar.setPreferredSize(new Dimension(0, 4));
+        sessionProgressBar.setVisible(false);
+        sessionProgressBar.setFocusable(false);
+        sessionProgressBar.setBackground(new java.awt.Color(220, 220, 220));
+        sessionProgressBar.setForeground(new java.awt.Color(0, 120, 212));
+        layeredPane.add(sessionProgressBar, JLayeredPane.PALETTE_LAYER);
+
         // Fix: Mouse wheel scrolling often breaks when mouse is over child components
         // like JTextPane. We redirect those events to the main scroll pane.
         messagesContainer.addMouseWheelListener(e -> {
@@ -124,6 +138,7 @@ public class ChatThreadPanel extends JPanel {
                 int h = getHeight();
                 layeredPane.setBounds(0, 0, w, h);
                 scrollPane.setBounds(0, 0, w, h);
+                sessionProgressBar.setBounds(0, 0, w, 4);
                 scrollController.positionScrollDownBtn(w, h);
             }
         });
@@ -480,6 +495,22 @@ public class ChatThreadPanel extends JPanel {
             messagesContainer.revalidate();
             scrollController.scrollToBottom(true);
             trimMessages();
+        });
+    }
+
+    public void setSessionLoading(boolean loading) {
+        SwingUtilities.invokeLater(() -> {
+            sessionProgressBar.setVisible(loading);
+            if (!loading) {
+                sessionProgressBar.setValue(100);
+            }
+        });
+    }
+
+    public void setSessionProgress(int percent) {
+        SwingUtilities.invokeLater(() -> {
+            sessionProgressBar.setVisible(true);
+            sessionProgressBar.setValue(Math.max(0, Math.min(100, percent)));
         });
     }
 

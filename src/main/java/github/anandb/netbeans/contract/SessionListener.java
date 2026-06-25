@@ -20,6 +20,9 @@ public interface SessionListener {
     /** Fired to show/hide a loading indicator. */
     void onSessionLoading(boolean isLoading);
 
+    /** Fired to report session loading progress (0-100). */
+    default void onSessionProgress(int percent) {}
+
     /** Fired when a session operation fails. */
     void onSessionError(String message);
 
