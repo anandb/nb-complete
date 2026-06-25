@@ -10,10 +10,17 @@ import javax.swing.ActionMap;
 import javax.swing.JPopupMenu;
 import javax.swing.JTextArea;
 import javax.swing.Scrollable;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.UndoableEditEvent;
+import javax.swing.event.UndoableEditListener;
+import javax.swing.text.AbstractDocument;
+import javax.swing.text.BadLocationException;
 import javax.swing.text.DefaultEditorKit;
 import javax.swing.undo.CannotRedoException;
 import javax.swing.undo.CannotUndoException;
+import javax.swing.undo.CompoundEdit;
 import javax.swing.undo.UndoManager;
+import javax.swing.undo.UndoableEdit;
 
 import java.util.regex.Pattern;
 
@@ -45,7 +52,61 @@ public class PlaceholderTextArea extends JTextArea implements Scrollable {
 
     private void initUndoManager() {
         undoManager = new UndoManager();
-        getDocument().addUndoableEditListener(undoManager);
+        getDocument().addUndoableEditListener(new WordBoundaryEditListener());
+    }
+
+    /**
+     * Groups consecutive character edits into word-level {@link CompoundEdit}s.
+     * A whitespace character ends the current compound and starts a new one,
+     * so each undo step removes one word (or continuous non-whitespace run).
+     * Deletes and pastes end the current compound and create their own step.
+     */
+    private class WordBoundaryEditListener implements UndoableEditListener {
+        private CompoundEdit compound;
+
+        @Override
+        public void undoableEditHappened(UndoableEditEvent e) {
+            UndoableEdit edit = e.getEdit();
+
+            if (edit instanceof AbstractDocument.DefaultDocumentEvent docEvent) {
+                if (docEvent.getType() == DocumentEvent.EventType.INSERT) {
+                    // Check if this insert hits a word boundary (whitespace)
+                    if (insertContainsWhitespace(docEvent)) {
+                        endCompound();
+                    }
+                } else {
+                    // REMOVE or CHANGE: end current compound so delete/paste is its own step
+                    endCompound();
+                }
+            }
+
+            if (compound == null) {
+                compound = new CompoundEdit();
+                compound.addEdit(edit);
+                undoManager.addEdit(compound);
+            } else {
+                compound.addEdit(edit);
+            }
+        }
+
+        private void endCompound() {
+            if (compound != null) {
+                compound.end();
+                compound = null;
+            }
+        }
+
+        private boolean insertContainsWhitespace(AbstractDocument.DefaultDocumentEvent docEvent) {
+            try {
+                String text = docEvent.getDocument().getText(
+                    docEvent.getOffset(), docEvent.getLength());
+                for (int i = 0; i < text.length(); i++) {
+                    if (Character.isWhitespace(text.charAt(i))) return true;
+                }
+            } catch (BadLocationException ignored) {
+            }
+            return false;
+        }
     }
 
     @Override

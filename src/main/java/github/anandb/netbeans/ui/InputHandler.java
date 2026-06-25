@@ -70,10 +70,10 @@ public class InputHandler {
                     } else if (messageHistory.isNavigating()) {
                         inputArea.setText(messageHistory.navigateDown(inputArea.getText()));
                     }
-                } else if ((e.getModifiersEx() & InputEvent.CTRL_DOWN_MASK) != 0 && e.getKeyCode() == KeyEvent.VK_Z) {
+                } else if ((e.getModifiersEx() & (InputEvent.CTRL_DOWN_MASK | InputEvent.META_DOWN_MASK)) != 0 && e.getKeyCode() == KeyEvent.VK_Z) {
                     e.consume();
                     inputArea.undo();
-                } else if ((e.getModifiersEx() & InputEvent.CTRL_DOWN_MASK) != 0 && e.getKeyCode() == KeyEvent.VK_Y) {
+                } else if ((e.getModifiersEx() & (InputEvent.CTRL_DOWN_MASK | InputEvent.META_DOWN_MASK)) != 0 && e.getKeyCode() == KeyEvent.VK_Y) {
                     e.consume();
                     inputArea.redo();
                 } else if ((e.getModifiersEx() & InputEvent.CTRL_DOWN_MASK) != 0 && e.getKeyCode() == KeyEvent.VK_R) {
