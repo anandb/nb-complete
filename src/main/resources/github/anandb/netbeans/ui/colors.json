@@ -31,7 +31,8 @@
   },
   {
     "name": "bubbleUser",
-    "property": "netbeans.codingassistant.color.bubbleUserBackground",
+    "propertyLight": "netbeans.codingassistant.color.bubbleUserBackground",
+    "propertyDark": "netbeans.codingassistant.color.bubbleUserBackgroundDark",
     "dark": "#2D2A23",
     "light": "#E9E8E2"
   },

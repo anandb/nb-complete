@@ -103,8 +103,7 @@ public record ColorTheme(
         for (JsonNode entry : config) {
             String name = entry.has("name") ? entry.get("name").asText() : null;
             if (name == null) continue;
-            String propName = entry.has("property") ? entry.get("property").asText() : null;
-            Color fromProp = resolveFromProperty(propName);
+            Color fromProp = resolveFromProperty(entry, darkMode);
             if (fromProp != null) {
                 colors.put(name, fromProp);
                 continue;
@@ -120,9 +119,20 @@ public record ColorTheme(
         return colors;
     }
 
-    private static Color resolveFromProperty(String propName) {
-        if (propName == null) return null;
-        String value = System.getProperty(propName);
+    private static Color resolveFromProperty(JsonNode entry, boolean darkMode) {
+        String propName = entry.has("property") ? entry.get("property").asText() : null;
+        String propDark = entry.has("propertyDark") ? entry.get("propertyDark").asText() : null;
+        String propLight = entry.has("propertyLight") ? entry.get("propertyLight").asText() : null;
+        String effectiveProp = null;
+        if (darkMode && propDark != null) {
+            effectiveProp = propDark;
+        } else if (!darkMode && propLight != null) {
+            effectiveProp = propLight;
+        } else if (propName != null) {
+            effectiveProp = propName;
+        }
+        if (effectiveProp == null) return null;
+        String value = System.getProperty(effectiveProp);
         if (value != null && !value.isBlank()) {
             try {
                 return Color.decode(value);
