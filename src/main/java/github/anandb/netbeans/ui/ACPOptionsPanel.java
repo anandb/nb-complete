@@ -3,6 +3,7 @@ package github.anandb.netbeans.ui;
 import java.io.File;
 
 import javax.swing.JFileChooser;
+import javax.swing.filechooser.FileNameExtensionFilter;
 
 import github.anandb.netbeans.support.BinaryResolver;
 import github.anandb.netbeans.support.PluginSettings;
@@ -252,6 +253,7 @@ public class ACPOptionsPanel extends JPanel {
 
     private void iconBrowseButtonActionPerformed() {
         JFileChooser chooser = new JFileChooser();
+        chooser.setFileFilter(new FileNameExtensionFilter("PNG Images (*.png)", "png"));
         chooser.setDialogTitle(NbBundle.getMessage(ACPOptionsPanel.class, "TITLE_SelectIcon"));
         String currentPath = iconPathField.getText();
         if (!currentPath.isEmpty()) {

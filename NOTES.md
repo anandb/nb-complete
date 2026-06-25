@@ -1,5 +1,32 @@
 # Release Notes
 
+## v1.7.3 (Changes since v1.7.2)
+
+### Features
+- **Resizable input split pane**: Bottom panel replaced with `JSplitPane` so users can resize the input area vertically.
+- **Determinate progress bar**: Session load progress bar is now blue and determinate (0–100) — starts at 10%, advances to 30% on ACP request, 60% on response, 100% on session loaded. Works for both new session creation and session reload.
+- **Preamble context menu**: Right-click the preamble text area for "Clear" and "Reset to default" options.
+- **`/title <name>` direct rename**: Passing a name argument to `/title` renames the session immediately without an AI tool call. `/title` alone (no args) still uses AI.
+
+### Fixes
+- **Progress bar through preamble**: Progress bar now stays visible during preamble response (fixed `onPreambleDone` contract).
+- **Slash commands in history**: Slash commands now appear in `Alt+Up` navigation history (`messageHistory.add` called before slash intercept).
+- **`get_opened_files` scoped to project**: Editor context capture now filters to project files only, excluding phantom `/tmp/xxx` paths.
+- **Mac last-line clipping**: Increased `FitEditorPane` height fudge factor (+5→+10) and streaming `JTextArea` bottom margin (4→8) to prevent clipped last line on macOS.
+- **Dark/light system properties**: Color resolution now supports separate `propertyDark`/`propertyLight` keys alongside the existing `property` fallback, enabling distinct system property overrides per theme mode.
+- **SVG user icon removed**: Dropped `batik-transcoder` dependency — SVG is not supported for user icons. `loadSvgIcon()` removed; SVG paths in settings show "(no preview)".
+- **Streaming failsafe**: Added `sweepStreamingBubbles()` dual-source-of-truth sweep to clean up orphaned `JTextArea` instances.
+- **Log noise reduction**: MCP and Strategy messages downgraded from `INFO` to `FINE`.
+
+### UI
+- **Wait cursor**: Shows WAIT cursor while a new session is being created.
+- **`rename_session` logging**: Tool now logs `sessionId` and `title` at INFO level.
+
+### Refactoring
+- **`SlashCommandInterceptor`**: Switched to custom `Logger` with index-based placeholders.
+- **`PluginSettings`**: Exposed `getDefaultPreamble()` for context menu reset.
+- **`MockSvgLoader`**: Added for test compatibility after Batik removal.
+
 ## v1.7.2 (Changes since v1.7.0)
 
 ### Fixes
