@@ -79,6 +79,7 @@ final class IconPreviewManager {
                     icon.getImage().getScaledInstance(72, 72, Image.SCALE_SMOOTH)));
                 previewLabel.setText("");
             } else {
+                // SVG files are not supported as user icons
                 previewLabel.setIcon(null);
                 previewLabel.setText("SVG (no preview)");
             }

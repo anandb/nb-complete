@@ -276,6 +276,11 @@ public class ChatThreadPanel extends JPanel {
         // Capture scroll state BEFORE modifying content
         boolean wasAtBottom = scrollController.isAtBottom();
 
+        // Failsafe: sweep for orphaned streaming JTextAreas before creating
+        // any new bubble. Catches cases where a previous streaming bubble's
+        // boolean flags were corrupted and never finalized.
+        sweepStreamingBubbles(wasAtBottom);
+
         // Tool/thought messages create individual bubbles immediately (not accumulated)
         if (type.isTool() || type.isThought()) {
             MessageBubble bubble = BubbleFactory.createToolThoughtBubble(type, text, messageId, toolTitle, streaming);
@@ -397,13 +402,9 @@ public class ChatThreadPanel extends JPanel {
         // activeStreamBubble path (e.g. interrupted by tool/thought
         // chunks that reset activeStreamBubble, or late SSE deltas
         // arriving after the responding_finished timer fired).
-        for (Component c : messagesContainer.getComponents()) {
-            if (c instanceof MessageBubble mb && mb.isStreaming()) {
-                mb.flushUpdate(true);
-                mb.finalizeStreaming(allBlocksExpanded, true);
-                anyFinalized = true;
-            }
-        }
+        // Uses both boolean flags and physical JTextArea presence as
+        // dual source of truth for the failsafe sweep.
+        anyFinalized |= sweepStreamingBubbles(wasAtBottom);
         if (anyFinalized) {
             messagesContainer.revalidate();
             if (wasAtBottom) {
@@ -412,6 +413,63 @@ public class ChatThreadPanel extends JPanel {
         }
         // Combine any remaining individual tool/thought bubbles
         ToolThoughtCombiner.combine(messagesContainer, allBlocksExpanded, scrollController);
+    }
+
+    /**
+     * Sweeps all bubbles in the container for orphaned streaming JTextAreas.
+     * Checks both {@link MessageBubble#isStreaming()} (boolean flags) and
+     * {@link MessageBubble#hasStreamingTextArea()} (physical component tree)
+     * as dual source of truth.
+     * <p>
+     * Three cases:
+     * <ol>
+     *   <li><b>Flags say streaming, no JTextArea</b> — tool/thought bubble
+     *       with content-updater streaming (no JTextArea). Normal finalize.
+     *   <li><b>Flags say streaming, has JTextArea</b> — normal assistant
+     *       stream bubble. Normal finalize works.
+     *   <li><b>Flags say NOT streaming, has JTextArea</b> — flag corruption.
+     *       {@link MessageBubble#finalizeStreaming} would short-circuit
+     *       because it checks the private {@code isStreaming} field directly.
+     *       Use {@link MessageBubble#forceFinalize} to bypass the flag check.
+     * </ol>
+     *
+     * @param wasAtBottom whether the scroll was at bottom before this sweep
+     * @return true if any bubble was finalized
+     */
+    private boolean sweepStreamingBubbles(boolean wasAtBottom) {
+        boolean anyFinalized = false;
+        for (Component c : messagesContainer.getComponents()) {
+            if (c instanceof MessageBubble mb) {
+                boolean flagSaysStreaming = mb.isStreaming();
+                boolean hasTextArea = mb.hasStreamingTextArea();
+                if (hasTextArea) {
+                    // Physical text area present — force finalize regardless
+                    // of flag state. This handles both normal streaming and
+                    // corrupted flags in one path.
+                    mb.flushUpdate(true);
+                    if (flagSaysStreaming) {
+                        mb.finalizeStreaming(allBlocksExpanded, true);
+                    } else {
+                        // Flags corrupted — bypass the boolean check
+                        mb.forceFinalize(allBlocksExpanded);
+                    }
+                    anyFinalized = true;
+                } else if (flagSaysStreaming) {
+                    // No JTextArea (tool/thought content-updater path),
+                    // but flags still say streaming. Normal finalize.
+                    mb.flushUpdate(true);
+                    mb.finalizeStreaming(allBlocksExpanded, true);
+                    anyFinalized = true;
+                }
+            }
+        }
+        if (anyFinalized) {
+            messagesContainer.revalidate();
+            if (wasAtBottom) {
+                scrollController.scrollToBottom(true);
+            }
+        }
+        return anyFinalized;
     }
 
     public void addPermissionRequest(String prompt, JsonNode options, CompletableFuture<String> responseFuture) {

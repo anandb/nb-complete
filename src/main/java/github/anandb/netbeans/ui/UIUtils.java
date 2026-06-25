@@ -9,9 +9,7 @@ import java.awt.LayoutManager;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
 import javax.swing.JComboBox;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
@@ -27,8 +25,8 @@ import javax.swing.border.EmptyBorder;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.PreferenceKeys;
 import github.anandb.netbeans.support.Logger;
+
 import org.openide.util.NbPreferences;
-import org.openide.util.Utilities;
 
 public class UIUtils {
 
@@ -186,34 +184,14 @@ public class UIUtils {
                         cachedUserIcon = scaled;
                         return scaled;
                     }
+                    // SVG files are not supported — log and fall through to default
+                    LOG.info("Unsupported icon format (SVG) at: {0}", path);
                 } catch (Exception e) {
                     LOG.log(Level.WARNING, "Failed to load custom user icon", e);
                 }
-                return loadSvgIcon(file);
             }
         }
         return ThemeManager.getIcon("user.svg", size);
-    }
-
-    public static Icon loadSvgIcon(File file) {
-        try {
-            Class<?> transcoderClass = Class.forName("org.apache.batik.transcoder.image.PNGTranscoder");
-            Class<?> inputClass = Class.forName("org.apache.batik.transcoder.TranscoderInput");
-            Class<?> outputClass = Class.forName("org.apache.batik.transcoder.TranscoderOutput");
-            Object transcoder = transcoderClass.getDeclaredConstructor().newInstance();
-            transcoderClass.getMethod("addTranscodingHint", Object.class, Object.class)
-                .invoke(transcoder, transcoderClass.getField("KEY_WIDTH").get(null), 37f);
-            transcoderClass.getMethod("addTranscodingHint", Object.class, Object.class)
-                .invoke(transcoder, transcoderClass.getField("KEY_HEIGHT").get(null), 37f);
-            Object input = inputClass.getConstructor(String.class).newInstance(Utilities.toURI(file).toURL().toString());
-            ByteArrayOutputStream ostream = new ByteArrayOutputStream();
-            Object output = outputClass.getConstructor(OutputStream.class).newInstance(ostream);
-            transcoderClass.getMethod("transcode", inputClass, outputClass).invoke(transcoder, input, output);
-            return new ImageIcon(ostream.toByteArray());
-        } catch (Exception e) {
-            LOG.log(Level.WARNING, "Failed to load SVG custom user icon", e);
-            return ThemeManager.getIcon("user.svg", 37);
-        }
     }
 
     public static boolean isSeparatorRowLine(String line) {

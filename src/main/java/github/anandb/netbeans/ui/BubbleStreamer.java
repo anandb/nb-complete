@@ -90,6 +90,16 @@ class BubbleStreamer {
         return streamingTextArea;
     }
 
+    /**
+     * Returns true if the streaming JTextArea still exists in the component
+     * tree. This is the physical source of truth — unlike {@link #isStreaming()}
+     * it cannot lie if boolean flags go out of sync (exception midway through
+     * finalization, double-finalize short-circuit, etc.).
+     */
+    boolean hasStreamingTextArea() {
+        return streamingTextArea != null && streamingTextArea.getParent() != null;
+    }
+
     void setStreamingTextArea(JTextArea ta) {
         this.streamingTextArea = ta;
     }
@@ -183,7 +193,23 @@ class BubbleStreamer {
     }
 
     boolean isStreaming() {
-        return isStreaming || isFinalizingDeferred;
+        // Physical check covers flag corruption: if any text area is still in
+        // the component tree, we are still streaming regardless of flags.
+        return streamingTextArea != null || isStreaming || isFinalizingDeferred;
+    }
+
+    /**
+     * Force-finalizes streaming without checking boolean flags. Used by the
+     * sweep failsafe ({@link ChatThreadPanel#sweepStreamingBubbles()}) when
+     * a bubble's streaming JTextArea is still in the component tree but the
+     * boolean flags are corrupted (exception midway through finalization,
+     * double-finalize short-circuit, etc.).
+     */
+    void forceFinalize(boolean expanded) {
+        if (streamingTextArea != null) {
+            savedCollapseState = expanded;
+            performFinalization();
+        }
     }
 
     void stopTimer() {

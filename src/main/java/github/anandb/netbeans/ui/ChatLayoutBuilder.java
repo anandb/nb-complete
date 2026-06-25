@@ -168,6 +168,10 @@ final class ChatLayoutBuilder {
 
         newSessionBtn = UIUtils.createToolbarButton("new.svg", NbBundle.getMessage(AssistantTopComponent.class, "HINT_NewSession"), e -> {
             newSessionDebounceTimer.restart();
+            javax.swing.JRootPane rootPane = topComponent.getRootPane();
+            if (rootPane != null) {
+                rootPane.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+            }
         });
         String renameHint = NbBundle.getMessage(AssistantTopComponent.class, "HINT_RenameSession");
         renameSessionBtn = UIUtils.createToolbarButton("rename.svg", renameHint, e -> topComponent.renameCurrentSession());

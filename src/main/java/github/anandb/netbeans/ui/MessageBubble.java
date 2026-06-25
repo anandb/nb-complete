@@ -329,6 +329,17 @@ public class MessageBubble extends JPanel implements Scrollable {
         return streamer.isStreaming();
     }
 
+    /**
+     * Returns true if the streaming JTextArea is still present in the component
+     * tree. This is the physical source of truth — unlike {@link #isStreaming()}
+     * it catches cases where boolean flags were corrupted (exception midway
+     * through finalization, double-finalize short-circuit, etc.).
+     * Used by {@link ChatThreadPanel#sweepStreamingBubbles()} as a failsafe.
+     */
+    public boolean hasStreamingTextArea() {
+        return streamer.hasStreamingTextArea();
+    }
+
     public void setResponseTimeMs(long ms) {
         themeApplier.setResponseTimeMs(ms);
     }
@@ -384,6 +395,15 @@ public class MessageBubble extends JPanel implements Scrollable {
      */
     public void finalizeStreaming(boolean expanded, boolean immediate) {
         streamer.finalizeStreaming(expanded, immediate);
+    }
+
+    /**
+     * Force-finalizes streaming without checking boolean flags. Used by the
+     * sweep failsafe when flag corruption is suspected.
+     * @param expanded initial collapse state for code/tool panes
+     */
+    void forceFinalize(boolean expanded) {
+        streamer.forceFinalize(expanded);
     }
 
     /**
