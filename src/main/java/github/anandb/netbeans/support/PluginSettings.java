@@ -43,6 +43,11 @@ public final class PluginSettings {
     private PluginSettings() {
     }
 
+    /** Returns the default preamble loaded from the bundled resources. */
+    public static String getDefaultPreamble() {
+        return DEFAULT_PREAMBLE;
+    }
+
     public static String getPreamble() {
         return NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).get(KEY_PREAMBLE, DEFAULT_PREAMBLE);
     }

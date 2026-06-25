@@ -23,8 +23,11 @@ public final class PreferenceKeys {
 
     // Input history keys
     public static final String INPUT_HISTORY_COUNT = "inputHistory.count";
+
     public static final String INPUT_HISTORY_PREFIX = "inputHistory.";
 
+    /** Stored JSplitPane divider position for the chat panel / input area split. */
+    public static final String DIVIDER_POSITION = "dividerPosition";
     // Toolbar button visibility keys
     public static final String TOOLBAR_ARCHIVE = "toolbar.archive";
     public static final String TOOLBAR_NEW_SESSION = "toolbar.newSession";

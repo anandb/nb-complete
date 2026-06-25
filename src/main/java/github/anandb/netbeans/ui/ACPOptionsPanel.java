@@ -22,6 +22,8 @@ import java.awt.event.KeyEvent;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JLabel;
+import javax.swing.JMenuItem;
+import javax.swing.JPopupMenu;
 import javax.swing.JSpinner;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.JPanel;
@@ -181,6 +183,15 @@ public class ACPOptionsPanel extends JPanel {
             @Override
             public void keyReleased(KeyEvent evt) { controller.changed(); }
         });
+        // Right-click menu: Clear or Reset to default preamble
+        JPopupMenu preambleMenu = new JPopupMenu();
+        JMenuItem clearItem = new JMenuItem(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_PreambleClear"));
+        clearItem.addActionListener(e -> preambleArea.setText(""));
+        preambleMenu.add(clearItem);
+        JMenuItem resetItem = new JMenuItem(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_PreambleReset"));
+        resetItem.addActionListener(e -> preambleArea.setText(PluginSettings.getDefaultPreamble()));
+        preambleMenu.add(resetItem);
+        preambleArea.setComponentPopupMenu(preambleMenu);
         GridBagConstraints gbcPreambleScroll = UIUtils.createGbc(0, 9, 1.0, 0.2, GridBagConstraints.BOTH,
                 GridBagConstraints.WEST, new Insets(0, 12, 15, 0));
         gbcPreambleScroll.gridwidth = 3;

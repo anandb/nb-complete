@@ -24,6 +24,7 @@ import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JSplitPane;
 import javax.swing.SwingUtilities;
 
 import org.netbeans.api.settings.ConvertAsProperties;
@@ -96,6 +97,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     private final transient AutocompleteManager autocompleteManager;
 
     private final transient PermissionDialogManager permissionDialogManager;
+    private final transient JSplitPane mainSplitPane;
 
     public AssistantTopComponent() {
         setName(NbBundle.getMessage(AssistantTopComponent.class, "CTL_AssistantTopComponent"));
@@ -128,8 +130,14 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         stopBtn = layoutBuilder.getStopBtn();
 
         add(header, BorderLayout.NORTH);
-        add(chatPanel, BorderLayout.CENTER);
-        add(bottomPanel, BorderLayout.SOUTH);
+
+        mainSplitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, chatPanel, bottomPanel);
+        mainSplitPane.setResizeWeight(1.0);
+        mainSplitPane.setOneTouchExpandable(false);
+        mainSplitPane.setContinuousLayout(true);
+        mainSplitPane.setBorder(null);
+        // Divider position is not persisted across restarts.
+        add(mainSplitPane, BorderLayout.CENTER);
 
         statusController = new StatusController(statusLabel, sendBtn, stopBtn, inputArea, toggleOptionsBtn);
         attachmentUiHandler = new AttachmentUiHandler(attachmentManager, statusController, inputArea, AssistantTopComponent.this);

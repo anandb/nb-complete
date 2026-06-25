@@ -334,7 +334,7 @@ public class MessageBubble extends JPanel implements Scrollable {
      * tree. This is the physical source of truth — unlike {@link #isStreaming()}
      * it catches cases where boolean flags were corrupted (exception midway
      * through finalization, double-finalize short-circuit, etc.).
-     * Used by {@link ChatThreadPanel#sweepStreamingBubbles()} as a failsafe.
+     * Used by {@code ChatThreadPanel.sweepStreamingBubbles()} as a failsafe.
      */
     public boolean hasStreamingTextArea() {
         return streamer.hasStreamingTextArea();

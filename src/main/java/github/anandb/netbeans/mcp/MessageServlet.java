@@ -57,7 +57,7 @@ class MessageServlet extends HttpServlet {
         }
 
         long start = System.nanoTime();
-        LOG.info("MCP request received: {0} {1}", request.getMethod(), request.getRequestURI());
+        LOG.fine("MCP request received: {0} {1}", request.getMethod(), request.getRequestURI());
         AsyncContext asyncContext = request.startAsync();
         asyncContext.setTimeout(PluginSettings.getSessionIdleTimeout() * 1000L);
 
@@ -86,7 +86,7 @@ class MessageServlet extends HttpServlet {
                 // ids into 0, breaking client response correlation.
                 JsonNode idNode = isNotification ? null : req.get("id");
 
-                LOG.info("MCP method: {0} (id={1})", method, idNode);
+                LOG.fine("MCP method: {0} (id={1})", method, idNode);
 
                 isToolsCall = !isNotification && "tools/call".equals(method);
 
@@ -114,7 +114,7 @@ class MessageServlet extends HttpServlet {
 
                     writeResponse(asyncContext, resp);
                     long durationMs = (System.nanoTime() - start) / 1_000_000;
-                    LOG.info("MCP response sent: {0} in {1}ms", method, durationMs);
+                    LOG.fine("MCP response sent: {0} in {1}ms", method, durationMs);
                 } else {
                     handleNotification(method, params);
                 }
@@ -139,7 +139,7 @@ class MessageServlet extends HttpServlet {
                 }
             } finally {
                 long durationMs = (System.nanoTime() - start) / 1_000_000;
-                LOG.info("MCP request completed in {0}ms", durationMs);
+                LOG.fine("MCP request completed in {0}ms", durationMs);
                 if (!isToolsCall) {
                     asyncContext.complete();
                 }
@@ -192,7 +192,7 @@ class MessageServlet extends HttpServlet {
 
                 try {
                     writeResponse(asyncContext, resp);
-                    LOG.info("MCP tools/call completed: {0} (tool={1}ms, total={2}ms)", name, toolElapsed, totalElapsed);
+                    LOG.fine("MCP tools/call completed: {0} (tool={1}ms, total={2}ms)", name, toolElapsed, totalElapsed);
                 } catch (IOException e) {
                     LOG.log(Level.SEVERE, "Failed to write tools/call response", e);
                 } finally {
@@ -247,13 +247,13 @@ class MessageServlet extends HttpServlet {
     private void handleNotification(String method, JsonNode params) {
         switch (method) {
             case "notifications/initialized" ->
-                LOG.info("MCP client initialized");
+                LOG.fine("MCP client initialized");
             case "notifications/cancelled" ->
-                LOG.info("MCP client cancelled: {0}", params);
+                LOG.fine("MCP client cancelled: {0}", params);
             case "notifications/tools/list_changed" ->
-                LOG.info("MCP client notified tool list changed");
+                LOG.fine("MCP client notified tool list changed");
             default ->
-                LOG.info("MCP unhandled notification: {0}", method);
+                LOG.fine("MCP unhandled notification: {0}", method);
         }
     }
 
@@ -289,12 +289,12 @@ class MessageServlet extends HttpServlet {
 
     private void handleToolsList(ObjectNode resp) {
         long start = System.nanoTime();
-        LOG.info("MCP tools/list request");
+        LOG.fine("MCP tools/list request");
         ObjectNode result = mapper.createObjectNode();
         result.set("tools", mcpTools.getToolList());
         resp.set("result", result);
         long durationMs = (System.nanoTime() - start) / 1_000_000;
-        LOG.info("MCP tools/list completed in {0}ms, tools={1}", durationMs, mcpTools.toolCount());
+        LOG.fine("MCP tools/list completed in {0}ms, tools={1}", durationMs, mcpTools.toolCount());
     }
 
     private void handleResourcesList(ObjectNode resp) {

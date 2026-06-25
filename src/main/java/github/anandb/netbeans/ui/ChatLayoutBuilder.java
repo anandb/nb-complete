@@ -2,12 +2,16 @@ package github.anandb.netbeans.ui;
 
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
+import java.awt.Component;
 import java.awt.Cursor;
+import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 
+import javax.swing.Box;
+import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JComboBox;
@@ -345,6 +349,12 @@ final class ChatLayoutBuilder {
         inputArea.setFont(ThemeManager.getFont().deriveFont(editorFontSize));
 
         inputScrollPane = new JScrollPane(inputArea);
+        // Prevent the input area from shrinking below its 2-row natural height,
+        // otherwise a scrollbar appears when the split pane divider is dragged down.
+        Dimension scrollMin = inputArea.getPreferredScrollableViewportSize();
+        scrollMin.height += inputArea.getBorder().getBorderInsets(inputArea).top
+                          + inputArea.getBorder().getBorderInsets(inputArea).bottom;
+        inputScrollPane.setMinimumSize(scrollMin);
 
         JPanel inputMainPanel = new JPanel(new BorderLayout(0, 4));
         inputMainPanel.setOpaque(false);
@@ -378,10 +388,18 @@ final class ChatLayoutBuilder {
             }
         });
 
-        JPanel rightPanel = new JPanel(new BorderLayout(0, 4));
+        JPanel rightPanel = new JPanel();
+        rightPanel.setLayout(new BoxLayout(rightPanel, BoxLayout.Y_AXIS));
         rightPanel.setOpaque(false);
-        rightPanel.add(btnCard, BorderLayout.CENTER);
-        rightPanel.add(versionLabel, BorderLayout.SOUTH);
+        // Let the send/stop button card grow up to 2× its natural height
+        // when the input area is enlarged via the split pane divider.
+        int maxBtnH = btnCard.getPreferredSize().height * 2;
+        btnCard.setMaximumSize(new Dimension(Integer.MAX_VALUE, maxBtnH));
+        btnCard.setAlignmentX(Component.CENTER_ALIGNMENT);
+        rightPanel.add(btnCard);
+        rightPanel.add(Box.createVerticalGlue());
+        versionLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        rightPanel.add(versionLabel);
 
         inputMainPanel.add(rightPanel, BorderLayout.EAST);
 

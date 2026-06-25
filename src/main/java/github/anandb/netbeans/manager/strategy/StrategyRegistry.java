@@ -77,7 +77,7 @@ public class StrategyRegistry implements UpdateDispatcher {
 
         type = defaultIfBlank(reClassify(update), update.type());
         if (hasAnnotationFilter(update) && shouldSkip(update.content())) {
-            LOG.info("Ignoring message type={0}: annotation filter matched, update={1}", type, update);
+            LOG.fine("Ignoring message type={0}: annotation filter matched, update={1}", type, update);
             return;
         }
 
@@ -170,7 +170,7 @@ public class StrategyRegistry implements UpdateDispatcher {
             case "message" -> {
                 Message msg = update.message();
                 if (msg == null) {
-                    LOG.info("Ignoring message: null message object, update={0}", update);
+                    LOG.fine("Ignoring message: null message object, update={0}", update);
                     return;
                 }
                 String role = msg.type() != null ? msg.type() : "assistant";
@@ -271,7 +271,7 @@ public class StrategyRegistry implements UpdateDispatcher {
                     return true;
             }
         }
-        
+
         return false;
     }
 
