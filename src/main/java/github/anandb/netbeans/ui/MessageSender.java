@@ -78,6 +78,10 @@ public class MessageSender {
             onNewMessageCallback.run();
         }
 
+        // Add to history before slash intercept so local commands (/models, /title etc.)
+        // are available via Alt+Up browsing.
+        messageHistory.add(text);
+
         // Intercept local slash commands first (trim is only to check for '/')
         boolean isForwardedSlash = false;
         if (text.trim().startsWith("/")) {
@@ -107,9 +111,6 @@ public class MessageSender {
                 isForwardedSlash = true;
             }
         }
-
-        // Add to history (including slash commands)
-        messageHistory.add(text);
 
         String currentSessionId = Lookup.getDefault().lookup(SessionControl.class).getCurrentSessionId();
         if (currentSessionId == null) {

@@ -80,7 +80,7 @@ class BubbleStreamer {
         ta.setBackground(TRANSPARENT);
         ta.setForeground(theme.assistantForeground());
         ta.setFont(ThemeManager.getFont());
-        ta.setBorder(new EmptyBorder(4, 20, 4, 6));
+        ta.setBorder(new EmptyBorder(4, 20, 8, 6));
         ta.setCaretPosition(ta.getDocument().getLength());
         isStreaming = true;
         return ta;

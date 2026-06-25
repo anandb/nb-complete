@@ -53,11 +53,24 @@ public class EditorToolProvider {
                                 new java.util.concurrent.CompletableFuture<>();
                         SwingUtilities.invokeLater(() -> {
                             try {
+                                Project[] projects = ACPProjectManager.getInstance().getAllOpenProjects();
                                 List<String> paths = new ArrayList<>();
                                 for (var editor : EditorRegistry.componentList()) {
                                     FileObject fo = NbEditorUtilities.getFileObject(editor.getDocument());
-                                    if (fo != null) {
-                                        paths.add(fo.getPath());
+                                    if (fo == null) continue;
+                                    String filePath = fo.getPath();
+                                    // Only include files inside open projects — phantom paths
+                                    // like /tmp/xxx (when no project is open) confuse the AI.
+                                    boolean inProject = false;
+                                    for (Project p : projects) {
+                                        String projectDir = p.getProjectDirectory().getPath();
+                                        if (filePath.startsWith(projectDir)) {
+                                            inProject = true;
+                                            break;
+                                        }
+                                    }
+                                    if (inProject) {
+                                        paths.add(filePath);
                                     }
                                 }
                                 future.complete(paths);
@@ -158,18 +171,25 @@ public class EditorToolProvider {
                         if (args.title() == null) {
                             return Map.of("status", "error", "message", "title is required");
                         }
+                        String title = args.title().trim();
+                        LOG.info("rename_session tool called: title=\"{0}\", sessionId={1}",
+                                title, args.sessionId() != null ? args.sessionId() : "(current)");
                         SwingUtilities.invokeLater(() -> {
                             SessionControl sc = Lookup.getDefault().lookup(SessionControl.class);
                             if (sc == null) {
+                                LOG.warn("rename_session: SessionControl not found");
                                 return;
                             }
                             String sessionId = args.sessionId() != null
                                     ? args.sessionId()
                                     : sc.getCurrentSessionId();
                             if (sessionId == null) {
+                                LOG.warn("rename_session: no active session");
                                 return;
                             }
-                            sc.renameSession(sessionId, args.title());
+                            sc.renameSession(sessionId, title);
+                            LOG.info("rename_session completed: sessionId={0}, title=\"{1}\"",
+                                    sessionId, title);
                         });
                         return Map.of("status", "ok");
                     }

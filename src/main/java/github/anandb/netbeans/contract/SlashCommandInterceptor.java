@@ -3,14 +3,13 @@ package github.anandb.netbeans.contract;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.logging.Level;
 import github.anandb.netbeans.model.ModelRecords.CommandInfo;
+import github.anandb.netbeans.support.Logger;
 import org.openide.util.Lookup;
 
 public class SlashCommandInterceptor {
 
-    private static final java.util.logging.Logger LOG =
-            java.util.logging.Logger.getLogger(SlashCommandInterceptor.class.getName());
+    private static final Logger LOG = Logger.from(SlashCommandInterceptor.class);
 
     private final Map<String, CommandInfo> commands = new HashMap<>();
 
@@ -24,7 +23,7 @@ public class SlashCommandInterceptor {
                 // Wrap SlashCommandHandler → BiFunction to match CommandInfo type
                 SlashCommandHandler h = provider.getHandler();
                 commands.put(provider.getCommand(), new CommandInfo(h::handle, provider.getDescription()));
-                LOG.log(Level.FINE, "Registered slash command from provider: {0}", provider.getCommand());
+                LOG.fine("Registered slash command from provider: {0}", provider.getCommand());
             }
         }
     }
@@ -58,7 +57,7 @@ public class SlashCommandInterceptor {
 
         CommandInfo info = commands.get(command);
         if (info != null) {
-            LOG.log(Level.INFO, "Intercepted local command: {0}", command);
+            LOG.info("Intercepted local command: {0}", command);
             return info.handler().apply(args, context);
         }
 
@@ -116,6 +115,20 @@ public class SlashCommandInterceptor {
         String sessionId = sc.getCurrentSessionId();
         if (sessionId == null) {
             return CompletableFuture.completedFuture(false);
+        }
+
+        // If user provided a title directly (e.g. /title My Title), rename immediately
+        // without relying on AI tool calling — works even when MCP tools are not available.
+        if (!args.isBlank()) {
+            String newTitle = args.trim();
+            LOG.info("Direct rename via /title: sessionId={0}, title=\"{1}\"",
+                    sessionId, newTitle);
+            sc.renameSession(sessionId, newTitle);
+            SlashCommandCallback cb = callback;
+            if (cb != null) {
+                cb.displayToolMessage("title", "Renamed to: " + newTitle);
+            }
+            return CompletableFuture.completedFuture(true);
         }
 
         // Show simulated tool_call_update in chat

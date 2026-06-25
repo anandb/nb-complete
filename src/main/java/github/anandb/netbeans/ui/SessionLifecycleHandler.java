@@ -54,6 +54,10 @@ public class SessionLifecycleHandler implements SessionListener {
     private boolean isSwitchingSessionDropdown = false;
     private volatile boolean turnEnded = false;
 
+    /** True while waiting for the preamble response on a new session.
+     *  Keeps the progress bar visible until the preamble turn ends. */
+    private volatile boolean pendingPreambleResponse = false;
+
     public SessionLifecycleHandler(
             ChatThreadPanel chatPanel,
             JComboBox<SessionItem> sessionDropdown,
@@ -192,6 +196,11 @@ public class SessionLifecycleHandler implements SessionListener {
                 || "available_commands_update".equals(type)) {
             LOG.info("SSE turn-end signal received: type={0} (this confirms SSE path WORKS)", type);
             turnEnded = true;
+            // If waiting for the preamble response, hide the progress bar now.
+            if (pendingPreambleResponse) {
+                pendingPreambleResponse = false;
+                SwingUtilities.invokeLater(() -> chatPanel.setSessionLoading(false));
+            }
             // Brief delay to allow any in-flight delta notifications to arrive
             // before finalizing the stream bubble.
             SwingUtilities.invokeLater(() -> {
@@ -310,10 +319,21 @@ public class SessionLifecycleHandler implements SessionListener {
             chatPanel.setSessionLoading(true);
             chatPanel.setSessionProgress(10);
             if (sessionId == null) {
+                pendingPreambleResponse = true;
                 statusController.setStatus("STATUS_CreatingSession");
                 tabNameUpdater.accept(null);
             } else {
                 statusController.setStatus("STATUS_LoadingChat");
+            }
+        });
+    }
+
+    @Override
+    public void onPreambleDone() {
+        SwingUtilities.invokeLater(() -> {
+            if (pendingPreambleResponse) {
+                pendingPreambleResponse = false;
+                chatPanel.setSessionLoading(false);
             }
         });
     }
@@ -363,7 +383,9 @@ public class SessionLifecycleHandler implements SessionListener {
                 inputArea.requestFocusInWindow();
             }
             chatPanel.scrollToBottom();
-            chatPanel.setSessionLoading(false);
+            if (!pendingPreambleResponse) {
+                chatPanel.setSessionLoading(false);
+            }
         });
     }
 

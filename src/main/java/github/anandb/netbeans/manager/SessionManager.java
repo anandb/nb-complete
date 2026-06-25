@@ -456,7 +456,9 @@ public class SessionManager implements SessionQuery, SessionControl {
                     stateMachine.transitionTo(SessionState.STREAMING);
                     notifySessionLoaded(session.id(), session.configOptions(), true);
                     refreshSessions();
-                    sendPreamble(session.id());
+                    if (!sendPreamble(session.id())) {
+                        notifyPreambleDone();
+                    }
                 })
                 .exceptionally(ex -> {
                     LOG.severe("Failed to create session", ex);
@@ -557,11 +559,15 @@ public class SessionManager implements SessionQuery, SessionControl {
         refreshSessions();
     }
 
-    private void sendPreamble(String sessionId) {
+    /** Sends the initial preamble prompt for a new session.
+     *  @return true if a preamble was sent, false if empty/skipped */
+    private boolean sendPreamble(String sessionId) {
         String preamble = PluginSettings.getPreamble().trim();
         if (!preamble.isEmpty()) {
             sendAssistantPrompt(sessionId, preamble, "preamble");
+            return true;
         }
+        return false;
     }
 
     /**
@@ -642,6 +648,12 @@ public class SessionManager implements SessionQuery, SessionControl {
             LOG.info("onTurnEnded: transitioning STOPPING -> STREAMING");
         } else {
             LOG.fine("onTurnEnded: current state={0} (no transition needed)", stateMachine.getState());
+        }
+    }
+
+    private void notifyPreambleDone() {
+        for (SessionListener l : listeners) {
+            l.onPreambleDone();
         }
     }
 

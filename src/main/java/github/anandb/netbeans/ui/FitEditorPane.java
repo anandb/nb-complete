@@ -101,8 +101,9 @@ public class FitEditorPane extends JTextPane {
                 if (h > 0) {
                     lastComputedHeight = (int) Math.ceil(h);
                     lastComputedWidth = w;
-                    // +5 fudge prevents last text line from being clipped
-                    cachedSize = new Dimension(w, lastComputedHeight + insets.top + insets.bottom + 5);
+                    // +10 fudge prevents last text line from being clipped
+                    // (macOS font descenders can be larger; +5 was insufficient)
+                    cachedSize = new Dimension(w, lastComputedHeight + insets.top + insets.bottom + 10);
                     return cachedSize;
                 }
             }
@@ -111,8 +112,9 @@ public class FitEditorPane extends JTextPane {
         }
 
         if (lastComputedHeight > 0) {
-            // +5 fudge prevents last text line from being clipped
-            cachedSize = new Dimension(w, Math.max(30, lastComputedHeight + insets.top + insets.bottom + 5));
+            // +10 fudge prevents last text line from being clipped
+            // (macOS font descenders can be larger; +5 was insufficient)
+            cachedSize = new Dimension(w, Math.max(30, lastComputedHeight + insets.top + insets.bottom + 10));
             return cachedSize;
         }
         Dimension superSize = super.getPreferredSize();

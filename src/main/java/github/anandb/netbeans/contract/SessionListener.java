@@ -28,4 +28,9 @@ public interface SessionListener {
 
     /** Fired for every SSE session/update notification. */
     void onSessionUpdate(SessionUpdate update);
+
+    /** Fired when the preamble has been sent (or skipped because empty).
+     *  Only called for new sessions. Used to hide the session-loading
+     *  progress bar once the preamble response completes. */
+    default void onPreambleDone() {}
 }
