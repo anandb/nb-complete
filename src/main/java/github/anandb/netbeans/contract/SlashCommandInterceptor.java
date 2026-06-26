@@ -3,9 +3,12 @@ package github.anandb.netbeans.contract;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+
 import github.anandb.netbeans.model.ModelRecords.CommandInfo;
 import github.anandb.netbeans.support.Logger;
 import org.openide.util.Lookup;
+
+import static org.apache.commons.lang3.StringUtils.isBlank;
 
 public class SlashCommandInterceptor {
 
@@ -108,12 +111,12 @@ public class SlashCommandInterceptor {
     }
 
     private CompletableFuture<Boolean> handleTitle(String args, Lookup context) {
-        SessionControl sc = Lookup.getDefault().lookup(SessionControl.class);
+        SessionControl sc = context.lookup(SessionControl.class);
         if (sc == null) {
             return CompletableFuture.completedFuture(false);
         }
         String sessionId = sc.getCurrentSessionId();
-        if (sessionId == null) {
+        if (isBlank(sessionId)) {
             return CompletableFuture.completedFuture(false);
         }
 
@@ -121,13 +124,13 @@ public class SlashCommandInterceptor {
         // without relying on AI tool calling — works even when MCP tools are not available.
         if (!args.isBlank()) {
             String newTitle = args.trim();
-            LOG.info("Direct rename via /title: sessionId={0}, title=\"{1}\"",
-                    sessionId, newTitle);
+            LOG.info("Direct rename via /title: sessionId={0}, title=\"{1}\"", sessionId, newTitle);
             sc.renameSession(sessionId, newTitle);
             SlashCommandCallback cb = callback;
             if (cb != null) {
                 cb.displayToolMessage("title", "Renamed to: " + newTitle);
             }
+
             return CompletableFuture.completedFuture(true);
         }
 
@@ -139,7 +142,7 @@ public class SlashCommandInterceptor {
 
         // Send as regular message — AI needs conversation context to suggest a title
         String prompt = "Suggest a title for this session and call the nb_rename_session tool to rename the session.";
-        ProcessControl pc = Lookup.getDefault().lookup(ProcessControl.class);
+        ProcessControl pc = context.lookup(ProcessControl.class);
         if (pc != null) {
             pc.sendMessage(sessionId, prompt, null);
         }

@@ -92,7 +92,8 @@ public class MessageSender {
         if (text.trim().startsWith("/")) {
             SlashCommandInterceptor interceptor = Lookup.getDefault().lookup(ProcessControl.class).getSlashCommandInterceptor();
             if (interceptor != null) {
-                CompletableFuture<Boolean> handled = interceptor.intercept(text, null);
+                Lookup defaultCtx = Lookup.getDefault();
+                CompletableFuture<Boolean> handled = interceptor.intercept(text, defaultCtx);
                 if (handled != null && handled.isDone() && !handled.isCompletedExceptionally()) {
                     Boolean result = handled.join();
                     if (Boolean.TRUE.equals(result)) {

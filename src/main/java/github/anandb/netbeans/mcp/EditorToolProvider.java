@@ -27,6 +27,10 @@ import org.openide.filesystems.FileUtil;
 import org.openide.loaders.DataObject;
 import org.openide.text.Line;
 
+import static org.apache.commons.lang3.StringUtils.defaultIfBlank;
+import static org.apache.commons.lang3.StringUtils.isBlank;
+import static org.apache.commons.lang3.StringUtils.isNotBlank;
+
 public class EditorToolProvider {
 
     private static final Logger LOG = Logger.from(EditorToolProvider.class);
@@ -168,28 +172,25 @@ public class EditorToolProvider {
                 new ToolExecutor<RenameSessionInput, Map<String, Object>>(RenameSessionInput.class) {
                     @Override
                     public Map<String, Object> execute(RenameSessionInput args) throws Exception {
-                        if (args.title() == null) {
+                        if (isBlank(args.title())) {
                             return Map.of("status", "error", "message", "title is required");
                         }
-                        String title = args.title().trim();
+
                         LOG.info("rename_session tool called: title=\"{0}\", sessionId={1}",
-                                title, args.sessionId() != null ? args.sessionId() : "(current)");
+                                args.title(), isNotBlank(args.sessionId()) ? args.sessionId() : "(current)");
+
+                        final String title = args.title().trim();
+                        final SessionControl sc = Lookup.getDefault().lookup(SessionControl.class);
+                        final String sessionId = defaultIfBlank(args.sessionId(), sc.getCurrentSessionId());
+
                         SwingUtilities.invokeLater(() -> {
-                            SessionControl sc = Lookup.getDefault().lookup(SessionControl.class);
-                            if (sc == null) {
-                                LOG.warn("rename_session: SessionControl not found");
-                                return;
-                            }
-                            String sessionId = args.sessionId() != null
-                                    ? args.sessionId()
-                                    : sc.getCurrentSessionId();
-                            if (sessionId == null) {
+                            if (isBlank(sessionId)) {
                                 LOG.warn("rename_session: no active session");
                                 return;
                             }
+
                             sc.renameSession(sessionId, title);
-                            LOG.info("rename_session completed: sessionId={0}, title=\"{1}\"",
-                                    sessionId, title);
+                            LOG.info("rename_session completed: sessionId={0}, title=\"{1}\"", sessionId, title);
                         });
                         return Map.of("status", "ok");
                     }
