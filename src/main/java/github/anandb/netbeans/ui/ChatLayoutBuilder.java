@@ -363,9 +363,11 @@ final class ChatLayoutBuilder {
 
         JPanel btnCard = UIUtils.createTransparentPanel(new CardLayout());
         sendBtn = UIUtils.createTextButton(NbBundle.getMessage(AssistantTopComponent.class, "BTN_Go"), null);
+        sendBtn.setPreferredSize(new java.awt.Dimension(80, 64));
         sendBtn.setMnemonic(java.awt.event.KeyEvent.VK_G);
         sendBtn.setDisplayedMnemonicIndex(0);
         stopBtn = UIUtils.createTextButton(NbBundle.getMessage(AssistantTopComponent.class, "BTN_Stop"), null);
+        stopBtn.setPreferredSize(new java.awt.Dimension(80, 64));
         stopBtn.setMnemonic(java.awt.event.KeyEvent.VK_S);
         stopBtn.setDisplayedMnemonicIndex(0);
 

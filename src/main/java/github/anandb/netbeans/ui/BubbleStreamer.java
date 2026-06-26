@@ -14,12 +14,26 @@ import javax.swing.border.EmptyBorder;
 
 import org.openide.util.NbBundle;
 
+import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.TimingConstants;
 
 class BubbleStreamer {
 
+    private static final Logger LOG = Logger.from(BubbleStreamer.class);
+
     interface ContentUpdater {
         void update(ColorTheme theme, boolean expanded);
+    }
+
+    /** Single source of truth for the streaming lifecycle. Replaces the old
+     *  pair of boolean flags that could drift out of sync with the component tree. */
+    private enum StreamingState {
+        /** Bubble is finalized and shows rendered HTML. */
+        FINALIZED,
+        /** Bubble has a streaming JTextArea and accepts new text. */
+        STREAMING,
+        /** Bubble is waiting for the deferred finalization cooldown. */
+        DEFERRED_FINALIZING
     }
 
     private static final java.awt.Color TRANSPARENT = new java.awt.Color(0, 0, 0, 0);
@@ -32,8 +46,7 @@ class BubbleStreamer {
     private JTextArea streamingTextArea;
     private int lastDisplayedLength = 0;
     private volatile boolean hasPendingTextUpdate = false;
-    private boolean isStreaming = false;
-    private boolean isFinalizingDeferred = false;
+    private StreamingState state = StreamingState.FINALIZED;
     private Timer deferredFinalizeTimer;
     private boolean savedCollapseState;
 
@@ -82,7 +95,7 @@ class BubbleStreamer {
         ta.setFont(ThemeManager.getFont());
         ta.setBorder(new EmptyBorder(4, 20, 8, 6));
         ta.setCaretPosition(ta.getDocument().getLength());
-        isStreaming = true;
+        state = StreamingState.STREAMING;
         return ta;
     }
 
@@ -93,8 +106,7 @@ class BubbleStreamer {
     /**
      * Returns true if the streaming JTextArea still exists in the component
      * tree. This is the physical source of truth — unlike {@link #isStreaming()}
-     * it cannot lie if boolean flags go out of sync (exception midway through
-     * finalization, double-finalize short-circuit, etc.).
+     * it cannot lie if the state enum drifts out of sync with the component tree.
      */
     boolean hasStreamingTextArea() {
         return streamingTextArea != null && streamingTextArea.getParent() != null;
@@ -118,7 +130,7 @@ class BubbleStreamer {
         }
         text.append(newText);
         hasPendingTextUpdate = true;
-        if (isFinalizingDeferred && deferredFinalizeTimer != null) {
+        if (state == StreamingState.DEFERRED_FINALIZING && deferredFinalizeTimer != null) {
             deferredFinalizeTimer.restart();
         }
     }
@@ -129,7 +141,7 @@ class BubbleStreamer {
         }
         hasPendingTextUpdate = false;
 
-        if (isStreaming || isFinalizingDeferred) {
+        if (state != StreamingState.FINALIZED) {
             int totalLen = text.length();
             if (streamingTextArea != null && totalLen > lastDisplayedLength) {
                 // Use substring to get a copy of only the new delta.
@@ -158,7 +170,7 @@ class BubbleStreamer {
     }
 
     void finalizeStreaming(boolean expanded, boolean immediate) {
-        if (!isStreaming && !isFinalizingDeferred) {
+        if (state == StreamingState.FINALIZED) {
             postFinalizeCallback.accept(expanded, false);
             return;
         }
@@ -168,7 +180,7 @@ class BubbleStreamer {
         if (immediate) {
             performFinalization();
         } else {
-            isFinalizingDeferred = true;
+            state = StreamingState.DEFERRED_FINALIZING;
             if (deferredFinalizeTimer == null) {
                 deferredFinalizeTimer = new Timer(TimingConstants.STREAM_FLUSH_MS, e -> performFinalization());
                 deferredFinalizeTimer.setRepeats(false);
@@ -178,31 +190,46 @@ class BubbleStreamer {
     }
 
     private void performFinalization() {
-        isStreaming = false;
-        isFinalizingDeferred = false;
+        state = StreamingState.FINALIZED;
         if (deferredFinalizeTimer != null) {
             deferredFinalizeTimer.stop();
         }
         if (streamingTextArea != null) {
-            segments.remove(streamingTextArea);
+            try {
+                segments.remove(streamingTextArea);
+            } catch (Exception ex) {
+                LOG.warn("Failed to remove streaming text area during finalization", ex);
+            }
             streamingTextArea = null;
         }
-        contentUpdater.update(ThemeManager.getCurrentTheme(), savedCollapseState);
+        try {
+            contentUpdater.update(ThemeManager.getCurrentTheme(), savedCollapseState);
+            postFinalizeCallback.accept(savedCollapseState, false);
+        } catch (Exception ex) {
+            LOG.warn("Failed to build final HTML content during streaming finalization", ex);
+        }
         segments.revalidate();
         segments.repaint();
     }
 
     boolean isStreaming() {
-        // Physical check covers flag corruption: if any text area is still in
-        // the component tree, we are still streaming regardless of flags.
-        return streamingTextArea != null || isStreaming || isFinalizingDeferred;
+        // Physical check covers state drift: if any text area is still in
+        // the component tree, we are still streaming regardless of enum state.
+        return streamingTextArea != null || state != StreamingState.FINALIZED;
+    }
+
+    /** Returns true unless the state machine is in the FINALIZED state.
+     *  Used by the sweep failsafe to decide whether normal finalization will
+     *  work or whether force-finalization is needed. */
+    boolean streamingFlagsSet() {
+        return state != StreamingState.FINALIZED;
     }
 
     /**
-     * Force-finalizes streaming without checking boolean flags. Used by the
+     * Force-finalizes streaming without checking the state enum. Used by the
      * sweep failsafe ({@link ChatThreadPanel#sweepStreamingBubbles()}) when
      * a bubble's streaming JTextArea is still in the component tree but the
-     * boolean flags are corrupted (exception midway through finalization,
+     * state was left inconsistent (exception midway through finalization,
      * double-finalize short-circuit, etc.).
      */
     void forceFinalize(boolean expanded) {

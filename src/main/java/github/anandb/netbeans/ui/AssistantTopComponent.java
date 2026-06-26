@@ -167,7 +167,8 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                 helpBtn.setEnabled(sessionActive);
                 restartServerBtn.setEnabled(true);
                 newSessionBtn.setEnabled(true);
-            }
+            },
+            this::setOptionsPanelVisible
         );
         messageSender = new MessageSender(
             inputArea, chatPanel, attachmentManager, messageHistory,
@@ -182,11 +183,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
         toggleOptionsBtn.addActionListener(e -> {
             boolean collapsed = !sessionLifecycleHandler.isOptionsPanelCollapsed();
-            sessionLifecycleHandler.setOptionsPanelCollapsed(collapsed);
-            configPanelController.getComponent().setVisible(!collapsed);
-            toggleOptionsBtn.setIcon(ThemeManager.getIcon(collapsed ? "settings.svg" : "arrow-down.svg", 25));
-            AssistantTopComponent.this.revalidate();
-            AssistantTopComponent.this.repaint();
+            setOptionsPanelVisible(!collapsed);
         });
 
         autocompleteManager = new AutocompleteManager(inputArea, messageSender::sendMessage);
@@ -295,12 +292,37 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     void toggleOptions() {
         if (sessionLifecycleHandler != null) {
             boolean collapsed = !sessionLifecycleHandler.isOptionsPanelCollapsed();
-            sessionLifecycleHandler.setOptionsPanelCollapsed(collapsed);
-            configPanelController.getComponent().setVisible(!collapsed);
-            toggleOptionsBtn.setIcon(ThemeManager.getIcon(collapsed ? "settings.svg" : "arrow-down.svg", 25));
-            revalidate();
-            repaint();
+            setOptionsPanelVisible(!collapsed);
         }
+    }
+
+    /**
+     * Shows or hides the options panel and adjusts the mainSplitPane divider
+     * so that the options panel takes space from the chat panel, not the textarea.
+     */
+    void setOptionsPanelVisible(boolean visible) {
+        if (sessionLifecycleHandler == null) return;
+        boolean collapsed = !visible;
+        sessionLifecycleHandler.setOptionsPanelCollapsed(collapsed);
+
+        // Capture the config panel's preferred height before toggling visibility
+        int configHeight = configPanelController.getComponent().getPreferredSize().height;
+
+        configPanelController.getComponent().setVisible(visible);
+        toggleOptionsBtn.setIcon(ThemeManager.getIcon(visible ? "arrow-down.svg" : "settings.svg", 25));
+
+        // Adjust split pane divider so the textarea keeps its size:
+        // expanding moves the divider UP (taking space from chat), collapsing moves it DOWN.
+        if (visible && configHeight > 0) {
+            int current = mainSplitPane.getDividerLocation();
+            mainSplitPane.setDividerLocation(Math.max(0, current - configHeight));
+        } else if (!visible && configHeight > 0) {
+            int current = mainSplitPane.getDividerLocation();
+            mainSplitPane.setDividerLocation(current + configHeight);
+        }
+
+        revalidate();
+        repaint();
     }
 
     void toggleAllBlocks() {

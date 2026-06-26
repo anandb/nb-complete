@@ -37,9 +37,10 @@ public final class ToolThoughtCombiner {
 
     /**
      * Walks the container backwards and returns true if any individual (non-combined)
-     * tool/thought bubble exists. Used as a fast-path early exit before the full
-     * combine scan, which would otherwise touch every component in the container
-     * even when there's nothing to combine.
+     * tool/thought bubble exists after the last user/assistant/combined bubble.
+     * User and assistant bubbles act as turn separators — tool/thoughts before them
+     * belong to a previous turn and must not be included.
+     * Used as a fast-path early exit before the full combine scan.
      */
     private static boolean hasPendingIndividualToolThought(JPanel messagesContainer) {
         Component[] comps = messagesContainer.getComponents();
@@ -47,8 +48,15 @@ public final class ToolThoughtCombiner {
             Component c = comps[i];
             if (c instanceof MessageBubble mb) {
                 String role = mb.getRole();
-                if (("tool".equals(role) || "thought".equals(role))
-                        && !Boolean.TRUE.equals(mb.getClientProperty("nb-complete.combined"))) {
+                // User/assistant bubbles act as turn separators — stop here
+                if ("user".equals(role) || "assistant".equals(role)) {
+                    return false;
+                }
+                // Already-combined bubble also acts as a boundary
+                if (Boolean.TRUE.equals(mb.getClientProperty("nb-complete.combined"))) {
+                    return false;
+                }
+                if ("tool".equals(role) || "thought".equals(role)) {
                     return true;
                 }
             }
@@ -81,16 +89,37 @@ public final class ToolThoughtCombiner {
             return;
         }
 
-        // Find all individual tool/thought bubbles (skip already-combined ones)
+        // Find all individual tool/thought bubbles after the last
+        // user/assistant/combined boundary. Scan only the tail region
+        // to avoid O(N) per-call on the full container.
         List<Component> toRemove = new ArrayList<>();
         List<CollapsibleToolPane.ToolSegment> allSegments = new ArrayList<>();
         int insertIndex = -1;
 
         Component[] comps = messagesContainer.getComponents();
-        for (int i = 0; i < comps.length; i++) {
+
+        // Find scan start: after the last user, assistant, or combined bubble
+        int scanStart = 0;
+        for (int i = comps.length - 1; i >= 0; i--) {
             Component c = comps[i];
             if (c instanceof MessageBubble mb) {
                 String role = mb.getRole();
+                if ("user".equals(role) || "assistant".equals(role)
+                        || Boolean.TRUE.equals(mb.getClientProperty("nb-complete.combined"))) {
+                    scanStart = i + 1;
+                    break;
+                }
+            }
+        }
+
+        for (int i = scanStart; i < comps.length; i++) {
+            Component c = comps[i];
+            if (c instanceof MessageBubble mb) {
+                String role = mb.getRole();
+                // Safety guard: stop if we cross a user/assistant boundary
+                if ("user".equals(role) || "assistant".equals(role)) {
+                    break;
+                }
                 if (("tool".equals(role) || "thought".equals(role))
                         && !Boolean.TRUE.equals(mb.getClientProperty("nb-complete.combined"))) {
                     if (insertIndex < 0) {

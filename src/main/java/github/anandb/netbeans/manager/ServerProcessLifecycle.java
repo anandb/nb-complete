@@ -150,7 +150,7 @@ class ServerProcessLifecycle {
                     // Construct synthetic SessionUpdate for textual turn-end signals
                     // before Jackson treeToValue drops them (they lack the "update" wrapper object)
                     if ("responding_finished".equals(rawType) || "end_turn".equals(rawType)) {
-                        LOG.info("SSE turn-end signal received via textual sessionUpdate: {0}", rawType);
+                        LOG.fine("SSE turn-end signal received via textual sessionUpdate: {0}", rawType);
                         MessageType mt = MessageType.valueOf(rawType);
                         String ssId = params != null && params.has("sessionId")
                             ? params.get("sessionId").asText() : null;

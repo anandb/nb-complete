@@ -139,11 +139,7 @@ public class ComponentLifecycleHandler {
             @Override
             public void expandOptionsPanel() {
                 if (sessionLifecycleHandler.isOptionsPanelCollapsed()) {
-                    sessionLifecycleHandler.setOptionsPanelCollapsed(false);
-                    configPanelController.getComponent().setVisible(true);
-                    toggleOptionsBtn.setIcon(ThemeManager.getIcon("arrow-down.svg", 25));
-                    topComponent.revalidate();
-                    topComponent.repaint();
+                    topComponent.setOptionsPanelVisible(true);
                 }
             }
 
@@ -203,11 +199,7 @@ public class ComponentLifecycleHandler {
                     if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
                         e.consume();
                         if (!sessionLifecycleHandler.isOptionsPanelCollapsed()) {
-                            sessionLifecycleHandler.setOptionsPanelCollapsed(true);
-                            configPanelController.getComponent().setVisible(false);
-                            toggleOptionsBtn.setIcon(ThemeManager.getIcon("settings.svg", 25));
-                            topComponent.revalidate();
-                            topComponent.repaint();
+                            topComponent.setOptionsPanelVisible(false);
                         }
                         inputArea.requestFocusInWindow();
                     }

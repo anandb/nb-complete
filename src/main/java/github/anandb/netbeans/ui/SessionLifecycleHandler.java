@@ -6,7 +6,6 @@ import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.SwingUtilities;
-import javax.swing.Timer;
 import github.anandb.netbeans.contract.SessionListener;
 import github.anandb.netbeans.contract.UIHandler;
 import github.anandb.netbeans.contract.SessionControl;
@@ -20,7 +19,6 @@ import github.anandb.netbeans.model.SessionItem;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.project.ACPProjectManager;
 import github.anandb.netbeans.support.Logger;
-import github.anandb.netbeans.support.TimingConstants;
 import org.netbeans.api.project.Project;
 import org.netbeans.api.project.ui.OpenProjects;
 import org.openide.util.NbBundle;
@@ -48,6 +46,7 @@ public class SessionLifecycleHandler implements SessionListener {
     private final Consumer<String> tabNameUpdater;
     private final Consumer<String> cwdLabelUpdater;
     private final Consumer<Boolean> sessionStateHandler;
+    private final Consumer<Boolean> optionsPanelToggler;
 
     // Shared mutable state
     private boolean optionsPanelCollapsed = true;
@@ -71,7 +70,8 @@ public class SessionLifecycleHandler implements SessionListener {
             Consumer<JComponent> projectPickerShower,
             Consumer<String> tabNameUpdater,
             Consumer<String> cwdLabelUpdater,
-            Consumer<Boolean> sessionStateHandler) {
+            Consumer<Boolean> sessionStateHandler,
+            Consumer<Boolean> optionsPanelToggler) {
         this.chatPanel = chatPanel;
         this.sessionDropdown = sessionDropdown;
         this.hideBtn = hideBtn;
@@ -85,6 +85,7 @@ public class SessionLifecycleHandler implements SessionListener {
         this.tabNameUpdater = tabNameUpdater;
         this.cwdLabelUpdater = cwdLabelUpdater;
         this.sessionStateHandler = sessionStateHandler;
+        this.optionsPanelToggler = optionsPanelToggler;
     }
 
     boolean isOptionsPanelCollapsed() {
@@ -194,24 +195,16 @@ public class SessionLifecycleHandler implements SessionListener {
         // End of turn signals
         if ("responding_finished".equals(type) || "end_turn".equals(type)
                 || "available_commands_update".equals(type)) {
-            LOG.info("SSE turn-end signal received: type={0} (this confirms SSE path WORKS)", type);
+            LOG.fine("SSE turn-end signal received: type={0} (this confirms SSE path WORKS)", type);
             turnEnded = true;
             // If waiting for the preamble response, hide the progress bar now.
             if (pendingPreambleResponse) {
                 pendingPreambleResponse = false;
                 SwingUtilities.invokeLater(() -> chatPanel.setSessionLoading(false));
             }
-            // Brief delay to allow any in-flight delta notifications to arrive
-            // before finalizing the stream bubble.
-            SwingUtilities.invokeLater(() -> {
-                Timer flushTimer = new Timer(TimingConstants.STREAM_FLUSH_MS, e -> {
-                    if (chatPanel.isDisplayable()) {
-                        chatPanel.stopStreaming();
-                    }
-                });
-                flushTimer.setRepeats(false);
-                flushTimer.start();
-            });
+            // Debounce finalization via the panel's shared flush timer (reset on
+            // every processed message), so it fires 300ms after the last one drains.
+            SwingUtilities.invokeLater(chatPanel::restartFlushTimer);
         }
     }
 
@@ -297,9 +290,7 @@ public class SessionLifecycleHandler implements SessionListener {
                     } else {
                         statusController.setStatus("STATUS_NewChat");
                     }
-                    optionsPanelCollapsed = false;
-                    configPanelController.getComponent().setVisible(true);
-                    toggleOptionsBtn.setIcon(ThemeManager.getIcon("arrow-down.svg", 25));
+                    optionsPanelToggler.accept(true);
                     statusController.setInputEnabled(false);
                     sessionStateHandler.accept(false);
                     configPanelController.ensureDefaultModelAdded();
@@ -351,13 +342,9 @@ public class SessionLifecycleHandler implements SessionListener {
             // updateButtonState(true), but defer stopStreaming via a flush timer
             // to allow any in-flight SSE delta to arrive first.
             turnEnded = true;
-            Timer flushTimer = new Timer(TimingConstants.STREAM_FLUSH_MS, e -> {
-                if (chatPanel.isDisplayable()) {
-                    chatPanel.stopStreaming();
-                }
-            });
-            flushTimer.setRepeats(false);
-            flushTimer.start();
+            // Debounce finalization via the panel's shared flush timer, so it
+            // fires 300ms after the last reloaded message drains from the queue.
+            chatPanel.restartFlushTimer();
             statusController.setStatus("STATUS_Ready");
             statusController.stopThinking();
             statusController.updateButtonState(false);

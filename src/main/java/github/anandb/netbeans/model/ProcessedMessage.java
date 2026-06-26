@@ -1,5 +1,6 @@
 package github.anandb.netbeans.model;
 
+import java.util.Set;
 import static org.apache.commons.lang3.StringUtils.defaultIfBlank;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
@@ -13,11 +14,15 @@ public record ProcessedMessage(
         boolean streaming,
         String status) {
 
+    private static final Set<String> TASK_STATUS_VALUES = Set.of(
+        "completed", "failed", "in-progress", "in progress", "in_progress",
+        "inprogress", "success", "done"
+    );
+
     public boolean isIgnorable() {
         boolean isTool = messageType == MessageType.tool_call || messageType == MessageType.tool_call_update;
         if (isTool) {
-            boolean pendingStatus = isNotBlank(status)
-                    && (status.startsWith("pending") || status.startsWith("in_progress"));
+            boolean pendingStatus = isNotBlank(status) && (status.startsWith("pending") || status.startsWith("in_progress"));
             boolean mcpTool = toolTitle != null && toolTitle.startsWith("mcp ");
             return pendingStatus || mcpTool;
         }
@@ -26,14 +31,12 @@ public record ProcessedMessage(
     }
 
     public static boolean isIgnorable(String role, String text) {
-        String trimmed = defaultIfBlank(text, "").trim().toLowerCase();
-        if (trimmed.endsWith(".") || trimmed.endsWith("!")) {
-            trimmed = trimmed.substring(0, trimmed.length() - 1);
+        String taskStatus = defaultIfBlank(text, "").trim().toLowerCase();
+        if (taskStatus.endsWith(".") || taskStatus.endsWith("!")) {
+            taskStatus = taskStatus.substring(0, taskStatus.length() - 1);
         }
 
-        return "tool".equals(role) && (trimmed.equals("completed") || trimmed.equals("failed") ||
-                trimmed.equals("in-progress") || trimmed.equals("in progress") || trimmed.equals("in_progress") ||
-                trimmed.equals("inprogress") || trimmed.equals("success") || trimmed.equals("done"));
+        return "tool".equals(role) && TASK_STATUS_VALUES.contains(taskStatus);
     }
 
     public static ProcessedMessage createError(MessageType messageType, String text, String messageId, String kind) {

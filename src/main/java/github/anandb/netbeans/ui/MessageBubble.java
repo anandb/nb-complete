@@ -330,6 +330,15 @@ public class MessageBubble extends JPanel implements Scrollable {
     }
 
     /**
+     * Returns true if the boolean streaming flags are set, ignoring the physical
+     * JTextArea presence. Used by {@code ChatThreadPanel} to decide between
+     * normal and force finalization in the sweep failsafe.
+     */
+    boolean streamingFlagsSet() {
+        return streamer.streamingFlagsSet();
+    }
+
+    /**
      * Returns true if the streaming JTextArea is still present in the component
      * tree. This is the physical source of truth — unlike {@link #isStreaming()}
      * it catches cases where boolean flags were corrupted (exception midway

@@ -4,7 +4,6 @@ import java.util.List;
 import java.util.Map;
 
 import javax.swing.SwingUtilities;
-import javax.swing.Timer;
 
 import java.util.concurrent.CompletableFuture;
 
@@ -15,7 +14,6 @@ import github.anandb.netbeans.support.ToolDataExtractor;
 import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.support.Logger;
-import github.anandb.netbeans.support.TimingConstants;
 import org.openide.util.Lookup;
 import org.openide.util.NbPreferences;
 import org.openide.util.NbBundle;
@@ -188,15 +186,11 @@ public class MessageSender {
                         // Handle turn completion from RPC result
                         if (result != null && result.has("stopReason")) {
                             LOG.info("Turn finished via RPC result: stopReason={0}", result.get("stopReason").asText());
-                            // Brief delay to allow any in-flight delta notifications to arrive
-                            // before finalizing the stream bubble (opencode may send result before last delta)
-                            Timer flushTimer = new Timer(TimingConstants.STREAM_FLUSH_MS, e -> {
-                                if (chatPanel.isDisplayable()) {
-                                    chatPanel.stopStreaming();
-                                }
-                            });
-                            flushTimer.setRepeats(false);
-                            flushTimer.start();
+                            // Reset the debounced flush timer (it's also reset on every
+                            // processed message via drainMessageQueue), so the bubble is
+                            // finalized 300ms after ALL messages drain — even if the RPC
+                            // result arrives before the last SSE delta.
+                            chatPanel.restartFlushTimer();
                         }
                     });
                 })

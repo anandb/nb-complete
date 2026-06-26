@@ -29,6 +29,7 @@ import javax.swing.ScrollPaneConstants;
 import javax.swing.Scrollable;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
+import javax.swing.Timer;
 import javax.swing.border.EmptyBorder;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -41,6 +42,9 @@ import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.TimingConstants;
 
+import static org.apache.commons.lang3.StringUtils.defaultString;
+import static org.apache.commons.lang3.StringUtils.isBlank;
+
 
 public class ChatThreadPanel extends JPanel {
 
@@ -48,23 +52,31 @@ public class ChatThreadPanel extends JPanel {
     private static final long serialVersionUID = 1L;
     private static final Pattern SECTION_SPLIT = Pattern.compile("(?m)^---[ \\t]*$");
     private static final int MAX_MESSAGES = 100;
+
     private long lastUserTimestamp = -1L;
     private int userMessageCount = 0;
     private final ConcurrentLinkedQueue<Runnable> messageQueue = new ConcurrentLinkedQueue<>();
     private boolean draining = false;
 
+    // Debounced flush timer. Reset on every processed message so it fires
+    // 300ms after the last message is drained from the queue. Replaces the
+    // one-shot timers that were created per-turn in SessionLifecycleHandler.
+    private final javax.swing.Timer flushTimer;
+
     private final JPanel messagesContainer;
     private final JScrollPane scrollPane;
     private final JLayeredPane layeredPane;
-    private final StreamingCoordinator streamingCoordinator;
 
-    /** Cached full message list so filter/preference changes can re-render
-     *  the conversation without a server round-trip. */
-    private volatile List<Message> cachedMessages;
-    private volatile boolean allBlocksExpanded = false;
-    private volatile boolean keepOlderMessages = false;
+    // Cached full message list so filter/preference changes can re-render
+    // the conversation without a server round-trip.
+    private transient volatile List<Message> cachedMessages;
     private final transient ScrollController scrollController;
     private final transient MessageTransformer messageTransformer;
+    private final transient StreamingCoordinator streamingCoordinator;
+
+    private volatile boolean allBlocksExpanded = false;
+    private volatile boolean keepOlderMessages = false;
+    private volatile boolean batchAdding = false;
     private final JProgressBar sessionProgressBar;
 
     public ChatThreadPanel() {
@@ -160,6 +172,16 @@ public class ChatThreadPanel extends JPanel {
                 scrollController.scrollToBottom(wasAtBottom);
             }
         }, TimingConstants.STREAM_FLUSH_MS);
+
+        // Shared flush timer for debounced finalization. Reset on each processed
+        // message so it fires 300ms after the last message is drained from the
+        // queue — no need for extra boolean flags.
+        flushTimer = new Timer(TimingConstants.STREAM_FLUSH_MS, e -> {
+            if (isDisplayable()) {
+                stopStreaming();
+            }
+        });
+        flushTimer.setRepeats(false);
     }
 
     private static class ScrollablePanel extends JPanel implements Scrollable {
@@ -219,6 +241,11 @@ public class ChatThreadPanel extends JPanel {
                 task.run();
             } catch (Exception ex) {
                 LOG.warn("Error processing message: {0}", ex.getMessage());
+            } finally {
+                // Reset the debounced flush timer on every processed message so it
+                // fires 300ms after the last message drains — regardless of whether
+                // messages arrived via SSE during a live turn or during session reload.
+                flushTimer.restart();
             }
             SwingUtilities.invokeLater(this::drainMessageQueue);
         } else {
@@ -251,20 +278,21 @@ public class ChatThreadPanel extends JPanel {
 
             boolean canMerge = (lastBubble != null && role.equals(lastBubble.getRole()));
             if (canMerge) {
-                if ("thought".equals(role)) {
-                    canMerge = true;
-                } else if ("tool".equals(role)) {
-                    // Merge if message IDs match (incl. streaming prefixes) OR
-                    // if the toolTitle is the same (same tool call in flight).
-                    // Also merge when the current fragment has a title but the
-                    // last bubble didn't (first fragment lacked a toolTitle).
-                    String lastTitle = lastBubble.getToolTitle();
-                    canMerge = canMergeMessages(pm.messageId(), lastBubble.getMessageId())
-                            || (pm.toolTitle() != null && pm.toolTitle().equals(lastTitle))
-                            || (pm.toolTitle() != null && pm.streaming()
-                                    && (lastTitle == null || lastTitle.isEmpty()));
-                } else {
-                    canMerge = !"user".equals(role) && canMergeMessages(pm.messageId(), lastBubble.getMessageId());
+                switch (role) {
+                    case "thought" -> canMerge = true;
+                    case "tool" -> {
+                        /**
+                            Merge if message IDs match (incl. streaming prefixes) OR
+                            if the toolTitle is the same (same tool call in flight).
+                            Also merge when the current fragment has a title but the
+                            last bubble didn't (first fragment lacked a toolTitle).
+                        */
+                        String lastTitle = defaultString(lastBubble.getToolTitle());
+                        canMerge = canMergeMessages(pm.messageId(), lastBubble.getMessageId())
+                                || (pm.toolTitle() != null && pm.toolTitle().equals(lastTitle))
+                                || (pm.toolTitle() != null && pm.streaming() && (isBlank(lastTitle)));
+                    }
+                    default -> canMerge = !"user".equals(role) && canMergeMessages(pm.messageId(), lastBubble.getMessageId());
                 }
             }
 
@@ -314,7 +342,10 @@ public class ChatThreadPanel extends JPanel {
         // Failsafe: sweep for orphaned streaming JTextAreas before creating
         // any new bubble. Catches cases where a previous streaming bubble's
         // boolean flags were corrupted and never finalized.
-        sweepStreamingBubbles(wasAtBottom);
+        // Skip in batch mode — container was just cleared.
+        if (!batchAdding) {
+            sweepStreamingBubbles(wasAtBottom);
+        }
 
         // Tool/thought messages create individual bubbles immediately (not accumulated)
         if (type.isTool() || type.isThought()) {
@@ -330,10 +361,13 @@ public class ChatThreadPanel extends JPanel {
             // Streaming bubbles revalidate via the streamer's deferred-finalize
             // path; revalidating here would force a layout pass for each tool
             // chunk before its content is even known to be visible.
+            // Skip revalidate in batch mode — single pass at end of setMessages.
             if (!streaming) {
-                messagesContainer.revalidate();
-                if (wasAtBottom) {
-                    scrollController.scrollToBottom(true);
+                if (!batchAdding) {
+                    messagesContainer.revalidate();
+                    if (wasAtBottom) {
+                        scrollController.scrollToBottom(true);
+                    }
                 }
             } else if (wasAtBottom) {
                 scrollController.scrollToBottom(true);
@@ -346,7 +380,8 @@ public class ChatThreadPanel extends JPanel {
         }
 
         // Combine individual tool/thought bubbles before user/assistant messages
-        if (type.isUser() || type.isAssistant()) {
+        // Skip in batch mode — container was just cleared, nothing to combine.
+        if (!batchAdding && (type.isUser() || type.isAssistant())) {
             ToolThoughtCombiner.combine(messagesContainer, allBlocksExpanded, scrollController);
         }
 
@@ -373,10 +408,13 @@ public class ChatThreadPanel extends JPanel {
         // For streaming bubbles, addNotify() revalidates the bubble itself, and
         // the streamer's deferred-finalize path revalidates the container on flush —
         // skipping revalidate here avoids forcing a layout pass per initial chunk.
+        // Skip revalidate + scroll in batch mode — single pass at end of setMessages.
         if (!streaming) {
-            messagesContainer.revalidate();
+            if (!batchAdding) {
+                messagesContainer.revalidate();
+            }
         }
-        if (wasAtBottom) {
+        if (wasAtBottom && !batchAdding) {
             scrollController.scrollToBottom(true);
         }
         if (streaming) {
@@ -418,6 +456,14 @@ public class ChatThreadPanel extends JPanel {
         }
     }
 
+    /** Restart the debounced flush timer. Called when a turn-end signal arrives
+     *  ({@code responding_finished}) or when a session is loaded. The timer is also
+     *  restarted on every processed message in {@link #drainMessageQueue()}, so it
+     *  fires 300ms after the last message drains — no extra boolean flags needed. */
+    public void restartFlushTimer() {
+        flushTimer.restart();
+    }
+
     public void stopStreaming() {
         // Already on EDT — all callers (Timer, SessionLifecycleHandler) invoke via EDT.
         // Do NOT wrap in SwingUtilities.invokeLater: that defers execution, creating a
@@ -428,7 +474,14 @@ public class ChatThreadPanel extends JPanel {
         MessageBubble activeBubble = streamingCoordinator.stopStreaming();
         if (activeBubble != null) {
             activeBubble.flushUpdate(true);
-            activeBubble.finalizeStreaming(allBlocksExpanded, true);
+            if (activeBubble.streamingFlagsSet()) {
+                activeBubble.finalizeStreaming(allBlocksExpanded, true);
+            } else if (activeBubble.hasStreamingTextArea()) {
+                // Boolean flags were corrupted (e.g. exception midway through a
+                // previous finalization) but the streaming JTextArea is still
+                // in the tree. Normal finalize would short-circuit, so force it.
+                activeBubble.forceFinalize(allBlocksExpanded);
+            }
             anyFinalized = true;
         }
         // Scan for any remaining streaming bubbles missed by the
@@ -450,7 +503,7 @@ public class ChatThreadPanel extends JPanel {
 
     /**
      * Sweeps all bubbles in the container for orphaned streaming JTextAreas.
-     * Checks both {@link MessageBubble#isStreaming()} (boolean flags) and
+     * Checks both {@link MessageBubble#streamingFlagsSet()} (boolean flags) and
      * {@link MessageBubble#hasStreamingTextArea()} (physical component tree)
      * as dual source of truth.
      * <p>
@@ -473,17 +526,15 @@ public class ChatThreadPanel extends JPanel {
         boolean anyFinalized = false;
         for (Component c : messagesContainer.getComponents()) {
             if (c instanceof MessageBubble mb) {
-                boolean flagSaysStreaming = mb.isStreaming();
+                boolean flagSaysStreaming = mb.streamingFlagsSet();
                 boolean hasTextArea = mb.hasStreamingTextArea();
                 if (hasTextArea) {
-                    // Physical text area present — force finalize regardless
-                    // of flag state. This handles both normal streaming and
-                    // corrupted flags in one path.
                     mb.flushUpdate(true);
                     if (flagSaysStreaming) {
                         mb.finalizeStreaming(allBlocksExpanded, true);
                     } else {
-                        // Flags corrupted — bypass the boolean check
+                        // Flags corrupted — finalizeStreaming would short-circuit
+                        // because it checks the private isStreaming flag directly.
                         mb.forceFinalize(allBlocksExpanded);
                     }
                     anyFinalized = true;
@@ -563,6 +614,7 @@ public class ChatThreadPanel extends JPanel {
         // bubbles. Must run before streamingCoordinator.cleanup() stops the
         // flush timer.
         stopStreaming();
+        flushTimer.stop();
         streamingCoordinator.cleanup();
         if (scrollController != null) {
             scrollController.cleanup();
@@ -730,21 +782,29 @@ public class ChatThreadPanel extends JPanel {
             userMessageCount = 0;
 
             if (messages != null) {
-                for (Message m : messages) {
-                    ProcessedMessage pm = messageTransformer.convert(m);
-                    if (pm.isIgnorable()) {
-                        continue;
+                // Batch mode: skip per-bubble revalidate, sweep, and combine.
+                // Single revalidate + scroll at end cuts O(N²) to O(N).
+                batchAdding = true;
+                try {
+                    for (Message m : messages) {
+                        ProcessedMessage pm = messageTransformer.convert(m);
+                        if (pm.isIgnorable()) {
+                            continue;
+                        }
+                        // Bypass addMessage()'s invokeLater — we are already on EDT.
+                        if (pm.streaming()) {
+                            processMessageSections(pm, pm.text(), pm.messageType().roleName());
+                        } else {
+                            addSingleBubble(pm.messageType(), pm.text(), pm.messageId(), pm.toolTitle(), false);
+                        }
                     }
-                    // Bypass addMessage()'s invokeLater — we are already on EDT.
-                    if (pm.streaming()) {
-                        processMessageSections(pm, pm.text(), pm.messageType().roleName());
-                    } else {
-                        addSingleBubble(pm.messageType(), pm.text(), pm.messageId(), pm.toolTitle(), false);
-                    }
+                } finally {
+                    batchAdding = false;
                 }
             }
             trimMessages();
             messagesContainer.revalidate();
+            scrollController.scrollToBottom(true);
         });
     }
 
