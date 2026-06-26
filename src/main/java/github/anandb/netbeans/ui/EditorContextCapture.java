@@ -50,15 +50,19 @@ public final class EditorContextCapture {
         Map<String, Object> context = new HashMap<>();
         context.put("filePath", fo.getPath());
 
-        String selection = editor.getSelectedText();
-        if (isNotBlank(selection)) {
-            context.put("selectionContent", selection);
-            int selStart = editor.getSelectionStart();
-            int selEnd = editor.getSelectionEnd();
+        int selStart = editor.getSelectionStart();
+        int selEnd = editor.getSelectionEnd();
+        int docLen = doc.getLength();
 
-            int startLine = NbDocument.findLineNumber(styledDoc, selStart) + 1;
-            int endLine = NbDocument.findLineNumber(styledDoc, selEnd) + 1;
-            context.put("selection", startLine + ":" + endLine);
+        // Re-validate bounds to avoid an IllegalArgumentException when offset+length exceeds document length.
+        if (selStart >= 0 && selEnd >= 0 && selStart <= selEnd && selEnd <= docLen) {
+            String selection = editor.getSelectedText();
+            if (isNotBlank(selection)) {
+                context.put("selectionContent", selection);
+                int startLine = NbDocument.findLineNumber(styledDoc, selStart) + 1;
+                int endLine = NbDocument.findLineNumber(styledDoc, selEnd) + 1;
+                context.put("selection", startLine + ":" + endLine);
+            }
         }
 
         int caretPos = editor.getCaretPosition();

@@ -13,6 +13,7 @@ import java.awt.event.ContainerEvent;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
@@ -49,6 +50,8 @@ public class ChatThreadPanel extends JPanel {
     private static final int MAX_MESSAGES = 100;
     private long lastUserTimestamp = -1L;
     private int userMessageCount = 0;
+    private final ConcurrentLinkedQueue<Runnable> messageQueue = new ConcurrentLinkedQueue<>();
+    private boolean draining = false;
 
     private final JPanel messagesContainer;
     private final JScrollPane scrollPane;
@@ -202,21 +205,38 @@ public class ChatThreadPanel extends JPanel {
             return;
         }
 
+        messageQueue.add(() -> processMessageOnEDT(pm));
+        if (!draining) {
+            draining = true;
+            SwingUtilities.invokeLater(this::drainMessageQueue);
+        }
+    }
+
+    private void drainMessageQueue() {
+        Runnable task = messageQueue.poll();
+        if (task != null) {
+            try {
+                task.run();
+            } catch (Exception ex) {
+                LOG.warn("Error processing message: {0}", ex.getMessage());
+            }
+            SwingUtilities.invokeLater(this::drainMessageQueue);
+        } else {
+            draining = false;
+        }
+    }
+
+    private void processMessageOnEDT(ProcessedMessage pm) {
         String text = pm.text();
         final String role = pm.messageType().roleName();
 
-        SwingUtilities.invokeLater(() -> {
-            if (pm.streaming()) {
-                processMessageSections(pm, text, role);
-            } else {
-                // Non-streaming messages are complete — finalize any in-flight
-                // streaming bubble before creating a new one, otherwise the old
-                // streaming bubble is orphaned without a FitEditorPane.
-                stopStreaming();
-                addSingleBubble(pm.messageType(), text, pm.messageId(), pm.toolTitle(), false);
-            }
-            trimMessages();
-        });
+        if (pm.streaming()) {
+            processMessageSections(pm, text, role);
+        } else {
+            stopStreaming();
+            addSingleBubble(pm.messageType(), text, pm.messageId(), pm.toolTitle(), false);
+        }
+        trimMessages();
     }
 
     /** Process message sections on EDT (shared by addMessage and setMessages). */

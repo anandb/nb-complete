@@ -17,6 +17,13 @@
 - **SVG user icon removed**: Dropped `batik-transcoder` dependency — SVG is not supported for user icons. `loadSvgIcon()` removed; SVG paths in settings show "(no preview)".
 - **Streaming failsafe**: Added `sweepStreamingBubbles()` dual-source-of-truth sweep to clean up orphaned `JTextArea` instances.
 - **Log noise reduction**: MCP and Strategy messages downgraded from `INFO` to `FINE`.
+- **Word-granular undo**: Input area groups consecutive character inserts into word-level `CompoundEdit`s. Whitespace ends a group so each undo removes one word.
+- **Mac undo (Cmd+Z/Y)**: Undo/redo registered via `InputMap`/`ActionMap` (wins over Swing default bindings) instead of `KeyListener`.
+- **TTFT only on real sends**: Time-to-first-token measured from `MessageSender.sendMessage()` callback, not from reloaded messages.
+- **PNG-only icon filter**: User icon file chooser filtered to `.png` only; label updated from "SVG or PNG".
+- **Session load EDT freeze**: Replaced per-message `invokeLater` with recursive drain queue — each message gets its own EDT tick, paint events fire between messages, preventing 1+ second EDT lockup during 50+ message SSE burst.
+- **`/title` and `rename_session` Lookup context**: Slash command handler and MCP tool now use passed Lookup context instead of global Lookup; blank sessionId guard added.
+- **EditorContextCapture selection bounds**: Validates selection offsets against document length to prevent `IllegalArgumentException`.
 
 ### UI
 - **Wait cursor**: Shows WAIT cursor while a new session is being created.
