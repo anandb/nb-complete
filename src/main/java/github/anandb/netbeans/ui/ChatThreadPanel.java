@@ -499,8 +499,11 @@ public class ChatThreadPanel extends JPanel {
                 scrollController.scrollToBottom(true);
             }
         }
-        // Combine any remaining individual tool/thought bubbles
-        ToolThoughtCombiner.combine(messagesContainer, allBlocksExpanded, scrollController);
+        // Tool/thought combining is NOT done here — it is triggered only by a
+        // new user/assistant message arriving via addSingleBubble(). The flush
+        // timer is for finalizing streaming assistant content only; calling
+        // combine here would prematurely merge tools between messages when
+        // the timer fires during a gap in tool streaming.
     }
 
     /**
