@@ -123,9 +123,9 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
                     accordionGroup.expandPane(BaseCollapsiblePane.this);
                 } else {
                     if (accordionGroup == null) {
-                        LOG.info("Collapsible: click on pane (expanded={0}), accordionGroup=null, toggling directly", expanded);
+                        LOG.fine("Collapsible: click on pane (expanded={0}), accordionGroup=null, toggling directly", expanded);
                     } else {
-                        LOG.info("Collapsible: click on expanded pane with accordionGroup, toggling to collapse");
+                        LOG.fine("Collapsible: click on expanded pane with accordionGroup, toggling to collapse");
                     }
                     toggle();
                 }

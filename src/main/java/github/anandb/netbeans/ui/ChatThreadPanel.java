@@ -379,9 +379,11 @@ public class ChatThreadPanel extends JPanel {
             return;
         }
 
-        // Combine individual tool/thought bubbles before user/assistant messages
-        // Skip in batch mode — container was just cleared, nothing to combine.
-        if (!batchAdding && (type.isUser() || type.isAssistant())) {
+        // Combine individual tool/thought bubbles before user/assistant messages.
+        // Runs even in batch mode — the boundary optimization (scanStart finds
+        // last user/assistant/combined) limits per-call scan to the current
+        // turn's tail, so batch combine cost is O(N) total, not O(N²).
+        if (type.isUser() || type.isAssistant()) {
             ToolThoughtCombiner.combine(messagesContainer, allBlocksExpanded, scrollController);
         }
 

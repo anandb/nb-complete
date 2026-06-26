@@ -120,7 +120,7 @@ public class StrategyRegistry implements UpdateDispatcher {
             case "user_message_chunk" -> {
                 String text = extractText(update.content());
                 if (isBlank(text)) {
-                    LOG.info("Ignoring user_message_chunk: empty text, update={0}", update);
+                    LOG.fine("Ignoring user_message_chunk: empty text, update={0}", update);
                     return;
                 }
                 handler.displayMessage(buildStreamingMessage(update, text));
@@ -136,13 +136,13 @@ public class StrategyRegistry implements UpdateDispatcher {
 
             case "tool_call_update", "tool_call" -> {
                 if (isPlanToolCall(update)) {
-                    LOG.info("Ignoring tool_call: plan tool call, update={0}", update);
+                    LOG.fine("Ignoring tool_call: plan tool call, update={0}", update);
                     return;
                 }
                 final String sessionId = update.params().sessionId();
                 final String messageId = update.messageId();
                 if (isBlank(messageId) || isBlank(sessionId)) {
-                    LOG.info("Ignoring tool_call: blank messageId or sessionId, update={0}", update);
+                    LOG.fine("Ignoring tool_call: blank messageId or sessionId, update={0}", update);
                     return;
                 }
                 final String command = update.command();
@@ -157,7 +157,7 @@ public class StrategyRegistry implements UpdateDispatcher {
                 // processToolMessage is safe.
                 synchronized (data) {
                     if (data.isDone()) {
-                        LOG.info("Ignoring tool_call: already completed, update={0}", update);
+                        LOG.fine("Ignoring tool_call: already completed, update={0}", update);
                         return;
                     }
                     ProcessedMessage target = processToolMessage(data, command, update, kind, messageId);
@@ -206,7 +206,7 @@ public class StrategyRegistry implements UpdateDispatcher {
             case "plan" -> {
                 JsonNode entriesNode = update.update() != null ? update.update().entries() : null;
                 if (entriesNode == null || !entriesNode.isArray()) {
-                    LOG.info("Ignoring plan update: no entries array, update={0}", update);
+                    LOG.fine("Ignoring plan update: no entries array, update={0}", update);
                     return;
                 }
                 List<PlanEntry> entries;
@@ -217,7 +217,7 @@ public class StrategyRegistry implements UpdateDispatcher {
                     return;
                 }
                 if (entries.isEmpty()) {
-                    LOG.info("Ignoring plan update: empty entries, update={0}", update);
+                    LOG.fine("Ignoring plan update: empty entries, update={0}", update);
                     return;
                 }
                 entries = new ArrayList<>(entries);
