@@ -104,6 +104,7 @@ public class PlaceholderTextArea extends JTextArea implements Scrollable {
                     if (Character.isWhitespace(text.charAt(i))) return true;
                 }
             } catch (BadLocationException ignored) {
+                // Ignore this exception
             }
             return false;
         }
