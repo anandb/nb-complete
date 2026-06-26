@@ -5,10 +5,14 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Rectangle;
+import java.awt.event.ActionEvent;
+import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.ActionMap;
+import javax.swing.InputMap;
 import javax.swing.JPopupMenu;
 import javax.swing.JTextArea;
+import javax.swing.KeyStroke;
 import javax.swing.Scrollable;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.UndoableEditEvent;
@@ -53,6 +57,29 @@ public class PlaceholderTextArea extends JTextArea implements Scrollable {
     private void initUndoManager() {
         undoManager = new UndoManager();
         getDocument().addUndoableEditListener(new WordBoundaryEditListener());
+        installKeyBindings();
+    }
+
+    private void installKeyBindings() {
+        InputMap im = getInputMap(WHEN_FOCUSED);
+        ActionMap am = getActionMap();
+
+        Action undoAction = new AbstractAction() {
+            @Override public void actionPerformed(ActionEvent e) { undo(); }
+        };
+        Action redoAction = new AbstractAction() {
+            @Override public void actionPerformed(ActionEvent e) { redo(); }
+        };
+
+        // Ctrl+Z / Cmd+Z for undo
+        im.put(KeyStroke.getKeyStroke("control Z"), "undo");
+        im.put(KeyStroke.getKeyStroke("meta Z"), "undo");
+        am.put("undo", undoAction);
+
+        // Ctrl+Y / Cmd+Y for redo
+        im.put(KeyStroke.getKeyStroke("control Y"), "redo");
+        im.put(KeyStroke.getKeyStroke("meta Y"), "redo");
+        am.put("redo", redoAction);
     }
 
     /**

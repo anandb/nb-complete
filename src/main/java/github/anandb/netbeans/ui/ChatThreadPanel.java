@@ -48,7 +48,6 @@ public class ChatThreadPanel extends JPanel {
     private static final Pattern SECTION_SPLIT = Pattern.compile("(?m)^---[ \\t]*$");
     private static final int MAX_MESSAGES = 100;
     private long lastUserTimestamp = -1L;
-    private boolean isLoading = false;
     private int userMessageCount = 0;
 
     private final JPanel messagesContainer;
@@ -338,9 +337,7 @@ public class ChatThreadPanel extends JPanel {
 
         MessageBubble bubble = BubbleFactory.createRoleBubble(type, text, messageId, toolTitle, streaming, userMessageCount);
 
-        if ("user".equals(type.roleName())) {
-            lastUserTimestamp = System.currentTimeMillis();
-        } else if (!isLoading && lastUserTimestamp > 0) {
+        if (lastUserTimestamp > 0 && !"user".equals(type.roleName())) {
             long elapsed = System.currentTimeMillis() - lastUserTimestamp;
             bubble.setResponseTimeMs(elapsed);
             lastUserTimestamp = -1L;
@@ -497,6 +494,11 @@ public class ChatThreadPanel extends JPanel {
             scrollController.scrollToBottom(true);
             trimMessages();
         });
+    }
+
+    /** Called by MessageSender when a user message is actually sent via RPC. */
+    public void recordUserMessageSent() {
+        lastUserTimestamp = System.currentTimeMillis();
     }
 
     public void setSessionLoading(boolean loading) {
@@ -706,7 +708,6 @@ public class ChatThreadPanel extends JPanel {
             scrollController.unfixAllMouseWheel();
             lastUserTimestamp = -1L;
             userMessageCount = 0;
-            isLoading = true;
 
             if (messages != null) {
                 for (Message m : messages) {
@@ -722,7 +723,6 @@ public class ChatThreadPanel extends JPanel {
                     }
                 }
             }
-            isLoading = false;
             trimMessages();
             messagesContainer.revalidate();
         });

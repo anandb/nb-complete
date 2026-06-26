@@ -38,6 +38,7 @@ public class MessageSender {
     private final Runnable inputFocusRequester;
     private Runnable onNewMessageCallback;
     private Runnable onMessageDoneCallback;
+    private Runnable onUserMessageSentCallback;
 
     public MessageSender(
             PlaceholderTextArea inputArea,
@@ -62,6 +63,10 @@ public class MessageSender {
 
     public void setOnMessageDoneCallback(Runnable callback) {
         this.onMessageDoneCallback = callback;
+    }
+
+    public void setOnUserMessageSentCallback(Runnable callback) {
+        this.onUserMessageSentCallback = callback;
     }
 
     /** Sends (or intercepts) the current message text. */
@@ -158,6 +163,9 @@ public class MessageSender {
         Map<String, Object> context = isForwardedSlash ? null : EditorContextCapture.capture();
 
         final String messageText = text;
+        if (onUserMessageSentCallback != null) {
+            onUserMessageSentCallback.run();
+        }
         Lookup.getDefault().lookup(ProcessControl.class).sendMessage(currentSessionId, messageText, context, fileBlocks)
                 .thenAccept(result -> {
                     SwingUtilities.invokeLater(() -> {

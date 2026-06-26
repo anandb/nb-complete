@@ -175,6 +175,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         );
         messageSender.setOnNewMessageCallback(sessionLifecycleHandler::onNewMessageSent);
         messageSender.setOnMessageDoneCallback(sessionLifecycleHandler::onMessageDone);
+        messageSender.setOnUserMessageSentCallback(chatPanel::recordUserMessageSent);
 
         sendBtn.addActionListener(e -> messageSender.sendMessage());
         stopBtn.addActionListener(e -> messageSender.stopMessage());
