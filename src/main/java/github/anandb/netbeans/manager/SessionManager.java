@@ -581,18 +581,6 @@ public class SessionManager implements SessionQuery, SessionControl {
 
     private void handleProjectOpened(String openedDir) {
         refreshSessions();
-        getSessions(openedDir)
-            .thenAccept(sessions -> {
-                Session newest = sessions.stream()
-                    .sorted((s1, s2) -> Long.compare(
-                        parseTimestamp(s2.updatedAt()),
-                        parseTimestamp(s1.updatedAt())))
-                    .findFirst()
-                    .orElse(null);
-                if (newest != null) {
-                    loadSession(newest.id());
-                }
-            });
     }
 
     private void handleProjectClosed(String closedDir) {

@@ -255,11 +255,6 @@ public class SessionLifecycleHandler implements SessionListener {
                 if (hasSessions) {
                     if (selectIdx != -1) {
                         sessionDropdown.setSelectedIndex(selectIdx);
-                        SessionItem cur = sessionDropdown.getItemAt(selectIdx);
-                        if (cur != null) {
-                            LOG.fine("Re-loading current session: {0}", cur.getSession().id());
-                            Lookup.getDefault().lookup(SessionControl.class).loadSession(cur.getSession().id());
-                        }
                     } else {
                         SessionItem mostRecent = sessionDropdown.getItemAt(0);
                         if (mostRecent != null) {

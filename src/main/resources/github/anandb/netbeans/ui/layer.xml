@@ -36,4 +36,27 @@
             <attr name="keywordsCategory" stringvalue="Assistant"/>
             </file>
         </folder>
+    <folder name="Projects">
+        <folder name="github-anandb-netbeans-mdproject">
+            <attr name="iconBase" stringvalue="github/anandb/netbeans/ui/icons/mdproject.svg"/>
+            <folder name="LogicalViewProvider">
+                <file name="github-anandb-netbeans-project-mdproject-MdLogicalViewProvider.instance"/>
+            </folder>
+            <folder name="Lookup">
+                <file name="github-anandb-netbeans-project-mdproject-MdProjectInformation.instance"/>
+            </folder>
+        </folder>
+    </folder>
+    <folder name="Templates">
+        <folder name="Project">
+            <folder name="Coding Assistant">
+                <attr name="displayName" bundlevalue="github.anandb.netbeans.ui.Bundle#LBL_ProjectCategory"/>
+                <file name="github-anandb-netbeans-ui-mdproject-MdProjectWizardIterator.instance">
+                    <attr name="instantiatingIterator" newvalue="github.anandb.netbeans.ui.mdproject.MdProjectWizardIterator"/>
+                    <attr name="iconBase" stringvalue="github/anandb/netbeans/ui/icons/mdproject.svg"/>
+                    <attr name="displayName" bundlevalue="github.anandb.netbeans.ui.mdproject.Bundle#LBL_WizardName"/>
+                </file>
+            </folder>
+        </folder>
+    </folder>
 </filesystem>

@@ -18,6 +18,7 @@
 - **Preamble context menu**: Right-click the preamble text area for "Clear" and "Reset to default" options.
 - **`/title <name>` direct rename**: Passing a name argument to `/title` renames the session immediately without an AI tool call. `/title` alone (no args) still uses AI.
 - **Permission dialog code preview**: Permission requests now display code diffs/patches inline. Supports `text`, `diff` (with `text`/`patch`/`oldText+newText`), rendered in `CollapsibleCodePane` with syntax highlighting. Content is scrollable with a 300px max height cap.
+- **Markdown Project type**: Minimal project type for folders containing markdown notes and other text files — no build system, no source roots. Detected by a `.mdproject` marker. Use `File > New Project > Other > Markdown Project` or open any existing folder containing a `.mdproject` file. The Projects tab shows the full directory tree with OS junk and editor swap files filtered out.
 
 ### Fixes
 - **Progress bar through preamble**: Progress bar now stays visible during preamble response (fixed `onPreambleDone` contract).
