@@ -89,12 +89,17 @@ class PermissionBubble extends JPanel {
             }
         }
 
-        javax.swing.JScrollPane scrollPane = new javax.swing.JScrollPane(centerPanel);
+        javax.swing.JScrollPane scrollPane = new javax.swing.JScrollPane(centerPanel) {
+            @Override
+            public Dimension getPreferredSize() {
+                Dimension d = super.getPreferredSize();
+                d.height = Math.min(d.height, 300);
+                return d;
+            }
+        };
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
         scrollPane.setOpaque(false);
         scrollPane.getViewport().setOpaque(false);
-        // Limit max height so it doesn't take over the screen
-        scrollPane.setPreferredSize(new Dimension(scrollPane.getPreferredSize().width, Math.min(scrollPane.getPreferredSize().height, 300)));
         content.add(scrollPane, BorderLayout.CENTER);
 
         int numOptions = (options != null && options.isArray() && options.size() > 0) ? options.size() : 2;

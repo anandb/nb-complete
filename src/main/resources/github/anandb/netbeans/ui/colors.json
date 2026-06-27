@@ -20,11 +20,6 @@
     "key": "Button.focusColor"
   },
   {
-    "name": "ghostBackground",
-    "property": "netbeans.codingassistant.color.ghostBackground",
-    "key": "Label.background"
-  },
-  {
     "name": "sunkenBackground",
     "property": "netbeans.codingassistant.color.sunkenBackground",
     "key": "Editor.background"
@@ -62,11 +57,6 @@
     "key": "Panel.background"
   },
   {
-    "name": "panelHeaderHover",
-    "property": "netbeans.codingassistant.color.panelHeaderHover",
-    "key": "Button.background"
-  },
-  {
     "name": "base1",
     "property": "netbeans.codingassistant.color.base1",
     "key": "Label.foreground"
@@ -75,11 +65,6 @@
     "name": "base2",
     "property": "netbeans.codingassistant.color.base2",
     "key": "controlShadow"
-  },
-  {
-    "name": "base3",
-    "property": "netbeans.codingassistant.color.base3",
-    "key": "control"
   },
   {
     "name": "yellow",
