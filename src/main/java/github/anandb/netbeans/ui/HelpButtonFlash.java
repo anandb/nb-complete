@@ -32,7 +32,7 @@ final class HelpButtonFlash {
         Timer[] timerHolder = new Timer[1];
         MouseAdapter[] listenerHolder = new MouseAdapter[1];
         Timer timer = new Timer(TimingConstants.HELP_FLASH_INTERVAL_MS, new ActionListener() {
-            int tick = 0;
+            private int tick = 0;
 
             @Override
             public void actionPerformed(ActionEvent e) {

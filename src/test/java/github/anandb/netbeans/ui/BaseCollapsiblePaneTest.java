@@ -29,6 +29,11 @@ class BaseCollapsiblePaneTest {
             protected javax.swing.Icon getDefaultIcon() {
                 return null;
             }
+
+            @Override
+            protected void updateAppearance() {
+                super.updateBaseAppearance();
+            }
         };
         assertTrue(pane.isExpanded());
 

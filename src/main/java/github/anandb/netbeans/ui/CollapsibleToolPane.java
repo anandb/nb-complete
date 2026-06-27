@@ -17,13 +17,13 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
 
     public CollapsibleToolPane(String title, String content, boolean expandedAtStart) {
         super(12, title, ThemeManager.getCurrentTheme().yellow(), expandedAtStart);
-        
+
         textArea = createActivityTextArea(content);
         textArea.setFont(isThinking
                 ? ThemeManager.getFont().deriveFont(Font.PLAIN, ThemeManager.getFont().getSize() - 1f)
                 : ThemeManager.getMonospaceFont().deriveFont(Font.PLAIN, ThemeManager.getMonospaceFont().getSize() - 1f));
         contentPanel.add(textArea, BorderLayout.CENTER);
-        
+
         updateAppearance();
         setAlignmentX(Component.LEFT_ALIGNMENT);
     }
@@ -39,8 +39,8 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
     }
 
     @Override
-    protected void updateAppearance() {
-        super.updateAppearance();
+    protected final void updateAppearance() {
+        super.updateBaseAppearance();
         ColorTheme theme = ThemeManager.getCurrentTheme();
         if (textArea != null) {
             textArea.setForeground(expanded ? theme.thinkingHeaderForeground() : theme.foreground());

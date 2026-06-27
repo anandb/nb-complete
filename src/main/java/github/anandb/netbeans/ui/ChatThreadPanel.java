@@ -278,6 +278,10 @@ public class ChatThreadPanel extends JPanel {
 
             boolean canMerge = (lastBubble != null && role.equals(lastBubble.getRole()));
             if (canMerge) {
+                if (lastBubble == null) {
+                    throw new IllegalArgumentException("lastBubble cannot be null");
+                }
+
                 switch (role) {
                     case "thought" -> canMerge = true;
                     case "tool" -> {

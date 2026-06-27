@@ -3,6 +3,7 @@ package github.anandb.netbeans.manager;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.model.SessionConfigOption;
 import github.anandb.netbeans.support.PluginSettings;
@@ -41,6 +42,8 @@ import github.anandb.netbeans.model.SessionState;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.MapperSupplier;
+import org.apache.commons.lang3.exception.ExceptionUtils;
+
 import static org.apache.commons.text.StringEscapeUtils.unescapeHtml4;
 
 /**
@@ -636,9 +639,8 @@ public class SessionManager implements SessionQuery, SessionControl {
 
         ProcessManager.getInstance().sendRequest("session/prompt", params)
                 .exceptionally(ex -> {
-                    Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
-                    LOG.warn("Failed to send {0}: {1}", label, cause.getMessage());
-                    notifyError("Connection lost while sending " + label + ": " + cause.getMessage());
+                    LOG.warn("Failed to send {0}: {1}", label, ExceptionUtils.getRootCauseMessage(ex));
+                    notifyError("Connection lost while sending " + label + ": " + ExceptionUtils.getRootCauseMessage(ex));
                     return null;
                 });
     }

@@ -28,14 +28,12 @@ import org.openide.util.NbBundle;
 public class CollapsibleCodePane extends BaseCollapsiblePane {
 
     private static final long serialVersionUID = 1L;
+    private static volatile Theme cachedRTheme;
 
     private String language;
     private String code;
     private RSyntaxTextArea codeTextArea;
-
     private boolean codeAreaInitialized;
-
-    private static volatile Theme cachedRTheme;
 
     private static synchronized Theme loadCodeTheme() {
         Theme theme = cachedRTheme;
@@ -391,5 +389,10 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
         String md = "```" + lang + "\n" + code + "\n```";
         StringSelection sel = new StringSelection(md);
         Toolkit.getDefaultToolkit().getSystemClipboard().setContents(sel, sel);
+    }
+
+    @Override
+    protected void updateAppearance() {
+        super.updateBaseAppearance();
     }
 }

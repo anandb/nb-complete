@@ -131,8 +131,8 @@ public class CollapsibleActivityPane extends BaseCollapsiblePane {
     }
 
     @Override
-    protected void updateAppearance() {
-        super.updateAppearance();
+    protected final void updateAppearance() {
+        super.updateBaseAppearance();
         ColorTheme theme = ThemeManager.getCurrentTheme();
         if (expanded) {
             Color accentColor = getAccordionGroup() != null ? theme.base1() : defaultAccent;

@@ -1,5 +1,7 @@
 package github.anandb.netbeans.ui;
 
+import java.text.StringCharacterIterator;
+
 /**
  * Tokenizes markdown text into structured elements for rendering.
  * Handles inline formatting detection (bold, italic, code, strikethrough).
@@ -103,17 +105,19 @@ final class MarkdownTokenizer {
             return s;
         }
         StringBuilder sb = new StringBuilder(s.length());
-        for (int i = 0; i < s.length(); i++) {
-            char c = s.charAt(i);
-            if (c == '\\' && i + 1 < s.length()) {
-                char next = s.charAt(i + 1);
-                if (next == '\\' || next == '*' || next == '`' || next == '~' || next == '|') {
+        StringCharacterIterator it = new StringCharacterIterator(s);
+        while (it.current() != StringCharacterIterator.DONE) {
+            char c = it.current();
+            if (c == '\\') {
+                char next = it.next();
+                if (next != StringCharacterIterator.DONE && (next == '\\' || next == '*' || next == '`' || next == '~' || next == '|')) {
                     sb.append(next);
-                    i++;
                     continue;
                 }
+                it.previous();
             }
             sb.append(c);
+            it.next();
         }
         return sb.toString();
     }

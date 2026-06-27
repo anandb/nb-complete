@@ -31,13 +31,7 @@ class BubbleContentRenderer {
      *  content on the first render. */
     private List<CollapsibleToolPane.ToolSegment> pendingSegmentedContent;
 
-    static class CollapsibleState {
-        boolean expanded;
-
-        CollapsibleState(boolean expanded) {
-            this.expanded = expanded;
-        }
-    }
+    public record CollapsibleState(boolean expanded) {}
 
     BubbleContentRenderer(JPanel segments, StringBuilder text, String role,
                           ArrayList<CollapsibleState> codeStates, BubbleStreamer streamer) {

@@ -16,11 +16,12 @@ import org.openide.util.lookup.ServiceProvider;
 public class ACPProjectManager implements PropertyChangeListener {
     private static final Logger LOG = Logger.from(ACPProjectManager.class);
 
-    private volatile Project[] currentProjects = new Project[0];
+    private volatile Project[] currentProjects;
     private volatile Consumer<String> projectCloseListener;
     private volatile Consumer<String> projectOpenListener;
 
     public ACPProjectManager() {
+        this.currentProjects = new Project[0];
     }
 
     public static ACPProjectManager getInstance() {
@@ -48,7 +49,7 @@ public class ACPProjectManager implements PropertyChangeListener {
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
         String prop = evt.getPropertyName();
-        if (OpenProjects.PROPERTY_MAIN_PROJECT.equals(prop) || 
+        if (OpenProjects.PROPERTY_MAIN_PROJECT.equals(prop) ||
             OpenProjects.PROPERTY_OPEN_PROJECTS.equals(prop)) {
             syncActiveProject();
         }

@@ -67,6 +67,7 @@ public class StrategyRegistry implements UpdateDispatcher {
     }
 
     /** Dispatches a SessionUpdate to the appropriate extraction logic via a type switch. */
+    @Override
     public void handle(SessionUpdate update, UIHandler handler) {
         String type = update.type();
         if (type == null) {

@@ -213,7 +213,7 @@ public class UpdateCheckerService {
         String currentVersionStr = AgentUtils.getVersion();
 
         if (isNewerVersion(info.latestVersion, currentVersionStr)) {
-            LOG.info("New update found: {0} (current: {1}). Download URL: {2}", 
+            LOG.info("New update found: {0} (current: {1}). Download URL: {2}",
                     new Object[]{info.latestVersion, currentVersionStr, info.downloadUrl});
 
             showNotification(info.latestVersion, info.downloadUrl);
@@ -241,11 +241,8 @@ public class UpdateCheckerService {
             String message = "A new version of Coding Assistant (" + latestVersion
                     + ") is available. Click to download.";
 
-            ActionListener action = new ActionListener() {
-                @Override
-                public void actionPerformed(ActionEvent e) {
-                    BrowserUtils.openOrCopyUrl(downloadUrl, null, null);
-                }
+            ActionListener action = (ActionEvent e) -> {
+                BrowserUtils.openOrCopyUrl(downloadUrl, null, null);
             };
 
             NotificationDisplayer.getDefault().notify(

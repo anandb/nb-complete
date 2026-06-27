@@ -2,7 +2,9 @@ package github.anandb.netbeans.ui;
 
 import java.awt.Component;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.regex.Pattern;
 import javax.swing.Box;
 import javax.swing.JPanel;
@@ -112,8 +114,10 @@ public final class ToolThoughtCombiner {
             }
         }
 
-        for (int i = scanStart; i < comps.length; i++) {
-            Component c = comps[i];
+        List<Component> compList = Arrays.asList(comps);
+        ListIterator<Component> it = compList.listIterator(scanStart);
+        while (it.hasNext()) {
+            Component c = it.next();
             if (c instanceof MessageBubble mb) {
                 String role = mb.getRole();
                 // Safety guard: stop if we cross a user/assistant boundary
@@ -123,7 +127,7 @@ public final class ToolThoughtCombiner {
                 if (("tool".equals(role) || "thought".equals(role))
                         && !Boolean.TRUE.equals(mb.getClientProperty("nb-complete.combined"))) {
                     if (insertIndex < 0) {
-                        insertIndex = i;
+                        insertIndex = it.previousIndex();
                     }
                     String text = mb.getRawText();
                     if (text != null && !text.isEmpty()) {
@@ -149,9 +153,8 @@ public final class ToolThoughtCombiner {
                     }
                     toRemove.add(c);
                     // Remove trailing strut as well
-                    if (i + 1 < comps.length && comps[i + 1] instanceof Box.Filler) {
-                        toRemove.add(comps[i + 1]);
-                        i++; // skip strut in next iteration
+                    if (it.hasNext() && compList.get(it.nextIndex()) instanceof Box.Filler) {
+                        toRemove.add(it.next());
                     }
                 }
             }
@@ -174,8 +177,8 @@ public final class ToolThoughtCombiner {
 
         if (visibleSegments.isEmpty()) {
             // All segments hidden — remove individual bubbles but create no combined pane
-            for (int i = toRemove.size() - 1; i >= 0; i--) {
-                Component removed = toRemove.get(i);
+            for (int ri = toRemove.size() - 1; ri >= 0; ri--) {
+                Component removed = toRemove.get(ri);
                 messagesContainer.remove(removed);
                 if (scrollController != null) {
                     scrollController.unfixMouseWheel(removed);
@@ -186,8 +189,8 @@ public final class ToolThoughtCombiner {
         }
 
         // Remove from back to front to keep indices valid
-        for (int i = toRemove.size() - 1; i >= 0; i--) {
-            Component removed = toRemove.get(i);
+        for (int ri = toRemove.size() - 1; ri >= 0; ri--) {
+            Component removed = toRemove.get(ri);
             messagesContainer.remove(removed);
             if (scrollController != null) {
                 scrollController.unfixMouseWheel(removed);

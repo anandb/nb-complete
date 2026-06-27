@@ -44,22 +44,22 @@ public class MessageBubble extends JPanel implements Scrollable {
     private static final long serialVersionUID = 1L;
 
     /** Determines where the user avatar is positioned relative to the message bubble. */
-    enum AvatarPosition { LEFT, RIGHT, NONE }
+    public enum AvatarPosition { LEFT, RIGHT, NONE }
 
-    private final MessageType type;
-    private final String role;
-    private final String messageId;
-    private final StringBuilder text;
-    private String toolTitle;
-    private final JPanel segments;
     private JPanel bubble;
-    private final BubbleThemeApplier themeApplier;
-    private final ArrayList<BubbleContentRenderer.CollapsibleState> codeStates = new ArrayList<>();
-    private transient HierarchyListener hierarchyListener;
+    private String toolTitle;
     private Timer copyRevertTimer;
-    private final BubbleStreamer streamer;
-    private final BubbleAccordionManager accordionManager;
-    private final BubbleContentRenderer contentRenderer;
+    private final ArrayList<BubbleContentRenderer.CollapsibleState> codeStates = new ArrayList<>();
+    private final JPanel segments;
+    private final MessageType type;
+    private final String messageId;
+    private final String role;
+    private final StringBuilder text;
+    private final transient BubbleAccordionManager accordionManager;
+    private final transient BubbleContentRenderer contentRenderer;
+    private final transient BubbleStreamer streamer;
+    private final transient BubbleThemeApplier themeApplier;
+    private transient HierarchyListener hierarchyListener;
 
     @Override
     public float getAlignmentX() {
@@ -105,18 +105,22 @@ public class MessageBubble extends JPanel implements Scrollable {
 
         this.bubble = new JPanel(new BorderLayout());
         this.bubble.setDoubleBuffered(true);
-        if ("user".equals(role)) {
-            RoundedPanel p = new RoundedPanel(32);
-            p.setLayout(new BorderLayout());
-            p.setBorder(new EmptyBorder(10, 8, 10, 8));
-            this.bubble = p;
-        } else if ("assistant".equals(role)) {
-            RoundedPanel p = new RoundedPanel(32);
-            p.setLayout(new BorderLayout());
-            p.setBorder(new EmptyBorder(8, 10, 8, 10));
-            this.bubble = p;
-        } else {
+        if (null == role) {
             this.bubble.setBorder(new EmptyBorder(2, 8, 2, 8));
+        } else switch (role) {
+            case "user" -> {
+                    RoundedPanel p = new RoundedPanel(32);
+                    p.setLayout(new BorderLayout());
+                    p.setBorder(new EmptyBorder(10, 8, 10, 8));
+                    this.bubble = p;
+                }
+            case "assistant" -> {
+                    RoundedPanel p = new RoundedPanel(32);
+                    p.setLayout(new BorderLayout());
+                    p.setBorder(new EmptyBorder(8, 10, 8, 10));
+                    this.bubble = p;
+                }
+            default -> this.bubble.setBorder(new EmptyBorder(2, 8, 2, 8));
         }
         this.bubble.add(segments, BorderLayout.CENTER);
         this.themeApplier = new BubbleThemeApplier(this, segments, bubble, messageId, role);

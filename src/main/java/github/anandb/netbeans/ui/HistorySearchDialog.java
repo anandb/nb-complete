@@ -150,25 +150,31 @@ final class HistorySearchDialog extends JDialog {
         searchField.addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
-                if (e.getKeyCode() == KeyEvent.VK_DOWN) {
-                    e.consume();
-                    if (listModel.getSize() > 0) {
-                        int idx = resultList.getSelectedIndex();
-                        int next = (idx < listModel.getSize() - 1) ? idx + 1 : 0;
-                        resultList.setSelectedIndex(next);
-                        resultList.ensureIndexIsVisible(next);
+                switch (e.getKeyCode()) {
+                    case KeyEvent.VK_DOWN -> {
+                        e.consume();
+                        if (listModel.getSize() > 0) {
+                            int idx = resultList.getSelectedIndex();
+                            int next = (idx < listModel.getSize() - 1) ? idx + 1 : 0;
+                            resultList.setSelectedIndex(next);
+                            resultList.ensureIndexIsVisible(next);
+                        }
                     }
-                } else if (e.getKeyCode() == KeyEvent.VK_UP) {
-                    e.consume();
-                    if (listModel.getSize() > 0) {
-                        int idx = resultList.getSelectedIndex();
-                        int prev = (idx > 0) ? idx - 1 : listModel.getSize() - 1;
-                        resultList.setSelectedIndex(prev);
-                        resultList.ensureIndexIsVisible(prev);
+                    case KeyEvent.VK_UP -> {
+                        e.consume();
+                        if (listModel.getSize() > 0) {
+                            int idx = resultList.getSelectedIndex();
+                            int prev = (idx > 0) ? idx - 1 : listModel.getSize() - 1;
+                            resultList.setSelectedIndex(prev);
+                            resultList.ensureIndexIsVisible(prev);
+                        }
                     }
-                } else if (e.getKeyCode() == KeyEvent.VK_ENTER) {
-                    e.consume();
-                    selectAndClose();
+                    case KeyEvent.VK_ENTER -> {
+                        e.consume();
+                        selectAndClose();
+                    }
+                    default -> {
+                    }
                 }
             }
         });

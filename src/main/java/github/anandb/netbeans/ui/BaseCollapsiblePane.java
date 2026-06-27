@@ -192,7 +192,6 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
         header.add(groupToggleBtn, BorderLayout.WEST);
 
         setupTitleLabels(title);
-        updateAppearance();
     }
 
     public AccordionGroup getAccordionGroup() {
@@ -300,7 +299,7 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
         return ThemeManager.getCurrentTheme().panelHeader();
     }
 
-    protected void setupTitleLabels(String rawTitle) {
+    protected final void setupTitleLabels(String rawTitle) {
         titlePanel.removeAll();
         Icon icon = getHeaderIcon(rawTitle);
 
@@ -394,7 +393,7 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
         copyFeedbackTimer.start();
     }
 
-    protected void updateAppearance() {
+    protected final void updateBaseAppearance() {
         ColorTheme theme = ThemeManager.getCurrentTheme();
         Color newBg = expanded ? theme.base2() : getDefaultHeaderBackground();
         Color newFg = getHeaderForeground(theme);
@@ -418,6 +417,8 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
         }
         copyButton.setForeground(newFg);
     }
+
+    protected abstract void updateAppearance();
 
     protected Color getHeaderForeground(ColorTheme theme) {
         return expanded ? theme.foreground() : theme.collapsedHeaderForeground();

@@ -282,14 +282,14 @@ final class ChatLayoutBuilder {
         helpBtn.setContentAreaFilled(false);
         helpBtn.setBorderPainted(false);
         helpBtn.addActionListener(e -> github.anandb.netbeans.support.BrowserUtils.openOrCopyUrl(quickstartUrl, "STATUS_QuickstartCopied",
-            (url, key) -> topComponent.statusController.setStatus(key, url)));
+            (url, key) -> topComponent.setStatus(key, url)));
 
         JButton feedbackBtn = UIUtils.createToolbarButton("feedback.svg",
             NbBundle.getMessage(AssistantTopComponent.class, "HINT_Feedback"), null);
         feedbackBtn.setContentAreaFilled(false);
         feedbackBtn.setBorderPainted(false);
         feedbackBtn.addActionListener(e -> github.anandb.netbeans.support.BrowserUtils.openOrCopyUrl(feedbackUrl, "STATUS_FeedbackCopied",
-            (url, key) -> topComponent.statusController.setStatus(key, url)));
+            (url, key) -> topComponent.setStatus(key, url)));
 
         JButton keyboardShortcutsBtn = UIUtils.createToolbarButton("keyboard.svg",
             NbBundle.getMessage(AssistantTopComponent.class, "HINT_KeyboardShortcuts"), null);
@@ -434,7 +434,7 @@ final class ChatLayoutBuilder {
     }
 
     private JPopupMenu newToolBarPopup() {
-        JPopupMenu popup = new JPopupMenu() {
+        return new JPopupMenu() {
             @Override
             public void show(java.awt.Component invoker, int x, int y) {
                 removeAll();
@@ -442,7 +442,6 @@ final class ChatLayoutBuilder {
                 super.show(invoker, x, y);
             }
         };
-        return popup;
     }
 
     private void buildToolBarItems(JPopupMenu popup) {
@@ -492,9 +491,10 @@ final class ChatLayoutBuilder {
             {restartServerBtn, PreferenceKeys.TOOLBAR_RESTART},
         };
         for (Object[] pair : btns) {
-            boolean visible = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
-                    .getBoolean((String) pair[1], isDefaultVisible((String) pair[1]));
-            ((JButton) pair[0]).setVisible(visible);
+            boolean visible = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean(
+                (String) pair[1], isDefaultVisible((String) pair[1])
+            );
+            ((Component) pair[0]).setVisible(visible);
         }
     }
 

@@ -58,13 +58,13 @@ final class MessageFilterManager {
         if ("activity".equals(type)) {
             return filterTool || filterThought;
         }
-        switch (type) {
-            case "tool":      return filterTool;
-            case "thought":   return filterThought;
-            case "assistant": return filterAssistant;
-            case "user":      return filterUser;
-            default:          return false;
-        }
+        return switch (type) {
+            case "tool" -> filterTool;
+            case "thought" -> filterThought;
+            case "assistant" -> filterAssistant;
+            case "user" -> filterUser;
+            default -> false;
+        };
     }
 
     static void setTypeHidden(String type, boolean hidden) {
@@ -83,23 +83,12 @@ final class MessageFilterManager {
         String key = evt.getKey();
         if (key == null) return;
         switch (key) {
-            case "combineToolThought":
-                combineToolThought = Boolean.parseBoolean(evt.getNewValue());
-                break;
-            case PREF_PREFIX + "tool":
-                filterTool = Boolean.parseBoolean(evt.getNewValue());
-                break;
-            case PREF_PREFIX + "thought":
-                filterThought = Boolean.parseBoolean(evt.getNewValue());
-                break;
-            case PREF_PREFIX + "assistant":
-                filterAssistant = Boolean.parseBoolean(evt.getNewValue());
-                break;
-            case PREF_PREFIX + "user":
-                filterUser = Boolean.parseBoolean(evt.getNewValue());
-                break;
-            default:
-                break;
+            case "combineToolThought" -> combineToolThought = Boolean.parseBoolean(evt.getNewValue());
+            case PREF_PREFIX + "tool" -> filterTool = Boolean.parseBoolean(evt.getNewValue());
+            case PREF_PREFIX + "thought" -> filterThought = Boolean.parseBoolean(evt.getNewValue());
+            case PREF_PREFIX + "assistant" -> filterAssistant = Boolean.parseBoolean(evt.getNewValue());
+            case PREF_PREFIX + "user" -> filterUser = Boolean.parseBoolean(evt.getNewValue());
+            default -> {}
         }
     }
 }

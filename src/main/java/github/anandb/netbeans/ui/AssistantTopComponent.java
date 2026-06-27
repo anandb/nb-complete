@@ -84,10 +84,10 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     private final JScrollPane inputScrollPane;
     private final JPanel header;
     private final transient MessageHistory messageHistory = new MessageHistory();
-    transient StatusController statusController;
+    private final transient StatusController statusController;
     private final transient AttachmentUiHandler attachmentUiHandler;
     private final transient SessionDropdownHandler sessionDropdownHandler;
-    transient ComponentLifecycleHandler componentLifecycleHandler;
+    private final transient ComponentLifecycleHandler componentLifecycleHandler;
     private final transient InputHandler inputHandler;
     private final transient SessionLifecycleHandler sessionLifecycleHandler;
     private final transient MessageSender messageSender;
@@ -287,6 +287,12 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     void stopMessage() {
         if (messageSender != null) {
             messageSender.stopMessage();
+        }
+    }
+
+    void setStatus(String key, Object... args) {
+        if (statusController != null) {
+            statusController.setStatus(key, args);
         }
     }
 

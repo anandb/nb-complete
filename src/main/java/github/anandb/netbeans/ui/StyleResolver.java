@@ -101,9 +101,12 @@ final class StyleResolver {
         SimpleAttributeSet attr = new SimpleAttributeSet(base);
         StyleConstants.setBold(attr, true);
         int size = baseFont.getSize() + 1;
-        if (level == 1) size += 6;
-        else if (level == 2) size += 4;
-        else if (level == 3) size += 2;
+        switch (level) {
+            case 1 -> size += 6;
+            case 2 -> size += 4;
+            case 3 -> size += 2;
+            default -> {}
+        }
         StyleConstants.setFontSize(attr, size);
         StyleConstants.setSpaceAbove(attr, 8);
         StyleConstants.setSpaceBelow(attr, 4);
