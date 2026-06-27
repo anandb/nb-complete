@@ -4,14 +4,16 @@ import java.awt.Color;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import javax.swing.UIManager;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 
 import github.anandb.netbeans.support.MapperSupplier;
 import org.openide.util.NbBundle;
@@ -41,10 +43,14 @@ public record ColorTheme(
 
     private static volatile ColorTheme cachedTheme;
 
-    /** Cache for {@link #toHtmlHex(Color)} results. Identity-based so distinct
-     *  Color instances (even with same RGB) don't collide. Cleared on theme
+    /** Cache for {@link #toHtmlHex(Color)} results. Caffeine handles concurrency,
+     *  size eviction, and access-order tracking internally. Cleared on theme
      *  switch via the UIManager property change listener below. */
-    private static final Map<Color, String> HEX_CACHE = new IdentityHashMap<>();
+    private static final Cache<Color, String> HEX_CACHE =
+            Caffeine.newBuilder()
+                    .maximumSize(128)
+                    .expireAfterAccess(60, TimeUnit.MINUTES)
+                    .build();
     private static volatile String cachedCssAssistant;
     private static volatile String cachedCssAssistantBg;
     private static volatile String cachedCssAssistantFontSize;
@@ -57,9 +63,7 @@ public record ColorTheme(
             cachedTheme = null;
             cachedCssAssistant = null;
             cachedCssUser = null;
-            synchronized (ColorTheme.class) {
-                HEX_CACHE.clear();
-            }
+            HEX_CACHE.invalidateAll();
             StyleResolver.clearCache();
             HtmlContentPreparer.clearCache();
         });
@@ -263,15 +267,8 @@ public record ColorTheme(
         if (color == null) {
             return "#000000";
         }
-        String cached = HEX_CACHE.get(color);
-        if (cached != null) {
-            return cached;
-        }
-        String hex = String.format("#%02x%02x%02x", color.getRed(), color.getGreen(), color.getBlue());
-        // Only cache if cache is reasonably small to avoid unbounded growth
-        if (HEX_CACHE.size() < 128) {
-            HEX_CACHE.put(color, hex);
-        }
-        return hex;
+        // Caffeine's get(key, loader) is atomic — no external synchronization needed.
+        return HEX_CACHE.get(color,
+                c -> String.format("#%02x%02x%02x", c.getRed(), c.getGreen(), c.getBlue()));
     }
 }

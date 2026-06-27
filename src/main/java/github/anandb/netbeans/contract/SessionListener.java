@@ -33,4 +33,8 @@ public interface SessionListener {
      *  Only called for new sessions. Used to hide the session-loading
      *  progress bar once the preamble response completes. */
     default void onPreambleDone() {}
+
+    /** Fired when a session has been renamed locally. UI should update the
+     *  dropdown display without reloading the entire conversation. */
+    default void onSessionRenamed(String sessionId) {}
 }

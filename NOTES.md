@@ -2,6 +2,15 @@
 
 ## v1.7.3 (Changes since v1.7.2)
 
+**BREAKING CHANGE** Opencode Upstream Changes 1.17.9+ (ACP Next Promotion)
+- Promoted ACP Next Implementation: The experimental OPENCODE_ACP_NEXT feature flag has been removed, and the "next" implementation
+  of the Agent Client Protocol (ACP) is now the default behavior for all users.
+- Decoupled Model Variants: The session/load configuration payload has been restructured. Previously, model variants
+  (such as thinking effort levels) were combined with base models inside the single model config option.
+- New thought_level Config Option: Effort levels and variants are now isolated into their own dedicated thought_level
+  config option (identified as effort). The available options for this field update dynamically based on the currently
+  selected base model.
+
 ### Features
 - **Resizable input split pane**: Bottom panel replaced with `JSplitPane` so users can resize the input area vertically.
 - **Determinate progress bar**: Session load progress bar is now blue and determinate (0–100) — starts at 10%, advances to 30% on ACP request, 60% on response, 100% on session loaded. Works for both new session creation and session reload.
@@ -24,10 +33,21 @@
 - **Session load EDT freeze**: Replaced per-message `invokeLater` with recursive drain queue — each message gets its own EDT tick, paint events fire between messages, preventing 1+ second EDT lockup during 50+ message SSE burst.
 - **`/title` and `rename_session` Lookup context**: Slash command handler and MCP tool now use passed Lookup context instead of global Lookup; blank sessionId guard added.
 - **EditorContextCapture selection bounds**: Validates selection offsets against document length to prevent `IllegalArgumentException`.
+- **`/title` invisible prompt annotation**: Title suggestion now sends prompt with `audience: assistant` annotation so it doesn't render as a user message bubble.
+- **Session dropdown rename**: `onSessionRenamed` listener updates the dropdown item in-place without requiring a full session list reload.
+- **Debounce timer leak**: `ChatLayoutBuilder.newSessionDebounceTimer` stopped in `removeNotify()` via `layoutBuilder.cleanup()` to prevent timer firing after component disposal.
+- **McpManager.start() race**: `readyFuture.complete(null)` moved inside `synchronized(McpManager.this)` on the success path to prevent a concurrent `start()` from prematurely completing a replaced future.
+- **ProcessManager cleanup**: Removed redundant `permissionHandler` field (delegated to `requestRouter`); added `@Override` to `shutdown()`.
 
 ### UI
 - **Wait cursor**: Shows WAIT cursor while a new session is being created.
 - **`rename_session` logging**: Tool now logs `sessionId` and `title` at INFO level.
+
+### Performance
+- **Caffeine caches**: Replaced manual LRU and `ConcurrentHashMap` caches with Caffeine across `ColorTheme.HEX_CACHE`, `HtmlContentPreparer.MARKDOWN_HTML_CACHE`, `HtmlContentPreparer.HTML_WRAPPER_CACHE`, and `StyleResolver.DERIVED_CACHE`. Caffeine handles concurrency, size eviction, and access-order tracking internally — eliminates external `synchronized` blocks and manual eviction logic.
+
+### Dependencies
+- **commons-text 1.13.0**: Added for `unescapeHtml4()` in `SessionManager` custom title decoding.
 
 ### Refactoring
 - **`SlashCommandInterceptor`**: Switched to custom `Logger` with index-based placeholders.

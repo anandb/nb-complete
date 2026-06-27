@@ -9,9 +9,11 @@ import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.TextScanner;
 import static github.anandb.netbeans.ui.UIUtils.MONO_STACK;
 
-import java.util.LinkedHashMap;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+
 import java.util.List;
-import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 public final class HtmlContentPreparer {
 
@@ -22,18 +24,13 @@ public final class HtmlContentPreparer {
     private static final Parser FLEXMARK_PARSER;
     private static final HtmlRenderer FLEXMARK_RENDERER;
 
-    /** Bounded LRU cache for markdown→HTML output. Uses a LinkedHashMap with
-     *  removeEldestEntry for true LRU eviction instead of wholesale clear,
-     *  which would cause a burst of N synchronous Flexmark re-parses. */
-    private static final int MARKDOWN_CACHE_MAX = 256;
-    private static final Map<String, String> MARKDOWN_HTML_CACHE =
-            java.util.Collections.synchronizedMap(
-                    new LinkedHashMap<String, String>(64, 0.75f, true) {
-                        @Override
-                        protected boolean removeEldestEntry(Map.Entry<String, String> eldest) {
-                            return size() > MARKDOWN_CACHE_MAX;
-                        }
-                    });
+    /** Bounded LRU cache for markdown→HTML output. Caffeine handles concurrency,
+     *  size eviction, and access-order tracking internally. */
+    private static final Cache<String, String> MARKDOWN_HTML_CACHE =
+            Caffeine.newBuilder()
+                    .maximumSize(256)
+                    .expireAfterAccess(60, TimeUnit.MINUTES)
+                    .build();
 
     static {
         MutableDataSet options = new MutableDataSet();
@@ -43,16 +40,13 @@ public final class HtmlContentPreparer {
         FLEXMARK_RENDERER = HtmlRenderer.builder(options).build();
     }
 
-    /** Cache key for the static HTML wrapper (head+style). Keyed on (role, fontSize, theme-identity)
-     *  since CSS depends on these. Invalidated when the L&amp;F changes (theme switch). */
-    private static final Map<String, String> HTML_WRAPPER_CACHE = new LinkedHashMap<>() {
-        private static final int MAX_ENTRIES = 32;
-
-        @Override
-        protected boolean removeEldestEntry(Map.Entry<String, String> eldest) {
-            return size() > MAX_ENTRIES;
-        }
-    };
+    /** Cache for the static HTML wrapper (head+style). Keyed on (role, fontSize, theme-identity)
+     *  since CSS depends on these. Caffeine handles concurrency and LRU eviction.
+     *  Invalidated when the L&amp;F changes (theme switch). */
+    private static final Cache<String, String> HTML_WRAPPER_CACHE =
+            Caffeine.newBuilder()
+                    .maximumSize(32)
+                    .build();
 
     public static String prepareHtml(String markdown, ColorTheme theme, String role, boolean incremental) {
         String html = computeOrGetCachedHtml(markdown);
@@ -124,11 +118,7 @@ public final class HtmlContentPreparer {
     private static String getCachedWrapper(ColorTheme theme, String role, boolean isAssistant) {
         int fontSize = ThemeManager.getFont().getSize() - 2;
         String cacheKey = role + "|" + fontSize + "|" + System.identityHashCode(theme);
-        synchronized (HTML_WRAPPER_CACHE) {
-            String cached = HTML_WRAPPER_CACHE.get(cacheKey);
-            if (cached != null) {
-                return cached;
-            }
+        return HTML_WRAPPER_CACHE.get(cacheKey, key -> {
             String customCss = theme.toCss(null, isAssistant, fontSize);
             if ("error".equals(role)) {
                 customCss += " body { color: #D32F2F; font-weight: bold; }";
@@ -136,18 +126,14 @@ public final class HtmlContentPreparer {
                 customCss += " body { font-weight: 300; }";
             }
             String bodyStyle = "margin: 0; padding: 0; text-align: left !important; width: 100%;";
-            String wrapper = "<html><head><style>" + customCss + "</style></head><body style='" + bodyStyle + "'>__BODY__";
-            HTML_WRAPPER_CACHE.put(cacheKey, wrapper);
-            return wrapper;
-        }
+            return "<html><head><style>" + customCss + "</style></head><body style='" + bodyStyle + "'>__BODY__";
+        });
     }
 
     /** Evict all cached HTML (called on theme switch to force reparse). */
     public static void clearCache() {
-        MARKDOWN_HTML_CACHE.clear();
-        synchronized (HTML_WRAPPER_CACHE) {
-            HTML_WRAPPER_CACHE.clear();
-        }
+        MARKDOWN_HTML_CACHE.invalidateAll();
+        HTML_WRAPPER_CACHE.invalidateAll();
     }
 
     public static boolean containsAsciiArt(String markdown) {
@@ -163,17 +149,10 @@ public final class HtmlContentPreparer {
         if (markdown.length() > 32768) {
             return FLEXMARK_RENDERER.render(FLEXMARK_PARSER.parse(markdown));
         }
-        // Fast path: cache hit (lock-free read)
-        String cached = MARKDOWN_HTML_CACHE.get(markdown);
-        if (cached != null) {
-            return cached;
-        }
-        String rendered = FLEXMARK_RENDERER.render(FLEXMARK_PARSER.parse(markdown));
-        // LinkedHashMap with removeEldestEntry handles LRU eviction
-        // automatically on put(). Collections.synchronizedMap provides
-        // the thread-safety wrapper.
-        MARKDOWN_HTML_CACHE.put(markdown, rendered);
-        return rendered;
+        // Caffeine's get(key, loader) is atomic — computes on miss,
+        // no external synchronization needed.
+        return MARKDOWN_HTML_CACHE.get(markdown,
+                md -> FLEXMARK_RENDERER.render(FLEXMARK_PARSER.parse(md)));
     }
 
     /**

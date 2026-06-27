@@ -1,6 +1,7 @@
 package github.anandb.netbeans.contract;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
@@ -144,7 +145,7 @@ public class SlashCommandInterceptor {
         String prompt = "Suggest a title for this session and call the nb_rename_session tool to rename the session.";
         ProcessControl pc = context.lookup(ProcessControl.class);
         if (pc != null) {
-            pc.sendMessage(sessionId, prompt, null);
+            pc.sendMessage(sessionId, prompt, Map.of("annotations", Map.of("audience", List.of("assistant"))));
         }
         return CompletableFuture.completedFuture(true);
     }

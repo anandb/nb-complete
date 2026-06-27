@@ -2,9 +2,11 @@ package github.anandb.netbeans.ui;
 
 import java.awt.Color;
 import java.awt.Font;
-import java.util.concurrent.ConcurrentHashMap;
 import javax.swing.text.SimpleAttributeSet;
 import javax.swing.text.StyleConstants;
+
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 
 /**
  * Resolves markdown token types to {@link SimpleAttributeSet} styles.
@@ -19,9 +21,12 @@ final class StyleResolver {
     }
 
     /** Per-base derived-style cache. Keyed on base identity hash; values hold
-     *  the resolved styles for that specific base. The cache is bounded and
-     *  cleared on theme switch (see {@link #clearCache()}). */
-    private static final ConcurrentHashMap<Integer, DerivedStyles> DERIVED_CACHE = new ConcurrentHashMap<>();
+     *  the resolved styles for that specific base. Caffeine handles concurrency
+     *  and LRU eviction (max 32 entries). Cleared on theme switch. */
+    private static final Cache<Integer, DerivedStyles> DERIVED_CACHE =
+            Caffeine.newBuilder()
+                    .maximumSize(32)
+                    .build();
 
     private static class DerivedStyles {
         /** The base instance this was derived from — used to detect
@@ -125,21 +130,13 @@ final class StyleResolver {
      *  is cheap because typical renders only create one base. */
     private static DerivedStyles derivedFor(SimpleAttributeSet base, Font baseFont, Color codeFg) {
         Integer key = System.identityHashCode(base);
-        DerivedStyles existing = DERIVED_CACHE.get(key);
+        DerivedStyles existing = DERIVED_CACHE.getIfPresent(key);
         // Verify the cached entry is actually for THIS base instance, not a
         // hash collision from a different SimpleAttributeSet instance.
         if (existing != null && existing.base == base) {
             return existing;
         }
         DerivedStyles created = new DerivedStyles(base, baseFont, codeFg);
-        if (existing == null) {
-            DERIVED_CACHE.putIfAbsent(key, created);
-            if (DERIVED_CACHE.size() > 32) {
-                DERIVED_CACHE.clear();
-            }
-            return created;
-        }
-        // Hash collision — overwrite the stale entry for the different base.
         DERIVED_CACHE.put(key, created);
         return created;
     }
@@ -226,6 +223,6 @@ final class StyleResolver {
 
     /** Clears the derived style cache. Call on theme switch. */
     static void clearCache() {
-        DERIVED_CACHE.clear();
+        DERIVED_CACHE.invalidateAll();
     }
 }

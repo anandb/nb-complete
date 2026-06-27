@@ -330,6 +330,29 @@ public class SessionLifecycleHandler implements SessionListener {
     }
 
     @Override
+    public void onSessionRenamed(String sessionId) {
+        SwingUtilities.invokeLater(() -> {
+            SessionControl sc = Lookup.getDefault().lookup(SessionControl.class);
+            for (int i = 0; i < sessionDropdown.getItemCount(); i++) {
+                SessionItem item = sessionDropdown.getItemAt(i);
+                if (item != null && sessionId.equals(item.getSession().id())) {
+                    String newTitle = sc.getCustomTitle(sessionId, item.getSession().title());
+                    SessionItem updated = new SessionItem(item.getSession(), newTitle);
+                    sessionDropdown.insertItemAt(updated, i);
+                    sessionDropdown.removeItemAt(i + 1);
+                    // Keep the selection if it was this item
+                    if (sessionDropdown.getSelectedIndex() == i) {
+                        sessionDropdown.setSelectedItem(updated);
+                    }
+                    break;
+                }
+            }
+            sessionDropdown.revalidate();
+            sessionDropdown.repaint();
+        });
+    }
+
+    @Override
     public void onSessionProgress(int percent) {
         chatPanel.setSessionProgress(percent);
     }

@@ -98,6 +98,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
     private final transient PermissionDialogManager permissionDialogManager;
     private final transient JSplitPane mainSplitPane;
+    private final transient ChatLayoutBuilder layoutBuilder;
 
     public AssistantTopComponent() {
         setName(NbBundle.getMessage(AssistantTopComponent.class, "CTL_AssistantTopComponent"));
@@ -106,7 +107,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         chatPanel = new ChatThreadPanel();
 
         configPanelController = new ConfigPanelController(this::updateTabName);
-        ChatLayoutBuilder layoutBuilder = new ChatLayoutBuilder(this, chatPanel, configPanelController);
+        layoutBuilder = new ChatLayoutBuilder(this, chatPanel, configPanelController);
 
         header = layoutBuilder.buildHeader();
         JPanel bottomPanel = layoutBuilder.buildBottomPanel();
@@ -460,6 +461,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
     @Override
     public void removeNotify() {
+        layoutBuilder.cleanup();
         componentLifecycleHandler.removeNotify();
         super.removeNotify();
     }

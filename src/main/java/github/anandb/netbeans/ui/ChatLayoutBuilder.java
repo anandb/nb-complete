@@ -564,6 +564,11 @@ final class ChatLayoutBuilder {
         }
     }
 
+    /** Stops the debounce timer to prevent firing after the component is removed. */
+    void cleanup() {
+        newSessionDebounceTimer.stop();
+    }
+
     static boolean isShowingHidden() {
         return NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean("showHiddenSessions", false);
     }

@@ -57,10 +57,13 @@ public class McpManager {
                         synchronized (McpManager.this) {
                             mcpServer = server;
                             serverStartFuture = null;
+                            LOG.info("MCP Server running at {0}", server.getUrl());
+                            // Complete inside the synchronized block to prevent a
+                            // race where a concurrent start() replaces readyFuture
+                            // between our null-out and the complete, which would
+                            // prematurely complete the NEW future.
+                            readyFuture.complete(null);
                         }
-                        LOG.info("MCP Server running at {0}", server.getUrl());
-                        LOG.info("Completing MCP ready future");
-                        readyFuture.complete(null);
                     } catch (IOException e) {
                         LOG.warn("Failed to start MCP server: {0}", e.getMessage());
                         if (server != null) {

@@ -54,7 +54,6 @@ public class ProcessManager implements ProcessControl {
 
     private volatile Consumer<String> statusListener;
     private volatile List<SessionUpdate.AvailableCommand> availableCommands = List.of();
-    private volatile PermissionHandler permissionHandler;
     private volatile Runnable crashHandler;
     private volatile Runnable readyHandler;
 
@@ -172,6 +171,7 @@ public class ProcessManager implements ProcessControl {
         serverLifecycle.startServer();
     }
 
+    @Override
     public void shutdown() {
         if (serverLifecycle.isClosing()) {
             return;
@@ -322,7 +322,6 @@ public class ProcessManager implements ProcessControl {
 
     @Override
     public void setPermissionHandler(PermissionHandler handler) {
-        this.permissionHandler = handler;
         requestRouter.setPermissionHandler(handler);
     }
 
