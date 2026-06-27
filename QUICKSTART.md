@@ -2,6 +2,10 @@
 
 [![Support this project](https://img.shields.io/badge/OpenCode-Referral-FF6C37?style=flat&logo=openai&logoColor=white)](https://opencode.ai/go?ref=DWTNHGN9KX)
 
+> **⚠ v1.7.3 Breaking Changes** — The ACP Next protocol is now the default. Session config
+> payloads have been restructured and model variants are split into a separate `thought_level`
+> option. See [NOTES.md](NOTES.md) for full details.
+
 This document covers features available in the latest release. The plugin can be downloaded from
 **Maven Central** or built from source. Due to the release cadence, there may be a delay before
 new versions appear on the NetBeans plugin portal.

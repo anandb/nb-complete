@@ -112,6 +112,7 @@ final class MarkdownTokenizer {
                 char next = it.next();
                 if (next != StringCharacterIterator.DONE && (next == '\\' || next == '*' || next == '`' || next == '~' || next == '|')) {
                     sb.append(next);
+                    it.next();
                     continue;
                 }
                 it.previous();
