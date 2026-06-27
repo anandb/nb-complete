@@ -56,7 +56,7 @@ public class ChatThreadPanel extends JPanel {
     private long lastUserTimestamp = -1L;
     private int userMessageCount = 0;
     private final ConcurrentLinkedQueue<Runnable> messageQueue = new ConcurrentLinkedQueue<>();
-    private boolean draining = false;
+    private volatile boolean draining = false;
 
     // Debounced flush timer. Reset on every processed message so it fires
     // 300ms after the last message is drained from the queue. Replaces the
@@ -278,10 +278,6 @@ public class ChatThreadPanel extends JPanel {
 
             boolean canMerge = (lastBubble != null && role.equals(lastBubble.getRole()));
             if (canMerge) {
-                if (lastBubble == null) {
-                    throw new IllegalArgumentException("lastBubble cannot be null");
-                }
-
                 switch (role) {
                     case "thought" -> canMerge = true;
                     case "tool" -> {
@@ -818,7 +814,8 @@ public class ChatThreadPanel extends JPanel {
     }
 
     public void setSessionList(List<Session> sessions, Consumer<String> onSessionSelected, Runnable onNewChat) {
-        LOG.fine("setSessionList: received {0} sessions, onSessionSelected={1}", new Object[]{sessions.size(), onSessionSelected});
+        int count = sessions != null ? sessions.size() : 0;
+        LOG.fine("setSessionList: received {0} sessions, onSessionSelected={1}", new Object[]{count, onSessionSelected});
         SwingUtilities.invokeLater(() -> {
             try {
                 clearMessages();

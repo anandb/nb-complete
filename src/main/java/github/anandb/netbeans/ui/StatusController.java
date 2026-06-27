@@ -1,6 +1,7 @@
 package github.anandb.netbeans.ui;
 
 import java.awt.CardLayout;
+import java.util.regex.Pattern;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.SwingUtilities;
@@ -15,6 +16,7 @@ import org.openide.util.NbBundle;
 public class StatusController {
 
     private static final String[] DOT_STRINGS = {"", ".", "..", "..."};
+    private static final Pattern TRAILING_DOTS = Pattern.compile("\\.+$");
 
     private final JLabel statusLabel;
     private final Timer thinkingTimer;
@@ -155,7 +157,7 @@ public class StatusController {
         if (animatedStatus && statusLabel != null) {
             String txt = statusLabel.getText();
             if (txt != null) {
-                String base = txt.replace(".", "");
+                String base = TRAILING_DOTS.matcher(txt).replaceFirst("");
                 thinkingDots = (thinkingDots + 1) % 4;
                 statusLabel.setText(base + DOT_STRINGS[thinkingDots]);
             }
