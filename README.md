@@ -1,6 +1,6 @@
 # Coding Assistant
 
-[![Version](https://img.shields.io/badge/version-1.7.2-blue.svg)](pom.xml)
+[![Version](https://img.shields.io/badge/version-1.7.3-blue.svg)](pom.xml)
 [![Build Status](https://img.shields.io/badge/build-success-brightgreen.svg)](https://github.com/anandb/nb-complete)
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.anandb/beanbot)](https://central.sonatype.com/artifact/io.github.anandb/beanbot/versions)
 [![NetBeans](https://img.shields.io/badge/NetBeans-RELEASE220-blue.svg)](https://netbeans.apache.org/download/index.html)
@@ -74,10 +74,10 @@ All source lives under `src/main/java/github/anandb/netbeans/`:
 | `manager/` | 10 | Core orchestration, protocol clients, session management, process lifecycle |
 | `manager/strategy/` | 2 | Strategy dispatch and sub-agent title resolution |
 | `mcp/` | 11 | MCP server integration (editor tools, tool definitions, message servlet) |
-| `model/` | 13 | ACP-compliant data models (session, messages, updates, config options) |
+| `model/` | 15 | ACP-compliant data models (session, messages, updates, config options, color tokens) |
 | `project/` | 3 | NetBeans lifecycle hooks (`@OnStart`, `@OnStop`) and project manager |
 | `support/` | 14 | Utilities (logging, JSON mapping, text scanning, constants, browser helpers) |
-| `ui/` | 70 | All Swing components (chat window, message bubbles, theming, options panel) |
+| `ui/` | 71 | All Swing components (chat window, message bubbles, theming, options panel) |
 
 ---
 
@@ -139,7 +139,7 @@ The plugin reads the following system properties and environment variables:
 | `OPENCODE_MODEL` | Env | Default model override in config (`ConfigPanelController`) |
 | `PATH` | Env | Search path for opencode binary (`BinaryResolver`) |
 
-The color properties are declared in [`colors.json`](src/main/resources/github/anandb/netbeans/ui/colors.json) and cover: background, foreground, selection, accent, ghost background, sunken background, bubble (user/assistant), code, table, header, thinking, tool, permission, and error colors — each with light and dark variants.
+The color properties are declared in [`colors.json`](src/main/resources/github/anandb/netbeans/ui/colors.json) and cover: background, foreground, selection, accent, sunken background, bubble (user/assistant), code, table, header, thinking, tool, permission, and error colors — each with light and dark variants.
 
 ---
 

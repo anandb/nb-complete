@@ -2,7 +2,7 @@
 
 ## v1.7.3 (Changes since v1.7.2)
 
-**BREAKING CHANGE** Opencode Upstream Changes 1.17.9+ (ACP Next Promotion)
+**BREAKING CHANGE** OpenCode Upstream Changes 1.17.9+ (ACP Next Promotion)
 - Promoted ACP Next Implementation: The experimental OPENCODE_ACP_NEXT feature flag has been removed, and the "next" implementation
   of the Agent Client Protocol (ACP) is now the default behavior for all users.
 - Decoupled Model Variants: The session/load configuration payload has been restructured. Previously, model variants
@@ -10,6 +10,7 @@
 - New thought_level Config Option: Effort levels and variants are now isolated into their own dedicated thought_level
   config option (identified as effort). The available options for this field update dynamically based on the currently
   selected base model.
+- Continue to use 1.7.2 or older if you have an earlier version of OpenCode.
 
 ### Features
 - **Resizable input split pane**: Bottom panel replaced with `JSplitPane` so users can resize the input area vertically.
@@ -39,6 +40,8 @@
 - **Debounce timer leak**: `ChatLayoutBuilder.newSessionDebounceTimer` stopped in `removeNotify()` via `layoutBuilder.cleanup()` to prevent timer firing after component disposal.
 - **McpManager.start() race**: `readyFuture.complete(null)` moved inside `synchronized(McpManager.this)` on the success path to prevent a concurrent `start()` from prematurely completing a replaced future.
 - **ProcessManager cleanup**: Removed redundant `permissionHandler` field (delegated to `requestRouter`); added `@Override` to `shutdown()`.
+- **Update notification branding**: Fixed notification title from "BeanBot" to "Coding Assistant".
+- **UpdateCheckerService fallback**: `getInstance()` caches Lookup result and logs `SEVERE` on missing registration instead of silently creating an orphan instance.
 
 ### UI
 - **Wait cursor**: Shows WAIT cursor while a new session is being created.
@@ -54,6 +57,8 @@
 - **`SlashCommandInterceptor`**: Switched to custom `Logger` with index-based placeholders.
 - **`PluginSettings`**: Exposed `getDefaultPreamble()` for context menu reset.
 - **`MockSvgLoader`**: Added for test compatibility after Batik removal.
+- **Theming system extraction**: Replaced 45-field `ColorTheme` record with type-safe `ColorKey` enum + `ColorRegistry` map-based container. CSS generation extracted to `CssGenerator`. Resolution logic (property → key → fallback) moved to `ColorRegistry`. Removed 3 dead color entries from `colors.json`. Zero caller API changes — all 48+ call sites unaffected.
+- **UpdateCheckerService**: Replaced raw `Thread` with `RequestProcessor` daemon. Extracted `HttpClient` to static field (reused across checks). Added `User-Agent` header to HTTP requests. Cached `NbPreferences.forModule()` in local variable. Added `cancel()` method for clean shutdown.
 
 ## v1.7.2 (Changes since v1.7.0)
 

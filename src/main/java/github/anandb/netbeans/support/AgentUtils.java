@@ -35,7 +35,7 @@ public final class AgentUtils {
         } catch (Exception e) {
             LOG.log(Level.WARNING, "Failed to get module version", e);
         }
-        
+
         try (InputStream is = AgentUtils.class.getResourceAsStream("/META-INF/MANIFEST.MF")) {
             if (is != null) {
                 Properties p = new Properties();

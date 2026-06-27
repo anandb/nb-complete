@@ -7,6 +7,7 @@ import org.openide.windows.WindowManager;
 
 import github.anandb.netbeans.support.AgentUtils;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.manager.UpdateCheckerService;
 import org.openide.windows.TopComponent;
 
 @OnStart
@@ -18,6 +19,7 @@ public class ACPStartup implements Runnable {
         LOG.info("ACP Plugin Startup: Initializing Project Manager...");
         ACPProjectManager.getInstance().start();
         checkVersionAndOpen();
+        UpdateCheckerService.getInstance().start();
     }
 
     private void checkVersionAndOpen() {
@@ -27,6 +29,8 @@ public class ACPStartup implements Runnable {
         if (!currentVersion.equals(lastVersion)) {
             LOG.info("New version detected ({0}), opening Assistant sidebar (docked left)...", currentVersion);
             NbPreferences.forModule(ACPStartup.class).put("lastVersion", currentVersion);
+
+            UpdateCheckerService.getInstance().onInstallOrUpgrade();
 
             WindowManager.getDefault().invokeWhenUIReady(() -> {
                 TopComponent sidebar = WindowManager.getDefault().findTopComponent("AssistantTopComponent");
@@ -42,3 +46,4 @@ public class ACPStartup implements Runnable {
         }
     }
 }
+

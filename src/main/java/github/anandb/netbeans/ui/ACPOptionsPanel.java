@@ -52,6 +52,7 @@ public class ACPOptionsPanel extends JPanel {
     private JButton browseButton;
     private JCheckBox echoCheckbox;
     private JCheckBox combineCheckbox;
+    private JCheckBox checkForUpdatesCheckbox;
     private JSpinner idleTimeoutSpinner;
     private JLabel argsLabel;
     private JTextField argsField;
@@ -82,6 +83,7 @@ public class ACPOptionsPanel extends JPanel {
         argsField = new JTextField(40);
         echoCheckbox = new JCheckBox();
         combineCheckbox = new JCheckBox();
+        checkForUpdatesCheckbox = new JCheckBox();
         preambleLabel = new JLabel();
         preambleArea = new JTextArea(5, 40);
         preambleScroll = new JScrollPane(preambleArea);
@@ -136,44 +138,51 @@ public class ACPOptionsPanel extends JPanel {
 
         argsLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_ProcessArguments"));
         add(argsLabel, UIUtils.createGbc(0, 3, 0.0, 0, GridBagConstraints.NONE, GridBagConstraints.WEST,
-                                         new Insets(0, 12, 15, 5)));
+                                         new Insets(0, 12, 5, 5)));
 
         argsField.addKeyListener(new KeyAdapter() {
             @Override
             public void keyReleased(KeyEvent evt) { controller.changed(); }
         });
         add(argsField, UIUtils.createGbc(1, 3, 1.0, 0, GridBagConstraints.HORIZONTAL,
-                                         GridBagConstraints.WEST, new Insets(0, 0, 15, 5)));
+                                         GridBagConstraints.WEST, new Insets(0, 0, 5, 5)));
+
+        checkForUpdatesCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_CheckForUpdates"));
+        checkForUpdatesCheckbox.addActionListener(evt -> controller.changed());
+        GridBagConstraints gbcUpdates = UIUtils.createGbc(0, 4, 1.0, 0, GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST,
+                new Insets(0, 12, 15, 0));
+        gbcUpdates.gridwidth = 3;
+        add(checkForUpdatesCheckbox, gbcUpdates);
 
         // --- SECTION: Chat Behavior ---
         JLabel behaviorHeader = new JLabel(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_BehaviorHeader"));
         behaviorHeader.setFont(behaviorHeader.getFont().deriveFont(Font.BOLD));
-        GridBagConstraints gbcHeader = UIUtils.createGbc(0, 4, 1.0, 0, GridBagConstraints.HORIZONTAL,
+        GridBagConstraints gbcHeader = UIUtils.createGbc(0, 5, 1.0, 0, GridBagConstraints.HORIZONTAL,
                 GridBagConstraints.WEST, new Insets(10, 0, 10, 0));
         gbcHeader.gridwidth = 3;
         add(behaviorHeader, gbcHeader);
 
         echoCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_EchoUserInput"));
         echoCheckbox.addActionListener(evt -> controller.changed());
-        add(echoCheckbox, UIUtils.createGbc(0, 5, 1.0, 0, GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST,
+        add(echoCheckbox, UIUtils.createGbc(0, 6, 1.0, 0, GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST,
                 new Insets(0, 12, 5, 0)));
 
         combineCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_CombineToolThought"));
         combineCheckbox.addActionListener(evt -> controller.changed());
-        add(combineCheckbox, UIUtils.createGbc(0, 6, 1.0, 0, GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST,
+        add(combineCheckbox, UIUtils.createGbc(0, 7, 1.0, 0, GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST,
                 new Insets(0, 12, 10, 0)));
 
         JLabel idleTimeoutLabel = new JLabel(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_SessionIdleTimeout"));
-        add(idleTimeoutLabel, UIUtils.createGbc(0, 7, 0.0, 0, GridBagConstraints.NONE,
+        add(idleTimeoutLabel, UIUtils.createGbc(0, 8, 0.0, 0, GridBagConstraints.NONE,
                 GridBagConstraints.WEST, new Insets(0, 12, 10, 5)));
         SpinnerNumberModel spinnerModel = new SpinnerNumberModel(300, 0, 3600, 5);
         idleTimeoutSpinner = new JSpinner(spinnerModel);
         idleTimeoutSpinner.addChangeListener(evt -> controller.changed());
-        add(idleTimeoutSpinner, UIUtils.createGbc(1, 7, 0.0, 0, GridBagConstraints.NONE,
+        add(idleTimeoutSpinner, UIUtils.createGbc(1, 8, 0.0, 0, GridBagConstraints.NONE,
                 GridBagConstraints.WEST, new Insets(0, 0, 10, 0)));
 
         preambleLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_Preamble"));
-        GridBagConstraints gbcPreambleLabel = UIUtils.createGbc(0, 8, 1.0, 0, GridBagConstraints.HORIZONTAL,
+        GridBagConstraints gbcPreambleLabel = UIUtils.createGbc(0, 9, 1.0, 0, GridBagConstraints.HORIZONTAL,
                 GridBagConstraints.WEST, new Insets(0, 12, 5, 0));
         gbcPreambleLabel.gridwidth = 3;
         add(preambleLabel, gbcPreambleLabel);
@@ -193,7 +202,7 @@ public class ACPOptionsPanel extends JPanel {
         resetItem.addActionListener(e -> preambleArea.setText(PluginSettings.getDefaultPreamble()));
         preambleMenu.add(resetItem);
         preambleArea.setComponentPopupMenu(preambleMenu);
-        GridBagConstraints gbcPreambleScroll = UIUtils.createGbc(0, 9, 1.0, 0.2, GridBagConstraints.BOTH,
+        GridBagConstraints gbcPreambleScroll = UIUtils.createGbc(0, 10, 1.0, 0.2, GridBagConstraints.BOTH,
                 GridBagConstraints.WEST, new Insets(0, 12, 15, 0));
         gbcPreambleScroll.gridwidth = 3;
         add(preambleScroll, gbcPreambleScroll);
@@ -201,13 +210,13 @@ public class ACPOptionsPanel extends JPanel {
         // --- SECTION: Appearance ---
         JLabel appearanceHeader = new JLabel(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_AppearanceHeader"));
         appearanceHeader.setFont(appearanceHeader.getFont().deriveFont(Font.BOLD));
-        GridBagConstraints gbcAppHeader = UIUtils.createGbc(0, 10, 1.0, 0, GridBagConstraints.HORIZONTAL,
+        GridBagConstraints gbcAppHeader = UIUtils.createGbc(0, 11, 1.0, 0, GridBagConstraints.HORIZONTAL,
                 GridBagConstraints.WEST, new Insets(10, 0, 10, 0));
         gbcAppHeader.gridwidth = 3;
         add(appearanceHeader, gbcAppHeader);
 
         iconLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_UserIcon"));
-        add(iconLabel, UIUtils.createGbc(0, 11, 0.0, 0, GridBagConstraints.NONE, GridBagConstraints.WEST,
+        add(iconLabel, UIUtils.createGbc(0, 12, 0.0, 0, GridBagConstraints.NONE, GridBagConstraints.WEST,
                 new Insets(0, 12, 5, 5)));
 
         iconPathField.addKeyListener(new KeyAdapter() {
@@ -217,19 +226,19 @@ public class ACPOptionsPanel extends JPanel {
                 controller.changed();
             }
         });
-        add(iconPathField, UIUtils.createGbc(1, 11, 1.0, 0, GridBagConstraints.HORIZONTAL,
+        add(iconPathField, UIUtils.createGbc(1, 12, 1.0, 0, GridBagConstraints.HORIZONTAL,
                                              GridBagConstraints.WEST, new Insets(0, 0, 5, 5)));
 
         iconBrowseButton.setText(NbBundle.getMessage(ACPOptionsPanel.class, "BTN_Browse"));
         iconBrowseButton.addActionListener(evt -> iconBrowseButtonActionPerformed());
-        add(iconBrowseButton, UIUtils.createGbc(2, 11, 0.0, 0, GridBagConstraints.NONE,
+        add(iconBrowseButton, UIUtils.createGbc(2, 12, 0.0, 0, GridBagConstraints.NONE,
                                                 GridBagConstraints.WEST, new Insets(0, 0, 5, 0)));
 
-        add(iconPreviewLabel, UIUtils.createGbc(1, 12, 0.0, 0, GridBagConstraints.NONE,
+        add(iconPreviewLabel, UIUtils.createGbc(1, 13, 0.0, 0, GridBagConstraints.NONE,
                                                 GridBagConstraints.WEST, new Insets(5, 0, 5, 0)));
 
         // Spacer at the bottom to push everything up
-        add(new JLabel(), UIUtils.createGbc(0, 13, 1.0, 1.0, GridBagConstraints.BOTH,
+        add(new JLabel(), UIUtils.createGbc(0, 14, 1.0, 1.0, GridBagConstraints.BOTH,
                                             GridBagConstraints.NORTHWEST, new Insets(0, 0, 0, 0)));
     }
 
@@ -296,6 +305,7 @@ public class ACPOptionsPanel extends JPanel {
         preambleArea.setText(PluginSettings.getPreamble());
         echoCheckbox.setSelected(NbPreferences.forModule(ACPOptionsPanel.class).getBoolean("echoUserInput", true));
         combineCheckbox.setSelected(NbPreferences.forModule(ACPOptionsPanel.class).getBoolean("combineToolThought", true));
+        checkForUpdatesCheckbox.setSelected(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean(PreferenceKeys.CHECK_FOR_UPDATES, true));
         idleTimeoutSpinner.setValue(PluginSettings.getSessionIdleTimeout());
         previousIconPath = PluginSettings.getCustomUserIcon();
         iconPathField.setText(previousIconPath);
@@ -331,6 +341,7 @@ public class ACPOptionsPanel extends JPanel {
                 != NbPreferences.forModule(ACPOptionsPanel.class).getBoolean("combineToolThought", true);
         NbPreferences.forModule(ACPOptionsPanel.class).putBoolean("echoUserInput", echoCheckbox.isSelected());
         NbPreferences.forModule(ACPOptionsPanel.class).putBoolean("combineToolThought", combineCheckbox.isSelected());
+        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean(PreferenceKeys.CHECK_FOR_UPDATES, checkForUpdatesCheckbox.isSelected());
         PluginSettings.setSessionIdleTimeout((Integer) idleTimeoutSpinner.getValue());
 
         if (changedCombine) {

@@ -38,4 +38,9 @@ public final class PreferenceKeys {
     public static final String TOOLBAR_FILTER = "toolbar.filter";
     public static final String TOOLBAR_EXPORT = "toolbar.export";
     public static final String TOOLBAR_RESTART = "toolbar.restart";
+
+    // Update checker preference keys
+    public static final String LAST_CHECKED_FOR_UPDATES = "update.lastCheckedForUpdates";
+    public static final String CHECK_FOR_UPDATES = "update.checkForUpdates";
 }
+

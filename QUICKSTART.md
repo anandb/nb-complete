@@ -30,6 +30,8 @@ new versions appear on the NetBeans plugin portal.
 
 - **Ctrl + L** — Open or switch focus to the assistant panel.
 - **Tab** — Cycle between agents defined in your OpenCode configuration.
+- **Alt + Up / Alt + Down** — Cycle through previously sent messages.
+- **Ctrl + R** — Search message history.
 - **Page Up / Page Down** — Scroll the chat thread.
 - **Ctrl + Home / Ctrl + End** — Jump to top or bottom of the chat thread.
 - **Escape** — Close the options panel and return focus to the input area.
@@ -39,7 +41,6 @@ new versions appear on the NetBeans plugin portal.
 ### Input Area
 
 - **Enter** — Send message. **Shift + Enter** — Insert newline.
-- **Up / Down Arrow** — Cycle through previously sent messages.
 - **/** — Trigger autocomplete popup with commands, agents, and mentions.
 - **Paperclip** — Open attachment menu. Drag-and-drop and screenshot paste also supported (requires a vision-capable model).
 - **Stop** — Cancel an in-progress response (the AI is notified immediately).
