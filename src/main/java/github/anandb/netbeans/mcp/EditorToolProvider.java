@@ -116,34 +116,40 @@ public class EditorToolProvider {
                         if (args.filePath() == null) {
                             return Map.of("status", "error", "message", "No file path provided");
                         }
-                        SwingUtilities.invokeLater(() -> {
-                            boolean inProject = false;
-                            for (Project p : ACPProjectManager.getInstance().getAllOpenProjects()) {
-                                String projectDir = p.getProjectDirectory().getPath();
-                                if (args.filePath().startsWith(projectDir)) {
-                                    inProject = true;
-                                    break;
+                        boolean inProject = false;
+                        for (Project p : ACPProjectManager.getInstance().getAllOpenProjects()) {
+                            String projectDir = p.getProjectDirectory().getPath();
+                            if (args.filePath().startsWith(projectDir)) {
+                                inProject = true;
+                                break;
+                            }
+                        }
+                        if (!inProject) {
+                            return Map.of("status", "error", "message", "File is not in the current project");
+                        }
+                        try {
+                            FileObject fo = FileUtil.toFileObject(new File(args.filePath()));
+                            if (fo != null) {
+                                DataObject data = DataObject.find(fo);
+                                LineCookie lc = data.getLookup().lookup(LineCookie.class);
+                                if (lc != null) {
+                                    Line.Set lineSet = lc.getLineSet();
+                                    Line line = lineSet.getOriginal(Math.max(0, args.line() - 1));
+                                    SwingUtilities.invokeLater(() -> {
+                                        try {
+                                            line.show(Line.ShowOpenType.OPEN, Line.ShowVisibilityType.FOCUS);
+                                        } catch (Exception e) {
+                                            LOG.warn("Failed to show line in editor: {0}", e.getMessage());
+                                        }
+                                    });
+                                    return Map.of("status", "ok");
                                 }
                             }
-                            if (!inProject) {
-                                return;
-                            }
-                            try {
-                                FileObject fo = FileUtil.toFileObject(new File(args.filePath()));
-                                if (fo != null) {
-                                    DataObject data = DataObject.find(fo);
-                                    LineCookie lc = data.getLookup().lookup(LineCookie.class);
-                                    if (lc != null) {
-                                        Line.Set lineSet = lc.getLineSet();
-                                        Line line = lineSet.getOriginal(Math.max(0, args.line() - 1));
-                                        line.show(Line.ShowOpenType.OPEN, Line.ShowVisibilityType.FOCUS);
-                                    }
-                                }
-                            } catch (Exception e) {
-                                LOG.warn("Failed to open file at line: {0}", e.getMessage());
-                            }
-                        });
-                        return Map.of("status", "ok");
+                        } catch (Exception e) {
+                            LOG.warn("Failed to resolve file at line on background thread: {0}", e.getMessage());
+                            return Map.of("status", "error", "message", e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName());
+                        }
+                        return Map.of("status", "error", "message", "File or line not found");
                     }
                 });
     }
