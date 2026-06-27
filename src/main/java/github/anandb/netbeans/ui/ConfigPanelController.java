@@ -265,10 +265,6 @@ public class ConfigPanelController {
     private void postProcessModel(JComboBox<ConfigItem> combo, ConfigItem selected) {
         combo.setEditable(false);
         tabNameUpdater.accept(buildTabLabel());
-        ConfigItem selItem = (ConfigItem) combo.getSelectedItem();
-        if (selItem != null) {
-            updateThinkingComboForModel(selItem.value());
-        }
     }
 
     private void setupConfigCombo(JComboBox<ConfigItem> combo, String configId) {
@@ -293,17 +289,12 @@ public class ConfigPanelController {
         });
 
         combo.addActionListener(e -> {
-            if (isUpdatingConfigControls) {
-                return;
-            }
-            Object selected = combo.getSelectedItem();
-            ConfigItem item = resolveComboSelection(combo, selected);
-            if (item == null) return;
-
-            // UI side effects only (no API calls while popup is visible)
-            if (combo == modelCombo) {
-                modelResolver.setLastSelectedModelId(item.value());
-                updateThinkingComboForModel(item.value());
+            if (isUpdatingConfigControls) return;
+            ConfigItem item = (ConfigItem) combo.getSelectedItem();
+            if (item != null) {
+                if (combo == modelCombo) {
+                    modelResolver.setLastSelectedModelId(item.value());
+                }
             }
             tabNameUpdater.accept(buildTabLabel());
         });
@@ -408,33 +399,7 @@ public class ConfigPanelController {
         return s.substring(0, 1).toUpperCase() + s.substring(1).toLowerCase();
     }
 
-    private void updateThinkingComboForModel(String baseId) {
-        boolean alreadyUpdating = isUpdatingConfigControls;
-        isUpdatingConfigControls = true;
-        try {
-            thinkingCombo.removeAllItems();
-            List<ConfigItem> variants = modelResolver.getModelVariants().get(baseId);
-            if (variants != null && !variants.isEmpty()) {
-                ConfigItem selectedVariant = null;
-                for (ConfigItem v : variants) {
-                    thinkingCombo.addItem(v);
-                    if (v.value().equalsIgnoreCase(modelResolver.getCurrentConfigModelId())) {
-                        selectedVariant = v;
-                    }
-                }
-                if (selectedVariant != null) {
-                    thinkingCombo.setSelectedItem(selectedVariant);
-                } else {
-                    thinkingCombo.setSelectedIndex(0);
-                }
-                thinkingCombo.setEnabled(true);
-            } else {
-                thinkingCombo.setEnabled(false);
-            }
-        } finally {
-            isUpdatingConfigControls = alreadyUpdating;
-        }
-    }
+
 
     public void setOnModelSelectedCallback(Runnable r) {
         this.onModelSelectedCallback = r;

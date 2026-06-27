@@ -61,11 +61,11 @@ final class SessionRpcClient {
         return processManager.sendRequest("session/update", params).thenApply(r -> null);
     }
 
-    CompletableFuture<Void> setSessionConfigOption(String sessionId, String configId, String value) {
+    CompletableFuture<JsonNode> setSessionConfigOption(String sessionId, String configId, String value) {
         return processManager.sendRequest("session/set_config_option", Map.of(
                 "sessionId", sessionId,
                 "configId", configId,
                 "value", value
-        )).thenApply(r -> null);
+        ));
     }
 }

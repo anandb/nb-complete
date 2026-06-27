@@ -41,6 +41,7 @@ import github.anandb.netbeans.model.SessionState;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.MapperSupplier;
+import static org.apache.commons.text.StringEscapeUtils.unescapeHtml4;
 
 /**
  * Manages the state and lifecycle of chat sessions.
@@ -55,11 +56,16 @@ public class SessionManager implements SessionQuery, SessionControl {
     /** @see SessionQuery#getCustomTitle(String, String) */
     @Override
     public String getCustomTitle(String sessionId, String defaultTitle) {
-        return resolveCustomTitle(sessionId, defaultTitle);
+        return decodeHtmlEntities(resolveCustomTitle(sessionId, defaultTitle));
     }
 
     private static String resolveCustomTitle(String sessionId, String defaultTitle) {
         return NbPreferences.forModule(SessionManager.class).get(TITLE_PREFIX + sessionId, defaultTitle);
+    }
+
+    private static String decodeHtmlEntities(String input) {
+        if (input == null) return null;
+        return unescapeHtml4(input);
     }
 
     static void setCustomTitle(String sessionId, String title) {
@@ -372,7 +378,21 @@ public class SessionManager implements SessionQuery, SessionControl {
 
     @Override
     public CompletableFuture<Void> setSessionConfigOption(String sessionId, String configId, String value) {
-        return rpcClient.setSessionConfigOption(sessionId, configId, value);
+        return rpcClient.setSessionConfigOption(sessionId, configId, value)
+                .thenApply(res -> {
+                    if (res != null && res.has("configOptions")) {
+                        try {
+                            List<SessionConfigOption> configOptions = objectMapper.convertValue(
+                                    res.get("configOptions"), new TypeReference<List<SessionConfigOption>>() {});
+                            if (sessionId.equals(currentSessionId)) {
+                                notifySessionLoaded(sessionId, configOptions, false);
+                            }
+                        } catch (Exception e) {
+                            LOG.warn("Failed to parse configOptions from set_config_option: {0}", e.getMessage());
+                        }
+                    }
+                    return null;
+                });
     }
 
     public CompletableFuture<JsonNode> renameSessionOnServer(String sessionId, String newTitle) {
@@ -529,7 +549,31 @@ public class SessionManager implements SessionQuery, SessionControl {
             return;
         }
         setCustomTitle(sessionId, newTitle.trim());
-        refreshSessions();
+        // Update the cached session title so in-memory state is consistent
+        Session s = cacheManager.getCachedSession(sessionId);
+        if (s != null) {
+            Session updated = new Session(s.id(), newTitle, s.cwd(), s.directory(),
+                    s.parentID(), s.updatedAt(), s.mcpServers(), s.configOptions());
+            cacheManager.cacheSession(updated);
+            // Refresh the cached list to include the updated session
+            List<Session> cached = cacheManager.getCachedSessions();
+            List<Session> updatedList = new ArrayList<>(cached);
+            for (int i = 0; i < updatedList.size(); i++) {
+                if (sessionId.equals(updatedList.get(i).id())) {
+                    updatedList.set(i, updated);
+                    break;
+                }
+            }
+            cacheManager.setCachedSessions(updatedList);
+        }
+        notifySessionRenamed(sessionId);
+        // Sync the rename to the server asynchronously (fire-and-forget)
+        renameSessionOnServer(sessionId, newTitle)
+                .whenComplete((v, ex) -> {
+                    if (ex != null) {
+                        LOG.log(Level.WARNING, "Failed to rename session on server: {0}", ex.getMessage());
+                    }
+                });
     }
 
     private void handleProjectOpened(String openedDir) {
@@ -660,6 +704,12 @@ public class SessionManager implements SessionQuery, SessionControl {
     private void notifySessionListUpdated(List<Session> sessions) {
         for (SessionListener l : listeners) {
             l.onSessionListUpdated(sessions);
+        }
+    }
+
+    private void notifySessionRenamed(String sessionId) {
+        for (SessionListener l : listeners) {
+            l.onSessionRenamed(sessionId);
         }
     }
 
