@@ -2,7 +2,7 @@
 
 ## Project Overview
 - **Project**: Coding Assistant (NetBeans IDE plugin, Java 17, Maven)
-- **Current Stable Version**: 1.7.2
+- **Current Stable Version**: 1.7.3
 - **Key Tech**: NetBeans API (RELEASE220), Flexmark, Jackson, RSyntaxTextArea, JUnit 5.
 
 ## Build Commands
@@ -30,6 +30,12 @@
   `NbPreferences.forModule().getBoolean()` on every invocation.
 - **Scan ranges**: When scanning large strings for patterns (e.g. ASCII art detection), limit
   the scan to a bounded prefix (e.g. first 512 chars) instead of the full string.
+- **ACPProjectManager cache**: `getAllOpenProjects()` returns the cached `currentProjects` field,
+  not `OpenProjects.getDefault().getOpenProjects()`. The cache is populated by `start()` and
+  updated via `propertyChange()` on project open/close. Do NOT bypass the cache.
+- **New session debounce**: The toolbar New Session button has a 300ms debounce timer to prevent
+  accidental double-clicks. The keyboard shortcut (`Ctrl+L` via `NewSessionAction`) bypasses the
+  debounce and calls `createNewSession()` directly.
 - **contract/ → manager/ singletons**: `contract/` classes must use `Lookup.getDefault().lookup()`
   to access services, never direct `Manager.getInstance()` calls. The `SlashCommandInterceptor`
   violation was fixed by injecting `ProcessControl` via Lookup.

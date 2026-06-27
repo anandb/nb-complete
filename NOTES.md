@@ -43,6 +43,11 @@
 - **ProcessManager cleanup**: Removed redundant `permissionHandler` field (delegated to `requestRouter`); added `@Override` to `shutdown()`.
 - **Update notification branding**: Fixed notification title from "BeanBot" to "Coding Assistant".
 - **UpdateCheckerService fallback**: `getInstance()` caches Lookup result and logs `SEVERE` on missing registration instead of silently creating an orphan instance.
+- **MarkdownTokenizer unescape double-append**: `StringCharacterIterator`-based unescape skipped `next()` after appending the unescaped char, causing escaped chars like `\|` to emit the raw backslash plus the char instead of just the char.
+- **Project template position**: Added `position="110"` attribute to new project template registration so it appears in the correct order in the New Project wizard.
+- **ACPProjectManager cache**: `getAllOpenProjects()` now returns the cached `currentProjects` field (updated on project open/close events) instead of calling the slow `OpenProjects.getDefault().getOpenProjects()` API every time — eliminates EDT lag when many projects are open.
+- **New session debounce**: Reduced toolbar debounce timer from 2000ms to 300ms — button now responds within a few hundred milliseconds instead of 2 seconds.
+- **EditorToolProvider EDT fix**: Moved project-check loop out of `SwingUtilities.invokeLater()` so the open-file MCP tool runs the project membership check on the background thread, resolving the result before dispatching line navigation on the EDT.
 
 ### UI
 - **Wait cursor**: Shows WAIT cursor while a new session is being created.
@@ -60,6 +65,7 @@
 - **`MockSvgLoader`**: Added for test compatibility after Batik removal.
 - **Theming system extraction**: Replaced 45-field `ColorTheme` record with type-safe `ColorKey` enum + `ColorRegistry` map-based container. CSS generation extracted to `CssGenerator`. Resolution logic (property → key → fallback) moved to `ColorRegistry`. Removed 3 dead color entries from `colors.json`. Zero caller API changes — all 48+ call sites unaffected.
 - **UpdateCheckerService**: Replaced raw `Thread` with `RequestProcessor` daemon. Extracted `HttpClient` to static field (reused across checks). Added `User-Agent` header to HTTP requests. Cached `NbPreferences.forModule()` in local variable. Added `cancel()` method for clean shutdown.
+
 
 ## v1.7.2 (Changes since v1.7.0)
 

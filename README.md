@@ -29,9 +29,9 @@ should work on other versions, but your experience may vary.
 | **OS** | openSUSE Tumbleweed-Slowroll |
 | **NetBeans** | RELEASE220 |
 | **Java** | JDK 17+ |
-| **Opencode** | 1.17.3 |
+| **Opencode** | 1.17.11 |
 | **Opencode plugins** | `@franzmoca/opencode-lombok`, `@tarquinen/opencode-dcp@latest`, `@opencode/mcp-git` |
-| **This Plugin Version** | ≥ v1.5.26 |
+| **This Plugin Version** | ≥ v1.7.3 |
 | **LLMs** | Big Pickle; GPT 5.4-mini, GPT 5.4-nano; DeepSeek V4 Pro, DeepSeek V4 Flash; Kimi K2.5, Kimi K2.6; Mimo V2.5; Qwen3.5, Qwen3.6; Gemma4 |
 
 Note: Qwen models require `--think=false` if using Ollama, and a `"reasoningEffort": "none"`
@@ -71,13 +71,13 @@ All source lives under `src/main/java/github/anandb/netbeans/`:
 | Package | Files | Role |
 | --- | --- | --- |
 | `contract/` | 13 | Service interfaces (UI callbacks, session & process control, permission & request handlers) |
-| `manager/` | 10 | Core orchestration, protocol clients, session management, process lifecycle |
+| `manager/` | 12 | Core orchestration, protocol clients, session management, process lifecycle |
 | `manager/strategy/` | 2 | Strategy dispatch and sub-agent title resolution |
 | `mcp/` | 11 | MCP server integration (editor tools, tool definitions, message servlet) |
 | `model/` | 15 | ACP-compliant data models (session, messages, updates, config options, color tokens) |
-| `project/` | 3 | NetBeans lifecycle hooks (`@OnStart`, `@OnStop`) and project manager |
+| `project/` | 4 | NetBeans lifecycle hooks (`@OnStart`, `@OnStop`), project manager, MdProject support |
 | `support/` | 14 | Utilities (logging, JSON mapping, text scanning, constants, browser helpers) |
-| `ui/` | 71 | All Swing components (chat window, message bubbles, theming, options panel) |
+| `ui/` | 72 | All Swing components (chat window, message bubbles, theming, options panel) |
 
 ---
 

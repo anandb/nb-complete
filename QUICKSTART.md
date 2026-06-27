@@ -85,6 +85,11 @@ new versions appear on the NetBeans plugin portal.
 - **Pin** — Keep older messages visible indefinitely (they're otherwise evicted to conserve memory).
 - **Right-click toolbar** — Show/hide individual toolbar buttons.
 
+### Markdown Project Type
+
+- **Tools > New Project > Other > Markdown Project** — Create a minimal project type for folders containing markdown notes and text files. No build system or source roots. Detected by a `.mdproject` marker file. Shows full directory tree in the Projects tab with OS junk and editor swap files filtered out.
+- **Right-click project node** — Close or delete the project directly from the Projects tab context menu.
+
 ### Session Management
 
 - **Status Bar** — Shows `Ready`, `Thinking...`, `Responding...`, or `Error` with details.
