@@ -74,8 +74,10 @@ final class PermissionDialogManager {
         }
 
         final String finalPrompt = prompt;
+        final JsonNode finalToolCall = params.has("toolCall") ? params.get("toolCall") 
+                : (params.has("tool_call") ? params.get("tool_call") : null);
         SwingUtilities.invokeLater(() -> {
-            chatPanel.addPermissionRequest(finalPrompt, params.get("options"), response);
+            chatPanel.addPermissionRequest(finalPrompt, params.get("options"), response, finalToolCall);
             activateCallback.run();
         });
     }

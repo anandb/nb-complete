@@ -27,7 +27,7 @@ class PermissionBubble extends JPanel {
     private static final long serialVersionUID = 1L;
     private static final Logger LOG = Logger.from(PermissionBubble.class);
 
-    PermissionBubble(String prompt, JsonNode options, CompletableFuture<String> responseFuture) {
+    PermissionBubble(String prompt, JsonNode options, CompletableFuture<String> responseFuture, JsonNode toolCall) {
         setLayout(new BorderLayout());
         setAlignmentY(Component.CENTER_ALIGNMENT);
         setOpaque(false);
@@ -52,7 +52,50 @@ class PermissionBubble extends JPanel {
 
         JLabel promptLabel = new JLabel("<html>" + prompt.replace("\n", "<br>") + "</html>");
         promptLabel.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN));
-        content.add(promptLabel, BorderLayout.CENTER);
+
+        JPanel centerPanel = new JPanel();
+        centerPanel.setLayout(new javax.swing.BoxLayout(centerPanel, javax.swing.BoxLayout.Y_AXIS));
+        centerPanel.setOpaque(false);
+        promptLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        centerPanel.add(promptLabel);
+
+        if (toolCall != null && toolCall.has("content") && toolCall.get("content").isArray()) {
+            for (JsonNode block : toolCall.get("content")) {
+                if (block.has("type")) {
+                    String type = block.get("type").asText();
+                    String codeText = null;
+                    String lang = "text";
+                    
+                    if ("text".equals(type) && block.has("text")) {
+                        codeText = block.get("text").asText();
+                    } else if ("diff".equals(type)) {
+                        lang = "diff";
+                        if (block.has("text")) {
+                            codeText = block.get("text").asText();
+                        } else if (block.has("patch")) {
+                            codeText = block.get("patch").asText();
+                        } else if (block.has("oldText") && block.has("newText")) {
+                            codeText = "- " + block.get("oldText").asText() + "\n+ " + block.get("newText").asText();
+                        }
+                    }
+
+                    if (codeText != null && !codeText.trim().isEmpty()) {
+                        CollapsibleCodePane codePane = new CollapsibleCodePane(lang, codeText.trim(), true);
+                        codePane.setAlignmentX(Component.LEFT_ALIGNMENT);
+                        centerPanel.add(javax.swing.Box.createVerticalStrut(10));
+                        centerPanel.add(codePane);
+                    }
+                }
+            }
+        }
+
+        javax.swing.JScrollPane scrollPane = new javax.swing.JScrollPane(centerPanel);
+        scrollPane.setBorder(BorderFactory.createEmptyBorder());
+        scrollPane.setOpaque(false);
+        scrollPane.getViewport().setOpaque(false);
+        // Limit max height so it doesn't take over the screen
+        scrollPane.setPreferredSize(new Dimension(scrollPane.getPreferredSize().width, Math.min(scrollPane.getPreferredSize().height, 300)));
+        content.add(scrollPane, BorderLayout.CENTER);
 
         int numOptions = (options != null && options.isArray() && options.size() > 0) ? options.size() : 2;
         JPanel buttons = new JPanel(new GridLayout(1, numOptions, 4, 0));

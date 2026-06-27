@@ -561,9 +561,9 @@ public class ChatThreadPanel extends JPanel {
         return anyFinalized;
     }
 
-    public void addPermissionRequest(String prompt, JsonNode options, CompletableFuture<String> responseFuture) {
+    public void addPermissionRequest(String prompt, JsonNode options, CompletableFuture<String> responseFuture, JsonNode toolCall) {
         SwingUtilities.invokeLater(() -> {
-            PermissionBubble bubble = new PermissionBubble(prompt, options, responseFuture);
+            PermissionBubble bubble = new PermissionBubble(prompt, options, responseFuture, toolCall);
             messagesContainer.add(bubble);
             messagesContainer.add(Box.createVerticalStrut(4));
             messagesContainer.revalidate();
