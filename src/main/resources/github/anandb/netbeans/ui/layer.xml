@@ -51,10 +51,12 @@
         <folder name="Project">
             <folder name="Coding Assistant">
                 <attr name="displayName" bundlevalue="github.anandb.netbeans.ui.Bundle#LBL_ProjectCategory"/>
+                <attr name="position" intvalue="9900"/>
                 <file name="github-anandb-netbeans-ui-mdproject-MdProjectWizardIterator.instance">
                     <attr name="instantiatingIterator" newvalue="github.anandb.netbeans.ui.mdproject.MdProjectWizardIterator"/>
                     <attr name="iconBase" stringvalue="github/anandb/netbeans/ui/icons/mdproject.svg"/>
                     <attr name="displayName" bundlevalue="github.anandb.netbeans.ui.mdproject.Bundle#LBL_WizardName"/>
+                    <attr name="template" boolvalue="true"/>
                 </file>
             </folder>
         </folder>
