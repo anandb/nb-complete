@@ -101,6 +101,6 @@ public class ACPProjectManager implements PropertyChangeListener {
     }
 
     public Project[] getAllOpenProjects() {
-        return OpenProjects.getDefault().getOpenProjects();
+        return currentProjects;
     }
 }

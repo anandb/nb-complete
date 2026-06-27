@@ -66,7 +66,7 @@ final class ChatLayoutBuilder {
         this.topComponent = topComponent;
         this.chatPanel = chatPanel;
         this.configPanelController = configPanelController;
-        this.newSessionDebounceTimer = new javax.swing.Timer(2000, e -> fireNewSession());
+        this.newSessionDebounceTimer = new javax.swing.Timer(300, e -> fireNewSession());
         this.newSessionDebounceTimer.setRepeats(false);
     }
 
