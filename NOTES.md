@@ -1,5 +1,11 @@
 # Release Notes
 
+## v1.7.4 (Changes since v1.7.3)
+
+### Fixes
+- **Stale sessions in dropdown after project close**: `ACPProjectManager.syncActiveProject()` now updates `currentProjects` **before** calling close/open listeners, so `refreshSessions()` in `handleProjectClosed` sees the correct (reduced) project list and excludes the closed project's sessions from the dropdown. Previously it was updated after listeners, causing stale project data in session queries.
+- **Stale `lastProjectDir` after last project closed**: `handleProjectClosed` resets `lastProjectDir` to `""` when no open projects remain, preventing a stale directory path from matching a future project close event and incorrectly triggering `closeSession()`.
+
 ## v1.7.3 (Changes since v1.7.2)
 
 **BREAKING CHANGE** OpenCode Upstream Changes 1.17.9+ (ACP Next Promotion)

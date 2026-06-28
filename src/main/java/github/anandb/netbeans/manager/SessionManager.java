@@ -592,6 +592,14 @@ public class SessionManager implements SessionQuery, SessionControl {
         // Refresh the session list — it only shows sessions for open projects,
         // so sessions for the closed project will disappear from the dropdown.
         refreshSessions();
+        // Reset lastProjectDir when no more open projects remain, preventing
+        // stale path matches from a prior session that was never set via a project.
+        Project[] remaining = ACPProjectManager.getInstance().getAllOpenProjects();
+        if (remaining == null || remaining.length == 0
+                || (remaining.length == 1 && remaining[0] != null
+                && remaining[0].getProjectDirectory().getPath().equals(closedDir))) {
+            lastProjectDir = "";
+        }
     }
 
     /** Sends the initial preamble prompt for a new session.

@@ -61,6 +61,10 @@ public class ACPProjectManager implements PropertyChangeListener {
         Set<String> oldDirs = dirsOf(currentProjects);
         Set<String> newDirs = dirsOf(openProjects);
 
+        // Update currentProjects BEFORE calling listeners so their use of
+        // getAllOpenProjects() (e.g. refreshSessions()) sees the correct list.
+        currentProjects = openProjects;
+
         Set<String> closedDirs = new HashSet<>(oldDirs);
         closedDirs.removeAll(newDirs);
 
@@ -84,8 +88,6 @@ public class ACPProjectManager implements PropertyChangeListener {
                 }
             }
         }
-
-        currentProjects = openProjects;
     }
 
     private Set<String> dirsOf(Project[] projects) {

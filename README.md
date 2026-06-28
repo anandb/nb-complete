@@ -1,6 +1,6 @@
 # Coding Assistant
 
-[![Version](https://img.shields.io/badge/version-1.7.3-blue.svg)](pom.xml)
+[![Version](https://img.shields.io/badge/version-1.7.4-blue.svg)](pom.xml)
 [![Build Status](https://img.shields.io/badge/build-success-brightgreen.svg)](https://github.com/anandb/nb-complete)
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.anandb/beanbot)](https://central.sonatype.com/artifact/io.github.anandb/beanbot/versions)
 [![NetBeans](https://img.shields.io/badge/NetBeans-RELEASE220-blue.svg)](https://netbeans.apache.org/download/index.html)
@@ -30,8 +30,8 @@ should work on other versions, but your experience may vary.
 | **NetBeans** | RELEASE220 |
 | **Java** | JDK 17+ |
 | **Opencode** | 1.17.11 |
-| **Opencode plugins** | `@franzmoca/opencode-lombok`, `@tarquinen/opencode-dcp@latest`, `@opencode/mcp-git` |
-| **This Plugin Version** | ≥ v1.7.3 |
+| **Opencode plugins** | `@franzmoca/opencode-lombok`, `true-mem` |
+| **This Plugin Version** | ≥ v1.7.4 |
 | **LLMs** | Big Pickle; GPT 5.4-mini, GPT 5.4-nano; DeepSeek V4 Pro, DeepSeek V4 Flash; Kimi K2.5, Kimi K2.6; Mimo V2.5; Qwen3.5, Qwen3.6; Gemma4 |
 
 Note: Qwen models require `--think=false` if using Ollama, and a `"reasoningEffort": "none"`
