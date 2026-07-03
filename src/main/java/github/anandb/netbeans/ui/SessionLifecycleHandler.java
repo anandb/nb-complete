@@ -256,10 +256,25 @@ public class SessionLifecycleHandler implements SessionListener {
                     if (selectIdx != -1) {
                         sessionDropdown.setSelectedIndex(selectIdx);
                     } else {
-                        SessionItem mostRecent = sessionDropdown.getItemAt(0);
-                        if (mostRecent != null) {
-                            LOG.fine("Loading most recent session: {0}", mostRecent.getSession().id());
-                            Lookup.getDefault().lookup(SessionControl.class).loadSession(mostRecent.getSession().id());
+                        // Current session is gone (e.g. its project closed).
+                        // Prefer a session from the SAME project as the last active
+                        // session to avoid hijacking the user to a different project.
+                        String prevDir = Lookup.getDefault().lookup(SessionControl.class).getCurrentSessionDirectory();
+                        SessionItem sameProjectMatch = null;
+                        SessionItem mostRecentAny = sessionDropdown.getItemAt(0);
+                        for (int i = 0; i < sessionDropdown.getItemCount(); i++) {
+                            SessionItem item = sessionDropdown.getItemAt(i);
+                            if (item != null && prevDir != null
+                                    && prevDir.equals(item.getSession().effectiveDirectory())) {
+                                sameProjectMatch = item;
+                                break;
+                            }
+                        }
+                        SessionItem fallback = sameProjectMatch != null ? sameProjectMatch : mostRecentAny;
+                        if (fallback != null) {
+                            LOG.fine("Auto-selecting fallback session: {0} (sameProject={1})",
+                                    fallback.getSession().id(), sameProjectMatch != null);
+                            Lookup.getDefault().lookup(SessionControl.class).loadSession(fallback.getSession().id());
                         }
                     }
                 } else {

@@ -146,12 +146,15 @@ public class ChatThreadPanel extends JPanel {
             }
         });
 
-        addComponentListener(new ComponentAdapter() {
+        // Listen on the layeredPane itself (not the parent ChatThreadPanel) so
+        // children get correct bounds the moment the layeredPane is sized by
+        // the parent BorderLayout — avoids the (0,0,0,0) window where the
+        // scrollPane has zero size during the initial layout pass.
+        layeredPane.addComponentListener(new ComponentAdapter() {
             @Override
             public void componentResized(ComponentEvent e) {
-                int w = getWidth();
-                int h = getHeight();
-                layeredPane.setBounds(0, 0, w, h);
+                int w = layeredPane.getWidth();
+                int h = layeredPane.getHeight();
                 scrollPane.setBounds(0, 0, w, h);
                 sessionProgressBar.setBounds(0, 0, w, 4);
                 scrollController.positionScrollDownBtn(w, h);
@@ -791,7 +794,17 @@ public class ChatThreadPanel extends JPanel {
                 // Single revalidate + scroll at end cuts O(N²) to O(N).
                 batchAdding = true;
                 try {
-                    for (Message m : messages) {
+                    // When "Pin to keep messages" is OFF, only render the tail
+                    // that fits MAX_MESSAGES — avoids building bubbles for
+                    // hundreds of oldest messages just to discard them in
+                    // trimMessages(). The full list is still cached so filter
+                    // toggles can re-render from source.
+                    List<Message> toRender = messages;
+                    int max = MAX_MESSAGES;
+                    if (max > 0 && !keepOlderMessages && messages.size() > max) {
+                        toRender = messages.subList(messages.size() - max, messages.size());
+                    }
+                    for (Message m : toRender) {
                         ProcessedMessage pm = messageTransformer.convert(m);
                         if (pm.isIgnorable()) {
                             continue;

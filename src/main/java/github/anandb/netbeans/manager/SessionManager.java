@@ -517,7 +517,9 @@ public class SessionManager implements SessionQuery, SessionControl {
                 })
                 .orElse(null);
 
-        String workingCwd = sessionCwd != null ? sessionCwd : System.getProperty("user.dir");
+        // Prefer the cached cwd; fall back to the last known project dir rather
+        // than System.getProperty("user.dir") which may point at an unrelated project.
+        String workingCwd = sessionCwd != null ? sessionCwd : lastProjectDir;
 
         this.lastProjectDir = workingCwd;
         notifySessionProgress(30);
