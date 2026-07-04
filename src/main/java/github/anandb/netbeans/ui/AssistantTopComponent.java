@@ -388,9 +388,6 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             if (effectivePath == null || effectivePath.isEmpty()) {
                 effectivePath = Lookup.getDefault().lookup(SessionControl.class).getCurrentSessionDirectory();
             }
-            if (effectivePath == null || effectivePath.isEmpty()) {
-                effectivePath = System.getProperty("user.dir");
-            }
 
             if (effectivePath == null || effectivePath.isEmpty()) {
                 cwdLabel.setText("");

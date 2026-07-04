@@ -313,10 +313,13 @@ public class SessionManager implements SessionQuery, SessionControl {
 
     @Override
     public CompletableFuture<Session> createSession(String cwd) {
+        // Do NOT fall back to System.getProperty("user.dir") which points at the
+        // IDE launcher directory and would cause the server to sandbox the session
+        // in the wrong project. Fail fast instead.
         if (cwd == null) {
-            cwd = System.getProperty("user.dir");
+            return CompletableFuture.failedFuture(
+                    new IllegalArgumentException("cwd must not be null — provide a valid project directory"));
         }
-
         LOG.log(Level.FINE, "Creating new session with CWD: {0}", cwd);
         final String finalCwd = cwd;
         final long start = System.nanoTime();

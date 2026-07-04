@@ -306,10 +306,6 @@ public class ProcessManager implements ProcessControl {
         return CompletableFuture.completedFuture(null);
     }
 
-    public String getActiveProjectDir() {
-        return System.getProperty("user.dir");
-    }
-
     @Override
     public List<SessionUpdate.AvailableCommand> getAvailableCommands() {
         return new ArrayList<>(availableCommands);
