@@ -1,5 +1,19 @@
 # Release Notes
 
+## v1.7.5 (Changes since v1.7.4)
+
+### Fixes
+- **Session hijack on project close**: When a project closed and removed its session from the dropdown, `onSessionListUpdated` blindly selected the most recently updated session from *any* project. Now it prefers a session from the same project as the last active directory — prevents silently switching to a different project's session.
+- **Chat panel not filling IDE height**: Moved the resize listener from `ChatThreadPanel` to the `layeredPane` itself. The scroll pane now gets correct bounds the instant the `BorderLayout` sizes the layered pane, eliminating the `(0,0,0,0)` window that caused intermittent collapsed chat area.
+- **SessionManager.loadSession wrong cwd**: Changed fallback from `System.getProperty("user.dir")` (JVM working dir, often an unrelated project) to `lastProjectDir` when the session's directory isn't found in the cache — prevents loading a session with the wrong project context.
+
+### Dependencies
+- **Jackson BOM 2.18.6 → 2.22.0**: Fixes 9 CVEs (3 HIGH — PolymorphicTypeValidator bypass, array subtype bypass, nesting depth DoS).
+- **Jetty 11.0.26 → 12.1.10**: Migrated from EOL 11.x to the current 12.x (ee10) line. Replaced `jetty-servlet` with `jetty-ee10-servlet`. Fixes 2 CVEs on the 11.x line (MadeYouReset HTTP/2 DoS, URI parsing differential) and restores active security patch support.
+
+### Housekeeping
+- **NOTES.md renamed to CHANGELOG.md**: Standard changelog naming convention.
+
 ## v1.7.4 (Changes since v1.7.3)
 
 ### Fixes
