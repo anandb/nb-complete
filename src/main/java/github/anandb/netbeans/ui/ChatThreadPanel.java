@@ -46,6 +46,9 @@ import static org.apache.commons.lang3.StringUtils.defaultString;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 
 
+// DSL-CONTROLLER: not a view — flushTimer + messageQueue EDT bridge +
+// trimMessages/cachedMessages logic. The future DSL declares the
+// messagesContainer/scrollPane shell; restart()/stop() hot-path calls stay here.
 public class ChatThreadPanel extends JPanel {
 
     private static final Logger LOG = Logger.from(ChatThreadPanel.class);

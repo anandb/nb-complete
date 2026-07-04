@@ -13,6 +13,9 @@ import org.openide.util.NbBundle;
  * Manages status bar display, thinking animation, send/stop button states,
  * and input enablement. Shared by SessionLifecycleHandler and MessageSender.
  */
+// DSL-CONTROLLER: not a view — thinkingTimer (500ms) + statusResetTimer (1.5s)
+// drive status label/send-stop enablement. Stays imperative; the status label
+// it drives is bound via the future StatusView spec.
 public class StatusController {
 
     private static final String[] DOT_STRINGS = {"", ".", "..", "..."};

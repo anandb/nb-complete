@@ -38,6 +38,10 @@ import org.openide.util.NbBundle;
 import static org.apache.commons.lang3.StringUtils.length;
 
 
+// DSL-LEAF: keep imperative, wrap via UI.of(...) — Scrollable impl + heavy
+// delegation (segments/codeStates/accordionManager/contentRenderer/streamer/
+// themeApplier). Bubble shell stays a leaf; its sub-specs (header, code
+// toolbar) are extracted to ui/spec/.
 public class MessageBubble extends JPanel implements Scrollable {
 
     private static final Logger LOG = Logger.from(MessageBubble.class);

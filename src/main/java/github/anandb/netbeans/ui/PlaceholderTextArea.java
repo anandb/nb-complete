@@ -30,6 +30,7 @@ import java.util.regex.Pattern;
 
 import github.anandb.netbeans.support.Logger;
 
+// DSL-LEAF: keep imperative, wrap via UI.of(...) — paintComponent placeholder overlay + word-wise undo. Not ported to withStyle.
 public class PlaceholderTextArea extends JTextArea implements Scrollable {
     private static final long serialVersionUID = 1L;
     private static final Pattern LINE_SPLIT = Pattern.compile("\\R");

@@ -8,6 +8,7 @@ import javax.swing.Timer;
  * Manages streaming lifecycle: active bubble reference and flush timer.
  * Extracted from ChatThreadPanel.
  */
+// DSL-CONTROLLER: not a view — streamFlushTimer driver wrapping the per-bubble active stream. Stays imperative.
 final class StreamingCoordinator {
 
     private MessageBubble activeStreamBubble;

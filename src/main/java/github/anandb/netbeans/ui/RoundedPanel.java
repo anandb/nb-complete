@@ -16,6 +16,7 @@ import javax.swing.JPanel;
  * - Draws a 1px border in the theme's bubbleBorder color.
  * - Insets (from setBorder) serve as outer margin for the rounded rect.
  */
+// DSL-LEAF: keep imperative, wrap via UI.of(...) — Graphics2D gradient/clip paintComponent + paintBorder. Not ported to withStyle.
 public class RoundedPanel extends JPanel {
 
     private static final long serialVersionUID = 1L;

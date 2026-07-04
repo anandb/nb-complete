@@ -20,6 +20,9 @@ import javax.swing.text.View;
 import org.openide.util.NbBundle;
 import github.anandb.netbeans.support.Logger;
 
+// DSL-LEAF: keep imperative, wrap via UI.of(...) — HTML Document reuse via
+// doc.remove()+kit.read(); non-declarative layout-tree-avoidance logic.
+// Not ported to withStyle.
 public class FitEditorPane extends JTextPane {
     private static final long serialVersionUID = 1L;
     private static final Logger LOG = Logger.from(FitEditorPane.class);

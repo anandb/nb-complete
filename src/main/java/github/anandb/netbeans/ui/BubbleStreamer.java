@@ -17,6 +17,7 @@ import org.openide.util.NbBundle;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.TimingConstants;
 
+// DSL-CONTROLLER: not a view — deferredFinalizeTimer + streaming-text accumulation state. Stays imperative; the bubble shell it drives is a DSL-LEAF.
 class BubbleStreamer {
 
     private static final Logger LOG = Logger.from(BubbleStreamer.class);

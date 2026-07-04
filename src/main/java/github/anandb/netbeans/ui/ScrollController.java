@@ -63,6 +63,8 @@ public class ScrollController implements KeyEventDispatcher {
     }
 
     private JButton createScrollDownBtn() {
+        // DSL-LEAF: keep imperative, wrap via UI.of(...) — anonymous JComponent with
+// Graphics2D paintComponent for the floating scroll-down button. Not ported to withStyle.
         JButton btn = new JButton(ThemeManager.getIcon("scroll-down.svg", 24)) {
             private static final long serialVersionUID = 1L;
 

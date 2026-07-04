@@ -31,6 +31,9 @@ import org.openide.util.NbPreferences;
 import github.anandb.netbeans.support.AgentUtils;
 import github.anandb.netbeans.support.PreferenceKeys;
 
+// DSL-CONTROLLER: not a view — newSessionDebounceTimer (300ms) lives here per
+// AGENTS.md. Construction body is the Phase 2 seam target (ChatLayoutSpec);
+// the debounce timer stays imperative.
 final class ChatLayoutBuilder {
 
     private final AssistantTopComponent topComponent;
@@ -571,5 +574,23 @@ final class ChatLayoutBuilder {
 
     static boolean isShowingHidden() {
         return NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean("showHiddenSessions", false);
+    }
+
+    /**
+     * Returns an immutable bundle of every component this builder constructed.
+     * This is the DSL-ready seam: callers can hold a {@link ChatLayoutRefs}
+     * instead of N separate {@code getX()} references, and a future swingtree
+     * migration replaces the construction body without changing the refs shape.
+     * Non-behavioral — equivalent to calling the individual getters.
+     */
+    github.anandb.netbeans.ui.spec.ChatLayoutRefs refs() {
+        return new github.anandb.netbeans.ui.spec.ChatLayoutRefs(
+                header, rightStatusPanel,
+                (JComboBox<github.anandb.netbeans.model.SessionItem>) (JComboBox<?>) sessionDropdown,
+                hideBtn, showHiddenBtn, newSessionBtn, renameSessionBtn,
+                toggleBlocksBtn, keepBtn, filterBtn, helpBtn, toggleOptionsBtn,
+                restartServerBtn, refreshBtn, exportBtn, sendBtn, stopBtn,
+                statusLabel, versionLabel, cwdLabel,
+                inputArea, inputScrollPane);
     }
 }
