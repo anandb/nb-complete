@@ -54,7 +54,7 @@ public class ChatThreadPanel extends JPanel {
     private static final Logger LOG = Logger.from(ChatThreadPanel.class);
     private static final long serialVersionUID = 1L;
     private static final Pattern SECTION_SPLIT = Pattern.compile("(?m)^---[ \\t]*$");
-    private static final int MAX_MESSAGES = 100;
+    private static final int MAX_MESSAGES = 25;
 
     private long lastUserTimestamp = -1L;
     private int userMessageCount = 0;
@@ -81,6 +81,11 @@ public class ChatThreadPanel extends JPanel {
     private volatile boolean keepOlderMessages = false;
     private volatile boolean batchAdding = false;
     private final JProgressBar sessionProgressBar;
+
+    // Turn-end gate for flushTimer. When null or false, the deferred-finalize
+    // timer restarts instead of firing — guards against premature JTextArea→
+    // FitEditorPane conversion during multi-second idle gaps in a live turn.
+    private transient volatile java.util.function.BooleanSupplier turnEndedSupplier;
 
     public ChatThreadPanel() {
         ColorTheme theme = ThemeManager.getCurrentTheme();
@@ -671,6 +676,21 @@ public class ChatThreadPanel extends JPanel {
 
     public void setKeepOlderMessages(boolean keep) {
         keepOlderMessages = keep;
+        // When the user unpins (keep=false), immediately trim the
+        // currently-displayed bubbles that exceed MAX_MESSAGES rather than
+        // waiting for a future addMessage/trimMessages tick. The pin button
+        // listener always fires on the EDT, so it is safe to mutate the
+        // component tree synchronously here. Adding a revalidate is required
+        // because trimMessages() only removes components — callers are
+        // otherwise expected to revalidate themselves, and this path had none.
+        if (!keep) {
+            trimMessages();
+            messagesContainer.revalidate();
+            boolean wasAtBottom = scrollController.isAtBottom();
+            if (wasAtBottom) {
+                scrollController.scrollToBottom(true);
+            }
+        }
     }
 
     public boolean isKeepOlderMessages() {

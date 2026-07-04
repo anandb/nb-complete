@@ -109,6 +109,14 @@ public class SessionLifecycleHandler implements SessionListener {
         turnEnded = false;
     }
 
+    /** True once an end-of-turn signal arrived (SSE responding_finished/end_turn/
+     *  available_commands_update, RPC completion, or session load). Used by
+     *  {@code ChatThreadPanel.flushTimer} to gate idle-gap-based finalization
+     *  on the turn actually being over. */
+    public boolean isTurnEnded() {
+        return turnEnded;
+    }
+
     /** Signal that the RPC completed (turn ended). Prevents displayMessage
      *  from overriding the button state with late SSE messages, and
      *  recovers the state machine if it was stuck at STOPPING. */
