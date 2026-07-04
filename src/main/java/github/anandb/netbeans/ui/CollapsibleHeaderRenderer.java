@@ -10,6 +10,9 @@ import org.apache.commons.lang3.StringUtils;
  * Resolves header icons and formatted titles for collapsible panes.
  * Extracted from BaseCollapsiblePane to isolate title/icon logic.
  */
+// DSL-LEAF: not a controller — builds the activity/tool header label + tag chip
+// and resolves tag (read/write/edit/...) to NbBundle string. Migration target:
+// CollapsibleHeaderSpec; the tag→i18n resolver stays imperative.
 final class CollapsibleHeaderRenderer {
 
     private static final Pattern TOOL_PREFIX = Pattern.compile("(?i)TOOL:?\\s*");

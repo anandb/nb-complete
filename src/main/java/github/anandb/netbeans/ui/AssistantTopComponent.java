@@ -38,11 +38,13 @@ import org.openide.windows.WindowManager;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
-import github.anandb.netbeans.contract.SessionControl;
 import github.anandb.netbeans.contract.PermissionHandler;
 import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.model.SessionItem;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.ui.platform.PlatformBridge;
+import github.anandb.netbeans.ui.platform.ProjectContext;
+import github.anandb.netbeans.ui.platform.SessionService;
 
 @ConvertAsProperties(
     dtd = "-//github.anandb.netbeans.ui//Assistant//EN",
@@ -59,10 +61,16 @@ import github.anandb.netbeans.support.Logger;
     displayName = "#CTL_AssistantAction",
     preferredID = "AssistantTopComponent"
 )
+// DSL-LEAF: not a controller — TopComponent is the root view shell. The DSL
+// migration ports the BorderLayout.add(...) + JSplitPane assembly to a
+// declarative tree; the lifecycle handlers (componentOpened/componentClosed)
+// stay imperative and are wired via PlatformBridge.
 public final class AssistantTopComponent extends TopComponent implements PermissionHandler {
 
     private static final Logger LOG = Logger.from(AssistantTopComponent.class);
     private static final long serialVersionUID = 1L;
+    private final SessionService sessionService = Lookup.getDefault().lookup(PlatformBridge.class).sessionService();
+    private final ProjectContext projectContext = Lookup.getDefault().lookup(PlatformBridge.class).projectContext();
     private final ChatThreadPanel chatPanel;
     private final PlaceholderTextArea inputArea;
     private final JButton sendBtn;
@@ -204,7 +212,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     }
 
     private void initChat() {
-        Lookup.getDefault().lookup(SessionControl.class).refreshSessions();
+        sessionService.get().refreshSessions();
     }
 
     public void setInputText(String text) {
@@ -230,7 +238,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     }
 
     void renameCurrentSession() {
-        String currentId = Lookup.getDefault().lookup(SessionControl.class).getCurrentSessionId();
+        String currentId = sessionService.get().getCurrentSessionId();
         if (currentId == null) {
             return;
         }
@@ -250,14 +258,14 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         if (result == NotifyDescriptor.OK_OPTION) {
             String newTitle = input.getInputText();
             if (newTitle != null && !newTitle.trim().isEmpty()) {
-                Lookup.getDefault().lookup(SessionControl.class).renameSession(currentId, newTitle.trim());
+                sessionService.get().renameSession(currentId, newTitle.trim());
             }
         }
     }
 
     private String selectedIdToTitle(Session session) {
         String title = defaultIfBlank(session.title(), NbBundle.getMessage(AssistantTopComponent.class, "LBL_ChatDefault", left(session.id(), 8)));
-        return Lookup.getDefault().lookup(SessionControl.class).getCustomTitle(session.id(), title);
+        return sessionService.get().getCustomTitle(session.id(), title);
     }
 
     void showProjectPickerPopup(JComponent parent) {
@@ -265,13 +273,12 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     }
 
     void createNewSession() {
-        org.netbeans.api.project.Project[] projects = github.anandb.netbeans.project.ACPProjectManager.getInstance().getAllOpenProjects();
+        org.netbeans.api.project.Project[] projects = projectContext.getAllOpenProjects();
         if (projects == null || projects.length == 0) {
             return;
         }
         if (projects.length == 1) {
-            Lookup.getDefault()
-                .lookup(SessionControl.class)
+            sessionService.get()
                 .createNewSession(projects[0].getProjectDirectory().getPath());
         } else {
             componentLifecycleHandler.showProjectPickerPopup(newSessionBtn);
@@ -340,9 +347,9 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     }
 
     void reloadCurrentSession() {
-        String currentId = Lookup.getDefault().lookup(SessionControl.class).getCurrentSessionId();
+        String currentId = sessionService.get().getCurrentSessionId();
         if (currentId != null) {
-            Lookup.getDefault().lookup(SessionControl.class).loadSession(currentId);
+            sessionService.get().loadSession(currentId);
         }
     }
 
@@ -386,7 +393,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             String effectivePath = path;
 
             if (effectivePath == null || effectivePath.isEmpty()) {
-                effectivePath = Lookup.getDefault().lookup(SessionControl.class).getCurrentSessionDirectory();
+                effectivePath = sessionService.get().getCurrentSessionDirectory();
             }
 
             if (effectivePath == null || effectivePath.isEmpty()) {

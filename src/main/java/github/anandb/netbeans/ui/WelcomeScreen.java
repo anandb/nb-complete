@@ -26,11 +26,18 @@ import static org.apache.commons.lang3.StringUtils.left;
 
 import org.openide.util.NbBundle;
 
-import github.anandb.netbeans.contract.SessionControl;
+import github.anandb.netbeans.ui.platform.PlatformBridge;
+import github.anandb.netbeans.ui.platform.SessionService;
 import org.openide.util.Lookup;
 import github.anandb.netbeans.model.Session;
 
+// DSL-LEAF: not a controller — static factory that builds the welcome/session
+// list view. The DSL migration ports build to WelcomeSpec; the
+// SessionControl.lookup calls move to PlatformBridge.SessionService (see MIGRATION.md Phase 4).
 final class WelcomeScreen {
+
+    private static final SessionService SESSION_SERVICE =
+            Lookup.getDefault().lookup(PlatformBridge.class).sessionService();
 
     private WelcomeScreen() {}
 
@@ -66,11 +73,11 @@ final class WelcomeScreen {
 
             boolean showHidden = ChatLayoutBuilder.isShowingHidden();
             for (Session s : sessions) {
-                if (!showHidden && Lookup.getDefault().lookup(SessionControl.class).isHidden(s.id())) {
+                if (!showHidden && SESSION_SERVICE.get().isHidden(s.id())) {
                     continue;
                 }
                 String title = defaultIfBlank(s.title(), NbBundle.getMessage(AssistantTopComponent.class, "LBL_ChatDefault", left(s.id(), 8)));
-                String label = Lookup.getDefault().lookup(SessionControl.class).getCustomTitle(s.id(), title);
+                String label = SESSION_SERVICE.get().getCustomTitle(s.id(), title);
                 String dir = s.effectiveDirectory();
                 JButton sessionBtn = createSelectionButton(label, dir);
                 sessionBtn.addActionListener(e -> onSessionSelected.accept(s.id()));

@@ -19,22 +19,30 @@ import org.openide.DialogDisplayer;
 import org.openide.NotifyDescriptor;
 import org.openide.util.NbBundle;
 import github.anandb.netbeans.contract.SlashCommandCallback;
-import github.anandb.netbeans.project.ACPProjectManager;
 import github.anandb.netbeans.contract.ToolExecutor;
-import github.anandb.netbeans.contract.ProcessControl;
-import github.anandb.netbeans.contract.SessionControl;
 import org.openide.util.Lookup;
 import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.model.SessionItem;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.ui.platform.PlatformBridge;
+import github.anandb.netbeans.ui.platform.ProcessService;
+import github.anandb.netbeans.ui.platform.ProjectContext;
+import github.anandb.netbeans.ui.platform.SessionService;
 
 /**
  * Manages the component lifecycle: open, activate, deactivate, close, and remove notify.
  * Owns the page key event dispatcher and handles server startup, session refresh,
  * permissions, status listeners, slash command callback, and ESC key handler.
  */
+// DSL-CONTROLLER: not a view — focus/window/visibility bridge + project picker
+// popup state. Stays imperative; the DSL declares the AssistantTopComponent
+// shell it drives. The restart-needed flag + tooltip update logic stays here.
 public class ComponentLifecycleHandler {
+
+    private final SessionService sessionService = Lookup.getDefault().lookup(PlatformBridge.class).sessionService();
+    private final ProcessService processService = Lookup.getDefault().lookup(PlatformBridge.class).processService();
+    private final ProjectContext projectContext = Lookup.getDefault().lookup(PlatformBridge.class).projectContext();
 
     private static final Logger LOG = Logger.from(ComponentLifecycleHandler.class);
 
@@ -81,7 +89,7 @@ public class ComponentLifecycleHandler {
         // Reset turn-ended flag from any prior RPC completion that fired while panel was closed.
         // Without this, new SSE updates after reopen would be suppressed.
         sessionLifecycleHandler.onNewMessageSent();
-        Lookup.getDefault().lookup(SessionControl.class).addSessionListener(sessionLifecycleHandler);
+        sessionService.get().addSessionListener(sessionLifecycleHandler);
 
         // Defer session refresh and server start so the component opens immediately.
         // During plugin installation the @OnStart handler opens this component while
@@ -89,17 +97,17 @@ public class ComponentLifecycleHandler {
         // dialog from being blocked by server/session initialization.
         SwingUtilities.invokeLater(() -> {
             Set<String> currentDirs = new HashSet<>();
-            for (var p : ACPProjectManager.getInstance().getAllOpenProjects()) {
+            for (var p : projectContext.getAllOpenProjects()) {
                 if (p != null) {
                     currentDirs.add(p.getProjectDirectory().getPath());
                 }
             }
             if (!currentDirs.equals(closedProjectDirs)) {
-                Lookup.getDefault().lookup(SessionControl.class).refreshSessions();
+                sessionService.get().refreshSessions();
             }
             closedProjectDirs = Set.of();
             try {
-                Lookup.getDefault().lookup(ProcessControl.class).ensureStarted();
+                processService.get().ensureStarted();
             } catch (Exception ex) {
                 LOG.severe("Failed to ensure server is started", ex);
                 String msg = ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName();
@@ -113,7 +121,7 @@ public class ComponentLifecycleHandler {
         });
 
         // Update status label when MCP server is starting/ready
-        ToolExecutor mcp = Lookup.getDefault().lookup(ProcessControl.class).getToolExecutor();
+        ToolExecutor mcp = processService.get().getToolExecutor();
         if (!mcp.isDisabled() && !mcp.waitForReady().isDone()) {
             SwingUtilities.invokeLater(() -> statusController.setStatus("STATUS_McpInitializing"));
             mcp.waitForReady().thenRun(() ->
@@ -121,14 +129,14 @@ public class ComponentLifecycleHandler {
             );
         }
 
-        Lookup.getDefault().lookup(ProcessControl.class).setPermissionHandler(topComponent);
-        Lookup.getDefault().lookup(ProcessControl.class).setStatusListener(msg -> {
+        processService.get().setPermissionHandler(topComponent);
+        processService.get().setStatusListener(msg -> {
             SwingUtilities.invokeLater(() -> {
                 statusController.setStatusText(msg);
                 statusController.scheduleReset();
             });
         });
-        Lookup.getDefault().lookup(ProcessControl.class).getSlashCommandInterceptor().setCallback(new SlashCommandCallback() {
+        processService.get().getSlashCommandInterceptor().setCallback(new SlashCommandCallback() {
             {
                 Runnable returnFocus = () -> inputArea.requestFocusInWindow();
                 configPanelController.setOnModelSelectedCallback(returnFocus);
@@ -169,12 +177,12 @@ public class ComponentLifecycleHandler {
             @Override
             public void popupNewSession() {
                 SwingUtilities.invokeLater(() -> {
-                    Project[] projects = ACPProjectManager.getInstance().getAllOpenProjects();
+                    Project[] projects = projectContext.getAllOpenProjects();
                     if (projects == null || projects.length == 0) {
                         return;
                     }
                     if (projects.length == 1) {
-                        Lookup.getDefault().lookup(SessionControl.class).createNewSession(projects[0].getProjectDirectory().getPath());
+                        sessionService.get().createNewSession(projects[0].getProjectDirectory().getPath());
                     } else {
                         showProjectPickerPopup(inputArea);
                     }
@@ -212,11 +220,11 @@ public class ComponentLifecycleHandler {
             if (inputArea != null) {
                 inputArea.requestFocusInWindow();
             }
-            String currentSessionId = Lookup.getDefault().lookup(SessionControl.class).getCurrentSessionId();
+            String currentSessionId = sessionService.get().getCurrentSessionId();
             if (currentSessionId != null) {
-                Lookup.getDefault().lookup(SessionControl.class).loadSession(currentSessionId);
+                sessionService.get().loadSession(currentSessionId);
             } else {
-                Lookup.getDefault().lookup(SessionControl.class).refreshSessions();
+                sessionService.get().refreshSessions();
             }
         });
     }
@@ -238,7 +246,7 @@ public class ComponentLifecycleHandler {
         // stops processing and doesn't flood stale SSE content on reopen.
         // We bypass stopCurrentMessage() and go directly to IDLE to avoid the
         // STOPPING state — loadSession() on reopen needs IDLE→LOADING to work.
-        Lookup.getDefault().lookup(SessionControl.class).forceCancelCurrentMessage();
+        sessionService.get().forceCancelCurrentMessage();
 
         if (pageKeyDispatcher != null) {
             KeyboardFocusManager.getCurrentKeyboardFocusManager().removeKeyEventDispatcher(pageKeyDispatcher);
@@ -248,20 +256,20 @@ public class ComponentLifecycleHandler {
             chatPanel.clearMessages();
         }
         closedProjectDirs = new HashSet<>();
-        for (var p : ACPProjectManager.getInstance().getAllOpenProjects()) {
+        for (var p : projectContext.getAllOpenProjects()) {
             if (p != null) {
                 closedProjectDirs.add(p.getProjectDirectory().getPath());
             }
         }
-        Lookup.getDefault().lookup(SessionControl.class).removeSessionListener(sessionLifecycleHandler);
+        sessionService.get().removeSessionListener(sessionLifecycleHandler);
 
         // Clear handler references to prevent memory leak (ProcessManager holds these)
-        Lookup.getDefault().lookup(ProcessControl.class).setPermissionHandler(null);
-        Lookup.getDefault().lookup(ProcessControl.class).setStatusListener(null);
-        Lookup.getDefault().lookup(ProcessControl.class).setCrashHandler(null);
+        processService.get().setPermissionHandler(null);
+        processService.get().setStatusListener(null);
+        processService.get().setCrashHandler(null);
         // Note: readyHandler is intentionally NOT cleared — SessionManager sets it
         // to reload sessions after reconnect and its lambda captures only singleton references.
-        Lookup.getDefault().lookup(ProcessControl.class).getSlashCommandInterceptor().setCallback(null);
+        processService.get().getSlashCommandInterceptor().setCallback(null);
 
         if (escKeyListener != null) {
             configPanelController.removeKeyListenerFromInputs(escKeyListener);
@@ -300,7 +308,7 @@ public class ComponentLifecycleHandler {
     }
 
     public void restartServer() {
-        String currentSessionId = Lookup.getDefault().lookup(SessionControl.class).getCurrentSessionId();
+        String currentSessionId = sessionService.get().getCurrentSessionId();
         statusController.setStatus("STATUS_RestartingServer");
         statusController.setInputEnabled(false);
         restartServerBtn.setEnabled(false);
@@ -310,9 +318,9 @@ public class ComponentLifecycleHandler {
         safetyTimeout.setRepeats(false);
         safetyTimeout.start();
 
-        Lookup.getDefault().lookup(ProcessControl.class).restartServer();
+        processService.get().restartServer();
 
-        Lookup.getDefault().lookup(ProcessControl.class).whenReady().thenAccept(v -> {
+        processService.get().whenReady().thenAccept(v -> {
             SwingUtilities.invokeLater(() -> {
                 // After server ready, wait 5 more seconds before re-enabling
                 Timer cooldown = new Timer(5_000, e -> restartServerBtn.setEnabled(true));
@@ -320,9 +328,9 @@ public class ComponentLifecycleHandler {
                 cooldown.start();
                 statusController.setStatus("STATUS_ServerRestarted");
                 if (currentSessionId != null) {
-                    Lookup.getDefault().lookup(SessionControl.class).loadSession(currentSessionId);
+                    sessionService.get().loadSession(currentSessionId);
                 } else {
-                    Lookup.getDefault().lookup(SessionControl.class).refreshSessions();
+                    sessionService.get().refreshSessions();
                 }
             });
         }).exceptionally(ex -> {
@@ -342,7 +350,7 @@ public class ComponentLifecycleHandler {
     }
 
     public void showProjectPickerPopup(JComponent parent) {
-        Project[] projects = ACPProjectManager.getInstance().getAllOpenProjects();
+        Project[] projects = projectContext.getAllOpenProjects();
         if (projects == null || projects.length <= 1) {
             return;
         }
@@ -350,7 +358,7 @@ public class ComponentLifecycleHandler {
         for (Project project : projects) {
             String projectDir = project.getProjectDirectory().getPath();
             JMenuItem item = new JMenuItem(project.getProjectDirectory().getName());
-            item.addActionListener(ev -> Lookup.getDefault().lookup(SessionControl.class).createNewSession(projectDir));
+            item.addActionListener(ev -> sessionService.get().createNewSession(projectDir));
             popup.add(item);
         }
         popup.show(parent, 0, parent.getHeight());

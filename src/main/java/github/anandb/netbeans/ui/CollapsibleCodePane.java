@@ -25,6 +25,8 @@ import org.fife.ui.rsyntaxtextarea.SyntaxConstants;
 import org.fife.ui.rsyntaxtextarea.Theme;
 import org.openide.util.NbBundle;
 
+// DSL-LEAF: keep imperative, wrap via UI.of(...) — extends BaseCollapsiblePane,
+// builds RSyntaxTextArea code block + copy popup. Migration target: CodePaneToolbarSpec.
 public class CollapsibleCodePane extends BaseCollapsiblePane {
 
     private static final long serialVersionUID = 1L;

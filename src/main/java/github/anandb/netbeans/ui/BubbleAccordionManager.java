@@ -3,6 +3,9 @@ package github.anandb.netbeans.ui;
 import java.awt.Component;
 import javax.swing.JPanel;
 
+// DSL-LEAF: not a controller — manages accordion grouping of activity/tool
+// sub-panes inside a bubble. Migration target: BubbleAccordionSpec; group
+// toggle/bookmark logic stays imperative.
 class BubbleAccordionManager {
 
     private final JPanel segments;

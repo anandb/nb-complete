@@ -13,6 +13,8 @@ import javax.swing.Timer;
 import github.anandb.netbeans.support.ToolDataExtractor;
 import github.anandb.netbeans.support.Logger;
 
+// DSL-CONTROLLER: not a view — copyRevertTimer handles the click-to-copy → revert-icon
+// animation on assistant bubbles. Stays imperative; DSL wraps the leaf it drives.
 public class MessageCopyMouseAdapter extends MouseAdapter {
     private static final Logger LOG = Logger.from(MessageCopyMouseAdapter.class);
 

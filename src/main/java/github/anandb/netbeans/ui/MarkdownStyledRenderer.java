@@ -19,6 +19,10 @@ import javax.swing.text.StyledDocument;
  * Avoids the Swing HTML renderer entirely, eliminating the reflow and
  * width-calculation bugs that plague {@link javax.swing.JEditorPane}.
  */
+// DSL-LEAF: keep imperative — inserts SimpleAttributeSet text ranges into a
+// JTextPane (bypasses Swing HTML engine). Migration target: a
+// MarkdownStyledSpec wraps the JTextPane via UI.of(...); the range-insert logic
+// is NOT ported to withStyle.
 public final class MarkdownStyledRenderer {
 
     private static final Pattern SEPARATOR_PATTERN = Pattern.compile("^:?-+:?$");

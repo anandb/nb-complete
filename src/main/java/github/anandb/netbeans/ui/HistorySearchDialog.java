@@ -31,6 +31,8 @@ import javax.swing.event.DocumentListener;
  * Non-modal dialog for searching message history with type-as-you-search filtering.
  * Triggered by Ctrl+R on the chat input area.
  */
+// DSL-LEAF: keep imperative, wrap via UI.of(...) — JDialog modal form. Low-risk DSL pilot candidate
+// (self-contained; no streaming/timer bridge). Migration target: DialogSpec family.
 final class HistorySearchDialog extends JDialog {
     private static final long serialVersionUID = 1L;
     private static final java.awt.Font DIALOG_FONT = ThemeManager.getFont().deriveFont(13f);

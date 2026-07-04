@@ -7,8 +7,6 @@ import javax.swing.SwingUtilities;
 
 import java.util.concurrent.CompletableFuture;
 
-import github.anandb.netbeans.contract.ProcessControl;
-import github.anandb.netbeans.contract.SessionControl;
 import github.anandb.netbeans.contract.SlashCommandInterceptor;
 import github.anandb.netbeans.support.ToolDataExtractor;
 import github.anandb.netbeans.model.MessageType;
@@ -18,14 +16,25 @@ import org.openide.util.Lookup;
 import org.openide.util.NbPreferences;
 import org.openide.util.NbBundle;
 
+import github.anandb.netbeans.ui.platform.PlatformBridge;
+import github.anandb.netbeans.ui.platform.ProcessService;
+import github.anandb.netbeans.ui.platform.SessionService;
+
 /**
  * Handles sending user messages and stopping message processing.
  * Manages slash command interception, file attachments, local echo, editor context,
  * and the async RPC call for message delivery.
  */
+// DSL-CONTROLLER: not a view — MessageSender drives the send pipeline (input
+// area trim, attachment attach, status callbacks, POST to ACP). Stays
+// imperative; the input area + status label it touches are bound via InputAreaVM
+// + StatusSpec.
 public class MessageSender {
 
     private static final Logger LOG = Logger.from(MessageSender.class);
+
+    private final SessionService sessionService = Lookup.getDefault().lookup(PlatformBridge.class).sessionService();
+    private final ProcessService processService = Lookup.getDefault().lookup(PlatformBridge.class).processService();
 
     private final PlaceholderTextArea inputArea;
     private final ChatThreadPanel chatPanel;
@@ -69,7 +78,7 @@ public class MessageSender {
 
     /** Sends (or intercepts) the current message text. */
     public void sendMessage() {
-        if (!Lookup.getDefault().lookup(SessionControl.class).canSendMessage()) {
+        if (!sessionService.get().canSendMessage()) {
             return;
         }
         String text = inputArea.getText(); // Don't trim user input spaces
@@ -88,7 +97,7 @@ public class MessageSender {
         // Intercept local slash commands first (trim is only to check for '/')
         boolean isForwardedSlash = false;
         if (text.trim().startsWith("/")) {
-            SlashCommandInterceptor interceptor = Lookup.getDefault().lookup(ProcessControl.class).getSlashCommandInterceptor();
+            SlashCommandInterceptor interceptor = processService.get().getSlashCommandInterceptor();
             if (interceptor != null) {
                 Lookup defaultCtx = Lookup.getDefault();
                 CompletableFuture<Boolean> handled = interceptor.intercept(text, defaultCtx);
@@ -116,7 +125,7 @@ public class MessageSender {
             }
         }
 
-        String currentSessionId = Lookup.getDefault().lookup(SessionControl.class).getCurrentSessionId();
+        String currentSessionId = sessionService.get().getCurrentSessionId();
         if (currentSessionId == null) {
             statusController.setStatus("STATUS_NoSession");
             return;
@@ -165,7 +174,7 @@ public class MessageSender {
         if (onUserMessageSentCallback != null) {
             onUserMessageSentCallback.run();
         }
-        Lookup.getDefault().lookup(ProcessControl.class).sendMessage(currentSessionId, messageText, context, fileBlocks)
+        processService.get().sendMessage(currentSessionId, messageText, context, fileBlocks)
                 .thenAccept(result -> {
                     SwingUtilities.invokeLater(() -> {
                         LOG.info("RPC thenAccept fired (status during = {0}, hasStopReason = {1})",
@@ -219,7 +228,7 @@ public class MessageSender {
 
     /** Stops the currently processing message. */
     public void stopMessage() {
-        if (!Lookup.getDefault().lookup(SessionControl.class).canStopMessage()) {
+        if (!sessionService.get().canStopMessage()) {
             return;
         }
         SwingUtilities.invokeLater(() -> {
@@ -229,7 +238,7 @@ public class MessageSender {
         // stopCurrentMessage may block on pipe I/O (writer.println).
         // Run off EDT to avoid freezing the UI.
         CompletableFuture.runAsync(() ->
-            Lookup.getDefault().lookup(SessionControl.class).stopCurrentMessage()
+            sessionService.get().stopCurrentMessage()
         );
         // Show "Stopped" immediately — don't wait for cancel notification to be sent.
         SwingUtilities.invokeLater(() -> {

@@ -26,6 +26,8 @@ import javax.swing.JTextArea;
  *       {@link #setSegmentedContent(List)}.</li>
  * </ul>
  */
+// DSL-LEAF: keep imperative, wrap via UI.of(...) — extends BaseCollapsiblePane;
+// activity/thought sub-pane (multi-content card layout). Migration target: ActivityPaneSpec.
 public class CollapsibleActivityPane extends BaseCollapsiblePane {
 
     private static final long serialVersionUID = 1L;

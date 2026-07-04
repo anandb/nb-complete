@@ -18,6 +18,9 @@ import java.awt.event.MouseEvent;
 /**
  * Manages icon preview display, browse, and clear for user icon selection.
  */
+// DSL-LEAF: not a controller — keeps the user-icon preview label in sync with
+// the icon path text field via a DocumentListener. Migration target:
+// IconPreviewSpec; the SvgIconLoader call stays imperative.
 final class IconPreviewManager {
 
     private static final Logger LOG = Logger.from(IconPreviewManager.class);

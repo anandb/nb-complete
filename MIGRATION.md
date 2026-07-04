@@ -55,11 +55,11 @@ when the DSL lands:
 | 0 | This document + quarantine tag convention | ✅ done |
 | 1 | `ui/vm/` Swing-free view-models (`ChatToolbarVM`, `InputAreaVM`, `ConfigPanelVM`, `WelcomeVM`) | ✅ done |
 | 2 | `ChatLayoutSpec` + `ChatToolbarActions` seam; `ChatLayoutBuilder.refs()` accessor | ✅ seam done — full field-collapse **deferred** |
-| 3 | Declarative sub-specs (`CollapsibleHeaderSpec`, `CodePaneToolbarSpec`, `OptionsFormSpec`, `ConfigComboSpec`, `WelcomeSpec`, `PermissionBubbleSpec`) | ⏳ deferred (risky mechanical extraction) |
-| 4 | `ui/PlatformBridge` interfaces (`SessionService`, `ProcessService`, `PrefStore`, `Bundle`, `ProjectContext`) + `DefaultPlatformBridge` `@ServiceProvider` | ✅ seam done — call-site migration **deferred** |
-| 5 | Quarantine custom-paint leaves (`DSL-LEAF`) | ✅ done |
-| 6 | Quarantine streaming/timer controllers (`DSL-CONTROLLER`) | ✅ done |
-| 7 | Pilot `StatusView` / `StatusSpec` seam test (imperative, DSL-shaped) | ✅ done (not wired into live UI) |
+| 3 | Declarative sub-specs (`CollapsibleHeaderSpec`, `CodePaneToolbarSpec`, `OptionsFormSpec`, `ConfigComboSpec`, `WelcomeSpec`, `PermissionBubbleSpec`) | ⏳ deferred (risky mechanical extractions) |
+| 4 | `ui/PlatformBridge` interfaces (`SessionService`, `ProcessService`, `PrefStore`, `Bundle`, `ProjectContext`) + `DefaultPlatformBridge` `@ServiceProvider` | ✅ seam + call-site migration done (Lookup + ACPProjectManager); `NbPreferences` / `NbBundle` migration deferred |
+| 5 | Quarantine custom-paint leaves (`DSL-LEAF`) | ✅ done — 32 files tagged |
+| 6 | Quarantine streaming/timer controllers (`DSL-CONTROLLER`) | ✅ done — covered by the 32-file tag pass |
+| 7 | Pilot `StatusView` / `Status Spec` seam test (imperative, DSL-shaped) | ✅ done (not wired into live UI) |
 | 8 | Finalize per-file migration order + quarantine inventory below | ✅ done |
 
 ### Deferred follow-up PRs (tracked here, not in this refactor)
@@ -70,11 +70,15 @@ when the DSL lands:
    toolbar rendering + all 11 `*Action` classes.
 2. **Phase 3 sub-specs**: extract the 6 leaf-cluster specs. Mechanical; do one
    per PR.
-3. **Phase 4 call-site migration**: rewrite the ~6 `ACPProjectManager.getInstance()`
-   call sites + the `Lookup.getDefault().lookup(SessionControl.class)` /
-   `NbPreferences.forModule(...)` / `NbBundle.getMessage(...)` call sites in
-   `ui/` to use `PlatformBridge`. Preserve the AGENTS.md hot-path
-   `static volatile` + `PreferenceChangeListener` cache pattern.
+3. **Phase 4 `NbPreferences` / `NbBundle` migration**: the Lookup +
+   `ACPProjectManager` call sites are now routed through `PlatformBridge`
+   (this PR). Remaining: `NbPreferences.forModule(...)` (15 sites across
+   `UIUtils`, `MessageHistory`, `MessageFilterManager`, `MessageSender`,
+   `ChatLayoutBuilder`, `ACPOptionsPanel`, `ToolThoughtCombiner`) and
+   `NbBundle.getMessage(...)` (27 sites in `ChatLayoutBuilder`, 24 in
+   `ACPOptionsPanel`, etc.) still call NetBeans APIs directly. Migrate via
+   `PrefStore` + `Bundle` sub-services; preserve the AGENTS.md hot-path
+   `static volatile` + `PreferenceChangeListener` cache pattern in `UIUtils`.
 4. **Phase 7 wiring**: replace `AssistantTopComponent`'s ad-hoc status label
    construction with `StatusSpec.build(...)`. Verify identical rendering.
 5. **Adoption gate**: solve the MigLayout split-package NBM precondition

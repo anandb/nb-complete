@@ -11,6 +11,8 @@ import javax.swing.Icon;
 import javax.swing.JPanel;
 import javax.swing.JTextArea;
 
+// DSL-LEAF: keep imperative, wrap via UI.of(...) — extends BaseCollapsiblePane;
+// tool-call sub-pane (input params + status row). Migration target: ToolPaneSpec.
 public class CollapsibleToolPane extends BaseCollapsiblePane {
     private static final long serialVersionUID = 1L;
     private JTextArea textArea;

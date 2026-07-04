@@ -7,6 +7,9 @@ import org.openide.util.NbBundle;
  * Factory for creating MessageBubble instances.
  * Extracted from ChatThreadPanel.addSingleBubble().
  */
+// DSL-LEAF: not a controller — produces MessageBubble instances per MessageType.
+// Migration target: BubbleFactory delegates to BubbleShellSpec; avatar position +
+// streaming flag plumbing stays imperative.
 final class BubbleFactory {
 
     private BubbleFactory() {}

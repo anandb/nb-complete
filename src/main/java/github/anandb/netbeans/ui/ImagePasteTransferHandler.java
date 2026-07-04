@@ -27,6 +27,9 @@ import org.openide.util.RequestProcessor;
 
 import github.anandb.netbeans.model.AttachedFile;
 
+// DSL-CONTROLLER: not a view — image paste background I/O thread pool + EDT
+// bridge to AttachmentManager. Stays imperative; the input area + preview
+// components it touches are bound by InputAreaSpec.
 public class ImagePasteTransferHandler extends TransferHandler {
 
     private static final long serialVersionUID = 1L;

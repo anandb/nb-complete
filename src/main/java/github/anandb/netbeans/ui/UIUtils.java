@@ -28,6 +28,10 @@ import github.anandb.netbeans.support.Logger;
 
 import org.openide.util.NbPreferences;
 
+// DSL-LEAF: factories are the swingtree replacement seam — createToolbarButton /
+// createTextButton / createPanel / styleToolbarButton become UI.button(...) /
+// UI.panel(...) literals. The 80+ call sites migrate via ComponentSpec builders in ui/spec/.
+// NbPreferences preference cache (cachedUserIcon) stays imperative.
 public class UIUtils {
 
     // --- font stacks (merged from FontStacks) --------------------------------

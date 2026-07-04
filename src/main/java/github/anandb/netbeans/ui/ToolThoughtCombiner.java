@@ -18,6 +18,9 @@ import github.anandb.netbeans.model.MessageType;
  * activity panel. Called before a user/assistant message is added or when
  * streaming ends. Individual bubbles are removed to free memory.
  */
+// DSL-LEAF: not a controller — combines adjacent tool-call + thought activity
+// panes into one collapsible (group header). Migration target:
+// CombinedActivitySpec; the combination merge logic stays imperative.
 public final class ToolThoughtCombiner {
 
     private static volatile boolean combineEnabled = true;

@@ -12,10 +12,17 @@ import com.fasterxml.jackson.databind.JsonNode;
 import github.anandb.netbeans.contract.SessionControl;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.ToolContextExtractor;
+import github.anandb.netbeans.ui.platform.PlatformBridge;
+import github.anandb.netbeans.ui.platform.SessionService;
 
+// DSL-CONTROLLER: not a view — NotifyDescriptor-based permission dialog
+// orchestration (SessionControl lookup, prompt formatting). Stays imperative;
+// the PermissionBubble leaf it produces is bound via PermissionBubbleSpec.
 final class PermissionDialogManager {
 
     private static final Logger LOG = Logger.from(PermissionDialogManager.class);
+
+    private final SessionService sessionService = Lookup.getDefault().lookup(PlatformBridge.class).sessionService();
 
     private final ChatThreadPanel chatPanel;
 
@@ -25,7 +32,7 @@ final class PermissionDialogManager {
 
     void handlePermissionRequest(String sessionId, JsonNode params,
             CompletableFuture<String> response, Runnable activateCallback) {
-        SessionControl sessionControl = Lookup.getDefault().lookup(SessionControl.class);
+        SessionControl sessionControl = sessionService.get();
         String currentId = sessionControl != null ? sessionControl.getCurrentSessionId() : null;
 
         boolean isCurrent = currentId != null && currentId.equals(sessionId);

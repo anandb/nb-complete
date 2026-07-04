@@ -15,6 +15,9 @@ import org.openide.util.NbBundle;
 /**
  * Package-private helper that extracts theme/appearance logic from {@link MessageBubble}.
  */
+// DSL-LEAF: not a controller — applies theme colors/icons to the bubble shell
+// (user avatar, TTF label). Migration target: BubbleAvatarSpec; theme
+// re-application hook stays imperative (ThemeManager rebind).
 class BubbleThemeApplier {
 
     private static final Color TRANSPARENT = new Color(0, 0, 0, 0);

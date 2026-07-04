@@ -23,17 +23,24 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.event.PopupMenuEvent;
 import javax.swing.event.PopupMenuListener;
 
-import github.anandb.netbeans.contract.SessionControl;
-import org.openide.util.Lookup;
 import github.anandb.netbeans.model.ModelRecords.ConfigItem;
 import github.anandb.netbeans.model.SessionConfigOption;
 import github.anandb.netbeans.model.SessionConfigSelectOption;
 import github.anandb.netbeans.support.Logger;
 import org.openide.util.NbBundle;
+import org.openide.util.Lookup;
 
+import github.anandb.netbeans.ui.platform.PlatformBridge;
+import github.anandb.netbeans.ui.platform.SessionService;
+
+// DSL-LEAF: not a view-pure form — builds the agent/model/thinking combo panel
+// (GridBagLayout). Migration target: OptionsFormSpec + ConfigComboSpec; the
+// selection callbacks + ModelVariantResolver wiring stay imperative.
 public class ConfigPanelController {
 
     private static final Logger LOG = Logger.from(ConfigPanelController.class);
+
+    private final SessionService sessionService = Lookup.getDefault().lookup(PlatformBridge.class).sessionService();
 
     private final JPanel configPanel;
     private final JComboBox<ConfigItem> modeCombo;
@@ -155,7 +162,7 @@ public class ConfigPanelController {
                 if (selectedValue != null && !selectedValue.isEmpty() && !selectedValue.equals(currentValue)) {
                     LOG.fine("Applying pre-selected config: {0}={1} (server default was {2})",
                             new Object[]{opt.id(), selectedValue, currentValue});
-                    Lookup.getDefault().lookup(SessionControl.class).setSessionConfigOption(sessionId, opt.id(), selectedValue);
+                    sessionService.get().setSessionConfigOption(sessionId, opt.id(), selectedValue);
                 }
             }
         }
@@ -309,11 +316,11 @@ public class ConfigPanelController {
                 if (isUpdatingConfigControls) return;
 
                 ConfigItem selected = resolveComboSelection(combo, combo.getSelectedItem());
-                if (selected != null && Lookup.getDefault().lookup(SessionControl.class).getCurrentSessionId() != null) {
-                    String currentId = Lookup.getDefault().lookup(SessionControl.class).getCurrentSessionId();
+                if (selected != null && sessionService.get().getCurrentSessionId() != null) {
+                    String currentId = sessionService.get().getCurrentSessionId();
                     String prevModelId = combo == modelCombo ? modelResolver.getLastSelectedModelId() : null;
                     LOG.fine("Config update: {0}={1} for session {2}", new Object[]{configId, selected.value(), currentId});
-                    Lookup.getDefault().lookup(SessionControl.class).setSessionConfigOption(currentId, configId, selected.value())
+                    sessionService.get().setSessionConfigOption(currentId, configId, selected.value())
                         .exceptionally(ex -> {
                             LOG.warn("Failed to set config {0}: {1}", configId, ex.getMessage());
                             if (combo == modelCombo && prePopupSelection[0] != null && prevModelId != null) {

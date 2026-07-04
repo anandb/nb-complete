@@ -14,6 +14,9 @@ import org.openide.util.NbPreferences;
  * in sync via a {@link PreferenceChangeListener} so that hot-path reads
  * never touch disk.</p>
  */
+// DSL-CONTROLLER: not a view — preferences-backed filter state (show/hide tool
+// blocks, keep bubbles). Stays imperative; the toggle button it drives is
+// bound by ChatToolbarSpec.
 final class MessageFilterManager {
     private static final String PREF_PREFIX = "messageFilter.";
     private static final String[] MESSAGE_TYPES = {"tool", "thought", "assistant", "user"};

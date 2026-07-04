@@ -30,6 +30,8 @@ import org.openide.util.NbPreferences;
 
 import github.anandb.netbeans.support.AgentUtils;
 import github.anandb.netbeans.support.PreferenceKeys;
+import github.anandb.netbeans.ui.platform.PlatformBridge;
+import github.anandb.netbeans.ui.platform.ProjectContext;
 
 // DSL-CONTROLLER: not a view — newSessionDebounceTimer (300ms) lives here per
 // AGENTS.md. Construction body is the Phase 2 seam target (ChatLayoutSpec);
@@ -39,6 +41,7 @@ final class ChatLayoutBuilder {
     private final AssistantTopComponent topComponent;
     private final ChatThreadPanel chatPanel;
     private final ConfigPanelController configPanelController;
+    private final ProjectContext projectContext = Lookup.getDefault().lookup(PlatformBridge.class).projectContext();
 
     private UIUtils.WrappingComboBox<?> sessionDropdown;
     private JButton hideBtn;
@@ -511,7 +514,7 @@ final class ChatLayoutBuilder {
     JButton getShowHiddenBtn() { return showHiddenBtn; }
 
     private void fireNewSession() {
-        org.netbeans.api.project.Project[] projects = github.anandb.netbeans.project.ACPProjectManager.getInstance().getAllOpenProjects();
+        org.netbeans.api.project.Project[] projects = projectContext.getAllOpenProjects();
         if (projects == null || projects.length == 0) {
             return;
         }

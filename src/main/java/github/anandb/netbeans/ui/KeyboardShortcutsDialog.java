@@ -23,6 +23,8 @@ import org.openide.util.Utilities;
  * Modal dialog listing all keyboard shortcuts supported by the plugin.
  * Rendered as styled HTML for clean presentation.
  */
+// DSL-LEAF: keep imperative, wrap via UI.of(...) — JDialog modal form. Low-risk DSL pilot candidate
+// (self-contained; no streaming/timer bridge). Migration target: DialogSpec family.
 final class KeyboardShortcutsDialog extends JDialog {
 
     private static final long serialVersionUID = 1L;

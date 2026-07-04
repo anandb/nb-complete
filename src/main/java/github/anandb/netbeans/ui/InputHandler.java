@@ -3,24 +3,28 @@ package github.anandb.netbeans.ui;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
-import github.anandb.netbeans.contract.ProcessControl;
 import org.openide.util.Lookup;
 import github.anandb.netbeans.contract.SlashCommandInterceptor;
 import github.anandb.netbeans.contract.SlashCommandCallback;
+import github.anandb.netbeans.ui.platform.PlatformBridge;
+import github.anandb.netbeans.ui.platform.ProcessService;
 
 /**
  * Handles keyboard input for the chat input area: Tab (switch agent),
  * Enter (send), Shift+Enter (newline), Alt+Up/Down (history navigation),
  * Ctrl+Z/Y (undo/redo), and autocomplete integration.
  */
+// DSL-CONTROLLER: not a view — keyboard input dispatch for the input area
+// (Enter to send, Shift+Enter newline, Ctrl+Enter force-send, history
+// navigation). The DSL binds these via InputMap/ActionMap; the dispatcher impl
+// stays imperative.
 public class InputHandler {
 
     private final PlaceholderTextArea inputArea;
     private final AutocompleteManager autocompleteManager;
     private final MessageSender messageSender;
     private final MessageHistory messageHistory;
-    /** Cached so keyReleased doesn't hit Lookup on every keystroke. */
-    private final ProcessControl processControl = Lookup.getDefault().lookup(ProcessControl.class);
+    private final ProcessService processService = Lookup.getDefault().lookup(PlatformBridge.class).processService();
 
     public InputHandler(
             PlaceholderTextArea inputArea,
@@ -40,7 +44,7 @@ public class InputHandler {
             public void keyPressed(KeyEvent e) {
                 if (e.getKeyCode() == KeyEvent.VK_TAB) {
                     e.consume();
-                    SlashCommandInterceptor interceptor = processControl.getSlashCommandInterceptor();
+                    SlashCommandInterceptor interceptor = processService.get().getSlashCommandInterceptor();
                     SlashCommandCallback cb = interceptor != null ? interceptor.getCallback() : null;
                     if (cb != null) {
                         cb.expandOptionsPanel();
@@ -79,7 +83,7 @@ public class InputHandler {
             @Override
             public void keyReleased(KeyEvent e) {
                 autocompleteManager.handleKeyReleased(e);
-                processControl.touchConnection();
+                processService.get().touchConnection();
             }
         });
     }

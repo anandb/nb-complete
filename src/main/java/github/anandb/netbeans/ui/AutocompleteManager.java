@@ -21,13 +21,17 @@ import javax.swing.JViewport;
 import javax.swing.ListSelectionModel;
 import javax.swing.UIManager;
 
-import github.anandb.netbeans.contract.ProcessControl;
-import org.openide.util.Lookup;
 import github.anandb.netbeans.contract.SlashCommandInterceptor;
 import github.anandb.netbeans.model.ModelRecords.CommandInfo;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.ui.platform.PlatformBridge;
+import github.anandb.netbeans.ui.platform.ProcessService;
+import org.openide.util.Lookup;
 
+// DSL-CONTROLLER: not a view — autocomplete popup state (filter, navigate,
+// enter-to-send). The popup JPopupMenu is a leaf the DSL wraps; the keyboard
+// dispatcher + filter timer stays imperative.
 public class AutocompleteManager {
 
     // --- inner class: merged from AutocompleteRenderer -----------------------
@@ -50,6 +54,8 @@ public class AutocompleteManager {
 
     private static final Logger LOG = Logger.from(AutocompleteManager.class);
     private String lastPrefix;
+
+    private final ProcessService processService = Lookup.getDefault().lookup(PlatformBridge.class).processService();
 
     private final PlaceholderTextArea inputArea;
     private final Runnable sendMessageAction;
@@ -200,7 +206,7 @@ public class AutocompleteManager {
         List<SessionUpdate.AvailableCommand> allCommands = new ArrayList<>();
 
         if (trigger == '/') {
-            SlashCommandInterceptor interceptor = Lookup.getDefault().lookup(ProcessControl.class).getSlashCommandInterceptor();
+            SlashCommandInterceptor interceptor = processService.get().getSlashCommandInterceptor();
             if (interceptor != null) {
                 for (Map.Entry<String, CommandInfo> entry : interceptor.getCommands().entrySet()) {
                     String cmdName = entry.getKey();
@@ -210,7 +216,7 @@ public class AutocompleteManager {
                 }
             }
 
-            allCommands.addAll(Lookup.getDefault().lookup(ProcessControl.class).getAvailableCommands());
+            allCommands.addAll(processService.get().getAvailableCommands());
         }
 
         List<SessionUpdate.AvailableCommand> filtered = allCommands.stream()

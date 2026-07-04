@@ -38,10 +38,16 @@ import github.anandb.netbeans.contract.SessionControl;
 import org.openide.util.Lookup;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.PreferenceKeys;
+import github.anandb.netbeans.ui.platform.PlatformBridge;
+import github.anandb.netbeans.ui.platform.SessionService;
 
+// DSL-LEAF: keep imperative, wrap via UI.of(...) — NetBeans Options panel
+// (GridBagLayout form). When the DSL lands, port the form to OptionsFormSpec;
+// ACPOptionsPanelController (NetBeans SPI) stays as-is.
 public class ACPOptionsPanel extends JPanel {
     private static final Logger LOG = Logger.from(ACPOptionsPanel.class);
     private static final long serialVersionUID = 1L;
+    private final SessionService sessionService = Lookup.getDefault().lookup(PlatformBridge.class).sessionService();
     private final ACPOptionsPanelController controller;
     private JLabel jLabel1;
     private JTextField pathField;
@@ -346,9 +352,9 @@ public class ACPOptionsPanel extends JPanel {
 
         if (changedCombine) {
             LOG.info("Combine tool/thought toggled to {0}", combineCheckbox.isSelected());
-            String currentId = Lookup.getDefault().lookup(SessionControl.class).getCurrentSessionId();
+            String currentId = sessionService.get().getCurrentSessionId();
             if (currentId != null) {
-                SwingUtilities.invokeLater(() -> Lookup.getDefault().lookup(SessionControl.class).loadSession(currentId));
+                SwingUtilities.invokeLater(() -> sessionService.get().loadSession(currentId));
             }
         }
         PluginSettings.setCustomUserIcon(iconPathField.getText());
@@ -360,7 +366,7 @@ public class ACPOptionsPanel extends JPanel {
             LOG.info("User icon changed: {0} -> {1}", oldPath, newPath);
             previousIconPath = newPath;
             SwingUtilities.invokeLater(() -> {
-                SessionControl sm = Lookup.getDefault().lookup(SessionControl.class);
+                SessionControl sm = sessionService.get();
                 String currentId = sm.getCurrentSessionId();
                 if (currentId != null) {
                     sm.loadSession(currentId);

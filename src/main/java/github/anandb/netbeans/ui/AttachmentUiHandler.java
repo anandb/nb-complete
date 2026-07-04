@@ -16,6 +16,9 @@ import github.anandb.netbeans.model.AttachedFile;
  * Handles all attachment-related UI: paperclip button, file selection popup,
  * attachment tooltip updates, and image paste handling.
  */
+// DSL-LEAF: not a controller — builds the paperclip toolbar button + popup menu
+// for file attachments. Migration target: AttachmentButtonSpec; the JFileChooser
+// + AttachmentManager state wiring stays imperative.
 public class AttachmentUiHandler {
 
     private final AttachmentManager attachmentManager;

@@ -4,15 +4,21 @@ import javax.swing.JComboBox;
 import javax.swing.SwingUtilities;
 import javax.swing.event.PopupMenuEvent;
 import javax.swing.event.PopupMenuListener;
-import github.anandb.netbeans.contract.SessionControl;
-import org.openide.util.Lookup;
 import github.anandb.netbeans.model.SessionItem;
+import org.openide.util.Lookup;
+
+import github.anandb.netbeans.ui.platform.PlatformBridge;
+import github.anandb.netbeans.ui.platform.SessionService;
 
 /**
  * Handles session dropdown popup behavior: tracking session selection changes
  * and restoring focus to the input area after popup interactions.
  */
+// DSL-CONTROLLER: not a view — dropdown popup visibility / hide-on-outside-click
+// state. Stays imperative; the JComboBox it drives is bound by ChatLayoutSpec.
 public class SessionDropdownHandler {
+
+    private final SessionService sessionService = Lookup.getDefault().lookup(PlatformBridge.class).sessionService();
 
     private final PlaceholderTextArea inputArea;
 
@@ -40,7 +46,7 @@ public class SessionDropdownHandler {
                 if (currentId != null && previousId != null && !currentId.equals(previousId)) {
                     if (now - lastSessionSwitch[0] < 500) return;
                     lastSessionSwitch[0] = now;
-                    boolean success = Lookup.getDefault().lookup(SessionControl.class).loadSession(currentId);
+                    boolean success = sessionService.get().loadSession(currentId);
                     if (!success) {
                         SwingUtilities.invokeLater(() -> sessionDropdown.setSelectedItem(prePopupSession[0]));
                     }

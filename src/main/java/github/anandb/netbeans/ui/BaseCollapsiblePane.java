@@ -35,6 +35,9 @@ import github.anandb.netbeans.support.ToolDataExtractor;
  * Centralizes common GUI layout elements including headers, titles, accordion toggles,
  * copy buttons, and segmented panel builders to eliminate code duplication and maintain visual consistency.
  */
+// DSL-LEAF: keep imperative, wrap via UI.of(...) — extends JPanel with custom
+// expand/collapse animation, title row, param/output sub-panels. Migration
+// target: CollapsibleHeaderSpec + CollapsibleBodySpec; the toggle timer stays imperative.
 public abstract class BaseCollapsiblePane extends RoundedPanel {
     private static final Pattern TOOL_PREFIX = Pattern.compile("(?i)TOOL:?\\s*");
     private static final Logger LOG = Logger.from(BaseCollapsiblePane.class);

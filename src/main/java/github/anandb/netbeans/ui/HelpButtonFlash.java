@@ -13,6 +13,9 @@ import github.anandb.netbeans.support.TimingConstants;
  * Flashes a help button on startup for discoverability.
  * Self-contained — creates its own timer and cleans up when done.
  */
+// DSL-CONTROLLER: not a view — flashTimer drives the help button's
+// "new-update" pulse animation. Stays imperative; the button it animates is
+// bound by the future ChatToolbarSpec.
 final class HelpButtonFlash {
 
     private HelpButtonFlash() {}

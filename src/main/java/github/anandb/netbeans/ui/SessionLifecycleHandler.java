@@ -17,8 +17,10 @@ import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.SessionConfigOption;
 import github.anandb.netbeans.model.SessionItem;
 import github.anandb.netbeans.model.SessionUpdate;
-import github.anandb.netbeans.project.ACPProjectManager;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.ui.platform.PlatformBridge;
+import github.anandb.netbeans.ui.platform.ProjectContext;
+import github.anandb.netbeans.ui.platform.SessionService;
 import org.netbeans.api.project.Project;
 import org.netbeans.api.project.ui.OpenProjects;
 import org.openide.util.NbBundle;
@@ -27,7 +29,13 @@ import org.openide.util.NbBundle;
  * Handles all SessionListener callbacks, updating the chat panel, session dropdown,
  * status bar, and config controls. Replaces the corresponding methods in AssistantTopComponent.
  */
+// DSL-CONTROLLER: not a view — session lifecycle bridge (refresh / load / new /
+// rename / archive). Stays imperative; the toolbar buttons it toggles are
+// bound via the future ChatToolbarSpec + ChatToolbarActions.
 public class SessionLifecycleHandler implements SessionListener {
+
+    private final SessionService sessionService = Lookup.getDefault().lookup(PlatformBridge.class).sessionService();
+    private final ProjectContext projectContext = Lookup.getDefault().lookup(PlatformBridge.class).projectContext();
 
     private static final Logger LOG = Logger.from(SessionLifecycleHandler.class);
 
@@ -107,7 +115,7 @@ public class SessionLifecycleHandler implements SessionListener {
     public void onMessageDone() {
         LOG.info("onMessageDone called (turnEnded -> true, triggering onTurnEnded)");
         turnEnded = true;
-        Lookup.getDefault().lookup(SessionControl.class).onTurnEnded();
+        sessionService.get().onTurnEnded();
     }
 
     boolean isSwitchingSessionDropdown() {
@@ -138,7 +146,7 @@ public class SessionLifecycleHandler implements SessionListener {
                     // late message is safe; showing it in the wrong session is
                     // a visible data corruption.
                     if (msgSessionId != null) {
-                        String currentId = Lookup.getDefault().lookup(SessionControl.class).getCurrentSessionId();
+                        String currentId = sessionService.get().getCurrentSessionId();
                         if (!msgSessionId.equals(currentId)) {
                             return;
                         }
@@ -164,7 +172,7 @@ public class SessionLifecycleHandler implements SessionListener {
 
             @Override
             public void refreshSessions() {
-                Lookup.getDefault().lookup(SessionControl.class).refreshSessions();
+                sessionService.get().refreshSessions();
             }
 
             @Override
@@ -214,7 +222,7 @@ public class SessionLifecycleHandler implements SessionListener {
             List<Session> sessions = allSessions;
             isSwitchingSessionDropdown = true;
             try {
-                String currentId = Lookup.getDefault().lookup(SessionControl.class).getCurrentSessionId();
+                String currentId = sessionService.get().getCurrentSessionId();
                 sessionDropdown.removeAllItems();
                 LOG.fine("onSessionListUpdated: adding {0} sessions to dropdown", sessions.size());
                 int selectIdx = -1;
@@ -223,10 +231,10 @@ public class SessionLifecycleHandler implements SessionListener {
                 for (int i = 0; i < sessions.size(); i++) {
                     Session s = sessions.get(i);
                     // Filter hidden sessions unless show-hidden toggle is active
-                    if (!showHidden && Lookup.getDefault().lookup(SessionControl.class).isHidden(s.id())) {
+                    if (!showHidden && sessionService.get().isHidden(s.id())) {
                         continue;
                     }
-                    String customTitle = Lookup.getDefault().lookup(SessionControl.class).getCustomTitle(s.id(), s.title());
+                    String customTitle = sessionService.get().getCustomTitle(s.id(), s.title());
                     sessionDropdown.addItem(new SessionItem(s, customTitle));
                     if (currentId != null && s.id().equals(currentId)) {
                         selectIdx = itemIdx;
@@ -241,7 +249,7 @@ public class SessionLifecycleHandler implements SessionListener {
                 // When the session is being filtered out (archived), onSessionLoaded will set the
                 // correct icon for the replacement session — updating here causes a brief icon flip.
                 if (currentId != null && selectIdx != -1) {
-                    boolean hidden = Lookup.getDefault().lookup(SessionControl.class).isHidden(currentId);
+                    boolean hidden = sessionService.get().isHidden(currentId);
                     hideBtn.setIcon(ThemeManager.getIcon(hidden ? "unarchive.svg" : "archive.svg", 28));
                     hideBtn.setToolTipText(hidden
                         ? NbBundle.getMessage(AssistantTopComponent.class, "HINT_UnarchiveSession")
@@ -259,7 +267,7 @@ public class SessionLifecycleHandler implements SessionListener {
                         // Current session is gone (e.g. its project closed).
                         // Prefer a session from the SAME project as the last active
                         // session to avoid hijacking the user to a different project.
-                        String prevDir = Lookup.getDefault().lookup(SessionControl.class).getCurrentSessionDirectory();
+                        String prevDir = sessionService.get().getCurrentSessionDirectory();
                         SessionItem sameProjectMatch = null;
                         SessionItem mostRecentAny = sessionDropdown.getItemAt(0);
                         for (int i = 0; i < sessionDropdown.getItemCount(); i++) {
@@ -274,22 +282,22 @@ public class SessionLifecycleHandler implements SessionListener {
                         if (fallback != null) {
                             LOG.fine("Auto-selecting fallback session: {0} (sameProject={1})",
                                     fallback.getSession().id(), sameProjectMatch != null);
-                            Lookup.getDefault().lookup(SessionControl.class).loadSession(fallback.getSession().id());
+                            sessionService.get().loadSession(fallback.getSession().id());
                         }
                     }
                 } else {
                     // Filter hidden sessions for WelcomeScreen too
                     List<Session> visibleSessions = showHidden ? sessions
                         : sessions.stream()
-                            .filter(s -> !Lookup.getDefault().lookup(SessionControl.class).isHidden(s.id()))
+                            .filter(s -> !sessionService.get().isHidden(s.id()))
                             .toList();
-                    chatPanel.setSessionList(visibleSessions, id -> Lookup.getDefault().lookup(SessionControl.class).loadSession(id), () -> {
-                        Project[] projects = ACPProjectManager.getInstance().getAllOpenProjects();
+                    chatPanel.setSessionList(visibleSessions, id -> sessionService.get().loadSession(id), () -> {
+                        Project[] projects = projectContext.getAllOpenProjects();
                         if (projects == null || projects.length == 0) {
                             return;
                         }
                         if (projects.length == 1) {
-                            Lookup.getDefault().lookup(SessionControl.class).createNewSession(projects[0].getProjectDirectory().getPath());
+                            sessionService.get().createNewSession(projects[0].getProjectDirectory().getPath());
                         } else {
                             projectPickerShower.accept(sessionDropdown);
                         }
@@ -342,7 +350,7 @@ public class SessionLifecycleHandler implements SessionListener {
     @Override
     public void onSessionRenamed(String sessionId) {
         SwingUtilities.invokeLater(() -> {
-            SessionControl sc = Lookup.getDefault().lookup(SessionControl.class);
+            SessionControl sc = sessionService.get();
             for (int i = 0; i < sessionDropdown.getItemCount(); i++) {
                 SessionItem item = sessionDropdown.getItemAt(i);
                 if (item != null && sessionId.equals(item.getSession().id())) {
@@ -394,7 +402,7 @@ public class SessionLifecycleHandler implements SessionListener {
             statusController.setInputEnabled(true);
             sessionStateHandler.accept(true);
             hideBtn.setEnabled(true);
-            boolean hidden = Lookup.getDefault().lookup(SessionControl.class).isHidden(sessionId);
+            boolean hidden = sessionService.get().isHidden(sessionId);
             hideBtn.setIcon(ThemeManager.getIcon(hidden ? "unarchive.svg" : "archive.svg", 28));
             hideBtn.setToolTipText(hidden
                 ? NbBundle.getMessage(AssistantTopComponent.class, "HINT_UnarchiveSession")

@@ -8,11 +8,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import github.anandb.netbeans.contract.SessionControl;
 import github.anandb.netbeans.model.ModelRecords.ConfigItem;
 import github.anandb.netbeans.model.SessionConfigOption;
 import github.anandb.netbeans.model.SessionConfigSelectOption;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.ui.platform.PlatformBridge;
+import github.anandb.netbeans.ui.platform.SessionService;
 import org.openide.util.Lookup;
 
 /**
@@ -22,6 +23,8 @@ import org.openide.util.Lookup;
 final class ModelVariantResolver {
 
     private static final Logger LOG = Logger.from(ModelVariantResolver.class);
+
+    private final SessionService sessionService = Lookup.getDefault().lookup(PlatformBridge.class).sessionService();
 
     private final LinkedHashMap<String, List<ConfigItem>> modelVariants = new LinkedHashMap<>();
     private String currentConfigModelId = null;
@@ -84,7 +87,7 @@ final class ModelVariantResolver {
     String resolveStartupValue(SessionConfigOption opt, boolean isThinking,
                                 String currentValue, boolean force) {
         if (!force) return currentValue;
-        String currentId = Lookup.getDefault().lookup(SessionControl.class).getCurrentSessionId();
+        String currentId = sessionService.get().getCurrentSessionId();
 
         if ("mode".equals(opt.category())) {
             if (opt.options().stream().anyMatch(o -> "build".equalsIgnoreCase(o.value()))) {
@@ -107,12 +110,12 @@ final class ModelVariantResolver {
                 String match = findModelMatch(opt, envModel);
                 if (match != null) {
                     LOG.fine("Using OPENCODE_MODEL: {0}", new Object[]{match});
-                    Lookup.getDefault().lookup(SessionControl.class).setSessionConfigOption(currentId, opt.id(), match);
+                    sessionService.get().setSessionConfigOption(currentId, opt.id(), match);
                     return match;
                 }
             }
             if (lastSelectedModelId != null && !lastSelectedModelId.equalsIgnoreCase(currentValue)) {
-                Lookup.getDefault().lookup(SessionControl.class).setSessionConfigOption(currentId, opt.id(), lastSelectedModelId);
+                sessionService.get().setSessionConfigOption(currentId, opt.id(), lastSelectedModelId);
                 return lastSelectedModelId;
             }
         }
@@ -123,7 +126,7 @@ final class ModelVariantResolver {
     private String sendAndReturn(SessionConfigOption opt, String forcedValue, String currentId) {
         if (!forcedValue.equalsIgnoreCase(opt.currentValue()) && currentId != null) {
             LOG.fine("Forcing default: {0}={1} (was {2})", new Object[]{opt.id(), forcedValue, opt.currentValue()});
-            Lookup.getDefault().lookup(SessionControl.class).setSessionConfigOption(currentId, opt.id(), forcedValue);
+            sessionService.get().setSessionConfigOption(currentId, opt.id(), forcedValue);
             return forcedValue;
         }
         return opt.currentValue();

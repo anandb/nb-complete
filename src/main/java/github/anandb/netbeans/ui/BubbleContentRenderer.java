@@ -10,6 +10,9 @@ import java.util.regex.Pattern;
 import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
 
+// DSL-LEAF: not a controller — renders bubble content (segment → component).
+// Migration target: BubbleContentSpec; the per-MessageType render dispatch
+// stays imperative until the DSL can express it declaratively.
 class BubbleContentRenderer {
 
     private static final Pattern CODE_BLOCK_PATTERN = Pattern.compile(
