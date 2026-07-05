@@ -175,6 +175,12 @@
     "light": "#B8B0A0"
   },
   {
+    "name": "tableRowAlternate",
+    "property": "netbeans.codingassistant.color.tableRowAlternate",
+    "dark": "#443A2E",
+    "light": "#F0E9DB"
+  },
+  {
     "name": "mutedForeground",
     "property": "netbeans.codingassistant.color.mutedForeground",
     "key": "Label.disabledForeground",

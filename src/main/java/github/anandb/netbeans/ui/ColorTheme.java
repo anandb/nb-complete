@@ -88,6 +88,7 @@ public final class ColorTheme {
     public Color  tableBackground()                              { return registry.get(ColorKey.table_background); }
     public Color  tableHeaderBackground()                        { return registry.get(ColorKey.table_header_background); }
     public Color  tableBorder()                                  { return registry.get(ColorKey.table_border); }
+    public Color  tableRowAlternate()                            { return registry.get(ColorKey.table_row_alternate); }
     public Color  mutedForeground()                              { return registry.get(ColorKey.muted_foreground); }
     public Color  placeholderForeground()                        { return registry.get(ColorKey.placeholder_foreground); }
     public Color  collapsedHeaderForeground()                    { return registry.get(ColorKey.collapsed_header_foreground); }

@@ -9,9 +9,9 @@
 
 Coding Assistant is a NetBeans IDE plugin designed to provide integrated AI capabilities through the Agent Client Protocol (ACP). It offers a structured chat interface for technical assistance, including code generation, project analysis, and automated task execution.
 
-| | |
-| :---: | :---: |
-| ![UI Screenshot 1](screenshots/Screenshot_20260424_030044.png) | ![UI Screenshot 2](screenshots/Screenshot_20260424_025618.png) |
+| | | |
+| :---: | :---: | :---: |
+| ![UI Screenshot 1](screenshots/Screenshot_20260705_235605.png) | ![UI Screenshot 2](screenshots/Screenshot_20260705_235904.png) | ![UI Screenshot 3](screenshots/Screenshot_20260706_000132.png) |
 
 ---
 
@@ -53,13 +53,13 @@ configuration in `opencode.json`
 
 ## Architecture
 
-The project follows an event-driven architecture integrated into the NetBeans Platform:
+The project follows a hexagonal (ports & adapters) architecture integrated into the NetBeans Platform:
 
-- **Management Layer**: Handles the lifecycle of the communication process and service discovery.
-- **Protocol Layer**: Manages JSON-RPC communication and session state transitions.
-- **Streaming Service**: Processes real-time data feeds for the user interface.
-- **UI Components**: Provides specialized Swing-based components for chat rendering and interaction.
-- **Theme System**: Ensures visual consistency with the host IDE environment.
+- **`model/`**: ACP-compliant data records (sessions, messages, updates, config options). Zero dependencies on upper layers.
+- **`contract/`**: Service interfaces that define ports for session control, process management, and UI callbacks. `manager/` implements; `ui/` consumes.
+- **`manager/`**: Core orchestration — protocol client (JSON-RPC over stdin/stdout), session state machine, process lifecycle, and SSE strategy dispatch.
+- **`support/`**: Pure utilities — logging, JSON mapping, text scanning, constants, browser helpers. Zero dependencies on upper layers.
+- **`ui/`**: All Swing components — chat window, message bubbles, streaming animation, theming, options panel. Depends only on `contract/` interfaces.
 
 ---
 
@@ -70,13 +70,18 @@ All source lives under `src/main/java/github/anandb/netbeans/`:
 | Package | Files | Role |
 | --- | --- | --- |
 | `contract/` | 13 | Service interfaces (UI callbacks, session & process control, permission & request handlers) |
-| `manager/` | 12 | Core orchestration, protocol clients, session management, process lifecycle |
+| `manager/` | 11 | Core orchestration, protocol clients, session management, process lifecycle |
 | `manager/strategy/` | 2 | Strategy dispatch and sub-agent title resolution |
 | `mcp/` | 11 | MCP server integration (editor tools, tool definitions, message servlet) |
 | `model/` | 15 | ACP-compliant data models (session, messages, updates, config options, color tokens) |
-| `project/` | 4 | NetBeans lifecycle hooks (`@OnStart`, `@OnStop`), project manager, MdProject support |
+| `project/` | 3 | NetBeans lifecycle hooks (`@OnStart`, `@OnStop`), project manager |
+| `project/mdproject/` | 6 | Markdown project support (file types, data objects, openable) |
 | `support/` | 14 | Utilities (logging, JSON mapping, text scanning, constants, browser helpers) |
-| `ui/` | 72 | All Swing components (chat window, message bubbles, theming, options panel) |
+| `ui/` | 71 | Swing components (chat window, message bubbles, theming, options panel) |
+| `ui/platform/` | 7 | Platform integration (IDE theme detection, icon resources, editor context) |
+| `ui/spec/` | 6 | Specification/configuration UI components |
+| `ui/vm/` | 4 | View model layer (decouples UI from business logic) |
+| `ui/mdproject/` | 3 | Markdown project UI components |
 
 ---
 
@@ -91,7 +96,7 @@ For a guided walkthrough mapped to the plugin's execution flow, read files in th
 
 ### Phase 2: Server Process
 4. [`manager/ProcessManager.java`](src/main/java/github/anandb/netbeans/manager/ProcessManager.java) — Spawns/owns the `opencode acp` subprocess; central request dispatch
-5. [`manager/BinaryResolver.java`](src/main/java/github/anandb/netbeans/manager/BinaryResolver.java) — Locates the binary on PATH
+5. [`support/BinaryResolver.java`](src/main/java/github/anandb/netbeans/support/BinaryResolver.java) — Locates the binary on PATH
 6. [`manager/CommandBuilder.java`](src/main/java/github/anandb/netbeans/manager/CommandBuilder.java) — Builds CLI args
 7. [`manager/AcpProtocolClient.java`](src/main/java/github/anandb/netbeans/manager/AcpProtocolClient.java) — JSON-RPC over stdin/stdout, SSE read loop, pending request tracking
 

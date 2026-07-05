@@ -76,6 +76,11 @@ public final class HtmlContentPreparer {
                 "<p>", pTag,
                 "<div>", divTag);
 
+        // Alternating row highlighting — Swing's HTMLEditorKit doesn't support
+        // CSS nth-child, so we inject inline styles on even <tr> elements.
+        String alternateBg = theme.toHtmlHex(theme.tableRowAlternate());
+        html = highlightAlternateRows(html, alternateBg);
+
         boolean hasArt = TextScanner.containsAsciiArt(markdown);
         if (!hasArt && !"user".equals(role)) {
             html = html.replace("  ", " &nbsp;");
@@ -178,6 +183,40 @@ public final class HtmlContentPreparer {
             }
             sb.append(source.charAt(i));
             i++;
+        }
+        return sb.toString();
+    }
+
+    /**
+     * Adds inline {@code background-color} to every even (2nd, 4th, …)
+     * {@code <tr>} element for alternating row highlighting.
+     * Swing's {@code HTMLEditorKit} doesn't support CSS {@code nth-child},
+     * so this must be done via HTML post-processing.
+     */
+    private static String highlightAlternateRows(String html, String alternateBg) {
+        StringBuilder sb = new StringBuilder(html.length() + 128);
+        int trCount = 0;
+        int i = 0;
+        while (i < html.length()) {
+            int trStart = html.indexOf("<tr", i);
+            if (trStart < 0) {
+                sb.append(html.substring(i));
+                break;
+            }
+            sb.append(html, i, trStart);
+            trCount++;
+            int tagEnd = html.indexOf('>', trStart);
+            if (tagEnd < 0) {
+                sb.append(html.substring(trStart));
+                break;
+            }
+            sb.append(html, trStart, tagEnd + 1);
+            if (trCount % 2 == 0) {
+                // Insert style attribute before the closing '>'
+                sb.insert(sb.length() - 1,
+                        " style='background-color: " + alternateBg + "'");
+            }
+            i = tagEnd + 1;
         }
         return sb.toString();
     }

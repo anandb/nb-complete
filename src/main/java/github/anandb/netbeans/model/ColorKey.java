@@ -42,6 +42,7 @@ public enum ColorKey {
     table_background("tableBackground"),
     table_header_background("tableHeaderBackground"),
     table_border("tableBorder"),
+    table_row_alternate("tableRowAlternate"),
     muted_foreground("mutedForeground"),
     placeholder_foreground("placeholderForeground"),
     collapsed_header_foreground("collapsedHeaderForeground"),
