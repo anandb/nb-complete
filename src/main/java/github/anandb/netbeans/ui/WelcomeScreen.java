@@ -26,20 +26,29 @@ import static org.apache.commons.lang3.StringUtils.left;
 
 import org.openide.util.NbBundle;
 
+import github.anandb.netbeans.model.Session;
+import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
 import github.anandb.netbeans.ui.platform.SessionService;
 import org.openide.util.Lookup;
-import github.anandb.netbeans.model.Session;
 
 // DSL-LEAF: not a controller — static factory that builds the welcome/session
 // list view. The DSL migration ports build to WelcomeSpec; the
 // SessionControl.lookup calls move to PlatformBridge.SessionService (see MIGRATION.md Phase 4).
 final class WelcomeScreen {
 
-    private static final SessionService SESSION_SERVICE =
-            Lookup.getDefault().lookup(PlatformBridge.class).sessionService();
+    private static final Logger LOG = Logger.from(WelcomeScreen.class);
 
     private WelcomeScreen() {}
+
+    private static SessionService sessionService() {
+        var bridge = Lookup.getDefault().lookup(PlatformBridge.class);
+        if (bridge == null) {
+            LOG.severe("PlatformBridge not found in Lookup — WelcomeScreen may display stale data");
+            return null;
+        }
+        return bridge.sessionService();
+    }
 
     public static void show(JPanel messagesContainer, List<Session> sessions,
                             Consumer<String> onSessionSelected, Runnable onNewChat) {
@@ -72,12 +81,14 @@ final class WelcomeScreen {
             messagesContainer.add(Box.createVerticalStrut(12));
 
             boolean showHidden = ChatLayoutBuilder.isShowingHidden();
+            SessionService svc = sessionService();
             for (Session s : sessions) {
-                if (!showHidden && SESSION_SERVICE.get().isHidden(s.id())) {
+                if (svc == null) break;
+                if (!showHidden && svc.get().isHidden(s.id())) {
                     continue;
                 }
                 String title = defaultIfBlank(s.title(), NbBundle.getMessage(AssistantTopComponent.class, "LBL_ChatDefault", left(s.id(), 8)));
-                String label = SESSION_SERVICE.get().getCustomTitle(s.id(), title);
+                String label = svc.get().getCustomTitle(s.id(), title);
                 String dir = s.effectiveDirectory();
                 JButton sessionBtn = createSelectionButton(label, dir);
                 sessionBtn.addActionListener(e -> onSessionSelected.accept(s.id()));

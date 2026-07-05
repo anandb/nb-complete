@@ -23,9 +23,9 @@ import javax.swing.TransferHandler.TransferSupport;
 import javax.swing.text.JTextComponent;
 
 import org.openide.util.NbBundle;
-import org.openide.util.RequestProcessor;
 
 import github.anandb.netbeans.model.AttachedFile;
+import github.anandb.netbeans.support.ImagePasteIoProcessor;
 
 // DSL-CONTROLLER: not a view — image paste background I/O thread pool + EDT
 // bridge to AttachmentManager. Stays imperative; the input area + preview
@@ -36,12 +36,6 @@ public class ImagePasteTransferHandler extends TransferHandler {
 
     private final transient PasteCallback callback;
     private static final long MAX_FILE_SIZE = 10 * 1024 * 1024;
-    private static final RequestProcessor IO_RP = new RequestProcessor("ImagePaste-IO", 2, true);
-
-    /** Shuts down the background I/O thread pool. Called at IDE shutdown. */
-    public static void shutdownIoProcessor() {
-        IO_RP.stop();
-    }
 
     public interface PasteCallback {
         boolean canAddAttachment();
@@ -102,7 +96,7 @@ public class ImagePasteTransferHandler extends TransferHandler {
                 Image image = (Image) support.getTransferable().getTransferData(DataFlavor.imageFlavor);
                 if (image != null) {
                     // Do I/O on background thread, report via callback
-                    IO_RP.post(() -> processImageAsync(image));
+                    ImagePasteIoProcessor.get().post(() -> processImageAsync(image));
                     return true;
                 }
             }
@@ -113,7 +107,7 @@ public class ImagePasteTransferHandler extends TransferHandler {
                 if (files != null && !files.isEmpty()) {
                     File file = files.get(0);
                     if (file != null) {
-                        IO_RP.post(() -> processFileAsync(file));
+                        ImagePasteIoProcessor.get().post(() -> processFileAsync(file));
                         return true;
                     }
                 }
@@ -138,7 +132,7 @@ public class ImagePasteTransferHandler extends TransferHandler {
         // EDT to avoid blocking the UI for hundreds of ms. Optimistically return
         // true (matching the image/file async paths) and report via the callback.
         if (isWayland() && callback != null && callback.canAddAttachment()) {
-            IO_RP.post(this::processWaylandClipboardAsync);
+            ImagePasteIoProcessor.get().post(this::processWaylandClipboardAsync);
             return true;
         }
         return false;

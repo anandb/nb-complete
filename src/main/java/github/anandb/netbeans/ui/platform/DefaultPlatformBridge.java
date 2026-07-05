@@ -1,6 +1,7 @@
 package github.anandb.netbeans.ui.platform;
 
 import java.util.prefs.Preferences;
+import java.util.logging.Level;
 
 import org.netbeans.api.project.Project;
 import org.openide.util.Lookup;
@@ -11,6 +12,7 @@ import org.openide.util.lookup.ServiceProvider;
 import github.anandb.netbeans.contract.ProcessControl;
 import github.anandb.netbeans.contract.SessionControl;
 import github.anandb.netbeans.project.ACPProjectManager;
+import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.PreferenceKeys;
 
 /**
@@ -39,14 +41,24 @@ public final class DefaultPlatformBridge implements PlatformBridge {
     @Override public ProjectContext projectContext() { return projectContext; }
 
     private static final class SessionServiceImpl implements SessionService {
+        private static final Logger LOG = Logger.from(SessionServiceImpl.class);
         @Override public SessionControl get() {
-            return Lookup.getDefault().lookup(SessionControl.class);
+            SessionControl sc = Lookup.getDefault().lookup(SessionControl.class);
+            if (sc == null) {
+                LOG.log(Level.WARNING, "SessionControl not found in Lookup — callers must handle null");
+            }
+            return sc;
         }
     }
 
     private static final class ProcessServiceImpl implements ProcessService {
+        private static final Logger LOG = Logger.from(ProcessServiceImpl.class);
         @Override public ProcessControl get() {
-            return Lookup.getDefault().lookup(ProcessControl.class);
+            ProcessControl pc = Lookup.getDefault().lookup(ProcessControl.class);
+            if (pc == null) {
+                LOG.log(Level.WARNING, "ProcessControl not found in Lookup — callers must handle null");
+            }
+            return pc;
         }
     }
 

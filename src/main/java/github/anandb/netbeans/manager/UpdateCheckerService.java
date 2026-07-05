@@ -26,14 +26,15 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import github.anandb.netbeans.contract.UpdateCheckerControl;
 import github.anandb.netbeans.support.AgentUtils;
 import github.anandb.netbeans.support.BrowserUtils;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.MapperSupplier;
 import github.anandb.netbeans.support.PreferenceKeys;
 
-@ServiceProvider(service = UpdateCheckerService.class)
-public class UpdateCheckerService {
+@ServiceProvider(service = UpdateCheckerControl.class)
+public class UpdateCheckerService implements UpdateCheckerControl {
 
     private static final Logger LOG = Logger.from(UpdateCheckerService.class);
     private static final String UPDATE_URL = "https://anandb.github.io/beanbot.json";

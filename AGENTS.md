@@ -109,18 +109,21 @@ NbPreferences.forModule(PreferenceKeys.class)
 | Data classes | `model/` | `Session`, `ProcessedMessage` |
 | Utilities, constants | `support/` | `Logger`, `PreferenceKeys` |
 
-### Architectural Debt (Known Violations)
+### Architectural Debt (Known Violations — All Resolved)
 - **ui/ → manager/ singletons (RESOLVED)**: All `ui/` → `manager/SessionManager` and
   `ProcessManager` imports have been eliminated. UI now accesses services via
   `Lookup.getDefault().lookup(SessionControl.class)` and
   `Lookup.getDefault().lookup(ProcessControl.class)`. Do NOT reintroduce
   `SessionManager.getInstance()` or `ProcessManager.getInstance()` calls in `ui/`.
+- **project/ACPStartup → manager/ (RESOLVED)**: `ACPStartup` was importing
+  `manager/UpdateCheckerService` directly. Fixed via `contract/UpdateCheckerControl`
+  interface with `Lookup.getDefault().lookup()`. Do NOT reintroduce direct
+  `UpdateCheckerService.getInstance()` calls in `project/`.
+- **project/ACPShutdown → ui/ (RESOLVED)**: `ACPShutdown` was importing
+  `ui/ImagePasteTransferHandler` to shut down the image paste I/O thread pool.
+  Fixed by extracting the `RequestProcessor` to `support/ImagePasteIoProcessor`.
 - **New extraction pattern**: When extracting utilities from `ui/` god components, place
   pure logic in `support/` (e.g. `ToolContextExtractor`). Keep Swing-coupled code in `ui/`.
-- **project/ACPShutdown → ui/**: `ACPShutdown` imports `ImagePasteTransferHandler` to
-  shut down the image paste I/O thread pool. This is a pragmatic exception — shutdown
-  hooks are one-shot cleanup at IDE exit, not design-time coupling. Do NOT add other
-  `project/` → `ui/` imports.
 
 ## Critical Technical Details
 

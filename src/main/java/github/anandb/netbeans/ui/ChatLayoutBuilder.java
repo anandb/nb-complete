@@ -31,7 +31,6 @@ import org.openide.util.NbPreferences;
 import github.anandb.netbeans.support.AgentUtils;
 import github.anandb.netbeans.support.PreferenceKeys;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
-import github.anandb.netbeans.ui.platform.ProjectContext;
 
 // DSL-CONTROLLER: not a view — newSessionDebounceTimer (300ms) lives here per
 // AGENTS.md. Construction body is the Phase 2 seam target (ChatLayoutSpec);
@@ -41,7 +40,6 @@ final class ChatLayoutBuilder {
     private final AssistantTopComponent topComponent;
     private final ChatThreadPanel chatPanel;
     private final ConfigPanelController configPanelController;
-    private final ProjectContext projectContext = Lookup.getDefault().lookup(PlatformBridge.class).projectContext();
 
     private UIUtils.WrappingComboBox<?> sessionDropdown;
     private JButton hideBtn;
@@ -104,23 +102,28 @@ final class ChatLayoutBuilder {
                 Object sel = sessionDropdown.getSelectedItem();
                 if (sel instanceof github.anandb.netbeans.model.SessionItem item) {
                     String sessionId = item.getSession().id();
-                    boolean hidden = Lookup.getDefault()
-                        .lookup(github.anandb.netbeans.contract.SessionControl.class)
-                        .isHidden(sessionId);
+                    var tmpSc = Lookup.getDefault()
+                        .lookup(github.anandb.netbeans.contract.SessionControl.class);
 
                     JMenuItem rename = new JMenuItem("Rename");
                     rename.addActionListener(ev -> topComponent.renameCurrentSession());
                     add(rename);
 
-                    JMenuItem archive = new JMenuItem(hidden ? "Unarchive" : "Archive");
-                    archive.addActionListener(ev -> {
-                        github.anandb.netbeans.contract.SessionControl sc =
-                            Lookup.getDefault().lookup(
+                    if (tmpSc != null) {
+                        boolean hidden = tmpSc.isHidden(sessionId);
+                        JMenuItem archive = new JMenuItem(hidden ? "Unarchive" : "Archive");
+                        archive.addActionListener(ev -> {
+                            var archSc = Lookup.getDefault().lookup(
                                 github.anandb.netbeans.contract.SessionControl.class);
-                        sc.setHidden(sessionId, !hidden);
-                        sc.refreshSessions();
-                    });
-                    add(archive);
+                            if (archSc == null) {
+                                topComponent.setStatus("STATUS_ServiceUnavailable");
+                                return;
+                            }
+                            archSc.setHidden(sessionId, !hidden);
+                            archSc.refreshSessions();
+                        });
+                        add(archive);
+                    }
 
                     addSeparator();
 
@@ -145,11 +148,17 @@ final class ChatLayoutBuilder {
             });
             timer.setRepeats(false);
             timer.start();
-            String sid = Lookup.getDefault().lookup(github.anandb.netbeans.contract.SessionControl.class).getCurrentSessionId();
+            var sc = Lookup.getDefault().lookup(github.anandb.netbeans.contract.SessionControl.class);
+            if (sc == null) {
+                btn.setEnabled(true);
+                topComponent.setStatus("STATUS_ServiceUnavailable");
+                return;
+            }
+            String sid = sc.getCurrentSessionId();
             if (sid != null) {
-                boolean currentlyHidden = Lookup.getDefault().lookup(github.anandb.netbeans.contract.SessionControl.class).isHidden(sid);
-                Lookup.getDefault().lookup(github.anandb.netbeans.contract.SessionControl.class).setHidden(sid, !currentlyHidden);
-                Lookup.getDefault().lookup(github.anandb.netbeans.contract.SessionControl.class).refreshSessions();
+                boolean currentlyHidden = sc.isHidden(sid);
+                sc.setHidden(sid, !currentlyHidden);
+                sc.refreshSessions();
             } else {
                 btn.setEnabled(true);
             }
@@ -166,7 +175,12 @@ final class ChatLayoutBuilder {
             shbRef[0].setToolTipText(showing
                 ? NbBundle.getMessage(AssistantTopComponent.class, "HINT_HideArchivedSessions")
                 : NbBundle.getMessage(AssistantTopComponent.class, "HINT_ShowArchivedSessions"));
-            Lookup.getDefault().lookup(github.anandb.netbeans.contract.SessionControl.class).refreshSessionList();
+            var sc = Lookup.getDefault().lookup(github.anandb.netbeans.contract.SessionControl.class);
+            if (sc != null) {
+                sc.refreshSessionList();
+            } else {
+                topComponent.setStatus("STATUS_ServiceUnavailable");
+            }
         });
         shbRef[0] = shb;
         showHiddenBtn = shb;
@@ -514,14 +528,18 @@ final class ChatLayoutBuilder {
     JButton getShowHiddenBtn() { return showHiddenBtn; }
 
     private void fireNewSession() {
-        org.netbeans.api.project.Project[] projects = projectContext.getAllOpenProjects();
+        var bridge = Lookup.getDefault().lookup(PlatformBridge.class);
+        if (bridge == null) return;
+        org.netbeans.api.project.Project[] projects = bridge.projectContext().getAllOpenProjects();
         if (projects == null || projects.length == 0) {
             return;
         }
         if (projects.length == 1) {
-            Lookup.getDefault()
-                .lookup(github.anandb.netbeans.contract.SessionControl.class)
-                .createNewSession(projects[0].getProjectDirectory().getPath());
+            var sc = Lookup.getDefault()
+                .lookup(github.anandb.netbeans.contract.SessionControl.class);
+            if (sc != null) {
+                sc.createNewSession(projects[0].getProjectDirectory().getPath());
+            }
         } else {
             topComponent.showProjectPickerPopup(newSessionBtn);
         }

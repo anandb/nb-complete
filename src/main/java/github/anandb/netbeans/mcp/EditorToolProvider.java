@@ -53,36 +53,30 @@ public class EditorToolProvider {
                 new ToolExecutor<EmptyToolInput, List<String>>(EmptyToolInput.class) {
                     @Override
                     public List<String> execute(EmptyToolInput args) throws Exception {
-                        java.util.concurrent.CompletableFuture<List<String>> future =
-                                new java.util.concurrent.CompletableFuture<>();
-                        SwingUtilities.invokeLater(() -> {
-                            try {
-                                Project[] projects = ACPProjectManager.getInstance().getAllOpenProjects();
-                                List<String> paths = new ArrayList<>();
-                                for (var editor : EditorRegistry.componentList()) {
-                                    FileObject fo = NbEditorUtilities.getFileObject(editor.getDocument());
-                                    if (fo == null) continue;
-                                    String filePath = fo.getPath();
-                                    // Only include files inside open projects — phantom paths
-                                    // like /tmp/xxx (when no project is open) confuse the AI.
-                                    boolean inProject = false;
-                                    for (Project p : projects) {
-                                        String projectDir = p.getProjectDirectory().getPath();
-                                        if (filePath.startsWith(projectDir)) {
-                                            inProject = true;
-                                            break;
-                                        }
-                                    }
-                                    if (inProject) {
-                                        paths.add(filePath);
-                                    }
+                        // EditorRegistry.componentList() reads a CopyOnWriteArrayList
+                        // and NbEditorUtilities.getFileObject() takes a Document (model
+                        // object, not a Swing component) — both are safe off-EDT.
+                        Project[] projects = ACPProjectManager.getInstance().getAllOpenProjects();
+                        List<String> paths = new ArrayList<>();
+                        for (var editor : EditorRegistry.componentList()) {
+                            FileObject fo = NbEditorUtilities.getFileObject(editor.getDocument());
+                            if (fo == null) continue;
+                            String filePath = fo.getPath();
+                            // Only include files inside open projects — phantom paths
+                            // like /tmp/xxx (when no project is open) confuse the AI.
+                            boolean inProject = false;
+                            for (Project p : projects) {
+                                String projectDir = p.getProjectDirectory().getPath();
+                                if (filePath.startsWith(projectDir)) {
+                                    inProject = true;
+                                    break;
                                 }
-                                future.complete(paths);
-                            } catch (Exception e) {
-                                future.completeExceptionally(e);
                             }
-                        });
-                        return future.get(5, java.util.concurrent.TimeUnit.SECONDS);
+                            if (inProject) {
+                                paths.add(filePath);
+                            }
+                        }
+                        return paths;
                     }
                 });
     }

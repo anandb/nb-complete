@@ -40,9 +40,9 @@ import github.anandb.netbeans.ui.platform.SessionService;
 // shell it drives. The restart-needed flag + tooltip update logic stays here.
 public class ComponentLifecycleHandler {
 
-    private final SessionService sessionService = Lookup.getDefault().lookup(PlatformBridge.class).sessionService();
-    private final ProcessService processService = Lookup.getDefault().lookup(PlatformBridge.class).processService();
-    private final ProjectContext projectContext = Lookup.getDefault().lookup(PlatformBridge.class).projectContext();
+    private final SessionService sessionService;
+    private final ProcessService processService;
+    private final ProjectContext projectContext;
 
     private static final Logger LOG = Logger.from(ComponentLifecycleHandler.class);
 
@@ -80,12 +80,24 @@ public class ComponentLifecycleHandler {
         this.restartServerBtn = restartServerBtn;
         this.topComponent = topComponent;
 
+        var bridge = Lookup.getDefault().lookup(PlatformBridge.class);
+        if (bridge == null) {
+            LOG.severe("PlatformBridge not found in Lookup — UI services unavailable");
+        }
+        this.sessionService = bridge != null ? bridge.sessionService() : null;
+        this.processService = bridge != null ? bridge.processService() : null;
+        this.projectContext = bridge != null ? bridge.projectContext() : null;
+
         this.pageKeyDispatcher = createPageKeyDispatcher();
     }
 
     // -- Lifecycle callbacks --
 
     public void componentOpened() {
+        if (sessionService == null || processService == null || projectContext == null) {
+            LOG.severe("PlatformBridge unavailable, skipping componentOpened");
+            return;
+        }
         // Reset turn-ended flag from any prior RPC completion that fired while panel was closed.
         // Without this, new SSE updates after reopen would be suppressed.
         sessionLifecycleHandler.onNewMessageSent();
@@ -242,6 +254,10 @@ public class ComponentLifecycleHandler {
     }
 
     public void componentClosed() {
+        if (sessionService == null || processService == null || projectContext == null) {
+            LOG.severe("PlatformBridge unavailable, skipping componentClosed");
+            return;
+        }
         // Cancel any active message before detaching the listener, so the server
         // stops processing and doesn't flood stale SSE content on reopen.
         // We bypass stopCurrentMessage() and go directly to IDLE to avoid the
@@ -308,6 +324,10 @@ public class ComponentLifecycleHandler {
     }
 
     public void restartServer() {
+        if (sessionService == null || processService == null) {
+            LOG.severe("PlatformBridge unavailable, cannot restart server");
+            return;
+        }
         String currentSessionId = sessionService.get().getCurrentSessionId();
         statusController.setStatus("STATUS_RestartingServer");
         statusController.setInputEnabled(false);
@@ -350,6 +370,7 @@ public class ComponentLifecycleHandler {
     }
 
     public void showProjectPickerPopup(JComponent parent) {
+        if (projectContext == null) return;
         Project[] projects = projectContext.getAllOpenProjects();
         if (projects == null || projects.length <= 1) {
             return;

@@ -3,7 +3,7 @@ package github.anandb.netbeans.project;
 import github.anandb.netbeans.support.Logger;
 
 import github.anandb.netbeans.contract.ProcessControl;
-import github.anandb.netbeans.ui.ImagePasteTransferHandler;
+import github.anandb.netbeans.support.ImagePasteIoProcessor;
 import org.openide.modules.OnStop;
 import org.openide.util.Lookup;
 
@@ -18,6 +18,6 @@ public class ACPShutdown implements Runnable {
         if (pc != null) {
             pc.shutdown();
         }
-        ImagePasteTransferHandler.shutdownIoProcessor();
+        ImagePasteIoProcessor.shutdown();
     }
 }

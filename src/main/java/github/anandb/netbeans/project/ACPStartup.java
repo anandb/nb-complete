@@ -5,9 +5,10 @@ import org.openide.util.NbPreferences;
 import org.openide.windows.Mode;
 import org.openide.windows.WindowManager;
 
+import github.anandb.netbeans.contract.UpdateCheckerControl;
 import github.anandb.netbeans.support.AgentUtils;
 import github.anandb.netbeans.support.Logger;
-import github.anandb.netbeans.manager.UpdateCheckerService;
+import org.openide.util.Lookup;
 import org.openide.windows.TopComponent;
 
 @OnStart
@@ -19,7 +20,12 @@ public class ACPStartup implements Runnable {
         LOG.info("ACP Plugin Startup: Initializing Project Manager...");
         ACPProjectManager.getInstance().start();
         checkVersionAndOpen();
-        UpdateCheckerService.getInstance().start();
+        UpdateCheckerControl ucc = Lookup.getDefault().lookup(UpdateCheckerControl.class);
+        if (ucc != null) {
+            ucc.start();
+        } else {
+            LOG.warn("UpdateCheckerControl not found — update checks disabled");
+        }
     }
 
     private void checkVersionAndOpen() {
@@ -30,7 +36,12 @@ public class ACPStartup implements Runnable {
             LOG.info("New version detected ({0}), opening Assistant sidebar (docked left)...", currentVersion);
             NbPreferences.forModule(ACPStartup.class).put("lastVersion", currentVersion);
 
-            UpdateCheckerService.getInstance().onInstallOrUpgrade();
+            UpdateCheckerControl ucc = Lookup.getDefault().lookup(UpdateCheckerControl.class);
+            if (ucc != null) {
+                ucc.onInstallOrUpgrade();
+            } else {
+                LOG.warn("UpdateCheckerControl not found — install/upgrade schedule skipped");
+            }
 
             WindowManager.getDefault().invokeWhenUIReady(() -> {
                 TopComponent sidebar = WindowManager.getDefault().findTopComponent("AssistantTopComponent");
