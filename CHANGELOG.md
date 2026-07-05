@@ -3,7 +3,38 @@
 ## v1.7.6 (Changes since v1.7.5)
 
 ### Fixes
-- **Premature assistant bubble finalization (flashing)**: `ChatThreadPanel.flushTimer`
+- **Critical: MCP thread pool starvation on `get_opened_files`**:
+  `EditorToolProvider.get_opened_files` previously posted to EDT then blocked
+  with `future.get(5s)`. If EDT was busy streaming, all 20 MCP pool threads
+  piled up → cascading timeouts. Now runs entirely off-EDT
+  (`EditorRegistry.componentList()` + `NbEditorUtilities.getFileObject()` are
+  safe from any thread).
+- **Critical: 5 unchecked `Lookup.getDefault().lookup()` sites**:
+  `ChatLayoutBuilder` (8 calls), `ComponentLifecycleHandler` (3 field inits),
+  `DefaultPlatformBridge` (2 getters), `WelcomeScreen` (static field) —
+  any missing service caused cascading NPEs. All now null-guarded with
+  `STATUS_ServiceUnavailable` UI feedback or logged warnings.
+- **Path traversal via symlink in `open_file_at_line`**: Non-canonical
+  `startsWith(projectDir)` allowed `../../etc/passwd` and symlink escapes.
+  Now compares canonical file path against canonical project directories.
+- **Arbitrary file read in `fs/readTextFile`**: `AcpRequestRouter` accepted
+  any `filePath` from the server with zero validation. Now restricted to
+  open-project boundaries via canonical-path check.
+- **`rename_session` returned success before rename executed**: Removed
+  EDT wrapper — `renameSession()` is pure local data (no server call), runs
+  synchronously on the caller thread.
+- **Null rpcClient in `initializeProtocol`**: `rpcClient.get()` could be null
+  in a narrow race window during startup. Now captured and null-checked with
+  a descriptive failure.
+- **Exception messages leaked to MCP/ACP clients**: 5 sites in `MessageServlet`,
+  `AcpRequestRouter`, and `EditorToolProvider` sent `e.getMessage()` in error
+  responses. Now return generic messages; full details logged server-side.
+- **MCP auth token logged in plaintext**: `McpManager` logged the full MCP URL
+  including `?token=xxx` at INFO level. Token now redacted as `token=REDACTED`.
+- **`--add-opens java.base/java.net=ALL-UNNAMED`**: Added to surefire config so
+  NetBeans `ProxyURLStreamHandlerFactory` can reflect into `URL.handler` under
+  Java 17+ module system (removes SEVERE stack trace from every test run).
+- **Forget/remember not trimming displayed bubbles**: `setKeepOlderMessages(false)`
   previously fired on every 300 ms idle gap during a live turn, so the model's
   1-3 s mid-turn pauses (especially after tool calls) prematurely converted the
   streaming `JTextArea` to `FitEditorPane`. Late chunks then re-rendered the
@@ -13,10 +44,10 @@
   `end_turn` / `available_commands_update`, RPC completion, session load) set
   the flag before invoking `restartFlushTimer()`, so the fire condition is
   unchanged for them.
-- **Pin/unpin not trimming displayed bubbles**: `setKeepOlderMessages(false)`
+- **Forget/remember not trimming displayed bubbles**: `setKeepOlderMessages(false)`
   only flipped a flag — already-rendered bubbles beyond `MAX_MESSAGES` stayed
   on screen until a future `addMessage`/`setMessages` tick tripped
-  `trimMessages()`. Unpinning now trims + revalidates + re-snaps scroll
+  `trimMessages()`. Forgetting now trims + revalidates + re-snaps scroll
   synchronously.
 - **Missing `LBL_EchoInput` resource**: Options panel threw
   `MissingResourceException` when opened because the code looked up
@@ -48,6 +79,11 @@
   have consistent 80px width.
 
 ### Housekeeping
+- **Hexagonal arch violations resolved (2 remaining exceptions eliminated)**:
+  Extracted `contract/UpdateCheckerControl` interface — `ACPStartup` now uses
+  `Lookup.getDefault().lookup()` instead of `UpdateCheckerService.getInstance()`;
+  extracted `support/ImagePasteIoProcessor` — `ACPShutdown` no longer imports
+  from `ui/` layer. Both exceptions removed from AGENTS.md known-violations list.
 - **DSL migration scaffolding**: Added `ui/spec/`, `ui/vm/`, `ui/platform/`
   packages (view-models, spec builders, platform-bridge interfaces); no
   swingtree dependency yet. Quarantine tags (`DSL-LEAF` on 21 view/builder/
