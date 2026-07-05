@@ -60,6 +60,7 @@ public class ACPOptionsPanel extends JPanel {
     private JCheckBox combineCheckbox;
     private JCheckBox checkForUpdatesCheckbox;
     private JSpinner idleTimeoutSpinner;
+    private JSpinner maxMessagesSpinner;
     private JLabel argsLabel;
     private JTextField argsField;
     private JLabel iconLabel;
@@ -153,9 +154,17 @@ public class ACPOptionsPanel extends JPanel {
         add(argsField, UIUtils.createGbc(1, 3, 1.0, 0, GridBagConstraints.HORIZONTAL,
                                          GridBagConstraints.WEST, new Insets(0, 0, 5, 5)));
 
+// --- SECTION: Updates ---
+        JLabel updatesHeader = new JLabel(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_UpdatesHeader"));
+        updatesHeader.setFont(updatesHeader.getFont().deriveFont(Font.BOLD));
+        GridBagConstraints gbcUpdatesHeader = UIUtils.createGbc(0, 4, 1.0, 0, GridBagConstraints.HORIZONTAL,
+                GridBagConstraints.WEST, new Insets(10, 0, 10, 0));
+        gbcUpdatesHeader.gridwidth = 3;
+        add(updatesHeader, gbcUpdatesHeader);
+
         checkForUpdatesCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_CheckForUpdates"));
         checkForUpdatesCheckbox.addActionListener(evt -> controller.changed());
-        GridBagConstraints gbcUpdates = UIUtils.createGbc(0, 4, 1.0, 0, GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST,
+        GridBagConstraints gbcUpdates = UIUtils.createGbc(0, 5, 1.0, 0, GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST,
                 new Insets(0, 12, 15, 0));
         gbcUpdates.gridwidth = 3;
         add(checkForUpdatesCheckbox, gbcUpdates);
@@ -163,57 +172,43 @@ public class ACPOptionsPanel extends JPanel {
         // --- SECTION: Chat Behavior ---
         JLabel behaviorHeader = new JLabel(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_BehaviorHeader"));
         behaviorHeader.setFont(behaviorHeader.getFont().deriveFont(Font.BOLD));
-        GridBagConstraints gbcHeader = UIUtils.createGbc(0, 5, 1.0, 0, GridBagConstraints.HORIZONTAL,
+        GridBagConstraints gbcHeader = UIUtils.createGbc(0, 6, 1.0, 0, GridBagConstraints.HORIZONTAL,
                 GridBagConstraints.WEST, new Insets(10, 0, 10, 0));
         gbcHeader.gridwidth = 3;
         add(behaviorHeader, gbcHeader);
 
-        echoCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_EchoUserInput"));
+        echoCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_EchoInput"));
         echoCheckbox.addActionListener(evt -> controller.changed());
-        add(echoCheckbox, UIUtils.createGbc(0, 6, 1.0, 0, GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST,
-                new Insets(0, 12, 5, 0)));
+        add(echoCheckbox, UIUtils.createGbc(0, 7, 1.0, 0, GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST,
+                new Insets(0, 12, 10, 0)));
 
         combineCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_CombineToolThought"));
         combineCheckbox.addActionListener(evt -> controller.changed());
-        add(combineCheckbox, UIUtils.createGbc(0, 7, 1.0, 0, GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST,
+        add(combineCheckbox, UIUtils.createGbc(0, 8, 1.0, 0, GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST,
                 new Insets(0, 12, 10, 0)));
 
         JLabel idleTimeoutLabel = new JLabel(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_SessionIdleTimeout"));
-        add(idleTimeoutLabel, UIUtils.createGbc(0, 8, 0.0, 0, GridBagConstraints.NONE,
+        add(idleTimeoutLabel, UIUtils.createGbc(0, 9, 0.0, 0, GridBagConstraints.NONE,
                 GridBagConstraints.WEST, new Insets(0, 12, 10, 5)));
         SpinnerNumberModel spinnerModel = new SpinnerNumberModel(300, 0, 3600, 5);
         idleTimeoutSpinner = new JSpinner(spinnerModel);
         idleTimeoutSpinner.addChangeListener(evt -> controller.changed());
-        add(idleTimeoutSpinner, UIUtils.createGbc(1, 8, 0.0, 0, GridBagConstraints.NONE,
+        add(idleTimeoutSpinner, UIUtils.createGbc(1, 9, 0.0, 0, GridBagConstraints.NONE,
                 GridBagConstraints.WEST, new Insets(0, 0, 10, 0)));
 
-        preambleLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_Preamble"));
-        GridBagConstraints gbcPreambleLabel = UIUtils.createGbc(0, 9, 1.0, 0, GridBagConstraints.HORIZONTAL,
-                GridBagConstraints.WEST, new Insets(0, 12, 5, 0));
-        gbcPreambleLabel.gridwidth = 3;
-        add(preambleLabel, gbcPreambleLabel);
-
-        preambleArea.setLineWrap(true);
-        preambleArea.setWrapStyleWord(true);
-        preambleArea.addKeyListener(new KeyAdapter() {
-            @Override
-            public void keyReleased(KeyEvent evt) { controller.changed(); }
-        });
-        // Right-click menu: Clear or Reset to default preamble
-        JPopupMenu preambleMenu = new JPopupMenu();
-        JMenuItem clearItem = new JMenuItem(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_PreambleClear"));
-        clearItem.addActionListener(e -> preambleArea.setText(""));
-        preambleMenu.add(clearItem);
-        JMenuItem resetItem = new JMenuItem(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_PreambleReset"));
-        resetItem.addActionListener(e -> preambleArea.setText(PluginSettings.getDefaultPreamble()));
-        preambleMenu.add(resetItem);
-        preambleArea.setComponentPopupMenu(preambleMenu);
-        GridBagConstraints gbcPreambleScroll = UIUtils.createGbc(0, 10, 1.0, 0.2, GridBagConstraints.BOTH,
-                GridBagConstraints.WEST, new Insets(0, 12, 15, 0));
-        gbcPreambleScroll.gridwidth = 3;
-        add(preambleScroll, gbcPreambleScroll);
+        JLabel maxMessagesLabel = new JLabel(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_MaxMessages"));
+        add(maxMessagesLabel, UIUtils.createGbc(0, 10, 0.0, 0, GridBagConstraints.NONE,
+                GridBagConstraints.WEST, new Insets(0, 12, 10, 5)));
+        SpinnerNumberModel maxMessagesModel = new SpinnerNumberModel(100, 10, 100, 5);
+        maxMessagesSpinner = new JSpinner(maxMessagesModel);
+        maxMessagesSpinner.addChangeListener(evt -> controller.changed());
+        add(maxMessagesSpinner, UIUtils.createGbc(1, 10, 0.0, 0, GridBagConstraints.NONE,
+                GridBagConstraints.WEST, new Insets(0, 0, 10, 0)));
 
         // --- SECTION: Appearance ---
+        // Appearance section moved above the preamble so the preamble text
+        // area can occupy the bottom of the form and absorb all leftover
+        // vertical space when the Options window is resized taller.
         JLabel appearanceHeader = new JLabel(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_AppearanceHeader"));
         appearanceHeader.setFont(appearanceHeader.getFont().deriveFont(Font.BOLD));
         GridBagConstraints gbcAppHeader = UIUtils.createGbc(0, 11, 1.0, 0, GridBagConstraints.HORIZONTAL,
@@ -243,8 +238,44 @@ public class ACPOptionsPanel extends JPanel {
         add(iconPreviewLabel, UIUtils.createGbc(1, 13, 0.0, 0, GridBagConstraints.NONE,
                                                 GridBagConstraints.WEST, new Insets(5, 0, 5, 0)));
 
-        // Spacer at the bottom to push everything up
-        add(new JLabel(), UIUtils.createGbc(0, 14, 1.0, 1.0, GridBagConstraints.BOTH,
+        // --- SECTION: Session preamble (bottom-most, grows with window) ---
+        preambleLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_Preamble"));
+        GridBagConstraints gbcPreambleLabel = UIUtils.createGbc(0, 14, 1.0, 0, GridBagConstraints.HORIZONTAL,
+                GridBagConstraints.WEST, new Insets(10, 12, 5, 0));
+        gbcPreambleLabel.gridwidth = 3;
+        add(preambleLabel, gbcPreambleLabel);
+
+        preambleArea.setLineWrap(true);
+        preambleArea.setWrapStyleWord(true);
+        preambleArea.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyReleased(KeyEvent evt) { controller.changed(); }
+        });
+        // Right-click menu: Clear or Reset to default preamble
+        JPopupMenu preambleMenu = new JPopupMenu();
+        JMenuItem clearItem = new JMenuItem(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_PreambleClear"));
+        clearItem.addActionListener(e -> preambleArea.setText(""));
+        preambleMenu.add(clearItem);
+        JMenuItem resetItem = new JMenuItem(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_PreambleReset"));
+        resetItem.addActionListener(e -> preambleArea.setText(PluginSettings.getDefaultPreamble()));
+        preambleMenu.add(resetItem);
+        preambleArea.setComponentPopupMenu(preambleMenu);
+        // weighty=1.0 + BOTH: absorbs all leftover vertical space at the
+        // bottom of the form. The spacer at row 15 has weighty=0 so the
+        // preamble takes priority on window resize.
+        // weighty=1.0 + BOTH: absorbs all leftover vertical space at the
+        // bottom of the form. The spacer at row 16 has weighty=0 so the
+        // preamble takes priority on window resize.
+        GridBagConstraints gbcPreambleScroll = UIUtils.createGbc(0, 15, 1.0, 1.0, GridBagConstraints.BOTH,
+                GridBagConstraints.WEST, new Insets(0, 12, 15, 0));
+        gbcPreambleScroll.gridwidth = 3;
+        add(preambleScroll, gbcPreambleScroll);
+
+        // Spacer at the bottom — keeps the layout anchored above the preamble
+        // (which now absorbs all leftover vertical space at row 14 weighty=1.0).
+        // weighty=0 here so the preamble takes priority; a non-zero value would
+        // split leftover space evenly with the preamble and shrink it.
+        add(new JLabel(), UIUtils.createGbc(0, 16, 1.0, 0.0, GridBagConstraints.BOTH,
                                             GridBagConstraints.NORTHWEST, new Insets(0, 0, 0, 0)));
     }
 
@@ -313,6 +344,7 @@ public class ACPOptionsPanel extends JPanel {
         combineCheckbox.setSelected(NbPreferences.forModule(ACPOptionsPanel.class).getBoolean("combineToolThought", true));
         checkForUpdatesCheckbox.setSelected(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean(PreferenceKeys.CHECK_FOR_UPDATES, true));
         idleTimeoutSpinner.setValue(PluginSettings.getSessionIdleTimeout());
+        maxMessagesSpinner.setValue(PluginSettings.getMaxMessages());
         previousIconPath = PluginSettings.getCustomUserIcon();
         iconPathField.setText(previousIconPath);
         iconPreviewManager.updatePreview(iconPathField.getText());
@@ -349,6 +381,7 @@ public class ACPOptionsPanel extends JPanel {
         NbPreferences.forModule(ACPOptionsPanel.class).putBoolean("combineToolThought", combineCheckbox.isSelected());
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean(PreferenceKeys.CHECK_FOR_UPDATES, checkForUpdatesCheckbox.isSelected());
         PluginSettings.setSessionIdleTimeout((Integer) idleTimeoutSpinner.getValue());
+        PluginSettings.setMaxMessages((Integer) maxMessagesSpinner.getValue());
 
         if (changedCombine) {
             LOG.info("Combine tool/thought toggled to {0}", combineCheckbox.isSelected());

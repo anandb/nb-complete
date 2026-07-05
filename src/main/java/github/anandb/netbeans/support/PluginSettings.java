@@ -15,11 +15,15 @@ public final class PluginSettings {
     private static final String KEY_PREAMBLE = "preamble";
     private static final String KEY_CUSTOM_USER_ICON = "customUserIcon";
     private static final String KEY_SESSION_IDLE_TIMEOUT = "sessionIdleTimeout";
+    private static final String KEY_MAX_MESSAGES = PreferenceKeys.MAX_MESSAGES;
     private static final int DEFAULT_SESSION_IDLE_TIMEOUT = 300;
+    private static final int DEFAULT_MAX_MESSAGES = 100;
     private static final String DEFAULT_PREAMBLE;
 
     /** Cached session idle timeout in seconds — volatile for cross-thread visibility. */
     private static volatile int cachedSessionIdleTimeout = DEFAULT_SESSION_IDLE_TIMEOUT;
+    /** Cached max visible message bubbles — volatile for cross-thread visibility. */
+    private static volatile int cachedMaxMessages = DEFAULT_MAX_MESSAGES;
 
     private static final PreferenceChangeListener listener = PluginSettings::onPreferenceChanged;
 
@@ -37,6 +41,7 @@ public final class PluginSettings {
         // Seed cached value and register listener
         Preferences prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
         cachedSessionIdleTimeout = prefs.getInt(KEY_SESSION_IDLE_TIMEOUT, DEFAULT_SESSION_IDLE_TIMEOUT);
+        cachedMaxMessages = prefs.getInt(KEY_MAX_MESSAGES, DEFAULT_MAX_MESSAGES);
         prefs.addPreferenceChangeListener(listener);
     }
 
@@ -79,6 +84,26 @@ public final class PluginSettings {
             } catch (NumberFormatException e) {
                 cachedSessionIdleTimeout = DEFAULT_SESSION_IDLE_TIMEOUT;
             }
+        } else if (KEY_MAX_MESSAGES.equals(evt.getKey())) {
+            try {
+                if (evt.getNewValue() == null || evt.getNewValue().isBlank()) {
+                    cachedMaxMessages = DEFAULT_MAX_MESSAGES;
+                } else {
+                    int v = Integer.parseInt(evt.getNewValue());
+                    cachedMaxMessages = (v < 0) ? DEFAULT_MAX_MESSAGES : v;
+                }
+            } catch (NumberFormatException e) {
+                cachedMaxMessages = DEFAULT_MAX_MESSAGES;
+            }
         }
+    }
+
+    /** Max visible message bubbles before older ones are trimmed. 0 = unlimited. */
+    public static int getMaxMessages() {
+        return cachedMaxMessages;
+    }
+
+    public static void setMaxMessages(int count) {
+        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putInt(KEY_MAX_MESSAGES, count);
     }
 }

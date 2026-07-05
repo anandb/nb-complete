@@ -20,6 +20,8 @@ public final class PreferenceKeys {
     public static final String PROCESS_ARGUMENTS = "processArguments";
     public static final String ECHO_USER_INPUT = "echoUserInput";
     public static final String COMBINE_TOOL_THOUGHT = "combineToolThought";
+    /** Max visible message bubbles before older ones are trimmed (0 = unlimited). */
+    public static final String MAX_MESSAGES = "maxMessages";
 
     // Input history keys
     public static final String INPUT_HISTORY_COUNT = "inputHistory.count";

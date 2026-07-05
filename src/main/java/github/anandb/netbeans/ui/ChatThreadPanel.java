@@ -40,6 +40,7 @@ import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.TimingConstants;
 
 import static org.apache.commons.lang3.StringUtils.defaultString;
@@ -54,7 +55,9 @@ public class ChatThreadPanel extends JPanel {
     private static final Logger LOG = Logger.from(ChatThreadPanel.class);
     private static final long serialVersionUID = 1L;
     private static final Pattern SECTION_SPLIT = Pattern.compile("(?m)^---[ \\t]*$");
-    private static final int MAX_MESSAGES = 25;
+    // Maximum visible message bubbles. Configurable via NetBeans preferences
+    // (Preferences > Assistant > Chat Behavior > Max Messages); 0 = unlimited.
+    // See PluginSettings.getMaxMessages().
 
     private long lastUserTimestamp = -1L;
     private int userMessageCount = 0;
@@ -436,7 +439,8 @@ public class ChatThreadPanel extends JPanel {
     }
 
     private void trimMessages() {
-        if (MAX_MESSAGES <= 0 || keepOlderMessages) return;
+        int max = currentMaxMessages();
+        if (max <= 0 || keepOlderMessages) return;
 
         int count = 0;
         for (Component c : messagesContainer.getComponents()) {
@@ -445,7 +449,7 @@ public class ChatThreadPanel extends JPanel {
             }
         }
 
-        int excess = count - MAX_MESSAGES;
+        int excess = count - max;
         if (excess <= 0) return;
 
         int removed = 0;
@@ -697,6 +701,15 @@ public class ChatThreadPanel extends JPanel {
         return keepOlderMessages;
     }
 
+    /** Returns the configured max visible message bubbles — 0 means unlimited.
+     *  Reads from {@link PluginSettings} so Options-panel edits take effect
+     *  immediately without restarting the IDE. The in-process default (100)
+     *  is used only when the preference has never been seeded. */
+    private int currentMaxMessages() {
+        int max = PluginSettings.getMaxMessages();
+        return max;
+    }
+
     public String getConversationAsMarkdown() {
         StringBuilder sb = new StringBuilder();
         sb.append("# ACP Conversation Export\n\n");
@@ -817,13 +830,12 @@ public class ChatThreadPanel extends JPanel {
                 // Single revalidate + scroll at end cuts O(N²) to O(N).
                 batchAdding = true;
                 try {
-                    // When "Pin to keep messages" is OFF, only render the tail
-                    // that fits MAX_MESSAGES — avoids building bubbles for
+                    // that fits the configured maximum — avoids building bubbles for
                     // hundreds of oldest messages just to discard them in
                     // trimMessages(). The full list is still cached so filter
                     // toggles can re-render from source.
                     List<Message> toRender = messages;
-                    int max = MAX_MESSAGES;
+                    int max = currentMaxMessages();
                     if (max > 0 && !keepOlderMessages && messages.size() > max) {
                         toRender = messages.subList(messages.size() - max, messages.size());
                     }

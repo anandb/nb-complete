@@ -1,5 +1,61 @@
 # Release Notes
 
+## v1.7.6 (Changes since v1.7.5)
+
+### Fixes
+- **Premature assistant bubble finalization (flashing)**: `ChatThreadPanel.flushTimer`
+  previously fired on every 300 ms idle gap during a live turn, so the model's
+  1-3 s mid-turn pauses (especially after tool calls) prematurely converted the
+  streaming `JTextArea` to `FitEditorPane`. Late chunks then re-rendered the
+  full HTML on every tick → flashing. The timer is now gated on
+  `SessionLifecycleHandler.isTurnEnded()`; it restarts instead of firing while
+  the turn is still live. End-of-turn paths (SSE `responding_finished` /
+  `end_turn` / `available_commands_update`, RPC completion, session load) set
+  the flag before invoking `restartFlushTimer()`, so the fire condition is
+  unchanged for them.
+- **Pin/unpin not trimming displayed bubbles**: `setKeepOlderMessages(false)`
+  only flipped a flag — already-rendered bubbles beyond `MAX_MESSAGES` stayed
+  on screen until a future `addMessage`/`setMessages` tick tripped
+  `trimMessages()`. Unpinning now trims + revalidates + re-snaps scroll
+  synchronously.
+- **Missing `LBL_EchoInput` resource**: Options panel threw
+  `MissingResourceException` when opened because the code looked up
+  `LBL_EchoInput` but the bundle had `LBL_EchoUserInput`. The bundle key was
+  renamed to match the lookup.
+
+### Features
+- **Configurable Max Messages preference**: The maximum number of visible
+  message bubbles (previously hardcoded to 100) is now a NetBeans preference —
+  Options > Assistant > Chat Behavior > Max Messages, range 10–100, default
+  100, step 5. Stored under `PreferenceKeys.MAX_MESSAGES` and read live via
+  `PluginSettings.getMaxMessages()` (cached volatile + listener, per AGENTS.md
+  hot-path rules). Edits take effect immediately without restarting the IDE.
+- **Updates section in Options panel**: "Check for Updates" was previously
+  bundled inside the Assistant Service section. It now lives in its own
+  "Updates" section with a dedicated header for clearer grouping.
+- **Preamble text area grows with Options window**: The preamble text area was
+  pinned to a fixed vertical weight and surrounded by a bottom spacer that
+  competed for leftover space. The bottom-most layout is now Appearance →
+  Preamble scroll (`weighty=1.0`, `BOTH`), so resizing the Options window
+  taller grants all extra space to the preamble. Appearance section moved
+  above the preamble so the preamble sits bottom-most.
+
+### Housekeeping
+- **DSL migration scaffolding**: Added `ui/spec/`, `ui/vm/`, `ui/platform/`
+  packages (view-models, spec builders, platform-bridge interfaces); no
+  swingtree dependency yet. Quarantine tags (`DSL-LEAF` on 21 view/builder/
+  renderer classes, `DSL-CONTROLLER` on 11 timer/dispatcher classes) name the
+  migration target spec and what stays imperative. `ChatLayoutRefs` seam
+  introduced as an immutable bundle of constructed components. Version
+  bumped to 1.7.6-SNAPSHOT. See `MIGRATION.md` for the adoption gate and
+  per-file migration order.
+- **Phase 4 PlatformBridge call-site migration**: 13 `ui/` files, ~70 call
+  sites routed through `PlatformBridge.SessionService` / `ProcessService` /
+  `ProjectContext`. Zero `Lookup.getDefault().lookup(SessionControl|ProcessControl.class)`
+  and zero `ACPProjectManager.getInstance()` remain outside the `platform/`
+  bridge impl. `NbPreferences` / `NbBundle` migration deferred (tracked in
+  `MIGRATION.md`) — those have hot-path caching considerations.
+
 ## v1.7.5 (Changes since v1.7.4)
 
 ### Fixes
