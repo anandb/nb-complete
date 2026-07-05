@@ -680,9 +680,9 @@ public class ChatThreadPanel extends JPanel {
 
     public void setKeepOlderMessages(boolean keep) {
         keepOlderMessages = keep;
-        // When the user unpins (keep=false), immediately trim the
+        // When the user chooses to forget (keep=false), immediately trim the
         // currently-displayed bubbles that exceed MAX_MESSAGES rather than
-        // waiting for a future addMessage/trimMessages tick. The pin button
+        // waiting for a future addMessage/trimMessages tick. The forget/remember button
         // listener always fires on the EDT, so it is safe to mutate the
         // component tree synchronously here. Adding a revalidate is required
         // because trimMessages() only removes components — callers are

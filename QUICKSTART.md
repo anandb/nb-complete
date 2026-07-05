@@ -125,7 +125,7 @@ Type `/` in the input area to trigger the autocomplete popup.
 - **Copy** — Hover a user message and click the icon to restore its text to the input area.
 - **Pencil icon** — Rename a session. Mappings are stored locally.
 - **Export** — Save the full session transcript as Markdown.
-- **Pin** — Keep older messages visible indefinitely. Without pinning, older messages are removed from the local view to conserve memory (they remain on the server and can be reloaded).
+- **Forget/Remember** — Display-only: the session always holds all messages. **Remember** keeps older messages visible in the chat panel. **Forget** progressively hides older messages from the local view to conserve memory (use **Reload** to re-fetch from the server).
 - **Right-click toolbar** — Show/hide individual toolbar buttons.
 
 ### Markdown Project Type
@@ -178,7 +178,7 @@ Select from the model dropdown. See [OpenCode Privacy](https://opencode.ai/docs/
 | Assistant becomes unresponsive | Click **Restart ACP Server** in the toolbar. |
 | Image paste doesn't work on Linux | Install the `wl-clipboard` package (Wayland) or check your clipboard manager. |
 | Model not appearing after upgrade to OpenCode v1.17.9, upgrade plugin to >= 1.7.3 | Re-select your model via `/models`. The upgrade resets model selection due to the new `thought_level` split. |
-| Messages disappear from view | Older messages are evicted to conserve memory. Click **Pin** on important messages, or use **Reload** to re-fetch from the server. |
+| Messages disappear from view | This is display-only — the session still has all messages. Click **Remember** to keep them visible, or use **Reload** to re-fetch from the server. |
 | LLM modified files unexpectedly | Always keep your project under version control (git) before allowing file modifications. Use **Accept/Deny** permission prompts to review changes. |
 
 ---

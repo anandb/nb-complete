@@ -225,19 +225,19 @@ final class ChatLayoutBuilder {
 
         final boolean savedKeepState = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean("keepOlderMessages", false);
         chatPanel.setKeepOlderMessages(savedKeepState);
-        JButton pinBtn = UIUtils.createToolbarButton(savedKeepState ? "pin_off.svg" : "pin.svg",
+        JButton forgetBtn = UIUtils.createToolbarButton(savedKeepState ? "forget.svg" : "remember.svg",
                 NbBundle.getMessage(AssistantTopComponent.class, savedKeepState ? "HINT_TruncateMessages" : "HINT_KeepMessages"), null);
-        pinBtn.addActionListener(e -> {
+        forgetBtn.addActionListener(e -> {
             boolean keep = !chatPanel.isKeepOlderMessages();
             chatPanel.setKeepOlderMessages(keep);
             NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean("keepOlderMessages", keep);
-            pinBtn.setIcon(ThemeManager.getIcon(keep ? "pin_off.svg" : "pin.svg", 28));
-            pinBtn.setToolTipText(keep
+            forgetBtn.setIcon(ThemeManager.getIcon(keep ? "forget.svg" : "remember.svg", 28));
+            forgetBtn.setToolTipText(keep
                 ? NbBundle.getMessage(AssistantTopComponent.class, "HINT_TruncateMessages")
                 : NbBundle.getMessage(AssistantTopComponent.class, "HINT_KeepMessages"));
         });
-        keepBtn = pinBtn;
-        keepBtn.putClientProperty("state", savedKeepState ? "pinned" : "unpinned");
+        keepBtn = forgetBtn;
+        keepBtn.putClientProperty("state", savedKeepState ? "forget" : "remember");
 
         filterBtn = createFilterButton();
 
@@ -475,7 +475,7 @@ final class ChatLayoutBuilder {
             {newSessionBtn, PreferenceKeys.TOOLBAR_NEW_SESSION, "New Session"},
             {renameSessionBtn, PreferenceKeys.TOOLBAR_RENAME_SESSION, "Rename Session"},
             {refreshBtn, PreferenceKeys.TOOLBAR_RELOAD, "Reload"},
-            {keepBtn, PreferenceKeys.TOOLBAR_KEEP, "Keep Messages"},
+            {keepBtn, PreferenceKeys.TOOLBAR_KEEP, "Forget/Remember"},
             {toggleBlocksBtn, PreferenceKeys.TOOLBAR_EXPAND_COLLAPSE, "Expand/Collapse All"},
             {filterBtn, PreferenceKeys.TOOLBAR_FILTER, "Filter"},
             {exportBtn, PreferenceKeys.TOOLBAR_EXPORT, "Export"},

@@ -42,7 +42,7 @@ public interface ChatToolbarActions {
     /** Toggle expand/collapse of all code/activity blocks. */
     default void onToggleBlocks() {}
 
-    /** Toggle "pin to keep older messages". */
+    /** Toggle forget/remember older messages. */
     default void onKeep() {}
 
     /** Open the message-type filter popup. */
