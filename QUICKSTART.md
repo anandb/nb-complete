@@ -4,10 +4,14 @@
   It communicates with OpenCode over ACP (Agent Control Protocol), running it as a background server so you can chat
   with AI models directly inside the IDE.
 
-> **⚠ v1.7.3 Breaking Changes** — The ACP Next protocol is now the default. Session config
-> payloads have been restructured and model variants are split into a separate `thought_level`
-> option. If you are upgrading from v1.7.2 or earlier, you will need to re-select your model
-> and review any custom preamble or session settings. See [NOTES.md](NOTES.md) for full details.
+## Breaking Changes and Alerts.
+- **⚠ OpenCode v1.17.13 Breaking Changes** — Image paste seems to be broken in the latest OpenCode version,
+  downgrade to v1.17.10 if you face any issues.
+
+- **⚠ OpenCode v1.17.9 Breaking Changes** — The ACP Next protocol is now the default. Session config
+  payloads have been restructured and model variants are split into a separate `thought_level`
+  option. If you are upgrading from an earlier version, you will need to re-select your model
+  and review any custom preamble or session settings. See [CHANGELOG.md](CHANGELOG.md) for full details.
 
 This document covers features available in the latest release. The plugin can be downloaded from
 **Maven Central** or built from source. Due to the release cadence, there may be a delay before
@@ -144,7 +148,7 @@ Type `/` in the input area to trigger the autocomplete popup.
 - **Process Arguments** — Additional command-line arguments passed to the OpenCode process.
 - **Preamble** — Global system prompt prepended to every new session.
 - **Local Echo** — Show your message instantly in the chat panel before the server responds.
-- **Session Idle Timeout** — Minutes of inactivity before the plugin disconnects and reconnects to the OpenCode server.
+- **Session Idle Timeout** — Seconds of inactivity before the plugin disconnects and reconnects to the OpenCode server.
 - **User Icon** — Set a custom avatar displayed next to your messages; right-click the preview to clear it.
 
 ### Media
@@ -173,7 +177,7 @@ Select from the model dropdown. See [OpenCode Privacy](https://opencode.ai/docs/
 | Plugin can't find OpenCode | Ensure `opencode` is on your `PATH`. Set the binary path manually under `Options > Assistant`. |
 | Assistant becomes unresponsive | Click **Restart ACP Server** in the toolbar. |
 | Image paste doesn't work on Linux | Install the `wl-clipboard` package (Wayland) or check your clipboard manager. |
-| Model not appearing after upgrade to v1.7.3 | Re-select your model via `/models`. The upgrade resets model selection due to the new `thought_level` split. |
+| Model not appearing after upgrade to OpenCode v1.17.9, upgrade plugin to >= 1.7.3 | Re-select your model via `/models`. The upgrade resets model selection due to the new `thought_level` split. |
 | Messages disappear from view | Older messages are evicted to conserve memory. Click **Pin** on important messages, or use **Reload** to re-fetch from the server. |
 | LLM modified files unexpectedly | Always keep your project under version control (git) before allowing file modifications. Use **Accept/Deny** permission prompts to review changes. |
 

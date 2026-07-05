@@ -39,6 +39,13 @@
   Preamble scroll (`weighty=1.0`, `BOTH`), so resizing the Options window
   taller grants all extra space to the preamble. Appearance section moved
   above the preamble so the preamble sits bottom-most.
+- **Options panel layout with bordered sections**: Options panel now uses
+  titled borders (etched) for each section: Assistant Service, Updates,
+  Chat Behavior, Appearance, and Session Preamble. Layout switched from
+  GridBagLayout to BoxLayout with vertical stacking. Icon preview shows
+  in its own "Current Icon Preview" bordered panel to the right of the
+  Appearance section. Spinboxes for Session Idle Timeout and Max Messages
+  have consistent 80px width.
 
 ### Housekeeping
 - **DSL migration scaffolding**: Added `ui/spec/`, `ui/vm/`, `ui/platform/`
