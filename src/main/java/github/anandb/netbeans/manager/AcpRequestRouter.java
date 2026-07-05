@@ -4,6 +4,7 @@ import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.concurrent.CompletableFuture;
+import java.util.logging.Level;
 import javax.swing.text.Document;
 
 import github.anandb.netbeans.support.ToolDataExtractor;
@@ -20,7 +21,9 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import javax.swing.SwingUtilities;
 
+import github.anandb.netbeans.project.ACPProjectManager;
 import github.anandb.netbeans.support.Logger;
+import org.netbeans.api.project.Project;
 
 class AcpRequestRouter {
     private static final Logger LOG = Logger.from(AcpRequestRouter.class);
@@ -102,6 +105,30 @@ class AcpRequestRouter {
             return CompletableFuture.failedFuture(new RuntimeException(NbBundle.getMessage(ProcessManager.class, "ERR_FileNotFound", filePath)));
         }
 
+        // Prevent arbitrary file reads — only allow files inside open projects.
+        // Resolve both to canonical paths to prevent .. and symlink escapes.
+        try {
+            String canonicalRequested = file.getCanonicalPath();
+            boolean inProject = false;
+            for (Project p : ACPProjectManager.getInstance().getAllOpenProjects()) {
+                File projectDirFile = FileUtil.toFile(p.getProjectDirectory());
+                if (projectDirFile == null) continue;
+                String canonicalProject = projectDirFile.getCanonicalPath();
+                if (canonicalRequested.startsWith(canonicalProject)) {
+                    inProject = true;
+                    break;
+                }
+            }
+            if (!inProject) {
+                LOG.warn("Blocked fs/readTextFile on path outside project: {0}", filePath);
+                return CompletableFuture.failedFuture(new RuntimeException(
+                    NbBundle.getMessage(ProcessManager.class, "ERR_PathOutsideProject")));
+            }
+        } catch (java.io.IOException e) {
+            LOG.warn("Failed to resolve canonical path for {0}", filePath);
+            return CompletableFuture.failedFuture(new RuntimeException("Invalid file path"));
+        }
+
         CompletableFuture<JsonNode> resultFuture = new CompletableFuture<>();
 
         FileObject fo = FileUtil.toFileObject(file);
@@ -138,8 +165,9 @@ class AcpRequestRouter {
                 String content = new String(bytes, StandardCharsets.UTF_8);
                 return objectMapper.createObjectNode().put("content", content);
             } catch (Exception e) {
-                LOG.severe("fs/readTextFile failed", e);
-                throw new RuntimeException(NbBundle.getMessage(ProcessManager.class, "ERR_ReadFileFailed", e.getMessage()), e);
+                LOG.severe("fs/readTextFile failed: {0}", e.getMessage());
+                LOG.log(Level.FINE, "fs/readTextFile details", e);
+                throw new RuntimeException("Failed to read file");
             }
         }).thenAccept(resultFuture::complete)
           .exceptionally(ex -> {

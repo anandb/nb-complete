@@ -51,6 +51,10 @@ class AcpReconnectManager {
 
     synchronized void handleDisconnection(Runnable onStartServer) {
         if (isClosing.getAsBoolean()) {
+            // Double-get is safe here: serverProcess Supplier wraps an AtomicReference
+            // that is written only once (ServerProcessLifecycle.start()) and cleared
+            // only after destroy. In the synchronized context of this method the
+            // value cannot change between the null check and pid().
             LOG.warn("handleDisconnection called while closing — returning early (PID: {0})",
                     serverProcess.get() != null ? serverProcess.get().pid() : "unknown");
             return;

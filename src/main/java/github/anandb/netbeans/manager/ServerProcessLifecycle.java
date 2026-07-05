@@ -97,6 +97,15 @@ class ServerProcessLifecycle {
             String executable = BinaryResolver.resolveExecutablePath();
             String args = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).get("processArguments", "acp");
 
+            // Strip shell metacharacters — args are passed directly to the binary
+            // (no shell interpretation), but users can accidentally paste dangerous
+            // patterns into the Options panel.
+            if (args != null && (args.contains(";") || args.contains("|") || args.contains("$")
+                    || args.contains("`") || args.contains("\\n"))) {
+                LOG.warn("processArguments contains suspicious characters, stripping: {0}", args);
+                args = args.replaceAll("[;|$`]", "").replace("\\n", " ");
+            }
+
             CommandLine cmd = new CommandLine(executable);
             cmd.addArguments(args, true);
 
@@ -202,7 +211,13 @@ class ServerProcessLifecycle {
                         "terminal", true
                 )
         );
-        rpcClient.get().sendRequest("initialize", params)
+        AcpProtocolClient client = rpcClient.get();
+        if (client == null) {
+            LOG.severe("Cannot initialize protocol — rpcClient is null");
+            readyFuture.completeExceptionally(new IllegalStateException("rpcClient not set"));
+            return;
+        }
+        client.sendRequest("initialize", params)
                 .orTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
                 .thenAccept(res -> {
                     if (res != null) {

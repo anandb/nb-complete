@@ -57,7 +57,7 @@ public class McpManager {
                         synchronized (McpManager.this) {
                             mcpServer = server;
                             serverStartFuture = null;
-                            LOG.info("MCP Server running at {0}", server.getUrl());
+                            LOG.info("MCP Server running at {0}", server.getUrl().replaceAll("token=.*", "token=REDACTED"));
                             // Complete inside the synchronized block to prevent a
                             // race where a concurrent start() replaces readyFuture
                             // between our null-out and the complete, which would

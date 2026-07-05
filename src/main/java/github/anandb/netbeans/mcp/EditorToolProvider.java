@@ -110,19 +110,24 @@ public class EditorToolProvider {
                         if (args.filePath() == null) {
                             return Map.of("status", "error", "message", "No file path provided");
                         }
-                        boolean inProject = false;
-                        for (Project p : ACPProjectManager.getInstance().getAllOpenProjects()) {
-                            String projectDir = p.getProjectDirectory().getPath();
-                            if (args.filePath().startsWith(projectDir)) {
-                                inProject = true;
-                                break;
-                            }
-                        }
-                        if (!inProject) {
-                            return Map.of("status", "error", "message", "File is not in the current project");
-                        }
                         try {
-                            FileObject fo = FileUtil.toFileObject(new File(args.filePath()));
+                            File requestedFile = new File(args.filePath()).getCanonicalFile();
+                            String canonicalRequested = requestedFile.getCanonicalPath();
+                            boolean inProject = false;
+                            for (Project p : ACPProjectManager.getInstance().getAllOpenProjects()) {
+                                FileObject projectDirFO = p.getProjectDirectory();
+                                File projectDirFile = FileUtil.toFile(projectDirFO);
+                                if (projectDirFile == null) continue;
+                                String canonicalProject = projectDirFile.getCanonicalPath();
+                                if (canonicalRequested.startsWith(canonicalProject)) {
+                                    inProject = true;
+                                    break;
+                                }
+                            }
+                            if (!inProject) {
+                                return Map.of("status", "error", "message", "File is not in the current project");
+                            }
+                            FileObject fo = FileUtil.toFileObject(requestedFile);
                             if (fo != null) {
                                 DataObject data = DataObject.find(fo);
                                 LineCookie lc = data.getLookup().lookup(LineCookie.class);
@@ -141,7 +146,7 @@ public class EditorToolProvider {
                             }
                         } catch (Exception e) {
                             LOG.warn("Failed to resolve file at line on background thread: {0}", e.getMessage());
-                            return Map.of("status", "error", "message", e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName());
+                            return Map.of("status", "error", "message", "Failed to open file");
                         }
                         return Map.of("status", "error", "message", "File or line not found");
                     }
@@ -183,15 +188,13 @@ public class EditorToolProvider {
                         final SessionControl sc = Lookup.getDefault().lookup(SessionControl.class);
                         final String sessionId = defaultIfBlank(args.sessionId(), sc.getCurrentSessionId());
 
-                        SwingUtilities.invokeLater(() -> {
-                            if (isBlank(sessionId)) {
-                                LOG.warn("rename_session: no active session");
-                                return;
-                            }
+                        if (isBlank(sessionId)) {
+                            LOG.warn("rename_session: no active session");
+                            return Map.of("status", "error", "message", "No active session");
+                        }
 
-                            sc.renameSession(sessionId, title);
-                            LOG.info("rename_session completed: sessionId={0}, title=\"{1}\"", sessionId, title);
-                        });
+                        sc.renameSession(sessionId, title);
+                        LOG.info("rename_session completed: sessionId={0}, title=\"{1}\"", sessionId, title);
                         return Map.of("status", "ok");
                     }
                 });

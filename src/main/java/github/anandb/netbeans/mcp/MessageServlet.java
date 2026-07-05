@@ -104,11 +104,11 @@ class MessageServlet extends HttpServlet {
                     try {
                         handleRequest(method, params, resp);
                     } catch (Exception e) {
-                        LOG.log(Level.SEVERE, "Error handling MCP method: {0}", method);
-                        LOG.log(Level.SEVERE, "Exception: {0}", e.getMessage(), e);
+                        LOG.log(Level.SEVERE, "Error handling MCP method: {0}: {1}", new Object[]{method, e.getMessage()});
+                        LOG.log(Level.FINE, "Exception details", e);
                         ObjectNode error = mapper.createObjectNode();
                         error.put("code", -32603);
-                        error.put("message", NbBundle.getMessage(MessageServlet.class, "MSG_InternalError", e.getMessage()));
+                        error.put("message", "Internal error");
                         resp.set("error", error);
                     }
 
@@ -199,10 +199,12 @@ class MessageServlet extends HttpServlet {
                     asyncContext.complete();
                 }
             } catch (IllegalArgumentException e) {
-                scheduleErrorResponse(resp, asyncContext, -32602, e.getMessage());
+                LOG.log(Level.WARNING, "Tool call invalid params: {0}", e.getMessage());
+                scheduleErrorResponse(resp, asyncContext, -32602, "Invalid parameters");
             } catch (Exception e) {
                 LOG.log(Level.SEVERE, "Tool execution failed: {0}", e.getMessage());
-                scheduleErrorResponse(resp, asyncContext, -32603, "Tool execution failed: " + e.getMessage());
+                LOG.log(Level.FINE, "Tool exception details", e);
+                scheduleErrorResponse(resp, asyncContext, -32603, "Tool execution failed");
             }
         });
     }
@@ -342,9 +344,10 @@ class MessageServlet extends HttpServlet {
                 result.set("contents", contents);
                 resp.set("result", result);
             } catch (IOException e) {
+                LOG.log(Level.WARNING, "Failed to read MCP resource: {0}", e.getMessage());
                 ObjectNode error = mapper.createObjectNode();
                 error.put("code", -32603);
-                error.put("message", "Failed to read resource: " + e.getMessage());
+                error.put("message", "Failed to read resource");
                 resp.set("error", error);
             }
         } else {

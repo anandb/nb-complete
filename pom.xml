@@ -311,7 +311,7 @@
                     <artifactId>maven-surefire-plugin</artifactId>
                     <version>3.5.5</version>
                     <configuration>
-                        <argLine>@{argLine} -Dnet.bytebuddy.experimental=true</argLine>
+                        <argLine>@{argLine} --add-opens java.base/java.net=ALL-UNNAMED -Dnet.bytebuddy.experimental=true</argLine>
                     </configuration>
                 </plugin>
                 <plugin>
