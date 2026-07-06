@@ -35,6 +35,7 @@ import javax.swing.border.EmptyBorder;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import github.anandb.netbeans.contract.PinnedMessageControl;
+import github.anandb.netbeans.contract.SessionControl;
 import github.anandb.netbeans.model.Message;
 import github.anandb.netbeans.model.MessageTransformer;
 import github.anandb.netbeans.model.MessageType;
@@ -352,6 +353,15 @@ public class ChatThreadPanel extends JPanel {
         }
     }
 
+    /** Ensures {@link #currentSessionId} is populated from SessionControl if needed. */
+    private String ensureCurrentSessionId() {
+        if (currentSessionId == null) {
+            SessionControl sc = Lookup.getDefault().lookup(SessionControl.class);
+            currentSessionId = sc != null ? sc.getCurrentSessionId() : null;
+        }
+        return currentSessionId;
+    }
+
     private void addSingleBubble(MessageType type, String text, String messageId, String toolTitle, boolean streaming) {
         // Capture scroll state BEFORE modifying content
         boolean wasAtBottom = scrollController.isAtBottom();
@@ -409,7 +419,8 @@ public class ChatThreadPanel extends JPanel {
             userMessageCount++;
         }
 
-        MessageBubble bubble = BubbleFactory.createRoleBubble(type, text, messageId, toolTitle, streaming, userMessageCount, currentSessionId);
+        String sid = ensureCurrentSessionId();
+        MessageBubble bubble = BubbleFactory.createRoleBubble(type, text, messageId, toolTitle, streaming, userMessageCount, sid);
 
         if (lastUserTimestamp > 0 && !"user".equals(type.roleName())) {
             long elapsed = System.currentTimeMillis() - lastUserTimestamp;

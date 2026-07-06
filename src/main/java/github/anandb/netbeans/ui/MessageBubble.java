@@ -200,8 +200,8 @@ public class MessageBubble extends JPanel implements Scrollable {
 
         // Pin + copy buttons for assistant messages at bottom right — visible on hover.
         // Pin first, copy last. When pinned, the pinned icon is always visible.
-        // sessionId and messageId must be known at construction time.
-        if ("assistant".equals(role) && sessionId != null && messageId != null) {
+        // messageId must be known; sessionId is resolved lazily if not passed in.
+        if ("assistant".equals(role) && messageId != null) {
             final PinnedMessageControl pinStore = Lookup.getDefault().lookup(PinnedMessageControl.class);
             this.pinned = (pinStore != null && pinStore.isPinned(sessionId, messageId));
 
@@ -320,8 +320,8 @@ public class MessageBubble extends JPanel implements Scrollable {
             avatarWrapper.add(userLabel, BorderLayout.CENTER);
 
             // User messages: pin + copy replace the avatar icon on hover.
-            // sessionId and messageId must be known at construction time.
-            if (sessionId != null && messageId != null) {
+            // messageId must be known; sessionId is resolved lazily if not passed in.
+            if (messageId != null) {
                 final PinnedMessageControl pinStore = Lookup.getDefault().lookup(PinnedMessageControl.class);
                 this.pinned = (pinStore != null && pinStore.isPinned(sessionId, messageId));
 
