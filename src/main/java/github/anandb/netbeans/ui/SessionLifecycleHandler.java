@@ -332,6 +332,7 @@ public class SessionLifecycleHandler implements SessionListener {
     @Override
     public void onSessionStarted(String sessionId) {
         SwingUtilities.invokeLater(() -> {
+            chatPanel.setSessionId(sessionId);
             chatPanel.clearMessages();
             chatPanel.setSessionLoading(true);
             chatPanel.setSessionProgress(10);

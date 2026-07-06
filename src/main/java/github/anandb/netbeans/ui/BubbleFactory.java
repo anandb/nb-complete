@@ -29,13 +29,19 @@ final class BubbleFactory {
             toolTitle = NbBundle.getMessage(CollapsibleToolPane.class, "LBL_ThinkingProcess");
         }
         return new MessageBubble(type, text, messageId, toolTitle,
-                MessageBubble.AvatarPosition.NONE, streaming);
+                MessageBubble.AvatarPosition.NONE, streaming, null);
     }
 
     /** Create a bubble for user/assistant messages with avatar positioning. */
     static MessageBubble createRoleBubble(MessageType type, String text,
-            String messageId, String toolTitle, boolean streaming, int userMessageCount) {
+            String messageId, String toolTitle, boolean streaming, int userMessageCount, String sessionId) {
         MessageBubble.AvatarPosition avatarPos = resolveAvatarPosition(type.roleName(), userMessageCount);
-        return new MessageBubble(type, text, messageId, toolTitle, avatarPos, streaming);
+        return new MessageBubble(type, text, messageId, toolTitle, avatarPos, streaming, sessionId);
+    }
+
+    /** Overload without sessionId for callers that don't track it. */
+    static MessageBubble createRoleBubble(MessageType type, String text,
+            String messageId, String toolTitle, boolean streaming, int userMessageCount) {
+        return createRoleBubble(type, text, messageId, toolTitle, streaming, userMessageCount, null);
     }
 }

@@ -1,6 +1,7 @@
 package github.anandb.netbeans.ui;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
@@ -31,8 +32,10 @@ import java.awt.GridBagLayout;
 import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
 
+import github.anandb.netbeans.contract.PinnedMessageControl;
 import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.support.Logger;
+import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
 
 import static org.apache.commons.lang3.StringUtils.length;
@@ -65,6 +68,11 @@ public class MessageBubble extends JPanel implements Scrollable {
     private final transient BubbleThemeApplier themeApplier;
     private transient HierarchyListener hierarchyListener;
 
+    /** Session ID — passed through from ChatThreadPanel for pin state persistence. */
+    private final String sessionId;
+    private boolean pinned;
+    private JButton pinBtn;
+
     @Override
     public float getAlignmentX() {
         return Component.LEFT_ALIGNMENT;
@@ -78,15 +86,22 @@ public class MessageBubble extends JPanel implements Scrollable {
     }
 
     public MessageBubble(MessageType type, String text, String messageId, String toolTitle, AvatarPosition avatarPosition) {
-        this(type, text, messageId, toolTitle, avatarPosition, false);
+        this(type, text, messageId, toolTitle, avatarPosition, false, null);
     }
 
     public MessageBubble(MessageType type, String text, String messageId, String toolTitle, AvatarPosition avatarPosition, boolean streaming) {
+        this(type, text, messageId, toolTitle, avatarPosition, streaming, null);
+    }
+
+    public MessageBubble(MessageType type, String text, String messageId,
+            String toolTitle, AvatarPosition avatarPosition,
+            boolean streaming, String sessionId) {
         this.type = type;
         this.role = type.roleName();
         this.messageId = messageId;
         this.text = new StringBuilder(text);
         this.toolTitle = toolTitle;
+        this.sessionId = sessionId;
 
         ColorTheme theme = ThemeManager.getCurrentTheme();
         setLayout(new GridBagLayout());
@@ -218,6 +233,54 @@ public class MessageBubble extends JPanel implements Scrollable {
                 public void mouseExited(MouseEvent e) {
                     if (!bubble.contains(e.getPoint())) {
                         copyBtn[0].setVisible(false);
+                    }
+                }
+            });
+        }
+
+        // Pin button for user/assistant messages at top-right corner.
+        // Visible on hover when unpinned; always visible when pinned.
+        if (("user".equals(role) || "assistant".equals(role))
+                && sessionId != null && messageId != null) {
+            final PinnedMessageControl pinStore = Lookup.getDefault().lookup(PinnedMessageControl.class);
+            this.pinned = (pinStore != null && pinStore.isPinned(sessionId, messageId));
+
+            pinBtn = UIUtils.createToolbarButton("pin.svg", 32,
+                    NbBundle.getMessage(MessageBubble.class,
+                            pinned ? "HINT_UnpinMessage" : "HINT_PinMessage"),
+                    e -> flipPin(pinStore));
+            pinBtn.setBorder(BorderFactory.createEmptyBorder());
+            pinBtn.setContentAreaFilled(false);
+            pinBtn.setOpaque(false);
+            pinBtn.setForeground(theme.foreground());
+            pinBtn.setVisible(pinned);
+
+            if (pinned) {
+                pinBtn.setIcon(ThemeManager.getIcon("pinned.svg", 32));
+                applyPinAccent(true);
+            }
+
+            JPanel pinPlaceholder = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 5));
+            pinPlaceholder.setOpaque(false);
+            Dimension pinBtnSize = pinBtn.getPreferredSize();
+            pinPlaceholder.setPreferredSize(pinBtnSize);
+            pinPlaceholder.setMinimumSize(pinBtnSize);
+            pinPlaceholder.setMaximumSize(pinBtnSize);
+            pinPlaceholder.add(pinBtn);
+            bubble.add(pinPlaceholder, BorderLayout.NORTH);
+
+            bubble.addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseEntered(MouseEvent e) {
+                    if (!pinned) {
+                        pinBtn.setVisible(true);
+                    }
+                }
+
+                @Override
+                public void mouseExited(MouseEvent e) {
+                    if (!pinned && !bubble.contains(e.getPoint())) {
+                        pinBtn.setVisible(false);
                     }
                 }
             });
@@ -393,6 +456,56 @@ public class MessageBubble extends JPanel implements Scrollable {
         });
         copyRevertTimer.setRepeats(false);
         copyRevertTimer.start();
+    }
+
+    /** Toggles pin state, persists via store, updates icon and accent. */
+    private void flipPin(PinnedMessageControl store) {
+        if (store == null) {
+            return;
+        }
+        pinned = !pinned;
+        store.setPinned(sessionId, messageId, pinned);
+        pinBtn.setIcon(ThemeManager.getIcon(
+                pinned ? "pinned.svg" : "pin.svg", 32));
+        pinBtn.setToolTipText(NbBundle.getMessage(MessageBubble.class,
+                pinned ? "HINT_UnpinMessage" : "HINT_PinMessage"));
+        pinBtn.getAccessibleContext().setAccessibleName(pinBtn.getToolTipText());
+        pinBtn.getAccessibleContext().setAccessibleDescription(pinBtn.getToolTipText());
+        if (!pinned) {
+            pinBtn.setVisible(false);
+        }
+        applyPinAccent(pinned);
+        revalidate();
+        repaint();
+    }
+
+    /** Returns {@code true} if this message is pinned. */
+    public boolean isPinned() {
+        return pinned;
+    }
+
+    /** Sets the pinned state (visual only — does NOT persist to store). */
+    public void setPinned(boolean pinned) {
+        this.pinned = pinned;
+        if (pinBtn != null) {
+            pinBtn.setIcon(ThemeManager.getIcon(
+                    pinned ? "pinned.svg" : "pin.svg", 32));
+            pinBtn.setToolTipText(NbBundle.getMessage(MessageBubble.class,
+                    pinned ? "HINT_UnpinMessage" : "HINT_PinMessage"));
+            pinBtn.getAccessibleContext().setAccessibleName(pinBtn.getToolTipText());
+            pinBtn.getAccessibleContext().setAccessibleDescription(pinBtn.getToolTipText());
+            pinBtn.setVisible(pinned);
+        }
+        applyPinAccent(pinned);
+    }
+
+    /** Applies or removes a subtle red accent border on the bubble when pinned. */
+    private void applyPinAccent(boolean apply) {
+        if (bubble instanceof RoundedPanel rp) {
+            rp.setBorderColor(apply
+                    ? new Color(0xCC, 0x33, 0x33, 255)
+                    : null);
+        }
     }
 
     /**

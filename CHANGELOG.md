@@ -77,6 +77,15 @@
   in its own "Current Icon Preview" bordered panel to the right of the
   Appearance section. Spinboxes for Session Idle Timeout and Max Messages
   have consistent 80px width.
+- **Pin messages in chat**: User and assistant messages can now be pinned
+  to prevent them from being removed when "hide older messages" is active.
+  A pin button appears on hover (top-right corner) for unpinned messages;
+  pinned messages show a pushpin icon always and get a subtle red accent
+  border. Pin state persists across IDE restarts via NbPreferences.
+  Pinned messages never count toward the max-messages cap — they are
+  always retained regardless of the trim threshold. Clicking pin/unpin
+  when "show all messages" is active still persists the state for future
+  use.
 
 ### Housekeeping
 - **Hexagonal arch violations resolved (2 remaining exceptions eliminated)**:

@@ -34,6 +34,7 @@ import javax.swing.border.EmptyBorder;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
+import github.anandb.netbeans.contract.PinnedMessageControl;
 import github.anandb.netbeans.model.Message;
 import github.anandb.netbeans.model.MessageTransformer;
 import github.anandb.netbeans.model.MessageType;
@@ -42,6 +43,7 @@ import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.TimingConstants;
+import org.openide.util.Lookup;
 
 import static org.apache.commons.lang3.StringUtils.defaultString;
 import static org.apache.commons.lang3.StringUtils.isBlank;
@@ -84,6 +86,7 @@ public class ChatThreadPanel extends JPanel {
     private volatile boolean keepOlderMessages = false;
     private volatile boolean batchAdding = false;
     private final JProgressBar sessionProgressBar;
+    private String currentSessionId;
 
     // Turn-end gate for flushTimer. When null or false, the deferred-finalize
     // timer restarts instead of firing — guards against premature JTextArea→
@@ -406,7 +409,7 @@ public class ChatThreadPanel extends JPanel {
             userMessageCount++;
         }
 
-        MessageBubble bubble = BubbleFactory.createRoleBubble(type, text, messageId, toolTitle, streaming, userMessageCount);
+        MessageBubble bubble = BubbleFactory.createRoleBubble(type, text, messageId, toolTitle, streaming, userMessageCount, currentSessionId);
 
         if (lastUserTimestamp > 0 && !"user".equals(type.roleName())) {
             long elapsed = System.currentTimeMillis() - lastUserTimestamp;
@@ -442,9 +445,14 @@ public class ChatThreadPanel extends JPanel {
         int max = currentMaxMessages();
         if (max <= 0 || keepOlderMessages) return;
 
+        // Count only unpinned bubbles — pinned never count toward the cap.
         int count = 0;
         for (Component c : messagesContainer.getComponents()) {
-            if (c instanceof MessageBubble || c instanceof PermissionBubble) {
+            if (c instanceof MessageBubble mb) {
+                if (!mb.isPinned()) {
+                    count++;
+                }
+            } else if (c instanceof PermissionBubble) {
                 count++;
             }
         }
@@ -455,13 +463,22 @@ public class ChatThreadPanel extends JPanel {
         int removed = 0;
         for (int i = 0; i < messagesContainer.getComponentCount() && removed < excess; ) {
             Component c = messagesContainer.getComponent(i);
-            if (c instanceof MessageBubble || c instanceof PermissionBubble) {
+            if (c instanceof MessageBubble mb) {
+                if (mb.isPinned()) {
+                    i++;
+                    continue;
+                }
                 messagesContainer.remove(i);
-                // Drop the wheel-redirect listener so the removed bubble (and
-                // its component subtree) is not retained by ScrollController's
-                // strong-keyed map until panel teardown.
                 scrollController.unfixMouseWheel(c);
                 // Remove trailing strut
+                if (i < messagesContainer.getComponentCount()
+                        && messagesContainer.getComponent(i) instanceof Box.Filler) {
+                    messagesContainer.remove(i);
+                }
+                removed++;
+            } else if (c instanceof PermissionBubble) {
+                messagesContainer.remove(i);
+                scrollController.unfixMouseWheel(c);
                 if (i < messagesContainer.getComponentCount()
                         && messagesContainer.getComponent(i) instanceof Box.Filler) {
                     messagesContainer.remove(i);
@@ -678,6 +695,11 @@ public class ChatThreadPanel extends JPanel {
         return allBlocksExpanded;
     }
 
+    /** Sets the current session ID. Called by SessionLifecycleHandler on session start. */
+    public void setSessionId(String sessionId) {
+        this.currentSessionId = sessionId;
+    }
+
     public void setKeepOlderMessages(boolean keep) {
         keepOlderMessages = keep;
         // When the user chooses to forget (keep=false), immediately trim the
@@ -826,18 +848,49 @@ public class ChatThreadPanel extends JPanel {
             userMessageCount = 0;
 
             if (messages != null) {
+                // Prime the pinned-message store so isPinned() reads are fast
+                // during bubble construction.
+                if (currentSessionId != null) {
+                    PinnedMessageControl pinStore = Lookup.getDefault()
+                            .lookup(PinnedMessageControl.class);
+                    if (pinStore != null) {
+                        List<String> ids = new ArrayList<>(messages.size());
+                        for (Message m : messages) {
+                            if (m.id() != null) {
+                                ids.add(m.id());
+                            }
+                        }
+                        pinStore.loadSession(currentSessionId, ids);
+                    }
+                }
+
                 // Batch mode: skip per-bubble revalidate, sweep, and combine.
                 // Single revalidate + scroll at end cuts O(N²) to O(N).
                 batchAdding = true;
                 try {
-                    // that fits the configured maximum — avoids building bubbles for
-                    // hundreds of oldest messages just to discard them in
-                    // trimMessages(). The full list is still cached so filter
-                    // toggles can re-render from source.
-                    List<Message> toRender = messages;
+                    // Build the render list: the tail that fits the configured
+                    // maximum, plus any pinned messages that fall before the tail.
+                    List<Message> toRender;
                     int max = currentMaxMessages();
                     if (max > 0 && !keepOlderMessages && messages.size() > max) {
-                        toRender = messages.subList(messages.size() - max, messages.size());
+                        int tailStart = messages.size() - max;
+                        // Collect pinned messages that occur before the tail.
+                        PinnedMessageControl pinStore2 = (currentSessionId != null)
+                                ? Lookup.getDefault().lookup(PinnedMessageControl.class) : null;
+                        List<Message> pinnedBefore = new ArrayList<>();
+                        for (int i = 0; i < tailStart; i++) {
+                            Message m = messages.get(i);
+                            if (m.id() != null && pinStore2 != null
+                                    && pinStore2.isPinned(currentSessionId, m.id())) {
+                                pinnedBefore.add(m);
+                            }
+                        }
+                        // Merge: pinned-before first, then the tail, preserving order.
+                        toRender = new ArrayList<>(pinnedBefore.size() + max);
+                        toRender.addAll(pinnedBefore);
+                        toRender.addAll(messages.subList(tailStart, messages.size()));
+                    } else {
+                        toRender = messages;
                     }
                     for (Message m : toRender) {
                         ProcessedMessage pm = messageTransformer.convert(m);

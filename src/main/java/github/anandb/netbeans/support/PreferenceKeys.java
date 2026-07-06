@@ -41,6 +41,9 @@ public final class PreferenceKeys {
     public static final String TOOLBAR_EXPORT = "toolbar.export";
     public static final String TOOLBAR_RESTART = "toolbar.restart";
 
+    /** JSON-encoded map of sessionId → list of pinned message IDs. */
+    public static final String PINNED_MESSAGES = "pinnedMessages";
+
     // Update checker preference keys
     public static final String LAST_CHECKED_FOR_UPDATES = "update.lastCheckedForUpdates";
     public static final String CHECK_FOR_UPDATES = "update.checkForUpdates";
