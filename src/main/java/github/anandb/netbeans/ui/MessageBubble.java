@@ -628,12 +628,10 @@ public class MessageBubble extends JPanel implements Scrollable {
         applyPinAccent(pinned);
     }
 
-    /** Applies or removes a subtle red accent border on the bubble when pinned. */
+    /** Applies or removes a red left accent on the bubble when pinned. */
     private void applyPinAccent(boolean apply) {
         if (bubble instanceof RoundedPanel rp) {
-            rp.setBorderColor(apply
-                    ? new Color(0xCC, 0x33, 0x33, 255)
-                    : null);
+            rp.setLeftAccent(apply ? new Color(0xCC, 0x33, 0x33, 255) : null);
         }
     }
 

@@ -1,12 +1,14 @@
 package github.anandb.netbeans.ui;
 
+import java.awt.BasicStroke;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Insets;
 import java.awt.RenderingHints;
+import java.awt.geom.Area;
 import java.awt.geom.RoundRectangle2D;
-import java.awt.Component;
 import javax.swing.JPanel;
 
 /**
@@ -31,6 +33,8 @@ public class RoundedPanel extends JPanel {
     private int radius;
     private Color baseColor; // null = transparent (children fill their own backgrounds)
     private Color borderColor; // null = use theme's bubbleBorder
+    private Color leftAccent; // null = no accent
+    private float borderStrokeWidth = 1f;
     private boolean showBorder = true;
     private RoundRectangle2D.Float cachedShape;
     private RoundRectangle2D.Float cachedBorderShape;
@@ -63,6 +67,15 @@ public class RoundedPanel extends JPanel {
     public final void setBorderColor(Color borderColor) {
         this.borderColor = borderColor;
         invalidateResolvedBorder();
+    }
+
+    public final void setBorderStrokeWidth(float width) {
+        this.borderStrokeWidth = width;
+    }
+
+    public final void setLeftAccent(Color accent) {
+        this.leftAccent = accent;
+        repaint();
     }
 
     private void invalidateShape() {
@@ -144,8 +157,23 @@ public class RoundedPanel extends JPanel {
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.clip(getShape());
                 super.paintChildren(g2);
+                if (leftAccent != null && leftAccent.getAlpha() > 0) {
+                    // Paint a 4px rounded accent on the left side.
+                    g2.setColor(leftAccent);
+                    int accentWidth = 4;
+                    RoundRectangle2D.Float full = getShape();
+                    RoundRectangle2D.Float accentShape = new RoundRectangle2D.Float(
+                            full.x, full.y, accentWidth, full.height,
+                            radius, radius);
+                    // Clip accent to the rounded shape so it doesn't bleed outside.
+                    Area accentArea = new Area(accentShape);
+                    accentArea.intersect(new Area(full));
+                    g2.fill(accentArea);
+                }
                 if (drawBorder) {
                     g2.setColor(resolvedBorder);
+                    float sw = borderColor != null ? borderStrokeWidth : 1f;
+                    g2.setStroke(new BasicStroke(sw));
                     g2.draw(getBorderShape(ins, w, h));
                 }
             } finally {
