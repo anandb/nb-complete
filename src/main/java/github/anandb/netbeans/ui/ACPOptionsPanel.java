@@ -139,12 +139,13 @@ public class ACPOptionsPanel extends JPanel {
         servicePanel.add(browseButton, UIUtils.createGbc(2, row, 0.0, 0, GridBagConstraints.NONE, GridBagConstraints.WEST,
                                             new Insets(0, 0, 5, 0)));
 
-        pathErrorLabel = new JLabel(" ");
+        pathErrorLabel = new JLabel();
         pathErrorLabel.setForeground(UIManager.getColor("Panel.foreground"));
         pathErrorLabel.setFont(pathErrorLabel.getFont().deriveFont(Font.ITALIC, pathErrorLabel.getFont().getSize() - 1f));
         GridBagConstraints errGbc = UIUtils.createGbc(1, ++row, 1.0, 0, GridBagConstraints.HORIZONTAL,
                                          GridBagConstraints.WEST, new Insets(0, 0, 5, 5));
         errGbc.gridwidth = 2;
+        errGbc.ipady = 0;
         servicePanel.add(pathErrorLabel, errGbc);
 
         argsLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_ProcessArguments"));
@@ -459,7 +460,7 @@ public class ACPOptionsPanel extends JPanel {
 
     boolean valid() {
         if (!userEditedPath) {
-            pathErrorLabel.setText(" ");
+            pathErrorLabel.setText("");
             return true;
         }
         String path = pathField.getText();
@@ -490,7 +491,7 @@ public class ACPOptionsPanel extends JPanel {
             pathErrorLabel.setForeground(UIManager.getColor("Label.errorForeground"));
             return false;
         }
-        pathErrorLabel.setText(" ");
+        pathErrorLabel.setText("");
         return true;
     }
 }
