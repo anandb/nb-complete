@@ -62,7 +62,7 @@ public class MessageBubble extends JPanel implements Scrollable {
     private final ArrayList<BubbleContentRenderer.CollapsibleState> codeStates = new ArrayList<>();
     private final JPanel segments;
     private final MessageType type;
-    private final String messageId;
+    private String messageId;
     private final String role;
     private final StringBuilder text;
     private final transient BubbleAccordionManager accordionManager;
@@ -350,8 +350,8 @@ public class MessageBubble extends JPanel implements Scrollable {
 
                 final JButton[] userCopyBtn = new JButton[1];
                 userCopyBtn[0] = UIUtils.createToolbarButton("copy.svg", btnSize,
-                    NbBundle.getMessage(MessageBubble.class, "HINT_CopyAssistantMessage"),
-                    e -> copyMessageToClipboard(userCopyBtn[0]));
+                    NbBundle.getMessage(MessageBubble.class, "HINT_CopyToInput"),
+                    e -> copyMessageToInputAndClipboard(userCopyBtn[0]));
                 userCopyBtn[0].setBorder(BorderFactory.createEmptyBorder());
                 userCopyBtn[0].setContentAreaFilled(false);
                 userCopyBtn[0].setOpaque(false);
@@ -577,6 +577,34 @@ public class MessageBubble extends JPanel implements Scrollable {
         copyRevertTimer.start();
     }
 
+    /** Copies message text to both the input text area and the system clipboard. */
+    private void copyMessageToInputAndClipboard(JButton copyBtn) {
+        String textToCopy = text.toString();
+        if (textToCopy.isEmpty()) {
+            return;
+        }
+
+        AssistantTopComponent.copyToInput(textToCopy);
+
+        StringSelection selection = new StringSelection(textToCopy);
+        Toolkit.getDefaultToolkit().getSystemClipboard().setContents(selection, selection);
+
+        Icon originalIcon = copyBtn.getIcon();
+        Icon checkIcon = ThemeManager.getIcon("check.svg", 14);
+        copyBtn.setIcon(checkIcon);
+
+        if (copyRevertTimer != null) {
+            copyRevertTimer.stop();
+        }
+        copyRevertTimer = new Timer(2000, e -> {
+            if (copyBtn.isShowing()) {
+                copyBtn.setIcon(originalIcon);
+            }
+        });
+        copyRevertTimer.setRepeats(false);
+        copyRevertTimer.start();
+    }
+
     /** Resolves the current session ID via Lookup (defensive fallback only). */
     private String resolveSessionId() {
         if (sessionId != null) {
@@ -626,6 +654,23 @@ public class MessageBubble extends JPanel implements Scrollable {
             pinBtn.getAccessibleContext().setAccessibleDescription(pinBtn.getToolTipText());
         }
         applyPinAccent(pinned);
+    }
+
+    /**
+     * Updates the message ID (e.g., when a client-generated echo ID is replaced
+     * by the server-assigned ID). Re-queries pin state for the new ID and
+     * updates the visual pin indicator.
+     */
+    public void setMessageId(String messageId) {
+        this.messageId = messageId;
+        if (pinBtn != null) {
+            PinnedMessageControl pinStore = Lookup.getDefault().lookup(PinnedMessageControl.class);
+            String sid = resolveSessionId();
+            if (pinStore != null && sid != null) {
+                this.pinned = pinStore.isPinned(sid, messageId);
+            }
+            setPinned(this.pinned);
+        }
     }
 
     /** Applies or removes a red left accent on the bubble when pinned. */

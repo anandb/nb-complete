@@ -91,6 +91,9 @@ public class ChatThreadPanel extends JPanel {
     // Seen message IDs during loading, for stale-pin cleanup in flushSessionBuffer().
     private final transient Map<String, Set<String>> seenMessageIdsBySession = new ConcurrentHashMap<>();
 
+    private final transient MessageTrimmer messageTrimmer;
+
+
     // Turn-end gate for flushTimer. When null or false, the timer restarts instead of firing,
     private transient volatile java.util.function.BooleanSupplier turnEndedSupplier;
 
@@ -129,6 +132,7 @@ public class ChatThreadPanel extends JPanel {
         add(layeredPane, BorderLayout.CENTER);
 
         scrollController = new ScrollController(scrollPane, this, layeredPane);
+        messageTrimmer = new MessageTrimmer(messagesContainer, scrollController);
 
         layeredPane.add(scrollPane, JLayeredPane.DEFAULT_LAYER);
 
@@ -248,7 +252,7 @@ public class ChatThreadPanel extends JPanel {
                 }
                 return;
             }
-            LOG.warn("sessionLoading=true, shouldBufferMgs()=true, but sessionId is null — falling through to unbuffered path");
+            LOG.warn("sessionLoading=true, shouldBufferMessages()=true, but sessionId is null — falling through to unbuffered path");
         }
 
         messageQueue.add(() -> processMessageOnEDT(pm));
@@ -438,52 +442,7 @@ public class ChatThreadPanel extends JPanel {
     }
 
     private void trimMessages() {
-        int max = currentMaxMessages();
-        if (max <= 0 || keepOlderMessages) return;
-
-        // Count only unpinned bubbles — pinned never count toward the cap.
-        int count = 0;
-        for (Component c : messagesContainer.getComponents()) {
-            if (c instanceof MessageBubble mb) {
-                if (!mb.isPinned()) {
-                    count++;
-                }
-            } else if (c instanceof PermissionBubble) {
-                count++;
-            }
-        }
-
-        int excess = count - max;
-        if (excess <= 0) return;
-
-        int removed = 0;
-        for (int i = 0; i < messagesContainer.getComponentCount() && removed < excess; ) {
-            Component c = messagesContainer.getComponent(i);
-            if (c instanceof MessageBubble mb) {
-                if (mb.isPinned()) {
-                    i++;
-                    continue;
-                }
-                messagesContainer.remove(i);
-                scrollController.unfixMouseWheel(c);
-                // Remove trailing strut
-                if (i < messagesContainer.getComponentCount()
-                        && messagesContainer.getComponent(i) instanceof Box.Filler) {
-                    messagesContainer.remove(i);
-                }
-                removed++;
-            } else if (c instanceof PermissionBubble) {
-                messagesContainer.remove(i);
-                scrollController.unfixMouseWheel(c);
-                if (i < messagesContainer.getComponentCount()
-                        && messagesContainer.getComponent(i) instanceof Box.Filler) {
-                    messagesContainer.remove(i);
-                }
-                removed++;
-            } else {
-                i++;
-            }
-        }
+        messageTrimmer.trim(currentMaxMessages(), keepOlderMessages);
     }
 
     /** Restart the debounced flush timer. Called when a turn-end signal arrives
@@ -833,9 +792,9 @@ public class ChatThreadPanel extends JPanel {
             return;
         }
 
+        sessionLoading = false;
         List<ProcessedMessage> buffer = pendingMessagesBySession.remove(sid);
         if (buffer != null && !buffer.isEmpty()) {
-            sessionLoading = false;
             batchAdding = true;
             try {
                 int max = currentMaxMessages();

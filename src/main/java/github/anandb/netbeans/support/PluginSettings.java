@@ -18,7 +18,7 @@ public final class PluginSettings {
     private static final String KEY_MAX_MESSAGES = PreferenceKeys.MAX_MESSAGES;
     private static final int DEFAULT_SESSION_IDLE_TIMEOUT = 300;
     private static final int DEFAULT_MAX_MESSAGES = 100;
-    private static final int DEFAULT_TOOLBAR_ICON_SIZE = 32;
+    private static final int DEFAULT_TOOLBAR_ICON_SIZE = 24;
     private static final String DEFAULT_PREAMBLE;
 
     /** Cached session idle timeout in seconds — volatile for cross-thread visibility. */
@@ -104,6 +104,8 @@ public final class PluginSettings {
                 int v = Integer.parseInt(evt.getNewValue());
                 if (v == 16 || v == 24 || v == 28 || v == 32 || v == 48) {
                     cachedToolbarIconSize = v;
+                } else {
+                    cachedToolbarIconSize = DEFAULT_TOOLBAR_ICON_SIZE;
                 }
             } catch (NumberFormatException e) {
                 cachedToolbarIconSize = DEFAULT_TOOLBAR_ICON_SIZE;

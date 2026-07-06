@@ -2,6 +2,7 @@ package github.anandb.netbeans.ui;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import javax.swing.SwingUtilities;
 
@@ -131,6 +132,10 @@ public class MessageSender {
             return;
         }
 
+        // Client-generated correlation ID so the local echo bubble can be matched
+        // to the server-assigned message ID when it is echoed back.
+        final String clientMessageId = UUID.randomUUID().toString();
+
         inputArea.setText("");
         statusController.setStatus("STATUS_Sending");
         statusController.startThinking();
@@ -163,6 +168,7 @@ public class MessageSender {
                     .messageType(MessageType.user_message_chunk)
                     .text(echoBuilder.toString())
                     .rawText(echoBuilder.toString())
+                    .messageId(clientMessageId)
                     .build());
             }
         }
