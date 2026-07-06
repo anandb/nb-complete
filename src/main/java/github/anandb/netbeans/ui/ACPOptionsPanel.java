@@ -26,6 +26,7 @@ import javax.swing.border.TitledBorder;
 
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JMenuItem;
 import javax.swing.JPopupMenu;
@@ -72,6 +73,7 @@ public class ACPOptionsPanel extends JPanel {
     private JButton iconBrowseButton;
     private JLabel iconPreviewLabel;
     private transient IconPreviewManager iconPreviewManager;
+    private JComboBox<String> toolbarIconCombo;
 
     private String detectedPath;
     private boolean showingHint;
@@ -245,6 +247,15 @@ public class ACPOptionsPanel extends JPanel {
         appearanceLeft.add(iconBrowseButton, UIUtils.createGbc(2, row, 0.0, 0, GridBagConstraints.NONE,
                                                 GridBagConstraints.WEST, new Insets(0, 0, 5, 0)));
 
+        JLabel toolbarIconLabel = new JLabel(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_ToolbarIconSize"));
+        appearanceLeft.add(toolbarIconLabel, UIUtils.createGbc(0, ++row, 0.0, 0, GridBagConstraints.NONE, GridBagConstraints.WEST,
+                new Insets(0, 12, 5, 5)));
+
+        toolbarIconCombo = new JComboBox<>(new String[]{"16", "24", "28", "32", "48"});
+        toolbarIconCombo.addActionListener(evt -> controller.changed());
+        appearanceLeft.add(toolbarIconCombo, UIUtils.createGbc(1, row, 0.0, 0, GridBagConstraints.NONE,
+                GridBagConstraints.WEST, new Insets(0, 0, 5, 5)));
+
         JPanel previewPanel = new JPanel(new GridBagLayout());
         TitledBorder previewBorder = BorderFactory.createTitledBorder(
                 BorderFactory.createEtchedBorder(),
@@ -378,6 +389,9 @@ public class ACPOptionsPanel extends JPanel {
         previousIconPath = PluginSettings.getCustomUserIcon();
         iconPathField.setText(previousIconPath);
         iconPreviewManager.updatePreview(iconPathField.getText());
+
+        int currentSize = PluginSettings.getToolbarIconSize();
+        toolbarIconCombo.setSelectedItem(String.valueOf(currentSize));
     }
 
     private void clearHint() {
@@ -421,6 +435,11 @@ public class ACPOptionsPanel extends JPanel {
             }
         }
         PluginSettings.setCustomUserIcon(iconPathField.getText());
+
+        String selectedSize = (String) toolbarIconCombo.getSelectedItem();
+        if (selectedSize != null) {
+            PluginSettings.setToolbarIconSize(Integer.parseInt(selectedSize));
+        }
 
         String newIconPath = iconPathField.getText();
         String oldPath = previousIconPath != null ? previousIconPath : "";

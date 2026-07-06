@@ -32,6 +32,9 @@ public final class PinnedMessageStore implements PinnedMessageControl {
 
     private static final String PREF_PREFIX = "pinnedMessages.";
 
+    /** Logger. */
+    private static final Logger LOG = Logger.from(PinnedMessageStore.class);
+
     /** In-memory cache: sessionId → mutable set of pinned message IDs. */
     private final ConcurrentHashMap<String, Set<String>> cache = new ConcurrentHashMap<>();
 
@@ -70,6 +73,25 @@ public final class PinnedMessageStore implements PinnedMessageControl {
         Set<String> pinned = new HashSet<>(stored);
         cache.put(sessionId, ConcurrentHashMap.newKeySet());
         cache.get(sessionId).addAll(pinned);
+    }
+
+    @Override
+    public void retainPinned(String sessionId, java.util.Set<String> activeMessageIds) {
+        if (sessionId == null || activeMessageIds == null) {
+            return;
+        }
+        Set<String> pinned = cache.get(sessionId);
+        if (pinned == null) {
+            return;
+        }
+        int before = pinned.size();
+        pinned.removeIf(id -> !activeMessageIds.contains(id));
+        int removed = before - pinned.size();
+        if (removed > 0) {
+            LOG.info("Pinned-message cleanup for session {0}: removed {1} stale entries",
+                    sessionId, removed);
+            persistSession(sessionId);
+        }
     }
 
     @Override

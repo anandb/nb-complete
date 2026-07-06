@@ -28,6 +28,9 @@ public final class PreferenceKeys {
 
     public static final String INPUT_HISTORY_PREFIX = "inputHistory.";
 
+    /** Toolbar icon size: 24 (small), 28 (medium), 32 (large). */
+    public static final String TOOLBAR_ICON_SIZE = "toolbarIconSize";
+
     /** Stored JSplitPane divider position for the chat panel / input area split. */
     public static final String DIVIDER_POSITION = "dividerPosition";
     // Toolbar button visibility keys

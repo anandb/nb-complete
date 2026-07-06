@@ -42,6 +42,7 @@ import github.anandb.netbeans.contract.PermissionHandler;
 import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.model.SessionItem;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
 import github.anandb.netbeans.ui.platform.ProjectContext;
 import github.anandb.netbeans.ui.platform.SessionService;
@@ -155,7 +156,9 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         layoutBuilder.getRightStatusPanel().add(attachmentUiHandler.getButton(), 0);
 
         // Add rocket (OpenCode Go) button to the left of the attachment button
-        JButton rocketBtn = UIUtils.createToolbarButton("shuttle.svg", 30, "Sign up for OpenCode Go (Referral Link)", e -> {
+        int iconSize = PluginSettings.getToolbarIconSize();
+        JButton rocketBtn = UIUtils.createToolbarButton("shuttle.svg", iconSize,
+                "Sign up for OpenCode Go (Referral Link)", e -> {
             github.anandb.netbeans.support.BrowserUtils.openOrCopyUrl(
                     "https://opencode.ai/go?ref=DWTNHGN9KX", null, null);
         });

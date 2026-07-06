@@ -11,6 +11,7 @@ import javax.swing.JPopupMenu;
 import javax.swing.SwingUtilities;
 import org.openide.util.NbBundle;
 import github.anandb.netbeans.model.AttachedFile;
+import github.anandb.netbeans.support.PluginSettings;
 
 /**
  * Handles all attachment-related UI: paperclip button, file selection popup,
@@ -50,10 +51,10 @@ public class AttachmentUiHandler {
     public void updateTooltip() {
         if (attachmentManager.getAttachments().isEmpty()) {
             paperclipBtn.setToolTipText(NbBundle.getMessage(AssistantTopComponent.class, "HINT_AttachFiles"));
-            paperclipBtn.setIcon(ThemeManager.getIcon("paperclip.svg", 28));
+            paperclipBtn.setIcon(ThemeManager.getIcon("paperclip.svg", PluginSettings.getToolbarIconSize()));
         } else {
             paperclipBtn.setToolTipText(NbBundle.getMessage(AssistantTopComponent.class, "HINT_FilesAttached", attachmentManager.size()));
-            paperclipBtn.setIcon(ThemeManager.getIcon("paperclip-dot.svg", 28));
+            paperclipBtn.setIcon(ThemeManager.getIcon("paperclip-dot.svg", PluginSettings.getToolbarIconSize()));
         }
     }
 

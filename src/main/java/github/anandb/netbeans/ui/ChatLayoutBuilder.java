@@ -29,6 +29,7 @@ import org.openide.util.NbBundle;
 import org.openide.util.NbPreferences;
 
 import github.anandb.netbeans.support.AgentUtils;
+import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.PreferenceKeys;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
 
@@ -171,7 +172,7 @@ final class ChatLayoutBuilder {
         JButton shb = UIUtils.createToolbarButton("show.svg", NbBundle.getMessage(AssistantTopComponent.class, "HINT_ShowArchivedSessions"), e -> {
             boolean showing = !isShowingHidden();
             NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean("showHiddenSessions", showing);
-            shbRef[0].setIcon(ThemeManager.getIcon(showing ? "hide.svg" : "show.svg", 28));
+            shbRef[0].setIcon(ThemeManager.getIcon(showing ? "hide.svg" : "show.svg", PluginSettings.getToolbarIconSize()));
             shbRef[0].setToolTipText(showing
                 ? NbBundle.getMessage(AssistantTopComponent.class, "HINT_HideArchivedSessions")
                 : NbBundle.getMessage(AssistantTopComponent.class, "HINT_ShowArchivedSessions"));
@@ -186,7 +187,7 @@ final class ChatLayoutBuilder {
         showHiddenBtn = shb;
         // Restore icon state from preference
         if (isShowingHidden()) {
-            shb.setIcon(ThemeManager.getIcon("hide.svg", 28));
+            shb.setIcon(ThemeManager.getIcon("hide.svg", PluginSettings.getToolbarIconSize()));
             shb.setToolTipText(NbBundle.getMessage(AssistantTopComponent.class, "HINT_HideArchivedSessions"));
         }
 
@@ -218,7 +219,7 @@ final class ChatLayoutBuilder {
             tb.setToolTipText(expanded
                 ? NbBundle.getMessage(AssistantTopComponent.class, "HINT_CollapseAll")
                 : NbBundle.getMessage(AssistantTopComponent.class, "HINT_ExpandAll"));
-            tb.setIcon(ThemeManager.getIcon(expanded ? "collapse.svg" : "expand.svg", 28));
+            tb.setIcon(ThemeManager.getIcon(expanded ? "collapse.svg" : "expand.svg", PluginSettings.getToolbarIconSize()));
         });
         toggleBlocksBtn = tb;
         toggleBlocksBtn.putClientProperty("state", "expand");
@@ -231,7 +232,7 @@ final class ChatLayoutBuilder {
             boolean keep = !chatPanel.isKeepOlderMessages();
             chatPanel.setKeepOlderMessages(keep);
             NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean("keepOlderMessages", keep);
-            forgetBtn.setIcon(ThemeManager.getIcon(keep ? "forget.svg" : "remember.svg", 28));
+            forgetBtn.setIcon(ThemeManager.getIcon(keep ? "forget.svg" : "remember.svg", PluginSettings.getToolbarIconSize()));
             forgetBtn.setToolTipText(keep
                 ? NbBundle.getMessage(AssistantTopComponent.class, "HINT_TruncateMessages")
                 : NbBundle.getMessage(AssistantTopComponent.class, "HINT_KeepMessages"));
@@ -349,7 +350,9 @@ final class ChatLayoutBuilder {
         statusLabel.setFont(statusLabel.getFont().deriveFont(11f));
         statusPanel.add(statusLabel, BorderLayout.WEST);
 
-        toggleOptionsBtn = UIUtils.createToolbarButton("settings.svg", 25, NbBundle.getMessage(AssistantTopComponent.class, "HINT_Options"), null);
+        int tsz = PluginSettings.getToolbarIconSize();
+        toggleOptionsBtn = UIUtils.createToolbarButton("settings.svg", tsz,
+                NbBundle.getMessage(AssistantTopComponent.class, "HINT_Options"), null);
 
         rightStatusPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         rightStatusPanel.setOpaque(false);
@@ -431,8 +434,10 @@ final class ChatLayoutBuilder {
     }
 
     private JButton createFilterButton() {
+        int tsz = PluginSettings.getToolbarIconSize();
         final JButton[] btnRef = new JButton[1];
-        JButton btn = UIUtils.createToolbarButton("filter.svg", 25, NbBundle.getMessage(AssistantTopComponent.class, "HINT_FilterMessages"), e -> {
+        JButton btn = UIUtils.createToolbarButton("filter.svg", tsz,
+                NbBundle.getMessage(AssistantTopComponent.class, "HINT_FilterMessages"), e -> {
             javax.swing.JPopupMenu popup = new javax.swing.JPopupMenu();
             for (String type : MessageFilterManager.getEffectiveMessageTypes()) {
                 javax.swing.JCheckBoxMenuItem item = new javax.swing.JCheckBoxMenuItem(type, !MessageFilterManager.isTypeHidden(type));
@@ -581,7 +586,7 @@ final class ChatLayoutBuilder {
 
     void updateHideButtonIcon(boolean hidden) {
         if (hideBtn != null) {
-            hideBtn.setIcon(ThemeManager.getIcon(hidden ? "unarchive.svg" : "archive.svg", 28));
+            hideBtn.setIcon(ThemeManager.getIcon(hidden ? "unarchive.svg" : "archive.svg", PluginSettings.getToolbarIconSize()));
             hideBtn.setToolTipText(hidden
                 ? NbBundle.getMessage(AssistantTopComponent.class, "HINT_UnarchiveSession")
                 : NbBundle.getMessage(AssistantTopComponent.class, "HINT_ArchiveSession"));

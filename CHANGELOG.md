@@ -3,6 +3,15 @@
 ## v1.7.6 (Changes since v1.7.5)
 
 ### Fixes
+- **Pinned user bubbles use left accent instead of red border**: `RoundedPanel`
+  now draws a 2px colored left accent strip for pinned status instead of a full
+  red border. Border is drawn via `paintComponent` override inside the clip,
+  respecting the panel's corner radius. The accent color uses the theme's
+  `accent` color for both light and dark modes.
+- **Streamed assistant bubbles missing messageId**: `ChatThreadPanel` stream
+  timer path did not populate `currentSessionId` before creating assistant
+  bubbles, causing pin button lookups to fail. Session ID is now captured
+  before each flush and passed to `addSingleBubble`.
 - **Automatic update check never running**: The startup update check was gated
   behind an environment variable `ACP_CHECK_UPDATES_ON_STARTUP` that is almost
   never set in production. This meant the startup check never ran, and the
@@ -61,6 +70,22 @@
   renamed to match the lookup.
 
 ### Features
+- **Configurable toolbar icon size**: Toolbar, status bar, and inline action
+  button icons (gear, filter, paperclip, rocket/signup, archive, show/hide,
+  expand/collapse, remember/forget, help, feedback, keyboard shortcuts, new
+  session, rename, reload, export, restart) are now sized dynamically from a
+  single preference — Options > Assistant > Appearance > Toolbar Icon Size.
+  Choices: 16 (XS), 24 (S), 28 (M), 32 (L), 48 (XL). Default is 32. Cached
+  via volatile + `PreferenceChangeListener` per AGENTS.md hot-path rules.
+  Requires IDE restart to take full effect.
+- **Per-session pinned message keys**: Pin state is now stored under
+  `session/{sessionId}/pinned` keys instead of a flat `message/{msgId}/pinned`
+  namespace. Prevents cross-session pin bleed when the same message ID appears
+  in multiple sessions.
+- **Pinned messages survive session reload/load**: `ChatThreadPanel` buffers
+  seen message IDs during streaming and re-applies pin state after
+  `setMessages()` completes. Stale pinned references (messages no longer in
+  the session) are cleaned up automatically with an INFO log.
 - **Configurable Max Messages preference**: The maximum number of visible
   message bubbles (previously hardcoded to 100) is now a NetBeans preference —
   Options > Assistant > Chat Behavior > Max Messages, range 10–100, default
@@ -98,6 +123,10 @@
   button on hover that copies just that segment's content.
 
 ### Housekeeping
+- **Forget/remember icon replaced**: The vault icon was replaced with a
+  chat-bubble icon (`show_all.svg`/`show_all_dark.svg`) for both remember and
+  forget states, providing a clearer visual metaphor for message visibility
+  toggling.
 - **Hexagonal arch violations resolved (2 remaining exceptions eliminated)**:
   Extracted `contract/UpdateCheckerControl` interface — `ACPStartup` now uses
   `Lookup.getDefault().lookup()` instead of `UpdateCheckerService.getInstance()`;

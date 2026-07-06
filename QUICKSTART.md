@@ -149,6 +149,7 @@ Type `/` in the input area to trigger the autocomplete popup.
 - **Preamble** — Global system prompt prepended to every new session.
 - **Local Echo** — Show your message instantly in the chat panel before the server responds.
 - **Session Idle Timeout** — Seconds of inactivity before the plugin disconnects and reconnects to the OpenCode server.
+- **Toolbar Icon Size** — Adjust toolbar and action button icon size (16/24/28/32/48) in Options > Assistant > Appearance. Requires IDE restart.
 - **User Icon** — Set a custom avatar displayed next to your messages; right-click the preview to clear it.
 
 ### Media

@@ -19,6 +19,12 @@ public interface PinnedMessageControl {
      */
     void loadSession(String sessionId);
 
+    /**
+     * Removes pinned entries for message IDs not in the active set.
+     * Call after loading completes to clean up stale pins (e.g. for deleted messages).
+     */
+    void retainPinned(String sessionId, java.util.Set<String> activeMessageIds);
+
     /** Evicts the in-memory cache for the given session. */
     void unloadSession(String sessionId);
 }

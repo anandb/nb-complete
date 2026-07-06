@@ -11,9 +11,9 @@ import java.awt.event.ComponentEvent;
 import java.awt.event.ContainerAdapter;
 import java.awt.event.ContainerEvent;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.Consumer;
@@ -46,6 +46,7 @@ import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.TimingConstants;
+import java.util.concurrent.ConcurrentHashMap;
 import org.openide.util.Lookup;
 
 import static org.apache.commons.lang3.StringUtils.defaultString;
@@ -57,21 +58,21 @@ public class ChatThreadPanel extends JPanel {
     private static final Logger LOG = Logger.from(ChatThreadPanel.class);
     private static final long serialVersionUID = 1L;
     private static final Pattern SECTION_SPLIT = Pattern.compile("(?m)^---[ \\t]*$");
-    // Max visible message bubbles via PluginSettings.getMaxMessages(); 0 = unlimited.
+    // Max visible bubbles via PluginSettings.getMaxMessages(); 0 = unlimited.
 
     private long lastUserTimestamp = -1L;
     private int userMessageCount = 0;
     private final ConcurrentLinkedQueue<Runnable> messageQueue = new ConcurrentLinkedQueue<>();
     private volatile boolean draining = false;
 
-    // Debounced flush timer. Reset on every processed message so it fires 300ms after the last drain.
+    // Debounced flush timer. Reset on each processed message, fires 300ms after last drain.
     private final javax.swing.Timer flushTimer;
 
     private final JPanel messagesContainer;
     private final JScrollPane scrollPane;
     private final JLayeredPane layeredPane;
 
-    // Cached full message list so filter/preference changes can re-render without server round-trip.
+    // Cached full message list for re-render on filter/pref changes.
     private transient volatile List<Message> cachedMessages;
     private final transient ScrollController scrollController;
     private final transient MessageTransformer messageTransformer;
@@ -84,9 +85,11 @@ public class ChatThreadPanel extends JPanel {
     private String currentSessionId;
 
     private volatile boolean sessionLoading = false;
-    // Session-keyed buffer flushed when loading completes. Keyed by sessionId
-    // so switch-session races cannot mix buffers.
-    private final Map<String, List<ProcessedMessage>> pendingMessagesBySession = new HashMap<>();
+    // Session-keyed buffer for loading; switch-session-safe.
+    private final transient Map<String, List<ProcessedMessage>> pendingMessagesBySession = new ConcurrentHashMap<>();
+
+    // Seen message IDs during loading, for stale-pin cleanup in flushSessionBuffer().
+    private final transient Map<String, Set<String>> seenMessageIdsBySession = new ConcurrentHashMap<>();
 
     // Turn-end gate for flushTimer. When null or false, the timer restarts instead of firing,
     private transient volatile java.util.function.BooleanSupplier turnEndedSupplier;
@@ -157,8 +160,7 @@ public class ChatThreadPanel extends JPanel {
             }
         });
 
-        // Listen on layeredPane (not parent) so children get correct bounds the moment it's sized.
-        // Fixes the (0,0,0,0) window where scrollPane has zero size during the initial layout pass.
+        // Listen on layeredPane so children get correct bounds at first layout.
         layeredPane.addComponentListener(new ComponentAdapter() {
             @Override
             public void componentResized(ComponentEvent e) {
@@ -236,10 +238,14 @@ public class ChatThreadPanel extends JPanel {
         }
 
         // Buffer during loading when trimming is active — avoids create-then-remove churn.
-        if (sessionLoading && shouldBufferMgs()) {
+        if (sessionLoading && shouldBufferMessages()) {
             String sid = ensureCurrentSessionId();
             if (sid != null) {
                 pendingMessagesBySession.computeIfAbsent(sid, k -> new ArrayList<>()).add(pm);
+                // Track seen message IDs for stale-pin cleanup.
+                if (pm.messageId() != null) {
+                    seenMessageIdsBySession.computeIfAbsent(sid, k -> ConcurrentHashMap.newKeySet()).add(pm.messageId());
+                }
                 return;
             }
             LOG.warn("sessionLoading=true, shouldBufferMgs()=true, but sessionId is null — falling through to unbuffered path");
@@ -358,10 +364,7 @@ public class ChatThreadPanel extends JPanel {
         // Capture scroll state BEFORE modifying content
         boolean wasAtBottom = scrollController.isAtBottom();
 
-        // Failsafe: sweep for orphaned streaming JTextAreas before creating
-        // any new bubble. Catches cases where a previous streaming bubble's
-        // boolean flags were corrupted and never finalized.
-        // Skip in batch mode — container was just cleared.
+        // Sweep orphaned streaming JTextAreas before creating new bubble. Skip in batch mode.
         if (!batchAdding) {
             sweepStreamingBubbles(wasAtBottom);
         }
@@ -377,10 +380,7 @@ public class ChatThreadPanel extends JPanel {
             messagesContainer.add(bubble);
             messagesContainer.add(strut);
 
-            // Streaming bubbles revalidate via the streamer's deferred-finalize
-            // path; revalidating here would force a layout pass for each tool
-            // chunk before its content is even known to be visible.
-            // Skip revalidate in batch mode — single pass at end of setMessages.
+            // Streaming bubbles revalidate via deferred-finalize; skip per-chunk layout.
             if (!streaming) {
                 if (!batchAdding) {
                     messagesContainer.revalidate();
@@ -398,10 +398,7 @@ public class ChatThreadPanel extends JPanel {
             return;
         }
 
-        // Combine individual tool/thought bubbles before user/assistant messages.
-        // Runs even in batch mode — the boundary optimization (scanStart finds
-        // last user/assistant/combined) limits per-call scan to the current
-        // turn's tail, so batch combine cost is O(N) total, not O(N²).
+        // Combine tool/thought bubbles before user/assistant. Batch-safe (scanStart limits per-call).
         if (type.isUser() || type.isAssistant()) {
             ToolThoughtCombiner.combine(messagesContainer, allBlocksExpanded, scrollController);
         }
@@ -426,11 +423,7 @@ public class ChatThreadPanel extends JPanel {
         strut.setVisible(visible);
         messagesContainer.add(bubble);
         messagesContainer.add(strut);
-        // For non-streaming messages, force revalidation so the bubble is laid out.
-        // For streaming bubbles, addNotify() revalidates the bubble itself, and
-        // the streamer's deferred-finalize path revalidates the container on flush —
-        // skipping revalidate here avoids forcing a layout pass per initial chunk.
-        // Skip revalidate + scroll in batch mode — single pass at end of setMessages.
+        // Non-streaming: force layout. Streaming: deferred-finalize handles it. Skip in batch mode.
         if (!streaming) {
             if (!batchAdding) {
                 messagesContainer.revalidate();
@@ -502,9 +495,7 @@ public class ChatThreadPanel extends JPanel {
     }
 
     public void stopStreaming() {
-        // Already on EDT — all callers (Timer, SessionLifecycleHandler) invoke via EDT.
-        // Do NOT wrap in SwingUtilities.invokeLater: that defers execution, creating a
-        // race where late SSE deltas can clear activeStreamBubble before we finalize it.
+        // Already on EDT — do NOT wrap in invokeLater (creates race with late SSE deltas).
         boolean anyFinalized = false;
         boolean wasAtBottom = scrollController.isAtBottom();
 
@@ -514,19 +505,12 @@ public class ChatThreadPanel extends JPanel {
             if (activeBubble.streamingFlagsSet()) {
                 activeBubble.finalizeStreaming(allBlocksExpanded, true);
             } else if (activeBubble.hasStreamingTextArea()) {
-                // Boolean flags were corrupted (e.g. exception midway through a
-                // previous finalization) but the streaming JTextArea is still
-                // in the tree. Normal finalize would short-circuit, so force it.
+                // Boolean flags corrupted mid-finalize; force finalize via JTextArea presence.
                 activeBubble.forceFinalize(allBlocksExpanded);
             }
             anyFinalized = true;
         }
-        // Scan for any remaining streaming bubbles missed by the
-        // activeStreamBubble path (e.g. interrupted by tool/thought
-        // chunks that reset activeStreamBubble, or late SSE deltas
-        // arriving after the responding_finished timer fired).
-        // Uses both boolean flags and physical JTextArea presence as
-        // dual source of truth for the failsafe sweep.
+        // Failsafe sweep for remaining streaming bubbles (missed by activeStreamBubble).
         anyFinalized |= sweepStreamingBubbles(wasAtBottom);
         if (anyFinalized) {
             messagesContainer.revalidate();
@@ -534,18 +518,11 @@ public class ChatThreadPanel extends JPanel {
                 scrollController.scrollToBottom(true);
             }
         }
-        // Tool/thought combining is NOT done here — it is triggered only by a
-        // new user/assistant message arriving via addSingleBubble(). The flush
-        // timer is for finalizing streaming assistant content only; calling
-        // combine here would prematurely merge tools between messages when
-        // the timer fires during a gap in tool streaming.
+        // Combine NOT done here — triggered by addSingleBubble on user/assistant messages.
     }
 
     /**
-     * Sweeps all bubbles in the container for orphaned streaming JTextAreas.
-     * Checks both {@link MessageBubble#streamingFlagsSet()} (boolean flags) and
-     * {@link MessageBubble#hasStreamingTextArea()} (physical component tree)
-     * as dual source of truth.
+     * Sweeps all bubbles for orphaned streaming JTextAreas (dual source of truth).
      * <p>
      * Three cases:
      * <ol>
@@ -623,7 +600,7 @@ public class ChatThreadPanel extends JPanel {
     }
 
     /** Returns true when messages will be trimmed (max > 0 and not "keep all"). */
-    private boolean shouldBufferMgs() {
+    private boolean shouldBufferMessages() {
         return currentMaxMessages() > 0 && !keepOlderMessages;
     }
 
@@ -838,6 +815,7 @@ public class ChatThreadPanel extends JPanel {
     public void clearMessages() {
         cachedMessages = null;
         pendingMessagesBySession.clear();
+        seenMessageIdsBySession.clear();
         SwingUtilities.invokeLater(() -> {
             messagesContainer.removeAll();
             scrollController.unfixAllMouseWheel();
@@ -847,56 +825,77 @@ public class ChatThreadPanel extends JPanel {
         });
     }
 
-    /** Flush buffered messages for current session, trimming to MAX_MESSAGES + pinned. */
+    /** Flush buffered messages and clean stale pins. Runs for both streaming + history-load paths. */
     public void flushSessionBuffer() {
         String sid = ensureCurrentSessionId();
         if (sid == null) {
             LOG.warn("flushSessionBuffer: sessionId is null, cannot flush buffer");
             return;
         }
+
         List<ProcessedMessage> buffer = pendingMessagesBySession.remove(sid);
-        if (buffer == null || buffer.isEmpty()) return;
-        sessionLoading = false;
-        batchAdding = true;
-        try {
-            int max = currentMaxMessages();
-            List<ProcessedMessage> toRender;
-            if (max > 0 && !keepOlderMessages && buffer.size() > max) {
-                int tailStart = buffer.size() - max;
-                PinnedMessageControl pinStore = (currentSessionId != null)
-                        ? Lookup.getDefault().lookup(PinnedMessageControl.class) : null;
-                List<ProcessedMessage> pinnedBefore = new ArrayList<>();
-                for (int i = 0; i < tailStart; i++) {
-                    ProcessedMessage pm = buffer.get(i);
-                    if (pm.messageId() != null && pinStore != null
-                            && pinStore.isPinned(sid, pm.messageId())) {
-                        pinnedBefore.add(pm);
+        if (buffer != null && !buffer.isEmpty()) {
+            sessionLoading = false;
+            batchAdding = true;
+            try {
+                int max = currentMaxMessages();
+                List<ProcessedMessage> toRender;
+                if (max > 0 && !keepOlderMessages && buffer.size() > max) {
+                    int tailStart = buffer.size() - max;
+                    PinnedMessageControl pinStore = (currentSessionId != null)
+                            ? Lookup.getDefault().lookup(PinnedMessageControl.class) : null;
+                    List<ProcessedMessage> pinnedBefore = new ArrayList<>();
+                    for (int i = 0; i < tailStart; i++) {
+                        ProcessedMessage pm = buffer.get(i);
+                        if (pm.messageId() != null && pinStore != null
+                                && pinStore.isPinned(sid, pm.messageId())) {
+                            pinnedBefore.add(pm);
+                        }
+                    }
+                    toRender = new ArrayList<>(pinnedBefore.size() + max);
+                    toRender.addAll(pinnedBefore);
+                    toRender.addAll(buffer.subList(tailStart, buffer.size()));
+                } else {
+                    toRender = buffer;
+                }
+                for (ProcessedMessage pm : toRender) {
+                    if (pm.isIgnorable()) continue;
+                    if (pm.streaming()) {
+                        processMessageSections(pm, pm.text(), pm.messageType().roleName());
+                    } else {
+                        addSingleBubble(pm.messageType(), pm.text(), pm.messageId(), pm.toolTitle(), false);
                     }
                 }
-                toRender = new ArrayList<>(pinnedBefore.size() + max);
-                toRender.addAll(pinnedBefore);
-                toRender.addAll(buffer.subList(tailStart, buffer.size()));
-            } else {
-                toRender = buffer;
+            } finally {
+                batchAdding = false;
             }
-            for (ProcessedMessage pm : toRender) {
-                if (pm.isIgnorable()) continue;
-                if (pm.streaming()) {
-                    processMessageSections(pm, pm.text(), pm.messageType().roleName());
-                } else {
-                    addSingleBubble(pm.messageType(), pm.text(), pm.messageId(), pm.toolTitle(), false);
-                }
-            }
-        } finally {
-            batchAdding = false;
+            trimMessages();
+            messagesContainer.revalidate();
+            scrollController.scrollToBottom(true);
         }
-        trimMessages();
-        messagesContainer.revalidate();
-        scrollController.scrollToBottom(true);
+
+        // Stale-pin cleanup: remove pins for unseen message IDs. Runs for both paths.
+        Set<String> seen = seenMessageIdsBySession.remove(sid);
+        if (seen != null && !seen.isEmpty()) {
+            PinnedMessageControl pinStore = Lookup.getDefault().lookup(PinnedMessageControl.class);
+            if (pinStore != null) {
+                pinStore.retainPinned(sid, seen);
+            }
+        }
     }
 
     public void setMessages(List<Message> messages) {
         cachedMessages = (messages != null) ? new ArrayList<>(messages) : null;
+
+        // Populate seen IDs for flushSessionBuffer() stale-pin cleanup (same EDT tick).
+        if (messages != null && currentSessionId != null) {
+            Set<String> seen = seenMessageIdsBySession
+                    .computeIfAbsent(currentSessionId, k -> ConcurrentHashMap.newKeySet());
+            for (Message m : messages) {
+                if (m.id() != null) seen.add(m.id());
+            }
+        }
+
         SwingUtilities.invokeLater(() -> {
             // Clear synchronously — avoid clearMessages()'s own invokeLater
             // which would add an extra EDT tick.

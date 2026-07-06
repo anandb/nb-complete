@@ -18,12 +18,15 @@ public final class PluginSettings {
     private static final String KEY_MAX_MESSAGES = PreferenceKeys.MAX_MESSAGES;
     private static final int DEFAULT_SESSION_IDLE_TIMEOUT = 300;
     private static final int DEFAULT_MAX_MESSAGES = 100;
+    private static final int DEFAULT_TOOLBAR_ICON_SIZE = 32;
     private static final String DEFAULT_PREAMBLE;
 
     /** Cached session idle timeout in seconds — volatile for cross-thread visibility. */
     private static volatile int cachedSessionIdleTimeout = DEFAULT_SESSION_IDLE_TIMEOUT;
     /** Cached max visible message bubbles — volatile for cross-thread visibility. */
     private static volatile int cachedMaxMessages = DEFAULT_MAX_MESSAGES;
+    /** Cached toolbar icon size — volatile for cross-thread visibility. */
+    private static volatile int cachedToolbarIconSize = DEFAULT_TOOLBAR_ICON_SIZE;
 
     private static final PreferenceChangeListener listener = PluginSettings::onPreferenceChanged;
 
@@ -42,6 +45,7 @@ public final class PluginSettings {
         Preferences prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
         cachedSessionIdleTimeout = prefs.getInt(KEY_SESSION_IDLE_TIMEOUT, DEFAULT_SESSION_IDLE_TIMEOUT);
         cachedMaxMessages = prefs.getInt(KEY_MAX_MESSAGES, DEFAULT_MAX_MESSAGES);
+        cachedToolbarIconSize = prefs.getInt(PreferenceKeys.TOOLBAR_ICON_SIZE, DEFAULT_TOOLBAR_ICON_SIZE);
         prefs.addPreferenceChangeListener(listener);
     }
 
@@ -95,6 +99,15 @@ public final class PluginSettings {
             } catch (NumberFormatException e) {
                 cachedMaxMessages = DEFAULT_MAX_MESSAGES;
             }
+        } else if (PreferenceKeys.TOOLBAR_ICON_SIZE.equals(evt.getKey())) {
+            try {
+                int v = Integer.parseInt(evt.getNewValue());
+                if (v == 16 || v == 24 || v == 28 || v == 32 || v == 48) {
+                    cachedToolbarIconSize = v;
+                }
+            } catch (NumberFormatException e) {
+                cachedToolbarIconSize = DEFAULT_TOOLBAR_ICON_SIZE;
+            }
         }
     }
 
@@ -105,5 +118,14 @@ public final class PluginSettings {
 
     public static void setMaxMessages(int count) {
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putInt(KEY_MAX_MESSAGES, count);
+    }
+
+    /** Toolbar icon size: 24 (small), 28 (medium), 32 (large). */
+    public static int getToolbarIconSize() {
+        return cachedToolbarIconSize;
+    }
+
+    public static void setToolbarIconSize(int size) {
+        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putInt(PreferenceKeys.TOOLBAR_ICON_SIZE, size);
     }
 }

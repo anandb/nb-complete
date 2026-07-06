@@ -9,6 +9,7 @@ import javax.swing.SwingUtilities;
 import github.anandb.netbeans.contract.SessionListener;
 import github.anandb.netbeans.contract.UIHandler;
 import github.anandb.netbeans.contract.PinnedMessageControl;
+import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.contract.SessionControl;
 import org.openide.util.Lookup;
 import github.anandb.netbeans.contract.UpdateDispatcher;
@@ -218,8 +219,7 @@ public class SessionLifecycleHandler implements SessionListener {
             if (pendingPreambleResponse) {
                 pendingPreambleResponse = false;
                 SwingUtilities.invokeLater(() -> {
-                chatPanel.setSessionLoading(false);
-                chatPanel.flushSessionBuffer();
+                    chatPanel.setSessionLoading(false);
                     chatPanel.flushSessionBuffer();
                 });
             }
@@ -263,7 +263,7 @@ public class SessionLifecycleHandler implements SessionListener {
                 // correct icon for the replacement session — updating here causes a brief icon flip.
                 if (currentId != null && selectIdx != -1) {
                     boolean hidden = sessionService.get().isHidden(currentId);
-                    hideBtn.setIcon(ThemeManager.getIcon(hidden ? "unarchive.svg" : "archive.svg", 28));
+                    hideBtn.setIcon(ThemeManager.getIcon(hidden ? "unarchive.svg" : "archive.svg", PluginSettings.getToolbarIconSize()));
                     hideBtn.setToolTipText(hidden
                         ? NbBundle.getMessage(AssistantTopComponent.class, "HINT_UnarchiveSession")
                         : NbBundle.getMessage(AssistantTopComponent.class, "HINT_ArchiveSession"));
@@ -430,7 +430,7 @@ public class SessionLifecycleHandler implements SessionListener {
             sessionStateHandler.accept(true);
             hideBtn.setEnabled(true);
             boolean hidden = sessionService.get().isHidden(sessionId);
-            hideBtn.setIcon(ThemeManager.getIcon(hidden ? "unarchive.svg" : "archive.svg", 28));
+            hideBtn.setIcon(ThemeManager.getIcon(hidden ? "unarchive.svg" : "archive.svg", PluginSettings.getToolbarIconSize()));
             hideBtn.setToolTipText(hidden
                 ? NbBundle.getMessage(AssistantTopComponent.class, "HINT_UnarchiveSession")
                 : NbBundle.getMessage(AssistantTopComponent.class, "HINT_ArchiveSession"));
