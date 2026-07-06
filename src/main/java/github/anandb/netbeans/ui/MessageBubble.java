@@ -3,6 +3,7 @@ package github.anandb.netbeans.ui;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Insets;
@@ -15,6 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import javax.swing.BorderFactory;
+import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.Icon;
 import javax.swing.JButton;
@@ -33,6 +35,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
 
 import github.anandb.netbeans.contract.PinnedMessageControl;
+import github.anandb.netbeans.contract.SessionControl;
 import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.support.Logger;
 import org.openide.util.Lookup;
@@ -195,15 +198,83 @@ public class MessageBubble extends JPanel implements Scrollable {
             gbcInsets.right = 12;
         }
 
-        // Copy button for assistant messages at bottom right — visible only on hover
-        if ("assistant".equals(role)) {
+        // Pin + copy buttons for assistant messages at bottom right — visible on hover.
+        // Pin first, copy last. When pinned, the pinned icon is always visible.
+        // sessionId and messageId must be known at construction time.
+        if ("assistant".equals(role) && sessionId != null && messageId != null) {
+            final PinnedMessageControl pinStore = Lookup.getDefault().lookup(PinnedMessageControl.class);
+            this.pinned = (pinStore != null && pinStore.isPinned(sessionId, messageId));
+
+            pinBtn = UIUtils.createToolbarButton("pin.svg", 32,
+                    NbBundle.getMessage(MessageBubble.class,
+                            pinned ? "HINT_UnpinMessage" : "HINT_PinMessage"),
+                    e -> flipPin(pinStore));
+            pinBtn.setBorder(BorderFactory.createEmptyBorder());
+            pinBtn.setContentAreaFilled(false);
+            pinBtn.setOpaque(false);
+            pinBtn.setForeground(theme.foreground());
+            pinBtn.setVisible(pinned);
+
+            if (pinned) {
+                pinBtn.setIcon(ThemeManager.getIcon("pinned.svg", 32));
+                applyPinAccent(true);
+            }
+
+            final JButton[] copyBtnArr = new JButton[1];
+            copyBtnArr[0] = UIUtils.createToolbarButton("copy.svg", 32,
+                NbBundle.getMessage(MessageBubble.class, "HINT_CopyAssistantMessage"),
+                e -> copyMessageToClipboard(copyBtnArr[0]));
+            copyBtnArr[0].setBorder(BorderFactory.createEmptyBorder());
+            copyBtnArr[0].setContentAreaFilled(false);
+            copyBtnArr[0].setOpaque(false);
+            copyBtnArr[0].setForeground(theme.foreground());
+            copyBtnArr[0].setVisible(false);
+
+            // Reserve space with both buttons so layout never shifts.
+            // FlowLayout ignores invisible components when sizing, so compute
+            // the size from the button preferred sizes directly.
+            Dimension pinSize = pinBtn.getPreferredSize();
+            Dimension copySize = copyBtnArr[0].getPreferredSize();
+            int actionsW = pinSize.width + copySize.width + 4;
+            int actionsH = Math.max(pinSize.height, copySize.height);
+            Dimension actionsSize = new Dimension(actionsW, actionsH);
+
+            JPanel actionsPlaceholder = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
+            actionsPlaceholder.setOpaque(false);
+            actionsPlaceholder.add(copyBtnArr[0]);
+            actionsPlaceholder.add(pinBtn);
+            actionsPlaceholder.setPreferredSize(actionsSize);
+            actionsPlaceholder.setMinimumSize(actionsSize);
+            actionsPlaceholder.setMaximumSize(actionsSize);
+            bubble.add(actionsPlaceholder, BorderLayout.SOUTH);
+
+            // Hover: show copy on hover, pin always visible when pinned.
+            bubble.addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseEntered(MouseEvent e) {
+                    copyBtnArr[0].setVisible(true);
+                    if (!pinned) {
+                        pinBtn.setVisible(true);
+                    }
+                }
+
+                @Override
+                public void mouseExited(MouseEvent e) {
+                    if (!bubble.contains(e.getPoint())) {
+                        copyBtnArr[0].setVisible(false);
+                        if (!pinned) {
+                            pinBtn.setVisible(false);
+                        }
+                    }
+                }
+            });
+        } else if ("assistant".equals(role)) {
+            // Assistant without messageId — copy only
             final JButton[] copyBtn = new JButton[1];
-            copyBtn[0] = UIUtils.createToolbarButton("copy.svg", 20,
+            copyBtn[0] = UIUtils.createToolbarButton("copy.svg", 32,
                 NbBundle.getMessage(MessageBubble.class, "HINT_CopyAssistantMessage"),
                 e -> copyMessageToClipboard(copyBtn[0]));
-            copyBtn[0].setBorder(BorderFactory.createCompoundBorder(
-                    BorderFactory.createLineBorder(theme.bubbleBorder()),
-                    BorderFactory.createEmptyBorder(1, 2, 1, 2)));
+            copyBtn[0].setBorder(BorderFactory.createEmptyBorder());
             copyBtn[0].setContentAreaFilled(false);
             copyBtn[0].setOpaque(false);
             copyBtn[0].setForeground(theme.foreground());
@@ -238,54 +309,6 @@ public class MessageBubble extends JPanel implements Scrollable {
             });
         }
 
-        // Pin button for user/assistant messages at top-right corner.
-        // Visible on hover when unpinned; always visible when pinned.
-        if (("user".equals(role) || "assistant".equals(role))
-                && sessionId != null && messageId != null) {
-            final PinnedMessageControl pinStore = Lookup.getDefault().lookup(PinnedMessageControl.class);
-            this.pinned = (pinStore != null && pinStore.isPinned(sessionId, messageId));
-
-            pinBtn = UIUtils.createToolbarButton("pin.svg", 32,
-                    NbBundle.getMessage(MessageBubble.class,
-                            pinned ? "HINT_UnpinMessage" : "HINT_PinMessage"),
-                    e -> flipPin(pinStore));
-            pinBtn.setBorder(BorderFactory.createEmptyBorder());
-            pinBtn.setContentAreaFilled(false);
-            pinBtn.setOpaque(false);
-            pinBtn.setForeground(theme.foreground());
-            pinBtn.setVisible(pinned);
-
-            if (pinned) {
-                pinBtn.setIcon(ThemeManager.getIcon("pinned.svg", 32));
-                applyPinAccent(true);
-            }
-
-            JPanel pinPlaceholder = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 5));
-            pinPlaceholder.setOpaque(false);
-            Dimension pinBtnSize = pinBtn.getPreferredSize();
-            pinPlaceholder.setPreferredSize(pinBtnSize);
-            pinPlaceholder.setMinimumSize(pinBtnSize);
-            pinPlaceholder.setMaximumSize(pinBtnSize);
-            pinPlaceholder.add(pinBtn);
-            bubble.add(pinPlaceholder, BorderLayout.NORTH);
-
-            bubble.addMouseListener(new MouseAdapter() {
-                @Override
-                public void mouseEntered(MouseEvent e) {
-                    if (!pinned) {
-                        pinBtn.setVisible(true);
-                    }
-                }
-
-                @Override
-                public void mouseExited(MouseEvent e) {
-                    if (!pinned && !bubble.contains(e.getPoint())) {
-                        pinBtn.setVisible(false);
-                    }
-                }
-            });
-        }
-
         if ("user".equals(role) && avatarPosition != AvatarPosition.NONE) {
             // Wrap bubble + external avatar in a content row
             JPanel contentRow = new JPanel(new BorderLayout());
@@ -294,7 +317,103 @@ public class MessageBubble extends JPanel implements Scrollable {
 
             JLabel userLabel = themeApplier.createUserAvatar();
             JPanel avatarWrapper = UIUtils.createTransparentPanel(new BorderLayout());
-            avatarWrapper.add(userLabel, BorderLayout.NORTH);
+            avatarWrapper.add(userLabel, BorderLayout.CENTER);
+
+            // User messages: pin + copy replace the avatar icon on hover.
+            // sessionId and messageId must be known at construction time.
+            if (sessionId != null && messageId != null) {
+                final PinnedMessageControl pinStore = Lookup.getDefault().lookup(PinnedMessageControl.class);
+                this.pinned = (pinStore != null && pinStore.isPinned(sessionId, messageId));
+
+                // Replace the built-in avatar copy behavior with our pin+copy panel.
+                for (java.awt.event.MouseListener ml : userLabel.getMouseListeners()) {
+                    userLabel.removeMouseListener(ml);
+                }
+                userLabel.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+                userLabel.setToolTipText(null);
+
+                // Size the action panel to the avatar label so the wrapper never resizes.
+                Dimension avatarSize = userLabel.getPreferredSize();
+                int gap = 2;
+                int btnSize = Math.min(avatarSize.width - gap, avatarSize.height) / 2 - gap;
+                btnSize = Math.max(16, btnSize);
+
+                pinBtn = UIUtils.createToolbarButton("pin.svg", btnSize,
+                        NbBundle.getMessage(MessageBubble.class,
+                                pinned ? "HINT_UnpinMessage" : "HINT_PinMessage"),
+                        e -> flipPin(pinStore));
+                pinBtn.setBorder(BorderFactory.createEmptyBorder());
+                pinBtn.setContentAreaFilled(false);
+                pinBtn.setOpaque(false);
+                pinBtn.setForeground(theme.foreground());
+                pinBtn.setVisible(false);
+
+                final JButton[] userCopyBtn = new JButton[1];
+                userCopyBtn[0] = UIUtils.createToolbarButton("copy.svg", btnSize,
+                    NbBundle.getMessage(MessageBubble.class, "HINT_CopyAssistantMessage"),
+                    e -> copyMessageToClipboard(userCopyBtn[0]));
+                userCopyBtn[0].setBorder(BorderFactory.createEmptyBorder());
+                userCopyBtn[0].setContentAreaFilled(false);
+                userCopyBtn[0].setOpaque(false);
+                userCopyBtn[0].setForeground(theme.foreground());
+                userCopyBtn[0].setVisible(false);
+
+                // Remove default toolbar padding so buttons fill the available space.
+                Dimension exactBtn = new Dimension(btnSize, btnSize);
+                pinBtn.setPreferredSize(exactBtn);
+                pinBtn.setMinimumSize(exactBtn);
+                pinBtn.setMaximumSize(exactBtn);
+                userCopyBtn[0].setPreferredSize(exactBtn);
+                userCopyBtn[0].setMinimumSize(exactBtn);
+                userCopyBtn[0].setMaximumSize(exactBtn);
+
+                JPanel userActions = new JPanel();
+                userActions.setLayout(new BoxLayout(userActions, BoxLayout.X_AXIS));
+                userActions.setOpaque(false);
+                userActions.add(Box.createHorizontalGlue());
+                userActions.add(userCopyBtn[0]);
+                userActions.add(Box.createRigidArea(new Dimension(gap, 0)));
+                userActions.add(pinBtn);
+                userActions.add(Box.createHorizontalGlue());
+                userActions.setVisible(false);
+                userActions.setPreferredSize(avatarSize);
+                userActions.setMinimumSize(avatarSize);
+                userActions.setMaximumSize(avatarSize);
+                avatarWrapper.add(userActions, BorderLayout.SOUTH);
+
+                // Apply red border accent if already pinned.
+                if (pinned) {
+                    applyPinAccent(true);
+                }
+
+                // Hover: hide user icon, show pin + copy in its place.
+                avatarWrapper.addMouseListener(new MouseAdapter() {
+                    @Override
+                    public void mouseEntered(MouseEvent e) {
+                        userLabel.setVisible(false);
+                        userActions.setVisible(true);
+                        userCopyBtn[0].setVisible(true);
+                        pinBtn.setVisible(true);
+                        if (pinned) {
+                            pinBtn.setIcon(ThemeManager.getIcon("pinned.svg", 32));
+                        }
+                        avatarWrapper.revalidate();
+                        avatarWrapper.repaint();
+                    }
+
+                    @Override
+                    public void mouseExited(MouseEvent e) {
+                        if (!avatarWrapper.contains(e.getPoint())) {
+                            userCopyBtn[0].setVisible(false);
+                            pinBtn.setVisible(false);
+                            userActions.setVisible(false);
+                            userLabel.setVisible(true);
+                            avatarWrapper.revalidate();
+                            avatarWrapper.repaint();
+                        }
+                    }
+                });
+            }
 
             if (avatarPosition == AvatarPosition.LEFT) {
                 contentRow.add(avatarWrapper, BorderLayout.WEST);
@@ -458,22 +577,33 @@ public class MessageBubble extends JPanel implements Scrollable {
         copyRevertTimer.start();
     }
 
+    /** Resolves the current session ID via Lookup (defensive fallback only). */
+    private String resolveSessionId() {
+        if (sessionId != null) {
+            return sessionId;
+        }
+        LOG.warn("MessageBubble sessionId was null at construction; falling back to Lookup. messageId={0}", messageId);
+        SessionControl sc = Lookup.getDefault().lookup(SessionControl.class);
+        return sc != null ? sc.getCurrentSessionId() : null;
+    }
+
     /** Toggles pin state, persists via store, updates icon and accent. */
     private void flipPin(PinnedMessageControl store) {
         if (store == null) {
             return;
         }
+        String sid = resolveSessionId();
+        if (sid == null) {
+            return;
+        }
         pinned = !pinned;
-        store.setPinned(sessionId, messageId, pinned);
+        store.setPinned(sid, messageId, pinned);
         pinBtn.setIcon(ThemeManager.getIcon(
                 pinned ? "pinned.svg" : "pin.svg", 32));
         pinBtn.setToolTipText(NbBundle.getMessage(MessageBubble.class,
                 pinned ? "HINT_UnpinMessage" : "HINT_PinMessage"));
         pinBtn.getAccessibleContext().setAccessibleName(pinBtn.getToolTipText());
         pinBtn.getAccessibleContext().setAccessibleDescription(pinBtn.getToolTipText());
-        if (!pinned) {
-            pinBtn.setVisible(false);
-        }
         applyPinAccent(pinned);
         revalidate();
         repaint();
@@ -494,7 +624,6 @@ public class MessageBubble extends JPanel implements Scrollable {
                     pinned ? "HINT_UnpinMessage" : "HINT_PinMessage"));
             pinBtn.getAccessibleContext().setAccessibleName(pinBtn.getToolTipText());
             pinBtn.getAccessibleContext().setAccessibleDescription(pinBtn.getToolTipText());
-            pinBtn.setVisible(pinned);
         }
         applyPinAccent(pinned);
     }

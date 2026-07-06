@@ -134,6 +134,7 @@ public class UpdateCheckerService implements UpdateCheckerControl {
         // Set the next time of execution to be 16-24 hours from now
         long initialNextTime = System.currentTimeMillis() + getRandomIntervalMillis();
         prefs.putLong(PreferenceKeys.LAST_CHECKED_FOR_UPDATES, initialNextTime);
+        LOG.info("Next automatic update check scheduled for: {0}", new java.util.Date(initialNextTime));
 
         while (running) {
             try {

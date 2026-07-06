@@ -85,13 +85,17 @@
   have consistent 80px width.
 - **Pin messages in chat**: User and assistant messages can now be pinned
   to prevent them from being removed when "hide older messages" is active.
-  A pin button appears on hover (top-right corner) for unpinned messages;
-  pinned messages show a pushpin icon always and get a subtle red accent
-  border. Pin state persists across IDE restarts via NbPreferences.
-  Pinned messages never count toward the max-messages cap — they are
-  always retained regardless of the trim threshold. Clicking pin/unpin
-  when "show all messages" is active still persists the state for future
-  use.
+  Assistant bubbles show a pin button next to the copy button on hover;
+  pinned assistant messages show a pushpin icon always. User bubbles show
+  pin + copy buttons on hover over the avatar, replacing the user icon;
+  pinned user messages get a subtle red accent border. Pin state persists
+  across IDE restarts via NbPreferences. Pinned messages never count toward
+  the max-messages cap — they are always retained regardless of the trim
+  threshold. Clicking pin/unpin when "show all messages" is active still
+  persists the state for future use.
+- **Copy individual activity-pane segments**: When tool and thought messages
+  are merged into an activity pane, each segment header now shows a copy
+  button on hover that copies just that segment's content.
 
 ### Housekeeping
 - **Hexagonal arch violations resolved (2 remaining exceptions eliminated)**:

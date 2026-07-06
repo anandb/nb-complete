@@ -387,6 +387,7 @@ public class SessionLifecycleHandler implements SessionListener {
     @Override
     public void onSessionLoaded(String sessionId, List<SessionConfigOption> configOptions, boolean isStartup) {
         SwingUtilities.invokeLater(() -> {
+            chatPanel.setSessionId(sessionId);
             // The session/load response with configOptions signals end of turn.
             // Set turnEnded immediately so late SSE messages don't call
             // updateButtonState(true), but defer stopStreaming via a flush timer

@@ -513,6 +513,61 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
                 });
             }
             headerPanel.add(titleLabel, BorderLayout.CENTER);
+
+            // Copy button for this segment — visible on header hover.
+            final String segmentText = text != null ? text : "";
+            final JButton[] segCopyBtnRef = new JButton[1];
+            Timer[] segRevertTimer = new Timer[1];
+            segCopyBtnRef[0] = UIUtils.createToolbarButton("copy.svg", 20,
+                    NbBundle.getMessage(BaseCollapsiblePane.class, "HINT_CopyContent"),
+                    e -> {
+                        java.awt.datatransfer.StringSelection sel =
+                                new java.awt.datatransfer.StringSelection(segmentText);
+                        java.awt.Toolkit.getDefaultToolkit().getSystemClipboard()
+                                .setContents(sel, sel);
+                        JButton btn = segCopyBtnRef[0];
+                        Icon orig = btn.getIcon();
+                        btn.setIcon(ThemeManager.getIcon("check.svg", 14));
+                        if (segRevertTimer[0] != null) {
+                            segRevertTimer[0].stop();
+                        }
+                        segRevertTimer[0] = new Timer(2000, ev -> btn.setIcon(orig));
+                        segRevertTimer[0].setRepeats(false);
+                        segRevertTimer[0].start();
+                    });
+            JButton segCopyBtn = segCopyBtnRef[0];
+            segCopyBtn.setBorder(BorderFactory.createEmptyBorder());
+            segCopyBtn.setContentAreaFilled(false);
+            segCopyBtn.setOpaque(false);
+            segCopyBtn.setForeground(theme.foreground());
+            segCopyBtn.setVisible(false);
+
+            // Reserve space so layout doesn't shift.
+            JPanel segCopyPlaceholder = new JPanel(new BorderLayout());
+            segCopyPlaceholder.setOpaque(false);
+            Dimension btnSz = segCopyBtn.getPreferredSize();
+            segCopyPlaceholder.setPreferredSize(btnSz);
+            segCopyPlaceholder.setMinimumSize(btnSz);
+            segCopyPlaceholder.setMaximumSize(btnSz);
+            segCopyPlaceholder.add(segCopyBtn, BorderLayout.CENTER);
+
+            headerPanel.add(segCopyPlaceholder, BorderLayout.EAST);
+            headerPanel.addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseEntered(MouseEvent e) {
+                    segCopyBtn.setVisible(true);
+                }
+
+                @Override
+                public void mouseExited(MouseEvent e) {
+                    // Only hide if the mouse actually left the header bounds,
+                    // not when moving between header children (e.g. title → button).
+                    if (!headerPanel.contains(e.getPoint())) {
+                        segCopyBtn.setVisible(false);
+                    }
+                }
+            });
+
             wrapper.add(headerPanel, BorderLayout.NORTH);
         }
 
