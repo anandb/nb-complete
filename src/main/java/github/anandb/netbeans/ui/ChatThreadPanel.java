@@ -11,7 +11,9 @@ import java.awt.event.ComponentEvent;
 import java.awt.event.ContainerAdapter;
 import java.awt.event.ContainerEvent;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.Consumer;
@@ -49,35 +51,27 @@ import org.openide.util.Lookup;
 import static org.apache.commons.lang3.StringUtils.defaultString;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 
-
-// DSL-CONTROLLER: not a view — flushTimer + messageQueue EDT bridge +
-// trimMessages/cachedMessages logic. The future DSL declares the
-// messagesContainer/scrollPane shell; restart()/stop() hot-path calls stay here.
+// DSL-CONTROLLER: not a view — flushTimer/messageQueue EDT bridge + trimMessages/cachedMessages.
 public class ChatThreadPanel extends JPanel {
 
     private static final Logger LOG = Logger.from(ChatThreadPanel.class);
     private static final long serialVersionUID = 1L;
     private static final Pattern SECTION_SPLIT = Pattern.compile("(?m)^---[ \\t]*$");
-    // Maximum visible message bubbles. Configurable via NetBeans preferences
-    // (Preferences > Assistant > Chat Behavior > Max Messages); 0 = unlimited.
-    // See PluginSettings.getMaxMessages().
+    // Max visible message bubbles via PluginSettings.getMaxMessages(); 0 = unlimited.
 
     private long lastUserTimestamp = -1L;
     private int userMessageCount = 0;
     private final ConcurrentLinkedQueue<Runnable> messageQueue = new ConcurrentLinkedQueue<>();
     private volatile boolean draining = false;
 
-    // Debounced flush timer. Reset on every processed message so it fires
-    // 300ms after the last message is drained from the queue. Replaces the
-    // one-shot timers that were created per-turn in SessionLifecycleHandler.
+    // Debounced flush timer. Reset on every processed message so it fires 300ms after the last drain.
     private final javax.swing.Timer flushTimer;
 
     private final JPanel messagesContainer;
     private final JScrollPane scrollPane;
     private final JLayeredPane layeredPane;
 
-    // Cached full message list so filter/preference changes can re-render
-    // the conversation without a server round-trip.
+    // Cached full message list so filter/preference changes can re-render without server round-trip.
     private transient volatile List<Message> cachedMessages;
     private final transient ScrollController scrollController;
     private final transient MessageTransformer messageTransformer;
@@ -89,9 +83,12 @@ public class ChatThreadPanel extends JPanel {
     private final JProgressBar sessionProgressBar;
     private String currentSessionId;
 
-    // Turn-end gate for flushTimer. When null or false, the deferred-finalize
-    // timer restarts instead of firing — guards against premature JTextArea→
-    // FitEditorPane conversion during multi-second idle gaps in a live turn.
+    private volatile boolean sessionLoading = false;
+    // Session-keyed buffer flushed when loading completes. Keyed by sessionId
+    // so switch-session races cannot mix buffers.
+    private final Map<String, List<ProcessedMessage>> pendingMessagesBySession = new HashMap<>();
+
+    // Turn-end gate for flushTimer. When null or false, the timer restarts instead of firing,
     private transient volatile java.util.function.BooleanSupplier turnEndedSupplier;
 
     public ChatThreadPanel() {
@@ -144,8 +141,7 @@ public class ChatThreadPanel extends JPanel {
         sessionProgressBar.setForeground(new java.awt.Color(0, 120, 212));
         layeredPane.add(sessionProgressBar, JLayeredPane.PALETTE_LAYER);
 
-        // Fix: Mouse wheel scrolling often breaks when mouse is over child components
-        // like JTextPane. We redirect those events to the main scroll pane.
+        // Fix: Mouse wheel scrolling breaks when over child components. Redirect to main scroll pane.
         messagesContainer.addMouseWheelListener(e -> {
             scrollController.redirectMouseWheel(messagesContainer, e);
         });
@@ -161,10 +157,8 @@ public class ChatThreadPanel extends JPanel {
             }
         });
 
-        // Listen on the layeredPane itself (not the parent ChatThreadPanel) so
-        // children get correct bounds the moment the layeredPane is sized by
-        // the parent BorderLayout — avoids the (0,0,0,0) window where the
-        // scrollPane has zero size during the initial layout pass.
+        // Listen on layeredPane (not parent) so children get correct bounds the moment it's sized.
+        // Fixes the (0,0,0,0) window where scrollPane has zero size during the initial layout pass.
         layeredPane.addComponentListener(new ComponentAdapter() {
             @Override
             public void componentResized(ComponentEvent e) {
@@ -180,20 +174,16 @@ public class ChatThreadPanel extends JPanel {
             if (!isShowing() || bubble == null) {
                 return;
             }
-            // Check wasAtBottom BEFORE flushUpdate changes content height
+                // Check wasAtBottom BEFORE flushUpdate changes content height.
             boolean wasAtBottom = scrollController.isAtBottom();
             boolean didUpdate = bubble.flushUpdate();
             if (didUpdate) {
-                // No explicit bubble.revalidate() here — the container's
-                // layout pass (triggered by scrollToBottom → revalidate)
-                // will lay out this bubble. Avoids a redundant layout tick.
+                // No explicit revalidate — container layout pass (triggered by scrollToBottom) handles it.
                 scrollController.scrollToBottom(wasAtBottom);
             }
         }, TimingConstants.STREAM_FLUSH_MS);
 
-        // Shared flush timer for debounced finalization. Reset on each processed
-        // message so it fires 300ms after the last message is drained from the
-        // queue — no need for extra boolean flags.
+        // Shared flush timer for debounced finalization. Reset on each processed message so it
         flushTimer = new Timer(TimingConstants.STREAM_FLUSH_MS, e -> {
             if (isDisplayable()) {
                 stopStreaming();
@@ -245,6 +235,16 @@ public class ChatThreadPanel extends JPanel {
             return;
         }
 
+        // Buffer during loading when trimming is active — avoids create-then-remove churn.
+        if (sessionLoading && shouldBufferMgs()) {
+            String sid = ensureCurrentSessionId();
+            if (sid != null) {
+                pendingMessagesBySession.computeIfAbsent(sid, k -> new ArrayList<>()).add(pm);
+                return;
+            }
+            LOG.warn("sessionLoading=true, shouldBufferMgs()=true, but sessionId is null — falling through to unbuffered path");
+        }
+
         messageQueue.add(() -> processMessageOnEDT(pm));
         if (!draining) {
             draining = true;
@@ -260,9 +260,7 @@ public class ChatThreadPanel extends JPanel {
             } catch (Exception ex) {
                 LOG.warn("Error processing message: {0}", ex.getMessage());
             } finally {
-                // Reset the debounced flush timer on every processed message so it
-                // fires 300ms after the last message drains — regardless of whether
-                // messages arrived via SSE during a live turn or during session reload.
+                // Reset debounced flush timer — fires 300ms after last message drains.
                 flushTimer.restart();
             }
             SwingUtilities.invokeLater(this::drainMessageQueue);
@@ -326,12 +324,8 @@ public class ChatThreadPanel extends JPanel {
                     }
                 }
             } else {
-                // Capture scroll state BEFORE touching content — the finalize
-                // below can shrink the bubble (JTextArea→HTML), moving the
-                // viewport off-bottom before addSingleBubble captures its own
-                // wasAtBottom. Per the auto-scroll contract (AGENTS.md),
-                // processMessageSections must capture wasAtBottom before any
-                // content mutation.
+                // Capture scroll state BEFORE content mutation — finalize can shrink bubble (JTextArea→HTML),
+                // wasAtBottom. Per auto-scroll contract, capture before any content mutation.
                 boolean wasAtBottomBeforeFinalize = scrollController.isAtBottom();
                 if (lastBubble != null) {
                     if (lastBubble == streamingCoordinator.getActiveStreamBubble()) {
@@ -343,9 +337,7 @@ public class ChatThreadPanel extends JPanel {
 
                 addSingleBubble(pm.messageType(), part, pm.messageId(), pm.toolTitle(), pm.streaming());
                 lastBubble = findLastNonIgnorableBubble();
-                // Force-scroll if the user was at bottom before the finalize;
-                // addSingleBubble's internal check may have seen a post-shrink
-                // viewport that is no longer at bottom.
+                // Force-scroll if user was at bottom before finalize; addSingleBubble may have seen a post-shrink viewport.
                 if (wasAtBottomBeforeFinalize) {
                     scrollController.scrollToBottom(true);
                 }
@@ -621,12 +613,18 @@ public class ChatThreadPanel extends JPanel {
     }
 
     public void setSessionLoading(boolean loading) {
+        this.sessionLoading = loading;
         SwingUtilities.invokeLater(() -> {
             sessionProgressBar.setVisible(loading);
             if (!loading) {
                 sessionProgressBar.setValue(100);
             }
         });
+    }
+
+    /** Returns true when messages will be trimmed (max > 0 and not "keep all"). */
+    private boolean shouldBufferMgs() {
+        return currentMaxMessages() > 0 && !keepOlderMessages;
     }
 
     public void setSessionProgress(int percent) {
@@ -839,6 +837,7 @@ public class ChatThreadPanel extends JPanel {
 
     public void clearMessages() {
         cachedMessages = null;
+        pendingMessagesBySession.clear();
         SwingUtilities.invokeLater(() -> {
             messagesContainer.removeAll();
             scrollController.unfixAllMouseWheel();
@@ -846,6 +845,54 @@ public class ChatThreadPanel extends JPanel {
             userMessageCount = 0;
             messagesContainer.revalidate();
         });
+    }
+
+    /** Flush buffered messages for current session, trimming to MAX_MESSAGES + pinned. */
+    public void flushSessionBuffer() {
+        String sid = ensureCurrentSessionId();
+        if (sid == null) {
+            LOG.warn("flushSessionBuffer: sessionId is null, cannot flush buffer");
+            return;
+        }
+        List<ProcessedMessage> buffer = pendingMessagesBySession.remove(sid);
+        if (buffer == null || buffer.isEmpty()) return;
+        sessionLoading = false;
+        batchAdding = true;
+        try {
+            int max = currentMaxMessages();
+            List<ProcessedMessage> toRender;
+            if (max > 0 && !keepOlderMessages && buffer.size() > max) {
+                int tailStart = buffer.size() - max;
+                PinnedMessageControl pinStore = (currentSessionId != null)
+                        ? Lookup.getDefault().lookup(PinnedMessageControl.class) : null;
+                List<ProcessedMessage> pinnedBefore = new ArrayList<>();
+                for (int i = 0; i < tailStart; i++) {
+                    ProcessedMessage pm = buffer.get(i);
+                    if (pm.messageId() != null && pinStore != null
+                            && pinStore.isPinned(sid, pm.messageId())) {
+                        pinnedBefore.add(pm);
+                    }
+                }
+                toRender = new ArrayList<>(pinnedBefore.size() + max);
+                toRender.addAll(pinnedBefore);
+                toRender.addAll(buffer.subList(tailStart, buffer.size()));
+            } else {
+                toRender = buffer;
+            }
+            for (ProcessedMessage pm : toRender) {
+                if (pm.isIgnorable()) continue;
+                if (pm.streaming()) {
+                    processMessageSections(pm, pm.text(), pm.messageType().roleName());
+                } else {
+                    addSingleBubble(pm.messageType(), pm.text(), pm.messageId(), pm.toolTitle(), false);
+                }
+            }
+        } finally {
+            batchAdding = false;
+        }
+        trimMessages();
+        messagesContainer.revalidate();
+        scrollController.scrollToBottom(true);
     }
 
     public void setMessages(List<Message> messages) {
@@ -859,22 +906,6 @@ public class ChatThreadPanel extends JPanel {
             userMessageCount = 0;
 
             if (messages != null) {
-                // Prime the pinned-message store so isPinned() reads are fast
-                // during bubble construction.
-                if (currentSessionId != null) {
-                    PinnedMessageControl pinStore = Lookup.getDefault()
-                            .lookup(PinnedMessageControl.class);
-                    if (pinStore != null) {
-                        List<String> ids = new ArrayList<>(messages.size());
-                        for (Message m : messages) {
-                            if (m.id() != null) {
-                                ids.add(m.id());
-                            }
-                        }
-                        pinStore.loadSession(currentSessionId, ids);
-                    }
-                }
-
                 // Batch mode: skip per-bubble revalidate, sweep, and combine.
                 // Single revalidate + scroll at end cuts O(N²) to O(N).
                 batchAdding = true;

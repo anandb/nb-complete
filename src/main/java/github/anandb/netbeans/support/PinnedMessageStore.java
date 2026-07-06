@@ -2,12 +2,9 @@ package github.anandb.netbeans.support;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -20,7 +17,8 @@ import org.openide.util.lookup.ServiceProvider;
 
 /**
  * In-memory + NbPreferences-persisted store for pinned messages.
- * Keyed by {@code sessionId → Set<messageId>}.
+ * Each session stores its pinned message IDs as a JSON array under
+ * the pref key {@code "pinnedMessages." + sessionId}.
  * <p>
  * Registers via {@code @ServiceProvider} so the UI layer can discover it
  * through {@code Lookup.getDefault().lookup(PinnedMessageControl.class)}.
@@ -29,14 +27,13 @@ import org.openide.util.lookup.ServiceProvider;
 public final class PinnedMessageStore implements PinnedMessageControl {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
-    private static final TypeReference<Map<String, List<String>>> MAP_TYPE =
+    private static final TypeReference<List<String>> LIST_TYPE =
             new TypeReference<>() {};
+
+    private static final String PREF_PREFIX = "pinnedMessages.";
 
     /** In-memory cache: sessionId → mutable set of pinned message IDs. */
     private final ConcurrentHashMap<String, Set<String>> cache = new ConcurrentHashMap<>();
-
-    /** Lock guarding NbPreferences reads/writes (JSON parse + serialize). */
-    private static final Object PREF_LOCK = new Object();
 
     // ── PinnedMessageControl ──────────────────────────────────────────────
 
@@ -61,22 +58,18 @@ public final class PinnedMessageStore implements PinnedMessageControl {
         } else {
             pinnedSet.remove(messageId);
         }
-        persist();
+        persistSession(sessionId);
     }
 
     @Override
-    public void loadSession(String sessionId, Collection<String> messageIds) {
+    public void loadSession(String sessionId) {
         if (sessionId == null) {
             return;
         }
-        // Load the persisted JSON, then intersect with the candidate set so we
-        // only keep pins that still have matching messages in the current session.
-        Map<String, List<String>> all = loadFromPrefs();
-        List<String> stored = all.getOrDefault(sessionId, Collections.emptyList());
-        Set<String> valid = new HashSet<>(stored);
-        valid.retainAll(messageIds);
+        List<String> stored = loadFromPrefs(sessionId);
+        Set<String> pinned = new HashSet<>(stored);
         cache.put(sessionId, ConcurrentHashMap.newKeySet());
-        cache.get(sessionId).addAll(valid);
+        cache.get(sessionId).addAll(pinned);
     }
 
     @Override
@@ -89,48 +82,44 @@ public final class PinnedMessageStore implements PinnedMessageControl {
 
     // ── Persistence ───────────────────────────────────────────────────────
 
-    private void persist() {
-        Map<String, List<String>> all = loadFromPrefs();
-        // Merge current cache into the persisted map (overwrite each session).
-        for (Map.Entry<String, Set<String>> e : cache.entrySet()) {
-            if (e.getValue().isEmpty()) {
-                all.remove(e.getKey());
-            } else {
-                all.put(e.getKey(), new ArrayList<>(e.getValue()));
-            }
+    /** Persists one session's pinned set to its dedicated pref key. */
+    private void persistSession(String sessionId) {
+        Set<String> pinnedSet = cache.get(sessionId);
+        String key = prefKey(sessionId);
+        if (pinnedSet == null || pinnedSet.isEmpty()) {
+            NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                    .remove(key);
+            return;
         }
-        // Remove sessions that were unloaded (not in cache).
-        all.keySet().removeIf(k -> !cache.containsKey(k));
-        saveToPrefs(all);
-    }
-
-    private static Map<String, List<String>> loadFromPrefs() {
-        synchronized (PREF_LOCK) {
-            String json = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
-                    .get(PreferenceKeys.PINNED_MESSAGES, null);
-            if (json == null || json.isEmpty()) {
-                return new HashMap<>();
-            }
-            try {
-                return MAPPER.readValue(json, MAP_TYPE);
-            } catch (IOException ex) {
-                Logger.from(PinnedMessageStore.class)
-                        .warn("Failed to parse pinned messages JSON: {0}", ex.getMessage());
-                return new HashMap<>();
-            }
+        try {
+            String json = MAPPER.writeValueAsString(new ArrayList<>(pinnedSet));
+            NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                    .put(key, json);
+        } catch (IOException ex) {
+            Logger.from(PinnedMessageStore.class)
+                    .warn("Failed to serialize pinned messages for session {0}: {1}",
+                            sessionId, ex.getMessage());
         }
     }
 
-    private static void saveToPrefs(Map<String, List<String>> data) {
-        synchronized (PREF_LOCK) {
-            try {
-                String json = MAPPER.writeValueAsString(data);
-                NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
-                        .put(PreferenceKeys.PINNED_MESSAGES, json);
-            } catch (IOException ex) {
-                Logger.from(PinnedMessageStore.class)
-                        .warn("Failed to serialize pinned messages: {0}", ex.getMessage());
-            }
+    /** Loads one session's pinned message IDs from its pref key. */
+    private static List<String> loadFromPrefs(String sessionId) {
+        String json = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                .get(prefKey(sessionId), null);
+        if (json == null || json.isEmpty()) {
+            return Collections.emptyList();
         }
+        try {
+            return MAPPER.readValue(json, LIST_TYPE);
+        } catch (IOException ex) {
+            Logger.from(PinnedMessageStore.class)
+                    .warn("Failed to parse pinned messages for session {0}: {1}",
+                            sessionId, ex.getMessage());
+            return Collections.emptyList();
+        }
+    }
+
+    private static String prefKey(String sessionId) {
+        return PREF_PREFIX + sessionId;
     }
 }

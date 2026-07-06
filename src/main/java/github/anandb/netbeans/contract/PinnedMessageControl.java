@@ -14,11 +14,10 @@ public interface PinnedMessageControl {
     void setPinned(String sessionId, String messageId, boolean pinned);
 
     /**
-     * Primes the in-memory cache for a session from the given candidate message IDs.
-     * Call once at the start of {@code ChatThreadPanel.setMessages(sessionId, messages)}
-     * to avoid per-bubble NbPreferences reads.
+     * Primes the in-memory cache for a session from persisted storage.
+     * Call when the session becomes active (e.g. in onSessionLoaded).
      */
-    void loadSession(String sessionId, java.util.Collection<String> messageIds);
+    void loadSession(String sessionId);
 
     /** Evicts the in-memory cache for the given session. */
     void unloadSession(String sessionId);

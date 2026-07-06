@@ -8,6 +8,7 @@ import javax.swing.JComponent;
 import javax.swing.SwingUtilities;
 import github.anandb.netbeans.contract.SessionListener;
 import github.anandb.netbeans.contract.UIHandler;
+import github.anandb.netbeans.contract.PinnedMessageControl;
 import github.anandb.netbeans.contract.SessionControl;
 import org.openide.util.Lookup;
 import github.anandb.netbeans.contract.UpdateDispatcher;
@@ -216,7 +217,11 @@ public class SessionLifecycleHandler implements SessionListener {
             // If waiting for the preamble response, hide the progress bar now.
             if (pendingPreambleResponse) {
                 pendingPreambleResponse = false;
-                SwingUtilities.invokeLater(() -> chatPanel.setSessionLoading(false));
+                SwingUtilities.invokeLater(() -> {
+                chatPanel.setSessionLoading(false);
+                chatPanel.flushSessionBuffer();
+                    chatPanel.flushSessionBuffer();
+                });
             }
             // Debounce finalization via the panel's shared flush timer (reset on
             // every processed message), so it fires 300ms after the last one drains.
@@ -333,6 +338,12 @@ public class SessionLifecycleHandler implements SessionListener {
     public void onSessionStarted(String sessionId) {
         SwingUtilities.invokeLater(() -> {
             chatPanel.setSessionId(sessionId);
+            // Prime the pinned-message cache before any bubbles are created.
+            PinnedMessageControl pinStore = Lookup.getDefault()
+                    .lookup(PinnedMessageControl.class);
+            if (pinStore != null && sessionId != null) {
+                pinStore.loadSession(sessionId);
+            }
             chatPanel.clearMessages();
             chatPanel.setSessionLoading(true);
             chatPanel.setSessionProgress(10);
@@ -388,6 +399,12 @@ public class SessionLifecycleHandler implements SessionListener {
     public void onSessionLoaded(String sessionId, List<SessionConfigOption> configOptions, boolean isStartup) {
         SwingUtilities.invokeLater(() -> {
             chatPanel.setSessionId(sessionId);
+            // Prime the pinned-message cache so bubble constructors see stored pins.
+            PinnedMessageControl pinStore = Lookup.getDefault()
+                    .lookup(PinnedMessageControl.class);
+            if (pinStore != null) {
+                pinStore.loadSession(sessionId);
+            }
             // The session/load response with configOptions signals end of turn.
             // Set turnEnded immediately so late SSE messages don't call
             // updateButtonState(true), but defer stopStreaming via a flush timer
@@ -423,6 +440,10 @@ public class SessionLifecycleHandler implements SessionListener {
             chatPanel.scrollToBottom();
             if (!pendingPreambleResponse) {
                 chatPanel.setSessionLoading(false);
+                // For startup sessions the flush already happened in onPreambleDone/responding_finished.
+                if (!isStartup) {
+                    chatPanel.flushSessionBuffer();
+                }
             }
         });
     }
