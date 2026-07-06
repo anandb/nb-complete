@@ -3,6 +3,12 @@
 ## v1.7.6 (Changes since v1.7.5)
 
 ### Fixes
+- **Automatic update check never running**: The startup update check was gated
+  behind an environment variable `ACP_CHECK_UPDATES_ON_STARTUP` that is almost
+  never set in production. This meant the startup check never ran, and the
+  periodic loop slept 16–24 hours before the first check. Removed the env var
+  gate — startup check now runs whenever the "Check for Updates" preference
+  is enabled.
 - **Critical: MCP thread pool starvation on `get_opened_files`**:
   `EditorToolProvider.get_opened_files` previously posted to EDT then blocked
   with `future.get(5s)`. If EDT was busy streaming, all 20 MCP pool threads

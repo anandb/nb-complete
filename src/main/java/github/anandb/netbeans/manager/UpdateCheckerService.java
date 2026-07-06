@@ -119,19 +119,16 @@ public class UpdateCheckerService implements UpdateCheckerControl {
     private void runLoop() {
         Preferences prefs = prefs();
         boolean checkEnabled = prefs.getBoolean(PreferenceKeys.CHECK_FOR_UPDATES, true);
-        String envVal = System.getenv("ACP_CHECK_UPDATES_ON_STARTUP");
-        boolean checkOnStartupEnv = "true".equalsIgnoreCase(envVal);
 
-        if (checkEnabled && checkOnStartupEnv) {
+        if (checkEnabled) {
             try {
-                LOG.info("Checking for updates at startup (ACP_CHECK_UPDATES_ON_STARTUP is enabled)...");
+                LOG.info("Checking for updates at startup...");
                 checkForUpdates();
             } catch (Exception e) {
                 LOG.log(Level.WARNING, "Error checking for updates at startup: {0}", e.getMessage());
             }
         } else {
-            LOG.fine("Startup update check skipped (preference enabled: {0}, startup env enabled: {1}).",
-                    new Object[]{checkEnabled, checkOnStartupEnv});
+            LOG.fine("Startup update check skipped (preference disabled).");
         }
 
         // Set the next time of execution to be 16-24 hours from now
