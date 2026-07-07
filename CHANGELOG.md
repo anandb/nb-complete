@@ -138,7 +138,7 @@
   renderer classes, `DSL-CONTROLLER` on 11 timer/dispatcher classes) name the
   migration target spec and what stays imperative. `ChatLayoutRefs` seam
   introduced as an immutable bundle of constructed components. Version
-  bumped to 1.7.6-SNAPSHOT. See `MIGRATION.md` for the adoption gate and
+  bumped to 1.7.6. See `MIGRATION.md` for the adoption gate and
   per-file migration order.
 - **Phase 4 PlatformBridge call-site migration**: 13 `ui/` files, ~70 call
   sites routed through `PlatformBridge.SessionService` / `ProcessService` /
