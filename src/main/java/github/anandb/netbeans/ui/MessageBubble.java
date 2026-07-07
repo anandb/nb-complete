@@ -3,7 +3,6 @@ package github.anandb.netbeans.ui;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
-import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Insets;
@@ -16,7 +15,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import javax.swing.BorderFactory;
-import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.Icon;
 import javax.swing.JButton;
@@ -319,102 +317,6 @@ public class MessageBubble extends JPanel implements Scrollable {
             JPanel avatarWrapper = UIUtils.createTransparentPanel(new BorderLayout());
             avatarWrapper.add(userLabel, BorderLayout.CENTER);
 
-            // User messages: pin + copy replace the avatar icon on hover.
-            // messageId must be known; sessionId is resolved lazily if not passed in.
-            if (messageId != null) {
-                final PinnedMessageControl pinStore = Lookup.getDefault().lookup(PinnedMessageControl.class);
-                this.pinned = (pinStore != null && pinStore.isPinned(sessionId, messageId));
-
-                // Replace the built-in avatar copy behavior with our pin+copy panel.
-                for (java.awt.event.MouseListener ml : userLabel.getMouseListeners()) {
-                    userLabel.removeMouseListener(ml);
-                }
-                userLabel.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
-                userLabel.setToolTipText(null);
-
-                // Size the action panel to the avatar label so the wrapper never resizes.
-                Dimension avatarSize = userLabel.getPreferredSize();
-                int gap = 2;
-                int btnSize = Math.min(avatarSize.width - gap, avatarSize.height) / 2 - gap;
-                btnSize = Math.max(16, btnSize);
-
-                pinBtn = UIUtils.createToolbarButton("pin.svg", btnSize,
-                        NbBundle.getMessage(MessageBubble.class,
-                                pinned ? "HINT_UnpinMessage" : "HINT_PinMessage"),
-                        e -> flipPin(pinStore));
-                pinBtn.setBorder(BorderFactory.createEmptyBorder());
-                pinBtn.setContentAreaFilled(false);
-                pinBtn.setOpaque(false);
-                pinBtn.setForeground(theme.foreground());
-                pinBtn.setVisible(false);
-
-                final JButton[] userCopyBtn = new JButton[1];
-                userCopyBtn[0] = UIUtils.createToolbarButton("copy.svg", btnSize,
-                    NbBundle.getMessage(MessageBubble.class, "HINT_CopyToInput"),
-                    e -> copyMessageToInputAndClipboard(userCopyBtn[0]));
-                userCopyBtn[0].setBorder(BorderFactory.createEmptyBorder());
-                userCopyBtn[0].setContentAreaFilled(false);
-                userCopyBtn[0].setOpaque(false);
-                userCopyBtn[0].setForeground(theme.foreground());
-                userCopyBtn[0].setVisible(false);
-
-                // Remove default toolbar padding so buttons fill the available space.
-                Dimension exactBtn = new Dimension(btnSize, btnSize);
-                pinBtn.setPreferredSize(exactBtn);
-                pinBtn.setMinimumSize(exactBtn);
-                pinBtn.setMaximumSize(exactBtn);
-                userCopyBtn[0].setPreferredSize(exactBtn);
-                userCopyBtn[0].setMinimumSize(exactBtn);
-                userCopyBtn[0].setMaximumSize(exactBtn);
-
-                JPanel userActions = new JPanel();
-                userActions.setLayout(new BoxLayout(userActions, BoxLayout.X_AXIS));
-                userActions.setOpaque(false);
-                userActions.add(Box.createHorizontalGlue());
-                userActions.add(userCopyBtn[0]);
-                userActions.add(Box.createRigidArea(new Dimension(gap, 0)));
-                userActions.add(pinBtn);
-                userActions.add(Box.createHorizontalGlue());
-                userActions.setVisible(false);
-                userActions.setPreferredSize(avatarSize);
-                userActions.setMinimumSize(avatarSize);
-                userActions.setMaximumSize(avatarSize);
-                avatarWrapper.add(userActions, BorderLayout.SOUTH);
-
-                // Apply red border accent if already pinned.
-                if (pinned) {
-                    applyPinAccent(true);
-                }
-
-                // Hover: hide user icon, show pin + copy in its place.
-                avatarWrapper.addMouseListener(new MouseAdapter() {
-                    @Override
-                    public void mouseEntered(MouseEvent e) {
-                        userLabel.setVisible(false);
-                        userActions.setVisible(true);
-                        userCopyBtn[0].setVisible(true);
-                        pinBtn.setVisible(true);
-                        if (pinned) {
-                            pinBtn.setIcon(ThemeManager.getIcon("pinned.svg", 32));
-                        }
-                        avatarWrapper.revalidate();
-                        avatarWrapper.repaint();
-                    }
-
-                    @Override
-                    public void mouseExited(MouseEvent e) {
-                        if (!avatarWrapper.contains(e.getPoint())) {
-                            userCopyBtn[0].setVisible(false);
-                            pinBtn.setVisible(false);
-                            userActions.setVisible(false);
-                            userLabel.setVisible(true);
-                            avatarWrapper.revalidate();
-                            avatarWrapper.repaint();
-                        }
-                    }
-                });
-            }
-
             if (avatarPosition == AvatarPosition.LEFT) {
                 contentRow.add(avatarWrapper, BorderLayout.WEST);
             } else {
@@ -565,34 +467,6 @@ public class MessageBubble extends JPanel implements Scrollable {
         copyBtn.setIcon(checkIcon);
 
         // Cancel any previous revert timer to avoid leaking timers on rapid clicks.
-        if (copyRevertTimer != null) {
-            copyRevertTimer.stop();
-        }
-        copyRevertTimer = new Timer(2000, e -> {
-            if (copyBtn.isShowing()) {
-                copyBtn.setIcon(originalIcon);
-            }
-        });
-        copyRevertTimer.setRepeats(false);
-        copyRevertTimer.start();
-    }
-
-    /** Copies message text to both the input text area and the system clipboard. */
-    private void copyMessageToInputAndClipboard(JButton copyBtn) {
-        String textToCopy = text.toString();
-        if (textToCopy.isEmpty()) {
-            return;
-        }
-
-        AssistantTopComponent.copyToInput(textToCopy);
-
-        StringSelection selection = new StringSelection(textToCopy);
-        Toolkit.getDefaultToolkit().getSystemClipboard().setContents(selection, selection);
-
-        Icon originalIcon = copyBtn.getIcon();
-        Icon checkIcon = ThemeManager.getIcon("check.svg", 14);
-        copyBtn.setIcon(checkIcon);
-
         if (copyRevertTimer != null) {
             copyRevertTimer.stop();
         }

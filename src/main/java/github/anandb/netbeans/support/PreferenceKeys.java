@@ -18,8 +18,6 @@ public final class PreferenceKeys {
     // Preference keys (must match what ACPOptionsPanel uses)
     public static final String ACP_EXECUTABLE_PATH = "acpExecutablePath";
     public static final String PROCESS_ARGUMENTS = "processArguments";
-    public static final String ECHO_USER_INPUT = "echoUserInput";
-    public static final String COMBINE_TOOL_THOUGHT = "combineToolThought";
     /** Max visible message bubbles before older ones are trimmed (0 = unlimited). */
     public static final String MAX_MESSAGES = "maxMessages";
 
@@ -31,8 +29,6 @@ public final class PreferenceKeys {
     /** Toolbar icon size: 24 (small), 28 (medium), 32 (large). */
     public static final String TOOLBAR_ICON_SIZE = "toolbarIconSize";
 
-    /** Stored JSplitPane divider position for the chat panel / input area split. */
-    public static final String DIVIDER_POSITION = "dividerPosition";
     // Toolbar button visibility keys
     public static final String TOOLBAR_ARCHIVE = "toolbar.archive";
     public static final String TOOLBAR_NEW_SESSION = "toolbar.newSession";
@@ -43,9 +39,6 @@ public final class PreferenceKeys {
     public static final String TOOLBAR_FILTER = "toolbar.filter";
     public static final String TOOLBAR_EXPORT = "toolbar.export";
     public static final String TOOLBAR_RESTART = "toolbar.restart";
-
-    /** JSON-encoded map of sessionId → list of pinned message IDs. */
-    public static final String PINNED_MESSAGES = "pinnedMessages";
 
     // Update checker preference keys
     public static final String LAST_CHECKED_FOR_UPDATES = "update.lastCheckedForUpdates";

@@ -3,11 +3,6 @@
 ## v1.7.6 (Changes since v1.7.5)
 
 ### Fixes
-- **Pinned user bubbles use left accent instead of red border**: `RoundedPanel`
-  now draws a 2px colored left accent strip for pinned status instead of a full
-  red border. Border is drawn via `paintComponent` override inside the clip,
-  respecting the panel's corner radius. The accent color uses the theme's
-  `accent` color for both light and dark modes.
 - **Streamed assistant bubbles missing messageId**: `ChatThreadPanel` stream
   timer path did not populate `currentSessionId` before creating assistant
   bubbles, causing pin button lookups to fail. Session ID is now captured
@@ -108,21 +103,26 @@
   in its own "Current Icon Preview" bordered panel to the right of the
   Appearance section. Spinboxes for Session Idle Timeout and Max Messages
   have consistent 80px width.
-- **Pin messages in chat**: User and assistant messages can now be pinned
-  to prevent them from being removed when "hide older messages" is active.
-  Assistant bubbles show a pin button next to the copy button on hover;
-  pinned assistant messages show a pushpin icon always. User bubbles show
-  pin + copy buttons on hover over the avatar, replacing the user icon;
-  pinned user messages get a subtle red accent border. Pin state persists
-  across IDE restarts via NbPreferences. Pinned messages never count toward
-  the max-messages cap — they are always retained regardless of the trim
-  threshold. Clicking pin/unpin when "show all messages" is active still
-  persists the state for future use.
+- **Pin messages in chat**: Assistant messages can now be pinned to prevent
+  them from being removed when "hide older messages" is active. Bubbles show
+  a pin button next to the copy button on hover; pinned messages show a
+  pushpin icon always. Pin state persists across IDE restarts via
+  NbPreferences. Pinned messages never count toward the max-messages cap —
+  they are always retained regardless of the trim threshold.
 - **Copy individual activity-pane segments**: When tool and thought messages
   are merged into an activity pane, each segment header now shows a copy
   button on hover that copies just that segment's content.
 
 ### Housekeeping
+- **Removed pinning support for user messages**: Pinning now only applies to
+  assistant messages (which always have a server-assigned `messageId`). User
+  message pin button and hover overlay removed; avatar retains copy-to-input
+  behavior via `MessageCopyMouseAdapter`. Simplifies pin state management and
+  removes the need for client-generated GUID workarounds.
+- **Dead code cleanup**: Removed `support/JsonFields.java` (22 unused JSON
+  field name constants) and 4 unused preference key constants from
+  `PreferenceKeys.java` (`ECHO_USER_INPUT`, `COMBINE_TOOL_THOUGHT`,
+  `DIVIDER_POSITION`, `PINNED_MESSAGES`).
 - **Forget/remember icon replaced**: The vault icon was replaced with a
   chat-bubble icon (`show_all.svg`/`show_all_dark.svg`) for both remember and
   forget states, providing a clearer visual metaphor for message visibility
