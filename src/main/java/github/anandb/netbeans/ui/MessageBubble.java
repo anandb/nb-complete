@@ -6,6 +6,9 @@ import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Insets;
+import java.awt.MouseInfo;
+import java.awt.Point;
+import java.awt.PointerInfo;
 import java.awt.Rectangle;
 import java.awt.Toolkit;
 import java.awt.datatransfer.StringSelection;
@@ -258,7 +261,7 @@ public class MessageBubble extends JPanel implements Scrollable {
 
                 @Override
                 public void mouseExited(MouseEvent e) {
-                    if (!bubble.contains(e.getPoint())) {
+                    if (!isMouseInsideComponent(bubble)) {
                         copyBtnArr[0].setVisible(false);
                         if (!pinned) {
                             pinBtn.setVisible(false);
@@ -266,6 +269,23 @@ public class MessageBubble extends JPanel implements Scrollable {
                     }
                 }
             });
+            // Also hide when mouse exits a child button — mouseExited on bubble
+            // only fires once (when entering the child), so we re-check here.
+            MouseAdapter childExit = new MouseAdapter() {
+                @Override
+                public void mouseExited(MouseEvent e) {
+                    SwingUtilities.invokeLater(() -> {
+                        if (!isMouseInsideComponent(bubble)) {
+                            copyBtnArr[0].setVisible(false);
+                            if (!pinned) {
+                                pinBtn.setVisible(false);
+                            }
+                        }
+                    });
+                }
+            };
+            copyBtnArr[0].addMouseListener(childExit);
+            pinBtn.addMouseListener(childExit);
         } else if ("assistant".equals(role)) {
             // Assistant without messageId — copy only
             final JButton[] copyBtn = new JButton[1];
@@ -289,9 +309,7 @@ public class MessageBubble extends JPanel implements Scrollable {
             copyPlaceholder.add(copyBtn[0]);
             bubble.add(copyPlaceholder, BorderLayout.SOUTH);
 
-            // Show copy button + frame on hover over the bubble.
-            // mouseExited only hides when truly leaving the bubble, not when
-            // entering a child (otherwise the button vanishes on approach).
+            // Show copy button on hover over the bubble.
             bubble.addMouseListener(new MouseAdapter() {
                 @Override
                 public void mouseEntered(MouseEvent e) {
@@ -300,9 +318,20 @@ public class MessageBubble extends JPanel implements Scrollable {
 
                 @Override
                 public void mouseExited(MouseEvent e) {
-                    if (!bubble.contains(e.getPoint())) {
+                    if (!isMouseInsideComponent(bubble)) {
                         copyBtn[0].setVisible(false);
                     }
+                }
+            });
+            // Also hide when mouse exits child button (same reason as above).
+            copyBtn[0].addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseExited(MouseEvent e) {
+                    SwingUtilities.invokeLater(() -> {
+                        if (!isMouseInsideComponent(bubble)) {
+                            copyBtn[0].setVisible(false);
+                        }
+                    });
                 }
             });
         }
@@ -443,10 +472,6 @@ public class MessageBubble extends JPanel implements Scrollable {
 
     public void setResponseTimeMs(long ms) {
         themeApplier.setResponseTimeMs(ms);
-    }
-
-    private void handleToolThoughtContent(ColorTheme theme, boolean expanded) {
-        contentRenderer.updateContent(theme, expanded, toolTitle);
     }
 
     private void updateContent(ColorTheme theme, boolean expanded) {
@@ -623,5 +648,20 @@ public class MessageBubble extends JPanel implements Scrollable {
     @Override
     public boolean getScrollableTracksViewportHeight() {
         return false;
+    }
+
+    /**
+     * Checks whether the mouse pointer is currently within the screen bounds of
+     * the given component. Uses screen coordinates to avoid the unreliable
+     * relative-point check in {@link MouseEvent#getPoint()} when the mouse
+     * moves quickly.
+     */
+    private static boolean isMouseInsideComponent(Component c) {
+        PointerInfo pi = MouseInfo.getPointerInfo();
+        if (pi == null) return false;
+        Point screenLoc = pi.getLocation();
+        Rectangle bounds = c.getBounds();
+        bounds.setLocation(c.getLocationOnScreen());
+        return bounds.contains(screenLoc);
     }
 }

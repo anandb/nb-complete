@@ -57,7 +57,6 @@ public class ACPOptionsPanel extends JPanel {
     private JLabel jLabel1;
     private JTextField pathField;
     private JLabel pathErrorLabel;
-    private JLabel preambleLabel;
     private JTextArea preambleArea;
     private JScrollPane preambleScroll;
     private JButton browseButton;
@@ -98,7 +97,6 @@ public class ACPOptionsPanel extends JPanel {
         echoCheckbox = new JCheckBox();
         combineCheckbox = new JCheckBox();
         checkForUpdatesCheckbox = new JCheckBox();
-        preambleLabel = new JLabel();
         preambleArea = new JTextArea(5, 40);
         preambleScroll = new JScrollPane(preambleArea);
         iconLabel = new JLabel();

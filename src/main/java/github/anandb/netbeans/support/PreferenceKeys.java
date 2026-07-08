@@ -43,5 +43,6 @@ public final class PreferenceKeys {
     // Update checker preference keys
     public static final String LAST_CHECKED_FOR_UPDATES = "update.lastCheckedForUpdates";
     public static final String CHECK_FOR_UPDATES = "update.checkForUpdates";
+
 }
 

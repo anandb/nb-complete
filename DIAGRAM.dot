@@ -9,9 +9,10 @@ digraph CodingAssistant {
     splines=true
     compound=true
 
-    /* ================================================================ */
-    /* Contract Layer — Interfaces & Ports                               */
-    /* ================================================================ */
+/* HEAD: 7f10f6a Update to 1.7.6 */
+/* ================================================================ */
+/* Contract Layer — Interfaces & Ports                               */
+/* ================================================================ */
     subgraph cluster_contract {
         label="Contract Layer"
         style=solid
@@ -126,7 +127,7 @@ digraph CodingAssistant {
         <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
         <TR><TD><FONT COLOR="gray"><I>&lt;&lt;constants&gt;&gt;</I></FONT></TD></TR>
         <TR><TD ALIGN="LEFT"><B>PreferenceKeys</B></TD></TR>
-        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">+MODULE_ANCHOR$<BR/>+ACP_EXECUTABLE_PATH$<BR/>+PROCESS_ARGUMENTS$<BR/>+COMBINE_TOOL_THOUGHT$<BR/>+TOOLBAR_*$</FONT></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">+MODULE_ANCHOR$<BR/>+ACP_EXECUTABLE_PATH$<BR/>+PROCESS_ARGUMENTS$<BR/>+TOOLBAR_ICON_SIZE$<BR/>+MAX_MESSAGES$<BR/>+TOOLBAR_VISIBILITY_*$<BR/>+INPUT_HISTORY_PREFIX$<BR/>+LAST_CHECKED_FOR_UPDATES$<BR/>+CHECK_FOR_UPDATES$</FONT></TD></TR>
         </TABLE>
     >]
 
@@ -134,7 +135,7 @@ digraph CodingAssistant {
         <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white">
         <TR><TD><FONT COLOR="gray"><I>&lt;&lt;singleton&gt;&gt;</I></FONT></TD></TR>
         <TR><TD ALIGN="LEFT"><B>PluginSettings</B></TD></TR>
-        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">+getPreamble() : String$<BR/>+setPreamble(String)$<BR/>+getCustomUserIcon() : String$<BR/>+getSessionIdleTimeout() : long$</FONT></TD></TR>
+        <TR><TD ALIGN="LEFT"><FONT FACE="Courier">+getPreamble() : String$<BR/>+setPreamble(String)$<BR/>+getCustomUserIcon() : String$<BR/>+setCustomUserIcon(String)$<BR/>+getSessionIdleTimeout() : long$<BR/>+setSessionIdleTimeout(int)$<BR/>+getMaxMessages() : int$<BR/>+setMaxMessages(int)$<BR/>+getToolbarIconSize() : int$<BR/>+setToolbarIconSize(int)$</FONT></TD></TR>
         </TABLE>
     >]
 

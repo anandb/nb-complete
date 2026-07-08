@@ -8,7 +8,6 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
-import java.util.concurrent.Future;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.logging.Level;
 import java.util.prefs.Preferences;
@@ -52,7 +51,7 @@ public class UpdateCheckerService implements UpdateCheckerControl {
     private static volatile UpdateCheckerService instance;
 
     private volatile boolean running;
-    private volatile Future<?> rpFuture;
+    private volatile RequestProcessor.Task rpTask;
 
     public UpdateCheckerService() {
     }
@@ -80,6 +79,7 @@ public class UpdateCheckerService implements UpdateCheckerControl {
      * Computes a random time interval between 16 to 24 hours, adds that to current time
      * to get time of execution, and saves it in preferences.
      */
+    @Override
     public void onInstallOrUpgrade() {
         long timeOfExecution = System.currentTimeMillis() + getRandomIntervalMillis();
         prefs().putLong(PreferenceKeys.LAST_CHECKED_FOR_UPDATES, timeOfExecution);
@@ -89,22 +89,26 @@ public class UpdateCheckerService implements UpdateCheckerControl {
     /**
      * Starts the background daemon task on the {@link RequestProcessor}.
      * Safe to call multiple times — subsequent calls are no-ops.
+     * Does NOT run an immediate check — respects the stored schedule
+     * from the previous cycle (or from {@link #onInstallOrUpgrade()}).
      */
+    @Override
     public synchronized void start() {
-        if (rpFuture != null && !rpFuture.isDone()) {
+        if (rpTask != null && !rpTask.isFinished()) {
             return;
         }
         running = true;
-        rpFuture = RP.submit(this::runLoop);
+        rpTask = RP.create(this::runCheckCycle);
+        rpTask.schedule(0);
         LOG.info("UpdateCheckerService daemon task submitted.");
     }
 
     /** Cancels the running update-check loop, if any. */
     public synchronized void cancel() {
         running = false;
-        if (rpFuture != null) {
-            rpFuture.cancel(true);
-            rpFuture = null;
+        if (rpTask != null) {
+            rpTask.cancel();
+            rpTask = null;
         }
     }
 
@@ -116,108 +120,96 @@ public class UpdateCheckerService implements UpdateCheckerControl {
         return NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
     }
 
-    private void runLoop() {
-        Preferences prefs = prefs();
-        boolean checkEnabled = prefs.getBoolean(PreferenceKeys.CHECK_FOR_UPDATES, true);
+    private void runCheckCycle() {
+        if (!running) return;
+        try {
+            Preferences prefs = prefs();
+            long now = System.currentTimeMillis();
+            long timeOfExecution = prefs.getLong(PreferenceKeys.LAST_CHECKED_FOR_UPDATES, 0L);
 
-        if (checkEnabled) {
-            try {
-                LOG.info("Checking for updates at startup...");
-                checkForUpdates();
-            } catch (Exception e) {
-                LOG.log(Level.WARNING, "Error checking for updates at startup: {0}", e.getMessage());
+            // If not initialized, set initial execution time.
+            if (timeOfExecution == 0L) {
+                timeOfExecution = now + getRandomIntervalMillis();
+                prefs.putLong(PreferenceKeys.LAST_CHECKED_FOR_UPDATES, timeOfExecution);
             }
-        } else {
-            LOG.fine("Startup update check skipped (preference disabled).");
-        }
 
-        // Set the next time of execution to be 16-24 hours from now
-        long initialNextTime = System.currentTimeMillis() + getRandomIntervalMillis();
-        prefs.putLong(PreferenceKeys.LAST_CHECKED_FOR_UPDATES, initialNextTime);
-        LOG.info("Next automatic update check scheduled for: {0}", new java.util.Date(initialNextTime));
+            if (now >= timeOfExecution) {
+                // Compute next time of execution BEFORE the update check
+                long nextTime = System.currentTimeMillis() + getRandomIntervalMillis();
+                prefs.putLong(PreferenceKeys.LAST_CHECKED_FOR_UPDATES, nextTime);
 
-        while (running) {
-            try {
-                long now = System.currentTimeMillis();
-                long timeOfExecution = prefs.getLong(PreferenceKeys.LAST_CHECKED_FOR_UPDATES, 0L);
+                boolean checkEnabled = prefs.getBoolean(PreferenceKeys.CHECK_FOR_UPDATES, true);
 
-                // If not initialized, set initial execution time.
-                if (timeOfExecution == 0L) {
-                    timeOfExecution = now + getRandomIntervalMillis();
-                    prefs.putLong(PreferenceKeys.LAST_CHECKED_FOR_UPDATES, timeOfExecution);
-                }
-
-                if (now >= timeOfExecution) {
-                    // Compute next time of execution BEFORE the update check
-                    long nextTime = System.currentTimeMillis() + getRandomIntervalMillis();
-                    prefs.putLong(PreferenceKeys.LAST_CHECKED_FOR_UPDATES, nextTime);
-
-                    checkEnabled = prefs.getBoolean(PreferenceKeys.CHECK_FOR_UPDATES, true);
-
-                    if (checkEnabled) {
-                        try {
-                            LOG.info("Checking for updates...");
-                            checkForUpdates();
-                        } catch (Exception e) {
-                            LOG.log(Level.WARNING, "Error checking for updates: {0}", e.getMessage());
-                        }
-                    } else {
-                        LOG.fine("Update check is disabled in settings. Skipping update check.");
+                if (checkEnabled) {
+                    try {
+                        LOG.info("Checking for updates...");
+                        checkForUpdates();
+                    } catch (Exception e) {
+                        LOG.log(Level.WARNING, "Error checking for updates: {0}", e.getMessage());
                     }
                 } else {
-                    long sleepTime = timeOfExecution - now;
-                    if (sleepTime > 0) {
-                        Thread.sleep(sleepTime);
-                    }
+                    LOG.fine("Update check is disabled in settings. Skipping update check.");
                 }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                break;
-            } catch (Exception e) {
-                LOG.log(Level.WARNING, "Unexpected error in update checker loop: {0}", e);
-                try {
-                    // Prevent tight loop in case of continuous unexpected failures
-                    Thread.sleep(60000L);
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    break;
-                }
+
+                scheduleNext(getRandomIntervalMillis());
+            } else {
+                long delay = timeOfExecution - now;
+                scheduleNext(delay > 0 ? delay : 1000L);
             }
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "Unexpected error in update checker cycle: {0}", e);
+            scheduleNext(60000L);
+        }
+    }
+
+    private void scheduleNext(long delayMillis) {
+        if (running) {
+            rpTask = RP.create(this::runCheckCycle);
+            rpTask.schedule((int) Math.min(delayMillis, (long) Integer.MAX_VALUE));
         }
     }
 
     private void checkForUpdates() throws Exception {
-        String userAgent = "CodingAssistant/" + AgentUtils.getVersion();
+        LOG.info("Checking for updates from {0}", UPDATE_URL);
 
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(UPDATE_URL))
-                .header("User-Agent", userAgent)
-                .timeout(Duration.ofSeconds(15))
-                .GET()
-                .build();
+        try {
+            String userAgent = "CodingAssistant/" + AgentUtils.getVersion();
 
-        HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
-        if (response.statusCode() != 200) {
-            throw new IOException("HTTP update check failed with status code: " + response.statusCode());
-        }
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(UPDATE_URL))
+                    .header("User-Agent", userAgent)
+                    .timeout(Duration.ofSeconds(15))
+                    .GET()
+                    .build();
 
-        String body = response.body();
-        ObjectMapper mapper = MapperSupplier.get();
-        UpdateInfo info = mapper.readValue(body, UpdateInfo.class);
+            HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() != 200) {
+                throw new IOException("HTTP update check failed with status code: " + response.statusCode());
+            }
 
-        if (info == null || info.latestVersion == null) {
-            throw new IOException("Invalid or empty update JSON response");
-        }
+            String body = response.body();
+            ObjectMapper mapper = MapperSupplier.get();
+            UpdateInfo info = mapper.readValue(body, UpdateInfo.class);
 
-        String currentVersionStr = AgentUtils.getVersion();
+            if (info == null || info.latestVersion == null) {
+                throw new IOException("Invalid or empty update JSON response");
+            }
 
-        if (isNewerVersion(info.latestVersion, currentVersionStr)) {
-            LOG.info("New update found: {0} (current: {1}). Download URL: {2}",
-                    new Object[]{info.latestVersion, currentVersionStr, info.downloadUrl});
+            String currentVersionStr = AgentUtils.getVersion();
 
-            showNotification(info.latestVersion, info.downloadUrl);
-        } else {
-            LOG.info("Already on the latest version: {0}", currentVersionStr);
+            if (isNewerVersion(info.latestVersion, currentVersionStr)) {
+                LOG.info("New update found: {0} (current: {1}). Download URL: {2}",
+                        new Object[]{info.latestVersion, currentVersionStr, info.downloadUrl});
+
+                showNotification(info.latestVersion, info.downloadUrl);
+            } else {
+                LOG.info("Already on the latest version: {0}", currentVersionStr);
+            }
+
+            LOG.info("Update check completed successfully.");
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "Update check failed: {0}", e.getMessage());
+            throw e;
         }
     }
 

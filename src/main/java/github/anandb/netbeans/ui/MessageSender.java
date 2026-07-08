@@ -28,8 +28,7 @@ import github.anandb.netbeans.ui.platform.SessionService;
  */
 // DSL-CONTROLLER: not a view — MessageSender drives the send pipeline (input
 // area trim, attachment attach, status callbacks, POST to ACP). Stays
-// imperative; the input area + status label it touches are bound via InputAreaVM
-// + StatusSpec.
+// imperative.
 public class MessageSender {
 
     private static final Logger LOG = Logger.from(MessageSender.class);

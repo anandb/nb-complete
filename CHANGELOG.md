@@ -1,5 +1,25 @@
 # Release Notes
 
+## v1.8.0 (Changes since v1.7.6)
+
+### Housekeeping
+- **Dead code cleanup**: Removed `CommandBuilder` (unused builder — production
+  builds `CommandLine` directly), `ui/vm/` and `ui/spec/` packages (10 files
+  from the planned swingtree DSL migration — never wired into live UI),
+  `handleToolThoughtContent` dead method in `MessageBubble`, `table()` dead
+  method in `KeyboardShortcutsDialog`, unused `preambleLabel` field in
+  `ACPOptionsPanel`, and unused `sessionDropdownHandler`/`inputHandler` fields
+  in `AssistantTopComponent` (kept alive by listener registrations). Removed
+  corresponding test class `ACPCommandBuilderTest`. Total 611 lines removed.
+- **Update checker now purely scheduled**: `start()` schedules `runCheckCycle`
+  instead of `runStartupCheck` — no immediate check at IDE startup. First check
+  respects the stored schedule (from `onInstallOrUpgrade()` or the previous
+  cycle). Removed `runStartupCheck()` method.
+- **Hover button fix for assistant bubbles**: When mouse exits a child button
+  (copy/pin) directly into the editor area, buttons now correctly hide. Added
+  `mouseExited` listeners on child buttons with `SwingUtilities.invokeLater` +
+  `isMouseInsideComponent` re-check.
+
 ## v1.7.6 (Changes since v1.7.5)
 
 ### Fixes

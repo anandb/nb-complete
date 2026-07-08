@@ -33,7 +33,7 @@ import org.openide.util.NbBundle;
  */
 // DSL-CONTROLLER: not a view — session lifecycle bridge (refresh / load / new /
 // rename / archive). Stays imperative; the toolbar buttons it toggles are
-// bound via the future ChatToolbarSpec + ChatToolbarActions.
+// kept imperative.
 public class SessionLifecycleHandler implements SessionListener {
 
     private final SessionService sessionService = Lookup.getDefault().lookup(PlatformBridge.class).sessionService();

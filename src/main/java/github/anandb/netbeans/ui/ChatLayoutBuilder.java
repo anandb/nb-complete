@@ -602,21 +602,4 @@ final class ChatLayoutBuilder {
         return NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean("showHiddenSessions", false);
     }
 
-    /**
-     * Returns an immutable bundle of every component this builder constructed.
-     * This is the DSL-ready seam: callers can hold a {@link ChatLayoutRefs}
-     * instead of N separate {@code getX()} references, and a future swingtree
-     * migration replaces the construction body without changing the refs shape.
-     * Non-behavioral — equivalent to calling the individual getters.
-     */
-    github.anandb.netbeans.ui.spec.ChatLayoutRefs refs() {
-        return new github.anandb.netbeans.ui.spec.ChatLayoutRefs(
-                header, rightStatusPanel,
-                (JComboBox<github.anandb.netbeans.model.SessionItem>) (JComboBox<?>) sessionDropdown,
-                hideBtn, showHiddenBtn, newSessionBtn, renameSessionBtn,
-                toggleBlocksBtn, keepBtn, filterBtn, helpBtn, toggleOptionsBtn,
-                restartServerBtn, refreshBtn, exportBtn, sendBtn, stopBtn,
-                statusLabel, versionLabel, cwdLabel,
-                inputArea, inputScrollPane);
-    }
 }
