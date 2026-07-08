@@ -584,6 +584,11 @@ public class ChatThreadPanel extends JPanel {
                 scrollController.fixMouseWheel(c);
             }
         }
+        // Force full re-layout after a hide/show cycle; the component hierarchy
+        // may be stale because removeNotify() tears down listeners and timers,
+        // leaving the panel blank until the user manually resizes or reopens.
+        revalidate();
+        repaint();
     }
 
     @Override

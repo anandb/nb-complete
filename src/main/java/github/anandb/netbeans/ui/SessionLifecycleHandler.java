@@ -454,6 +454,11 @@ public class SessionLifecycleHandler implements SessionListener {
     }
 
     @Override
+    public void onAllProjectsClosed() {
+        SwingUtilities.invokeLater(() -> inputArea.setText(""));
+    }
+
+    @Override
     public void onSessionError(String message) {
         SwingUtilities.invokeLater(() -> {
             statusController.setStatus("STATUS_Error", message);

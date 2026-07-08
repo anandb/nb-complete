@@ -604,6 +604,11 @@ public class SessionManager implements SessionQuery, SessionControl {
                 || (remaining.length == 1 && remaining[0] != null
                 && remaining[0].getProjectDirectory().getPath().equals(closedDir))) {
             lastProjectDir = "";
+            if (remaining == null || remaining.length == 0) {
+                for (SessionListener l : listeners) {
+                    l.onAllProjectsClosed();
+                }
+            }
         }
     }
 

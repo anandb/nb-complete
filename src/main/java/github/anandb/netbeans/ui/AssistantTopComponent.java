@@ -157,8 +157,8 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
         // Add rocket (OpenCode Go) button to the left of the attachment button
         int iconSize = PluginSettings.getToolbarIconSize();
-        JButton rocketBtn = UIUtils.createToolbarButton("shuttle.svg", iconSize,
-                "Sign up for OpenCode Go (Referral Link)", e -> {
+        JButton rocketBtn = UIUtils.createToolbarButton("rocket-ship.svg", iconSize,
+                "Sign up for OpenCode Go", e -> {
             github.anandb.netbeans.support.BrowserUtils.openOrCopyUrl(
                     "https://opencode.ai/go?ref=DWTNHGN9KX", null, null);
         });
@@ -470,6 +470,10 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     public void addNotify() {
         super.addNotify();
         componentLifecycleHandler.registerKeyEventDispatchers();
+        // Re-layout the outer hierarchy (header, split pane, bottom bar)
+        // after a hide/show cycle to prevent blank panels.
+        revalidate();
+        repaint();
     }
 
     @Override

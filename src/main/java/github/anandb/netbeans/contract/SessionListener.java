@@ -37,4 +37,8 @@ public interface SessionListener {
     /** Fired when a session has been renamed locally. UI should update the
      *  dropdown display without reloading the entire conversation. */
     default void onSessionRenamed(String sessionId) {}
+
+    /** Fired when all open projects have been closed. The UI should clear
+     *  the input area since there is no active project context. */
+    default void onAllProjectsClosed() {}
 }
