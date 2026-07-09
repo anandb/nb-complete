@@ -1,5 +1,19 @@
 # Release Notes
 
+## v1.8.1 (Changes since v1.8.0)
+
+### Fixes
+- **Blank sidebar after auto-hide**: `addNotify()` in `AssistantTopComponent`
+  and `ChatThreadPanel` now force `revalidate()` + `repaint()` after a
+  hide/show cycle, preventing the panel from staying blank when reopened.
+- **Input area cleared when all projects close**: Added `onAllProjectsClosed()`
+  callback to `SessionListener` contract. When the last open project is closed,
+  the input area is cleared — no stale project context remains.
+
+### Housekeeping
+- **Unused icons removed**: `stop.svg`, `stop_dark.svg`, `tick.svg`, `tick_dark.svg`
+  deleted.
+
 ## v1.8.0 (Changes since v1.7.6)
 
 ### Housekeeping

@@ -128,14 +128,14 @@ final class KeyboardShortcutsDialog extends JDialog {
         // Assignable shortcuts — all in one table, two per row
         tableTwoCol(sb, border, bg, hdrBg, "Assignable Shortcuts (Tools > Keymap)", new String[][]{
             {resolveShortcut("Actions/Assistant/github-anandb-netbeans-ui-NewSessionAction"), "New Session"},
-            {resolveShortcut("Actions/Assistant/github-anandb-netbeans-ui-ReloadSessionAction"), "Reload Conversation"},
+            {resolveShortcut("Actions/Assistant/github-anandb-netbeans-ui-ReloadSessionAction"), "Reload Session"},
             {resolveShortcut("Actions/Assistant/github-anandb-netbeans-ui-RenameSessionAction"), "Rename Session"},
             {resolveShortcut("Actions/Assistant/github-anandb-netbeans-ui-ArchiveSessionAction"), "Archive Session"},
             {resolveShortcut("Actions/Assistant/github-anandb-netbeans-ui-RestartServerAction"), "Restart Server"},
             {resolveShortcut("Actions/Assistant/github-anandb-netbeans-ui-SendMessageAction"), "Send Message"},
             {resolveShortcut("Actions/Assistant/github-anandb-netbeans-ui-StopMessageAction"), "Stop Message"},
             {resolveShortcut("Actions/Assistant/github-anandb-netbeans-ui-ToggleOptionsAction"), "Toggle Options"},
-            {resolveShortcut("Actions/Assistant/github-anandb-netbeans-ui-ExportConversationAction"), "Export Conversation"},
+            {resolveShortcut("Actions/Assistant/github-anandb-netbeans-ui-ExportConversationAction"), "Export Session"},
             {resolveShortcut("Actions/Assistant/github-anandb-netbeans-ui-ToggleBlocksAction"), "Toggle Expand/Collapse All"},
         });
 

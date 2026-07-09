@@ -66,6 +66,19 @@ public class SessionManager implements SessionQuery, SessionControl {
         return NbPreferences.forModule(SessionManager.class).get(TITLE_PREFIX + sessionId, defaultTitle);
     }
 
+    /** @see SessionQuery#getSessionTitle(String) */
+    @Override
+    public String getSessionTitle(String sessionId) {
+        if (sessionId == null) return null;
+        Session s = cacheManager.getCachedSession(sessionId);
+        if (s == null) return null;
+        String serverTitle = s.title();
+        if (serverTitle == null || serverTitle.isBlank()) {
+            serverTitle = sessionId;
+        }
+        return getCustomTitle(sessionId, serverTitle);
+    }
+
     private static String decodeHtmlEntities(String input) {
         if (input == null) return null;
         return unescapeHtml4(input);

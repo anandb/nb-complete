@@ -362,9 +362,18 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             return;
         }
 
+        String defaultName = "session.md";
+        String currentId = sessionService.get().getCurrentSessionId();
+        if (currentId != null) {
+            String title = sessionService.get().getSessionTitle(currentId);
+            if (title != null && !title.startsWith("New Session")) {
+                defaultName = title.replaceAll("[^a-zA-Z0-9._-]", "_") + ".md";
+            }
+        }
+
         JFileChooser chooser = new JFileChooser();
         chooser.setDialogTitle(NbBundle.getMessage(AssistantTopComponent.class, "TITLE_ExportConv"));
-        chooser.setSelectedFile(new File("conversation.md"));
+        chooser.setSelectedFile(new File(defaultName));
         if (chooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
             File file = chooser.getSelectedFile();
             try (FileWriter writer = new FileWriter(file)) {

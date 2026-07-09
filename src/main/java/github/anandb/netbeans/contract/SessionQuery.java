@@ -26,6 +26,9 @@ public interface SessionQuery {
     /** Returns a custom title for a session, falling back to the default. */
     String getCustomTitle(String sessionId, String defaultTitle);
 
+    /** Returns the display title for a session — custom title if set, else the server-provided title. */
+    String getSessionTitle(String sessionId);
+
     /** Returns true if the given sessionId is a sub-agent/descendant of the current active session. */
     boolean isDescendantOfCurrent(String sessionId);
 
