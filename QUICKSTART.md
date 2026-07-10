@@ -5,13 +5,13 @@
   with AI models directly inside the IDE.
 
 ## Breaking Changes and Alerts.
-- **⚠ OpenCode v1.17.13 Breaking Changes** — Image paste seems to be broken in the latest OpenCode version,
-  downgrade to v1.17.10 if you face any issues.
+- ~~**⚠ OpenCode v1.17.13 Breaking Changes** — Image paste seems to be broken in the latest OpenCode version,
+  downgrade to v1.17.10 if you face any issues.~~ (Works on 1.17.17)
 
-- **⚠ OpenCode v1.17.9 Breaking Changes** — The ACP Next protocol is now the default. Session config
+- ~~**⚠ OpenCode v1.17.9 Breaking Changes** — The ACP Next protocol is now the default. Session config
   payloads have been restructured and model variants are split into a separate `thought_level`
   option. If you are upgrading from an earlier version, you will need to re-select your model
-  and review any custom preamble or session settings. See [CHANGELOG.md](CHANGELOG.md) for full details.
+  and review any custom preamble or session settings. See [CHANGELOG.md](CHANGELOG.md) for full details.~~ (Upgrade to the latest plugin release & opencode version 1.17.17)
 
 This document covers features available in the latest release. The plugin can be downloaded from
 **Maven Central** or built from source. Due to the release cadence, there may be a delay before
