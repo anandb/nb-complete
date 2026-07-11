@@ -20,6 +20,7 @@ import org.openide.util.NbBundle;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
 import github.anandb.netbeans.ui.platform.ProcessService;
 import github.anandb.netbeans.ui.platform.SessionService;
+import java.util.prefs.PreferenceChangeListener;
 
 /**
  * Handles sending user messages and stopping message processing.
@@ -32,6 +33,17 @@ import github.anandb.netbeans.ui.platform.SessionService;
 public class MessageSender {
 
     private static final Logger LOG = Logger.from(MessageSender.class);
+    
+    private static volatile boolean localEchoEnabled = true;
+    private static final PreferenceChangeListener PREF_LISTENER = evt -> {
+        if ("echoUserInput".equals(evt.getKey())) {
+            localEchoEnabled = Boolean.parseBoolean(evt.getNewValue());
+        }
+    };
+    static {
+        localEchoEnabled = NbPreferences.forModule(ACPOptionsPanel.class).getBoolean("echoUserInput", true);
+        NbPreferences.forModule(ACPOptionsPanel.class).addPreferenceChangeListener(PREF_LISTENER);
+    }
 
     private final SessionService sessionService;
     private final ProcessService processService;
@@ -156,8 +168,7 @@ public class MessageSender {
             paperclipUpdater.run();
 
             // Local echo with file references
-            boolean localEcho = NbPreferences.forModule(ACPOptionsPanel.class).getBoolean("echoUserInput", true);
-            if (localEcho) {
+            if (localEchoEnabled) {
                 StringBuilder echoBuilder = new StringBuilder(text);
                 if (!fileBlocks.isEmpty()) {
                     if (!text.isBlank()) echoBuilder.append("\n");

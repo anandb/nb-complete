@@ -58,6 +58,8 @@ import github.anandb.netbeans.support.Logger;
 public final class StashDiffAction implements java.awt.event.ActionListener {
 
     private static final Pattern STASH_NAME = Pattern.compile("stash@\\{(\\d+)\\}");
+    private static final Pattern STASH_REF_PATTERN = Pattern.compile("stash@\\{\\d+\\}.*");
+    private static final Pattern FATAL_PREFIX = Pattern.compile("(?m)^fatal: ");
     /** Current diff controller for navigating differences. */
     private DiffController currentController;
 
@@ -96,7 +98,7 @@ public final class StashDiffAction implements java.awt.event.ActionListener {
         Node node = lookup.lookup(Node.class);
         if (node == null) return null;
         String name = node.getDisplayName();
-        return (name != null && name.matches("stash@\\{\\d+\\}.*")) ? node : null;
+        return (name != null && STASH_REF_PATTERN.matcher(name).matches()) ? node : null;
     }
 
     // --- Git helpers ---
@@ -116,7 +118,7 @@ public final class StashDiffAction implements java.awt.event.ActionListener {
     }
 
     private static String stripFatal(String output) {
-        return output.replaceAll("(?m)^fatal: ", "");
+        return FATAL_PREFIX.matcher(output).replaceAll("");
     }
 
     private static String statusName(String code) {

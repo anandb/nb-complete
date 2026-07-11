@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.logging.Level;
+import java.util.regex.Pattern;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -69,6 +70,7 @@ import github.anandb.netbeans.ui.platform.SessionService;
 public final class AssistantTopComponent extends TopComponent implements PermissionHandler {
 
     private static final Logger LOG = Logger.from(AssistantTopComponent.class);
+    private static final Pattern INVALID_TITLE_PATTERN = Pattern.compile("[^a-zA-Z0-9._-]");
     private static final long serialVersionUID = 1L;
     private final SessionService sessionService = Lookup.getDefault().lookup(PlatformBridge.class).sessionService();
     private final ProjectContext projectContext = Lookup.getDefault().lookup(PlatformBridge.class).projectContext();
@@ -367,7 +369,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         if (currentId != null) {
             String title = sessionService.get().getSessionTitle(currentId);
             if (title != null && !title.startsWith("New Session")) {
-                defaultName = title.replaceAll("[^a-zA-Z0-9._-]", "_") + ".md";
+                defaultName = INVALID_TITLE_PATTERN.matcher(title).replaceAll("_") + ".md";
             }
         }
 

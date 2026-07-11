@@ -5,6 +5,7 @@ import javax.swing.JPanel;
 import javax.swing.event.ChangeListener;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
+import java.util.regex.Pattern;
 import org.openide.WizardDescriptor;
 import org.openide.util.NbBundle;
 
@@ -12,6 +13,8 @@ import org.openide.util.NbBundle;
  * Visual panel for entering the project name and location.
  */
 final class MdProjectPanelVisual extends JPanel {
+
+    private static final Pattern VALID_NAME_PATTERN = Pattern.compile("\\w[\\w\\-.]*");
 
     private final javax.swing.JTextField nameField;
     private final javax.swing.JTextField folderField;
@@ -94,7 +97,7 @@ final class MdProjectPanelVisual extends JPanel {
             errorLabel.setText(NbBundle.getMessage(MdProjectPanelVisual.class, "ERR_EmptyName"));
             return false;
         }
-        if (!name.matches("\\w[\\w\\-.]*")) {
+        if (!VALID_NAME_PATTERN.matcher(name).matches()) {
             errorLabel.setText(NbBundle.getMessage(MdProjectPanelVisual.class, "ERR_InvalidName"));
             return false;
         }
