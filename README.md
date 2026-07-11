@@ -70,17 +70,15 @@ All source lives under `src/main/java/github/anandb/netbeans/`:
 | Package | Files | Role |
 | --- | --- | --- |
 | `contract/` | 15 | Service interfaces (UI callbacks, session & process control, permission & request handlers, pinned message control) |
-| `manager/` | 11 | Core orchestration, protocol clients, session management, process lifecycle |
+| `manager/` | 10 | Core orchestration, protocol clients, session management, process lifecycle |
 | `manager/strategy/` | 2 | Strategy dispatch and sub-agent title resolution |
 | `mcp/` | 11 | MCP server integration (editor tools, tool definitions, message servlet) |
 | `model/` | 15 | ACP-compliant data models (session, messages, updates, config options, color tokens) |
 | `project/` | 3 | NetBeans lifecycle hooks (`@OnStart`, `@OnStop`), project manager |
 | `project/mdproject/` | 6 | Markdown project support (file types, data objects, openable) |
 | `support/` | 15 | Utilities (logging, JSON mapping, text scanning, constants, browser helpers, pinned message store) |
-| `ui/` | 72 | Swing components (chat window, message bubbles, theming, options panel, stash diff viewer) |
+| `ui/` | 73 | Swing components (chat window, message bubbles, theming, options panel, stash diff viewer) |
 | `ui/platform/` | 7 | Platform integration (IDE theme detection, icon resources, editor context) |
-| `ui/spec/` | 6 | Specification/configuration UI components |
-| `ui/vm/` | 4 | View model layer (decouples UI from business logic) |
 | `ui/mdproject/` | 3 | Markdown project UI components |
 
 ---

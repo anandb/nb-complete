@@ -25,7 +25,7 @@
   - **Non-persistent tab**: Stash diff tab no longer persists across IDE
     restarts (prevents blank tab on reopen).
   - **Dynamic left panel sizing**: File list width computed from longest file
-    name and widest toolbar button text.
+    name and toolbar preferred width.
 - **Chat Font Size setting**: New combo in Options > Assistant > Appearance.
   Options: Inherited (default, uses theme font size − 2), 10, 11, 12, 13, 14,
   16. Takes effect immediately.

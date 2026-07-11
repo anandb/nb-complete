@@ -73,9 +73,9 @@ public class ScrollController implements KeyEventDispatcher {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(SCROLL_BTN_COLOR_A);
-                g2.fillOval(2, 2, getWidth() - 5, getHeight() - 5);
+                g2.fillOval(1, 1, getWidth() - 3, getHeight() - 3);
                 g2.setColor(SCROLL_BTN_COLOR_B);
-                g2.fillOval(3, 3, getWidth() - 7, getHeight() - 7);
+                g2.fillOval(2, 2, getWidth() - 5, getHeight() - 5);
                 g2.dispose();
                 super.paintComponent(g);
             }
@@ -84,7 +84,7 @@ public class ScrollController implements KeyEventDispatcher {
         btn.setContentAreaFilled(false);
         btn.setBorderPainted(false);
         btn.setFocusPainted(false);
-        btn.setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
+        btn.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btn.setToolTipText(NbBundle.getMessage(ChatThreadPanel.class, "HINT_ScrollToBottom"));
         btn.getAccessibleContext().setAccessibleName("Scroll to bottom");

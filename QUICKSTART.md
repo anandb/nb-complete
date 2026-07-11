@@ -12,7 +12,6 @@
   - [Input Area](#input-area)
   - [Slash Commands](#slash-commands)
   - [Model & Command Control](#model--command-control)
-  - [Message Display](#message-display)
   - [Message Management](#message-management)
   - [Markdown Project Type](#markdown-project-type)
   - [Stash Diff (Experimental)](#stash-diff-experimental)

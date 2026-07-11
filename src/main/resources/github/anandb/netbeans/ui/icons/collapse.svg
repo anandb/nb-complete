@@ -1,1 +1,39 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="#17a2b8" d="M7.41 18.59L8.83 20L12 16.83L15.17 20l1.41-1.41L12 14l-4.59 4.59zm9.18-13.18L15.17 4L12 7.17L8.83 4L7.41 5.41L12 10l4.59-4.59z"/></svg>
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="24"
+   height="24"
+   viewBox="0 0 24 24"
+   version="1.1"
+   id="svg1"
+   sodipodi:docname="collapse.svg"
+   inkscape:version="1.4.4 (unknown)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs1" />
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="45.625"
+     inkscape:cx="12"
+     inkscape:cy="12"
+     inkscape:window-width="3434"
+     inkscape:window-height="1326"
+     inkscape:window-x="0"
+     inkscape:window-y="63"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg1" />
+  <path
+     fill="#17a2b8"
+     d="m 5.5031507,19.618535 1.8539631,1.674616 4.1387772,-3.764918 4.138776,3.764918 1.840907,-1.674616 -5.979683,-5.451411 z M 17.48863,3.9650274 15.634667,2.290411 11.495891,6.0553288 7.3571138,2.290411 5.5031507,3.9650274 11.495891,9.4164384 Z"
+     id="path1"
+     style="stroke-width:1.24524" />
+</svg>
