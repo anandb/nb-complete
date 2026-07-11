@@ -1,6 +1,6 @@
 # Coding Assistant
 
-[![Version](https://img.shields.io/badge/version-1.8.1-blue.svg)](pom.xml)
+[![Version](https://img.shields.io/badge/version-1.8.2-blue.svg)](pom.xml)
 [![Build Status](https://img.shields.io/badge/build-success-brightgreen.svg)](https://github.com/anandb/nb-complete)
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.anandb/beanbot)](https://central.sonatype.com/artifact/io.github.anandb/beanbot/versions)
 [![NetBeans](https://img.shields.io/badge/NetBeans-RELEASE220-blue.svg)](https://netbeans.apache.org/download/index.html)
@@ -22,16 +22,16 @@ See the [Quickstart Guide](QUICKSTART.md) for setup, feature details, and usage 
 ### Test Configuration
 
 Due to time constraints, testing is primarily done on this configuration. The plugin
-should work on other versions, but your experience may vary.
+should work on other versions/operating systems, but your experience may vary.
 
 | Component | Details |
 | --- | --- |
 | **OS** | openSUSE Tumbleweed-Slowroll |
 | **NetBeans** | RELEASE220 |
 | **Java** | JDK 17+ |
-| **Opencode** | 1.17.11 |
+| **Opencode** | 1.17.17 |
 | **Opencode plugins** | `@franzmoca/opencode-lombok`, `true-mem` |
-| **LLMs** | Big Pickle; GPT 5.4-mini, GPT 5.4-nano; DeepSeek V4 Pro, DeepSeek V4 Flash; Kimi K2.5, Kimi K2.6; Mimo V2.5; Qwen3.5, Qwen3.6; Gemma4 |
+| **LLMs** | Big Pickle; GPT 5.4-mini, GPT 5.4-nano; GLM 5.1, GLM 5.2; DeepSeek V4 Pro, DeepSeek V4 Flash; Kimi K2.5, Kimi K2.6; Mimo V2.5; Qwen3.5, Qwen3.6; Gemma4 |
 
 Note: Qwen models require `--think=false` if using Ollama, and a `"reasoningEffort": "none"`
 configuration in `opencode.json`
@@ -144,14 +144,6 @@ The plugin reads the following system properties and environment variables:
 | `PATH` | Env | Search path for opencode binary (`BinaryResolver`) |
 
 The color properties are declared in [`colors.json`](src/main/resources/github/anandb/netbeans/ui/colors.json) and cover: background, foreground, selection, accent, sunken background, bubble (user/assistant), code, table, header, thinking, tool, permission, and error colors — each with light and dark variants.
-
----
-
-## Known Issues
-
-- The plugin sometimes doesn't respond when using nested agents.
-- Switching sessions or reloading the conversation while awaiting a response can cancel the current request.
-- On macOS, MCP clients with short HTTP timeouts could abort `tools/call` requests — fixed in v1.7.2 by removing the artificial 5s minimum latency.
 
 ---
 

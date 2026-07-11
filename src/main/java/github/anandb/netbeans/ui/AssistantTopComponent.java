@@ -56,7 +56,7 @@ import github.anandb.netbeans.ui.platform.SessionService;
     iconBase = "github/anandb/netbeans/ui/icons/logo_window.svg",
     persistenceType = TopComponent.PERSISTENCE_ALWAYS
 )
-@TopComponent.Registration(mode = "explorer", openAtStartup = true)
+@TopComponent.Registration(mode = "properties", openAtStartup = true, position = 1001)
 @ActionID(category = "Window", id = "github.anandb.netbeans.ui.AssistantTopComponent")
 @TopComponent.OpenActionRegistration(
     displayName = "#CTL_AssistantAction",
@@ -481,7 +481,13 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         componentLifecycleHandler.registerKeyEventDispatchers();
         // Re-layout the outer hierarchy (header, split pane, bottom bar)
         // after a hide/show cycle to prevent blank panels.
+        // Force layout recalculation on the split pane and its children
+        if (mainSplitPane != null) {
+            mainSplitPane.revalidate();
+            mainSplitPane.repaint();
+        }
         revalidate();
+        validate();
         repaint();
     }
 

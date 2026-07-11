@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>io.github.anandb</groupId>
     <artifactId>beanbot</artifactId>
-    <version>1.8.1</version>
+    <version>1.8.2-SNAPSHOT</version>
     <packaging>nbm</packaging>
 
     <name>Coding Assistant</name>
@@ -119,6 +119,11 @@
         <dependency>
             <groupId>org.netbeans.api</groupId>
             <artifactId>org-netbeans-modules-options-api</artifactId>
+            <version>${netbeans.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.netbeans.api</groupId>
+            <artifactId>org-netbeans-modules-diff</artifactId>
             <version>${netbeans.version}</version>
         </dependency>
         <dependency>

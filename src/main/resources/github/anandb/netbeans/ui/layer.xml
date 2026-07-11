@@ -2,6 +2,13 @@
 <!DOCTYPE filesystem PUBLIC "-//NetBeans//DTD Filesystem 1.2//EN" "http://www.netbeans.org/dtds/filesystem-1_2.dtd">
 <filesystem>
     <folder name="Actions">
+        <folder name="Tools">
+            <file name="github-anandb-netbeans-ui-StashDiffAction.instance">
+                <attr name="instanceCreate" methodvalue="org.openide.awt.Actions.alwaysEnabled"/>
+                <attr name="delegate" newvalue="github.anandb.netbeans.ui.StashDiffAction"/>
+                <attr name="displayName" bundlevalue="github.anandb.netbeans.ui.Bundle#CTL_StashDiffAction"/>
+            </file>
+        </folder>
         <folder name="Window">
             <file name="github-anandb-netbeans-ui-ToggleAssistantAction.instance">
                 <attr name="instanceCreate" methodvalue="org.openide.awt.Actions.alwaysEnabled"/>
@@ -21,6 +28,9 @@
     <folder name="Shortcuts">
         <file name="D-L.shadow">
             <attr name="originalFile" stringvalue="Actions/Window/github-anandb-netbeans-ui-ToggleAssistantAction.instance"/>
+        </file>
+        <file name="DS-L.shadow">
+            <attr name="originalFile" stringvalue="Actions/Tools/github-anandb-netbeans-ui-StashDiffAction.instance"/>
         </file>
     </folder>
     <folder name="Windows2">

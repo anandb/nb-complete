@@ -121,7 +121,8 @@ public final class HtmlContentPreparer {
      * so the body is properly opened after the sentinel.
      */
     private static String getCachedWrapper(ColorTheme theme, String role, boolean isAssistant) {
-        int fontSize = ThemeManager.getFont().getSize() - 2;
+        int prefSize = github.anandb.netbeans.support.PluginSettings.getChatFontSize();
+        int fontSize = (prefSize > 0) ? prefSize : ThemeManager.getFont().getSize() - 2;
         String cacheKey = role + "|" + fontSize + "|" + System.identityHashCode(theme);
         return HTML_WRAPPER_CACHE.get(cacheKey, key -> {
             String customCss = theme.toCss(null, isAssistant, fontSize);

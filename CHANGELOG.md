@@ -1,5 +1,63 @@
 # Release Notes
 
+## v1.8.2 (Changes since v1.8.1)
+
+### Features
+- **Stash Diff viewer**: Select a stash in the NetBeans Git Repository Browser
+  and press `Ctrl+Shift+L` (assignable in Keymap) to open a side-by-side diff
+  viewer. Shows a file list on the left, diff view on the right, with toolbar
+  buttons to toggle between "To HEAD" and "To Working Tree". Full file contents
+  are shown (not just hunks). Navigates differences with `Ctrl+,` / `Ctrl+.`
+  or the ▴/▾ triangle buttons. Syntax highlighting is applied based on file
+  extension. No longer experimental — always enabled.
+- **Stash diff file list improvements**: Each file now shows a file icon with
+  proper spacing. Right-click any file to "Apply this change" individually
+  from the stash.
+- **Chat Font Size setting**: New combo in Options > Assistant > Appearance.
+  Options: Inherited (default, uses theme font size − 2), 10, 11, 12, 13, 14,
+  16. Takes effect immediately.
+- **Keyboard shortcuts dialog updated**: Added "Assistant" section (Ctrl+L),
+  "Stash Diff" section with Ctrl+Shift+L, and Sort Lines/Compact JSON to
+  the assignable shortcuts list.
+- **Icon size options expanded**: Added sizes 36 and 40 to the Toolbar Icon
+  Size dropdown (now 16/24/28/32/36/40/48).
+- **Tooltips above buttons**: All toolbar button tooltips now appear above
+  the icon instead of below, preventing clipping at the bottom of the panel.
+- **Sidebar always opens on startup**: The assistant panel now opens on every
+  IDE startup (not just after version changes).
+
+### Fixes
+- **Ctrl+L shortcut restored**: The `Ctrl+L` keyboard shortcut and Window >
+  Assistant menu item now work reliably. Fixed a `KeyEventDispatcher` that
+  was stealing the shortcut when focus was in the input area. Toggle logic
+  (`toggleVisibility`) now correctly handles open, minimized, and closed
+  states.
+- **Blank sidebar on dock position change**: Moving the sidebar from right to
+  left (or vice versa) no longer leaves a blank panel. `addNotify()` now
+  forces layout recalculation on `mainSplitPane` and validates the hierarchy.
+- **Stash diff file list now shows correct files**: Changed from `git diff`
+  to `git stash show --name-status` to correctly list files in each stash
+  instead of comparing to the current working tree.
+- **Stash diff font uses editor monospace font**: Diff viewer now uses
+  `IconResourceManager.getMonospaceFont()` (same monospace font as the rest
+  of the application) instead of a hardcoded font.
+- **Appearance section size increased**: Preview panel size increased from
+  320×120 to 380×160, icon preview label from 80×80 to 100×100, and icon
+  scale from 72×72 to 96×96 to prevent text/label overlap.
+- **Chat font hint label removed**: The "* appearance changes might require
+  an IDE restart" label next to the Chat Font Size combo was removed.
+
+### Housekeeping
+- **Rocket icon replaced**: `shuttle.svg` replaced with `rocket-ship.svg`.
+- **AGENTS.md updated**: Added "Ctrl+L Toggle / Shortcut Registration (DO NOT
+  BREAK)" section documenting the exact working configuration of annotations,
+  layer.xml, ToggleAssistantAction, and toggleVisibility.
+- **Documentation reorganized**: Moved "Known Issues" from README to QUICKSTART.
+  Removed "Breaking Changes and Alerts" section, folded entries into
+  Troubleshooting table.
+- **Stash system property removed**: `netbeans.codingassistant.experimental.stash.show`
+  no longer needed — Stash Diff is always enabled.
+
 ## v1.8.1 (Changes since v1.8.0)
 
 ### Fixes
@@ -134,7 +192,7 @@
   titled borders (etched) for each section: Assistant Service, Updates,
   Chat Behavior, Appearance, and Session Preamble. Layout switched from
   GridBagLayout to BoxLayout with vertical stacking. Icon preview shows
-  in its own "Current Icon Preview" bordered panel to the right of the
+  in its own "User Icon Preview" bordered panel to the right of the
   Appearance section. Spinboxes for Session Idle Timeout and Max Messages
   have consistent 80px width.
 - **Pin messages in chat**: Assistant messages can now be pinned to prevent

@@ -391,14 +391,6 @@ public class ComponentLifecycleHandler {
         return e -> {
             if (e.getID() == KeyEvent.KEY_PRESSED) {
                 int keyCode = e.getKeyCode();
-                if ((e.getModifiersEx() & KeyEvent.CTRL_DOWN_MASK) != 0 && keyCode == KeyEvent.VK_L) {
-                    Component src = e.getComponent();
-                    if (!topComponent.isOpened()
-                            || (src != null && SwingUtilities.isDescendingFrom(src, topComponent))) {
-                        topComponent.minimizeToDock();
-                        return true;
-                    }
-                }
                 if (keyCode == KeyEvent.VK_PAGE_UP
                         || keyCode == KeyEvent.VK_PAGE_DOWN
                         || ((e.getModifiersEx() & KeyEvent.CTRL_DOWN_MASK) != 0

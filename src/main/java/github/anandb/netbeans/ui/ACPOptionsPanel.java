@@ -73,6 +73,7 @@ public class ACPOptionsPanel extends JPanel {
     private JLabel iconPreviewLabel;
     private transient IconPreviewManager iconPreviewManager;
     private JComboBox<String> toolbarIconCombo;
+    private JComboBox<String> chatFontCombo;
 
     private String detectedPath;
     private boolean showingHint;
@@ -250,21 +251,31 @@ public class ACPOptionsPanel extends JPanel {
         appearanceLeft.add(toolbarIconLabel, UIUtils.createGbc(0, ++row, 0.0, 0, GridBagConstraints.NONE, GridBagConstraints.WEST,
                 new Insets(0, 12, 5, 5)));
 
-        toolbarIconCombo = new JComboBox<>(new String[]{"16", "24", "28", "32", "48"});
+        toolbarIconCombo = new JComboBox<>(new String[]{"16", "24", "28", "32", "36", "40", "48"});
         toolbarIconCombo.addActionListener(evt -> controller.changed());
         appearanceLeft.add(toolbarIconCombo, UIUtils.createGbc(1, row, 0.0, 0, GridBagConstraints.NONE,
+                GridBagConstraints.WEST, new Insets(0, 0, 5, 5)));
+
+        row++;
+        JLabel chatFontLabel = new JLabel(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_ChatFontSize"));
+        appearanceLeft.add(chatFontLabel, UIUtils.createGbc(0, row, 0.0, 0, GridBagConstraints.NONE, GridBagConstraints.WEST,
+                new Insets(0, 12, 5, 5)));
+
+        chatFontCombo = new JComboBox<>(new String[]{"Inherited", "10", "11", "12", "13", "14", "16"});
+        chatFontCombo.addActionListener(evt -> controller.changed());
+        appearanceLeft.add(chatFontCombo, UIUtils.createGbc(1, row, 0.0, 0, GridBagConstraints.NONE,
                 GridBagConstraints.WEST, new Insets(0, 0, 5, 5)));
 
         JPanel previewPanel = new JPanel(new GridBagLayout());
         TitledBorder previewBorder = BorderFactory.createTitledBorder(
                 BorderFactory.createEtchedBorder(),
-                "Current Icon Preview",
+                "User Icon Preview",
                 TitledBorder.LEADING,
                 TitledBorder.TOP,
                 previewPanel.getFont().deriveFont(Font.BOLD),
                 ThemeManager.getCurrentTheme().foreground());
         previewPanel.setBorder(previewBorder);
-        previewPanel.setPreferredSize(new Dimension(320, 120));
+        previewPanel.setPreferredSize(new Dimension(380, 160));
         previewPanel.add(iconPreviewLabel, UIUtils.createGbc(0, 0, 0.0, 0, GridBagConstraints.NONE,
                                                 GridBagConstraints.WEST, new Insets(0, 12, 5, 12)));
 
@@ -391,6 +402,9 @@ public class ACPOptionsPanel extends JPanel {
 
         int currentSize = PluginSettings.getToolbarIconSize();
         toolbarIconCombo.setSelectedItem(String.valueOf(currentSize));
+
+        int currentChatFont = PluginSettings.getChatFontSize();
+        chatFontCombo.setSelectedItem(currentChatFont < 0 ? "Inherited" : String.valueOf(currentChatFont));
     }
 
     private void clearHint() {
@@ -438,6 +452,11 @@ public class ACPOptionsPanel extends JPanel {
         String selectedSize = (String) toolbarIconCombo.getSelectedItem();
         if (selectedSize != null) {
             PluginSettings.setToolbarIconSize(Integer.parseInt(selectedSize));
+        }
+
+        String selectedChatFont = (String) chatFontCombo.getSelectedItem();
+        if (selectedChatFont != null) {
+            PluginSettings.setChatFontSize("Inherited".equals(selectedChatFont) ? -1 : Integer.parseInt(selectedChatFont));
         }
 
         String newIconPath = iconPathField.getText();

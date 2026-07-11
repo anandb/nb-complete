@@ -27,6 +27,8 @@ public final class PluginSettings {
     private static volatile int cachedMaxMessages = DEFAULT_MAX_MESSAGES;
     /** Cached toolbar icon size — volatile for cross-thread visibility. */
     private static volatile int cachedToolbarIconSize = DEFAULT_TOOLBAR_ICON_SIZE;
+    /** Cached chat font size — volatile for cross-thread visibility. -1 = inherited. */
+    private static volatile int cachedChatFontSize = -1;
 
     private static final PreferenceChangeListener listener = PluginSettings::onPreferenceChanged;
 
@@ -46,6 +48,7 @@ public final class PluginSettings {
         cachedSessionIdleTimeout = prefs.getInt(KEY_SESSION_IDLE_TIMEOUT, DEFAULT_SESSION_IDLE_TIMEOUT);
         cachedMaxMessages = prefs.getInt(KEY_MAX_MESSAGES, DEFAULT_MAX_MESSAGES);
         cachedToolbarIconSize = prefs.getInt(PreferenceKeys.TOOLBAR_ICON_SIZE, DEFAULT_TOOLBAR_ICON_SIZE);
+        cachedChatFontSize = prefs.getInt(PreferenceKeys.CHAT_FONT_SIZE, -1);
         prefs.addPreferenceChangeListener(listener);
     }
 
@@ -110,6 +113,13 @@ public final class PluginSettings {
             } catch (NumberFormatException e) {
                 cachedToolbarIconSize = DEFAULT_TOOLBAR_ICON_SIZE;
             }
+        } else if (PreferenceKeys.CHAT_FONT_SIZE.equals(evt.getKey())) {
+            try {
+                int v = Integer.parseInt(evt.getNewValue());
+                cachedChatFontSize = (v < 0) ? -1 : v;
+            } catch (NumberFormatException e) {
+                cachedChatFontSize = -1;
+            }
         }
     }
 
@@ -125,6 +135,18 @@ public final class PluginSettings {
     /** Toolbar icon size: 24 (small), 28 (medium), 32 (large). */
     public static int getToolbarIconSize() {
         return cachedToolbarIconSize;
+    }
+
+    /**
+     * Chat font size in px. Returns -1 if inherited from theme.
+     * The effective size is computed as: (size == -1) ? ThemeManager.getFont().getSize() - 2 : size.
+     */
+    public static int getChatFontSize() {
+        return cachedChatFontSize;
+    }
+
+    public static void setChatFontSize(int size) {
+        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putInt(PreferenceKeys.CHAT_FONT_SIZE, size);
     }
 
     public static void setToolbarIconSize(int size) {

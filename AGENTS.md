@@ -182,3 +182,90 @@ NbPreferences.forModule(PreferenceKeys.class)
   collapsible activity/thought panes.
 - `FitEditorPane` renders complete HTML/CSS via Swing's native rendering engine. Heavy and
   complex; reserved for main chat bubbles needing full list, link, and nested styling support.
+
+### Ctrl+L Toggle / Shortcut Registration (DO NOT BREAK)
+The Ctrl+L shortcut and Window > Assistant menu item depend on a specific combination of
+annotations and layer.xml entries. This is the ONLY working configuration:
+
+1. **`AssistantTopComponent` annotations** (must all be present together):
+```java
+@TopComponent.Registration(mode = "properties", openAtStartup = true, position = 1001)
+@ActionID(category = "Window", id = "github.anandb.netbeans.ui.AssistantTopComponent")
+@TopComponent.OpenActionRegistration(
+    displayName = "#CTL_AssistantAction",
+    preferredID = "AssistantTopComponent"
+)
+```
+   - `@TopComponent.OpenActionRegistration` generates a built-in open action at
+     `Actions/Window/github-anandb-netbeans-ui-AssistantTopComponent.instance`.
+   - Do NOT remove `@ActionID` or `@TopComponent.OpenActionRegistration` — other
+     combinations cause the shortcut or menu to stop working.
+   - `@TopComponent.OpenActionRegistration` does NOT support a `shortcuts` attribute in
+     NetBeans RELEASE220 — the shortcut must be registered in `layer.xml`.
+
+2. **`layer.xml`** — manual `ToggleAssistantAction` registration (handles toggle/close):
+```xml
+<!-- Action instance -->
+<folder name="Actions">
+    <folder name="Window">
+        <file name="github-anandb-netbeans-ui-ToggleAssistantAction.instance">
+            <attr name="instanceCreate" methodvalue="org.openide.awt.Actions.alwaysEnabled"/>
+            <attr name="delegate" newvalue="github.anandb.netbeans.ui.ToggleAssistantAction"/>
+            <attr name="displayName" bundlevalue="github/anandb/netbeans/ui/Bundle#CTL_ToggleAssistantAction"/>
+            <attr name="iconBase" stringvalue="github/anandb/netbeans/ui/icons/logo_window.svg"/>
+        </file>
+    </folder>
+</folder>
+<!-- Menu entry -->
+<folder name="Menu">
+    <folder name="Window">
+        <file name="Assistant.shadow">
+            <attr name="originalFile" stringvalue="Actions/Window/github-anandb-netbeans-ui-ToggleAssistantAction.instance"/>
+        </file>
+    </folder>
+</folder>
+<!-- Shortcut -->
+<folder name="Shortcuts">
+    <file name="D-L.shadow">
+        <attr name="originalFile" stringvalue="Actions/Window/github-anandb-netbeans-ui-ToggleAssistantAction.instance"/>
+    </file>
+</folder>
+```
+   - Both `Assistant.shadow` (menu) and `D-L.shadow` (Ctrl+L) point to
+     `ToggleAssistantAction`, NOT the generated open action.
+   - `D-L` = Ctrl+L in NetBeans keymap notation (D = Ctrl, S = Shift).
+
+3. **`ToggleAssistantAction.java`** — must use `findInstance()` + `toggleVisibility()`:
+```java
+@ActionID(category = "Window", id = "github.anandb.netbeans.ui.ToggleAssistantAction")
+public class ToggleAssistantAction implements ActionListener {
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        AssistantTopComponent assistant = AssistantTopComponent.findInstance();
+        if (assistant != null) {
+            assistant.toggleVisibility();
+        }
+    }
+}
+```
+
+4. **`AssistantTopComponent.toggleVisibility()`** — must check `isOpened() && isShowing()`:
+```java
+public void toggleVisibility() {
+    if (isOpened() && isShowing()) {
+        close();
+    } else {
+        if (!isOpened()) {
+            open();
+        }
+        requestActive();
+    }
+}
+```
+   - Do NOT replace with `close()` + `open()` (always reopens, can never close).
+   - Do NOT remove the `isShowing()` check (needed for minimized/docked state).
+
+5. **`ComponentLifecycleHandler.createPageKeyDispatcher()`** — must NOT intercept Ctrl+L.
+   A `KeyEventDispatcher` for Page Up/Down/Ctrl+Home/End was stealing Ctrl+L when focus
+   was inside the assistant panel. The interceptor was removed. Do NOT re-add Ctrl+L
+   handling in any `KeyEventDispatcher`.

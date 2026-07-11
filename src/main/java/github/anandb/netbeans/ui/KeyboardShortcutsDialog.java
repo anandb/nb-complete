@@ -107,6 +107,11 @@ final class KeyboardShortcutsDialog extends JDialog {
         sb.append("<html><body style='font-family:sans-serif;font-size:12px;")
           .append("margin:0;padding:0;'>");
 
+        // Primary shortcut — Toggle Assistant
+        tableTwoCol(sb, border, bg, hdrBg, "Assistant", new String[][]{
+            {mod + " + L", "Toggle assistant panel"},
+        });
+
         // Fixed shortcuts — all in one table, two per row
         tableTwoCol(sb, border, bg, hdrBg, "Fixed Shortcuts", new String[][]{
             {"Enter", "Send message"},
@@ -122,7 +127,6 @@ final class KeyboardShortcutsDialog extends JDialog {
             {"Page Down", "Scroll down one page"},
             {mod + " + Home", "Scroll to top"},
             {mod + " + End", "Scroll to bottom"},
-            {mod + " + L", "Toggle assistant panel"},
         });
 
         // Assignable shortcuts — all in one table, two per row
@@ -137,6 +141,16 @@ final class KeyboardShortcutsDialog extends JDialog {
             {resolveShortcut("Actions/Assistant/github-anandb-netbeans-ui-ToggleOptionsAction"), "Toggle Options"},
             {resolveShortcut("Actions/Assistant/github-anandb-netbeans-ui-ExportConversationAction"), "Export Session"},
             {resolveShortcut("Actions/Assistant/github-anandb-netbeans-ui-ToggleBlocksAction"), "Toggle Expand/Collapse All"},
+            {resolveShortcut("Actions/Edit/github-anandb-netbeans-ui-SortLinesAction"), "Sort Lines Ascending"},
+            {resolveShortcut("Actions/Edit/github-anandb-netbeans-ui-SortLinesDescAction"), "Sort Lines Descending"},
+            {resolveShortcut("Actions/Edit/github-anandb-netbeans-ui-CompactJsonAction"), "Minify JSON"},
+        });
+
+        // Stash diff shortcuts
+        tableTwoCol(sb, border, bg, hdrBg, "Stash Diff (Experimental)", new String[][]{
+            {mod + " + Shift + L", "Open stash diff viewer"},
+            {mod + " + ,", "Previous difference"},
+            {mod + " + .", "Next difference"},
         });
 
         sb.append("</body></html>");

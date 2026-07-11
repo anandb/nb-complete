@@ -100,7 +100,14 @@ public class UIUtils {
     }
 
     public static JButton createToolbarButton(String iconName, int iconSize, String toolTip, ActionListener l) {
-        JButton btn = new JButton();
+        JButton btn = new JButton() {
+            @Override
+            public java.awt.Point getToolTipLocation(java.awt.event.MouseEvent event) {
+                // Show tooltip above the button
+                java.awt.Insets ins = getInsets();
+                return new java.awt.Point(ins.left, -getHeight() - 8);
+            }
+        };
         btn.setIcon(ThemeManager.getIcon(iconName, iconSize));
         btn.setToolTipText(toolTip);
         btn.getAccessibleContext().setAccessibleName(toolTip);

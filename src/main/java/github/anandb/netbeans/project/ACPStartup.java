@@ -42,19 +42,20 @@ public class ACPStartup implements Runnable {
             } else {
                 LOG.warn("UpdateCheckerControl not found — install/upgrade schedule skipped");
             }
-
-            WindowManager.getDefault().invokeWhenUIReady(() -> {
-                TopComponent sidebar = WindowManager.getDefault().findTopComponent("AssistantTopComponent");
-                if (sidebar != null) {
-                    Mode explorer = WindowManager.getDefault().findMode("explorer");
-                    if (explorer != null) {
-                        explorer.dockInto(sidebar);
-                    }
-                    sidebar.open();
-                    sidebar.requestActive();
-                }
-            });
         }
+
+        // Always open the sidebar on startup
+        WindowManager.getDefault().invokeWhenUIReady(() -> {
+            TopComponent sidebar = WindowManager.getDefault().findTopComponent("AssistantTopComponent");
+            if (sidebar != null && !sidebar.isOpened()) {
+                Mode explorer = WindowManager.getDefault().findMode("explorer");
+                if (explorer != null) {
+                    explorer.dockInto(sidebar);
+                }
+                sidebar.open();
+                sidebar.requestActive();
+            }
+        });
     }
 }
 

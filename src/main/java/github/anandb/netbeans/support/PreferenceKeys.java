@@ -29,6 +29,9 @@ public final class PreferenceKeys {
     /** Toolbar icon size: 24 (small), 28 (medium), 32 (large). */
     public static final String TOOLBAR_ICON_SIZE = "toolbarIconSize";
 
+    /** Chat font size in px. -1 = inherited from theme. */
+    public static final String CHAT_FONT_SIZE = "chatFontSize";
+
     // Toolbar button visibility keys
     public static final String TOOLBAR_ARCHIVE = "toolbar.archive";
     public static final String TOOLBAR_NEW_SESSION = "toolbar.newSession";

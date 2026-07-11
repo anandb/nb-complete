@@ -36,7 +36,7 @@ final class IconPreviewManager {
     }
 
     private void initPreviewLabel() {
-        previewLabel.setPreferredSize(new Dimension(80, 80));
+        previewLabel.setPreferredSize(new Dimension(100, 100));
         previewLabel.setHorizontalAlignment(SwingConstants.CENTER);
         previewLabel.setToolTipText("Right-click to clear icon");
         previewLabel.addMouseListener(new MouseAdapter() {
@@ -77,7 +77,7 @@ final class IconPreviewManager {
             ImageIcon icon = new ImageIcon(path);
             if (icon.getIconWidth() > 0) {
                 previewLabel.setIcon(new ImageIcon(
-                    icon.getImage().getScaledInstance(72, 72, Image.SCALE_SMOOTH)));
+                    icon.getImage().getScaledInstance(96, 96, Image.SCALE_SMOOTH)));
                 previewLabel.setText("");
             } else {
                 // SVG files are not supported as user icons

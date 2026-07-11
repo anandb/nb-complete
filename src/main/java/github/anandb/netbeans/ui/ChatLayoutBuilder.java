@@ -347,7 +347,7 @@ final class ChatLayoutBuilder {
         statusPanel.setOpaque(false);
 
         statusLabel = new JLabel(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Ready"));
-        statusLabel.setFont(statusLabel.getFont().deriveFont(11f));
+        statusLabel.setFont(statusLabel.getFont().deriveFont(12f));
         statusPanel.add(statusLabel, BorderLayout.WEST);
 
         int tsz = PluginSettings.getToolbarIconSize();

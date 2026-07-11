@@ -102,10 +102,10 @@ final class IconResourceManager {
         Font editorFont = UIManager.getFont("EditorPane.font");
         int size = (editorFont != null) ? editorFont.getSize() : 13;
 
-        Font meslo = new Font("Fira Code", Font.PLAIN, size);
-        if (meslo.getFamily().equalsIgnoreCase("Fira Code")) {
-            cachedMonospaceFont = meslo;
-            return meslo;
+        Font fira = new Font("Fira Code", Font.PLAIN, size);
+        if (fira.getFamily().equalsIgnoreCase("Fira Code")) {
+            cachedMonospaceFont = fira;
+            return fira;
         }
 
         f = (editorFont != null)
