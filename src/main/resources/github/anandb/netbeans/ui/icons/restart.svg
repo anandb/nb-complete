@@ -26,7 +26,10 @@
      d="M 0,19 H 22 L 11,0 Z"
      id="path1" />
   <path
-     fill="#ffd700"
+     fill="#ffcc00"
+     stroke="#ffffff"
+     stroke-width="0.75"
+     stroke-linejoin="round"
      d="m 11,2 -2,9 h 3 l -2,7 7,-11 h -3 l 2,-6 z"
      id="path2" />
 </svg>

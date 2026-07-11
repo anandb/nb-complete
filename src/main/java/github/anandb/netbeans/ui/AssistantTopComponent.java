@@ -178,7 +178,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                 toggleBlocksBtn.setEnabled(sessionActive);
                 keepBtn.setEnabled(sessionActive);
                 filterBtn.setEnabled(sessionActive);
-                helpBtn.setEnabled(sessionActive);
+                helpBtn.setEnabled(true);
                 restartServerBtn.setEnabled(true);
                 newSessionBtn.setEnabled(true);
             },

@@ -35,7 +35,12 @@ final class KeyboardShortcutsDialog extends JDialog {
         setResizable(true);
         initComponents();
         pack();
-        setMinimumSize(getPreferredSize());
+        // Ensure reasonable size
+        java.awt.Dimension pref = getPreferredSize();
+        int w = Math.max(pref.width, 620);
+        int h = Math.max(pref.height, 480);
+        setPreferredSize(new java.awt.Dimension(w, h));
+        setMinimumSize(new java.awt.Dimension(520, 320));
         setLocationRelativeTo(owner);
         addWindowListener(new java.awt.event.WindowAdapter() {
             @Override
@@ -60,7 +65,7 @@ final class KeyboardShortcutsDialog extends JDialog {
 
     private void initComponents() {
         JPanel contentPanel = new JPanel(new BorderLayout(0, 8));
-        contentPanel.setBorder(new EmptyBorder(16, 20, 12, 20));
+        contentPanel.setBorder(new EmptyBorder(12, 16, 8, 16));
 
         JTextPane htmlPane = new JTextPane();
         htmlPane.setEditorKit(new HTMLEditorKit());
@@ -78,7 +83,11 @@ final class KeyboardShortcutsDialog extends JDialog {
             }
         });
 
-        contentPanel.add(htmlPane, BorderLayout.CENTER);
+        // Wrap in scroll pane for long content
+        javax.swing.JScrollPane scrollPane = new javax.swing.JScrollPane(htmlPane);
+        scrollPane.setBorder(null);
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
+        contentPanel.add(scrollPane, BorderLayout.CENTER);
 
         // Close hint
         JLabel closeHint = new JLabel(NbBundle.getMessage(KeyboardShortcutsDialog.class, "LBL_CloseHint"));
@@ -100,37 +109,41 @@ final class KeyboardShortcutsDialog extends JDialog {
         String border = theme.toHtmlHex(theme.tableBorder());
         String bg = theme.toHtmlHex(theme.tableBackground());
         String hdrBg = theme.toHtmlHex(theme.tableHeaderBackground());
+        String altRowBg = theme.toHtmlHex(
+            theme.tableBackground().brighter() instanceof java.awt.Color
+                ? theme.tableBackground().brighter() : theme.tableBackground());
         String mod = System.getProperty("os.name", "").toLowerCase().contains("mac")
                 ? "\u2318" : "Ctrl";
+        boolean isDark = ThemeManager.getCurrentTheme().isDark();
 
         StringBuilder sb = new StringBuilder();
         sb.append("<html><body style='font-family:sans-serif;font-size:12px;")
           .append("margin:0;padding:0;'>");
 
         // Primary shortcut — Toggle Assistant
-        tableTwoCol(sb, border, bg, hdrBg, "Assistant", new String[][]{
+        tableTwoCol(sb, border, bg, altRowBg, hdrBg, "Assistant", isDark, new String[][]{
             {mod + " + L", "Toggle assistant panel"},
-        });
+        }, null);
 
         // Fixed shortcuts — all in one table, two per row
-        tableTwoCol(sb, border, bg, hdrBg, "Fixed Shortcuts", new String[][]{
+        tableTwoCol(sb, border, bg, altRowBg, hdrBg, "Fixed Shortcuts", isDark, new String[][]{
             {"Enter", "Send message"},
             {"Shift + Enter", "Insert newline"},
             {"/", "Slash command autocomplete"},
             {"Tab", "Switch agent / open options"},
-            {"Alt + Up", "Previous in history"},
-            {"Alt + Down", "Next in history"},
+            {"Alt + \u2191", "Previous in history"},
+            {"Alt + \u2193", "Next in history"},
             {mod + " + Z", "Undo"},
             {mod + " + Y", "Redo"},
             {mod + " + R", "Search history"},
-            {"Page Up", "Scroll up one page"},
-            {"Page Down", "Scroll down one page"},
+            {"PgUp", "Scroll up one page"},
+            {"PgDn", "Scroll down one page"},
             {mod + " + Home", "Scroll to top"},
             {mod + " + End", "Scroll to bottom"},
-        });
+        }, null);
 
         // Assignable shortcuts — all in one table, two per row
-        tableTwoCol(sb, border, bg, hdrBg, "Assignable Shortcuts (Tools > Keymap)", new String[][]{
+        String[][] assignableRows = new String[][]{
             {resolveShortcut("Actions/Assistant/github-anandb-netbeans-ui-NewSessionAction"), "New Session"},
             {resolveShortcut("Actions/Assistant/github-anandb-netbeans-ui-ReloadSessionAction"), "Reload Session"},
             {resolveShortcut("Actions/Assistant/github-anandb-netbeans-ui-RenameSessionAction"), "Rename Session"},
@@ -144,14 +157,16 @@ final class KeyboardShortcutsDialog extends JDialog {
             {resolveShortcut("Actions/Edit/github-anandb-netbeans-ui-SortLinesAction"), "Sort Lines Ascending"},
             {resolveShortcut("Actions/Edit/github-anandb-netbeans-ui-SortLinesDescAction"), "Sort Lines Descending"},
             {resolveShortcut("Actions/Edit/github-anandb-netbeans-ui-CompactJsonAction"), "Minify JSON"},
-        });
+        };
+        tableTwoCol(sb, border, bg, altRowBg, hdrBg, "Assignable Shortcuts", isDark,
+                assignableRows, "Assign via Tools > Keymap");
 
         // Stash diff shortcuts
-        tableTwoCol(sb, border, bg, hdrBg, "Stash Diff (Experimental)", new String[][]{
+        tableTwoCol(sb, border, bg, altRowBg, hdrBg, "Stash Diff (Experimental)", isDark, new String[][]{
             {mod + " + Shift + L", "Open stash diff viewer"},
             {mod + " + ,", "Previous difference"},
             {mod + " + .", "Next difference"},
-        });
+        }, null);
 
         sb.append("</body></html>");
         return sb.toString();
@@ -169,18 +184,33 @@ final class KeyboardShortcutsDialog extends JDialog {
     }
 
     private static void tableTwoCol(StringBuilder sb, String border, String bg,
-            String hdrBg, String title, String[][] rows) {
-        String tdStyle = "padding:6px 8px;border:1px solid " + border;
-        String keyStyle = tdStyle + ";font-family:monospace;font-size:11px;";
+            String altRowBg, String hdrBg, String title, boolean isDark,
+            String[][] rows, String footnote) {
+        String tdStyle = "padding:7px 10px;border:1px solid " + border;
+        String keyBadge = tdStyle + ";font-family:monospace;font-size:11px;font-weight:600;"
+                + "background:" + (isDark ? "#2a2d35" : "#e8e8ec") + ";"
+                + "border-radius:4px;text-align:center;white-space:nowrap;";
+        String noneStyle = tdStyle + ";color:" + (isDark ? "#666" : "#999") + ";font-style:italic;";
         String hdrTh = " align='left' bgcolor='" + hdrBg
-                + "' style='padding:6px 8px;border:1px solid " + border + ";'";
+                + "' style='padding:7px 10px;border:1px solid " + border
+                + ";font-size:11px;text-transform:uppercase;letter-spacing:0.5px;'";
+        String sectionDivider = "border-top:2px solid " + border + ";margin-top:16px;";
 
-        sb.append("<p style='font-weight:bold;font-size:13px;margin:12px 0 4px;'>")
+        sb.append("<div style='").append(sectionDivider).append("'>");
+        sb.append("<p style='font-weight:bold;font-size:13px;margin:8px 0 6px;color:")
+          .append(isDark ? "#e0e0e0" : "#333").append(";'>")
           .append(title).append("</p>");
+
+        if (footnote != null) {
+            sb.append("<p style='font-size:10px;margin:0 0 6px;color:")
+              .append(isDark ? "#888" : "#666").append(";'>")
+              .append(footnote).append("</p>");
+        }
+
         sb.append("<table border='1' bordercolor='").append(border)
           .append("' cellspacing='0' cellpadding='0'")
           .append(" style='border-collapse:collapse;width:100%;")
-          .append("background:").append(bg).append(";'>");
+          .append("background:").append(bg).append(";border-radius:6px;overflow:hidden;'>");
         sb.append("<tr>")
           .append("<th").append(hdrTh).append(">Key</th>")
           .append("<th").append(hdrTh).append(">Action</th>")
@@ -190,15 +220,31 @@ final class KeyboardShortcutsDialog extends JDialog {
 
         int len = rows.length;
         for (int i = 0; i < len; i += 2) {
+            String rowBg = (i / 2 % 2 == 0) ? bg : altRowBg;
             String[] left = rows[i];
             String[] right = (i + 1 < len) ? rows[i + 1] : new String[]{"", ""};
-            sb.append("<tr>");
-            sb.append("<td style='").append(keyStyle).append(";'>").append(left[0]).append("</td>");
+
+            sb.append("<tr style='background:").append(rowBg).append(";'>");
+            sb.append("<td style='").append(keyBadge).append(";'>")
+              .append(wrapKey(left[0])).append("</td>");
             sb.append("<td style='").append(tdStyle).append(";'>").append(left[1]).append("</td>");
-            sb.append("<td style='").append(keyStyle).append(";'>").append(right[0]).append("</td>");
+            sb.append("<td style='").append(right[0].isEmpty() ? tdStyle : keyBadge)
+              .append(";'>").append(wrapKey(right[0])).append("</td>");
             sb.append("<td style='").append(tdStyle).append(";'>").append(right[1]).append("</td>");
             sb.append("</tr>");
         }
-        sb.append("</table>");
+        sb.append("</table></div>");
+    }
+
+    /** Wrap key text in a styled badge span; blank for empty keys. */
+    private static String wrapKey(String key) {
+        if (key == null || key.isEmpty()) {
+            return "";
+        }
+        // "None" entries get special styling
+        if ("None".equals(key)) {
+            return key;
+        }
+        return key;
     }
 }
