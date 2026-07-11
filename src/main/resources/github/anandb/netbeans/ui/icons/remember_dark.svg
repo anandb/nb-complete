@@ -1,36 +1,296 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="10 6 80 88" width="100%" height="100%">
-  <defs>
-    <linearGradient id="bgBubbleGradDark" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#312E81" stop-opacity="0.3" /> <stop offset="100%" stop-color="#2E1065" stop-opacity="0.3" /> </linearGradient>
-
-    <linearGradient id="midBubbleGradDark" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#4338CA" stop-opacity="0.6" /> <stop offset="100%" stop-color="#3730A3" stop-opacity="0.6" /> </linearGradient>
-
-    <linearGradient id="fgBubbleGradDark" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#4F46E5" /> <stop offset="100%" stop-color="#6366F1" /> </linearGradient>
-
-    <filter id="softShadowDark" x="-10%" y="-10%" width="130%" height="130%">
-      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#020617" flood-opacity="0.3" />
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   viewBox="10 8 68.999458 66.999321"
+   width="68.999458"
+   height="66.999321"
+   version="1.1"
+   id="svg11"
+   sodipodi:docname="remember.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview11"
+     pagecolor="#1e1e2e"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#11111b" />
+  <defs
+     id="defs6">
+    <linearGradient
+       id="bgBubbleGrad"
+       x1="0"
+       y1="0"
+       x2="1"
+       y2="1">
+      <stop
+         offset="0%"
+         stop-color="#818CF8"
+         stop-opacity="0.3"
+         id="stop1" />
+      <stop
+         offset="100%"
+         stop-color="#6366F1"
+         stop-opacity="0.3"
+         id="stop2" />
+    </linearGradient>
+    <linearGradient
+       id="midBubbleGrad"
+       x1="0"
+       y1="0"
+       x2="1"
+       y2="1">
+      <stop
+         offset="0%"
+         stop-color="#818CF8"
+         stop-opacity="0.65"
+         id="stop3" />
+      <stop
+         offset="100%"
+         stop-color="#6366F1"
+         stop-opacity="0.65"
+         id="stop4" />
+    </linearGradient>
+    <linearGradient
+       id="fgBubbleGrad"
+       x1="0"
+       y1="0"
+       x2="1"
+       y2="1">
+      <stop
+         offset="0%"
+         stop-color="#818CF8"
+         id="stop5" />
+      <stop
+         offset="100%"
+         stop-color="#6366F1"
+         id="stop6" />
+    </linearGradient>
+    <filter
+       id="softShadow"
+       x="-0.02082208"
+       y="-0.02"
+       width="1.05"
+       height="1.06">
+      <feDropShadow
+         dx="0"
+         dy="3"
+         stdDeviation="3"
+         flood-color="#000000"
+         flood-opacity="0.4" />
     </filter>
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#bgBubbleGrad"
+       id="linearGradient11"
+       x1="13.466007"
+       y1="16.634479"
+       x2="53.864026"
+       y2="57.032498"
+       gradientTransform="scale(1.1881771,0.84162541)"
+       gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#bgBubbleGrad"
+       id="linearGradient12"
+       x1="15.000541"
+       y1="46.999998"
+       x2="22.99986"
+       y2="54.999317"
+       gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#bgBubbleGrad"
+       id="linearGradient13"
+       x1="15.000541"
+       y1="46.999998"
+       x2="22.99986"
+       y2="54.999317"
+       gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#midBubbleGrad"
+       id="linearGradient14"
+       x1="21.882261"
+       y1="32.08078"
+       x2="62.28028"
+       y2="72.4788"
+       gradientTransform="scale(1.1881771,0.84162541)"
+       gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#midBubbleGrad"
+       id="linearGradient15"
+       x1="25.000541"
+       y1="59.999998"
+       x2="32.99986"
+       y2="67.999316"
+       gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#midBubbleGrad"
+       id="linearGradient16"
+       x1="25.000541"
+       y1="59.999998"
+       x2="32.99986"
+       y2="67.999316"
+       gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#fgBubbleGrad"
+       id="linearGradient17"
+       x1="30.298515"
+       y1="47.527082"
+       x2="70.696535"
+       y2="87.925102"
+       gradientTransform="scale(1.1881771,0.84162541)"
+       gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#fgBubbleGrad"
+       id="linearGradient18"
+       x1="35.000542"
+       y1="72.999997"
+       x2="42.99986"
+       y2="80.999316"
+       gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#fgBubbleGrad"
+       id="linearGradient19"
+       x1="35.000542"
+       y1="72.999997"
+       x2="42.99986"
+       y2="80.999316"
+       gradientUnits="userSpaceOnUse" />
   </defs>
-
-  <rect width="100" height="100" fill="#111827" />
-
-  <g filter="url(#softShadowDark)">
-    <rect x="16" y="14" width="48" height="34" rx="10" fill="url(#bgBubbleGradDark)" />
-    <path d="M 22 48 L 16 54 L 20 48 Z" fill="url(#bgBubbleGradDark)" stroke="url(#bgBubbleGradDark)" stroke-width="2" stroke-linejoin="round" />
-    <line x1="24" y1="26" x2="44" y2="26" stroke="#94A3B8" stroke-width="2.5" stroke-linecap="round" opacity="0.3" /> <line x1="24" y1="34" x2="54" y2="34" stroke="#94A3B8" stroke-width="2.5" stroke-linecap="round" opacity="0.3" />
+  <g
+     filter="url(#softShadow)"
+     id="g7"
+     transform="translate(-5.0005402,-6)">
+    <rect
+       x="16"
+       y="14"
+       width="48"
+       height="34"
+       rx="10"
+       fill="url(#bgBubbleGrad)"
+       id="rect6"
+       style="fill:url(#linearGradient11)" />
+    <path
+       d="m 22,48 -6,6 4,-6 z"
+       fill="url(#bgBubbleGrad)"
+       stroke="url(#bgBubbleGrad)"
+       stroke-width="2"
+       stroke-linejoin="round"
+       id="path6"
+       style="fill:url(#linearGradient12);stroke:url(#linearGradient13)" />
+    <line
+       x1="24"
+       y1="26"
+       x2="44"
+       y2="26"
+       stroke="#ffffff"
+       stroke-width="2.5"
+       stroke-linecap="round"
+       opacity="0.45"
+       id="line6" />
+    <line
+       x1="24"
+       y1="34"
+       x2="54"
+       y2="34"
+       stroke="#ffffff"
+       stroke-width="2.5"
+       stroke-linecap="round"
+       opacity="0.45"
+       id="line7" />
   </g>
-
-  <g filter="url(#softShadowDark)">
-    <rect x="26" y="27" width="48" height="34" rx="10" fill="url(#midBubbleGradDark)" />
-    <path d="M 32 61 L 26 67 L 30 61 Z" fill="url(#midBubbleGradDark)" stroke="url(#midBubbleGradDark)" stroke-width="2" stroke-linejoin="round" />
-    <line x1="34" y1="39" x2="54" y2="39" stroke="#E2E8F0" stroke-width="2.5" stroke-linecap="round" opacity="0.5" /> <line x1="34" y1="47" x2="64" y2="47" stroke="#E2E8F0" stroke-width="2.5" stroke-linecap="round" opacity="0.5" />
+  <g
+     filter="url(#softShadow)"
+     id="g9"
+     transform="translate(-5.0005402,-6)">
+    <rect
+       x="26"
+       y="27"
+       width="48"
+       height="34"
+       rx="10"
+       fill="url(#midBubbleGrad)"
+       id="rect7"
+       style="fill:url(#linearGradient14)" />
+    <path
+       d="m 32,61 -6,6 4,-6 z"
+       fill="url(#midBubbleGrad)"
+       stroke="url(#midBubbleGrad)"
+       stroke-width="2"
+       stroke-linejoin="round"
+       id="path7"
+       style="fill:url(#linearGradient15);stroke:url(#linearGradient16)" />
+    <line
+       x1="34"
+       y1="39"
+       x2="54"
+       y2="39"
+       stroke="#ffffff"
+       stroke-width="2.5"
+       stroke-linecap="round"
+       opacity="0.65"
+       id="line8" />
+    <line
+       x1="34"
+       y1="47"
+       x2="64"
+       y2="47"
+       stroke="#ffffff"
+       stroke-width="2.5"
+       stroke-linecap="round"
+       opacity="0.65"
+       id="line9" />
   </g>
-
-  <g filter="url(#softShadowDark)">
-    <rect x="36" y="40" width="48" height="34" rx="10" fill="url(#fgBubbleGradDark)" />
-    <path d="M 42 74 L 36 80 L 40 74 Z" fill="url(#fgBubbleGradDark)" stroke="url(#fgBubbleGradDark)" stroke-width="2" stroke-linejoin="round" />
-    <line x1="44" y1="52" x2="64" y2="52" stroke="#F1F5F9" stroke-width="2.5" stroke-linecap="round" /> <line x1="44" y1="60" x2="74" y2="60" stroke="#F1F5F9" stroke-width="2.5" stroke-linecap="round" />
+  <g
+     filter="url(#softShadow)"
+     id="g11"
+     transform="translate(-5.0005402,-6)">
+    <rect
+       x="36"
+       y="40"
+       width="48"
+       height="34"
+       rx="10"
+       fill="url(#fgBubbleGrad)"
+       id="rect9"
+       style="fill:url(#linearGradient17)" />
+    <path
+       d="m 42,74 -6,6 4,-6 z"
+       fill="url(#fgBubbleGrad)"
+       stroke="url(#fgBubbleGrad)"
+       stroke-width="2"
+       stroke-linejoin="round"
+       id="path9"
+       style="fill:url(#linearGradient18);stroke:url(#linearGradient19)" />
+    <line
+       x1="44"
+       y1="52"
+       x2="64"
+       y2="52"
+       stroke="#ffffff"
+       stroke-width="2.5"
+       stroke-linecap="round"
+       id="line10" />
+    <line
+       x1="44"
+       y1="60"
+       x2="74"
+       y2="60"
+       stroke="#ffffff"
+       stroke-width="2.5"
+       stroke-linecap="round"
+       id="line11" />
   </g>
 </svg>

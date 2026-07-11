@@ -47,11 +47,13 @@ import github.anandb.netbeans.support.Logger;
 @ActionID(category = "Tools", id = "github.anandb.netbeans.ui.StashDiffAction")
 @ActionRegistration(displayName = "#CTL_StashDiffAction", lazy = true)
 @NbBundle.Messages({
-    "CTL_StashDiffAction=Diff to HEAD",
+    "CTL_StashDiffAction=Diff Stash",
     "# {0} - stash name",
     "CTL_StashDiffAction_TopComponentName=Stash Diff ({0})",
+    "CTL_StashDiffAction_DiffToBase=To Base",
     "CTL_StashDiffAction_DiffToHead=To HEAD",
     "CTL_StashDiffAction_DiffToWorking=To Working Tree",
+    "CTL_StashDiffAction_Tip=<html>Diff a selected stash.<br>Select a stash in the Git Repository Browser first.</html>",
     "CTL_StashDiffAction_PrevDiff=Previous difference",
     "CTL_StashDiffAction_NextDiff=Next difference"
 })
@@ -121,6 +123,37 @@ public final class StashDiffAction implements java.awt.event.ActionListener {
         return FATAL_PREFIX.matcher(output).replaceAll("");
     }
 
+    /** Simulate a 3-way merge in-memory using git merge-file. Returns merged content. */
+    private static String threeWayMerge(File repoDir, String base, String ours, String theirs) {
+        // Trivial cases: file added or deleted in stash
+        if (theirs == null || theirs.isEmpty()) return ours != null ? ours : "";
+        if ((base == null || base.isEmpty()) && (ours == null || ours.isEmpty())) return theirs;
+        File baseF = null;
+        File oursF = null;
+        File theirsF = null;
+        try {
+            baseF = File.createTempFile("gmerge-base-", ".tmp");
+            oursF = File.createTempFile("gmerge-ours-", ".tmp");
+            theirsF = File.createTempFile("gmerge-theirs-", ".tmp");
+            java.nio.file.Files.writeString(baseF.toPath(), base == null ? "" : base);
+            java.nio.file.Files.writeString(oursF.toPath(), ours == null ? "" : ours);
+            java.nio.file.Files.writeString(theirsF.toPath(), theirs == null ? "" : theirs);
+            return runGit(repoDir, "git", "merge-file", "-p",
+                    oursF.getAbsolutePath(), baseF.getAbsolutePath(), theirsF.getAbsolutePath());
+        } catch (Exception e) {
+            return theirs;
+        } finally {
+            if (baseF != null) baseF.delete();
+            if (oursF != null) oursF.delete();
+            if (theirsF != null) theirsF.delete();
+        }
+    }
+
+    /** True if merge output contains standard conflict markers. */
+    private static boolean hasConflictMarkers(String content) {
+        return content.contains("<<<<<<<") || content.contains("=======") || content.contains(">>>>>>>");
+    }
+
     private static String statusName(String code) {
         if (code == null || code.isEmpty()) return "Modified";
         return switch (code.charAt(0)) {
@@ -138,6 +171,8 @@ public final class StashDiffAction implements java.awt.event.ActionListener {
         CompletableFuture.supplyAsync(() -> {
             try {
                 String stashRef = "stash@{" + stashIndex + "}";
+                String baseRef = stashRef + "^";
+                String baseShortHash = stripFatal(runGit(repoDir, "git", "rev-parse", "--short", baseRef)).trim();
                 // Get file statuses from git stash show (files actually in the stash)
                 String statusOutput = runGit(repoDir, "git", "stash", "show", "--name-status", "--no-renames", stashRef);
                 List<String[]> fileStatusPairs = new ArrayList<>();
@@ -152,9 +187,10 @@ public final class StashDiffAction implements java.awt.event.ActionListener {
                     }
                 }
 
-                // For each file, get full HEAD and stash contents in parallel
+                // For each file, get full HEAD, stash, base (stash parent), and working tree contents in parallel
                 List<FileDiff> headDiffs = new ArrayList<>();
                 List<FileDiff> workTreeDiffs = new ArrayList<>();
+                List<FileDiff> baseDiffs = new ArrayList<>();
                 for (String[] pair : fileStatusPairs) {
                     String status = pair[0];
                     String filePath = pair[1];
@@ -166,6 +202,10 @@ public final class StashDiffAction implements java.awt.event.ActionListener {
                         try { return stripFatal(runGit(repoDir, "git", "show", stashRef + ":" + filePath)); }
                         catch (Exception e) { return ""; }
                     });
+                    CompletableFuture<String> baseContent = CompletableFuture.supplyAsync(() -> {
+                        try { return stripFatal(runGit(repoDir, "git", "show", stashRef + "^:" + filePath)); }
+                        catch (Exception e) { return ""; }
+                    });
                     CompletableFuture<String> workTreeContent = CompletableFuture.supplyAsync(() -> {
                         try {
                             File f = new File(repoDir, filePath);
@@ -175,13 +215,22 @@ public final class StashDiffAction implements java.awt.event.ActionListener {
 
                     String h = headContent.join();
                     String s = stashContent.join();
+                    String b = baseContent.join();
                     String w = workTreeContent.join();
-                    headDiffs.add(new FileDiff(filePath, status, h, s));
-                    workTreeDiffs.add(new FileDiff(filePath, status, s, w));
+                    // Simulate applying stash to HEAD and to working tree via 3-way merge
+                    String headMerge = threeWayMerge(repoDir, b, h, s);
+                    boolean headConflict = hasConflictMarkers(headMerge);
+                    String workTreeMerge = threeWayMerge(repoDir, b, w, s);
+                    boolean workTreeConflict = hasConflictMarkers(workTreeMerge);
+                    headDiffs.add(new FileDiff(filePath, status, h, headMerge, headConflict, "HEAD"));
+                    // Working tree status: real uncommitted changes, not stash status
+                    String workTreeLabel = w.equals(h) ? "Unchanged in tree" : "Modified in tree";
+                    workTreeDiffs.add(new FileDiff(filePath, status, w, workTreeMerge, workTreeConflict, workTreeLabel));
+                    baseDiffs.add(new FileDiff(filePath, status, b, s, false, "Base (" + baseShortHash + ")"));
                 }
-                return new StashDiffData(repoDir, stashIndex, stashName, headDiffs, workTreeDiffs);
+                return new StashDiffData(repoDir, stashIndex, stashName, headDiffs, workTreeDiffs, baseDiffs);
             } catch (Exception ex) {
-                return new StashDiffData(repoDir, stashIndex, stashName, List.of(), List.of());
+                return new StashDiffData(repoDir, stashIndex, stashName, List.of(), List.of(), List.of());
             }
         }).thenAcceptAsync(data -> SwingUtilities.invokeLater(() -> openPanel(data)));
     }
@@ -189,7 +238,7 @@ public final class StashDiffAction implements java.awt.event.ActionListener {
     // --- UI ---
 
     private void openPanel(StashDiffData data) {
-        if (data.headDiffs.isEmpty() && data.workTreeDiffs.isEmpty()) return;
+        if (data.headDiffs.isEmpty() && data.workTreeDiffs.isEmpty() && data.baseDiffs.isEmpty()) return;
 
         DefaultListModel<FileDiff> listModel = new DefaultListModel<>();
         JList<FileDiff> fileList = new JList<>(listModel);
@@ -229,20 +278,27 @@ public final class StashDiffAction implements java.awt.event.ActionListener {
         JPanel diffPanel = new JPanel(new BorderLayout());
 
         // Toolbar with toggle buttons
+        JToggleButton btnBase = new JToggleButton(Bundle.CTL_StashDiffAction_DiffToBase());
         JToggleButton btnHead = new JToggleButton(Bundle.CTL_StashDiffAction_DiffToHead());
         JToggleButton btnWork = new JToggleButton(Bundle.CTL_StashDiffAction_DiffToWorking());
         ButtonGroup group = new ButtonGroup();
+        group.add(btnBase);
         group.add(btnHead);
         group.add(btnWork);
+        btnBase.setSelected(true);
         btnHead.setSelected(false);
-        btnWork.setSelected(true);
+        btnWork.setSelected(false);
 
         JToolBar toolbar = new JToolBar();
         toolbar.setFloatable(false);
+        toolbar.add(btnBase);
         toolbar.add(btnHead);
         toolbar.add(btnWork);
 
         // Wire toggle → swap file list contents
+        btnBase.addActionListener((ActionEvent ev) -> {
+            switchTo(listModel, fileList, diffPanel, data.baseDiffs);
+        });
         btnHead.addActionListener((ActionEvent ev) -> {
             switchTo(listModel, fileList, diffPanel, data.headDiffs);
         });
@@ -263,13 +319,23 @@ public final class StashDiffAction implements java.awt.event.ActionListener {
         leftPanel.add(fileList, BorderLayout.CENTER);
 
         JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, leftPanel, diffPanel);
-        split.setDividerLocation(220);
+        // Size left panel to fit widest content: toolbar total width + file names
+        java.awt.Font uiFont = fileList.getFont();
+        if (uiFont == null) uiFont = javax.swing.UIManager.getFont("Label.font");
+        java.awt.FontMetrics fm = fileList.getFontMetrics(uiFont);
+        int widestFileName = data.headDiffs.stream()
+                .mapToInt(fd -> fm.stringWidth(fd.filePath))
+                .max().orElse(0);
+        toolbar.doLayout();
+        int toolbarWidth = toolbar.getPreferredSize().width;
+        split.setDividerLocation(Math.max(widestFileName + 50, Math.max(toolbarWidth, 220)));
         split.setResizeWeight(0.0);
 
         TopComponent tc = new TopComponent();
         tc.setLayout(new BorderLayout());
         tc.add(split, BorderLayout.CENTER);
         tc.setDisplayName(Bundle.CTL_StashDiffAction_TopComponentName(data.stashName));
+        tc.putClientProperty("PersistenceType", "Never");
 
         // Key bindings for navigating differences
         tc.getActionMap().put("prevDiff", new AbstractAction() {
@@ -286,8 +352,8 @@ public final class StashDiffAction implements java.awt.event.ActionListener {
         tc.open();
         tc.requestActive();
 
-        // Start with working tree diffs
-        switchTo(listModel, fileList, diffPanel, data.workTreeDiffs);
+        // Start with base diffs
+        switchTo(listModel, fileList, diffPanel, data.baseDiffs);
     }
 
     private void switchTo(DefaultListModel<FileDiff> model, JList<FileDiff> list,
@@ -313,11 +379,17 @@ public final class StashDiffAction implements java.awt.event.ActionListener {
             try {
                 String name = new File(fd.filePath).getName();
                 String mime = mimeFor(name);
+                String baseTitle = fd.leftLabel != null
+                        ? fd.leftLabel
+                        : "Base (" + statusName(fd.status) + ")";
                 StreamSource base = StreamSource.createSource(
-                        name + " (base)", "Base (" + statusName(fd.status) + ")", mime,
+                        name + " (base)", baseTitle, mime,
                         new java.io.StringReader(fd.headContent));
+                String modifiedTitle = fd.conflict
+                        ? "<html>Stash (<font color='red'>Conflict</font>)</html>"
+                        : "Stash";
                 StreamSource modified = StreamSource.createSource(
-                        name + " (modified)", "Stash", mime,
+                        name + " (modified)", modifiedTitle, mime,
                         new java.io.StringReader(fd.stashContent));
                 DiffController ctrl = DiffController.createEnhanced(base, modified);
                 currentController = ctrl;
@@ -476,12 +548,24 @@ public final class StashDiffAction implements java.awt.event.ActionListener {
         final String status;
         final String headContent;
         final String stashContent;
+        final boolean conflict;
+        final String leftLabel; // null = use default "Base (status)"
 
         FileDiff(String filePath, String status, String headContent, String stashContent) {
+            this(filePath, status, headContent, stashContent, false, null);
+        }
+
+        FileDiff(String filePath, String status, String headContent, String stashContent, boolean conflict) {
+            this(filePath, status, headContent, stashContent, conflict, null);
+        }
+
+        FileDiff(String filePath, String status, String headContent, String stashContent, boolean conflict, String leftLabel) {
             this.filePath = filePath;
             this.status = status;
             this.headContent = headContent;
             this.stashContent = stashContent;
+            this.conflict = conflict;
+            this.leftLabel = leftLabel;
         }
     }
 
@@ -491,14 +575,17 @@ public final class StashDiffAction implements java.awt.event.ActionListener {
         final String stashName;
         final List<FileDiff> headDiffs;
         final List<FileDiff> workTreeDiffs;
+        final List<FileDiff> baseDiffs;
 
         StashDiffData(File repoDir, int stashIndex, String stashName,
-                      List<FileDiff> headDiffs, List<FileDiff> workTreeDiffs) {
+                      List<FileDiff> headDiffs, List<FileDiff> workTreeDiffs,
+                      List<FileDiff> baseDiffs) {
             this.repoDir = repoDir;
             this.stashIndex = stashIndex;
             this.stashName = stashName;
             this.headDiffs = headDiffs;
             this.workTreeDiffs = workTreeDiffs;
+            this.baseDiffs = baseDiffs;
         }
     }
 }

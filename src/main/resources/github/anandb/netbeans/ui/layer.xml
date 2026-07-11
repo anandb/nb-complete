@@ -7,6 +7,8 @@
                 <attr name="instanceCreate" methodvalue="org.openide.awt.Actions.alwaysEnabled"/>
                 <attr name="delegate" newvalue="github.anandb.netbeans.ui.StashDiffAction"/>
                 <attr name="displayName" bundlevalue="github.anandb.netbeans.ui.Bundle#CTL_StashDiffAction"/>
+                <attr name="shortDescription" bundlevalue="github.anandb.netbeans.ui.Bundle#CTL_StashDiffAction_Tip"/>
+                <attr name="iconBase" stringvalue="github/anandb/netbeans/ui/icons/stash.png"/>
             </file>
         </folder>
         <folder name="Window">
@@ -32,6 +34,14 @@
         <file name="DS-L.shadow">
             <attr name="originalFile" stringvalue="Actions/Tools/github-anandb-netbeans-ui-StashDiffAction.instance"/>
         </file>
+    </folder>
+    <folder name="Toolbars">
+        <folder name="Git">
+            <file name="github-anandb-netbeans-ui-StashDiffAction.shadow">
+                <attr name="originalFile" stringvalue="Actions/Tools/github-anandb-netbeans-ui-StashDiffAction.instance"/>
+                <attr name="position" intvalue="510"/>
+            </file>
+        </folder>
     </folder>
     <folder name="Windows2">
     </folder>

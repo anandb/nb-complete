@@ -6,11 +6,26 @@
 - **Stash Diff viewer**: Select a stash in the NetBeans Git Repository Browser
   and press `Ctrl+Shift+L` (assignable in Keymap) to open a side-by-side diff
   viewer. Shows a file list on the left, diff view on the right, with toolbar
-  buttons to toggle between "To HEAD" and "To Working Tree". Full file contents
-  are shown (not just hunks). Navigates differences with `Ctrl+,` / `Ctrl+.`
-  or the ▴/▾ triangle buttons. Syntax highlighting is applied based on file
-  extension. Right-click any file to "Apply this change" individually
+  buttons to toggle between "To Base", "To HEAD", and "To Working Tree". Full
+  file contents are shown (not just hunks). Navigates differences with `Ctrl+,`
+  / `Ctrl+.` or the ▴/▾ triangle buttons. Syntax highlighting is applied based
+  on file extension. Right-click any file to "Apply this change" individually
   from the stash.
+  - **To Base** (default): Shows stash parent commit vs stash content, equivalent
+    to `git stash show -p`. Left panel header shows `Base (short-hash)`.
+  - **To HEAD**: Simulates 3-way merge of stash into current HEAD via
+    `git merge-file`. Shows merge result with conflict markers inline.
+    Conflict indicator displays "Conflict" in red on the right panel label.
+  - **To Working Tree**: Simulates 3-way merge of stash into working tree.
+    Left panel shows actual working tree status ("Unchanged in tree" or
+    "Modified in tree") instead of stash metadata.
+  - **Git toolbar button**: "Diff Stash" button added to the Git toolbar
+    (position 510, after Diff). Custom SVG/PNG icons with light and dark
+    variants. Two-line tooltip explains that a stash must be selected first.
+  - **Non-persistent tab**: Stash diff tab no longer persists across IDE
+    restarts (prevents blank tab on reopen).
+  - **Dynamic left panel sizing**: File list width computed from longest file
+    name and widest toolbar button text.
 - **Chat Font Size setting**: New combo in Options > Assistant > Appearance.
   Options: Inherited (default, uses theme font size − 2), 10, 11, 12, 13, 14,
   16. Takes effect immediately.
@@ -37,6 +52,8 @@
 - **Appearance section size increased**: Preview panel size increased from
   320×120 to 380×160, icon preview label from 80×80 to 100×100, and icon
   scale from 72×72 to 96×96 to prevent text/label overlap.
+- **Forget/remember icon padding**: Tightened SVG viewBox on forget and
+  remember icons to remove excess padding around the icon content.
 
 ### Housekeeping
 - **AGENTS.md updated**: Added "Ctrl+L Toggle / Shortcut Registration (DO NOT

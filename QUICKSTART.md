@@ -126,7 +126,9 @@ Type `/` in the input area to trigger the autocomplete popup.
 
 ### Stash Diff (Experimental)
 
-Select a stash in the NetBeans Git Repository Browser and press `Ctrl+Shift+L` to open a side-by-side diff viewer.
+Select a stash in the NetBeans Git Repository Browser and press `Ctrl+Shift+L`
+or click the **Diff Stash** button in the Git toolbar to open a side-by-side
+diff viewer.
 
 | Shortcut | Action |
 |----------|--------|
@@ -134,8 +136,19 @@ Select a stash in the NetBeans Git Repository Browser and press `Ctrl+Shift+L` t
 | `Ctrl + ,` | Previous difference |
 | `Ctrl + .` | Next difference |
 
-- **Toolbar**: Toggle between "To HEAD" and "To Working Tree" to compare against different targets.
-- **File list**: Click a file to view its diff. Full file contents are shown with syntax highlighting.
+- **To Base** (default): Shows the stash parent commit vs stash content — the
+  same as `git stash show -p`. Left panel header displays `Base (short-hash)`.
+- **To HEAD**: Simulates applying the stash onto the current HEAD via 3-way
+  merge. Shows the merge result with conflict markers inline. If a conflict
+  exists, the right panel label shows "Conflict" in red.
+- **To Working Tree**: Simulates applying the stash onto the working tree.
+  Left panel shows actual uncommitted status ("Unchanged in tree" or
+  "Modified in tree") instead of the stash change type.
+- **File list**: Click a file to view its diff. Full file contents are shown
+  with syntax highlighting. Right-click a file to "Apply this change"
+  individually from the stash.
+
+The stash diff tab does not persist across IDE restarts.
 
 ### Session Management
 

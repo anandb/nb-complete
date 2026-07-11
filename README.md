@@ -59,7 +59,7 @@ The project follows a hexagonal (ports & adapters) architecture integrated into 
 - **`contract/`**: Service interfaces that define ports for session control, process management, and UI callbacks. `manager/` implements; `ui/` consumes.
 - **`manager/`**: Core orchestration — protocol client (JSON-RPC over stdin/stdout), session state machine, process lifecycle, and SSE strategy dispatch.
 - **`support/`**: Pure utilities — logging, JSON mapping, text scanning, constants, browser helpers. Zero dependencies on upper layers.
-- **`ui/`**: All Swing components — chat window, message bubbles, streaming animation, theming, options panel. Depends only on `contract/` interfaces.
+- **`ui/`**: All Swing components — chat window, message bubbles, streaming animation, theming, options panel, stash diff viewer. Depends only on `contract/` interfaces.
 
 ---
 
@@ -77,7 +77,7 @@ All source lives under `src/main/java/github/anandb/netbeans/`:
 | `project/` | 3 | NetBeans lifecycle hooks (`@OnStart`, `@OnStop`), project manager |
 | `project/mdproject/` | 6 | Markdown project support (file types, data objects, openable) |
 | `support/` | 15 | Utilities (logging, JSON mapping, text scanning, constants, browser helpers, pinned message store) |
-| `ui/` | 72 | Swing components (chat window, message bubbles, theming, options panel) |
+| `ui/` | 72 | Swing components (chat window, message bubbles, theming, options panel, stash diff viewer) |
 | `ui/platform/` | 7 | Platform integration (IDE theme detection, icon resources, editor context) |
 | `ui/spec/` | 6 | Specification/configuration UI components |
 | `ui/vm/` | 4 | View model layer (decouples UI from business logic) |
@@ -92,7 +92,7 @@ For a guided walkthrough mapped to the plugin's execution flow, read files in th
 ### Phase 1: Entry & Lifecycle
 1. [`project/ACPStartup.java`](src/main/java/github/anandb/netbeans/project/ACPStartup.java) — NetBeans `@OnStart` hook
 2. [`project/ACPShutdown.java`](src/main/java/github/anandb/netbeans/project/ACPShutdown.java) — `@OnStop` cleanup
-3. [`src/main/resources/github/anandb/netbeans/ui/layer.xml`](src/main/resources/github/anandb/netbeans/ui/layer.xml) — NetBeans registration (window, shortcut, options)
+3. [`src/main/resources/github/anandb/netbeans/ui/layer.xml`](src/main/resources/github/anandb/netbeans/ui/layer.xml) — NetBeans registration (window, shortcut, options, Git toolbar)
 
 ### Phase 2: Server Process
 4. [`manager/ProcessManager.java`](src/main/java/github/anandb/netbeans/manager/ProcessManager.java) — Spawns/owns the `opencode acp` subprocess; central request dispatch
