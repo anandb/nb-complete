@@ -213,8 +213,7 @@ snippet from an `opencode.json` configuration.
       "*.p12": "deny",
       "*.jks": "deny",
       "*credentials*": "deny",
-      "*": "allow",
-      "external_directory": "allow"
+      "*": "allow"
     },
     "edit": {
       "~/.aws/**": "deny",
@@ -231,9 +230,7 @@ snippet from an `opencode.json` configuration.
       "rm *.env*": "deny"
     },
     "webfetch": "allow",
-    "external": {
-      "read": "allow"
-    }
+    "external_directory": "allow"
   }
 }
 ```
