@@ -300,6 +300,27 @@
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-resources-plugin</artifactId>
                     <version>3.5.0</version>
+                    <executions>
+                        <execution>
+                            <id>copy-bundle-for-annotations</id>
+                            <phase>generate-sources</phase>
+                            <goals>
+                                <goal>copy-resources</goal>
+                            </goals>
+                            <configuration>
+                                <outputDirectory>${project.basedir}/src/main/java/github/anandb/netbeans/ui</outputDirectory>
+                                <resources>
+                                    <resource>
+                                        <directory>${project.basedir}/src/main/resources/github/anandb/netbeans/ui</directory>
+                                        <includes>
+                                            <include>Bundle.properties</include>
+                                        </includes>
+                                    </resource>
+                                </resources>
+                                <overwrite>true</overwrite>
+                            </configuration>
+                        </execution>
+                    </executions>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>

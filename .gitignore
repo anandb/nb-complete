@@ -55,6 +55,9 @@ nb-configuration.xml
 # Windows
 Thumbs.db
 
+# Auto-generated copy of resources Bundle.properties for annotation processor
+src/main/java/github/anandb/netbeans/ui/Bundle.properties
+
 # Certificate files (for local testing)
 *.crt
 *.key
