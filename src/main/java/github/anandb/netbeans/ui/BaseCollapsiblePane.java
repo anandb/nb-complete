@@ -586,9 +586,11 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
 
     @Override
     public void removeNotify() {
-        super.removeNotify();
+        // Stop timer before super.removeNotify() to prevent callbacks
+        // from firing on a partially-dismantled component tree.
         if (copyFeedbackTimer != null && copyFeedbackTimer.isRunning()) {
             copyFeedbackTimer.stop();
         }
+        super.removeNotify();
     }
 }

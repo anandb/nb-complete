@@ -1,18 +1,16 @@
 package github.anandb.netbeans.manager;
 
 import com.fasterxml.jackson.core.JsonParser;
-
-
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.MappingIterator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import java.io.BufferedWriter;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.PrintWriter;
+import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -23,6 +21,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
 import org.openide.util.RequestProcessor;
+
+import org.apache.commons.lang3.exception.ExceptionUtils;
 
 import github.anandb.netbeans.contract.RequestHandler;
 import github.anandb.netbeans.support.Logger;
@@ -38,15 +38,15 @@ public class AcpProtocolClient implements Closeable {
 
     private volatile Consumer<Throwable> connectionErrorHandler;
     private volatile Runnable disconnectionHandler;
-    private Thread readerThread;
-    private RequestProcessor watchdogRP;
+    private volatile Thread readerThread;
+    private volatile RequestProcessor watchdogRP;
 
     private final AtomicLong nextId = new AtomicLong(0);
     private final InputStream inputStream;
     private final Map<Long, CompletableFuture<JsonNode>> pendingRequests = new ConcurrentHashMap<>();
     private final Map<String, Consumer<JsonNode>> notificationListeners = new ConcurrentHashMap<>();
     private final Map<String, RequestHandler> requestHandlers = new ConcurrentHashMap<>();
-    private final PrintWriter writer;
+    private final BufferedWriter writer;
     private final WireLogger wireLogger;
 
     private volatile boolean running = true;
@@ -55,7 +55,7 @@ public class AcpProtocolClient implements Closeable {
     private volatile String closeReason;
 
     public AcpProtocolClient(Process process) throws IOException {
-        this.writer = new PrintWriter(process.getOutputStream(), true, StandardCharsets.UTF_8);
+        this.writer = new BufferedWriter(new OutputStreamWriter(process.getOutputStream(), StandardCharsets.UTF_8));
         this.inputStream = process.getInputStream();
         this.wireLogger = new WireLogger();
     }
@@ -88,9 +88,20 @@ public class AcpProtocolClient implements Closeable {
     }
 
     public CompletableFuture<JsonNode> sendRequest(String method, Object params, long timeoutSeconds) {
+        if (closed) {
+            return CompletableFuture.failedFuture(new IOException("Client closed"));
+        }
         long id = nextId.getAndIncrement();
         CompletableFuture<JsonNode> future = new CompletableFuture<>();
         pendingRequests.put(id, future);
+
+        // Re-check closed after put — if close() drained the map between
+        // our top-level guard and this put, remove the orphaned future.
+        if (closed) {
+            pendingRequests.remove(id);
+            future.completeExceptionally(new IOException("Client closed"));
+            return future;
+        }
 
         long sendStart = System.nanoTime();
 
@@ -103,25 +114,22 @@ public class AcpProtocolClient implements Closeable {
         try {
             String json = MAPPER.writeValueAsString(request);
             LOG.fine("[ACP] Sending request: {0}", method);
-            writer.println(json);
+            synchronized (writer) {
+                writer.write(json);
+                writer.newLine();
+                writer.flush();
+            }
             touch();
             long sendEnd = System.nanoTime();
             long sendMs = (sendEnd - sendStart) / 1_000_000;
             LOG.info("[ACP] Request {0} (id={1}) sent in {2}ms", method, id, sendMs);
-            if (writer.checkError()) {
-                pendingRequests.remove(id);
-                IOException ex = new IOException("Failed to write request");
-                LOG.severe("Failed to write request method={0}, id={1}", method, id);
-                future.completeExceptionally(ex);
-                notifyConnectionError(ex);
-                return future;
-            }
 
             wireLogger.log(json);
         } catch (IOException e) {
             pendingRequests.remove(id);
             LOG.severe("IOException sending request method={0}, id={1}", method, id, e);
             future.completeExceptionally(e);
+            notifyConnectionError(e);
         }
 
         if (timeoutSeconds > 0) {
@@ -145,6 +153,7 @@ public class AcpProtocolClient implements Closeable {
     }
 
     public void sendNotification(String method, Object params) {
+        if (closed) return;
         ObjectNode notification = MAPPER.createObjectNode();
         notification.put("jsonrpc", "2.0");
         notification.put("method", method);
@@ -153,17 +162,17 @@ public class AcpProtocolClient implements Closeable {
         try {
             String json = MAPPER.writeValueAsString(notification);
             LOG.fine("[ACP] Sending notification: {0}", method);
-            writer.println(json);
-            touch();
-            if (writer.checkError()) {
-                LOG.severe("Failed to write notification");
-                notifyConnectionError(new IOException("Failed to write notification"));
-                return;
+            synchronized (writer) {
+                writer.write(json);
+                writer.newLine();
+                writer.flush();
             }
+            touch();
 
             wireLogger.log(json);
         } catch (IOException e) {
-            LOG.severe("Failed to serialize notification", e);
+            LOG.severe("Failed to send notification: {0}", method, e);
+            notifyConnectionError(e);
         }
     }
 
@@ -171,9 +180,17 @@ public class AcpProtocolClient implements Closeable {
         try (JsonParser parser = MAPPER.getFactory().createParser(this.inputStream)) {
             MappingIterator<JsonNode> iterator = MAPPER.readValues(parser, JsonNode.class);
             while (running && iterator.hasNext()) {
-                JsonNode node = iterator.next();
-                lastDataTime = System.nanoTime();
-                handleMessage(node);
+                try {
+                    JsonNode node = iterator.next();
+                    lastDataTime = System.nanoTime();
+                    handleMessage(node);
+                } catch (Exception e) {
+                    // Recover from a single malformed message instead of
+                    // shutting down the entire connection.
+                    if (running) {
+                        LOG.warn("Skipping malformed message: {0}", e.getMessage());
+                    }
+                }
             }
         } catch (Exception e) {
             if (running) {
@@ -295,7 +312,7 @@ public class AcpProtocolClient implements Closeable {
                     .thenAccept(result -> sendResponse(id, result))
                     .exceptionally(ex -> {
                         LOG.severe("Error handling request {0} ({1})", method, id, ex);
-                        sendError(id, -32603, ex.getMessage());
+                        sendError(id, -32603, ExceptionUtils.getRootCauseMessage(ex));
                         return null;
                     });
         } else {
@@ -308,9 +325,13 @@ public class AcpProtocolClient implements Closeable {
         try {
             String json = MAPPER.writeValueAsString(message);
             LOG.fine("[ACP] Sending: {0}", json);
-            writer.println(json);
-        } catch (JsonProcessingException e) {
-            LOG.severe("Failed to serialize message", e);
+            synchronized (writer) {
+                writer.write(json);
+                writer.newLine();
+                writer.flush();
+            }
+        } catch (IOException e) {
+            LOG.severe("Failed to write message", e);
         }
     }
 
@@ -355,6 +376,7 @@ public class AcpProtocolClient implements Closeable {
 
     @Override
     public void close() {
+        if (closed) return;
         closed = true;
         running = false;
         stopWatchdog();
@@ -363,7 +385,11 @@ public class AcpProtocolClient implements Closeable {
         // Close streams first to unblock reader loops, then interrupt threads.
         // Order matters: close underlying errorStream before errorReader to
         // avoid deadlock (readErrorLoop holds BufferedReader lock inside readLine()).
-        closeQuietly(writer);
+        // Synchronize on writer to prevent concurrent write/close race.
+        // BufferedWriter is not thread-safe for concurrent close + write.
+        synchronized (writer) {
+            closeQuietly(writer);
+        }
         closeQuietly(inputStream);
 
         // Interrupt reader thread — cancel() on RequestProcessor tasks does not

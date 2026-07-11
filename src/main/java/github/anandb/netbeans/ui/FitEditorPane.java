@@ -14,6 +14,7 @@ import javax.swing.JMenuItem;
 import javax.swing.JPopupMenu;
 import javax.swing.JTextPane;
 import javax.swing.border.EmptyBorder;
+import javax.swing.plaf.TextUI;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.View;
 
@@ -28,10 +29,10 @@ public class FitEditorPane extends JTextPane {
     private static final Logger LOG = Logger.from(FitEditorPane.class);
     private static final Color TRANSPARENT = new Color(0, 0, 0, 0);
 
-    private int lastComputedHeight = 0;
-    private int lastComputedWidth = 0;
+    private volatile int lastComputedHeight = 0;
+    private volatile int lastComputedWidth = 0;
     private String lastText = null;
-    private Dimension cachedSize = null;
+    private volatile Dimension cachedSize = null;
     private volatile boolean revalidatePending = false;
 
     /** Prevents cascading revalidates across multiple FitEditorPane instances. */
@@ -154,22 +155,28 @@ public class FitEditorPane extends JTextPane {
             if (!revalidatePending && GLOBAL_REVALIDATE_QUEUED.compareAndSet(false, true)) {
                 revalidatePending = true;
                 // Force the HTML view to reformat at the new width.
-                View root = getUI().getRootView(this);
-                if (root != null) {
-                    Insets ins = getInsets();
-                    int cw = Math.max(1, width - ins.left - ins.right);
-                    root.setSize(cw, Integer.MAX_VALUE);
+                TextUI ui = (TextUI) getUI();
+                if (ui != null) {
+                    View root = ui.getRootView(this);
+                    if (root != null) {
+                        Insets ins = getInsets();
+                        int cw = Math.max(1, width - ins.left - ins.right);
+                        root.setSize(cw, Integer.MAX_VALUE);
+                    }
                 }
                 javax.swing.SwingUtilities.invokeLater(() -> {
-                    revalidatePending = false;
-                    GLOBAL_REVALIDATE_QUEUED.set(false);
-                    revalidate();
+                    try {
+                        revalidate();
+                    } finally {
+                        revalidatePending = false;
+                        GLOBAL_REVALIDATE_QUEUED.set(false);
+                    }
                 });
             }
         }
     }
 
-    private Dimension cachedMaxSize;
+    private volatile Dimension cachedMaxSize;
 
     @Override
     public Dimension getMaximumSize() {

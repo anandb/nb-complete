@@ -55,8 +55,9 @@ class AcpReconnectManager {
             // that is written only once (ServerProcessLifecycle.start()) and cleared
             // only after destroy. In the synchronized context of this method the
             // value cannot change between the null check and pid().
+            Process p = serverProcess.get();
             LOG.warn("handleDisconnection called while closing — returning early (PID: {0})",
-                    serverProcess.get() != null ? serverProcess.get().pid() : "unknown");
+                    p != null ? p.pid() : "unknown");
             return;
         }
 

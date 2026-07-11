@@ -9,15 +9,13 @@
   buttons to toggle between "To HEAD" and "To Working Tree". Full file contents
   are shown (not just hunks). Navigates differences with `Ctrl+,` / `Ctrl+.`
   or the ▴/▾ triangle buttons. Syntax highlighting is applied based on file
-  extension. No longer experimental — always enabled.
-- **Stash diff file list improvements**: Each file now shows a file icon with
-  proper spacing. Right-click any file to "Apply this change" individually
+  extension. Right-click any file to "Apply this change" individually
   from the stash.
 - **Chat Font Size setting**: New combo in Options > Assistant > Appearance.
   Options: Inherited (default, uses theme font size − 2), 10, 11, 12, 13, 14,
   16. Takes effect immediately.
 - **Keyboard shortcuts dialog updated**: Added "Assistant" section (Ctrl+L),
-  "Stash Diff" section with Ctrl+Shift+L, and Sort Lines/Compact JSON to
+  "Stash Diff" section with Ctrl+Shift+L, and Sort Lines/Minify JSON to
   the assignable shortcuts list.
 - **Icon size options expanded**: Added sizes 36 and 40 to the Toolbar Icon
   Size dropdown (now 16/24/28/32/36/40/48).
@@ -27,11 +25,6 @@
   IDE startup (not just after version changes).
 
 ### Fixes
-- **Ctrl+L shortcut restored**: The `Ctrl+L` keyboard shortcut and Window >
-  Assistant menu item now work reliably. Fixed a `KeyEventDispatcher` that
-  was stealing the shortcut when focus was in the input area. Toggle logic
-  (`toggleVisibility`) now correctly handles open, minimized, and closed
-  states.
 - **Blank sidebar on dock position change**: Moving the sidebar from right to
   left (or vice versa) no longer leaves a blank panel. `addNotify()` now
   forces layout recalculation on `mainSplitPane` and validates the hierarchy.
@@ -44,19 +37,14 @@
 - **Appearance section size increased**: Preview panel size increased from
   320×120 to 380×160, icon preview label from 80×80 to 100×100, and icon
   scale from 72×72 to 96×96 to prevent text/label overlap.
-- **Chat font hint label removed**: The "* appearance changes might require
-  an IDE restart" label next to the Chat Font Size combo was removed.
 
 ### Housekeeping
-- **Rocket icon replaced**: `shuttle.svg` replaced with `rocket-ship.svg`.
 - **AGENTS.md updated**: Added "Ctrl+L Toggle / Shortcut Registration (DO NOT
   BREAK)" section documenting the exact working configuration of annotations,
   layer.xml, ToggleAssistantAction, and toggleVisibility.
 - **Documentation reorganized**: Moved "Known Issues" from README to QUICKSTART.
   Removed "Breaking Changes and Alerts" section, folded entries into
   Troubleshooting table.
-- **Stash system property removed**: `netbeans.codingassistant.experimental.stash.show`
-  no longer needed — Stash Diff is always enabled.
 
 ## v1.8.1 (Changes since v1.8.0)
 

@@ -179,6 +179,11 @@ class BubbleStreamer {
         savedCollapseState = expanded;
 
         if (immediate) {
+            // Stop any pending deferred timer to prevent a double
+            // finalization when the stale timer eventually fires.
+            if (deferredFinalizeTimer != null && deferredFinalizeTimer.isRunning()) {
+                deferredFinalizeTimer.stop();
+            }
             performFinalization();
         } else {
             state = StreamingState.DEFERRED_FINALIZING;

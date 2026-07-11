@@ -33,8 +33,8 @@ public class MessageSender {
 
     private static final Logger LOG = Logger.from(MessageSender.class);
 
-    private final SessionService sessionService = Lookup.getDefault().lookup(PlatformBridge.class).sessionService();
-    private final ProcessService processService = Lookup.getDefault().lookup(PlatformBridge.class).processService();
+    private final SessionService sessionService;
+    private final ProcessService processService;
 
     private final PlaceholderTextArea inputArea;
     private final ChatThreadPanel chatPanel;
@@ -62,6 +62,15 @@ public class MessageSender {
         this.statusController = statusController;
         this.paperclipUpdater = paperclipUpdater;
         this.inputFocusRequester = inputFocusRequester;
+        PlatformBridge bridge = Lookup.getDefault().lookup(PlatformBridge.class);
+        if (bridge == null) {
+            LOG.severe("PlatformBridge not found in Lookup — MessageSender services unavailable");
+            this.sessionService = null;
+            this.processService = null;
+        } else {
+            this.sessionService = bridge.sessionService();
+            this.processService = bridge.processService();
+        }
     }
 
     public void setOnNewMessageCallback(Runnable callback) {

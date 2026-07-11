@@ -492,7 +492,11 @@ public class SessionManager implements SessionQuery, SessionControl {
                     // Run on the CompletableFuture thread for consistency with loadSession
                     // The state machine is thread-safe and listeners marshall their own
                     // UI work onto the EDT, so an explicit invokeLater hop here is unnecessary.
-                    stateMachine.transitionTo(SessionState.STREAMING);
+                    if (!stateMachine.transitionTo(SessionState.STREAMING)) {
+                        LOG.fine("createNewSession: transitionTo(STREAMING) failed, state is {0}",
+                                stateMachine.getState());
+                        return;
+                    }
                     notifySessionLoaded(session.id(), session.configOptions(), true);
                     refreshSessions();
                     if (!sendPreamble(session.id())) {
@@ -519,8 +523,11 @@ public class SessionManager implements SessionQuery, SessionControl {
             LOG.warn("Cannot load session in state {0}", stateMachine.getState());
             return false;
         }
-        this.currentSessionId = sessionId;
+        // Post clearMessages() to EDT first, then set currentSessionId,
+        // so SSE messages for the new session always arrive after the
+        // old session's bubbles have been cleared.
         notifySessionStarted(sessionId);
+        this.currentSessionId = sessionId;
         notifySessionProgress(10);
 
         // Look up session directory from cache

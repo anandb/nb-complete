@@ -230,6 +230,7 @@ public class MessageBubble extends JPanel implements Scrollable {
             copyBtnArr[0].setOpaque(false);
             copyBtnArr[0].setForeground(theme.foreground());
             copyBtnArr[0].setVisible(false);
+            final Icon copyBtnArrIcon = copyBtnArr[0].getIcon();
 
             // Reserve space with both buttons so layout never shifts.
             // FlowLayout ignores invisible components when sizing, so compute
@@ -254,6 +255,14 @@ public class MessageBubble extends JPanel implements Scrollable {
                 @Override
                 public void mouseEntered(MouseEvent e) {
                     copyBtnArr[0].setVisible(true);
+                    // Reset icon — a stale check icon may remain from a
+                    // copy where the timer fired while the button was hidden.
+                    if (copyRevertTimer != null && copyRevertTimer.isRunning()) {
+                        copyRevertTimer.stop();
+                    }
+                    if (copyBtnArr.length > 0) {
+                        copyBtnArr[0].setIcon(copyBtnArrIcon);
+                    }
                     if (!pinned) {
                         pinBtn.setVisible(true);
                     }
@@ -297,6 +306,7 @@ public class MessageBubble extends JPanel implements Scrollable {
             copyBtn[0].setOpaque(false);
             copyBtn[0].setForeground(theme.foreground());
             copyBtn[0].setVisible(false);
+            final Icon copyBtnIcon = copyBtn[0].getIcon();
 
             // Reserve space in SOUTH with a fixed-size placeholder so the
             // layout never shifts when toggling button visibility (avoids jitter).
@@ -314,6 +324,12 @@ public class MessageBubble extends JPanel implements Scrollable {
                 @Override
                 public void mouseEntered(MouseEvent e) {
                     copyBtn[0].setVisible(true);
+                    // Reset icon — a stale check icon may remain from a
+                    // copy where the timer fired while the button was hidden.
+                    if (copyRevertTimer != null && copyRevertTimer.isRunning()) {
+                        copyRevertTimer.stop();
+                    }
+                    copyBtn[0].setIcon(copyBtnIcon);
                 }
 
                 @Override
@@ -379,16 +395,18 @@ public class MessageBubble extends JPanel implements Scrollable {
 
     @Override
     public void removeNotify() {
-        super.removeNotify();
-        if (hierarchyListener != null) {
-            removeHierarchyListener(hierarchyListener);
-            hierarchyListener = null;
-        }
+        // Stop timers and remove listeners BEFORE super.removeNotify()
+        // to avoid callbacks firing on a partially-dismantled component tree.
         streamer.stopTimer();
         if (copyRevertTimer != null) {
             copyRevertTimer.stop();
             copyRevertTimer = null;
         }
+        if (hierarchyListener != null) {
+            removeHierarchyListener(hierarchyListener);
+            hierarchyListener = null;
+        }
+        super.removeNotify();
     }
 
     public void appendText(String newText) {
@@ -495,10 +513,8 @@ public class MessageBubble extends JPanel implements Scrollable {
         if (copyRevertTimer != null) {
             copyRevertTimer.stop();
         }
-        copyRevertTimer = new Timer(2000, e -> {
-            if (copyBtn.isShowing()) {
-                copyBtn.setIcon(originalIcon);
-            }
+        copyRevertTimer = new Timer(1500, e -> {
+            copyBtn.setIcon(originalIcon);
         });
         copyRevertTimer.setRepeats(false);
         copyRevertTimer.start();

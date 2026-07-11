@@ -1,4 +1,4 @@
-# Quickstart Guide
+# QuickStart Guide
 
 **BeanBot/Coding Assistant** is a NetBeans plugin that provides an AI assistant panel powered by [OpenCode](https://opencode.ai/).
   It communicates with OpenCode over ACP (Agent Client Protocol), running it as a background server so you can chat
@@ -30,7 +30,7 @@
 ### 1. Install OpenCode
 
 Install [OpenCode Terminal](https://opencode.ai/download), then connect and configure your providers.
-You can skip provider configuration if you plan to use the free models. The plugin runs `opencode acp` under
+You can skip provider configuration if you only plan to use the free models. The plugin runs `opencode acp` under
 the hood as a background server.
 
 **Verify your installation:**
@@ -200,7 +200,9 @@ snippet from an `opencode.json` configuration.
       "*.key": "deny",
       "*.p12": "deny",
       "*.jks": "deny",
-      "*credentials*": "deny"
+      "*credentials*": "deny",
+      "*": "allow",
+      "external_directory": "allow"
     },
     "edit": {
       "~/.aws/**": "deny",
@@ -239,7 +241,7 @@ snippet from an `opencode.json` configuration.
 | Image paste broken after OpenCode upgrade | Upgrade to OpenCode >= 1.17.17 to resolve the breakage introduced in v1.17.13. |
 | Model not appearing after upgrade to OpenCode v1.17.9, upgrade plugin to >= 1.7.3 | Re-select your model via `/models`. The upgrade resets model selection due to the new `thought_level` split. |
 | Session config payloads restructured after upgrade | Upgrade the plugin to >= 1.7.3 and OpenCode to >= 1.17.17. Re-select your model and review any custom preamble or session settings. |
-| Messages disappear from view | This is display-only — the session still has all messages. Click **Show All Messages** to keep them visible, or use **Reload** to re-fetch from the server. |
+| Messages disappear from view | This is display-only — the session still has all messages. Click **Show All Messages** to keep them visible, and use **Reload** to re-fetch from the server. |
 | LLM modified files unexpectedly | Always keep your project under version control (git) before allowing file modifications. Use **Accept/Deny** permission prompts to review changes. |
 
 ---

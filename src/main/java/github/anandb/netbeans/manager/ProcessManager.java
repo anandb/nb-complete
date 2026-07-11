@@ -207,7 +207,11 @@ public class ProcessManager implements ProcessControl {
             }
         }
         for (Consumer<SessionUpdate> listener : sseListeners) {
-            listener.accept(update);
+            try {
+                listener.accept(update);
+            } catch (Exception e) {
+                LOG.warn("SSE listener threw exception, continuing with remaining listeners", e);
+            }
         }
     }
 

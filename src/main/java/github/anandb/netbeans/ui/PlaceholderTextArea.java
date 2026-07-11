@@ -37,6 +37,7 @@ public class PlaceholderTextArea extends JTextArea implements Scrollable {
     private static final Logger LOG = Logger.from(PlaceholderTextArea.class);
     private String placeholder;
     private UndoManager undoManager;
+    private WordBoundaryEditListener editListener;
     private transient JPopupMenu contextMenu;
 
     public PlaceholderTextArea(String placeholder) {
@@ -57,7 +58,8 @@ public class PlaceholderTextArea extends JTextArea implements Scrollable {
 
     private void initUndoManager() {
         undoManager = new UndoManager();
-        getDocument().addUndoableEditListener(new WordBoundaryEditListener());
+        editListener = new WordBoundaryEditListener();
+        getDocument().addUndoableEditListener(editListener);
         installKeyBindings();
     }
 
@@ -77,9 +79,11 @@ public class PlaceholderTextArea extends JTextArea implements Scrollable {
         im.put(KeyStroke.getKeyStroke("meta Z"), "undo");
         am.put("undo", undoAction);
 
-        // Ctrl+Y / Cmd+Y for redo
+        // Ctrl+Y / Cmd+Y / Shift+Ctrl+Z / Shift+Cmd+Z for redo
         im.put(KeyStroke.getKeyStroke("control Y"), "redo");
         im.put(KeyStroke.getKeyStroke("meta Y"), "redo");
+        im.put(KeyStroke.getKeyStroke("shift control Z"), "redo");
+        im.put(KeyStroke.getKeyStroke("shift meta Z"), "redo");
         am.put("redo", redoAction);
     }
 
@@ -165,6 +169,9 @@ public class PlaceholderTextArea extends JTextArea implements Scrollable {
     }
 
     public void undo() {
+        if (editListener != null) {
+            editListener.endCompound();
+        }
         try {
             if (undoManager.canUndo()) {
                 undoManager.undo();
@@ -175,6 +182,9 @@ public class PlaceholderTextArea extends JTextArea implements Scrollable {
     }
 
     public void redo() {
+        if (editListener != null) {
+            editListener.endCompound();
+        }
         try {
             if (undoManager.canRedo()) {
                 undoManager.redo();

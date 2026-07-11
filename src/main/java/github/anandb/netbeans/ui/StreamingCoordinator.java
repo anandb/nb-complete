@@ -25,6 +25,16 @@ final class StreamingCoordinator {
 
     /** Start streaming for the given bubble. */
     void startStreaming(MessageBubble bubble) {
+        if (activeStreamBubble != null) {
+            // Stop prior stream before overwriting, else the old bubble's
+            // streaming JTextArea is never finalized.
+            activeStreamBubble.flushUpdate(true);
+            if (activeStreamBubble.streamingFlagsSet()) {
+                activeStreamBubble.finalizeStreaming(true, true);
+            } else if (activeStreamBubble.hasStreamingTextArea()) {
+                activeStreamBubble.forceFinalize(true);
+            }
+        }
         activeStreamBubble = bubble;
         streamFlushTimer.start();
     }

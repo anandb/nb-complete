@@ -392,7 +392,7 @@ public class ChatThreadPanel extends JPanel {
                         scrollController.scrollToBottom(true);
                     }
                 }
-            } else if (wasAtBottom) {
+            } else if (wasAtBottom && !batchAdding) {
                 scrollController.scrollToBottom(true);
             }
 
@@ -780,7 +780,12 @@ public class ChatThreadPanel extends JPanel {
         cachedMessages = null;
         pendingMessagesBySession.clear();
         seenMessageIdsBySession.clear();
+        // Stop the repeating flush timer off-EDT. The per-bubble streaming
+        // finalization (stopStreaming) must run on EDT inside invokeLater
+        // to safely touch the component tree before removeAll.
+        streamingCoordinator.cleanup();
         SwingUtilities.invokeLater(() -> {
+            stopStreaming();
             messagesContainer.removeAll();
             scrollController.unfixAllMouseWheel();
             lastUserTimestamp = -1L;
@@ -860,7 +865,13 @@ public class ChatThreadPanel extends JPanel {
             }
         }
 
+        // Stop the repeating flush timer off-EDT. Actual per-bubble
+        // streaming finalization happens inside invokeLater before removeAll.
+        streamingCoordinator.cleanup();
+
         SwingUtilities.invokeLater(() -> {
+            // Finalize any in-flight streaming bubbles before removing content.
+            stopStreaming();
             // Clear synchronously — avoid clearMessages()'s own invokeLater
             // which would add an extra EDT tick.
             messagesContainer.removeAll();

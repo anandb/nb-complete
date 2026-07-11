@@ -225,7 +225,10 @@ class ServerProcessLifecycle {
                     }
                     readyFuture.complete(null);
                     LOG.fine("ACP initialized successfully");
-                    if (onReady != null) {
+                    // Guard: stopServer() may have been called during the async
+                    // initialize window. Do not fire the ready callback if the
+                    // server is shutting down — it would operate on dead resources.
+                    if (onReady != null && !isClosing) {
                         try {
                             onReady.run();
                         } catch (Exception ex) {

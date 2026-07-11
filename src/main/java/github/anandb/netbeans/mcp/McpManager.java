@@ -103,8 +103,13 @@ public class McpManager {
                 serverStartFuture = null;
             }
             if (mcpServer != null) {
-                mcpServer.stop();
-                mcpServer = null;
+                try {
+                    mcpServer.stop();
+                } catch (Exception e) {
+                    LOG.warn("Error stopping MCP server: {0}", e.getMessage());
+                } finally {
+                    mcpServer = null;
+                }
             }
         }
         // Do NOT shut down mcpStartExecutor — it uses daemon threads and
