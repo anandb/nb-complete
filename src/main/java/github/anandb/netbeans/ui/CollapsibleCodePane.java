@@ -24,12 +24,14 @@ import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
 import org.fife.ui.rsyntaxtextarea.SyntaxConstants;
 import org.fife.ui.rsyntaxtextarea.Theme;
 import org.openide.util.NbBundle;
+import github.anandb.netbeans.support.Logger;
 
 // DSL-LEAF: keep imperative, wrap via UI.of(...) — extends BaseCollapsiblePane,
 // builds RSyntaxTextArea code block + copy popup. Migration target: CodePaneToolbarSpec.
 public class CollapsibleCodePane extends BaseCollapsiblePane {
 
     private static final long serialVersionUID = 1L;
+    private static final Logger LOG = Logger.from(CollapsibleCodePane.class);
     private static volatile Theme cachedRTheme;
 
     private String language;
@@ -48,8 +50,8 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
                 cachedRTheme = theme;
                 return theme;
             }
-        } catch (Exception ignored) {
-            // theme file not found or parse error
+        } catch (Exception e) {
+            LOG.warn("Failed to load code theme: {0}", e.getMessage());
         }
         return null;
     }

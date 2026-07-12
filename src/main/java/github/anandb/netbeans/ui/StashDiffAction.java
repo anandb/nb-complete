@@ -278,21 +278,33 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
                     String filePath = pair[1];
                     CompletableFuture<String> headContent = CompletableFuture.supplyAsync(() -> {
                         try { return stripFatal(runGit(repoDir, "git", "show", "HEAD:" + filePath)); }
-                        catch (Exception e) { return ""; }
+                        catch (Exception e) {
+                            LOG.warn("Failed HEAD content for {0}: {1}", filePath, e.getMessage(), e);
+                            return "";
+                        }
                     });
                     CompletableFuture<String> stashContent = CompletableFuture.supplyAsync(() -> {
                         try { return stripFatal(runGit(repoDir, "git", "show", stashRef + ":" + filePath)); }
-                        catch (Exception e) { return ""; }
+                        catch (Exception e) {
+                            LOG.warn("Failed stash content for {0}: {1}", filePath, e.getMessage(), e);
+                            return "";
+                        }
                     });
                     CompletableFuture<String> baseContent = CompletableFuture.supplyAsync(() -> {
                         try { return stripFatal(runGit(repoDir, "git", "show", stashRef + "^:" + filePath)); }
-                        catch (Exception e) { return ""; }
+                        catch (Exception e) {
+                            LOG.warn("Failed base content for {0}: {1}", filePath, e.getMessage(), e);
+                            return "";
+                        }
                     });
                     CompletableFuture<String> workTreeContent = CompletableFuture.supplyAsync(() -> {
                         try {
                             File f = new File(repoDir, filePath);
                             return f.exists() ? Files.readString(f.toPath()) : "";
-                        } catch (Exception e) { return ""; }
+                        } catch (Exception e) {
+                            LOG.warn("Failed work-tree content for {0}: {1}", filePath, e.getMessage(), e);
+                            return "";
+                        }
                     });
 
                     String h = headContent.join();

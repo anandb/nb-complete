@@ -361,7 +361,7 @@ public class StrategyRegistry implements UpdateDispatcher {
     }
 
     /** Detects plan tool calls by inspecting the output structure. */
-    private static boolean isPlanToolCall(SessionUpdate update) {
+    static boolean isPlanToolCall(SessionUpdate update) {
         if (!"completed".equals(update.status())) return false;
         JsonNode rawOutput = update.update() != null ? update.update().rawOutput() : null;
         if (rawOutput == null || !rawOutput.has("output")) return false;
@@ -370,11 +370,17 @@ public class StrategyRegistry implements UpdateDispatcher {
         try {
             String outText = output.asText().trim();
             if (!outText.startsWith("[")) return false;
+            // Guard: next non-whitespace char must be '{' (plan entries are [{...}])
+            // This avoids JsonParseException on git log lines like "[main abc123]..." 
+            int idx = 1;
+            while (idx < outText.length() && outText.charAt(idx) <= ' ') idx++;
+            if (idx >= outText.length() || outText.charAt(idx) != '{') return false;
             JsonNode arr = MAPPER.readTree(outText);
             if (!arr.isArray() || arr.isEmpty()) return false;
             JsonNode first = arr.get(0);
             return first.has("content") && first.has("status") && first.has("priority");
         } catch (Exception e) {
+            LOG.warn("Skipping unparseable tool_call update: {0}", e.getMessage());
             return false;
         }
     }

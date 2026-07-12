@@ -188,7 +188,7 @@ public class AcpProtocolClient implements Closeable {
                     // Recover from a single malformed message instead of
                     // shutting down the entire connection.
                     if (running) {
-                        LOG.warn("Skipping malformed message: {0}", e.getMessage());
+                        LOG.warn("Skipping malformed message: {0}", e.getMessage(), e);
                     }
                 }
             }

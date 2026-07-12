@@ -44,7 +44,7 @@ public final class BrowserUtils {
                 onFallback.accept(url, statusKey);
             }
         } catch (Exception ex) {
-            LOG.fine("Clipboard access failed: {0}", ex.getMessage());
+            LOG.warn("Clipboard access failed: {0}", ex.getMessage());
         }
     }
 }

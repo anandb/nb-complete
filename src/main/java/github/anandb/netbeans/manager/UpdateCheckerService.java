@@ -145,7 +145,7 @@ public class UpdateCheckerService implements UpdateCheckerControl {
                         LOG.info("Checking for updates...");
                         checkForUpdates();
                     } catch (Exception e) {
-                        LOG.log(Level.WARNING, "Error checking for updates: {0}", e.getMessage());
+                        LOG.log(Level.WARNING, "Error checking for updates: {0}", e.getMessage(), e);
                     }
                 } else {
                     LOG.fine("Update check is disabled in settings. Skipping update check.");

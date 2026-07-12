@@ -388,7 +388,7 @@ public class SessionManager implements SessionQuery, SessionControl {
                         try {
                             return objectMapper.convertValue(res.get("configOptions"), new TypeReference<List<SessionConfigOption>>() {});
                         } catch (Exception e) {
-                            LOG.warn("Failed to parse configOptions: {0}", e.getMessage());
+                            LOG.warn("Failed to parse configOptions: {0}", e.getMessage(), e);
                         }
                     }
                     return null;
@@ -407,7 +407,7 @@ public class SessionManager implements SessionQuery, SessionControl {
                                 notifySessionLoaded(sessionId, configOptions, false);
                             }
                         } catch (Exception e) {
-                            LOG.warn("Failed to parse configOptions from set_config_option: {0}", e.getMessage());
+                            LOG.warn("Failed to parse configOptions from set_config_option: {0}", e.getMessage(), e);
                         }
                     }
                     return null;
@@ -796,6 +796,7 @@ public class SessionManager implements SessionQuery, SessionControl {
         try {
             return OffsetDateTime.parse(ts).toInstant().toEpochMilli();
         } catch (Exception e) {
+            LOG.warn("Failed to parse timestamp: {0}", ts, e);
             return 0;
         }
     }
