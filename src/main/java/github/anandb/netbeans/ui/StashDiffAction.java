@@ -2,44 +2,63 @@ package github.anandb.netbeans.ui;
 
 import java.awt.BorderLayout;
 import java.awt.Component;
+import java.awt.Container;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.Insets;
+import java.awt.Point;
 import java.awt.event.ActionEvent;
+import java.awt.event.HierarchyEvent;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStreamReader;
+import java.io.StringReader;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.swing.AbstractAction;
+import javax.swing.BorderFactory;
 import javax.swing.ButtonGroup;
 import javax.swing.DefaultListCellRenderer;
 import javax.swing.DefaultListModel;
+import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JList;
+import javax.swing.JMenuItem;
 import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
 import javax.swing.JSplitPane;
 import javax.swing.JToggleButton;
 import javax.swing.JToolBar;
 import javax.swing.KeyStroke;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingUtilities;
+import javax.swing.UIManager;
 import javax.swing.event.ListSelectionEvent;
+import javax.swing.text.JTextComponent;
+import org.netbeans.api.diff.DiffController;
+import org.netbeans.api.diff.StreamSource;
 import org.openide.awt.ActionID;
 import org.openide.nodes.Node;
+import org.openide.util.ImageUtilities;
 import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
+import org.openide.util.Utilities;
 import org.openide.util.actions.Presenter;
 import org.openide.windows.TopComponent;
 import org.openide.windows.WindowManager;
-import org.netbeans.api.diff.DiffController;
-import org.netbeans.api.diff.StreamSource;
 
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.PluginSettings;
@@ -78,10 +97,10 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
             private static final long serialVersionUID = 1L;
 
             ToolbarButton() {
-                javax.swing.Icon enabledIcon = ThemeManager.getIcon("stash.png", PluginSettings.getToolbarIconSize());
+                Icon enabledIcon = ThemeManager.getIcon("stash.png", PluginSettings.getToolbarIconSize());
                 setIcon(enabledIcon);
                 if (enabledIcon != null) {
-                    setDisabledIcon(org.openide.util.ImageUtilities.createDisabledIcon(enabledIcon));
+                    setDisabledIcon(ImageUtilities.createDisabledIcon(enabledIcon));
                 }
                 setToolTipText(Bundle.CTL_StashDiffAction_Tip());
                 getAccessibleContext().setAccessibleName(Bundle.CTL_StashDiffAction_Tip());
@@ -91,9 +110,9 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
             }
 
             @Override
-            public java.awt.Point getToolTipLocation(java.awt.event.MouseEvent event) {
-                java.awt.Insets ins = getInsets();
-                return new java.awt.Point(ins.left, -getHeight() - 8);
+            public Point getToolTipLocation(MouseEvent event) {
+                Insets ins = getInsets();
+                return new Point(ins.left, -getHeight() - 8);
             }
 
             @Override
@@ -159,7 +178,7 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
     }
 
     private static Node getSelectedStashNode() {
-        Lookup lookup = org.openide.util.Utilities.actionsGlobalContext();
+        Lookup lookup = Utilities.actionsGlobalContext();
         Node node = lookup.lookup(Node.class);
         if (node == null) return null;
         String name = node.getDisplayName();
@@ -198,9 +217,9 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
             baseF = File.createTempFile("gmerge-base-", ".tmp");
             oursF = File.createTempFile("gmerge-ours-", ".tmp");
             theirsF = File.createTempFile("gmerge-theirs-", ".tmp");
-            java.nio.file.Files.writeString(baseF.toPath(), base == null ? "" : base);
-            java.nio.file.Files.writeString(oursF.toPath(), ours == null ? "" : ours);
-            java.nio.file.Files.writeString(theirsF.toPath(), theirs == null ? "" : theirs);
+            Files.writeString(baseF.toPath(), base == null ? "" : base);
+            Files.writeString(oursF.toPath(), ours == null ? "" : ours);
+            Files.writeString(theirsF.toPath(), theirs == null ? "" : theirs);
             return runGit(repoDir, "git", "merge-file", "-p",
                     oursF.getAbsolutePath(), baseF.getAbsolutePath(), theirsF.getAbsolutePath());
         } catch (Exception e) {
@@ -272,7 +291,7 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
                     CompletableFuture<String> workTreeContent = CompletableFuture.supplyAsync(() -> {
                         try {
                             File f = new File(repoDir, filePath);
-                            return f.exists() ? java.nio.file.Files.readString(f.toPath()) : "";
+                            return f.exists() ? Files.readString(f.toPath()) : "";
                         } catch (Exception e) { return ""; }
                     });
 
@@ -309,21 +328,21 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
         fileList.setCellRenderer(new FileDiffCellRenderer());
 
         // Right-click context menu to apply a single file from the stash
-        fileList.addMouseListener(new java.awt.event.MouseAdapter() {
+        fileList.addMouseListener(new MouseAdapter() {
             @Override
-            public void mousePressed(java.awt.event.MouseEvent e) {
+            public void mousePressed(MouseEvent e) {
                 if (e.isPopupTrigger()) showFilePopup(e);
             }
             @Override
-            public void mouseReleased(java.awt.event.MouseEvent e) {
+            public void mouseReleased(MouseEvent e) {
                 if (e.isPopupTrigger()) showFilePopup(e);
             }
-            private void showFilePopup(java.awt.event.MouseEvent e) {
+            private void showFilePopup(MouseEvent e) {
                 int idx = fileList.locationToIndex(e.getPoint());
                 if (idx < 0) return;
                 FileDiff fd = listModel.getElementAt(idx);
-                javax.swing.JPopupMenu popup = new javax.swing.JPopupMenu();
-                javax.swing.JMenuItem applyItem = new javax.swing.JMenuItem("Apply this change");
+                JPopupMenu popup = new JPopupMenu();
+                JMenuItem applyItem = new JMenuItem("Apply this change");
                 applyItem.addActionListener(ev -> {
                     try {
                         String stashRef = "stash@{" + data.stashIndex + "}";
@@ -383,9 +402,9 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
 
         JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, leftPanel, diffPanel);
         // Size left panel to fit widest content: toolbar total width + file names
-        java.awt.Font uiFont = fileList.getFont();
-        if (uiFont == null) uiFont = javax.swing.UIManager.getFont("Label.font");
-        java.awt.FontMetrics fm = fileList.getFontMetrics(uiFont);
+        Font uiFont = fileList.getFont();
+        if (uiFont == null) uiFont = UIManager.getFont("Label.font");
+        FontMetrics fm = fileList.getFontMetrics(uiFont);
         int widestFileName = data.headDiffs.stream()
                 .mapToInt(fd -> fm.stringWidth(fd.filePath))
                 .max().orElse(0);
@@ -447,13 +466,13 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
                         : "Base (" + statusName(fd.status) + ")";
                 StreamSource base = StreamSource.createSource(
                         name + " (base)", baseTitle, mime,
-                        new java.io.StringReader(fd.headContent));
+                        new StringReader(fd.headContent));
                 String modifiedTitle = fd.conflict
                         ? "<html>Stash (<font color='red'>Conflict</font>)</html>"
                         : "Stash";
                 StreamSource modified = StreamSource.createSource(
                         name + " (modified)", modifiedTitle, mime,
-                        new java.io.StringReader(fd.stashContent));
+                        new StringReader(fd.stashContent));
                 DiffController ctrl = DiffController.createEnhanced(base, modified);
                 currentController = ctrl;
                 JComponent diffView = ctrl.getJComponent();
@@ -461,12 +480,12 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
                 // Wrap diff view: nav buttons above the view, aligned right
                 JPanel wrapper = new JPanel(new BorderLayout());
                 int navIconSize = 16;
-                JPanel navBar = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 4, 0));
+                JPanel navBar = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
                 navBar.setOpaque(false);
                 JButton prevBtn = new JButton(ThemeManager.getIcon("up.svg", navIconSize));
                 JButton nextBtn = new JButton(ThemeManager.getIcon("down.svg", navIconSize));
-                prevBtn.setMargin(new java.awt.Insets(4, 8, 4, 8));
-                nextBtn.setMargin(new java.awt.Insets(4, 8, 4, 8));
+                prevBtn.setMargin(new Insets(4, 8, 4, 8));
+                nextBtn.setMargin(new Insets(4, 8, 4, 8));
                 prevBtn.setToolTipText(Bundle.CTL_StashDiffAction_PrevDiff());
                 nextBtn.setToolTipText(Bundle.CTL_StashDiffAction_NextDiff());
                 prevBtn.addActionListener(e -> navigateDiff(-1));
@@ -485,7 +504,7 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
                 });
                 // Also re-apply when component becomes visible (covers initial render)
                 diffView.addHierarchyListener(e -> {
-                    if ((e.getChangeFlags() & java.awt.event.HierarchyEvent.SHOWING_CHANGED) != 0
+                    if ((e.getChangeFlags() & HierarchyEvent.SHOWING_CHANGED) != 0
                             && diffView.isShowing()) {
                         SwingUtilities.invokeLater(() -> applyDiffFont(diffView));
                     }
@@ -505,18 +524,18 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
     }
 
     private void applyDiffFont(JComponent diffView) {
-        java.awt.Font diffFont = IconResourceManager.getMonospaceFont();
+        Font diffFont = IconResourceManager.getMonospaceFont();
         setFontRecursive(diffView, diffFont);
         diffView.revalidate();
         diffView.repaint();
     }
 
-    private static void setFontRecursive(java.awt.Component c, java.awt.Font font) {
-        if (c instanceof javax.swing.text.JTextComponent) {
+    private static void setFontRecursive(Component c, Font font) {
+        if (c instanceof JTextComponent) {
             c.setFont(font);
         }
-        if (c instanceof java.awt.Container) {
-            for (java.awt.Component child : ((java.awt.Container) c).getComponents()) {
+        if (c instanceof Container) {
+            for (Component child : ((Container) c).getComponents()) {
                 setFontRecursive(child, font);
             }
         }
@@ -587,20 +606,20 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
     // --- Inner types ---
 
     private static class FileDiffCellRenderer extends DefaultListCellRenderer {
-        private static final javax.swing.Icon FILE_ICON = ThemeManager.getIcon("file.svg", 16);
+        private static final Icon FILE_ICON = ThemeManager.getIcon("file.svg", 16);
 
         @Override
         public Component getListCellRendererComponent(JList<?> list, Object value,
                 int index, boolean isSelected, boolean cellHasFocus) {
             super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
             if (value instanceof FileDiff fd) {
-                java.awt.Font mono = getFont().deriveFont(java.awt.Font.PLAIN);
+                Font mono = getFont().deriveFont(Font.PLAIN);
                 setFont(mono);
                 setIcon(FILE_ICON);
                 setIconTextGap(8);
                 setText(new File(fd.filePath).getName());
                 setToolTipText(fd.filePath);
-                setBorder(javax.swing.BorderFactory.createEmptyBorder(3, 4, 3, 4));
+                setBorder(BorderFactory.createEmptyBorder(3, 4, 3, 4));
             }
             return this;
         }
