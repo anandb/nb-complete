@@ -1,5 +1,30 @@
 # Release Notes
 
+## v1.9.1 (Changes since v1.9.0)
+
+### Fixes
+- **NPE on null message text**: `ChatThreadPanel` now guards `pm.text()` against null on both streaming
+  and non-streaming paths — prevents `NullPointerException` in `String.split()` and `StringBuilder`.
+- **5 potential NPE paths guarded**: Added null checks in `StrategyRegistry` (`update.update()` in
+  `config_options_update`, `update.params()` in `tool_call_update`), `ToolDataExtractor`
+  (`update.update().title()`), `ChatThreadPanel` (non-streaming `addSingleBubble`), and
+  `CollapsibleActivityPane` (`StringBuilder.append(null)`).
+- **isPlanToolCall JsonParseException**: Tightened guard to skip non-JSON text (e.g. git log
+  lines like `[main abc123]`) before reaching Jackson's `readTree()`. Whitespace after `[` is
+  allowed to support pretty-printed plan output. 11 unit tests added.
+- **WelcomeScreen→chat transition on show-archived toggle**: Restore chat panel (auto-load the
+  selected session) instead of staying stuck on the WelcomeScreen when no visible sessions had
+  been showing and the archived toggle makes them visible.
+
+### Improvements
+- **Exception traces preserved in logs**: 9 catch blocks across `CollapsibleCodePane`,
+  `StashDiffAction`, `BrowserUtils`, `SessionManager`, `StrategyRegistry`,
+  `AcpProtocolClient`, and `UpdateCheckerService` now pass the exception to the logger
+  (preserving stack trace) or log at WARN level instead of FINE/empty catch.
+
+### Housekeeping
+- Version bumped to 1.9.1
+
 ## v1.9.0 (Changes since v1.8.2)
 
 ### Features
