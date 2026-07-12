@@ -5,6 +5,8 @@ import java.awt.Component;
 import java.awt.event.ActionEvent;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStreamReader;
@@ -30,22 +32,23 @@ import javax.swing.ListSelectionModel;
 import javax.swing.SwingUtilities;
 import javax.swing.event.ListSelectionEvent;
 import org.openide.awt.ActionID;
-import org.openide.awt.ActionRegistration;
 import org.openide.nodes.Node;
 import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
+import org.openide.util.actions.Presenter;
 import org.openide.windows.TopComponent;
+import org.openide.windows.WindowManager;
 import org.netbeans.api.diff.DiffController;
 import org.netbeans.api.diff.StreamSource;
 
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.PluginSettings;
 
 /**
  * Shows a side-by-side diff of a selected stash.
  * Toolbar toggles between "Diff to HEAD" and "Diff to Working Tree".
  */
 @ActionID(category = "Tools", id = "github.anandb.netbeans.ui.StashDiffAction")
-@ActionRegistration(displayName = "#CTL_StashDiffAction", lazy = true)
 @NbBundle.Messages({
     "CTL_StashDiffAction=Diff Stash",
     "# {0} - stash name",
@@ -57,7 +60,7 @@ import github.anandb.netbeans.support.Logger;
     "CTL_StashDiffAction_PrevDiff=Previous difference",
     "CTL_StashDiffAction_NextDiff=Next difference"
 })
-public final class StashDiffAction implements java.awt.event.ActionListener {
+public final class StashDiffAction extends AbstractAction implements Presenter.Toolbar {
 
     private static final Pattern STASH_NAME = Pattern.compile("stash@\\{(\\d+)\\}");
     private static final Pattern STASH_REF_PATTERN = Pattern.compile("stash@\\{\\d+\\}.*");
@@ -66,6 +69,62 @@ public final class StashDiffAction implements java.awt.event.ActionListener {
     private DiffController currentController;
 
     private static final Logger LOG = Logger.from(StashDiffAction.class);
+
+    // --- Toolbar presenter ---
+
+    @Override
+    public Component getToolbarPresenter() {
+        class ToolbarButton extends JButton implements PropertyChangeListener {
+            private static final long serialVersionUID = 1L;
+
+            ToolbarButton() {
+                setIcon(ThemeManager.getIcon("stash.png", PluginSettings.getToolbarIconSize()));
+                setToolTipText(Bundle.CTL_StashDiffAction_Tip());
+                getAccessibleContext().setAccessibleName(Bundle.CTL_StashDiffAction_Tip());
+                getAccessibleContext().setAccessibleDescription(Bundle.CTL_StashDiffAction_Tip());
+                UIUtils.styleToolbarButton(this);
+                addActionListener(StashDiffAction.this);
+            }
+
+            @Override
+            public java.awt.Point getToolTipLocation(java.awt.event.MouseEvent event) {
+                java.awt.Insets ins = getInsets();
+                return new java.awt.Point(ins.left, -getHeight() - 8);
+            }
+
+            @Override
+            public void addNotify() {
+                super.addNotify();
+                updateState();
+                TopComponent.getRegistry().addPropertyChangeListener(this);
+            }
+
+            @Override
+            public void removeNotify() {
+                TopComponent.getRegistry().removePropertyChangeListener(this);
+                super.removeNotify();
+            }
+
+            @Override
+            public void propertyChange(PropertyChangeEvent evt) {
+                if (TopComponent.Registry.PROP_OPENED.equals(evt.getPropertyName())) {
+                    updateState();
+                }
+            }
+
+            private void updateState() {
+                boolean enabled = isGitRepositoriesOpen();
+                setEnabled(enabled);
+                StashDiffAction.this.setEnabled(enabled);
+            }
+        }
+        return new ToolbarButton();
+    }
+
+    private static boolean isGitRepositoriesOpen() {
+        TopComponent tc = WindowManager.getDefault().findTopComponent("GitRepositories");
+        return tc != null && tc.isOpened();
+    }
 
     @Override
     public void actionPerformed(ActionEvent e) {
