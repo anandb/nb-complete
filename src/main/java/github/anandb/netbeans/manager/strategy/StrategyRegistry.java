@@ -85,8 +85,11 @@ public class StrategyRegistry implements UpdateDispatcher {
         LOG.fine("Processing update type: {0}", type);
 
         switch (type) {
-            case "config_options_update" ->
-                handler.updateConfig(update.update().configOptions());
+            case "config_options_update" -> {
+                if (update.update() != null) {
+                    handler.updateConfig(update.update().configOptions());
+                }
+            }
 
             case "usage_update" -> {
                 if (update.update() != null) {
@@ -140,7 +143,7 @@ public class StrategyRegistry implements UpdateDispatcher {
                     LOG.fine("Ignoring tool_call: plan tool call, update={0}", update);
                     return;
                 }
-                final String sessionId = update.params().sessionId();
+                final String sessionId = update.params() != null ? update.params().sessionId() : null;
                 final String messageId = update.messageId();
                 if (isBlank(messageId) || isBlank(sessionId)) {
                     LOG.fine("Ignoring tool_call: blank messageId or sessionId, update={0}", update);

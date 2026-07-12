@@ -128,7 +128,7 @@ public final class ToolDataExtractor {
             tag = firstNonBlank(kind, "Tool");
         }
 
-        String title = update != null ? update.update().title() : null;
+        String title = update != null && update.update() != null ? update.update().title() : null;
         String identifier = firstNonBlank(title, "");
         if (isBlank(identifier)) {
             for (var entry : TOOL_CONTENT_PATTERNS) {

@@ -123,7 +123,7 @@ public class CollapsibleActivityPane extends BaseCollapsiblePane {
                     : null;
             JPanel segPane = createSegmentPane(block.text(), block.isThought(), block.title(), theme, bodyComp, this::toggle);
             multiPanel.add(segPane);
-            combinedPlainTextBuilder.append(block.text());
+            combinedPlainTextBuilder.append(block.text() != null ? block.text() : "");
         }
         contentPanel.add(multiPanel, BorderLayout.CENTER);
 

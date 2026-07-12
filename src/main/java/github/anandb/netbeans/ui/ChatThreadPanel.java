@@ -281,6 +281,7 @@ public class ChatThreadPanel extends JPanel {
 
     private void processMessageOnEDT(ProcessedMessage pm) {
         String text = pm.text();
+        if (text == null) text = "";
         final String role = pm.messageType().roleName();
 
         if (pm.streaming()) {
