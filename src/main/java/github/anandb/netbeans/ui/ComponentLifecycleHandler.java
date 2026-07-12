@@ -120,6 +120,22 @@ public class ComponentLifecycleHandler {
             closedProjectDirs = Set.of();
             try {
                 processService.get().ensureStarted();
+                processService.get().whenReady().exceptionally(ex -> {
+                    Throwable cause = ex;
+                    while (cause.getCause() != null) {
+                        cause = cause.getCause();
+                    }
+                    if (cause instanceof IllegalStateException && cause.getMessage() != null && cause.getMessage().contains("not found")) {
+                        SwingUtilities.invokeLater(() -> {
+                            statusController.setStatus("STATUS_BinaryNotFound");
+                            chatPanel.stopStreaming();
+                            chatPanel.addMessage(ProcessedMessage.createError(
+                                MessageType.error_response, NbBundle.getMessage(AssistantTopComponent.class, "STATUS_BinaryNotFound"), null, null
+                            ));
+                        });
+                    }
+                    return null;
+                });
             } catch (Exception ex) {
                 LOG.severe("Failed to ensure server is started", ex);
                 String msg = ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName();
@@ -357,12 +373,24 @@ public class ComponentLifecycleHandler {
             SwingUtilities.invokeLater(() -> {
                 safetyTimeout.stop();
                 restartServerBtn.setEnabled(true);
-                String msg = ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName();
-                statusController.setStatus("STATUS_RestartFailed", msg);
-                chatPanel.stopStreaming();
-                chatPanel.addMessage(ProcessedMessage.createError(
-                    MessageType.error_response, NbBundle.getMessage(AssistantTopComponent.class, "STATUS_RestartFailed", msg), null, null
-                ));
+                Throwable cause = ex;
+                while (cause.getCause() != null) {
+                    cause = cause.getCause();
+                }
+                if (cause instanceof IllegalStateException && cause.getMessage() != null && cause.getMessage().contains("not found")) {
+                    statusController.setStatus("STATUS_BinaryNotFound");
+                    chatPanel.stopStreaming();
+                    chatPanel.addMessage(ProcessedMessage.createError(
+                        MessageType.error_response, NbBundle.getMessage(AssistantTopComponent.class, "STATUS_BinaryNotFound"), null, null
+                    ));
+                } else {
+                    String msg = ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName();
+                    statusController.setStatus("STATUS_RestartFailed", msg);
+                    chatPanel.stopStreaming();
+                    chatPanel.addMessage(ProcessedMessage.createError(
+                        MessageType.error_response, NbBundle.getMessage(AssistantTopComponent.class, "STATUS_RestartFailed", msg), null, null
+                    ));
+                }
                 statusController.setInputEnabled(true);
             });
             return null;
