@@ -67,6 +67,11 @@ public class SessionLifecycleHandler implements SessionListener {
      *  Keeps the progress bar visible until the preamble turn ends. */
     private volatile boolean pendingPreambleResponse = false;
 
+    /** True while the WelcomeScreen (session-list view) is displayed instead of chat messages.
+     *  Set when onSessionListUpdated shows the WelcomeScreen; cleared when a session is loaded.
+     *  Used to restore the chat panel when archived sessions become visible via the toggle. */
+    private boolean showingWelcomeScreen = false;
+
     public SessionLifecycleHandler(
             ChatThreadPanel chatPanel,
             JComboBox<SessionItem> sessionDropdown,
@@ -276,6 +281,13 @@ public class SessionLifecycleHandler implements SessionListener {
                 if (hasSessions) {
                     if (selectIdx != -1) {
                         sessionDropdown.setSelectedIndex(selectIdx);
+                        // When transitioning from WelcomeScreen (no visible sessions) back to
+                        // having sessions (e.g. show-archived toggled), load the auto-selected
+                        // session to replace the WelcomeScreen with actual chat messages.
+                        if (showingWelcomeScreen) {
+                            showingWelcomeScreen = false;
+                            sessionService.get().loadSession(currentId);
+                        }
                     } else {
                         // Current session is gone (e.g. its project closed).
                         // Prefer a session from the SAME project as the last active
@@ -299,6 +311,7 @@ public class SessionLifecycleHandler implements SessionListener {
                         }
                     }
                 } else {
+                    showingWelcomeScreen = true;
                     // Filter hidden sessions for WelcomeScreen too
                     List<Session> visibleSessions = showHidden ? sessions
                         : sessions.stream()
@@ -336,6 +349,7 @@ public class SessionLifecycleHandler implements SessionListener {
 
     @Override
     public void onSessionStarted(String sessionId) {
+        showingWelcomeScreen = false;
         SwingUtilities.invokeLater(() -> {
             chatPanel.setSessionId(sessionId);
             // Prime the pinned-message cache before any bubbles are created.
