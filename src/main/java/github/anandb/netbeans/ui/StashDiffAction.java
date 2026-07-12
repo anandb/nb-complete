@@ -78,7 +78,11 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
             private static final long serialVersionUID = 1L;
 
             ToolbarButton() {
-                setIcon(ThemeManager.getIcon("stash.png", PluginSettings.getToolbarIconSize()));
+                javax.swing.Icon enabledIcon = ThemeManager.getIcon("stash.png", PluginSettings.getToolbarIconSize());
+                setIcon(enabledIcon);
+                if (enabledIcon != null) {
+                    setDisabledIcon(org.openide.util.ImageUtilities.createDisabledIcon(enabledIcon));
+                }
                 setToolTipText(Bundle.CTL_StashDiffAction_Tip());
                 getAccessibleContext().setAccessibleName(Bundle.CTL_StashDiffAction_Tip());
                 getAccessibleContext().setAccessibleDescription(Bundle.CTL_StashDiffAction_Tip());
