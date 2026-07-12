@@ -1,5 +1,42 @@
 # Release Notes
 
+## v1.9.0 (Changes since v1.8.2)
+
+### Features
+- **Stash Diff button disabled when Git Repositories closed**: Toolbar button and
+  keyboard shortcut (`Ctrl+Shift+L`) disable when the Git Repository Browser is
+  not open. Uses `Presenter.Toolbar` with lifecycle-aware `addNotify`/`removeNotify`
+  listener registration. Disabled icon greys out via `ImageUtilities.createDisabledIcon`.
+
+### Fixes
+- **MissingResourceException on startup**: Added `Bundle.properties` for the
+  `BinaryResolver` in the support layer to prevent locale resource lookup failures.
+- **Cleaner binary-not-found handling**: Server start failure due to missing
+  `opencode` binary is logged as a warning without stack trace (no NetBeans
+  error popups). Status message shows full actionable text.
+
+### Improvements
+- **Keyboard shortcuts dialog redesigned**: Major visual overhaul — scroll pane
+  for long content, badge-style key caps (monospace, subtle background),
+  alternating row colors, uppercase header styling, footnote for keymap hint,
+  proper minimum size (520×320).
+- **Help button always enabled**: Quickstart guide button works regardless of
+  session state.
+- **Stash Diff disabled icon**: Button greys out when disabled.
+- **Restart icon stroke**: Lightning bolt icon has white/black stroke for
+  better visibility on all backgrounds.
+- **Dark mode file icon**: Added `file_dark.svg` for white file listing icon
+  in dark themes.
+- **Unused icon removed**: Deleted `archive_dark.svg` (unused — archive icon is
+  SVG-based with built-in dark variant pattern).
+
+### Housekeeping
+- Version bumped to 1.9.0
+- Removed `<system>` tag wrapper from preamble.md, OpenCode complained of prompt injection attack.
+- Import cleanup in StashDiffAction (16+ missing imports added, 30+ FQN references replaced)
+- Added DESIGN.md with architectural documentation
+- QUICKSTART.md updated
+
 ## v1.8.2 (Changes since v1.8.1)
 
 ### Features

@@ -1,6 +1,6 @@
 # Coding Assistant
 
-[![Version](https://img.shields.io/badge/version-1.8.2-blue.svg)](pom.xml)
+[![Version](https://img.shields.io/badge/version-1.9.0-blue.svg)](pom.xml)
 [![Build Status](https://img.shields.io/badge/build-success-brightgreen.svg)](https://github.com/anandb/nb-complete)
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.anandb/beanbot)](https://central.sonatype.com/artifact/io.github.anandb/beanbot/versions)
 [![NetBeans](https://img.shields.io/badge/NetBeans-RELEASE220-blue.svg)](https://netbeans.apache.org/download/index.html)
@@ -95,15 +95,14 @@ For a guided walkthrough mapped to the plugin's execution flow, read files in th
 ### Phase 2: Server Process
 4. [`manager/ProcessManager.java`](src/main/java/github/anandb/netbeans/manager/ProcessManager.java) — Spawns/owns the `opencode acp` subprocess; central request dispatch
 5. [`support/BinaryResolver.java`](src/main/java/github/anandb/netbeans/support/BinaryResolver.java) — Locates the binary on PATH
-6. [`manager/CommandBuilder.java`](src/main/java/github/anandb/netbeans/manager/CommandBuilder.java) — Builds CLI args
-7. [`manager/AcpProtocolClient.java`](src/main/java/github/anandb/netbeans/manager/AcpProtocolClient.java) — JSON-RPC over stdin/stdout, SSE read loop, pending request tracking
+6. [`manager/AcpProtocolClient.java`](src/main/java/github/anandb/netbeans/manager/AcpProtocolClient.java) — JSON-RPC over stdin/stdout, SSE read loop, pending request tracking
 
 ### Phase 3: Session Management
-8. [`manager/SessionManager.java`](src/main/java/github/anandb/netbeans/manager/SessionManager.java) — Session CRUD, state machine, SSE routing
-9. [`manager/SessionStateMachine.java`](src/main/java/github/anandb/netbeans/manager/SessionStateMachine.java) — Finite-state machine for session lifecycle
-10. [`model/Session.java`](src/main/java/github/anandb/netbeans/model/Session.java) — Session data record
-11. [`model/SessionUpdate.java`](src/main/java/github/anandb/netbeans/model/SessionUpdate.java) — SSE notification payload model
-12. [`model/Message.java`](src/main/java/github/anandb/netbeans/model/Message.java) — Message model (prompts, tool calls, results)
+7. [`manager/SessionManager.java`](src/main/java/github/anandb/netbeans/manager/SessionManager.java) — Session CRUD, state machine, SSE routing
+8. [`manager/SessionStateMachine.java`](src/main/java/github/anandb/netbeans/manager/SessionStateMachine.java) — Finite-state machine for session lifecycle
+9. [`model/Session.java`](src/main/java/github/anandb/netbeans/model/Session.java) — Session data record
+10. [`model/SessionUpdate.java`](src/main/java/github/anandb/netbeans/model/SessionUpdate.java) — SSE notification payload model
+11. [`model/Message.java`](src/main/java/github/anandb/netbeans/model/Message.java) — Message model (prompts, tool calls, results)
 
 ### Phase 4: Strategy Dispatch (SSE handler chain)
 13. [`contract/UIHandler.java`](src/main/java/github/anandb/netbeans/contract/UIHandler.java) — Callback interface for rendering
@@ -131,7 +130,7 @@ The plugin reads the following system properties and environment variables:
 | Property | System | Description |
 |---|---|---|
 | `user.dir` | System | Working directory for session/project (`ProcessManager`, `SessionManager`, `AssistantTopComponent`) |
-| `user.home` | System | Default path to opencode binary (`ACPCommandBuilderTest`) |
+| `user.home` | System | Default path to opencode binary (`BinaryResolver`) |
 | `java.io.tmpdir` | System | Temp directory for pasted images (`ImagePasteTransferHandler`) |
 | `os.name` | System | Detect Windows for binary resolution (`BinaryResolver`) |
 | `netbeans.codingassistant.roundedPanels` | System (`true`) | Toggle rounded panel corners (`RoundedPanel`) |

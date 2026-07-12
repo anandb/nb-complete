@@ -1,6 +1,6 @@
 # Architectural Design Review: NetBeans Coding Assistant Plugin
 
-This document provides a detailed architectural review of the **Coding Assistant** NetBeans IDE plugin (v1.8.2). The plugin bridges the NetBeans Platform with an AI subprocess using the **Agent Client Protocol (ACP) v1** via JSON-RPC over stdin/stdout and Server-Sent Events (SSE) streaming.
+This document provides a detailed architectural review of the **Coding Assistant** NetBeans IDE plugin (v1.9.0). The plugin bridges the NetBeans Platform with an AI subprocess using the **Agent Client Protocol (ACP) v1** via JSON-RPC over stdin/stdout and Server-Sent Events (SSE) streaming.
 
 ---
 

@@ -248,7 +248,7 @@ public class AutocompleteManager {
         inputArea.requestFocusInWindow();
     }
 
-    private void selectCommand() {
+    void selectCommand() {
         SessionUpdate.AvailableCommand selected = commandList.getSelectedValue();
         if (selected != null) {
             String text = inputArea.getText();

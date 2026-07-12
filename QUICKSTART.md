@@ -70,7 +70,7 @@ prepended to every new session alongside your OpenCode agent prompts.
 | Shortcut | Action |
 |----------|--------|
 | `Ctrl + L` | Open or switch focus to the assistant panel |
-| `Tab` | Cycle between agents defined in your OpenCode configuration |
+| `Tab` | Copy selected slash command to input, or cycle agents if popup closed |
 | `Alt + Up / Alt + Down` | Cycle through previously sent messages |
 | `Ctrl + R` | Search message history |
 | `Page Up / Page Down` | Scroll the chat thread |

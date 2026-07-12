@@ -43,12 +43,17 @@ public class InputHandler {
             @Override
             public void keyPressed(KeyEvent e) {
                 if (e.getKeyCode() == KeyEvent.VK_TAB) {
-                    e.consume();
-                    SlashCommandInterceptor interceptor = processService.get().getSlashCommandInterceptor();
-                    SlashCommandCallback cb = interceptor != null ? interceptor.getCallback() : null;
-                    if (cb != null) {
-                        cb.expandOptionsPanel();
-                        cb.popupAgentCombo();
+                    if (autocompleteManager.isPopupVisible()) {
+                        e.consume();
+                        autocompleteManager.selectCommand();
+                    } else {
+                        e.consume();
+                        SlashCommandInterceptor interceptor = processService.get().getSlashCommandInterceptor();
+                        SlashCommandCallback cb = interceptor != null ? interceptor.getCallback() : null;
+                        if (cb != null) {
+                            cb.expandOptionsPanel();
+                            cb.popupAgentCombo();
+                        }
                     }
                 } else if (e.getKeyCode() == KeyEvent.VK_ENTER) {
                     if (autocompleteManager.handleKeyPressed(e)) {

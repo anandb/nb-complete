@@ -2,7 +2,7 @@
 
 ## Project Overview
 - **Project**: Coding Assistant (NetBeans IDE plugin, Java 17, Maven)
-- **Current Stable Version**: 1.8.2
+- **Current Stable Version**: 1.9.0
 - **Key Tech**: NetBeans API (RELEASE220), Flexmark, Jackson, RSyntaxTextArea, JUnit 5.
 
 ## Build Commands
