@@ -43,6 +43,9 @@ public class UpdateCheckerService implements UpdateCheckerControl {
             .connectTimeout(Duration.ofSeconds(15))
             .build();
 
+    /** Delay before the first update check after IDE startup. */
+    private static final long FIRST_CHECK_DELAY_MS = 60_000L;
+
     /** Daemon request processor for the update-check loop. */
     private static final RequestProcessor RP =
             new RequestProcessor("ACP-UpdateChecker", 1, true);
@@ -81,9 +84,14 @@ public class UpdateCheckerService implements UpdateCheckerControl {
      */
     @Override
     public void onInstallOrUpgrade() {
-        long timeOfExecution = System.currentTimeMillis() + getRandomIntervalMillis();
-        prefs().putLong(PreferenceKeys.LAST_CHECKED_FOR_UPDATES, timeOfExecution);
-        LOG.info("Plugin installed/upgraded. Scheduled next update check for: {0}", new java.util.Date(timeOfExecution));
+        long stored = prefs().getLong(PreferenceKeys.NEXT_UPDATE_CHECK_TIME, 0L);
+        if (stored > System.currentTimeMillis()) {
+            LOG.info("Plugin installed/upgraded. Next update check already scheduled for: {0}", new java.util.Date(stored));
+            return;
+        }
+        long timeOfExecution = System.currentTimeMillis() + FIRST_CHECK_DELAY_MS;
+        prefs().putLong(PreferenceKeys.NEXT_UPDATE_CHECK_TIME, timeOfExecution);
+        LOG.info("Plugin installed/upgraded. Scheduled first update check for: {0}", new java.util.Date(timeOfExecution));
     }
 
     /**
@@ -125,18 +133,18 @@ public class UpdateCheckerService implements UpdateCheckerControl {
         try {
             Preferences prefs = prefs();
             long now = System.currentTimeMillis();
-            long timeOfExecution = prefs.getLong(PreferenceKeys.LAST_CHECKED_FOR_UPDATES, 0L);
+            long timeOfExecution = prefs.getLong(PreferenceKeys.NEXT_UPDATE_CHECK_TIME, 0L);
 
-            // If not initialized, set initial execution time.
+            // If not initialized, set first check 1 minute from now.
             if (timeOfExecution == 0L) {
-                timeOfExecution = now + getRandomIntervalMillis();
-                prefs.putLong(PreferenceKeys.LAST_CHECKED_FOR_UPDATES, timeOfExecution);
+                timeOfExecution = now + FIRST_CHECK_DELAY_MS;
+                prefs.putLong(PreferenceKeys.NEXT_UPDATE_CHECK_TIME, timeOfExecution);
             }
 
             if (now >= timeOfExecution) {
                 // Compute next time of execution BEFORE the update check
                 long nextTime = System.currentTimeMillis() + getRandomIntervalMillis();
-                prefs.putLong(PreferenceKeys.LAST_CHECKED_FOR_UPDATES, nextTime);
+                prefs.putLong(PreferenceKeys.NEXT_UPDATE_CHECK_TIME, nextTime);
 
                 boolean checkEnabled = prefs.getBoolean(PreferenceKeys.CHECK_FOR_UPDATES, true);
 

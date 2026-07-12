@@ -44,7 +44,7 @@ public final class PreferenceKeys {
     public static final String TOOLBAR_RESTART = "toolbar.restart";
 
     // Update checker preference keys
-    public static final String LAST_CHECKED_FOR_UPDATES = "update.lastCheckedForUpdates";
+    public static final String NEXT_UPDATE_CHECK_TIME = "update.nextCheckTime";
     public static final String CHECK_FOR_UPDATES = "update.checkForUpdates";
 
 }
