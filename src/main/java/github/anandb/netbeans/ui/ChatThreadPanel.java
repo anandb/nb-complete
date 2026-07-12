@@ -294,6 +294,7 @@ public class ChatThreadPanel extends JPanel {
 
     /** Process message sections on EDT (shared by addMessage and setMessages). */
     private void processMessageSections(ProcessedMessage pm, String text, String role) {
+        if (text == null) return;
         String[] parts = SECTION_SPLIT.split(text);
         MessageBubble lastBubble = findLastNonIgnorableBubble();
 
@@ -829,10 +830,12 @@ public class ChatThreadPanel extends JPanel {
                 }
                 for (ProcessedMessage pm : toRender) {
                     if (pm.isIgnorable()) continue;
+                    String text = pm.text();
+                    if (text == null) text = "";
                     if (pm.streaming()) {
-                        processMessageSections(pm, pm.text(), pm.messageType().roleName());
+                        processMessageSections(pm, text, pm.messageType().roleName());
                     } else {
-                        addSingleBubble(pm.messageType(), pm.text(), pm.messageId(), pm.toolTitle(), false);
+                        addSingleBubble(pm.messageType(), text, pm.messageId(), pm.toolTitle(), false);
                     }
                 }
             } finally {
@@ -913,11 +916,13 @@ public class ChatThreadPanel extends JPanel {
                         if (pm.isIgnorable()) {
                             continue;
                         }
+                        String text = pm.text();
+                        if (text == null) text = "";
                         // Bypass addMessage()'s invokeLater — we are already on EDT.
                         if (pm.streaming()) {
-                            processMessageSections(pm, pm.text(), pm.messageType().roleName());
+                            processMessageSections(pm, text, pm.messageType().roleName());
                         } else {
-                            addSingleBubble(pm.messageType(), pm.text(), pm.messageId(), pm.toolTitle(), false);
+                            addSingleBubble(pm.messageType(), text, pm.messageId(), pm.toolTitle(), false);
                         }
                     }
                 } finally {
