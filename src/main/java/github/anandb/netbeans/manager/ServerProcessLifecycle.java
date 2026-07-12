@@ -186,7 +186,11 @@ class ServerProcessLifecycle {
 
             LOG.fine("ACP server process started successfully");
         } catch (Exception e) {
-            LOG.severe("CRITICAL: Failed to start ACP server", e);
+            if (e instanceof IllegalStateException && e.getMessage() != null && e.getMessage().contains("not found")) {
+                LOG.warn("Failed to start ACP server: {0}", e.getMessage());
+            } else {
+                LOG.severe("CRITICAL: Failed to start ACP server", e);
+            }
             readyFuture.completeExceptionally(e);
             // Reset so ensureStarted() can retry.
             serverStarted = false;
