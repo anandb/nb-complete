@@ -2,6 +2,7 @@ package github.anandb.netbeans.ui;
 
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
+import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -12,6 +13,7 @@ import javax.swing.text.StyledDocument;
 import org.netbeans.api.editor.EditorRegistry;
 import org.netbeans.modules.editor.NbEditorUtilities;
 import org.openide.filesystems.FileObject;
+import org.openide.filesystems.FileUtil;
 import org.openide.text.NbDocument;
 
 import github.anandb.netbeans.support.Logger;
@@ -48,7 +50,9 @@ public final class EditorContextCapture {
         }
 
         Map<String, Object> context = new HashMap<>();
-        context.put("filePath", fo.getPath());
+        File file = FileUtil.toFile(fo);
+        String path = (file != null) ? file.getAbsolutePath() : fo.getPath();
+        context.put("filePath", path);
 
         int selStart = editor.getSelectionStart();
         int selEnd = editor.getSelectionEnd();

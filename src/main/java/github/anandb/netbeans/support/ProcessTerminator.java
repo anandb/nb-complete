@@ -32,15 +32,28 @@ public final class ProcessTerminator {
 
         List<ProcessHandle> descendants = proc.descendants().toList();
 
+        boolean isWindows = System.getProperty("os.name", "").toLowerCase().contains("win");
+
         // SIGTERM
-        for (ProcessHandle h : descendants) {
-            if (h.isAlive()) {
-                LOG.fine("SIGTERM descendant PID {0}", h.pid());
-                h.destroy();
+        if (isWindows) {
+            for (ProcessHandle h : descendants) {
+                if (h.isAlive()) {
+                    runTaskkill(h.pid(), false);
+                }
             }
-        }
-        if (proc.isAlive()) {
-            proc.destroy();
+            if (proc.isAlive()) {
+                runTaskkill(pid, false);
+            }
+        } else {
+            for (ProcessHandle h : descendants) {
+                if (h.isAlive()) {
+                    LOG.fine("SIGTERM descendant PID {0}", h.pid());
+                    h.destroy();
+                }
+            }
+            if (proc.isAlive()) {
+                proc.destroy();
+            }
         }
 
         try {
@@ -64,14 +77,39 @@ public final class ProcessTerminator {
 
         // SIGKILL
         LOG.log(Level.WARNING, "Process tree PID {0} still alive after SIGTERM, forcing SIGKILL...", pid);
-        for (ProcessHandle h : descendants) {
-            if (h.isAlive()) {
-                LOG.fine("SIGKILL descendant PID {0}", h.pid());
-                h.destroyForcibly();
+        if (isWindows) {
+            runTaskkill(pid, true);
+            for (ProcessHandle h : descendants) {
+                if (h.isAlive()) {
+                    h.destroyForcibly();
+                }
+            }
+            if (proc.isAlive()) {
+                proc.destroyForcibly();
+            }
+        } else {
+            for (ProcessHandle h : descendants) {
+                if (h.isAlive()) {
+                    LOG.fine("SIGKILL descendant PID {0}", h.pid());
+                    h.destroyForcibly();
+                }
+            }
+            if (proc.isAlive()) {
+                proc.destroyForcibly();
             }
         }
-        if (proc.isAlive()) {
-            proc.destroyForcibly();
+    }
+
+    private static void runTaskkill(long pid, boolean force) {
+        try {
+            ProcessBuilder pb = force
+                ? new ProcessBuilder("taskkill", "/F", "/PID", String.valueOf(pid))
+                : new ProcessBuilder("taskkill", "/PID", String.valueOf(pid));
+            pb.redirectError(ProcessBuilder.Redirect.DISCARD);
+            pb.redirectOutput(ProcessBuilder.Redirect.DISCARD);
+            pb.start().waitFor(1, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            LOG.log(Level.FINE, "taskkill failed for PID " + pid, e);
         }
     }
 }

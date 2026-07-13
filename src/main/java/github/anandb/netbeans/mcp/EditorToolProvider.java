@@ -61,12 +61,15 @@ public class EditorToolProvider {
                         for (var editor : EditorRegistry.componentList()) {
                             FileObject fo = NbEditorUtilities.getFileObject(editor.getDocument());
                             if (fo == null) continue;
-                            String filePath = fo.getPath();
+                            File file = FileUtil.toFile(fo);
+                            String filePath = (file != null) ? file.getAbsolutePath() : fo.getPath();
                             // Only include files inside open projects — phantom paths
                             // like /tmp/xxx (when no project is open) confuse the AI.
                             boolean inProject = false;
                             for (Project p : projects) {
-                                String projectDir = p.getProjectDirectory().getPath();
+                                FileObject projectDirFO = p.getProjectDirectory();
+                                File projectDirFile = FileUtil.toFile(projectDirFO);
+                                String projectDir = (projectDirFile != null) ? projectDirFile.getAbsolutePath() : projectDirFO.getPath();
                                 if (filePath.startsWith(projectDir)) {
                                     inProject = true;
                                     break;
