@@ -94,7 +94,7 @@ public class TokenUsageDialog extends JDialog {
         formPanel.setOpaque(false);
 
         // Days
-        daysSpinner = new JSpinner(new SpinnerNumberModel(1, 1, 7, 1));
+        daysSpinner = new JSpinner(new SpinnerNumberModel(1, 1, 30, 1));
         daysSpinner.setPreferredSize(new Dimension(60, 28));
         daysSpinner.setMaximumSize(new Dimension(60, 28));
 

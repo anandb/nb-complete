@@ -45,8 +45,18 @@ public final class ProcessTerminator {
 
         try {
             if (proc.waitFor(3, TimeUnit.SECONDS)) {
-                LOG.fine("Process tree PID {0} exited gracefully.", pid);
-                return;
+                // If parent exited, check if any descendants are still alive
+                boolean childrenAlive = false;
+                for (ProcessHandle h : descendants) {
+                    if (h.isAlive()) {
+                        childrenAlive = true;
+                        break;
+                    }
+                }
+                if (!childrenAlive) {
+                    LOG.fine("Process tree PID {0} exited gracefully.", pid);
+                    return;
+                }
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();

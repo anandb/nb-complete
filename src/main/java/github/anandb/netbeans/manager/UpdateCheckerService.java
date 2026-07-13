@@ -141,8 +141,9 @@ public class UpdateCheckerService implements UpdateCheckerControl {
             }
 
             if (now >= timeOfExecution) {
+                long interval = getRandomIntervalMillis();
                 // Compute next time of execution BEFORE the update check
-                long nextTime = System.currentTimeMillis() + getRandomIntervalMillis();
+                long nextTime = System.currentTimeMillis() + interval;
                 prefs.putLong(PreferenceKeys.NEXT_UPDATE_CHECK_TIME, nextTime);
 
                 boolean checkEnabled = prefs.getBoolean(PreferenceKeys.CHECK_FOR_UPDATES, true);
@@ -158,7 +159,7 @@ public class UpdateCheckerService implements UpdateCheckerControl {
                     LOG.fine("Update check is disabled in settings. Skipping update check.");
                 }
 
-                scheduleNext(getRandomIntervalMillis());
+                scheduleNext(interval);
             } else {
                 long delay = timeOfExecution - now;
                 scheduleNext(delay > 0 ? delay : 1000L);
@@ -233,7 +234,7 @@ public class UpdateCheckerService implements UpdateCheckerControl {
             SpecificationVersion current = new SpecificationVersion(currentVersionStr);
             SpecificationVersion latest = new SpecificationVersion(latestVersionStr);
             return latest.compareTo(current) > 0;
-        } catch (NumberFormatException e) {
+        } catch (IllegalArgumentException e) {
             return false;
         }
     }
@@ -252,7 +253,7 @@ public class UpdateCheckerService implements UpdateCheckerControl {
                     NotifyDescriptor.DEFAULT_OPTION,
                     NotifyDescriptor.INFORMATION_MESSAGE,
                     options,
-                    "Later"
+                    "Remind me Later"
             );
             Object result = DialogDisplayer.getDefault().notify(nd);
             if ("Download Now".equals(result)) {
@@ -260,7 +261,7 @@ public class UpdateCheckerService implements UpdateCheckerControl {
             } else if ("Skip this Version".equals(result)) {
                 prefs().put(PreferenceKeys.SKIPPED_UPDATE_VERSION, latestVersion);
             }
-            // "Later" — just dismiss, next cycle prompts again
+            // "Remind me Later" — just dismiss, next cycle prompts again
         });
     }
 
