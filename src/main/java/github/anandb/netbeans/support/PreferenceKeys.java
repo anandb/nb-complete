@@ -45,6 +45,7 @@ public final class PreferenceKeys {
 
     // Update checker preference keys
     public static final String NEXT_UPDATE_CHECK_TIME = "update.nextCheckTime";
+    public static final String SKIPPED_UPDATE_VERSION = "update.skippedVersion";
     public static final String CHECK_FOR_UPDATES = "update.checkForUpdates";
 
 }

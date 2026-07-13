@@ -1,7 +1,5 @@
 package github.anandb.netbeans.manager;
 
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -14,7 +12,8 @@ import java.util.prefs.Preferences;
 
 import javax.swing.SwingUtilities;
 
-import org.openide.awt.NotificationDisplayer;
+import org.openide.DialogDisplayer;
+import org.openide.NotifyDescriptor;
 import org.openide.modules.SpecificationVersion;
 import org.openide.util.Lookup;
 import org.openide.util.NbPreferences;
@@ -206,10 +205,15 @@ public class UpdateCheckerService implements UpdateCheckerControl {
             String currentVersionStr = AgentUtils.getVersion();
 
             if (isNewerVersion(info.latestVersion, currentVersionStr)) {
-                LOG.info("New update found: {0} (current: {1}). Download URL: {2}",
-                        new Object[]{info.latestVersion, currentVersionStr, info.downloadUrl});
+                String skipped = prefs().get(PreferenceKeys.SKIPPED_UPDATE_VERSION, "");
+                if (info.latestVersion.equals(skipped)) {
+                    LOG.info("Update v{0} skipped by user preference, not prompting.", info.latestVersion);
+                } else {
+                    LOG.info("New update found: {0} (current: {1}). Download URL: {2}",
+                            new Object[]{info.latestVersion, currentVersionStr, info.downloadUrl});
 
-                showNotification(info.latestVersion, info.downloadUrl);
+                    showNotification(info.latestVersion, info.downloadUrl);
+                }
             } else {
                 LOG.info("Already on the latest version: {0}", currentVersionStr);
             }
@@ -237,20 +241,26 @@ public class UpdateCheckerService implements UpdateCheckerControl {
     private void showNotification(String latestVersion, String downloadUrl) {
         SwingUtilities.invokeLater(() -> {
             String title = "Coding Assistant Update Available";
-            String message = "A new version of Coding Assistant (" + latestVersion
-                    + ") is available. Click to download.";
+            String body = "A new version of Coding Assistant (" + latestVersion
+                    + ") is available.\n\nCurrent: " + AgentUtils.getVersion()
+                    + "\nLatest: " + latestVersion;
 
-            ActionListener action = (ActionEvent e) -> {
-                BrowserUtils.openOrCopyUrl(downloadUrl, null, null);
-            };
-
-            NotificationDisplayer.getDefault().notify(
+            Object[] options = new Object[]{"Download Now", "Remind me Later", "Skip this Version"};
+            NotifyDescriptor nd = new NotifyDescriptor(
+                    body,
                     title,
-                    NotificationDisplayer.Priority.NORMAL.getIcon(),
-                    message,
-                    action,
-                    NotificationDisplayer.Priority.NORMAL
+                    NotifyDescriptor.YES_NO_CANCEL_OPTION,
+                    NotifyDescriptor.INFORMATION_MESSAGE,
+                    options,
+                    "Later"
             );
+            Object result = DialogDisplayer.getDefault().notify(nd);
+            if ("Download Now".equals(result)) {
+                BrowserUtils.openOrCopyUrl(downloadUrl, null, null);
+            } else if ("Skip this Version".equals(result)) {
+                prefs().put(PreferenceKeys.SKIPPED_UPDATE_VERSION, latestVersion);
+            }
+            // "Later" — just dismiss, next cycle prompts again
         });
     }
 

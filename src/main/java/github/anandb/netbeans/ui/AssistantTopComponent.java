@@ -166,6 +166,18 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         });
         layoutBuilder.getRightStatusPanel().add(rocketBtn, 0);
 
+        // Add token usage button after the rocket button
+        JButton tokenUsageBtn = UIUtils.createToolbarButton("currency.svg", iconSize,
+                "Token Stats", e -> {
+            java.awt.Window win = SwingUtilities.getWindowAncestor(AssistantTopComponent.this);
+            if (win instanceof java.awt.Frame frame) {
+                TokenUsageDialog.show(frame);
+            } else {
+                TokenUsageDialog.show(null);
+            }
+        });
+        layoutBuilder.getRightStatusPanel().add(tokenUsageBtn, 1);
+
         sessionDropdownHandler = new SessionDropdownHandler(sessionDropdown, inputArea);
         sessionLifecycleHandler = new SessionLifecycleHandler(
             chatPanel, sessionDropdown, hideBtn, newSessionBtn, renameSessionBtn,
