@@ -58,7 +58,7 @@ public class TokenUsageDialog extends JDialog {
     private static final String[] PROJECT_OPTIONS = { PROJECT_CURRENT, PROJECT_ALL };
     private static final String ALL_MODELS = "All Models";
     private static final java.util.regex.Pattern ANSI_ESCAPE =
-        java.util.regex.Pattern.compile("\u001b\\[[0-9;]*[a-zA-Z]");
+        java.util.regex.Pattern.compile("\u001b\\[[0-9;]*[a-zA-Z~]|\u001b\\][^\u0007]*\u0007");
 
     private final JSpinner daysSpinner;
     private final JComboBox<String> modelCombo;
@@ -67,6 +67,7 @@ public class TokenUsageDialog extends JDialog {
     private final JButton refreshBtn;
     private final AtomicBoolean running = new AtomicBoolean(false);
     private volatile Process currentProcess;
+    private volatile Process modelsProcess;
     private javax.swing.Timer autoRefreshTimer;
     private boolean firstRefresh = true;
 
@@ -270,10 +271,12 @@ public class TokenUsageDialog extends JDialog {
         return sb.toString().trim();
     }
 
-    /** Gracefully terminates the running opencode process. */
+    /** Gracefully terminates any running opencode processes. */
     private void cancelProcess() {
         ProcessTerminator.terminate(currentProcess);
         currentProcess = null;
+        ProcessTerminator.terminate(modelsProcess);
+        modelsProcess = null;
     }
 
     private static void addContextMenu(JTextArea area) {
@@ -331,6 +334,7 @@ public class TokenUsageDialog extends JDialog {
                 ProcessBuilder pb = new ProcessBuilder(binary, "models");
                 pb.redirectErrorStream(true);
                 Process proc = pb.start();
+                modelsProcess = proc;
                 StringBuilder sb = new StringBuilder();
                 try (BufferedReader r = new BufferedReader(
                         new InputStreamReader(proc.getInputStream(), StandardCharsets.UTF_8))) {
@@ -358,6 +362,8 @@ public class TokenUsageDialog extends JDialog {
                 }
             } catch (Exception ex) {
                 LOG.log(java.util.logging.Level.FINE, "Failed to load model list", ex);
+            } finally {
+                modelsProcess = null;
             }
         }, "load-models").start();
     }

@@ -78,8 +78,8 @@ public class UpdateCheckerService implements UpdateCheckerControl {
 
     /**
      * Called when the plugin is installed or upgraded.
-     * Computes a random time interval between 16 to 24 hours, adds that to current time
-     * to get time of execution, and saves it in preferences.
+     * If a future check is already scheduled, keeps it. Otherwise reschedules
+     * with a random 16-24h window and triggers an immediate update check.
      */
     @Override
     public void onInstallOrUpgrade() {
@@ -88,9 +88,9 @@ public class UpdateCheckerService implements UpdateCheckerControl {
             LOG.info("Plugin installed/upgraded. Next update check already scheduled for: {0}", new java.util.Date(stored));
             return;
         }
-        long timeOfExecution = System.currentTimeMillis() + FIRST_CHECK_DELAY_MS;
-        prefs().putLong(PreferenceKeys.NEXT_UPDATE_CHECK_TIME, timeOfExecution);
-        LOG.info("Plugin installed/upgraded. Scheduled first update check for: {0}", new java.util.Date(timeOfExecution));
+        // Past-due or first install — check immediately; next time will be randomized
+        prefs().putLong(PreferenceKeys.NEXT_UPDATE_CHECK_TIME, System.currentTimeMillis());
+        LOG.info("Plugin installed/upgraded. Scheduling immediate update check.");
     }
 
     /**
@@ -249,7 +249,7 @@ public class UpdateCheckerService implements UpdateCheckerControl {
             NotifyDescriptor nd = new NotifyDescriptor(
                     body,
                     title,
-                    NotifyDescriptor.YES_NO_CANCEL_OPTION,
+                    NotifyDescriptor.DEFAULT_OPTION,
                     NotifyDescriptor.INFORMATION_MESSAGE,
                     options,
                     "Later"

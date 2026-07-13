@@ -480,7 +480,7 @@ final class ChatLayoutBuilder {
             {newSessionBtn, PreferenceKeys.TOOLBAR_NEW_SESSION, "New Session"},
             {renameSessionBtn, PreferenceKeys.TOOLBAR_RENAME_SESSION, "Rename Session"},
             {refreshBtn, PreferenceKeys.TOOLBAR_RELOAD, "Reload"},
-            {keepBtn, PreferenceKeys.TOOLBAR_KEEP, "Forget/Remember"},
+            {keepBtn, PreferenceKeys.TOOLBAR_KEEP, "Hide Older/Show All"},
             {toggleBlocksBtn, PreferenceKeys.TOOLBAR_EXPAND_COLLAPSE, "Expand/Collapse All"},
             {filterBtn, PreferenceKeys.TOOLBAR_FILTER, "Filter"},
             {exportBtn, PreferenceKeys.TOOLBAR_EXPORT, "Export"},
