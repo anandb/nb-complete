@@ -38,6 +38,7 @@ import org.openide.util.Lookup;
 import github.anandb.netbeans.contract.SessionQuery;
 import github.anandb.netbeans.support.BinaryResolver;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.ProcessTerminator;
 import javax.swing.JPopupMenu;
 import javax.swing.JMenuItem;
 import java.awt.event.MouseAdapter;
@@ -65,6 +66,7 @@ public class TokenUsageDialog extends JDialog {
     private final JTextArea statsArea;
     private final JButton refreshBtn;
     private final AtomicBoolean running = new AtomicBoolean(false);
+    private volatile Process currentProcess;
     private javax.swing.Timer autoRefreshTimer;
     private boolean firstRefresh = true;
 
@@ -211,13 +213,14 @@ public class TokenUsageDialog extends JDialog {
                     statsArea.setCaretPosition(0);
                 });
             } finally {
+                currentProcess = null;
                 SwingUtilities.invokeLater(() -> refreshBtn.setEnabled(true));
                 running.set(false);
             }
         }, "token-stats").start();
     }
 
-    private static String runStatsCommand(int days, String model, String projectDir) throws Exception {
+    private String runStatsCommand(int days, String model, String projectDir) throws Exception {
         String binary = BinaryResolver.resolveExecutablePath();
         List<String> cmd = new ArrayList<>();
         cmd.add(binary);
@@ -248,6 +251,7 @@ public class TokenUsageDialog extends JDialog {
             }
         }
         Process proc = pb.start();
+        currentProcess = proc;
 
         StringBuilder sb = new StringBuilder();
         try (BufferedReader r = new BufferedReader(
@@ -264,6 +268,12 @@ public class TokenUsageDialog extends JDialog {
                 + exitCode + (output.isEmpty() ? "" : ": " + output));
         }
         return sb.toString().trim();
+    }
+
+    /** Gracefully terminates the running opencode process. */
+    private void cancelProcess() {
+        ProcessTerminator.terminate(currentProcess);
+        currentProcess = null;
     }
 
     private static void addContextMenu(JTextArea area) {
@@ -361,6 +371,7 @@ public class TokenUsageDialog extends JDialog {
             dlg.addWindowListener(new java.awt.event.WindowAdapter() {
                 @Override public void windowClosed(java.awt.event.WindowEvent e) {
                     if (dlg.autoRefreshTimer != null) dlg.autoRefreshTimer.stop();
+                    dlg.cancelProcess();
                 }
             });
             dlg.autoRefreshTimer.start();

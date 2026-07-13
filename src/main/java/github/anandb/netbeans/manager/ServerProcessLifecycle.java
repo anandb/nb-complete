@@ -21,6 +21,7 @@ import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.PreferenceKeys;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.BinaryResolver;
+import github.anandb.netbeans.support.ProcessTerminator;
 
 /**
  * Extracted server lifecycle methods from ProcessManager.
@@ -282,54 +283,7 @@ class ServerProcessLifecycle {
 
         if (serverProcess != null && serverProcess.isAlive()) {
             LOG.fine("Stopping ACP server (PID: {0})...", serverProcess.pid());
-
-            // Capture descendants before the parent process potentially disappears
-            List<ProcessHandle> descendants = serverProcess.descendants().toList();
-
-            // 1. Try graceful exit via closed stdin (already triggered by rpcClient.close())
-            try {
-                if (serverProcess.waitFor(2, java.util.concurrent.TimeUnit.SECONDS)) {
-                    LOG.info("ACP server exited gracefully.");
-                }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-
-            // 2. If still alive, or if there are orphaned descendants, send SIGTERM
-            if (serverProcess != null && serverProcess.isAlive()) {
-                LOG.warn("Terminating process tree (parent + {0} descendants)...", descendants.size());
-
-                for (ProcessHandle h : descendants) {
-                    if (h.isAlive()) {
-                        LOG.info("Sending SIGTERM to descendant PID: {0}", h.pid());
-                        h.destroy();
-                    }
-                }
-                if (serverProcess.isAlive()) {
-                    serverProcess.destroy();
-                }
-
-                try {
-                    serverProcess.waitFor(3, java.util.concurrent.TimeUnit.SECONDS);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
-            }
-
-            if (serverProcess.isAlive() || descendants.stream().anyMatch(ProcessHandle::isAlive)) {
-                LOG.warn("Some processes still alive, forcing SIGKILL...");
-                descendants.forEach(h -> {
-                    if (h.isAlive()) {
-                        LOG.warn("Killing descendant PID: {0}", h.pid());
-                        h.destroyForcibly();
-                    }
-                });
-                if (serverProcess.isAlive()) {
-                    serverProcess.destroyForcibly();
-                }
-            }
-
-            LOG.info("ACP server shutdown complete.");
+            ProcessTerminator.terminate(serverProcess);
         }
 
         serverProcess = null;
