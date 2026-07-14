@@ -34,7 +34,7 @@ import static org.apache.commons.lang3.StringUtils.isNotBlank;
 public class EditorToolProvider {
 
     private static final Logger LOG = Logger.from(EditorToolProvider.class);
-    private final ObjectMapper mapper = MapperSupplier.get();
+    private static final ObjectMapper MAPPER = MapperSupplier.get();
 
     public void registerTools(McpTools mcpTools) {
         registerGetOpenedFiles(mcpTools);
@@ -43,7 +43,7 @@ public class EditorToolProvider {
     }
 
     private void registerGetOpenedFiles(McpTools mcpTools) {
-        ObjectNode schema = mapper.createObjectNode();
+        ObjectNode schema = MAPPER.createObjectNode();
         schema.put("type", "object");
 
         mcpTools.registerTool(
@@ -85,7 +85,7 @@ public class EditorToolProvider {
     }
 
     private void registerOpenFileAtLine(McpTools mcpTools) {
-        ObjectNode schema = mapper.createObjectNode();
+        ObjectNode schema = MAPPER.createObjectNode();
         schema.put("type", "object");
         ObjectNode properties = schema.putObject("properties");
 
@@ -157,7 +157,7 @@ public class EditorToolProvider {
     }
 
     private void registerRenameSession(McpTools mcpTools) {
-        ObjectNode schema = mapper.createObjectNode();
+        ObjectNode schema = MAPPER.createObjectNode();
         schema.put("type", "object");
         ObjectNode properties = schema.putObject("properties");
 

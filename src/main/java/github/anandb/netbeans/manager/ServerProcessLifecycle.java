@@ -12,6 +12,7 @@ import org.openide.util.NbPreferences;
 import org.openide.util.RequestProcessor;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import github.anandb.netbeans.contract.RequestHandler;
 import github.anandb.netbeans.contract.ToolExecutor;
@@ -20,6 +21,7 @@ import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.PreferenceKeys;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.BinaryResolver;
+import github.anandb.netbeans.support.MapperSupplier;
 import github.anandb.netbeans.support.ProcessTerminator;
 
 /**
@@ -31,7 +33,7 @@ class ServerProcessLifecycle {
 
     private final AtomicReference<AcpProtocolClient> rpcClient;
     private final ToolExecutor toolExecutor;
-    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+    private static final ObjectMapper MAPPER = MapperSupplier.get();
     private final Runnable onReady;
     private final Consumer<SessionUpdate> onNotify;
     private final Runnable onDisconnection;
@@ -48,7 +50,6 @@ class ServerProcessLifecycle {
 
     ServerProcessLifecycle(AtomicReference<AcpProtocolClient> rpcClient,
                            ToolExecutor toolExecutor,
-                           com.fasterxml.jackson.databind.ObjectMapper objectMapper,
                            Runnable onReady,
                            Consumer<SessionUpdate> onNotify,
                            Runnable onDisconnection,
@@ -57,7 +58,6 @@ class ServerProcessLifecycle {
                            RequestHandler onRequestPermission) {
         this.rpcClient = rpcClient;
         this.toolExecutor = toolExecutor;
-        this.objectMapper = objectMapper;
         this.onReady = onReady;
         this.onNotify = onNotify;
         this.onDisconnection = onDisconnection;
@@ -171,7 +171,7 @@ class ServerProcessLifecycle {
                         return;
                     }
 
-                    SessionUpdate.Params sessionParams = objectMapper.treeToValue(params, SessionUpdate.Params.class);
+                    SessionUpdate.Params sessionParams = MAPPER.treeToValue(params, SessionUpdate.Params.class);
                     SessionUpdate update = new SessionUpdate("2.0", "session/update", sessionParams);
 
                     onNotify.accept(update);

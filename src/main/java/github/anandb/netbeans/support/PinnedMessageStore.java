@@ -26,7 +26,7 @@ import org.openide.util.lookup.ServiceProvider;
 @ServiceProvider(service = PinnedMessageControl.class)
 public final class PinnedMessageStore implements PinnedMessageControl {
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final ObjectMapper MAPPER = MapperSupplier.get();
     private static final TypeReference<List<String>> LIST_TYPE =
             new TypeReference<>() {};
 

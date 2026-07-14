@@ -120,7 +120,7 @@ public class SessionManager implements SessionQuery, SessionControl {
 
     private static final Logger LOG = Logger.from(SessionManager.class);
 
-    private final ObjectMapper objectMapper = MapperSupplier.get();
+    private static final ObjectMapper MAPPER = MapperSupplier.get();
     private final List<SessionListener> listeners = new CopyOnWriteArrayList<>();
     private final SessionStateMachine stateMachine = new SessionStateMachine();
     private volatile String currentSessionId;
@@ -287,7 +287,7 @@ public class SessionManager implements SessionQuery, SessionControl {
                         }
                         JsonNode sessionsNode = res.has("sessions") ? res.get("sessions") : res.has("data") ? res.get("data") : res;
                         if (sessionsNode.isArray()) {
-                            List<Session> rawSessions = objectMapper.readValue(sessionsNode.traverse(), new TypeReference<List<Session>>() {});
+                            List<Session> rawSessions = MAPPER.readValue(sessionsNode.traverse(), new TypeReference<List<Session>>() {});
                             List<Session> sessions = new ArrayList<>();
                             for (Session s : rawSessions) {
                                 Session resolved = s;
@@ -364,7 +364,7 @@ public class SessionManager implements SessionQuery, SessionControl {
                     long durationMs = (System.nanoTime() - start) / 1_000_000;
                     LOG.info("session/new completed in {0}ms", durationMs);
                     try {
-                        Session s = objectMapper.treeToValue(res, Session.class);
+                        Session s = MAPPER.treeToValue(res, Session.class);
                         if (s.effectiveDirectory() == null) {
                             s = new Session(s.id(), s.title(), finalCwd, finalCwd, s.parentID(), s.updatedAt(), s.mcpServers(), s.configOptions());
                         }
@@ -400,7 +400,7 @@ public class SessionManager implements SessionQuery, SessionControl {
                     LOG.fine("loadSessionFromServer: got response {0}", res);
                     if (res != null && res.has("configOptions")) {
                         try {
-                            return objectMapper.convertValue(res.get("configOptions"), new TypeReference<List<SessionConfigOption>>() {});
+                            return MAPPER.convertValue(res.get("configOptions"), new TypeReference<List<SessionConfigOption>>() {});
                         } catch (Exception e) {
                             LOG.warn("Failed to parse configOptions: {0}", e.getMessage(), e);
                         }
@@ -415,7 +415,7 @@ public class SessionManager implements SessionQuery, SessionControl {
                 .thenApply(res -> {
                     if (res != null && res.has("configOptions")) {
                         try {
-                            List<SessionConfigOption> configOptions = objectMapper.convertValue(
+                            List<SessionConfigOption> configOptions = MAPPER.convertValue(
                                     res.get("configOptions"), new TypeReference<List<SessionConfigOption>>() {});
                             if (sessionId.equals(currentSessionId)) {
                                 notifySessionLoaded(sessionId, configOptions, false);
@@ -435,7 +435,7 @@ public class SessionManager implements SessionQuery, SessionControl {
 
     public CompletableFuture<JsonNode> renameSessionOnServer(String sessionId, String newTitle) {
         return rpcClient.renameSessionOnServer(sessionId, newTitle)
-                .thenApply(v -> objectMapper.createObjectNode());
+                .thenApply(v -> MAPPER.createObjectNode());
     }
 
     // --- High-level session operations ---

@@ -10,21 +10,17 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.MapperSupplier;
 import org.openide.util.NbBundle;
 
 public class McpTools {
 
     private static final Logger LOG = Logger.from(McpTools.class);
+    private static final ObjectMapper MAPPER = MapperSupplier.get();
     private final Map<String, McpToolDefinition> tools = new ConcurrentHashMap<>();
     private final Map<String, ToolExecutor> executors = new ConcurrentHashMap<>();
-    private final ObjectMapper mapper;
-
-    public McpTools(ObjectMapper mapper) {
-        this.mapper = mapper;
-    }
 
     public McpTools() {
-        this(github.anandb.netbeans.support.MapperSupplier.get());
     }
 
     public <T, R> void registerTool(String name, String description, ObjectNode inputSchema, ToolExecutor<T, R> executor) {
@@ -40,12 +36,12 @@ public class McpTools {
     }
 
     public ArrayNode getToolList() {
-        ArrayNode arr = mapper.createArrayNode();
+        ArrayNode arr = MAPPER.createArrayNode();
         for (McpToolDefinition def : tools.values()) {
-            ObjectNode tool = mapper.createObjectNode();
+            ObjectNode tool = MAPPER.createObjectNode();
             tool.put("name", def.name());
             tool.put("description", def.description());
-            tool.set("inputSchema", def.inputSchema() != null ? def.inputSchema() : mapper.createObjectNode());
+            tool.set("inputSchema", def.inputSchema() != null ? def.inputSchema() : MAPPER.createObjectNode());
             arr.add(tool);
         }
         return arr;
@@ -70,9 +66,9 @@ public class McpTools {
 
     @SuppressWarnings("unchecked")
     private <T, R> JsonNode callToolInternal(ToolExecutor<T, R> executor, JsonNode arguments) throws Exception {
-        T args = mapper.treeToValue(arguments, executor.getArgClass());
+        T args = MAPPER.treeToValue(arguments, executor.getArgClass());
         R response = executor.execute(args);
-        return mapper.valueToTree(response);
+        return MAPPER.valueToTree(response);
     }
 
     public int toolCount() {

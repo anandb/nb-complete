@@ -18,7 +18,6 @@ import org.openide.util.NbBundle;
 import org.openide.util.NbPreferences;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.openide.util.Lookup;
 import org.openide.util.lookup.ServiceProvider;
@@ -29,7 +28,6 @@ import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.PreferenceKeys;
 import github.anandb.netbeans.support.LanguageResolver;
 import github.anandb.netbeans.support.Logger;
-import github.anandb.netbeans.support.MapperSupplier;
 import github.anandb.netbeans.contract.ProcessControl;
 import github.anandb.netbeans.contract.ToolExecutor;
 import github.anandb.netbeans.mcp.McpToolAdapter;
@@ -41,7 +39,6 @@ public class ProcessManager implements ProcessControl {
     private static volatile ProcessManager INSTANCE;
     private final SlashCommandInterceptor slashCommandInterceptor = new SlashCommandInterceptor();
 
-    private final ObjectMapper objectMapper = MapperSupplier.get();
     private final AtomicReference<AcpProtocolClient> rpcClient = new AtomicReference<>();
     private final List<Consumer<SessionUpdate>> sseListeners = new CopyOnWriteArrayList<>();
     private final PreferenceChangeListener preferenceChangeListener;
@@ -64,10 +61,10 @@ public class ProcessManager implements ProcessControl {
         prefs.addPreferenceChangeListener(preferenceChangeListener);
 
         // Wire helpers with callbacks
-        requestRouter = new AcpRequestRouter(objectMapper);
+        requestRouter = new AcpRequestRouter();
 
         serverLifecycle = new ServerProcessLifecycle(
-            rpcClient, toolExecutor, objectMapper,
+            rpcClient, toolExecutor,
             () -> {
                 Runnable handler = readyHandler;
                 if (handler != null) {

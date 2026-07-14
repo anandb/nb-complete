@@ -23,15 +23,15 @@ import javax.swing.SwingUtilities;
 
 import github.anandb.netbeans.project.ACPProjectManager;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.MapperSupplier;
 import org.netbeans.api.project.Project;
 
 class AcpRequestRouter {
     private static final Logger LOG = Logger.from(AcpRequestRouter.class);
-    private final ObjectMapper objectMapper;
+    private static final ObjectMapper MAPPER = MapperSupplier.get();
     private volatile github.anandb.netbeans.contract.PermissionHandler permissionHandler;
 
-    AcpRequestRouter(ObjectMapper objectMapper) {
-        this.objectMapper = objectMapper;
+    AcpRequestRouter() {
     }
 
     void setPermissionHandler(github.anandb.netbeans.contract.PermissionHandler handler) {
@@ -54,7 +54,7 @@ class AcpRequestRouter {
         }
 
         return response.thenApply(optionId -> {
-            ObjectNode res = objectMapper.createObjectNode();
+            ObjectNode res = MAPPER.createObjectNode();
 
             // Map common internal IDs to standard ACP ones if needed
             String mappedId = optionId;
@@ -68,7 +68,7 @@ class AcpRequestRouter {
             }
 
             // Match ACP outcome structure
-            ObjectNode outcome = objectMapper.createObjectNode();
+            ObjectNode outcome = MAPPER.createObjectNode();
             outcome.put("outcome", "selected");
             outcome.put("optionId", mappedId);
             res.set("outcome", outcome);
@@ -141,7 +141,7 @@ class AcpRequestRouter {
                         Document doc = ec.getDocument();
                         if (doc != null) {
                             String content = doc.getText(0, doc.getLength());
-                            resultFuture.complete(objectMapper.createObjectNode().put("content", content));
+                            resultFuture.complete(MAPPER.createObjectNode().put("content", content));
                             return;
                         }
                     }
@@ -163,7 +163,7 @@ class AcpRequestRouter {
             try {
                 byte[] bytes = Files.readAllBytes(file.toPath());
                 String content = new String(bytes, StandardCharsets.UTF_8);
-                return objectMapper.createObjectNode().put("content", content);
+                return MAPPER.createObjectNode().put("content", content);
             } catch (Exception e) {
                 LOG.severe("fs/readTextFile failed: {0}", e.getMessage());
                 LOG.log(Level.FINE, "fs/readTextFile details", e);

@@ -46,6 +46,7 @@ public class AcpProtocolClient implements Closeable {
     private final AtomicLong nextId = new AtomicLong(0);
     private final InputStream inputStream;
     private final Map<Long, CompletableFuture<JsonNode>> pendingRequests = new ConcurrentHashMap<>();
+    
     /** Per-request idle timeout in seconds. A request times out when no data arrives on the connection for this duration. */
     private final Map<Long, Long> pendingRequestIdleTimeouts = new ConcurrentHashMap<>();
     private final Map<String, Consumer<JsonNode>> notificationListeners = new ConcurrentHashMap<>();

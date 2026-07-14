@@ -1,7 +1,5 @@
 package github.anandb.netbeans.mcp;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import java.io.IOException;
 import java.security.SecureRandom;
 import java.util.logging.Level;
@@ -10,7 +8,6 @@ import github.anandb.netbeans.support.PluginSettings;
 import org.openide.util.RequestProcessor;
 
 import github.anandb.netbeans.support.Logger;
-import github.anandb.netbeans.support.MapperSupplier;
 import org.openide.util.NbBundle;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
@@ -23,8 +20,7 @@ public class McpServer {
     private static final int MAX_THREADS = 20;
     private static final SecureRandom RANDOM = new SecureRandom();
 
-    private final ObjectMapper mapper = MapperSupplier.get();
-    private final McpTools mcpTools = new McpTools(mapper);
+    private final McpTools mcpTools = new McpTools();
     private final String token;
     private Server server;
     private ServerConnector connector;
@@ -64,7 +60,7 @@ public class McpServer {
         ServletContextHandler context = new ServletContextHandler(ServletContextHandler.NO_SESSIONS);
         context.setContextPath("/");
 
-        context.addServlet(new ServletHolder(new MessageServlet(mapper, asyncExecutor, mcpTools, token)), "/mcp");
+        context.addServlet(new ServletHolder(new MessageServlet(asyncExecutor, mcpTools, token)), "/mcp");
 
         server.setHandler(context);
         try {

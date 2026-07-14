@@ -33,9 +33,7 @@ import github.anandb.netbeans.support.PreferenceKeys;
 
 @ServiceProvider(service = UpdateCheckerControl.class)
 public class UpdateCheckerService implements UpdateCheckerControl {
-
     private static final Logger LOG = Logger.from(UpdateCheckerService.class);
-    private static final String UPDATE_URL = "https://anandb.github.io/beanbot.json";
 
     /** Shared HTTP client — thread-safe, reused across checks. */
     private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
@@ -178,13 +176,13 @@ public class UpdateCheckerService implements UpdateCheckerControl {
     }
 
     private void checkForUpdates() throws Exception {
-        LOG.info("Checking for updates from {0}", UPDATE_URL);
+        LOG.info("Checking for updates from {0}", PreferenceKeys.UPDATE_URL);
 
         try {
             String userAgent = "CodingAssistant/" + AgentUtils.getVersion();
 
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(UPDATE_URL))
+                    .uri(URI.create(PreferenceKeys.UPDATE_URL))
                     .header("User-Agent", userAgent)
                     .timeout(Duration.ofSeconds(15))
                     .GET()

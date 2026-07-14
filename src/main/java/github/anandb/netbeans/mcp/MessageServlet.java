@@ -11,6 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.logging.Level;
 
+import github.anandb.netbeans.support.MapperSupplier;
 import github.anandb.netbeans.support.PluginSettings;
 import org.openide.util.NbBundle;
 import org.openide.util.RequestProcessor;
@@ -30,13 +31,12 @@ class MessageServlet extends HttpServlet {
     private static final String SERVER_NAME = "nb-mcp";
     private static final String SERVER_VERSION = "1.0.0";
 
-    private final ObjectMapper mapper;
+    private static final ObjectMapper MAPPER = MapperSupplier.get();
     private final transient RequestProcessor asyncExecutor;
     private final transient McpTools mcpTools;
     private final String token;
 
-    MessageServlet(ObjectMapper mapper, RequestProcessor asyncExecutor, McpTools mcpTools, String token) {
-        this.mapper = mapper;
+    MessageServlet(RequestProcessor asyncExecutor, McpTools mcpTools, String token) {
         this.asyncExecutor = asyncExecutor;
         this.mcpTools = mcpTools;
         this.token = token;
@@ -70,7 +70,7 @@ class MessageServlet extends HttpServlet {
                     body.append(line);
                 }
 
-                JsonNode req = mapper.readTree(body.toString());
+                JsonNode req = MAPPER.readTree(body.toString());
                 if (!req.has("method")) {
                     HttpServletResponse httpResp = (HttpServletResponse) asyncContext.getResponse();
                     httpResp.setContentType("application/json");
@@ -91,7 +91,7 @@ class MessageServlet extends HttpServlet {
                 isToolsCall = !isNotification && "tools/call".equals(method);
 
                 if (!isNotification) {
-                    ObjectNode resp = mapper.createObjectNode();
+                    ObjectNode resp = MAPPER.createObjectNode();
                     resp.put("jsonrpc", "2.0");
                     resp.set("id", idNode);
 
@@ -106,7 +106,7 @@ class MessageServlet extends HttpServlet {
                     } catch (Exception e) {
                         LOG.log(Level.SEVERE, "Error handling MCP method: {0}: {1}", new Object[]{method, e.getMessage()});
                         LOG.log(Level.FINE, "Exception details", e);
-                        ObjectNode error = mapper.createObjectNode();
+                        ObjectNode error = MAPPER.createObjectNode();
                         error.put("code", -32603);
                         error.put("message", "Internal error");
                         resp.set("error", error);
@@ -162,7 +162,7 @@ class MessageServlet extends HttpServlet {
         }
 
         String name = params.get("name").asText();
-        JsonNode arguments = params.has("arguments") ? params.get("arguments") : mapper.createObjectNode();
+        JsonNode arguments = params.has("arguments") ? params.get("arguments") : MAPPER.createObjectNode();
 
         asyncExecutor.post(() -> {
             try {
@@ -172,20 +172,20 @@ class MessageServlet extends HttpServlet {
                 long totalElapsed = (System.nanoTime() - requestStart) / 1_000_000;
 
                 // Build result (cheap, no blocking)
-                ObjectNode result = mapper.createObjectNode();
+                ObjectNode result = MAPPER.createObjectNode();
                 // structuredContent expects a record (object), not an array.
                 // Wrap array-type tool responses so the content is always an object.
                 if (toolResponse.isArray()) {
-                    ObjectNode wrapped = mapper.createObjectNode();
+                    ObjectNode wrapped = MAPPER.createObjectNode();
                     wrapped.set("items", toolResponse);
                     result.set("structuredContent", wrapped);
                 } else {
                     result.set("structuredContent", toolResponse);
                 }
-                ArrayNode contentNode = mapper.createArrayNode();
-                ObjectNode contentElement = mapper.createObjectNode();
+                ArrayNode contentNode = MAPPER.createArrayNode();
+                ObjectNode contentElement = MAPPER.createObjectNode();
                 contentElement.put("type", "text");
-                contentElement.put("text", mapper.writeValueAsString(toolResponse));
+                contentElement.put("text", MAPPER.writeValueAsString(toolResponse));
                 contentNode.add(contentElement);
                 result.set("content", contentNode);
                 resp.set("result", result);
@@ -220,7 +220,7 @@ class MessageServlet extends HttpServlet {
     }
 
     private void writeError(AsyncContext ctx, ObjectNode resp, int code, String message) throws IOException {
-        ObjectNode error = mapper.createObjectNode();
+        ObjectNode error = MAPPER.createObjectNode();
         error.put("code", code);
         error.put("message", message);
         resp.set("error", error);
@@ -232,13 +232,13 @@ class MessageServlet extends HttpServlet {
         switch (method) {
             case "initialize" -> handleInitialize(params, resp);
             case "tools/list" -> handleToolsList(resp);
-            case "ping" -> resp.set("result", mapper.createObjectNode());
+            case "ping" -> resp.set("result", MAPPER.createObjectNode());
             case "resources/list" -> handleResourcesList(resp);
             case "resources/read" -> handleResourcesRead(params, resp);
-            case "resources/subscribe" -> resp.set("result", mapper.createObjectNode());
-            case "resources/unsubscribe" -> resp.set("result", mapper.createObjectNode());
+            case "resources/subscribe" -> resp.set("result", MAPPER.createObjectNode());
+            case "resources/unsubscribe" -> resp.set("result", MAPPER.createObjectNode());
             default -> {
-                ObjectNode error = mapper.createObjectNode();
+                ObjectNode error = MAPPER.createObjectNode();
                 error.put("code", -32601);
                 error.put("message", NbBundle.getMessage(MessageServlet.class, "MSG_MethodNotFound", method));
                 resp.set("error", error);
@@ -269,19 +269,19 @@ class MessageServlet extends HttpServlet {
         }
         LOG.info("MCP initialize from {0} v{1}", clientName, clientVersion);
 
-        ObjectNode result = mapper.createObjectNode();
+        ObjectNode result = MAPPER.createObjectNode();
         result.put("protocolVersion", MCP_PROTOCOL_VERSION);
 
-        ObjectNode capabilities = mapper.createObjectNode();
-        ObjectNode tools = mapper.createObjectNode();
+        ObjectNode capabilities = MAPPER.createObjectNode();
+        ObjectNode tools = MAPPER.createObjectNode();
         tools.put("listChanged", true);
         capabilities.set("tools", tools);
-        ObjectNode resources = mapper.createObjectNode();
+        ObjectNode resources = MAPPER.createObjectNode();
         resources.put("listChanged", false);
         capabilities.set("resources", resources);
         result.set("capabilities", capabilities);
 
-        ObjectNode serverInfo = mapper.createObjectNode();
+        ObjectNode serverInfo = MAPPER.createObjectNode();
         serverInfo.put("name", SERVER_NAME);
         serverInfo.put("version", SERVER_VERSION);
         result.set("serverInfo", serverInfo);
@@ -292,7 +292,7 @@ class MessageServlet extends HttpServlet {
     private void handleToolsList(ObjectNode resp) {
         long start = System.nanoTime();
         LOG.fine("MCP tools/list request");
-        ObjectNode result = mapper.createObjectNode();
+        ObjectNode result = MAPPER.createObjectNode();
         result.set("tools", mcpTools.getToolList());
         resp.set("result", result);
         long durationMs = (System.nanoTime() - start) / 1_000_000;
@@ -300,10 +300,10 @@ class MessageServlet extends HttpServlet {
     }
 
     private void handleResourcesList(ObjectNode resp) {
-        ObjectNode result = mapper.createObjectNode();
-        ArrayNode resources = mapper.createArrayNode();
+        ObjectNode result = MAPPER.createObjectNode();
+        ArrayNode resources = MAPPER.createArrayNode();
 
-        ObjectNode caveman = mapper.createObjectNode();
+        ObjectNode caveman = MAPPER.createObjectNode();
         caveman.put("uri", "nb-resource://caveman");
         caveman.put("name", "caveman");
         caveman.put("description", "Ultra-compressed communication mode skill for token-efficient responses");
@@ -316,7 +316,7 @@ class MessageServlet extends HttpServlet {
 
     private void handleResourcesRead(JsonNode params, ObjectNode resp) {
         if (params == null || !params.has("uri")) {
-            ObjectNode error = mapper.createObjectNode();
+            ObjectNode error = MAPPER.createObjectNode();
             error.put("code", -32602);
             error.put("message", "Missing required parameter: uri");
             resp.set("error", error);
@@ -327,16 +327,16 @@ class MessageServlet extends HttpServlet {
         if ("nb-resource://caveman".equals(uri)) {
             try (InputStream in = getClass().getResourceAsStream("/github/anandb/netbeans/mcp/caveman.md")) {
                 if (in == null) {
-                    ObjectNode error = mapper.createObjectNode();
+                    ObjectNode error = MAPPER.createObjectNode();
                     error.put("code", -32602);
                     error.put("message", "Resource not found: caveman.md");
                     resp.set("error", error);
                     return;
                 }
                 String text = new String(in.readAllBytes(), StandardCharsets.UTF_8);
-                ObjectNode result = mapper.createObjectNode();
-                ArrayNode contents = mapper.createArrayNode();
-                ObjectNode content = mapper.createObjectNode();
+                ObjectNode result = MAPPER.createObjectNode();
+                ArrayNode contents = MAPPER.createArrayNode();
+                ObjectNode content = MAPPER.createObjectNode();
                 content.put("uri", uri);
                 content.put("mimeType", "text/markdown");
                 content.put("text", text);
@@ -345,13 +345,13 @@ class MessageServlet extends HttpServlet {
                 resp.set("result", result);
             } catch (IOException e) {
                 LOG.log(Level.WARNING, "Failed to read MCP resource: {0}", e.getMessage());
-                ObjectNode error = mapper.createObjectNode();
+                ObjectNode error = MAPPER.createObjectNode();
                 error.put("code", -32603);
                 error.put("message", "Failed to read resource");
                 resp.set("error", error);
             }
         } else {
-            ObjectNode error = mapper.createObjectNode();
+            ObjectNode error = MAPPER.createObjectNode();
             error.put("code", -32602);
             error.put("message", "Unknown resource: " + uri);
             resp.set("error", error);
@@ -363,7 +363,7 @@ class MessageServlet extends HttpServlet {
         httpResp.setContentType("application/json");
         httpResp.setCharacterEncoding(StandardCharsets.UTF_8.name());
         applyCorsHeaders((HttpServletRequest) asyncContext.getRequest(), httpResp);
-        httpResp.getWriter().write(mapper.writeValueAsString(resp));
+        httpResp.getWriter().write(MAPPER.writeValueAsString(resp));
     }
 
     @Override
