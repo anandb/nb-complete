@@ -29,14 +29,13 @@
 ### 1. Install OpenCode
 
 Install [OpenCode Terminal](https://opencode.ai/download), then connect and configure your providers.
-You can skip provider configuration if you only plan to use the free models. The plugin runs `opencode acp` under
-the hood as a background server.
+You can skip provider configuration if you only plan to use the free models. The plugin runs `opencode acp` under the hood as a background server.
 
 **Verify your installation:**
 
 1. Open a terminal and navigate to your project directory.
 2. Run `opencode .` to launch the OpenCode TUI (terminal-based interface).
-3. Confirm you can connect and interact with your configured providers.
+3. Confirm you can connect and interact with your configured providers (`/connect` and then `/models`)
 4. If the command is not found, add OpenCode to your `PATH` environment variable and restart the terminal.
 
 On **Wayland**, also install the `wl-clipboard` package for image paste support.
@@ -59,7 +58,8 @@ override, set the path manually under `Options > Assistant`.
 ### 5. Set a Preamble (Optional)
 
 Define a global system prompt in `Options > Assistant > Preamble`. This is
-prepended to every new session alongside your OpenCode agent prompts.
+added to every new session alongside your OpenCode agent prompts. An example
+comes out of the box, you can change it to suit your needs.
 
 ---
 

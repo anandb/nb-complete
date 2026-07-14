@@ -34,9 +34,18 @@ public class FitEditorPane extends JTextPane {
     private String lastText = null;
     private volatile Dimension cachedSize = null;
     private volatile boolean revalidatePending = false;
+    private volatile boolean suppressRevalidate = false;
 
     /** Prevents cascading revalidates across multiple FitEditorPane instances. */
     private static final AtomicBoolean GLOBAL_REVALIDATE_QUEUED = new AtomicBoolean(false);
+
+    @Override
+    public void revalidate() {
+        if (suppressRevalidate) {
+            return;
+        }
+        super.revalidate();
+    }
 
     @Override
     public void setText(String t) {
@@ -73,57 +82,62 @@ public class FitEditorPane extends JTextPane {
 
     @Override
     public Dimension getPreferredSize() {
-        Insets insets = getInsets();
-
-        int w = getWidth();
-        if (w <= 0 || (getParent() != null && getParent().getWidth() > 0 && getParent().getWidth() != w)) {
-            Component p = getParent();
-            while (p != null) {
-                if (p.getWidth() > 0) {
-                    w = p.getWidth();
-                    break;
-                }
-                p = p.getParent();
-            }
-        }
-
-        if (w <= 0) {
-            w = 500;
-        }
-
-        if (w == lastComputedWidth && lastComputedHeight > 0 && cachedSize != null) {
-            return cachedSize;
-        }
-
+        suppressRevalidate = true;
         try {
-            View root = getUI().getRootView(this);
-            if (root != null) {
-                int contentWidth = Math.max(1, w - insets.left - insets.right);
-                root.setSize(contentWidth, Integer.MAX_VALUE);
+            Insets insets = getInsets();
 
-                float h = root.getPreferredSpan(View.Y_AXIS);
-                if (h > 0) {
-                    lastComputedHeight = (int) Math.ceil(h);
-                    lastComputedWidth = w;
-                    // +10 fudge prevents last text line from being clipped
-                    // (macOS font descenders can be larger; +5 was insufficient)
-                    cachedSize = new Dimension(w, lastComputedHeight + insets.top + insets.bottom + 10);
-                    return cachedSize;
+            int w = getWidth();
+            if (w <= 0 || (getParent() != null && getParent().getWidth() > 0 && getParent().getWidth() != w)) {
+                Component p = getParent();
+                while (p != null) {
+                    if (p.getWidth() > 0) {
+                        w = p.getWidth();
+                        break;
+                    }
+                    p = p.getParent();
                 }
             }
-        } catch (Exception ex) {
-            LOG.fine("View sizing failed, using fallback: {0}", ex.getMessage());
-        }
 
-        if (lastComputedHeight > 0) {
-            // +10 fudge prevents last text line from being clipped
-            // (macOS font descenders can be larger; +5 was insufficient)
-            cachedSize = new Dimension(w, Math.max(30, lastComputedHeight + insets.top + insets.bottom + 10));
+            if (w <= 0) {
+                w = 500;
+            }
+
+            if (w == lastComputedWidth && lastComputedHeight > 0 && cachedSize != null) {
+                return cachedSize;
+            }
+
+            try {
+                View root = getUI().getRootView(this);
+                if (root != null) {
+                    int contentWidth = Math.max(1, w - insets.left - insets.right);
+                    root.setSize(contentWidth, Integer.MAX_VALUE);
+
+                    float h = root.getPreferredSpan(View.Y_AXIS);
+                    if (h > 0) {
+                        lastComputedHeight = (int) Math.ceil(h);
+                        lastComputedWidth = w;
+                        // +10 fudge prevents last text line from being clipped
+                        // (macOS font descenders can be larger; +5 was insufficient)
+                        cachedSize = new Dimension(w, lastComputedHeight + insets.top + insets.bottom + 10);
+                        return cachedSize;
+                    }
+                }
+            } catch (Exception ex) {
+                LOG.fine("View sizing failed, using fallback: {0}", ex.getMessage());
+            }
+
+            if (lastComputedHeight > 0) {
+                // +10 fudge prevents last text line from being clipped
+                // (macOS font descenders can be larger; +5 was insufficient)
+                cachedSize = new Dimension(w, Math.max(30, lastComputedHeight + insets.top + insets.bottom + 10));
+                return cachedSize;
+            }
+            Dimension superSize = super.getPreferredSize();
+            cachedSize = new Dimension(w, Math.max(30, superSize.height + insets.top + insets.bottom + 2));
             return cachedSize;
+        } finally {
+            suppressRevalidate = false;
         }
-        Dimension superSize = super.getPreferredSize();
-        cachedSize = new Dimension(w, Math.max(30, superSize.height + insets.top + insets.bottom + 2));
-        return cachedSize;
     }
 
     @Override
@@ -155,14 +169,19 @@ public class FitEditorPane extends JTextPane {
             if (!revalidatePending && GLOBAL_REVALIDATE_QUEUED.compareAndSet(false, true)) {
                 revalidatePending = true;
                 // Force the HTML view to reformat at the new width.
-                TextUI ui = (TextUI) getUI();
-                if (ui != null) {
-                    View root = ui.getRootView(this);
-                    if (root != null) {
-                        Insets ins = getInsets();
-                        int cw = Math.max(1, width - ins.left - ins.right);
-                        root.setSize(cw, Integer.MAX_VALUE);
+                suppressRevalidate = true;
+                try {
+                    TextUI ui = (TextUI) getUI();
+                    if (ui != null) {
+                        View root = ui.getRootView(this);
+                        if (root != null) {
+                            Insets ins = getInsets();
+                            int cw = Math.max(1, width - ins.left - ins.right);
+                            root.setSize(cw, Integer.MAX_VALUE);
+                        }
                     }
+                } finally {
+                    suppressRevalidate = false;
                 }
                 javax.swing.SwingUtilities.invokeLater(() -> {
                     try {
