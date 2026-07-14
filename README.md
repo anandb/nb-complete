@@ -70,7 +70,7 @@ All source lives under `src/main/java/github/anandb/netbeans/`:
 | Package | Files | Role |
 | --- | --- | --- |
 | `contract/` | 15 | Service interfaces (UI callbacks, session & process control, permission & request handlers, pinned message control) |
-| `manager/` | 14 | Core orchestration, protocol clients, session management, process lifecycle (includes `strategy/`) |
+| `manager/` | 12 | Core orchestration, protocol clients, session management, process lifecycle (includes `strategy/`) |
 | `mcp/` | 11 | MCP server integration (editor tools, tool definitions, message servlet) |
 | `model/` | 15 | ACP-compliant data models (session, messages, updates, config options, color tokens) |
 | `project/` | 9 | NetBeans lifecycle hooks, project manager, markdown project support |
@@ -125,8 +125,8 @@ The plugin reads the following system properties and environment variables:
 
 | Property | System | Description |
 |---|---|---|
-| `user.dir` | System | Working directory for session/project (`ProcessManager`, `SessionManager`, `AssistantTopComponent`) |
-| `user.home` | System | Default path to opencode binary (`BinaryResolver`) |
+| `user.dir` | System | Working directory for session/project (`SessionManager`) |
+| `user.home` | System | Default folder for Markdown Project creation (`MdProjectPanelVisual`) |
 | `java.io.tmpdir` | System | Temp directory for pasted images (`ImagePasteTransferHandler`) |
 | `os.name` | System | Detect Windows for binary resolution (`BinaryResolver`) |
 | `netbeans.codingassistant.roundedPanels` | System (`true`) | Toggle rounded panel corners (`RoundedPanel`) |
