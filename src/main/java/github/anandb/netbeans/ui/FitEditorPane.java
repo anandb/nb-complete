@@ -87,7 +87,7 @@ public class FitEditorPane extends JTextPane {
             Insets insets = getInsets();
 
             int w = getWidth();
-            if (w <= 0 || (getParent() != null && getParent().getWidth() > 0 && getParent().getWidth() != w)) {
+            if (w <= 0) {
                 Component p = getParent();
                 while (p != null) {
                     if (p.getWidth() > 0) {
