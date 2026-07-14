@@ -38,6 +38,16 @@ public class ACPProjectManager implements PropertyChangeListener {
 
     public void setProjectOpenListener(Consumer<String> listener) {
         this.projectOpenListener = listener;
+        // Replay open events for any projects already loaded before the listener was registered.
+        // Without this, if OpenProjects fires between start() and SessionManager registration,
+        // the open event is silently dropped and the session dropdown stays empty.
+        if (listener != null && currentProjects != null) {
+            for (Project p : currentProjects) {
+                if (p != null) {
+                    listener.accept(p.getProjectDirectory().getPath());
+                }
+            }
+        }
     }
 
     public void start() {
