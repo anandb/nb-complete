@@ -34,5 +34,8 @@ public interface SessionQuery {
 
     /** Returns true if the session is marked as hidden locally. */
     boolean isHidden(String sessionId);
+
+    /** Returns persisted context usage string ("used,size") for a session, or null. */
+    String getContextUsage(String sessionId);
 }
 

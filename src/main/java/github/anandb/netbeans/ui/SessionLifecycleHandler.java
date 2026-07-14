@@ -192,6 +192,11 @@ public class SessionLifecycleHandler implements SessionListener {
 
             @Override
             public void updateUsage(long used, long size) {
+                // Persist so the value survives session reload
+                String sessionId = update.params() != null ? update.params().sessionId() : null;
+                if (sessionId != null) {
+                    sessionService.get().setContextUsage(sessionId, used, size);
+                }
                 SwingUtilities.invokeLater(() ->
                     statusController.setTooltip("HINT_ContextUsage", used, size)
                 );
@@ -430,6 +435,20 @@ public class SessionLifecycleHandler implements SessionListener {
             statusController.setStatus("STATUS_Ready");
             statusController.stopThinking();
             statusController.updateButtonState(false);
+            // Restore persisted context usage tooltip
+            String usage = sessionService.get().getContextUsage(sessionId);
+            if (usage != null) {
+                String[] parts = usage.split(",");
+                if (parts.length == 2) {
+                    try {
+                        long used = Long.parseLong(parts[0]);
+                        long size = Long.parseLong(parts[1]);
+                        statusController.setTooltip("HINT_ContextUsage", used, size);
+                    } catch (NumberFormatException e) {
+                        // ignore malformed data
+                    }
+                }
+            }
             cwdLabelUpdater.accept(null);
             if (configOptions != null) {
                 configPanelController.updateConfigControls(configOptions, isStartup);

@@ -1,9 +1,11 @@
 package github.anandb.netbeans.ui;
 
 import java.awt.BorderLayout;
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.Insets;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStreamReader;
@@ -12,7 +14,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
@@ -23,7 +24,7 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
-import javax.swing.JTextArea;
+import javax.swing.JTextPane;
 import javax.swing.KeyStroke;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingUtilities;
@@ -39,12 +40,7 @@ import github.anandb.netbeans.contract.SessionQuery;
 import github.anandb.netbeans.support.BinaryResolver;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.ProcessTerminator;
-import javax.swing.JPopupMenu;
-import javax.swing.JMenuItem;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import java.awt.Toolkit;
-import java.awt.datatransfer.StringSelection;
+import static github.anandb.netbeans.ui.UIUtils.MONO_STACK;
 
 // DSL-LEAF: a standalone dialog for token usage stats.
 // Built imperatively — no need for the full SwingTree DSL.
@@ -63,7 +59,7 @@ public class TokenUsageDialog extends JDialog {
     private final JSpinner daysSpinner;
     private final JComboBox<String> modelCombo;
     private final JComboBox<String> projectCombo;
-    private final JTextArea statsArea;
+    private final FitEditorPane statsPane;
     private final JButton refreshBtn;
     private final AtomicBoolean running = new AtomicBoolean(false);
     private volatile Process currentProcess;
@@ -138,20 +134,22 @@ public class TokenUsageDialog extends JDialog {
         content.add(formPanel, BorderLayout.BEFORE_FIRST_LINE);
 
         // --- Stats area ---
-        statsArea = new JTextArea();
-        statsArea.setEditable(false);
-        statsArea.setFont(ThemeManager.getMonospaceFont());
-        statsArea.setBackground(theme.codeBackground());
-        statsArea.setForeground(theme.codeForeground());
-        statsArea.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(theme.tableBorder(), 1),
-            new EmptyBorder(8, 8, 8, 8)
-        ));
-        statsArea.setText("Press Refresh to fetch token usage stats.");
-        addContextMenu(statsArea);
+        statsPane = new FitEditorPane();
+        statsPane.putClientProperty(JTextPane.HONOR_DISPLAY_PROPERTIES, Boolean.TRUE);
+        statsPane.setEditable(false);
+        statsPane.setContentType("text/html");
+        statsPane.setOpaque(true);
+        statsPane.setBackground(theme.bubbleAssistant());
+        statsPane.setForeground(theme.foreground());
+        statsPane.setDoubleBuffered(true);
+        statsPane.setMargin(new Insets(0, 0, 0, 0));
+        statsPane.setBorder(new EmptyBorder(8, 8, 8, 8));
+        statsPane.setAlignmentX(Component.LEFT_ALIGNMENT);
+        statsPane.setText(buildPlaceholderHtml(theme));
 
-        JScrollPane scrollPane = new JScrollPane(statsArea);
+        JScrollPane scrollPane = new JScrollPane(statsPane);
         scrollPane.setPreferredSize(new Dimension(500, 260));
+        scrollPane.getViewport().setBackground(theme.bubbleAssistant());
         content.add(scrollPane, BorderLayout.CENTER);
 
         // --- Close button (centered) ---
@@ -186,8 +184,8 @@ public class TokenUsageDialog extends JDialog {
         String model = (String) modelCombo.getSelectedItem();
         String project = (String) projectCombo.getSelectedItem();
         refreshBtn.setEnabled(false);
-        statsArea.setText("Fetching stats...");
-        statsArea.setCaretPosition(0);
+        ColorTheme currentTheme = ThemeManager.getCurrentTheme();
+        statsPane.setText(buildPlaceholderHtml(currentTheme, "Fetching stats..."));
 
         new Thread(() -> {
             try {
@@ -199,9 +197,9 @@ public class TokenUsageDialog extends JDialog {
                     }
                 }
                 String result = ANSI_ESCAPE.matcher(runStatsCommand(days, model, projectDir)).replaceAll("");
+                String styledHtml = convertStatsToHtml(result, currentTheme);
                 SwingUtilities.invokeLater(() -> {
-                    statsArea.setText(result);
-                    statsArea.setCaretPosition(0);
+                    statsPane.setText(styledHtml);
                     if (firstRefresh) {
                         firstRefresh = false;
                         autoSizeInitial();
@@ -210,8 +208,7 @@ public class TokenUsageDialog extends JDialog {
             } catch (Exception ex) {
                 LOG.log(java.util.logging.Level.WARNING, "Failed to fetch token usage stats", ex);
                 SwingUtilities.invokeLater(() -> {
-                    statsArea.setText("Error: " + ex.getMessage());
-                    statsArea.setCaretPosition(0);
+                    statsPane.setText(buildPlaceholderHtml(currentTheme, "Error: " + ex.getMessage()));
                 });
             } finally {
                 currentProcess = null;
@@ -279,51 +276,148 @@ public class TokenUsageDialog extends JDialog {
         modelsProcess = null;
     }
 
-    private static void addContextMenu(JTextArea area) {
-        JPopupMenu popup = new JPopupMenu();
-        JMenuItem copyItem = new JMenuItem("Copy");
-        copyItem.addActionListener(e -> {
-            String sel = area.getSelectedText();
-            if (sel == null || sel.isEmpty()) {
-                sel = area.getText();
-            }
-            Toolkit.getDefaultToolkit().getSystemClipboard()
-                .setContents(new StringSelection(sel), null);
-        });
-        popup.add(copyItem);
-        JMenuItem selectAllItem = new JMenuItem("Select All");
-        selectAllItem.addActionListener(e -> area.selectAll());
-        popup.add(selectAllItem);
-
-        area.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mousePressed(MouseEvent e) {
-                if (e.isPopupTrigger()) popup.show(area, e.getX(), e.getY());
-            }
-            @Override
-            public void mouseReleased(MouseEvent e) {
-                if (e.isPopupTrigger()) popup.show(area, e.getX(), e.getY());
-            }
-        });
-    }
-
-    /** Height = 90% of parent, width = longest line + padding. */
+    /** Sizes the dialog to 90% parent height with reasonable width for table content. */
     private void autoSizeInitial() {
         java.awt.Window parent = SwingUtilities.getWindowAncestor(this);
         int h = parent != null ? (int)(parent.getHeight() * 0.9) : 520;
-
-        // Width based on longest line
-        String text = statsArea.getText();
-        java.awt.FontMetrics fm = statsArea.getFontMetrics(statsArea.getFont());
-        int maxW = 400;
-        if (text != null) {
-            for (String line : text.split("\n")) {
-                int w = fm.stringWidth(line) + 120;
-                if (w > maxW) maxW = w;
-            }
-        }
-        setSize(new Dimension(Math.min(maxW, 900), h));
+        setSize(new Dimension(700, h));
         revalidate();
+    }
+
+    // ---- Box-drawing to HTML table conversion ----
+
+    /** Extracts text content from between │ delimiters in a box-drawing row. */
+    private static String extractBoxContent(String line) {
+        int first = line.indexOf('│');
+        int last = line.lastIndexOf('│');
+        if (first >= 0 && last > first) {
+            return line.substring(first + 1, last).trim();
+        }
+        return null;
+    }
+
+    /** Parses a stats row content into [label, value]. */
+    private static String[] parseStatsRow(String content) {
+        // Split on 2+ spaces (box-drawing uses fixed-width padding)
+        String[] parts = content.split("\\s{2,}");
+        if (parts.length >= 2) {
+            String label = parts[0].trim();
+            if (content.contains("█")) {
+                // Tool usage row with progress bar — join everything after label
+                StringBuilder value = new StringBuilder();
+                for (int i = 1; i < parts.length; i++) {
+                    if (value.length() > 0) value.append(' ');
+                    value.append(parts[i].trim());
+                }
+                return new String[]{label, value.toString()};
+            }
+            // Simple key-value: label is first, value is last
+            return new String[]{label, parts[parts.length - 1].trim()};
+        }
+        // Single value (model name sub-header, etc.)
+        return new String[]{content, ""};
+    }
+
+    /** Escapes HTML special characters. */
+    private static String escapeHtml(String s) {
+        return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+    }
+
+    /** Converts box-drawing stats output into themed HTML tables. */
+    private static String convertStatsToHtml(String rawText, ColorTheme theme) {
+        String[] lines = rawText.split("\n", -1);
+        StringBuilder sb = new StringBuilder(2048);
+        String bg = theme.toHtmlHex(theme.bubbleAssistant());
+        String fg = theme.toHtmlHex(theme.assistantForeground());
+        String borderColor = theme.toHtmlHex(theme.tableBorder());
+        String headerBg = theme.toHtmlHex(theme.tableHeaderBackground());
+        String tableBg = theme.toHtmlHex(theme.tableBackground());
+        String altBg = theme.toHtmlHex(theme.tableRowAlternate());
+        String linkColor = ThemeManager.isDark() ? "#589DF6" : "#268BD2";
+
+        sb.append("<html><head><style>")
+          .append("html,body{margin:0;padding:8px;background:").append(bg)
+          .append(";color:").append(fg).append(";font-family:")
+          .append(MONO_STACK).append(";font-size:13px;line-height:1.4;}")
+          .append("table{border-collapse:collapse;width:100%;margin:8px 0;background:")
+          .append(tableBg).append(";}")
+          .append("th{background:").append(headerBg).append(";padding:8px;border:1px solid ")
+          .append(borderColor).append(";text-align:left;font-weight:bold;}")
+          .append("td{padding:8px;border:1px solid ").append(borderColor)
+          .append(";vertical-align:top;}")
+          .append("a{color:").append(linkColor).append(";text-decoration:none;}")
+          .append("</style></head><body>");
+
+        int i = 0;
+        while (i < lines.length) {
+            String line = lines[i];
+            if (!line.contains("\u250C")) {
+                i++;
+                continue;
+            } // ┌
+            i++;
+
+            // Section title
+            String title = "";
+            if (i < lines.length) {
+                String t = extractBoxContent(lines[i]);
+                if (t != null) title = t;
+                i++;
+            }
+            // Skip separator (├───┤)
+            if (i < lines.length && lines[i].contains("\u251C")) { i++; } // ├
+
+            // Collect data rows until section end
+            List<String[]> rows = new ArrayList<>();
+            while (i < lines.length) {
+                String dl = lines[i];
+                if (dl.contains("\u2514")) break; // └
+                String content = extractBoxContent(dl);
+                if (content != null && !content.isEmpty()) {
+                    rows.add(parseStatsRow(content));
+                }
+                i++;
+            }
+            // Skip past └─ line — outer loop skips blanks and finds next ┌─
+            i++;
+
+            // Render table
+            sb.append("<table><tr><th colspan='2'>").append(escapeHtml(title)).append("</th></tr>");
+            boolean alt = false;
+            for (String[] row : rows) {
+                if (row[1].isEmpty()) {
+                    // Sub-header row (model name)
+                    sb.append("<tr><td colspan='2' style='font-weight:bold;background:")
+                      .append(headerBg).append("'>").append(escapeHtml(row[0])).append("</td></tr>");
+                    alt = false;
+                } else {
+                    boolean isTotal = "Total Cost".equals(row[0]);
+                    String rowStyle = isTotal ? " style='font-weight:bold;" : "";
+                    if (alt) rowStyle += "background-color: " + altBg;
+                    sb.append("<tr").append(rowStyle.isEmpty() ? "" : rowStyle + "'").append(">")
+                      .append("<td style='white-space:nowrap;'>").append(escapeHtml(row[0])).append("</td>")
+                      .append("<td style='text-align:right;'>").append(escapeHtml(row[1])).append("</td>")
+                      .append("</tr>");
+                    alt = !alt;
+                }
+            }
+            sb.append("</table>");
+        }
+
+        sb.append("</body></html>");
+        return sb.toString();
+    }
+
+    /** Builds a simple placeholder HTML message for the stats pane. */
+    private static String buildPlaceholderHtml(ColorTheme theme) {
+        return buildPlaceholderHtml(theme, "Press Refresh to fetch token usage stats.");
+    }
+
+    private static String buildPlaceholderHtml(ColorTheme theme, String message) {
+        String fg = theme.toHtmlHex(theme.foreground());
+        return "<html><body style='margin:0;padding:8px;color:" + fg
+            + ";font-family:sans-serif;font-size:13px;'>"
+            + escapeHtml(message) + "</body></html>";
     }
 
     /** Fetches model list via `opencode models` in background, updates combo on EDT. */

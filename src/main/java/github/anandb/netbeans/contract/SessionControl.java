@@ -59,4 +59,7 @@ public interface SessionControl extends SessionQuery {
 
     /** Toggles the hidden attribute for a session in local storage. */
     void setHidden(String sessionId, boolean hidden);
+
+    /** Persists context usage (used, size) for a session so it survives reload. */
+    void setContextUsage(String sessionId, long used, long size);
 }

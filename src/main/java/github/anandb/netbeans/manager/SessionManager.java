@@ -102,6 +102,20 @@ public class SessionManager implements SessionQuery, SessionControl {
     }
     // -------------------------------------------------------------------------
 
+    // --- persisted context usage (used/size) ---------------------------------
+    private static final String USAGE_PREFIX = "session_usage_";
+
+    @Override
+    public String getContextUsage(String sessionId) {
+        return NbPreferences.forModule(SessionManager.class).get(USAGE_PREFIX + sessionId, null);
+    }
+
+    @Override
+    public void setContextUsage(String sessionId, long used, long size) {
+        NbPreferences.forModule(SessionManager.class).put(USAGE_PREFIX + sessionId, used + "," + size);
+    }
+    // -------------------------------------------------------------------------
+
     private static volatile SessionManager INSTANCE;
 
     private static final Logger LOG = Logger.from(SessionManager.class);
