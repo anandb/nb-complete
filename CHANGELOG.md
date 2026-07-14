@@ -16,6 +16,9 @@
   violations, resource leaks, error handling, lifecycle management, and structure. Findings  
   documented in `.opencode/review.md`.
 
+### Fixes
+- **FitEditorPane layout loop fix**: Resolved a 100% CPU lockup and infinite layout loop triggered by synchronous `revalidate()` calls during HTML text wrapping. Added a `suppressRevalidate` guard during sizing and fixed the width fallback logic in `getPreferredSize()` to correctly prefer the component's own width over the parent width, terminating the oscillation.
+
 ## v1.9.1 (Changes since v1.9.0)
 
 ### Fixes
