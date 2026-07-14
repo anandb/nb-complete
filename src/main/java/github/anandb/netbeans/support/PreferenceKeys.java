@@ -48,5 +48,8 @@ public final class PreferenceKeys {
     public static final String SKIPPED_UPDATE_VERSION = "update.skippedVersion";
     public static final String CHECK_FOR_UPDATES = "update.checkForUpdates";
 
+    /** Set to "true" on install/upgrade, consumed once by ChatLayoutBuilder to flash the help button. */
+    public static final String HELP_FLASH_PENDING = "helpFlashPending";
+
 }
 

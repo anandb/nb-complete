@@ -329,7 +329,14 @@ final class ChatLayoutBuilder {
         rightButtons.add(helpBtn);
         cwdRow.add(rightButtons, BorderLayout.EAST);
 
-        HelpButtonFlash.flash(helpBtn);
+        // Flash the help button only on install/upgrade, not every startup
+        String flashPending = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                .get(PreferenceKeys.HELP_FLASH_PENDING, "false");
+        if ("true".equals(flashPending)) {
+            HelpButtonFlash.flash(helpBtn);
+            NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                    .put(PreferenceKeys.HELP_FLASH_PENDING, "false");
+        }
 
         headerContent.add(cwdRow, BorderLayout.NORTH);
         headerContent.add(topBar, BorderLayout.SOUTH);

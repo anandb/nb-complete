@@ -8,6 +8,7 @@ import org.openide.windows.WindowManager;
 import github.anandb.netbeans.contract.UpdateCheckerControl;
 import github.anandb.netbeans.support.AgentUtils;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.PreferenceKeys;
 import org.openide.util.Lookup;
 import org.openide.windows.TopComponent;
 
@@ -35,6 +36,7 @@ public class ACPStartup implements Runnable {
         if (!currentVersion.equals(lastVersion)) {
             LOG.info("New version detected ({0}), opening Assistant sidebar (docked left)...", currentVersion);
             NbPreferences.forModule(ACPStartup.class).put("lastVersion", currentVersion);
+            NbPreferences.forModule(PreferenceKeys.class).put(PreferenceKeys.HELP_FLASH_PENDING, "true");
 
             UpdateCheckerControl ucc = Lookup.getDefault().lookup(UpdateCheckerControl.class);
             if (ucc != null) {
