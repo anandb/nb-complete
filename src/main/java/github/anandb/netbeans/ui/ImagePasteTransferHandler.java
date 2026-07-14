@@ -1,5 +1,6 @@
 package github.anandb.netbeans.ui;
 
+import github.anandb.netbeans.contract.PasteCallback;
 import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.datatransfer.DataFlavor;
@@ -37,15 +38,6 @@ public class ImagePasteTransferHandler extends TransferHandler {
     private final transient PasteCallback callback;
     private static final long MAX_FILE_SIZE = 10 * 1024 * 1024;
 
-    public interface PasteCallback {
-        boolean canAddAttachment();
-
-        void onAttachmentAdded(AttachedFile file);
-
-        void onError(String message);
-
-        void onAttachmentLimitReached();
-    }
 
     public ImagePasteTransferHandler(PasteCallback callback) {
         this.callback = callback;

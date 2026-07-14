@@ -1,5 +1,6 @@
 package github.anandb.netbeans.ui;
 
+import github.anandb.netbeans.contract.PasteCallback;
 import java.awt.Component;
 import java.awt.event.ActionEvent;
 import java.util.List;
@@ -59,7 +60,7 @@ public class AttachmentUiHandler {
     }
 
     private void setupImagePasteHandler(PlaceholderTextArea inputArea) {
-        ImagePasteTransferHandler.PasteCallback callback = new ImagePasteTransferHandler.PasteCallback() {
+        PasteCallback callback = new PasteCallback() {
             @Override
             public boolean canAddAttachment() {
                 return attachmentManager.canAdd();
