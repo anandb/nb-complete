@@ -133,7 +133,10 @@ final class IconResourceManager {
 
     private static String getThemeAwareName(String name) {
         if (isDark()) {
-            String darkName = name.replace(".svg", "_dark.svg");
+            int dot = name.lastIndexOf('.');
+            String darkName = dot > 0
+                ? name.substring(0, dot) + "_dark" + name.substring(dot)
+                : name + "_dark";
             if (ImageUtilities.loadImage("github/anandb/netbeans/ui/icons/" + darkName, true) != null) {
                 return darkName;
             }
