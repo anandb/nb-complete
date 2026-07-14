@@ -12,6 +12,7 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.swing.Box;
@@ -435,7 +436,11 @@ public class TokenUsageDialog extends JDialog {
                     String line;
                     while ((line = r.readLine()) != null) sb.append(line).append('\n');
                 }
-                proc.waitFor();
+                if (!proc.waitFor(30, TimeUnit.SECONDS)) {
+                    proc.destroyForcibly();
+                    LOG.fine("Model list fetch timed out after 30s");
+                    return;
+                }
                 String[] lines = sb.toString().trim().split("\n");
                 if (lines.length > 0 && !lines[0].isEmpty()) {
                     java.util.Set<String> models = new java.util.LinkedHashSet<>();

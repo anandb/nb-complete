@@ -89,6 +89,7 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
     private static final Pattern FATAL_PREFIX = Pattern.compile("(?m)^fatal: ");
     /** Current diff controller for navigating differences. */
     private DiffController currentController;
+    private PropertyChangeListener currentDiffListener;
 
     private static final Logger LOG = Logger.from(StashDiffAction.class);
 
@@ -514,8 +515,18 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
                         name + " (modified)", modifiedTitle, mime,
                         new StringReader(fd.stashContent));
                 DiffController ctrl = DiffController.createEnhanced(base, modified);
-                currentController = ctrl;
                 JComponent diffView = ctrl.getJComponent();
+                // Remove old listener before replacing controller
+                if (currentController != null && currentDiffListener != null) {
+                    currentController.removePropertyChangeListener(currentDiffListener);
+                }
+                currentDiffListener = evt -> {
+                    if (DiffController.PROP_DIFFERENCES.equals(evt.getPropertyName())) {
+                        SwingUtilities.invokeLater(() -> applyDiffFont(diffView));
+                    }
+                };
+                ctrl.addPropertyChangeListener(currentDiffListener);
+                currentController = ctrl;
 
                 // Wrap diff view: nav buttons above the view, aligned right
                 JPanel wrapper = new JPanel(new BorderLayout());
@@ -537,11 +548,6 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
                 diffPanel.add(wrapper, BorderLayout.CENTER);
                 // Apply font immediately and re-apply on property changes (tab switches)
                 SwingUtilities.invokeLater(() -> applyDiffFont(diffView));
-                ctrl.addPropertyChangeListener(evt -> {
-                    if (DiffController.PROP_DIFFERENCES.equals(evt.getPropertyName())) {
-                        SwingUtilities.invokeLater(() -> applyDiffFont(diffView));
-                    }
-                });
                 // Also re-apply when component becomes visible (covers initial render)
                 diffView.addHierarchyListener(e -> {
                     if ((e.getChangeFlags() & HierarchyEvent.SHOWING_CHANGED) != 0

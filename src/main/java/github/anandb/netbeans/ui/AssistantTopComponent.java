@@ -34,6 +34,7 @@ import org.openide.DialogDisplayer;
 import org.openide.NotifyDescriptor;
 import org.openide.util.NbBundle;
 import org.openide.util.Lookup;
+import org.openide.util.RequestProcessor;
 import org.openide.windows.TopComponent;
 import org.openide.windows.WindowManager;
 
@@ -390,12 +391,14 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         chooser.setSelectedFile(new File(defaultName));
         if (chooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
             File file = chooser.getSelectedFile();
-            try (FileWriter writer = new FileWriter(file)) {
-                writer.write(markdown);
-                LOG.fine("Conversation exported to {0}", file.getAbsolutePath());
-            } catch (IOException ex) {
-                LOG.warn("Failed to export conversation", ex);
-            }
+            RequestProcessor.getDefault().post(() -> {
+                try (FileWriter writer = new FileWriter(file)) {
+                    writer.write(markdown);
+                    LOG.fine("Conversation exported to {0}", file.getAbsolutePath());
+                } catch (IOException ex) {
+                    LOG.warn("Failed to export conversation", ex);
+                }
+            });
         }
     }
 

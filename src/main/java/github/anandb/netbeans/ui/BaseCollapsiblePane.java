@@ -534,6 +534,7 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
                         segRevertTimer[0] = new Timer(2000, ev -> btn.setIcon(orig));
                         segRevertTimer[0].setRepeats(false);
                         segRevertTimer[0].start();
+                        wrapper.putClientProperty("segRevertTimer", segRevertTimer[0]);
                     });
             JButton segCopyBtn = segCopyBtnRef[0];
             segCopyBtn.setBorder(BorderFactory.createEmptyBorder());
@@ -586,10 +587,19 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
 
     @Override
     public void removeNotify() {
-        // Stop timer before super.removeNotify() to prevent callbacks
+        // Stop all timers before super.removeNotify() to prevent callbacks
         // from firing on a partially-dismantled component tree.
         if (copyFeedbackTimer != null && copyFeedbackTimer.isRunning()) {
             copyFeedbackTimer.stop();
+        }
+        // Stop any segRevertTimers stored as client properties on children
+        for (java.awt.Component c : getComponents()) {
+            if (c instanceof JPanel) {
+                Timer t = (Timer) ((JPanel) c).getClientProperty("segRevertTimer");
+                if (t != null && t.isRunning()) {
+                    t.stop();
+                }
+            }
         }
         if (paramLabelToggleListener != null && paramLabel != null) {
             paramLabel.removeMouseListener(paramLabelToggleListener);

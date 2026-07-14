@@ -424,7 +424,12 @@ public class SessionManager implements SessionQuery, SessionControl {
                             LOG.warn("Failed to parse configOptions from set_config_option: {0}", e.getMessage(), e);
                         }
                     }
-                    return null;
+                    return (Void) null;
+                })
+                .whenComplete((res, ex) -> {
+                    if (ex != null) {
+                        LOG.warn("Failed to set config {0}: {1}", configId, ex.getMessage());
+                    }
                 });
     }
 
