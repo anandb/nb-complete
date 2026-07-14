@@ -76,6 +76,7 @@ public class MessageBubble extends JPanel implements Scrollable {
     private final String sessionId;
     private boolean pinned;
     private JButton pinBtn;
+    private transient Timer showTimer;
 
     @Override
     public float getAlignmentX() {
@@ -250,27 +251,38 @@ public class MessageBubble extends JPanel implements Scrollable {
             actionsPlaceholder.setMaximumSize(actionsSize);
             bubble.add(actionsPlaceholder, BorderLayout.SOUTH);
 
-            // Hover: show copy on hover, pin always visible when pinned.
+            // Hover: show copy/pin after 400ms delay (timer created lazily).
             bubble.addMouseListener(new MouseAdapter() {
                 @Override
                 public void mouseEntered(MouseEvent e) {
-                    copyBtnArr[0].setVisible(true);
-                    // Reset icon — a stale check icon may remain from a
-                    // copy where the timer fired while the button was hidden.
-                    if (copyRevertTimer != null && copyRevertTimer.isRunning()) {
-                        copyRevertTimer.stop();
+                    if (showTimer == null) {
+                        showTimer = new Timer(400, evt -> {
+                            if (isMouseInsideComponent(bubble)) {
+                                copyBtnArr[0].setVisible(true);
+                                // Reset icon — a stale check icon may remain from a
+                                // copy where the timer fired while the button was hidden.
+                                if (copyRevertTimer != null && copyRevertTimer.isRunning()) {
+                                    copyRevertTimer.stop();
+                                }
+                                if (copyBtnArr.length > 0) {
+                                    copyBtnArr[0].setIcon(copyBtnArrIcon);
+                                }
+                                if (!pinned) {
+                                    pinBtn.setVisible(true);
+                                }
+                            }
+                        });
+                        showTimer.setRepeats(false);
                     }
-                    if (copyBtnArr.length > 0) {
-                        copyBtnArr[0].setIcon(copyBtnArrIcon);
-                    }
-                    if (!pinned) {
-                        pinBtn.setVisible(true);
-                    }
+                    showTimer.start();
                 }
 
                 @Override
                 public void mouseExited(MouseEvent e) {
                     if (!isMouseInsideComponent(bubble)) {
+                        if (showTimer != null) {
+                            showTimer.stop();
+                        }
                         copyBtnArr[0].setVisible(false);
                         if (!pinned) {
                             pinBtn.setVisible(false);
@@ -319,22 +331,33 @@ public class MessageBubble extends JPanel implements Scrollable {
             copyPlaceholder.add(copyBtn[0]);
             bubble.add(copyPlaceholder, BorderLayout.SOUTH);
 
-            // Show copy button on hover over the bubble.
+            // Show copy button after 400ms hover delay (timer created lazily).
             bubble.addMouseListener(new MouseAdapter() {
                 @Override
                 public void mouseEntered(MouseEvent e) {
-                    copyBtn[0].setVisible(true);
-                    // Reset icon — a stale check icon may remain from a
-                    // copy where the timer fired while the button was hidden.
-                    if (copyRevertTimer != null && copyRevertTimer.isRunning()) {
-                        copyRevertTimer.stop();
+                    if (showTimer == null) {
+                        showTimer = new Timer(400, evt -> {
+                            if (isMouseInsideComponent(bubble)) {
+                                copyBtn[0].setVisible(true);
+                                // Reset icon — a stale check icon may remain from a
+                                // copy where the timer fired while the button was hidden.
+                                if (copyRevertTimer != null && copyRevertTimer.isRunning()) {
+                                    copyRevertTimer.stop();
+                                }
+                                copyBtn[0].setIcon(copyBtnIcon);
+                            }
+                        });
+                        showTimer.setRepeats(false);
                     }
-                    copyBtn[0].setIcon(copyBtnIcon);
+                    showTimer.start();
                 }
 
                 @Override
                 public void mouseExited(MouseEvent e) {
                     if (!isMouseInsideComponent(bubble)) {
+                        if (showTimer != null) {
+                            showTimer.stop();
+                        }
                         copyBtn[0].setVisible(false);
                     }
                 }
@@ -401,6 +424,9 @@ public class MessageBubble extends JPanel implements Scrollable {
         if (copyRevertTimer != null) {
             copyRevertTimer.stop();
             copyRevertTimer = null;
+        }
+        if (showTimer != null) {
+            showTimer.stop();
         }
         if (hierarchyListener != null) {
             removeHierarchyListener(hierarchyListener);

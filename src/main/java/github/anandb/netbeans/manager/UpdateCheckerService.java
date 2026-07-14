@@ -179,11 +179,18 @@ public class UpdateCheckerService implements UpdateCheckerControl {
         LOG.info("Checking for updates from {0}", PreferenceKeys.UPDATE_URL);
 
         try {
-            String userAgent = "CodingAssistant/" + AgentUtils.getVersion();
+            String ua = String.format(
+                "Mozilla/5.0 (compatible; %s %s; NetBeans %s; Java %s) BeanBot/%s",
+                System.getProperty("os.name", "unknown"),
+                System.getProperty("os.arch", "unknown"),
+                System.getProperty("netbeans.version", "unknown"),
+                System.getProperty("java.version", "unknown"),
+                AgentUtils.getVersion()
+            );
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(PreferenceKeys.UPDATE_URL))
-                    .header("User-Agent", userAgent)
+                    .header("User-Agent", ua)
                     .timeout(Duration.ofSeconds(15))
                     .GET()
                     .build();
