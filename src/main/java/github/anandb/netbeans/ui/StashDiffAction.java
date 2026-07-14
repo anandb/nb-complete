@@ -18,12 +18,14 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.StringReader;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.swing.AbstractAction;
@@ -55,6 +57,7 @@ import org.openide.nodes.Node;
 import org.openide.util.ImageUtilities;
 import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
+import org.openide.util.RequestProcessor;
 import org.openide.util.Utilities;
 import org.openide.util.actions.Presenter;
 import org.openide.windows.TopComponent;
@@ -187,18 +190,43 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
 
     // --- Git helpers ---
 
+    private static final RequestProcessor GIT_RP = new RequestProcessor("StashDiff-git", 1);
+
     private static String runGit(File dir, String... cmd) throws Exception {
         ProcessBuilder pb = new ProcessBuilder(cmd);
         pb.directory(dir);
         pb.redirectErrorStream(true);
         Process proc = pb.start();
         StringBuilder sb = new StringBuilder();
-        try (BufferedReader r = new BufferedReader(new InputStreamReader(proc.getInputStream()))) {
-            String line;
-            while ((line = r.readLine()) != null) sb.append(line).append('\n');
+        // Read process output via RequestProcessor so the main thread can
+        // timeout via waitFor. Destroying the process closes stdout, which
+        // causes readLine() to return null and the reader task to exit.
+        RequestProcessor.Task readerTask = GIT_RP.post(() -> {
+            try (BufferedReader r = new BufferedReader(new InputStreamReader(proc.getInputStream()))) {
+                String line;
+                while ((line = r.readLine()) != null) sb.append(line).append('\n');
+            } catch (IOException e) {
+                // Expected when process is destroyed before all output is read
+            }
+        });
+        try {
+            boolean timedOut = !proc.waitFor(60, TimeUnit.SECONDS);
+            if (timedOut) {
+                proc.destroyForcibly();
+            }
+            // Always wait for reader before reading sb (destroyForcibly above closes stdout,
+            // unblocking readLine). On timeout the reader gets partial output and exits.
+            readerTask.waitFinished(1000);
+            if (timedOut) {
+                throw new RuntimeException("git command timed out after 60 seconds: " + String.join(" ", cmd));
+            }
+            return sb.toString();
+        } finally {
+            if (proc.isAlive()) {
+                proc.destroyForcibly();
+            }
+            readerTask.waitFinished(1000);
         }
-        proc.waitFor();
-        return sb.toString();
     }
 
     private static String stripFatal(String output) {
