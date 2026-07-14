@@ -1,5 +1,21 @@
 # Release Notes
 
+## v1.9.2 (Changes since v1.9.1)
+
+### Stability
+- **Per-request idle timeouts replace absolute orTimeout**: `AcpProtocolClient` now tracks  
+  idle timeouts per pending request via `pendingRequestIdleTimeouts` map. The watchdog fails  
+  individual requests with `TimeoutException` when the connection is idle beyond their timeout,  
+  without closing the entire connection. `SessionRpcClient` passes: `session/list`=60s,  
+  `session/load`=120s, `session/update`=30s, `session/set_config_option`=30s idle timeout.
+- **StashDiffAction.runGit()**: Rewrote to read process stdout via `RequestProcessor` daemon  
+  thread so `proc.waitFor(60, SECONDS)` operates as the timeout mechanism. On timeout,  
+  `destroyForcibly()` closes stdout, unblocking the reader. `waitFinished(1000)` called in  
+  both try and finally to ensure the reader exits before `sb` is read.
+- **Codebase-wide stability review**: Six parallel subagent audits covered threading/EDT  
+  violations, resource leaks, error handling, lifecycle management, and structure. Findings  
+  documented in `.opencode/review.md`.
+
 ## v1.9.1 (Changes since v1.9.0)
 
 ### Fixes

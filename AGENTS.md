@@ -39,6 +39,17 @@
 - **contract/ → manager/ singletons**: `contract/` classes must use `Lookup.getDefault().lookup()`
   to access services, never direct `Manager.getInstance()` calls. The `SlashCommandInterceptor`
   violation was fixed by injecting `ProcessControl` via Lookup.
+- **Request idle timeouts, not absolute**: Use per-request idle timeouts tied to
+  `AcpProtocolClient`'s connection-level `lastDataTime`. Only fail requests when the connection
+  is idle (no inbound data) beyond their timeout. Do NOT use `future.orTimeout()` — that is an
+  absolute deadline that kills requests even when data is flowing. Set timeouts by passing
+  `(method, params, timeout, unit)` to `ProcessManager.sendRequest()` or  
+  `SessionRpcClient` methods.
+- **Process I/O pattern**: When reading a subprocess's stdout/stdin with a timeout, read in a
+  `RequestProcessor` background task, then use `proc.waitFor(timeout, unit)` on the caller
+  thread as the timeout mechanism. On timeout, `proc.destroyForcibly()` closes the pipe,
+  unblocking the reader. Always call `readerTask.waitFinished(timeoutMs)` before consuming
+  output and in a `finally` block to guarantee the reader exits. Example: `StashDiffAction.runGit()`.
 
 ## Token Efficiency Rules
 - **Targeted File Reads**: NEVER read full files unless they are <100 lines. Use `view_file`
