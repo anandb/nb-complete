@@ -62,6 +62,7 @@ public class TokenUsageDialog extends JDialog {
     private final JComboBox<String> projectCombo;
     private final FitEditorPane statsPane;
     private final JButton refreshBtn;
+    private final JScrollPane scrollPane;
     private final AtomicBoolean running = new AtomicBoolean(false);
     private volatile Process currentProcess;
     private volatile Process modelsProcess;
@@ -148,7 +149,7 @@ public class TokenUsageDialog extends JDialog {
         statsPane.setAlignmentX(Component.LEFT_ALIGNMENT);
         statsPane.setText(buildPlaceholderHtml(theme));
 
-        JScrollPane scrollPane = new JScrollPane(statsPane);
+        scrollPane = new JScrollPane(statsPane);
         scrollPane.setPreferredSize(new Dimension(500, 260));
         scrollPane.getViewport().setBackground(theme.bubbleAssistant());
         content.add(scrollPane, BorderLayout.CENTER);
@@ -205,11 +206,14 @@ public class TokenUsageDialog extends JDialog {
                         firstRefresh = false;
                         autoSizeInitial();
                     }
+                    // Scroll to top after layout settles
+                    SwingUtilities.invokeLater(() -> scrollPane.getVerticalScrollBar().setValue(0));
                 });
             } catch (Exception ex) {
                 LOG.log(java.util.logging.Level.WARNING, "Failed to fetch token usage stats", ex);
                 SwingUtilities.invokeLater(() -> {
                     statsPane.setText(buildPlaceholderHtml(currentTheme, "Error: " + ex.getMessage()));
+                    SwingUtilities.invokeLater(() -> scrollPane.getVerticalScrollBar().setValue(0));
                 });
             } finally {
                 currentProcess = null;
