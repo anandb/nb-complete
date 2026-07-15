@@ -525,7 +525,7 @@ public class SessionManager implements SessionQuery, SessionControl {
                 .exceptionally(ex -> {
                     LOG.severe("Failed to create session", ex);
                     stateMachine.transitionTo(SessionState.IDLE);
-                    notifyError(ex.getMessage());
+                    notifyError(rootMessage(ex));
                     return null;
                 });
     }
@@ -583,7 +583,7 @@ public class SessionManager implements SessionQuery, SessionControl {
                 .exceptionally(ex -> {
                     if (sessionId.equals(this.currentSessionId)) {
                         stateMachine.transitionTo(SessionState.IDLE);
-                        notifyError(NbBundle.getMessage(SessionManager.class, "ERR_LoadSessionFailed", ex.getMessage()));
+                        notifyError(NbBundle.getMessage(SessionManager.class, "ERR_LoadSessionFailed", rootMessage(ex)));
                     }
                     return null;
                 });
@@ -808,6 +808,16 @@ public class SessionManager implements SessionQuery, SessionControl {
             }
             return CompletableFuture.<T>failedFuture(ex);
         }).thenCompose(f -> f);
+    }
+
+    /** Unwrap the cause chain and return the root error message. */
+    private static String rootMessage(Throwable ex) {
+        Throwable cause = ex;
+        while (cause.getCause() != null) {
+            cause = cause.getCause();
+        }
+        String msg = cause.getMessage();
+        return msg != null ? msg : ex.getMessage();
     }
 
     private long parseTimestamp(String ts) {

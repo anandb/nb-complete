@@ -10,18 +10,14 @@ import java.awt.FontMetrics;
 import java.awt.Desktop;
 
 import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.logging.Level;
-import java.util.regex.Pattern;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
-import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -34,7 +30,6 @@ import org.openide.DialogDisplayer;
 import org.openide.NotifyDescriptor;
 import org.openide.util.NbBundle;
 import org.openide.util.Lookup;
-import org.openide.util.RequestProcessor;
 import org.openide.windows.TopComponent;
 import org.openide.windows.WindowManager;
 
@@ -71,7 +66,7 @@ import github.anandb.netbeans.ui.platform.SessionService;
 public final class AssistantTopComponent extends TopComponent implements PermissionHandler {
 
     private static final Logger LOG = Logger.from(AssistantTopComponent.class);
-    private static final Pattern INVALID_TITLE_PATTERN = Pattern.compile("[^a-zA-Z0-9._-]");
+
     private static final long serialVersionUID = 1L;
     private final SessionService sessionService = Lookup.getDefault().lookup(PlatformBridge.class).sessionService();
     private final ProjectContext projectContext = Lookup.getDefault().lookup(PlatformBridge.class).projectContext();
@@ -372,34 +367,13 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     }
 
     void exportConversation() {
-        String markdown = chatPanel.getConversationAsMarkdown();
+        String currentId = sessionService.get().getCurrentSessionId();
+        String title = currentId != null ? sessionService.get().getSessionTitle(currentId) : null;
+        String markdown = chatPanel.getConversationAsMarkdown(title);
         if (markdown == null || markdown.trim().isEmpty()) {
             return;
         }
-
-        String defaultName = "session.md";
-        String currentId = sessionService.get().getCurrentSessionId();
-        if (currentId != null) {
-            String title = sessionService.get().getSessionTitle(currentId);
-            if (title != null && !title.startsWith("New Session")) {
-                defaultName = INVALID_TITLE_PATTERN.matcher(title).replaceAll("_") + ".md";
-            }
-        }
-
-        JFileChooser chooser = new JFileChooser();
-        chooser.setDialogTitle(NbBundle.getMessage(AssistantTopComponent.class, "TITLE_ExportConv"));
-        chooser.setSelectedFile(new File(defaultName));
-        if (chooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
-            File file = chooser.getSelectedFile();
-            RequestProcessor.getDefault().post(() -> {
-                try (FileWriter writer = new FileWriter(file)) {
-                    writer.write(markdown);
-                    LOG.fine("Conversation exported to {0}", file.getAbsolutePath());
-                } catch (IOException ex) {
-                    LOG.warn("Failed to export conversation", ex);
-                }
-            });
-        }
+        ConversationExporter.export(this, markdown, ConversationExporter.defaultFileName(title));
     }
 
     private void updateTabName(String modelName) {

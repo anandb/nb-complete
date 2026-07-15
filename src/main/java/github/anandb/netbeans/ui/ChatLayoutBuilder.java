@@ -374,9 +374,9 @@ final class ChatLayoutBuilder {
         inputArea.setLineWrap(true);
         inputArea.setWrapStyleWord(true);
         inputArea.setBorder(new EmptyBorder(12, 12, 12, 12));
-        inputArea.setRows(2);
-        int editorFontSize = ThemeManager.getMonospaceFont().getSize();
-        inputArea.setFont(ThemeManager.getFont().deriveFont(editorFontSize));
+        inputArea.setRows(3);
+        int chatFontSize = ThemeManager.getFont().getSize() - 2;
+        inputArea.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN, chatFontSize + 2f));
 
         inputScrollPane = new JScrollPane(inputArea);
         // Prevent the input area from shrinking below its 2-row natural height,
@@ -397,7 +397,7 @@ final class ChatLayoutBuilder {
         sendBtn.setMnemonic(java.awt.event.KeyEvent.VK_G);
         sendBtn.setDisplayedMnemonicIndex(0);
         stopBtn = UIUtils.createTextButton(NbBundle.getMessage(AssistantTopComponent.class, "BTN_Stop"), null);
-        stopBtn.setPreferredSize(new java.awt.Dimension(80, 64));
+        stopBtn.setPreferredSize(new java.awt.Dimension(100, 64));
         stopBtn.setMnemonic(java.awt.event.KeyEvent.VK_S);
         stopBtn.setDisplayedMnemonicIndex(0);
 

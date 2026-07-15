@@ -284,6 +284,16 @@ public class SessionLifecycleHandler implements SessionListener {
                 configPanelController.ensureDefaultModelSelected();
 
                 if (hasSessions) {
+                    // Current session is archived but visible in dropdown because
+                    // show-hidden is active. Auto-select a non-archived fallback so
+                    // the user doesn't end up with a hidden session selected and the
+                    // input area stuck enabled.
+                    boolean currentArchived = currentId != null
+                            && selectIdx != -1
+                            && sessionService.get().isHidden(currentId);
+                    if (currentArchived) {
+                        selectIdx = -1; // force fallback selection below
+                    }
                     if (selectIdx != -1) {
                         sessionDropdown.setSelectedIndex(selectIdx);
                         // When transitioning from WelcomeScreen (no visible sessions) back to
@@ -294,7 +304,7 @@ public class SessionLifecycleHandler implements SessionListener {
                             sessionService.get().loadSession(currentId);
                         }
                     } else {
-                        // Current session is gone (e.g. its project closed).
+                        // Current session is gone (archived or project closed).
                         // Prefer a session from the SAME project as the last active
                         // session to avoid hijacking the user to a different project.
                         String prevDir = sessionService.get().getCurrentSessionDirectory();
@@ -303,16 +313,45 @@ public class SessionLifecycleHandler implements SessionListener {
                         for (int i = 0; i < sessionDropdown.getItemCount(); i++) {
                             SessionItem item = sessionDropdown.getItemAt(i);
                             if (item != null && prevDir != null
-                                    && prevDir.equals(item.getSession().effectiveDirectory())) {
+                                    && prevDir.equals(item.getSession().effectiveDirectory())
+                                    && !sessionService.get().isHidden(item.getSession().id())) {
                                 sameProjectMatch = item;
                                 break;
                             }
                         }
-                        SessionItem fallback = sameProjectMatch != null ? sameProjectMatch : mostRecentAny;
+                        // Exclude archived sessions from the most-recent fallback too
+                        SessionItem fallback = sameProjectMatch;
+                        if (fallback == null) {
+                            for (int i = 0; i < sessionDropdown.getItemCount(); i++) {
+                                SessionItem item = sessionDropdown.getItemAt(i);
+                                if (item != null && !sessionService.get().isHidden(item.getSession().id())) {
+                                    fallback = item;
+                                    break;
+                                }
+                            }
+                        }
                         if (fallback != null) {
                             LOG.fine("Auto-selecting fallback session: {0} (sameProject={1})",
                                     fallback.getSession().id(), sameProjectMatch != null);
+                            statusController.setInputEnabled(false);
                             sessionService.get().loadSession(fallback.getSession().id());
+                        } else {
+                            // All remaining sessions are archived — show WelcomeScreen
+                            showingWelcomeScreen = true;
+                            chatPanel.setSessionList(sessions,
+                                id -> sessionService.get().loadSession(id), () -> {
+                                    Project[] projects = projectContext.getAllOpenProjects();
+                                    if (projects == null || projects.length == 0) return;
+                                    if (projects.length == 1) {
+                                        sessionService.get().createNewSession(
+                                            projects[0].getProjectDirectory().getPath());
+                                    } else {
+                                        projectPickerShower.accept(sessionDropdown);
+                                    }
+                                });
+                            sessionDropdown.setSelectedIndex(-1);
+                            statusController.setInputEnabled(false);
+                            sessionStateHandler.accept(false);
                         }
                     }
                 } else {

@@ -699,11 +699,16 @@ public class MessageBubble extends JPanel implements Scrollable {
      * moves quickly.
      */
     private static boolean isMouseInsideComponent(Component c) {
+        if (!c.isShowing()) return false;
         PointerInfo pi = MouseInfo.getPointerInfo();
         if (pi == null) return false;
-        Point screenLoc = pi.getLocation();
-        Rectangle bounds = c.getBounds();
-        bounds.setLocation(c.getLocationOnScreen());
-        return bounds.contains(screenLoc);
+        try {
+            Point screenLoc = pi.getLocation();
+            Rectangle bounds = c.getBounds();
+            bounds.setLocation(c.getLocationOnScreen());
+            return bounds.contains(screenLoc);
+        } catch (java.awt.IllegalComponentStateException ex) {
+            return false;
+        }
     }
 }

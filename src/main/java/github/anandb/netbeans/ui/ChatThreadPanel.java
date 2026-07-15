@@ -685,37 +685,11 @@ public class ChatThreadPanel extends JPanel {
     }
 
     public String getConversationAsMarkdown() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("# ACP Conversation Export\n\n");
+        return getConversationAsMarkdown(null);
+    }
 
-        for (Component c : messagesContainer.getComponents()) {
-            if (c instanceof MessageBubble bubble) {
-                String role = bubble.getRole();
-                String text = bubble.getRawText();
-
-                if (text == null || text.trim().isEmpty()) {
-                    continue;
-                }
-
-                if (null == role) {
-                    sb.append("## ASSISTANT\n\n");
-                    sb.append(text).append("\n\n");
-                } else switch (role) {
-                    case "user" -> {
-                        sb.append("## USER\n\n");
-                        sb.append(text).append("\n\n");
-                    }
-                    case "thought" -> sb.append("> **Thinking:**\n> ").append(text.replace("\n", "\n> ")).append("\n\n");
-                    case "tool" -> sb.append("`Tool Output: ").append(text.replace("`", "'")).append("`\n\n");
-                    default -> {
-                        sb.append("## ASSISTANT\n\n");
-                        sb.append(text).append("\n\n");
-                    }
-                }
-                sb.append("---\n\n");
-            }
-        }
-        return sb.toString();
+    public String getConversationAsMarkdown(String sessionTitle) {
+        return ConversationExporter.generateMarkdown(messagesContainer, sessionTitle);
     }
 
     public void applyTypeFilters() {
