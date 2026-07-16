@@ -334,6 +334,7 @@ public class SessionLifecycleHandler implements SessionListener {
                             LOG.fine("Auto-selecting fallback session: {0} (sameProject={1})",
                                     fallback.getSession().id(), sameProjectMatch != null);
                             statusController.setInputEnabled(false);
+                            sessionDropdown.setSelectedItem(fallback);
                             sessionService.get().loadSession(fallback.getSession().id());
                         } else {
                             // All remaining sessions are archived — show WelcomeScreen
@@ -506,6 +507,14 @@ public class SessionLifecycleHandler implements SessionListener {
             hideBtn.setToolTipText(hidden
                 ? NbBundle.getMessage(AssistantTopComponent.class, "HINT_UnarchiveSession")
                 : NbBundle.getMessage(AssistantTopComponent.class, "HINT_ArchiveSession"));
+            // Sync the dropdown to the loaded session so it always reflects what's displayed.
+            for (int i = 0; i < sessionDropdown.getItemCount(); i++) {
+                SessionItem item = sessionDropdown.getItemAt(i);
+                if (item != null && sessionId.equals(item.getSession().id())) {
+                    sessionDropdown.setSelectedItem(item);
+                    break;
+                }
+            }
             if (!sessionDropdown.isPopupVisible()) {
                 inputArea.requestFocusInWindow();
             }
