@@ -36,6 +36,7 @@ import static org.apache.commons.lang3.StringUtils.defaultIfBlank;
 import static org.apache.commons.lang3.StringUtils.defaultString;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
+import org.apache.commons.lang3.Strings;
 
 @ServiceProvider(service = UpdateDispatcher.class)
 public class StrategyRegistry implements UpdateDispatcher {
@@ -143,6 +144,7 @@ public class StrategyRegistry implements UpdateDispatcher {
                     LOG.fine("Ignoring tool_call: plan tool call, update={0}", update);
                     return;
                 }
+
                 final String sessionId = update.params() != null ? update.params().sessionId() : null;
                 final String messageId = update.messageId();
                 if (isBlank(messageId) || isBlank(sessionId)) {
@@ -164,7 +166,13 @@ public class StrategyRegistry implements UpdateDispatcher {
                         LOG.fine("Ignoring tool_call: already completed, update={0}", update);
                         return;
                     }
+
                     ProcessedMessage target = processToolMessage(data, command, update, kind, messageId);
+                    if (Strings.CS.contains(target.rawText(), "Could not find oldString in the file.")) {
+                        LOG.fine("Ignoring tool_call: Failed Edit, update={0}", update);
+                        return;
+                    }
+                    
                     if (data.shouldDisplay(target.text())) {
                         handler.displayMessage(target);
                     }
@@ -371,7 +379,7 @@ public class StrategyRegistry implements UpdateDispatcher {
             String outText = output.asText().trim();
             if (!outText.startsWith("[")) return false;
             // Guard: next non-whitespace char must be '{' (plan entries are [{...}])
-            // This avoids JsonParseException on git log lines like "[main abc123]..." 
+            // This avoids JsonParseException on git log lines like "[main abc123]..."
             int idx = 1;
             while (idx < outText.length() && outText.charAt(idx) <= ' ') idx++;
             if (idx >= outText.length() || outText.charAt(idx) != '{') return false;
