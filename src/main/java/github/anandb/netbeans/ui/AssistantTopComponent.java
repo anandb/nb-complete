@@ -587,7 +587,6 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                 filterBtn.setEnabled(false);
                 refreshBtn.setEnabled(false);
                 exportBtn.setEnabled(false);
-                helpBtn.setEnabled(false);
                 // restartServerBtn stays enabled so user can retry after installing
 
                 // Disable input area
