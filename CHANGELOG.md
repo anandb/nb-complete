@@ -1,5 +1,65 @@
 # Release Notes
 
+## v1.9.3 (Changes since v1.9.2)
+
+### Features
+- **Binary-not-found state**: When the `opencode` binary is not installed or not on
+  PATH, all toolbar buttons are disabled except "Restart ACP Server". A warning
+  message is shown in the chat panel and status bar. State is cleared automatically
+  on successful server restart. Proactive check at startup prevents futile server
+  start attempts. Added `BinaryResolver.isAvailable()` non-throwing check and
+  `AssistantTopComponent.setBinaryNotFoundState()` for centralized state management.
+
+### Fixes
+- **Conversation export uses structured markdown**: Extracted `ConversationExporter`
+  with YAML frontmatter, role headers, fenced tool blocks, and clean blockquotes.
+  Fixes export skipping merged tool/thought bubbles — ToolSegment data is now
+  properly included in the output.
+- **Input area font fixed**: Uses chat bubble font size + 2, plain style, 3 rows
+  — no longer inherits a hardcoded font that broke styling.
+- **Archive-last-session input disable**: When the last visible session is archived,
+  the input area now correctly auto-selects a non-archived fallback session instead
+  of leaving the user with a disabled input.
+- **Exception cause chain unwrapped**: Error messages now display the root cause
+  message instead of wrapped `CompletionException` text.
+- **IllegalComponentStateException guard**: `MessageBubble` hover check now guards
+  against `IllegalComponentStateException` when the component is not showing.
+- **Help button flash only on install/upgrade**: The flashing help button on startup
+  was gated by a `helpFlashPending` preference set only on version changes — no
+  more distracting flash on every IDE launch.
+- **Project open events replayed on late listener registration**: If `OpenProjects`
+  fires between `ACPProjectManager.start()` and `SessionManager` registration,
+  the event is dropped → empty session dropdown. Now replays open events when
+  `setProjectOpenListener` is called, so no events are missed.
+- **Stash icon transparency fixed**: Dark mode stash icon no longer loses transparency.
+- **Dark mode icon contrast**: Brightened currency icon fills and darkened emblem
+  details for legibility; `getThemeAwareName` now handles `.png` extensions for
+  `stash_dark.png`.
+- **TokenUsageDialog scrolls to top after refresh**: Nested `invokeLater` ensures
+  the progress scroll resets after dialog resize settles.
+- **Stop button width**: Widened to 100px to prevent text truncation in some themes.
+
+### Improvements
+- **ObjectMapper made static final across 12 classes**: Replaced per-class
+  `ObjectMapper` instances with `MapperSupplier` reuse — reduces memory footprint
+  and ensures consistent configuration.
+- **Hover duration increased**: Message bubble hover buttons (copy/pin) stay visible
+  50% longer (500ms → 750ms) for easier interaction.
+
+### Refactoring
+- **PasteCallback extracted to contract layer**: `ImagePasteTransferHandler` inner
+  type moved to `contract/PasteCallback` — removes a `ui`→`ui` dependency,
+  aligning with hexagonal architecture.
+
+### Housekeeping
+- Version bumped to 1.9.3-SNAPSHOT.
+- Removed duplicate `ui/Bundle.properties` (identical copy in `src/main/resources/`)
+  and unused `manager/Bundle.properties` (no code references `ERR_BinaryNotFound`
+  from it).
+- Updated binary-not-found error message across all bundles to include
+  "Click Restart ACP Server once configured".
+- README minor updates.
+
 ## v1.9.2 (Changes since v1.9.1)
 
 ### Stability
