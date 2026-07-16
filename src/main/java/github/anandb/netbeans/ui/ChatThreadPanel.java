@@ -545,6 +545,16 @@ public class ChatThreadPanel extends JPanel {
         });
     }
 
+    public void addMissingBinaryBubble(Runnable onGuide, Runnable onRestart) {
+        SwingUtilities.invokeLater(() -> {
+            MissingBinaryBubble bubble = new MissingBinaryBubble(onGuide, onRestart);
+            messagesContainer.add(bubble);
+            messagesContainer.add(Box.createVerticalStrut(4));
+            messagesContainer.revalidate();
+            scrollController.scrollToBottom(true);
+        });
+    }
+
     /** Called by MessageSender when a user message is actually sent via RPC. */
     public void recordUserMessageSent() {
         lastUserTimestamp = System.currentTimeMillis();

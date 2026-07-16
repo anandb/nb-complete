@@ -84,6 +84,8 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     private final JButton helpBtn;
     private final JButton toggleOptionsBtn;
     private final JButton restartServerBtn;
+    private final JButton refreshBtn;
+    private final JButton exportBtn;
     private final JLabel statusLabel;
     private final JLabel versionLabel;
     private final JLabel cwdLabel;
@@ -129,6 +131,8 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         helpBtn = layoutBuilder.getHelpBtn();
         toggleOptionsBtn = layoutBuilder.getToggleOptionsBtn();
         restartServerBtn = layoutBuilder.getRestartServerBtn();
+        refreshBtn = layoutBuilder.getRefreshBtn();
+        exportBtn = layoutBuilder.getExportBtn();
         statusLabel = layoutBuilder.getStatusLabel();
         versionLabel = layoutBuilder.getVersionLabel();
         cwdLabel = layoutBuilder.getCwdLabel();
@@ -562,6 +566,59 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
     void promptRestartServer() {
         componentLifecycleHandler.promptRestartServer();
+    }
+
+    /**
+     * Enters or exits the "binary not found" state. When entered, all toolbar
+     * buttons except restart are disabled, a warning message is shown in the
+     * chat panel, and the status bar displays the error. When exited, buttons
+     * are restored to their normal session-aware state.
+     */
+    void setBinaryNotFoundState(boolean notFound) {
+        SwingUtilities.invokeLater(() -> {
+            if (notFound) {
+                // Disable all session toolbar buttons — only restart stays enabled
+                sessionDropdown.setEnabled(false);
+                hideBtn.setEnabled(false);
+                newSessionBtn.setEnabled(false);
+                renameSessionBtn.setEnabled(false);
+                toggleBlocksBtn.setEnabled(false);
+                keepBtn.setEnabled(false);
+                filterBtn.setEnabled(false);
+                refreshBtn.setEnabled(false);
+                exportBtn.setEnabled(false);
+                helpBtn.setEnabled(false);
+                // restartServerBtn stays enabled so user can retry after installing
+
+                // Disable input area
+                statusController.setInputEnabled(false);
+
+                // Show warning in chat panel
+                chatPanel.stopStreaming();
+                chatPanel.clearMessages();
+                chatPanel.addMissingBinaryBubble(
+                    () -> github.anandb.netbeans.support.BrowserUtils.openOrCopyUrl("https://opencode.ai/docs/", null, null),
+                    this::promptRestartServer
+                );
+                statusController.setStatus("STATUS_BinaryNotFound");
+            } else {
+                // Restore normal session-aware state. Do not touch the status
+                // bar — the caller (e.g. restartServer success) manages it.
+                boolean hasSession = sessionService.get().getCurrentSessionId() != null;
+                sessionDropdown.setEnabled(hasSession);
+                hideBtn.setEnabled(hasSession);
+                newSessionBtn.setEnabled(true);
+                renameSessionBtn.setEnabled(hasSession);
+                toggleBlocksBtn.setEnabled(hasSession);
+                keepBtn.setEnabled(hasSession);
+                filterBtn.setEnabled(hasSession);
+                refreshBtn.setEnabled(hasSession);
+                exportBtn.setEnabled(hasSession);
+                helpBtn.setEnabled(true);
+
+                statusController.setInputEnabled(true);
+            }
+        });
     }
 
     @Override

@@ -131,6 +131,16 @@ final class ConversationExporter {
         chooser.setSelectedFile(new File(defaultName));
         if (chooser.showSaveDialog(parent) == JFileChooser.APPROVE_OPTION) {
             File file = chooser.getSelectedFile();
+            if (file.exists()) {
+                int confirm = javax.swing.JOptionPane.showConfirmDialog(parent,
+                        NbBundle.getMessage(ConversationExporter.class, "MSG_OverwriteConfirm", file.getName()),
+                        NbBundle.getMessage(ConversationExporter.class, "TITLE_ExportConv"),
+                        javax.swing.JOptionPane.YES_NO_OPTION,
+                        javax.swing.JOptionPane.WARNING_MESSAGE);
+                if (confirm != javax.swing.JOptionPane.YES_OPTION) {
+                    return;
+                }
+            }
             RequestProcessor.getDefault().post(() -> {
                 try (FileWriter writer = new FileWriter(file)) {
                     writer.write(markdown);

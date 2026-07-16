@@ -591,6 +591,10 @@ final class ChatLayoutBuilder {
 
     JButton getRestartServerBtn() { return restartServerBtn; }
 
+    JButton getRefreshBtn() { return refreshBtn; }
+
+    JButton getExportBtn() { return exportBtn; }
+
     void updateHideButtonIcon(boolean hidden) {
         if (hideBtn != null) {
             hideBtn.setIcon(ThemeManager.getIcon(hidden ? "unarchive.svg" : "archive.svg", PluginSettings.getToolbarIconSize()));

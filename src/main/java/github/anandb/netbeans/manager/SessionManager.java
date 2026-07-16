@@ -492,42 +492,48 @@ public class SessionManager implements SessionQuery, SessionControl {
         notifySessionProgress(10);
 
         notifySessionProgress(30);
-        createSession(explicitCwd)
-                .thenAccept(session -> {
-                    // Guard: if closeSession() ran during the async window, the
-                    // state machine is no longer LOADING. Discard the orphaned
-                    // session to avoid setting currentSessionId while IDLE.
-                    if (stateMachine.getState() != SessionState.LOADING) {
-                        LOG.fine("createNewSession: discarding session {0}, state is {1}",
-                                session.id(), stateMachine.getState());
-                        return;
-                    }
-                    this.currentSessionId = session.id();
-                    this.lastProjectDir = session.effectiveDirectory();
-                    Logger.setSession(session.id(), session.title());
+        try {
+            createSession(explicitCwd)
+                    .thenAccept(session -> {
+                        // Guard: if closeSession() ran during the async window, the
+                        // state machine is no longer LOADING. Discard the orphaned
+                        // session to avoid setting currentSessionId while IDLE.
+                        if (stateMachine.getState() != SessionState.LOADING) {
+                            LOG.fine("createNewSession: discarding session {0}, state is {1}",
+                                    session.id(), stateMachine.getState());
+                            return;
+                        }
+                        this.currentSessionId = session.id();
+                        this.lastProjectDir = session.effectiveDirectory();
+                        Logger.setSession(session.id(), session.title());
 
-                    notifySessionProgress(60);
+                        notifySessionProgress(60);
 
-                    // Run on the CompletableFuture thread for consistency with loadSession
-                    // The state machine is thread-safe and listeners marshall their own
-                    // UI work onto the EDT, so an explicit invokeLater hop here is unnecessary.
-                    if (!stateMachine.transitionTo(SessionState.STREAMING)) {
-                        LOG.fine("createNewSession: transitionTo(STREAMING) failed, state is {0}",
-                                stateMachine.getState());
-                        return;
-                    }
-                    notifySessionLoaded(session.id(), session.configOptions(), true);
-                    refreshSessions();
-                    if (!sendPreamble(session.id())) {
-                        notifyPreambleDone();
-                    }
-                })
-                .exceptionally(ex -> {
-                    LOG.severe("Failed to create session", ex);
-                    stateMachine.transitionTo(SessionState.IDLE);
-                    notifyError(rootMessage(ex));
-                    return null;
-                });
+                        // Run on the CompletableFuture thread for consistency with loadSession
+                        // The state machine is thread-safe and listeners marshall their own
+                        // UI work onto the EDT, so an explicit invokeLater hop here is unnecessary.
+                        if (!stateMachine.transitionTo(SessionState.STREAMING)) {
+                            LOG.fine("createNewSession: transitionTo(STREAMING) failed, state is {0}",
+                                    stateMachine.getState());
+                            return;
+                        }
+                        notifySessionLoaded(session.id(), session.configOptions(), true);
+                        refreshSessions();
+                        if (!sendPreamble(session.id())) {
+                            notifyPreambleDone();
+                        }
+                    })
+                    .exceptionally(ex -> {
+                        LOG.severe("Failed to create session", ex);
+                        stateMachine.transitionTo(SessionState.IDLE);
+                        notifyError(rootMessage(ex));
+                        return null;
+                    });
+        } catch (Exception ex) {
+            LOG.severe("Failed to create session", ex);
+            stateMachine.transitionTo(SessionState.IDLE);
+            notifyError(rootMessage(ex));
+        }
     }
 
     @Override
@@ -565,28 +571,34 @@ public class SessionManager implements SessionQuery, SessionControl {
 
         this.lastProjectDir = workingCwd;
         notifySessionProgress(30);
-        loadSessionFromServer(sessionId, workingCwd)
-                .thenAccept(configOptions -> {
-                    if (sessionId.equals(this.currentSessionId)) {
-                        notifySessionProgress(60);
-                        stateMachine.transitionTo(SessionState.STREAMING);
-                        notifySessionLoaded(sessionId, configOptions, isStartup);
+        try {
+            loadSessionFromServer(sessionId, workingCwd)
+                    .thenAccept(configOptions -> {
+                        if (sessionId.equals(this.currentSessionId)) {
+                            notifySessionProgress(60);
+                            stateMachine.transitionTo(SessionState.STREAMING);
+                            notifySessionLoaded(sessionId, configOptions, isStartup);
 
-                        // After reconnect, send an invisible "Proceed" prompt so the
-                        // agent resumes execution from where it left off.
-                        if (sendResumeOnLoad) {
-                            sendResumeOnLoad = false;
-                            sendResumePrompt(sessionId);
+                            // After reconnect, send an invisible "Proceed" prompt so the
+                            // agent resumes execution from where it left off.
+                            if (sendResumeOnLoad) {
+                                sendResumeOnLoad = false;
+                                sendResumePrompt(sessionId);
+                            }
                         }
-                    }
-                })
-                .exceptionally(ex -> {
-                    if (sessionId.equals(this.currentSessionId)) {
-                        stateMachine.transitionTo(SessionState.IDLE);
-                        notifyError(NbBundle.getMessage(SessionManager.class, "ERR_LoadSessionFailed", rootMessage(ex)));
-                    }
-                    return null;
-                });
+                    })
+                    .exceptionally(ex -> {
+                        if (sessionId.equals(this.currentSessionId)) {
+                            stateMachine.transitionTo(SessionState.IDLE);
+                            notifyError(NbBundle.getMessage(SessionManager.class, "ERR_LoadSessionFailed", rootMessage(ex)));
+                        }
+                        return null;
+                    });
+        } catch (Exception ex) {
+            LOG.severe("Failed to load session", ex);
+            stateMachine.transitionTo(SessionState.IDLE);
+            notifyError(NbBundle.getMessage(SessionManager.class, "ERR_LoadSessionFailed", rootMessage(ex)));
+        }
         return true;
     }
 

@@ -25,6 +25,7 @@ import org.openide.util.RequestProcessor;
 import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.model.SessionItem;
+import github.anandb.netbeans.support.BinaryResolver;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
 import github.anandb.netbeans.ui.platform.ProcessService;
@@ -119,6 +120,14 @@ public class ComponentLifecycleHandler {
                 sessionService.get().refreshSessions();
             }
             closedProjectDirs = Set.of();
+
+            // Proactive binary check: if opencode is not installed, enter
+            // the "binary not found" state immediately and skip starting the server.
+            if (!BinaryResolver.isAvailable()) {
+                topComponent.setBinaryNotFoundState(true);
+                return;
+            }
+
             // Start server on a background thread to avoid blocking EDT
             // (BinaryResolver PATH scan + ProcessBuilder.start() can be slow).
             RequestProcessor.getDefault().post(() -> processService.get().ensureStarted());
@@ -128,13 +137,7 @@ public class ComponentLifecycleHandler {
                     cause = cause.getCause();
                 }
                 if (cause instanceof IllegalStateException && cause.getMessage() != null && cause.getMessage().contains("not found")) {
-                    SwingUtilities.invokeLater(() -> {
-                        statusController.setStatus("STATUS_BinaryNotFound");
-                        chatPanel.stopStreaming();
-                        chatPanel.addMessage(ProcessedMessage.createError(
-                            MessageType.error_response, NbBundle.getMessage(AssistantTopComponent.class, "STATUS_BinaryNotFound"), null, null
-                        ));
-                    });
+                    topComponent.setBinaryNotFoundState(true);
                 }
                 return null;
             });
@@ -355,6 +358,8 @@ public class ComponentLifecycleHandler {
                 cooldown.setRepeats(false);
                 cooldown.start();
                 statusController.setStatus("STATUS_ServerRestarted");
+                // Clear binary-not-found state on successful restart
+                topComponent.setBinaryNotFoundState(false);
                 if (currentSessionId != null) {
                     sessionService.get().loadSession(currentSessionId);
                 } else {
@@ -370,11 +375,7 @@ public class ComponentLifecycleHandler {
                     cause = cause.getCause();
                 }
                 if (cause instanceof IllegalStateException && cause.getMessage() != null && cause.getMessage().contains("not found")) {
-                    statusController.setStatus("STATUS_BinaryNotFound");
-                    chatPanel.stopStreaming();
-                    chatPanel.addMessage(ProcessedMessage.createError(
-                        MessageType.error_response, NbBundle.getMessage(AssistantTopComponent.class, "STATUS_BinaryNotFound"), null, null
-                    ));
+                    topComponent.setBinaryNotFoundState(true);
                 } else {
                     String msg = ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName();
                     statusController.setStatus("STATUS_RestartFailed", msg);
@@ -382,8 +383,8 @@ public class ComponentLifecycleHandler {
                     chatPanel.addMessage(ProcessedMessage.createError(
                         MessageType.error_response, NbBundle.getMessage(AssistantTopComponent.class, "STATUS_RestartFailed", msg), null, null
                     ));
+                    statusController.setInputEnabled(true);
                 }
-                statusController.setInputEnabled(true);
             });
             return null;
         });

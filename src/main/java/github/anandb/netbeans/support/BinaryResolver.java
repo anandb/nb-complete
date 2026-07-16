@@ -71,6 +71,28 @@ public final class BinaryResolver {
     }
 
     /**
+     * Returns true if the opencode binary is available (either configured or on PATH).
+     * Unlike resolveExecutablePath(), this does not throw.
+     */
+    public static boolean isAvailable() {
+        Preferences nbPrefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
+        String configuredPath = nbPrefs.get("acpExecutablePath", null);
+        boolean isWindows = System.getProperty("os.name", "").toLowerCase().contains("win");
+        String exeName = isWindows ? "opencode.exe" : "opencode";
+
+        // 1. Check configured absolute path
+        if (configuredPath != null && !configuredPath.trim().isEmpty()) {
+            File f = new File(configuredPath);
+            if (f.isAbsolute() && f.exists()) {
+                return true;
+            }
+        }
+
+        // 2. Search system PATH
+        return findOnPath(exeName) != null;
+    }
+
+    /**
      * Checks whether the given command name exists and is executable on the system PATH.
      */
     public static boolean isInPath(String command) {
