@@ -4,8 +4,6 @@ import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Font;
 import java.awt.Frame;
-import java.lang.reflect.Method;
-import java.util.List;
 
 import javax.swing.JDialog;
 import javax.swing.JLabel;
@@ -174,22 +172,66 @@ final class KeyboardShortcutsDialog extends JDialog {
     }
 
     private static String resolveShortcut(String actionId) {
-        // Try KeyStrokeUtils via reflection (resolves user-assigned shortcuts from the Keymap)
         try {
-            Class<?> cls = Class.forName("org.netbeans.core.options.keymap.api.KeyStrokeUtils");
-            Method m = cls.getMethod("getKeyStrokesForAction", String.class, KeyStroke.class);
+            ClassLoader cl = org.openide.util.Lookup.getDefault().lookup(ClassLoader.class);
+            Class<?> cls = cl != null ? cl.loadClass("org.netbeans.core.options.keymap.api.KeyStrokeUtils")
+                                      : Class.forName("org.netbeans.core.options.keymap.api.KeyStrokeUtils");
+            java.lang.reflect.Method m = cls.getMethod("getKeyStrokesForAction", String.class, javax.swing.KeyStroke.class);
+            
+            // Try with dots
             @SuppressWarnings("unchecked")
-            List<KeyStroke[]> all = (List<KeyStroke[]>) m.invoke(null, actionId, null);
+            java.util.List<javax.swing.KeyStroke[]> all = (java.util.List<javax.swing.KeyStroke[]>) m.invoke(null, actionId, null);
+            
+            // Try with hyphens (NetBeans @ActionID generated standard)
+            if (all == null || all.isEmpty()) {
+                all = (java.util.List<javax.swing.KeyStroke[]>) m.invoke(null, actionId.replace('.', '-'), null);
+            }
+
             if (all != null && !all.isEmpty() && all.get(0) != null && all.get(0).length > 0) {
-                KeyStroke ks = all.get(0)[0];
-                if (ks != null) {
-                    return ks.toString().replace("pressed ", "").replace("Released ", "");
+                StringBuilder sb = new StringBuilder();
+                for (javax.swing.KeyStroke k : all.get(0)) {
+                    if (k != null) {
+                        if (sb.length() > 0) sb.append(", ");
+                        sb.append(formatKeyStroke(k));
+                    }
+                }
+                if (sb.length() > 0) {
+                    return sb.toString();
                 }
             }
-        } catch (Exception ignored) {
-            // KeyStrokeUtils not available as a friend — fall through
+        } catch (Throwable t) {
+            java.util.logging.Logger.getLogger(KeyboardShortcutsDialog.class.getName()).log(
+                java.util.logging.Level.INFO, "Could not resolve shortcut for " + actionId, t);
         }
-        return "No key mapped";
+        return "";
+    }
+
+    private static String formatKeyStroke(javax.swing.KeyStroke ks) {
+        if (ks == null) return "";
+        StringBuilder sb = new StringBuilder();
+        int mod = ks.getModifiers();
+        boolean mac = org.openide.util.Utilities.isMac();
+
+        if ((mod & java.awt.event.InputEvent.CTRL_DOWN_MASK) != 0 || (mod & java.awt.event.InputEvent.CTRL_MASK) != 0) {
+            sb.append("Ctrl + ");
+        }
+        if ((mod & java.awt.event.InputEvent.META_DOWN_MASK) != 0 || (mod & java.awt.event.InputEvent.META_MASK) != 0) {
+            sb.append(mac ? "Cmd + " : "Meta + ");
+        }
+        if ((mod & java.awt.event.InputEvent.ALT_DOWN_MASK) != 0 || (mod & java.awt.event.InputEvent.ALT_MASK) != 0) {
+            sb.append(mac ? "Option + " : "Alt + ");
+        }
+        if ((mod & java.awt.event.InputEvent.SHIFT_DOWN_MASK) != 0 || (mod & java.awt.event.InputEvent.SHIFT_MASK) != 0) {
+            sb.append("Shift + ");
+        }
+
+        int code = ks.getKeyCode();
+        if (code != java.awt.event.KeyEvent.VK_UNDEFINED) {
+            sb.append(java.awt.event.KeyEvent.getKeyText(code));
+        } else {
+            sb.append(ks.getKeyChar());
+        }
+        return sb.toString();
     }
 
     private static void tableTwoCol(StringBuilder sb, String border, String bg,

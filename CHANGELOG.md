@@ -8,7 +8,8 @@
   file cache at startup, respects `.gitignore` via `git ls-files` for Git projects,
   and updates incrementally via filesystem watchers. Shows indexing status with
   auto-refresh on completion. Extensible VCS strategy (Mercurial/SVN stubs ready).
-  Assignable keyboard shortcut via Keymap (no default shortcut assigned).
+  Assignable keyboard shortcut via Keymap (default shortcut mapped to `Ctrl + Alt + J` / `Cmd + Option + J`).
+- **Navigate > Jump to file menu item**: Added a menu item under the main Navigate menu to trigger the Jump to File action.
 - **Actions section in Options**: New "Actions" section in Options > Assistant with
   three toggles (all enabled by default): Enable Sort Lines and Minify, Enable Stash
   Diff, Enable Jump to file. Disabling an action immediately hides/disables it.
@@ -26,6 +27,10 @@
   `Lookup.getDefault().lookup()` instead of through the registered `PlatformBridge`.
   Now correctly detects open projects and an active session before enabling the option.
   Defaults to "All Projects" when unavailable.
+- **Token Stats dialog form layout**: Replaced `BoxLayout` with single-row `GridBagLayout`
+  so the Days spinner, Model combo, Project combo, and Refresh button resize correctly
+  when the dialog auto-sizes after fetching data.
+- **MCP tool renamed**: `get_opened_files` renamed to `get_tabs` for clarity.
 - **Attachment, Reload, Export disabled without session**: These toolbar buttons now
   correctly follow the session state — disabled when no project or session is active,
   matching the existing `hideBtn`, `renameSessionBtn`, etc.
@@ -33,6 +38,17 @@
   display a pointless "No changes to apply" bubble in chat.
 - **Stash Diff disabled tooltip**: When Stash Diff is disabled in Options, the toolbar
   button tooltip now shows "Stash Diff is disabled. Enable in Assistant Settings."
+- **Keyboard shortcut resolution via Keymap**: Replaced fragile reflection-based `KeyStrokeUtils`
+  lookup with the standard NetBeans Keymap API using the correct hyphenated action format
+  (e.g., `github-anandb-netbeans-ui-NewSessionAction`) to successfully resolve both system and
+  user-assigned overrides. Handled formatting dynamically so they render as standard, spacing-friendly
+  UI shortcuts (`Ctrl + Key` or `Cmd + Key` on macOS).
+- **GoToFileDialog glob pattern support**: File search now accepts glob patterns
+  (`*`, `?`, `[...]`, `{a,b}`) via `PathMatcher`, with dynamic dialog width sizing
+  and arrow key wrap-around.
+- **Assistant Options spinner truncation**: Configured the `Session Idle Timeout` and
+  `Max Messages` spinners in the Options panel to request `4` columns in their internal
+  text fields rather than using hardcoded bounds, preventing value truncation on certain themes.
 
 ### Housekeeping
 - Version bumped to 1.9.5-SNAPSHOT.

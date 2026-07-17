@@ -5,6 +5,7 @@ import java.awt.Window;
 import java.awt.event.ActionEvent;
 import javax.swing.AbstractAction;
 
+import org.openide.awt.ActionID;
 import org.openide.util.NbBundle;
 
 import github.anandb.netbeans.support.PluginSettings;
@@ -20,6 +21,7 @@ import github.anandb.netbeans.support.PluginSettings;
  *   <li>Respects .gitignore via {@code FileCacheManager}</li>
  * </ul>
  */
+@ActionID(category = "Navigate", id = "github.anandb.netbeans.ui.GoToFileAction")
 @NbBundle.Messages("CTL_GoToFileAction=Jump to file")
 public class GoToFileAction extends AbstractAction {
 
