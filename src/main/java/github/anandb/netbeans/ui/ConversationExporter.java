@@ -2,7 +2,6 @@ package github.anandb.netbeans.ui;
 
 import java.awt.Component;
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -144,7 +143,8 @@ final class ConversationExporter {
                 }
             }
             RequestProcessor.getDefault().post(() -> {
-                try (FileWriter writer = new FileWriter(file)) {
+                try (java.io.OutputStreamWriter writer = new java.io.OutputStreamWriter(
+                        new java.io.FileOutputStream(file), java.nio.charset.StandardCharsets.UTF_8)) {
                     writer.write(markdown);
                     LOG.log(Level.FINE, "Conversation exported to {0}", file.getAbsolutePath());
                     FileObject fo = FileUtil.toFileObject(FileUtil.normalizeFile(file));

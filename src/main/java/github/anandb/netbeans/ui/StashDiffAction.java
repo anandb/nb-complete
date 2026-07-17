@@ -215,11 +215,9 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
         pb.redirectErrorStream(true);
         Process proc = pb.start();
         StringBuilder sb = new StringBuilder();
-        // Read process output via RequestProcessor so the main thread can
-        // timeout via waitFor. Destroying the process closes stdout, which
-        // causes readLine() to return null and the reader task to exit.
         RequestProcessor.Task readerTask = GIT_RP.post(() -> {
-            try (BufferedReader r = new BufferedReader(new InputStreamReader(proc.getInputStream()))) {
+            try (BufferedReader r = new BufferedReader(
+                    new InputStreamReader(proc.getInputStream(), java.nio.charset.StandardCharsets.UTF_8))) {
                 String line;
                 while ((line = r.readLine()) != null) sb.append(line).append('\n');
             } catch (IOException e) {
