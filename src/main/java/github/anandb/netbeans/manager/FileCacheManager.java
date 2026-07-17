@@ -1,0 +1,272 @@
+package github.anandb.netbeans.manager;
+
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.WeakHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+import org.openide.filesystems.FileAttributeEvent;
+import org.openide.filesystems.FileEvent;
+import org.openide.filesystems.FileObject;
+import org.openide.filesystems.FileRenameEvent;
+import org.openide.filesystems.FileUtil;
+import org.netbeans.api.project.Project;
+import org.netbeans.api.project.ProjectInformation;
+import org.netbeans.api.project.ProjectUtils;
+import org.netbeans.api.project.Sources;
+import org.openide.filesystems.FileChangeListener;
+import org.netbeans.api.project.ui.OpenProjects;
+import org.openide.util.RequestProcessor;
+
+import github.anandb.netbeans.contract.FileCacheQuery;
+import github.anandb.netbeans.contract.VcsIgnoreStrategy;
+
+/**
+ * Builds and maintains an in-memory file cache across all open projects.
+ * Uses {@link VcsIgnoreStrategy} for initial bulk filtering and filesystem
+ * listeners for incremental updates.
+ *
+ * <p>Thread safety: writes are serialized on a single-threads RP; reads
+ * use snapshot copies via {@code volatile} fields.</p>
+ */
+public class FileCacheManager implements FileCacheQuery {
+
+    private static final Logger LOG = Logger.getLogger(FileCacheManager.class.getName());
+    private static final RequestProcessor RP = new RequestProcessor("GoToFile-CacheBuilder", 1);
+
+    private final List<FileCacheQuery.CachedFile> files = new CopyOnWriteArrayList<>();
+    private volatile boolean ready;
+    private final List<Runnable> readyListeners = new CopyOnWriteArrayList<>();
+
+    // Per-sourceRoot listeners for incremental updates
+    private final Map<File, FileChangeListener> rootListeners =
+            Collections.synchronizedMap(new WeakHashMap<>());
+
+    // Project name cache (FileObject path → project name)
+    private final Map<String, String> projectNameCache =
+            Collections.synchronizedMap(new HashMap<>());
+
+    // Strategy instances (one per root, cached)
+    private final Map<File, VcsIgnoreStrategy> strategyCache =
+            Collections.synchronizedMap(new HashMap<>());
+
+    // Singleton via Lookup
+    private static volatile FileCacheManager INSTANCE;
+
+    public static FileCacheManager getDefault() {
+        if (INSTANCE == null) {
+            synchronized (FileCacheManager.class) {
+                if (INSTANCE == null) {
+                    INSTANCE = new FileCacheManager();
+                }
+            }
+        }
+        return INSTANCE;
+    }
+
+    private FileCacheManager() {
+        // Listen for project open/close to rebuild affected roots
+        OpenProjects.getDefault().addPropertyChangeListener(evt -> {
+            if (OpenProjects.PROPERTY_OPEN_PROJECTS.equals(evt.getPropertyName())) {
+                RP.post(this::rebuild);
+            }
+        });
+        // Initial build
+        RP.post(this::rebuild);
+    }
+
+    // --- FileCacheQuery ---
+
+    @Override
+    public boolean isReady() {
+        return ready;
+    }
+
+    @Override
+    public Collection<CachedFile> getAllFiles() {
+        return Collections.unmodifiableList(new ArrayList<>(files));
+    }
+
+    /** Registers a listener that fires once when the cache first becomes ready. */
+    public void onReady(Runnable action) {
+        if (ready) {
+            action.run();
+        } else {
+            readyListeners.add(action);
+        }
+    }
+
+    // --- Cache lifecycle ---
+
+    private void rebuild() {
+        long start = System.currentTimeMillis();
+        files.clear();
+        projectNameCache.clear();
+
+        // Dispose old listeners
+        synchronized (rootListeners) {
+            for (Map.Entry<File, FileChangeListener> e : rootListeners.entrySet()) {
+                try {
+                    FileUtil.removeRecursiveListener(e.getValue(), e.getKey());
+                } catch (Exception ex) {
+                    // already removed
+                }
+            }
+            rootListeners.clear();
+        }
+        strategyCache.clear();
+
+        Project[] openProjects = OpenProjects.getDefault().getOpenProjects();
+        for (Project project : openProjects) {
+            scanProject(project);
+        }
+
+        ready = true;
+        long elapsed = System.currentTimeMillis() - start;
+        LOG.log(Level.FINE, "GoToFile cache built: {0} files in {1}ms",
+                new Object[]{files.size(), elapsed});
+
+        for (Runnable r : readyListeners) {
+            try {
+                r.run();
+            } catch (Exception e) {
+                LOG.log(Level.FINE, "Ready listener failed", e);
+            }
+        }
+        readyListeners.clear();
+    }
+
+    private void scanProject(Project project) {
+        ProjectInformation info = project.getLookup().lookup(ProjectInformation.class);
+        String projectName = info != null ? info.getDisplayName() : project.getProjectDirectory().getName();
+        org.netbeans.api.project.SourceGroup[] groups =
+                ProjectUtils.getSources(project).getSourceGroups(Sources.TYPE_GENERIC);
+        for (org.netbeans.api.project.SourceGroup group : groups) {
+            FileObject root = group.getRootFolder();
+
+            File rootDir = FileUtil.toFile(root);
+            if (rootDir == null || !rootDir.isDirectory()) continue;
+
+            projectNameCache.put(root.getPath(), projectName);
+            VcsIgnoreStrategy strategy = detectStrategy(rootDir);
+            strategyCache.put(rootDir, strategy);
+
+            // Bulk scan
+            Set<String> nonIgnored = strategy.listNonIgnoredFiles(rootDir);
+            if (nonIgnored.isEmpty()) {
+                // NoOp or git returned empty — fall back to full filesystem walk
+                walkFileSystem(root, projectName, rootDir);
+            } else {
+                // Add all non-ignored files from git
+                for (String relPath : nonIgnored) {
+                    FileObject child = root.getFileObject(relPath);
+                    if (child != null && !child.isFolder()) {
+                        files.add(new FileCacheQuery.CachedFile(child, projectName, relPath));
+                    }
+                }
+            }
+
+            // Install incremental listener
+            installListener(root, rootDir, projectName, strategy);
+        }
+    }
+
+    /** Recursively walk the source root for projects without VCS. */
+    private void walkFileSystem(FileObject folder, String projectName, File rootDir) {
+        for (FileObject child : folder.getChildren()) {
+            if (child.isFolder()) {
+                // Skip hidden/VCS directories
+                String name = child.getName();
+                if (name.startsWith(".") || "node_modules".equals(name)
+                        || "target".equals(name) || "build".equals(name)) {
+                    continue;
+                }
+                walkFileSystem(child, projectName, rootDir);
+            } else {
+                File f = FileUtil.toFile(child);
+                if (f == null) continue;
+                String relPath = relativize(rootDir, f);
+                if (relPath != null) {
+                    files.add(new FileCacheQuery.CachedFile(child, projectName, relPath));
+                }
+            }
+        }
+    }
+
+    private void installListener(FileObject root, File rootDir,
+            String projectName, VcsIgnoreStrategy strategy) {
+        FileChangeListener listener = new FileChangeListener() {
+            @Override
+            public void fileDataCreated(FileEvent fe) {
+                FileObject fo = fe.getFile();
+                File f = FileUtil.toFile(fo);
+                if (f == null) return;
+                if (!strategy.isIgnored(rootDir, f)) {
+                    String rel = relativize(rootDir, f);
+                    if (rel != null) {
+                        files.add(new FileCacheQuery.CachedFile(fo, projectName, rel));
+                    }
+                }
+            }
+
+            @Override
+            public void fileDeleted(FileEvent fe) {
+                FileObject fo = fe.getFile();
+                files.removeIf(cf -> cf.fileObject().equals(fo));
+            }
+
+            @Override
+            public void fileRenamed(FileRenameEvent fe) {
+                FileObject fo = fe.getFile();
+                // Remove old, re-add new
+                files.removeIf(cf -> cf.fileObject().equals(fo));
+                File f = FileUtil.toFile(fo);
+                if (f != null && !strategy.isIgnored(rootDir, f)) {
+                    String rel = relativize(rootDir, f);
+                    if (rel != null) {
+                        files.add(new FileCacheQuery.CachedFile(fo, projectName, rel));
+                    }
+                }
+            }
+
+            @Override public void fileFolderCreated(FileEvent fe) { /* no-op */ }
+            @Override public void fileChanged(FileEvent fe) { /* no-op — content changes don't affect listing */ }
+            @Override public void fileAttributeChanged(FileAttributeEvent fe) { /* no-op */ }
+        };
+
+        FileUtil.addRecursiveListener(listener, rootDir);
+        rootListeners.put(rootDir, listener);
+    }
+
+    // --- Strategy detection ---
+
+    private VcsIgnoreStrategy detectStrategy(File rootDir) {
+        return strategyCache.computeIfAbsent(rootDir, dir -> {
+            if (new GitIgnoreStrategy().isAvailable(dir)) {
+                return new GitIgnoreStrategy();
+            }
+            return new NoOpIgnoreStrategy();
+        });
+    }
+
+    // --- Utilities ---
+
+    private static String relativize(File root, File file) {
+        String rootPath = root.getAbsolutePath();
+        String filePath = file.getAbsolutePath();
+        if (!filePath.startsWith(rootPath)) return null;
+        String rel = filePath.substring(rootPath.length());
+        if (rel.startsWith(File.separator)) {
+            rel = rel.substring(1);
+        }
+        return rel.replace(File.separatorChar, '/');
+    }
+}

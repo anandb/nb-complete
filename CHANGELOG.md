@@ -3,6 +3,11 @@
 ## v1.9.5 (Changes since v1.9.4)
 
 ### Features
+- **Go To File dialog**: Custom file search dialog (`Ctrl+N`) with case-insensitive
+  filename prefix and path substring matching across all open projects. Builds an
+  in-memory file cache at startup, respects `.gitignore` via `git ls-files` for Git
+  projects, and updates incrementally via filesystem watchers. Shows indexing status
+  with auto-refresh on completion. Extensible VCS strategy (Mercurial/SVN stubs ready).
 - **Markdown project properties**: Right-click a Markdown Project → Properties → Ignored Files
   tab. Add patterns like `node_modules`, `dist/`, `*.log` to hide files from the project tree.
   Patterns persist in `.mdproject-ignore` in the project root.
@@ -16,6 +21,8 @@
 - **Attachment, Reload, Export disabled without session**: These toolbar buttons now
   correctly follow the session state — disabled when no project or session is active,
   matching the existing `hideBtn`, `renameSessionBtn`, etc.
+- **Edit tool no-ops suppressed**: Identical oldString/newString tool calls no longer
+  display a pointless "No changes to apply" bubble in chat.
 
 ### Housekeeping
 - Version bumped to 1.9.5-SNAPSHOT.

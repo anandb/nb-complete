@@ -171,8 +171,11 @@ public class StrategyRegistry implements UpdateDispatcher {
                     if (Strings.CS.contains(target.rawText(), "Could not find oldString in the file.")) {
                         LOG.fine("Ignoring tool_call: Failed Edit, update={0}", update);
                         return;
+                    } else if (Strings.CS.contains(target.rawText(), "No changes to apply: oldString and newString are identical")) {
+                        LOG.fine("Ignoring tool_call: Failed Edit, update={0}", update);
+                        return;
                     }
-                    
+
                     if (data.shouldDisplay(target.text())) {
                         handler.displayMessage(target);
                     }
