@@ -536,7 +536,10 @@ public class SessionLifecycleHandler implements SessionListener {
 
     @Override
     public void onAllProjectsClosed() {
-        SwingUtilities.invokeLater(() -> inputArea.setText(""));
+        SwingUtilities.invokeLater(() -> {
+            inputArea.setText("");
+            cwdLabelUpdater.accept("");
+        });
     }
 
     @Override
