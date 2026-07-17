@@ -1,6 +1,7 @@
 package github.anandb.netbeans.ui;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
@@ -17,11 +18,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.swing.Box;
 import javax.swing.BoxLayout;
+import javax.swing.DefaultListCellRenderer;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
+import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
@@ -33,6 +36,7 @@ import javax.swing.border.EmptyBorder;
 
 import javax.swing.AbstractAction;
 import java.awt.event.ActionEvent;
+import java.awt.event.ItemEvent;
 import java.awt.event.KeyEvent;
 
 import org.openide.util.Lookup;
@@ -41,6 +45,7 @@ import github.anandb.netbeans.contract.SessionQuery;
 import github.anandb.netbeans.support.BinaryResolver;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.ProcessTerminator;
+import github.anandb.netbeans.ui.platform.ProjectContext;
 import static github.anandb.netbeans.ui.UIUtils.MONO_STACK;
 
 // DSL-LEAF: a standalone dialog for token usage stats.
@@ -120,6 +125,32 @@ public class TokenUsageDialog extends JDialog {
         projectCombo = new JComboBox<>(PROJECT_OPTIONS);
         projectCombo.setPreferredSize(new Dimension(140, 28));
         projectCombo.setMaximumSize(new Dimension(140, 28));
+        projectCombo.setRenderer(new DefaultListCellRenderer() {
+            private static final long serialVersionUID = 1L;
+            @Override
+            public Component getListCellRendererComponent(JList<?> list, Object value,
+                    int index, boolean isSelected, boolean cellHasFocus) {
+                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                if (PROJECT_CURRENT.equals(value) && !isCurrentProjectAvailable()) {
+                    setEnabled(false);
+                    if (!isSelected) {
+                        setForeground(Color.GRAY);
+                    }
+                }
+                return this;
+            }
+        });
+        // Revert to "All" if "Current Project" is somehow selected when unavailable
+        projectCombo.addItemListener(e -> {
+            if (e.getStateChange() == ItemEvent.SELECTED
+                    && PROJECT_CURRENT.equals(e.getItem()) && !isCurrentProjectAvailable()) {
+                projectCombo.setSelectedItem(PROJECT_ALL);
+            }
+        });
+        // Default to "All" when "Current Project" is unavailable
+        if (!isCurrentProjectAvailable()) {
+            projectCombo.setSelectedItem(PROJECT_ALL);
+        }
 
         JLabel projectLabel = new JLabel("Project:");
         projectLabel.setLabelFor(projectCombo);
@@ -176,6 +207,16 @@ public class TokenUsageDialog extends JDialog {
         setContentPane(content);
         pack();
         setLocationRelativeTo(owner);
+    }
+
+    /** Returns true when there is at least one open project and an active session. */
+    private static boolean isCurrentProjectAvailable() {
+        ProjectContext pc = Lookup.getDefault().lookup(ProjectContext.class);
+        if (pc == null) return false;
+        org.netbeans.api.project.Project[] projects = pc.getAllOpenProjects();
+        if (projects == null || projects.length == 0) return false;
+        SessionQuery sq = Lookup.getDefault().lookup(SessionQuery.class);
+        return sq != null && sq.getCurrentSessionId() != null;
     }
 
     private void onRefresh(ActionEvent e) {

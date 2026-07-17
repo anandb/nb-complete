@@ -1,5 +1,25 @@
 # Release Notes
 
+## v1.9.5 (Changes since v1.9.4)
+
+### Features
+- **Markdown project properties**: Right-click a Markdown Project → Properties → Ignored Files
+  tab. Add patterns like `node_modules`, `dist/`, `*.log` to hide files from the project tree.
+  Patterns persist in `.mdproject-ignore` in the project root.
+- **Disabled toolbar icons**: All toolbar buttons now use `ImageUtilities.createDisabledIcon`
+  for a proper disabled appearance instead of Swing's default gray overlay.
+
+### Fixes
+- **Token Stats dialog disables "Current Project"**: The "Current Project" option in the
+  project combo is disabled and grayed out when there are no open projects or no active
+  session. Defaults to "All" view when unavailable.
+- **Attachment, Reload, Export disabled without session**: These toolbar buttons now
+  correctly follow the session state — disabled when no project or session is active,
+  matching the existing `hideBtn`, `renameSessionBtn`, etc.
+
+### Housekeeping
+- Version bumped to 1.9.5-SNAPSHOT.
+
 ## v1.9.4 (Changes since v1.9.3)
 
 ### Features

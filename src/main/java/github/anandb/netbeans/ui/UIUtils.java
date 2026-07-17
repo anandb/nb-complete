@@ -22,10 +22,11 @@ import javax.swing.JPanel;
 import javax.swing.border.Border;
 import javax.swing.border.EmptyBorder;
 
+import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.PreferenceKeys;
-import github.anandb.netbeans.support.Logger;
 
+import org.openide.util.ImageUtilities;
 import org.openide.util.NbPreferences;
 
 // DSL-LEAF: factories are the swingtree replacement seam — createToolbarButton /
@@ -108,7 +109,11 @@ public class UIUtils {
                 return new java.awt.Point(ins.left, -getHeight() - 8);
             }
         };
-        btn.setIcon(ThemeManager.getIcon(iconName, iconSize));
+        Icon icon = ThemeManager.getIcon(iconName, iconSize);
+        btn.setIcon(icon);
+        if (icon != null) {
+            btn.setDisabledIcon(ImageUtilities.createDisabledIcon(icon));
+        }
         btn.setToolTipText(toolTip);
         btn.getAccessibleContext().setAccessibleName(toolTip);
         btn.getAccessibleContext().setAccessibleDescription(toolTip);

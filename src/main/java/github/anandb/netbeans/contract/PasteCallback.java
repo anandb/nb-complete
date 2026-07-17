@@ -11,5 +11,4 @@ public interface PasteCallback {
     void onError(String message);
 
     void onAttachmentLimitReached();
-
 }

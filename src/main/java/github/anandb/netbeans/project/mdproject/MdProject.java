@@ -19,8 +19,9 @@ public final class MdProject implements Project {
         MdProjectInformation info = new MdProjectInformation(this);
         MdLogicalViewProvider view = new MdLogicalViewProvider(this);
         MdProjectConfigurationProvider configProvider = new MdProjectConfigurationProvider();
+        MdProjectCustomizerProvider customizer = new MdProjectCustomizerProvider(this);
         this.lookup = Lookups.fixed(new Object[]{
-            this, info, view, configProvider
+            this, info, view, configProvider, customizer
         });
     }
 

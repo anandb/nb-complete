@@ -15,8 +15,9 @@ import org.openide.util.lookup.Lookups;
 
 /**
  * {@link LogicalViewProvider} that renders the project directory's full
- * file tree in the Projects tab. Hides OS junk files and common
- * temporary/editor swap files via {@link #FILE_FILTER}.
+ * file tree in the Projects tab. Hides OS junk files, common
+ * temporary/editor swap files, and user-configured ignored patterns
+ * (from {@code .mdproject-ignore}).
  */
 public final class MdLogicalViewProvider implements LogicalViewProvider {
 
@@ -28,11 +29,6 @@ public final class MdLogicalViewProvider implements LogicalViewProvider {
         + "|^Thumbs\\.db$|^Desktop\\.ini$|^\\.DS_Store$"
         + "|\\.(?:swp|swo|bak|~)$"                                  // editor swap/backup
     );
-
-    private static final DataFilter FILE_FILTER = (DataObject dob) -> {
-        FileObject fo = dob.getPrimaryFile();
-        return !HIDDEN_NAMES.matcher(fo.getNameExt()).find();
-    };
 
     private final MdProject project;
 
@@ -46,7 +42,7 @@ public final class MdLogicalViewProvider implements LogicalViewProvider {
         Children children = Children.LEAF;
         try {
             DataFolder df = DataFolder.findFolder(dir);
-            children = df.createNodeChildren(FILE_FILTER);
+            children = df.createNodeChildren(createFilter());
         } catch (Exception e) {
             // fallback to leaf node
         }
@@ -54,6 +50,7 @@ public final class MdLogicalViewProvider implements LogicalViewProvider {
             @Override
             public Action[] getActions(boolean context) {
                 return new Action[] {
+                    CommonProjectActions.customizeProjectAction(),
                     CommonProjectActions.closeProjectAction(),
                     CommonProjectActions.deleteProjectAction(),
                 };
@@ -62,6 +59,17 @@ public final class MdLogicalViewProvider implements LogicalViewProvider {
         root.setDisplayName(project.getProjectDirectory().getNameExt());
         root.setIconBaseWithExtension(ICON);
         return root;
+    }
+
+    /** Creates a {@link DataFilter} combining built-in hidden names with user-configured ignores. */
+    private DataFilter createFilter() {
+        return (DataObject dob) -> {
+            FileObject fo = dob.getPrimaryFile();
+            if (HIDDEN_NAMES.matcher(fo.getNameExt()).find()) {
+                return false;
+            }
+            return !MdProjectIgnoredFiles.isIgnored(project, fo);
+        };
     }
 
     @Override

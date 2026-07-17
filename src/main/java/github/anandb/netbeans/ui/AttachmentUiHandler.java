@@ -4,12 +4,14 @@ import github.anandb.netbeans.contract.PasteCallback;
 import java.awt.Component;
 import java.awt.event.ActionEvent;
 import java.util.List;
+import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JFileChooser;
 import javax.swing.JMenuItem;
 import javax.swing.JPopupMenu;
 import javax.swing.SwingUtilities;
+import org.openide.util.ImageUtilities;
 import org.openide.util.NbBundle;
 import github.anandb.netbeans.model.AttachedFile;
 import github.anandb.netbeans.support.PluginSettings;
@@ -52,10 +54,18 @@ public class AttachmentUiHandler {
     public void updateTooltip() {
         if (attachmentManager.getAttachments().isEmpty()) {
             paperclipBtn.setToolTipText(NbBundle.getMessage(AssistantTopComponent.class, "HINT_AttachFiles"));
-            paperclipBtn.setIcon(ThemeManager.getIcon("paperclip.svg", PluginSettings.getToolbarIconSize()));
+            Icon icon = ThemeManager.getIcon("paperclip.svg", PluginSettings.getToolbarIconSize());
+            paperclipBtn.setIcon(icon);
+            if (icon != null) {
+                paperclipBtn.setDisabledIcon(ImageUtilities.createDisabledIcon(icon));
+            }
         } else {
             paperclipBtn.setToolTipText(NbBundle.getMessage(AssistantTopComponent.class, "HINT_FilesAttached", attachmentManager.size()));
-            paperclipBtn.setIcon(ThemeManager.getIcon("paperclip-dot.svg", PluginSettings.getToolbarIconSize()));
+            Icon icon = ThemeManager.getIcon("paperclip-dot.svg", PluginSettings.getToolbarIconSize());
+            paperclipBtn.setIcon(icon);
+            if (icon != null) {
+                paperclipBtn.setDisabledIcon(ImageUtilities.createDisabledIcon(icon));
+            }
         }
     }
 
