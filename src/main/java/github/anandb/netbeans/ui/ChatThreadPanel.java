@@ -165,6 +165,9 @@ public class ChatThreadPanel extends JPanel {
         });
 
         // Listen on layeredPane so children get correct bounds at first layout.
+        // Also forces a full re-layout+repaint of the scroll pane on resize,
+        // which prevents the viewport backing store from going stale during
+        // dock rearrange (the component gets resized without addNotify).
         layeredPane.addComponentListener(new ComponentAdapter() {
             @Override
             public void componentResized(ComponentEvent e) {
@@ -173,6 +176,8 @@ public class ChatThreadPanel extends JPanel {
                 scrollPane.setBounds(0, 0, w, h);
                 sessionProgressBar.setBounds(0, 0, w, 4);
                 scrollController.positionScrollDownBtn(w, h);
+                scrollPane.revalidate();
+                scrollPane.repaint();
             }
         });
 

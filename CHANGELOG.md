@@ -1,5 +1,24 @@
 # Release Notes
 
+## v1.9.4 (Changes since v1.9.3)
+
+### Fixes
+- **Sidebar blank on dock rearrange**: When the dock is rearranged, the scroll pane's
+  viewport backing store could go stale because the `componentResized` handler only
+  updated bounds without forcing a full re-layout+repaint. Added explicit
+  `scrollPane.revalidate()` + `scrollPane.repaint()` in the `layeredPane` resize
+  listener to force the viewport to refresh on every resize.
+- **Session dropdown out of sync after archive**: Archiving a session auto-selected a
+  fallback session in the chat panel but left the `JComboBox` displaying the wrong
+  entry (first item or blank). Now syncs `sessionDropdown.setSelectedItem(fallback)`
+  before `loadSession()` and in `onSessionLoaded()` as a belt-and-suspenders guard.
+- **Failed edit tool calls displayed as error bubbles**: When the AI's edit tool call
+  failed with "Could not find oldString in the file", the failure message appeared as
+  a tool bubble in the chat. Now silently skipped — the agent retries on its own.
+
+### Housekeeping
+- Version bumped to 1.9.4-SNAPSHOT.
+
 ## v1.9.3 (Changes since v1.9.2)
 
 ### Features
