@@ -77,6 +77,8 @@ comes out of the box, you can change it to suit your needs.
 | `Ctrl + Home / Ctrl + End` | Jump to top or bottom of the chat thread |
 | `Escape` | Close the options panel and return focus to the input area |
 | **Right-click selected text** → **Search Web** | Look up the selected text (or word under cursor) on Google using the browser configured in NetBeans |
+| **Right-click selected text** → **Sort Lines Ascending / Descending** | Sorts the selected lines in alphabetical order |
+| **Right-click JSON content** → **Minify** | Compacts the JSON content by removing all unnecessary whitespace |
 
 **Toolbar buttons:**
 
@@ -169,6 +171,7 @@ The stash diff tab does not persist across IDE restarts.
 - **Toolbar Icon Size** — Adjust toolbar and action button icon size (16/24/28/32/36/40/48) in Options > Assistant > Appearance. Requires IDE restart.
 - **Chat Font Size** — Adjust chat bubble font size (Inherited / 10–16) in Options > Assistant > Appearance. Default is "Inherited" (theme font size − 2).
 - **User Icon** — Set a custom avatar displayed next to your messages; right-click the preview to clear it.
+- **Actions** — Enable or disable specific features (Enable context menu additions, Enable Stash Diff, Enable Jump to file). When disabled, the corresponding context menu items, keybindings, and toolbar buttons are hidden or deactivated immediately.
 
 ### Media
 
