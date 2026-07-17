@@ -27,21 +27,17 @@ import org.openide.util.NbBundle;
  * in a {@link MdProject}. Patterns are persisted to the
  * {@code .mdproject-ignore} file in the project root.
  */
-@ProjectCustomizer.CompositeCategoryProvider.Registration(
-    projectType = "github-anandb-netbeans-mdproject",
-    position = 100
-)
-public final class MdProjectPropertiesPanel extends JPanel
-        implements ProjectCustomizer.CompositeCategoryProvider {
+public final class MdProjectPropertiesPanel extends JPanel {
 
     private static final long serialVersionUID = 1L;
 
     private final DefaultListModel<String> listModel;
     private final JList<String> patternList;
-    private MdProject project;
+    private final MdProject project;
 
-    private MdProjectPropertiesPanel() {
+    public MdProjectPropertiesPanel(MdProject project, Category category) {
         super(new BorderLayout(8, 8));
+        this.project = project;
         setBorder(new EmptyBorder(12, 12, 12, 12));
 
         JLabel header = new JLabel(NbBundle.getMessage(
@@ -66,44 +62,16 @@ public final class MdProjectPropertiesPanel extends JPanel
         btnPanel.add(addBtn);
         btnPanel.add(removeBtn);
         add(btnPanel, BorderLayout.SOUTH);
-    }
-
-    // ---- CompositeCategoryProvider ----
-
-    @Override
-    public Category createCategory(Lookup context) {
-        MdProject p = context.lookup(MdProject.class);
-        if (p == null) {
-            return null; // hide panel if no mdproject in context
-        }
-        return ProjectCustomizer.Category.create(
-                "IgnoredFiles",
-                NbBundle.getMessage(MdProjectPropertiesPanel.class, "LBL_CategoryIgnoredFiles"),
-                null);
-    }
-
-    @Override
-    public JComponent createComponent(Category category, Lookup context) {
-        MdProject p = context.lookup(MdProject.class);
-        if (p == null) {
-            return new JPanel(); // fallback
-        }
-        this.project = p;
 
         // Load current patterns
-        List<String> patterns = MdProjectIgnoredFiles.getIgnoredPatterns(p);
-        listModel.clear();
+        List<String> patterns = MdProjectIgnoredFiles.getIgnoredPatterns(project);
         for (String pat : patterns) {
             listModel.addElement(pat);
         }
 
         // Save on OK/store
         category.setStoreListener((ActionEvent e) -> savePatterns());
-
-        return this;
     }
-
-    // ---- actions ----
 
     private void onAddPattern() {
         String input = JOptionPane.showInputDialog(this,
@@ -123,9 +91,6 @@ public final class MdProjectPropertiesPanel extends JPanel
     }
 
     private void savePatterns() {
-        if (project == null) {
-            return;
-        }
         List<String> patterns = new ArrayList<>();
         for (int i = 0; i < listModel.size(); i++) {
             patterns.add(listModel.get(i));
@@ -137,6 +102,34 @@ public final class MdProjectPropertiesPanel extends JPanel
                     NbBundle.getMessage(MdProjectPropertiesPanel.class,
                             "MSG_SaveError", ex.getMessage()),
                     "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    @ProjectCustomizer.CompositeCategoryProvider.Registration(
+        projectType = "github-anandb-netbeans-mdproject",
+        position = 100
+    )
+    public static final class Provider implements ProjectCustomizer.CompositeCategoryProvider {
+
+        @Override
+        public Category createCategory(Lookup context) {
+            MdProject p = context.lookup(MdProject.class);
+            if (p == null) {
+                return null;
+            }
+            return ProjectCustomizer.Category.create(
+                    "IgnoredFiles",
+                    NbBundle.getMessage(MdProjectPropertiesPanel.class, "LBL_CategoryIgnoredFiles"),
+                    null);
+        }
+
+        @Override
+        public JComponent createComponent(Category category, Lookup context) {
+            MdProject p = context.lookup(MdProject.class);
+            if (p == null) {
+                return new JPanel();
+            }
+            return new MdProjectPropertiesPanel(p, category);
         }
     }
 }

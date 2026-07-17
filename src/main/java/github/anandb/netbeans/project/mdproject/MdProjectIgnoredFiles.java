@@ -24,13 +24,34 @@ public final class MdProjectIgnoredFiles {
 
     private MdProjectIgnoredFiles() {}
 
+    private static final java.util.Map<Project, CachedPatterns> CACHE =
+            Collections.synchronizedMap(new java.util.WeakHashMap<>());
+
+    private static class CachedPatterns {
+        final long lastModified;
+        final List<String> patterns;
+
+        CachedPatterns(long lastModified, List<String> patterns) {
+            this.lastModified = lastModified;
+            this.patterns = patterns;
+        }
+    }
+
     /** Returns the list of non-comment, non-empty patterns from the ignore file. */
     public static List<String> getIgnoredPatterns(Project project) {
         FileObject dir = project.getProjectDirectory();
         FileObject ignoreFile = dir.getFileObject(IGNORE_FILE);
         if (ignoreFile == null) {
+            CACHE.remove(project);
             return Collections.emptyList();
         }
+
+        long currentModified = ignoreFile.lastModified().getTime();
+        CachedPatterns cached = CACHE.get(project);
+        if (cached != null && cached.lastModified == currentModified) {
+            return cached.patterns;
+        }
+
         try {
             String content = new String(ignoreFile.asBytes(), StandardCharsets.UTF_8);
             List<String> patterns = new ArrayList<>();
@@ -40,7 +61,9 @@ public final class MdProjectIgnoredFiles {
                     patterns.add(line);
                 }
             }
-            return patterns;
+            List<String> unmodifiable = Collections.unmodifiableList(patterns);
+            CACHE.put(project, new CachedPatterns(currentModified, unmodifiable));
+            return unmodifiable;
         } catch (IOException e) {
             return Collections.emptyList();
         }

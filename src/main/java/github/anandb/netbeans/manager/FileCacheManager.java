@@ -45,6 +45,7 @@ public class FileCacheManager implements FileCacheQuery {
     private final List<FileCacheQuery.CachedFile> files = new CopyOnWriteArrayList<>();
     private volatile boolean ready;
     private final List<Runnable> readyListeners = new CopyOnWriteArrayList<>();
+    private final Object readyLock = new Object();
 
     // Per-sourceRoot listeners for incremental updates
     private final Map<File, FileChangeListener> rootListeners =
@@ -87,7 +88,9 @@ public class FileCacheManager implements FileCacheQuery {
 
     @Override
     public boolean isReady() {
-        return ready;
+        synchronized (readyLock) {
+            return ready;
+        }
     }
 
     @Override
@@ -97,10 +100,16 @@ public class FileCacheManager implements FileCacheQuery {
 
     /** Registers a listener that fires once when the cache first becomes ready. */
     public void onReady(Runnable action) {
-        if (ready) {
+        boolean shouldRun = false;
+        synchronized (readyLock) {
+            if (ready) {
+                shouldRun = true;
+            } else {
+                readyListeners.add(action);
+            }
+        }
+        if (shouldRun) {
             action.run();
-        } else {
-            readyListeners.add(action);
         }
     }
 
@@ -108,6 +117,9 @@ public class FileCacheManager implements FileCacheQuery {
 
     private void rebuild() {
         long start = System.currentTimeMillis();
+        synchronized (readyLock) {
+            ready = false;
+        }
         files.clear();
         projectNameCache.clear();
 
@@ -129,19 +141,24 @@ public class FileCacheManager implements FileCacheQuery {
             scanProject(project);
         }
 
-        ready = true;
+        List<Runnable> listenersCopy;
+        synchronized (readyLock) {
+            ready = true;
+            listenersCopy = new ArrayList<>(readyListeners);
+            readyListeners.clear();
+        }
+
         long elapsed = System.currentTimeMillis() - start;
         LOG.log(Level.FINE, "GoToFile cache built: {0} files in {1}ms",
                 new Object[]{files.size(), elapsed});
 
-        for (Runnable r : readyListeners) {
+        for (Runnable r : listenersCopy) {
             try {
                 r.run();
             } catch (Exception e) {
                 LOG.log(Level.FINE, "Ready listener failed", e);
             }
         }
-        readyListeners.clear();
     }
 
     private void scanProject(Project project) {

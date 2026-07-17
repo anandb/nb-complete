@@ -23,6 +23,8 @@ public class GitIgnoreStrategy implements VcsIgnoreStrategy {
 
     private static final Logger LOG = Logger.getLogger(GitIgnoreStrategy.class.getName());
     private static final long CMD_TIMEOUT_SEC = 30;
+    private static final org.openide.util.RequestProcessor GIT_RP =
+            new org.openide.util.RequestProcessor("GitIgnore-Reader", 1);
 
     @Override
     public boolean isAvailable(File projectRoot) {
@@ -41,28 +43,40 @@ public class GitIgnoreStrategy implements VcsIgnoreStrategy {
             pb.redirectErrorStream(true);
             Process proc = pb.start();
 
-            Set<String> files = new LinkedHashSet<>();
-            try (BufferedReader r = new BufferedReader(
-                    new InputStreamReader(proc.getInputStream(), StandardCharsets.UTF_8))) {
-                String line;
-                while ((line = r.readLine()) != null) {
-                    files.add(line);
+            Set<String> files = Collections.synchronizedSet(new LinkedHashSet<>());
+            org.openide.util.RequestProcessor.Task readerTask = GIT_RP.post(() -> {
+                try (BufferedReader r = new BufferedReader(
+                        new InputStreamReader(proc.getInputStream(), StandardCharsets.UTF_8))) {
+                    String line;
+                    while ((line = r.readLine()) != null) {
+                        files.add(line);
+                    }
+                } catch (Exception e) {
+                    // Expected when process is closed/destroyed
                 }
-            }
+            });
 
-            boolean ok = proc.waitFor(CMD_TIMEOUT_SEC, TimeUnit.SECONDS);
-            if (!ok) {
-                proc.destroyForcibly();
-                LOG.log(Level.WARNING, "git ls-files timed out in {0}", projectRoot);
-                return Collections.emptySet();
+            try {
+                boolean ok = proc.waitFor(CMD_TIMEOUT_SEC, TimeUnit.SECONDS);
+                if (!ok) {
+                    proc.destroyForcibly();
+                    LOG.log(Level.WARNING, "git ls-files timed out in {0}", projectRoot);
+                    return Collections.emptySet();
+                }
+                readerTask.waitFinished(1000);
+                int exitCode = proc.exitValue();
+                if (exitCode != 0) {
+                    LOG.log(Level.WARNING, "git ls-files failed (exit {0}) in {1}",
+                            new Object[]{exitCode, projectRoot});
+                    return Collections.emptySet();
+                }
+                return files;
+            } finally {
+                if (proc.isAlive()) {
+                    proc.destroyForcibly();
+                }
+                readerTask.waitFinished(1000);
             }
-            int exitCode = proc.exitValue();
-            if (exitCode != 0) {
-                LOG.log(Level.WARNING, "git ls-files failed (exit {0}) in {1}",
-                        new Object[]{exitCode, projectRoot});
-                return Collections.emptySet();
-            }
-            return files;
         } catch (Exception e) {
             LOG.log(Level.WARNING, "git ls-files failed in " + projectRoot, e);
             return Collections.emptySet();
