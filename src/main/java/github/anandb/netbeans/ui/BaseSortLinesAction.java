@@ -1,7 +1,6 @@
 package github.anandb.netbeans.ui;
 
 import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.util.Arrays;
 import java.util.Comparator;
 import javax.swing.text.BadLocationException;
@@ -9,11 +8,28 @@ import javax.swing.text.Document;
 import javax.swing.text.JTextComponent;
 import org.netbeans.api.editor.EditorRegistry;
 
+import org.openide.util.actions.Presenter;
+import javax.swing.JMenuItem;
+import javax.swing.AbstractAction;
+
 import github.anandb.netbeans.support.PluginSettings;
 
-public abstract class BaseSortLinesAction implements ActionListener {
+public abstract class BaseSortLinesAction extends AbstractAction implements Presenter.Popup {
 
     protected abstract Comparator<String> getComparator();
+    protected abstract String getDisplayName();
+
+    @Override
+    public JMenuItem getPopupPresenter() {
+        if (!PluginSettings.isSortLinesEnabled()) {
+            JMenuItem item = new JMenuItem();
+            item.setVisible(false);
+            return item;
+        }
+        JMenuItem item = new JMenuItem(getDisplayName());
+        item.addActionListener(this);
+        return item;
+    }
 
     @Override
     public void actionPerformed(ActionEvent e) {

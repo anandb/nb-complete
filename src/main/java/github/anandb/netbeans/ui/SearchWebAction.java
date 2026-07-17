@@ -1,7 +1,6 @@
 package github.anandb.netbeans.ui;
 
 import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -17,6 +16,10 @@ import org.openide.awt.ActionRegistration;
 import org.openide.awt.HtmlBrowser;
 import org.openide.util.Lookup;
 import org.openide.util.NbPreferences;
+import org.openide.util.NbBundle;
+import org.openide.util.actions.Presenter;
+import javax.swing.JMenuItem;
+import javax.swing.AbstractAction;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.PluginSettings;
@@ -28,11 +31,23 @@ import github.anandb.netbeans.support.PluginSettings;
  * Otherwise opens a Google search URL via {@link HtmlBrowser.URLDisplayer}.
  */
 @ActionID(category = "Edit", id = "github.anandb.netbeans.ui.SearchWebAction")
-@ActionRegistration(displayName = "#CTL_SearchWebAction")
+@ActionRegistration(displayName = "#CTL_SearchWebAction", lazy = false)
 @ActionReference(path = "Editors/Popup", position = 250)
-public final class SearchWebAction implements ActionListener {
+public final class SearchWebAction extends AbstractAction implements Presenter.Popup {
 
     private static final Logger LOG = Logger.from(SearchWebAction.class);
+
+    @Override
+    public JMenuItem getPopupPresenter() {
+        if (!PluginSettings.isSortLinesEnabled()) {
+            JMenuItem item = new JMenuItem();
+            item.setVisible(false);
+            return item;
+        }
+        JMenuItem item = new JMenuItem(NbBundle.getMessage(SearchWebAction.class, "CTL_SearchWebAction"));
+        item.addActionListener(this);
+        return item;
+    }
 
     @Override
     public void actionPerformed(ActionEvent e) {

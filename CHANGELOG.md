@@ -49,6 +49,11 @@
 - **Assistant Options spinner truncation**: Configured the `Session Idle Timeout` and
   `Max Messages` spinners in the Options panel to request `4` columns in their internal
   text fields rather than using hardcoded bounds, preventing value truncation on certain themes.
+- **Hide editor context menu additions**: When the "Enable context menu additions" checkbox is
+  unchecked in the Assistant Settings tab, the right-click menu items (Search Web, Minify,
+  Sort Lines Ascending, Sort Lines Descending) are now hidden by implementing `Presenter.Popup`
+  on their action classes and returning an invisible menu item. Explicitly specified `lazy = false`
+  in `@ActionRegistration` for these actions to resolve compiler warnings.
 
 ### Housekeeping
 - Version bumped to 1.9.5-SNAPSHOT.

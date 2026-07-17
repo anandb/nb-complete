@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.Document;
 import javax.swing.text.JTextComponent;
@@ -13,17 +12,32 @@ import org.openide.awt.ActionID;
 import org.openide.awt.ActionReference;
 import org.openide.awt.ActionRegistration;
 import org.openide.util.NbBundle;
+import org.openide.util.actions.Presenter;
+import javax.swing.JMenuItem;
+import javax.swing.AbstractAction;
 
 import github.anandb.netbeans.support.MapperSupplier;
 import github.anandb.netbeans.support.PluginSettings;
 import org.openide.awt.StatusDisplayer;
 
 @ActionID(category = "Edit", id = "github.anandb.netbeans.ui.CompactJsonAction")
-@ActionRegistration(displayName = "#CTL_CompactJsonAction")
+@ActionRegistration(displayName = "#CTL_CompactJsonAction", lazy = false)
 @ActionReference(path = "Editors/Popup", position = 400)
-public class CompactJsonAction implements ActionListener {
+public class CompactJsonAction extends AbstractAction implements Presenter.Popup {
 
     private static final ObjectMapper MAPPER = MapperSupplier.get();
+
+    @Override
+    public JMenuItem getPopupPresenter() {
+        if (!PluginSettings.isSortLinesEnabled()) {
+            JMenuItem item = new JMenuItem();
+            item.setVisible(false);
+            return item;
+        }
+        JMenuItem item = new JMenuItem(NbBundle.getMessage(CompactJsonAction.class, "CTL_CompactJsonAction"));
+        item.addActionListener(this);
+        return item;
+    }
 
     @Override
     public void actionPerformed(ActionEvent e) {
