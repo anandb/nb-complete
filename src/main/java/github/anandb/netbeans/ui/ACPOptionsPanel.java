@@ -1,8 +1,11 @@
 package github.anandb.netbeans.ui;
 
 import java.io.File;
+import java.lang.reflect.Method;
+import java.util.List;
 
 import javax.swing.JFileChooser;
+import javax.swing.KeyStroke;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
 import github.anandb.netbeans.support.BinaryResolver;
@@ -235,7 +238,8 @@ public class ACPOptionsPanel extends JPanel {
         actionsPanel.add(stashDiffCheckbox, UIUtils.createGbc(0, 1, 1.0, 0, GridBagConstraints.HORIZONTAL,
                 GridBagConstraints.WEST, new Insets(0, 12, 5, 0)));
 
-        quickJumpCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_QuickJump"));
+        quickJumpCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_QuickJump")
+                + " (" + resolveShortcut("github.anandb.netbeans.ui.GoToFileAction") + ")");
         quickJumpCheckbox.addActionListener(evt -> controller.changed());
         actionsPanel.add(quickJumpCheckbox, UIUtils.createGbc(0, 2, 1.0, 0, GridBagConstraints.HORIZONTAL,
                 GridBagConstraints.WEST, new Insets(0, 12, 5, 0)));
@@ -548,5 +552,25 @@ public class ACPOptionsPanel extends JPanel {
         }
         pathErrorLabel.setText("");
         return true;
+    }
+
+    /** Look up the assigned shortcut for an action, including user-assigned shortcuts from the Keymap. */
+    private static String resolveShortcut(String actionId) {
+        // Try KeyStrokeUtils via reflection (resolves user-assigned shortcuts from the Keymap)
+        try {
+            Class<?> cls = Class.forName("org.netbeans.core.options.keymap.api.KeyStrokeUtils");
+            Method m = cls.getMethod("getKeyStrokesForAction", String.class, KeyStroke.class);
+            @SuppressWarnings("unchecked")
+            List<KeyStroke[]> all = (List<KeyStroke[]>) m.invoke(null, actionId, null);
+            if (all != null && !all.isEmpty() && all.get(0) != null && all.get(0).length > 0) {
+                KeyStroke ks = all.get(0)[0];
+                if (ks != null) {
+                    return ks.toString().replace("pressed ", "").replace("Released ", "");
+                }
+            }
+        } catch (Exception ignored) {
+            // KeyStrokeUtils not available as a friend — fall through
+        }
+        return "No key mapped";
     }
 }

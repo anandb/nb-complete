@@ -45,7 +45,7 @@ import github.anandb.netbeans.contract.SessionQuery;
 import github.anandb.netbeans.support.BinaryResolver;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.ProcessTerminator;
-import github.anandb.netbeans.ui.platform.ProjectContext;
+import github.anandb.netbeans.ui.platform.PlatformBridge;
 import static github.anandb.netbeans.ui.UIUtils.MONO_STACK;
 
 // DSL-LEAF: a standalone dialog for token usage stats.
@@ -211,9 +211,9 @@ public class TokenUsageDialog extends JDialog {
 
     /** Returns true when there is at least one open project and an active session. */
     private static boolean isCurrentProjectAvailable() {
-        ProjectContext pc = Lookup.getDefault().lookup(ProjectContext.class);
-        if (pc == null) return false;
-        org.netbeans.api.project.Project[] projects = pc.getAllOpenProjects();
+        PlatformBridge bridge = Lookup.getDefault().lookup(PlatformBridge.class);
+        if (bridge == null) return false;
+        org.netbeans.api.project.Project[] projects = bridge.projectContext().getAllOpenProjects();
         if (projects == null || projects.length == 0) return false;
         SessionQuery sq = Lookup.getDefault().lookup(SessionQuery.class);
         return sq != null && sq.getCurrentSessionId() != null;

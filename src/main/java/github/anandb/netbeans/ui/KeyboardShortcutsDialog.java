@@ -4,9 +4,9 @@ import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Font;
 import java.awt.Frame;
+import java.lang.reflect.Method;
 import java.util.List;
 
-import javax.swing.Action;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -17,7 +17,6 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.text.html.HTMLEditorKit;
 
 import org.openide.util.NbBundle;
-import org.openide.util.Utilities;
 
 /**
  * Modal dialog listing all keyboard shortcuts supported by the plugin.
@@ -144,21 +143,21 @@ final class KeyboardShortcutsDialog extends JDialog {
 
         // Assignable shortcuts — all in one table, two per row
         String[][] assignableRows = new String[][]{
-            {resolveShortcut("Actions/Assistant/github-anandb-netbeans-ui-NewSessionAction"), "New Session"},
-            {resolveShortcut("Actions/Assistant/github-anandb-netbeans-ui-ReloadSessionAction"), "Reload Session"},
-            {resolveShortcut("Actions/Assistant/github-anandb-netbeans-ui-RenameSessionAction"), "Rename Session"},
-            {resolveShortcut("Actions/Assistant/github-anandb-netbeans-ui-ArchiveSessionAction"), "Archive Session"},
-            {resolveShortcut("Actions/Assistant/github-anandb-netbeans-ui-RestartServerAction"), "Restart Server"},
-            {resolveShortcut("Actions/Assistant/github-anandb-netbeans-ui-SendMessageAction"), "Send Message"},
-            {resolveShortcut("Actions/Assistant/github-anandb-netbeans-ui-StopMessageAction"), "Stop Message"},
-            {resolveShortcut("Actions/Assistant/github-anandb-netbeans-ui-ToggleOptionsAction"), "Toggle Options"},
-            {resolveShortcut("Actions/Assistant/github-anandb-netbeans-ui-ExportConversationAction"), "Export Session"},
-            {resolveShortcut("Actions/Assistant/github-anandb-netbeans-ui-ToggleBlocksAction"), "Toggle Expand/Collapse All"},
-            {resolveShortcut("Actions/Edit/github-anandb-netbeans-ui-SortLinesAction"), "Sort Lines Ascending"},
-            {resolveShortcut("Actions/Edit/github-anandb-netbeans-ui-SortLinesDescAction"), "Sort Lines Descending"},
-            {resolveShortcut("Actions/Edit/github-anandb-netbeans-ui-CompactJsonAction"), "Minify JSON"},
-            {resolveShortcut("Actions/Tools/github-anandb-netbeans-ui-SearchWebAction"), "Search Web"},
-            {resolveShortcut("Actions/Navigate/github-anandb-netbeans-ui-GoToFileAction"), "Jump to file"},
+            {resolveShortcut("github.anandb.netbeans.ui.NewSessionAction"), "New Session"},
+            {resolveShortcut("github.anandb.netbeans.ui.ReloadSessionAction"), "Reload Session"},
+            {resolveShortcut("github.anandb.netbeans.ui.RenameSessionAction"), "Rename Session"},
+            {resolveShortcut("github.anandb.netbeans.ui.ArchiveSessionAction"), "Archive Session"},
+            {resolveShortcut("github.anandb.netbeans.ui.RestartServerAction"), "Restart Server"},
+            {resolveShortcut("github.anandb.netbeans.ui.SendMessageAction"), "Send Message"},
+            {resolveShortcut("github.anandb.netbeans.ui.StopMessageAction"), "Stop Message"},
+            {resolveShortcut("github.anandb.netbeans.ui.ToggleOptionsAction"), "Toggle Options"},
+            {resolveShortcut("github.anandb.netbeans.ui.ExportConversationAction"), "Export Session"},
+            {resolveShortcut("github.anandb.netbeans.ui.ToggleBlocksAction"), "Toggle Expand/Collapse All"},
+            {resolveShortcut("github.anandb.netbeans.ui.SortLinesAction"), "Sort Lines Ascending"},
+            {resolveShortcut("github.anandb.netbeans.ui.SortLinesDescAction"), "Sort Lines Descending"},
+            {resolveShortcut("github.anandb.netbeans.ui.CompactJsonAction"), "Minify JSON"},
+            {resolveShortcut("github.anandb.netbeans.ui.SearchWebAction"), "Search Web"},
+            {resolveShortcut("github.anandb.netbeans.ui.GoToFileAction"), "Jump to file"},
         };
         tableTwoCol(sb, border, bg, altRowBg, hdrBg, "Assignable Shortcuts", isDark,
                 assignableRows, "Assign via Tools > Keymap");
@@ -174,15 +173,23 @@ final class KeyboardShortcutsDialog extends JDialog {
         return sb.toString();
     }
 
-    private static String resolveShortcut(String actionPath) {
-        List<? extends Action> actions = Utilities.actionsForPath(actionPath);
-        if (actions != null && !actions.isEmpty()) {
-            KeyStroke ks = (KeyStroke) actions.get(0).getValue(Action.ACCELERATOR_KEY);
-            if (ks != null) {
-                return ks.toString().replace("pressed ", "").replace("Released ", "");
+    private static String resolveShortcut(String actionId) {
+        // Try KeyStrokeUtils via reflection (resolves user-assigned shortcuts from the Keymap)
+        try {
+            Class<?> cls = Class.forName("org.netbeans.core.options.keymap.api.KeyStrokeUtils");
+            Method m = cls.getMethod("getKeyStrokesForAction", String.class, KeyStroke.class);
+            @SuppressWarnings("unchecked")
+            List<KeyStroke[]> all = (List<KeyStroke[]>) m.invoke(null, actionId, null);
+            if (all != null && !all.isEmpty() && all.get(0) != null && all.get(0).length > 0) {
+                KeyStroke ks = all.get(0)[0];
+                if (ks != null) {
+                    return ks.toString().replace("pressed ", "").replace("Released ", "");
+                }
             }
+        } catch (Exception ignored) {
+            // KeyStrokeUtils not available as a friend — fall through
         }
-        return "None";
+        return "No key mapped";
     }
 
     private static void tableTwoCol(StringBuilder sb, String border, String bg,

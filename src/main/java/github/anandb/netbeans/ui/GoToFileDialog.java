@@ -5,6 +5,7 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.Toolkit;
 import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
@@ -13,11 +14,15 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.nio.file.FileSystems;
+import java.nio.file.Path;
+import java.nio.file.PathMatcher;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Pattern;
 
 import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
@@ -67,6 +72,7 @@ public class GoToFileDialog extends JDialog {
     private final JList<FileItem> resultList;
     private final DefaultListModel<FileItem> listModel;
     private final JLabel statusLabel;
+    private final JScrollPane scrollPane;
     private FileItem selectedItem;
 
     /** Timer for debounced search — 150ms idle before filtering. */
@@ -101,20 +107,11 @@ public class GoToFileDialog extends JDialog {
         resultList.setCellRenderer(new FileItemRenderer());
         resultList.addMouseListener(new DoubleClickOpener());
         resultList.addKeyListener(new EnterKeyOpener());
-        // Pre-select first item when results arrive
-        listModel.addListDataListener(new javax.swing.event.ListDataListener() {
-            @Override public void intervalAdded(javax.swing.event.ListDataEvent e) {
-                if (listModel.getSize() == 1) {
-                    resultList.setSelectedIndex(0);
-                }
-            }
-            @Override public void intervalRemoved(javax.swing.event.ListDataEvent e) {}
-            @Override public void contentsChanged(javax.swing.event.ListDataEvent e) {}
-        });
 
         JScrollPane scrollPane = new JScrollPane(resultList);
         scrollPane.setBorder(BorderFactory.createLineBorder(theme.sunkenBackground()));
         scrollPane.setPreferredSize(new Dimension(560, 380));
+        this.scrollPane = scrollPane;
 
         // --- Status label ---
         statusLabel = new JLabel();
@@ -150,6 +147,9 @@ public class GoToFileDialog extends JDialog {
             });
         }
 
+        // --- Compute dialog width from the full file cache ---
+        resizeToContentWidth();
+
         // --- Focus ---
         addWindowListener(new WindowAdapter() {
             @Override public void windowOpened(WindowEvent e) {
@@ -165,7 +165,11 @@ public class GoToFileDialog extends JDialog {
         });
 
         pack();
-        setLocationRelativeTo(owner);
+        // Center horizontally, position 30% from the top of the screen
+        Dimension screenSize = java.awt.Toolkit.getDefaultToolkit().getScreenSize();
+        int x = (screenSize.width - getWidth()) / 2;
+        int y = (int) (screenSize.height * 0.30);
+        setLocation(x, y);
     }
 
     /** Returns the file the user selected, or {@code null} if cancelled. */
@@ -183,6 +187,9 @@ public class GoToFileDialog extends JDialog {
         }
     }
 
+    /** Detects glob metacharacters: *, ?, [, { */
+    private static final Pattern GLOB_CHARS = Pattern.compile("[*?\\[{]");
+
     private void performSearch() {
         String query = searchField.getText().trim();
         listModel.clear();
@@ -192,7 +199,19 @@ public class GoToFileDialog extends JDialog {
             return;
         }
 
-        if (query.length() < 3) {
+        // Build a PathMatcher if the query contains glob characters (case-insensitive)
+        PathMatcher globMatcher = null;
+        if (GLOB_CHARS.matcher(query).find()) {
+            try {
+                globMatcher = FileSystems.getDefault().getPathMatcher(
+                        "glob:" + query.toLowerCase(Locale.ROOT));
+            } catch (Exception e) {
+                LOG.log(Level.FINE, "Invalid glob pattern: {0}", query);
+            }
+        }
+
+        // 3-char minimum for plain text; glob patterns are always accepted
+        if (globMatcher == null && query.length() < 3) {
             statusLabel.setText(Bundle.LBL_FilesFound(allFiles.size()));
             return;
         }
@@ -201,7 +220,7 @@ public class GoToFileDialog extends JDialog {
         int count = 0;
         for (FileCacheQuery.CachedFile cf : allFiles) {
             if (count >= MAX_RESULTS) break;
-            if (matches(cf, lowerQuery)) {
+            if (matches(cf, lowerQuery, globMatcher)) {
                 listModel.addElement(new FileItem(
                     cf.fileObject(), cf.projectName(), cf.relativePath()));
                 count++;
@@ -218,14 +237,54 @@ public class GoToFileDialog extends JDialog {
     }
 
     /**
-     * Case-insensitive matching: prefix on filename, or substring in relative path.
+     * Resize the dialog width to fit the longest path in the cache, capped at 30% of screen width.
+     * Minimum width is 420px. Called once at dialog open.
      */
-    private static boolean matches(FileCacheQuery.CachedFile cf, String lowerQuery) {
+    private void resizeToContentWidth() {
+        java.awt.Font nameFont = resultList.getFont().deriveFont(Font.BOLD);
+        java.awt.Font pathFont = resultList.getFont().deriveFont(Font.PLAIN, 11f);
+        java.awt.FontMetrics nameFm = resultList.getFontMetrics(nameFont);
+        java.awt.FontMetrics pathFm = resultList.getFontMetrics(pathFont);
+
+        int maxTextWidth = 0;
+        for (FileCacheQuery.CachedFile cf : allFiles) {
+            int nameWidth = nameFm.stringWidth(cf.fileObject().getNameExt());
+            int pathWidth = pathFm.stringWidth(cf.projectName() + "/" + cf.relativePath());
+            maxTextWidth = Math.max(maxTextWidth, Math.max(nameWidth, pathWidth));
+        }
+
+        // Add padding: border(2) + emptyBorder(6*2) + scrollpane border(2) + content border(10*2) + scrollbar(~20)
+        int preferred = maxTextWidth + 2 + 12 + 2 + 20 + 20 + 24;
+        int minWidth = 420;
+        int maxWidth = (int) (Toolkit.getDefaultToolkit().getScreenSize().width * 0.30);
+        int newWidth = Math.max(minWidth, Math.min(preferred, maxWidth));
+
+        Dimension current = scrollPane.getPreferredSize();
+        scrollPane.setPreferredSize(new Dimension(newWidth, current.height));
+        pack();
+    }
+
+    /**
+     * Case-insensitive matching: prefix on filename, or substring in relative path.
+     * When a glob pattern is present, also matches against the relative path using
+     * bash-style globs ({@code *}, {@code **}, {@code ?}, {@code [...]}, {@code \{a,b\}}).
+     */
+    private static boolean matches(FileCacheQuery.CachedFile cf, String lowerQuery,
+            PathMatcher globMatcher) {
         String fileName = cf.fileObject().getNameExt().toLowerCase(Locale.ROOT);
         String relPath = cf.relativePath().toLowerCase(Locale.ROOT);
 
+        // Plain text matching (always available)
         if (fileName.startsWith(lowerQuery)) return true;
-        return relPath.contains(lowerQuery);
+        if (relPath.contains(lowerQuery)) return true;
+
+        // Glob matching (only when pattern was parseable) — compare lowercased
+        if (globMatcher != null) {
+            Path path = Path.of(relPath);
+            if (globMatcher.matches(path)) return true;
+        }
+
+        return false;
     }
 
     // --- Inner types ---
@@ -282,9 +341,10 @@ public class GoToFileDialog extends JDialog {
     private class ArrowKeyHandler extends KeyAdapter {
         @Override public void keyPressed(KeyEvent e) {
             if (e.getKeyCode() == KeyEvent.VK_DOWN) {
-                int idx = resultList.getSelectedIndex();
-                int next = Math.max(0, idx + 1);
-                if (next < listModel.getSize()) {
+                int size = listModel.getSize();
+                if (size > 0) {
+                    int idx = resultList.getSelectedIndex();
+                    int next = (idx < 0 || idx >= size - 1) ? 0 : idx + 1;
                     resultList.setSelectedIndex(next);
                     resultList.ensureIndexIsVisible(next);
                     resultList.requestFocusInWindow();

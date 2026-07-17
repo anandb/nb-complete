@@ -21,9 +21,11 @@
   Tools > Options > Keymap, alongside Jump to file.
 
 ### Fixes
-- **Token Stats dialog disables "Current Project"**: The "Current Project" option in the
-  project combo is disabled and grayed out when there are no open projects or no active
-  session. Defaults to "All" view when unavailable.
+- **Token Stats dialog "Current Project" detection fixed**: The "Current Project" option
+  was always disabled because `ProjectContext` was looked up directly via
+  `Lookup.getDefault().lookup()` instead of through the registered `PlatformBridge`.
+  Now correctly detects open projects and an active session before enabling the option.
+  Defaults to "All Projects" when unavailable.
 - **Attachment, Reload, Export disabled without session**: These toolbar buttons now
   correctly follow the session state — disabled when no project or session is active,
   matching the existing `hideBtn`, `renameSessionBtn`, etc.
