@@ -47,7 +47,7 @@ public class EditorToolProvider {
         schema.put("type", "object");
 
         mcpTools.registerTool(
-                "get_opened_files",
+                "get_tabs",
                 "Returns a list of file paths currently open in editor tabs",
                 schema,
                 new ToolExecutor<EmptyToolInput, List<String>>(EmptyToolInput.class) {

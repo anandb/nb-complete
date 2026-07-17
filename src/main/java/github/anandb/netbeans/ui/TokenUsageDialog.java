@@ -16,8 +16,6 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import javax.swing.Box;
-import javax.swing.BoxLayout;
 import javax.swing.DefaultListCellRenderer;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
@@ -47,6 +45,7 @@ import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.ProcessTerminator;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
 import static github.anandb.netbeans.ui.UIUtils.MONO_STACK;
+import java.awt.GridBagConstraints;
 
 // DSL-LEAF: a standalone dialog for token usage stats.
 // Built imperatively — no need for the full SwingTree DSL.
@@ -91,40 +90,34 @@ public class TokenUsageDialog extends JDialog {
         titleLabel.setBorder(new EmptyBorder(0, 0, 8, 0));
         content.add(titleLabel, BorderLayout.NORTH);
 
-        // --- Form ---
-        JPanel formPanel = new JPanel();
-        formPanel.setLayout(new BoxLayout(formPanel, BoxLayout.X_AXIS));
+        // --- Form (single row: Days | Model | Project | Refresh) ---
+        JPanel formPanel = new JPanel(new java.awt.GridBagLayout());
         formPanel.setOpaque(false);
+        java.awt.Insets ins = new java.awt.Insets(0, 2, 0, 2);
 
-        // Days
+        // Days (fixed)
         daysSpinner = new JSpinner(new SpinnerNumberModel(1, 1, 30, 1));
         daysSpinner.setPreferredSize(new Dimension(60, 28));
         daysSpinner.setMaximumSize(new Dimension(60, 28));
 
         JLabel daysLabel = new JLabel("Days:");
         daysLabel.setLabelFor(daysSpinner);
-        formPanel.add(daysLabel);
-        formPanel.add(Box.createHorizontalStrut(6));
-        formPanel.add(daysSpinner);
-        formPanel.add(Box.createHorizontalStrut(12));
+        formPanel.add(daysLabel,  new GridBagConstraints(0, 0, 1, 1, 0, 0, GridBagConstraints.WEST, GridBagConstraints.NONE, ins, 0, 0));
+        formPanel.add(daysSpinner, new GridBagConstraints(1, 0, 1, 1, 0, 0, GridBagConstraints.WEST, GridBagConstraints.NONE, ins, 0, 0));
 
-        // Model
+        // Model (flexible — fills available space)
         modelCombo = new JComboBox<>(new String[]{ ALL_MODELS });
         loadModelListAsync();
         modelCombo.setPreferredSize(new Dimension(180, 28));
-        modelCombo.setMaximumSize(new Dimension(180, 28));
 
         JLabel modelLabel = new JLabel("Model:");
         modelLabel.setLabelFor(modelCombo);
-        formPanel.add(modelLabel);
-        formPanel.add(Box.createHorizontalStrut(6));
-        formPanel.add(modelCombo);
-        formPanel.add(Box.createHorizontalStrut(12));
+        formPanel.add(modelLabel,  new GridBagConstraints(2, 0, 1, 1, 0, 0, GridBagConstraints.WEST, GridBagConstraints.NONE, ins, 0, 0));
+        formPanel.add(modelCombo,  new GridBagConstraints(3, 0, 1, 1, 1.0, 0, GridBagConstraints.WEST, GridBagConstraints.HORIZONTAL, ins, 0, 0));
 
-        // Project
+        // Project (flexible — fills available space)
         projectCombo = new JComboBox<>(PROJECT_OPTIONS);
         projectCombo.setPreferredSize(new Dimension(140, 28));
-        projectCombo.setMaximumSize(new Dimension(140, 28));
         projectCombo.setRenderer(new DefaultListCellRenderer() {
             private static final long serialVersionUID = 1L;
             @Override
@@ -154,15 +147,13 @@ public class TokenUsageDialog extends JDialog {
 
         JLabel projectLabel = new JLabel("Project:");
         projectLabel.setLabelFor(projectCombo);
-        formPanel.add(projectLabel);
-        formPanel.add(Box.createHorizontalStrut(6));
-        formPanel.add(projectCombo);
+        formPanel.add(projectLabel, new GridBagConstraints(4, 0, 1, 1, 0, 0, GridBagConstraints.WEST, GridBagConstraints.NONE, ins, 0, 0));
+        formPanel.add(projectCombo, new GridBagConstraints(5, 0, 1, 1, 1.0, 0, GridBagConstraints.WEST, GridBagConstraints.HORIZONTAL, ins, 0, 0));
 
-        // Refresh button to the right of project dropdown
-        formPanel.add(Box.createHorizontalGlue());
+        // Refresh button (fixed, rightmost)
         refreshBtn = new JButton("Refresh");
         refreshBtn.addActionListener(this::onRefresh);
-        formPanel.add(refreshBtn);
+        formPanel.add(refreshBtn, new GridBagConstraints(6, 0, 1, 1, 0, 0, GridBagConstraints.EAST, GridBagConstraints.NONE, ins, 0, 0));
 
         content.add(formPanel, BorderLayout.BEFORE_FIRST_LINE);
 
