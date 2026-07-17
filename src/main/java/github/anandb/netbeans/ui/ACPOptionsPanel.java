@@ -42,6 +42,8 @@ import javax.swing.SwingUtilities;
 import github.anandb.netbeans.contract.SessionControl;
 import org.openide.util.Lookup;
 import github.anandb.netbeans.support.Logger;
+
+import static org.apache.commons.lang3.StringUtils.isBlank;
 import github.anandb.netbeans.support.PreferenceKeys;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
 import github.anandb.netbeans.ui.platform.SessionService;
@@ -481,7 +483,7 @@ public class ACPOptionsPanel extends JPanel {
             return true;
         }
         String path = pathField.getText();
-        if (path == null || path.trim().isEmpty()) {
+        if (isBlank(path)) {
             pathErrorLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "ERR_EmptyPath"));
             pathErrorLabel.setForeground(UIManager.getColor("Label.errorForeground"));
             return false;

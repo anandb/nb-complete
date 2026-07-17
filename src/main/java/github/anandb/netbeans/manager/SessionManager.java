@@ -44,6 +44,7 @@ import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.MapperSupplier;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 
+import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.text.StringEscapeUtils.unescapeHtml4;
 
 /**
@@ -604,7 +605,7 @@ public class SessionManager implements SessionQuery, SessionControl {
 
     @Override
     public void renameSession(String sessionId, String newTitle) {
-        if (newTitle == null || newTitle.trim().isEmpty()) {
+        if (isBlank(newTitle)) {
             return;
         }
         setCustomTitle(sessionId, newTitle.trim());

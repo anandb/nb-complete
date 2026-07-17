@@ -11,6 +11,8 @@ import javax.swing.Icon;
 import javax.swing.JPanel;
 import javax.swing.JTextArea;
 
+import static org.apache.commons.lang3.StringUtils.isNotBlank;
+
 /**
  * A collapsible pane for displaying AI activity (tool calls, thoughts, etc.)
  * using a {@link JTextArea} with word wrapping instead of a complex HTML
@@ -118,7 +120,7 @@ public class CollapsibleActivityPane extends BaseCollapsiblePane {
             if (i > 0) {
                 combinedPlainTextBuilder.append("\n\n");
             }
-            Component bodyComp = (block.text() != null && !block.text().trim().isEmpty())
+            Component bodyComp = (isNotBlank(block.text()))
                     ? MarkdownStyledRenderer.render(block.text(), theme)
                     : null;
             JPanel segPane = createSegmentPane(block.text(), block.isThought(), block.title(), theme, bodyComp, this::toggle);

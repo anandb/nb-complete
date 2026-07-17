@@ -2,6 +2,12 @@
 
 ## v1.9.4 (Changes since v1.9.3)
 
+### Features
+- **Search Web editor context menu**: Right-click selected text in any editor and
+  choose "Search Web" to open a Google search URL via the browser configured in
+  NetBeans General Options. If Firefox is configured, uses `firefox --search`.
+  Falls back to the word under the cursor when no text is selected.
+
 ### Fixes
 - **Sidebar blank on dock rearrange**: When the dock is rearranged, the scroll pane's
   viewport backing store could go stale because the `componentResized` handler only

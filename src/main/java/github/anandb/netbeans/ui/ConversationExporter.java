@@ -10,6 +10,8 @@ import java.util.List;
 import java.util.regex.Pattern;
 import java.util.logging.Level;
 
+import static org.apache.commons.lang3.StringUtils.isBlank;
+
 import javax.swing.JFileChooser;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
@@ -61,7 +63,7 @@ final class ConversationExporter {
                         (List<CollapsibleToolPane.ToolSegment>) bubble.getClientProperty("nb-complete.segments");
                 if (segments != null && !segments.isEmpty()) {
                     for (CollapsibleToolPane.ToolSegment seg : segments) {
-                        if (seg.text() == null || seg.text().trim().isEmpty()) continue;
+                        if (isBlank(seg.text())) continue;
                         String title = seg.title() != null ? seg.title() : "";
                         if (seg.isThought()) {
                             sb.append("> **Thinking**\n>\n");
@@ -81,7 +83,7 @@ final class ConversationExporter {
                 }
                 String role = bubble.getRole();
                 String text = bubble.getRawText();
-                if (text == null || text.trim().isEmpty()) continue;
+                if (isBlank(text)) continue;
                 String title = bubble.getToolTitle() != null ? bubble.getToolTitle() : "";
                 String displayRole = role != null ? role : "assistant";
                 // Add section header only when role changes

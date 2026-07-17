@@ -23,6 +23,8 @@ import java.util.concurrent.CompletableFuture;
 
 import org.openide.util.NbBundle;
 
+import static org.apache.commons.lang3.StringUtils.isNotBlank;
+
 // DSL-LEAF: not a controller — builds a permission request panel inline.
 // Migration target: PermissionBubbleSpec (refs + actions); stays imperative until then.
 class PermissionBubble extends JPanel {
@@ -81,7 +83,7 @@ class PermissionBubble extends JPanel {
                         }
                     }
 
-                    if (codeText != null && !codeText.trim().isEmpty()) {
+                    if (isNotBlank(codeText)) {
                         CollapsibleCodePane codePane = new CollapsibleCodePane(lang, codeText.trim(), true);
                         codePane.setAlignmentX(Component.LEFT_ALIGNMENT);
                         centerPanel.add(javax.swing.Box.createVerticalStrut(10));

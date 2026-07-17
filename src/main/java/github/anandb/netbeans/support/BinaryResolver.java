@@ -7,6 +7,8 @@ import java.util.regex.Pattern;
 import org.openide.util.NbBundle;
 import org.openide.util.NbPreferences;
 
+import static org.apache.commons.lang3.StringUtils.isNotBlank;
+
 public final class BinaryResolver {
 
     private static final Logger LOG = Logger.from(BinaryResolver.class);
@@ -25,7 +27,7 @@ public final class BinaryResolver {
         String exeName = isWindows ? "opencode.exe" : "opencode";
 
         // 1. Configured absolute path
-        if (configuredPath != null && !configuredPath.trim().isEmpty()) {
+        if (isNotBlank(configuredPath)) {
             File f = new File(configuredPath);
             if (f.isAbsolute() && f.exists()) {
                 LOG.fine("Using configured absolute path: {0}", configuredPath);
@@ -81,7 +83,7 @@ public final class BinaryResolver {
         String exeName = isWindows ? "opencode.exe" : "opencode";
 
         // 1. Check configured absolute path
-        if (configuredPath != null && !configuredPath.trim().isEmpty()) {
+        if (isNotBlank(configuredPath)) {
             File f = new File(configuredPath);
             if (f.isAbsolute() && f.exists()) {
                 return true;

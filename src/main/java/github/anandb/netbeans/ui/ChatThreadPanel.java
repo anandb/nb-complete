@@ -305,7 +305,7 @@ public class ChatThreadPanel extends JPanel {
         MessageBubble lastBubble = findLastNonIgnorableBubble();
 
         for (String part : parts) {
-            if (part.trim().isEmpty() && parts.length > 1) {
+            if (isBlank(part) && parts.length > 1) {
                 continue;
             }
 

@@ -1,6 +1,8 @@
 package github.anandb.netbeans.ui;
 
 import static org.apache.commons.lang3.StringUtils.defaultIfBlank;
+import static org.apache.commons.lang3.StringUtils.isBlank;
+import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import static org.apache.commons.lang3.StringUtils.left;
 
 import java.awt.BorderLayout;
@@ -274,7 +276,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         Object result = DialogDisplayer.getDefault().notify(input);
         if (result == NotifyDescriptor.OK_OPTION) {
             String newTitle = input.getInputText();
-            if (newTitle != null && !newTitle.trim().isEmpty()) {
+            if (isNotBlank(newTitle)) {
                 sessionService.get().renameSession(currentId, newTitle.trim());
             }
         }
@@ -374,7 +376,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         String currentId = sessionService.get().getCurrentSessionId();
         String title = currentId != null ? sessionService.get().getSessionTitle(currentId) : null;
         String markdown = chatPanel.getConversationAsMarkdown(title);
-        if (markdown == null || markdown.trim().isEmpty()) {
+        if (isBlank(markdown)) {
             return;
         }
         ConversationExporter.export(this, markdown, ConversationExporter.defaultFileName(title));

@@ -7,6 +7,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 import javax.swing.JTextPane;
+
+import static org.apache.commons.lang3.StringUtils.isBlank;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.SimpleAttributeSet;
 import javax.swing.text.StyleConstants;
@@ -249,7 +251,7 @@ public final class MarkdownStyledRenderer {
             List<String> row = new ArrayList<>();
             for (int i = 0; i < cells.length; i++) {
                 if (i == 0 || i == cells.length - 1) {
-                    if (cells[i].trim().isEmpty()) {
+                    if (isBlank(cells[i])) {
                         continue;
                     }
                 }

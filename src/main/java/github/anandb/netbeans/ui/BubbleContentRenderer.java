@@ -10,6 +10,8 @@ import java.util.regex.Pattern;
 import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
 
+import static org.apache.commons.lang3.StringUtils.isNotBlank;
+
 // DSL-LEAF: not a controller — renders bubble content (segment → component).
 // Migration target: BubbleContentSpec; the per-MessageType render dispatch
 // stays imperative until the DSL can express it declaratively.
@@ -207,13 +209,13 @@ class BubbleContentRenderer {
             Component c = segments.getComponent(compIdx);
             if (c instanceof CollapsibleCodePane pane) {
                 pane.updateContent(lang, code);
-                pane.setVisible(code != null && !code.trim().isEmpty());
+                pane.setVisible(isNotBlank(code));
                 return;
             }
         }
 
         CollapsibleCodePane codePane = new CollapsibleCodePane(lang, code, expanded);
-        codePane.setVisible(code != null && !code.trim().isEmpty());
+        codePane.setVisible(isNotBlank(code));
         if (compIdx < segments.getComponentCount()) {
             segments.remove(compIdx);
             segments.add(codePane, compIdx);

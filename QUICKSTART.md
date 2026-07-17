@@ -57,7 +57,7 @@ override, set the path manually under `Options > Assistant`.
 
 ### 5. Set a Preamble (Optional)
 
-Define a global system prompt in `Options > Assistant > Preamble`. This is
+Define a global prompt in `Options > Assistant > Preamble`. This is
 added to every new session alongside your OpenCode agent prompts. An example
 comes out of the box, you can change it to suit your needs.
 
