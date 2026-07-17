@@ -17,6 +17,11 @@
                 <attr name="shortDescription" bundlevalue="github.anandb.netbeans.ui.Bundle#CTL_StashDiffAction_Tip"/>
                 <attr name="iconBase" stringvalue="github/anandb/netbeans/ui/icons/stash.png"/>
             </file>
+            <file name="github-anandb-netbeans-ui-SearchWebAction.instance">
+                <attr name="instanceCreate" methodvalue="org.openide.awt.Actions.alwaysEnabled"/>
+                <attr name="delegate" newvalue="github.anandb.netbeans.ui.SearchWebAction"/>
+                <attr name="displayName" bundlevalue="github.anandb.netbeans.ui.Bundle#CTL_SearchWebAction"/>
+            </file>
         </folder>
         <folder name="Window">
             <file name="github-anandb-netbeans-ui-ToggleAssistantAction.instance">
@@ -41,9 +46,6 @@
         </folder>
     </folder>
     <folder name="Shortcuts">
-        <file name="D-N.shadow">
-            <attr name="originalFile" stringvalue="Actions/Navigate/github-anandb-netbeans-ui-GoToFileAction.instance"/>
-        </file>
         <file name="D-L.shadow">
             <attr name="originalFile" stringvalue="Actions/Window/github-anandb-netbeans-ui-ToggleAssistantAction.instance"/>
         </file>

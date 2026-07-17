@@ -157,6 +157,8 @@ final class KeyboardShortcutsDialog extends JDialog {
             {resolveShortcut("Actions/Edit/github-anandb-netbeans-ui-SortLinesAction"), "Sort Lines Ascending"},
             {resolveShortcut("Actions/Edit/github-anandb-netbeans-ui-SortLinesDescAction"), "Sort Lines Descending"},
             {resolveShortcut("Actions/Edit/github-anandb-netbeans-ui-CompactJsonAction"), "Minify JSON"},
+            {resolveShortcut("Actions/Tools/github-anandb-netbeans-ui-SearchWebAction"), "Search Web"},
+            {resolveShortcut("Actions/Navigate/github-anandb-netbeans-ui-GoToFileAction"), "Jump to file"},
         };
         tableTwoCol(sb, border, bg, altRowBg, hdrBg, "Assignable Shortcuts", isDark,
                 assignableRows, "Assign via Tools > Keymap");

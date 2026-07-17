@@ -7,8 +7,10 @@ import javax.swing.AbstractAction;
 
 import org.openide.util.NbBundle;
 
+import github.anandb.netbeans.support.PluginSettings;
+
 /**
- * Opens the "Go To File" dialog. Registered in layer.xml with Ctrl+N
+ * Opens the "Jump to file" dialog. Registered in layer.xml with Ctrl+N
  * shortcut (remappable via NetBeans Tools &gt; Options &gt; Keymap).
  *
  * <p>Unlike NetBeans' built-in Go To File (Ctrl+O), this dialog:
@@ -18,7 +20,7 @@ import org.openide.util.NbBundle;
  *   <li>Respects .gitignore via {@code FileCacheManager}</li>
  * </ul>
  */
-@NbBundle.Messages("CTL_GoToFileAction=Go To File")
+@NbBundle.Messages("CTL_GoToFileAction=Jump to file")
 public class GoToFileAction extends AbstractAction {
 
     public GoToFileAction() {
@@ -27,6 +29,7 @@ public class GoToFileAction extends AbstractAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
+        if (!PluginSettings.isQuickJumpEnabled()) return;
         Window owner = findOwnerWindow();
         GoToFileDialog dialog = new GoToFileDialog(owner);
         dialog.setVisible(true);

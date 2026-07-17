@@ -50,7 +50,7 @@ import github.anandb.netbeans.manager.FileCacheManager;
  * <p>UI: JTextField + JList + status label. Double-click or Enter opens file.</p>
  */
 @NbBundle.Messages({
-    "LBL_GoToFile=Go To File",
+    "LBL_GoToFile=Jump to file",
     "LBL_SearchHint=Type to search files...",
     "# {0} - count",
     "LBL_FilesFound={0} files",
@@ -272,6 +272,9 @@ public class GoToFileDialog extends JDialog {
                     && !e.isAltDown() && !e.isControlDown() && !e.isShiftDown()) {
                 openSelected();
                 e.consume();
+            } else if (e.getKeyCode() == KeyEvent.VK_UP && resultList.getSelectedIndex() == 0) {
+                searchField.requestFocusInWindow();
+                e.consume();
             }
         }
     }
@@ -280,17 +283,25 @@ public class GoToFileDialog extends JDialog {
         @Override public void keyPressed(KeyEvent e) {
             if (e.getKeyCode() == KeyEvent.VK_DOWN) {
                 int idx = resultList.getSelectedIndex();
-                if (idx < listModel.getSize() - 1) {
-                    resultList.setSelectedIndex(idx + 1);
-                    resultList.ensureIndexIsVisible(idx + 1);
+                int next = Math.max(0, idx + 1);
+                if (next < listModel.getSize()) {
+                    resultList.setSelectedIndex(next);
+                    resultList.ensureIndexIsVisible(next);
+                    resultList.requestFocusInWindow();
                 }
                 e.consume();
             } else if (e.getKeyCode() == KeyEvent.VK_UP) {
                 int idx = resultList.getSelectedIndex();
-                if (idx > 0) {
+                if (idx <= 0) {
+                    searchField.requestFocusInWindow();
+                } else {
                     resultList.setSelectedIndex(idx - 1);
                     resultList.ensureIndexIsVisible(idx - 1);
                 }
+                e.consume();
+            } else if (e.getKeyCode() == KeyEvent.VK_ENTER
+                    && !e.isAltDown() && !e.isControlDown() && !e.isShiftDown()) {
+                openSelected();
                 e.consume();
             }
         }

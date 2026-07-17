@@ -15,6 +15,7 @@ import org.openide.awt.ActionRegistration;
 import org.openide.util.NbBundle;
 
 import github.anandb.netbeans.support.MapperSupplier;
+import github.anandb.netbeans.support.PluginSettings;
 import org.openide.awt.StatusDisplayer;
 
 @ActionID(category = "Edit", id = "github.anandb.netbeans.ui.CompactJsonAction")
@@ -26,6 +27,7 @@ public class CompactJsonAction implements ActionListener {
 
     @Override
     public void actionPerformed(ActionEvent e) {
+        if (!PluginSettings.isSortLinesEnabled()) return;
         JTextComponent editor = EditorRegistry.lastFocusedComponent();
         if (editor == null) return;
 

@@ -52,5 +52,10 @@ public final class PreferenceKeys {
     /** Set to "true" on install/upgrade, consumed once by ChatLayoutBuilder to flash the help button. */
     public static final String HELP_FLASH_PENDING = "helpFlashPending";
 
+    // Actions toggle keys (enabled by default)
+    public static final String ACTIONS_SORT_LINES = "actions.sortLines";
+    public static final String ACTIONS_STASH_DIFF = "actions.stashDiff";
+    public static final String ACTIONS_QUICK_JUMP = "actions.quickJump";
+
 }
 

@@ -19,6 +19,7 @@ import org.openide.util.Lookup;
 import org.openide.util.NbPreferences;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.PluginSettings;
 
 /**
  * Searches the web for the selected text in the editor.
@@ -35,6 +36,7 @@ public final class SearchWebAction implements ActionListener {
 
     @Override
     public void actionPerformed(ActionEvent e) {
+        if (!PluginSettings.isSortLinesEnabled()) return;
         JTextComponent editor = EditorRegistry.lastFocusedComponent();
         if (editor == null) return;
 

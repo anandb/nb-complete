@@ -65,6 +65,9 @@ public class ACPOptionsPanel extends JPanel {
     private JCheckBox echoCheckbox;
     private JCheckBox combineCheckbox;
     private JCheckBox checkForUpdatesCheckbox;
+    private JCheckBox sortLinesCheckbox;
+    private JCheckBox stashDiffCheckbox;
+    private JCheckBox quickJumpCheckbox;
     private JSpinner idleTimeoutSpinner;
     private JSpinner maxMessagesSpinner;
     private JLabel argsLabel;
@@ -100,6 +103,9 @@ public class ACPOptionsPanel extends JPanel {
         echoCheckbox = new JCheckBox();
         combineCheckbox = new JCheckBox();
         checkForUpdatesCheckbox = new JCheckBox();
+        sortLinesCheckbox = new JCheckBox();
+        stashDiffCheckbox = new JCheckBox();
+        quickJumpCheckbox = new JCheckBox();
         preambleArea = new JTextArea(5, 40);
         preambleScroll = new JScrollPane(preambleArea);
         iconLabel = new JLabel();
@@ -213,6 +219,28 @@ public class ACPOptionsPanel extends JPanel {
                 GridBagConstraints.WEST, new Insets(0, 0, 5, 12)));
 
         add(behaviorPanel);
+        add(javax.swing.Box.createVerticalStrut(8));
+
+        // --- Actions ---
+        JPanel actionsPanel = createSectionPanel("LBL_ActionsHeader");
+        actionsPanel.setLayout(new GridBagLayout());
+
+        sortLinesCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_SortLines"));
+        sortLinesCheckbox.addActionListener(evt -> controller.changed());
+        actionsPanel.add(sortLinesCheckbox, UIUtils.createGbc(0, 0, 1.0, 0, GridBagConstraints.HORIZONTAL,
+                GridBagConstraints.WEST, new Insets(0, 12, 5, 0)));
+
+        stashDiffCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_StashDiff"));
+        stashDiffCheckbox.addActionListener(evt -> controller.changed());
+        actionsPanel.add(stashDiffCheckbox, UIUtils.createGbc(0, 1, 1.0, 0, GridBagConstraints.HORIZONTAL,
+                GridBagConstraints.WEST, new Insets(0, 12, 5, 0)));
+
+        quickJumpCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_QuickJump"));
+        quickJumpCheckbox.addActionListener(evt -> controller.changed());
+        actionsPanel.add(quickJumpCheckbox, UIUtils.createGbc(0, 2, 1.0, 0, GridBagConstraints.HORIZONTAL,
+                GridBagConstraints.WEST, new Insets(0, 12, 5, 0)));
+
+        add(actionsPanel);
         add(javax.swing.Box.createVerticalStrut(8));
 
         // --- Appearance (two-column) ---
@@ -407,6 +435,10 @@ public class ACPOptionsPanel extends JPanel {
 
         int currentChatFont = PluginSettings.getChatFontSize();
         chatFontCombo.setSelectedItem(currentChatFont < 0 ? "Inherited" : String.valueOf(currentChatFont));
+
+        sortLinesCheckbox.setSelected(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean(PreferenceKeys.ACTIONS_SORT_LINES, true));
+        stashDiffCheckbox.setSelected(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean(PreferenceKeys.ACTIONS_STASH_DIFF, true));
+        quickJumpCheckbox.setSelected(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean(PreferenceKeys.ACTIONS_QUICK_JUMP, true));
     }
 
     private void clearHint() {
@@ -460,6 +492,10 @@ public class ACPOptionsPanel extends JPanel {
         if (selectedChatFont != null) {
             PluginSettings.setChatFontSize("Inherited".equals(selectedChatFont) ? -1 : Integer.parseInt(selectedChatFont));
         }
+
+        PluginSettings.setSortLinesEnabled(sortLinesCheckbox.isSelected());
+        PluginSettings.setStashDiffEnabled(stashDiffCheckbox.isSelected());
+        PluginSettings.setQuickJumpEnabled(quickJumpCheckbox.isSelected());
 
         String newIconPath = iconPathField.getText();
         String oldPath = previousIconPath != null ? previousIconPath : "";

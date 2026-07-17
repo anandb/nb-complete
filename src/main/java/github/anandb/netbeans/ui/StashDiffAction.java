@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.prefs.PreferenceChangeListener;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.swing.AbstractAction;
@@ -65,6 +66,8 @@ import org.openide.windows.WindowManager;
 
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.PluginSettings;
+import github.anandb.netbeans.support.PreferenceKeys;
+import org.openide.util.NbPreferences;
 
 /**
  * Shows a side-by-side diff of a selected stash.
@@ -79,6 +82,7 @@ import github.anandb.netbeans.support.PluginSettings;
     "CTL_StashDiffAction_DiffToHead=To HEAD",
     "CTL_StashDiffAction_DiffToWorking=To Working Tree",
     "CTL_StashDiffAction_Tip=<html>Diff a selected stash.<br>Select a stash in the Git Repository Browser first.</html>",
+    "CTL_StashDiffAction_DisabledTip=Stash Diff is disabled. Enable in Assistant Settings.",
     "CTL_StashDiffAction_PrevDiff=Previous difference",
     "CTL_StashDiffAction_NextDiff=Next difference"
 })
@@ -99,6 +103,11 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
     public Component getToolbarPresenter() {
         class ToolbarButton extends JButton implements PropertyChangeListener {
             private static final long serialVersionUID = 1L;
+            private final PreferenceChangeListener prefListener = evt -> {
+                if (PreferenceKeys.ACTIONS_STASH_DIFF.equals(evt.getKey())) {
+                    updateState();
+                }
+            };
 
             ToolbarButton() {
                 Icon enabledIcon = ThemeManager.getIcon("stash.png", PluginSettings.getToolbarIconSize());
@@ -124,11 +133,13 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
                 super.addNotify();
                 updateState();
                 TopComponent.getRegistry().addPropertyChangeListener(this);
+                NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).addPreferenceChangeListener(prefListener);
             }
 
             @Override
             public void removeNotify() {
                 TopComponent.getRegistry().removePropertyChangeListener(this);
+                NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).removePreferenceChangeListener(prefListener);
                 super.removeNotify();
             }
 
@@ -140,9 +151,14 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
             }
 
             private void updateState() {
-                boolean enabled = isGitRepositoriesOpen();
+                boolean enabled = isGitRepositoriesOpen() && PluginSettings.isStashDiffEnabled();
                 setEnabled(enabled);
                 StashDiffAction.this.setEnabled(enabled);
+                String tip = enabled ? Bundle.CTL_StashDiffAction_Tip()
+                        : Bundle.CTL_StashDiffAction_DisabledTip();
+                setToolTipText(tip);
+                getAccessibleContext().setAccessibleName(tip);
+                getAccessibleContext().setAccessibleDescription(tip);
             }
         }
         return new ToolbarButton();

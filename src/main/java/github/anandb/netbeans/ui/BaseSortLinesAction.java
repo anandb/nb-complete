@@ -9,12 +9,15 @@ import javax.swing.text.Document;
 import javax.swing.text.JTextComponent;
 import org.netbeans.api.editor.EditorRegistry;
 
+import github.anandb.netbeans.support.PluginSettings;
+
 public abstract class BaseSortLinesAction implements ActionListener {
 
     protected abstract Comparator<String> getComparator();
 
     @Override
     public void actionPerformed(ActionEvent e) {
+        if (!PluginSettings.isSortLinesEnabled()) return;
         JTextComponent editor = EditorRegistry.lastFocusedComponent();
         if (editor == null) {
             return;

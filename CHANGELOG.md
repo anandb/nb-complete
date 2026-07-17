@@ -3,16 +3,22 @@
 ## v1.9.5 (Changes since v1.9.4)
 
 ### Features
-- **Go To File dialog**: Custom file search dialog (`Ctrl+N`) with case-insensitive
-  filename prefix and path substring matching across all open projects. Builds an
-  in-memory file cache at startup, respects `.gitignore` via `git ls-files` for Git
-  projects, and updates incrementally via filesystem watchers. Shows indexing status
-  with auto-refresh on completion. Extensible VCS strategy (Mercurial/SVN stubs ready).
+- **Jump to file dialog**: Custom file search dialog with case-insensitive filename
+  prefix and path substring matching across all open projects. Builds an in-memory
+  file cache at startup, respects `.gitignore` via `git ls-files` for Git projects,
+  and updates incrementally via filesystem watchers. Shows indexing status with
+  auto-refresh on completion. Extensible VCS strategy (Mercurial/SVN stubs ready).
+  Assignable keyboard shortcut via Keymap (no default shortcut assigned).
+- **Actions section in Options**: New "Actions" section in Options > Assistant with
+  three toggles (all enabled by default): Enable Sort Lines and Minify, Enable Stash
+  Diff, Enable Jump to file. Disabling an action immediately hides/disables it.
 - **Markdown project properties**: Right-click a Markdown Project → Properties → Ignored Files
   tab. Add patterns like `node_modules`, `dist/`, `*.log` to hide files from the project tree.
   Patterns persist in `.mdproject-ignore` in the project root.
 - **Disabled toolbar icons**: All toolbar buttons now use `ImageUtilities.createDisabledIcon`
   for a proper disabled appearance instead of Swing's default gray overlay.
+- **Search Web added to Keymap**: Search Web action is now assignable via
+  Tools > Options > Keymap, alongside Jump to file.
 
 ### Fixes
 - **Token Stats dialog disables "Current Project"**: The "Current Project" option in the
@@ -23,6 +29,8 @@
   matching the existing `hideBtn`, `renameSessionBtn`, etc.
 - **Edit tool no-ops suppressed**: Identical oldString/newString tool calls no longer
   display a pointless "No changes to apply" bubble in chat.
+- **Stash Diff disabled tooltip**: When Stash Diff is disabled in Options, the toolbar
+  button tooltip now shows "Stash Diff is disabled. Enable in Assistant Settings."
 
 ### Housekeeping
 - Version bumped to 1.9.5-SNAPSHOT.
