@@ -2,7 +2,7 @@
 
 ## Project Overview
 - **Project**: Coding Assistant (NetBeans IDE plugin, Java 17, Maven)
-- **Current Stable Version**: 1.9.2
+- **Current Stable Version**: 1.9.4
 - **Key Tech**: NetBeans API (RELEASE220), Flexmark, Jackson, RSyntaxTextArea, JUnit 5.
 
 ## Build Commands
@@ -44,7 +44,7 @@
   `AcpProtocolClient`'s connection-level `lastDataTime`. Only fail requests when the connection
   is idle (no inbound data) beyond their timeout. Do NOT use `future.orTimeout()` — that is an
   absolute deadline that kills requests even when data is flowing. Set timeouts by passing
-  `(method, params, timeout, unit)` to `ProcessManager.sendRequest()` or  
+  `(method, params, timeout, unit)` to `ProcessManager.sendRequest()` or
   `SessionRpcClient` methods.
 - **Process I/O pattern**: When reading a subprocess's stdout/stdin with a timeout, read in a
   `RequestProcessor` background task, then use `proc.waitFor(timeout, unit)` on the caller

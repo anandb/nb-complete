@@ -76,6 +76,7 @@ comes out of the box, you can change it to suit your needs.
 | `Page Up / Page Down` | Scroll the chat thread |
 | `Ctrl + Home / Ctrl + End` | Jump to top or bottom of the chat thread |
 | `Escape` | Close the options panel and return focus to the input area |
+| **Right-click selected text** → **Search Web** | Look up the selected text (or word under cursor) on Google using the browser configured in NetBeans |
 
 **Toolbar buttons:**
 
@@ -243,7 +244,6 @@ snippet from an `opencode.json` configuration.
 |---------|----------|
 | Plugin can't find OpenCode | Ensure `opencode` is on your `PATH`. Set the binary path manually under `Options > Assistant`. |
 | Assistant becomes unresponsive | Click **Restart ACP Server** in the toolbar. |
-| Sidebar goes blank after dock position change | Close and reopen the assistant panel (Choose Assistant from the Window Menu) to restore it. |
 | `Ctrl+L` stops working | Close and reopen the assistant panel from the Window menu. If that doesn't work, restart the IDE. |
 | Sidebar doesn't open after install/upgrade | The plugin auto-opens the sidebar on version change. If it doesn't appear, open it from `Window > Assistant`. |
 | Image paste doesn't work on Linux | Install the `wl-clipboard` package (Wayland) or check your clipboard manager. |
@@ -256,4 +256,4 @@ snippet from an `opencode.json` configuration.
 
 ---
 
-Support the project: [Sign up for OpenCode Go](https://opencode.ai/go?ref=DWTNHGN9KX) 🚀
+[Sign up for OpenCode Go](https://opencode.ai/go?ref=DWTNHGN9KX) 🚀
