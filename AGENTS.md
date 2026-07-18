@@ -2,7 +2,7 @@
 
 ## Project Overview
 - **Project**: Coding Assistant (NetBeans IDE plugin, Java 17, Maven)
-- **Current Stable Version**: 1.9.4
+- **Current Stable Version**: 1.9.5
 - **Key Tech**: NetBeans API (RELEASE220), Flexmark, Jackson, RSyntaxTextArea, JUnit 5.
 
 ## Build Commands
@@ -134,8 +134,12 @@ NbPreferences.forModule(PreferenceKeys.class)
 - **project/ACPShutdown → ui/ (RESOLVED)**: `ACPShutdown` was importing
   `ui/ImagePasteTransferHandler` to shut down the image paste I/O thread pool.
   Fixed by extracting the `RequestProcessor` to `support/ImagePasteIoProcessor`.
+- **ui/GoToFileDialog → manager/FileCacheManager (RESOLVED)**: `GoToFileDialog` was importing
+  `manager/FileCacheManager` directly instead of using `contract/FileCacheQuery` via Lookup.
+  Fixed by accessing `Lookup.getDefault().lookup(FileCacheQuery.class)`. Do NOT reintroduce
+  `FileCacheManager.getDefault()` calls in `ui/`.
 - **New extraction pattern**: When extracting utilities from `ui/` god components, place
-  pure logic in `support/` (e.g. `ToolContextExtractor`). Keep Swing-coupled code in `ui/`.
+  pure logic in `support/` (e.g. `ToolContextExtractor`, `ShortcutUtils`). Keep Swing-coupled code in `ui/`.
 
 ## Critical Technical Details
 

@@ -79,11 +79,13 @@ comes out of the box, you can change it to suit your needs.
 | **Right-click selected text** → **Search Web** | Look up the selected text (or word under cursor) on Google using the browser configured in NetBeans |
 | **Right-click selected text** → **Sort Lines Ascending / Descending** | Sorts the selected lines in alphabetical order |
 | **Right-click JSON content** → **Minify** | Compacts the JSON content by removing all unnecessary whitespace |
+| `Ctrl + Alt + J` / `Cmd + Option + J` | Open the **Jump to File** dialog (assignable in Keymap) |
 
 **Toolbar buttons:**
 
 - **?** — Open this quickstart guide.
 - **Keyboard** — Open the keyboard shortcuts reference dialog.
+- **Rocket** — Bring attention to the assistant panel.
 
 ### Input Area
 
@@ -172,6 +174,7 @@ The stash diff tab does not persist across IDE restarts.
 - **Chat Font Size** — Adjust chat bubble font size (Inherited / 10–16) in Options > Assistant > Appearance. Default is "Inherited" (theme font size − 2).
 - **User Icon** — Set a custom avatar displayed next to your messages; right-click the preview to clear it.
 - **Actions** — Enable or disable specific features (Enable context menu additions, Enable Stash Diff, Enable Jump to file). When disabled, the corresponding context menu items, keybindings, and toolbar buttons are hidden or deactivated immediately.
+- **Jump to File** — Opens a modeless file search dialog (default shortcut `Ctrl + Alt + J` / `Cmd + Option + J`). Searches all open projects by filename prefix, path substring, or glob patterns. Supports arrow key navigation and Enter to open.
 
 ### Media
 

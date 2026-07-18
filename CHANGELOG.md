@@ -54,9 +54,30 @@
   Sort Lines Ascending, Sort Lines Descending) are now hidden by implementing `Presenter.Popup`
   on their action classes and returning an invisible menu item. Explicitly specified `lazy = false`
   in `@ActionRegistration` for these actions to resolve compiler warnings.
+- **GoToFileDialog architectural fix**: Resolved `ui/` → `manager/` violation by accessing
+  `FileCacheQuery` via `Lookup.getDefault().lookup()` instead of direct `FileCacheManager.getDefault()`.
+  Stopped `debounceTimer` in `removeNotify()` to prevent memory leaks. Replaced `APPLICATION_MODAL`
+  with `MODELESS` so the dialog doesn't block the entire IDE.
+- **GoToFileDialog cell renderer reuse**: Switched from creating new JPanel/JLabels on every
+  render call to a pre-built `FileItemRenderer` component, eliminating excessive allocations
+  during search.
+- **Duplicate shortcut methods extracted**: `resolveShortcut()` and `formatKeyStroke()` were
+  duplicated across `ACPOptionsPanel` and `KeyboardShortcutsDialog`. Extracted to new
+  `support/ShortcutUtils` utility class with unit tests.
+- **GitIgnoreStrategy stdout drain**: Added `proc.getInputStream().readAllBytes()` after
+  `waitFor()` in `isIgnored()` to prevent pipe buffer deadlock.
+- **FileCacheManager dead cache removed**: Removed unused `projectNameCache` field that was
+  written but never read.
+- **TokenUsageDialog simplified**: Made non-modal, removed unused model combo box (stats now
+  always use `--models` without filtering), added unit tests for `parseStatsRow` and
+  `convertStatsToHtml`. Improved progress bar row parsing with non-ASCII detection.
+- **Rocketship toolbar button**: Added `AttentionButton` with SVG rocketship icon (light/dark
+  variants) to the left of the attachment icon, providing quick access to assistant attention.
 
 ### Housekeeping
-- Version bumped to 1.9.5-SNAPSHOT.
+- Version bumped to 1.9.5.
+- Added `ShortcutUtilsTest` and `TokenUsageDialogTest`.
+- Added `DefaultPlatformBridge` support for project token stats context.
 
 ## v1.9.4 (Changes since v1.9.3)
 

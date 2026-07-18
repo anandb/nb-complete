@@ -69,13 +69,13 @@ All source lives under `src/main/java/github/anandb/netbeans/`:
 
 | Package | Files | Role |
 | --- | --- | --- |
-| `contract/` | 15 | Service interfaces (UI callbacks, session & process control, permission & request handlers, pinned message control) |
-| `manager/` | 12 | Core orchestration, protocol clients, session management, process lifecycle (includes `strategy/`) |
+| `contract/` | 18 | Service interfaces (UI callbacks, session & process control, permission & request handlers, pinned message control) |
+| `manager/` | 16 | Core orchestration, protocol clients, session management, process lifecycle (includes `strategy/`, file cache, VCS ignore) |
 | `mcp/` | 11 | MCP server integration (editor tools, tool definitions, message servlet) |
 | `model/` | 15 | ACP-compliant data models (session, messages, updates, config options, color tokens) |
-| `project/` | 9 | NetBeans lifecycle hooks, project manager, markdown project support |
-| `support/` | 16 | Utilities (logging, JSON mapping, text scanning, constants, browser helpers, pinned message store) |
-| `ui/` | 85 | Swing components, platform integration, markdown project UI (chat, bubbles, theming, options, stash diff) |
+| `project/` | 12 | NetBeans lifecycle hooks, project manager, markdown project support |
+| `support/` | 17 | Utilities (logging, JSON mapping, text scanning, constants, browser helpers, pinned message store, shortcut utils) |
+| `ui/` | 90 | Swing components, platform integration, markdown project UI (chat, bubbles, theming, options, stash diff, file search) |
 
 ---
 
