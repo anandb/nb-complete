@@ -209,6 +209,7 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
     // --- Git helpers ---
 
     private static final RequestProcessor GIT_RP = new RequestProcessor("StashDiff-git", 1);
+    private static final RequestProcessor READER_RP = new RequestProcessor("StashDiff-reader", 2);
 
     private static String runGit(File dir, String... cmd) throws Exception {
         ProcessBuilder pb = new ProcessBuilder(cmd);
@@ -216,7 +217,7 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
         pb.redirectErrorStream(true);
         Process proc = pb.start();
         StringBuilder sb = new StringBuilder();
-        RequestProcessor.Task readerTask = GIT_RP.post(() -> {
+        RequestProcessor.Task readerTask = READER_RP.post(() -> {
             try (BufferedReader r = new BufferedReader(
                     new InputStreamReader(proc.getInputStream(), java.nio.charset.StandardCharsets.UTF_8))) {
                 String line;
