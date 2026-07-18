@@ -40,6 +40,7 @@ import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JSplitPane;
@@ -441,6 +442,63 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
         toolbar.add(btnHead);
         toolbar.add(btnWork);
 
+        // --- Stash lifecycle buttons (use holder array for tc reference) ---
+        final TopComponent[] tcRef = new TopComponent[1];
+        toolbar.addSeparator();
+
+        JButton btnApplyStash = new JButton("Apply Stash");
+        btnApplyStash.setToolTipText("Apply this stash to the working tree");
+        btnApplyStash.addActionListener(ev -> {
+            btnApplyStash.setEnabled(false);
+            GIT_RP.post(() -> {
+                try {
+                    String stashRef = "stash@{" + data.stashIndex + "}";
+                    runGit(data.repoDir, "git", "stash", "apply", stashRef);
+                    SwingUtilities.invokeLater(() -> {
+                        JOptionPane.showMessageDialog(tcRef[0],
+                                "Stash applied successfully.", "Apply Stash",
+                                JOptionPane.INFORMATION_MESSAGE);
+                        btnApplyStash.setEnabled(true);
+                    });
+                } catch (Exception ex) {
+                    SwingUtilities.invokeLater(() -> {
+                        LOG.warn("Failed to apply stash: {0}", ex.getMessage());
+                        showStashError(tcRef[0], ex);
+                        btnApplyStash.setEnabled(true);
+                    });
+                }
+            });
+        });
+
+        JButton btnDropStash = new JButton("Drop Stash");
+        btnDropStash.setToolTipText("Drop this stash permanently");
+        btnDropStash.addActionListener(ev -> {
+            int confirm = JOptionPane.showConfirmDialog(tcRef[0],
+                    "Are you sure you want to drop stash@{" + data.stashIndex + "}?",
+                    "Drop Stash", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+            if (confirm != JOptionPane.YES_OPTION) return;
+
+            btnDropStash.setEnabled(false);
+            GIT_RP.post(() -> {
+                try {
+                    String stashRef = "stash@{" + data.stashIndex + "}";
+                    runGit(data.repoDir, "git", "stash", "drop", stashRef);
+                    SwingUtilities.invokeLater(() -> {
+                        if (tcRef[0] != null) tcRef[0].close();
+                    });
+                } catch (Exception ex) {
+                    SwingUtilities.invokeLater(() -> {
+                        LOG.warn("Failed to drop stash: {0}", ex.getMessage());
+                        showStashError(tcRef[0], ex);
+                        btnDropStash.setEnabled(true);
+                    });
+                }
+            });
+        });
+
+        toolbar.add(btnApplyStash);
+        toolbar.add(btnDropStash);
+
         // Wire toggle → swap file list contents
         btnBase.addActionListener((ActionEvent ev) -> {
             switchTo(listModel, fileList, diffPanel, data.baseDiffs);
@@ -478,6 +536,7 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
         split.setResizeWeight(0.0);
 
         TopComponent tc = new TopComponent();
+        tcRef[0] = tc;
         tc.setLayout(new BorderLayout());
         tc.add(split, BorderLayout.CENTER);
         tc.setDisplayName(Bundle.CTL_StashDiffAction_TopComponentName(data.stashName));
@@ -670,6 +729,14 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
             case "ini", "cfg", "conf" -> "text/x-ini";
             default           -> "text/plain";
         };
+    }
+
+    /** Show a user-friendly error dialog. */
+    private static void showStashError(Component parent, Exception ex) {
+        String msg = ex.getMessage();
+        JOptionPane.showMessageDialog(parent,
+                msg != null ? msg : "Unknown error",
+                "Stash Operation Failed", JOptionPane.ERROR_MESSAGE);
     }
 
     // --- Inner types ---
