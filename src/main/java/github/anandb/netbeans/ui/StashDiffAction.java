@@ -31,6 +31,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
+import javax.swing.Box;
 import javax.swing.ButtonGroup;
 import javax.swing.DefaultListCellRenderer;
 import javax.swing.DefaultListModel;
@@ -49,6 +50,7 @@ import javax.swing.JToolBar;
 import javax.swing.KeyStroke;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingUtilities;
+import javax.swing.SwingConstants;
 import javax.swing.UIManager;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.text.JTextComponent;
@@ -445,9 +447,10 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
 
         // --- Stash lifecycle buttons (use holder array for tc reference) ---
         final TopComponent[] tcRef = new TopComponent[1];
-        toolbar.addSeparator();
+        toolbar.add(Box.createHorizontalStrut(32));
 
-        JButton btnApplyStash = new JButton("Apply Stash");
+        JButton btnApplyStash = new JButton("Apply", ThemeManager.getIcon("stash_apply.svg", PluginSettings.getToolbarIconSize()));
+        btnApplyStash.setHorizontalTextPosition(SwingConstants.RIGHT);
         btnApplyStash.setToolTipText("Apply this stash to the working tree");
         btnApplyStash.addActionListener(ev -> {
             btnApplyStash.setEnabled(false);
@@ -471,7 +474,8 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
             });
         });
 
-        JButton btnDropStash = new JButton("Drop Stash");
+        JButton btnDropStash = new JButton("Drop", ThemeManager.getIcon("stash_drop.svg", PluginSettings.getToolbarIconSize()));
+        btnDropStash.setHorizontalTextPosition(SwingConstants.RIGHT);
         btnDropStash.setToolTipText("Drop this stash permanently");
         btnDropStash.addActionListener(ev -> {
             int confirm = JOptionPane.showConfirmDialog(tcRef[0],
@@ -611,10 +615,10 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
                 ctrl.addPropertyChangeListener(currentDiffListener);
                 currentController = ctrl;
 
-                // Wrap diff view: nav buttons above the view, aligned right
+                // Wrap diff view: nav buttons above the view, aligned left
                 JPanel wrapper = new JPanel(new BorderLayout());
                 int navIconSize = 16;
-                JPanel navBar = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
+                JPanel navBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
                 navBar.setOpaque(false);
                 JButton prevBtn = new JButton(ThemeManager.getIcon("up.svg", navIconSize));
                 JButton nextBtn = new JButton(ThemeManager.getIcon("down.svg", navIconSize));

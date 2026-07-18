@@ -299,20 +299,12 @@ final class ChatLayoutBuilder {
         cwdRow.add(cwdLabel, BorderLayout.CENTER);
 
         String quickstartUrl = "https://github.com/anandb/nb-complete/blob/main/QUICKSTART.md";
-        String feedbackUrl = "https://forms.gle/ZQn5Wy2aDSSpkzkaA";
 
         helpBtn = UIUtils.createToolbarButton("help.svg",
             NbBundle.getMessage(AssistantTopComponent.class, "HINT_QuickstartGuide"), null);
         helpBtn.setContentAreaFilled(false);
         helpBtn.setBorderPainted(false);
         helpBtn.addActionListener(e -> github.anandb.netbeans.support.BrowserUtils.openOrCopyUrl(quickstartUrl, "STATUS_QuickstartCopied",
-            (url, key) -> topComponent.setStatus(key, url)));
-
-        JButton feedbackBtn = UIUtils.createToolbarButton("feedback.svg",
-            NbBundle.getMessage(AssistantTopComponent.class, "HINT_Feedback"), null);
-        feedbackBtn.setContentAreaFilled(false);
-        feedbackBtn.setBorderPainted(false);
-        feedbackBtn.addActionListener(e -> github.anandb.netbeans.support.BrowserUtils.openOrCopyUrl(feedbackUrl, "STATUS_FeedbackCopied",
             (url, key) -> topComponent.setStatus(key, url)));
 
         JButton keyboardShortcutsBtn = UIUtils.createToolbarButton("keyboard.svg",
@@ -328,7 +320,6 @@ final class ChatLayoutBuilder {
         JPanel rightButtons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 2, 0));
         rightButtons.setOpaque(false);
         rightButtons.add(keyboardShortcutsBtn);
-        rightButtons.add(feedbackBtn);
         rightButtons.add(helpBtn);
         cwdRow.add(rightButtons, BorderLayout.EAST);
 
