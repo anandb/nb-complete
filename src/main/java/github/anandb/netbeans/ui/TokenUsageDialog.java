@@ -70,7 +70,7 @@ public class TokenUsageDialog extends JDialog {
     private boolean firstRefresh = true;
 
     public TokenUsageDialog(java.awt.Frame owner) {
-        super(owner, "Token Stats", true);
+        super(owner, "Token Stats", false);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         setPreferredSize(new Dimension(540, 460));
         setResizable(true);

@@ -83,7 +83,7 @@ public class GoToFileDialog extends JDialog {
     private volatile boolean indexingComplete;
 
     public GoToFileDialog(Window owner) {
-        super(owner, Bundle.LBL_GoToFile(), ModalityType.APPLICATION_MODAL);
+        super(owner, Bundle.LBL_GoToFile(), ModalityType.MODELESS);
         FileCacheQuery cache = Lookup.getDefault().lookup(FileCacheQuery.class);
         this.allFiles = new ArrayList<>(cache.getAllFiles());
         this.indexingComplete = cache.isReady();
