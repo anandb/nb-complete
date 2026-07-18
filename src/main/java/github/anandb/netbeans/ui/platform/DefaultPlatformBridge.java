@@ -1,9 +1,15 @@
 package github.anandb.netbeans.ui.platform;
 
+import java.beans.PropertyChangeEvent;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.prefs.Preferences;
 import java.util.logging.Level;
 
+import javax.swing.SwingUtilities;
+
 import org.netbeans.api.project.Project;
+import org.netbeans.api.project.ui.OpenProjects;
 import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
 import org.openide.util.NbPreferences;
@@ -84,10 +90,37 @@ public final class DefaultPlatformBridge implements PlatformBridge {
     }
 
     private static final class ProjectContextImpl implements ProjectContext {
+        private final List<Runnable> changeListeners = new CopyOnWriteArrayList<>();
+        private volatile boolean listening;
+
+        ProjectContextImpl() {
+            // Register a PropertyChangeListener on OpenProjects to detect
+            // project open/close events. We still read from the ACPProjectManager
+            // cache — this is only for notification, not data access.
+            OpenProjects.getDefault().addPropertyChangeListener((PropertyChangeEvent evt) -> {
+                if (!OpenProjects.PROPERTY_OPEN_PROJECTS.equals(evt.getPropertyName())) {
+                    return;
+                }
+                SwingUtilities.invokeLater(() -> {
+                    for (Runnable r : changeListeners) {
+                        r.run();
+                    }
+                });
+            });
+        }
+
         @Override public Project[] getAllOpenProjects() {
             // AGENTS.md: getAllOpenProjects() returns the cached
             // currentProjects field — do NOT bypass the cache.
             return ACPProjectManager.getInstance().getAllOpenProjects();
+        }
+
+        @Override public void addProjectChangeListener(Runnable listener) {
+            changeListeners.add(listener);
+        }
+
+        @Override public void removeProjectChangeListener(Runnable listener) {
+            changeListeners.remove(listener);
         }
     }
 }

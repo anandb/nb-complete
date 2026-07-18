@@ -25,6 +25,7 @@ import org.netbeans.api.project.Sources;
 import org.openide.filesystems.FileChangeListener;
 import org.netbeans.api.project.ui.OpenProjects;
 import org.openide.util.RequestProcessor;
+import org.openide.util.lookup.ServiceProvider;
 
 import github.anandb.netbeans.contract.FileCacheQuery;
 import github.anandb.netbeans.contract.VcsIgnoreStrategy;
@@ -37,6 +38,7 @@ import github.anandb.netbeans.contract.VcsIgnoreStrategy;
  * <p>Thread safety: writes are serialized on a single-threads RP; reads
  * use snapshot copies via {@code volatile} fields.</p>
  */
+@ServiceProvider(service = FileCacheQuery.class)
 public class FileCacheManager implements FileCacheQuery {
 
     private static final Logger LOG = Logger.getLogger(FileCacheManager.class.getName());
@@ -51,10 +53,6 @@ public class FileCacheManager implements FileCacheQuery {
     private final Map<File, FileChangeListener> rootListeners =
             Collections.synchronizedMap(new WeakHashMap<>());
 
-    // Project name cache (FileObject path → project name)
-    private final Map<String, String> projectNameCache =
-            Collections.synchronizedMap(new HashMap<>());
-
     // Strategy instances (one per root, cached)
     private final Map<File, VcsIgnoreStrategy> strategyCache =
             Collections.synchronizedMap(new HashMap<>());
@@ -63,6 +61,10 @@ public class FileCacheManager implements FileCacheQuery {
     private static volatile FileCacheManager INSTANCE;
 
     public static FileCacheManager getDefault() {
+        FileCacheQuery query = org.openide.util.Lookup.getDefault().lookup(FileCacheQuery.class);
+        if (query instanceof FileCacheManager manager) {
+            return manager;
+        }
         if (INSTANCE == null) {
             synchronized (FileCacheManager.class) {
                 if (INSTANCE == null) {
@@ -73,7 +75,10 @@ public class FileCacheManager implements FileCacheQuery {
         return INSTANCE;
     }
 
-    private FileCacheManager() {
+    public FileCacheManager() {
+        synchronized (FileCacheManager.class) {
+            INSTANCE = this;
+        }
         // Listen for project open/close to rebuild affected roots
         OpenProjects.getDefault().addPropertyChangeListener(evt -> {
             if (OpenProjects.PROPERTY_OPEN_PROJECTS.equals(evt.getPropertyName())) {
@@ -99,6 +104,7 @@ public class FileCacheManager implements FileCacheQuery {
     }
 
     /** Registers a listener that fires once when the cache first becomes ready. */
+    @Override
     public void onReady(Runnable action) {
         boolean shouldRun = false;
         synchronized (readyLock) {
@@ -121,7 +127,6 @@ public class FileCacheManager implements FileCacheQuery {
             ready = false;
         }
         files.clear();
-        projectNameCache.clear();
 
         // Dispose old listeners
         synchronized (rootListeners) {
@@ -172,7 +177,6 @@ public class FileCacheManager implements FileCacheQuery {
             File rootDir = FileUtil.toFile(root);
             if (rootDir == null || !rootDir.isDirectory()) continue;
 
-            projectNameCache.put(root.getPath(), projectName);
             VcsIgnoreStrategy strategy = detectStrategy(rootDir);
             strategyCache.put(rootDir, strategy);
 

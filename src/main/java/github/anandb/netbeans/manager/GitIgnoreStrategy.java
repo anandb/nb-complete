@@ -90,7 +90,8 @@ public class GitIgnoreStrategy implements VcsIgnoreStrategy {
                 "git", "check-ignore", "-q", file.getAbsolutePath()
             );
             pb.directory(projectRoot);
-            pb.redirectErrorStream(true);
+            pb.redirectOutput(ProcessBuilder.Redirect.DISCARD);
+            pb.redirectError(ProcessBuilder.Redirect.DISCARD);
             Process proc = pb.start();
             boolean ok = proc.waitFor(CMD_TIMEOUT_SEC, TimeUnit.SECONDS);
             if (!ok) {

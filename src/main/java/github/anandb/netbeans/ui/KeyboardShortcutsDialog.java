@@ -15,6 +15,7 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.text.html.HTMLEditorKit;
 
 import org.openide.util.NbBundle;
+import github.anandb.netbeans.support.ShortcutUtils;
 
 /**
  * Modal dialog listing all keyboard shortcuts supported by the plugin.
@@ -141,21 +142,21 @@ final class KeyboardShortcutsDialog extends JDialog {
 
         // Assignable shortcuts — all in one table, two per row
         String[][] assignableRows = new String[][]{
-            {resolveShortcut("github.anandb.netbeans.ui.NewSessionAction"), "New Session"},
-            {resolveShortcut("github.anandb.netbeans.ui.ReloadSessionAction"), "Reload Session"},
-            {resolveShortcut("github.anandb.netbeans.ui.RenameSessionAction"), "Rename Session"},
-            {resolveShortcut("github.anandb.netbeans.ui.ArchiveSessionAction"), "Archive Session"},
-            {resolveShortcut("github.anandb.netbeans.ui.RestartServerAction"), "Restart Server"},
-            {resolveShortcut("github.anandb.netbeans.ui.SendMessageAction"), "Send Message"},
-            {resolveShortcut("github.anandb.netbeans.ui.StopMessageAction"), "Stop Message"},
-            {resolveShortcut("github.anandb.netbeans.ui.ToggleOptionsAction"), "Toggle Options"},
-            {resolveShortcut("github.anandb.netbeans.ui.ExportConversationAction"), "Export Session"},
-            {resolveShortcut("github.anandb.netbeans.ui.ToggleBlocksAction"), "Toggle Expand/Collapse All"},
-            {resolveShortcut("github.anandb.netbeans.ui.SortLinesAction"), "Sort Lines Ascending"},
-            {resolveShortcut("github.anandb.netbeans.ui.SortLinesDescAction"), "Sort Lines Descending"},
-            {resolveShortcut("github.anandb.netbeans.ui.CompactJsonAction"), "Minify JSON"},
-            {resolveShortcut("github.anandb.netbeans.ui.SearchWebAction"), "Search Web"},
-            {resolveShortcut("github.anandb.netbeans.ui.GoToFileAction"), "Jump to file"},
+            {ShortcutUtils.resolveShortcut("github.anandb.netbeans.ui.NewSessionAction"), "New Session"},
+            {ShortcutUtils.resolveShortcut("github.anandb.netbeans.ui.ReloadSessionAction"), "Reload Session"},
+            {ShortcutUtils.resolveShortcut("github.anandb.netbeans.ui.RenameSessionAction"), "Rename Session"},
+            {ShortcutUtils.resolveShortcut("github.anandb.netbeans.ui.ArchiveSessionAction"), "Archive Session"},
+            {ShortcutUtils.resolveShortcut("github.anandb.netbeans.ui.RestartServerAction"), "Restart Server"},
+            {ShortcutUtils.resolveShortcut("github.anandb.netbeans.ui.SendMessageAction"), "Send Message"},
+            {ShortcutUtils.resolveShortcut("github.anandb.netbeans.ui.StopMessageAction"), "Stop Message"},
+            {ShortcutUtils.resolveShortcut("github.anandb.netbeans.ui.ToggleOptionsAction"), "Toggle Options"},
+            {ShortcutUtils.resolveShortcut("github.anandb.netbeans.ui.ExportConversationAction"), "Export Session"},
+            {ShortcutUtils.resolveShortcut("github.anandb.netbeans.ui.ToggleBlocksAction"), "Toggle Expand/Collapse All"},
+            {ShortcutUtils.resolveShortcut("github.anandb.netbeans.ui.SortLinesAction"), "Sort Lines Ascending"},
+            {ShortcutUtils.resolveShortcut("github.anandb.netbeans.ui.SortLinesDescAction"), "Sort Lines Descending"},
+            {ShortcutUtils.resolveShortcut("github.anandb.netbeans.ui.CompactJsonAction"), "Minify JSON"},
+            {ShortcutUtils.resolveShortcut("github.anandb.netbeans.ui.SearchWebAction"), "Search Web"},
+            {ShortcutUtils.resolveShortcut("github.anandb.netbeans.ui.GoToFileAction"), "Jump to file"},
         };
         tableTwoCol(sb, border, bg, altRowBg, hdrBg, "Assignable Shortcuts", isDark,
                 assignableRows, "Assign via Tools > Keymap");
@@ -168,69 +169,6 @@ final class KeyboardShortcutsDialog extends JDialog {
         }, null);
 
         sb.append("</body></html>");
-        return sb.toString();
-    }
-
-    private static String resolveShortcut(String actionId) {
-        try {
-            ClassLoader cl = org.openide.util.Lookup.getDefault().lookup(ClassLoader.class);
-            Class<?> cls = cl != null ? cl.loadClass("org.netbeans.core.options.keymap.api.KeyStrokeUtils")
-                                      : Class.forName("org.netbeans.core.options.keymap.api.KeyStrokeUtils");
-            java.lang.reflect.Method m = cls.getMethod("getKeyStrokesForAction", String.class, javax.swing.KeyStroke.class);
-            
-            // Try with dots
-            @SuppressWarnings("unchecked")
-            java.util.List<javax.swing.KeyStroke[]> all = (java.util.List<javax.swing.KeyStroke[]>) m.invoke(null, actionId, null);
-            
-            // Try with hyphens (NetBeans @ActionID generated standard)
-            if (all == null || all.isEmpty()) {
-                all = (java.util.List<javax.swing.KeyStroke[]>) m.invoke(null, actionId.replace('.', '-'), null);
-            }
-
-            if (all != null && !all.isEmpty() && all.get(0) != null && all.get(0).length > 0) {
-                StringBuilder sb = new StringBuilder();
-                for (javax.swing.KeyStroke k : all.get(0)) {
-                    if (k != null) {
-                        if (sb.length() > 0) sb.append(", ");
-                        sb.append(formatKeyStroke(k));
-                    }
-                }
-                if (sb.length() > 0) {
-                    return sb.toString();
-                }
-            }
-        } catch (Throwable t) {
-            java.util.logging.Logger.getLogger(KeyboardShortcutsDialog.class.getName()).log(
-                java.util.logging.Level.INFO, "Could not resolve shortcut for " + actionId, t);
-        }
-        return "";
-    }
-
-    private static String formatKeyStroke(javax.swing.KeyStroke ks) {
-        if (ks == null) return "";
-        StringBuilder sb = new StringBuilder();
-        int mod = ks.getModifiers();
-        boolean mac = org.openide.util.Utilities.isMac();
-
-        if ((mod & java.awt.event.InputEvent.CTRL_DOWN_MASK) != 0 || (mod & java.awt.event.InputEvent.CTRL_MASK) != 0) {
-            sb.append("Ctrl + ");
-        }
-        if ((mod & java.awt.event.InputEvent.META_DOWN_MASK) != 0 || (mod & java.awt.event.InputEvent.META_MASK) != 0) {
-            sb.append(mac ? "Cmd + " : "Meta + ");
-        }
-        if ((mod & java.awt.event.InputEvent.ALT_DOWN_MASK) != 0 || (mod & java.awt.event.InputEvent.ALT_MASK) != 0) {
-            sb.append(mac ? "Option + " : "Alt + ");
-        }
-        if ((mod & java.awt.event.InputEvent.SHIFT_DOWN_MASK) != 0 || (mod & java.awt.event.InputEvent.SHIFT_MASK) != 0) {
-            sb.append("Shift + ");
-        }
-
-        int code = ks.getKeyCode();
-        if (code != java.awt.event.KeyEvent.VK_UNDEFINED) {
-            sb.append(java.awt.event.KeyEvent.getKeyText(code));
-        } else {
-            sb.append(ks.getKeyChar());
-        }
         return sb.toString();
     }
 

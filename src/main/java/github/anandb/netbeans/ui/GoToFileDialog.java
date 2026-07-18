@@ -45,8 +45,8 @@ import org.openide.filesystems.FileObject;
 import org.openide.loaders.DataObject;
 import org.openide.util.NbBundle;
 
+import org.openide.util.Lookup;
 import github.anandb.netbeans.contract.FileCacheQuery;
-import github.anandb.netbeans.manager.FileCacheManager;
 
 /**
  * Modal "Go To File" dialog. Case-insensitive prefix/camel-case search
@@ -84,7 +84,7 @@ public class GoToFileDialog extends JDialog {
 
     public GoToFileDialog(Window owner) {
         super(owner, Bundle.LBL_GoToFile(), ModalityType.APPLICATION_MODAL);
-        FileCacheQuery cache = FileCacheManager.getDefault();
+        FileCacheQuery cache = Lookup.getDefault().lookup(FileCacheQuery.class);
         this.allFiles = new ArrayList<>(cache.getAllFiles());
         this.indexingComplete = cache.isReady();
 
@@ -136,7 +136,7 @@ public class GoToFileDialog extends JDialog {
 
         // --- Listen for indexing completion to refresh results ---
         if (!indexingComplete) {
-            FileCacheManager.getDefault().onReady(() -> {
+            Lookup.getDefault().lookup(FileCacheQuery.class).onReady(() -> {
                 if (!isDisplayable()) return;
                 indexingComplete = true;
                 allFiles = new ArrayList<>(cache.getAllFiles());
@@ -175,6 +175,14 @@ public class GoToFileDialog extends JDialog {
     /** Returns the file the user selected, or {@code null} if cancelled. */
     public FileObject getSelectedFile() {
         return selectedItem != null ? selectedItem.fileObject() : null;
+    }
+
+    @Override
+    public void removeNotify() {
+        if (debounceTimer != null) {
+            debounceTimer.stop();
+        }
+        super.removeNotify();
     }
 
     // --- Search logic ---
@@ -369,39 +377,47 @@ public class GoToFileDialog extends JDialog {
 
     // --- Cell renderer: fileName bold, gray path below ---
 
-    private static class FileItemRenderer extends DefaultListCellRenderer {
+    private static class FileItemRenderer extends JPanel implements javax.swing.ListCellRenderer<Object> {
         private static final Color PATH_GRAY = new Color(128, 128, 128);
+        private final JLabel nameLabel;
+        private final JLabel pathLabel;
+
+        FileItemRenderer() {
+            super(new BorderLayout(0, 1));
+            setBorder(new EmptyBorder(3, 6, 3, 6));
+
+            nameLabel = new JLabel();
+            nameLabel.setFont(nameLabel.getFont().deriveFont(Font.BOLD));
+            nameLabel.setOpaque(false);
+
+            pathLabel = new JLabel();
+            pathLabel.setFont(pathLabel.getFont().deriveFont(Font.PLAIN, 11f));
+            pathLabel.setOpaque(false);
+
+            add(nameLabel, BorderLayout.NORTH);
+            add(pathLabel, BorderLayout.SOUTH);
+        }
 
         @Override
         public Component getListCellRendererComponent(JList<?> list, Object value,
                 int index, boolean isSelected, boolean cellHasFocus) {
             if (!(value instanceof FileItem item)) {
-                return super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                return new DefaultListCellRenderer().getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
             }
-
-            JPanel panel = new JPanel(new BorderLayout(0, 1));
-            panel.setBorder(new EmptyBorder(3, 6, 3, 6));
 
             ColorTheme theme = ThemeManager.getCurrentTheme();
             Color bg = isSelected ? theme.selection() : theme.background();
-            panel.setBackground(bg);
+            setBackground(bg);
 
-            // File name (bold)
-            JLabel nameLabel = new JLabel(item.fileObject().getNameExt());
-            nameLabel.setFont(nameLabel.getFont().deriveFont(Font.BOLD));
+            // File name
+            nameLabel.setText(item.fileObject().getNameExt());
             nameLabel.setForeground(isSelected ? Color.WHITE : theme.foreground());
-            nameLabel.setOpaque(false);
 
-            // Project + relative path (gray)
-            JLabel pathLabel = new JLabel(item.projectName() + "/" + item.relativePath());
-            pathLabel.setFont(pathLabel.getFont().deriveFont(Font.PLAIN, 11f));
+            // Project + relative path
+            pathLabel.setText(item.projectName() + "/" + item.relativePath());
             pathLabel.setForeground(isSelected ? new Color(200, 200, 200) : PATH_GRAY);
-            pathLabel.setOpaque(false);
 
-            panel.add(nameLabel, BorderLayout.NORTH);
-            panel.add(pathLabel, BorderLayout.SOUTH);
-
-            return panel;
+            return this;
         }
     }
 }

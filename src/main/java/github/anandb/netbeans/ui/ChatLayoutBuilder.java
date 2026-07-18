@@ -45,7 +45,7 @@ final class ChatLayoutBuilder {
     private UIUtils.WrappingComboBox<?> sessionDropdown;
     private JButton hideBtn;
     private JButton showHiddenBtn;
-    private JButton newSessionBtn;
+    private AttentionButton newSessionBtn;
     private JButton renameSessionBtn;
     private JButton toggleBlocksBtn;
     private JButton keepBtn;
@@ -191,9 +191,12 @@ final class ChatLayoutBuilder {
             shb.setToolTipText(NbBundle.getMessage(AssistantTopComponent.class, "HINT_HideArchivedSessions"));
         }
 
-        newSessionBtn = UIUtils.createToolbarButton("new.svg", NbBundle.getMessage(AssistantTopComponent.class, "HINT_NewSession"), e -> {
-            newSessionDebounceTimer.restart();
-        });
+        newSessionBtn = UIUtils.createAttentionToolbarButton(
+                "new.svg",
+                PluginSettings.getToolbarIconSize(),
+                NbBundle.getMessage(AssistantTopComponent.class, "HINT_NewSession"),
+                e -> newSessionDebounceTimer.restart()
+        );
         String renameHint = NbBundle.getMessage(AssistantTopComponent.class, "HINT_RenameSession");
         renameSessionBtn = UIUtils.createToolbarButton("rename.svg", renameHint, e -> topComponent.renameCurrentSession());
         refreshBtn = UIUtils.createToolbarButton("reload.svg",

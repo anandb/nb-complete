@@ -7,6 +7,7 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 
 import github.anandb.netbeans.support.BinaryResolver;
 import github.anandb.netbeans.support.PluginSettings;
+import github.anandb.netbeans.support.ShortcutUtils;
 import org.openide.util.NbBundle;
 import org.openide.util.NbPreferences;
 
@@ -235,7 +236,7 @@ public class ACPOptionsPanel extends JPanel {
         actionsPanel.add(stashDiffCheckbox, UIUtils.createGbc(0, 1, 1.0, 0, GridBagConstraints.HORIZONTAL,
                 GridBagConstraints.WEST, new Insets(0, 12, 5, 0)));
 
-        String quickJumpShortcut = resolveShortcut("github.anandb.netbeans.ui.GoToFileAction");
+        String quickJumpShortcut = ShortcutUtils.resolveShortcut("github.anandb.netbeans.ui.GoToFileAction");
         quickJumpCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_QuickJump")
                 + (quickJumpShortcut.isEmpty() ? "" : " (" + quickJumpShortcut + ")"));
         quickJumpCheckbox.addActionListener(evt -> controller.changed());
@@ -552,66 +553,4 @@ public class ACPOptionsPanel extends JPanel {
         return true;
     }
 
-    /** Look up the assigned shortcut for an action, including user-assigned shortcuts from the Keymap. */
-    private static String resolveShortcut(String actionId) {
-        try {
-            ClassLoader cl = org.openide.util.Lookup.getDefault().lookup(ClassLoader.class);
-            Class<?> cls = cl != null ? cl.loadClass("org.netbeans.core.options.keymap.api.KeyStrokeUtils")
-                                      : Class.forName("org.netbeans.core.options.keymap.api.KeyStrokeUtils");
-            java.lang.reflect.Method m = cls.getMethod("getKeyStrokesForAction", String.class, javax.swing.KeyStroke.class);
-            
-            // Try with dots
-            @SuppressWarnings("unchecked")
-            java.util.List<javax.swing.KeyStroke[]> all = (java.util.List<javax.swing.KeyStroke[]>) m.invoke(null, actionId, null);
-            
-            // Try with hyphens (NetBeans @ActionID generated standard)
-            if (all == null || all.isEmpty()) {
-                all = (java.util.List<javax.swing.KeyStroke[]>) m.invoke(null, actionId.replace('.', '-'), null);
-            }
-
-            if (all != null && !all.isEmpty() && all.get(0) != null && all.get(0).length > 0) {
-                StringBuilder sb = new StringBuilder();
-                for (javax.swing.KeyStroke k : all.get(0)) {
-                    if (k != null) {
-                        if (sb.length() > 0) sb.append(", ");
-                        sb.append(formatKeyStroke(k));
-                    }
-                }
-                if (sb.length() > 0) {
-                    return sb.toString();
-                }
-            }
-        } catch (Throwable t) {
-            LOG.log(java.util.logging.Level.INFO, "Could not resolve shortcut for " + actionId, t);
-        }
-        return "";
-    }
-
-    private static String formatKeyStroke(javax.swing.KeyStroke ks) {
-        if (ks == null) return "";
-        StringBuilder sb = new StringBuilder();
-        int mod = ks.getModifiers();
-        boolean mac = org.openide.util.Utilities.isMac();
-
-        if ((mod & java.awt.event.InputEvent.CTRL_DOWN_MASK) != 0 || (mod & java.awt.event.InputEvent.CTRL_MASK) != 0) {
-            sb.append("Ctrl + ");
-        }
-        if ((mod & java.awt.event.InputEvent.META_DOWN_MASK) != 0 || (mod & java.awt.event.InputEvent.META_MASK) != 0) {
-            sb.append(mac ? "Cmd + " : "Meta + ");
-        }
-        if ((mod & java.awt.event.InputEvent.ALT_DOWN_MASK) != 0 || (mod & java.awt.event.InputEvent.ALT_MASK) != 0) {
-            sb.append(mac ? "Option + " : "Alt + ");
-        }
-        if ((mod & java.awt.event.InputEvent.SHIFT_DOWN_MASK) != 0 || (mod & java.awt.event.InputEvent.SHIFT_MASK) != 0) {
-            sb.append("Shift + ");
-        }
-
-        int code = ks.getKeyCode();
-        if (code != java.awt.event.KeyEvent.VK_UNDEFINED) {
-            sb.append(java.awt.event.KeyEvent.getKeyText(code));
-        } else {
-            sb.append(ks.getKeyChar());
-        }
-        return sb.toString();
-    }
 }

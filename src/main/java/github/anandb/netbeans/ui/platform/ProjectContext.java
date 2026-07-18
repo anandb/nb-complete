@@ -16,4 +16,13 @@ import org.netbeans.api.project.Project;
  */
 public interface ProjectContext {
     Project[] getAllOpenProjects();
+
+    /**
+     * Register a listener that fires when the set of open projects changes
+     * (project opened or closed). The listener runs on the EDT.
+     */
+    void addProjectChangeListener(Runnable listener);
+
+    /** Remove a previously registered project change listener. */
+    void removeProjectChangeListener(Runnable listener);
 }

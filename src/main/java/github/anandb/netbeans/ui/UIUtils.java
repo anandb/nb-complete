@@ -124,6 +124,23 @@ public class UIUtils {
         return btn;
     }
 
+    public static AttentionButton createAttentionToolbarButton(String iconName, int iconSize, String toolTip, ActionListener l) {
+        AttentionButton btn = new AttentionButton();
+        Icon icon = ThemeManager.getIcon(iconName, iconSize);
+        btn.setIcon(icon);
+        if (icon != null) {
+            btn.setDisabledIcon(ImageUtilities.createDisabledIcon(icon));
+        }
+        btn.setToolTipText(toolTip);
+        btn.getAccessibleContext().setAccessibleName(toolTip);
+        btn.getAccessibleContext().setAccessibleDescription(toolTip);
+        styleToolbarButton(btn);
+        if (l != null) {
+            btn.addActionListener(l);
+        }
+        return btn;
+    }
+
     public static JButton createTextButton(String text, ActionListener l) {
         JButton btn = new JButton(text);
         btn.setFocusPainted(false);

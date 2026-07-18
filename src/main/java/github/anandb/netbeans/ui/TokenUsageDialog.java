@@ -13,7 +13,6 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.swing.DefaultListCellRenderer;
@@ -57,19 +56,16 @@ public class TokenUsageDialog extends JDialog {
     private static final String PROJECT_CURRENT = "Current Project";
     private static final String PROJECT_ALL = "All";
     private static final String[] PROJECT_OPTIONS = { PROJECT_CURRENT, PROJECT_ALL };
-    private static final String ALL_MODELS = "All Models";
     private static final java.util.regex.Pattern ANSI_ESCAPE =
         java.util.regex.Pattern.compile("\u001b\\[[0-9;]*[a-zA-Z~]|\u001b\\][^\u0007]*\u0007");
 
     private final JSpinner daysSpinner;
-    private final JComboBox<String> modelCombo;
     private final JComboBox<String> projectCombo;
     private final FitEditorPane statsPane;
     private final JButton refreshBtn;
     private final JScrollPane scrollPane;
     private final AtomicBoolean running = new AtomicBoolean(false);
     private volatile Process currentProcess;
-    private volatile Process modelsProcess;
     private javax.swing.Timer autoRefreshTimer;
     private boolean firstRefresh = true;
 
@@ -96,24 +92,17 @@ public class TokenUsageDialog extends JDialog {
         java.awt.Insets ins = new java.awt.Insets(0, 2, 0, 2);
 
         // Days (fixed)
-        daysSpinner = new JSpinner(new SpinnerNumberModel(1, 1, 30, 1));
-        daysSpinner.setPreferredSize(new Dimension(60, 28));
-        daysSpinner.setMaximumSize(new Dimension(60, 28));
+        daysSpinner = new JSpinner(new SpinnerNumberModel(1, 1, 999, 1));
+        JSpinner.NumberEditor editor = new JSpinner.NumberEditor(daysSpinner, "#");
+        editor.getTextField().setColumns(3);
+        daysSpinner.setEditor(editor);
+        daysSpinner.setPreferredSize(new Dimension(80, 28));
+        daysSpinner.setMaximumSize(new Dimension(80, 28));
 
         JLabel daysLabel = new JLabel("Days:");
         daysLabel.setLabelFor(daysSpinner);
         formPanel.add(daysLabel,  new GridBagConstraints(0, 0, 1, 1, 0, 0, GridBagConstraints.WEST, GridBagConstraints.NONE, ins, 0, 0));
         formPanel.add(daysSpinner, new GridBagConstraints(1, 0, 1, 1, 0, 0, GridBagConstraints.WEST, GridBagConstraints.NONE, ins, 0, 0));
-
-        // Model (flexible — fills available space)
-        modelCombo = new JComboBox<>(new String[]{ ALL_MODELS });
-        loadModelListAsync();
-        modelCombo.setPreferredSize(new Dimension(180, 28));
-
-        JLabel modelLabel = new JLabel("Model:");
-        modelLabel.setLabelFor(modelCombo);
-        formPanel.add(modelLabel,  new GridBagConstraints(2, 0, 1, 1, 0, 0, GridBagConstraints.WEST, GridBagConstraints.NONE, ins, 0, 0));
-        formPanel.add(modelCombo,  new GridBagConstraints(3, 0, 1, 1, 1.0, 0, GridBagConstraints.WEST, GridBagConstraints.HORIZONTAL, ins, 0, 0));
 
         // Project (flexible — fills available space)
         projectCombo = new JComboBox<>(PROJECT_OPTIONS);
@@ -147,13 +136,13 @@ public class TokenUsageDialog extends JDialog {
 
         JLabel projectLabel = new JLabel("Project:");
         projectLabel.setLabelFor(projectCombo);
-        formPanel.add(projectLabel, new GridBagConstraints(4, 0, 1, 1, 0, 0, GridBagConstraints.WEST, GridBagConstraints.NONE, ins, 0, 0));
-        formPanel.add(projectCombo, new GridBagConstraints(5, 0, 1, 1, 1.0, 0, GridBagConstraints.WEST, GridBagConstraints.HORIZONTAL, ins, 0, 0));
+        formPanel.add(projectLabel, new GridBagConstraints(2, 0, 1, 1, 0, 0, GridBagConstraints.WEST, GridBagConstraints.NONE, ins, 0, 0));
+        formPanel.add(projectCombo, new GridBagConstraints(3, 0, 1, 1, 1.0, 0, GridBagConstraints.WEST, GridBagConstraints.HORIZONTAL, ins, 0, 0));
 
         // Refresh button (fixed, rightmost)
         refreshBtn = new JButton("Refresh");
         refreshBtn.addActionListener(this::onRefresh);
-        formPanel.add(refreshBtn, new GridBagConstraints(6, 0, 1, 1, 0, 0, GridBagConstraints.EAST, GridBagConstraints.NONE, ins, 0, 0));
+        formPanel.add(refreshBtn, new GridBagConstraints(4, 0, 1, 1, 0, 0, GridBagConstraints.EAST, GridBagConstraints.NONE, ins, 0, 0));
 
         content.add(formPanel, BorderLayout.BEFORE_FIRST_LINE);
 
@@ -215,7 +204,6 @@ public class TokenUsageDialog extends JDialog {
             return;
         }
         int days = (int) daysSpinner.getValue();
-        String model = (String) modelCombo.getSelectedItem();
         String project = (String) projectCombo.getSelectedItem();
         refreshBtn.setEnabled(false);
         ColorTheme currentTheme = ThemeManager.getCurrentTheme();
@@ -230,7 +218,7 @@ public class TokenUsageDialog extends JDialog {
                         projectDir = sq.getCurrentSessionDirectory();
                     }
                 }
-                String result = ANSI_ESCAPE.matcher(runStatsCommand(days, model, projectDir)).replaceAll("");
+                String result = ANSI_ESCAPE.matcher(runStatsCommand(days, projectDir)).replaceAll("");
                 String styledHtml = convertStatsToHtml(result, currentTheme);
                 SwingUtilities.invokeLater(() -> {
                     statsPane.setText(styledHtml);
@@ -255,22 +243,20 @@ public class TokenUsageDialog extends JDialog {
         }, "token-stats").start();
     }
 
-    private String runStatsCommand(int days, String model, String projectDir) throws Exception {
+    private String runStatsCommand(int days, String projectDir) throws Exception {
         String binary = BinaryResolver.resolveExecutablePath();
         List<String> cmd = new ArrayList<>();
         cmd.add(binary);
         cmd.add("stats");
         cmd.add("--days");
         cmd.add(String.valueOf(days));
-        // Always pass --models; empty value for "All Models"
         cmd.add("--models");
-        if (!ALL_MODELS.equals(model)) {
-            cmd.add(model);
-        }
         if (projectDir != null) {
             cmd.add("--project");
             cmd.add("");
         }
+
+        LOG.info("Running opencode stats command: {0}", String.join(" ", cmd));
 
         ProcessBuilder pb = new ProcessBuilder(cmd);
         if (!System.getProperty("os.name", "").toLowerCase().contains("win")) {
@@ -309,8 +295,6 @@ public class TokenUsageDialog extends JDialog {
     private void cancelProcess() {
         ProcessTerminator.terminate(currentProcess);
         currentProcess = null;
-        ProcessTerminator.terminate(modelsProcess);
-        modelsProcess = null;
     }
 
     /** Sizes the dialog to 90% parent height with reasonable width for table content. */
@@ -333,21 +317,41 @@ public class TokenUsageDialog extends JDialog {
         return null;
     }
 
-    /** Parses a stats row content into [label, value]. */
-    private static String[] parseStatsRow(String content) {
+    private static boolean containsNonAscii(String s) {
+        for (int i = 0; i < s.length(); i++) {
+            if (s.charAt(i) > 127) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Parses a stats row content into [label, value] or [label, progress, percentage]. */
+    static String[] parseStatsRow(String content) {
+        if (containsNonAscii(content)) {
+            int idx = -1;
+            for (int i = 0; i < content.length(); i++) {
+                if (content.charAt(i) > 127) {
+                    idx = i;
+                    break;
+                }
+            }
+            if (idx >= 0) {
+                String labelPart = content.substring(0, idx).trim();
+                String rest = content.substring(idx).trim();
+                String[] restParts = rest.split("\\s+", 2);
+                if (restParts.length == 2) {
+                    return new String[]{labelPart, restParts[0], restParts[1]};
+                } else {
+                    return new String[]{labelPart, rest, ""};
+                }
+            }
+        }
+
         // Split on 2+ spaces (box-drawing uses fixed-width padding)
         String[] parts = content.split("\\s{2,}");
         if (parts.length >= 2) {
             String label = parts[0].trim();
-            if (content.contains("█")) {
-                // Tool usage row with progress bar — join everything after label
-                StringBuilder value = new StringBuilder();
-                for (int i = 1; i < parts.length; i++) {
-                    if (value.length() > 0) value.append(' ');
-                    value.append(parts[i].trim());
-                }
-                return new String[]{label, value.toString()};
-            }
             // Simple key-value: label is first, value is last
             return new String[]{label, parts[parts.length - 1].trim()};
         }
@@ -361,7 +365,7 @@ public class TokenUsageDialog extends JDialog {
     }
 
     /** Converts box-drawing stats output into themed HTML tables. */
-    private static String convertStatsToHtml(String rawText, ColorTheme theme) {
+    static String convertStatsToHtml(String rawText, ColorTheme theme) {
         String[] lines = rawText.split("\n", -1);
         StringBuilder sb = new StringBuilder(2048);
         String bg = theme.toHtmlHex(theme.bubbleAssistant());
@@ -419,20 +423,32 @@ public class TokenUsageDialog extends JDialog {
             i++;
 
             // Render table
-            sb.append("<table><tr><th colspan='2'>").append(escapeHtml(title)).append("</th></tr>");
+            sb.append("<table><tr><th colspan='3'>").append(escapeHtml(title)).append("</th></tr>");
             boolean alt = false;
             for (String[] row : rows) {
-                if (row[1].isEmpty()) {
+                if (row.length == 2 && row[1].isEmpty()) {
                     // Sub-header row (model name)
-                    sb.append("<tr><td colspan='2' style='font-weight:bold;background:")
+                    sb.append("<tr><td colspan='3' style='font-weight:bold;background:")
                       .append(headerBg).append("'>").append(escapeHtml(row[0])).append("</td></tr>");
                     alt = false;
-                } else {
-                    boolean isTotal = "Total Cost".equals(row[0]);
-                    String rowStyle = isTotal ? " style='font-weight:bold;" : "";
-                    if (alt) rowStyle += "background-color: " + altBg;
-                    sb.append("<tr").append(rowStyle.isEmpty() ? "" : rowStyle + "'").append(">")
+                } else if (row.length == 3) {
+                    // Progress bar row
+                    String rowStyle = "";
+                    if (alt) rowStyle += "style='background-color: " + altBg + "'";
+                    sb.append("<tr ").append(rowStyle).append(">")
                       .append("<td style='white-space:nowrap;'>").append(escapeHtml(row[0])).append("</td>")
+                      .append("<td style='text-align:right;'>").append(escapeHtml(row[1])).append("</td>")
+                      .append("<td style='text-align:right;white-space:nowrap;'>").append(escapeHtml(row[2])).append("</td>")
+                      .append("</tr>");
+                    alt = !alt;
+                } else {
+                    // Simple key-value row (length 2)
+                    boolean isTotal = "Total Cost".equals(row[0]);
+                    String rowStyle = isTotal ? "font-weight:bold;" : "";
+                    if (alt) rowStyle += "background-color: " + altBg + ";";
+                    String trAttr = rowStyle.isEmpty() ? "" : " style='" + rowStyle + "'";
+                    sb.append("<tr").append(trAttr).append(">")
+                      .append("<td colspan='2' style='white-space:nowrap;'>").append(escapeHtml(row[0])).append("</td>")
                       .append("<td style='text-align:right;'>").append(escapeHtml(row[1])).append("</td>")
                       .append("</tr>");
                     alt = !alt;
@@ -455,52 +471,6 @@ public class TokenUsageDialog extends JDialog {
         return "<html><body style='margin:0;padding:8px;color:" + fg
             + ";font-family:sans-serif;font-size:13px;'>"
             + escapeHtml(message) + "</body></html>";
-    }
-
-    /** Fetches model list via `opencode models` in background, updates combo on EDT. */
-    private void loadModelListAsync() {
-        new Thread(() -> {
-            try {
-                String binary = BinaryResolver.resolveExecutablePath();
-                ProcessBuilder pb = new ProcessBuilder(binary, "models");
-                pb.redirectErrorStream(true);
-                Process proc = pb.start();
-                modelsProcess = proc;
-                StringBuilder sb = new StringBuilder();
-                try (BufferedReader r = new BufferedReader(
-                        new InputStreamReader(proc.getInputStream(), StandardCharsets.UTF_8))) {
-                    String line;
-                    while ((line = r.readLine()) != null) sb.append(line).append('\n');
-                }
-                if (!proc.waitFor(30, TimeUnit.SECONDS)) {
-                    proc.destroyForcibly();
-                    LOG.fine("Model list fetch timed out after 30s");
-                    return;
-                }
-                String[] lines = sb.toString().trim().split("\n");
-                if (lines.length > 0 && !lines[0].isEmpty()) {
-                    java.util.Set<String> models = new java.util.LinkedHashSet<>();
-                    models.add(ALL_MODELS);
-                    for (String l : lines) {
-                        String m = l.trim();
-                        if (!m.isEmpty()) {
-                            // Strip provider prefix — keep only model name after last /
-                            int slash = m.lastIndexOf('/');
-                            if (slash >= 0) m = m.substring(slash + 1);
-                            models.add(m);
-                        }
-                    }
-                    SwingUtilities.invokeLater(() -> {
-                        modelCombo.removeAllItems();
-                        for (String m : models) modelCombo.addItem(m);
-                    });
-                }
-            } catch (Exception ex) {
-                LOG.log(java.util.logging.Level.FINE, "Failed to load model list", ex);
-            } finally {
-                modelsProcess = null;
-            }
-        }, "load-models").start();
     }
 
     public static void show(java.awt.Frame parent) {

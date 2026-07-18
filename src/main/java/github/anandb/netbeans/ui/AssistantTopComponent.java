@@ -111,6 +111,10 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     private final transient JSplitPane mainSplitPane;
     private final transient ChatLayoutBuilder layoutBuilder;
 
+    private boolean sessionActive = false;
+    private transient javax.swing.Timer attentionPeriodicTimer;
+    private transient javax.swing.Timer attentionShakeTimer;
+
     public AssistantTopComponent() {
         setName(NbBundle.getMessage(AssistantTopComponent.class, "CTL_AssistantTopComponent"));
 
@@ -186,6 +190,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             toggleOptionsBtn, configPanelController, inputArea, statusController,
             this::showProjectPickerPopup, this::updateTabName, this::updateCwdLabel,
             sessionActive -> {
+                this.sessionActive = sessionActive;
                 sessionDropdown.setEnabled(sessionActive);
                 hideBtn.setEnabled(sessionActive);
                 renameSessionBtn.setEnabled(sessionActive);
@@ -197,10 +202,14 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                 exportBtn.setEnabled(sessionActive);
                 helpBtn.setEnabled(true);
                 restartServerBtn.setEnabled(true);
-                newSessionBtn.setEnabled(true);
+                updateNewSessionBtnState();
             },
             this::setOptionsPanelVisible
         );
+        // Track project open/close to disable new-session button when no projects are open
+        projectContext.addProjectChangeListener(this::updateNewSessionBtnState);
+        updateNewSessionBtnState();
+
         messageSender = new MessageSender(
             inputArea, chatPanel, attachmentManager, messageHistory,
             statusController, attachmentUiHandler::updateTooltip, inputArea::requestFocusInWindow
@@ -288,6 +297,83 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     private String selectedIdToTitle(Session session) {
         String title = defaultIfBlank(session.title(), NbBundle.getMessage(AssistantTopComponent.class, "LBL_ChatDefault", left(session.id(), 8)));
         return sessionService.get().getCustomTitle(session.id(), title);
+    }
+
+    /** Enable the new-session button only when at least one project is open. */
+    private void updateNewSessionBtnState() {
+        org.netbeans.api.project.Project[] projects = projectContext.getAllOpenProjects();
+        newSessionBtn.setEnabled(projects != null && projects.length > 0);
+        updateAttentionAnimation();
+    }
+
+    private void updateAttentionAnimation() {
+        org.netbeans.api.project.Project[] projects = projectContext.getAllOpenProjects();
+        boolean projectsOpen = (projects != null && projects.length > 0);
+        boolean shouldAnimate = projectsOpen && !sessionActive && isOpened();
+
+        if (shouldAnimate) {
+            if (attentionPeriodicTimer == null) {
+                attentionPeriodicTimer = new javax.swing.Timer(4000, e -> {
+                    if (isOpened() && isShowing()) {
+                        triggerAttentionShake();
+                    }
+                });
+                attentionPeriodicTimer.setRepeats(true);
+                attentionPeriodicTimer.start();
+                if (isOpened() && isShowing()) {
+                    triggerAttentionShake();
+                }
+            }
+        } else {
+            stopAttentionAnimation();
+        }
+    }
+
+    private void stopAttentionAnimation() {
+        if (attentionPeriodicTimer != null) {
+            attentionPeriodicTimer.stop();
+            attentionPeriodicTimer = null;
+        }
+        if (attentionShakeTimer != null) {
+            attentionShakeTimer.stop();
+            attentionShakeTimer = null;
+        }
+        if (newSessionBtn instanceof AttentionButton ab) {
+            ab.setOffsetAndHighlight(0, 0, 0.0f);
+        }
+    }
+
+    private void triggerAttentionShake() {
+        if (!(newSessionBtn instanceof AttentionButton ab)) {
+            return;
+        }
+
+        if (attentionShakeTimer != null && attentionShakeTimer.isRunning()) {
+            return;
+        }
+
+        final int[] yOffsets = {0, -2, -4, -6, -7, -6, -4, -2, 0, -1, -3, -4, -3, -1, 0};
+        final int[] xOffsets = {0, -2, 2, -2, 2, -1, 1, 0, 0, 0, 0, 0, 0, 0, 0};
+        final float[] alphas = {0.0f, 0.3f, 0.6f, 0.9f, 1.0f, 0.9f, 0.6f, 0.3f, 0.0f, 0.2f, 0.5f, 0.6f, 0.5f, 0.2f, 0.0f};
+
+        attentionShakeTimer = new javax.swing.Timer(30, new java.awt.event.ActionListener() {
+            private int frame = 0;
+
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                if (frame < yOffsets.length) {
+                    ab.setOffsetAndHighlight(xOffsets[frame], yOffsets[frame], alphas[frame]);
+                    frame++;
+                } else {
+                    ab.setOffsetAndHighlight(0, 0, 0.0f);
+                    if (attentionShakeTimer != null) {
+                        attentionShakeTimer.stop();
+                        attentionShakeTimer = null;
+                    }
+                }
+            }
+        });
+        attentionShakeTimer.start();
     }
 
     void showProjectPickerPopup(JComponent parent) {
@@ -431,12 +517,14 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     @Override
     public void componentActivated() {
         componentLifecycleHandler.componentActivated();
+        updateAttentionAnimation();
     }
 
     @Override
     public void componentDeactivated() {
         super.componentDeactivated();
         componentLifecycleHandler.componentDeactivated();
+        updateAttentionAnimation();
     }
 
     public void toggleVisibility() {
@@ -464,6 +552,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     @Override
     public void componentClosed() {
         // Resources (listeners, handlers, messages) stay alive across all close/reopen cycles.
+        stopAttentionAnimation();
     }
 
     @Override
@@ -473,6 +562,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             componentLifecycleHandler.componentOpened();
         }
         // On subsequent opens, resources are already alive — no reinit needed.
+        updateAttentionAnimation();
     }
 
     @Override
@@ -489,10 +579,12 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         revalidate();
         validate();
         repaint();
+        updateAttentionAnimation();
     }
 
     @Override
     public void removeNotify() {
+        stopAttentionAnimation();
         layoutBuilder.cleanup();
         componentLifecycleHandler.removeNotify();
         super.removeNotify();
@@ -611,7 +703,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                 boolean hasSession = sessionService.get().getCurrentSessionId() != null;
                 sessionDropdown.setEnabled(hasSession);
                 hideBtn.setEnabled(hasSession);
-                newSessionBtn.setEnabled(true);
+                updateNewSessionBtnState();
                 renameSessionBtn.setEnabled(hasSession);
                 toggleBlocksBtn.setEnabled(hasSession);
                 keepBtn.setEnabled(hasSession);

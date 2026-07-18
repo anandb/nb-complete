@@ -22,6 +22,9 @@ public interface FileCacheQuery {
      */
     Collection<CachedFile> getAllFiles();
 
+    /** Registers a listener that fires once when the cache first becomes ready. */
+    void onReady(Runnable action);
+
     /** A single entry in the file cache. */
     record CachedFile(FileObject fileObject, String projectName, String relativePath) {}
 }
