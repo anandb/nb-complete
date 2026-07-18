@@ -265,6 +265,11 @@ public class ComponentLifecycleHandler {
     }
 
     public void componentClosed() {
+        // UNREACHABLE (by design): AssistantTopComponent.componentClosed() is a no-op.
+        // The assistant lives for the entire IDE session and must not tear down the
+        // server connection, session state, or registered handlers on tab close.
+        // If this method is ever wired in, the crash handler removal below (line 285)
+        // will break the crash→reconnect→resume flow after close/reopen.
         if (sessionService == null || processService == null || projectContext == null) {
             LOG.severe("PlatformBridge unavailable, skipping componentClosed");
             return;

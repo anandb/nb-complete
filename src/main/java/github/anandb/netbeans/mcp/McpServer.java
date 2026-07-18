@@ -46,6 +46,9 @@ public class McpServer {
         EditorToolProvider editorTools = new EditorToolProvider();
         editorTools.registerTools(mcpTools);
 
+        StashDiffToolProvider stashDiffTool = new StashDiffToolProvider();
+        stashDiffTool.registerTools(mcpTools);
+
         server = new Server(0);
 
         connector = new ServerConnector(server);

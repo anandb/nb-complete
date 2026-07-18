@@ -292,6 +292,15 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
         };
     }
 
+    /**
+     * Opens the stash diff viewer for a given stash index in the specified repository.
+     * Called by the MCP diff_stash tool.
+     */
+    public static void openStashDiff(File repoDir, int stashIndex) {
+        String stashName = "stash@{" + stashIndex + "}";
+        new StashDiffAction().loadDiffs(repoDir, stashIndex, stashName);
+    }
+
     private void loadDiffs(File repoDir, int stashIndex, String stashName) {
         CompletableFuture.supplyAsync(() -> {
             try {

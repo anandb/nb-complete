@@ -19,6 +19,7 @@
   - [Renaming the session](#renaming-the-session)
   - [Check token usage](#check-token-usage)
   - [Filtering Chat Messages](#filtering-chat-messages)
+  - [Resetting context limits (/compact)](#resetting-context-limits-compact)
   - [Attachments](#attachments)
   - [Permission Requests](#permission-requests)
   - [Keyboard Shortcuts](#keyboard-shortcuts)
@@ -28,6 +29,12 @@
     - [Thinking and Tool Responses](#thinking-and-tool-responses)
   - [Assistant Options](#assistant-options)
   - [IDE Enhancements](#ide-enhancements)
+- [Experiments](#experiments)
+  - [Manage OpenCode Config in NetBeans](#manage-opencode-config-in-netbeans)
+  - [Git Stashes as "Code Drafts" (using Stash Diff)](#git-stashes-as-code-drafts-using-stash-diff)
+  - [Completely Offline/Private Coding (Local LLMs)](#completely-offlineprivate-coding-local-llms)
+  - [Local Data Analysis in Java](#local-data-analysis-in-java)
+  - [Mockups to Functional Swing Code (Matisse Integration)](#mockups-to-functional-swing-code-matisse-integration)
 - [Known Issues](#known-issues)
 - [Troubleshooting](#troubleshooting)
 
@@ -148,6 +155,10 @@ To reduce clutter in your chat history, you can selectively show or hide differe
 
 If the option to combine tools and thoughts is disabled in your settings, the menu will dynamically update to show individual checkboxes for **Tool** outputs and **Thought** reasoning. Your filter choices are instantly applied to the active chat thread and are automatically saved so they persist across NetBeans IDE restarts.
 
+### Resetting context limits (/compact)
+
+If your conversation becomes very long and you notice the AI starting to forget earlier details or slow down as it approaches its context token limits, you can reset the conversation context. Type the `/compact` command in the chat input. The assistant will summarize the history, code changes, and context discussed so far, replacing the verbose message history with a highly condensed summary. This resets the active token budget while preserving the essential goals and context of the thread.
+
 ### Attachments
 
 You can attach files and images to provide more context to the AI. Click the **Paperclip icon** in the input area to open the attachment menu. The plugin also supports dragging and dropping files directly into the chat, as well as pasting screenshots straight from your clipboard (provided you are using a vision-capable model).
@@ -162,7 +173,7 @@ Navigate and control the assistant efficiently using keyboard shortcuts. Press `
 
 ### Message History
 
-Your complete message history is always safely stored on the server. While the local chat view might hide older messages ("Forget") to conserve IDE memory, you can always retrieve the full history by clicking **Show All Messages** followed by **Reload**. You can search through your past user messages using `Ctrl + R`.
+Your complete message history is always safely stored on the server. While the local chat view might hide older messages ("Forget") to conserve IDE memory, you can always retrieve the full history by clicking **Show All Messages** followed by **Reload**. You can also search through your past input history using `Ctrl + R`.
 
 ### Chat Features
 
@@ -182,7 +193,7 @@ Additionally, the plugin includes a background **Update Checker Service** that a
 
 The plugin integrates deeply with NetBeans beyond just the chat panel to boost your coding productivity:
 
-*   **Markdown Project Type:** 
+*   **Markdown Project Type:**
     *   Allows you to create a minimal project for managing folders of text notes, design files, or markdown documentation without requiring a compiler or build system (e.g., Maven or Gradle).
     *   To create one, go to `Tools > New Project > Other > Markdown Project`. Alternatively, you can run `touch .mdproject` inside any folder to instantly make that directory loadable as a project in NetBeans.
     *   It is identified by a `.mdproject` marker file, and renders a clean directory tree in the NetBeans Projects tab, automatically filtering out OS junk files and editor swap files.
@@ -205,7 +216,71 @@ The plugin integrates deeply with NetBeans beyond just the chat panel to boost y
     *   Can be enabled or disabled under `Tools > Options > Assistant`.
 
         ![Jump to File](./screenshots/jump_to_file.png)
+---
 
+## Experiments
+
+Here are some interesting things you can try with the plugin:
+
+### Manage OpenCode Config in NetBeans
+
+Since the plugin supports the **Markdown Project** type (which lets you load any folder that has a `.mdproject` file in it), you can use it to manage your OpenCode configuration directly inside the IDE:
+
+1.  Navigate to your OpenCode configuration directory in your terminal:
+    *   **Linux/macOS:** `~/.config/opencode` (or `~/.config/opencode-ai`)
+    *   **Windows:** `%APPDATA%\opencode`
+2.  Create an empty project marker file by running:
+    *   `touch .mdproject` (Linux/macOS)
+    *   `type nul > .mdproject` (Windows CMD) or `New-Item .mdproject` (PowerShell)
+3.  Open NetBeans and go to `File > Open Project`. Navigate to that configuration directory and open it.
+4.  You can now manage your configuration directly inside the IDE. Since the files are loaded as a project in NetBeans, you can ask the assistant panel to make changes for you (e.g., "Add a new custom agent config to my opencode.json") instead of editing them manually.
+
+### Git Stashes as "Code Drafts" (using Stash Diff)
+
+Instead of creating temporary branches for minor changes or code drafts, you can save your progress as stashes and use the Stash Diff viewer as a visual sandbox:
+1.  Save your experimental code in a stash: `git stash`.
+2.  Open the NetBeans Git Repository Browser, select the stash, and press `Ctrl + Shift + L` (or click **Diff Stash** in the toolbar).
+3.  Simulate a merge by comparing it against **To HEAD**, or see how it fits with other local changes by comparing it against **To Working Tree**.
+4.  If you only want specific changes, right-click files in the diff list and choose **"Apply this change"** to cherry-pick them back into your working tree without applying the entire stash.
+
+### Completely Offline/Private Coding (Local LLMs)
+
+If you have strict privacy requirements or want to avoid API costs, you can run the plugin entirely offline using local LLMs:
+1.  Install a local runner like [Ollama](https://ollama.com) and download a coding model (e.g., `ollama run deepseek-coder` or `ollama run qwen2.5-coder`).
+2.  Add a configuration block for the local model in your `opencode.json` configuration file. Note that Qwen models might require `--think=false` if configured via Ollama, and a `"reasoningEffort": "none"` entry.
+3.  Open the chat options panel (click the gear icon or press `Tab` in the input area) and choose your local model from the dropdown list. All code queries and indexing tasks will now execute locally on your machine.
+
+### Local Data Analysis in Java
+
+You can use the assistant to run quick data processing tasks on local files (like `.csv` or log files) using single-file Java programs and have the results rendered directly in the chat:
+1.  **Prepare your Data**: Open a project or create a folder with some tabular data (e.g., `sales.csv`).
+2.  **Ask the Assistant to Analyze**: Ask the assistant to write a single-file Java program to analyze this data.
+    *   *Prompt:* `"Write a single-file Java program to read sales.csv, calculate the total revenue grouped by category, and print the results as an ASCII table."`
+3.  **Execute the Code**: Click **Accept** on the permission prompt to let the assistant write the file (e.g., `SalesAnalyzer.java`) and run it using the Java launcher (e.g., `java SalesAnalyzer.java`).
+4.  **View Formatted Output**: Since Java 11+, single-file source code can be run directly using the `java` launcher without manual compilation. Because the plugin renders ASCII tables as formatted HTML tables with alternating row colors, the printed output will display beautifully inside your chat bubble.
+
+### Mockups to Functional Swing Code (Matisse Integration)
+
+You can use the assistant to convert visual UI mockups (screenshots or wireframes) into Java Swing code, and enhance your Matisse GUI forms with custom components:
+1.  **Draft a Visual Mockup**: Draw a UI sketch or take a screenshot of a component you want to build.
+2.  **Generate the Custom Component**: Drag-and-drop the mockup image into the chat (or use the paperclip icon) and ask the assistant to code it.
+    *   *Prompt:* `"Analyze this mockup. Write a custom JComponent called GradientHeaderPanel.java that renders a color gradient background, a title label, and a drop shadow that matches this design."`
+3.  **Compile & Palette Import**: Let the assistant write the file, compile your project, and then drag the compiled `GradientHeaderPanel` class directly into the NetBeans **Matisse Palette**.
+4.  **Design visually with Matisse**: Open any Swing GUI form (like a `JFrame` or `JPanel`) in Matisse, and drag-and-drop your new custom AI-generated component directly from the Palette onto your form design.
+5.  **Hook up the Logic**: In your Matisse form, click the "Source" tab. Share the Matisse-generated class with the assistant and ask it to write the event listeners and backend logic for your visual components:
+    *   *Prompt:* `"Help me write the ActionListeners to connect the search button (btnSearch) to fetch results and populate the list model for lstResults."`
+
+### Screenshot-Driven Bug Diagnosis
+
+Use image paste and a vision-capable model to turn screenshots of broken UIs or stack traces into actionable fixes:
+
+1.  **Capture the Bug**: Take a screenshot of a broken UI, an error dialog, a stack trace, or unexpected output.
+2.  **Paste into Chat**: Press `Ctrl+V` directly from the clipboard (requires `wl-clipboard` on Wayland; works natively on macOS/Windows). Alternatively, drag-and-drop the image file onto the input area or click the paperclip icon to attach it.
+3.  **Ask for Diagnosis**: Send a message describing the problem alongside the screenshot: *Prompt:* `"This error dialog appears when I click Save. Here's the stack trace. What's causing it and how do I fix it?"`
+4.  **Get a Fix Recipe**: The vision-capable model (e.g., GPT-4o, Claude 3.5 Sonnet, Mimo V2.5) reads the screenshot, identifies the crash location or rendering issue, and suggests the exact code change needed.
+5.  **Apply the Fix**: Ask the assistant write the fix directly.
+
+---
 
 ## Known Issues
 
