@@ -58,6 +58,7 @@ The project follows a hexagonal (ports & adapters) architecture integrated into 
 - **`model/`**: ACP-compliant data records (sessions, messages, updates, config options). Zero dependencies on upper layers.
 - **`contract/`**: Service interfaces that define ports for session control, process management, and UI callbacks. `manager/` implements; `ui/` consumes.
 - **`manager/`**: Core orchestration — protocol client (JSON-RPC over stdin/stdout), session state machine, process lifecycle, and SSE strategy dispatch.
+- **`mcp/`**: MCP server integration — hosts a local server that registers IDE tools (`get_tabs`, `open_pos`, `rename_session`) so that the AI client can inspect open tabs and control editor navigation.
 - **`support/`**: Pure utilities — logging, JSON mapping, text scanning, constants, browser helpers. Zero dependencies on upper layers.
 - **`ui/`**: All Swing components — chat window, message bubbles, streaming animation, theming, options panel, stash diff viewer. Depends only on `contract/` interfaces.
 
