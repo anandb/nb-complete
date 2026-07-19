@@ -285,3 +285,5 @@ public void toggleVisibility() {
    A `KeyEventDispatcher` for Page Up/Down/Ctrl+Home/End was stealing Ctrl+L when focus
    was inside the assistant panel. The interceptor was removed. Do NOT re-add Ctrl+L
    handling in any `KeyEventDispatcher`.
+
+6. MCP tools that we add must have names <= 14 characters in length.

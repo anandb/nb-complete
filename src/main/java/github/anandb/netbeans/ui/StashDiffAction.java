@@ -25,6 +25,8 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.prefs.PreferenceChangeListener;
 import java.util.regex.Matcher;
@@ -66,7 +68,9 @@ import org.openide.util.Utilities;
 import org.openide.util.actions.Presenter;
 import org.openide.windows.TopComponent;
 import org.openide.windows.WindowManager;
+import org.openide.util.lookup.ServiceProvider;
 
+import github.anandb.netbeans.contract.StashDiffControl;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.PreferenceKeys;
@@ -77,6 +81,7 @@ import org.openide.util.NbPreferences;
  * Toolbar toggles between "Diff to HEAD" and "Diff to Working Tree".
  */
 @ActionID(category = "Tools", id = "github.anandb.netbeans.ui.StashDiffAction")
+@ServiceProvider(service = StashDiffControl.class)
 @NbBundle.Messages({
     "CTL_StashDiffAction=Diff Stash",
     "# {0} - stash name",
@@ -89,7 +94,7 @@ import org.openide.util.NbPreferences;
     "CTL_StashDiffAction_PrevDiff=Previous difference",
     "CTL_StashDiffAction_NextDiff=Next difference"
 })
-public final class StashDiffAction extends AbstractAction implements Presenter.Toolbar {
+public final class StashDiffAction extends AbstractAction implements Presenter.Toolbar, StashDiffControl {
 
     private static final Pattern STASH_NAME = Pattern.compile("stash@\\{(\\d+)\\}");
     private static final Pattern STASH_REF_PATTERN = Pattern.compile("stash@\\{\\d+\\}.*");
@@ -212,13 +217,20 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
 
     private static final RequestProcessor GIT_RP = new RequestProcessor("StashDiff-git", 1);
     private static final RequestProcessor READER_RP = new RequestProcessor("StashDiff-reader", 2);
+    /** Dedicated executor for loadDiffs to avoid starving ForkJoinPool.commonPool. */
+    private static final ExecutorService LOAD_EXECUTOR = Executors.newFixedThreadPool(4, r -> {
+        Thread t = new Thread(r, "StashDiff-load");
+        t.setDaemon(true);
+        return t;
+    });
 
     private static String runGit(File dir, String... cmd) throws Exception {
         ProcessBuilder pb = new ProcessBuilder(cmd);
         pb.directory(dir);
         pb.redirectErrorStream(true);
         Process proc = pb.start();
-        StringBuilder sb = new StringBuilder();
+        // Use StringBuffer (thread-safe) — reader appends on READER_RP, caller reads after waitFinished.
+        StringBuffer sb = new StringBuffer();
         RequestProcessor.Task readerTask = READER_RP.post(() -> {
             try (BufferedReader r = new BufferedReader(
                     new InputStreamReader(proc.getInputStream(), java.nio.charset.StandardCharsets.UTF_8))) {
@@ -234,8 +246,8 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
                 proc.destroyForcibly();
             }
             // Always wait for reader before reading sb (destroyForcibly above closes stdout,
-            // unblocking readLine). On timeout the reader gets partial output and exits.
-            readerTask.waitFinished(1000);
+            // unblocking readLine). Use 5s timeout to avoid data race on large output.
+            readerTask.waitFinished(5000);
             if (timedOut) {
                 throw new RuntimeException("git command timed out after 60 seconds: " + String.join(" ", cmd));
             }
@@ -244,7 +256,7 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
             if (proc.isAlive()) {
                 proc.destroyForcibly();
             }
-            readerTask.waitFinished(1000);
+            readerTask.waitFinished(5000);
         }
     }
 
@@ -272,15 +284,24 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
         } catch (Exception e) {
             return theirs;
         } finally {
-            if (baseF != null) baseF.delete();
-            if (oursF != null) oursF.delete();
-            if (theirsF != null) theirsF.delete();
+            deleteTempFile(baseF);
+            deleteTempFile(oursF);
+            deleteTempFile(theirsF);
         }
     }
 
     /** True if merge output contains standard conflict markers. */
     private static boolean hasConflictMarkers(String content) {
         return content.contains("<<<<<<<") || content.contains("=======") || content.contains(">>>>>>>");
+    }
+
+    private static void deleteTempFile(File f) {
+        if (f == null) return;
+        try {
+            Files.deleteIfExists(f.toPath());
+        } catch (IOException ignored) {
+            // Temp file cleanup is best-effort
+        }
     }
 
     private static String statusName(String code) {
@@ -298,11 +319,27 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
 
     /**
      * Opens the stash diff viewer for a given stash index in the specified repository.
-     * Called by the MCP diff_stash tool.
+     * Called via {@link StashDiffControl} from non-UI layers (e.g. MCP tools).
      */
-    public static void openStashDiff(File repoDir, int stashIndex) {
+    @Override
+    public void openStashDiff(File repoDir, int stashIndex) {
         String stashName = "stash@{" + stashIndex + "}";
-        new StashDiffAction().loadDiffs(repoDir, stashIndex, stashName);
+        loadDiffs(repoDir, stashIndex, stashName);
+    }
+
+    @Override
+    public String validateStash(File repoDir, int stashIndex) {
+        try {
+            String stashRef = "stash@{" + stashIndex + "}";
+            String result = stripFatal(runGit(repoDir, "git", "rev-parse", "--verify", stashRef)).trim();
+            if (result.isEmpty()) {
+                return "Stash " + stashRef + " does not exist";
+            }
+            return null; // valid
+        } catch (Exception e) {
+            String msg = e.getMessage();
+            return msg != null ? msg : "Failed to validate stash";
+        }
     }
 
     private void loadDiffs(File repoDir, int stashIndex, String stashName) {
@@ -338,21 +375,21 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
                             LOG.warn("Failed HEAD content for {0}: {1}", filePath, e.getMessage(), e);
                             return "";
                         }
-                    });
+                    }, LOAD_EXECUTOR);
                     CompletableFuture<String> stashContent = CompletableFuture.supplyAsync(() -> {
                         try { return stripFatal(runGit(repoDir, "git", "show", stashRef + ":" + filePath)); }
                         catch (Exception e) {
                             LOG.warn("Failed stash content for {0}: {1}", filePath, e.getMessage(), e);
                             return "";
                         }
-                    });
+                    }, LOAD_EXECUTOR);
                     CompletableFuture<String> baseContent = CompletableFuture.supplyAsync(() -> {
                         try { return stripFatal(runGit(repoDir, "git", "show", stashRef + "^:" + filePath)); }
                         catch (Exception e) {
                             LOG.warn("Failed base content for {0}: {1}", filePath, e.getMessage(), e);
                             return "";
                         }
-                    });
+                    }, LOAD_EXECUTOR);
                     CompletableFuture<String> workTreeContent = CompletableFuture.supplyAsync(() -> {
                         try {
                             File f = new File(repoDir, filePath);
@@ -361,7 +398,7 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
                             LOG.warn("Failed work-tree content for {0}: {1}", filePath, e.getMessage(), e);
                             return "";
                         }
-                    });
+                    }, LOAD_EXECUTOR);
 
                     String h = headContent.join();
                     String s = stashContent.join();
@@ -382,13 +419,18 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
             } catch (Exception ex) {
                 return new StashDiffData(repoDir, stashIndex, stashName, List.of(), List.of(), List.of());
             }
-        }).thenAcceptAsync(data -> SwingUtilities.invokeLater(() -> openPanel(data)));
+        }, LOAD_EXECUTOR).thenAcceptAsync(data -> SwingUtilities.invokeLater(() -> openPanel(data)));
     }
 
     // --- UI ---
 
     private void openPanel(StashDiffData data) {
-        if (data.headDiffs.isEmpty() && data.workTreeDiffs.isEmpty() && data.baseDiffs.isEmpty()) return;
+        if (data.headDiffs.isEmpty() && data.workTreeDiffs.isEmpty() && data.baseDiffs.isEmpty()) {
+            JOptionPane.showMessageDialog(null,
+                    "Stash " + data.stashName + " has no changes or could not be loaded.",
+                    "Stash Diff", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
 
         DefaultListModel<FileDiff> listModel = new DefaultListModel<>();
         JList<FileDiff> fileList = new JList<>(listModel);
@@ -412,13 +454,18 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
                 JPopupMenu popup = new JPopupMenu();
                 JMenuItem applyItem = new JMenuItem("Apply this change");
                 applyItem.addActionListener(ev -> {
-                    try {
-                        String stashRef = "stash@{" + data.stashIndex + "}";
-                        String result = runGit(data.repoDir, "git", "checkout", stashRef, "--", fd.filePath);
-                        LOG.info("Applied {0} from {1}: {2}", fd.filePath, stashRef, result.trim());
-                    } catch (Exception ex) {
-                        LOG.warn("Failed to apply {0}: {1}", fd.filePath, ex.getMessage());
-                    }
+                    applyItem.setEnabled(false);
+                    GIT_RP.post(() -> {
+                        try {
+                            String stashRef = "stash@{" + data.stashIndex + "}";
+                            runGit(data.repoDir, "git", "checkout", stashRef, "--", fd.filePath);
+                            LOG.info("Applied {0} from {1}", fd.filePath, stashRef);
+                        } catch (Exception ex) {
+                            LOG.warn("Failed to apply {0}: {1}", fd.filePath, ex.getMessage());
+                        } finally {
+                            SwingUtilities.invokeLater(() -> applyItem.setEnabled(true));
+                        }
+                    });
                 });
                 popup.add(applyItem);
                 popup.show(fileList, e.getX(), e.getY());
@@ -449,11 +496,13 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
         final TopComponent[] tcRef = new TopComponent[1];
         toolbar.add(Box.createHorizontalStrut(32));
 
+        JButton btnDropStash = new JButton("Drop", ThemeManager.getIcon("stash_drop.svg", PluginSettings.getToolbarIconSize()));
         JButton btnApplyStash = new JButton("Apply", ThemeManager.getIcon("stash_apply.svg", PluginSettings.getToolbarIconSize()));
         btnApplyStash.setHorizontalTextPosition(SwingConstants.RIGHT);
         btnApplyStash.setToolTipText("Apply this stash to the working tree");
         btnApplyStash.addActionListener(ev -> {
             btnApplyStash.setEnabled(false);
+            btnDropStash.setEnabled(false);
             GIT_RP.post(() -> {
                 try {
                     String stashRef = "stash@{" + data.stashIndex + "}";
@@ -463,18 +512,19 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
                                 "Stash applied successfully.", "Apply Stash",
                                 JOptionPane.INFORMATION_MESSAGE);
                         btnApplyStash.setEnabled(true);
+                        btnDropStash.setEnabled(true);
                     });
                 } catch (Exception ex) {
                     SwingUtilities.invokeLater(() -> {
                         LOG.warn("Failed to apply stash: {0}", ex.getMessage());
                         showStashError(tcRef[0], ex);
                         btnApplyStash.setEnabled(true);
+                        btnDropStash.setEnabled(true);
                     });
                 }
             });
         });
 
-        JButton btnDropStash = new JButton("Drop", ThemeManager.getIcon("stash_drop.svg", PluginSettings.getToolbarIconSize()));
         btnDropStash.setHorizontalTextPosition(SwingConstants.RIGHT);
         btnDropStash.setToolTipText("Drop this stash permanently");
         btnDropStash.addActionListener(ev -> {
@@ -483,6 +533,7 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
                     "Drop Stash", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
             if (confirm != JOptionPane.YES_OPTION) return;
 
+            btnApplyStash.setEnabled(false);
             btnDropStash.setEnabled(false);
             GIT_RP.post(() -> {
                 try {
@@ -495,6 +546,7 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
                     SwingUtilities.invokeLater(() -> {
                         LOG.warn("Failed to drop stash: {0}", ex.getMessage());
                         showStashError(tcRef[0], ex);
+                        btnApplyStash.setEnabled(true);
                         btnDropStash.setEnabled(true);
                     });
                 }
