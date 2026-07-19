@@ -1,5 +1,52 @@
 # Release Notes
 
+## v1.10.0 (Changes since v1.9.5)
+
+### Features
+- **MCP diff_stash tool**: New MCP tool `diff_stash` exposes the stash diff viewer to
+  AI agents. Accepts `stashIndex` (required) and `repoDir` (optional) parameters.
+  Validates stash existence via `git rev-parse --verify` before opening. Supports
+  the `nb_get_tabs` MCP tool for session-aware stash diffs.
+- **Stash diff toolbar icons**: Apply and Drop buttons now show Lucide-sourced icons
+  (`stash_apply.svg`/`stash_drop.svg` with dark mode variants). Horizontal spacing
+  between toggle buttons and lifecycle buttons increased to 32px for visual separation.
+  Navigation arrows (prev/next difference) left-aligned for consistency with other toolbars.
+- **Send Feedback button removed**: Removed from the toolbar — feedback can be provided
+  via the project GitHub page.
+
+### Fixes
+- **Code review hardening**: All 10 findings from the adversarial code review resolved:
+  - Extracted `StashDiffControl` interface in `contract/` to fix hexagonal architecture
+    violation (`mcp/` → `ui/` dependency). `StashDiffToolProvider` now uses Lookup.
+  - File-level "Apply this change" popup moved off EDT (now runs on `GIT_RP`).
+  - MCP tool validates stash existence before opening; rejects negative/missing
+    `stashIndex` with descriptive error messages.
+  - `StringBuilder` replaced with `StringBuffer` in `runGit()` to prevent data races.
+  - Apply/Drop buttons disable both during lifecycle operations (mutual exclusion).
+  - Dedicated `LOAD_EXECUTOR` thread pool replaces `ForkJoinPool.commonPool()` for
+    `loadDiffs()` — prevents common pool starvation across the JVM.
+  - Temp file cleanup uses `Files.deleteIfExists()` instead of silent `File.delete()`.
+  - Warning dialog shown when stash has no changes or fails to load.
+- **Native git CLI for stash apply/drop**: Switched from JGit to native `git stash
+  apply`/`git stash drop` to avoid `IllegalArgumentException` when
+  `merge.conflictstyle=zdiff3` is set. Also adds a separate `READER_RP` to prevent
+  `RequestProcessor` deadlock when `runGit()` is called from within a `GIT_RP` task.
+- **ShortcutUtils filesystem fallback**: Resolves shortcuts registered via layer.xml
+  shadow files that the Keymap API doesn't pick up. Scans the `Shortcuts` folder for
+  `.shadow` files matching action IDs and parses NetBeans notation (D=Ctrl, S=Shift,
+  A=Alt, M=Meta) into human-readable strings.
+
+### Improvements
+- **Stash diff viewer UI polish**: Toolbar buttons use icon+text with proper disabled
+  appearance. Navigation bar aligned left. Removed Send Feedback button.
+
+### Documentation
+- Updated QUICKSTART.md with experiments section and `/compact` documentation.
+- Added troubleshooting note for blank sidebar after dock rearrange.
+
+### Housekeeping
+- Version bumped to 1.10.0.
+
 ## v1.9.5 (Changes since v1.9.4)
 
 ### Features
