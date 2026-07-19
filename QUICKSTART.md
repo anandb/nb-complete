@@ -345,6 +345,7 @@ snippet from an `opencode.json` configuration.
 | Messages disappear from view | This is display-only — the session still has all messages. Click **Show All Messages** to keep them visible, and use **Reload** to re-fetch from the server. |
 | LLM modified files unexpectedly | Always keep your project under version control (git) before allowing file modifications. Use **Accept/Deny** permission prompts to review changes. |
 | High CPU usage or UI freezes | Upgrade the plugin to >= 1.9.2, which resolves an infinite layout validation loop in the chat panel. |
+| Panel goes blank during docking or resizing | Close and reopen the docked panel from `Window > Assistant`. NetBeans may not repaint correctly after a drag-dock or undock operation. |
 
 ---
 
