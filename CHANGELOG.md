@@ -1,5 +1,41 @@
 # Release Notes
 
+## v1.11.0 (Changes since v1.10.0)
+
+### Features
+- **Mercurial VCS support**: New `HgIgnoreStrategy` provides Mercurial-aware file
+  discovery via `hg files` (bulk listing) and `hg status -i` (single-file check).
+  Walks up parent directories to locate `.hg` directory.
+- **Filesystem fallback for non-VCS projects**: New `NoVcsIgnoreStrategy` replaces
+  `NoOpIgnoreStrategy` with a real filesystem walker that excludes hidden files,
+  swap files (`*.swp`, `*.swo`, `*~`), and known junk directories (`target`,
+  `build`, `node_modules`, `.git`, etc.).
+
+### Improvements
+- **File cache deduplication**: `FileCacheManager` switched from `CopyOnWriteArrayList`
+  to `ConcurrentHashMap` keyed by absolute path for O(1) dedup across overlapping
+  projects. Event handlers (`fileDeleted`/`fileRenamed`) now use path-based removal.
+- **Git root detection**: `GitIgnoreStrategy` now walks up parent directories to find
+  the `.git` directory and runs `git ls-files` from the repo root instead of
+  `projectRoot`, fixing ignored files in nested module layouts.
+- **Language resolver**: `LanguageResolver` now provides a static `EXT_TO_MIME` map
+  (100+ entries), `fromMime()`, and `fromPathToMime()` methods. `StashDiffAction`
+  uses the new resolver instead of an inline `mimeFor()` method.
+
+### UI
+- **Project context menu simplified**: Removed `customizeProjectAction` and
+  `deleteProjectAction` from the Markdown project's logical view context menu.
+- **Layer.xml**: Added empty `<folder name="Customizer"/>` for the MdProject.
+
+### Housekeeping
+- **Coding rules**: Added line length rule (≤120 chars) to AGENTS.md.
+- **Dependencies**: Added `org-netbeans-modules-projectuiapi` annotation processor
+  dependency to pom.xml.
+- **Tests**: New `NoVcsIgnoreStrategyTest` — 267-line JUnit 5 test class covering
+  file listing, swap/hidden/build exclusions, nested POM structures, path
+  normalization.
+- Version bumped to 1.11.0.
+
 ## v1.10.0 (Changes since v1.9.5)
 
 ### Features
