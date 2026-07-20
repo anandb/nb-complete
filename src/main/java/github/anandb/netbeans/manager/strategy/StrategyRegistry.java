@@ -1,5 +1,6 @@
 package github.anandb.netbeans.manager.strategy;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -228,7 +229,7 @@ public class StrategyRegistry implements UpdateDispatcher {
                 try {
                     entries = MAPPER.convertValue(entriesNode, new TypeReference<List<PlanEntry>>() {});
                 } catch (Exception e) {
-                    LOG.warn("Failed to deserialize plan entries: {0}", e.getMessage());
+                    LOG.warn("Failed to deserialize plan entries: {0}", ExceptionUtils.getMessage(e));
                     return;
                 }
                 if (entries.isEmpty()) {
@@ -391,7 +392,7 @@ public class StrategyRegistry implements UpdateDispatcher {
             JsonNode first = arr.get(0);
             return first.has("content") && first.has("status") && first.has("priority");
         } catch (Exception e) {
-            LOG.warn("Skipping unparseable tool_call update: {0}", e.getMessage());
+            LOG.warn("Skipping unparseable tool_call update: {0}", ExceptionUtils.getMessage(e));
             return false;
         }
     }

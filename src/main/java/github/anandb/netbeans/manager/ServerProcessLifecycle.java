@@ -1,5 +1,6 @@
 package github.anandb.netbeans.manager;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -131,9 +132,9 @@ class ServerProcessLifecycle {
                 // the server death promptly. Guard with isClosing to avoid
                 // reconnection during intentional shutdown.
                 if (!isClosing) {
-                    LOG.warn("Connection error detected, triggering reconnection: {0}", t.getMessage());
+                    LOG.warn("Connection error detected, triggering reconnection: {0}", ExceptionUtils.getMessage(t));
                     if (onConnectionError != null) {
-                        onConnectionError.accept(t.getMessage());
+                        onConnectionError.accept(ExceptionUtils.getMessage(t));
                     }
                     onDisconnection.run();
                 }
@@ -177,7 +178,7 @@ class ServerProcessLifecycle {
                     onNotify.accept(update);
                 } catch (Exception e) {
                     LOG.log(rawType != null ? Level.INFO : Level.FINE,
-                        "Failed to parse session/update notification: " + e.getMessage(), e);
+                        "Failed to parse session/update notification: " + ExceptionUtils.getMessage(e), e);
                 }
             });
 
@@ -186,8 +187,8 @@ class ServerProcessLifecycle {
 
             LOG.fine("ACP server process started successfully");
         } catch (Exception e) {
-            if (e instanceof IllegalStateException && e.getMessage() != null && e.getMessage().contains("not found")) {
-                LOG.warn("Failed to start ACP server: {0}", e.getMessage());
+            if (e instanceof IllegalStateException && ExceptionUtils.getMessage(e) != null && ExceptionUtils.getMessage(e).contains("not found")) {
+                LOG.warn("Failed to start ACP server: {0}", ExceptionUtils.getMessage(e));
             } else {
                 LOG.severe("CRITICAL: Failed to start ACP server", e);
             }

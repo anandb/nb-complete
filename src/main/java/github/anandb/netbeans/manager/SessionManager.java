@@ -22,6 +22,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
+
 import java.util.function.Supplier;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
@@ -275,7 +276,7 @@ public class SessionManager implements SessionQuery, SessionControl {
     public CompletableFuture<List<Session>> getSessions(String directory) {
         LOG.log(Level.FINE, "getSessions: called with directory={0}", directory);
         return ProcessManager.getInstance().getToolExecutor().waitForReady()
-                .orTimeout(15, TimeUnit.SECONDS)
+                .orTimeout(60, TimeUnit.SECONDS)
                 .thenCompose(v -> {
                     return rpcClient.getSessions(directory);
                 })
@@ -310,12 +311,12 @@ public class SessionManager implements SessionQuery, SessionControl {
                             return new ArrayList<Session>();
                         }
                     } catch (IOException e) {
-                        LOG.warn("getSessions: failed to deserialize: {0} {1}", e.getMessage(), e.toString());
+                        LOG.warn("getSessions: failed to deserialize: {0}", ExceptionUtils.getMessage(e), e);
                         return new ArrayList<Session>();
                     }
                 })
                 .exceptionally(ex -> {
-                    LOG.warn("getSessions: rpc error: {0} {1}", ex.getMessage(), ex.toString());
+                    LOG.warn("getSessions: rpc error: {0}", ExceptionUtils.getRootCauseMessage(ex), ex);
                     return new ArrayList<>();
                 });
     }
@@ -329,12 +330,12 @@ public class SessionManager implements SessionQuery, SessionControl {
                 .map(dir -> getSessions(dir))
                 .toList();
         return CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new))
-                .orTimeout(10, TimeUnit.SECONDS)
+                .orTimeout(3, TimeUnit.MINUTES)
                 .thenApply(v -> futures.stream()
                 .flatMap(f -> f.join().stream())
                 .toList())
                 .exceptionally(ex -> {
-                    LOG.log(Level.WARNING, "Failed to get sessions within timeout: {0}", ex.getMessage());
+                    LOG.warn("Failed to get sessions: {0}", ExceptionUtils.getRootCauseMessage(ex), ex);
                     return new ArrayList<>();
                 });
     }
@@ -357,7 +358,7 @@ public class SessionManager implements SessionQuery, SessionControl {
 
     private CompletableFuture<Session> sendCreateSessionRequest(String finalCwd, long start) {
         return ProcessManager.getInstance().getToolExecutor().waitForReady()
-                .orTimeout(15, TimeUnit.SECONDS)
+                .orTimeout(60, TimeUnit.SECONDS)
                 .thenCompose(v -> {
                     return rpcClient.createSession(finalCwd);
                 })
@@ -384,14 +385,14 @@ public class SessionManager implements SessionQuery, SessionControl {
         return withMcpFallback("session/load",
                 () -> sendLoadSessionRequest(sessionId, cwd, start), start)
                 .exceptionally(ex -> {
-                    LOG.warn("loadSessionFromServer: error: {0}", ex.getMessage());
+                    LOG.warn("loadSessionFromServer: error: {0}", ExceptionUtils.getMessage(ex), ex);
                     return null;
                 });
     }
 
     private CompletableFuture<List<SessionConfigOption>> sendLoadSessionRequest(String sessionId, String cwd, long start) {
         return ProcessManager.getInstance().getToolExecutor().waitForReady()
-                .orTimeout(15, TimeUnit.SECONDS)
+                .orTimeout(2, TimeUnit.MINUTES)
                 .thenCompose(v -> {
                     return rpcClient.loadSessionFromServer(sessionId, cwd);
                 })
@@ -403,7 +404,7 @@ public class SessionManager implements SessionQuery, SessionControl {
                         try {
                             return MAPPER.convertValue(res.get("configOptions"), new TypeReference<List<SessionConfigOption>>() {});
                         } catch (Exception e) {
-                            LOG.warn("Failed to parse configOptions: {0}", e.getMessage(), e);
+                            LOG.warn("Failed to parse configOptions: {0}", ExceptionUtils.getMessage(e), e);
                         }
                     }
                     return null;
@@ -422,14 +423,14 @@ public class SessionManager implements SessionQuery, SessionControl {
                                 notifySessionLoaded(sessionId, configOptions, false);
                             }
                         } catch (Exception e) {
-                            LOG.warn("Failed to parse configOptions from set_config_option: {0}", e.getMessage(), e);
+                            LOG.warn("Failed to parse configOptions from set_config_option: {0}", ExceptionUtils.getMessage(e), e);
                         }
                     }
                     return (Void) null;
                 })
                 .whenComplete((res, ex) -> {
                     if (ex != null) {
-                        LOG.warn("Failed to set config {0}: {1}", configId, ex.getMessage());
+                        LOG.warn("Failed to set config {0}: {1}", configId, ExceptionUtils.getMessage(ex), ex);
                     }
                 });
     }
@@ -466,6 +467,10 @@ public class SessionManager implements SessionQuery, SessionControl {
 
                     cacheManager.setCachedSessions(filteredSessions);
                     notifySessionListUpdated(filteredSessions);
+                })
+                .exceptionally(ex -> {
+                    LOG.warn("Failed to refresh sessions: {0}", ExceptionUtils.getMessage(ex), ex);
+                    return null;
                 });
     }
 
@@ -589,6 +594,7 @@ public class SessionManager implements SessionQuery, SessionControl {
                         }
                     })
                     .exceptionally(ex -> {
+                        LOG.severe("Failed to load session async: {0}", ExceptionUtils.getMessage(ex), ex);
                         if (sessionId.equals(this.currentSessionId)) {
                             stateMachine.transitionTo(SessionState.IDLE);
                             notifyError(NbBundle.getMessage(SessionManager.class, "ERR_LoadSessionFailed", rootMessage(ex)));
@@ -631,7 +637,7 @@ public class SessionManager implements SessionQuery, SessionControl {
         renameSessionOnServer(sessionId, newTitle)
                 .whenComplete((v, ex) -> {
                     if (ex != null) {
-                        LOG.log(Level.WARNING, "Failed to rename session on server: {0}", ex.getMessage());
+                        LOG.warn("Failed to rename session on server: {0}", ExceptionUtils.getMessage(ex), ex);
                     }
                 });
     }
@@ -811,7 +817,7 @@ public class SessionManager implements SessionQuery, SessionControl {
             if (ex instanceof TimeoutException) {
                 LOG.warn("{0} timed out after {1}ms", operationName, durationMs);
             } else {
-                LOG.warn("{0} failed after {1}ms: {2}", operationName, durationMs, ex.getMessage());
+                LOG.warn("{0} failed after {1}ms: {2}", operationName, durationMs, ExceptionUtils.getMessage(ex));
             }
             Throwable cause = (ex instanceof CompletionException) ? ex.getCause() : ex;
             if (isInvalidParamsError(cause) && !ProcessManager.getInstance().getToolExecutor().isDisabled()) {
@@ -829,8 +835,8 @@ public class SessionManager implements SessionQuery, SessionControl {
         while (cause.getCause() != null) {
             cause = cause.getCause();
         }
-        String msg = cause.getMessage();
-        return msg != null ? msg : ex.getMessage();
+        String msg = ExceptionUtils.getMessage(cause);
+        return msg != null ? msg : ExceptionUtils.getMessage(ex);
     }
 
     private long parseTimestamp(String ts) {
@@ -847,7 +853,7 @@ public class SessionManager implements SessionQuery, SessionControl {
         if (t == null) {
             return false;
         }
-        String msg = t.getMessage();
+        String msg = ExceptionUtils.getMessage(t);
         return msg != null && msg.contains("Invalid params");
     }
 }

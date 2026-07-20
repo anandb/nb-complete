@@ -1,5 +1,6 @@
 package github.anandb.netbeans.manager;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -116,6 +117,6 @@ class AcpProtocolClientTest {
         clientInputEmulator.flush();
 
         Exception ex = assertThrows(Exception.class, () -> future.get(5, TimeUnit.SECONDS));
-        assertTrue(ex.getMessage().contains("Internal error"));
+        assertTrue(ExceptionUtils.getMessage(ex).contains("Internal error"));
     }
 }

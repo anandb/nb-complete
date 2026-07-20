@@ -1,5 +1,6 @@
 package github.anandb.netbeans.support;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.logging.Level;
@@ -43,7 +44,7 @@ public final class PluginSettings {
                 preamble = new String(in.readAllBytes(), StandardCharsets.UTF_8);
             }
         } catch (Exception e) {
-            LOG.log(Level.WARNING, "Failed to load preamble.md: {0}", e.getMessage());
+            LOG.log(Level.WARNING, "Failed to load preamble.md: {0}", ExceptionUtils.getMessage(e));
         }
         DEFAULT_PREAMBLE = preamble;
 

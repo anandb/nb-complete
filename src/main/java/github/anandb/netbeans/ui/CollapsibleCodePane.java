@@ -1,5 +1,6 @@
 package github.anandb.netbeans.ui;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
@@ -51,7 +52,7 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
                 return theme;
             }
         } catch (Exception e) {
-            LOG.warn("Failed to load code theme: {0}", e.getMessage());
+            LOG.warn("Failed to load code theme: {0}", ExceptionUtils.getMessage(e));
         }
         return null;
     }

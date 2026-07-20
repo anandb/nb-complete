@@ -48,6 +48,8 @@ public class SessionDropdownHandler {
                     lastSessionSwitch[0] = now;
                     boolean success = sessionService.get().loadSession(currentId);
                     if (!success) {
+                        github.anandb.netbeans.support.Logger.from(SessionDropdownHandler.class)
+                                .warn("Failed to load session {0} from dropdown", currentId);
                         SwingUtilities.invokeLater(() -> sessionDropdown.setSelectedItem(prePopupSession[0]));
                     }
                 }

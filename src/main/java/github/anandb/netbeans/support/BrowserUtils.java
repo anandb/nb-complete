@@ -1,5 +1,6 @@
 package github.anandb.netbeans.support;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import java.awt.Desktop;
 import java.awt.Toolkit;
 import java.awt.datatransfer.StringSelection;
@@ -32,7 +33,7 @@ public final class BrowserUtils {
                 Desktop.getDesktop().browse(new URI(url));
                 return;
             } catch (IOException | URISyntaxException ex) {
-                LOG.fine("Browser open failed, falling back to clipboard: {0}", ex.getMessage());
+                LOG.fine("Browser open failed, falling back to clipboard: {0}", ExceptionUtils.getMessage(ex));
                 // fall through to clipboard
             }
         }
@@ -44,7 +45,7 @@ public final class BrowserUtils {
                 onFallback.accept(url, statusKey);
             }
         } catch (Exception ex) {
-            LOG.warn("Clipboard access failed: {0}", ex.getMessage());
+            LOG.warn("Clipboard access failed: {0}", ExceptionUtils.getMessage(ex));
         }
     }
 }

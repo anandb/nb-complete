@@ -1,5 +1,6 @@
 package github.anandb.netbeans.ui;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
@@ -232,7 +233,7 @@ public class TokenUsageDialog extends JDialog {
             } catch (Exception ex) {
                 LOG.log(java.util.logging.Level.WARNING, "Failed to fetch token usage stats", ex);
                 SwingUtilities.invokeLater(() -> {
-                    statsPane.setText(buildPlaceholderHtml(currentTheme, "Error: " + ex.getMessage()));
+                    statsPane.setText(buildPlaceholderHtml(currentTheme, "Error: " + ExceptionUtils.getMessage(ex)));
                     SwingUtilities.invokeLater(() -> scrollPane.getVerticalScrollBar().setValue(0));
                 });
             } finally {

@@ -1,5 +1,6 @@
 package github.anandb.netbeans.ui;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.Toolkit;
@@ -322,7 +323,7 @@ public class ConfigPanelController {
                     LOG.fine("Config update: {0}={1} for session {2}", new Object[]{configId, selected.value(), currentId});
                     sessionService.get().setSessionConfigOption(currentId, configId, selected.value())
                         .exceptionally(ex -> {
-                            LOG.warn("Failed to set config {0}: {1}", configId, ex.getMessage());
+                            LOG.warn("Failed to set config {0}: {1}", configId, ExceptionUtils.getMessage(ex));
                             if (combo == modelCombo && prePopupSelection[0] != null && prevModelId != null) {
                                 SwingUtilities.invokeLater(() -> {
                                     isUpdatingConfigControls = true;

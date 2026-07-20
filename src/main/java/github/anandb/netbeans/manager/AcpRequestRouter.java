@@ -1,5 +1,6 @@
 package github.anandb.netbeans.manager;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -165,7 +166,7 @@ class AcpRequestRouter {
                 String content = new String(bytes, StandardCharsets.UTF_8);
                 return MAPPER.createObjectNode().put("content", content);
             } catch (Exception e) {
-                LOG.severe("fs/readTextFile failed: {0}", e.getMessage());
+                LOG.severe("fs/readTextFile failed: {0}", ExceptionUtils.getMessage(e));
                 LOG.log(Level.FINE, "fs/readTextFile details", e);
                 throw new RuntimeException("Failed to read file");
             }

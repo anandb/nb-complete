@@ -1,5 +1,6 @@
 package github.anandb.netbeans.ui;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -230,14 +231,15 @@ public class MessageSender {
                 })
                 .exceptionally(ex -> {
                     SwingUtilities.invokeLater(() -> {
-                        LOG.info("RPC exceptionally fired: {0}", ex.getMessage());
-                        statusController.setStatus("STATUS_Error", ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName());
+                        LOG.info("RPC exceptionally fired: {0}", ExceptionUtils.getMessage(ex));
+                        statusController.setStatus("STATUS_Error",
+                    ExceptionUtils.getMessage(ex) != null ? ExceptionUtils.getMessage(ex) : ex.getClass().getSimpleName());
                         statusController.stopThinking();
                         chatPanel.stopStreaming();
                         chatPanel.addMessage(ProcessedMessage.createError(
                                 MessageType.error_response,
                                 NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Error",
-                                        ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName()),
+                                        ExceptionUtils.getMessage(ex) != null ? ExceptionUtils.getMessage(ex) : ex.getClass().getSimpleName()),
                                 null, null
                         ));
                         inputArea.setText(messageText);

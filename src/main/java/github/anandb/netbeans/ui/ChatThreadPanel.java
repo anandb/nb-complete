@@ -1,5 +1,6 @@
 package github.anandb.netbeans.ui;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
@@ -273,7 +274,7 @@ public class ChatThreadPanel extends JPanel {
             try {
                 task.run();
             } catch (Exception ex) {
-                LOG.warn("Error processing message: {0}", ex.getMessage());
+                LOG.warn("Error processing message: {0}", ExceptionUtils.getMessage(ex));
             } finally {
                 // Reset debounced flush timer — fires 300ms after last message drains.
                 flushTimer.restart();
@@ -933,7 +934,7 @@ public class ChatThreadPanel extends JPanel {
                 clearMessages();
                 WelcomeScreen.show(messagesContainer, sessions, onSessionSelected, onNewChat);
             } catch (Exception ex) {
-                LOG.warn("setSessionList error: {0}", ex.getMessage());
+                LOG.warn("setSessionList error: {0}", ExceptionUtils.getMessage(ex));
             }
         });
     }

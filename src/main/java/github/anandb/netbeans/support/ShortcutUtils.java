@@ -1,5 +1,6 @@
 package github.anandb.netbeans.support;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.util.List;
@@ -57,7 +58,7 @@ public final class ShortcutUtils {
                 }
             }
         } catch (Throwable t) {
-            LOG.log(Level.FINE, "KeyStrokeUtils lookup failed for {0}: {1}", new Object[]{actionId, t.getMessage()});
+            LOG.log(Level.FINE, "KeyStrokeUtils lookup failed for {0}: {1}", new Object[]{actionId, ExceptionUtils.getMessage(t)});
         }
         return "";
     }
@@ -90,7 +91,7 @@ public final class ShortcutUtils {
             }
         } catch (Throwable t) {
             LOG.log(Level.FINE, "Filesystem shortcut lookup failed for {0}: {1}",
-                    new Object[]{actionId, t.getMessage()});
+                    new Object[]{actionId, ExceptionUtils.getMessage(t)});
         }
         return "";
     }

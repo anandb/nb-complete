@@ -1,5 +1,6 @@
 package github.anandb.netbeans.manager;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import github.anandb.netbeans.model.SessionState;
 import github.anandb.netbeans.support.Logger;
 
@@ -76,7 +77,7 @@ public class SessionStateMachine {
             try {
                 listener.accept(newState);
             } catch (Exception e) {
-                LOG.warn("State listener threw exception: {0}", e.getMessage(), e);
+                LOG.warn("State listener threw exception: {0}", ExceptionUtils.getMessage(e), e);
             }
         }
     }

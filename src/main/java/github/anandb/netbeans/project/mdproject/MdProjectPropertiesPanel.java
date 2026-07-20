@@ -1,5 +1,6 @@
 package github.anandb.netbeans.project.mdproject;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
@@ -100,7 +101,7 @@ public final class MdProjectPropertiesPanel extends JPanel {
         } catch (IOException ex) {
             JOptionPane.showMessageDialog(this,
                     NbBundle.getMessage(MdProjectPropertiesPanel.class,
-                            "MSG_SaveError", ex.getMessage()),
+                            "MSG_SaveError", ExceptionUtils.getMessage(ex)),
                     "Error", JOptionPane.ERROR_MESSAGE);
         }
     }

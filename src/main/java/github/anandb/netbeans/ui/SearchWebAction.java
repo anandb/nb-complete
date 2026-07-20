@@ -1,5 +1,6 @@
 package github.anandb.netbeans.ui;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import java.awt.event.ActionEvent;
 import java.io.IOException;
 import java.net.MalformedURLException;
@@ -81,7 +82,7 @@ public final class SearchWebAction extends AbstractAction implements Presenter.P
                 }
             }
         } catch (Exception ex) {
-            LOG.fine("Browser detection failed: {0}", ex.getMessage());
+            LOG.fine("Browser detection failed: {0}", ExceptionUtils.getMessage(ex));
         }
 
         showUrl(urlStr);
@@ -92,7 +93,7 @@ public final class SearchWebAction extends AbstractAction implements Presenter.P
         try {
             new ProcessBuilder(exec, "--search", query).start();
         } catch (IOException ex) {
-            LOG.warn("Failed to launch Firefox ({0}): {1}", exec, ex.getMessage());
+            LOG.warn("Failed to launch Firefox ({0}): {1}", exec, ExceptionUtils.getMessage(ex));
             showUrl(fallbackUrl);
         }
     }
@@ -139,7 +140,7 @@ public final class SearchWebAction extends AbstractAction implements Presenter.P
                 return doc.getText(start, end - start);
             }
         } catch (BadLocationException ex) {
-            LOG.fine("Cannot extract word at cursor: {0}", ex.getMessage());
+            LOG.fine("Cannot extract word at cursor: {0}", ExceptionUtils.getMessage(ex));
         }
         return null;
     }
@@ -154,7 +155,7 @@ public final class SearchWebAction extends AbstractAction implements Presenter.P
                 if (proc != null && !proc.isEmpty()) return proc;
             }
         } catch (Exception ex) {
-            LOG.fine("Cannot extract executable: {0}", ex.getMessage());
+            LOG.fine("Cannot extract executable: {0}", ExceptionUtils.getMessage(ex));
         }
         return "firefox";
     }

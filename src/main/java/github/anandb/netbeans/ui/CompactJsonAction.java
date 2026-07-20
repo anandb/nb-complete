@@ -1,5 +1,6 @@
 package github.anandb.netbeans.ui;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -72,7 +73,8 @@ public class CompactJsonAction extends AbstractAction implements Presenter.Popup
             doc.remove(start, end - start);
             doc.insertString(start, compacted, null);
         } catch (Exception ex) {
-            StatusDisplayer.getDefault().setStatusText(NbBundle.getMessage(CompactJsonAction.class, "ERR_InvalidJson", ex.getMessage()));
+            StatusDisplayer.getDefault().setStatusText(NbBundle.getMessage(CompactJsonAction.class,
+                    "ERR_InvalidJson", ExceptionUtils.getMessage(ex)));
         }
     }
 }

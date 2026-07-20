@@ -1,5 +1,6 @@
 package github.anandb.netbeans.ui;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Container;
@@ -338,7 +339,7 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
             }
             return null; // valid
         } catch (Exception e) {
-            String msg = e.getMessage();
+            String msg = ExceptionUtils.getMessage(e);
             return msg != null ? msg : "Failed to validate stash";
         }
     }
@@ -373,21 +374,21 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
                     CompletableFuture<String> headContent = CompletableFuture.supplyAsync(() -> {
                         try { return stripFatal(runGit(repoDir, "git", "show", "HEAD:" + filePath)); }
                         catch (Exception e) {
-                            LOG.warn("Failed HEAD content for {0}: {1}", filePath, e.getMessage(), e);
+                            LOG.warn("Failed HEAD content for {0}: {1}", filePath, ExceptionUtils.getMessage(e), e);
                             return "";
                         }
                     }, LOAD_EXECUTOR);
                     CompletableFuture<String> stashContent = CompletableFuture.supplyAsync(() -> {
                         try { return stripFatal(runGit(repoDir, "git", "show", stashRef + ":" + filePath)); }
                         catch (Exception e) {
-                            LOG.warn("Failed stash content for {0}: {1}", filePath, e.getMessage(), e);
+                            LOG.warn("Failed stash content for {0}: {1}", filePath, ExceptionUtils.getMessage(e), e);
                             return "";
                         }
                     }, LOAD_EXECUTOR);
                     CompletableFuture<String> baseContent = CompletableFuture.supplyAsync(() -> {
                         try { return stripFatal(runGit(repoDir, "git", "show", stashRef + "^:" + filePath)); }
                         catch (Exception e) {
-                            LOG.warn("Failed base content for {0}: {1}", filePath, e.getMessage(), e);
+                            LOG.warn("Failed base content for {0}: {1}", filePath, ExceptionUtils.getMessage(e), e);
                             return "";
                         }
                     }, LOAD_EXECUTOR);
@@ -396,7 +397,7 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
                             File f = new File(repoDir, filePath);
                             return f.exists() ? Files.readString(f.toPath()) : "";
                         } catch (Exception e) {
-                            LOG.warn("Failed work-tree content for {0}: {1}", filePath, e.getMessage(), e);
+                            LOG.warn("Failed work-tree content for {0}: {1}", filePath, ExceptionUtils.getMessage(e), e);
                             return "";
                         }
                     }, LOAD_EXECUTOR);
@@ -462,7 +463,7 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
                             runGit(data.repoDir, "git", "checkout", stashRef, "--", fd.filePath);
                             LOG.info("Applied {0} from {1}", fd.filePath, stashRef);
                         } catch (Exception ex) {
-                            LOG.warn("Failed to apply {0}: {1}", fd.filePath, ex.getMessage());
+                            LOG.warn("Failed to apply {0}: {1}", fd.filePath, ExceptionUtils.getMessage(ex));
                         } finally {
                             SwingUtilities.invokeLater(() -> applyItem.setEnabled(true));
                         }
@@ -517,7 +518,7 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
                     });
                 } catch (Exception ex) {
                     SwingUtilities.invokeLater(() -> {
-                        LOG.warn("Failed to apply stash: {0}", ex.getMessage());
+                        LOG.warn("Failed to apply stash: {0}", ExceptionUtils.getMessage(ex));
                         showStashError(tcRef[0], ex);
                         btnApplyStash.setEnabled(true);
                         btnDropStash.setEnabled(true);
@@ -545,7 +546,7 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
                     });
                 } catch (Exception ex) {
                     SwingUtilities.invokeLater(() -> {
-                        LOG.warn("Failed to drop stash: {0}", ex.getMessage());
+                        LOG.warn("Failed to drop stash: {0}", ExceptionUtils.getMessage(ex));
                         showStashError(tcRef[0], ex);
                         btnApplyStash.setEnabled(true);
                         btnDropStash.setEnabled(true);
@@ -697,7 +698,7 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
                 });
             } catch (Exception ex) {
                 currentController = null;
-                diffPanel.add(new JLabel("Error: " + ex.getMessage()), BorderLayout.CENTER);
+                diffPanel.add(new JLabel("Error: " + ExceptionUtils.getMessage(ex)), BorderLayout.CENTER);
             }
             diffPanel.revalidate();
             diffPanel.repaint();
@@ -747,7 +748,7 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
 
     /** Show a user-friendly error dialog. */
     private static void showStashError(Component parent, Exception ex) {
-        String msg = ex.getMessage();
+        String msg = ExceptionUtils.getMessage(ex);
         JOptionPane.showMessageDialog(parent,
                 msg != null ? msg : "Unknown error",
                 "Stash Operation Failed", JOptionPane.ERROR_MESSAGE);

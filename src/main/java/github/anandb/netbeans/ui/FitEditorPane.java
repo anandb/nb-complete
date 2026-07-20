@@ -1,5 +1,6 @@
 package github.anandb.netbeans.ui;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
@@ -123,7 +124,7 @@ public class FitEditorPane extends JTextPane {
                     }
                 }
             } catch (Exception ex) {
-                LOG.fine("View sizing failed, using fallback: {0}", ex.getMessage());
+                LOG.fine("View sizing failed, using fallback: {0}", ExceptionUtils.getMessage(ex));
             }
 
             if (lastComputedHeight > 0) {

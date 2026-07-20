@@ -180,7 +180,7 @@ public class AcpProtocolClient implements Closeable {
                     // Recover from a single malformed message instead of
                     // shutting down the entire connection.
                     if (running) {
-                        LOG.warn("Skipping malformed message: {0}", e.getMessage(), e);
+                        LOG.warn("Skipping malformed message: {0}", ExceptionUtils.getMessage(e), e);
                     }
                 }
             }
@@ -189,7 +189,7 @@ public class AcpProtocolClient implements Closeable {
                 LOG.severe("JSON-RPC reader thread error", e);
                 notifyConnectionError(e);
             } else {
-                LOG.warn("JSON-RPC reader thread error after close: {0}", e.getMessage());
+                LOG.warn("JSON-RPC reader thread error after close: {0}", ExceptionUtils.getMessage(e));
             }
         } finally {
             if (!closed) {

@@ -1,5 +1,6 @@
 package github.anandb.netbeans.ui;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import java.awt.Toolkit;
 import java.awt.datatransfer.StringSelection;
 import java.awt.event.MouseAdapter;
@@ -67,7 +68,7 @@ public class MessageCopyMouseAdapter extends MouseAdapter {
         try {
             Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new StringSelection(textToCopy), null);
         } catch (Exception ex) {
-            LOG.warn("Clipboard fail: {0}", ex.getMessage());
+            LOG.warn("Clipboard fail: {0}", ExceptionUtils.getMessage(ex));
         }
         iconLabel.setIcon(checkIcon);
         Timer timer = new Timer(1500, ev -> {

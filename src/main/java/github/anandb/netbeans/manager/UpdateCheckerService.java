@@ -1,5 +1,6 @@
 package github.anandb.netbeans.manager;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -151,7 +152,7 @@ public class UpdateCheckerService implements UpdateCheckerControl {
                         LOG.info("Checking for updates...");
                         checkForUpdates();
                     } catch (Exception e) {
-                        LOG.log(Level.WARNING, "Error checking for updates: {0}", e.getMessage(), e);
+                        LOG.log(Level.WARNING, "Error checking for updates: {0}", ExceptionUtils.getMessage(e), e);
                     }
                 } else {
                     LOG.fine("Update check is disabled in settings. Skipping update check.");
@@ -226,7 +227,7 @@ public class UpdateCheckerService implements UpdateCheckerControl {
 
             LOG.info("Update check completed successfully.");
         } catch (Exception e) {
-            LOG.log(Level.WARNING, "Update check failed: {0}", e.getMessage());
+            LOG.log(Level.WARNING, "Update check failed: {0}", ExceptionUtils.getMessage(e));
             throw e;
         }
     }

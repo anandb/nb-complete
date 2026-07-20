@@ -1,5 +1,6 @@
 package github.anandb.netbeans.ui;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
@@ -177,7 +178,7 @@ public class PlaceholderTextArea extends JTextArea implements Scrollable {
                 undoManager.undo();
             }
         } catch (CannotUndoException e) {
-            LOG.warn("Cannot undo: {0}", e.getMessage());
+            LOG.warn("Cannot undo: {0}", ExceptionUtils.getMessage(e));
         }
     }
 
@@ -190,7 +191,7 @@ public class PlaceholderTextArea extends JTextArea implements Scrollable {
                 undoManager.redo();
             }
         } catch (CannotRedoException e) {
-            LOG.warn("Cannot redo: {0}", e.getMessage());
+            LOG.warn("Cannot redo: {0}", ExceptionUtils.getMessage(e));
         }
     }
 

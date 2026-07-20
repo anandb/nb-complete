@@ -1,5 +1,6 @@
 package github.anandb.netbeans.support;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -120,7 +121,7 @@ public final class PinnedMessageStore implements PinnedMessageControl {
         } catch (IOException ex) {
             Logger.from(PinnedMessageStore.class)
                     .warn("Failed to serialize pinned messages for session {0}: {1}",
-                            sessionId, ex.getMessage());
+                            sessionId, ExceptionUtils.getMessage(ex));
         }
     }
 
@@ -136,7 +137,7 @@ public final class PinnedMessageStore implements PinnedMessageControl {
         } catch (IOException ex) {
             Logger.from(PinnedMessageStore.class)
                     .warn("Failed to parse pinned messages for session {0}: {1}",
-                            sessionId, ex.getMessage());
+                            sessionId, ExceptionUtils.getMessage(ex));
             return Collections.emptyList();
         }
     }

@@ -1,5 +1,6 @@
 package github.anandb.netbeans.ui;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import java.awt.Component;
 import java.awt.KeyEventDispatcher;
 import java.awt.KeyboardFocusManager;
@@ -136,7 +137,8 @@ public class ComponentLifecycleHandler {
                 while (cause.getCause() != null) {
                     cause = cause.getCause();
                 }
-                if (cause instanceof IllegalStateException && cause.getMessage() != null && cause.getMessage().contains("not found")) {
+                if (cause instanceof IllegalStateException && ExceptionUtils.getMessage(cause) != null
+                        && ExceptionUtils.getMessage(cause).contains("not found")) {
                     topComponent.setBinaryNotFoundState(true);
                 }
                 return null;
@@ -379,10 +381,11 @@ public class ComponentLifecycleHandler {
                 while (cause.getCause() != null) {
                     cause = cause.getCause();
                 }
-                if (cause instanceof IllegalStateException && cause.getMessage() != null && cause.getMessage().contains("not found")) {
+                if (cause instanceof IllegalStateException && ExceptionUtils.getMessage(cause) != null
+                        && ExceptionUtils.getMessage(cause).contains("not found")) {
                     topComponent.setBinaryNotFoundState(true);
                 } else {
-                    String msg = ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName();
+                    String msg = ExceptionUtils.getMessage(ex) != null ? ExceptionUtils.getMessage(ex) : ex.getClass().getSimpleName();
                     statusController.setStatus("STATUS_RestartFailed", msg);
                     chatPanel.stopStreaming();
                     chatPanel.addMessage(ProcessedMessage.createError(

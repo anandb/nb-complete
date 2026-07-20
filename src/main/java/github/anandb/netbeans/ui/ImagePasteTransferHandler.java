@@ -1,5 +1,6 @@
 package github.anandb.netbeans.ui;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import github.anandb.netbeans.contract.PasteCallback;
 import java.awt.Graphics2D;
 import java.awt.Image;
@@ -105,7 +106,7 @@ public class ImagePasteTransferHandler extends TransferHandler {
                 }
             }
         } catch (UnsupportedFlavorException | IOException e) {
-            reportError(NbBundle.getMessage(ImagePasteTransferHandler.class, "ERR_ReadClipboard", e.getMessage()));
+            reportError(NbBundle.getMessage(ImagePasteTransferHandler.class, "ERR_ReadClipboard", ExceptionUtils.getMessage(e)));
         }
 
         // Fallback: text paste on EDT
@@ -137,7 +138,7 @@ public class ImagePasteTransferHandler extends TransferHandler {
                 javax.swing.SwingUtilities.invokeLater(() -> callback.onAttachmentAdded(attachedFile));
             }
         } catch (Exception e) {
-            reportError(NbBundle.getMessage(ImagePasteTransferHandler.class, "ERR_SavePastedImage", e.getMessage()));
+            reportError(NbBundle.getMessage(ImagePasteTransferHandler.class, "ERR_SavePastedImage", ExceptionUtils.getMessage(e)));
         }
     }
 
@@ -148,7 +149,7 @@ public class ImagePasteTransferHandler extends TransferHandler {
                 javax.swing.SwingUtilities.invokeLater(() -> callback.onAttachmentAdded(attachedFile));
             }
         } catch (Exception e) {
-            reportError(NbBundle.getMessage(ImagePasteTransferHandler.class, "ERR_ProcessPastedFile", e.getMessage()));
+            reportError(NbBundle.getMessage(ImagePasteTransferHandler.class, "ERR_ProcessPastedFile", ExceptionUtils.getMessage(e)));
         }
     }
 
@@ -163,7 +164,7 @@ public class ImagePasteTransferHandler extends TransferHandler {
                 javax.swing.SwingUtilities.invokeLater(() -> callback.onAttachmentAdded(attachedFile));
             }
         } catch (Exception e) {
-            reportError(NbBundle.getMessage(ImagePasteTransferHandler.class, "ERR_ReadClipboard", e.getMessage()));
+            reportError(NbBundle.getMessage(ImagePasteTransferHandler.class, "ERR_ReadClipboard", ExceptionUtils.getMessage(e)));
         }
     }
 
@@ -196,7 +197,7 @@ public class ImagePasteTransferHandler extends TransferHandler {
             }
         } catch (IOException | RuntimeException e) {
             if (callback != null) {
-                callback.onError(NbBundle.getMessage(ImagePasteTransferHandler.class, "ERR_SavePastedImage", e.getMessage()));
+                callback.onError(NbBundle.getMessage(ImagePasteTransferHandler.class, "ERR_SavePastedImage", ExceptionUtils.getMessage(e)));
             }
         }
 
@@ -329,7 +330,7 @@ public class ImagePasteTransferHandler extends TransferHandler {
 
         } catch (IOException e) {
             if (callback != null) {
-                callback.onError(NbBundle.getMessage(ImagePasteTransferHandler.class, "ERR_ProcessPastedFile", e.getMessage()));
+                callback.onError(NbBundle.getMessage(ImagePasteTransferHandler.class, "ERR_ProcessPastedFile", ExceptionUtils.getMessage(e)));
             }
             return null;
         }

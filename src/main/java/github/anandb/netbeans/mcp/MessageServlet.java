@@ -1,5 +1,6 @@
 package github.anandb.netbeans.mcp;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -104,7 +105,7 @@ class MessageServlet extends HttpServlet {
                     try {
                         handleRequest(method, params, resp);
                     } catch (Exception e) {
-                        LOG.log(Level.SEVERE, "Error handling MCP method: {0}: {1}", new Object[]{method, e.getMessage()});
+                        LOG.log(Level.SEVERE, "Error handling MCP method: {0}: {1}", new Object[]{method, ExceptionUtils.getMessage(e)});
                         LOG.log(Level.FINE, "Exception details", e);
                         ObjectNode error = MAPPER.createObjectNode();
                         error.put("code", -32603);
@@ -199,10 +200,10 @@ class MessageServlet extends HttpServlet {
                     asyncContext.complete();
                 }
             } catch (IllegalArgumentException e) {
-                LOG.log(Level.WARNING, "Tool call invalid params: {0}", e.getMessage());
+                LOG.log(Level.WARNING, "Tool call invalid params: {0}", ExceptionUtils.getMessage(e));
                 scheduleErrorResponse(resp, asyncContext, -32602, "Invalid parameters");
             } catch (Exception e) {
-                LOG.log(Level.SEVERE, "Tool execution failed: {0}", e.getMessage());
+                LOG.log(Level.SEVERE, "Tool execution failed: {0}", ExceptionUtils.getMessage(e));
                 LOG.log(Level.FINE, "Tool exception details", e);
                 scheduleErrorResponse(resp, asyncContext, -32603, "Tool execution failed");
             }
@@ -344,7 +345,7 @@ class MessageServlet extends HttpServlet {
                 result.set("contents", contents);
                 resp.set("result", result);
             } catch (IOException e) {
-                LOG.log(Level.WARNING, "Failed to read MCP resource: {0}", e.getMessage());
+                LOG.log(Level.WARNING, "Failed to read MCP resource: {0}", ExceptionUtils.getMessage(e));
                 ObjectNode error = MAPPER.createObjectNode();
                 error.put("code", -32603);
                 error.put("message", "Failed to read resource");

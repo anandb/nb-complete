@@ -1,5 +1,6 @@
 package github.anandb.netbeans.mcp;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import github.anandb.netbeans.support.Logger;
@@ -65,7 +66,7 @@ public class McpManager {
                             readyFuture.complete(null);
                         }
                     } catch (IOException e) {
-                        LOG.warn("Failed to start MCP server: {0}", e.getMessage());
+                        LOG.warn("Failed to start MCP server: {0}", ExceptionUtils.getMessage(e));
                         if (server != null) {
                             server.stop();
                         }
@@ -106,7 +107,7 @@ public class McpManager {
                 try {
                     mcpServer.stop();
                 } catch (Exception e) {
-                    LOG.warn("Error stopping MCP server: {0}", e.getMessage());
+                    LOG.warn("Error stopping MCP server: {0}", ExceptionUtils.getMessage(e));
                 } finally {
                     mcpServer = null;
                 }

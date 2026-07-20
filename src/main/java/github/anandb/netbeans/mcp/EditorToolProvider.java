@@ -1,5 +1,6 @@
 package github.anandb.netbeans.mcp;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -141,14 +142,14 @@ public class EditorToolProvider {
                                         try {
                                             line.show(Line.ShowOpenType.OPEN, Line.ShowVisibilityType.FOCUS);
                                         } catch (Exception e) {
-                                            LOG.warn("Failed to show line in editor: {0}", e.getMessage());
+                                            LOG.warn("Failed to show line in editor: {0}", ExceptionUtils.getMessage(e));
                                         }
                                     });
                                     return Map.of("status", "ok");
                                 }
                             }
                         } catch (Exception e) {
-                            LOG.warn("Failed to resolve file at line on background thread: {0}", e.getMessage());
+                            LOG.warn("Failed to resolve file at line on background thread: {0}", ExceptionUtils.getMessage(e));
                             return Map.of("status", "error", "message", "Failed to open file");
                         }
                         return Map.of("status", "error", "message", "File or line not found");
