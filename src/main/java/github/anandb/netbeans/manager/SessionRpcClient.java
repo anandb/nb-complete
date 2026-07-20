@@ -9,7 +9,6 @@ import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.MapperSupplier;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 
 /**
  * Handles all session-related RPC calls to the ACP server.
@@ -57,13 +56,10 @@ final class SessionRpcClient {
     }
 
     CompletableFuture<Void> renameSessionOnServer(String sessionId, String title) {
-        ObjectNode params = MAPPER.createObjectNode();
-        params.put("sessionId", sessionId);
-        ObjectNode update = MAPPER.createObjectNode();
-        update.put("sessionUpdate", "session_info_update");
-        update.put("title", title);
-        params.set("update", update);
-        return processManager.sendRequest("session/update", params, getTimeout(30), java.util.concurrent.TimeUnit.SECONDS).thenApply(r -> null);
+        // The OpenCode ACP server currently does not implement a session/update 
+        // or session/rename RPC endpoint. We only rename the session locally in 
+        // the IDE and return a completed future here.
+        return CompletableFuture.completedFuture(null);
     }
 
     CompletableFuture<JsonNode> setSessionConfigOption(String sessionId, String configId, String value) {
