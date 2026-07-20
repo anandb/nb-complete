@@ -1,5 +1,15 @@
 # Release Notes
 
+## v1.11.1 (Changes since v1.11.0)
+
+### Fixes
+- **Session dropdown randomly empty**: Fixed a bug where a timed-out `session/list` request would swallow the JSON-RPC error and return an empty list, tricking the IDE into permanently wiping its cached session list. Error cases now correctly preserve the existing UI cache.
+- **Aggressive request timeouts**: Reverted per-request timeout logic in `AcpProtocolClient`. Timeouts now apply purely at the connection level, preventing queued requests from being abruptly cancelled when the ACP server is busy generating long LLM responses.
+
+### Improvements
+- **Reduced ACP server load**: Reduced `SessionManager` concurrent session fetch batch size from 5 to 2 to alleviate pressure on the ACP server during startup.
+- **Idle timeout increased**: Increased default ACP connection idle timeout from 300 to 600 seconds.
+
 ## v1.11.0 (Changes since v1.10.0)
 
 ### Features
