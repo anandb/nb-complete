@@ -14,31 +14,31 @@ import java.util.logging.Logger;
 import github.anandb.netbeans.contract.VcsIgnoreStrategy;
 
 /**
- * Git ignore strategy using {@code git ls-files} for bulk listing
- * and {@code git check-ignore} for single-file queries.
+ * Mercurial ignore strategy using {@code hg files} for bulk listing
+ * and {@code hg status -i} for single-file queries.
  *
- * <p>Detects availability by checking for a {@code .git} directory.</p>
+ * <p>Detects availability by checking for a {@code .hg} directory.</p>
  */
-public class GitIgnoreStrategy implements VcsIgnoreStrategy {
+public class HgIgnoreStrategy implements VcsIgnoreStrategy {
 
-    private static final Logger LOG = Logger.getLogger(GitIgnoreStrategy.class.getName());
+    private static final Logger LOG = Logger.getLogger(HgIgnoreStrategy.class.getName());
     private static final long CMD_TIMEOUT_SEC = 30;
-    private static final org.openide.util.RequestProcessor GIT_RP =
-            new org.openide.util.RequestProcessor("GitIgnore-Reader", 1);
+    private static final org.openide.util.RequestProcessor HG_RP =
+            new org.openide.util.RequestProcessor("HgIgnore-Reader", 1);
 
     @Override
     public boolean isAvailable(File projectRoot) {
-        return findGitRoot(projectRoot) != null;
+        return findHgRoot(projectRoot) != null;
     }
 
     /**
-     * Walks up from {@code dir} looking for a {@code .git} directory.
-     * Returns the git repository root, or {@code null} if none found.
+     * Walks up from {@code dir} looking for a {@code .hg} directory.
+     * Returns the Mercurial repository root, or {@code null} if none found.
      */
-    static File findGitRoot(File dir) {
+    static File findHgRoot(File dir) {
         File current = dir;
         while (current != null) {
-            if (new File(current, ".git").isDirectory()) {
+            if (new File(current, ".hg").isDirectory()) {
                 return current;
             }
             current = current.getParentFile();
@@ -49,19 +49,16 @@ public class GitIgnoreStrategy implements VcsIgnoreStrategy {
     @Override
     public Set<String> listNonIgnoredFiles(File projectRoot) {
         try {
-            File gitRoot = findGitRoot(projectRoot);
-            File workDir = gitRoot != null ? gitRoot : projectRoot;
-            // git ls-files returns all tracked + untracked (non-ignored) files
-            ProcessBuilder pb = new ProcessBuilder(
-                "git", "ls-files", "--cached", "--others", "--exclude-standard",
-                "--", projectRoot.getAbsolutePath()
-            );
+            File hgRoot = findHgRoot(projectRoot);
+            File workDir = hgRoot != null ? hgRoot : projectRoot;
+            // hg files lists versioned (non-ignored) files relative to repo root
+            ProcessBuilder pb = new ProcessBuilder("hg", "files");
             pb.directory(workDir);
             pb.redirectErrorStream(true);
             Process proc = pb.start();
 
             Set<String> files = Collections.synchronizedSet(new LinkedHashSet<>());
-            org.openide.util.RequestProcessor.Task readerTask = GIT_RP.post(() -> {
+            org.openide.util.RequestProcessor.Task readerTask = HG_RP.post(() -> {
                 try (BufferedReader r = new BufferedReader(
                         new InputStreamReader(proc.getInputStream(), StandardCharsets.UTF_8))) {
                     String line;
@@ -77,13 +74,13 @@ public class GitIgnoreStrategy implements VcsIgnoreStrategy {
                 boolean ok = proc.waitFor(CMD_TIMEOUT_SEC, TimeUnit.SECONDS);
                 if (!ok) {
                     proc.destroyForcibly();
-                    LOG.log(Level.WARNING, "git ls-files timed out in {0}", projectRoot);
+                    LOG.log(Level.WARNING, "hg files timed out in {0}", projectRoot);
                     return Collections.emptySet();
                 }
                 readerTask.waitFinished(1000);
                 int exitCode = proc.exitValue();
                 if (exitCode != 0) {
-                    LOG.log(Level.WARNING, "git ls-files failed (exit {0}) in {1}",
+                    LOG.log(Level.WARNING, "hg files failed (exit {0}) in {1}",
                             new Object[]{exitCode, projectRoot});
                     return Collections.emptySet();
                 }
@@ -95,7 +92,7 @@ public class GitIgnoreStrategy implements VcsIgnoreStrategy {
                 readerTask.waitFinished(1000);
             }
         } catch (Exception e) {
-            LOG.log(Level.WARNING, "git ls-files failed in " + projectRoot, e);
+            LOG.log(Level.WARNING, "hg files failed in " + projectRoot, e);
             return Collections.emptySet();
         }
     }
@@ -103,24 +100,39 @@ public class GitIgnoreStrategy implements VcsIgnoreStrategy {
     @Override
     public boolean isIgnored(File projectRoot, File file) {
         try {
-            File gitRoot = findGitRoot(projectRoot);
-            File workDir = gitRoot != null ? gitRoot : projectRoot;
+            File hgRoot = findHgRoot(projectRoot);
+            File workDir = hgRoot != null ? hgRoot : projectRoot;
+            // hg status -i outputs ignored files; empty output means not ignored
             ProcessBuilder pb = new ProcessBuilder(
-                "git", "check-ignore", "-q", file.getAbsolutePath()
+                "hg", "status", "-i", file.getAbsolutePath()
             );
             pb.directory(workDir);
-            pb.redirectOutput(ProcessBuilder.Redirect.DISCARD);
             pb.redirectError(ProcessBuilder.Redirect.DISCARD);
             Process proc = pb.start();
+
+            Set<String> output = Collections.synchronizedSet(new LinkedHashSet<>());
+            org.openide.util.RequestProcessor.Task readerTask = HG_RP.post(() -> {
+                try (BufferedReader r = new BufferedReader(
+                        new InputStreamReader(proc.getInputStream(), StandardCharsets.UTF_8))) {
+                    String line;
+                    while ((line = r.readLine()) != null) {
+                        output.add(line);
+                    }
+                } catch (Exception e) {
+                    // Expected when process is closed/destroyed
+                }
+            });
+
             boolean ok = proc.waitFor(CMD_TIMEOUT_SEC, TimeUnit.SECONDS);
             if (!ok) {
                 proc.destroyForcibly();
                 return false; // don't ignore on timeout
             }
-            // git check-ignore exits 0 if ignored, 1 if not
-            return proc.exitValue() == 0;
+            readerTask.waitFinished(1000);
+            // hg status -i exits 0 and outputs ignored files; empty = not ignored
+            return !output.isEmpty();
         } catch (Exception e) {
-            LOG.log(Level.FINE, "git check-ignore failed for {0}", file);
+            LOG.log(Level.FINE, "hg status -i failed for {0}", file);
             return false;
         }
     }

@@ -19,6 +19,7 @@
     - `CollapsibleCodePane`: Syntax highlighted code block rendering.
 
 ## Important Coding Rules
+- **Line Length**: Keep the line length <= 120 characters, but try to fit entire statements into the line without needlessly splitting into small chunks.
 - **Logging**: Use index-based placeholders (`{0}`). NO `warning()` method (use
   `LOG.log(Level.WARNING, ...)` or `severe/warn/info/fine`). Pass exceptions as the LAST argument.
 - **Theming**: Use `ThemeManager.getCurrentTheme()`. Dark mode icons require `_dark.svg` suffix.

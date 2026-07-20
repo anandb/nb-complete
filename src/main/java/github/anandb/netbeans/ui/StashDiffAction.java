@@ -71,6 +71,7 @@ import org.openide.windows.WindowManager;
 import org.openide.util.lookup.ServiceProvider;
 
 import github.anandb.netbeans.contract.StashDiffControl;
+import github.anandb.netbeans.support.LanguageResolver;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.PreferenceKeys;
@@ -640,7 +641,7 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
             diffPanel.removeAll();
             try {
                 String name = new File(fd.filePath).getName();
-                String mime = mimeFor(name);
+                String mime = LanguageResolver.fromPathToMime(name);
                 String baseTitle = fd.leftLabel != null
                         ? fd.leftLabel
                         : "Base (" + statusName(fd.status) + ")";
@@ -743,50 +744,6 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
         }
     }
 
-    /** Maps file name to MIME type for syntax highlighting in the diff view. */
-    private static String mimeFor(String fileName) {
-        String ext = "";
-        int dot = fileName.lastIndexOf('.');
-        if (dot >= 0) ext = fileName.substring(dot + 1).toLowerCase();
-        return switch (ext) {
-            case "java"       -> "text/x-java";
-            case "js", "jsx"  -> "text/javascript";
-            case "ts", "tsx"  -> "text/typescript";
-            case "py"         -> "text/x-python";
-            case "rb"         -> "text/x-ruby";
-            case "php"        -> "text/x-php";
-            case "c", "h"     -> "text/x-c";
-            case "cpp", "cc", "cxx", "hpp" -> "text/x-c++";
-            case "cs"         -> "text/x-csharp";
-            case "go"         -> "text/x-go";
-            case "rs"         -> "text/x-rust";
-            case "swift"      -> "text/x-swift";
-            case "kt", "kts"  -> "text/x-kotlin";
-            case "scala"      -> "text/x-scala";
-            case "xml", "xsd", "xsl", "xslt" -> "text/xml";
-            case "html", "htm", "xhtml" -> "text/html";
-            case "css"        -> "text/css";
-            case "scss", "sass" -> "text/x-scss";
-            case "less"       -> "text/x-less";
-            case "json"       -> "application/json";
-            case "yaml", "yml" -> "text/x-yaml";
-            case "toml"       -> "text/x-toml";
-            case "sh", "bash", "zsh" -> "text/x-shellscript";
-            case "sql"        -> "text/x-sql";
-            case "md", "markdown" -> "text/x-markdown";
-            case "properties" -> "text/x-properties";
-            case "gradle"     -> "text/x-gradle";
-            case "groovy", "gvy", "gy", "gsh" -> "text/x-groovy";
-            case "lua"        -> "text/x-lua";
-            case "r"          -> "text/x-r";
-            case "pl", "pm"   -> "text/x-perl";
-            case "vim"        -> "text/x-vim";
-            case "diff", "patch" -> "text/x-diff";
-            case "svg"        -> "text/xml";
-            case "ini", "cfg", "conf" -> "text/x-ini";
-            default           -> "text/plain";
-        };
-    }
 
     /** Show a user-friendly error dialog. */
     private static void showStashError(Component parent, Exception ex) {

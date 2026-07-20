@@ -80,6 +80,7 @@
             <folder name="Lookup">
                 <file name="github-anandb-netbeans-project-mdproject-MdProjectInformation.instance"/>
             </folder>
+            <folder name="Customizer"/>
         </folder>
     </folder>
     <folder name="Templates">

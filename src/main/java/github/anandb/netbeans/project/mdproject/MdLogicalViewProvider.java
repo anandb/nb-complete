@@ -50,9 +50,7 @@ public final class MdLogicalViewProvider implements LogicalViewProvider {
             @Override
             public Action[] getActions(boolean context) {
                 return new Action[] {
-                    CommonProjectActions.customizeProjectAction(),
                     CommonProjectActions.closeProjectAction(),
-                    CommonProjectActions.deleteProjectAction(),
                 };
             }
         };

@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.WeakHashMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -44,7 +45,8 @@ public class FileCacheManager implements FileCacheQuery {
     private static final Logger LOG = Logger.getLogger(FileCacheManager.class.getName());
     private static final RequestProcessor RP = new RequestProcessor("GoToFile-CacheBuilder", 1);
 
-    private final List<FileCacheQuery.CachedFile> files = new CopyOnWriteArrayList<>();
+    /** Files keyed by absolute path for O(1) dedup across overlapping projects. */
+    private final ConcurrentHashMap<String, FileCacheQuery.CachedFile> files = new ConcurrentHashMap<>();
     private volatile boolean ready;
     private final List<Runnable> readyListeners = new CopyOnWriteArrayList<>();
     private final Object readyLock = new Object();
@@ -100,7 +102,7 @@ public class FileCacheManager implements FileCacheQuery {
 
     @Override
     public Collection<CachedFile> getAllFiles() {
-        return Collections.unmodifiableList(new ArrayList<>(files));
+        return Collections.unmodifiableCollection(new ArrayList<>(files.values()));
     }
 
     /** Registers a listener that fires once when the cache first becomes ready. */
@@ -190,7 +192,11 @@ public class FileCacheManager implements FileCacheQuery {
                 for (String relPath : nonIgnored) {
                     FileObject child = root.getFileObject(relPath);
                     if (child != null && !child.isFolder()) {
-                        files.add(new FileCacheQuery.CachedFile(child, projectName, relPath));
+                        File f = FileUtil.toFile(child);
+                        if (f != null) {
+                            files.put(f.getAbsolutePath(),
+                                    new FileCacheQuery.CachedFile(child, projectName, relPath));
+                        }
                     }
                 }
             }
@@ -216,7 +222,8 @@ public class FileCacheManager implements FileCacheQuery {
                 if (f == null) continue;
                 String relPath = relativize(rootDir, f);
                 if (relPath != null) {
-                    files.add(new FileCacheQuery.CachedFile(child, projectName, relPath));
+                    files.put(f.getAbsolutePath(),
+                            new FileCacheQuery.CachedFile(child, projectName, relPath));
                 }
             }
         }
@@ -233,7 +240,8 @@ public class FileCacheManager implements FileCacheQuery {
                 if (!strategy.isIgnored(rootDir, f)) {
                     String rel = relativize(rootDir, f);
                     if (rel != null) {
-                        files.add(new FileCacheQuery.CachedFile(fo, projectName, rel));
+                        files.put(f.getAbsolutePath(),
+                                new FileCacheQuery.CachedFile(fo, projectName, rel));
                     }
                 }
             }
@@ -241,19 +249,24 @@ public class FileCacheManager implements FileCacheQuery {
             @Override
             public void fileDeleted(FileEvent fe) {
                 FileObject fo = fe.getFile();
-                files.removeIf(cf -> cf.fileObject().equals(fo));
+                File f = FileUtil.toFile(fo);
+                if (f != null) {
+                    files.remove(f.getAbsolutePath());
+                }
             }
 
             @Override
             public void fileRenamed(FileRenameEvent fe) {
                 FileObject fo = fe.getFile();
-                // Remove old, re-add new
-                files.removeIf(cf -> cf.fileObject().equals(fo));
+                // Remove stale entries whose FileObject is no longer valid after rename
+                files.values().removeIf(cf -> !cf.fileObject().isValid());
+                // Add new path
                 File f = FileUtil.toFile(fo);
                 if (f != null && !strategy.isIgnored(rootDir, f)) {
                     String rel = relativize(rootDir, f);
                     if (rel != null) {
-                        files.add(new FileCacheQuery.CachedFile(fo, projectName, rel));
+                        files.put(f.getAbsolutePath(),
+                                new FileCacheQuery.CachedFile(fo, projectName, rel));
                     }
                 }
             }
@@ -274,7 +287,10 @@ public class FileCacheManager implements FileCacheQuery {
             if (new GitIgnoreStrategy().isAvailable(dir)) {
                 return new GitIgnoreStrategy();
             }
-            return new NoOpIgnoreStrategy();
+            if (new HgIgnoreStrategy().isAvailable(dir)) {
+                return new HgIgnoreStrategy();
+            }
+            return new NoVcsIgnoreStrategy();
         });
     }
 
