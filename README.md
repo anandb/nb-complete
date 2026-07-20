@@ -1,6 +1,6 @@
 # Coding Assistant
 
-[![Version](https://img.shields.io/badge/version-1.11.0-blue.svg)](pom.xml)
+[![Version](https://img.shields.io/badge/version-1.11.1-blue.svg)](pom.xml)
 [![Build Status](https://img.shields.io/badge/build-success-brightgreen.svg)](https://github.com/anandb/nb-complete)
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.anandb/beanbot)](https://central.sonatype.com/artifact/io.github.anandb/beanbot/versions)
 [![NetBeans](https://img.shields.io/badge/NetBeans-RELEASE220-blue.svg)](https://netbeans.apache.org/download/index.html)
