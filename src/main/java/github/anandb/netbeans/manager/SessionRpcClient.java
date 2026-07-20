@@ -25,24 +25,20 @@ final class SessionRpcClient {
         this.processManager = processManager;
     }
 
-    private long getTimeout(long defaultTimeout) {
-        long global = github.anandb.netbeans.support.PluginSettings.getSessionIdleTimeout();
-        return global > 0 ? Math.max(defaultTimeout, global) : defaultTimeout;
-    }
 
     CompletableFuture<JsonNode> getSessions(String directory) {
         Map<String, Object> params = new java.util.HashMap<>();
         if (directory != null && !directory.isEmpty()) {
             params.put("cwd", directory);
         }
-        return processManager.sendRequest("session/list", params, getTimeout(60), java.util.concurrent.TimeUnit.SECONDS);
+        return processManager.sendRequest("session/list", params);
     }
 
     CompletableFuture<JsonNode> createSession(String cwd) {
         Map<String, Object> params = new java.util.HashMap<>();
         params.put("cwd", cwd);
         params.put("mcpServers", processManager.getToolExecutor().getServerConfig());
-        return processManager.sendRequest("session/new", params, getTimeout(60), java.util.concurrent.TimeUnit.SECONDS);
+        return processManager.sendRequest("session/new", params);
     }
 
     CompletableFuture<JsonNode> loadSessionFromServer(String sessionId, String cwd) {
@@ -52,7 +48,7 @@ final class SessionRpcClient {
             params.put("cwd", cwd);
         }
         params.put("mcpServers", processManager.getToolExecutor().getServerConfig());
-        return processManager.sendRequest("session/load", params, getTimeout(120), java.util.concurrent.TimeUnit.SECONDS);
+        return processManager.sendRequest("session/load", params);
     }
 
     CompletableFuture<Void> renameSessionOnServer(String sessionId, String title) {
@@ -67,6 +63,6 @@ final class SessionRpcClient {
                 "sessionId", sessionId,
                 "configId", configId,
                 "value", value
-        ), getTimeout(30), java.util.concurrent.TimeUnit.SECONDS);
+        ));
     }
 }

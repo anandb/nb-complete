@@ -314,10 +314,6 @@ public class SessionManager implements SessionQuery, SessionControl {
                         LOG.warn("getSessions: failed to deserialize: {0}", ExceptionUtils.getMessage(e), e);
                         return new ArrayList<Session>();
                     }
-                })
-                .exceptionally(ex -> {
-                    LOG.warn("getSessions: rpc error: {0}", ExceptionUtils.getRootCauseMessage(ex), ex);
-                    return new ArrayList<>();
                 });
     }
 
@@ -326,12 +322,8 @@ public class SessionManager implements SessionQuery, SessionControl {
             return CompletableFuture.completedFuture(new ArrayList<>());
         }
         LOG.fine("getSessionsForDirectories: querying {0} directories: {1}", directories.size(), directories);
-        return getSessionsBatched(directories, 5, 0)
-                .orTimeout(3, TimeUnit.MINUTES)
-                .exceptionally(ex -> {
-                    LOG.warn("Failed to get sessions: {0}", ExceptionUtils.getRootCauseMessage(ex), ex);
-                    return new ArrayList<>();
-                });
+        return getSessionsBatched(directories, 2, 0)
+                .orTimeout(3, TimeUnit.MINUTES);
     }
 
     private CompletableFuture<List<Session>> getSessionsBatched(List<String> dirs, int batchSize, int startIndex) {
@@ -488,7 +480,7 @@ public class SessionManager implements SessionQuery, SessionControl {
                     notifySessionListUpdated(filteredSessions);
                 })
                 .exceptionally(ex -> {
-                    LOG.warn("Failed to refresh sessions: {0}", ExceptionUtils.getMessage(ex), ex);
+                    LOG.warn("Failed to refresh sessions, keeping cache: {0}", ExceptionUtils.getRootCauseMessage(ex), ex);
                     return null;
                 });
     }

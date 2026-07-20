@@ -17,7 +17,7 @@ public final class PluginSettings {
     private static final String KEY_CUSTOM_USER_ICON = "customUserIcon";
     private static final String KEY_SESSION_IDLE_TIMEOUT = "sessionIdleTimeout";
     private static final String KEY_MAX_MESSAGES = PreferenceKeys.MAX_MESSAGES;
-    private static final int DEFAULT_SESSION_IDLE_TIMEOUT = 300;
+    private static final int DEFAULT_SESSION_IDLE_TIMEOUT = 600;
     private static final int DEFAULT_MAX_MESSAGES = 100;
     private static final int DEFAULT_TOOLBAR_ICON_SIZE = 24;
     private static final String DEFAULT_PREAMBLE;

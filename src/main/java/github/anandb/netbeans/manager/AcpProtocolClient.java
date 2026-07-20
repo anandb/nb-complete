@@ -12,13 +12,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
+
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
@@ -47,8 +46,6 @@ public class AcpProtocolClient implements Closeable {
     private final InputStream inputStream;
     private final Map<Long, CompletableFuture<JsonNode>> pendingRequests = new ConcurrentHashMap<>();
     
-    /** Per-request idle timeout in seconds. A request times out when no data arrives on the connection for this duration. */
-    private final Map<Long, Long> pendingRequestIdleTimeouts = new ConcurrentHashMap<>();
     private final Map<String, Consumer<JsonNode>> notificationListeners = new ConcurrentHashMap<>();
     private final Map<String, RequestHandler> requestHandlers = new ConcurrentHashMap<>();
     private final BufferedWriter writer;
@@ -89,10 +86,6 @@ public class AcpProtocolClient implements Closeable {
     }
 
     public CompletableFuture<JsonNode> sendRequest(String method, Object params) {
-        return sendRequest(method, params, 0);
-    }
-
-    public CompletableFuture<JsonNode> sendRequest(String method, Object params, long idleTimeoutSeconds) {
         if (closed) {
             return CompletableFuture.failedFuture(new IOException("Client closed"));
         }
@@ -135,10 +128,6 @@ public class AcpProtocolClient implements Closeable {
             LOG.severe("IOException sending request method={0}, id={1}", method, id, e);
             future.completeExceptionally(e);
             notifyConnectionError(e);
-        }
-
-        if (idleTimeoutSeconds > 0) {
-            pendingRequestIdleTimeouts.put(id, idleTimeoutSeconds);
         }
 
         return future;
@@ -216,30 +205,7 @@ public class AcpProtocolClient implements Closeable {
         long now = System.nanoTime();
         long idleNanos = now - lastDataTime;
 
-        // Check per-request idle timeouts — fail individual requests when
-        // no data arrives on the connection for the specified duration.
-        // Uses connection-level lastDataTime so ANY inbound data resets
-        // the idle timer for all pending requests.
-        if (!pendingRequestIdleTimeouts.isEmpty()) {
-            List<Long> timedOut = new ArrayList<>();
-            for (Map.Entry<Long, Long> entry : pendingRequestIdleTimeouts.entrySet()) {
-                long id = entry.getKey();
-                long idleTimeoutSecs = entry.getValue();
-                if (idleNanos >= TimeUnit.SECONDS.toNanos(idleTimeoutSecs)) {
-                    timedOut.add(id);
-                }
-            }
-            for (Long id : timedOut) {
-                pendingRequestIdleTimeouts.remove(id);
-                CompletableFuture<JsonNode> future = pendingRequests.remove(id);
-                if (future != null && !future.isDone()) {
-                    long idleSecs = TimeUnit.NANOSECONDS.toSeconds(idleNanos);
-                    LOG.warn("Request id={0} idle timeout after {1}s", id, idleSecs);
-                    future.completeExceptionally(
-                            new TimeoutException("No response received for " + idleSecs + "s"));
-                }
-            }
-        }
+
 
         // Global connection idle timeout (existing behavior)
         if (pendingRequests.isEmpty()) {
@@ -289,7 +255,6 @@ public class AcpProtocolClient implements Closeable {
                 handleIncomingRequest(id, method, params);
             } else {
                 // Response to Outgoing Request
-                pendingRequestIdleTimeouts.remove(id);
                 CompletableFuture<JsonNode> future = pendingRequests.remove(id);
                 if (future != null) {
                     if (node.has("error")) {
@@ -431,7 +396,6 @@ public class AcpProtocolClient implements Closeable {
             }
         });
         pendingRequests.clear();
-        pendingRequestIdleTimeouts.clear();
         notificationListeners.clear();
         requestHandlers.clear();
     }

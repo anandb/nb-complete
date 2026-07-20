@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.TimeUnit;
+
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.prefs.PreferenceChangeEvent;
@@ -142,13 +142,7 @@ public class ProcessManager implements ProcessControl {
         return client.sendRequest(method, params);
     }
 
-    public CompletableFuture<JsonNode> sendRequest(String method, Object params, long timeout, TimeUnit unit) {
-        AcpProtocolClient client = rpcClient.get();
-        if (client == null) {
-            return CompletableFuture.failedFuture(new RuntimeException(operationalError()));
-        }
-        return client.sendRequest(method, params, unit.toSeconds(timeout));
-    }
+
 
     public void sendNotification(String method, Object params) {
         AcpProtocolClient client = rpcClient.get();

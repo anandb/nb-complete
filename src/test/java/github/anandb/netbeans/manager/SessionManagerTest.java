@@ -1,14 +1,13 @@
 package github.anandb.netbeans.manager;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
+
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -69,10 +68,10 @@ class SessionManagerTest {
         JsonNode mockResponse = mapper.createObjectNode()
                 .put("id", "new-id")
                 .put("title", "New");
-        when(processManager.sendRequest(eq("session/new"), any(), anyLong(), eq(TimeUnit.SECONDS)))
+        when(processManager.sendRequest(eq("session/new"), any()))
                 .thenReturn(CompletableFuture.completedFuture(mockResponse));
 
-        sessionManager.createNewSession("/dir");
-        verify(processManager).sendRequest(eq("session/new"), any(), anyLong(), eq(TimeUnit.SECONDS));
+        sessionManager.createSession("/test/cwd");
+        verify(processManager).sendRequest(eq("session/new"), any());
     }
 }
