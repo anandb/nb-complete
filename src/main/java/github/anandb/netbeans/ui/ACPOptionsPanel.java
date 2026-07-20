@@ -41,7 +41,6 @@ import javax.swing.UIManager;
 import javax.swing.SwingUtilities;
 
 import github.anandb.netbeans.contract.SessionControl;
-import org.openide.util.Lookup;
 import github.anandb.netbeans.support.Logger;
 
 import static org.apache.commons.lang3.StringUtils.isBlank;
@@ -55,7 +54,7 @@ import github.anandb.netbeans.ui.platform.SessionService;
 public class ACPOptionsPanel extends JPanel {
     private static final Logger LOG = Logger.from(ACPOptionsPanel.class);
     private static final long serialVersionUID = 1L;
-    private final SessionService sessionService = Lookup.getDefault().lookup(PlatformBridge.class).sessionService();
+    private final SessionService sessionService = PlatformBridge.sessionServiceSafe();
     private final ACPOptionsPanelController controller;
     private JLabel jLabel1;
     private JTextField pathField;

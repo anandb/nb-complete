@@ -29,7 +29,6 @@ import github.anandb.netbeans.model.SessionConfigOption;
 import github.anandb.netbeans.model.SessionConfigSelectOption;
 import github.anandb.netbeans.support.Logger;
 import org.openide.util.NbBundle;
-import org.openide.util.Lookup;
 
 import github.anandb.netbeans.ui.platform.PlatformBridge;
 import github.anandb.netbeans.ui.platform.SessionService;
@@ -41,7 +40,7 @@ public class ConfigPanelController {
 
     private static final Logger LOG = Logger.from(ConfigPanelController.class);
 
-    private final SessionService sessionService = Lookup.getDefault().lookup(PlatformBridge.class).sessionService();
+    private final SessionService sessionService = PlatformBridge.sessionServiceSafe();
 
     private final JPanel configPanel;
     private final JComboBox<ConfigItem> modeCombo;

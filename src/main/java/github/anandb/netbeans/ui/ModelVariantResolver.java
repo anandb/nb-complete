@@ -14,7 +14,6 @@ import github.anandb.netbeans.model.SessionConfigSelectOption;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
 import github.anandb.netbeans.ui.platform.SessionService;
-import org.openide.util.Lookup;
 
 /**
  * Resolves model variants and startup default values for config combos.
@@ -24,7 +23,7 @@ final class ModelVariantResolver {
 
     private static final Logger LOG = Logger.from(ModelVariantResolver.class);
 
-    private final SessionService sessionService = Lookup.getDefault().lookup(PlatformBridge.class).sessionService();
+    private final SessionService sessionService = PlatformBridge.sessionServiceSafe();
 
     private final LinkedHashMap<String, List<ConfigItem>> modelVariants = new LinkedHashMap<>();
     private String currentConfigModelId = null;

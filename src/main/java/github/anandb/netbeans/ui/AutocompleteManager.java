@@ -27,7 +27,6 @@ import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
 import github.anandb.netbeans.ui.platform.ProcessService;
-import org.openide.util.Lookup;
 
 // DSL-CONTROLLER: not a view — autocomplete popup state (filter, navigate,
 // enter-to-send). The popup JPopupMenu is a leaf the DSL wraps; the keyboard
@@ -55,7 +54,7 @@ public class AutocompleteManager {
     private static final Logger LOG = Logger.from(AutocompleteManager.class);
     private String lastPrefix;
 
-    private final ProcessService processService = Lookup.getDefault().lookup(PlatformBridge.class).processService();
+    private final ProcessService processService = PlatformBridge.processServiceSafe();
 
     private final PlaceholderTextArea inputArea;
     private final Runnable sendMessageAction;

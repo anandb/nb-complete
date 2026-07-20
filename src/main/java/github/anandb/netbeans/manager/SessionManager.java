@@ -326,17 +326,36 @@ public class SessionManager implements SessionQuery, SessionControl {
             return CompletableFuture.completedFuture(new ArrayList<>());
         }
         LOG.fine("getSessionsForDirectories: querying {0} directories: {1}", directories.size(), directories);
-        List<CompletableFuture<List<Session>>> futures = directories.stream()
-                .map(dir -> getSessions(dir))
-                .toList();
-        return CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new))
+        return getSessionsBatched(directories, 5, 0)
                 .orTimeout(3, TimeUnit.MINUTES)
-                .thenApply(v -> futures.stream()
-                .flatMap(f -> f.join().stream())
-                .toList())
                 .exceptionally(ex -> {
                     LOG.warn("Failed to get sessions: {0}", ExceptionUtils.getRootCauseMessage(ex), ex);
                     return new ArrayList<>();
+                });
+    }
+
+    private CompletableFuture<List<Session>> getSessionsBatched(List<String> dirs, int batchSize, int startIndex) {
+        if (startIndex >= dirs.size()) {
+            return CompletableFuture.completedFuture(new ArrayList<>());
+        }
+        int endIndex = Math.min(startIndex + batchSize, dirs.size());
+        List<String> batch = dirs.subList(startIndex, endIndex);
+
+        List<CompletableFuture<List<Session>>> futures = batch.stream()
+                .map(dir -> getSessions(dir))
+                .toList();
+
+        return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
+                .thenCompose(v -> {
+                    List<Session> currentBatch = new ArrayList<>();
+                    for (CompletableFuture<List<Session>> f : futures) {
+                        currentBatch.addAll(f.join());
+                    }
+                    return getSessionsBatched(dirs, batchSize, endIndex)
+                            .thenApply(nextBatch -> {
+                                currentBatch.addAll(nextBatch);
+                                return currentBatch;
+                            });
                 });
     }
 

@@ -4,7 +4,6 @@ import java.util.concurrent.CompletableFuture;
 
 import javax.swing.SwingUtilities;
 
-import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -22,7 +21,7 @@ final class PermissionDialogManager {
 
     private static final Logger LOG = Logger.from(PermissionDialogManager.class);
 
-    private final SessionService sessionService = Lookup.getDefault().lookup(PlatformBridge.class).sessionService();
+    private final SessionService sessionService = PlatformBridge.sessionServiceSafe();
 
     private final ChatThreadPanel chatPanel;
 

@@ -36,8 +36,8 @@ import org.openide.util.NbBundle;
 // kept imperative.
 public class SessionLifecycleHandler implements SessionListener {
 
-    private final SessionService sessionService = Lookup.getDefault().lookup(PlatformBridge.class).sessionService();
-    private final ProjectContext projectContext = Lookup.getDefault().lookup(PlatformBridge.class).projectContext();
+    private final SessionService sessionService = PlatformBridge.sessionServiceSafe();
+    private final ProjectContext projectContext = PlatformBridge.projectContextSafe();
 
     private static final Logger LOG = Logger.from(SessionLifecycleHandler.class);
 

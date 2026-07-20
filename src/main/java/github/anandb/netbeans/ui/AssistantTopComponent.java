@@ -31,7 +31,6 @@ import org.openide.awt.ActionID;
 import org.openide.DialogDisplayer;
 import org.openide.NotifyDescriptor;
 import org.openide.util.NbBundle;
-import org.openide.util.Lookup;
 import org.openide.windows.TopComponent;
 import org.openide.windows.WindowManager;
 
@@ -70,8 +69,8 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     private static final Logger LOG = Logger.from(AssistantTopComponent.class);
 
     private static final long serialVersionUID = 1L;
-    private final SessionService sessionService = Lookup.getDefault().lookup(PlatformBridge.class).sessionService();
-    private final ProjectContext projectContext = Lookup.getDefault().lookup(PlatformBridge.class).projectContext();
+    private final SessionService sessionService = PlatformBridge.sessionServiceSafe();
+    private final ProjectContext projectContext = PlatformBridge.projectContextSafe();
     private final ChatThreadPanel chatPanel;
     private final PlaceholderTextArea inputArea;
     private final JButton sendBtn;

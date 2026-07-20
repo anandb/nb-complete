@@ -3,7 +3,6 @@ package github.anandb.netbeans.ui;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
-import org.openide.util.Lookup;
 import github.anandb.netbeans.contract.SlashCommandInterceptor;
 import github.anandb.netbeans.contract.SlashCommandCallback;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
@@ -24,7 +23,7 @@ public class InputHandler {
     private final AutocompleteManager autocompleteManager;
     private final MessageSender messageSender;
     private final MessageHistory messageHistory;
-    private final ProcessService processService = Lookup.getDefault().lookup(PlatformBridge.class).processService();
+    private final ProcessService processService = PlatformBridge.processServiceSafe();
 
     public InputHandler(
             PlaceholderTextArea inputArea,

@@ -5,7 +5,6 @@ import javax.swing.SwingUtilities;
 import javax.swing.event.PopupMenuEvent;
 import javax.swing.event.PopupMenuListener;
 import github.anandb.netbeans.model.SessionItem;
-import org.openide.util.Lookup;
 
 import github.anandb.netbeans.ui.platform.PlatformBridge;
 import github.anandb.netbeans.ui.platform.SessionService;
@@ -18,7 +17,7 @@ import github.anandb.netbeans.ui.platform.SessionService;
 // state. Stays imperative; the JComboBox it drives is bound by ChatLayoutSpec.
 public class SessionDropdownHandler {
 
-    private final SessionService sessionService = Lookup.getDefault().lookup(PlatformBridge.class).sessionService();
+    private final SessionService sessionService = PlatformBridge.sessionServiceSafe();
 
     private final PlaceholderTextArea inputArea;
 
