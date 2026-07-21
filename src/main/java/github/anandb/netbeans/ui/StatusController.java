@@ -1,6 +1,7 @@
 package github.anandb.netbeans.ui;
 
 import java.awt.CardLayout;
+import java.util.function.Consumer;
 import java.util.regex.Pattern;
 import javax.swing.JButton;
 import javax.swing.JLabel;
@@ -28,6 +29,8 @@ public class StatusController {
     private final JButton stopBtn;
     private final PlaceholderTextArea inputArea;
     private final JButton toggleOptionsBtn;
+
+    private volatile Consumer<Boolean> processingListener;
 
     private volatile boolean animatedStatus = false;
     private int thinkingDots = 0;
@@ -110,6 +113,10 @@ public class StatusController {
 
     // -- Button state --
 
+    public void setProcessingListener(Consumer<Boolean> listener) {
+        this.processingListener = listener;
+    }
+
     /** MUST be called on EDT. */
     public void updateButtonState(boolean isProcessing) {
         sendBtn.setEnabled(!isProcessing);
@@ -121,6 +128,10 @@ public class StatusController {
             thinkingTimer.start();
         } else {
             thinkingTimer.stop();
+        }
+        Consumer<Boolean> pl = processingListener;
+        if (pl != null) {
+            pl.accept(isProcessing);
         }
     }
 

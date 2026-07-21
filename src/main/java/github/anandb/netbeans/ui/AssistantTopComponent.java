@@ -157,6 +157,8 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         add(mainSplitPane, BorderLayout.CENTER);
 
         statusController = new StatusController(statusLabel, sendBtn, stopBtn, inputArea, toggleOptionsBtn);
+        statusController.setProcessingListener(
+                processing -> configPanelController.setCombosEnabled(!processing));
         attachmentUiHandler = new AttachmentUiHandler(attachmentManager, statusController, inputArea, AssistantTopComponent.this);
 
         // Add attachment button to the right status panel (before settings button)

@@ -436,4 +436,13 @@ public class ConfigPanelController {
     public void setOnThinkingSelectedCallback(Runnable r) {
         this.onThinkingSelectedCallback = r;
     }
+
+    /** Enable or disable all config combo boxes (agent, model, thinking). */
+    public void setCombosEnabled(boolean enabled) {
+        SwingUtilities.invokeLater(() -> {
+            modeCombo.setEnabled(enabled);
+            modelCombo.setEnabled(enabled);
+            thinkingCombo.setEnabled(enabled && thinkingCombo.getItemCount() > 0);
+        });
+    }
 }

@@ -1,5 +1,15 @@
 # Release Notes
 
+## v1.11.3 (Changes since v1.11.2)
+
+### UI
+- **Config combos disabled during processing**: Agent, model, and thinking level
+  dropdowns are now disabled while a request is being processed, preventing
+  mid-request config changes that could cause inconsistent state.
+
+### Housekeeping
+- Version bumped to 1.11.3.
+
 ## v1.11.2 (Changes since v1.11.1)
 
 ### Fixes
