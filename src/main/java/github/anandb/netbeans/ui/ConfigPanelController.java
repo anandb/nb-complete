@@ -191,13 +191,18 @@ public class ConfigPanelController {
         SwingUtilities.invokeLater(() -> {
             isUpdatingConfigControls = true;
             try {
+                // First pass: parse model variants before any combo population,
+                // so thinking-level filtering can rely on modelVariants being ready.
                 for (SessionConfigOption opt : options) {
-                    JComboBox<ConfigItem> combo = resolveComboTarget(opt.category());
-                    if (combo == null) continue;
-
                     if ("model".equals(opt.category())) {
                         modelResolver.parseModelVariants(opt);
                     }
+                }
+
+                // Second pass: populate all combos with variants already resolved.
+                for (SessionConfigOption opt : options) {
+                    JComboBox<ConfigItem> combo = resolveComboTarget(opt.category());
+                    if (combo == null) continue;
 
                     combo.removeAllItems();
 

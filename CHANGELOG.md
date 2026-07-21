@@ -1,5 +1,26 @@
 # Release Notes
 
+## v1.11.2 (Changes since v1.11.1)
+
+### Fixes
+- **Shell wildcards in Jump to File**: Glob patterns like `*.java` now find files in
+  subdirectories — matching against both the relative path and the bare file name so
+  `*Test*` finds all test files regardless of directory depth.
+- **GPT thinking level**: Filtered out `default`/`None`/empty thinking options when
+  the model already has variants that encode the thinking level. GPT models need a
+  concrete reasoning effort value (`low`/`medium`/`high`) to function.
+- **Model variant ordering race**: Config controls now parse model variants in a
+  dedicated first pass before populating any combo boxes, ensuring the thinking-level
+  dropdown always sees the complete variant list regardless of server option order.
+
+### UI
+- **Stash diff identical files**: When the left and right pane contents match, a
+  centered italic "Files are identical" message is shown instead of an empty
+  side-by-side diff view.
+
+### Housekeeping
+- Version bumped to 1.11.2.
+
 ## v1.11.1 (Changes since v1.11.0)
 
 ### Fixes
