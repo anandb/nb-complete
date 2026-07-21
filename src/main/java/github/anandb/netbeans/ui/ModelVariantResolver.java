@@ -98,7 +98,9 @@ final class ModelVariantResolver {
         }
 
         if (isThinking) {
-            if (opt.options().stream().anyMatch(o -> "default".equalsIgnoreCase(o.value()))) {
+            // If the model already has variants that encode thinking level,
+            // "default" would be meaningless — GPT models need a real level.
+            if (modelVariants.isEmpty() && opt.options().stream().anyMatch(o -> "default".equalsIgnoreCase(o.value()))) {
                 return sendAndReturn(opt, "default", currentId);
             }
         }

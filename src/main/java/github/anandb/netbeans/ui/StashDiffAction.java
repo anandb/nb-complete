@@ -2,6 +2,7 @@ package github.anandb.netbeans.ui;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.FlowLayout;
@@ -642,6 +643,19 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
             diffPanel.removeAll();
             try {
                 String name = new File(fd.filePath).getName();
+
+                // Identical content: show clear message instead of empty diff view
+                if (fd.headContent.equals(fd.stashContent)) {
+                    JLabel identicalLabel = new JLabel("Files are identical", JLabel.CENTER);
+                    identicalLabel.setFont(identicalLabel.getFont().deriveFont(Font.ITALIC, 14f));
+                    identicalLabel.setForeground(new Color(128, 128, 128));
+                    diffPanel.add(identicalLabel, BorderLayout.CENTER);
+                    currentController = null;
+                    diffPanel.revalidate();
+                    diffPanel.repaint();
+                    return;
+                }
+
                 String mime = LanguageResolver.fromPathToMime(name);
                 String baseTitle = fd.leftLabel != null
                         ? fd.leftLabel

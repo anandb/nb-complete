@@ -290,6 +290,10 @@ public class GoToFileDialog extends JDialog {
         if (globMatcher != null) {
             Path path = Path.of(relPath);
             if (globMatcher.matches(path)) return true;
+            // Simple globs like *.java or *Test* only match single path elements.
+            // Also try matching against just the file name so *.java finds all .java files.
+            Path namePath = Path.of(fileName);
+            if (globMatcher.matches(namePath)) return true;
         }
 
         return false;

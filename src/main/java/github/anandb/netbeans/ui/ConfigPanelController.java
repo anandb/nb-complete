@@ -258,7 +258,12 @@ public class ConfigPanelController {
                 }
             }
         } else {
+            boolean hasModelVariants = !modelResolver.getModelVariants().isEmpty();
+            boolean isThinking = category != null && (category.contains("thinking") || category.contains("thought"));
             for (SessionConfigSelectOption o : options) {
+                // When model has variants that encode thinking level, skip
+                // "default"/"None"/empty options — GPT models need a real level.
+                if (isThinking && hasModelVariants && isDefaultOrEmptyOption(o)) continue;
                 ConfigItem item = new ConfigItem(o.name(), o.value());
                 combo.addItem(item);
                 if (o.value() != null && valueToSelect != null && o.value().equalsIgnoreCase(valueToSelect)) {
@@ -404,6 +409,13 @@ public class ConfigPanelController {
     private static String capitalize(String s) {
         if (s == null || s.isEmpty()) return s;
         return s.substring(0, 1).toUpperCase() + s.substring(1).toLowerCase();
+    }
+
+    /** Returns true if the option value is meaningless for models that need a real thinking level. */
+    private static boolean isDefaultOrEmptyOption(SessionConfigSelectOption o) {
+        if (o.value() == null || o.value().isBlank()) return true;
+        String v = o.value().toLowerCase(java.util.Locale.ROOT);
+        return "default".equals(v) || "none".equals(v);
     }
 
 
