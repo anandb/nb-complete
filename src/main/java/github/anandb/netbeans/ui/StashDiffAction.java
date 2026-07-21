@@ -647,7 +647,7 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
                 // Identical content: show clear message instead of empty diff view
                 if (fd.headContent.equals(fd.stashContent)) {
                     JLabel identicalLabel = new JLabel("Files are identical", JLabel.CENTER);
-                    identicalLabel.setFont(identicalLabel.getFont().deriveFont(Font.ITALIC, 14f));
+                    identicalLabel.setFont(identicalLabel.getFont().deriveFont(Font.ITALIC, 16f));
                     identicalLabel.setForeground(new Color(128, 128, 128));
                     diffPanel.add(identicalLabel, BorderLayout.CENTER);
                     currentController = null;

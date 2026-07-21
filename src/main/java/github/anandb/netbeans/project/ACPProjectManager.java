@@ -2,8 +2,10 @@ package github.anandb.netbeans.project;
 
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 import github.anandb.netbeans.support.Logger;
@@ -16,13 +18,9 @@ import org.openide.util.lookup.ServiceProvider;
 public class ACPProjectManager implements PropertyChangeListener {
     private static final Logger LOG = Logger.from(ACPProjectManager.class);
 
-    private volatile Project[] currentProjects;
+    private final AtomicReference<Project[]> currentProjects = new AtomicReference<>(new Project[0]);
     private volatile Consumer<String> projectCloseListener;
     private volatile Consumer<String> projectOpenListener;
-
-    public ACPProjectManager() {
-        this.currentProjects = new Project[0];
-    }
 
     public static ACPProjectManager getInstance() {
         ACPProjectManager pm = Lookup.getDefault().lookup(ACPProjectManager.class);
@@ -41,8 +39,8 @@ public class ACPProjectManager implements PropertyChangeListener {
         // Replay open events for any projects already loaded before the listener was registered.
         // Without this, if OpenProjects fires between start() and SessionManager registration,
         // the open event is silently dropped and the session dropdown stays empty.
-        if (listener != null && currentProjects != null) {
-            for (Project p : currentProjects) {
+        if (listener != null && currentProjects.get() != null) {
+            for (Project p : currentProjects.get()) {
                 if (p != null) {
                     listener.accept(p.getProjectDirectory().getPath());
                 }
@@ -68,12 +66,12 @@ public class ACPProjectManager implements PropertyChangeListener {
     private void syncActiveProject() {
         Project[] openProjects = OpenProjects.getDefault().getOpenProjects();
 
-        Set<String> oldDirs = dirsOf(currentProjects);
+        Set<String> oldDirs = dirsOf(currentProjects.get());
         Set<String> newDirs = dirsOf(openProjects);
 
         // Update currentProjects BEFORE calling listeners so their use of
         // getAllOpenProjects() (e.g. refreshSessions()) sees the correct list.
-        currentProjects = openProjects;
+        currentProjects.set(openProjects);
 
         Set<String> closedDirs = new HashSet<>(oldDirs);
         closedDirs.removeAll(newDirs);
@@ -113,6 +111,7 @@ public class ACPProjectManager implements PropertyChangeListener {
     }
 
     public Project[] getAllOpenProjects() {
-        return currentProjects;
+        Project[] projects = currentProjects.get();
+        return Arrays.copyOf(projects, projects.length);
     }
 }
