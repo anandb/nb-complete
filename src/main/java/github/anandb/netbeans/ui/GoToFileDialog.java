@@ -21,7 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.logging.Level;
-import java.util.logging.Logger;
+import github.anandb.netbeans.support.Logger;
 import java.util.regex.Pattern;
 
 import javax.swing.AbstractAction;
@@ -65,7 +65,7 @@ import github.anandb.netbeans.contract.FileCacheQuery;
 })
 public class GoToFileDialog extends JDialog {
 
-    private static final Logger LOG = Logger.getLogger(GoToFileDialog.class.getName());
+    private static final Logger LOG = Logger.from(GoToFileDialog.class);
     private static final int MAX_RESULTS = 200;
 
     private final JTextField searchField;

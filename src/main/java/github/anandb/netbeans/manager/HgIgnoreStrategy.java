@@ -9,9 +9,8 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
-import java.util.logging.Logger;
-
 import github.anandb.netbeans.contract.VcsIgnoreStrategy;
+import github.anandb.netbeans.support.Logger;
 
 /**
  * Mercurial ignore strategy using {@code hg files} for bulk listing
@@ -21,7 +20,7 @@ import github.anandb.netbeans.contract.VcsIgnoreStrategy;
  */
 public class HgIgnoreStrategy implements VcsIgnoreStrategy {
 
-    private static final Logger LOG = Logger.getLogger(HgIgnoreStrategy.class.getName());
+    private static final Logger LOG = Logger.from(HgIgnoreStrategy.class);
     private static final long CMD_TIMEOUT_SEC = 30;
     private static final org.openide.util.RequestProcessor HG_RP =
             new org.openide.util.RequestProcessor("HgIgnore-Reader", 1);

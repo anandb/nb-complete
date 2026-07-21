@@ -6,12 +6,13 @@ import java.io.IOException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.regex.Pattern;
 import java.util.logging.Level;
-
+import java.util.regex.Pattern;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 
 import javax.swing.JFileChooser;
+
+import github.anandb.netbeans.support.Logger;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 
@@ -29,8 +30,7 @@ import org.openide.util.RequestProcessor;
  */
 final class ConversationExporter {
 
-    private static final java.util.logging.Logger LOG =
-            java.util.logging.Logger.getLogger(ConversationExporter.class.getName());
+    private static final Logger LOG = Logger.from(ConversationExporter.class);
     private static final Pattern INVALID_TITLE_PATTERN =
             Pattern.compile("[^a-zA-Z0-9._-]");
 

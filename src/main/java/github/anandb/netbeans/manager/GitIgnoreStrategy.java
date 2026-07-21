@@ -9,9 +9,8 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
-import java.util.logging.Logger;
-
 import github.anandb.netbeans.contract.VcsIgnoreStrategy;
+import github.anandb.netbeans.support.Logger;
 
 /**
  * Git ignore strategy using {@code git ls-files} for bulk listing
@@ -21,7 +20,7 @@ import github.anandb.netbeans.contract.VcsIgnoreStrategy;
  */
 public class GitIgnoreStrategy implements VcsIgnoreStrategy {
 
-    private static final Logger LOG = Logger.getLogger(GitIgnoreStrategy.class.getName());
+    private static final Logger LOG = Logger.from(GitIgnoreStrategy.class);
     private static final long CMD_TIMEOUT_SEC = 30;
     private static final org.openide.util.RequestProcessor GIT_RP =
             new org.openide.util.RequestProcessor("GitIgnore-Reader", 1);

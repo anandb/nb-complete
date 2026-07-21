@@ -12,7 +12,7 @@ import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Level;
-import java.util.logging.Logger;
+import github.anandb.netbeans.support.Logger;
 
 import org.openide.filesystems.FileAttributeEvent;
 import org.openide.filesystems.FileEvent;
@@ -42,7 +42,7 @@ import github.anandb.netbeans.contract.VcsIgnoreStrategy;
 @ServiceProvider(service = FileCacheQuery.class)
 public class FileCacheManager implements FileCacheQuery {
 
-    private static final Logger LOG = Logger.getLogger(FileCacheManager.class.getName());
+    private static final Logger LOG = Logger.from(FileCacheManager.class);
     private static final RequestProcessor RP = new RequestProcessor("GoToFile-CacheBuilder", 1);
 
     /** Files keyed by absolute path for O(1) dedup across overlapping projects. */
