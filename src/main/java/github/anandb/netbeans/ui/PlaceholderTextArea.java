@@ -231,22 +231,6 @@ public class PlaceholderTextArea extends JTextArea implements Scrollable {
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
-        if (placeholder != null && !placeholder.isEmpty() && getText().isEmpty() && !hasFocus()) {
-            Color oldColor = g.getColor();
-            Font oldFont = g.getFont();
-            g.setColor(ThemeManager.getCurrentTheme().placeholderForeground());
-            g.setFont(oldFont.deriveFont(Font.PLAIN));
-            int x = getInsets().left;
-            int y = getInsets().top + g.getFontMetrics().getAscent();
-            int lineHeight = g.getFontMetrics().getHeight();
-            String[] lines = LINE_SPLIT.split(placeholder, -1);
-            for (String line : lines) {
-                g.drawString(line, x, y);
-                y += lineHeight;
-            }
-            g.setColor(oldColor);
-            g.setFont(oldFont);
-        }
         if (overlayText != null && !overlayText.isEmpty() && getText().isEmpty()) {
             java.awt.Graphics2D g2 = (java.awt.Graphics2D) g.create();
             g2.setRenderingHint(java.awt.RenderingHints.KEY_TEXT_ANTIALIASING, java.awt.RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
@@ -291,6 +275,21 @@ public class PlaceholderTextArea extends JTextArea implements Scrollable {
                 y += fm.getHeight();
             }
             g2.dispose();
+        } else if (placeholder != null && !placeholder.isEmpty() && getText().isEmpty() && !hasFocus()) {
+            Color oldColor = g.getColor();
+            Font oldFont = g.getFont();
+            g.setColor(ThemeManager.getCurrentTheme().placeholderForeground());
+            g.setFont(oldFont.deriveFont(Font.PLAIN));
+            int x = getInsets().left;
+            int y = getInsets().top + g.getFontMetrics().getAscent();
+            int lineHeight = g.getFontMetrics().getHeight();
+            String[] lines = LINE_SPLIT.split(placeholder, -1);
+            for (String line : lines) {
+                g.drawString(line, x, y);
+                y += lineHeight;
+            }
+            g.setColor(oldColor);
+            g.setFont(oldFont);
         }
     }
 

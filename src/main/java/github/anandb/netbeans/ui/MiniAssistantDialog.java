@@ -46,7 +46,7 @@ public class MiniAssistantDialog extends JDialog {
         setLayout(new BorderLayout());
         
         responsePane = new JPanel(new BorderLayout());
-        inputArea = new PlaceholderTextArea(org.openide.util.NbBundle.getMessage(AssistantTopComponent.class, "LBL_TypeMessage"));
+        inputArea = new PlaceholderTextArea("");
         
         java.awt.KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(new java.awt.KeyEventDispatcher() {
             @Override
