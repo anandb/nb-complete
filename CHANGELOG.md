@@ -1,5 +1,43 @@
 # Release Notes
 
+## v1.12.0 (Changes since v1.11.3)
+
+### Features
+- **Mini assistant panel**: New floating mini assistant dialog (`MiniAssistantDialog`)
+  with keyboard navigation (PgUp/PgDn or Cmd+Left/Right to scroll bubbles),
+  Cmd+C to copy code blocks, Cmd+L to toggle main assistant, and Cmd+Alt+L to
+  toggle the mini assistant. Includes a stream log area showing real-time response
+  updates, and a spinner during processing.
+
+### Fixes
+- **Mini assistant singleton lifecycle**: `dispose()` now properly unregisters the
+  global `KeyEventDispatcher` and resets the singleton instance, preventing stale
+  dialog state after close.
+- **Mini assistant off-EDT crash**: `getAssistantBubbles()` now marshals to the
+  EDT when called from the keyboard dispatch thread, preventing
+  `ArrayIndexOutOfBoundsException` on the Swing component tree.
+- **Mini assistant ownership**: Removed `setAlwaysOnTop` so the mini assistant is
+  owned by the NetBeans main frame instead of the desktop.
+- **Mini assistant overlay text**: Cleaned up placeholder text and persisted dialog
+  geometry across sessions.
+
+### Improvements
+- **GoToFile search persistence**: Retains search text across dialog invocations
+  unless the file cache is rebuilt.
+- **Mini assistant keyboard shortcuts**: Cmd+Left and Cmd+Right mapped to scroll
+  bubbles on macOS; toggle shortcut dynamically resolved from keymap.
+- **Mini assistant token overlay**: Shows a compact "used / total" token count
+  badge while waiting for responses, polled from session context usage. Previous
+  bubble stays visible during streaming instead of being replaced by a spinner.
+
+### Refactoring
+- **Logger migration**: Replaced `java.util.logging.Logger` with the custom
+  `github.anandb.netbeans.support.Logger` across the entire project for consistent
+  log formatting.
+
+### Housekeeping
+- Version bumped to 1.12.0.
+
 ## v1.11.3 (Changes since v1.11.2)
 
 ### UI
