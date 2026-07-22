@@ -7,6 +7,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.Date;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.logging.Level;
 import java.util.prefs.Preferences;
@@ -84,7 +85,7 @@ public class UpdateCheckerService implements UpdateCheckerControl {
     public void onInstallOrUpgrade() {
         long stored = prefs().getLong(PreferenceKeys.NEXT_UPDATE_CHECK_TIME, 0L);
         if (stored > System.currentTimeMillis()) {
-            LOG.info("Plugin installed/upgraded. Next update check already scheduled for: {0}", new java.util.Date(stored));
+            LOG.info("Plugin installed/upgraded. Next update check already scheduled for: {0}", new Date(stored));
             return;
         }
         // Past-due or first install — check immediately; next time will be randomized

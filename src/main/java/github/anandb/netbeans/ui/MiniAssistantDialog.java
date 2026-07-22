@@ -1,24 +1,59 @@
 package github.anandb.netbeans.ui;
-
 import java.awt.BorderLayout;
 import java.awt.Component;
+import java.awt.Container;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.GraphicsDevice;
+import java.awt.GraphicsEnvironment;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
+import java.awt.KeyEventDispatcher;
+import java.awt.KeyboardFocusManager;
+import java.awt.LayoutManager;
+import java.awt.Rectangle;
+import java.awt.Toolkit;
+import java.awt.datatransfer.StringSelection;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.prefs.Preferences;
 
 import javax.swing.BorderFactory;
 import javax.swing.JDialog;
+import javax.swing.JEditorPane;
+import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JSplitPane;
-import javax.swing.SwingUtilities;
 import javax.swing.JProgressBar;
-import java.awt.Dimension;
-import java.util.prefs.Preferences;
+import javax.swing.JScrollPane;
+import javax.swing.JSplitPane;
+import javax.swing.JViewport;
+import javax.swing.Scrollable;
+import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
+import javax.swing.Timer;
+import javax.swing.border.BevelBorder;
 
+import org.openide.util.Lookup;
 import org.openide.util.NbPreferences;
+import org.openide.util.Utilities;
+import org.openide.windows.Mode;
 import org.openide.windows.WindowManager;
 
+import github.anandb.netbeans.contract.ProcessControl;
+import github.anandb.netbeans.contract.SessionControl;
 import github.anandb.netbeans.model.MessageType;
+import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.support.PreferenceKeys;
+import github.anandb.netbeans.support.ShortcutUtils;
 
 public class MiniAssistantDialog extends JDialog {
 
@@ -26,11 +61,12 @@ public class MiniAssistantDialog extends JDialog {
     private PlaceholderTextArea inputArea;
     private JPanel responsePane;
     private JSplitPane splitPane;
-    private javax.swing.JLabel tokenOverlay;
-    private javax.swing.Timer tokenTimer;
-    private java.awt.KeyEventDispatcher keyDispatcher;
+    private JLabel tokenOverlay;
+    private JProgressBar spinnerBar;
+    private Timer tokenTimer;
+    private KeyEventDispatcher keyDispatcher;
 
-    private static final java.util.Set<String> DISALLOWED_MINI_COMMANDS = java.util.Set.of(
+    private static final Set<String> DISALLOWED_MINI_COMMANDS = Set.of(
         "/model", "/models", "/level", "/sessions", "/agents"
     );
 
@@ -46,7 +82,7 @@ public class MiniAssistantDialog extends JDialog {
     private String displayedText;
 
     private int wordCount;
-    private final java.util.Map<String, Integer> wordsByMessageId = new java.util.concurrent.ConcurrentHashMap<>();
+    private final Map<String, Integer> wordsByMessageId = new ConcurrentHashMap<>();
     
     public static synchronized MiniAssistantDialog getInstance() {
         if (instance == null) {
@@ -73,14 +109,14 @@ public class MiniAssistantDialog extends JDialog {
         super(WindowManager.getDefault().getMainWindow(), false);
         restoreBounds();
         
-        addComponentListener(new java.awt.event.ComponentAdapter() {
+        addComponentListener(new ComponentAdapter() {
             @Override
-            public void componentResized(java.awt.event.ComponentEvent e) {
+            public void componentResized(ComponentEvent e) {
                 saveBounds();
             }
 
             @Override
-            public void componentMoved(java.awt.event.ComponentEvent e) {
+            public void componentMoved(ComponentEvent e) {
                 saveBounds();
             }
         });
@@ -92,32 +128,32 @@ public class MiniAssistantDialog extends JDialog {
         inputArea.setLineWrap(true);
         inputArea.setWrapStyleWord(true);
         
-        java.util.Set<String> miniExcluded = java.util.Set.of("model", "models", "level", "sessions", "agents");
+        Set<String> miniExcluded = Set.of("model", "models", "level", "sessions", "agents");
         autocompleteManager = new AutocompleteManager(inputArea, this::sendMessage, miniExcluded);
         
-        inputArea.addKeyListener(new java.awt.event.KeyAdapter() {
+        inputArea.addKeyListener(new KeyAdapter() {
             @Override
-            public void keyReleased(java.awt.event.KeyEvent e) {
+            public void keyReleased(KeyEvent e) {
                 if (autocompleteManager != null) {
                     autocompleteManager.handleKeyReleased(e);
                 }
             }
         });
         
-        keyDispatcher = new java.awt.KeyEventDispatcher() {
+        keyDispatcher = new KeyEventDispatcher() {
             @Override
-            public boolean dispatchKeyEvent(java.awt.event.KeyEvent e) {
+            public boolean dispatchKeyEvent(KeyEvent e) {
                 if (!isVisible()) return false;
-                java.awt.Component focusOwner = java.awt.KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusOwner();
+                Component focusOwner = KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusOwner();
                 if (focusOwner != MiniAssistantDialog.this && !isAncestorOf(focusOwner)) return false;
 
-                if (e.getID() == java.awt.event.KeyEvent.KEY_PRESSED) {
-                    boolean isMac = org.openide.util.Utilities.isMac();
+                if (e.getID() == KeyEvent.KEY_PRESSED) {
+                    boolean isMac = Utilities.isMac();
                     boolean isCmdOrCtrl = isMac ? e.isMetaDown() : e.isControlDown();
-                    boolean isPrev = e.getKeyCode() == java.awt.event.KeyEvent.VK_PAGE_UP ||
-                                     (isMac && e.getKeyCode() == java.awt.event.KeyEvent.VK_LEFT && e.isMetaDown());
-                    boolean isNext = e.getKeyCode() == java.awt.event.KeyEvent.VK_PAGE_DOWN ||
-                                     (isMac && e.getKeyCode() == java.awt.event.KeyEvent.VK_RIGHT && e.isMetaDown());
+                    boolean isPrev = e.getKeyCode() == KeyEvent.VK_PAGE_UP ||
+                                     (isMac && e.getKeyCode() == KeyEvent.VK_LEFT && e.isMetaDown());
+                    boolean isNext = e.getKeyCode() == KeyEvent.VK_PAGE_DOWN ||
+                                     (isMac && e.getKeyCode() == KeyEvent.VK_RIGHT && e.isMetaDown());
 
                     if (isPrev) {
                         navigateAssistantBubble(-1);
@@ -125,7 +161,7 @@ public class MiniAssistantDialog extends JDialog {
                     } else if (isNext) {
                         navigateAssistantBubble(1);
                         return true;
-                    } else if (e.getKeyCode() == java.awt.event.KeyEvent.VK_ESCAPE) {
+                    } else if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
                         if (autocompleteManager != null && autocompleteManager.isPopupVisible()) {
                             autocompleteManager.handleKeyReleased(e);
                             return true;
@@ -138,7 +174,7 @@ public class MiniAssistantDialog extends JDialog {
                         }
                         setVisible(false);
                         return true;
-                    } else if (e.getKeyCode() == java.awt.event.KeyEvent.VK_ENTER) {
+                    } else if (e.getKeyCode() == KeyEvent.VK_ENTER) {
                         if (inputArea.isFocusOwner()) {
                             if (autocompleteManager != null && autocompleteManager.isPopupVisible()) {
                                 autocompleteManager.handleKeyPressed(e);
@@ -152,14 +188,14 @@ public class MiniAssistantDialog extends JDialog {
                                 return true;
                             }
                         }
-                    } else if (e.getKeyCode() == java.awt.event.KeyEvent.VK_TAB) {
+                    } else if (e.getKeyCode() == KeyEvent.VK_TAB) {
                         if (inputArea.isFocusOwner()) {
                             e.consume();
                             if (autocompleteManager != null && autocompleteManager.isPopupVisible()) {
                                 autocompleteManager.selectCommand();
                             } else {
-                                var pc = org.openide.util.Lookup.getDefault()
-                                        .lookup(github.anandb.netbeans.contract.ProcessControl.class);
+                                var pc = Lookup.getDefault()
+                                        .lookup(ProcessControl.class);
                                 var interceptor = pc != null ? pc.getSlashCommandInterceptor() : null;
                                 var cb = interceptor != null ? interceptor.getCallback() : null;
                                 if (cb != null) {
@@ -168,16 +204,16 @@ public class MiniAssistantDialog extends JDialog {
                             }
                             return true;
                         }
-                    } else if (e.getKeyCode() == java.awt.event.KeyEvent.VK_C && isCmdOrCtrl) {
+                    } else if (e.getKeyCode() == KeyEvent.VK_C && isCmdOrCtrl) {
                         copyContent();
                         return true;
-                    } else if (e.getKeyCode() == java.awt.event.KeyEvent.VK_L && isCmdOrCtrl && !e.isAltDown()) {
+                    } else if (e.getKeyCode() == KeyEvent.VK_L && isCmdOrCtrl && !e.isAltDown()) {
                         AssistantTopComponent tc = AssistantTopComponent.findInstance();
                         if (tc != null) {
                             tc.toggleVisibility();
                         }
                         return true;
-                    } else if (e.getKeyCode() == java.awt.event.KeyEvent.VK_L && isCmdOrCtrl && e.isAltDown()) {
+                    } else if (e.getKeyCode() == KeyEvent.VK_L && isCmdOrCtrl && e.isAltDown()) {
                         toggleVisibility();
                         return true;
                     }
@@ -185,15 +221,15 @@ public class MiniAssistantDialog extends JDialog {
                 return false;
             }
         };
-        java.awt.KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(keyDispatcher);
+        KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(keyDispatcher);
         
         splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, null, inputArea);
         splitPane.setResizeWeight(0.85); // give more space to response
         splitPane.addPropertyChangeListener(JSplitPane.DIVIDER_LOCATION_PROPERTY, e -> saveBounds());
-        splitPane.addComponentListener(new java.awt.event.ComponentAdapter() {
+        splitPane.addComponentListener(new ComponentAdapter() {
             private boolean dividerRestored = false;
             @Override
-            public void componentResized(java.awt.event.ComponentEvent e) {
+            public void componentResized(ComponentEvent e) {
                 if (!dividerRestored && splitPane.getHeight() > 50) {
                     dividerRestored = true;
                     restoreDividerLocation();
@@ -204,39 +240,49 @@ public class MiniAssistantDialog extends JDialog {
         responsePane.setOpaque(true);
         responsePane.setBorder(BorderFactory.createEmptyBorder(2, 2, 0, 2));
 
-        javax.swing.JScrollPane scrollPane = new javax.swing.JScrollPane(responsePane);
+        JScrollPane scrollPane = new JScrollPane(responsePane);
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
         scrollPane.setOpaque(false);
         scrollPane.getViewport().setOpaque(false);
         scrollPane.getVerticalScrollBar().setUnitIncrement(16);
-        scrollPane.setHorizontalScrollBarPolicy(javax.swing.JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+
+        // Progress bar right at the top of the dialog
+        spinnerBar = new JProgressBar();
+        spinnerBar.setIndeterminate(true);
+        spinnerBar.setPreferredSize(new Dimension(Integer.MAX_VALUE, 3));
+        spinnerBar.setBorderPainted(false);
+        spinnerBar.setVisible(false);
 
         // Token count overlay — permanently reserved top-right header space
-        tokenOverlay = new javax.swing.JLabel();
+        tokenOverlay = new JLabel();
         tokenOverlay.setOpaque(false);
         tokenOverlay.setFont(ThemeManager.getMonospaceFont().deriveFont(10f));
         tokenOverlay.setBorder(BorderFactory.createEmptyBorder(2, 6, 2, 6));
-        tokenOverlay.setPreferredSize(new java.awt.Dimension(Integer.MAX_VALUE, 20));
-        tokenOverlay.setMinimumSize(new java.awt.Dimension(0, 20));
+        tokenOverlay.setPreferredSize(new Dimension(Integer.MAX_VALUE, 20));
+        tokenOverlay.setMinimumSize(new Dimension(0, 20));
         tokenOverlay.setVisible(true);
+        tokenOverlay.setHorizontalAlignment(SwingConstants.RIGHT);
 
-        // Wrapper so overlay floats above the scroll pane
-        JPanel responseWrapper = new JPanel(new java.awt.BorderLayout());
+        JPanel topHeader = new JPanel(new BorderLayout());
+        topHeader.setOpaque(false);
+        topHeader.add(spinnerBar, BorderLayout.NORTH);
+        topHeader.add(tokenOverlay, BorderLayout.SOUTH);
+
+        // Wrapper so header floats above the scroll pane
+        JPanel responseWrapper = new JPanel(new BorderLayout());
         responseWrapper.setOpaque(false);
-        responseWrapper.add(scrollPane, java.awt.BorderLayout.CENTER);
-        responseWrapper.add(tokenOverlay, java.awt.BorderLayout.NORTH);
-        // Anchor overlay to the right
-        ((java.awt.BorderLayout) responseWrapper.getLayout()).setHgap(0);
-        tokenOverlay.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
+        responseWrapper.add(scrollPane, BorderLayout.CENTER);
+        responseWrapper.add(topHeader, BorderLayout.NORTH);
 
         splitPane.setTopComponent(responseWrapper);
         splitPane.setDividerSize(2);
         
-        boolean isMac = org.openide.util.Utilities.isMac();
-        String toggleAction = github.anandb.netbeans.support.ShortcutUtils.resolveShortcut("github.anandb.netbeans.ui.ToggleAssistantAction");
+        boolean isMac = Utilities.isMac();
+        String toggleAction = ShortcutUtils.resolveShortcut("github.anandb.netbeans.ui.ToggleAssistantAction");
         if (toggleAction == null || toggleAction.isEmpty()) toggleAction = isMac ? "Cmd+L" : "Ctrl+L";
         
-        String miniToggleAction = github.anandb.netbeans.support.ShortcutUtils.resolveShortcut("github.anandb.netbeans.ui.ToggleMiniAssistantAction");
+        String miniToggleAction = ShortcutUtils.resolveShortcut("github.anandb.netbeans.ui.ToggleMiniAssistantAction");
         if (miniToggleAction == null || miniToggleAction.isEmpty()) miniToggleAction = isMac ? "Cmd+Alt+L" : "Ctrl+Alt+L";
         
         String scrollAction = isMac ? "Cmd+Left/Right: scroll" : "PgUp/PgDn: scroll";
@@ -256,15 +302,15 @@ public class MiniAssistantDialog extends JDialog {
 
     public void toggleVisibility() {
         if (isVisible()) {
-            java.awt.Component focusOwner = java.awt.KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusOwner();
+            Component focusOwner = KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusOwner();
             boolean hasFocus = inputArea.isFocusOwner() || isAncestorOf(focusOwner);
             if (hasFocus) {
-                org.openide.windows.Mode editorMode = org.openide.windows.WindowManager.getDefault().findMode("editor");
+                Mode editorMode = WindowManager.getDefault().findMode("editor");
                 if (editorMode != null && editorMode.getSelectedTopComponent() != null) {
                     editorMode.getSelectedTopComponent().requestActive();
                 }
             } else {
-                javax.swing.SwingUtilities.invokeLater(() -> {
+                SwingUtilities.invokeLater(() -> {
                     toFront();
                     requestFocus();
                     inputArea.requestFocus();
@@ -289,14 +335,14 @@ public class MiniAssistantDialog extends JDialog {
             return;
         }
 
-        var pc = org.openide.util.Lookup.getDefault()
-                .lookup(github.anandb.netbeans.contract.ProcessControl.class);
+        var pc = Lookup.getDefault()
+                .lookup(ProcessControl.class);
         var interceptor = pc != null ? pc.getSlashCommandInterceptor() : null;
         if (interceptor != null && trimmed.startsWith("/")) {
             String cmd = spaceIdx > 0 ? trimmed.substring(0, spaceIdx) : trimmed;
             if (interceptor.getCommands().containsKey(cmd)) {
                 inputArea.setText("");
-                interceptor.intercept(trimmed, org.openide.util.Lookup.getDefault());
+                interceptor.intercept(trimmed, Lookup.getDefault());
                 return;
             }
         }
@@ -318,16 +364,8 @@ public class MiniAssistantDialog extends JDialog {
         wordsByMessageId.clear();
         isAutoTrackingLatest = true;
         currentBubbleIndex = -1;
-        // Add a thin spinner bar at the top of responsePane, keep existing content
-        if (responsePane.getComponentCount() == 0 ||
-            !(responsePane.getComponent(0) instanceof JProgressBar)) {
-            JProgressBar spinner = new JProgressBar();
-            spinner.setIndeterminate(true);
-            spinner.setPreferredSize(new Dimension(Integer.MAX_VALUE, 3));
-            spinner.setBorderPainted(false);
-            responsePane.add(spinner, BorderLayout.NORTH);
-            responsePane.revalidate();
-            responsePane.repaint();
+        if (spinnerBar != null) {
+            spinnerBar.setVisible(true);
         }
         updateTokenOverlay();
         startTokenPolling();
@@ -346,28 +384,19 @@ public class MiniAssistantDialog extends JDialog {
     }
 
     private void applyTokenOverlayColors(boolean active) {
+        ColorTheme theme = ThemeManager.getCurrentTheme();
         if (!active) {
             tokenOverlay.setOpaque(false);
             tokenOverlay.setBorder(BorderFactory.createEmptyBorder(2, 6, 2, 6));
             return;
         }
-        boolean isDark = ThemeManager.isDark();
         tokenOverlay.setOpaque(true);
-        if (isDark) {
-            tokenOverlay.setBackground(new java.awt.Color(60, 50, 10));
-            tokenOverlay.setForeground(new java.awt.Color(255, 230, 130));
-            tokenOverlay.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new java.awt.Color(90, 75, 15)),
-                BorderFactory.createEmptyBorder(2, 8, 2, 8)
-            ));
-        } else {
-            tokenOverlay.setBackground(new java.awt.Color(255, 243, 205));
-            tokenOverlay.setForeground(new java.awt.Color(133, 100, 4));
-            tokenOverlay.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new java.awt.Color(254, 238, 186)),
-                BorderFactory.createEmptyBorder(2, 8, 2, 8)
-            ));
-        }
+        tokenOverlay.setBackground(theme.sunkenBackground());
+        tokenOverlay.setForeground(theme.foreground());
+        tokenOverlay.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(theme.bubbleBorder()),
+            BorderFactory.createEmptyBorder(2, 6, 2, 6)
+        ));
     }
 
     private void updateTokenOverlay() {
@@ -385,7 +414,7 @@ public class MiniAssistantDialog extends JDialog {
 
     private void startTokenPolling() {
         stopTokenPolling();
-        tokenTimer = new javax.swing.Timer(500, e -> updateTokenOverlay());
+        tokenTimer = new Timer(500, e -> updateTokenOverlay());
         tokenTimer.start();
     }
 
@@ -413,13 +442,13 @@ public class MiniAssistantDialog extends JDialog {
         displayBubble(bubbles.get(currentBubbleIndex));
     }
     
-    private List<MessageBubble> getAssistantBubbles() {
+    private List<MessageBubble> getAllResponseBubbles() {
         if (!SwingUtilities.isEventDispatchThread()) {
             try {
                 List<MessageBubble>[] result = new List[]{List.of()};
-                SwingUtilities.invokeAndWait(() -> result[0] = getAssistantBubbles());
+                SwingUtilities.invokeAndWait(() -> result[0] = getAllResponseBubbles());
                 return result[0];
-            } catch (InterruptedException | java.lang.reflect.InvocationTargetException ex) {
+            } catch (InterruptedException | InvocationTargetException ex) {
                 return List.of();
             }
         }
@@ -436,8 +465,31 @@ public class MiniAssistantDialog extends JDialog {
         return bubbles;
     }
 
+    private List<MessageBubble> getAssistantBubbles() {
+        if (!SwingUtilities.isEventDispatchThread()) {
+            try {
+                List<MessageBubble>[] result = new List[]{List.of()};
+                SwingUtilities.invokeAndWait(() -> result[0] = getAssistantBubbles());
+                return result[0];
+            } catch (InterruptedException | InvocationTargetException ex) {
+                return List.of();
+            }
+        }
+        AssistantTopComponent tc = AssistantTopComponent.findInstance();
+        if (tc == null || tc.getChatThreadPanel() == null) return List.of();
+
+        List<MessageBubble> bubbles = new ArrayList<>();
+        Component[] comps = tc.getChatThreadPanel().getMessagesContainer().getComponents();
+        for (Component c : comps) {
+            if (c instanceof MessageBubble mb && "assistant".equals(mb.getRole())) {
+                bubbles.add(mb);
+            }
+        }
+        return bubbles;
+    }
+
     private int calculateCurrentTokenCount() {
-        List<MessageBubble> bubbles = getAssistantBubbles();
+        List<MessageBubble> bubbles = getAllResponseBubbles();
         if (bubbles.isEmpty()) return 0;
         int total = 0;
         for (MessageBubble mb : bubbles) {
@@ -450,17 +502,7 @@ public class MiniAssistantDialog extends JDialog {
     }
     
     private void displayBubble(MessageBubble realBubble) {
-        Component spinner = null;
-        for (Component c : responsePane.getComponents()) {
-            if (c instanceof JProgressBar) {
-                spinner = c;
-                break;
-            }
-        }
         responsePane.removeAll();
-        if (spinner != null) {
-            responsePane.add(spinner, BorderLayout.NORTH);
-        }
 
         MessageBubble localBubble = new MessageBubble(MessageType.agent_message_chunk, 
             realBubble.getRawText(), realBubble.getMessageId(), null, 
@@ -479,15 +521,15 @@ public class MiniAssistantDialog extends JDialog {
     
     private void reduceFontSize(Component comp) {
         if (comp.getFont() != null) {
-            java.awt.Font f = comp.getFont();
+            Font f = comp.getFont();
             comp.setFont(f.deriveFont(Math.max(10f, f.getSize() - 1f)));
         }
-        if (comp instanceof javax.swing.JEditorPane) {
-            javax.swing.JEditorPane pane = (javax.swing.JEditorPane) comp;
-            pane.putClientProperty(javax.swing.JEditorPane.HONOR_DISPLAY_PROPERTIES, Boolean.TRUE);
+        if (comp instanceof JEditorPane) {
+            JEditorPane pane = (JEditorPane) comp;
+            pane.putClientProperty(JEditorPane.HONOR_DISPLAY_PROPERTIES, Boolean.TRUE);
         }
-        if (comp instanceof java.awt.Container) {
-            for (Component c : ((java.awt.Container) comp).getComponents()) {
+        if (comp instanceof Container) {
+            for (Component c : ((Container) comp).getComponents()) {
                 reduceFontSize(c);
             }
         }
@@ -496,8 +538,8 @@ public class MiniAssistantDialog extends JDialog {
     public void onProcessingChanged(boolean processing) {
         SwingUtilities.invokeLater(() -> {
             this.isProcessing = processing;
-            String sessionId = org.openide.util.Lookup.getDefault()
-                    .lookup(github.anandb.netbeans.contract.SessionControl.class).getCurrentSessionId();
+            String sessionId = Lookup.getDefault()
+                    .lookup(SessionControl.class).getCurrentSessionId();
             inputArea.setEnabled(sessionId != null);
             if (processing) {
                 maxTokenCountThisTurn = 0;
@@ -506,12 +548,8 @@ public class MiniAssistantDialog extends JDialog {
                 showSpinner();
             } else {
                 stopTokenPolling();
-                // Remove spinner bar if present
-                for (Component c : responsePane.getComponents()) {
-                    if (c instanceof JProgressBar) {
-                        responsePane.remove(c);
-                        break;
-                    }
+                if (spinnerBar != null) {
+                    spinnerBar.setVisible(false);
                 }
                 if (isVisible()) {
                     syncLatestBubble();
@@ -545,8 +583,8 @@ public class MiniAssistantDialog extends JDialog {
         return text.trim().split("\\s+").length;
     }
 
-    public void onStreamUpdate(github.anandb.netbeans.model.ProcessedMessage msg) {
-        if (msg != null && msg.messageType() == github.anandb.netbeans.model.MessageType.error_response) {
+    public void onStreamUpdate(ProcessedMessage msg) {
+        if (msg != null && msg.messageType() == MessageType.error_response) {
             if (lastSentText != null && !lastSentText.isBlank()) {
                 final String textToRestore = lastSentText;
                 lastSentText = null;
@@ -568,13 +606,13 @@ public class MiniAssistantDialog extends JDialog {
     private void styleAsMiniBubble(MessageBubble mb) {
         mb.setBorder(BorderFactory.createEmptyBorder(6, 8, 6, 8));
         mb.setOpaque(false); // Let responsePane background show through margins
-        if (mb.getLayout() instanceof java.awt.GridBagLayout gb) {
+        if (mb.getLayout() instanceof GridBagLayout gb) {
             for (Component c : mb.getComponents()) {
-                java.awt.GridBagConstraints gbc = gb.getConstraints(c);
-                gbc.insets = new java.awt.Insets(0, 0, 0, 0);
+                GridBagConstraints gbc = gb.getConstraints(c);
+                gbc.insets = new Insets(0, 0, 0, 0);
                 gbc.weightx = 1.0;
                 gbc.weighty = 1.0;
-                gbc.fill = java.awt.GridBagConstraints.BOTH;
+                gbc.fill = GridBagConstraints.BOTH;
                 gb.setConstraints(c, gbc);
                 if (c instanceof RoundedPanel) {
                     ((JPanel) c).setBorder(BorderFactory.createEmptyBorder());
@@ -600,19 +638,19 @@ public class MiniAssistantDialog extends JDialog {
                     int end = text.indexOf("```", firstNewline);
                     if (end != -1) {
                         String code = text.substring(firstNewline + 1, end).trim();
-                        java.awt.datatransfer.StringSelection selection = new java.awt.datatransfer.StringSelection(code);
-                        java.awt.Toolkit.getDefaultToolkit().getSystemClipboard().setContents(selection, selection);
+                        StringSelection selection = new StringSelection(code);
+                        Toolkit.getDefaultToolkit().getSystemClipboard().setContents(selection, selection);
                         return;
                     }
                 }
             }
-            java.awt.datatransfer.StringSelection selection = new java.awt.datatransfer.StringSelection(text);
-            java.awt.Toolkit.getDefaultToolkit().getSystemClipboard().setContents(selection, selection);
+            StringSelection selection = new StringSelection(text);
+            Toolkit.getDefaultToolkit().getSystemClipboard().setContents(selection, selection);
         }
     }
     
     private void updateResponsePane() {
-        String sessionId = org.openide.util.Lookup.getDefault().lookup(github.anandb.netbeans.contract.SessionControl.class).getCurrentSessionId();
+        String sessionId = Lookup.getDefault().lookup(SessionControl.class).getCurrentSessionId();
         
         List<MessageBubble> bubbles = getAssistantBubbles();
         if (!bubbles.isEmpty()) {
@@ -662,11 +700,11 @@ public class MiniAssistantDialog extends JDialog {
     }
 
     private boolean isPositionOnScreen(int x, int y, int w, int h) {
-        java.awt.GraphicsEnvironment ge = java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment();
-        java.awt.GraphicsDevice[] screens = ge.getScreenDevices();
-        java.awt.Rectangle dialogRect = new java.awt.Rectangle(x, y, w, h);
-        for (java.awt.GraphicsDevice screen : screens) {
-            java.awt.Rectangle screenBounds = screen.getDefaultConfiguration().getBounds();
+        GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
+        GraphicsDevice[] screens = ge.getScreenDevices();
+        Rectangle dialogRect = new Rectangle(x, y, w, h);
+        for (GraphicsDevice screen : screens) {
+            Rectangle screenBounds = screen.getDefaultConfiguration().getBounds();
             if (screenBounds.intersects(dialogRect)) {
                 return true;
             }
@@ -685,7 +723,7 @@ public class MiniAssistantDialog extends JDialog {
 
     private void saveBounds() {
         if (!isVisible()) return;
-        java.awt.Rectangle bounds = getBounds();
+        Rectangle bounds = getBounds();
         if (bounds.width > 0 && bounds.height > 0) {
             Preferences prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
             prefs.putInt(PreferenceKeys.MINI_ASSISTANT_X, bounds.x);
@@ -718,7 +756,7 @@ public class MiniAssistantDialog extends JDialog {
             saveBounds();
         }
         if (keyDispatcher != null) {
-            java.awt.KeyboardFocusManager.getCurrentKeyboardFocusManager()
+            KeyboardFocusManager.getCurrentKeyboardFocusManager()
                     .removeKeyEventDispatcher(keyDispatcher);
             keyDispatcher = null;
         }
@@ -730,10 +768,10 @@ public class MiniAssistantDialog extends JDialog {
         ColorTheme theme = ThemeManager.getCurrentTheme();
         getContentPane().setBackground(theme.background());
         responsePane.setBackground(theme.background());
-        if (responsePane.getParent() instanceof javax.swing.JViewport vp) {
+        if (responsePane.getParent() instanceof JViewport vp) {
             vp.setBackground(theme.background());
             vp.setOpaque(true);
-            if (vp.getParent() instanceof javax.swing.JScrollPane sp) {
+            if (vp.getParent() instanceof JScrollPane sp) {
                 sp.setBackground(theme.background());
                 sp.setOpaque(true);
             }
@@ -744,12 +782,12 @@ public class MiniAssistantDialog extends JDialog {
         inputArea.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createCompoundBorder(
                 BorderFactory.createEmptyBorder(2, 4, 2, 4),
-                BorderFactory.createSoftBevelBorder(javax.swing.border.BevelBorder.LOWERED)
+                BorderFactory.createSoftBevelBorder(BevelBorder.LOWERED)
             ),
             BorderFactory.createEmptyBorder(4, 6, 4, 6)
         ));
 
-        java.awt.Font f = ThemeManager.getFont();
+        Font f = ThemeManager.getFont();
         inputArea.setFont(f);
 
         applyTokenOverlayColors(isProcessing && maxTokenCountThisTurn > 0);
@@ -757,14 +795,14 @@ public class MiniAssistantDialog extends JDialog {
         SwingUtilities.updateComponentTreeUI(this);
     }
     
-    private static class ScrollablePanel extends JPanel implements javax.swing.Scrollable {
-        ScrollablePanel(java.awt.LayoutManager layout) { super(layout); }
-        @Override public java.awt.Dimension getPreferredScrollableViewportSize() { return getPreferredSize(); }
-        @Override public int getScrollableUnitIncrement(java.awt.Rectangle r, int o, int d) { return 16; }
-        @Override public int getScrollableBlockIncrement(java.awt.Rectangle r, int o, int d) { return 16; }
+    private static class ScrollablePanel extends JPanel implements Scrollable {
+        ScrollablePanel(LayoutManager layout) { super(layout); }
+        @Override public Dimension getPreferredScrollableViewportSize() { return getPreferredSize(); }
+        @Override public int getScrollableUnitIncrement(Rectangle r, int o, int d) { return 16; }
+        @Override public int getScrollableBlockIncrement(Rectangle r, int o, int d) { return 16; }
         @Override public boolean getScrollableTracksViewportWidth() { return true; }
         @Override public boolean getScrollableTracksViewportHeight() { 
-            if (getParent() instanceof javax.swing.JViewport vp) {
+            if (getParent() instanceof JViewport vp) {
                 return getPreferredSize().height < vp.getHeight();
             }
             return false;

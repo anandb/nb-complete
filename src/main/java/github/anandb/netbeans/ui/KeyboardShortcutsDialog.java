@@ -1,6 +1,7 @@
 package github.anandb.netbeans.ui;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Font;
@@ -9,6 +10,7 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 
 import javax.swing.JDialog;
+import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -105,8 +107,8 @@ final class KeyboardShortcutsDialog extends JDialog {
         setContentPane(contentPanel);
 
         // Escape to close
-        javax.swing.KeyStroke escapeKey = KeyStroke.getKeyStroke("ESCAPE");
-        getRootPane().registerKeyboardAction(e -> dispose(), escapeKey, javax.swing.JComponent.WHEN_IN_FOCUSED_WINDOW);
+        KeyStroke escapeKey = KeyStroke.getKeyStroke("ESCAPE");
+        getRootPane().registerKeyboardAction(e -> dispose(), escapeKey, JComponent.WHEN_IN_FOCUSED_WINDOW);
     }
 
     private static String buildHtml() {
@@ -115,7 +117,7 @@ final class KeyboardShortcutsDialog extends JDialog {
         String bg = theme.toHtmlHex(theme.tableBackground());
         String hdrBg = theme.toHtmlHex(theme.tableHeaderBackground());
         String altRowBg = theme.toHtmlHex(
-            theme.tableBackground().brighter() instanceof java.awt.Color
+            theme.tableBackground().brighter() instanceof Color
                 ? theme.tableBackground().brighter() : theme.tableBackground());
         String mod = System.getProperty("os.name", "").toLowerCase().contains("mac")
                 ? "\u2318" : "Ctrl";

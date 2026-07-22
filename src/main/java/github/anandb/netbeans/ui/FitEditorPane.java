@@ -18,6 +18,7 @@ import javax.swing.JTextPane;
 import javax.swing.border.EmptyBorder;
 import javax.swing.plaf.TextUI;
 import javax.swing.text.BadLocationException;
+import javax.swing.text.Document;
 import javax.swing.text.View;
 
 import org.openide.util.NbBundle;
@@ -62,7 +63,7 @@ public class FitEditorPane extends JTextPane {
         // opens a new StringReader, and dispatches separate remove +
         // insert DocumentEvents.  This path collapses those steps into
         // a single bulk operation on the existing document.
-        javax.swing.text.Document doc = getDocument();
+        Document doc = getDocument();
         if (doc == null) {
             super.setText(t);
         } else {
