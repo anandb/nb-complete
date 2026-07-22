@@ -13,10 +13,13 @@ import javax.swing.JSplitPane;
 import javax.swing.SwingUtilities;
 import javax.swing.JProgressBar;
 import java.awt.Dimension;
+import java.util.prefs.Preferences;
 
+import org.openide.util.NbPreferences;
 import org.openide.windows.WindowManager;
 
 import github.anandb.netbeans.model.MessageType;
+import github.anandb.netbeans.support.PreferenceKeys;
 
 public class MiniAssistantDialog extends JDialog {
 
@@ -40,8 +43,19 @@ public class MiniAssistantDialog extends JDialog {
 
     private MiniAssistantDialog() {
         super(WindowManager.getDefault().getMainWindow(), false);
-        setSize(500, 300);
-        setLocationRelativeTo(getParent());
+        restoreBounds();
+        
+        addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override
+            public void componentResized(java.awt.event.ComponentEvent e) {
+                saveBounds();
+            }
+
+            @Override
+            public void componentMoved(java.awt.event.ComponentEvent e) {
+                saveBounds();
+            }
+        });
         
         setLayout(new BorderLayout());
         
@@ -364,6 +378,65 @@ public class MiniAssistantDialog extends JDialog {
             responsePane.revalidate();
             responsePane.repaint();
         }
+    }
+
+    private void restoreBounds() {
+        Preferences prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
+        int w = prefs.getInt(PreferenceKeys.MINI_ASSISTANT_WIDTH, 500);
+        int h = prefs.getInt(PreferenceKeys.MINI_ASSISTANT_HEIGHT, 300);
+        int x = prefs.getInt(PreferenceKeys.MINI_ASSISTANT_X, Integer.MIN_VALUE);
+        int y = prefs.getInt(PreferenceKeys.MINI_ASSISTANT_Y, Integer.MIN_VALUE);
+
+        w = Math.max(250, w);
+        h = Math.max(150, h);
+        setSize(w, h);
+
+        if (x != Integer.MIN_VALUE && y != Integer.MIN_VALUE && isPositionOnScreen(x, y, w, h)) {
+            setLocation(x, y);
+        } else {
+            setLocationRelativeTo(getParent());
+        }
+    }
+
+    private boolean isPositionOnScreen(int x, int y, int w, int h) {
+        java.awt.GraphicsEnvironment ge = java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment();
+        java.awt.GraphicsDevice[] screens = ge.getScreenDevices();
+        java.awt.Rectangle dialogRect = new java.awt.Rectangle(x, y, w, h);
+        for (java.awt.GraphicsDevice screen : screens) {
+            java.awt.Rectangle screenBounds = screen.getDefaultConfiguration().getBounds();
+            if (screenBounds.intersects(dialogRect)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void saveBounds() {
+        if (!isVisible()) return;
+        java.awt.Rectangle bounds = getBounds();
+        if (bounds.width > 0 && bounds.height > 0) {
+            Preferences prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
+            prefs.putInt(PreferenceKeys.MINI_ASSISTANT_X, bounds.x);
+            prefs.putInt(PreferenceKeys.MINI_ASSISTANT_Y, bounds.y);
+            prefs.putInt(PreferenceKeys.MINI_ASSISTANT_WIDTH, bounds.width);
+            prefs.putInt(PreferenceKeys.MINI_ASSISTANT_HEIGHT, bounds.height);
+        }
+    }
+
+    @Override
+    public void setVisible(boolean b) {
+        if (!b && isVisible()) {
+            saveBounds();
+        }
+        super.setVisible(b);
+    }
+
+    @Override
+    public void dispose() {
+        if (isVisible()) {
+            saveBounds();
+        }
+        super.dispose();
     }
 
     private void applyTheme() {

@@ -57,5 +57,11 @@ public final class PreferenceKeys {
     public static final String ACTIONS_STASH_DIFF = "actions.stashDiff";
     public static final String ACTIONS_QUICK_JUMP = "actions.quickJump";
 
+    // Mini Assistant window bounds
+    public static final String MINI_ASSISTANT_X = "miniAssistant.x";
+    public static final String MINI_ASSISTANT_Y = "miniAssistant.y";
+    public static final String MINI_ASSISTANT_WIDTH = "miniAssistant.width";
+    public static final String MINI_ASSISTANT_HEIGHT = "miniAssistant.height";
+
 }
 
