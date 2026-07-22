@@ -12,6 +12,7 @@
   - [Picking an Agent, Model and Thinking Level](#picking-an-agent-model-and-thinking-level)
   - [Showing all messages](#showing-all-messages)
   - [Exporting a conversation](#exporting-a-conversation)
+  - [Copying a message](#copying-a-message)
   - [Commands](#commands)
   - [Selecting toolbar buttons](#selecting-toolbar-buttons)
   - [Archiving Sessions](#archiving-sessions)
@@ -79,7 +80,7 @@ On **Wayland** (Linux), also install the `wl-clipboard` package for image paste 
 
 You can install the plugin directly from the NetBeans plugin catalogue by navigating to `Tools > Plugins > Available Plugins` and searching for it.
 
-However, for the absolute latest version and newer releases, you can download the `.nbm` file from [Maven Central](https://central.sonatype.com/artifact/io.github.anandb/beanbot/versions). Once downloaded, navigate to `Tools > Plugins > Downloaded` in NetBeans and add the `.nbm` file manually.
+However, for the latest version, you can download the `.nbm` file directly from [Maven Central](https://central.sonatype.com/artifact/io.github.anandb/beanbot/versions), then navigate to `Tools > Plugins > Downloaded` in NetBeans and add the `.nbm` file manually.
 
 ### 3. Open the Assistant
 
@@ -118,7 +119,11 @@ By default, older messages are gradually hidden from the chat panel to conserve 
 
 ### Exporting a conversation
 
-The share button on the toolbar will export the session to a markdown file, you can select individual user messages by hovering over the user icon, the icon will change into a copy button, clicking the copy button will place a copy in the clipboard and also add it to the input text-area, you can use this if you want to resend a message. Assistant responses can be copied by hovering over the bubble, you'll see a copy and a pin button, copy will copy to the clipboard.
+The share button on the toolbar will export the session to a markdown file.
+
+### Copying a message
+
+You can copy individual user messages back into the input text-area. Hover over the user icon, it'll change into a copy button — clicking it copies the message to the clipboard and adds it to the input text-area so you can resend or edit it. Assistant responses can be copied by hovering over the bubble, you'll see a copy and a pin button, copy will copy to the clipboard.
 
 ### Commands
 
@@ -144,7 +149,7 @@ To keep your conversations organized, you can rename any session. Click the **Pe
 
 ### Check token usage
 
-You can monitor how many tokens your current conversation has consumed by clicking the Currency/Token Stats icon on the toolbar to keep track of your context window limits. Checking the token usage helps you decide when it might be necessary to use the `/compact` command to summarize the conversation and free up memory.
+Click the **Currency/Token Stats** icon on the toolbar to see how many tokens your current session has used. Hover over the status label (which normally says "Ready") to view the context window fill level. This helps you decide when to run `/compact` to summarize the conversation and free up context.
 
 ### Filtering Chat Messages
 

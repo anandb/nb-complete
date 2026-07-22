@@ -177,7 +177,7 @@ final class KeyboardShortcutsDialog extends JDialog {
             String altRowBg, String hdrBg, String title, boolean isDark,
             String[][] rows, String footnote) {
         String tdStyle = "padding:7px 10px;border:1px solid " + border;
-        String keyBadge = tdStyle + ";font-family:monospace;font-size:11px;font-weight:600;"
+        String keyBadge = tdStyle + ";font-family:monospace;font-size:13px;font-weight:600;"
                 + "background:" + (isDark ? "#2a2d35" : "#e8e8ec") + ";"
                 + "border-radius:4px;text-align:center;white-space:nowrap;";
         String noneStyle = tdStyle + ";color:" + (isDark ? "#666" : "#999") + ";font-style:italic;";
