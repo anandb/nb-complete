@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
+import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -122,7 +123,7 @@ class AttachmentManagerTest {
         byte[] data = new byte[11 * 1024 * 1024];
         Files.write(big, data);
         AttachmentManager am = new AttachmentManager();
-        am.addFromFiles(new java.io.File[]{small.toFile(), big.toFile()});
+        am.addFromFiles(new File[]{small.toFile(), big.toFile()});
         assertEquals(1, am.size());
     }
 

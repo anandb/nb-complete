@@ -9,6 +9,7 @@ import javax.swing.text.StyledDocument;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import org.junit.jupiter.api.Assertions;
 
 class MarkdownStyledRendererTest {
 
@@ -117,6 +118,6 @@ class MarkdownStyledRendererTest {
         assertTrue(StyleConstants.isItalic(doc.getCharacterElement(quoteIdx).getAttributes()));
 
         float indent = StyleConstants.getLeftIndent(doc.getParagraphElement(quoteIdx).getAttributes());
-        org.junit.jupiter.api.Assertions.assertEquals(16.0f, indent);
+        Assertions.assertEquals(16.0f, indent);
     }
 }

@@ -42,6 +42,8 @@ public class MiniAssistantDialog extends JDialog {
     private String lastSentText;
     private boolean isProcessing;
     private int maxTokenCountThisTurn;
+    private String displayedMessageId;
+    private String displayedText;
 
     private int wordCount;
     private final java.util.Map<String, Integer> wordsByMessageId = new java.util.concurrent.ConcurrentHashMap<>();
@@ -209,12 +211,14 @@ public class MiniAssistantDialog extends JDialog {
         scrollPane.getVerticalScrollBar().setUnitIncrement(16);
         scrollPane.setHorizontalScrollBarPolicy(javax.swing.JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
 
-        // Token count overlay — top-right corner of the scroll pane
+        // Token count overlay — permanently reserved top-right header space
         tokenOverlay = new javax.swing.JLabel();
-        tokenOverlay.setOpaque(true);
+        tokenOverlay.setOpaque(false);
         tokenOverlay.setFont(ThemeManager.getMonospaceFont().deriveFont(10f));
         tokenOverlay.setBorder(BorderFactory.createEmptyBorder(2, 6, 2, 6));
-        tokenOverlay.setVisible(false);
+        tokenOverlay.setPreferredSize(new java.awt.Dimension(Integer.MAX_VALUE, 20));
+        tokenOverlay.setMinimumSize(new java.awt.Dimension(0, 20));
+        tokenOverlay.setVisible(true);
 
         // Wrapper so overlay floats above the scroll pane
         JPanel responseWrapper = new JPanel(new java.awt.BorderLayout());
@@ -329,17 +333,40 @@ public class MiniAssistantDialog extends JDialog {
         startTokenPolling();
     }
 
-    private void setTokenOverlayVisible(boolean visible, String text) {
-        if (visible && text != null) {
-            tokenOverlay.setText(text);
-        }
-        if (tokenOverlay.isVisible() != visible) {
-            tokenOverlay.setVisible(visible);
-            Component parent = tokenOverlay.getParent();
-            if (parent != null) {
-                parent.revalidate();
-                parent.repaint();
+    private void setTokenOverlayVisible(boolean active, String text) {
+        if (active && text != null && !text.isEmpty()) {
+            if (!text.equals(tokenOverlay.getText())) {
+                tokenOverlay.setText(text);
             }
+            applyTokenOverlayColors(true);
+        } else {
+            tokenOverlay.setText("");
+            applyTokenOverlayColors(false);
+        }
+    }
+
+    private void applyTokenOverlayColors(boolean active) {
+        if (!active) {
+            tokenOverlay.setOpaque(false);
+            tokenOverlay.setBorder(BorderFactory.createEmptyBorder(2, 6, 2, 6));
+            return;
+        }
+        boolean isDark = ThemeManager.isDark();
+        tokenOverlay.setOpaque(true);
+        if (isDark) {
+            tokenOverlay.setBackground(new java.awt.Color(60, 50, 10));
+            tokenOverlay.setForeground(new java.awt.Color(255, 230, 130));
+            tokenOverlay.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new java.awt.Color(90, 75, 15)),
+                BorderFactory.createEmptyBorder(2, 8, 2, 8)
+            ));
+        } else {
+            tokenOverlay.setBackground(new java.awt.Color(255, 243, 205));
+            tokenOverlay.setForeground(new java.awt.Color(133, 100, 4));
+            tokenOverlay.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new java.awt.Color(254, 238, 186)),
+                BorderFactory.createEmptyBorder(2, 8, 2, 8)
+            ));
         }
     }
 
@@ -474,6 +501,8 @@ public class MiniAssistantDialog extends JDialog {
             inputArea.setEnabled(sessionId != null);
             if (processing) {
                 maxTokenCountThisTurn = 0;
+                displayedMessageId = null;
+                displayedText = null;
                 showSpinner();
             } else {
                 stopTokenPolling();
@@ -484,22 +513,31 @@ public class MiniAssistantDialog extends JDialog {
                         break;
                     }
                 }
-                tokenOverlay.setVisible(false);
                 if (isVisible()) {
-                    AssistantTopComponent tc = AssistantTopComponent.findInstance();
-                    if (tc != null) {
-                        List<MessageBubble> bubbles = getAssistantBubbles();
-                        if (!bubbles.isEmpty()) {
-                            if (isAutoTrackingLatest) {
-                                currentBubbleIndex = bubbles.size() - 1;
-                            }
-                            MessageBubble realBubble = bubbles.get(currentBubbleIndex);
-                            displayBubble(realBubble);
-                        }
-                    }
+                    syncLatestBubble();
                 }
             }
         });
+    }
+
+    private void syncLatestBubble() {
+        List<MessageBubble> bubbles = getAssistantBubbles();
+        if (bubbles.isEmpty()) return;
+        
+        if (isAutoTrackingLatest) {
+            currentBubbleIndex = bubbles.size() - 1;
+        }
+        MessageBubble latest = bubbles.get(currentBubbleIndex);
+        String id = latest.getMessageId() != null ? latest.getMessageId() : "";
+        String text = latest.getRawText() != null ? latest.getRawText() : "";
+
+        if (id.equals(displayedMessageId) && text.equals(displayedText)) {
+            return;
+        }
+
+        displayedMessageId = id;
+        displayedText = text;
+        displayBubble(latest);
     }
 
     private static int countWords(String text) {
@@ -519,27 +557,10 @@ public class MiniAssistantDialog extends JDialog {
                 });
             }
         }
-        if (msg != null && !msg.isIgnorable() && msg.text() != null && !msg.text().isBlank()) {
-            String id = msg.messageId();
-            int newCount = countWords(msg.text());
-            if (id != null) {
-                int oldCount = wordsByMessageId.getOrDefault(id, 0);
-                if (newCount > oldCount) {
-                    wordCount += (newCount - oldCount);
-                    wordsByMessageId.put(id, newCount);
-                }
-            } else {
-                wordCount += newCount;
-            }
-        }
         SwingUtilities.invokeLater(() -> {
             updateTokenOverlay();
             if (isAutoTrackingLatest && isVisible()) {
-                List<MessageBubble> bubbles = getAssistantBubbles();
-                if (!bubbles.isEmpty()) {
-                    currentBubbleIndex = bubbles.size() - 1;
-                    displayBubble(bubbles.get(currentBubbleIndex));
-                }
+                syncLatestBubble();
             }
         });
     }
@@ -731,22 +752,7 @@ public class MiniAssistantDialog extends JDialog {
         java.awt.Font f = ThemeManager.getFont();
         inputArea.setFont(f);
 
-        boolean isDark = ThemeManager.isDark();
-        if (isDark) {
-            tokenOverlay.setBackground(new java.awt.Color(60, 50, 10));
-            tokenOverlay.setForeground(new java.awt.Color(255, 230, 130));
-            tokenOverlay.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new java.awt.Color(90, 75, 15)),
-                BorderFactory.createEmptyBorder(2, 8, 2, 8)
-            ));
-        } else {
-            tokenOverlay.setBackground(new java.awt.Color(255, 243, 205));
-            tokenOverlay.setForeground(new java.awt.Color(133, 100, 4));
-            tokenOverlay.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new java.awt.Color(254, 238, 186)),
-                BorderFactory.createEmptyBorder(2, 8, 2, 8)
-            ));
-        }
+        applyTokenOverlayColors(isProcessing && maxTokenCountThisTurn > 0);
 
         SwingUtilities.updateComponentTreeUI(this);
     }

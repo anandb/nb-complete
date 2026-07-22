@@ -7,6 +7,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.List;
 
 
 import org.junit.jupiter.api.AfterEach;
@@ -49,7 +50,7 @@ class SessionManagerTest {
         when(processManager.whenReady()).thenReturn(CompletableFuture.completedFuture(null));
         when(processManager.getToolExecutor()).thenReturn(toolExecutor);
         when(toolExecutor.waitForReady()).thenReturn(CompletableFuture.completedFuture(null));
-        when(toolExecutor.getServerConfig()).thenReturn(java.util.List.of());
+        when(toolExecutor.getServerConfig()).thenReturn(List.of());
         // Default stub for 2-param sendRequest (e.g. session/prompt from sendPreamble)
         when(processManager.sendRequest(any(), any())).thenReturn(CompletableFuture.completedFuture(null));
 

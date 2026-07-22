@@ -24,7 +24,7 @@ class ShortcutUtilsTest {
 
     @Test
     void testFormatKeyStroke_complex() {
-        KeyStroke ks = KeyStroke.getKeyStroke(KeyEvent.VK_L, InputEvent.CTRL_DOWN_MASK | java.awt.event.InputEvent.SHIFT_DOWN_MASK);
+        KeyStroke ks = KeyStroke.getKeyStroke(KeyEvent.VK_L, InputEvent.CTRL_DOWN_MASK | InputEvent.SHIFT_DOWN_MASK);
         String formatted = ShortcutUtils.formatKeyStroke(ks);
         assertTrue(formatted.contains("Ctrl"));
         assertTrue(formatted.contains("Shift"));

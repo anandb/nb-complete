@@ -1,9 +1,12 @@
 package github.anandb.netbeans.ui;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import java.awt.Color;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.TimeUnit;
 
 import github.anandb.netbeans.model.ColorKey;
 import github.anandb.netbeans.model.ColorRegistry;
@@ -142,10 +145,10 @@ public final class CssGenerator {
     }
 
     /** Shared hex cache (static because it maps java.awt.Color, not theme state). */
-    private static final com.github.benmanes.caffeine.cache.Cache<Color, String> HEX_CACHE =
-            com.github.benmanes.caffeine.cache.Caffeine.newBuilder()
+    private static final Cache<Color, String> HEX_CACHE =
+            Caffeine.newBuilder()
                     .maximumSize(128)
-                    .expireAfterAccess(60, java.util.concurrent.TimeUnit.MINUTES)
+                    .expireAfterAccess(60, TimeUnit.MINUTES)
                     .build();
 
     /** Invalidates the shared hex cache (called on theme switch). */

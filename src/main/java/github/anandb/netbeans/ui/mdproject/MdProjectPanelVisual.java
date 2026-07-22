@@ -1,11 +1,22 @@
 package github.anandb.netbeans.ui.mdproject;
 
+import java.awt.Color;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
 import java.io.File;
+import java.util.regex.Pattern;
+
+import javax.swing.JButton;
+import javax.swing.JFileChooser;
+import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JTextField;
+import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
-import java.util.regex.Pattern;
+
 import org.openide.WizardDescriptor;
 import org.openide.util.NbBundle;
 
@@ -16,60 +27,60 @@ final class MdProjectPanelVisual extends JPanel {
 
     private static final Pattern VALID_NAME_PATTERN = Pattern.compile("\\w[\\w\\-.]*");
 
-    private final javax.swing.JTextField nameField;
-    private final javax.swing.JTextField folderField;
-    private final javax.swing.JButton browseButton;
-    private final javax.swing.JLabel errorLabel;
-    private javax.swing.event.ChangeListener changeListener;
+    private final JTextField nameField;
+    private final JTextField folderField;
+    private final JButton browseButton;
+    private final JLabel errorLabel;
+    private ChangeListener changeListener;
 
     MdProjectPanelVisual() {
-        setLayout(new java.awt.GridBagLayout());
-        java.awt.GridBagConstraints c = new java.awt.GridBagConstraints();
+        setLayout(new GridBagLayout());
+        GridBagConstraints c = new GridBagConstraints();
 
-        c.insets = new java.awt.Insets(8, 8, 8, 8);
-        c.anchor = java.awt.GridBagConstraints.WEST;
+        c.insets = new Insets(8, 8, 8, 8);
+        c.anchor = GridBagConstraints.WEST;
 
         // Project Name
         c.gridx = 0;
         c.gridy = 0;
-        add(new javax.swing.JLabel(NbBundle.getMessage(MdProjectPanelVisual.class, "LBL_ProjectName")), c);
+        add(new JLabel(NbBundle.getMessage(MdProjectPanelVisual.class, "LBL_ProjectName")), c);
 
         c.gridx = 1;
         c.gridy = 0;
-        c.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        c.fill = GridBagConstraints.HORIZONTAL;
         c.weightx = 1.0;
-        nameField = new javax.swing.JTextField(30);
+        nameField = new JTextField(30);
         add(nameField, c);
 
         // Project Location
         c.gridx = 0;
         c.gridy = 1;
-        c.fill = java.awt.GridBagConstraints.NONE;
+        c.fill = GridBagConstraints.NONE;
         c.weightx = 0;
-        add(new javax.swing.JLabel(NbBundle.getMessage(MdProjectPanelVisual.class, "LBL_ProjectLocation")), c);
+        add(new JLabel(NbBundle.getMessage(MdProjectPanelVisual.class, "LBL_ProjectLocation")), c);
 
         c.gridx = 1;
         c.gridy = 1;
-        c.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        c.fill = GridBagConstraints.HORIZONTAL;
         c.weightx = 1.0;
-        folderField = new javax.swing.JTextField(30);
+        folderField = new JTextField(30);
         folderField.setText(System.getProperty("user.home"));
         add(folderField, c);
 
         c.gridx = 2;
         c.gridy = 1;
-        c.fill = java.awt.GridBagConstraints.NONE;
+        c.fill = GridBagConstraints.NONE;
         c.weightx = 0;
-        browseButton = new javax.swing.JButton(NbBundle.getMessage(MdProjectPanelVisual.class, "LBL_Browse"));
+        browseButton = new JButton(NbBundle.getMessage(MdProjectPanelVisual.class, "LBL_Browse"));
         add(browseButton, c);
 
         // Error label
         c.gridx = 1;
         c.gridy = 2;
         c.gridwidth = 2;
-        c.fill = java.awt.GridBagConstraints.HORIZONTAL;
-        errorLabel = new javax.swing.JLabel(" ");
-        errorLabel.setForeground(java.awt.Color.RED);
+        c.fill = GridBagConstraints.HORIZONTAL;
+        errorLabel = new JLabel(" ");
+        errorLabel.setForeground(Color.RED);
         add(errorLabel, c);
 
         // Listeners
@@ -82,10 +93,10 @@ final class MdProjectPanelVisual extends JPanel {
         folderField.getDocument().addDocumentListener(dl);
 
         browseButton.addActionListener(e -> {
-            javax.swing.JFileChooser chooser = new javax.swing.JFileChooser();
-            chooser.setFileSelectionMode(javax.swing.JFileChooser.DIRECTORIES_ONLY);
+            JFileChooser chooser = new JFileChooser();
+            chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
             chooser.setCurrentDirectory(new File(folderField.getText()));
-            if (chooser.showOpenDialog(this) == javax.swing.JFileChooser.APPROVE_OPTION) {
+            if (chooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
                 folderField.setText(chooser.getSelectedFile().getAbsolutePath());
             }
         });
@@ -148,7 +159,7 @@ final class MdProjectPanelVisual extends JPanel {
 
     private void fireChange() {
         if (changeListener != null) {
-            changeListener.stateChanged(new javax.swing.event.ChangeEvent(this));
+            changeListener.stateChanged(new ChangeEvent(this));
         }
     }
 }

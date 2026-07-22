@@ -2,6 +2,7 @@ package github.anandb.netbeans.ui;
 
 import org.junit.jupiter.api.Test;
 
+import javax.swing.Icon;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -26,7 +27,7 @@ class BaseCollapsiblePaneTest {
             }
 
             @Override
-            protected javax.swing.Icon getDefaultIcon() {
+            protected Icon getDefaultIcon() {
                 return null;
             }
 

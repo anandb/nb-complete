@@ -1,19 +1,24 @@
 package github.anandb.netbeans.ui;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
+import java.awt.Font;
 import java.awt.Frame;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.util.ArrayList;
 import java.util.List;
 
 import javax.swing.BorderFactory;
+import javax.swing.DefaultListCellRenderer;
 import javax.swing.DefaultListModel;
+import javax.swing.JComponent;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JList;
@@ -35,7 +40,7 @@ import javax.swing.event.DocumentListener;
 // (self-contained; no streaming/timer bridge). Migration target: DialogSpec family.
 final class HistorySearchDialog extends JDialog {
     private static final long serialVersionUID = 1L;
-    private static final java.awt.Font DIALOG_FONT = ThemeManager.getFont().deriveFont(13f);
+    private static final Font DIALOG_FONT = ThemeManager.getFont().deriveFont(13f);
     private static HistorySearchDialog currentInstance;
 
     private final PlaceholderTextArea inputArea;
@@ -98,7 +103,7 @@ final class HistorySearchDialog extends JDialog {
         resultList.setCellRenderer(new HistoryCellRenderer());
         resultList.addMouseListener(new MouseAdapter() {
             @Override
-            public void mouseClicked(java.awt.event.MouseEvent e) {
+            public void mouseClicked(MouseEvent e) {
                 if (e.getClickCount() == 2) {
                     selectAndClose();
                 }
@@ -130,7 +135,7 @@ final class HistorySearchDialog extends JDialog {
 
         // Footer hint
         JLabel hint = new JLabel("Up/Down: Navigate   Enter: Select   Esc: Dismiss");
-        hint.setFont(hint.getFont().deriveFont(java.awt.Font.ITALIC,
+        hint.setFont(hint.getFont().deriveFont(Font.ITALIC,
                 hint.getFont().getSize() - 1f));
         hint.setForeground(hint.getForeground().brighter());
         hint.setHorizontalAlignment(JLabel.CENTER);
@@ -146,7 +151,7 @@ final class HistorySearchDialog extends JDialog {
                     inputArea.requestFocusInWindow();
                 },
                 KeyStroke.getKeyStroke("ESCAPE"),
-                javax.swing.JComponent.WHEN_IN_FOCUSED_WINDOW);
+                JComponent.WHEN_IN_FOCUSED_WINDOW);
 
         // Search field key bindings
         searchField.addKeyListener(new KeyAdapter() {
@@ -224,7 +229,7 @@ final class HistorySearchDialog extends JDialog {
     }
 
     /** Renderer that truncates long entries and highlights the search term. */
-    private static class HistoryCellRenderer extends javax.swing.DefaultListCellRenderer {
+    private static class HistoryCellRenderer extends DefaultListCellRenderer {
         private static final long serialVersionUID = 1L;
 
         @Override
@@ -244,7 +249,7 @@ final class HistorySearchDialog extends JDialog {
     }
 
     private static class UIManager {
-        static java.awt.Color getColor(String key) {
+        static Color getColor(String key) {
             return javax.swing.UIManager.getColor(key);
         }
     }

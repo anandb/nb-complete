@@ -3,6 +3,7 @@ package github.anandb.netbeans.manager;
 import java.util.ArrayList;
 import java.util.List;
 
+import java.util.function.Consumer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -128,7 +129,7 @@ class SessionStateMachineTest {
     @Test
     void removedListenerNoLongerReceivesEvents() {
         List<SessionState> observed = new ArrayList<>();
-        java.util.function.Consumer<SessionState> listener = observed::add;
+        Consumer<SessionState> listener = observed::add;
         machine.addListener(listener);
         machine.transitionTo(SessionState.LOADING);
 

@@ -6,6 +6,7 @@ import org.openide.util.NbPreferences;
 
 import java.util.prefs.Preferences;
 
+import org.junit.jupiter.api.Assertions;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class MiniAssistantDialogTest {
@@ -33,6 +34,6 @@ class MiniAssistantDialogTest {
 
     @Test
     void testCloseIfVisibleDoesNotThrowWhenNull() {
-        org.junit.jupiter.api.Assertions.assertDoesNotThrow(MiniAssistantDialog::closeIfVisible);
+        Assertions.assertDoesNotThrow(MiniAssistantDialog::closeIfVisible);
     }
 }

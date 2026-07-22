@@ -2,6 +2,7 @@ package github.anandb.netbeans.ui;
 
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.Field;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 class ColorThemeTest {
@@ -10,7 +11,7 @@ class ColorThemeTest {
     void testColorThemeGetters() {
         // Clear the static cache in ColorTheme using reflection to avoid flakiness
         try {
-            java.lang.reflect.Field field = ColorTheme.class.getDeclaredField("cachedTheme");
+            Field field = ColorTheme.class.getDeclaredField("cachedTheme");
             field.setAccessible(true);
             field.set(null, null);
         } catch (Exception e) {
