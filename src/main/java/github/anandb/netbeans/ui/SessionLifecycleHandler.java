@@ -167,6 +167,7 @@ public class SessionLifecycleHandler implements SessionListener {
                         }
                     }
                     chatPanel.addMessage(msg);
+                    MiniAssistantDialog.getInstance().onStreamUpdate(msg);
                     // Capture turnEnded once to avoid TOCTOU: the volatile
                     // field can be set to true by onMessageDone() or an SSE
                     // turn-end signal between our read and the button update,

@@ -23,6 +23,7 @@ public class MiniAssistantDialog extends JDialog {
     private static MiniAssistantDialog instance;
     private PlaceholderTextArea inputArea;
     private JPanel responsePane;
+    private javax.swing.JTextArea streamLogArea;
     
     // Drag variables
     private Point initialClick;
@@ -46,7 +47,7 @@ public class MiniAssistantDialog extends JDialog {
         setLayout(new BorderLayout());
         
         responsePane = new JPanel(new BorderLayout());
-        inputArea = new PlaceholderTextArea("");
+        inputArea = new PlaceholderTextArea(org.openide.util.NbBundle.getMessage(AssistantTopComponent.class, "LBL_TypeMessage"));
         
         java.awt.KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(new java.awt.KeyEventDispatcher() {
             @Override
@@ -56,10 +57,16 @@ public class MiniAssistantDialog extends JDialog {
                 if (focusOwner != MiniAssistantDialog.this && !isAncestorOf(focusOwner)) return false;
                 
                 if (e.getID() == java.awt.event.KeyEvent.KEY_PRESSED) {
-                    if (e.getKeyCode() == java.awt.event.KeyEvent.VK_PAGE_UP) {
+                    boolean isMac = org.openide.util.Utilities.isMac();
+                    boolean isPrev = e.getKeyCode() == java.awt.event.KeyEvent.VK_PAGE_UP || 
+                                     (isMac && e.getKeyCode() == java.awt.event.KeyEvent.VK_LEFT && e.isMetaDown());
+                    boolean isNext = e.getKeyCode() == java.awt.event.KeyEvent.VK_PAGE_DOWN || 
+                                     (isMac && e.getKeyCode() == java.awt.event.KeyEvent.VK_RIGHT && e.isMetaDown());
+                                     
+                    if (isPrev) {
                         navigateAssistantBubble(-1);
                         return true;
-                    } else if (e.getKeyCode() == java.awt.event.KeyEvent.VK_PAGE_DOWN) {
+                    } else if (isNext) {
                         navigateAssistantBubble(1);
                         return true;
                     } else if (e.getKeyCode() == java.awt.event.KeyEvent.VK_ESCAPE) {
@@ -70,7 +77,7 @@ public class MiniAssistantDialog extends JDialog {
                             sendMessage();
                             return true; // only consume Enter if in inputArea
                         }
-                    } else if (e.getKeyCode() == java.awt.event.KeyEvent.VK_C && e.isControlDown()) {
+                    } else if (e.getKeyCode() == java.awt.event.KeyEvent.VK_C && (isMac ? e.isMetaDown() : e.isControlDown())) {
                         copyContent();
                         return true;
                     } else if (e.getKeyCode() == java.awt.event.KeyEvent.VK_L && e.isControlDown() && !e.isAltDown()) {
@@ -103,8 +110,16 @@ public class MiniAssistantDialog extends JDialog {
         
         splitPane.setTopComponent(scrollPane);
         splitPane.setDividerSize(2);
-        inputArea.setOverlayText("Esc: close | Ctrl+L: Main Assistant Panel | Ctrl+Alt+L: focus toggle | "
-            + "PgUp/PgDn: scroll | Ctrl+C: copy | Enter: send");
+        
+        String toggleAction = github.anandb.netbeans.support.ShortcutUtils.resolveShortcut("github.anandb.netbeans.ui.ToggleAssistantAction");
+        if (toggleAction == null || toggleAction.isEmpty()) toggleAction = "Ctrl+L";
+        
+        boolean isMac = org.openide.util.Utilities.isMac();
+        String scrollAction = isMac ? "Cmd+Left/Right: scroll" : "PgUp/PgDn: scroll";
+        String copyAction = isMac ? "Cmd+C: copy" : "Ctrl+C: copy";
+        
+        inputArea.setOverlayText("Esc: close | " + toggleAction + ": Main Assistant Panel | Ctrl+Alt+L: focus toggle | "
+            + scrollAction + " | " + copyAction + " | Enter: send");
         
         add(splitPane, BorderLayout.CENTER);
         
@@ -148,14 +163,25 @@ public class MiniAssistantDialog extends JDialog {
     
     private void showSpinner() {
         responsePane.removeAll();
+        
+        JPanel p = new JPanel(new BorderLayout(0, 8));
+        p.setOpaque(false);
+        
         JProgressBar spinner = new JProgressBar();
         spinner.setIndeterminate(true);
         spinner.setPreferredSize(new Dimension(100, 4));
         spinner.setBorderPainted(false);
-        
-        JPanel p = new JPanel(new BorderLayout());
-        p.setOpaque(false);
         p.add(spinner, BorderLayout.NORTH);
+        
+        streamLogArea = new javax.swing.JTextArea();
+        streamLogArea.setOpaque(false);
+        streamLogArea.setEditable(false);
+        streamLogArea.setLineWrap(true);
+        streamLogArea.setWrapStyleWord(true);
+        streamLogArea.setRows(2);
+        streamLogArea.setFont(ThemeManager.getMonospaceFont());
+        streamLogArea.setForeground(ThemeManager.getCurrentTheme().foreground());
+        p.add(streamLogArea, BorderLayout.CENTER);
         
         responsePane.add(p, BorderLayout.CENTER);
         responsePane.revalidate();
@@ -239,6 +265,24 @@ public class MiniAssistantDialog extends JDialog {
                 }
             }
         });
+    }
+
+    public void onStreamUpdate(github.anandb.netbeans.model.ProcessedMessage msg) {
+        SwingUtilities.invokeLater(() -> {
+            if (streamLogArea != null && isVisible() && !inputArea.isEnabled()) {
+                String text = extractText(msg);
+                if (text != null && !text.isBlank()) {
+                    streamLogArea.setText(text.trim());
+                }
+            }
+        });
+    }
+
+    private String extractText(github.anandb.netbeans.model.ProcessedMessage msg) {
+        if (msg.text() != null && !msg.text().isBlank()) {
+            return msg.text();
+        }
+        return msg.rawText();
     }
 
     private void styleAsMiniBubble(MessageBubble mb) {
@@ -343,7 +387,7 @@ public class MiniAssistantDialog extends JDialog {
         ));
         
         java.awt.Font f = ThemeManager.getFont();
-        inputArea.setFont(f.deriveFont(Math.max(10f, f.getSize() - 1f)));
+        inputArea.setFont(f);
         
         SwingUtilities.updateComponentTreeUI(this);
     }

@@ -68,6 +68,9 @@ public class GoToFileDialog extends JDialog {
     private static final Logger LOG = Logger.from(GoToFileDialog.class);
     private static final int MAX_RESULTS = 200;
 
+    private static String lastSearchQuery = "";
+    private static long lastCacheVersion = -1;
+
     private final JTextField searchField;
     private final JList<FileItem> resultList;
     private final DefaultListModel<FileItem> listModel;
@@ -133,6 +136,17 @@ public class GoToFileDialog extends JDialog {
         // --- Debounce timer ---
         debounceTimer = new javax.swing.Timer(150, e -> performSearch());
         debounceTimer.setRepeats(false);
+
+        long currentVersion = cache.getCacheVersion();
+        if (currentVersion == lastCacheVersion) {
+            searchField.setText(lastSearchQuery);
+            if (!lastSearchQuery.isEmpty()) {
+                performSearch();
+            }
+        } else {
+            lastSearchQuery = "";
+            lastCacheVersion = currentVersion;
+        }
 
         // --- Listen for indexing completion to refresh results ---
         if (!indexingComplete) {
@@ -325,6 +339,7 @@ public class GoToFileDialog extends JDialog {
         @Override public void removeUpdate(DocumentEvent e)   { scheduleSearch(); }
         @Override public void changedUpdate(DocumentEvent e)  { scheduleSearch(); }
         private void scheduleSearch() {
+            lastSearchQuery = searchField.getText();
             debounceTimer.restart();
         }
     }

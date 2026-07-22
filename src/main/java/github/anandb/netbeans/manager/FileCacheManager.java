@@ -48,6 +48,7 @@ public class FileCacheManager implements FileCacheQuery {
     /** Files keyed by absolute path for O(1) dedup across overlapping projects. */
     private final ConcurrentHashMap<String, FileCacheQuery.CachedFile> files = new ConcurrentHashMap<>();
     private volatile boolean ready;
+    private volatile long cacheVersion = 0;
     private final List<Runnable> readyListeners = new CopyOnWriteArrayList<>();
     private final Object readyLock = new Object();
 
@@ -101,6 +102,11 @@ public class FileCacheManager implements FileCacheQuery {
     }
 
     @Override
+    public long getCacheVersion() {
+        return cacheVersion;
+    }
+
+    @Override
     public Collection<CachedFile> getAllFiles() {
         return Collections.unmodifiableCollection(new ArrayList<>(files.values()));
     }
@@ -151,6 +157,7 @@ public class FileCacheManager implements FileCacheQuery {
         List<Runnable> listenersCopy;
         synchronized (readyLock) {
             ready = true;
+            cacheVersion++;
             listenersCopy = new ArrayList<>(readyListeners);
             readyListeners.clear();
         }
