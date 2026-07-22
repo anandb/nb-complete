@@ -42,7 +42,6 @@ public class MiniAssistantDialog extends JDialog {
         super(WindowManager.getDefault().getMainWindow(), false);
         setSize(500, 300);
         setLocationRelativeTo(getParent());
-        setAlwaysOnTop(true);
         
         setLayout(new BorderLayout());
         
