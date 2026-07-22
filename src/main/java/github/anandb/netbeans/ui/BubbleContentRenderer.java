@@ -35,6 +35,7 @@ class BubbleContentRenderer {
      *  Held here so the activity pane can be created with the segmented
      *  content on the first render. */
     private List<CollapsibleToolPane.ToolSegment> pendingSegmentedContent;
+    private int fontSizeOverride = -1;
 
     public record CollapsibleState(boolean expanded) {}
 
@@ -45,6 +46,13 @@ class BubbleContentRenderer {
         this.role = role;
         this.codeStates = codeStates;
         this.streamer = streamer;
+    }
+    
+    void setFontSizeOverride(int size) {
+        if (this.fontSizeOverride != size) {
+            this.fontSizeOverride = size;
+            this.lastRenderedTextHash = 0; // Force re-render on next updateContent
+        }
     }
 
     private void handleToolThoughtContent(ColorTheme theme, boolean expanded, String toolTitle) {
@@ -225,7 +233,7 @@ class BubbleContentRenderer {
     }
 
     private void updateOrAddTextSegment(String markdown, ColorTheme theme, int compIdx, boolean incremental) {
-        String styledHtml = HtmlContentPreparer.prepareHtml(markdown, theme, role, incremental);
+        String styledHtml = HtmlContentPreparer.prepareHtml(markdown, theme, role, incremental, fontSizeOverride);
         java.awt.Color bg = UIUtils.getBubbleBackground(theme, role);
 
         if (compIdx < segments.getComponentCount()) {
@@ -262,7 +270,7 @@ class BubbleContentRenderer {
     }
 
     private void updateOrAddTableSegment(String tableMarkdown, ColorTheme theme, int compIdx) {
-        String styledHtml = HtmlContentPreparer.prepareHtml(tableMarkdown, theme, role, false);
+        String styledHtml = HtmlContentPreparer.prepareHtml(tableMarkdown, theme, role, false, fontSizeOverride);
 
         if (compIdx < segments.getComponentCount()) {
             Component c = segments.getComponent(compIdx);

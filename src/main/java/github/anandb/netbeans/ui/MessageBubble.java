@@ -648,6 +648,12 @@ public class MessageBubble extends JPanel implements Scrollable {
     void forceFinalize(boolean expanded) {
         streamer.forceFinalize(expanded);
     }
+    
+    public void setFontSizeOverride(int size) {
+        if (contentRenderer != null) {
+            contentRenderer.setFontSizeOverride(size);
+        }
+    }
 
     /**
      * Replaces the tool/thought content with segmented (markdown-rendered) blocks.

@@ -23,7 +23,7 @@ public final class HtmlContentPreparer {
 
     private static final Parser FLEXMARK_PARSER;
     private static final HtmlRenderer FLEXMARK_RENDERER;
-
+    
     /** Bounded LRU cache for markdown→HTML output. Caffeine handles concurrency,
      *  size eviction, and access-order tracking internally. */
     private static final Cache<String, String> MARKDOWN_HTML_CACHE =
@@ -49,6 +49,10 @@ public final class HtmlContentPreparer {
                     .build();
 
     public static String prepareHtml(String markdown, ColorTheme theme, String role, boolean incremental) {
+        return prepareHtml(markdown, theme, role, incremental, -1);
+    }
+    
+    public static String prepareHtml(String markdown, ColorTheme theme, String role, boolean incremental, int fontSizeOverride) {
         String html = computeOrGetCachedHtml(markdown);
 
         if (incremental) {
@@ -96,7 +100,7 @@ public final class HtmlContentPreparer {
             html = newlinesToBrOutsidePre(html);
         }
 
-        String wrapper = getCachedWrapper(theme, role, isAssistant);
+        String wrapper = getCachedWrapper(theme, role, isAssistant, fontSizeOverride);
         String headOpen = wrapper.substring(0, wrapper.indexOf("__BODY__"));
         String headCloseAndBodyOpen = wrapper.substring(wrapper.indexOf("__BODY__") + "__BODY__".length());
 
@@ -120,9 +124,14 @@ public final class HtmlContentPreparer {
      * variable body content is inserted. Includes the &lt;body style='...'&gt; opener
      * so the body is properly opened after the sentinel.
      */
-    private static String getCachedWrapper(ColorTheme theme, String role, boolean isAssistant) {
-        int prefSize = github.anandb.netbeans.support.PluginSettings.getChatFontSize();
-        int fontSize = (prefSize > 0) ? prefSize : ThemeManager.getFont().getSize() - 2;
+    private static String getCachedWrapper(ColorTheme theme, String role, boolean isAssistant, int fontSizeOverride) {
+        int fontSize;
+        if (fontSizeOverride > 0) {
+            fontSize = fontSizeOverride;
+        } else {
+            int prefSize = github.anandb.netbeans.support.PluginSettings.getChatFontSize();
+            fontSize = (prefSize > 0) ? prefSize : ThemeManager.getFont().getSize() - 2;
+        }
         String cacheKey = role + "|" + fontSize + "|" + System.identityHashCode(theme);
         return HTML_WRAPPER_CACHE.get(cacheKey, key -> {
             String customCss = theme.toCss(null, isAssistant, fontSize);

@@ -383,30 +383,36 @@ public class ConfigPanelController {
 
     /**
      * Builds the tab label from current combo selections.
-     * Format: "model/level | agent" or just "model" if agent/level unavailable.
+     * Format: "model - agent" without the provider name.
      * The agent name is rendered in bold blue using HTML.
      */
     private String buildTabLabel() {
         String model = null;
         String agent = null;
-        String level = null;
 
         if (modelCombo.getSelectedItem() instanceof ConfigItem m) {
             model = m.name();
+            // Remove provider prefix if present (e.g., "Google: gemini-pro" -> "gemini-pro")
+            if (model != null) {
+                int colonIdx = model.indexOf(':');
+                if (colonIdx != -1 && colonIdx < model.length() - 1) {
+                    model = model.substring(colonIdx + 1).trim();
+                } else {
+                    int slashIdx = model.indexOf('/');
+                    if (slashIdx != -1 && slashIdx < model.length() - 1) {
+                        model = model.substring(slashIdx + 1).trim();
+                    }
+                }
+            }
         }
         if (modeCombo.getSelectedItem() instanceof ConfigItem a) {
             agent = a.name();
         }
-        if (thinkingCombo.getSelectedItem() instanceof ConfigItem t) {
-            level = t.name();
-        }
 
         if (model == null) return null;
         String agentDisplay = agent != null ? capitalize(agent) : null;
-        if (agentDisplay != null && level != null) {
-            return "<html>" + model + "/" + level + " | <font color='#3A7FBF'><b>" + agentDisplay + "</b></font>";
-        } else if (agentDisplay != null) {
-            return "<html>" + model + " | <font color='#3A7FBF'><b>" + agentDisplay + "</b></font>";
+        if (agentDisplay != null) {
+            return "<html>" + model + " - <font color='#3A7FBF'><b>" + agentDisplay + "</b></font>";
         }
         return model;
     }

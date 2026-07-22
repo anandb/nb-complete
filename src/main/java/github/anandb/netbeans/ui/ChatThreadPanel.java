@@ -643,6 +643,10 @@ public class ChatThreadPanel extends JPanel {
         scrollController.scrollToBottom(force);
     }
 
+    public JPanel getMessagesContainer() {
+        return messagesContainer;
+    }
+
     public void toggleAllBlocks(boolean expanded) {
         LOG.info("Toggling all blocks to {0}", expanded);
         allBlocksExpanded = expanded;

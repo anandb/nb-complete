@@ -87,6 +87,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     private final JButton restartServerBtn;
     private final JButton refreshBtn;
     private final JButton exportBtn;
+    private final JButton rocketBtn;
     private final JLabel statusLabel;
     private final JLabel versionLabel;
     private final JLabel cwdLabel;
@@ -158,7 +159,10 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
         statusController = new StatusController(statusLabel, sendBtn, stopBtn, inputArea, toggleOptionsBtn);
         statusController.setProcessingListener(
-                processing -> configPanelController.setCombosEnabled(!processing));
+                processing -> {
+                    configPanelController.setCombosEnabled(!processing);
+                    MiniAssistantDialog.getInstance().onProcessingChanged(processing);
+                });
         attachmentUiHandler = new AttachmentUiHandler(attachmentManager, statusController, inputArea, AssistantTopComponent.this);
 
         // Add attachment button to the right status panel (before settings button)
@@ -166,11 +170,12 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
         // Add rocket (OpenCode Go) button to the left of the attachment button
         int iconSize = PluginSettings.getToolbarIconSize();
-        JButton rocketBtn = UIUtils.createToolbarButton("rocket-ship.svg", iconSize,
-                "Sign up for OpenCode Go", e -> {
+        rocketBtn = UIUtils.createToolbarButton("rocket-ship.svg", iconSize,
+                "Sign up for OpenCode Go, Referral Link", e -> {
             github.anandb.netbeans.support.BrowserUtils.openOrCopyUrl(
                     "https://opencode.ai/go?ref=DWTNHGN9KX", null, null);
         });
+        rocketBtn.setVisible(false);
         layoutBuilder.getRightStatusPanel().add(rocketBtn, 0);
 
         // Add token usage button after the rocket button
@@ -433,6 +438,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
         configPanelController.getComponent().setVisible(visible);
         toggleOptionsBtn.setIcon(ThemeManager.getIcon(visible ? "arrow-down.svg" : "settings.svg", 25));
+        rocketBtn.setVisible(visible);
 
         // Adjust split pane divider so the textarea keeps its size:
         // expanding moves the divider UP (taking space from chat), collapsing moves it DOWN.
@@ -485,6 +491,10 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     @Override
     public Dimension getMinimumSize() {
         return new Dimension(50, 50);
+    }
+
+    public ChatThreadPanel getChatThreadPanel() {
+        return chatPanel;
     }
 
     private void updateCwdLabel(String path) {

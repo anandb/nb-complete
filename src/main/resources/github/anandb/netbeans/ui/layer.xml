@@ -30,6 +30,11 @@
                 <attr name="displayName" bundlevalue="github.anandb.netbeans.ui.Bundle#CTL_ToggleAssistantAction"/>
                 <attr name="iconBase" stringvalue="github/anandb/netbeans/ui/icons/logo_window.svg"/>
             </file>
+            <file name="github-anandb-netbeans-ui-ToggleMiniAssistantAction.instance">
+                <attr name="instanceCreate" methodvalue="org.openide.awt.Actions.alwaysEnabled"/>
+                <attr name="delegate" newvalue="github.anandb.netbeans.ui.ToggleMiniAssistantAction"/>
+                <attr name="displayName" bundlevalue="github.anandb.netbeans.ui.Bundle#CTL_ToggleMiniAssistantAction"/>
+            </file>
         </folder>
     </folder>
     <folder name="Menu">
@@ -42,6 +47,9 @@
     <folder name="Shortcuts">
         <file name="D-L.shadow">
             <attr name="originalFile" stringvalue="Actions/Window/github-anandb-netbeans-ui-ToggleAssistantAction.instance"/>
+        </file>
+        <file name="DA-L.shadow">
+            <attr name="originalFile" stringvalue="Actions/Window/github-anandb-netbeans-ui-ToggleMiniAssistantAction.instance"/>
         </file>
         <file name="DS-L.shadow">
             <attr name="originalFile" stringvalue="Actions/Tools/github-anandb-netbeans-ui-StashDiffAction.instance"/>

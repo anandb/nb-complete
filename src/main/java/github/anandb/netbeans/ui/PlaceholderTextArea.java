@@ -40,11 +40,13 @@ public class PlaceholderTextArea extends JTextArea implements Scrollable {
     private UndoManager undoManager;
     private WordBoundaryEditListener editListener;
     private transient JPopupMenu contextMenu;
+    private String overlayText;
 
     public PlaceholderTextArea(String placeholder) {
         super();
         this.placeholder = placeholder;
         initUndoManager();
+        initDocumentListener();
         getAccessibleContext().setAccessibleName("Chat input");
         getAccessibleContext().setAccessibleDescription("Type your message here");
     }
@@ -53,8 +55,17 @@ public class PlaceholderTextArea extends JTextArea implements Scrollable {
         super(rows, cols);
         this.placeholder = placeholder;
         initUndoManager();
+        initDocumentListener();
         getAccessibleContext().setAccessibleName("Chat input");
         getAccessibleContext().setAccessibleDescription("Type your message here");
+    }
+
+    private void initDocumentListener() {
+        getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            @Override public void insertUpdate(DocumentEvent e) { repaint(); }
+            @Override public void removeUpdate(DocumentEvent e) { repaint(); }
+            @Override public void changedUpdate(DocumentEvent e) { repaint(); }
+        });
     }
 
     private void initUndoManager() {
@@ -212,6 +223,11 @@ public class PlaceholderTextArea extends JTextArea implements Scrollable {
         return placeholder;
     }
 
+    public void setOverlayText(String text) {
+        this.overlayText = text;
+        repaint();
+    }
+
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
@@ -230,6 +246,51 @@ public class PlaceholderTextArea extends JTextArea implements Scrollable {
             }
             g.setColor(oldColor);
             g.setFont(oldFont);
+        }
+        if (overlayText != null && !overlayText.isEmpty() && getText().isEmpty()) {
+            java.awt.Graphics2D g2 = (java.awt.Graphics2D) g.create();
+            g2.setRenderingHint(java.awt.RenderingHints.KEY_TEXT_ANTIALIASING, java.awt.RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+            g2.setColor(ThemeManager.getCurrentTheme().placeholderForeground());
+            Font overlayFont = getFont().deriveFont(Math.max(9f, getFont().getSize() - 2f));
+            g2.setFont(overlayFont);
+            java.awt.FontMetrics fm = g2.getFontMetrics();
+            
+            int availableWidth = getWidth() - getInsets().left - getInsets().right - 8;
+            String[] lines;
+            if (fm.stringWidth(overlayText) > availableWidth) {
+                int midPoint = overlayText.length() / 2;
+                int splitRight = overlayText.indexOf(" | ", midPoint);
+                int splitLeft = overlayText.lastIndexOf(" | ", midPoint);
+                
+                int splitIndex = -1;
+                if (splitRight != -1 && splitLeft != -1) {
+                    splitIndex = (splitRight - midPoint) < (midPoint - splitLeft) ? splitRight : splitLeft;
+                } else if (splitRight != -1) {
+                    splitIndex = splitRight;
+                } else {
+                    splitIndex = splitLeft;
+                }
+
+                if (splitIndex != -1) {
+                    lines = new String[] {
+                        overlayText.substring(0, splitIndex).trim(),
+                        overlayText.substring(splitIndex + 3).trim()
+                    };
+                } else {
+                    lines = new String[] { overlayText };
+                }
+            } else {
+                lines = new String[] { overlayText };
+            }
+
+            int y = getInsets().top + fm.getAscent();
+            for (String line : lines) {
+                int lineWidth = fm.stringWidth(line);
+                int x = (getWidth() - lineWidth) / 2;
+                g2.drawString(line, x, y);
+                y += fm.getHeight();
+            }
+            g2.dispose();
         }
     }
 

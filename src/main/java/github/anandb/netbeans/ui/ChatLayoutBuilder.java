@@ -317,8 +317,18 @@ final class ChatLayoutBuilder {
         }
         keyboardShortcutsBtn.addActionListener(e -> KeyboardShortcutsDialog.show(topComponent));
 
+        JButton launchMiniAssistantBtn = UIUtils.createToolbarButton("mini-assistant.svg",
+            "Launch Mini Assistant", null);
+        launchMiniAssistantBtn.setContentAreaFilled(false);
+        launchMiniAssistantBtn.setBorderPainted(false);
+        launchMiniAssistantBtn.addActionListener(e -> {
+            topComponent.minimizeToDock();
+            MiniAssistantDialog.getInstance().toggleVisibility();
+        });
+
         JPanel rightButtons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 2, 0));
         rightButtons.setOpaque(false);
+        rightButtons.add(launchMiniAssistantBtn);
         rightButtons.add(keyboardShortcutsBtn);
         rightButtons.add(helpBtn);
         cwdRow.add(rightButtons, BorderLayout.EAST);
