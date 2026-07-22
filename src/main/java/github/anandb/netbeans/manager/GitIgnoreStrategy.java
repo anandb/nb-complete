@@ -12,6 +12,8 @@ import java.util.logging.Level;
 import github.anandb.netbeans.contract.VcsIgnoreStrategy;
 import github.anandb.netbeans.support.Logger;
 
+import org.openide.util.RequestProcessor;
+
 /**
  * Git ignore strategy using {@code git ls-files} for bulk listing
  * and {@code git check-ignore} for single-file queries.
@@ -22,8 +24,8 @@ public class GitIgnoreStrategy implements VcsIgnoreStrategy {
 
     private static final Logger LOG = Logger.from(GitIgnoreStrategy.class);
     private static final long CMD_TIMEOUT_SEC = 30;
-    private static final org.openide.util.RequestProcessor GIT_RP =
-            new org.openide.util.RequestProcessor("GitIgnore-Reader", 1);
+    private static final RequestProcessor GIT_RP =
+            new RequestProcessor("GitIgnore-Reader", 1);
 
     @Override
     public boolean isAvailable(File projectRoot) {
@@ -60,7 +62,7 @@ public class GitIgnoreStrategy implements VcsIgnoreStrategy {
             Process proc = pb.start();
 
             Set<String> files = Collections.synchronizedSet(new LinkedHashSet<>());
-            org.openide.util.RequestProcessor.Task readerTask = GIT_RP.post(() -> {
+            RequestProcessor.Task readerTask = GIT_RP.post(() -> {
                 try (BufferedReader r = new BufferedReader(
                         new InputStreamReader(proc.getInputStream(), StandardCharsets.UTF_8))) {
                     String line;

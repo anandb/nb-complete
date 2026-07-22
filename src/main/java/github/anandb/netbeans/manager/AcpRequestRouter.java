@@ -2,6 +2,7 @@ package github.anandb.netbeans.manager;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import java.io.File;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.concurrent.CompletableFuture;
@@ -125,7 +126,7 @@ class AcpRequestRouter {
                 return CompletableFuture.failedFuture(new RuntimeException(
                     NbBundle.getMessage(ProcessManager.class, "ERR_PathOutsideProject")));
             }
-        } catch (java.io.IOException e) {
+        } catch (IOException e) {
             LOG.warn("Failed to resolve canonical path for {0}", filePath);
             return CompletableFuture.failedFuture(new RuntimeException("Invalid file path"));
         }

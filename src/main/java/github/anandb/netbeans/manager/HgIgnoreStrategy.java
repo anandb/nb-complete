@@ -12,6 +12,8 @@ import java.util.logging.Level;
 import github.anandb.netbeans.contract.VcsIgnoreStrategy;
 import github.anandb.netbeans.support.Logger;
 
+import org.openide.util.RequestProcessor;
+
 /**
  * Mercurial ignore strategy using {@code hg files} for bulk listing
  * and {@code hg status -i} for single-file queries.
@@ -22,8 +24,8 @@ public class HgIgnoreStrategy implements VcsIgnoreStrategy {
 
     private static final Logger LOG = Logger.from(HgIgnoreStrategy.class);
     private static final long CMD_TIMEOUT_SEC = 30;
-    private static final org.openide.util.RequestProcessor HG_RP =
-            new org.openide.util.RequestProcessor("HgIgnore-Reader", 1);
+    private static final RequestProcessor HG_RP =
+            new RequestProcessor("HgIgnore-Reader", 1);
 
     @Override
     public boolean isAvailable(File projectRoot) {
@@ -57,7 +59,7 @@ public class HgIgnoreStrategy implements VcsIgnoreStrategy {
             Process proc = pb.start();
 
             Set<String> files = Collections.synchronizedSet(new LinkedHashSet<>());
-            org.openide.util.RequestProcessor.Task readerTask = HG_RP.post(() -> {
+            RequestProcessor.Task readerTask = HG_RP.post(() -> {
                 try (BufferedReader r = new BufferedReader(
                         new InputStreamReader(proc.getInputStream(), StandardCharsets.UTF_8))) {
                     String line;
@@ -110,7 +112,7 @@ public class HgIgnoreStrategy implements VcsIgnoreStrategy {
             Process proc = pb.start();
 
             Set<String> output = Collections.synchronizedSet(new LinkedHashSet<>());
-            org.openide.util.RequestProcessor.Task readerTask = HG_RP.post(() -> {
+            RequestProcessor.Task readerTask = HG_RP.post(() -> {
                 try (BufferedReader r = new BufferedReader(
                         new InputStreamReader(proc.getInputStream(), StandardCharsets.UTF_8))) {
                     String line;

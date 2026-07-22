@@ -41,9 +41,24 @@ import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.model.SessionItem;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.PluginSettings;
+
 import github.anandb.netbeans.ui.platform.PlatformBridge;
 import github.anandb.netbeans.ui.platform.ProjectContext;
 import github.anandb.netbeans.ui.platform.SessionService;
+import java.awt.Frame;
+import java.awt.Window;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.MouseEvent;
+import javax.swing.JMenuItem;
+import javax.swing.JPopupMenu;
+import javax.swing.Timer;
+import javax.swing.border.EmptyBorder;
+import org.netbeans.api.project.Project;
+import github.anandb.netbeans.support.BrowserUtils;
+
+
+
 
 @ConvertAsProperties(
     dtd = "-//github.anandb.netbeans.ui//Assistant//EN",
@@ -112,8 +127,8 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     private final transient ChatLayoutBuilder layoutBuilder;
 
     private boolean sessionActive = false;
-    private transient javax.swing.Timer attentionPeriodicTimer;
-    private transient javax.swing.Timer attentionShakeTimer;
+    private transient Timer attentionPeriodicTimer;
+    private transient Timer attentionShakeTimer;
 
     public AssistantTopComponent() {
         setName(NbBundle.getMessage(AssistantTopComponent.class, "CTL_AssistantTopComponent"));
@@ -172,7 +187,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         int iconSize = PluginSettings.getToolbarIconSize();
         rocketBtn = UIUtils.createToolbarButton("rocket-ship.svg", iconSize,
                 "Sign up for OpenCode Go, Referral Link", e -> {
-            github.anandb.netbeans.support.BrowserUtils.openOrCopyUrl(
+            BrowserUtils.openOrCopyUrl(
                     "https://opencode.ai/go?ref=DWTNHGN9KX", null, null);
         });
         rocketBtn.setVisible(false);
@@ -181,8 +196,8 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         // Add token usage button after the rocket button
         JButton tokenUsageBtn = UIUtils.createToolbarButton("currency.svg", iconSize,
                 "Token Stats", e -> {
-            java.awt.Window win = SwingUtilities.getWindowAncestor(AssistantTopComponent.this);
-            if (win instanceof java.awt.Frame frame) {
+            Window win = SwingUtilities.getWindowAncestor(AssistantTopComponent.this);
+            if (win instanceof Frame frame) {
                 TokenUsageDialog.show(frame);
             } else {
                 TokenUsageDialog.show(null);
@@ -307,19 +322,19 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
     /** Enable the new-session button only when at least one project is open. */
     private void updateNewSessionBtnState() {
-        org.netbeans.api.project.Project[] projects = projectContext.getAllOpenProjects();
+        Project[] projects = projectContext.getAllOpenProjects();
         newSessionBtn.setEnabled(projects != null && projects.length > 0);
         updateAttentionAnimation();
     }
 
     private void updateAttentionAnimation() {
-        org.netbeans.api.project.Project[] projects = projectContext.getAllOpenProjects();
+        Project[] projects = projectContext.getAllOpenProjects();
         boolean projectsOpen = (projects != null && projects.length > 0);
         boolean shouldAnimate = projectsOpen && !sessionActive && isOpened();
 
         if (shouldAnimate) {
             if (attentionPeriodicTimer == null) {
-                attentionPeriodicTimer = new javax.swing.Timer(4000, e -> {
+                attentionPeriodicTimer = new Timer(4000, e -> {
                     if (isOpened() && isShowing()) {
                         triggerAttentionShake();
                     }
@@ -362,11 +377,11 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         final int[] xOffsets = {0, -2, 2, -2, 2, -1, 1, 0, 0, 0, 0, 0, 0, 0, 0};
         final float[] alphas = {0.0f, 0.3f, 0.6f, 0.9f, 1.0f, 0.9f, 0.6f, 0.3f, 0.0f, 0.2f, 0.5f, 0.6f, 0.5f, 0.2f, 0.0f};
 
-        attentionShakeTimer = new javax.swing.Timer(30, new java.awt.event.ActionListener() {
+        attentionShakeTimer = new Timer(30, new ActionListener() {
             private int frame = 0;
 
             @Override
-            public void actionPerformed(java.awt.event.ActionEvent e) {
+            public void actionPerformed(ActionEvent e) {
                 if (frame < yOffsets.length) {
                     ab.setOffsetAndHighlight(xOffsets[frame], yOffsets[frame], alphas[frame]);
                     frame++;
@@ -387,7 +402,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     }
 
     void createNewSession() {
-        org.netbeans.api.project.Project[] projects = projectContext.getAllOpenProjects();
+        Project[] projects = projectContext.getAllOpenProjects();
         if (projects == null || projects.length == 0) {
             return;
         }
@@ -620,13 +635,13 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         return null;
     }
 
-    void showCwdContextMenu(java.awt.event.MouseEvent e) {
+    void showCwdContextMenu(MouseEvent e) {
         if (!e.isPopupTrigger()) return;
         String cwd = cwdLabel.getToolTipText();
         if (cwd == null || cwd.isEmpty()) return;
 
-        javax.swing.JPopupMenu popup = new javax.swing.JPopupMenu();
-        javax.swing.JMenuItem locateItem = new javax.swing.JMenuItem("Locate in System");
+        JPopupMenu popup = new JPopupMenu();
+        JMenuItem locateItem = new JMenuItem("Locate in System");
         locateItem.addActionListener(ev -> openCwdInSystemBrowser(cwd));
         popup.add(locateItem);
         popup.show(cwdLabel, e.getX(), e.getY());
@@ -657,7 +672,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         Color bb = theme.bubbleBorder() != null ? theme.bubbleBorder() : Color.LIGHT_GRAY;
         cwdLabel.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(bb, 1),
-                new javax.swing.border.EmptyBorder(4, 8, 4, 8)));
+                new EmptyBorder(4, 8, 4, 8)));
 
         versionLabel.setForeground(theme.base1());
 
@@ -708,7 +723,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                 chatPanel.stopStreaming();
                 chatPanel.clearMessages();
                 chatPanel.addMissingBinaryBubble(
-                    () -> github.anandb.netbeans.support.BrowserUtils.openOrCopyUrl("https://opencode.ai/docs/", null, null),
+                    () -> BrowserUtils.openOrCopyUrl("https://opencode.ai/docs/", null, null),
                     this::promptRestartServer
                 );
                 statusController.setStatus("STATUS_BinaryNotFound");

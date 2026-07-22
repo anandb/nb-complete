@@ -40,6 +40,8 @@ public class MiniAssistantDialog extends JDialog {
     private int currentBubbleIndex = -1;
     private boolean isAutoTrackingLatest = true;
     private String lastSentText;
+    private boolean isProcessing;
+    private int maxTokenCountThisTurn;
 
     private int wordCount;
     private final java.util.Map<String, Integer> wordsByMessageId = new java.util.concurrent.ConcurrentHashMap<>();
@@ -327,12 +329,30 @@ public class MiniAssistantDialog extends JDialog {
         startTokenPolling();
     }
 
+    private void setTokenOverlayVisible(boolean visible, String text) {
+        if (visible && text != null) {
+            tokenOverlay.setText(text);
+        }
+        if (tokenOverlay.isVisible() != visible) {
+            tokenOverlay.setVisible(visible);
+            Component parent = tokenOverlay.getParent();
+            if (parent != null) {
+                parent.revalidate();
+                parent.repaint();
+            }
+        }
+    }
+
     private void updateTokenOverlay() {
-        if (wordCount > 0) {
-            tokenOverlay.setText(wordCount + " tokens received");
-            tokenOverlay.setVisible(true);
-        } else {
-            tokenOverlay.setVisible(false);
+        int count = calculateCurrentTokenCount();
+        if (count > maxTokenCountThisTurn) {
+            maxTokenCountThisTurn = count;
+        }
+        int displayCount = Math.max(count, maxTokenCountThisTurn);
+        if (displayCount > 0) {
+            setTokenOverlayVisible(true, displayCount + " tokens received");
+        } else if (!isProcessing) {
+            setTokenOverlayVisible(false, null);
         }
     }
 
@@ -347,9 +367,8 @@ public class MiniAssistantDialog extends JDialog {
             tokenTimer.stop();
             tokenTimer = null;
         }
-        wordCount = 0;
-        wordsByMessageId.clear();
-        tokenOverlay.setVisible(false);
+        maxTokenCountThisTurn = 0;
+        setTokenOverlayVisible(false, null);
     }
     
     private void navigateAssistantBubble(int direction) {
@@ -383,11 +402,24 @@ public class MiniAssistantDialog extends JDialog {
         List<MessageBubble> bubbles = new ArrayList<>();
         Component[] comps = tc.getChatThreadPanel().getMessagesContainer().getComponents();
         for (Component c : comps) {
-            if (c instanceof MessageBubble mb && "assistant".equals(mb.getRole())) {
+            if (c instanceof MessageBubble mb && !"user".equals(mb.getRole())) {
                 bubbles.add(mb);
             }
         }
         return bubbles;
+    }
+
+    private int calculateCurrentTokenCount() {
+        List<MessageBubble> bubbles = getAssistantBubbles();
+        if (bubbles.isEmpty()) return 0;
+        int total = 0;
+        for (MessageBubble mb : bubbles) {
+            String text = mb.getRawText();
+            if (text != null && !text.isBlank()) {
+                total += countWords(text);
+            }
+        }
+        return total;
     }
     
     private void displayBubble(MessageBubble realBubble) {
@@ -436,10 +468,12 @@ public class MiniAssistantDialog extends JDialog {
     
     public void onProcessingChanged(boolean processing) {
         SwingUtilities.invokeLater(() -> {
+            this.isProcessing = processing;
             String sessionId = org.openide.util.Lookup.getDefault()
                     .lookup(github.anandb.netbeans.contract.SessionControl.class).getCurrentSessionId();
             inputArea.setEnabled(sessionId != null);
             if (processing) {
+                maxTokenCountThisTurn = 0;
                 showSpinner();
             } else {
                 stopTokenPolling();

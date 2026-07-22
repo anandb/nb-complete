@@ -7,6 +7,7 @@ import javax.swing.ImageIcon;
 import javax.swing.JLabel;
 import javax.swing.JMenuItem;
 import javax.swing.JPopupMenu;
+import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 
 import github.anandb.netbeans.support.Logger;
@@ -25,10 +26,10 @@ final class IconPreviewManager {
     private static final Logger LOG = Logger.from(IconPreviewManager.class);
 
     private final JLabel previewLabel;
-    private final javax.swing.JTextField pathField;
+    private final JTextField pathField;
     private final Runnable onChangeCallback;
 
-    IconPreviewManager(JLabel previewLabel, javax.swing.JTextField pathField, Runnable onChangeCallback) {
+    IconPreviewManager(JLabel previewLabel, JTextField pathField, Runnable onChangeCallback) {
         this.previewLabel = previewLabel;
         this.pathField = pathField;
         this.onChangeCallback = onChangeCallback;

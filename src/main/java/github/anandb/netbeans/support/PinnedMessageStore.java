@@ -77,7 +77,7 @@ public final class PinnedMessageStore implements PinnedMessageControl {
     }
 
     @Override
-    public void retainPinned(String sessionId, java.util.Set<String> activeMessageIds) {
+    public void retainPinned(String sessionId, Set<String> activeMessageIds) {
         if (sessionId == null || activeMessageIds == null) {
             return;
         }

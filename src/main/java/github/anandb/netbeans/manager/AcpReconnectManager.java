@@ -1,6 +1,7 @@
 package github.anandb.netbeans.manager;
 
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
@@ -76,7 +77,7 @@ class AcpReconnectManager {
             }
             proc.destroyForcibly();
             try {
-                proc.waitFor(3, java.util.concurrent.TimeUnit.SECONDS);
+                proc.waitFor(3, TimeUnit.SECONDS);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }

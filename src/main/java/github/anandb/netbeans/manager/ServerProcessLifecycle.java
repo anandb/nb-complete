@@ -3,6 +3,7 @@ package github.anandb.netbeans.manager;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import java.util.Arrays;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
@@ -223,7 +224,7 @@ class ServerProcessLifecycle {
             return;
         }
         client.sendRequest("initialize", params)
-                .orTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+                .orTimeout(30, TimeUnit.SECONDS)
                 .thenAccept(res -> {
                     if (res != null) {
                         toolExecutor.checkServerSupport(res);

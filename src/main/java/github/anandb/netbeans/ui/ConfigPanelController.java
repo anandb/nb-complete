@@ -33,6 +33,13 @@ import org.openide.util.NbBundle;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
 import github.anandb.netbeans.ui.platform.SessionService;
 
+import java.awt.Rectangle;
+import java.awt.geom.Rectangle2D;
+import java.util.Locale;
+import javax.swing.JCheckBoxMenuItem;
+import javax.swing.JComponent;
+import javax.swing.JPopupMenu;
+
 // DSL-LEAF: not a view-pure form — builds the agent/model/thinking combo panel
 // (GridBagLayout). Migration target: OptionsFormSpec + ConfigComboSpec; the
 // selection callbacks + ModelVariantResolver wiring stay imperative.
@@ -50,7 +57,7 @@ public class ConfigPanelController {
     private volatile Runnable onModeSelectedCallback;
     private volatile Runnable onThinkingSelectedCallback;
     private boolean isUpdatingConfigControls = false;
-    private javax.swing.JPopupMenu activeCustomPopup;
+    private JPopupMenu activeCustomPopup;
 
     private final ModelVariantResolver modelResolver = new ModelVariantResolver();
 
@@ -132,7 +139,7 @@ public class ConfigPanelController {
         popupCombo(combo, null);
     }
 
-    public void popupCombo(JComboBox<ConfigItem> combo, javax.swing.JComponent targetInvoker) {
+    public void popupCombo(JComboBox<ConfigItem> combo, JComponent targetInvoker) {
         SwingUtilities.invokeLater(() -> {
             if (combo != null && combo.isShowing()) {
                 combo.requestFocusInWindow();
@@ -147,10 +154,10 @@ public class ConfigPanelController {
         });
     }
 
-    private void showCustomPopupMenu(JComboBox<ConfigItem> combo, javax.swing.JComponent targetInvoker) {
+    private void showCustomPopupMenu(JComboBox<ConfigItem> combo, JComponent targetInvoker) {
         if (combo == null || combo.getItemCount() == 0) return;
 
-        javax.swing.JPopupMenu popup = new javax.swing.JPopupMenu();
+        JPopupMenu popup = new JPopupMenu();
         ConfigItem currentSel = (ConfigItem) combo.getSelectedItem();
 
         activeCustomPopup = popup;
@@ -177,7 +184,7 @@ public class ConfigPanelController {
             ConfigItem item = combo.getItemAt(i);
             if (item == null) continue;
             boolean isSel = item.equals(currentSel);
-            javax.swing.JCheckBoxMenuItem menuItem = new javax.swing.JCheckBoxMenuItem(item.name(), isSel);
+            JCheckBoxMenuItem menuItem = new JCheckBoxMenuItem(item.name(), isSel);
             menuItem.setFont(ThemeManager.getFont().deriveFont(12f));
             menuItem.addActionListener(ev -> {
                 combo.setSelectedItem(item);
@@ -186,7 +193,7 @@ public class ConfigPanelController {
             popup.add(menuItem);
         }
 
-        javax.swing.JComponent invoker = targetInvoker;
+        JComponent invoker = targetInvoker;
         if (invoker == null || !invoker.isShowing()) {
             MiniAssistantDialog mini = MiniAssistantDialog.getInstance();
             if (mini != null && mini.isVisible()) {
@@ -203,9 +210,9 @@ public class ConfigPanelController {
             if (invoker instanceof PlaceholderTextArea pta) {
                 try {
                     int caret = pta.getCaretPosition();
-                    java.awt.geom.Rectangle2D rect2d = pta.modelToView2D(Math.max(0, caret - 1));
+                    Rectangle2D rect2d = pta.modelToView2D(Math.max(0, caret - 1));
                     if (rect2d != null) {
-                        java.awt.Rectangle rect = rect2d.getBounds();
+                        Rectangle rect = rect2d.getBounds();
                         int popH = popup.getPreferredSize().height;
                         x = rect.x;
                         y = Math.max(0, rect.y - popH - 2);
@@ -571,7 +578,7 @@ public class ConfigPanelController {
     /** Returns true if the option value is meaningless for models that need a real thinking level. */
     private static boolean isDefaultOrEmptyOption(SessionConfigSelectOption o) {
         if (o.value() == null || o.value().isBlank()) return true;
-        String v = o.value().toLowerCase(java.util.Locale.ROOT);
+        String v = o.value().toLowerCase(Locale.ROOT);
         return "default".equals(v) || "none".equals(v);
     }
 

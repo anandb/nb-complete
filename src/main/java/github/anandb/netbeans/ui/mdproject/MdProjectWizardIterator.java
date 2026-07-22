@@ -7,6 +7,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.text.MessageFormat;
+import java.time.LocalDate;
 import javax.swing.event.ChangeListener;
 import org.openide.WizardDescriptor;
 import org.openide.filesystems.FileObject;
@@ -68,8 +70,8 @@ public final class MdProjectWizardIterator implements WizardDescriptor.Instantia
         // Create .mdproject marker file with project metadata
         FileObject mdprojectFile = dir.createData(".mdproject");
         try (OutputStream out = mdprojectFile.getOutputStream()) {
-            String content = java.text.MessageFormat.format(MDPROJECT_CONTENT,
-                    name, java.time.LocalDate.now().toString());
+            String content = MessageFormat.format(MDPROJECT_CONTENT,
+                    name, LocalDate.now().toString());
             out.write(content.getBytes(StandardCharsets.UTF_8));
         }
 

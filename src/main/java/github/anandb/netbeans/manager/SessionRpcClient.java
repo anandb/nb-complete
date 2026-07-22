@@ -1,6 +1,7 @@
 package github.anandb.netbeans.manager;
 
 import java.util.Map;
+import java.util.HashMap;
 import java.util.concurrent.CompletableFuture;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -27,7 +28,7 @@ final class SessionRpcClient {
 
 
     CompletableFuture<JsonNode> getSessions(String directory) {
-        Map<String, Object> params = new java.util.HashMap<>();
+        Map<String, Object> params = new HashMap<>();
         if (directory != null && !directory.isEmpty()) {
             params.put("cwd", directory);
         }
@@ -35,14 +36,14 @@ final class SessionRpcClient {
     }
 
     CompletableFuture<JsonNode> createSession(String cwd) {
-        Map<String, Object> params = new java.util.HashMap<>();
+        Map<String, Object> params = new HashMap<>();
         params.put("cwd", cwd);
         params.put("mcpServers", processManager.getToolExecutor().getServerConfig());
         return processManager.sendRequest("session/new", params);
     }
 
     CompletableFuture<JsonNode> loadSessionFromServer(String sessionId, String cwd) {
-        Map<String, Object> params = new java.util.HashMap<>();
+        Map<String, Object> params = new HashMap<>();
         params.put("sessionId", sessionId);
         if (cwd != null) {
             params.put("cwd", cwd);

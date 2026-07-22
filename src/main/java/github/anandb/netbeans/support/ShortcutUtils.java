@@ -4,6 +4,7 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.util.List;
+import java.lang.reflect.Method;
 import java.util.logging.Level;
 import javax.swing.KeyStroke;
 import org.openide.filesystems.FileObject;
@@ -35,7 +36,7 @@ public final class ShortcutUtils {
             ClassLoader cl = Lookup.getDefault().lookup(ClassLoader.class);
             Class<?> cls = cl != null ? cl.loadClass("org.netbeans.core.options.keymap.api.KeyStrokeUtils")
                                       : Class.forName("org.netbeans.core.options.keymap.api.KeyStrokeUtils");
-            java.lang.reflect.Method m = cls.getMethod("getKeyStrokesForAction", String.class, KeyStroke.class);
+            Method m = cls.getMethod("getKeyStrokesForAction", String.class, KeyStroke.class);
 
             // Try with dots
             List<KeyStroke[]> all = (List<KeyStroke[]>) m.invoke(null, actionId, null);

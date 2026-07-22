@@ -5,6 +5,7 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.FontMetrics;
 import java.awt.Toolkit;
 import java.awt.Window;
 import java.awt.event.ActionEvent;
@@ -36,11 +37,15 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import javax.swing.KeyStroke;
+import javax.swing.ListCellRenderer;
 import javax.swing.ListSelectionModel;
+import javax.swing.SwingUtilities;
+import javax.swing.Timer;
 import javax.swing.border.EmptyBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 
+import org.openide.cookies.OpenCookie;
 import org.openide.filesystems.FileObject;
 import org.openide.loaders.DataObject;
 import org.openide.util.NbBundle;
@@ -79,7 +84,7 @@ public class GoToFileDialog extends JDialog {
     private FileItem selectedItem;
 
     /** Timer for debounced search — 150ms idle before filtering. */
-    private final javax.swing.Timer debounceTimer;
+    private final Timer debounceTimer;
 
     /** All cached files (snapshot taken at dialog open, refreshed when indexing completes). */
     private List<FileCacheQuery.CachedFile> allFiles;
@@ -134,7 +139,7 @@ public class GoToFileDialog extends JDialog {
         setContentPane(content);
 
         // --- Debounce timer ---
-        debounceTimer = new javax.swing.Timer(150, e -> performSearch());
+        debounceTimer = new Timer(150, e -> performSearch());
         debounceTimer.setRepeats(false);
 
         long currentVersion = cache.getCacheVersion();
@@ -154,7 +159,7 @@ public class GoToFileDialog extends JDialog {
                 if (!isDisplayable()) return;
                 indexingComplete = true;
                 allFiles = new ArrayList<>(cache.getAllFiles());
-                javax.swing.SwingUtilities.invokeLater(() -> {
+                SwingUtilities.invokeLater(() -> {
                     updateStatusLabel(searchField.getText());
                     debounceTimer.restart();
                 });
@@ -180,7 +185,7 @@ public class GoToFileDialog extends JDialog {
 
         pack();
         // Center horizontally, position 30% from the top of the screen
-        Dimension screenSize = java.awt.Toolkit.getDefaultToolkit().getScreenSize();
+        Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
         int x = (screenSize.width - getWidth()) / 2;
         int y = (int) (screenSize.height * 0.30);
         setLocation(x, y);
@@ -263,10 +268,10 @@ public class GoToFileDialog extends JDialog {
      * Minimum width is 420px. Called once at dialog open.
      */
     private void resizeToContentWidth() {
-        java.awt.Font nameFont = resultList.getFont().deriveFont(Font.BOLD);
-        java.awt.Font pathFont = resultList.getFont().deriveFont(Font.PLAIN, 11f);
-        java.awt.FontMetrics nameFm = resultList.getFontMetrics(nameFont);
-        java.awt.FontMetrics pathFm = resultList.getFontMetrics(pathFont);
+        Font nameFont = resultList.getFont().deriveFont(Font.BOLD);
+        Font pathFont = resultList.getFont().deriveFont(Font.PLAIN, 11f);
+        FontMetrics nameFm = resultList.getFontMetrics(nameFont);
+        FontMetrics pathFm = resultList.getFontMetrics(pathFont);
 
         int maxTextWidth = 0;
         for (FileCacheQuery.CachedFile cf : allFiles) {
@@ -325,7 +330,7 @@ public class GoToFileDialog extends JDialog {
         // Open in editor
         try {
             DataObject.find(item.fileObject()).getLookup()
-                .lookup(org.openide.cookies.OpenCookie.class)
+                .lookup(OpenCookie.class)
                 .open();
         } catch (Exception e) {
             LOG.log(Level.WARNING, "Failed to open file: {0}", item.fileObject());
@@ -396,7 +401,7 @@ public class GoToFileDialog extends JDialog {
 
     // --- Cell renderer: fileName bold, gray path below ---
 
-    private static class FileItemRenderer extends JPanel implements javax.swing.ListCellRenderer<Object> {
+    private static class FileItemRenderer extends JPanel implements ListCellRenderer<Object> {
         private static final Color PATH_GRAY = new Color(128, 128, 128);
         private final JLabel nameLabel;
         private final JLabel pathLabel;

@@ -12,6 +12,7 @@ import java.awt.event.MouseEvent;
 import java.io.InputStream;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.Map;
+import java.util.Objects;
 
 import javax.swing.BorderFactory;
 import javax.swing.Icon;
@@ -259,7 +260,7 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
             String prevLanguage = this.language;
             this.code = code;
             this.language = (language != null && !language.isEmpty()) ? language : NbBundle.getMessage(CollapsibleCodePane.class, "LBL_CodeFallback");
-            boolean languageChanged = !java.util.Objects.equals(prevLanguage, this.language);
+            boolean languageChanged = !Objects.equals(prevLanguage, this.language);
             if (codeAreaInitialized) {
                 codeTextArea.setText(code);
                 codeTextArea.setCaretPosition(0);

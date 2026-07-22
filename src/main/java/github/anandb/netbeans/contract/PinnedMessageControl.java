@@ -1,5 +1,7 @@
 package github.anandb.netbeans.contract;
 
+import java.util.Set;
+
 /**
  * Port for pinned-message state management.
  * UI layer depends on this interface (via Lookup) to query and toggle pin state.
@@ -23,7 +25,7 @@ public interface PinnedMessageControl {
      * Removes pinned entries for message IDs not in the active set.
      * Call after loading completes to clean up stale pins (e.g. for deleted messages).
      */
-    void retainPinned(String sessionId, java.util.Set<String> activeMessageIds);
+    void retainPinned(String sessionId, Set<String> activeMessageIds);
 
     /** Evicts the in-memory cache for the given session. */
     void unloadSession(String sessionId);

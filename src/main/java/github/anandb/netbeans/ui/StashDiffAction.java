@@ -23,6 +23,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.StringReader;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
@@ -236,7 +237,7 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
         StringBuffer sb = new StringBuffer();
         RequestProcessor.Task readerTask = READER_RP.post(() -> {
             try (BufferedReader r = new BufferedReader(
-                    new InputStreamReader(proc.getInputStream(), java.nio.charset.StandardCharsets.UTF_8))) {
+                    new InputStreamReader(proc.getInputStream(), StandardCharsets.UTF_8))) {
                 String line;
                 while ((line = r.readLine()) != null) sb.append(line).append('\n');
             } catch (IOException e) {

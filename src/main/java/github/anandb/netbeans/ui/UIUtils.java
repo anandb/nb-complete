@@ -4,10 +4,13 @@ import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.GridBagConstraints;
+import java.awt.Image;
 import java.awt.Insets;
 import java.awt.LayoutManager;
+import java.awt.Point;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseEvent;
 import javax.swing.JComboBox;
 import java.io.File;
 import java.util.ArrayList;
@@ -103,10 +106,10 @@ public class UIUtils {
     public static JButton createToolbarButton(String iconName, int iconSize, String toolTip, ActionListener l) {
         JButton btn = new JButton() {
             @Override
-            public java.awt.Point getToolTipLocation(java.awt.event.MouseEvent event) {
+            public Point getToolTipLocation(MouseEvent event) {
                 // Show tooltip above the button
-                java.awt.Insets ins = getInsets();
-                return new java.awt.Point(ins.left, -getHeight() - 8);
+                Insets ins = getInsets();
+                return new Point(ins.left, -getHeight() - 8);
             }
         };
         Icon icon = ThemeManager.getIcon(iconName, iconSize);
@@ -212,7 +215,7 @@ public class UIUtils {
                 try {
                     ImageIcon icon = new ImageIcon(path);
                     if (icon.getIconWidth() > 0) {
-                        Icon scaled = new ImageIcon(icon.getImage().getScaledInstance(size, size, java.awt.Image.SCALE_SMOOTH));
+                        Icon scaled = new ImageIcon(icon.getImage().getScaledInstance(size, size, Image.SCALE_SMOOTH));
                         cachedUserIconPath = path;
                         cachedUserIcon = scaled;
                         return scaled;

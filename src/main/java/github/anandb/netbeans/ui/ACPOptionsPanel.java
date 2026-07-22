@@ -23,6 +23,7 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
+import javax.swing.Box;
 import javax.swing.border.TitledBorder;
 
 import javax.swing.JButton;
@@ -167,7 +168,7 @@ public class ACPOptionsPanel extends JPanel {
                                          GridBagConstraints.WEST, new Insets(0, 0, 5, 5)));
 
         add(servicePanel);
-        add(javax.swing.Box.createVerticalStrut(8));
+        add(Box.createVerticalStrut(8));
 
         // --- Updates ---
         JPanel updatesPanel = createSectionPanel("LBL_UpdatesHeader");
@@ -181,7 +182,7 @@ public class ACPOptionsPanel extends JPanel {
         updatesPanel.add(checkForUpdatesCheckbox, gbcUpdates);
 
         add(updatesPanel);
-        add(javax.swing.Box.createVerticalStrut(8));
+        add(Box.createVerticalStrut(8));
 
         // --- Chat Behavior ---
         JPanel behaviorPanel = createSectionPanel("LBL_BehaviorHeader");
@@ -219,7 +220,7 @@ public class ACPOptionsPanel extends JPanel {
                 GridBagConstraints.WEST, new Insets(0, 0, 5, 12)));
 
         add(behaviorPanel);
-        add(javax.swing.Box.createVerticalStrut(8));
+        add(Box.createVerticalStrut(8));
 
         // --- Actions ---
         JPanel actionsPanel = createSectionPanel("LBL_ActionsHeader");
@@ -243,7 +244,7 @@ public class ACPOptionsPanel extends JPanel {
                 GridBagConstraints.WEST, new Insets(0, 12, 5, 0)));
 
         add(actionsPanel);
-        add(javax.swing.Box.createVerticalStrut(8));
+        add(Box.createVerticalStrut(8));
 
         // --- Appearance (two-column) ---
         JPanel appearanceOuter = new JPanel(new GridBagLayout());
@@ -320,7 +321,7 @@ public class ACPOptionsPanel extends JPanel {
                                                 GridBagConstraints.NORTHWEST, new Insets(0, 8, 0, 0)));
 
         add(appearanceOuter);
-        add(javax.swing.Box.createVerticalStrut(8));
+        add(Box.createVerticalStrut(8));
 
         // --- Session Preamble ---
         JPanel preamblePanel = createSectionPanel("LBL_Preamble");

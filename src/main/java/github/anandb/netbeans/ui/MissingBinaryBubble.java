@@ -12,6 +12,8 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 
 import org.openide.util.NbBundle;
+import javax.swing.JTextArea;
+import org.netbeans.api.options.OptionsDisplayer;
 
 class MissingBinaryBubble extends JPanel {
     private static final long serialVersionUID = 1L;
@@ -42,7 +44,7 @@ class MissingBinaryBubble extends JPanel {
         titleLabel.setForeground(theme.foreground());
         
         JButton settingsBtn = UIUtils.createToolbarButton("settings.svg", 32, "Open Settings", e -> {
-            org.netbeans.api.options.OptionsDisplayer.getDefault().open("github-anandb-netbeans-ui-ACPOptionsPanelController");
+            OptionsDisplayer.getDefault().open("github-anandb-netbeans-ui-ACPOptionsPanelController");
         });
         settingsBtn.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
 
@@ -52,7 +54,7 @@ class MissingBinaryBubble extends JPanel {
         content.add(headerPanel, BorderLayout.NORTH);
 
         String text = NbBundle.getMessage(MissingBinaryBubble.class, "MissingBinaryBubble.Body");
-        javax.swing.JTextArea bodyLabel = new javax.swing.JTextArea(text);
+        JTextArea bodyLabel = new JTextArea(text);
         bodyLabel.setLineWrap(true);
         bodyLabel.setWrapStyleWord(true);
         bodyLabel.setEditable(false);

@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
@@ -67,7 +68,7 @@ public class ChatThreadPanel extends JPanel {
     private volatile boolean draining = false;
 
     // Debounced flush timer. Reset on each processed message, fires 300ms after last drain.
-    private final javax.swing.Timer flushTimer;
+    private final Timer flushTimer;
 
     private final JPanel messagesContainer;
     private final JScrollPane scrollPane;
@@ -96,7 +97,7 @@ public class ChatThreadPanel extends JPanel {
 
 
     // Turn-end gate for flushTimer. When null or false, the timer restarts instead of firing,
-    private transient volatile java.util.function.BooleanSupplier turnEndedSupplier;
+    private transient volatile BooleanSupplier turnEndedSupplier;
 
     public ChatThreadPanel() {
         ColorTheme theme = ThemeManager.getCurrentTheme();
@@ -145,8 +146,8 @@ public class ChatThreadPanel extends JPanel {
         sessionProgressBar.setPreferredSize(new Dimension(0, 4));
         sessionProgressBar.setVisible(false);
         sessionProgressBar.setFocusable(false);
-        sessionProgressBar.setBackground(new java.awt.Color(220, 220, 220));
-        sessionProgressBar.setForeground(new java.awt.Color(0, 120, 212));
+        sessionProgressBar.setBackground(new Color(220, 220, 220));
+        sessionProgressBar.setForeground(new Color(0, 120, 212));
         layeredPane.add(sessionProgressBar, JLayeredPane.PALETTE_LAYER);
 
         // Fix: Mouse wheel scrolling breaks when over child components. Redirect to main scroll pane.
@@ -238,7 +239,7 @@ public class ChatThreadPanel extends JPanel {
         }
     }
 
-    public void setScrollBlocker(java.util.function.BooleanSupplier scrollBlocker) {
+    public void setScrollBlocker(BooleanSupplier scrollBlocker) {
         scrollController.setScrollBlocker(scrollBlocker);
     }
 

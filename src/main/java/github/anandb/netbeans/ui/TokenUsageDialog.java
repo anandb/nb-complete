@@ -47,6 +47,16 @@ import github.anandb.netbeans.ui.platform.PlatformBridge;
 import static github.anandb.netbeans.ui.UIUtils.MONO_STACK;
 import java.awt.GridBagConstraints;
 
+import java.awt.Frame;
+import java.awt.GridBagLayout;
+import java.awt.Window;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.util.logging.Level;
+import java.util.regex.Pattern;
+import javax.swing.Timer;
+import org.netbeans.api.project.Project;
+
 // DSL-LEAF: a standalone dialog for token usage stats.
 // Built imperatively — no need for the full SwingTree DSL.
 public class TokenUsageDialog extends JDialog {
@@ -57,8 +67,8 @@ public class TokenUsageDialog extends JDialog {
     private static final String PROJECT_CURRENT = "Current Project";
     private static final String PROJECT_ALL = "All";
     private static final String[] PROJECT_OPTIONS = { PROJECT_CURRENT, PROJECT_ALL };
-    private static final java.util.regex.Pattern ANSI_ESCAPE =
-        java.util.regex.Pattern.compile("\u001b\\[[0-9;]*[a-zA-Z~]|\u001b\\][^\u0007]*\u0007");
+    private static final Pattern ANSI_ESCAPE =
+        Pattern.compile("\u001b\\[[0-9;]*[a-zA-Z~]|\u001b\\][^\u0007]*\u0007");
 
     private final JSpinner daysSpinner;
     private final JComboBox<String> projectCombo;
@@ -67,10 +77,10 @@ public class TokenUsageDialog extends JDialog {
     private final JScrollPane scrollPane;
     private final AtomicBoolean running = new AtomicBoolean(false);
     private volatile Process currentProcess;
-    private javax.swing.Timer autoRefreshTimer;
+    private Timer autoRefreshTimer;
     private boolean firstRefresh = true;
 
-    public TokenUsageDialog(java.awt.Frame owner) {
+    public TokenUsageDialog(Frame owner) {
         super(owner, "Token Stats", false);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         setPreferredSize(new Dimension(540, 460));
@@ -88,9 +98,9 @@ public class TokenUsageDialog extends JDialog {
         content.add(titleLabel, BorderLayout.NORTH);
 
         // --- Form (single row: Days | Model | Project | Refresh) ---
-        JPanel formPanel = new JPanel(new java.awt.GridBagLayout());
+        JPanel formPanel = new JPanel(new GridBagLayout());
         formPanel.setOpaque(false);
-        java.awt.Insets ins = new java.awt.Insets(0, 2, 0, 2);
+        Insets ins = new Insets(0, 2, 0, 2);
 
         // Days (fixed)
         daysSpinner = new JSpinner(new SpinnerNumberModel(1, 1, 999, 1));
@@ -194,7 +204,7 @@ public class TokenUsageDialog extends JDialog {
     private static boolean isCurrentProjectAvailable() {
         PlatformBridge bridge = Lookup.getDefault().lookup(PlatformBridge.class);
         if (bridge == null) return false;
-        org.netbeans.api.project.Project[] projects = bridge.projectContext().getAllOpenProjects();
+        Project[] projects = bridge.projectContext().getAllOpenProjects();
         if (projects == null || projects.length == 0) return false;
         SessionQuery sq = Lookup.getDefault().lookup(SessionQuery.class);
         return sq != null && sq.getCurrentSessionId() != null;
@@ -231,7 +241,7 @@ public class TokenUsageDialog extends JDialog {
                     SwingUtilities.invokeLater(() -> scrollPane.getVerticalScrollBar().setValue(0));
                 });
             } catch (Exception ex) {
-                LOG.log(java.util.logging.Level.WARNING, "Failed to fetch token usage stats", ex);
+                LOG.log(Level.WARNING, "Failed to fetch token usage stats", ex);
                 SwingUtilities.invokeLater(() -> {
                     statsPane.setText(buildPlaceholderHtml(currentTheme, "Error: " + ExceptionUtils.getMessage(ex)));
                     SwingUtilities.invokeLater(() -> scrollPane.getVerticalScrollBar().setValue(0));
@@ -300,7 +310,7 @@ public class TokenUsageDialog extends JDialog {
 
     /** Sizes the dialog to 90% parent height with reasonable width for table content. */
     private void autoSizeInitial() {
-        java.awt.Window parent = SwingUtilities.getWindowAncestor(this);
+        Window parent = SwingUtilities.getWindowAncestor(this);
         int h = parent != null ? (int)(parent.getHeight() * 0.9) : 520;
         setSize(new Dimension(700, h));
         revalidate();
@@ -474,14 +484,14 @@ public class TokenUsageDialog extends JDialog {
             + escapeHtml(message) + "</body></html>";
     }
 
-    public static void show(java.awt.Frame parent) {
+    public static void show(Frame parent) {
         SwingUtilities.invokeLater(() -> {
             TokenUsageDialog dlg = new TokenUsageDialog(parent);
             // Auto-refresh 1s after show so UI paints first
-            dlg.autoRefreshTimer = new javax.swing.Timer(1000, e -> dlg.onRefresh(null));
+            dlg.autoRefreshTimer = new Timer(1000, e -> dlg.onRefresh(null));
             dlg.autoRefreshTimer.setRepeats(false);
-            dlg.addWindowListener(new java.awt.event.WindowAdapter() {
-                @Override public void windowClosed(java.awt.event.WindowEvent e) {
+            dlg.addWindowListener(new WindowAdapter() {
+                @Override public void windowClosed(WindowEvent e) {
                     if (dlg.autoRefreshTimer != null) dlg.autoRefreshTimer.stop();
                     dlg.cancelProcess();
                 }

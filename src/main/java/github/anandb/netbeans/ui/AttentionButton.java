@@ -7,6 +7,9 @@ import java.awt.Insets;
 import java.awt.event.MouseEvent;
 import javax.swing.JButton;
 
+import java.awt.Color;
+import java.awt.RenderingHints;
+
 /**
  * A JButton subclass that supports drawing offsets (xOffset, yOffset) to enable
  * animations (shaking/bouncing) without changing the button's layout bounds.
@@ -54,14 +57,14 @@ public class AttentionButton extends JButton {
         try {
             g2d.translate(xOffset, yOffset);
             if (highlightAlpha > 0.0f) {
-                g2d.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 ColorTheme theme = ThemeManager.getCurrentTheme();
-                java.awt.Color accent = theme.accent();
+                Color accent = theme.accent();
                 if (accent == null) {
-                    accent = new java.awt.Color(66, 133, 244);
+                    accent = new Color(66, 133, 244);
                 }
                 int alphaVal = Math.round(highlightAlpha * 120); // Max opacity ~47% (120/255)
-                java.awt.Color glowColor = new java.awt.Color(accent.getRed(), accent.getGreen(), accent.getBlue(), alphaVal);
+                Color glowColor = new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), alphaVal);
                 g2d.setColor(glowColor);
                 g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 8, 8);
             }

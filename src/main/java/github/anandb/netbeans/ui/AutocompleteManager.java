@@ -71,7 +71,7 @@ public class AutocompleteManager {
     public AutocompleteManager(PlaceholderTextArea inputArea, Runnable sendMessageAction, Set<String> excludedCommands) {
         this.inputArea = inputArea;
         this.sendMessageAction = sendMessageAction;
-        this.excludedCommands = excludedCommands != null ? excludedCommands : java.util.Set.of();
+        this.excludedCommands = excludedCommands != null ? excludedCommands : Set.of();
 
         autocompletePopup = new JPopupMenu();
         autocompletePopup.setBorder(BorderFactory.createLineBorder(UIManager.getColor("controlShadow")));

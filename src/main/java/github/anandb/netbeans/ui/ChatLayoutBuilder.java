@@ -9,6 +9,7 @@ import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.KeyEvent;
 
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -32,6 +33,13 @@ import github.anandb.netbeans.support.AgentUtils;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.PreferenceKeys;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
+
+import github.anandb.netbeans.contract.SessionControl;
+import github.anandb.netbeans.model.SessionItem;
+import github.anandb.netbeans.support.BrowserUtils;
+import javax.swing.JComponent;
+import javax.swing.Timer;
+import org.netbeans.api.project.Project;
 
 // DSL-CONTROLLER: not a view — newSessionDebounceTimer (300ms) lives here per
 // AGENTS.md. Construction body is the Phase 2 seam target (ChatLayoutSpec);
@@ -64,14 +72,14 @@ final class ChatLayoutBuilder {
     private JButton refreshBtn;
     private JButton exportBtn;
     private JPanel rightStatusPanel;
-    private final javax.swing.Timer newSessionDebounceTimer;
+    private final Timer newSessionDebounceTimer;
 
     ChatLayoutBuilder(AssistantTopComponent topComponent, ChatThreadPanel chatPanel,
             ConfigPanelController configPanelController) {
         this.topComponent = topComponent;
         this.chatPanel = chatPanel;
         this.configPanelController = configPanelController;
-        this.newSessionDebounceTimer = new javax.swing.Timer(300, e -> fireNewSession());
+        this.newSessionDebounceTimer = new Timer(300, e -> fireNewSession());
         this.newSessionDebounceTimer.setRepeats(false);
     }
 
@@ -88,7 +96,7 @@ final class ChatLayoutBuilder {
         sessionDropdown.addActionListener(e -> {
             if (!sessionDropdown.isPopupVisible()) {
                 Object sel = sessionDropdown.getSelectedItem();
-                if (sel instanceof github.anandb.netbeans.model.SessionItem item) {
+                if (sel instanceof SessionItem item) {
                     sessionDropdown.setToolTipText(item.getTitle());
                 }
             }
@@ -98,13 +106,13 @@ final class ChatLayoutBuilder {
         // componentPopupMenu so Swing's JComponent handles popup trigger
         sessionDropdown.setComponentPopupMenu(new JPopupMenu() {
             @Override
-            public void show(java.awt.Component invoker, int x, int y) {
+            public void show(Component invoker, int x, int y) {
                 removeAll();
                 Object sel = sessionDropdown.getSelectedItem();
-                if (sel instanceof github.anandb.netbeans.model.SessionItem item) {
+                if (sel instanceof SessionItem item) {
                     String sessionId = item.getSession().id();
                     var tmpSc = Lookup.getDefault()
-                        .lookup(github.anandb.netbeans.contract.SessionControl.class);
+                        .lookup(SessionControl.class);
 
                     JMenuItem rename = new JMenuItem("Rename");
                     rename.addActionListener(ev -> topComponent.renameCurrentSession());
@@ -115,7 +123,7 @@ final class ChatLayoutBuilder {
                         JMenuItem archive = new JMenuItem(hidden ? "Unarchive" : "Archive");
                         archive.addActionListener(ev -> {
                             var archSc = Lookup.getDefault().lookup(
-                                github.anandb.netbeans.contract.SessionControl.class);
+                                SessionControl.class);
                             if (archSc == null) {
                                 topComponent.setStatus("STATUS_ServiceUnavailable");
                                 return;
@@ -148,12 +156,12 @@ final class ChatLayoutBuilder {
         JButton hb = UIUtils.createToolbarButton("archive.svg", NbBundle.getMessage(AssistantTopComponent.class, "HINT_ArchiveSession"), e -> {
             JButton btn = hbRef[0];
             btn.setEnabled(false);
-            javax.swing.Timer timer = new javax.swing.Timer(500, ev -> {
+            Timer timer = new Timer(500, ev -> {
                 btn.setEnabled(true);
             });
             timer.setRepeats(false);
             timer.start();
-            var sc = Lookup.getDefault().lookup(github.anandb.netbeans.contract.SessionControl.class);
+            var sc = Lookup.getDefault().lookup(SessionControl.class);
             if (sc == null) {
                 btn.setEnabled(true);
                 topComponent.setStatus("STATUS_ServiceUnavailable");
@@ -184,7 +192,7 @@ final class ChatLayoutBuilder {
             shbRef[0].setToolTipText(showing
                 ? NbBundle.getMessage(AssistantTopComponent.class, "HINT_HideArchivedSessions")
                 : NbBundle.getMessage(AssistantTopComponent.class, "HINT_ShowArchivedSessions"));
-            var sc = Lookup.getDefault().lookup(github.anandb.netbeans.contract.SessionControl.class);
+            var sc = Lookup.getDefault().lookup(SessionControl.class);
             if (sc != null) {
                 sc.refreshSessionList();
             } else {
@@ -270,8 +278,8 @@ final class ChatLayoutBuilder {
         // popup, rebuilt on each show so checkbox state syncs with prefs.
         JPopupMenu sharedPopup = newToolBarPopup();
         sessionControls.setComponentPopupMenu(sharedPopup);
-        for (java.awt.Component c : sessionControls.getComponents()) {
-            if (c instanceof javax.swing.JComponent jc) {
+        for (Component c : sessionControls.getComponents()) {
+            if (c instanceof JComponent jc) {
                 jc.setComponentPopupMenu(sharedPopup);
             }
         }
@@ -287,14 +295,14 @@ final class ChatLayoutBuilder {
         cwdLabel = new JLabel("");
         cwdLabel.setFont(cwdLabel.getFont().deriveFont(Font.BOLD));
 
-        cwdLabel.addMouseListener(new java.awt.event.MouseAdapter() {
+        cwdLabel.addMouseListener(new MouseAdapter() {
             @Override
-            public void mousePressed(java.awt.event.MouseEvent e) {
+            public void mousePressed(MouseEvent e) {
                 topComponent.showCwdContextMenu(e);
             }
 
             @Override
-            public void mouseReleased(java.awt.event.MouseEvent e) {
+            public void mouseReleased(MouseEvent e) {
                 topComponent.showCwdContextMenu(e);
             }
         });
@@ -312,7 +320,7 @@ final class ChatLayoutBuilder {
             NbBundle.getMessage(AssistantTopComponent.class, "HINT_QuickstartGuide"), null);
         helpBtn.setContentAreaFilled(false);
         helpBtn.setBorderPainted(false);
-        helpBtn.addActionListener(e -> github.anandb.netbeans.support.BrowserUtils.openOrCopyUrl(quickstartUrl, "STATUS_QuickstartCopied",
+        helpBtn.addActionListener(e -> BrowserUtils.openOrCopyUrl(quickstartUrl, "STATUS_QuickstartCopied",
             (url, key) -> topComponent.setStatus(key, url)));
 
         JButton keyboardShortcutsBtn = UIUtils.createToolbarButton("keyboard.svg",
@@ -405,12 +413,12 @@ final class ChatLayoutBuilder {
 
         JPanel btnCard = UIUtils.createTransparentPanel(new CardLayout());
         sendBtn = UIUtils.createTextButton(NbBundle.getMessage(AssistantTopComponent.class, "BTN_Go"), null);
-        sendBtn.setPreferredSize(new java.awt.Dimension(80, 64));
-        sendBtn.setMnemonic(java.awt.event.KeyEvent.VK_G);
+        sendBtn.setPreferredSize(new Dimension(80, 64));
+        sendBtn.setMnemonic(KeyEvent.VK_G);
         sendBtn.setDisplayedMnemonicIndex(0);
         stopBtn = UIUtils.createTextButton(NbBundle.getMessage(AssistantTopComponent.class, "BTN_Stop"), null);
-        stopBtn.setPreferredSize(new java.awt.Dimension(100, 64));
-        stopBtn.setMnemonic(java.awt.event.KeyEvent.VK_S);
+        stopBtn.setPreferredSize(new Dimension(100, 64));
+        stopBtn.setMnemonic(KeyEvent.VK_S);
         stopBtn.setDisplayedMnemonicIndex(0);
 
         btnCard.add(sendBtn, "SEND");
@@ -428,7 +436,7 @@ final class ChatLayoutBuilder {
         versionLabel.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                github.anandb.netbeans.support.BrowserUtils.openOrCopyUrl(releasesUrl, null, null);
+                BrowserUtils.openOrCopyUrl(releasesUrl, null, null);
             }
         });
 
@@ -457,9 +465,9 @@ final class ChatLayoutBuilder {
         final JButton[] btnRef = new JButton[1];
         JButton btn = UIUtils.createToolbarButton("filter.svg", tsz,
                 NbBundle.getMessage(AssistantTopComponent.class, "HINT_FilterMessages"), e -> {
-            javax.swing.JPopupMenu popup = new javax.swing.JPopupMenu();
+            JPopupMenu popup = new JPopupMenu();
             for (String type : MessageFilterManager.getEffectiveMessageTypes()) {
-                javax.swing.JCheckBoxMenuItem item = new javax.swing.JCheckBoxMenuItem(type, !MessageFilterManager.isTypeHidden(type));
+                JCheckBoxMenuItem item = new JCheckBoxMenuItem(type, !MessageFilterManager.isTypeHidden(type));
                 item.addActionListener(ev -> {
                     MessageFilterManager.setTypeHidden(type, !item.isSelected());
                     chatPanel.applyTypeFilters();
@@ -480,7 +488,7 @@ final class ChatLayoutBuilder {
     private JPopupMenu newToolBarPopup() {
         return new JPopupMenu() {
             @Override
-            public void show(java.awt.Component invoker, int x, int y) {
+            public void show(Component invoker, int x, int y) {
                 removeAll();
                 buildToolBarItems(this);
                 super.show(invoker, x, y);
@@ -543,8 +551,8 @@ final class ChatLayoutBuilder {
     }
 
     @SuppressWarnings("unchecked")
-    JComboBox<github.anandb.netbeans.model.SessionItem> getSessionDropdown() {
-        return (JComboBox<github.anandb.netbeans.model.SessionItem>) sessionDropdown;
+    JComboBox<SessionItem> getSessionDropdown() {
+        return (JComboBox<SessionItem>) sessionDropdown;
     }
 
     JButton getHideBtn() { return hideBtn; }
@@ -554,13 +562,13 @@ final class ChatLayoutBuilder {
     private void fireNewSession() {
         var bridge = Lookup.getDefault().lookup(PlatformBridge.class);
         if (bridge == null) return;
-        org.netbeans.api.project.Project[] projects = bridge.projectContext().getAllOpenProjects();
+        Project[] projects = bridge.projectContext().getAllOpenProjects();
         if (projects == null || projects.length == 0) {
             return;
         }
         if (projects.length == 1) {
             var sc = Lookup.getDefault()
-                .lookup(github.anandb.netbeans.contract.SessionControl.class);
+                .lookup(SessionControl.class);
             if (sc != null) {
                 sc.createNewSession(projects[0].getProjectDirectory().getPath());
             }

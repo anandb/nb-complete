@@ -1,5 +1,17 @@
 package github.anandb.netbeans.ui.platform;
 
+import java.lang.reflect.Proxy;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+
+import org.netbeans.api.project.Project;
+import org.openide.util.Lookup;
+
+import github.anandb.netbeans.contract.ProcessControl;
+import github.anandb.netbeans.contract.SessionControl;
+
 /**
  * Aggregator for the NetBeans platform-access seams. Resolved via
  * {@code Lookup.getDefault().lookup(PlatformBridge.class)} so DSL-bound views
@@ -24,36 +36,36 @@ public interface PlatformBridge {
 
     static SessionService sessionServiceSafe() {
         return () -> {
-            PlatformBridge bridge = org.openide.util.Lookup.getDefault().lookup(PlatformBridge.class);
+            PlatformBridge bridge = Lookup.getDefault().lookup(PlatformBridge.class);
             if (bridge != null) return bridge.sessionService().get();
-            return createDummy(github.anandb.netbeans.contract.SessionControl.class);
+            return createDummy(SessionControl.class);
         };
     }
 
     static ProcessService processServiceSafe() {
         return () -> {
-            PlatformBridge bridge = org.openide.util.Lookup.getDefault().lookup(PlatformBridge.class);
+            PlatformBridge bridge = Lookup.getDefault().lookup(PlatformBridge.class);
             if (bridge != null) return bridge.processService().get();
-            return createDummy(github.anandb.netbeans.contract.ProcessControl.class);
+            return createDummy(ProcessControl.class);
         };
     }
 
     static ProjectContext projectContextSafe() {
         return new ProjectContext() {
             @Override
-            public org.netbeans.api.project.Project[] getAllOpenProjects() {
-                PlatformBridge bridge = org.openide.util.Lookup.getDefault().lookup(PlatformBridge.class);
+            public Project[] getAllOpenProjects() {
+                PlatformBridge bridge = Lookup.getDefault().lookup(PlatformBridge.class);
                 if (bridge != null) return bridge.projectContext().getAllOpenProjects();
-                return new org.netbeans.api.project.Project[0];
+                return new Project[0];
             }
             @Override
             public void addProjectChangeListener(Runnable listener) {
-                PlatformBridge bridge = org.openide.util.Lookup.getDefault().lookup(PlatformBridge.class);
+                PlatformBridge bridge = Lookup.getDefault().lookup(PlatformBridge.class);
                 if (bridge != null) bridge.projectContext().addProjectChangeListener(listener);
             }
             @Override
             public void removeProjectChangeListener(Runnable listener) {
-                PlatformBridge bridge = org.openide.util.Lookup.getDefault().lookup(PlatformBridge.class);
+                PlatformBridge bridge = Lookup.getDefault().lookup(PlatformBridge.class);
                 if (bridge != null) bridge.projectContext().removeProjectChangeListener(listener);
             }
         };
@@ -61,7 +73,7 @@ public interface PlatformBridge {
 
     @SuppressWarnings("unchecked")
     static <T> T createDummy(Class<T> clazz) {
-        return (T) java.lang.reflect.Proxy.newProxyInstance(
+        return (T) Proxy.newProxyInstance(
             clazz.getClassLoader(),
             new Class<?>[]{clazz},
             (p, m, a) -> {
@@ -71,9 +83,9 @@ public interface PlatformBridge {
                 if (ret == long.class) return 0L;
                 if (ret == double.class) return 0.0;
                 if (ret == String.class) return "";
-                if (ret == java.util.concurrent.CompletableFuture.class) return java.util.concurrent.CompletableFuture.completedFuture(null);
-                if (ret == java.util.List.class) return java.util.Collections.emptyList();
-                if (ret == java.util.Map.class) return java.util.Collections.emptyMap();
+                if (ret == CompletableFuture.class) return CompletableFuture.completedFuture(null);
+                if (ret == List.class) return Collections.emptyList();
+                if (ret == Map.class) return Collections.emptyMap();
                 return null;
             }
         );

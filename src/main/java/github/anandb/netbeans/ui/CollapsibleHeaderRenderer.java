@@ -53,7 +53,7 @@ final class CollapsibleHeaderRenderer {
 
     /** Formats a raw tool title into a display-friendly string. */
     static String formatTitle(String rawTitle) {
-        if (rawTitle.toUpperCase(java.util.Locale.ROOT).contains("THINKING")) {
+        if (rawTitle.toUpperCase(Locale.ROOT).contains("THINKING")) {
             return NbBundle.getMessage(CollapsibleHeaderRenderer.class, "LBL_ThinkingProcess");
         }
 

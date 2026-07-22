@@ -1,6 +1,7 @@
 package github.anandb.netbeans.ui;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Component;
 import java.util.ArrayList;
 import java.util.List;
@@ -234,7 +235,7 @@ class BubbleContentRenderer {
 
     private void updateOrAddTextSegment(String markdown, ColorTheme theme, int compIdx, boolean incremental) {
         String styledHtml = HtmlContentPreparer.prepareHtml(markdown, theme, role, incremental, fontSizeOverride);
-        java.awt.Color bg = UIUtils.getBubbleBackground(theme, role);
+        Color bg = UIUtils.getBubbleBackground(theme, role);
 
         if (compIdx < segments.getComponentCount()) {
             Component c = segments.getComponent(compIdx);

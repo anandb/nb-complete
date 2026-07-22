@@ -25,6 +25,7 @@ import javax.swing.TransferHandler.TransferSupport;
 import javax.swing.text.JTextComponent;
 
 import org.openide.util.NbBundle;
+import javax.swing.SwingUtilities;
 
 import github.anandb.netbeans.model.AttachedFile;
 import github.anandb.netbeans.support.ImagePasteIoProcessor;
@@ -135,7 +136,7 @@ public class ImagePasteTransferHandler extends TransferHandler {
         try {
             AttachedFile attachedFile = createAttachedFileFromImage(image);
             if (attachedFile != null && callback != null) {
-                javax.swing.SwingUtilities.invokeLater(() -> callback.onAttachmentAdded(attachedFile));
+                SwingUtilities.invokeLater(() -> callback.onAttachmentAdded(attachedFile));
             }
         } catch (Exception e) {
             reportError(NbBundle.getMessage(ImagePasteTransferHandler.class, "ERR_SavePastedImage", ExceptionUtils.getMessage(e)));
@@ -146,7 +147,7 @@ public class ImagePasteTransferHandler extends TransferHandler {
         try {
             AttachedFile attachedFile = createAttachedFileFromFile(file);
             if (attachedFile != null && callback != null) {
-                javax.swing.SwingUtilities.invokeLater(() -> callback.onAttachmentAdded(attachedFile));
+                SwingUtilities.invokeLater(() -> callback.onAttachmentAdded(attachedFile));
             }
         } catch (Exception e) {
             reportError(NbBundle.getMessage(ImagePasteTransferHandler.class, "ERR_ProcessPastedFile", ExceptionUtils.getMessage(e)));
@@ -161,7 +162,7 @@ public class ImagePasteTransferHandler extends TransferHandler {
             }
             AttachedFile attachedFile = fetchWaylandClipboardImage();
             if (attachedFile != null) {
-                javax.swing.SwingUtilities.invokeLater(() -> callback.onAttachmentAdded(attachedFile));
+                SwingUtilities.invokeLater(() -> callback.onAttachmentAdded(attachedFile));
             }
         } catch (Exception e) {
             reportError(NbBundle.getMessage(ImagePasteTransferHandler.class, "ERR_ReadClipboard", ExceptionUtils.getMessage(e)));
@@ -170,7 +171,7 @@ public class ImagePasteTransferHandler extends TransferHandler {
 
     private void reportError(String message) {
         if (callback != null) {
-            javax.swing.SwingUtilities.invokeLater(() -> callback.onError(message));
+            SwingUtilities.invokeLater(() -> callback.onError(message));
         }
     }
 

@@ -31,6 +31,9 @@ import org.openide.util.lookup.ServiceProvider;
 import github.anandb.netbeans.contract.FileCacheQuery;
 import github.anandb.netbeans.contract.VcsIgnoreStrategy;
 
+import org.netbeans.api.project.SourceGroup;
+import org.openide.util.Lookup;
+
 /**
  * Builds and maintains an in-memory file cache across all open projects.
  * Uses {@link VcsIgnoreStrategy} for initial bulk filtering and filesystem
@@ -64,7 +67,7 @@ public class FileCacheManager implements FileCacheQuery {
     private static volatile FileCacheManager INSTANCE;
 
     public static FileCacheManager getDefault() {
-        FileCacheQuery query = org.openide.util.Lookup.getDefault().lookup(FileCacheQuery.class);
+        FileCacheQuery query = Lookup.getDefault().lookup(FileCacheQuery.class);
         if (query instanceof FileCacheManager manager) {
             return manager;
         }
@@ -178,9 +181,9 @@ public class FileCacheManager implements FileCacheQuery {
     private void scanProject(Project project) {
         ProjectInformation info = project.getLookup().lookup(ProjectInformation.class);
         String projectName = info != null ? info.getDisplayName() : project.getProjectDirectory().getName();
-        org.netbeans.api.project.SourceGroup[] groups =
+        SourceGroup[] groups =
                 ProjectUtils.getSources(project).getSourceGroups(Sources.TYPE_GENERIC);
-        for (org.netbeans.api.project.SourceGroup group : groups) {
+        for (SourceGroup group : groups) {
             FileObject root = group.getRootFolder();
 
             File rootDir = FileUtil.toFile(root);

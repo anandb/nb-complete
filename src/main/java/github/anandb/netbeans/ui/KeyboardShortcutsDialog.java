@@ -2,19 +2,26 @@ package github.anandb.netbeans.ui;
 
 import java.awt.BorderLayout;
 import java.awt.Component;
+import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Frame;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 
 import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.JTextPane;
 import javax.swing.KeyStroke;
 import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
+import javax.swing.event.HyperlinkEvent;
 import javax.swing.border.EmptyBorder;
 import javax.swing.text.html.HTMLEditorKit;
 
 import org.openide.util.NbBundle;
+import github.anandb.netbeans.support.BrowserUtils;
 import github.anandb.netbeans.support.ShortcutUtils;
 
 /**
@@ -34,15 +41,15 @@ final class KeyboardShortcutsDialog extends JDialog {
         initComponents();
         pack();
         // Ensure reasonable size
-        java.awt.Dimension pref = getPreferredSize();
+        Dimension pref = getPreferredSize();
         int w = Math.max(pref.width, 620);
         int h = Math.max(pref.height, 480);
-        setPreferredSize(new java.awt.Dimension(w, h));
-        setMinimumSize(new java.awt.Dimension(520, 320));
+        setPreferredSize(new Dimension(w, h));
+        setMinimumSize(new Dimension(520, 320));
         setLocationRelativeTo(owner);
-        addWindowListener(new java.awt.event.WindowAdapter() {
+        addWindowListener(new WindowAdapter() {
             @Override
-            public void windowClosed(java.awt.event.WindowEvent e) {
+            public void windowClosed(WindowEvent e) {
                 if (currentInstance == KeyboardShortcutsDialog.this) {
                     currentInstance = null;
                 }
@@ -56,7 +63,7 @@ final class KeyboardShortcutsDialog extends JDialog {
             return;
         }
         Frame owner = parent instanceof Frame ? (Frame) parent
-                : (Frame) javax.swing.SwingUtilities.getWindowAncestor(parent);
+                : (Frame) SwingUtilities.getWindowAncestor(parent);
         currentInstance = new KeyboardShortcutsDialog(owner);
         currentInstance.setVisible(true);
     }
@@ -74,15 +81,15 @@ final class KeyboardShortcutsDialog extends JDialog {
 
         // Make links work
         htmlPane.addHyperlinkListener(e -> {
-            if (e.getEventType() == javax.swing.event.HyperlinkEvent.EventType.ACTIVATED) {
+            if (e.getEventType() == HyperlinkEvent.EventType.ACTIVATED) {
                 if (e.getDescription() != null) {
-                    github.anandb.netbeans.support.BrowserUtils.openOrCopyUrl(e.getDescription(), null, null);
+                    BrowserUtils.openOrCopyUrl(e.getDescription(), null, null);
                 }
             }
         });
 
         // Wrap in scroll pane for long content
-        javax.swing.JScrollPane scrollPane = new javax.swing.JScrollPane(htmlPane);
+        JScrollPane scrollPane = new JScrollPane(htmlPane);
         scrollPane.setBorder(null);
         scrollPane.getVerticalScrollBar().setUnitIncrement(16);
         contentPanel.add(scrollPane, BorderLayout.CENTER);

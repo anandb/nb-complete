@@ -1,5 +1,7 @@
 package github.anandb.netbeans.ui;
 
+import java.util.Comparator;
+import org.openide.util.NbBundle;
 import org.openide.awt.ActionID;
 import org.openide.awt.ActionReference;
 import org.openide.awt.ActionRegistration;
@@ -10,12 +12,12 @@ import org.openide.awt.ActionRegistration;
 public class SortLinesDescAction extends BaseSortLinesAction {
 
     @Override
-    protected java.util.Comparator<String> getComparator() {
-        return java.util.Comparator.reverseOrder();
+    protected Comparator<String> getComparator() {
+        return Comparator.reverseOrder();
     }
 
     @Override
     protected String getDisplayName() {
-        return org.openide.util.NbBundle.getMessage(SortLinesDescAction.class, "CTL_SortLinesDescAction");
+        return NbBundle.getMessage(SortLinesDescAction.class, "CTL_SortLinesDescAction");
     }
 }

@@ -13,6 +13,9 @@ import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
+import javax.swing.BoxLayout;
+import javax.swing.Box;
+import javax.swing.JScrollPane;
 import javax.swing.SwingUtilities;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -58,7 +61,7 @@ class PermissionBubble extends JPanel {
         promptLabel.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN));
 
         JPanel centerPanel = new JPanel();
-        centerPanel.setLayout(new javax.swing.BoxLayout(centerPanel, javax.swing.BoxLayout.Y_AXIS));
+        centerPanel.setLayout(new BoxLayout(centerPanel, BoxLayout.Y_AXIS));
         centerPanel.setOpaque(false);
         promptLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         centerPanel.add(promptLabel);
@@ -86,14 +89,14 @@ class PermissionBubble extends JPanel {
                     if (isNotBlank(codeText)) {
                         CollapsibleCodePane codePane = new CollapsibleCodePane(lang, codeText.trim(), true);
                         codePane.setAlignmentX(Component.LEFT_ALIGNMENT);
-                        centerPanel.add(javax.swing.Box.createVerticalStrut(10));
+                        centerPanel.add(Box.createVerticalStrut(10));
                         centerPanel.add(codePane);
                     }
                 }
             }
         }
 
-        javax.swing.JScrollPane scrollPane = new javax.swing.JScrollPane(centerPanel) {
+        JScrollPane scrollPane = new JScrollPane(centerPanel) {
             @Override
             public Dimension getPreferredSize() {
                 Dimension d = super.getPreferredSize();

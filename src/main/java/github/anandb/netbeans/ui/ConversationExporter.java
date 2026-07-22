@@ -3,6 +3,9 @@ package github.anandb.netbeans.ui;
 import java.awt.Component;
 import java.io.File;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.FileOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -11,6 +14,7 @@ import java.util.regex.Pattern;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 
 import javax.swing.JFileChooser;
+import javax.swing.JOptionPane;
 
 import github.anandb.netbeans.support.Logger;
 import javax.swing.JPanel;
@@ -133,18 +137,18 @@ final class ConversationExporter {
         if (chooser.showSaveDialog(parent) == JFileChooser.APPROVE_OPTION) {
             File file = chooser.getSelectedFile();
             if (file.exists()) {
-                int confirm = javax.swing.JOptionPane.showConfirmDialog(parent,
+                int confirm = JOptionPane.showConfirmDialog(parent,
                         NbBundle.getMessage(ConversationExporter.class, "MSG_OverwriteConfirm", file.getName()),
                         NbBundle.getMessage(ConversationExporter.class, "TITLE_ExportConv"),
-                        javax.swing.JOptionPane.YES_NO_OPTION,
-                        javax.swing.JOptionPane.WARNING_MESSAGE);
-                if (confirm != javax.swing.JOptionPane.YES_OPTION) {
+                        JOptionPane.YES_NO_OPTION,
+                        JOptionPane.WARNING_MESSAGE);
+                if (confirm != JOptionPane.YES_OPTION) {
                     return;
                 }
             }
             RequestProcessor.getDefault().post(() -> {
-                try (java.io.OutputStreamWriter writer = new java.io.OutputStreamWriter(
-                        new java.io.FileOutputStream(file), java.nio.charset.StandardCharsets.UTF_8)) {
+                try (OutputStreamWriter writer = new OutputStreamWriter(
+                        new FileOutputStream(file), StandardCharsets.UTF_8)) {
                     writer.write(markdown);
                     LOG.log(Level.FINE, "Conversation exported to {0}", file.getAbsolutePath());
                     FileObject fo = FileUtil.toFileObject(FileUtil.normalizeFile(file));

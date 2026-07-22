@@ -1,6 +1,8 @@
 package github.anandb.netbeans.ui;
 
+import java.awt.Color;
 import java.awt.Component;
+import java.awt.Dimension;
 import java.awt.Toolkit;
 import java.awt.datatransfer.StringSelection;
 import java.util.function.BiConsumer;
@@ -11,6 +13,8 @@ import javax.swing.JPopupMenu;
 import javax.swing.JMenuItem;
 import javax.swing.Timer;
 import javax.swing.border.EmptyBorder;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.Document;
 
 import org.openide.util.NbBundle;
 
@@ -37,7 +41,7 @@ class BubbleStreamer {
         DEFERRED_FINALIZING
     }
 
-    private static final java.awt.Color TRANSPARENT = new java.awt.Color(0, 0, 0, 0);
+    private static final Color TRANSPARENT = new Color(0, 0, 0, 0);
 
     private final ContentUpdater contentUpdater;
     private final BiConsumer<Boolean, Boolean> postFinalizeCallback;
@@ -61,9 +65,9 @@ class BubbleStreamer {
     JTextArea createStreamingTextArea(ColorTheme theme, String initialText) {
         JTextArea ta = new JTextArea(initialText) {
             @Override
-            public java.awt.Dimension getMaximumSize() {
-                java.awt.Dimension pref = getPreferredSize();
-                return new java.awt.Dimension(Short.MAX_VALUE, pref.height);
+            public Dimension getMaximumSize() {
+                Dimension pref = getPreferredSize();
+                return new Dimension(Short.MAX_VALUE, pref.height);
             }
 
             @Override
@@ -147,10 +151,10 @@ class BubbleStreamer {
             if (streamingTextArea != null && totalLen > lastDisplayedLength) {
                 // Use substring to get a copy of only the new delta.
                 String delta = text.substring(lastDisplayedLength, totalLen);
-                javax.swing.text.Document doc = streamingTextArea.getDocument();
+                Document doc = streamingTextArea.getDocument();
                 try {
                     doc.insertString(doc.getLength(), delta, null);
-                } catch (javax.swing.text.BadLocationException ignored) {
+                } catch (BadLocationException ignored) {
                     streamingTextArea.append(delta);
                 }
                 lastDisplayedLength = totalLen;

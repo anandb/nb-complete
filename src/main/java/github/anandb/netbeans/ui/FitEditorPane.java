@@ -9,6 +9,7 @@ import java.awt.Toolkit;
 import java.awt.datatransfer.StringSelection;
 import java.awt.event.ActionEvent;
 import java.io.StringReader;
+import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.swing.JMenuItem;
@@ -72,7 +73,7 @@ public class FitEditorPane extends JTextPane {
                 if (t != null && !t.isEmpty()) {
                     getEditorKit().read(new StringReader(t), doc, 0);
                 }
-            } catch (BadLocationException | java.io.IOException ex) {
+            } catch (BadLocationException | IOException ex) {
                 super.setText(t);
             }
         }

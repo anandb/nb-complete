@@ -5,6 +5,7 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
+import java.awt.IllegalComponentStateException;
 import java.awt.Insets;
 import java.awt.MouseInfo;
 import java.awt.Point;
@@ -159,7 +160,7 @@ public class MessageBubble extends JPanel implements Scrollable {
             },
             (expanded, full) -> {
                 if (!full) {
-                    for (java.awt.Component c : segments.getComponents()) {
+                    for (Component c : segments.getComponents()) {
                         if (c instanceof CollapsibleCodePane codePane) {
                             codePane.setExpanded(expanded);
                         } else if (c instanceof CollapsibleToolPane toolPane) {
@@ -713,7 +714,7 @@ public class MessageBubble extends JPanel implements Scrollable {
             Rectangle bounds = c.getBounds();
             bounds.setLocation(c.getLocationOnScreen());
             return bounds.contains(screenLoc);
-        } catch (java.awt.IllegalComponentStateException ex) {
+        } catch (IllegalComponentStateException ex) {
             return false;
         }
     }

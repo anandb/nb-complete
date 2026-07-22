@@ -12,6 +12,7 @@ import java.awt.Toolkit;
 import java.awt.datatransfer.StringSelection;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Pattern;
 
@@ -402,7 +403,7 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
         Color newFg = getHeaderForeground(theme);
         boolean hasParamLabel = paramLabel != null;
 
-        if (java.util.Objects.equals(newBg, lastHeaderBg) && java.util.Objects.equals(newFg, lastFg)
+        if (Objects.equals(newBg, lastHeaderBg) && Objects.equals(newFg, lastFg)
                 && expanded == lastExpanded && hasParamLabel == lastHadParamLabel) {
             return;
         }
@@ -457,7 +458,7 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
                 copyItem.addActionListener(e -> {
                     String sel = getSelectedText();
                     if (sel != null && !sel.isEmpty()) {
-                        java.awt.Toolkit.getDefaultToolkit().getSystemClipboard()
+                        Toolkit.getDefaultToolkit().getSystemClipboard()
                                 .setContents(new StringSelection(sel), null);
                     }
                 });
@@ -521,9 +522,9 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
             segCopyBtnRef[0] = UIUtils.createToolbarButton("copy.svg", 20,
                     NbBundle.getMessage(BaseCollapsiblePane.class, "HINT_CopyContent"),
                     e -> {
-                        java.awt.datatransfer.StringSelection sel =
-                                new java.awt.datatransfer.StringSelection(segmentText);
-                        java.awt.Toolkit.getDefaultToolkit().getSystemClipboard()
+                        StringSelection sel =
+                                new StringSelection(segmentText);
+                        Toolkit.getDefaultToolkit().getSystemClipboard()
                                 .setContents(sel, sel);
                         JButton btn = segCopyBtnRef[0];
                         Icon orig = btn.getIcon();
@@ -593,7 +594,7 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
             copyFeedbackTimer.stop();
         }
         // Stop any segRevertTimers stored as client properties on children
-        for (java.awt.Component c : getComponents()) {
+        for (Component c : getComponents()) {
             if (c instanceof JPanel) {
                 Timer t = (Timer) ((JPanel) c).getClientProperty("segRevertTimer");
                 if (t != null && t.isRunning()) {

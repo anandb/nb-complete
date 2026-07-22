@@ -9,6 +9,7 @@ import java.util.regex.Pattern;
 import javax.swing.JTextPane;
 
 import static org.apache.commons.lang3.StringUtils.isBlank;
+import javax.swing.BorderFactory;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.SimpleAttributeSet;
 import javax.swing.text.StyleConstants;
@@ -55,7 +56,7 @@ public final class MarkdownStyledRenderer {
         pane.setBackground(null);
         Font baseFont = ThemeManager.getFont();
         pane.setFont(baseFont.deriveFont(baseFont.getSize() - 1f));
-        pane.setBorder(javax.swing.BorderFactory.createEmptyBorder(8, 20, 8, 6));
+        pane.setBorder(BorderFactory.createEmptyBorder(8, 20, 8, 6));
 
         StyledDocument doc = pane.getStyledDocument();
         Color fg = theme.foreground();

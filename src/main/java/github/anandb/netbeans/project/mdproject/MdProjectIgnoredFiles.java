@@ -9,6 +9,9 @@ import java.util.List;
 import org.netbeans.api.project.Project;
 import org.openide.filesystems.FileObject;
 
+import java.util.Map;
+import java.util.WeakHashMap;
+
 /**
  * Utility for reading and writing the {@code .mdproject-ignore} file
  * in a markdown project's root directory. One glob-like pattern per line;
@@ -24,8 +27,8 @@ public final class MdProjectIgnoredFiles {
 
     private MdProjectIgnoredFiles() {}
 
-    private static final java.util.Map<Project, CachedPatterns> CACHE =
-            Collections.synchronizedMap(new java.util.WeakHashMap<>());
+    private static final Map<Project, CachedPatterns> CACHE =
+            Collections.synchronizedMap(new WeakHashMap<>());
 
     private static class CachedPatterns {
         final long lastModified;

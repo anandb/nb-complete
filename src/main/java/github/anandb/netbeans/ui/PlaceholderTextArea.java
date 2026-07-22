@@ -4,8 +4,11 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.FontMetrics;
 import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.Rectangle;
+import java.awt.RenderingHints;
 import java.awt.event.ActionEvent;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
@@ -16,6 +19,7 @@ import javax.swing.JTextArea;
 import javax.swing.KeyStroke;
 import javax.swing.Scrollable;
 import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.event.UndoableEditEvent;
 import javax.swing.event.UndoableEditListener;
 import javax.swing.text.AbstractDocument;
@@ -61,7 +65,7 @@ public class PlaceholderTextArea extends JTextArea implements Scrollable {
     }
 
     private void initDocumentListener() {
-        getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+        getDocument().addDocumentListener(new DocumentListener() {
             @Override public void insertUpdate(DocumentEvent e) { repaint(); }
             @Override public void removeUpdate(DocumentEvent e) { repaint(); }
             @Override public void changedUpdate(DocumentEvent e) { repaint(); }
@@ -232,12 +236,12 @@ public class PlaceholderTextArea extends JTextArea implements Scrollable {
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
         if (overlayText != null && !overlayText.isEmpty() && getText().isEmpty()) {
-            java.awt.Graphics2D g2 = (java.awt.Graphics2D) g.create();
-            g2.setRenderingHint(java.awt.RenderingHints.KEY_TEXT_ANTIALIASING, java.awt.RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
             g2.setColor(ThemeManager.getCurrentTheme().placeholderForeground());
             Font overlayFont = getFont().deriveFont(Math.max(9f, getFont().getSize() - 2f));
             g2.setFont(overlayFont);
-            java.awt.FontMetrics fm = g2.getFontMetrics();
+            FontMetrics fm = g2.getFontMetrics();
             
             int availableWidth = getWidth() - getInsets().left - getInsets().right - 8;
             String[] lines;
