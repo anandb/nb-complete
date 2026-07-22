@@ -428,6 +428,10 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
      * Shows or hides the options panel and adjusts the mainSplitPane divider
      * so that the options panel takes space from the chat panel, not the textarea.
      */
+    public ConfigPanelController getConfigPanelController() {
+        return configPanelController;
+    }
+
     void setOptionsPanelVisible(boolean visible) {
         if (sessionLifecycleHandler == null) return;
         boolean collapsed = !visible;

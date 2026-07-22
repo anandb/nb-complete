@@ -120,8 +120,12 @@ final class ChatLayoutBuilder {
                                 topComponent.setStatus("STATUS_ServiceUnavailable");
                                 return;
                             }
-                            archSc.setHidden(sessionId, !hidden);
+                            boolean newHidden = !hidden;
+                            archSc.setHidden(sessionId, newHidden);
                             archSc.refreshSessions();
+                            if (newHidden && !isShowingHidden()) {
+                                MiniAssistantDialog.closeIfVisible();
+                            }
                         });
                         add(archive);
                     }
@@ -158,8 +162,12 @@ final class ChatLayoutBuilder {
             String sid = sc.getCurrentSessionId();
             if (sid != null) {
                 boolean currentlyHidden = sc.isHidden(sid);
-                sc.setHidden(sid, !currentlyHidden);
+                boolean newHidden = !currentlyHidden;
+                sc.setHidden(sid, newHidden);
                 sc.refreshSessions();
+                if (newHidden && !isShowingHidden()) {
+                    MiniAssistantDialog.closeIfVisible();
+                }
             } else {
                 btn.setEnabled(true);
             }

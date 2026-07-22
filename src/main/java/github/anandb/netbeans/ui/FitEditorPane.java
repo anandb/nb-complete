@@ -164,34 +164,22 @@ public class FitEditorPane extends JTextPane {
         if (widthChanged) {
             lastComputedWidth = width;
             cachedSize = null;
-            // Only one FitEditorPane per layout pass may reflow its HTML.
-            // Others skip the expensive root.setSize() and will recompute
-            // their cached size on the next layout pass when they win the lock.
-            if (!revalidatePending && GLOBAL_REVALIDATE_QUEUED.compareAndSet(false, true)) {
-                revalidatePending = true;
-                // Force the HTML view to reformat at the new width.
-                suppressRevalidate = true;
-                try {
-                    TextUI ui = (TextUI) getUI();
-                    if (ui != null) {
-                        View root = ui.getRootView(this);
-                        if (root != null) {
-                            Insets ins = getInsets();
-                            int cw = Math.max(1, width - ins.left - ins.right);
-                            root.setSize(cw, Integer.MAX_VALUE);
-                        }
+            // Force the HTML view to reformat at the new width without re-queuing revalidate on EDT.
+            suppressRevalidate = true;
+            try {
+                TextUI ui = (TextUI) getUI();
+                if (ui != null) {
+                    View root = ui.getRootView(this);
+                    if (root != null) {
+                        Insets ins = getInsets();
+                        int cw = Math.max(1, width - ins.left - ins.right);
+                        root.setSize(cw, Integer.MAX_VALUE);
                     }
-                } finally {
-                    suppressRevalidate = false;
                 }
-                javax.swing.SwingUtilities.invokeLater(() -> {
-                    try {
-                        revalidate();
-                    } finally {
-                        revalidatePending = false;
-                        GLOBAL_REVALIDATE_QUEUED.set(false);
-                    }
-                });
+            } catch (Exception ex) {
+                LOG.fine("Failed to format HTML view in setBounds: {0}", ExceptionUtils.getMessage(ex));
+            } finally {
+                suppressRevalidate = false;
             }
         }
     }

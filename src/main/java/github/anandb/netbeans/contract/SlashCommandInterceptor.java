@@ -34,11 +34,13 @@ public class SlashCommandInterceptor {
 
     private void registerDefaultCommands() {
         commands.put("/models", new CommandInfo(this::handleModels, "Select model"));
+        commands.put("/model", new CommandInfo(this::handleModels, "Select model"));
         commands.put("/agents", new CommandInfo(this::handleAgents, "Select agent or mode"));
         commands.put("/level", new CommandInfo(this::handleLevel, "Select thinking level"));
         commands.put("/sessions", new CommandInfo(this::handleSession, "Select session"));
         commands.put("/new", new CommandInfo(this::handleNew, "Create new session"));
         commands.put("/title", new CommandInfo(this::handleTitle, "Generate session title"));
+        commands.put("/archive", new CommandInfo(this::handleArchive, "Archive/unarchive session"));
     }
 
     public void setCallback(SlashCommandCallback callback) {
@@ -71,7 +73,6 @@ public class SlashCommandInterceptor {
     private CompletableFuture<Boolean> handleModels(String args, Lookup context) {
         SlashCommandCallback cb = callback;
         if (cb != null) {
-            cb.expandOptionsPanel();
             cb.popupModelCombo();
         }
         return CompletableFuture.completedFuture(true);
@@ -80,7 +81,6 @@ public class SlashCommandInterceptor {
     private CompletableFuture<Boolean> handleAgents(String args, Lookup context) {
         SlashCommandCallback cb = callback;
         if (cb != null) {
-            cb.expandOptionsPanel();
             cb.popupAgentCombo();
         }
         return CompletableFuture.completedFuture(true);
@@ -89,7 +89,6 @@ public class SlashCommandInterceptor {
     private CompletableFuture<Boolean> handleLevel(String args, Lookup context) {
         SlashCommandCallback cb = callback;
         if (cb != null) {
-            cb.expandOptionsPanel();
             cb.popupThinkingCombo();
         }
         return CompletableFuture.completedFuture(true);
@@ -99,6 +98,14 @@ public class SlashCommandInterceptor {
         SlashCommandCallback cb = callback;
         if (cb != null) {
             cb.popupSessionCombo();
+        }
+        return CompletableFuture.completedFuture(true);
+    }
+
+    private CompletableFuture<Boolean> handleArchive(String args, Lookup context) {
+        SlashCommandCallback cb = callback;
+        if (cb != null) {
+            cb.popupArchiveSession();
         }
         return CompletableFuture.completedFuture(true);
     }

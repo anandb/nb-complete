@@ -25,18 +25,42 @@ public class MiniAssistantDialog extends JDialog {
     private static MiniAssistantDialog instance;
     private PlaceholderTextArea inputArea;
     private JPanel responsePane;
+    private JSplitPane splitPane;
     private javax.swing.JLabel tokenOverlay;
     private javax.swing.Timer tokenTimer;
     private java.awt.KeyEventDispatcher keyDispatcher;
 
+    private static final java.util.Set<String> DISALLOWED_MINI_COMMANDS = java.util.Set.of(
+        "/model", "/models", "/level", "/sessions", "/agents"
+    );
+
+    private AutocompleteManager autocompleteManager;
+
     // Navigation state
     private int currentBubbleIndex = -1;
+
+    private int wordCount;
+    private final java.util.Map<String, Integer> wordsByMessageId = new java.util.concurrent.ConcurrentHashMap<>();
     
     public static synchronized MiniAssistantDialog getInstance() {
         if (instance == null) {
             instance = new MiniAssistantDialog();
         }
         return instance;
+    }
+
+    public static void closeIfVisible() {
+        if (instance != null && instance.isVisible()) {
+            if (SwingUtilities.isEventDispatchThread()) {
+                instance.setVisible(false);
+            } else {
+                SwingUtilities.invokeLater(() -> {
+                    if (instance != null && instance.isVisible()) {
+                        instance.setVisible(false);
+                    }
+                });
+            }
+        }
     }
 
     private MiniAssistantDialog() {
@@ -59,6 +83,20 @@ public class MiniAssistantDialog extends JDialog {
         
         responsePane = new JPanel(new BorderLayout());
         inputArea = new PlaceholderTextArea("");
+        inputArea.setLineWrap(true);
+        inputArea.setWrapStyleWord(true);
+        
+        java.util.Set<String> miniExcluded = java.util.Set.of("model", "models", "level", "sessions", "agents");
+        autocompleteManager = new AutocompleteManager(inputArea, this::sendMessage, miniExcluded);
+        
+        inputArea.addKeyListener(new java.awt.event.KeyAdapter() {
+            @Override
+            public void keyReleased(java.awt.event.KeyEvent e) {
+                if (autocompleteManager != null) {
+                    autocompleteManager.handleKeyReleased(e);
+                }
+            }
+        });
         
         keyDispatcher = new java.awt.KeyEventDispatcher() {
             @Override
@@ -82,12 +120,47 @@ public class MiniAssistantDialog extends JDialog {
                         navigateAssistantBubble(1);
                         return true;
                     } else if (e.getKeyCode() == java.awt.event.KeyEvent.VK_ESCAPE) {
+                        if (autocompleteManager != null && autocompleteManager.isPopupVisible()) {
+                            autocompleteManager.handleKeyReleased(e);
+                            return true;
+                        }
+                        AssistantTopComponent tc = AssistantTopComponent.findInstance();
+                        if (tc != null && tc.getConfigPanelController() != null
+                                && tc.getConfigPanelController().isAnyPopupVisible()) {
+                            tc.getConfigPanelController().closeAnyPopup();
+                            return true;
+                        }
                         setVisible(false);
                         return true;
-                    } else if (e.getKeyCode() == java.awt.event.KeyEvent.VK_ENTER && !e.isShiftDown()) {
+                    } else if (e.getKeyCode() == java.awt.event.KeyEvent.VK_ENTER) {
                         if (inputArea.isFocusOwner()) {
-                            sendMessage();
-                            return true; // only consume Enter if in inputArea
+                            if (autocompleteManager != null && autocompleteManager.isPopupVisible()) {
+                                autocompleteManager.handleKeyPressed(e);
+                                return true;
+                            }
+                            if (e.isShiftDown()) {
+                                inputArea.insert("\n", inputArea.getCaretPosition());
+                                return true;
+                            } else {
+                                sendMessage();
+                                return true;
+                            }
+                        }
+                    } else if (e.getKeyCode() == java.awt.event.KeyEvent.VK_TAB) {
+                        if (inputArea.isFocusOwner()) {
+                            e.consume();
+                            if (autocompleteManager != null && autocompleteManager.isPopupVisible()) {
+                                autocompleteManager.selectCommand();
+                            } else {
+                                var pc = org.openide.util.Lookup.getDefault()
+                                        .lookup(github.anandb.netbeans.contract.ProcessControl.class);
+                                var interceptor = pc != null ? pc.getSlashCommandInterceptor() : null;
+                                var cb = interceptor != null ? interceptor.getCallback() : null;
+                                if (cb != null) {
+                                    cb.popupAgentCombo();
+                                }
+                            }
+                            return true;
                         }
                     } else if (e.getKeyCode() == java.awt.event.KeyEvent.VK_C && isCmdOrCtrl) {
                         copyContent();
@@ -108,8 +181,19 @@ public class MiniAssistantDialog extends JDialog {
         };
         java.awt.KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(keyDispatcher);
         
-        JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, null, inputArea);
+        splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, null, inputArea);
         splitPane.setResizeWeight(0.85); // give more space to response
+        splitPane.addPropertyChangeListener(JSplitPane.DIVIDER_LOCATION_PROPERTY, e -> saveBounds());
+        splitPane.addComponentListener(new java.awt.event.ComponentAdapter() {
+            private boolean dividerRestored = false;
+            @Override
+            public void componentResized(java.awt.event.ComponentEvent e) {
+                if (!dividerRestored && splitPane.getHeight() > 50) {
+                    dividerRestored = true;
+                    restoreDividerLocation();
+                }
+            }
+        });
         responsePane = new ScrollablePanel(new BorderLayout());
         responsePane.setOpaque(true);
         responsePane.setBorder(BorderFactory.createEmptyBorder(2, 2, 0, 2));
@@ -158,6 +242,10 @@ public class MiniAssistantDialog extends JDialog {
         applyTheme();
     }
 
+    public PlaceholderTextArea getInputArea() {
+        return inputArea;
+    }
+
     public void toggleVisibility() {
         if (isVisible()) {
             java.awt.Component focusOwner = java.awt.KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusOwner();
@@ -170,6 +258,7 @@ public class MiniAssistantDialog extends JDialog {
             } else {
                 javax.swing.SwingUtilities.invokeLater(() -> {
                     toFront();
+                    requestFocus();
                     inputArea.requestFocus();
                 });
             }
@@ -184,6 +273,26 @@ public class MiniAssistantDialog extends JDialog {
         String text = inputArea.getText();
         if (text.trim().isEmpty()) return;
         
+        String trimmed = text.trim();
+        int spaceIdx = trimmed.indexOf(' ');
+        String firstWord = spaceIdx > 0 ? trimmed.substring(0, spaceIdx).toLowerCase() : trimmed.toLowerCase();
+        if (DISALLOWED_MINI_COMMANDS.contains(firstWord)) {
+            inputArea.setText("");
+            return;
+        }
+
+        var pc = org.openide.util.Lookup.getDefault()
+                .lookup(github.anandb.netbeans.contract.ProcessControl.class);
+        var interceptor = pc != null ? pc.getSlashCommandInterceptor() : null;
+        if (interceptor != null && trimmed.startsWith("/")) {
+            String cmd = spaceIdx > 0 ? trimmed.substring(0, spaceIdx) : trimmed;
+            if (interceptor.getCommands().containsKey(cmd)) {
+                inputArea.setText("");
+                interceptor.intercept(trimmed, org.openide.util.Lookup.getDefault());
+                return;
+            }
+        }
+        
         AssistantTopComponent tc = AssistantTopComponent.findInstance();
         if (tc != null) {
             tc.setInputText(text);
@@ -194,6 +303,8 @@ public class MiniAssistantDialog extends JDialog {
     }
     
     private void showSpinner() {
+        wordCount = 0;
+        wordsByMessageId.clear();
         // Add a thin spinner bar at the top of responsePane, keep existing content
         if (responsePane.getComponentCount() == 0 ||
             !(responsePane.getComponent(0) instanceof JProgressBar)) {
@@ -210,18 +321,11 @@ public class MiniAssistantDialog extends JDialog {
     }
 
     private void updateTokenOverlay() {
-        github.anandb.netbeans.contract.SessionControl sc =
-                org.openide.util.Lookup.getDefault().lookup(github.anandb.netbeans.contract.SessionControl.class);
-        if (sc == null) return;
-        String sessionId = sc.getCurrentSessionId();
-        if (sessionId == null) return;
-        String usage = sc.getContextUsage(sessionId);
-        if (usage != null && !usage.isEmpty()) {
-            String[] parts = usage.split(",");
-            if (parts.length == 2) {
-                tokenOverlay.setText(parts[0].trim() + " / " + parts[1].trim());
-                tokenOverlay.setVisible(true);
-            }
+        if (tokenTimer != null && wordCount > 0) {
+            tokenOverlay.setText(wordCount + " tokens received");
+            tokenOverlay.setVisible(true);
+        } else {
+            tokenOverlay.setVisible(false);
         }
     }
 
@@ -236,6 +340,9 @@ public class MiniAssistantDialog extends JDialog {
             tokenTimer.stop();
             tokenTimer = null;
         }
+        wordCount = 0;
+        wordsByMessageId.clear();
+        tokenOverlay.setVisible(false);
     }
     
     private void navigateAssistantBubble(int direction) {
@@ -339,7 +446,25 @@ public class MiniAssistantDialog extends JDialog {
         });
     }
 
+    private static int countWords(String text) {
+        if (text == null || text.isBlank()) return 0;
+        return text.trim().split("\\s+").length;
+    }
+
     public void onStreamUpdate(github.anandb.netbeans.model.ProcessedMessage msg) {
+        if (msg != null && !msg.isIgnorable() && msg.text() != null && !msg.text().isBlank()) {
+            String id = msg.messageId();
+            int newCount = countWords(msg.text());
+            if (id != null) {
+                int oldCount = wordsByMessageId.getOrDefault(id, 0);
+                if (newCount > oldCount) {
+                    wordCount += (newCount - oldCount);
+                    wordsByMessageId.put(id, newCount);
+                }
+            } else {
+                wordCount += newCount;
+            }
+        }
         SwingUtilities.invokeLater(this::updateTokenOverlay);
     }
 
@@ -452,6 +577,15 @@ public class MiniAssistantDialog extends JDialog {
         return false;
     }
 
+    private void restoreDividerLocation() {
+        Preferences prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
+        int savedInputHeight = prefs.getInt(PreferenceKeys.MINI_ASSISTANT_INPUT_HEIGHT, -1);
+        if (savedInputHeight > 0 && splitPane != null && splitPane.getHeight() > 50) {
+            int targetDiv = Math.max(30, splitPane.getHeight() - savedInputHeight - splitPane.getDividerSize());
+            splitPane.setDividerLocation(targetDiv);
+        }
+    }
+
     private void saveBounds() {
         if (!isVisible()) return;
         java.awt.Rectangle bounds = getBounds();
@@ -461,6 +595,12 @@ public class MiniAssistantDialog extends JDialog {
             prefs.putInt(PreferenceKeys.MINI_ASSISTANT_Y, bounds.y);
             prefs.putInt(PreferenceKeys.MINI_ASSISTANT_WIDTH, bounds.width);
             prefs.putInt(PreferenceKeys.MINI_ASSISTANT_HEIGHT, bounds.height);
+            if (splitPane != null && splitPane.getHeight() > 50 && splitPane.getDividerLocation() > 0) {
+                int inputHeight = splitPane.getHeight() - splitPane.getDividerLocation() - splitPane.getDividerSize();
+                if (inputHeight > 20) {
+                    prefs.putInt(PreferenceKeys.MINI_ASSISTANT_INPUT_HEIGHT, inputHeight);
+                }
+            }
         }
     }
 
@@ -470,6 +610,9 @@ public class MiniAssistantDialog extends JDialog {
             saveBounds();
         }
         super.setVisible(b);
+        if (b) {
+            SwingUtilities.invokeLater(this::restoreDividerLocation);
+        }
     }
 
     @Override

@@ -176,19 +176,30 @@ public class ComponentLifecycleHandler {
                 }
             }
 
+            private void preparePopupAndAutoClose(Runnable popupAction) {
+                boolean wasCollapsed = sessionLifecycleHandler.isOptionsPanelCollapsed();
+                if (wasCollapsed) {
+                    configPanelController.setAutoHideOnClose(true, () -> {
+                        topComponent.setOptionsPanelVisible(false);
+                    });
+                    topComponent.setOptionsPanelVisible(true);
+                }
+                popupAction.run();
+            }
+
             @Override
             public void popupModelCombo() {
-                configPanelController.popupCombo(configPanelController.getModelCombo());
+                preparePopupAndAutoClose(() -> configPanelController.popupCombo(configPanelController.getModelCombo()));
             }
 
             @Override
             public void popupAgentCombo() {
-                configPanelController.popupCombo(configPanelController.getModeCombo());
+                preparePopupAndAutoClose(() -> configPanelController.popupCombo(configPanelController.getModeCombo()));
             }
 
             @Override
             public void popupThinkingCombo() {
-                configPanelController.popupCombo(configPanelController.getThinkingCombo());
+                preparePopupAndAutoClose(() -> configPanelController.popupCombo(configPanelController.getThinkingCombo()));
             }
 
             @Override
@@ -212,6 +223,22 @@ public class ComponentLifecycleHandler {
                         showProjectPickerPopup(inputArea);
                     }
                 });
+            }
+
+            @Override
+            public void popupArchiveSession() {
+                var sc = Lookup.getDefault().lookup(github.anandb.netbeans.contract.SessionControl.class);
+                if (sc == null) return;
+                String sid = sc.getCurrentSessionId();
+                if (sid != null) {
+                    boolean currentlyHidden = sc.isHidden(sid);
+                    boolean newHidden = !currentlyHidden;
+                    sc.setHidden(sid, newHidden);
+                    sc.refreshSessions();
+                    if (newHidden && !ChatLayoutBuilder.isShowingHidden()) {
+                        MiniAssistantDialog.closeIfVisible();
+                    }
+                }
             }
 
             @Override

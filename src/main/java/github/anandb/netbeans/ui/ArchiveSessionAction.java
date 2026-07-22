@@ -20,8 +20,12 @@ public class ArchiveSessionAction implements ActionListener {
         String sid = sc.getCurrentSessionId();
         if (sid != null) {
             boolean currentlyHidden = sc.isHidden(sid);
-            sc.setHidden(sid, !currentlyHidden);
+            boolean newHidden = !currentlyHidden;
+            sc.setHidden(sid, newHidden);
             sc.refreshSessions();
+            if (newHidden && !ChatLayoutBuilder.isShowingHidden()) {
+                MiniAssistantDialog.closeIfVisible();
+            }
         }
     }
 }

@@ -268,9 +268,13 @@ public class ChatThreadPanel extends JPanel {
         }
     }
 
+    private static final int MESSAGE_DRAIN_BATCH_SIZE = 5;
+
     private void drainMessageQueue() {
-        Runnable task = messageQueue.poll();
-        if (task != null) {
+        int count = 0;
+        Runnable task;
+        while (count < MESSAGE_DRAIN_BATCH_SIZE && (task = messageQueue.poll()) != null) {
+            count++;
             try {
                 task.run();
             } catch (Exception ex) {
@@ -279,6 +283,8 @@ public class ChatThreadPanel extends JPanel {
                 // Reset debounced flush timer — fires 300ms after last message drains.
                 flushTimer.restart();
             }
+        }
+        if (!messageQueue.isEmpty()) {
             SwingUtilities.invokeLater(this::drainMessageQueue);
         } else {
             draining = false;
@@ -774,6 +780,7 @@ public class ChatThreadPanel extends JPanel {
 
     public void clearMessages() {
         cachedMessages = null;
+        messageQueue.clear();
         pendingMessagesBySession.clear();
         seenMessageIdsBySession.clear();
         // Stop the repeating flush timer off-EDT. The per-bubble streaming

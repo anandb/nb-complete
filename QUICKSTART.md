@@ -186,7 +186,7 @@ Your complete message history is always safely stored on the server. While the l
 The status bar at the bottom of the assistant panel keeps you informed of the AI's progress. It will display states like `Ready`, `Thinking...`, and `Responding...`. The plugin optimizes for speed, reducing the time to first token so you can see responses being streamed immediately.
 
 #### Thinking and Tool Responses
-Advanced models use a "thinking" budget to reason before responding. This internal reasoning is displayed in its own collapsible pane. Similarly, when the AI uses tools, the tool output is shown in collapsible panes marked with a tag icon. You can use the **Filter** button to hide these thought or tool bubbles from the chat view, or use the **Expand/Collapse All** button to manage them all at once. Error messages will appear as red-tinted bubbles, and tables are rendered cleanly with alternating row colors.
+Advanced models use a "thinking" budget to reason before responding. This internal reasoning is displayed in its own collapsible pane. Similarly, when the AI uses tools, the tool output is shown in collapsible panes marked with a tag icon. You can use the **Filter** button to hide these thought or tool bubbles from the chat view, or use the **Expand/Collapse All** button to manage them all at once. Error messages will appear as red-tinted bubbles, and tables are rendered cleanly with alternating row colours.
 
 ### Assistant Options
 

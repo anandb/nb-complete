@@ -15,6 +15,9 @@ public interface SlashCommandCallback {
 
     void popupNewSession();
 
+    /** Toggles the archive state of the current session. */
+    void popupArchiveSession();
+
     /** Displays a simulated tool message in the chat thread. */
     void displayToolMessage(String title, String text);
 }

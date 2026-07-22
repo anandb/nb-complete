@@ -50,6 +50,7 @@ public class ConfigPanelController {
     private volatile Runnable onModeSelectedCallback;
     private volatile Runnable onThinkingSelectedCallback;
     private boolean isUpdatingConfigControls = false;
+    private javax.swing.JPopupMenu activeCustomPopup;
 
     private final ModelVariantResolver modelResolver = new ModelVariantResolver();
 
@@ -128,10 +129,116 @@ public class ConfigPanelController {
     }
 
     public void popupCombo(JComboBox<ConfigItem> combo) {
+        popupCombo(combo, null);
+    }
+
+    public void popupCombo(JComboBox<ConfigItem> combo, javax.swing.JComponent targetInvoker) {
         SwingUtilities.invokeLater(() -> {
-            combo.requestFocusInWindow();
-            SwingUtilities.invokeLater(() -> combo.setPopupVisible(true));
+            if (combo != null && combo.isShowing()) {
+                combo.requestFocusInWindow();
+                try {
+                    combo.setPopupVisible(true);
+                    return;
+                } catch (Exception ex) {
+                    LOG.warn("Failed to set popup visible on combo: {0}", ex);
+                }
+            }
+            showCustomPopupMenu(combo, targetInvoker);
         });
+    }
+
+    private void showCustomPopupMenu(JComboBox<ConfigItem> combo, javax.swing.JComponent targetInvoker) {
+        if (combo == null || combo.getItemCount() == 0) return;
+
+        javax.swing.JPopupMenu popup = new javax.swing.JPopupMenu();
+        ConfigItem currentSel = (ConfigItem) combo.getSelectedItem();
+
+        activeCustomPopup = popup;
+        popup.addPopupMenuListener(new PopupMenuListener() {
+            @Override
+            public void popupMenuWillBecomeVisible(PopupMenuEvent e) {}
+
+            @Override
+            public void popupMenuWillBecomeInvisible(PopupMenuEvent e) {
+                if (activeCustomPopup == popup) {
+                    activeCustomPopup = null;
+                }
+            }
+
+            @Override
+            public void popupMenuCanceled(PopupMenuEvent e) {
+                if (activeCustomPopup == popup) {
+                    activeCustomPopup = null;
+                }
+            }
+        });
+
+        for (int i = 0; i < combo.getItemCount(); i++) {
+            ConfigItem item = combo.getItemAt(i);
+            if (item == null) continue;
+            boolean isSel = item.equals(currentSel);
+            javax.swing.JCheckBoxMenuItem menuItem = new javax.swing.JCheckBoxMenuItem(item.name(), isSel);
+            menuItem.setFont(ThemeManager.getFont().deriveFont(12f));
+            menuItem.addActionListener(ev -> {
+                combo.setSelectedItem(item);
+                triggerComboSelection(combo, item);
+            });
+            popup.add(menuItem);
+        }
+
+        javax.swing.JComponent invoker = targetInvoker;
+        if (invoker == null || !invoker.isShowing()) {
+            MiniAssistantDialog mini = MiniAssistantDialog.getInstance();
+            if (mini != null && mini.isVisible()) {
+                invoker = mini.getInputArea();
+            }
+        }
+        if (invoker == null || !invoker.isShowing()) {
+            invoker = configPanel;
+        }
+
+        if (invoker != null && invoker.isShowing()) {
+            int x = 0;
+            int y = 0;
+            if (invoker instanceof PlaceholderTextArea pta) {
+                try {
+                    int caret = pta.getCaretPosition();
+                    java.awt.geom.Rectangle2D rect2d = pta.modelToView2D(Math.max(0, caret - 1));
+                    if (rect2d != null) {
+                        java.awt.Rectangle rect = rect2d.getBounds();
+                        int popH = popup.getPreferredSize().height;
+                        x = rect.x;
+                        y = Math.max(0, rect.y - popH - 2);
+                    }
+                } catch (Exception ex) {
+                    x = 0;
+                    y = -popup.getPreferredSize().height;
+                }
+            }
+            popup.show(invoker, x, y);
+        }
+    }
+
+    private void triggerComboSelection(JComboBox<ConfigItem> combo, ConfigItem selected) {
+        if (selected == null || isUpdatingConfigControls) return;
+
+        String configId = (combo == modelCombo) ? "model" : (combo == modeCombo) ? "mode" : "thinking";
+        String currentId = sessionService.get().getCurrentSessionId();
+
+        if (currentId != null) {
+            sessionService.get().setSessionConfigOption(currentId, configId, selected.value());
+        }
+
+        if (combo == modelCombo) {
+            modelResolver.setLastSelectedModelId(selected.value());
+            tabNameUpdater.accept(buildTabLabel());
+            if (onModelSelectedCallback != null) onModelSelectedCallback.run();
+        } else if (combo == modeCombo) {
+            tabNameUpdater.accept(buildTabLabel());
+            if (onModeSelectedCallback != null) onModeSelectedCallback.run();
+        } else if (combo == thinkingCombo) {
+            if (onThinkingSelectedCallback != null) onThinkingSelectedCallback.run();
+        }
     }
 
     JComboBox<ConfigItem> getModelCombo() { return modelCombo; }
@@ -185,6 +292,23 @@ public class ConfigPanelController {
             modelCombo.addItem(new ConfigItem(envModel, envModel));
             modelResolver.setLastSelectedModelId(envModel);
         }
+    }
+
+    public boolean isAnyPopupVisible() {
+        if (activeCustomPopup != null && activeCustomPopup.isVisible()) {
+            return true;
+        }
+        return modeCombo.isPopupVisible() || modelCombo.isPopupVisible() || thinkingCombo.isPopupVisible();
+    }
+
+    public void closeAnyPopup() {
+        if (activeCustomPopup != null) {
+            activeCustomPopup.setVisible(false);
+            activeCustomPopup = null;
+        }
+        if (modeCombo.isPopupVisible()) modeCombo.setPopupVisible(false);
+        if (modelCombo.isPopupVisible()) modelCombo.setPopupVisible(false);
+        if (thinkingCombo.isPopupVisible()) thinkingCombo.setPopupVisible(false);
     }
 
     public void updateConfigControls(List<SessionConfigOption> options, boolean forceStartupDefaults) {
@@ -284,6 +408,25 @@ public class ConfigPanelController {
         tabNameUpdater.accept(buildTabLabel());
     }
 
+    private boolean autoHideOnClose = false;
+    private Runnable autoHideCallback;
+
+    public void setAutoHideOnClose(boolean autoHide, Runnable callback) {
+        this.autoHideOnClose = autoHide;
+        this.autoHideCallback = callback;
+    }
+
+    private void checkAutoHide() {
+        if (autoHideOnClose) {
+            autoHideOnClose = false;
+            Runnable cb = autoHideCallback;
+            autoHideCallback = null;
+            if (cb != null) {
+                SwingUtilities.invokeLater(cb);
+            }
+        }
+    }
+
     private void setupConfigCombo(JComboBox<ConfigItem> combo, String configId) {
         Font btnFont = UIManager.getFont("Button.font");
         if (btnFont != null) {
@@ -355,6 +498,8 @@ public class ConfigPanelController {
                 } else if (combo == thinkingCombo && onThinkingSelectedCallback != null) {
                     onThinkingSelectedCallback.run();
                 }
+
+                checkAutoHide();
             }
 
             @Override
@@ -362,6 +507,7 @@ public class ConfigPanelController {
                 if (prePopupSelection[0] != null) {
                     combo.setSelectedItem(prePopupSelection[0]);
                 }
+                checkAutoHide();
             }
         });
     }

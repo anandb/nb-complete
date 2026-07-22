@@ -9,6 +9,7 @@ import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import java.awt.Component;
 import javax.swing.BorderFactory;
@@ -61,10 +62,16 @@ public class AutocompleteManager {
     private final JPopupMenu autocompletePopup;
     private final JList<SessionUpdate.AvailableCommand> commandList;
     private final JViewport viewport;
+    private final Set<String> excludedCommands;
 
     public AutocompleteManager(PlaceholderTextArea inputArea, Runnable sendMessageAction) {
+        this(inputArea, sendMessageAction, Set.of());
+    }
+
+    public AutocompleteManager(PlaceholderTextArea inputArea, Runnable sendMessageAction, Set<String> excludedCommands) {
         this.inputArea = inputArea;
         this.sendMessageAction = sendMessageAction;
+        this.excludedCommands = excludedCommands != null ? excludedCommands : java.util.Set.of();
 
         autocompletePopup = new JPopupMenu();
         autocompletePopup.setBorder(BorderFactory.createLineBorder(UIManager.getColor("controlShadow")));
@@ -219,6 +226,7 @@ public class AutocompleteManager {
         }
 
         List<SessionUpdate.AvailableCommand> filtered = allCommands.stream()
+                .filter(c -> !excludedCommands.contains(c.name().toLowerCase()))
                 .filter(c -> c.name().toLowerCase().startsWith(prefix))
                 .toList();
 

@@ -16,6 +16,7 @@ class MiniAssistantDialogTest {
         assertEquals("miniAssistant.y", PreferenceKeys.MINI_ASSISTANT_Y);
         assertEquals("miniAssistant.width", PreferenceKeys.MINI_ASSISTANT_WIDTH);
         assertEquals("miniAssistant.height", PreferenceKeys.MINI_ASSISTANT_HEIGHT);
+        assertEquals("miniAssistant.inputHeight", PreferenceKeys.MINI_ASSISTANT_INPUT_HEIGHT);
     }
 
     @Test
@@ -23,8 +24,15 @@ class MiniAssistantDialogTest {
         Preferences prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
         prefs.putInt(PreferenceKeys.MINI_ASSISTANT_WIDTH, 600);
         prefs.putInt(PreferenceKeys.MINI_ASSISTANT_HEIGHT, 400);
+        prefs.putInt(PreferenceKeys.MINI_ASSISTANT_INPUT_HEIGHT, 120);
 
         assertEquals(600, prefs.getInt(PreferenceKeys.MINI_ASSISTANT_WIDTH, 500));
         assertEquals(400, prefs.getInt(PreferenceKeys.MINI_ASSISTANT_HEIGHT, 300));
+        assertEquals(120, prefs.getInt(PreferenceKeys.MINI_ASSISTANT_INPUT_HEIGHT, -1));
+    }
+
+    @Test
+    void testCloseIfVisibleDoesNotThrowWhenNull() {
+        org.junit.jupiter.api.Assertions.assertDoesNotThrow(MiniAssistantDialog::closeIfVisible);
     }
 }
