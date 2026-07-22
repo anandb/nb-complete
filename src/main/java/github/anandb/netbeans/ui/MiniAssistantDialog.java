@@ -58,6 +58,7 @@ public class MiniAssistantDialog extends JDialog {
                 
                 if (e.getID() == java.awt.event.KeyEvent.KEY_PRESSED) {
                     boolean isMac = org.openide.util.Utilities.isMac();
+                    boolean isCmdOrCtrl = isMac ? e.isMetaDown() : e.isControlDown();
                     boolean isPrev = e.getKeyCode() == java.awt.event.KeyEvent.VK_PAGE_UP || 
                                      (isMac && e.getKeyCode() == java.awt.event.KeyEvent.VK_LEFT && e.isMetaDown());
                     boolean isNext = e.getKeyCode() == java.awt.event.KeyEvent.VK_PAGE_DOWN || 
@@ -77,16 +78,16 @@ public class MiniAssistantDialog extends JDialog {
                             sendMessage();
                             return true; // only consume Enter if in inputArea
                         }
-                    } else if (e.getKeyCode() == java.awt.event.KeyEvent.VK_C && (isMac ? e.isMetaDown() : e.isControlDown())) {
+                    } else if (e.getKeyCode() == java.awt.event.KeyEvent.VK_C && isCmdOrCtrl) {
                         copyContent();
                         return true;
-                    } else if (e.getKeyCode() == java.awt.event.KeyEvent.VK_L && e.isControlDown() && !e.isAltDown()) {
+                    } else if (e.getKeyCode() == java.awt.event.KeyEvent.VK_L && isCmdOrCtrl && !e.isAltDown()) {
                         AssistantTopComponent tc = AssistantTopComponent.findInstance();
                         if (tc != null) {
                             tc.toggleVisibility();
                         }
                         return true;
-                    } else if (e.getKeyCode() == java.awt.event.KeyEvent.VK_L && e.isControlDown() && e.isAltDown()) {
+                    } else if (e.getKeyCode() == java.awt.event.KeyEvent.VK_L && isCmdOrCtrl && e.isAltDown()) {
                         toggleVisibility();
                         return true;
                     }
@@ -111,14 +112,17 @@ public class MiniAssistantDialog extends JDialog {
         splitPane.setTopComponent(scrollPane);
         splitPane.setDividerSize(2);
         
-        String toggleAction = github.anandb.netbeans.support.ShortcutUtils.resolveShortcut("github.anandb.netbeans.ui.ToggleAssistantAction");
-        if (toggleAction == null || toggleAction.isEmpty()) toggleAction = "Ctrl+L";
-        
         boolean isMac = org.openide.util.Utilities.isMac();
+        String toggleAction = github.anandb.netbeans.support.ShortcutUtils.resolveShortcut("github.anandb.netbeans.ui.ToggleAssistantAction");
+        if (toggleAction == null || toggleAction.isEmpty()) toggleAction = isMac ? "Cmd+L" : "Ctrl+L";
+        
+        String miniToggleAction = github.anandb.netbeans.support.ShortcutUtils.resolveShortcut("github.anandb.netbeans.ui.ToggleMiniAssistantAction");
+        if (miniToggleAction == null || miniToggleAction.isEmpty()) miniToggleAction = isMac ? "Cmd+Alt+L" : "Ctrl+Alt+L";
+        
         String scrollAction = isMac ? "Cmd+Left/Right: scroll" : "PgUp/PgDn: scroll";
         String copyAction = isMac ? "Cmd+C: copy" : "Ctrl+C: copy";
         
-        inputArea.setOverlayText("Esc: close | " + toggleAction + ": Main Assistant Panel | Ctrl+Alt+L: focus toggle | "
+        inputArea.setOverlayText("Esc: close | " + toggleAction + ": Main Assistant Panel | " + miniToggleAction + ": focus toggle | "
             + scrollAction + " | " + copyAction + " | Enter: send");
         
         add(splitPane, BorderLayout.CENTER);

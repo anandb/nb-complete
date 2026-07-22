@@ -157,6 +157,7 @@ final class KeyboardShortcutsDialog extends JDialog {
             {ShortcutUtils.resolveShortcut("github.anandb.netbeans.ui.CompactJsonAction"), "Minify JSON"},
             {ShortcutUtils.resolveShortcut("github.anandb.netbeans.ui.SearchWebAction"), "Search Web"},
             {ShortcutUtils.resolveShortcut("github.anandb.netbeans.ui.GoToFileAction"), "Jump to file"},
+            {ShortcutUtils.resolveShortcut("github.anandb.netbeans.ui.ToggleMiniAssistantAction"), "Toggle Mini Assistant"},
         };
         tableTwoCol(sb, border, bg, altRowBg, hdrBg, "Assignable Shortcuts", isDark,
                 assignableRows, "Assign via Tools > Keymap");
