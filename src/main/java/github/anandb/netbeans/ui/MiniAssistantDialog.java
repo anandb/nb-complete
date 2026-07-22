@@ -38,6 +38,8 @@ public class MiniAssistantDialog extends JDialog {
 
     // Navigation state
     private int currentBubbleIndex = -1;
+    private boolean isAutoTrackingLatest = true;
+    private String lastSentText;
 
     private int wordCount;
     private final java.util.Map<String, Integer> wordsByMessageId = new java.util.concurrent.ConcurrentHashMap<>();
@@ -295,6 +297,9 @@ public class MiniAssistantDialog extends JDialog {
         
         AssistantTopComponent tc = AssistantTopComponent.findInstance();
         if (tc != null) {
+            lastSentText = text;
+            inputArea.setText("");
+            
             tc.setInputText(text);
             tc.sendMessage();
             
@@ -305,6 +310,8 @@ public class MiniAssistantDialog extends JDialog {
     private void showSpinner() {
         wordCount = 0;
         wordsByMessageId.clear();
+        isAutoTrackingLatest = true;
+        currentBubbleIndex = -1;
         // Add a thin spinner bar at the top of responsePane, keep existing content
         if (responsePane.getComponentCount() == 0 ||
             !(responsePane.getComponent(0) instanceof JProgressBar)) {
@@ -321,7 +328,7 @@ public class MiniAssistantDialog extends JDialog {
     }
 
     private void updateTokenOverlay() {
-        if (tokenTimer != null && wordCount > 0) {
+        if (wordCount > 0) {
             tokenOverlay.setText(wordCount + " tokens received");
             tokenOverlay.setVisible(true);
         } else {
@@ -355,6 +362,7 @@ public class MiniAssistantDialog extends JDialog {
         
         currentBubbleIndex += direction;
         currentBubbleIndex = Math.max(0, Math.min(bubbles.size() - 1, currentBubbleIndex));
+        isAutoTrackingLatest = (currentBubbleIndex == bubbles.size() - 1);
         
         displayBubble(bubbles.get(currentBubbleIndex));
     }
@@ -383,7 +391,18 @@ public class MiniAssistantDialog extends JDialog {
     }
     
     private void displayBubble(MessageBubble realBubble) {
+        Component spinner = null;
+        for (Component c : responsePane.getComponents()) {
+            if (c instanceof JProgressBar) {
+                spinner = c;
+                break;
+            }
+        }
         responsePane.removeAll();
+        if (spinner != null) {
+            responsePane.add(spinner, BorderLayout.NORTH);
+        }
+
         MessageBubble localBubble = new MessageBubble(MessageType.agent_message_chunk, 
             realBubble.getRawText(), realBubble.getMessageId(), null, 
             MessageBubble.AvatarPosition.NONE, false, null);
@@ -417,7 +436,9 @@ public class MiniAssistantDialog extends JDialog {
     
     public void onProcessingChanged(boolean processing) {
         SwingUtilities.invokeLater(() -> {
-            inputArea.setEnabled(!processing);
+            String sessionId = org.openide.util.Lookup.getDefault()
+                    .lookup(github.anandb.netbeans.contract.SessionControl.class).getCurrentSessionId();
+            inputArea.setEnabled(sessionId != null);
             if (processing) {
                 showSpinner();
             } else {
@@ -435,9 +456,10 @@ public class MiniAssistantDialog extends JDialog {
                     if (tc != null) {
                         List<MessageBubble> bubbles = getAssistantBubbles();
                         if (!bubbles.isEmpty()) {
-                            currentBubbleIndex = bubbles.size() - 1;
+                            if (isAutoTrackingLatest) {
+                                currentBubbleIndex = bubbles.size() - 1;
+                            }
                             MessageBubble realBubble = bubbles.get(currentBubbleIndex);
-                            inputArea.setText("");
                             displayBubble(realBubble);
                         }
                     }
@@ -452,6 +474,17 @@ public class MiniAssistantDialog extends JDialog {
     }
 
     public void onStreamUpdate(github.anandb.netbeans.model.ProcessedMessage msg) {
+        if (msg != null && msg.messageType() == github.anandb.netbeans.model.MessageType.error_response) {
+            if (lastSentText != null && !lastSentText.isBlank()) {
+                final String textToRestore = lastSentText;
+                lastSentText = null;
+                SwingUtilities.invokeLater(() -> {
+                    if (inputArea.getText().isEmpty()) {
+                        inputArea.setText(textToRestore);
+                    }
+                });
+            }
+        }
         if (msg != null && !msg.isIgnorable() && msg.text() != null && !msg.text().isBlank()) {
             String id = msg.messageId();
             int newCount = countWords(msg.text());
@@ -465,7 +498,16 @@ public class MiniAssistantDialog extends JDialog {
                 wordCount += newCount;
             }
         }
-        SwingUtilities.invokeLater(this::updateTokenOverlay);
+        SwingUtilities.invokeLater(() -> {
+            updateTokenOverlay();
+            if (isAutoTrackingLatest && isVisible()) {
+                List<MessageBubble> bubbles = getAssistantBubbles();
+                if (!bubbles.isEmpty()) {
+                    currentBubbleIndex = bubbles.size() - 1;
+                    displayBubble(bubbles.get(currentBubbleIndex));
+                }
+            }
+        });
     }
 
     private void styleAsMiniBubble(MessageBubble mb) {
@@ -655,8 +697,22 @@ public class MiniAssistantDialog extends JDialog {
         java.awt.Font f = ThemeManager.getFont();
         inputArea.setFont(f);
 
-        tokenOverlay.setBackground(theme.background().brighter());
-        tokenOverlay.setForeground(theme.foreground());
+        boolean isDark = ThemeManager.isDark();
+        if (isDark) {
+            tokenOverlay.setBackground(new java.awt.Color(60, 50, 10));
+            tokenOverlay.setForeground(new java.awt.Color(255, 230, 130));
+            tokenOverlay.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new java.awt.Color(90, 75, 15)),
+                BorderFactory.createEmptyBorder(2, 8, 2, 8)
+            ));
+        } else {
+            tokenOverlay.setBackground(new java.awt.Color(255, 243, 205));
+            tokenOverlay.setForeground(new java.awt.Color(133, 100, 4));
+            tokenOverlay.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new java.awt.Color(254, 238, 186)),
+                BorderFactory.createEmptyBorder(2, 8, 2, 8)
+            ));
+        }
 
         SwingUtilities.updateComponentTreeUI(this);
     }
