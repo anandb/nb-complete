@@ -224,6 +224,8 @@ class ServerProcessLifecycle {
             return;
         }
         client.sendRequest("initialize", params)
+                // Exception to the no-orTimeout rule: initialize must complete fast
+                // and does not stream long-running data.
                 .orTimeout(30, TimeUnit.SECONDS)
                 .thenAccept(res -> {
                     if (res != null) {

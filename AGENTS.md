@@ -46,7 +46,7 @@
   is idle (no inbound data) beyond their timeout. Do NOT use `future.orTimeout()` — that is an
   absolute deadline that kills requests even when data is flowing. Set timeouts by passing
   `(method, params, timeout, unit)` to `ProcessManager.sendRequest()` or
-  `SessionRpcClient` methods.
+  `SessionRpcClient` methods. (Exception: `initialize` request during startup may use `orTimeout` since it must complete quickly before streaming begins).
 - **Process I/O pattern**: When reading a subprocess's stdout/stdin with a timeout, read in a
   `RequestProcessor` background task, then use `proc.waitFor(timeout, unit)` on the caller
   thread as the timeout mechanism. On timeout, `proc.destroyForcibly()` closes the pipe,
