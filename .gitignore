@@ -72,6 +72,7 @@ src/main/java/github/anandb/netbeans/ui/Bundle.properties
 docs/
 .opencode/
 .vscode/
+.graymatter/
 
 # Application logs
 spring.log

@@ -7,7 +7,6 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.logging.Level;
@@ -304,13 +303,6 @@ class MessageServlet extends HttpServlet {
         ObjectNode result = MAPPER.createObjectNode();
         ArrayNode resources = MAPPER.createArrayNode();
 
-        ObjectNode caveman = MAPPER.createObjectNode();
-        caveman.put("uri", "nb-resource://caveman");
-        caveman.put("name", "caveman");
-        caveman.put("description", "Ultra-compressed communication mode skill for token-efficient responses");
-        caveman.put("mimeType", "text/markdown");
-        resources.add(caveman);
-
         result.set("resources", resources);
         resp.set("result", result);
     }
@@ -325,38 +317,10 @@ class MessageServlet extends HttpServlet {
         }
 
         String uri = params.get("uri").asText();
-        if ("nb-resource://caveman".equals(uri)) {
-            try (InputStream in = getClass().getResourceAsStream("/github/anandb/netbeans/mcp/caveman.md")) {
-                if (in == null) {
-                    ObjectNode error = MAPPER.createObjectNode();
-                    error.put("code", -32602);
-                    error.put("message", "Resource not found: caveman.md");
-                    resp.set("error", error);
-                    return;
-                }
-                String text = new String(in.readAllBytes(), StandardCharsets.UTF_8);
-                ObjectNode result = MAPPER.createObjectNode();
-                ArrayNode contents = MAPPER.createArrayNode();
-                ObjectNode content = MAPPER.createObjectNode();
-                content.put("uri", uri);
-                content.put("mimeType", "text/markdown");
-                content.put("text", text);
-                contents.add(content);
-                result.set("contents", contents);
-                resp.set("result", result);
-            } catch (IOException e) {
-                LOG.log(Level.WARNING, "Failed to read MCP resource: {0}", ExceptionUtils.getMessage(e));
-                ObjectNode error = MAPPER.createObjectNode();
-                error.put("code", -32603);
-                error.put("message", "Failed to read resource");
-                resp.set("error", error);
-            }
-        } else {
-            ObjectNode error = MAPPER.createObjectNode();
-            error.put("code", -32602);
-            error.put("message", "Unknown resource: " + uri);
-            resp.set("error", error);
-        }
+        ObjectNode error = MAPPER.createObjectNode();
+        error.put("code", -32602);
+        error.put("message", "Unknown resource: " + uri);
+        resp.set("error", error);
     }
 
     private void writeResponse(AsyncContext asyncContext, ObjectNode resp) throws IOException {

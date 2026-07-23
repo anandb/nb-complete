@@ -37,7 +37,7 @@ import github.anandb.netbeans.mcp.McpManager;
 public class ProcessManager implements ProcessControl {
     private static final Logger LOG = Logger.from(ProcessManager.class);
     private static volatile ProcessManager INSTANCE;
-    private final SlashCommandInterceptor slashCommandInterceptor = new SlashCommandInterceptor();
+    private final SlashCommandInterceptor slashCommandInterceptor = new DefaultSlashCommandInterceptor();
 
     private final AtomicReference<AcpProtocolClient> rpcClient = new AtomicReference<>();
     private final List<Consumer<SessionUpdate>> sseListeners = new CopyOnWriteArrayList<>();

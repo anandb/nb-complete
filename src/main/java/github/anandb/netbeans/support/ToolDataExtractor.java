@@ -73,10 +73,6 @@ public final class ToolDataExtractor {
             return new MessageClassification(MessageType.tool_call_update, "context cleanup");
         }
 
-        if (isCavemanFiller(text)) {
-            return new MessageClassification(MessageType.tool_call_update, "skill");
-        }
-
         if (defaultString(title).startsWith("nb_")) {
             kind = "mcp";
         }
@@ -100,10 +96,6 @@ public final class ToolDataExtractor {
             text.contains("DCP Context Analysis") ||
             text.contains("DCP Statistics")
         );
-    }
-
-    public static boolean isCavemanFiller(String text) {
-        return text != null && (text.contains("Respond terse like smart caveman"));
     }
 
     public static String stripMetadata(String text) {

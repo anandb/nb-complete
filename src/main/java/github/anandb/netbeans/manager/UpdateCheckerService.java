@@ -2,6 +2,7 @@ package github.anandb.netbeans.manager;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import java.io.IOException;
+import java.net.ProxySelector;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -37,9 +38,10 @@ import github.anandb.netbeans.support.PreferenceKeys;
 public class UpdateCheckerService implements UpdateCheckerControl {
     private static final Logger LOG = Logger.from(UpdateCheckerService.class);
 
-    /** Shared HTTP client — thread-safe, reused across checks. */
+    /** Shared HTTP client — thread-safe, reused across checks. Uses NetBeans proxy settings. */
     private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(15))
+            .proxy(ProxySelector.getDefault())
             .build();
 
     /** Delay before the first update check after IDE startup. */

@@ -45,7 +45,7 @@ public class AcpProtocolClient implements Closeable {
     private final AtomicLong nextId = new AtomicLong(0);
     private final InputStream inputStream;
     private final Map<Long, CompletableFuture<JsonNode>> pendingRequests = new ConcurrentHashMap<>();
-    
+
     private final Map<String, Consumer<JsonNode>> notificationListeners = new ConcurrentHashMap<>();
     private final Map<String, RequestHandler> requestHandlers = new ConcurrentHashMap<>();
     private final BufferedWriter writer;
@@ -158,8 +158,7 @@ public class AcpProtocolClient implements Closeable {
     }
 
     private void readLoop() {
-        try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
+        try (var reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
             String line;
             while (running && (line = reader.readLine()) != null) {
                 if (line.isBlank()) {

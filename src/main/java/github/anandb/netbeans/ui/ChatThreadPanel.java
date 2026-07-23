@@ -6,7 +6,6 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.KeyboardFocusManager;
-import java.awt.Rectangle;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.event.ContainerAdapter;
@@ -18,6 +17,7 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.BooleanSupplier;
+import java.util.function.Function;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
@@ -30,8 +30,6 @@ import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
 import javax.swing.JViewport;
 import javax.swing.ScrollPaneConstants;
-import javax.swing.Scrollable;
-import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import javax.swing.border.EmptyBorder;
@@ -203,40 +201,6 @@ public class ChatThreadPanel extends JPanel {
             }
         });
         flushTimer.setRepeats(false);
-    }
-
-    private static class ScrollablePanel extends JPanel implements Scrollable {
-        private static final long serialVersionUID = 1L;
-
-        ScrollablePanel() {
-            setOpaque(false);
-            setDoubleBuffered(true);
-        }
-
-        @Override
-        public Dimension getPreferredScrollableViewportSize() {
-            return getPreferredSize();
-        }
-
-        @Override
-        public int getScrollableUnitIncrement(Rectangle visibleRect, int orientation, int direction) {
-            return 16;
-        }
-
-        @Override
-        public int getScrollableBlockIncrement(Rectangle visibleRect, int orientation, int direction) {
-            return orientation == SwingConstants.VERTICAL ? visibleRect.height : 16;
-        }
-
-        @Override
-        public boolean getScrollableTracksViewportWidth() {
-            return true;
-        }
-
-        @Override
-        public boolean getScrollableTracksViewportHeight() {
-            return false;
-        }
     }
 
     public void setScrollBlocker(BooleanSupplier scrollBlocker) {
@@ -707,8 +671,30 @@ public class ChatThreadPanel extends JPanel {
      *  immediately without restarting the IDE. The in-process default (100)
      *  is used only when the preference has never been seeded. */
     private int currentMaxMessages() {
-        int max = PluginSettings.getMaxMessages();
-        return max;
+        return PluginSettings.getMaxMessages();
+    }
+
+    /** Truncates to the tail that fits {@link #currentMaxMessages()}, preserving pinned items before the cutoff. */
+    private <T> List<T> tailWithPinned(List<T> items, Function<T, String> idExtractor) {
+        int max = currentMaxMessages();
+        if (max <= 0 || keepOlderMessages || items.size() <= max) {
+            return items;
+        }
+        int tailStart = items.size() - max;
+        PinnedMessageControl pinStore = (currentSessionId != null)
+                ? Lookup.getDefault().lookup(PinnedMessageControl.class) : null;
+        List<T> pinnedBefore = new ArrayList<>();
+        for (int i = 0; i < tailStart; i++) {
+            T item = items.get(i);
+            String id = idExtractor.apply(item);
+            if (id != null && pinStore != null && pinStore.isPinned(currentSessionId, id)) {
+                pinnedBefore.add(item);
+            }
+        }
+        List<T> result = new ArrayList<>(pinnedBefore.size() + max);
+        result.addAll(pinnedBefore);
+        result.addAll(items.subList(tailStart, items.size()));
+        return result;
     }
 
     public String getConversationAsMarkdown() {
@@ -720,63 +706,7 @@ public class ChatThreadPanel extends JPanel {
     }
 
     public void applyTypeFilters() {
-        // Re-render from cached messages when available — avoids subtle
-        // visibility/revalidation bugs with hidden-shown combined bubbles.
-        List<Message> msgs = cachedMessages;
-        if (msgs != null && !msgs.isEmpty()) {
-            setMessages(msgs);
-            return;
-        }
-        // Fallback: visibility-only toggle (legacy path when cache not populated).
-        SwingUtilities.invokeLater(() -> {
-            boolean toolHidden = MessageFilterManager.isTypeHidden("tool");
-            boolean thoughtHidden = MessageFilterManager.isTypeHidden("thought");
-
-            Component[] comps = messagesContainer.getComponents();
-            for (int i = 0; i < comps.length; i++) {
-                if (comps[i] instanceof MessageBubble bubble) {
-                    // Combined bubbles need segment-level re-filtering
-                    if (Boolean.TRUE.equals(bubble.getClientProperty("nb-complete.combined"))) {
-                        @SuppressWarnings("unchecked")
-                        List<CollapsibleToolPane.ToolSegment> allSegments =
-                                (List<CollapsibleToolPane.ToolSegment>) bubble.getClientProperty("nb-complete.segments");
-                        if (allSegments != null) {
-                            List<CollapsibleToolPane.ToolSegment> visibleSegments = new ArrayList<>();
-                            for (CollapsibleToolPane.ToolSegment seg : allSegments) {
-                                if ((seg.isThought() && !thoughtHidden)
-                                        || (!seg.isThought() && !toolHidden)) {
-                                    visibleSegments.add(seg);
-                                }
-                            }
-                            if (visibleSegments.isEmpty()) {
-                                bubble.setVisible(false);
-                                if (i + 1 < comps.length) comps[i + 1].setVisible(false);
-                            } else {
-                                String newTitle = "Execution Steps (" + visibleSegments.size() + ")";
-                                bubble.setVisible(true);
-                                if (i + 1 < comps.length) comps[i + 1].setVisible(true);
-                                bubble.updateCombinedContent(visibleSegments, newTitle);
-                                bubble.revalidate();
-                            }
-                            continue;
-                        }
-                    }
-                    // Normal (non-combined) bubble visibility
-                    boolean visible = !MessageFilterManager.isTypeHidden(bubble.getRole());
-                    boolean wasHidden = !comps[i].isVisible();
-                    comps[i].setVisible(visible);
-                    if (i + 1 < comps.length) {
-                        comps[i + 1].setVisible(visible);
-                    }
-                    // Re-shown bubbles need revalidation so internal layout
-                    // (GridBagLayout, BoxLayout, etc.) recomputes child bounds.
-                    if (wasHidden && visible) {
-                        comps[i].revalidate();
-                    }
-                }
-            }
-            messagesContainer.revalidate();
-        });
+        TypeFilterApplier.apply(cachedMessages, this::setMessages, messagesContainer);
     }
 
     public void clearMessages() {
@@ -811,26 +741,7 @@ public class ChatThreadPanel extends JPanel {
         if (buffer != null && !buffer.isEmpty()) {
             batchAdding = true;
             try {
-                int max = currentMaxMessages();
-                List<ProcessedMessage> toRender;
-                if (max > 0 && !keepOlderMessages && buffer.size() > max) {
-                    int tailStart = buffer.size() - max;
-                    PinnedMessageControl pinStore = (currentSessionId != null)
-                            ? Lookup.getDefault().lookup(PinnedMessageControl.class) : null;
-                    List<ProcessedMessage> pinnedBefore = new ArrayList<>();
-                    for (int i = 0; i < tailStart; i++) {
-                        ProcessedMessage pm = buffer.get(i);
-                        if (pm.messageId() != null && pinStore != null
-                                && pinStore.isPinned(sid, pm.messageId())) {
-                            pinnedBefore.add(pm);
-                        }
-                    }
-                    toRender = new ArrayList<>(pinnedBefore.size() + max);
-                    toRender.addAll(pinnedBefore);
-                    toRender.addAll(buffer.subList(tailStart, buffer.size()));
-                } else {
-                    toRender = buffer;
-                }
+                List<ProcessedMessage> toRender = tailWithPinned(buffer, ProcessedMessage::messageId);
                 for (ProcessedMessage pm : toRender) {
                     if (pm.isIgnorable()) continue;
                     String text = pm.text();
@@ -890,30 +801,7 @@ public class ChatThreadPanel extends JPanel {
                 // Single revalidate + scroll at end cuts O(N²) to O(N).
                 batchAdding = true;
                 try {
-                    // Build the render list: the tail that fits the configured
-                    // maximum, plus any pinned messages that fall before the tail.
-                    List<Message> toRender;
-                    int max = currentMaxMessages();
-                    if (max > 0 && !keepOlderMessages && messages.size() > max) {
-                        int tailStart = messages.size() - max;
-                        // Collect pinned messages that occur before the tail.
-                        PinnedMessageControl pinStore2 = (currentSessionId != null)
-                                ? Lookup.getDefault().lookup(PinnedMessageControl.class) : null;
-                        List<Message> pinnedBefore = new ArrayList<>();
-                        for (int i = 0; i < tailStart; i++) {
-                            Message m = messages.get(i);
-                            if (m.id() != null && pinStore2 != null
-                                    && pinStore2.isPinned(currentSessionId, m.id())) {
-                                pinnedBefore.add(m);
-                            }
-                        }
-                        // Merge: pinned-before first, then the tail, preserving order.
-                        toRender = new ArrayList<>(pinnedBefore.size() + max);
-                        toRender.addAll(pinnedBefore);
-                        toRender.addAll(messages.subList(tailStart, messages.size()));
-                    } else {
-                        toRender = messages;
-                    }
+                    List<Message> toRender = tailWithPinned(messages, Message::id);
                     for (Message m : toRender) {
                         ProcessedMessage pm = messageTransformer.convert(m);
                         if (pm.isIgnorable()) {
