@@ -3,6 +3,17 @@
 ## v1.12.0 (Changes since v1.11.3)
 
 ### Features
+- **HTML export**: New self-contained HTML export option alongside existing Markdown.
+  Export button shows a MarkDown/HTML popup menu. HTML export includes base64-embedded
+  SVG icons, inline CSS matching theme colors, Flexmark markdown rendering, and
+  collapsible activity/tool/thought panels (folded by default). Custom user icons
+  are embedded as base64 data URLs. Bubbles use 80% width for a sidebar-like appearance.
+  User icon is displayed inside the bubble header.
+- **Show all & export dialog**: When messages are trimmed, export prompts with
+  "Export displayed messages" vs "Show all & export messages". The latter triggers
+  `loadSession()` to reload all messages before exporting.
+- **Show all messages reload**: The "Show all messages" button now triggers an implicit
+  `loadSession()` to bring back trimmed messages, instead of requiring a manual reload.
 - **Mini assistant panel**: New floating mini assistant dialog (`MiniAssistantDialog`)
   with keyboard navigation (PgUp/PgDn or Cmd+Left/Right to scroll bubbles),
   Cmd+C to copy code blocks, Cmd+L to toggle main assistant, and Cmd+Alt+L to
@@ -10,6 +21,14 @@
   updates, and a spinner during processing.
 
 ### Fixes
+- **HTML export page colors**: Replaced `theme.sunkenBackground()` with explicit colors
+  (`#ffffff` light / `#1e1f22` dark) to prevent black background with light text.
+- **HTML export segment headers**: Replaced `theme.base2()` with explicit colors
+  (`#f0f0f0` light / `#2b2d31` dark) for readable header backgrounds.
+- **Overwrite confirmation**: Added missing `MSG_OverwriteConfirm` bundle key so the
+  file overwrite dialog actually appears when exporting to an existing file.
+- **Export tooltip**: Updated "Show all messages" tooltip to remove "(requires reload)"
+  since the reload is now automatic.
 - **Mini assistant singleton lifecycle**: `dispose()` now properly unregisters the
   global `KeyEventDispatcher` and resets the singleton instance, preventing stale
   dialog state after close.
@@ -22,6 +41,10 @@
   geometry across sessions.
 
 ### Improvements
+- **Export reads displayed messages**: Export now reads from the UI container (what's on
+  screen) rather than cached model data, keeping behavior predictable.
+- **Flush timer callback**: Added `onMessagesStable` callback to `ChatThreadPanel` for
+  post-reload export hooks.
 - **GoToFile search persistence**: Retains search text across dialog invocations
   unless the file cache is rebuilt.
 - **Mini assistant keyboard shortcuts**: Cmd+Left and Cmd+Right mapped to scroll

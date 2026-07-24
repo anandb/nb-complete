@@ -25,6 +25,7 @@ import com.vladsch.flexmark.util.data.MutableDataSet;
 
 import github.anandb.netbeans.model.Message;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.PluginSettings;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 
 import org.openide.cookies.EditorCookie;
@@ -69,6 +70,25 @@ final class HtmlConversationExporter {
     private static String cachedGoIconDark;
 
     private static String userIcon(boolean dark) {
+        // Check for custom user icon first (same preference as sidebar)
+        String customPath = PluginSettings.getCustomUserIcon();
+        if (customPath != null && !customPath.isEmpty()) {
+            File file = new File(customPath);
+            if (file.exists()) {
+                try {
+                    String ext = customPath.toLowerCase();
+                    String mime = ext.endsWith(".png") ? "image/png"
+                            : ext.endsWith(".jpg") || ext.endsWith(".jpeg") ? "image/jpeg"
+                            : ext.endsWith(".gif") ? "image/gif" : null;
+                    if (mime != null) {
+                        byte[] data = java.nio.file.Files.readAllBytes(file.toPath());
+                        return "data:" + mime + ";base64," + Base64.getEncoder().encodeToString(data);
+                    }
+                } catch (Exception e) {
+                    // Fall through to default
+                }
+            }
+        }
         if (dark) {
             if (cachedUserIconDark == null)
                 cachedUserIconDark = svgToDataUrl("icons/user_dark.svg");
@@ -275,8 +295,10 @@ final class HtmlConversationExporter {
         String iconUrl = userIcon(dark);
         String escaped = escHtml(text).replace("\n", "<br/>\n");
         return "  <div class=\"message user\">\n"
-             + "    <img class=\"avatar\" src=\"" + iconUrl + "\" alt=\"User\"/>\n"
              + "    <div class=\"bubble user-bubble\">\n"
+             + "      <div class=\"bubble-header\">\n"
+             + "        <img class=\"avatar\" src=\"" + iconUrl + "\" alt=\"User\"/>\n"
+             + "      </div>\n"
              + "      <div class=\"content\">" + escaped + "</div>\n"
              + "    </div>\n"
              + "  </div>\n";
@@ -414,12 +436,12 @@ body {
 }
 .message {
     display: flex;
-    margin-bottom: 8px;
+    margin-bottom: 4px;
     gap: 8px;
     align-items: flex-start;
 }
 .message.user {
-    flex-direction: row-reverse;
+    justify-content: flex-start;
 }
 .message.assistant {
     flex-direction: row;
@@ -428,25 +450,22 @@ body {
 .message.tool {
     flex-direction: row;
 }
-.avatar {
-    width: 44px;
-    height: 44px;
-    flex-shrink: 0;
-    border-radius: 50%%;
-}
-.message.user .avatar {
-    display: block;
-}
-.message.assistant .avatar,
-.message.thought .avatar,
-.message.tool .avatar {
-    display: none;
-}
 .bubble {
-    max-width: 75%%;
+    width: 80%%;
     padding: 8px 12px;
     word-wrap: break-word;
     overflow-wrap: break-word;
+}
+.bubble-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+}
+.bubble-header .avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%%;
 }
 .user-bubble {
     background: %s;
@@ -524,10 +543,11 @@ body {
     font-size: 12px;
 }
 .activity {
-    margin: 4px 0;
+    margin: 2px 0;
     border-radius: 12px;
     overflow: hidden;
     border: 1px solid %s;
+    width: 80%%;
 }
 .activity-pane > summary {
     padding: 6px 10px;
@@ -539,6 +559,8 @@ body {
     align-items: center;
     gap: 6px;
     user-select: none;
+    width: 100%%;
+    box-sizing: border-box;
 }
 .activity-pane > summary img {
     width: 16px;
@@ -558,6 +580,8 @@ body {
 .segment {
     margin: 0;
     border-top: 1px solid %s;
+    width: 100%%;
+    box-sizing: border-box;
 }
 .segment summary {
     padding: 4px 8px 4px 24px;
@@ -614,11 +638,11 @@ body {
     background: %s;
 }
 .activity-segment {
-    margin: 2px 0;
+    margin: 1px 0;
     border-radius: 8px;
     overflow: hidden;
     border: 1px solid %s;
-    width: 100%%;
+    width: 80%%;
 }
 .segment-header {
     padding: 4px 8px;
