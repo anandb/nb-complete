@@ -222,7 +222,16 @@ final class ChatLayoutBuilder {
 
         String exportHint = NbBundle.getMessage(AssistantTopComponent.class, "HINT_ExportConversation");
         exportBtn = UIUtils.createToolbarButton("export.svg", exportHint, e -> {
-            topComponent.exportConversation();
+            JPopupMenu exportPopup = new JPopupMenu();
+            JMenuItem mdItem = new JMenuItem(NbBundle.getMessage(
+                    ChatLayoutBuilder.class, "LBL_ExportMarkDown"));
+            mdItem.addActionListener(ev -> topComponent.exportConversationAs("md"));
+            exportPopup.add(mdItem);
+            JMenuItem htmlItem = new JMenuItem(NbBundle.getMessage(
+                    ChatLayoutBuilder.class, "LBL_ExportHtml"));
+            htmlItem.addActionListener(ev -> topComponent.exportConversationAs("html"));
+            exportPopup.add(htmlItem);
+            exportPopup.show(exportBtn, 0, exportBtn.getHeight());
         });
         String restartHint = NbBundle.getMessage(AssistantTopComponent.class, "HINT_RestartServer");
         restartServerBtn = UIUtils.createToolbarButton("restart.svg", restartHint, e -> {

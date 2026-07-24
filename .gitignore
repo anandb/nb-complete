@@ -73,6 +73,9 @@ docs/
 .opencode/
 .vscode/
 .graymatter/
+tasks/
+research/
+
 
 # Application logs
 spring.log

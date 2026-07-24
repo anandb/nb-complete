@@ -111,6 +111,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     private final JPanel header;
     private final transient MessageHistory messageHistory = new MessageHistory();
     private final transient StatusController statusController;
+    private volatile String pendingExportFormat;
     private final transient AttachmentUiHandler attachmentUiHandler;
     private final transient SessionDropdownHandler sessionDropdownHandler;
     private final transient ComponentLifecycleHandler componentLifecycleHandler;
@@ -488,13 +489,48 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     }
 
     void exportConversation() {
+        exportConversationAs("md");
+    }
+
+    void exportConversationAs(String format) {
+        // If messages are being trimmed, ask user whether to show all first.
+        if (!chatPanel.isKeepOlderMessages()) {
+            int choice = javax.swing.JOptionPane.showOptionDialog(this,
+                    "Some messages may be hidden. What would you like to export?",
+                    "Export Conversation",
+                    javax.swing.JOptionPane.DEFAULT_OPTION,
+                    javax.swing.JOptionPane.QUESTION_MESSAGE,
+                    null,
+                    new Object[]{"Export displayed messages", "Show all & export messages"},
+                    "Export displayed messages");
+            if (choice == 1) {
+                // Reload then export via flush timer callback.
+                pendingExportFormat = format;
+                chatPanel.setOnMessagesStable(() -> {
+                    String fmt = pendingExportFormat;
+                    pendingExportFormat = null;
+                    chatPanel.setOnMessagesStable(null);
+                    if (fmt != null) exportConversationAs(fmt);
+                });
+                chatPanel.setKeepOlderMessages(true);
+                return;
+            }
+            if (choice == -1) return;
+        }
+        pendingExportFormat = null;
         String currentId = sessionService.get().getCurrentSessionId();
         String title = currentId != null ? sessionService.get().getSessionTitle(currentId) : null;
-        String markdown = chatPanel.getConversationAsMarkdown(title);
-        if (isBlank(markdown)) {
-            return;
+        if ("html".equals(format)) {
+            String html = chatPanel.getConversationAsHtml(title);
+            if (isBlank(html)) return;
+            HtmlConversationExporter.export(this, html,
+                    HtmlConversationExporter.defaultFileName(title));
+        } else {
+            String markdown = chatPanel.getConversationAsMarkdown(title);
+            if (isBlank(markdown)) return;
+            ConversationExporter.export(this, markdown,
+                    ConversationExporter.defaultFileName(title));
         }
-        ConversationExporter.export(this, markdown, ConversationExporter.defaultFileName(title));
     }
 
     private void updateTabName(String modelName) {

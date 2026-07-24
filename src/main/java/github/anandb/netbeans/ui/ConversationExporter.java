@@ -16,6 +16,7 @@ import static org.apache.commons.lang3.StringUtils.isBlank;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 
+import github.anandb.netbeans.model.Message;
 import github.anandb.netbeans.support.Logger;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
@@ -47,6 +48,89 @@ final class ConversationExporter {
      * @param sessionTitle      optional session title for the frontmatter header
      * @return Markdown string, never null
      */
+    /**
+     * Build a Markdown representation from the model message list (all messages,
+     * not just currently-rendered bubbles). Falls back to the UI-based export
+     * when messages is null.
+     */
+    static String generateMarkdown(List<Message> messages, String sessionTitle) {
+        if (messages == null || messages.isEmpty()) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        sb.append("---\n");
+        sb.append("title: \"").append(escYaml(sessionTitle != null ? sessionTitle : "Conversation")).append("\"\n");
+        sb.append("date: ").append(LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)).append("\n");
+        sb.append("---\n\n");
+        sb.append("# Conversation\n\n");
+
+        String lastRole = null;
+        for (Message m : messages) {
+            String role = extractRole(m);
+            String text = extractText(m);
+            if (isBlank(text)) continue;
+
+            String displayRole = role != null ? role : "assistant";
+            if (!displayRole.equals(lastRole)) {
+                sb.append("## ").append(displayRole.substring(0, 1).toUpperCase())
+                  .append(displayRole.substring(1)).append("\n\n");
+                lastRole = displayRole;
+            }
+            switch (displayRole) {
+                case "user" -> sb.append(text).append("\n\n");
+                case "thought" -> {
+                    sb.append("> **Thinking**\n>\n");
+                    for (String line : text.split("\n", -1)) {
+                        sb.append("> ").append(line).append("\n");
+                    }
+                    sb.append("\n");
+                }
+                default -> sb.append(text).append("\n\n");
+            }
+        }
+        return sb.toString();
+    }
+
+    /** Extract the display role from a Message model. */
+    private static String extractRole(Message m) {
+        if ("user".equals(m.type())) return "user";
+        if ("thinking".equals(m.state())) return "thought";
+        return "assistant";
+    }
+
+    /** Extract the display text from a Message model. */
+    static String extractText(Message m) {
+        StringBuilder sb = new StringBuilder();
+        if ("user".equals(m.type())) {
+            if (m.prompt() != null) {
+                if (m.prompt().text() != null) sb.append(m.prompt().text());
+                if (m.prompt().parts() != null) {
+                    for (Message.ContentPart part : m.prompt().parts()) {
+                        String pt = part.getDisplayText();
+                        if (pt != null && !pt.isEmpty()) {
+                            if (sb.length() > 0) sb.append("\n");
+                            sb.append(pt);
+                        }
+                    }
+                }
+            }
+        } else {
+            if (m.completion() != null) {
+                if (m.completion().text() != null) sb.append(m.completion().text());
+                if (m.completion().parts() != null) {
+                    for (Message.ContentPart part : m.completion().parts()) {
+                        String pt = part.getDisplayText();
+                        if (pt != null && !pt.isEmpty()) {
+                            if (sb.length() > 0) sb.append("\n\n");
+                            sb.append(pt);
+                        }
+                    }
+                }
+            }
+        }
+        return sb.toString().strip();
+    }
+
     @SuppressWarnings("unchecked")
     static String generateMarkdown(JPanel messagesContainer, String sessionTitle) {
         StringBuilder sb = new StringBuilder();

@@ -88,6 +88,9 @@ public class ChatThreadPanel extends JPanel {
     // Session-keyed buffer for loading; switch-session-safe.
     private final transient Map<String, List<ProcessedMessage>> pendingMessagesBySession = new ConcurrentHashMap<>();
 
+    // Callback fired when flush timer completes (messages stable). Used for post-reload export.
+    private transient volatile Runnable onMessagesStable;
+
     // Seen message IDs during loading, for stale-pin cleanup in flushSessionBuffer().
     private final transient Map<String, Set<String>> seenMessageIdsBySession = new ConcurrentHashMap<>();
 
@@ -199,6 +202,8 @@ public class ChatThreadPanel extends JPanel {
             if (isDisplayable()) {
                 stopStreaming();
             }
+            Runnable cb = onMessagesStable;
+            if (cb != null) cb.run();
         });
         flushTimer.setRepeats(false);
     }
@@ -643,16 +648,19 @@ public class ChatThreadPanel extends JPanel {
         this.currentSessionId = sessionId;
     }
 
+    /** Register a callback fired when the flush timer completes (messages stable). */
+    public void setOnMessagesStable(Runnable cb) {
+        this.onMessagesStable = cb;
+    }
+
     public void setKeepOlderMessages(boolean keep) {
         keepOlderMessages = keep;
-        // When the user chooses to forget (keep=false), immediately trim the
-        // currently-displayed bubbles that exceed MAX_MESSAGES rather than
-        // waiting for a future addMessage/trimMessages tick. The forget/remember button
-        // listener always fires on the EDT, so it is safe to mutate the
-        // component tree synchronously here. Adding a revalidate is required
-        // because trimMessages() only removes components — callers are
-        // otherwise expected to revalidate themselves, and this path had none.
-        if (!keep) {
+        if (keep) {
+            // Reload current session to bring back trimmed messages.
+            if (currentSessionId != null) {
+                Lookup.getDefault().lookup(SessionControl.class).loadSession(currentSessionId);
+            }
+        } else {
             trimMessages();
             messagesContainer.revalidate();
             boolean wasAtBottom = scrollController.isAtBottom();
@@ -703,6 +711,10 @@ public class ChatThreadPanel extends JPanel {
 
     public String getConversationAsMarkdown(String sessionTitle) {
         return ConversationExporter.generateMarkdown(messagesContainer, sessionTitle);
+    }
+
+    public String getConversationAsHtml(String sessionTitle) {
+        return HtmlConversationExporter.generateHtml(messagesContainer, sessionTitle);
     }
 
     public void applyTypeFilters() {
