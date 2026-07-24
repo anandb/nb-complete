@@ -2,21 +2,15 @@ package github.anandb.netbeans.ui;
 
 import java.awt.Component;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStreamWriter;
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Base64;
 import java.util.List;
 import java.util.logging.Level;
 
-import javax.swing.JFileChooser;
-import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.SwingUtilities;
 
 import com.vladsch.flexmark.ext.tables.TablesExtension;
 import com.vladsch.flexmark.html.HtmlRenderer;
@@ -27,13 +21,6 @@ import github.anandb.netbeans.model.Message;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.PluginSettings;
 import static org.apache.commons.lang3.StringUtils.isBlank;
-
-import org.openide.cookies.EditorCookie;
-import org.openide.filesystems.FileObject;
-import org.openide.filesystems.FileUtil;
-import org.openide.loaders.DataObject;
-import org.openide.util.NbBundle;
-import org.openide.util.RequestProcessor;
 
 /**
  * Stateless utility for exporting conversation history to self-contained
@@ -57,6 +44,33 @@ final class HtmlConversationExporter {
     }
 
     private HtmlConversationExporter() {}
+
+    // ---- Page setup helpers ---------------------------------------------------
+
+    private record PageSetup(ColorTheme theme, boolean dark, String pageTitle,
+                             String timestamp, StringBuilder body) {}
+
+    private static PageSetup initPage(String sessionTitle) {
+        ColorTheme theme = ThemeManager.getCurrentTheme();
+        boolean dark = theme.isDark();
+        String pageTitle = sessionTitle != null ? sessionTitle : "Conversation";
+        String timestamp = LocalDateTime.now()
+                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
+        StringBuilder body = new StringBuilder();
+        body.append("<div class=\"chat-container\">\n");
+        body.append("  <div class=\"chat-header\">\n")
+            .append("    <h1>").append(escHtml(pageTitle)).append("</h1>\n")
+            .append("    <span class=\"header-date\">Exported ")
+            .append(timestamp).append("</span>\n")
+            .append("  </div>\n");
+        return new PageSetup(theme, dark, pageTitle, timestamp, body);
+    }
+
+    private static String finishPage(PageSetup setup) {
+        setup.body().append("</div>\n");
+        return buildPageHtml(setup.pageTitle(), setup.timestamp(),
+                setup.body().toString(), setup.theme());
+    }
 
     // ---- SVG icon cache (loaded once from classpath) --------------------------
 
@@ -151,48 +165,6 @@ final class HtmlConversationExporter {
 
     // ---- Main entry point -----------------------------------------------------
 
-    // ---- Text extraction helpers (model-based export) -------------------------
-
-    /** Extract the display role from a Message model. */
-    private static String extractRole(Message m) {
-        if ("user".equals(m.type())) return "user";
-        if ("thinking".equals(m.state())) return "thought";
-        return "assistant";
-    }
-
-    /** Extract the display text from a Message model. */
-    static String extractText(Message m) {
-        StringBuilder sb = new StringBuilder();
-        if ("user".equals(m.type())) {
-            if (m.prompt() != null) {
-                if (m.prompt().text() != null) sb.append(m.prompt().text());
-                if (m.prompt().parts() != null) {
-                    for (Message.ContentPart part : m.prompt().parts()) {
-                        String pt = part.getDisplayText();
-                        if (pt != null && !pt.isEmpty()) {
-                            if (sb.length() > 0) sb.append("\n");
-                            sb.append(pt);
-                        }
-                    }
-                }
-            }
-        } else {
-            if (m.completion() != null) {
-                if (m.completion().text() != null) sb.append(m.completion().text());
-                if (m.completion().parts() != null) {
-                    for (Message.ContentPart part : m.completion().parts()) {
-                        String pt = part.getDisplayText();
-                        if (pt != null && !pt.isEmpty()) {
-                            if (sb.length() > 0) sb.append("\n\n");
-                            sb.append(pt);
-                        }
-                    }
-                }
-            }
-        }
-        return sb.toString().strip();
-    }
-
     // ---- Main entry points ----------------------------------------------------
 
     /**
@@ -202,38 +174,21 @@ final class HtmlConversationExporter {
      */
     static String generateHtml(List<Message> messages, String sessionTitle) {
         if (messages == null || messages.isEmpty()) return "";
-        ColorTheme theme = ThemeManager.getCurrentTheme();
-        boolean dark = theme.isDark();
-        String pageTitle = sessionTitle != null ? sessionTitle : "Conversation";
-        String timestamp = LocalDateTime.now()
-                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
-
-        StringBuilder body = new StringBuilder();
-        body.append("<div class=\"chat-container\">\n");
-
-        body.append("  <div class=\"chat-header\">\n")
-            .append("    <h1>").append(escHtml(pageTitle)).append("</h1>\n")
-            .append("    <span class=\"header-date\">Exported ")
-            .append(timestamp).append("</span>\n")
-            .append("  </div>\n");
+        PageSetup setup = initPage(sessionTitle);
 
         for (Message m : messages) {
-            String role = extractRole(m);
-            String text = extractText(m);
-            if (isBlank(text)) continue;
+            String role = m.extractRole();
+            String text = m.extractText();
+            if (text.isBlank()) continue;
 
             switch (role) {
-                case "user" -> body.append(buildUserHtml(text, dark));
-                case "thought" -> body.append(buildThoughtHtml(text, theme));
-                case "tool" -> {
-                    // Tool from model doesn't have toolTitle; use default
-                    body.append(buildToolHtml(text, "Tool", dark));
-                }
-                default -> body.append(buildAssistantHtml(text, theme));
+                case "user" -> setup.body().append(buildUserHtml(text, setup.dark()));
+                case "thought" -> setup.body().append(buildThoughtHtml(text, setup.theme()));
+                case "tool" -> setup.body().append(buildToolHtml(text, "Tool", setup.dark()));
+                default -> setup.body().append(buildAssistantHtml(text, setup.theme()));
             }
         }
-        body.append("</div>\n");
-        return buildPageHtml(pageTitle, timestamp, body.toString(), theme);
+        return finishPage(setup);
     }
 
     /**
@@ -245,30 +200,15 @@ final class HtmlConversationExporter {
      */
     @SuppressWarnings("unchecked")
     static String generateHtml(JPanel messagesContainer, String sessionTitle) {
-        ColorTheme theme = ThemeManager.getCurrentTheme();
-        boolean dark = theme.isDark();
-        String pageTitle = sessionTitle != null ? sessionTitle : "Conversation";
-        String timestamp = LocalDateTime.now()
-                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
+        PageSetup setup = initPage(sessionTitle);
 
-        StringBuilder body = new StringBuilder();
-        body.append("<div class=\"chat-container\">\n");
-
-        body.append("  <div class=\"chat-header\">\n")
-            .append("    <h1>").append(escHtml(pageTitle)).append("</h1>\n")
-            .append("    <span class=\"header-date\">Exported ")
-            .append(timestamp).append("</span>\n")
-            .append("  </div>\n");
-
-        String lastRole = null;
         for (Component c : messagesContainer.getComponents()) {
             if (c instanceof MessageBubble bubble) {
                 List<CollapsibleToolPane.ToolSegment> segments =
                         (List<CollapsibleToolPane.ToolSegment>)
                                 bubble.getClientProperty("nb-complete.segments");
                 if (segments != null && !segments.isEmpty()) {
-                    body.append(buildActivityHtml(segments, theme));
-                    lastRole = null;
+                    setup.body().append(buildActivityHtml(segments, setup.theme()));
                     continue;
                 }
 
@@ -277,16 +217,15 @@ final class HtmlConversationExporter {
                 if (isBlank(text)) continue;
 
                 switch (role != null ? role : "assistant") {
-                    case "user" -> body.append(buildUserHtml(text, dark));
-                    case "thought" -> body.append(buildThoughtHtml(text, theme));
-                    case "tool" -> body.append(buildToolHtml(text, bubble.getToolTitle(), dark));
-                    default -> body.append(buildAssistantHtml(text, theme));
+                    case "user" -> setup.body().append(buildUserHtml(text, setup.dark()));
+                    case "thought" -> setup.body().append(buildThoughtHtml(text, setup.theme()));
+                    case "tool" -> setup.body().append(buildToolHtml(text, bubble.getToolTitle(), setup.dark()));
+                    default -> setup.body().append(buildAssistantHtml(text, setup.theme()));
                 }
             }
         }
 
-        body.append("</div>\n");
-        return buildPageHtml(pageTitle, timestamp, body.toString(), theme);
+        return finishPage(setup);
     }
 
     // ---- Bubble renderers ----------------------------------------------------
@@ -730,46 +669,7 @@ body {
      * in the IDE editor.
      */
     static void export(Component parent, String html, String defaultName) {
-        JFileChooser chooser = new JFileChooser();
-        chooser.setDialogTitle(NbBundle.getMessage(
-                HtmlConversationExporter.class, "TITLE_ExportConv"));
-        chooser.setSelectedFile(new File(defaultName));
-        if (chooser.showSaveDialog(parent) == JFileChooser.APPROVE_OPTION) {
-            File file = chooser.getSelectedFile();
-            if (file.exists()) {
-                int confirm = JOptionPane.showConfirmDialog(parent,
-                        NbBundle.getMessage(HtmlConversationExporter.class,
-                                "MSG_OverwriteConfirm", file.getName()),
-                        NbBundle.getMessage(HtmlConversationExporter.class,
-                                "TITLE_ExportConv"),
-                        JOptionPane.YES_NO_OPTION,
-                        JOptionPane.WARNING_MESSAGE);
-                if (confirm != JOptionPane.YES_OPTION) {
-                    return;
-                }
-            }
-            RequestProcessor.getDefault().post(() -> {
-                try (OutputStreamWriter writer = new OutputStreamWriter(
-                        new FileOutputStream(file), StandardCharsets.UTF_8)) {
-                    writer.write(html);
-                    LOG.log(Level.FINE, "Conversation exported to {0}",
-                            file.getAbsolutePath());
-                    FileObject fo = FileUtil.toFileObject(
-                            FileUtil.normalizeFile(file));
-                    if (fo != null) {
-                        DataObject dobj = DataObject.find(fo);
-                        EditorCookie ec = dobj.getLookup()
-                                .lookup(EditorCookie.class);
-                        if (ec != null) {
-                            SwingUtilities.invokeLater(() -> ec.open());
-                        }
-                    }
-                } catch (IOException ex) {
-                    LOG.log(Level.WARNING,
-                            "Failed to export conversation", ex);
-                }
-            });
-        }
+        ConversationExporter.export(parent, html, defaultName);
     }
 
     /**

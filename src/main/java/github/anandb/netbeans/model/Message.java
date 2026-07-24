@@ -58,6 +58,46 @@ public record Message(
         }
     }
 
+    /** Display role for export: "user", "thought", or "assistant". */
+    public String extractRole() {
+        if ("user".equals(type())) return "user";
+        if ("thinking".equals(state())) return "thought";
+        return "assistant";
+    }
+
+    /** Concatenated display text from prompt/completion parts. */
+    public String extractText() {
+        StringBuilder sb = new StringBuilder();
+        if ("user".equals(type())) {
+            if (prompt() != null) {
+                if (prompt().text() != null) sb.append(prompt().text());
+                if (prompt().parts() != null) {
+                    for (ContentPart part : prompt().parts()) {
+                        String pt = part.getDisplayText();
+                        if (pt != null && !pt.isEmpty()) {
+                            if (sb.length() > 0) sb.append("\n");
+                            sb.append(pt);
+                        }
+                    }
+                }
+            }
+        } else {
+            if (completion() != null) {
+                if (completion().text() != null) sb.append(completion().text());
+                if (completion().parts() != null) {
+                    for (ContentPart part : completion().parts()) {
+                        String pt = part.getDisplayText();
+                        if (pt != null && !pt.isEmpty()) {
+                            if (sb.length() > 0) sb.append("\n\n");
+                            sb.append(pt);
+                        }
+                    }
+                }
+            }
+        }
+        return sb.toString().strip();
+    }
+
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record Annotations(
         List<String> audience,
