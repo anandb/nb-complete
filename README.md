@@ -151,7 +151,3 @@ Development follows standard NetBeans Platform patterns. Contributors are expect
 
 This software is released under the Apache License, Version 2.0. Further details can be found in the LICENSE file.
 
----
-
-Sign up for [OpenCode Go](https://opencode.ai/go?ref=DWTNHGN9KX) 🚀
-

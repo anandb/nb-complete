@@ -183,8 +183,12 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                     this.processing = processing;
                     configPanelController.setCombosEnabled(!processing);
                     MiniAssistantDialog.getInstance().onProcessingChanged(processing);
-                    // Reuse session-active callback to disable/restore all session controls
-                    sessionActiveCallback.accept(!processing && sessionActive);
+                    // Reuse session-active callback to disable/restore all session controls.
+                    // Use getCurrentSessionId() (the real source of truth) instead of the
+                    // sessionActive field, which the callback itself overwrites to false
+                    // when processing starts — that would prevent restoration at end-of-turn.
+                    boolean hasSession = sessionService.get().getCurrentSessionId() != null;
+                    sessionActiveCallback.accept(!processing && hasSession);
                 });
         attachmentUiHandler = new AttachmentUiHandler(attachmentManager, statusController, inputArea, AssistantTopComponent.this);
 
@@ -240,6 +244,48 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         // Track project open/close to disable new-session button when no projects are open
         projectContext.addProjectChangeListener(this::updateNewSessionBtnState);
         updateNewSessionBtnState();
+
+        // Register handler that opens the options panel (agent/model/level)
+        // and shows a slide-in confirmation bar (like the permission UI)
+        // after session/new, before the preamble.
+        sessionService.get().setBeforePreambleHandler((sessionId, configOptions) -> {
+            CompletableFuture<String> configFuture = new CompletableFuture<>();
+            try {
+                SwingUtilities.invokeAndWait(() -> {
+                    newSessionBtn.setEnabled(false);
+
+                    // Populate the bottom config panel combos with the options
+                    configPanelController.updateConfigControls(configOptions);
+                    // Open the options panel so the user can see/change selections
+                    setOptionsPanelVisible(true);
+
+                    // Show a slide-in confirm bar below the session dropdown,
+                    // reusing the permission-panel look and slide animation.
+                    layoutBuilder.getConfigConfirmPanel().showConfigConfirm(
+                        "Select the agent, model and level below, then click <b>Continue</b>.",
+                        configFuture);
+                });
+
+                // Block the async thread until the user clicks Continue
+                configFuture.get();
+                // Close the options panel now that the user confirmed
+                SwingUtilities.invokeLater(() -> setOptionsPanelVisible(false));
+                // Send the user's selections (or defaults if unchanged)
+                configPanelController.sendCurrentSelections(sessionId, configOptions);
+            } catch (Exception e) {
+                LOG.log(Level.WARNING, "Config confirmation interrupted", e);
+            } finally {
+                SwingUtilities.invokeLater(() -> {
+                    newSessionBtn.setEnabled(true);
+                    // If the future was never completed (e.g. InterruptedException),
+                    // slide the panel closed.
+                    if (!configFuture.isDone()) {
+                        configFuture.complete("cancel");
+                        layoutBuilder.getConfigConfirmPanel().slideClose();
+                    }
+                });
+            }
+        });
 
         messageSender = new MessageSender(
             inputArea, chatPanel, attachmentManager, messageHistory,
@@ -342,7 +388,8 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     private void updateAttentionAnimation() {
         Project[] projects = projectContext.getAllOpenProjects();
         boolean projectsOpen = (projects != null && projects.length > 0);
-        boolean shouldAnimate = projectsOpen && !sessionActive && isOpened();
+        boolean hasSession = sessionService.get().getCurrentSessionId() != null;
+        boolean shouldAnimate = projectsOpen && !hasSession && isOpened();
 
         if (shouldAnimate) {
             if (attentionPeriodicTimer == null) {

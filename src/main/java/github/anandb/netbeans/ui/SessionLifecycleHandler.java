@@ -236,7 +236,13 @@ public class SessionLifecycleHandler implements SessionListener {
             }
             // Debounce finalization via the panel's shared flush timer (reset on
             // every processed message), so it fires 300ms after the last one drains.
-            SwingUtilities.invokeLater(chatPanel::restartFlushTimer);
+            // Also re-enable send/toolbar here — the RPC result may be lost or
+            // arrive late, and this SSE signal is the authoritative end of turn.
+            SwingUtilities.invokeLater(() -> {
+                chatPanel.restartFlushTimer();
+                statusController.updateButtonState(false);
+                statusController.stopThinking();
+            });
         }
     }
 

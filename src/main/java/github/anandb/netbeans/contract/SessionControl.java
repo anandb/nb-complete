@@ -1,7 +1,10 @@
 package github.anandb.netbeans.contract;
 
 import github.anandb.netbeans.model.Session;
+import github.anandb.netbeans.model.SessionConfigOption;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.BiConsumer;
 
 /**
  * Write operations for session lifecycle management.
@@ -29,6 +32,12 @@ public interface SessionControl extends SessionQuery {
 
     /** Renames a session. */
     void renameSession(String sessionId, String newTitle);
+
+    /** Registers a handler invoked after session/new response but before the
+     *  preamble is sent. The handler receives (sessionId, configOptions) and
+     *  runs on the async thread — it MUST block until configuration is complete.
+     *  Intended for showing a modal config dialog before preamble proceeds. */
+    void setBeforePreambleHandler(BiConsumer<String, List<SessionConfigOption>> handler);
 
     /** Creates a new session in the given directory (convenience). */
     void createNewSession(String explicitCwd);

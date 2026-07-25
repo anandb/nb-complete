@@ -19,6 +19,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.BiConsumer;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
@@ -130,6 +131,7 @@ public class SessionManager implements SessionQuery, SessionControl {
     private final SessionCacheManager cacheManager = new SessionCacheManager();
     private final Consumer<SessionUpdate> sseListener = this::handleSseUpdate;
     private final SessionRpcClient rpcClient;
+    private volatile BiConsumer<String, List<SessionConfigOption>> beforePreambleHandler;
     private volatile boolean sendResumeOnLoad;
     /** True when the server crashed and we're waiting for reconnect to resume. */
     private volatile boolean crashedBeforeReconnect;
@@ -269,6 +271,11 @@ public class SessionManager implements SessionQuery, SessionControl {
         if (sid != null) {
             ProcessManager.getInstance().stopMessage(sid);
         }
+    }
+
+    @Override
+    public void setBeforePreambleHandler(BiConsumer<String, List<SessionConfigOption>> handler) {
+        this.beforePreambleHandler = handler;
     }
 
     // --- Session CRUD (moved from ProcessManager) ---
@@ -536,6 +543,12 @@ public class SessionManager implements SessionQuery, SessionControl {
                         }
                         notifySessionLoaded(session.id(), session.configOptions(), true);
                         refreshSessions();
+                        // Before preamble, let the UI handler (if set) show a config
+                        // dialog so the user can pick agent/model/level.
+                        // The handler runs on this async thread and blocks until done.
+                        if (beforePreambleHandler != null) {
+                            beforePreambleHandler.accept(session.id(), session.configOptions());
+                        }
                         if (!sendPreamble(session.id())) {
                             notifyPreambleDone();
                         }

@@ -73,6 +73,7 @@ final class ChatLayoutBuilder {
     private JButton exportBtn;
     private JPanel rightStatusPanel;
     private PermissionRequestPanel permissionPanel;
+    private PermissionRequestPanel configConfirmPanel;
     private final Timer newSessionDebounceTimer;
 
     ChatLayoutBuilder(AssistantTopComponent topComponent, ChatThreadPanel chatPanel,
@@ -405,7 +406,13 @@ final class ChatLayoutBuilder {
 
         statusPanel.add(rightStatusPanel, BorderLayout.EAST);
 
-        bottomPanel.add(statusPanel, BorderLayout.NORTH);
+        configConfirmPanel = new PermissionRequestPanel();
+        JPanel bottomNorth = new JPanel();
+        bottomNorth.setLayout(new BoxLayout(bottomNorth, BoxLayout.Y_AXIS));
+        bottomNorth.setOpaque(false);
+        bottomNorth.add(configConfirmPanel);
+        bottomNorth.add(statusPanel);
+        bottomPanel.add(bottomNorth, BorderLayout.NORTH);
 
         inputArea = new PlaceholderTextArea(NbBundle.getMessage(AssistantTopComponent.class, "LBL_TypeMessage"));
         inputArea.setLineWrap(true);
@@ -619,6 +626,7 @@ final class ChatLayoutBuilder {
     JScrollPane getInputScrollPane() { return inputScrollPane; }
 
     PermissionRequestPanel getPermissionPanel() { return permissionPanel; }
+    PermissionRequestPanel getConfigConfirmPanel() { return configConfirmPanel; }
 
     JPanel getHeader() { return header; }
 

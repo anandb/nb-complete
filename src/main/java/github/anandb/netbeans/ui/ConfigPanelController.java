@@ -60,6 +60,7 @@ public class ConfigPanelController {
     private JPopupMenu activeCustomPopup;
 
     private final ModelVariantResolver modelResolver = new ModelVariantResolver();
+    private SessionConfigOption thinkingConfigOption;
 
     private final Consumer<String> tabNameUpdater;
 
@@ -282,6 +283,22 @@ public class ConfigPanelController {
         }
     }
 
+    /**
+     * Sends the current selection of every config combo for the given session.
+     * Called when the user confirms the pre-preamble config dialog, ensuring
+     * the initial defaults are sent even when the user didn't interact with a combo.
+     */
+    public void sendCurrentSelections(String sessionId, List<SessionConfigOption> configOptions) {
+        for (SessionConfigOption opt : configOptions) {
+            JComboBox<ConfigItem> combo = resolveComboTarget(opt.category());
+            if (combo == null) continue;
+            ConfigItem selected = (ConfigItem) combo.getSelectedItem();
+            if (selected != null && selected.value() != null && !selected.value().isEmpty()) {
+                sessionService.get().setSessionConfigOption(sessionId, opt.id(), selected.value());
+            }
+        }
+    }
+
     public void ensureDefaultModelSelected() {
         isUpdatingConfigControls = true;
         try {
@@ -327,6 +344,8 @@ public class ConfigPanelController {
                 for (SessionConfigOption opt : options) {
                     if ("model".equals(opt.category())) {
                         modelResolver.parseModelVariants(opt);
+                    } else if (isThinkingCategory(opt.category())) {
+                        thinkingConfigOption = opt;
                     }
                 }
 
@@ -415,6 +434,53 @@ public class ConfigPanelController {
         tabNameUpdater.accept(buildTabLabel());
     }
 
+    /** Repopulate thinking combo with only the variants supported by the selected model. */
+    private void repopulateThinkingForModel(String modelValue) {
+        if (thinkingConfigOption == null) return;
+        Map<String, List<ConfigItem>> variants = modelResolver.getModelVariants();
+        if (variants.isEmpty()) return;
+
+        // Find the base model ID and its variants
+        String baseId = null;
+        for (Map.Entry<String, List<ConfigItem>> entry : variants.entrySet()) {
+            for (ConfigItem v : entry.getValue()) {
+                if (v.value().equalsIgnoreCase(modelValue)) {
+                    baseId = entry.getKey();
+                    break;
+                }
+            }
+            if (baseId != null) break;
+        }
+        if (baseId == null) return;
+
+        List<ConfigItem> modelVariants = variants.get(baseId);
+        if (modelVariants == null || modelVariants.isEmpty()) return;
+
+        // Remember current selection
+        ConfigItem prevSelection = (ConfigItem) thinkingCombo.getSelectedItem();
+        String prevValue = prevSelection != null ? prevSelection.value() : null;
+
+        thinkingCombo.removeAllItems();
+
+        // Add variant names as effort levels (skip "default")
+        ConfigItem selected = null;
+        for (ConfigItem v : modelVariants) {
+            if ("default".equalsIgnoreCase(v.name()) || v.name().isEmpty()) continue;
+            ConfigItem item = new ConfigItem(v.name(), v.value());
+            thinkingCombo.addItem(item);
+            if (prevValue != null && v.value().equalsIgnoreCase(prevValue)) {
+                selected = item;
+            }
+        }
+
+        if (selected != null) {
+            thinkingCombo.setSelectedItem(selected);
+        } else if (thinkingCombo.getItemCount() > 0) {
+            thinkingCombo.setSelectedIndex(0);
+        }
+        thinkingCombo.setEnabled(thinkingCombo.getItemCount() > 0);
+    }
+
     private boolean autoHideOnClose = false;
     private Runnable autoHideCallback;
 
@@ -498,8 +564,14 @@ public class ConfigPanelController {
                         });
                 }
 
-                if (combo == modelCombo && onModelSelectedCallback != null) {
-                    onModelSelectedCallback.run();
+                if (combo == modelCombo) {
+                    // Repopulate thinking combo with variants for the selected model
+                    if (selected != null) {
+                        repopulateThinkingForModel(selected.value());
+                    }
+                    if (onModelSelectedCallback != null) {
+                        onModelSelectedCallback.run();
+                    }
                 } else if (combo == modeCombo && onModeSelectedCallback != null) {
                     onModeSelectedCallback.run();
                 } else if (combo == thinkingCombo && onThinkingSelectedCallback != null) {

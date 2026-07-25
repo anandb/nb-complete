@@ -320,12 +320,14 @@ snippet from an `opencode.json` configuration.
       "~/.gnupg/**": "deny",
       "~/.kube/**": "deny",
       "~/.docker/**": "deny",
-      "~/.config/gcloud/**": "deny"
+      "~/.config/gcloud/**": "deny",
+      "*": "ask"
     },
     "bash": {
       "git push*": "ask",
       "rm *credentials*": "deny",
-      "rm *.env*": "deny"
+      "rm *.env*": "deny",
+      "rm": "ask"
     },
     "webfetch": "allow",
     "external_directory": "allow"
@@ -339,19 +341,16 @@ snippet from an `opencode.json` configuration.
 
 | Problem | Solution |
 |---------|----------|
-| Plugin can't find OpenCode | Ensure `opencode` is on your `PATH`. Set the binary path manually under `Options > Assistant`. |
-| Assistant becomes unresponsive | Click **Restart ACP Server** in the toolbar. |
-| `Ctrl+L` stops working | Close and reopen the assistant panel from the Window menu. If that doesn't work, restart the IDE. |
-| Sidebar doesn't open after install/upgrade | The plugin auto-opens the sidebar on version change. If it doesn't appear, open it from `Window > Assistant`. |
-| Image paste doesn't work on Linux | Install the `wl-clipboard` package (Wayland) or check your clipboard manager. |
-| Image paste broken after OpenCode upgrade | Upgrade to OpenCode >= 1.17.17 to resolve the breakage introduced in v1.17.13. |
-| Model not appearing after upgrade to OpenCode v1.17.9, upgrade plugin to >= 1.7.3 | Re-select your model via `/models`. The upgrade resets model selection due to the new `thought_level` split. |
-| Session config payloads restructured after upgrade | Upgrade the plugin to >= 1.7.3 and OpenCode to >= 1.17.17. Re-select your model and review any custom preamble or session settings. |
-| Messages disappear from view | This is display-only — the session still has all messages. Click **Show All Messages** to keep them visible, and use **Reload** to re-fetch from the server. |
-| LLM modified files unexpectedly | Always keep your project under version control (git) before allowing file modifications. Use **Accept/Deny** permission prompts to review changes. |
-| High CPU usage or UI freezes | Upgrade the plugin to >= 1.9.2, which resolves an infinite layout validation loop in the chat panel. |
-| Panel goes blank during docking or resizing | Close and reopen the docked panel from `Window > Assistant`. NetBeans may not repaint correctly after a drag-dock or undock operation. |
+| **Plugin can't find OpenCode** | Ensure `opencode` is on your `PATH`, or set the path manually under `Options > Assistant`. |
+| **Assistant becomes unresponsive** | Click **Restart ACP Server** in the toolbar. |
+| **Ctrl + L stops working** | Close and reopen the assistant panel from the Window menu. If that doesn't work, restart the IDE. |
+| **Sidebar doesn't open after install/upgrade** | The plugin auto-opens the sidebar on version change. If it doesn't appear, open it from `Window > Assistant`. |
+| **Image paste doesn't work with Wayland on Linux** | Install the `wl-clipboard` package (Wayland) or check your clipboard manager. |
+| **Image paste broken after OpenCode upgrade** | Upgrade to OpenCode >= 1.17.17 to resolve the breakage introduced in v1.17.13. |
+| **Model not appearing after upgrade to OpenCode v1.17.9**, upgrade plugin to >= 1.7.3 | Re-select your model via `/models`. The upgrade resets model selection due to the new `thought_level` split. |
+| **Session config payloads restructured after upgrade** | Upgrade the plugin to >= 1.7.3 and OpenCode to >= 1.17.17. Re-select your model and review any custom preamble or session settings. |
+| **Messages disappear from view** | This is display-only — the session still has all messages. Click **Show All Messages** to keep them visible, and use **Reload** to re-fetch from the server. |
+| **LLM modified files unexpectedly** | Always keep your project under version control (git) before allowing file modifications. Configure OpenCode to 'ask' for the edit permission, Use **Allow Once/Always Allow/Reject** permission prompts to review changes. |
+| **High CPU usage or UI freezes** | Upgrade the plugin to >= 1.9.2, which resolves an infinite layout validation loop in the chat panel. |
+| **Panel goes blank during docking or resizing** | Close and reopen the docked panel from `Window > Assistant`. NetBeans may not repaint correctly after a drag-dock or undock operation. |
 
----
-
-[Sign up for OpenCode Go](https://opencode.ai/go?ref=DWTNHGN9KX) 🚀
