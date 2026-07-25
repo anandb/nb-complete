@@ -155,13 +155,21 @@ public class DefaultSlashCommandInterceptor implements SlashCommandInterceptor {
         SlashCommandCallback cb = callback;
         if (cb != null) {
             cb.displayToolMessage("title", "Updating title...");
+            cb.onAsyncSendStarted();
         }
 
         // Send as regular message — AI needs conversation context to suggest a title
         String prompt = "Suggest a title for this session and call the nb_rename_session tool to rename the session.";
         ProcessControl pc = context.lookup(ProcessControl.class);
         if (pc != null) {
-            pc.sendMessage(sessionId, prompt, Map.of("annotations", Map.of("audience", List.of("assistant"))));
+            pc.sendMessage(sessionId, prompt, Map.of("annotations", Map.of("audience", List.of("assistant"))))
+                    .whenComplete((result, error) -> {
+                        if (cb != null) {
+                            cb.onAsyncSendCompleted();
+                        }
+                    });
+        } else if (cb != null) {
+            cb.onAsyncSendCompleted();
         }
         return CompletableFuture.completedFuture(true);
     }

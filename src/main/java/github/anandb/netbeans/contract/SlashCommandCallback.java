@@ -35,4 +35,12 @@ public interface SlashCommandCallback {
      * @param text  the tool body content
      */
     void displayToolMessage(String title, String text);
+
+    /** Transition UI to sending mode (Stop button, thinking state).
+     *  Default no-op for commands that don't send messages. */
+    default void onAsyncSendStarted() {}
+
+    /** Transition UI back to idle mode after the RPC completes.
+     *  Default no-op. */
+    default void onAsyncSendCompleted() {}
 }

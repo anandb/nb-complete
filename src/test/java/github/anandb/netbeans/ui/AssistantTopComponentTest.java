@@ -49,21 +49,15 @@ class AssistantTopComponentTest {
 
     @Test
     void testTruncatePathJustOverBoundary() {
-        // 66 chars → "..." + last 62 chars = 65 chars total
+        // No longer truncated — full path returned as-is
         String path = "a".repeat(66);
-        String result = ToolContextExtractor.truncatePath(path);
-        assertEquals(65, result.length());
-        assertTrue(result.startsWith("..."));
-        assertEquals(path.substring(4), result.substring(3));
+        assertEquals(path, ToolContextExtractor.truncatePath(path));
     }
 
     @Test
     void testTruncatePathLong() {
         String path = "a".repeat(100);
-        String result = ToolContextExtractor.truncatePath(path);
-        assertEquals(65, result.length());
-        assertTrue(result.startsWith("..."));
-        assertEquals(path.substring(38), result.substring(3));
+        assertEquals(path, ToolContextExtractor.truncatePath(path));
     }
 
     @Test
@@ -269,15 +263,13 @@ class AssistantTopComponentTest {
 
     @Test
     void testExtractContextTruncatesLongFilePath() {
+        // Paths are no longer truncated — full path returned as-is
         String longPath = "/a/" + "x".repeat(70);
         JsonNode tc = MAPPER.createObjectNode()
                 .set("args", MAPPER.createObjectNode()
                         .put("filePath", longPath));
         String result = ToolContextExtractor.extractToolContext(tc);
-        assertTrue(result.length() <= 65, "Truncated path should be ≤ 65 chars");
-        assertTrue(result.startsWith("..."), "Truncated path should start with ellipsis");
-        assertTrue(result.endsWith(longPath.substring(longPath.length() - 62)),
-                "Truncated path should end with last 62 chars of original");
+        assertEquals(longPath, result);
     }
 
     @Test

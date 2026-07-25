@@ -1,6 +1,7 @@
 package github.anandb.netbeans.ui;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
@@ -17,6 +18,7 @@ import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.SwingConstants;
 import javax.swing.Timer;
 
@@ -39,6 +41,7 @@ final class PermissionRequestPanel extends JPanel {
     private final JLabel promptLabel;
     private final JPanel buttonPanel;
     private final JPanel contentBlocks;
+    private final JScrollPane contentScroll;
     private final JPanel content;
     private CompletableFuture<String> pendingResponse;
     private boolean requestActive = false;
@@ -61,7 +64,7 @@ final class PermissionRequestPanel extends JPanel {
         content.setOpaque(true);
         content.setBackground(theme.permissionBg());
         content.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createMatteBorder(0, 0, 1, 0, theme.permissionBorder()),
+            BorderFactory.createLineBorder(Color.RED, 2),
             BorderFactory.createEmptyBorder(8, 12, 8, 12)
         ));
 
@@ -82,7 +85,13 @@ final class PermissionRequestPanel extends JPanel {
         contentBlocks = new JPanel();
         contentBlocks.setLayout(new BoxLayout(contentBlocks, BoxLayout.Y_AXIS));
         contentBlocks.setOpaque(false);
-        content.add(contentBlocks);
+        contentScroll = new JScrollPane(contentBlocks);
+        contentScroll.setBorder(BorderFactory.createEmptyBorder());
+        contentScroll.setOpaque(false);
+        contentScroll.getViewport().setOpaque(false);
+        contentScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        contentScroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        content.add(contentScroll);
 
         // Row 2: buttons right-aligned
         buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
@@ -107,6 +116,10 @@ final class PermissionRequestPanel extends JPanel {
         promptLabel.setText("<html>" + prompt.replace("\n", "<br>") + "</html>");
 
         buildContentBlocks(toolCall);
+
+        // Cap scroll height at half the container height
+        int maxH = getParent() != null ? getParent().getHeight() / 2 : 400;
+        contentScroll.setMaximumSize(new Dimension(Integer.MAX_VALUE, Math.max(maxH, 150)));
 
         buttonPanel.removeAll();
         buildButtons(options, responseFuture);
@@ -299,14 +312,14 @@ final class PermissionRequestPanel extends JPanel {
     }
 
     @Override
-    protected void paintComponent(Graphics g) {
+    public void paint(Graphics g) {
         if (wobbleX != 0 || wobbleY != 0) {
             Graphics2D g2d = (Graphics2D) g.create();
             g2d.translate(wobbleX, wobbleY);
-            super.paintComponent(g2d);
+            super.paint(g2d);
             g2d.dispose();
         } else {
-            super.paintComponent(g);
+            super.paint(g);
         }
     }
 

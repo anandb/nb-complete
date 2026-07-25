@@ -133,13 +133,10 @@ public final class ToolContextExtractor {
     }
 
     /**
-     * Truncates a file path for display, keeping the last ~60 chars.
+     * Returns the full path as-is (no truncation).
      */
     public static String truncatePath(String path) {
-        if (path == null || path.length() <= 65) {
-            return path;
-        }
-        return "..." + path.substring(path.length() - 62);
+        return path;
     }
 
     /**

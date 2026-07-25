@@ -249,6 +249,25 @@ public class ComponentLifecycleHandler {
                         text, null, null, title, text, false, "completed"));
                 });
             }
+
+            @Override
+            public void onAsyncSendStarted() {
+                SwingUtilities.invokeLater(() -> {
+                    statusController.setStatus("STATUS_Sending");
+                    statusController.startThinking();
+                    statusController.updateButtonState(true);
+                });
+            }
+
+            @Override
+            public void onAsyncSendCompleted() {
+                SwingUtilities.invokeLater(() -> {
+                    statusController.updateButtonState(false);
+                    statusController.stopThinking();
+                    sessionLifecycleHandler.onMessageDone();
+                    statusController.setStatus("STATUS_Ready");
+                });
+            }
         });
 
         // ESC key handler to close options panel and return focus to input
