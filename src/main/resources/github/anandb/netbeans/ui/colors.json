@@ -144,7 +144,7 @@
     "name": "permissionBg",
     "property": "netbeans.codingassistant.color.permissionBg",
     "dark": "#263238",
-    "light": "#C7C2BB"
+    "light": "#A3BDD4"
   },
   {
     "name": "permissionBorder",

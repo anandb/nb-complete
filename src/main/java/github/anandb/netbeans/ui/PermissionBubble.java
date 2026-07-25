@@ -70,7 +70,7 @@ class PermissionBubble extends JPanel {
         List<FileChange> fileChanges = toolCall != null
                 ? ToolCallDiffParser.parse(toolCall) : List.of();
         if (!fileChanges.isEmpty()) {
-            Font mono = ThemeManager.getFont().deriveFont(Font.PLAIN);
+            Font mono = IconResourceManager.getMonospaceFont();
             centerPanel.add(Box.createVerticalStrut(6));
             // Glanceable summary: count changes by type
             long added = fileChanges.stream().filter(fc -> fc.status() == 'A').count();

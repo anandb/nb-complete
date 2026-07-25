@@ -274,7 +274,7 @@ final class PermissionRequestPanel extends JPanel {
 
         ColorTheme theme = ThemeManager.getCurrentTheme();
         Color labelFg = theme.permissionTitle();
-        Font monoFont = ThemeManager.getFont().deriveFont(Font.PLAIN);
+        Font monoFont = IconResourceManager.getMonospaceFont();
 
         // Track per-file hunk index
         Map<String, Integer> hunkIndex = new HashMap<>();
