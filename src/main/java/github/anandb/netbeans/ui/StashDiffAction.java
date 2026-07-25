@@ -873,15 +873,13 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
             }
 
             String mime = LanguageResolver.fromPathToMime(name);
-            String baseTitle = fd.leftLabel != null ? fd.leftLabel : "Base (" + fd.status + ")";
+            // Permission diffs always use simple labels (stash-only fields
+            // leftLabel/conflict are never set in this path)
             StreamSource base = StreamSource.createSource(
-                    name + " (base)", baseTitle, mime,
+                    name + " (base)", "Base (" + fd.status + ")", mime,
                     new StringReader(fd.headContent));
-            String modifiedTitle = fd.conflict
-                    ? "<html>Stash (<font color='red'>Conflict</font>)</html>"
-                    : "Modified";
             StreamSource modified = StreamSource.createSource(
-                    name + " (modified)", modifiedTitle, mime,
+                    name + " (modified)", "Modified", mime,
                     new StringReader(fd.stashContent));
             DiffController ctrl = DiffController.createEnhanced(base, modified);
             JComponent diffView = ctrl.getJComponent();

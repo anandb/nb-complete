@@ -57,10 +57,10 @@ public final class ToolCallDiffParser {
             if (fp != null) return fp;
         }
 
-        // 3. name / title (ACP sometimes puts file path in title)
+        // 3. title — only use as file path if it contains a path separator
+        //    (avoids false positives like "version 1.2.3" or "Chapter.3")
         String title = textField(toolCall, "title");
         if (title != null && (title.contains("/") || title.contains("\\"))) return title;
-        if (title != null && title.contains(".")) return title;
 
         return null;
     }
@@ -140,6 +140,9 @@ public final class ToolCallDiffParser {
                 result.add(createChange(fp, "", content));
             }
         }
+
+        // Remove no-op entries where old and new are identical
+        result.removeIf(fc -> fc.oldContent().equals(fc.newContent()));
 
         return result;
     }

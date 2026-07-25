@@ -72,6 +72,22 @@ class PermissionBubble extends JPanel {
         if (!fileChanges.isEmpty()) {
             Font mono = ThemeManager.getFont().deriveFont(Font.PLAIN);
             centerPanel.add(Box.createVerticalStrut(6));
+            // Glanceable summary: count changes by type
+            long added = fileChanges.stream().filter(fc -> fc.status() == 'A').count();
+            long deleted = fileChanges.stream().filter(fc -> fc.status() == 'D').count();
+            long modified = fileChanges.stream().filter(fc -> fc.status() == 'M').count();
+            StringBuilder summary = new StringBuilder();
+            summary.append(fileChanges.size()).append(" file").append(fileChanges.size() != 1 ? "s" : "").append(" changed");
+            if (modified > 0) summary.append(" (").append(modified).append(" modified");
+            if (added > 0) summary.append(modified > 0 ? ", " : " (").append(added).append(" added");
+            if (deleted > 0) summary.append((modified > 0 || added > 0) ? ", " : " (").append(deleted).append(" deleted");
+            if (modified > 0 || added > 0 || deleted > 0) summary.append(")");
+            JLabel summaryLabel = new JLabel(summary.toString());
+            summaryLabel.setFont(mono);
+            summaryLabel.setForeground(theme.permissionTitle().darker());
+            summaryLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+            centerPanel.add(summaryLabel);
+            centerPanel.add(Box.createVerticalStrut(4));
             for (FileChange fc : fileChanges) {
                 JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 1));
                 row.setOpaque(false);

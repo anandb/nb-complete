@@ -308,29 +308,34 @@ public class AcpProtocolClient implements Closeable {
 
     private void handleIncomingRequest(long id, String method, JsonNode params) {
         RequestHandler handler = requestHandlers.get(method);
-        if (handler != null) {
-            if ("session/request_permission".equals(method)) {
-                setPermissionRequestPending(true);
-            }
-            handler.handle(params)
-                    .thenAccept(result -> {
-                        if ("session/request_permission".equals(method)) {
-                            setPermissionRequestPending(false);
-                        }
-                        sendResponse(id, result);
-                    })
-                    .exceptionally(ex -> {
-                        if ("session/request_permission".equals(method)) {
-                            setPermissionRequestPending(false);
-                        }
-                        LOG.severe("Error handling request {0} ({1})", method, id, ex);
-                        sendError(id, -32603, ExceptionUtils.getRootCauseMessage(ex));
-                        return null;
-                    });
-        } else {
+        if (handler == null) {
             LOG.warn("No handler for request method: {0}", method);
             sendError(id, -32601, "Method not found: " + method);
+            return;
         }
+
+        boolean isPermission = "session/request_permission".equals(method);
+        if (isPermission) setPermissionRequestPending(true);
+
+        CompletableFuture<JsonNode> future;
+        try {
+            future = handler.handle(params);
+        } catch (Exception ex) {
+            if (isPermission) setPermissionRequestPending(false);
+            LOG.severe("Error handling request {0} ({1})", method, id, ex);
+            sendError(id, -32603, ExceptionUtils.getRootCauseMessage(ex));
+            return;
+        }
+
+        future.whenComplete((result, ex) -> {
+            if (isPermission) setPermissionRequestPending(false);
+            if (ex != null) {
+                LOG.severe("Error handling request {0} ({1})", method, id, ex);
+                sendError(id, -32603, ExceptionUtils.getRootCauseMessage(ex));
+            } else {
+                sendResponse(id, result);
+            }
+        });
     }
 
     private void sendJsonMessage(ObjectNode message) {

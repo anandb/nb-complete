@@ -12,6 +12,9 @@ import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
@@ -224,16 +227,20 @@ final class PermissionRequestPanel extends JPanel {
         currentFileChanges = null;
         if (toolCall == null) return;
 
-        List<FileChange> changes = ToolCallDiffParser.parse(toolCall);
-        if (changes.isEmpty()) return;
+        List<FileChange> fragmentChanges = ToolCallDiffParser.parse(toolCall);
+        if (fragmentChanges.isEmpty()) return;
 
-        currentFileChanges = changes;
+        // Expand fragment-level changes to full file content, merging
+        // multiple edits to the same file into a single entry.
+        String cwd = getSessionDirectory();
+        currentFileChanges = expandAndMerge(fragmentChanges, cwd);
+
         ColorTheme theme = ThemeManager.getCurrentTheme();
         Color labelFg = theme.permissionTitle();
         Font monoFont = ThemeManager.getFont().deriveFont(Font.PLAIN);
 
-        for (int i = 0; i < changes.size(); i++) {
-            FileChange fc = changes.get(i);
+        for (int i = 0; i < currentFileChanges.size(); i++) {
+            FileChange fc = currentFileChanges.get(i);
             if (i > 0) contentBlocks.add(Box.createVerticalStrut(4));
 
             JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
@@ -257,6 +264,50 @@ final class PermissionRequestPanel extends JPanel {
         }
     }
 
+    /**
+     * Expands fragment-level changes to full file content. Multiple edits
+     * to the same file are merged into a single entry by reading the file
+     * from disk and applying all fragment replacements sequentially.
+     */
+    private static List<FileChange> expandAndMerge(List<FileChange> fragmentChanges, String cwd) {
+        // Group modified-file entries by path for merging
+        java.util.Map<String, java.util.List<FileChange>> byPath = new java.util.LinkedHashMap<>();
+        List<FileChange> result = new ArrayList<>();
+
+        for (FileChange fc : fragmentChanges) {
+            if (fc.status() == 'M' && !"unknown".equals(fc.filePath()) && !fc.oldContent().isEmpty()) {
+                byPath.computeIfAbsent(fc.filePath(), k -> new ArrayList<>()).add(fc);
+            } else {
+                result.add(fc); // added, deleted, or unknown — keep as-is
+            }
+        }
+
+        for (java.util.Map.Entry<String, java.util.List<FileChange>> entry : byPath.entrySet()) {
+            List<FileChange> edits = entry.getValue();
+            File f = resolveFilePath(entry.getKey(), cwd);
+            if (f != null && f.isFile()) {
+                try {
+                    String fullContent = Files.readString(f.toPath());
+                    String modified = fullContent;
+                    for (FileChange edit : edits) {
+                        if (modified.contains(edit.oldContent())) {
+                            modified = modified.replace(edit.oldContent(), edit.newContent());
+                        }
+                    }
+                    if (!modified.equals(fullContent)) {
+                        result.add(new FileChange(entry.getKey(), fullContent, modified, 'M'));
+                        continue;
+                    }
+                } catch (IOException e) {
+                    // Fall through to individual entries below
+                }
+            }
+            // File unreadable — add individual entries so at least fragment context shows
+            result.addAll(edits);
+        }
+        return result;
+    }
+
     /** Strips the session working directory prefix from a file path for display. */
     static String displayPath(String filePath) {
         String cwd = getSessionDirectory();
@@ -270,6 +321,13 @@ final class PermissionRequestPanel extends JPanel {
     private static String getSessionDirectory() {
         SessionQuery sq = Lookup.getDefault().lookup(SessionQuery.class);
         return sq != null ? sq.getCurrentSessionDirectory() : null;
+    }
+
+    /** Resolves a possibly-relative file path against the session directory. */
+    private static File resolveFilePath(String path, String cwd) {
+        if (path.startsWith("/")) return new File(path);
+        if (cwd != null) return new File(cwd, path);
+        return new File(path);
     }
 
     /** Flashes the OS taskbar to draw attention to the permission request. */
@@ -318,6 +376,9 @@ final class PermissionRequestPanel extends JPanel {
 
     private void slideOpen() {
         setVisible(true);
+        // Clear any stale preferred-size override from previous slideClose()
+        // so getPreferredSize() returns the natural layout height.
+        setPreferredSize(null);
         revalidate();
         int targetHeight = getPreferredSize().height;
         setPreferredSize(new Dimension(getParent() != null ? getParent().getWidth() : 400, 0));

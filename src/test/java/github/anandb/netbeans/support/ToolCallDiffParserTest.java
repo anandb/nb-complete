@@ -176,9 +176,10 @@ class ToolCallDiffParserTest {
     }
 
     @Test
-    void extractFilePath_fromTitleWithDotOnly() {
+    void extractFilePath_fromTitleWithDotOnly_noPathSeparator() {
+        // Title with a dot but no path separator is not a valid file path
         ObjectNode tc = obj().put("title", "Main.java");
-        assertEquals("Main.java", ToolCallDiffParser.extractFilePath(tc));
+        assertNull(ToolCallDiffParser.extractFilePath(tc));
     }
 
     @Test
@@ -272,14 +273,13 @@ class ToolCallDiffParserTest {
 
     @Test
     void parse_oldStringNewString_identical() {
+        // Identical old and new content produces no change — filtered out
         ObjectNode args = obj()
                 .put("filePath", "/src/Main.java")
                 .put("oldString", "unchanged")
                 .put("newString", "unchanged");
         ObjectNode tc = obj().set("args", args);
-        List<FileChange> result = ToolCallDiffParser.parse(tc);
-        assertEquals(1, result.size());
-        assertEquals('M', result.get(0).status());
+        assertTrue(ToolCallDiffParser.parse(tc).isEmpty());
     }
 
     // ========================================================
