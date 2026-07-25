@@ -15,7 +15,9 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
@@ -230,23 +232,71 @@ final class PermissionRequestPanel extends JPanel {
         List<FileChange> fragmentChanges = ToolCallDiffParser.parse(toolCall);
         if (fragmentChanges.isEmpty()) return;
 
-        // Expand fragment-level changes to full file content, merging
-        // multiple edits to the same file into a single entry.
+        // Dedup — the parser can return the same change from args.oldString
+        // and content[] blocks.
+        java.util.LinkedHashSet<FileChange> deduped = new java.util.LinkedHashSet<>(fragmentChanges);
+        if (deduped.size() < fragmentChanges.size()) {
+            fragmentChanges = new ArrayList<>(deduped);
+        }
+
+        // Expand each fragment individually (read full file, apply just this
+        // fragment's change) without merging. A file with 3 edits produces 3
+        // entries, each showing full-file diff with that one hunk applied.
         String cwd = getSessionDirectory();
-        currentFileChanges = expandAndMerge(fragmentChanges, cwd);
+        List<FileChange> expanded = new ArrayList<>();
+        for (FileChange fc : fragmentChanges) {
+            if (fc.status() == 'M' && !"unknown".equals(fc.filePath())
+                    && !fc.oldContent().isEmpty()) {
+                File f = resolveFilePath(fc.filePath(), cwd);
+                if (f != null && f.isFile()) {
+                    try {
+                        String fullContent = Files.readString(f.toPath());
+                        if (fullContent.contains(fc.oldContent())) {
+                            String modified = fullContent.replace(fc.oldContent(), fc.newContent());
+                            expanded.add(new FileChange(fc.filePath(), fullContent, modified, 'M'));
+                            continue;
+                        }
+                    } catch (IOException e) {
+                        // fall through to add fragment as-is
+                    }
+                }
+            }
+            expanded.add(fc);
+        }
+
+        currentFileChanges = expanded;
+
+        // Count occurrences per file path to detect duplicates
+        Map<String, Integer> pathCount = new HashMap<>();
+        for (FileChange fc : expanded) {
+            pathCount.merge(fc.filePath(), 1, Integer::sum);
+        }
 
         ColorTheme theme = ThemeManager.getCurrentTheme();
         Color labelFg = theme.permissionTitle();
         Font monoFont = ThemeManager.getFont().deriveFont(Font.PLAIN);
 
-        for (int i = 0; i < currentFileChanges.size(); i++) {
-            FileChange fc = currentFileChanges.get(i);
+        // Track per-file hunk index
+        Map<String, Integer> hunkIndex = new HashMap<>();
+
+        for (int i = 0; i < expanded.size(); i++) {
+            FileChange fc = expanded.get(i);
             if (i > 0) contentBlocks.add(Box.createVerticalStrut(4));
 
             JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
             row.setOpaque(false);
 
-            JLabel nameLabel = new JLabel(displayPath(fc.filePath()));
+            String dispPath = displayPath(fc.filePath());
+            String labelText;
+            int count = pathCount.getOrDefault(fc.filePath(), 1);
+            if (count > 1) {
+                int n = hunkIndex.merge(fc.filePath(), 1, Integer::sum);
+                labelText = dispPath + " : Hunk " + n;
+            } else {
+                labelText = dispPath;
+            }
+
+            JLabel nameLabel = new JLabel(labelText);
             nameLabel.setFont(monoFont);
             nameLabel.setForeground(labelFg);
             nameLabel.setIcon(ThemeManager.getIcon("file.svg", 14));
@@ -264,49 +314,7 @@ final class PermissionRequestPanel extends JPanel {
         }
     }
 
-    /**
-     * Expands fragment-level changes to full file content. Multiple edits
-     * to the same file are merged into a single entry by reading the file
-     * from disk and applying all fragment replacements sequentially.
-     */
-    private static List<FileChange> expandAndMerge(List<FileChange> fragmentChanges, String cwd) {
-        // Group modified-file entries by path for merging
-        java.util.Map<String, java.util.List<FileChange>> byPath = new java.util.LinkedHashMap<>();
-        List<FileChange> result = new ArrayList<>();
-
-        for (FileChange fc : fragmentChanges) {
-            if (fc.status() == 'M' && !"unknown".equals(fc.filePath()) && !fc.oldContent().isEmpty()) {
-                byPath.computeIfAbsent(fc.filePath(), k -> new ArrayList<>()).add(fc);
-            } else {
-                result.add(fc); // added, deleted, or unknown — keep as-is
-            }
-        }
-
-        for (java.util.Map.Entry<String, java.util.List<FileChange>> entry : byPath.entrySet()) {
-            List<FileChange> edits = entry.getValue();
-            File f = resolveFilePath(entry.getKey(), cwd);
-            if (f != null && f.isFile()) {
-                try {
-                    String fullContent = Files.readString(f.toPath());
-                    String modified = fullContent;
-                    for (FileChange edit : edits) {
-                        if (modified.contains(edit.oldContent())) {
-                            modified = modified.replace(edit.oldContent(), edit.newContent());
-                        }
-                    }
-                    if (!modified.equals(fullContent)) {
-                        result.add(new FileChange(entry.getKey(), fullContent, modified, 'M'));
-                        continue;
-                    }
-                } catch (IOException e) {
-                    // Fall through to individual entries below
-                }
-            }
-            // File unreadable — add individual entries so at least fragment context shows
-            result.addAll(edits);
-        }
-        return result;
-    }
+    
 
     /** Strips the session working directory prefix from a file path for display. */
     static String displayPath(String filePath) {

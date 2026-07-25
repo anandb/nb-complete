@@ -614,6 +614,12 @@ public class SessionManager implements SessionQuery, SessionControl {
                             if (sendResumeOnLoad) {
                                 sendResumeOnLoad = false;
                                 sendResumePrompt(sessionId);
+                            } else {
+                                // Warm-up: send an invisible prompt so the AI model
+                                // is primed before the user's first real message.
+                                // The first prompt after a fresh server start may
+                                // be silently dropped while the model initializes.
+                                sendWarmupPrompt(sessionId);
                             }
                         }
                     })
@@ -712,6 +718,10 @@ public class SessionManager implements SessionQuery, SessionControl {
      */
     private void sendResumePrompt(String sessionId) {
         sendAssistantPrompt(sessionId, "Proceed", "resume prompt");
+    }
+
+    private void sendWarmupPrompt(String sessionId) {
+        sendAssistantPrompt(sessionId, "Continue", "warm-up prompt");
     }
 
     private void sendAssistantPrompt(String sessionId, String text, String label) {

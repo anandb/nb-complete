@@ -785,7 +785,9 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
                 setFont(mono);
                 setIcon(FILE_ICON);
                 setIconTextGap(8);
-                setText(new File(fd.filePath).getName());
+                String name = new File(fd.filePath).getName();
+                if (fd.hunkLabel != null) name += " : " + fd.hunkLabel;
+                setText(name);
                 setToolTipText(fd.filePath);
                 setBorder(BorderFactory.createEmptyBorder(3, 4, 3, 4));
             }
@@ -799,9 +801,22 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
      * prev/next hunk navigation buttons.
      */
     static void openPermissionDiffView(List<FileChange> changes) {
+        // Count occurrences per file path to detect multi-hunk files
+        java.util.Map<String, Integer> pathCount = new java.util.HashMap<>();
+        for (FileChange fc : changes) {
+            pathCount.merge(fc.filePath(), 1, Integer::sum);
+        }
+        java.util.Map<String, Integer> hunkIndex = new java.util.HashMap<>();
+
         DefaultListModel<FileDiff> listModel = new DefaultListModel<>();
         for (FileChange fc : changes) {
-            listModel.addElement(fileChangeToFileDiff(fc));
+            String hunkLabel = null;
+            int count = pathCount.getOrDefault(fc.filePath(), 1);
+            if (count > 1) {
+                int n = hunkIndex.merge(fc.filePath(), 1, Integer::sum);
+                hunkLabel = "Hunk " + n;
+            }
+            listModel.addElement(fileChangeToFileDiff(fc, hunkLabel));
         }
 
         JList<FileDiff> fileList = new JList<>(listModel);
@@ -846,9 +861,9 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
         if (!changes.isEmpty()) fileList.setSelectedIndex(0);
     }
 
-    private static FileDiff fileChangeToFileDiff(FileChange fc) {
+    private static FileDiff fileChangeToFileDiff(FileChange fc, String hunkLabel) {
         return new FileDiff(fc.filePath(), String.valueOf(fc.status()),
-                fc.oldContent(), fc.newContent());
+                fc.oldContent(), fc.newContent(), false, null, hunkLabel);
     }
 
     private static void navigateFileToList(JList<FileDiff> list, int direction) {
@@ -924,22 +939,28 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
         final String stashContent;
         final boolean conflict;
         final String leftLabel; // null = use default "Base (status)"
+        final String hunkLabel; // null unless displayed as part of multi-hunk list
 
         FileDiff(String filePath, String status, String headContent, String stashContent) {
-            this(filePath, status, headContent, stashContent, false, null);
+            this(filePath, status, headContent, stashContent, false, null, null);
         }
 
         FileDiff(String filePath, String status, String headContent, String stashContent, boolean conflict) {
-            this(filePath, status, headContent, stashContent, conflict, null);
+            this(filePath, status, headContent, stashContent, conflict, null, null);
         }
 
         FileDiff(String filePath, String status, String headContent, String stashContent, boolean conflict, String leftLabel) {
+            this(filePath, status, headContent, stashContent, conflict, leftLabel, null);
+        }
+
+        FileDiff(String filePath, String status, String headContent, String stashContent, boolean conflict, String leftLabel, String hunkLabel) {
             this.filePath = filePath;
             this.status = status;
             this.headContent = headContent;
             this.stashContent = stashContent;
             this.conflict = conflict;
             this.leftLabel = leftLabel;
+            this.hunkLabel = hunkLabel;
         }
     }
 

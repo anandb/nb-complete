@@ -77,6 +77,12 @@ When directives conflict, resolve in this order (highest first):
 
 ---
 
+## Permission & Diff Handling
+
+*   **Per-hunk permission requests:** Send each individual edit as a separate tool call. Do not batch multiple changes to the same file into a single call. This lets the user approve/reject each hunk independently via the permission panel.
+
+---
+
 ## Context Management
 
 *   Compress conversation history when: (a) context exceeds 50% of window, (b) research phase completes, or (c) implementation of a major subtask is verified.
