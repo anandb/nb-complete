@@ -114,6 +114,7 @@ final class PermissionRequestPanel extends JPanel {
         buttonPanel.repaint();
 
         slideOpen();
+        startWobble();
     }
 
     private void buildButtons(JsonNode options, CompletableFuture<String> responseFuture) {
