@@ -135,6 +135,8 @@ public class SessionManager implements SessionQuery, SessionControl {
     private volatile boolean sendResumeOnLoad;
     /** True when the server crashed and we're waiting for reconnect to resume. */
     private volatile boolean crashedBeforeReconnect;
+    /** True once the warm-up prompt has been sent for this connection. */
+    private volatile boolean warmupSent;
 
     public SessionManager() {
         ACPProjectManager.getInstance().setProjectOpenListener(this::handleProjectOpened);
@@ -614,11 +616,13 @@ public class SessionManager implements SessionQuery, SessionControl {
                             if (sendResumeOnLoad) {
                                 sendResumeOnLoad = false;
                                 sendResumePrompt(sessionId);
-                            } else {
+                            } else if (!warmupSent) {
                                 // Warm-up: send an invisible prompt so the AI model
                                 // is primed before the user's first real message.
                                 // The first prompt after a fresh server start may
                                 // be silently dropped while the model initializes.
+                                // Only send once per connection — not on session switch.
+                                warmupSent = true;
                                 sendWarmupPrompt(sessionId);
                             }
                         }

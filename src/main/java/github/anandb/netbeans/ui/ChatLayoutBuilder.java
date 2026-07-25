@@ -373,6 +373,7 @@ final class ChatLayoutBuilder {
         headerContent.add(topBar, BorderLayout.SOUTH);
 
         permissionPanel = new PermissionRequestPanel();
+        configConfirmPanel = new PermissionRequestPanel();
 
         header.add(headerContent, BorderLayout.CENTER);
 
@@ -380,6 +381,7 @@ final class ChatLayoutBuilder {
         headerWrapper.setLayout(new BoxLayout(headerWrapper, BoxLayout.Y_AXIS));
         headerWrapper.add(header);
         headerWrapper.add(permissionPanel);
+        headerWrapper.add(configConfirmPanel);
 
         return headerWrapper;
     }
@@ -406,11 +408,9 @@ final class ChatLayoutBuilder {
 
         statusPanel.add(rightStatusPanel, BorderLayout.EAST);
 
-        configConfirmPanel = new PermissionRequestPanel();
         JPanel bottomNorth = new JPanel();
         bottomNorth.setLayout(new BoxLayout(bottomNorth, BoxLayout.Y_AXIS));
         bottomNorth.setOpaque(false);
-        bottomNorth.add(configConfirmPanel);
         bottomNorth.add(statusPanel);
         bottomPanel.add(bottomNorth, BorderLayout.NORTH);
 
