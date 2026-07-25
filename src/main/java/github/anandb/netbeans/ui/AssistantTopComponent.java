@@ -14,6 +14,7 @@ import java.awt.Desktop;
 import java.io.File;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 import java.util.logging.Level;
 
 import javax.swing.BorderFactory;
@@ -128,6 +129,9 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     private final transient ChatLayoutBuilder layoutBuilder;
 
     private boolean sessionActive = false;
+    private boolean processing = false;
+    /** Enables/disables all session toolbar controls. Used by session lifecycle and processing listener. */
+    private Consumer<Boolean> sessionActiveCallback;
     private transient Timer attentionPeriodicTimer;
     private transient Timer attentionShakeTimer;
 
@@ -176,10 +180,29 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         statusController = new StatusController(statusLabel, sendBtn, stopBtn, inputArea, toggleOptionsBtn);
         statusController.setProcessingListener(
                 processing -> {
+                    this.processing = processing;
                     configPanelController.setCombosEnabled(!processing);
                     MiniAssistantDialog.getInstance().onProcessingChanged(processing);
+                    // Reuse session-active callback to disable/restore all session controls
+                    sessionActiveCallback.accept(!processing && sessionActive);
                 });
         attachmentUiHandler = new AttachmentUiHandler(attachmentManager, statusController, inputArea, AssistantTopComponent.this);
+
+        sessionActiveCallback = sessionActive -> {
+            this.sessionActive = sessionActive;
+            sessionDropdown.setEnabled(sessionActive);
+            hideBtn.setEnabled(sessionActive);
+            renameSessionBtn.setEnabled(sessionActive);
+            toggleBlocksBtn.setEnabled(sessionActive);
+            keepBtn.setEnabled(sessionActive);
+            filterBtn.setEnabled(sessionActive);
+            attachmentUiHandler.getButton().setEnabled(sessionActive);
+            refreshBtn.setEnabled(sessionActive);
+            exportBtn.setEnabled(sessionActive);
+            helpBtn.setEnabled(true);
+            restartServerBtn.setEnabled(true);
+            updateNewSessionBtnState();
+        };
 
         // Add attachment button to the right status panel (before settings button)
         layoutBuilder.getRightStatusPanel().add(attachmentUiHandler.getButton(), 0);
@@ -211,21 +234,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             chatPanel, sessionDropdown, hideBtn, newSessionBtn, renameSessionBtn,
             toggleOptionsBtn, configPanelController, inputArea, statusController,
             this::showProjectPickerPopup, this::updateTabName, this::updateCwdLabel,
-            sessionActive -> {
-                this.sessionActive = sessionActive;
-                sessionDropdown.setEnabled(sessionActive);
-                hideBtn.setEnabled(sessionActive);
-                renameSessionBtn.setEnabled(sessionActive);
-                toggleBlocksBtn.setEnabled(sessionActive);
-                keepBtn.setEnabled(sessionActive);
-                filterBtn.setEnabled(sessionActive);
-                attachmentUiHandler.getButton().setEnabled(sessionActive);
-                refreshBtn.setEnabled(sessionActive);
-                exportBtn.setEnabled(sessionActive);
-                helpBtn.setEnabled(true);
-                restartServerBtn.setEnabled(true);
-                updateNewSessionBtnState();
-            },
+            sessionActiveCallback,
             this::setOptionsPanelVisible
         );
         // Track project open/close to disable new-session button when no projects are open
@@ -258,7 +267,9 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         );
         inputHandler = new InputHandler(inputArea, autocompleteManager, messageSender, messageHistory);
 
-        permissionDialogManager = new PermissionDialogManager(chatPanel);
+        PermissionRequestPanel permissionPanel = layoutBuilder.getPermissionPanel();
+        permissionDialogManager = new PermissionDialogManager(chatPanel, permissionPanel);
+        permissionPanel.setOnResult(permissionDialogManager::addResultToChat);
 
         initChat();
         applyInitialTheme();
@@ -321,10 +332,10 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         return sessionService.get().getCustomTitle(session.id(), title);
     }
 
-    /** Enable the new-session button only when at least one project is open. */
+    /** Enable the new-session button only when at least one project is open and not processing. */
     private void updateNewSessionBtnState() {
         Project[] projects = projectContext.getAllOpenProjects();
-        newSessionBtn.setEnabled(projects != null && projects.length > 0);
+        newSessionBtn.setEnabled(projects != null && projects.length > 0 && !processing);
         updateAttentionAnimation();
     }
 

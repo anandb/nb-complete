@@ -14,7 +14,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
@@ -24,17 +23,17 @@ import java.util.regex.Pattern;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
+import javax.swing.JLabel;
 import javax.swing.JLayeredPane;
 import javax.swing.JPanel;
 import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
 import javax.swing.JViewport;
 import javax.swing.ScrollPaneConstants;
+import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import javax.swing.border.EmptyBorder;
-
-import com.fasterxml.jackson.databind.JsonNode;
 
 import github.anandb.netbeans.contract.PinnedMessageControl;
 import github.anandb.netbeans.contract.SessionControl;
@@ -516,10 +515,32 @@ public class ChatThreadPanel extends JPanel {
         return anyFinalized;
     }
 
-    public void addPermissionRequest(String prompt, JsonNode options, CompletableFuture<String> responseFuture, JsonNode toolCall) {
+    public void addPermissionResult(String statusText, boolean allowed) {
         SwingUtilities.invokeLater(() -> {
-            PermissionBubble bubble = new PermissionBubble(prompt, options, responseFuture, toolCall);
-            messagesContainer.add(bubble);
+            ColorTheme theme = ThemeManager.getCurrentTheme();
+            java.awt.Color bg = allowed ? theme.permissionGrantBg() : theme.permissionDenyBg();
+            java.awt.Color fg = allowed ? theme.permissionGrantFg() : theme.permissionDenyFg();
+            java.awt.Color border = allowed ? theme.permissionGrantBorder() : theme.permissionDenyBorder();
+
+            JLabel lbl = new JLabel(statusText,
+                    ThemeManager.getIcon(allowed ? "check.svg" : "x.svg", 16),
+                    SwingConstants.LEFT);
+            lbl.setIconTextGap(8);
+            lbl.setFont(lbl.getFont().deriveFont(java.awt.Font.BOLD));
+            lbl.setForeground(fg);
+            lbl.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(border, 1, true),
+                BorderFactory.createEmptyBorder(6, 12, 6, 12)
+            ));
+            lbl.setOpaque(true);
+            lbl.setBackground(bg);
+
+            JPanel wrapper = new JPanel(new BorderLayout());
+            wrapper.setOpaque(false);
+            wrapper.setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 8));
+            wrapper.add(lbl, BorderLayout.CENTER);
+
+            messagesContainer.add(wrapper);
             messagesContainer.add(Box.createVerticalStrut(4));
             messagesContainer.revalidate();
             scrollController.scrollToBottom(true);

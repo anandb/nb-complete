@@ -14,9 +14,7 @@ import github.anandb.netbeans.support.ToolContextExtractor;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
 import github.anandb.netbeans.ui.platform.SessionService;
 
-// DSL-CONTROLLER: not a view — NotifyDescriptor-based permission dialog
-// orchestration (SessionControl lookup, prompt formatting). Stays imperative;
-// the PermissionBubble leaf it produces is bound via PermissionBubbleSpec.
+// DSL-CONTROLLER: orchestrates permission request in the header panel + adds result to chat.
 final class PermissionDialogManager {
 
     private static final Logger LOG = Logger.from(PermissionDialogManager.class);
@@ -24,9 +22,11 @@ final class PermissionDialogManager {
     private final SessionService sessionService = PlatformBridge.sessionServiceSafe();
 
     private final ChatThreadPanel chatPanel;
+    private final PermissionRequestPanel permissionPanel;
 
-    PermissionDialogManager(ChatThreadPanel chatPanel) {
+    PermissionDialogManager(ChatThreadPanel chatPanel, PermissionRequestPanel permissionPanel) {
         this.chatPanel = chatPanel;
+        this.permissionPanel = permissionPanel;
     }
 
     void handlePermissionRequest(String sessionId, JsonNode params,
@@ -80,11 +80,14 @@ final class PermissionDialogManager {
         }
 
         final String finalPrompt = prompt;
-        final JsonNode finalToolCall = params.has("toolCall") ? params.get("toolCall") 
-                : (params.has("tool_call") ? params.get("tool_call") : null);
         SwingUtilities.invokeLater(() -> {
-            chatPanel.addPermissionRequest(finalPrompt, params.get("options"), response, finalToolCall);
+            permissionPanel.showRequest(finalPrompt, params.get("options"), response);
             activateCallback.run();
         });
+    }
+
+    /** Called when a permission result is ready, adds the result to the chat thread. */
+    void addResultToChat(String statusText, boolean allowed) {
+        chatPanel.addPermissionResult(statusText, allowed);
     }
 }

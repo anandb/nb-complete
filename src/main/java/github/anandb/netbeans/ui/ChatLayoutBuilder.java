@@ -72,6 +72,7 @@ final class ChatLayoutBuilder {
     private JButton refreshBtn;
     private JButton exportBtn;
     private JPanel rightStatusPanel;
+    private PermissionRequestPanel permissionPanel;
     private final Timer newSessionDebounceTimer;
 
     ChatLayoutBuilder(AssistantTopComponent topComponent, ChatThreadPanel chatPanel,
@@ -372,7 +373,14 @@ final class ChatLayoutBuilder {
 
         header.add(headerContent, BorderLayout.CENTER);
 
-        return header;
+        permissionPanel = new PermissionRequestPanel();
+
+        JPanel headerWrapper = new JPanel();
+        headerWrapper.setLayout(new BoxLayout(headerWrapper, BoxLayout.Y_AXIS));
+        headerWrapper.add(header);
+        headerWrapper.add(permissionPanel);
+
+        return headerWrapper;
     }
 
     JPanel buildBottomPanel() {
@@ -609,6 +617,8 @@ final class ChatLayoutBuilder {
     PlaceholderTextArea getInputArea() { return inputArea; }
 
     JScrollPane getInputScrollPane() { return inputScrollPane; }
+
+    PermissionRequestPanel getPermissionPanel() { return permissionPanel; }
 
     JPanel getHeader() { return header; }
 
