@@ -57,6 +57,7 @@ public class ConfigPanelController {
     private volatile Runnable onModeSelectedCallback;
     private volatile Runnable onThinkingSelectedCallback;
     private boolean isUpdatingConfigControls = false;
+    private volatile boolean configConfirmActive = false;
     private JPopupMenu activeCustomPopup;
 
     private final ModelVariantResolver modelResolver = new ModelVariantResolver();
@@ -255,6 +256,9 @@ public class ConfigPanelController {
 
     JComboBox<ConfigItem> getThinkingCombo() { return thinkingCombo; }
 
+    /** Prevents SSE/RPC-triggered combo repopulation while user picks model/level. */
+    void setConfigConfirmActive(boolean active) { this.configConfirmActive = active; }
+
     public void updateConfigControls(List<SessionConfigOption> options) {
         updateConfigControls(options, false);
     }
@@ -336,6 +340,9 @@ public class ConfigPanelController {
     }
 
     public void updateConfigControls(List<SessionConfigOption> options, boolean forceStartupDefaults) {
+        // Skip repopulation while the config-confirm panel is active — the user
+        // is choosing model/level and SSE updates would overwrite their picks.
+        if (configConfirmActive) return;
         SwingUtilities.invokeLater(() -> {
             isUpdatingConfigControls = true;
             try {

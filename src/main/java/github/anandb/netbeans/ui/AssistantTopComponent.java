@@ -264,11 +264,15 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                     layoutBuilder.getConfigConfirmPanel().showConfigConfirm(
                         "Select the agent, model and level below, then click <b>Continue</b>.",
                         configFuture);
+                    // Lock combos — SSE/RPC config_options_update must not
+                    // repopulate while the user is choosing model/level.
+                    configPanelController.setConfigConfirmActive(true);
                 });
 
                 // Block the async thread until the user clicks Continue
                 configFuture.get();
-                // Close the options panel now that the user confirmed
+                // Unlock combos and close the options panel
+                configPanelController.setConfigConfirmActive(false);
                 SwingUtilities.invokeLater(() -> setOptionsPanelVisible(false));
                 // Send the user's selections (or defaults if unchanged)
                 configPanelController.sendCurrentSelections(sessionId, configOptions);
@@ -277,6 +281,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             } finally {
                 SwingUtilities.invokeLater(() -> {
                     newSessionBtn.setEnabled(true);
+                    configPanelController.setConfigConfirmActive(false);
                     // If the future was never completed (e.g. InterruptedException),
                     // slide the panel closed.
                     if (!configFuture.isDone()) {

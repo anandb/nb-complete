@@ -1,6 +1,7 @@
 package github.anandb.netbeans.ui;
 
 import java.awt.BorderLayout;
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
@@ -11,6 +12,7 @@ import java.awt.event.ActionListener;
 import java.util.concurrent.CompletableFuture;
 
 import javax.swing.BorderFactory;
+import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JLabel;
@@ -23,6 +25,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import github.anandb.netbeans.support.Logger;
 import org.openide.util.NbBundle;
 
+import static org.apache.commons.lang3.StringUtils.isNotBlank;
+
 // DSL-LEAF: fixed permission request panel below session dropdown, slides open/closed.
 final class PermissionRequestPanel extends JPanel {
 
@@ -34,6 +38,7 @@ final class PermissionRequestPanel extends JPanel {
 
     private final JLabel promptLabel;
     private final JPanel buttonPanel;
+    private final JPanel contentBlocks;
     private final JPanel content;
     private CompletableFuture<String> pendingResponse;
     private boolean requestActive = false;
@@ -73,6 +78,12 @@ final class PermissionRequestPanel extends JPanel {
         messageRow.add(promptLabel, BorderLayout.CENTER);
         content.add(messageRow);
 
+        // Row 1b: code/diff content blocks (shown when toolCall has diff data)
+        contentBlocks = new JPanel();
+        contentBlocks.setLayout(new BoxLayout(contentBlocks, BoxLayout.Y_AXIS));
+        contentBlocks.setOpaque(false);
+        content.add(contentBlocks);
+
         // Row 2: buttons right-aligned
         buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         buttonPanel.setOpaque(false);
@@ -86,10 +97,16 @@ final class PermissionRequestPanel extends JPanel {
     }
 
     void showRequest(String prompt, JsonNode options, CompletableFuture<String> responseFuture) {
+        showRequest(prompt, options, responseFuture, null);
+    }
+
+    void showRequest(String prompt, JsonNode options, CompletableFuture<String> responseFuture, JsonNode toolCall) {
         this.pendingResponse = responseFuture;
         this.requestActive = true;
 
         promptLabel.setText("<html>" + prompt.replace("\n", "<br>") + "</html>");
+
+        buildContentBlocks(toolCall);
 
         buttonPanel.removeAll();
         buildButtons(options, responseFuture);
@@ -139,6 +156,62 @@ final class PermissionRequestPanel extends JPanel {
 
             buttonPanel.add(denyBtn);
             buttonPanel.add(allowBtn);
+        }
+    }
+
+    private void buildContentBlocks(JsonNode toolCall) {
+        contentBlocks.removeAll();
+        if (toolCall == null) return;
+
+        // 1. Unified diff from rawInput.diff (most common for edit tools)
+        if (toolCall.has("rawInput")) {
+            JsonNode ri = toolCall.get("rawInput");
+            if (ri.has("diff") && isNotBlank(ri.get("diff").asText())) {
+                String diffText = ri.get("diff").asText().trim();
+                CollapsibleCodePane codePane = new CollapsibleCodePane("diff", diffText, true);
+                codePane.setAlignmentX(Component.LEFT_ALIGNMENT);
+                contentBlocks.add(Box.createVerticalStrut(8));
+                contentBlocks.add(codePane);
+            }
+        }
+
+        // 2. oldString/newString from arguments (tool call format)
+        JsonNode args = toolCall.has("arguments") ? toolCall.get("arguments")
+                : toolCall.has("args") ? toolCall.get("args") : null;
+        if (args != null && args.has("oldString") && args.has("newString")) {
+            String diff = "- " + args.get("oldString").asText() + "\n+ " + args.get("newString").asText();
+            CollapsibleCodePane codePane = new CollapsibleCodePane("diff", diff.trim(), true);
+            codePane.setAlignmentX(Component.LEFT_ALIGNMENT);
+            contentBlocks.add(Box.createVerticalStrut(8));
+            contentBlocks.add(codePane);
+        }
+
+        // 3. Rich content blocks from toolCall.content[] (PermissionBubble format)
+        if (toolCall.has("content") && toolCall.get("content").isArray()) {
+            for (JsonNode block : toolCall.get("content")) {
+                if (!block.has("type")) continue;
+                String type = block.get("type").asText();
+                String codeText = null;
+                String lang = "text";
+                if ("text".equals(type) && block.has("text")) {
+                    codeText = block.get("text").asText();
+                } else if ("diff".equals(type)) {
+                    lang = "diff";
+                    if (block.has("text")) {
+                        codeText = block.get("text").asText();
+                    } else if (block.has("patch")) {
+                        codeText = block.get("patch").asText();
+                    } else if (block.has("oldText") && block.has("newText")) {
+                        codeText = "- " + block.get("oldText").asText() + "\n+ " + block.get("newText").asText();
+                    }
+                }
+                if (isNotBlank(codeText)) {
+                    CollapsibleCodePane codePane = new CollapsibleCodePane(lang, codeText.trim(), true);
+                    codePane.setAlignmentX(Component.LEFT_ALIGNMENT);
+                    contentBlocks.add(Box.createVerticalStrut(8));
+                    contentBlocks.add(codePane);
+                }
+            }
         }
     }
 

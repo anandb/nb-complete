@@ -52,18 +52,27 @@ final class PermissionDialogManager {
                     new Object[] { sessionId, currentId });
         }
 
+        JsonNode toolCall = null;
         String prompt = NbBundle.getMessage(PermissionDialogManager.class, "MSG_PermissionRequested");
         if (params.has("message")) {
             prompt = params.get("message").asText();
         } else if (params.has("content")) {
             prompt = params.get("content").asText();
         } else if (params.has("toolCall") || params.has("tool_call")) {
-            JsonNode tc = params.has("toolCall") ? params.get("toolCall") : params.get("tool_call");
-            String title = tc.has("title") ? tc.get("title").asText()
-                    : tc.has("name") ? tc.get("name").asText() : "tool";
+            toolCall = params.has("toolCall") ? params.get("toolCall") : params.get("tool_call");
+            // Use kind as tool name (e.g. "edit", "write") when title is a file path
+            String title;
+            if (toolCall.has("kind") && !toolCall.get("kind").asText().isEmpty()) {
+                title = toolCall.get("kind").asText();
+            } else {
+                title = toolCall.has("title") ? toolCall.get("title").asText()
+                        : toolCall.has("name") ? toolCall.get("name").asText() : "tool";
+            }
 
-            String context = ToolContextExtractor.extractToolContext(tc);
-            if (context != null) {
+            String context = ToolContextExtractor.extractToolContext(toolCall);
+            // Avoid duplication: when title equals file path, don't show both
+            if (context != null && !context.equals(title)
+                    && !context.equals(toolCall.has("title") ? toolCall.get("title").asText() : null)) {
                 prompt = NbBundle.getMessage(PermissionDialogManager.class, "MSG_PermissionToolWithContext", title, context);
             } else {
                 prompt = NbBundle.getMessage(PermissionDialogManager.class, "MSG_PermissionTool", title);
@@ -80,8 +89,9 @@ final class PermissionDialogManager {
         }
 
         final String finalPrompt = prompt;
+        final JsonNode finalToolCall = toolCall;
         SwingUtilities.invokeLater(() -> {
-            permissionPanel.showRequest(finalPrompt, params.get("options"), response);
+            permissionPanel.showRequest(finalPrompt, params.get("options"), response, finalToolCall);
             activateCallback.run();
         });
     }

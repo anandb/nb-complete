@@ -55,6 +55,7 @@ public class AcpProtocolClient implements Closeable {
     private volatile boolean closed = false;
     private volatile long lastDataTime;
     private volatile String closeReason;
+    private volatile boolean permissionRequestPending;
 
     public AcpProtocolClient(Process process) throws IOException {
         this.writer = new BufferedWriter(new OutputStreamWriter(process.getOutputStream(), StandardCharsets.UTF_8));
@@ -205,10 +206,14 @@ public class AcpProtocolClient implements Closeable {
     private void checkIdleTimeout() {
         if (!running) return;
 
+        // Don't timeout while waiting for user to respond to a permission request
+        if (permissionRequestPending) {
+            scheduleWatchdogCheck();
+            return;
+        }
+
         long now = System.nanoTime();
         long idleNanos = now - lastDataTime;
-
-
 
         // Global connection idle timeout (existing behavior)
         if (pendingRequests.isEmpty()) {
@@ -236,6 +241,13 @@ public class AcpProtocolClient implements Closeable {
 
     public void touch() {
         lastDataTime = System.nanoTime();
+    }
+
+    public void setPermissionRequestPending(boolean pending) {
+        this.permissionRequestPending = pending;
+        if (pending) {
+            touch(); // reset idle timer when permission dialog opens
+        }
     }
 
     private void stopWatchdog() {
@@ -297,9 +309,20 @@ public class AcpProtocolClient implements Closeable {
     private void handleIncomingRequest(long id, String method, JsonNode params) {
         RequestHandler handler = requestHandlers.get(method);
         if (handler != null) {
+            if ("session/request_permission".equals(method)) {
+                setPermissionRequestPending(true);
+            }
             handler.handle(params)
-                    .thenAccept(result -> sendResponse(id, result))
+                    .thenAccept(result -> {
+                        if ("session/request_permission".equals(method)) {
+                            setPermissionRequestPending(false);
+                        }
+                        sendResponse(id, result);
+                    })
                     .exceptionally(ex -> {
+                        if ("session/request_permission".equals(method)) {
+                            setPermissionRequestPending(false);
+                        }
                         LOG.severe("Error handling request {0} ({1})", method, id, ex);
                         sendError(id, -32603, ExceptionUtils.getRootCauseMessage(ex));
                         return null;
