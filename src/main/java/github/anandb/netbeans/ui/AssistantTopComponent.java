@@ -125,6 +125,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     private final transient AutocompleteManager autocompleteManager;
 
     private final transient PermissionDialogManager permissionDialogManager;
+    private final transient PermissionRequestPanel permissionPanel;
     private final transient JSplitPane mainSplitPane;
     private final transient ChatLayoutBuilder layoutBuilder;
 
@@ -300,9 +301,6 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         messageSender.setOnMessageDoneCallback(sessionLifecycleHandler::onMessageDone);
         messageSender.setOnUserMessageSentCallback(chatPanel::recordUserMessageSent);
 
-        sendBtn.addActionListener(e -> messageSender.sendMessage());
-        stopBtn.addActionListener(e -> messageSender.stopMessage());
-
         toggleOptionsBtn.addActionListener(e -> {
             boolean collapsed = !sessionLifecycleHandler.isOptionsPanelCollapsed();
             setOptionsPanelVisible(!collapsed);
@@ -318,9 +316,18 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         );
         inputHandler = new InputHandler(inputArea, autocompleteManager, messageSender, messageHistory);
 
-        PermissionRequestPanel permissionPanel = layoutBuilder.getPermissionPanel();
+        permissionPanel = layoutBuilder.getPermissionPanel();
         permissionDialogManager = new PermissionDialogManager(chatPanel, permissionPanel);
         permissionPanel.setOnResult(permissionDialogManager::addResultToChat);
+
+        // Wire send/stop AFTER permissionPanel is initialized
+        sendBtn.addActionListener(e -> messageSender.sendMessage());
+        stopBtn.addActionListener(e -> {
+            if (permissionPanel != null) {
+                permissionPanel.rejectRequest();
+            }
+            messageSender.stopMessage();
+        });
 
         initChat();
         applyInitialTheme();
@@ -485,6 +492,9 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     }
 
     void stopMessage() {
+        if (permissionPanel != null) {
+            permissionPanel.rejectRequest();
+        }
         if (messageSender != null) {
             messageSender.stopMessage();
         }
@@ -732,6 +742,10 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             return assistantTopComponent;
         }
         return null;
+    }
+
+    PermissionRequestPanel getPermissionPanel() {
+        return permissionPanel;
     }
 
     void showCwdContextMenu(MouseEvent e) {

@@ -2,15 +2,19 @@ package github.anandb.netbeans.ui;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
-import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.Taskbar;
+import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.File;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -24,10 +28,13 @@ import javax.swing.Timer;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
+import github.anandb.netbeans.contract.SessionQuery;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.ToolCallDiffParser;
+import github.anandb.netbeans.support.ToolCallDiffParser.FileChange;
+import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
-
-import static org.apache.commons.lang3.StringUtils.isNotBlank;
+import org.openide.windows.WindowManager;
 
 // DSL-LEAF: fixed permission request panel below session dropdown, slides open/closed.
 final class PermissionRequestPanel extends JPanel {
@@ -44,12 +51,16 @@ final class PermissionRequestPanel extends JPanel {
     private final JScrollPane contentScroll;
     private final JPanel content;
     private CompletableFuture<String> pendingResponse;
+    private List<FileChange> currentFileChanges;
+    private Runnable allowAction;
     private boolean requestActive = false;
+    private Consumer<Boolean> inputEnableCallback;
 
     // Wobble animation state
     private int wobbleX;
     private int wobbleY;
     private Timer wobbleTimer;
+    private Timer wobbleRestartTimer;
 
     /** Called when a permission result is ready — receives (statusText, allowed). */
     private java.util.function.BiConsumer<String, Boolean> onResult;
@@ -90,10 +101,11 @@ final class PermissionRequestPanel extends JPanel {
         contentScroll.setOpaque(false);
         contentScroll.getViewport().setOpaque(false);
         contentScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-        contentScroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        contentScroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
         content.add(contentScroll);
 
         // Row 2: buttons right-aligned
+        content.add(Box.createVerticalStrut(8));
         buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         buttonPanel.setOpaque(false);
         content.add(buttonPanel);
@@ -130,8 +142,34 @@ final class PermissionRequestPanel extends JPanel {
         startWobble();
     }
 
+    /** Sets a callback that enables/disables the chat input area while this panel is active. */
+    void setInputEnableCallback(Consumer<Boolean> callback) {
+        this.inputEnableCallback = callback;
+    }
+
+    /**
+     * Rejects the pending permission request, closes the panel, and re-enables input.
+     * Called externally (e.g. from Stop button) to dismiss a stuck permission request.
+     */
+    void rejectRequest() {
+        if (requestActive && pendingResponse != null && !pendingResponse.isDone()) {
+            pendingResponse.complete("reject");
+            slideClose();
+            fireResult(NbBundle.getMessage(ChatThreadPanel.class, "MSG_PermissionDenied"), false);
+        }
+    }
+
     private void buildButtons(JsonNode options, CompletableFuture<String> responseFuture) {
         ColorTheme theme = ThemeManager.getCurrentTheme();
+        allowAction = null;
+
+        // Show Diff button (opens multi-file diff TopComponent like Git Changes)
+        if (currentFileChanges != null && !currentFileChanges.isEmpty()) {
+            JButton showDiffBtn = new JButton("Show Diff");
+            showDiffBtn.setFocusPainted(false);
+            showDiffBtn.addActionListener(e -> openDiffView(currentFileChanges));
+            buttonPanel.add(showDiffBtn);
+        }
 
         if (options != null && options.isArray() && options.size() > 0) {
             for (JsonNode opt : options) {
@@ -141,6 +179,13 @@ final class PermissionRequestPanel extends JPanel {
 
                 JButton btn = new JButton(name);
                 btn.setFocusPainted(false);
+                if (kind.contains("allow")) {
+                    allowAction = () -> {
+                        pendingResponse.complete(optionId);
+                        slideClose();
+                        fireResult(name, true);
+                    };
+                }
                 btn.addActionListener(e -> {
                     pendingResponse.complete(optionId);
                     boolean allowed = kind.contains("allow");
@@ -155,12 +200,13 @@ final class PermissionRequestPanel extends JPanel {
             denyBtn.setFocusPainted(false);
             JButton allowBtn = new JButton(NbBundle.getMessage(ChatThreadPanel.class, "BTN_Allow"));
             allowBtn.setFocusPainted(false);
-
-            allowBtn.addActionListener(e -> {
+            allowAction = () -> {
                 pendingResponse.complete("allow");
                 slideClose();
                 fireResult(NbBundle.getMessage(ChatThreadPanel.class, "MSG_PermissionGranted"), true);
-            });
+            };
+
+            allowBtn.addActionListener(e -> allowAction.run());
 
             denyBtn.addActionListener(e -> {
                 pendingResponse.complete("reject");
@@ -175,58 +221,92 @@ final class PermissionRequestPanel extends JPanel {
 
     private void buildContentBlocks(JsonNode toolCall) {
         contentBlocks.removeAll();
+        currentFileChanges = null;
         if (toolCall == null) return;
 
-        // 1. Unified diff from rawInput.diff (most common for edit tools)
-        if (toolCall.has("rawInput")) {
-            JsonNode ri = toolCall.get("rawInput");
-            if (ri.has("diff") && isNotBlank(ri.get("diff").asText())) {
-                String diffText = ri.get("diff").asText().trim();
-                CollapsibleCodePane codePane = new CollapsibleCodePane("diff", diffText, true);
-                codePane.setAlignmentX(Component.LEFT_ALIGNMENT);
-                contentBlocks.add(Box.createVerticalStrut(8));
-                contentBlocks.add(codePane);
-            }
-        }
+        List<FileChange> changes = ToolCallDiffParser.parse(toolCall);
+        if (changes.isEmpty()) return;
 
-        // 2. oldString/newString from arguments (tool call format)
-        JsonNode args = toolCall.has("arguments") ? toolCall.get("arguments")
-                : toolCall.has("args") ? toolCall.get("args") : null;
-        if (args != null && args.has("oldString") && args.has("newString")) {
-            String diff = "- " + args.get("oldString").asText() + "\n+ " + args.get("newString").asText();
-            CollapsibleCodePane codePane = new CollapsibleCodePane("diff", diff.trim(), true);
-            codePane.setAlignmentX(Component.LEFT_ALIGNMENT);
-            contentBlocks.add(Box.createVerticalStrut(8));
-            contentBlocks.add(codePane);
-        }
+        currentFileChanges = changes;
+        ColorTheme theme = ThemeManager.getCurrentTheme();
+        Color labelFg = theme.permissionTitle();
+        Font monoFont = ThemeManager.getFont().deriveFont(Font.PLAIN);
 
-        // 3. Rich content blocks from toolCall.content[] (PermissionBubble format)
-        if (toolCall.has("content") && toolCall.get("content").isArray()) {
-            for (JsonNode block : toolCall.get("content")) {
-                if (!block.has("type")) continue;
-                String type = block.get("type").asText();
-                String codeText = null;
-                String lang = "text";
-                if ("text".equals(type) && block.has("text")) {
-                    codeText = block.get("text").asText();
-                } else if ("diff".equals(type)) {
-                    lang = "diff";
-                    if (block.has("text")) {
-                        codeText = block.get("text").asText();
-                    } else if (block.has("patch")) {
-                        codeText = block.get("patch").asText();
-                    } else if (block.has("oldText") && block.has("newText")) {
-                        codeText = "- " + block.get("oldText").asText() + "\n+ " + block.get("newText").asText();
-                    }
-                }
-                if (isNotBlank(codeText)) {
-                    CollapsibleCodePane codePane = new CollapsibleCodePane(lang, codeText.trim(), true);
-                    codePane.setAlignmentX(Component.LEFT_ALIGNMENT);
-                    contentBlocks.add(Box.createVerticalStrut(8));
-                    contentBlocks.add(codePane);
+        for (int i = 0; i < changes.size(); i++) {
+            FileChange fc = changes.get(i);
+            if (i > 0) contentBlocks.add(Box.createVerticalStrut(4));
+
+            JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
+            row.setOpaque(false);
+
+            JLabel nameLabel = new JLabel(displayPath(fc.filePath()));
+            nameLabel.setFont(monoFont);
+            nameLabel.setForeground(labelFg);
+            nameLabel.setIcon(ThemeManager.getIcon("file.svg", 14));
+            nameLabel.setIconTextGap(6);
+            nameLabel.setToolTipText(fc.filePath());
+
+            String statusStr = "(" + fc.status() + ")";
+            JLabel statusLabel = new JLabel(statusStr);
+            statusLabel.setFont(monoFont);
+            statusLabel.setForeground(statusColor(fc.status()));
+
+            row.add(nameLabel);
+            row.add(statusLabel);
+            contentBlocks.add(row);
+        }
+    }
+
+    /** Strips the session working directory prefix from a file path for display. */
+    static String displayPath(String filePath) {
+        String cwd = getSessionDirectory();
+        if (cwd != null && filePath.startsWith(cwd + "/")) {
+            return filePath.substring(cwd.length() + 1);
+        }
+        return new File(filePath).getName();
+    }
+
+    /** Returns the current session's working directory, or null. */
+    private static String getSessionDirectory() {
+        SessionQuery sq = Lookup.getDefault().lookup(SessionQuery.class);
+        return sq != null ? sq.getCurrentSessionDirectory() : null;
+    }
+
+    /** Flashes the OS taskbar to draw attention to the permission request. */
+    private static void flashTaskbar() {
+        try {
+            if (!Taskbar.isTaskbarSupported()) return;
+            Window w = WindowManager.getDefault().getMainWindow();
+            if (w == null) return;
+            Taskbar tb = Taskbar.getTaskbar();
+            // requestWindowUserAttention (Java 20+) or requestWindowFocus (Java 9-17)
+            try {
+                tb.getClass().getMethod("requestWindowUserAttention", Window.class)
+                        .invoke(tb, w);
+            } catch (NoSuchMethodException e) {
+                try {
+                    tb.getClass().getMethod("requestWindowFocus", Window.class)
+                            .invoke(tb, w);
+                } catch (NoSuchMethodException e2) {
+                    // Neither method available — skip
                 }
             }
+        } catch (Exception ex) {
+            // Silently ignore — taskbar flash is best-effort
         }
+    }
+
+    private static Color statusColor(char status) {
+        return switch (status) {
+            case 'A' -> new Color(0x28a745);
+            case 'D' -> new Color(0xd73a49);
+            default -> new Color(0x0366d6);
+        };
+    }
+
+    /** Opens a TopComponent with file list + side-by-side diff (delegates to StashDiffAction). */
+    static void openDiffView(List<FileChange> changes) {
+        StashDiffAction.openPermissionDiffView(changes);
     }
 
     private void fireResult(String statusText, boolean allowed) {
@@ -238,12 +318,14 @@ final class PermissionRequestPanel extends JPanel {
 
     private void slideOpen() {
         setVisible(true);
-        // Let the content determine its natural height first
         revalidate();
         int targetHeight = getPreferredSize().height;
-        // Start animation from 0
         setPreferredSize(new Dimension(getParent() != null ? getParent().getWidth() : 400, 0));
         revalidate();
+
+        // Disable chat input while permission dialog is active
+        if (inputEnableCallback != null) inputEnableCallback.accept(false);
+        flashTaskbar();
 
         Timer timer = new Timer(SLIDE_INTERVAL_MS, null);
         final int[] step = {0};
@@ -265,6 +347,9 @@ final class PermissionRequestPanel extends JPanel {
 
     void slideClose() {
         if (!isVisible()) return;
+        stopWobble();
+        // Re-enable chat input immediately
+        if (inputEnableCallback != null) inputEnableCallback.accept(true);
         int startHeight = getHeight();
         Timer timer = new Timer(SLIDE_INTERVAL_MS, null);
         final int[] step = {SLIDE_STEPS};
@@ -323,9 +408,12 @@ final class PermissionRequestPanel extends JPanel {
         }
     }
 
-    /** Shake the panel side-to-side to attract attention. */
+    /** Shake the panel side-to-side to attract attention, repeating every few seconds. */
     void startWobble() {
-        if (wobbleTimer != null && wobbleTimer.isRunning()) return;
+        if (wobbleTimer != null && wobbleTimer.isRunning()) {
+            // Already wobbling — just reset the cycle (don't double-start)
+            return;
+        }
 
         final int[] yOffsets = {0, -2, -4, -6, -7, -6, -4, -2, 0, -1, -3, -4, -3, -1, 0};
         final int[] xOffsets = {0, -2, 2, -2, 2, -1, 1, 0, 0, 0, 0, 0, 0, 0, 0};
@@ -345,10 +433,36 @@ final class PermissionRequestPanel extends JPanel {
                     repaint();
                     wobbleTimer.stop();
                     wobbleTimer = null;
+                    // Schedule repeat after 5 seconds
+                    wobbleRestartTimer = new Timer(5000, ev -> startWobble());
+                    wobbleRestartTimer.setRepeats(false);
+                    wobbleRestartTimer.start();
                 }
             }
         });
         wobbleTimer.start();
+    }
+
+    /** Stops the wobble animation and its repeat cycle. */
+    private void stopWobble() {
+        if (wobbleTimer != null) {
+            wobbleTimer.stop();
+            wobbleTimer = null;
+        }
+        if (wobbleRestartTimer != null) {
+            wobbleRestartTimer.stop();
+            wobbleRestartTimer = null;
+        }
+        wobbleX = 0;
+        wobbleY = 0;
+        repaint();
+    }
+
+    /** Triggers the "allow" action, e.g. from a global keyboard shortcut. */
+    void triggerAllow() {
+        if (requestActive && isVisible() && allowAction != null) {
+            allowAction.run();
+        }
     }
 
     boolean isRequestActive() {

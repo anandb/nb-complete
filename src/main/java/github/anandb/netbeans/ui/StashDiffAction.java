@@ -76,6 +76,8 @@ import org.openide.util.lookup.ServiceProvider;
 import github.anandb.netbeans.contract.StashDiffControl;
 import github.anandb.netbeans.support.LanguageResolver;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.ToolCallDiffParser.FileChange;
+import javax.swing.JScrollPane;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.PreferenceKeys;
 import org.openide.util.NbPreferences;
@@ -771,7 +773,7 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
 
     // --- Inner types ---
 
-    private static class FileDiffCellRenderer extends DefaultListCellRenderer {
+    static class FileDiffCellRenderer extends DefaultListCellRenderer {
         private static final Icon FILE_ICON = ThemeManager.getIcon("file.svg", 16);
 
         @Override
@@ -791,7 +793,133 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
         }
     }
 
-    private static class FileDiff {
+    /**
+     * Opens a TopComponent with the same file-list + diff view layout as stash
+     * diff, but for permission-request file changes. Each diff view includes
+     * prev/next hunk navigation buttons.
+     */
+    static void openPermissionDiffView(List<FileChange> changes) {
+        DefaultListModel<FileDiff> listModel = new DefaultListModel<>();
+        for (FileChange fc : changes) {
+            listModel.addElement(fileChangeToFileDiff(fc));
+        }
+
+        JList<FileDiff> fileList = new JList<>(listModel);
+        fileList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        fileList.setCellRenderer(new FileDiffCellRenderer());
+        JScrollPane listScroll = new JScrollPane(fileList);
+        listScroll.setBorder(null);
+
+        JPanel diffPanel = new JPanel(new BorderLayout());
+
+        fileList.addListSelectionListener((ListSelectionEvent e) -> {
+            if (e.getValueIsAdjusting()) return;
+            FileDiff sel = fileList.getSelectedValue();
+            if (sel != null) updatePermissionDiffView(diffPanel, sel);
+        });
+
+        JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, listScroll, diffPanel);
+        split.setDividerLocation(300);
+        split.setResizeWeight(0.0);
+        split.setOneTouchExpandable(true);
+
+        TopComponent tc = new TopComponent();
+        tc.setLayout(new BorderLayout());
+        tc.add(split, BorderLayout.CENTER);
+        tc.setDisplayName("Changed Files (" + changes.size() + ")");
+        tc.putClientProperty("PersistenceType", "Never");
+
+        // Keyboard shortcuts for file navigation: Ctrl+, / Ctrl+.
+        tc.getActionMap().put("prevFile", new AbstractAction() {
+            @Override public void actionPerformed(ActionEvent e) { navigateFileToList(fileList, -1); }
+        });
+        tc.getActionMap().put("nextFile", new AbstractAction() {
+            @Override public void actionPerformed(ActionEvent e) { navigateFileToList(fileList, 1); }
+        });
+        tc.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(
+                KeyStroke.getKeyStroke(KeyEvent.VK_COMMA, InputEvent.CTRL_DOWN_MASK), "prevFile");
+        tc.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(
+                KeyStroke.getKeyStroke(KeyEvent.VK_PERIOD, InputEvent.CTRL_DOWN_MASK), "nextFile");
+
+        tc.open();
+        tc.requestActive();
+        if (!changes.isEmpty()) fileList.setSelectedIndex(0);
+    }
+
+    private static FileDiff fileChangeToFileDiff(FileChange fc) {
+        return new FileDiff(fc.filePath(), String.valueOf(fc.status()),
+                fc.oldContent(), fc.newContent());
+    }
+
+    private static void navigateFileToList(JList<FileDiff> list, int direction) {
+        int idx = list.getSelectedIndex();
+        int next = Math.max(0, Math.min(idx + direction, list.getModel().getSize() - 1));
+        if (next != idx) list.setSelectedIndex(next);
+    }
+
+    /** Builds diff view with prev/next hunk navigation (same as updateDiffView but static). */
+    private static void updatePermissionDiffView(JPanel diffPanel, FileDiff fd) {
+        diffPanel.removeAll();
+        try {
+            String name = new File(fd.filePath).getName();
+            if (fd.headContent.equals(fd.stashContent)) {
+                JLabel identicalLabel = new JLabel("Files are identical", JLabel.CENTER);
+                identicalLabel.setFont(identicalLabel.getFont().deriveFont(Font.ITALIC, 16f));
+                identicalLabel.setForeground(new Color(128, 128, 128));
+                diffPanel.add(identicalLabel, BorderLayout.CENTER);
+                diffPanel.revalidate();
+                diffPanel.repaint();
+                return;
+            }
+
+            String mime = LanguageResolver.fromPathToMime(name);
+            String baseTitle = fd.leftLabel != null ? fd.leftLabel : "Base (" + fd.status + ")";
+            StreamSource base = StreamSource.createSource(
+                    name + " (base)", baseTitle, mime,
+                    new StringReader(fd.headContent));
+            String modifiedTitle = fd.conflict
+                    ? "<html>Stash (<font color='red'>Conflict</font>)</html>"
+                    : "Modified";
+            StreamSource modified = StreamSource.createSource(
+                    name + " (modified)", modifiedTitle, mime,
+                    new StringReader(fd.stashContent));
+            DiffController ctrl = DiffController.createEnhanced(base, modified);
+            JComponent diffView = ctrl.getJComponent();
+
+            // Wrap with hunk-navigation buttons
+            JPanel wrapper = new JPanel(new BorderLayout());
+            JPanel navBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+            navBar.setOpaque(false);
+            JButton prevBtn = new JButton(ThemeManager.getIcon("up.svg", 16));
+            JButton nextBtn = new JButton(ThemeManager.getIcon("down.svg", 16));
+            prevBtn.setMargin(new Insets(4, 8, 4, 8));
+            nextBtn.setMargin(new Insets(4, 8, 4, 8));
+            prevBtn.setToolTipText("Previous difference");
+            nextBtn.setToolTipText("Next difference");
+            prevBtn.addActionListener(e -> {
+                int i = ctrl.getDifferenceIndex();
+                if (i > 0) ctrl.setLocation(DiffController.DiffPane.Base,
+                        DiffController.LocationType.DifferenceIndex, i - 1);
+            });
+            nextBtn.addActionListener(e -> {
+                int i = ctrl.getDifferenceIndex();
+                int cnt = ctrl.getDifferenceCount();
+                if (i < cnt - 1) ctrl.setLocation(DiffController.DiffPane.Base,
+                        DiffController.LocationType.DifferenceIndex, i + 1);
+            });
+            navBar.add(prevBtn);
+            navBar.add(nextBtn);
+            wrapper.add(navBar, BorderLayout.NORTH);
+            wrapper.add(diffView, BorderLayout.CENTER);
+            diffPanel.add(wrapper, BorderLayout.CENTER);
+        } catch (Exception ex) {
+            diffPanel.add(new JLabel("Error: " + ExceptionUtils.getMessage(ex)), BorderLayout.CENTER);
+        }
+        diffPanel.revalidate();
+        diffPanel.repaint();
+    }
+
+    static class FileDiff {
         final String filePath;
         final String status;
         final String headContent;

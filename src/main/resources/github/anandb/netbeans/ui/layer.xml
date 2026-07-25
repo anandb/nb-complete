@@ -57,6 +57,9 @@
         <file name="DA-J.shadow">
             <attr name="originalFile" stringvalue="Actions/Navigate/github-anandb-netbeans-ui-GoToFileAction.instance"/>
         </file>
+        <file name="D-ENTER.shadow">
+            <attr name="originalFile" stringvalue="Actions/Assistant/AllowPermissionAction.instance"/>
+        </file>
     </folder>
     <folder name="Toolbars">
         <folder name="Git">

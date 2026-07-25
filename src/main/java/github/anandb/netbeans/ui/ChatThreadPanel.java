@@ -84,6 +84,9 @@ public class ChatThreadPanel extends JPanel {
     private String currentSessionId;
 
     private volatile boolean sessionLoading = false;
+    private JLabel lastPermissionLabel;
+    private boolean lastPermissionAllowed;
+    private int permissionCount = 0;
     // Session-keyed buffer for loading; switch-session-safe.
     private final transient Map<String, List<ProcessedMessage>> pendingMessagesBySession = new ConcurrentHashMap<>();
 
@@ -348,6 +351,9 @@ public class ChatThreadPanel extends JPanel {
     }
 
     private void addSingleBubble(MessageType type, String text, String messageId, String toolTitle, boolean streaming) {
+        // Reset permission grouping when a non-permission message arrives
+        lastPermissionLabel = null;
+
         // Capture scroll state BEFORE modifying content
         boolean wasAtBottom = scrollController.isAtBottom();
 
@@ -522,6 +528,18 @@ public class ChatThreadPanel extends JPanel {
             java.awt.Color fg = allowed ? theme.permissionGrantFg() : theme.permissionDenyFg();
             java.awt.Color border = allowed ? theme.permissionGrantBorder() : theme.permissionDenyBorder();
 
+            // Merge consecutive same-allowed results into a single bubble
+            if (lastPermissionLabel != null && lastPermissionAllowed == allowed
+                    && lastPermissionLabel.getParent() != null) {
+                permissionCount++;
+                lastPermissionLabel.setText(statusText + " \u00D7" + permissionCount);
+                lastPermissionLabel.getParent().revalidate();
+                scrollController.scrollToBottom(true);
+                return;
+            }
+
+            permissionCount = 1;
+            lastPermissionAllowed = allowed;
             JLabel lbl = new JLabel(statusText,
                     ThemeManager.getIcon(allowed ? "check.svg" : "x.svg", 16),
                     SwingConstants.LEFT);
@@ -534,17 +552,17 @@ public class ChatThreadPanel extends JPanel {
             ));
             lbl.setOpaque(true);
             lbl.setBackground(bg);
+            lastPermissionLabel = lbl;
 
-            JPanel wrapper = new JPanel(new BorderLayout());
+            JPanel wrapper = new JPanel(new java.awt.BorderLayout());
             wrapper.setOpaque(false);
             wrapper.setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 8));
-            wrapper.add(lbl, BorderLayout.CENTER);
+            wrapper.add(lbl, java.awt.BorderLayout.CENTER);
 
             messagesContainer.add(wrapper);
             messagesContainer.add(Box.createVerticalStrut(4));
             messagesContainer.revalidate();
             scrollController.scrollToBottom(true);
-            trimMessages();
         });
     }
 

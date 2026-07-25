@@ -4,29 +4,29 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridLayout;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
 import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.SwingConstants;
-import javax.swing.BoxLayout;
-import javax.swing.Box;
 import javax.swing.JScrollPane;
+import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
 import github.anandb.netbeans.support.Logger;
-
-import java.util.concurrent.CompletableFuture;
-
+import github.anandb.netbeans.support.ToolCallDiffParser;
+import github.anandb.netbeans.support.ToolCallDiffParser.FileChange;
 import org.openide.util.NbBundle;
-
-import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
 // DSL-LEAF: not a controller — builds a permission request panel inline.
 // Migration target: PermissionBubbleSpec (refs + actions); stays imperative until then.
@@ -66,35 +66,52 @@ class PermissionBubble extends JPanel {
         promptLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         centerPanel.add(promptLabel);
 
+        // File list from tool call diffs
+        List<FileChange> fileChanges = toolCall != null
+                ? ToolCallDiffParser.parse(toolCall) : List.of();
+        if (!fileChanges.isEmpty()) {
+            Font mono = ThemeManager.getFont().deriveFont(Font.PLAIN);
+            centerPanel.add(Box.createVerticalStrut(6));
+            for (FileChange fc : fileChanges) {
+                JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 1));
+                row.setOpaque(false);
+
+                JLabel nameLabel = new JLabel(PermissionRequestPanel.displayPath(fc.filePath()));
+                nameLabel.setFont(mono);
+                nameLabel.setIcon(ThemeManager.getIcon("file.svg", 14));
+                nameLabel.setIconTextGap(5);
+                nameLabel.setToolTipText(fc.filePath());
+
+                char st = fc.status();
+                Color stCol = st == 'A' ? new Color(0x28a745)
+                        : st == 'D' ? new Color(0xd73a49) : new Color(0x0366d6);
+                JLabel stLabel = new JLabel("(" + st + ")");
+                stLabel.setFont(mono);
+                stLabel.setForeground(stCol);
+
+                row.add(nameLabel);
+                row.add(stLabel);
+                centerPanel.add(row);
+            }
+        }
+
+        // Text-only content blocks (non-diff) shown inline
         if (toolCall != null && toolCall.has("content") && toolCall.get("content").isArray()) {
             for (JsonNode block : toolCall.get("content")) {
-                if (block.has("type")) {
-                    String type = block.get("type").asText();
-                    String codeText = null;
-                    String lang = "text";
-                    
-                    if ("text".equals(type) && block.has("text")) {
-                        codeText = block.get("text").asText();
-                    } else if ("diff".equals(type)) {
-                        lang = "diff";
-                        if (block.has("text")) {
-                            codeText = block.get("text").asText();
-                        } else if (block.has("patch")) {
-                            codeText = block.get("patch").asText();
-                        } else if (block.has("oldText") && block.has("newText")) {
-                            codeText = "- " + block.get("oldText").asText() + "\n+ " + block.get("newText").asText();
-                        }
-                    }
-
-                    if (isNotBlank(codeText)) {
-                        CollapsibleCodePane codePane = new CollapsibleCodePane(lang, codeText.trim(), true);
-                        codePane.setAlignmentX(Component.LEFT_ALIGNMENT);
-                        centerPanel.add(Box.createVerticalStrut(10));
-                        centerPanel.add(codePane);
-                    }
+                if (!block.has("type")) continue;
+                String type = block.get("type").asText();
+                if ("text".equals(type) && block.has("text")) {
+                    CollapsibleCodePane codePane = new CollapsibleCodePane("text",
+                            block.get("text").asText().trim(), true);
+                    codePane.setAlignmentX(Component.LEFT_ALIGNMENT);
+                    centerPanel.add(Box.createVerticalStrut(6));
+                    centerPanel.add(codePane);
                 }
             }
         }
+
+        // Changes list for Show Diff button
+        final List<FileChange> changes = fileChanges;
 
         JScrollPane scrollPane = new JScrollPane(centerPanel) {
             @Override
@@ -109,9 +126,19 @@ class PermissionBubble extends JPanel {
         scrollPane.getViewport().setOpaque(false);
         content.add(scrollPane, BorderLayout.CENTER);
 
-        int numOptions = (options != null && options.isArray() && options.size() > 0) ? options.size() : 2;
+        boolean hasChanges = !changes.isEmpty();
+        int extra = hasChanges ? 1 : 0;
+        int numOptions = (options != null && options.isArray() && options.size() > 0)
+                ? options.size() + extra : 2 + extra;
         JPanel buttons = new JPanel(new GridLayout(1, numOptions, 4, 0));
         buttons.setOpaque(false);
+
+        if (hasChanges) {
+            JButton showDiffBtn = new JButton("Show Diff");
+            showDiffBtn.setFocusPainted(false);
+            showDiffBtn.addActionListener(e -> PermissionRequestPanel.openDiffView(changes));
+            buttons.add(showDiffBtn);
+        }
 
         if (options != null && options.isArray() && options.size() > 0) {
             LOG.fine("PermissionBubble: rendering {0} options", options.size());
