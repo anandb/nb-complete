@@ -105,9 +105,7 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
     private static final Pattern STASH_NAME = Pattern.compile("stash@\\{(\\d+)\\}");
     private static final Pattern STASH_REF_PATTERN = Pattern.compile("stash@\\{\\d+\\}.*");
     private static final Pattern FATAL_PREFIX = Pattern.compile("(?m)^fatal: ");
-    /** Current diff controller for navigating differences. */
-    private DiffController currentController;
-    private PropertyChangeListener currentDiffListener;
+
 
     private static final Logger LOG = Logger.from(StashDiffAction.class);
 
@@ -421,20 +419,20 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
                     workTreeDiffs.add(new FileDiff(filePath, status, w, workTreeMerge, workTreeConflict, workTreeLabel));
                     baseDiffs.add(new FileDiff(filePath, status, b, s, false, "Base (" + baseShortHash + ")"));
                 }
-                return new StashDiffData(repoDir, stashIndex, stashName, headDiffs, workTreeDiffs, baseDiffs);
+                return new DiffContext(true, stashName, repoDir, stashIndex, baseDiffs, headDiffs, workTreeDiffs);
             } catch (Exception ex) {
-                return new StashDiffData(repoDir, stashIndex, stashName, List.of(), List.of(), List.of());
+                return new DiffContext(true, stashName, repoDir, stashIndex, List.of(), List.of(), List.of());
             }
         }, LOAD_EXECUTOR).thenAcceptAsync(data -> SwingUtilities.invokeLater(() -> openPanel(data)));
     }
 
     // --- UI ---
 
-    private void openPanel(StashDiffData data) {
-        if (data.headDiffs.isEmpty() && data.workTreeDiffs.isEmpty() && data.baseDiffs.isEmpty()) {
+    static void openPanel(DiffContext data) {
+        if (data.primaryDiffs.isEmpty() && data.headDiffs.isEmpty() && data.workTreeDiffs.isEmpty()) {
             JOptionPane.showMessageDialog(null,
-                    "Stash " + data.stashName + " has no changes or could not be loaded.",
-                    "Stash Diff", JOptionPane.WARNING_MESSAGE);
+                    data.title + " has no changes or could not be loaded.",
+                    "Diff Viewer", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
@@ -451,7 +449,7 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
             }
             @Override
             public void mouseReleased(MouseEvent e) {
-                if (e.isPopupTrigger()) showFilePopup(e);
+                if (data.isStash && e.isPopupTrigger()) showFilePopup(e);
             }
             private void showFilePopup(MouseEvent e) {
                 int idx = fileList.locationToIndex(e.getPoint());
@@ -494,9 +492,11 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
 
         JToolBar toolbar = new JToolBar();
         toolbar.setFloatable(false);
-        toolbar.add(btnBase);
-        toolbar.add(btnHead);
-        toolbar.add(btnWork);
+        if (data.isStash) {
+            toolbar.add(btnBase);
+            toolbar.add(btnHead);
+            toolbar.add(btnWork);
+        }
 
         // --- Stash lifecycle buttons (use holder array for tc reference) ---
         final TopComponent[] tcRef = new TopComponent[1];
@@ -559,12 +559,14 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
             });
         });
 
-        toolbar.add(btnApplyStash);
-        toolbar.add(btnDropStash);
+        if (data.isStash) {
+            toolbar.add(btnApplyStash);
+            toolbar.add(btnDropStash);
+        }
 
         // Wire toggle → swap file list contents
         btnBase.addActionListener((ActionEvent ev) -> {
-            switchTo(listModel, fileList, diffPanel, data.baseDiffs);
+            switchTo(listModel, fileList, diffPanel, data.primaryDiffs);
         });
         btnHead.addActionListener((ActionEvent ev) -> {
             switchTo(listModel, fileList, diffPanel, data.headDiffs);
@@ -577,13 +579,16 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
         fileList.addListSelectionListener((ListSelectionEvent ev) -> {
             if (ev.getValueIsAdjusting()) return;
             FileDiff sel = fileList.getSelectedValue();
-            if (sel != null) updateDiffView(diffPanel, sel);
+            if (sel != null) updateDiffView(diffPanel, sel, fileList, data.isStash);
         });
 
         // Layout: toolbar on top, file list left, diff right
         JPanel leftPanel = new JPanel(new BorderLayout());
         leftPanel.add(toolbar, BorderLayout.NORTH);
-        leftPanel.add(fileList, BorderLayout.CENTER);
+        
+        JScrollPane listScroll = new JScrollPane(fileList);
+        listScroll.setBorder(BorderFactory.createEmptyBorder());
+        leftPanel.add(listScroll, BorderLayout.CENTER);
 
         JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, leftPanel, diffPanel);
         // Size left panel to fit widest content: toolbar total width + file names
@@ -602,29 +607,30 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
         tcRef[0] = tc;
         tc.setLayout(new BorderLayout());
         tc.add(split, BorderLayout.CENTER);
-        tc.setDisplayName(Bundle.CTL_StashDiffAction_TopComponentName(data.stashName));
+        tc.setDisplayName(data.isStash ? Bundle.CTL_StashDiffAction_TopComponentName(data.title) : data.title);
         tc.putClientProperty("PersistenceType", "Never");
 
-        // Key bindings for navigating differences
-        tc.getActionMap().put("prevDiff", new AbstractAction() {
-            @Override public void actionPerformed(ActionEvent e) { navigateDiff(-1); }
+        // Key bindings for navigating files in the list
+        listModel.clear();
+        tc.getActionMap().put("prevFile", new AbstractAction() {
+            @Override public void actionPerformed(ActionEvent e) { navigateFileToList(fileList, -1); }
         });
-        tc.getActionMap().put("nextDiff", new AbstractAction() {
-            @Override public void actionPerformed(ActionEvent e) { navigateDiff(1); }
+        tc.getActionMap().put("nextFile", new AbstractAction() {
+            @Override public void actionPerformed(ActionEvent e) { navigateFileToList(fileList, 1); }
         });
         tc.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(
-                KeyStroke.getKeyStroke(KeyEvent.VK_COMMA, InputEvent.CTRL_DOWN_MASK), "prevDiff");
+                KeyStroke.getKeyStroke(KeyEvent.VK_COMMA, InputEvent.CTRL_DOWN_MASK), "prevFile");
         tc.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(
-                KeyStroke.getKeyStroke(KeyEvent.VK_PERIOD, InputEvent.CTRL_DOWN_MASK), "nextDiff");
+                KeyStroke.getKeyStroke(KeyEvent.VK_PERIOD, InputEvent.CTRL_DOWN_MASK), "nextFile");
 
         tc.open();
         tc.requestActive();
 
-        // Start with base diffs
-        switchTo(listModel, fileList, diffPanel, data.baseDiffs);
+        // Start with primary diffs
+        switchTo(listModel, fileList, diffPanel, data.primaryDiffs);
     }
 
-    private void switchTo(DefaultListModel<FileDiff> model, JList<FileDiff> list,
+    private static void switchTo(DefaultListModel<FileDiff> model, JList<FileDiff> list,
                           JPanel diffPanel, List<FileDiff> diffs) {
         Runnable task = () -> {
             model.clear();
@@ -641,7 +647,7 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
         }
     }
 
-    private void updateDiffView(JPanel diffPanel, FileDiff fd) {
+    private static void updateDiffView(JPanel diffPanel, FileDiff fd, JList<FileDiff> fileList, boolean isStash) {
         Runnable task = () -> {
             diffPanel.removeAll();
             try {
@@ -653,7 +659,6 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
                     identicalLabel.setFont(identicalLabel.getFont().deriveFont(Font.ITALIC, 16f));
                     identicalLabel.setForeground(new Color(128, 128, 128));
                     diffPanel.add(identicalLabel, BorderLayout.CENTER);
-                    currentController = null;
                     diffPanel.revalidate();
                     diffPanel.repaint();
                     return;
@@ -666,25 +671,20 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
                 StreamSource base = StreamSource.createSource(
                         name + " (base)", baseTitle, mime,
                         new StringReader(fd.headContent));
-                String modifiedTitle = fd.conflict
+                String modifiedTitle = !isStash ? "Modified" : (fd.conflict
                         ? "<html>Stash (<font color='red'>Conflict</font>)</html>"
-                        : "Stash";
+                        : "Stash");
                 StreamSource modified = StreamSource.createSource(
                         name + " (modified)", modifiedTitle, mime,
                         new StringReader(fd.stashContent));
                 DiffController ctrl = DiffController.createEnhanced(base, modified);
                 JComponent diffView = ctrl.getJComponent();
-                // Remove old listener before replacing controller
-                if (currentController != null && currentDiffListener != null) {
-                    currentController.removePropertyChangeListener(currentDiffListener);
-                }
-                currentDiffListener = evt -> {
+                PropertyChangeListener diffListener = evt -> {
                     if (DiffController.PROP_DIFFERENCES.equals(evt.getPropertyName())) {
                         SwingUtilities.invokeLater(() -> applyDiffFont(diffView));
                     }
                 };
-                ctrl.addPropertyChangeListener(currentDiffListener);
-                currentController = ctrl;
+                ctrl.addPropertyChangeListener(diffListener);
 
                 // Wrap diff view: nav buttons above the view, aligned left
                 JPanel wrapper = new JPanel(new BorderLayout());
@@ -697,12 +697,35 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
                 nextBtn.setMargin(new Insets(4, 8, 4, 8));
                 prevBtn.setToolTipText(Bundle.CTL_StashDiffAction_PrevDiff());
                 nextBtn.setToolTipText(Bundle.CTL_StashDiffAction_NextDiff());
-                prevBtn.addActionListener(e -> navigateDiff(-1));
-                nextBtn.addActionListener(e -> navigateDiff(1));
+                prevBtn.addActionListener(e -> {
+                    int i = ctrl.getDifferenceIndex();
+                    if (i > 0) ctrl.setLocation(DiffController.DiffPane.Base,
+                            DiffController.LocationType.DifferenceIndex, i - 1);
+                });
+                nextBtn.addActionListener(e -> {
+                    int i = ctrl.getDifferenceIndex();
+                    int cnt = ctrl.getDifferenceCount();
+                    if (i < cnt - 1) ctrl.setLocation(DiffController.DiffPane.Base,
+                            DiffController.LocationType.DifferenceIndex, i + 1);
+                });
                 navBar.add(prevBtn);
                 navBar.add(nextBtn);
                 wrapper.add(navBar, BorderLayout.NORTH);
                 wrapper.add(diffView, BorderLayout.CENTER);
+
+                // Register file-navigation shortcuts on wrapper so they work even
+                // when focus is inside the DiffController component hierarchy.
+                wrapper.getActionMap().put("prevFile", new AbstractAction() {
+                    @Override public void actionPerformed(ActionEvent e) { navigateFileToList(fileList, -1); }
+                });
+                wrapper.getActionMap().put("nextFile", new AbstractAction() {
+                    @Override public void actionPerformed(ActionEvent e) { navigateFileToList(fileList, 1); }
+                });
+                wrapper.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(
+                        KeyStroke.getKeyStroke(KeyEvent.VK_COMMA, InputEvent.CTRL_DOWN_MASK), "prevFile");
+                wrapper.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(
+                        KeyStroke.getKeyStroke(KeyEvent.VK_PERIOD, InputEvent.CTRL_DOWN_MASK), "nextFile");
+
                 diffPanel.add(wrapper, BorderLayout.CENTER);
                 // Apply font immediately and re-apply on property changes (tab switches)
                 SwingUtilities.invokeLater(() -> applyDiffFont(diffView));
@@ -714,7 +737,6 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
                     }
                 });
             } catch (Exception ex) {
-                currentController = null;
                 diffPanel.add(new JLabel("Error: " + ExceptionUtils.getMessage(ex)), BorderLayout.CENTER);
             }
             diffPanel.revalidate();
@@ -727,7 +749,7 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
         }
     }
 
-    private void applyDiffFont(JComponent diffView) {
+    private static void applyDiffFont(JComponent diffView) {
         Font diffFont = IconResourceManager.getMonospaceFont();
         setFontRecursive(diffView, diffFont);
         diffView.revalidate();
@@ -745,22 +767,7 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
         }
     }
 
-    private void navigateDiff(int direction) {
-        Runnable task = () -> {
-            if (currentController == null) return;
-            int count = currentController.getDifferenceCount();
-            if (count == 0) return;
-            int current = currentController.getDifferenceIndex();
-            int next = (current == -1) ? 0 : Math.min(Math.max(current + direction, 0), count - 1);
-            currentController.setLocation(DiffController.DiffPane.Base,
-                    DiffController.LocationType.DifferenceIndex, next);
-        };
-        if (SwingUtilities.isEventDispatchThread()) {
-            task.run();
-        } else {
-            SwingUtilities.invokeLater(task);
-        }
-    }
+
 
 
     /** Show a user-friendly error dialog. */
@@ -808,7 +815,7 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
         }
         java.util.Map<String, Integer> hunkIndex = new java.util.HashMap<>();
 
-        DefaultListModel<FileDiff> listModel = new DefaultListModel<>();
+        List<FileDiff> diffs = new ArrayList<>();
         for (FileChange fc : changes) {
             String hunkLabel = null;
             int count = pathCount.getOrDefault(fc.filePath(), 1);
@@ -816,49 +823,12 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
                 int n = hunkIndex.merge(fc.filePath(), 1, Integer::sum);
                 hunkLabel = "Hunk " + n;
             }
-            listModel.addElement(fileChangeToFileDiff(fc, hunkLabel));
+            diffs.add(fileChangeToFileDiff(fc, hunkLabel));
         }
 
-        JList<FileDiff> fileList = new JList<>(listModel);
-        fileList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        fileList.setCellRenderer(new FileDiffCellRenderer());
-        JScrollPane listScroll = new JScrollPane(fileList);
-        listScroll.setBorder(null);
-
-        JPanel diffPanel = new JPanel(new BorderLayout());
-
-        fileList.addListSelectionListener((ListSelectionEvent e) -> {
-            if (e.getValueIsAdjusting()) return;
-            FileDiff sel = fileList.getSelectedValue();
-            if (sel != null) updatePermissionDiffView(diffPanel, sel, fileList);
-        });
-
-        JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, listScroll, diffPanel);
-        split.setDividerLocation(300);
-        split.setResizeWeight(0.0);
-        split.setOneTouchExpandable(true);
-
-        TopComponent tc = new TopComponent();
-        tc.setLayout(new BorderLayout());
-        tc.add(split, BorderLayout.CENTER);
-        tc.setDisplayName("Changed Files (" + changes.size() + ")");
-        tc.putClientProperty("PersistenceType", "Never");
-
-        // Keyboard shortcuts for file navigation: Ctrl+, / Ctrl+.
-        tc.getActionMap().put("prevFile", new AbstractAction() {
-            @Override public void actionPerformed(ActionEvent e) { navigateFileToList(fileList, -1); }
-        });
-        tc.getActionMap().put("nextFile", new AbstractAction() {
-            @Override public void actionPerformed(ActionEvent e) { navigateFileToList(fileList, 1); }
-        });
-        tc.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(
-                KeyStroke.getKeyStroke(KeyEvent.VK_COMMA, InputEvent.CTRL_DOWN_MASK), "prevFile");
-        tc.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(
-                KeyStroke.getKeyStroke(KeyEvent.VK_PERIOD, InputEvent.CTRL_DOWN_MASK), "nextFile");
-
-        tc.open();
-        tc.requestActive();
-        if (!changes.isEmpty()) fileList.setSelectedIndex(0);
+        DiffContext context = new DiffContext(false, "Changed Files (" + changes.size() + ")",
+                null, -1, diffs, List.of(), List.of());
+        openPanel(context);
     }
 
     private static FileDiff fileChangeToFileDiff(FileChange fc, String hunkLabel) {
@@ -870,80 +840,6 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
         int idx = list.getSelectedIndex();
         int next = Math.max(0, Math.min(idx + direction, list.getModel().getSize() - 1));
         if (next != idx) list.setSelectedIndex(next);
-    }
-
-    /** Builds diff view with prev/next hunk navigation (same as updateDiffView but static). */
-    private static void updatePermissionDiffView(JPanel diffPanel, FileDiff fd, JList<FileDiff> fileList) {
-        diffPanel.removeAll();
-        try {
-            String name = new File(fd.filePath).getName();
-            if (fd.headContent.equals(fd.stashContent)) {
-                JLabel identicalLabel = new JLabel("Files are identical", JLabel.CENTER);
-                identicalLabel.setFont(identicalLabel.getFont().deriveFont(Font.ITALIC, 16f));
-                identicalLabel.setForeground(new Color(128, 128, 128));
-                diffPanel.add(identicalLabel, BorderLayout.CENTER);
-                diffPanel.revalidate();
-                diffPanel.repaint();
-                return;
-            }
-
-            String mime = LanguageResolver.fromPathToMime(name);
-            // Permission diffs always use simple labels (stash-only fields
-            // leftLabel/conflict are never set in this path)
-            StreamSource base = StreamSource.createSource(
-                    name + " (base)", "Base (" + fd.status + ")", mime,
-                    new StringReader(fd.headContent));
-            StreamSource modified = StreamSource.createSource(
-                    name + " (modified)", "Modified", mime,
-                    new StringReader(fd.stashContent));
-            DiffController ctrl = DiffController.createEnhanced(base, modified);
-            JComponent diffView = ctrl.getJComponent();
-
-            // Wrap with hunk-navigation buttons
-            JPanel wrapper = new JPanel(new BorderLayout());
-            JPanel navBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
-            navBar.setOpaque(false);
-            JButton prevBtn = new JButton(ThemeManager.getIcon("up.svg", 16));
-            JButton nextBtn = new JButton(ThemeManager.getIcon("down.svg", 16));
-            prevBtn.setMargin(new Insets(4, 8, 4, 8));
-            nextBtn.setMargin(new Insets(4, 8, 4, 8));
-            prevBtn.setToolTipText("Previous difference");
-            nextBtn.setToolTipText("Next difference");
-            prevBtn.addActionListener(e -> {
-                int i = ctrl.getDifferenceIndex();
-                if (i > 0) ctrl.setLocation(DiffController.DiffPane.Base,
-                        DiffController.LocationType.DifferenceIndex, i - 1);
-            });
-            nextBtn.addActionListener(e -> {
-                int i = ctrl.getDifferenceIndex();
-                int cnt = ctrl.getDifferenceCount();
-                if (i < cnt - 1) ctrl.setLocation(DiffController.DiffPane.Base,
-                        DiffController.LocationType.DifferenceIndex, i + 1);
-            });
-            navBar.add(prevBtn);
-            navBar.add(nextBtn);
-            wrapper.add(navBar, BorderLayout.NORTH);
-            wrapper.add(diffView, BorderLayout.CENTER);
-
-            // Register file-navigation shortcuts on wrapper so they work even
-            // when focus is inside the DiffController component hierarchy.
-            wrapper.getActionMap().put("prevFile", new AbstractAction() {
-                @Override public void actionPerformed(ActionEvent e) { navigateFileToList(fileList, -1); }
-            });
-            wrapper.getActionMap().put("nextFile", new AbstractAction() {
-                @Override public void actionPerformed(ActionEvent e) { navigateFileToList(fileList, 1); }
-            });
-            wrapper.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(
-                    KeyStroke.getKeyStroke(KeyEvent.VK_COMMA, InputEvent.CTRL_DOWN_MASK), "prevFile");
-            wrapper.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(
-                    KeyStroke.getKeyStroke(KeyEvent.VK_PERIOD, InputEvent.CTRL_DOWN_MASK), "nextFile");
-
-            diffPanel.add(wrapper, BorderLayout.CENTER);
-        } catch (Exception ex) {
-            diffPanel.add(new JLabel("Error: " + ExceptionUtils.getMessage(ex)), BorderLayout.CENTER);
-        }
-        diffPanel.revalidate();
-        diffPanel.repaint();
     }
 
     static class FileDiff {
@@ -978,23 +874,25 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
         }
     }
 
-    private static class StashDiffData {
+    private static class DiffContext {
+        final boolean isStash;
+        final String title;
         final File repoDir;
         final int stashIndex;
-        final String stashName;
+        final List<FileDiff> primaryDiffs;
         final List<FileDiff> headDiffs;
         final List<FileDiff> workTreeDiffs;
-        final List<FileDiff> baseDiffs;
 
-        StashDiffData(File repoDir, int stashIndex, String stashName,
-                      List<FileDiff> headDiffs, List<FileDiff> workTreeDiffs,
-                      List<FileDiff> baseDiffs) {
+        DiffContext(boolean isStash, String title, File repoDir, int stashIndex,
+                      List<FileDiff> primaryDiffs, List<FileDiff> headDiffs,
+                      List<FileDiff> workTreeDiffs) {
+            this.isStash = isStash;
+            this.title = title;
             this.repoDir = repoDir;
             this.stashIndex = stashIndex;
-            this.stashName = stashName;
+            this.primaryDiffs = primaryDiffs;
             this.headDiffs = headDiffs;
             this.workTreeDiffs = workTreeDiffs;
-            this.baseDiffs = baseDiffs;
         }
     }
 }

@@ -203,7 +203,7 @@ The plugin integrates deeply with NetBeans beyond just the chat panel to boost y
     *   To create one, go to `Tools > New Project > Other > Markdown Project`. Alternatively, you can run `touch .mdproject` inside any folder to instantly make that directory loadable as a project in NetBeans.
     *   It is identified by a `.mdproject` marker file, and renders a clean directory tree in the NetBeans Projects tab, automatically filtering out OS junk files and editor swap files.
     *   You can close or delete the project directly from the right-click context menu on the project node.
-*   **Stash Diff (Experimental):**
+*   **Stash Diff:**
     *   A side-by-side diff viewer for git stashes. Select any stash in the NetBeans Git Repository Browser and press `Ctrl + Shift + L` (or click the **Diff Stash** button in the Git toolbar) to open it.
     *   **To Base (default):** Displays stash parent commit vs stash content (equivalent to `git stash show -p`).
     *   **To HEAD:** Simulates a 3-way merge applying the stash on your current HEAD, showing conflict markers inline (with a red "Conflict" label in the right panel if conflicts occur).
