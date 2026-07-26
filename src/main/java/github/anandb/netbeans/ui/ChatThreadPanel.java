@@ -522,6 +522,7 @@ public class ChatThreadPanel extends JPanel {
     }
 
     public void addPermissionResult(String statusText, boolean allowed) {
+        final String displayStatusText = "Allow once".equalsIgnoreCase(statusText) ? "Allowed Once" : statusText;
         SwingUtilities.invokeLater(() -> {
             ColorTheme theme = ThemeManager.getCurrentTheme();
             java.awt.Color bg = allowed ? theme.permissionGrantBg() : theme.permissionDenyBg();
@@ -532,7 +533,7 @@ public class ChatThreadPanel extends JPanel {
             if (lastPermissionLabel != null && lastPermissionAllowed == allowed
                     && lastPermissionLabel.getParent() != null) {
                 permissionCount++;
-                lastPermissionLabel.setText(statusText + " \u00D7" + permissionCount);
+                lastPermissionLabel.setText(displayStatusText + " \u00D7" + permissionCount);
                 lastPermissionLabel.getParent().revalidate();
                 scrollController.scrollToBottom(true);
                 return;
@@ -540,7 +541,7 @@ public class ChatThreadPanel extends JPanel {
 
             permissionCount = 1;
             lastPermissionAllowed = allowed;
-            JLabel lbl = new JLabel(statusText,
+            JLabel lbl = new JLabel(displayStatusText,
                     ThemeManager.getIcon(allowed ? "check.svg" : "x.svg", 16),
                     SwingConstants.LEFT);
             lbl.setIconTextGap(8);
@@ -561,7 +562,7 @@ public class ChatThreadPanel extends JPanel {
 
             JPanel wrapper = new JPanel(new java.awt.BorderLayout());
             wrapper.setOpaque(false);
-            wrapper.setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 8));
+            wrapper.setBorder(BorderFactory.createEmptyBorder(4, 20, 4, 20));
             wrapper.add(rp, java.awt.BorderLayout.CENTER);
 
             messagesContainer.add(wrapper);

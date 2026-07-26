@@ -76,6 +76,9 @@ import github.anandb.netbeans.support.BrowserUtils;
     displayName = "#CTL_AssistantAction",
     preferredID = "AssistantTopComponent"
 )
+@NbBundle.Messages({
+    "CTL_LocateInSystem=Locate in System"
+})
 // DSL-LEAF: not a controller — TopComponent is the root view shell. The DSL
 // migration ports the BorderLayout.add(...) + JSplitPane assembly to a
 // declarative tree; the lifecycle handlers (componentOpened/componentClosed)
@@ -754,7 +757,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         if (cwd == null || cwd.isEmpty()) return;
 
         JPopupMenu popup = new JPopupMenu();
-        JMenuItem locateItem = new JMenuItem("Locate in System");
+        JMenuItem locateItem = new JMenuItem(Bundle.CTL_LocateInSystem());
         locateItem.addActionListener(ev -> openCwdInSystemBrowser(cwd));
         popup.add(locateItem);
         popup.show(cwdLabel, e.getX(), e.getY());

@@ -30,6 +30,9 @@ import org.openide.util.NbBundle;
 
 // DSL-LEAF: not a controller — builds a permission request panel inline.
 // Migration target: PermissionBubbleSpec (refs + actions); stays imperative until then.
+@NbBundle.Messages({
+    "BTN_ShowDiff=Show Diff"
+})
 class PermissionBubble extends JPanel {
     private static final long serialVersionUID = 1L;
     private static final Logger LOG = Logger.from(PermissionBubble.class);
@@ -150,7 +153,7 @@ class PermissionBubble extends JPanel {
         buttons.setOpaque(false);
 
         if (hasChanges) {
-            JButton showDiffBtn = new JButton("Show Diff");
+            JButton showDiffBtn = new JButton(Bundle.BTN_ShowDiff());
             showDiffBtn.setFocusPainted(false);
             showDiffBtn.addActionListener(e -> PermissionRequestPanel.openDiffView(changes));
             buttons.add(showDiffBtn);

@@ -98,7 +98,15 @@ import org.openide.util.NbPreferences;
     "CTL_StashDiffAction_Tip=<html>Diff a selected stash.<br>Select a stash in the Git Repository Browser first.</html>",
     "CTL_StashDiffAction_DisabledTip=Stash Diff is disabled. Enable in Assistant Settings.",
     "CTL_StashDiffAction_PrevDiff=Previous difference",
-    "CTL_StashDiffAction_NextDiff=Next difference"
+    "CTL_StashDiffAction_NextDiff=Next difference",
+    "CTL_StashDiffAction_ApplyChange=Apply this change",
+    "CTL_StashDiffAction_Drop=Drop",
+    "CTL_StashDiffAction_Apply=Apply",
+    "CTL_StashDiffAction_ApplyStashTooltip=Apply this stash to the working tree",
+    "CTL_StashDiffAction_DropStashTooltip=Drop this stash permanently",
+    "CTL_StashDiffAction_FilesIdentical=Files are identical",
+    "# {0} - error message",
+    "CTL_StashDiffAction_Error=Error: {0}"
 })
 public final class StashDiffAction extends AbstractAction implements Presenter.Toolbar, StashDiffControl {
 
@@ -456,7 +464,7 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
                 if (idx < 0) return;
                 FileDiff fd = listModel.getElementAt(idx);
                 JPopupMenu popup = new JPopupMenu();
-                JMenuItem applyItem = new JMenuItem("Apply this change");
+                JMenuItem applyItem = new JMenuItem(Bundle.CTL_StashDiffAction_ApplyChange());
                 applyItem.addActionListener(ev -> {
                     applyItem.setEnabled(false);
                     GIT_RP.post(() -> {
@@ -502,10 +510,12 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
         final TopComponent[] tcRef = new TopComponent[1];
         toolbar.add(Box.createHorizontalStrut(32));
 
-        JButton btnDropStash = new JButton("Drop", ThemeManager.getIcon("stash_drop.svg", PluginSettings.getToolbarIconSize()));
-        JButton btnApplyStash = new JButton("Apply", ThemeManager.getIcon("stash_apply.svg", PluginSettings.getToolbarIconSize()));
+        JButton btnDropStash = new JButton(Bundle.CTL_StashDiffAction_Drop(),
+                ThemeManager.getIcon("stash_drop.svg", PluginSettings.getToolbarIconSize()));
+        JButton btnApplyStash = new JButton(Bundle.CTL_StashDiffAction_Apply(),
+                ThemeManager.getIcon("stash_apply.svg", PluginSettings.getToolbarIconSize()));
         btnApplyStash.setHorizontalTextPosition(SwingConstants.RIGHT);
-        btnApplyStash.setToolTipText("Apply this stash to the working tree");
+        btnApplyStash.setToolTipText(Bundle.CTL_StashDiffAction_ApplyStashTooltip());
         btnApplyStash.addActionListener(ev -> {
             btnApplyStash.setEnabled(false);
             btnDropStash.setEnabled(false);
@@ -532,7 +542,7 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
         });
 
         btnDropStash.setHorizontalTextPosition(SwingConstants.RIGHT);
-        btnDropStash.setToolTipText("Drop this stash permanently");
+        btnDropStash.setToolTipText(Bundle.CTL_StashDiffAction_DropStashTooltip());
         btnDropStash.addActionListener(ev -> {
             int confirm = JOptionPane.showConfirmDialog(tcRef[0],
                     "Are you sure you want to drop stash@{" + data.stashIndex + "}?",
@@ -655,7 +665,7 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
 
                 // Identical content: show clear message instead of empty diff view
                 if (fd.headContent.equals(fd.stashContent)) {
-                    JLabel identicalLabel = new JLabel("Files are identical", JLabel.CENTER);
+                    JLabel identicalLabel = new JLabel(Bundle.CTL_StashDiffAction_FilesIdentical(), JLabel.CENTER);
                     identicalLabel.setFont(identicalLabel.getFont().deriveFont(Font.ITALIC, 16f));
                     identicalLabel.setForeground(new Color(128, 128, 128));
                     diffPanel.add(identicalLabel, BorderLayout.CENTER);
@@ -737,7 +747,7 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
                     }
                 });
             } catch (Exception ex) {
-                diffPanel.add(new JLabel("Error: " + ExceptionUtils.getMessage(ex)), BorderLayout.CENTER);
+                diffPanel.add(new JLabel(Bundle.CTL_StashDiffAction_Error(ExceptionUtils.getMessage(ex))), BorderLayout.CENTER);
             }
             diffPanel.revalidate();
             diffPanel.repaint();

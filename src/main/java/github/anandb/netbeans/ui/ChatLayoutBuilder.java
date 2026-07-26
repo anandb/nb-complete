@@ -41,6 +41,13 @@ import javax.swing.JComponent;
 import javax.swing.Timer;
 import org.netbeans.api.project.Project;
 
+@NbBundle.Messages({
+    "LBL_Rename=Rename",
+    "LBL_Archive=Archive",
+    "LBL_Unarchive=Unarchive",
+    "LBL_Reload=Reload",
+    "LBL_ViewReleaseNotes=View Release Notes"
+})
 // DSL-CONTROLLER: not a view — newSessionDebounceTimer (300ms) lives here per
 // AGENTS.md. Construction body is the Phase 2 seam target (ChatLayoutSpec);
 // the debounce timer stays imperative.
@@ -116,13 +123,13 @@ final class ChatLayoutBuilder {
                     var tmpSc = Lookup.getDefault()
                         .lookup(SessionControl.class);
 
-                    JMenuItem rename = new JMenuItem("Rename");
+                    JMenuItem rename = new JMenuItem(Bundle.LBL_Rename());
                     rename.addActionListener(ev -> topComponent.renameCurrentSession());
                     add(rename);
 
                     if (tmpSc != null) {
                         boolean hidden = tmpSc.isHidden(sessionId);
-                        JMenuItem archive = new JMenuItem(hidden ? "Unarchive" : "Archive");
+                        JMenuItem archive = new JMenuItem(hidden ? Bundle.LBL_Unarchive() : Bundle.LBL_Archive());
                         archive.addActionListener(ev -> {
                             var archSc = Lookup.getDefault().lookup(
                                 SessionControl.class);
@@ -142,7 +149,7 @@ final class ChatLayoutBuilder {
 
                     addSeparator();
 
-                    JMenuItem reload = new JMenuItem("Reload");
+                    JMenuItem reload = new JMenuItem(Bundle.LBL_Reload());
                     reload.addActionListener(ev -> topComponent.reloadCurrentSession());
                     add(reload);
                 }
@@ -459,7 +466,7 @@ final class ChatLayoutBuilder {
         versionLabel.setFont(versionLabel.getFont().deriveFont(labelFont != null ? labelFont.getSize() - 1f : 9f));
         versionLabel.setForeground(ThemeManager.getCurrentTheme().mutedForeground());
         versionLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        versionLabel.setToolTipText("View Release Notes");
+        versionLabel.setToolTipText(Bundle.LBL_ViewReleaseNotes());
         versionLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         versionLabel.addMouseListener(new MouseAdapter() {
             @Override

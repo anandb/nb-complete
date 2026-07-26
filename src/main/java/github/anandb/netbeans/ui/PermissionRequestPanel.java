@@ -43,6 +43,9 @@ import org.openide.util.NbBundle;
 import org.openide.windows.WindowManager;
 
 // DSL-LEAF: fixed permission request panel below session dropdown, slides open/closed.
+@NbBundle.Messages({
+    "BTN_Continue=Continue"
+})
 final class PermissionRequestPanel extends JPanel {
 
     private static final long serialVersionUID = 1L;
@@ -177,7 +180,7 @@ final class PermissionRequestPanel extends JPanel {
 
         // Show Diff button — secondary style, does not dismiss the prompt
         if (currentFileChanges != null && !currentFileChanges.isEmpty()) {
-            JButton showDiffBtn = createButton("Show Diff", null, null, null);
+            JButton showDiffBtn = createButton(Bundle.BTN_ShowDiff(), null, null, null);
             showDiffBtn.setMnemonic('D');
             showDiffBtn.addActionListener(e -> {
                 stopWobble();
@@ -515,7 +518,7 @@ final class PermissionRequestPanel extends JPanel {
         promptLabel.setText("<html>" + prompt.replace("\n", "<br>") + "</html>");
 
         buttonPanel.removeAll();
-        JButton continueBtn = new JButton("Continue");
+        JButton continueBtn = new JButton(Bundle.BTN_Continue());
         continueBtn.setFocusPainted(false);
         continueBtn.addActionListener(e -> {
             pendingResponse.complete("continue");

@@ -28,6 +28,11 @@ import org.fife.ui.rsyntaxtextarea.Theme;
 import org.openide.util.NbBundle;
 import github.anandb.netbeans.support.Logger;
 
+@NbBundle.Messages({
+    "LBL_CodePane_Copy=Copy",
+    "LBL_CodePane_CopyAll=Copy All",
+    "LBL_CodePane_CopyAsMarkdown=Copy as Markdown"
+})
 // DSL-LEAF: keep imperative, wrap via UI.of(...) — extends BaseCollapsiblePane,
 // builds RSyntaxTextArea code block + copy popup. Migration target: CodePaneToolbarSpec.
 public class CollapsibleCodePane extends BaseCollapsiblePane {
@@ -223,17 +228,17 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
                 if (!e.isPopupTrigger()) return;
                 JPopupMenu menu = new JPopupMenu();
 
-                JMenuItem copyItem = new JMenuItem("Copy");
-                copyItem.addActionListener(ev -> copySelectedOrAll());
-                menu.add(copyItem);
+                JMenuItem copyMenuItem = new JMenuItem(Bundle.LBL_CodePane_Copy());
+                copyMenuItem.addActionListener(ev -> copySelectedOrAll());
+                menu.add(copyMenuItem);
 
-                JMenuItem copyAllItem = new JMenuItem("Copy All");
-                copyAllItem.addActionListener(ev -> copyAll());
-                menu.add(copyAllItem);
+                JMenuItem copyAllMenuItem = new JMenuItem(Bundle.LBL_CodePane_CopyAll());
+                copyAllMenuItem.addActionListener(ev -> copyAll());
+                menu.add(copyAllMenuItem);
 
-                JMenuItem copyMdItem = new JMenuItem("Copy as Markdown");
-                copyMdItem.addActionListener(ev -> copyAsMarkdown());
-                menu.add(copyMdItem);
+                JMenuItem copyAsMarkdownMenuItem = new JMenuItem(Bundle.LBL_CodePane_CopyAsMarkdown());
+                copyAsMarkdownMenuItem.addActionListener(ev -> copyAsMarkdown());
+                menu.add(copyAsMarkdownMenuItem);
 
                 menu.show(codeTextArea, e.getX(), e.getY());
             }

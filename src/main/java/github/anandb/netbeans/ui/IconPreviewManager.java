@@ -11,6 +11,7 @@ import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 
 import github.anandb.netbeans.support.Logger;
+import org.openide.util.NbBundle;
 
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -21,6 +22,11 @@ import java.awt.event.MouseEvent;
 // DSL-LEAF: not a controller — keeps the user-icon preview label in sync with
 // the icon path text field via a DocumentListener. Migration target:
 // IconPreviewSpec; the SvgIconLoader call stays imperative.
+@NbBundle.Messages({
+    "LBL_IconPreview_RightClickClear=Right-click to clear icon",
+    "LBL_IconPreview_Clear=Clear",
+    "LBL_IconPreview_SvgNoPreview=SVG (no preview)"
+})
 final class IconPreviewManager {
 
     private static final Logger LOG = Logger.from(IconPreviewManager.class);
@@ -39,7 +45,7 @@ final class IconPreviewManager {
     private void initPreviewLabel() {
         previewLabel.setPreferredSize(new Dimension(100, 100));
         previewLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        previewLabel.setToolTipText("Right-click to clear icon");
+        previewLabel.setToolTipText(Bundle.LBL_IconPreview_RightClickClear());
         previewLabel.addMouseListener(new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) { if (e.isPopupTrigger()) showPopup(e); }
@@ -50,7 +56,7 @@ final class IconPreviewManager {
             private void showPopup(MouseEvent e) {
                 if (pathField.getText().isEmpty()) return;
                 JPopupMenu popup = new JPopupMenu();
-                JMenuItem clearItem = new JMenuItem("Clear");
+                JMenuItem clearItem = new JMenuItem(Bundle.LBL_IconPreview_Clear());
                 clearItem.addActionListener(evt -> {
                     pathField.setText("");
                     updatePreview("");
@@ -83,7 +89,7 @@ final class IconPreviewManager {
             } else {
                 // SVG files are not supported as user icons
                 previewLabel.setIcon(null);
-                previewLabel.setText("SVG (no preview)");
+                previewLabel.setText("<html><center>" + Bundle.LBL_IconPreview_SvgNoPreview() + "</center></html>");
             }
         } catch (Exception e) {
             LOG.warn("Failed to update icon preview for: {0}", path, e);

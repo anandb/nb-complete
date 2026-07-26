@@ -38,6 +38,7 @@ import java.awt.event.ItemEvent;
 import java.awt.event.KeyEvent;
 
 import org.openide.util.Lookup;
+import org.openide.util.NbBundle;
 
 import github.anandb.netbeans.contract.SessionQuery;
 import github.anandb.netbeans.support.BinaryResolver;
@@ -59,13 +60,26 @@ import org.netbeans.api.project.Project;
 
 // DSL-LEAF: a standalone dialog for token usage stats.
 // Built imperatively — no need for the full SwingTree DSL.
+@NbBundle.Messages({
+    "LBL_TokenStats=Token Stats",
+    "LBL_CurrentProject=Current Project",
+    "LBL_AllProjects=All",
+    "LBL_Days=Days:",
+    "LBL_Project=Project:",
+    "LBL_Refresh=Refresh",
+    "LBL_Close=Close",
+    "LBL_FetchingStats=Fetching stats...",
+    "LBL_PressRefreshStats=Press Refresh to fetch token usage stats.",
+    "# {0} - error message",
+    "ERR_StatsError=Error: {0}"
+})
 public class TokenUsageDialog extends JDialog {
 
     private static final Logger LOG = Logger.from(TokenUsageDialog.class);
     private static final long serialVersionUID = 1L;
 
-    private static final String PROJECT_CURRENT = "Current Project";
-    private static final String PROJECT_ALL = "All";
+    private static final String PROJECT_CURRENT = Bundle.LBL_CurrentProject();
+    private static final String PROJECT_ALL = Bundle.LBL_AllProjects();
     private static final String[] PROJECT_OPTIONS = { PROJECT_CURRENT, PROJECT_ALL };
     private static final Pattern ANSI_ESCAPE =
         Pattern.compile("\u001b\\[[0-9;]*[a-zA-Z~]|\u001b\\][^\u0007]*\u0007");
@@ -81,7 +95,7 @@ public class TokenUsageDialog extends JDialog {
     private boolean firstRefresh = true;
 
     public TokenUsageDialog(Frame owner) {
-        super(owner, "Token Stats", false);
+        super(owner, Bundle.LBL_TokenStats(), false);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         setPreferredSize(new Dimension(540, 460));
         setResizable(true);
@@ -92,7 +106,7 @@ public class TokenUsageDialog extends JDialog {
         content.setBackground(theme.background());
 
         // --- Title ---
-        JLabel titleLabel = new JLabel("Token Stats");
+        JLabel titleLabel = new JLabel(Bundle.LBL_TokenStats());
         titleLabel.setFont(titleLabel.getFont().deriveFont(Font.BOLD, 16f));
         titleLabel.setBorder(new EmptyBorder(0, 0, 8, 0));
         content.add(titleLabel, BorderLayout.NORTH);
@@ -110,7 +124,7 @@ public class TokenUsageDialog extends JDialog {
         daysSpinner.setPreferredSize(new Dimension(80, 28));
         daysSpinner.setMaximumSize(new Dimension(80, 28));
 
-        JLabel daysLabel = new JLabel("Days:");
+        JLabel daysLabel = new JLabel(Bundle.LBL_Days());
         daysLabel.setLabelFor(daysSpinner);
         formPanel.add(daysLabel,  new GridBagConstraints(0, 0, 1, 1, 0, 0, GridBagConstraints.WEST, GridBagConstraints.NONE, ins, 0, 0));
         formPanel.add(daysSpinner, new GridBagConstraints(1, 0, 1, 1, 0, 0, GridBagConstraints.WEST, GridBagConstraints.NONE, ins, 0, 0));
@@ -145,13 +159,13 @@ public class TokenUsageDialog extends JDialog {
             projectCombo.setSelectedItem(PROJECT_ALL);
         }
 
-        JLabel projectLabel = new JLabel("Project:");
+        JLabel projectLabel = new JLabel(Bundle.LBL_Project());
         projectLabel.setLabelFor(projectCombo);
         formPanel.add(projectLabel, new GridBagConstraints(2, 0, 1, 1, 0, 0, GridBagConstraints.WEST, GridBagConstraints.NONE, ins, 0, 0));
         formPanel.add(projectCombo, new GridBagConstraints(3, 0, 1, 1, 1.0, 0, GridBagConstraints.WEST, GridBagConstraints.HORIZONTAL, ins, 0, 0));
 
         // Refresh button (fixed, rightmost)
-        refreshBtn = new JButton("Refresh");
+        refreshBtn = new JButton(Bundle.LBL_Refresh());
         refreshBtn.addActionListener(this::onRefresh);
         formPanel.add(refreshBtn, new GridBagConstraints(4, 0, 1, 1, 0, 0, GridBagConstraints.EAST, GridBagConstraints.NONE, ins, 0, 0));
 
@@ -179,7 +193,7 @@ public class TokenUsageDialog extends JDialog {
         // --- Close button (centered) ---
         JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
         btnPanel.setOpaque(false);
-        JButton closeBtn = new JButton("Close");
+        JButton closeBtn = new JButton(Bundle.LBL_Close());
         closeBtn.addActionListener(e -> dispose());
         btnPanel.add(closeBtn);
 
@@ -218,7 +232,7 @@ public class TokenUsageDialog extends JDialog {
         String project = (String) projectCombo.getSelectedItem();
         refreshBtn.setEnabled(false);
         ColorTheme currentTheme = ThemeManager.getCurrentTheme();
-        statsPane.setText(buildPlaceholderHtml(currentTheme, "Fetching stats..."));
+        statsPane.setText(buildPlaceholderHtml(currentTheme, Bundle.LBL_FetchingStats()));
 
         new Thread(() -> {
             try {
@@ -243,7 +257,7 @@ public class TokenUsageDialog extends JDialog {
             } catch (Exception ex) {
                 LOG.log(Level.WARNING, "Failed to fetch token usage stats", ex);
                 SwingUtilities.invokeLater(() -> {
-                    statsPane.setText(buildPlaceholderHtml(currentTheme, "Error: " + ExceptionUtils.getMessage(ex)));
+                    statsPane.setText(buildPlaceholderHtml(currentTheme, Bundle.ERR_StatsError(ExceptionUtils.getMessage(ex))));
                     SwingUtilities.invokeLater(() -> scrollPane.getVerticalScrollBar().setValue(0));
                 });
             } finally {
@@ -474,7 +488,7 @@ public class TokenUsageDialog extends JDialog {
 
     /** Builds a simple placeholder HTML message for the stats pane. */
     private static String buildPlaceholderHtml(ColorTheme theme) {
-        return buildPlaceholderHtml(theme, "Press Refresh to fetch token usage stats.");
+        return buildPlaceholderHtml(theme, Bundle.LBL_PressRefreshStats());
     }
 
     private static String buildPlaceholderHtml(ColorTheme theme, String message) {
