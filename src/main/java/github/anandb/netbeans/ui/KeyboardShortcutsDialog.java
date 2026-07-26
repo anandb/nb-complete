@@ -28,7 +28,6 @@ import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
-import javax.swing.table.JTableHeader;
 import javax.swing.table.TableColumnModel;
 
 import org.openide.util.NbBundle;
@@ -85,8 +84,8 @@ final class KeyboardShortcutsDialog extends JDialog {
     private void initComponents() {
         sections = buildSections();
 
-        JPanel root = new JPanel(new BorderLayout(0, 8));
-        root.setBorder(new EmptyBorder(12, 16, 8, 16));
+        JPanel root = new JPanel(new BorderLayout(0, 16));
+        root.setBorder(new EmptyBorder(20, 24, 16, 24));
 
         // Header: title + search
         JPanel headerPanel = new JPanel(new BorderLayout(8, 0));
@@ -226,34 +225,13 @@ final class KeyboardShortcutsDialog extends JDialog {
         table.setGridColor(border);
         table.setIntercellSpacing(new Dimension(1, 1));
         table.setRowHeight(32);
-        table.setTableHeader(new JTableHeader(table.getColumnModel()) {
-            @Override
-            public Dimension getPreferredSize() {
-                Dimension d = super.getPreferredSize();
-                d.height = 28;
-                return d;
-            }
-        });
-        table.getTableHeader().setBackground(hdrBg);
-        table.getTableHeader().setForeground(fg);
-        table.getTableHeader().setFont(table.getFont().deriveFont(Font.PLAIN, table.getFont().getSize() - 2f));
-        table.getTableHeader().setBorder(new MatteBorder(0, 0, 1, 0, border));
+        // No table header needed; removing empty headers to save space and clean up UI
+        table.setTableHeader(null);
 
         TableColumnModel cm = table.getColumnModel();
         cm.getColumn(0).setPreferredWidth(180);
         cm.getColumn(0).setMaxWidth(260);
         cm.getColumn(1).setPreferredWidth(300);
-
-        // Header renderer
-        DefaultTableCellRenderer hdrRenderer = new DefaultTableCellRenderer();
-        hdrRenderer.setBackground(hdrBg);
-        hdrRenderer.setForeground(fg);
-        hdrRenderer.setBorder(new MatteBorder(0, 0, 1, 0, border));
-        hdrRenderer.setHorizontalAlignment(SwingConstants.LEFT);
-        hdrRenderer.setHorizontalTextPosition(SwingConstants.LEFT);
-        hdrRenderer.setOpaque(true);
-        cm.getColumn(0).setHeaderRenderer(hdrRenderer);
-        cm.getColumn(1).setHeaderRenderer(hdrRenderer);
 
         // Cell renderer: kbd badge for key column, unassigned for empty keys
         DefaultTableCellRenderer keyRenderer = new DefaultTableCellRenderer() {
@@ -291,11 +269,11 @@ final class KeyboardShortcutsDialog extends JDialog {
         JPanel wrapper = new JPanel(new BorderLayout());
         wrapper.setOpaque(false);
         wrapper.setAlignmentX(Component.LEFT_ALIGNMENT);
-        wrapper.setBorder(new EmptyBorder(0, 0, 0, 0));
+        wrapper.setBorder(new MatteBorder(1, 0, 1, 0, border)); // Add top and bottom border to the table wrapper
         wrapper.add(table, BorderLayout.CENTER);
         // Fix: prevent JTable from stealing scroll from the outer JScrollPane
         table.setPreferredScrollableViewportSize(table.getPreferredSize());
-        wrapper.setPreferredSize(new Dimension(600, table.getPreferredSize().height + 28));
+        wrapper.setPreferredSize(new Dimension(600, table.getPreferredSize().height + 2));
 
         return table;
     }
@@ -307,14 +285,13 @@ final class KeyboardShortcutsDialog extends JDialog {
     private static JPanel buildUnassignedCollapse(List<String[]> unassigned, boolean addTopSpacing) {
         ColorTheme theme = ThemeManager.getCurrentTheme();
         String borderHex = theme.toHtmlHex(theme.tableBorder());
-        String bgHex = theme.toHtmlHex(theme.tableBackground());
-        String kbdFg = theme.isDark() ? "#d0d0d0" : "#333";
+        String altHex = theme.toHtmlHex(theme.tableRowAlternate());
+        String fgHex = theme.isDark() ? "#e0e0e0" : "#333";
 
         java.awt.Color border = java.awt.Color.decode(borderHex);
-        java.awt.Color bg = java.awt.Color.decode(bgHex);
-        java.awt.Color fg = java.awt.Color.decode(kbdFg);
-        java.awt.Color accentFg = isDark() ? java.awt.Color.decode("#7eb8da") : java.awt.Color.decode("#2a6496");
-        java.awt.Color accentBg = isDark() ? java.awt.Color.decode("#1e2a35") : java.awt.Color.decode("#e8f0f8");
+        java.awt.Color altBg = java.awt.Color.decode(altHex);
+        java.awt.Color fg = java.awt.Color.decode(fgHex);
+        java.awt.Color unassignedFg = theme.isDark() ? java.awt.Color.decode("#999999") : java.awt.Color.decode("#666666");
 
         JPanel wrapper = new JPanel(new BorderLayout());
         wrapper.setOpaque(false);
@@ -327,12 +304,12 @@ final class KeyboardShortcutsDialog extends JDialog {
         String count = unassigned.size() + (unassigned.size() == 1 ? " Action" : " Actions");
         JLabel summary = new JLabel("  Unassigned \u00a0\u00a0\u00a0 " + count + "  \u25BC");
         summary.setFont(summary.getFont().deriveFont(Font.BOLD, summary.getFont().getSize() + 1f));
-        summary.setForeground(accentFg);
+        summary.setForeground(unassignedFg);
         summary.setBorder(javax.swing.BorderFactory.createCompoundBorder(
                 new MatteBorder(1, 1, 1, 1, border),
                 new EmptyBorder(6, 4, 6, 4)));
         summary.setOpaque(true);
-        summary.setBackground(accentBg);
+        summary.setBackground(altBg);
         summary.setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR));
 
         // Detail table — hidden by default
