@@ -11,6 +11,8 @@ import java.awt.Taskbar;
 import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -28,7 +30,6 @@ import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
-import javax.swing.SwingConstants;
 import javax.swing.Timer;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -66,6 +67,7 @@ final class PermissionRequestPanel extends JPanel {
     private int wobbleY;
     private Timer wobbleTimer;
     private Timer wobbleRestartTimer;
+    private Timer wobbleDelayTimer;
 
     /** Called when a permission result is ready — receives (statusText, allowed). */
     private java.util.function.BiConsumer<String, Boolean> onResult;
@@ -80,20 +82,25 @@ final class PermissionRequestPanel extends JPanel {
         content.setOpaque(true);
         content.setBackground(theme.permissionBg());
         content.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(Color.RED, 2),
-            BorderFactory.createEmptyBorder(8, 12, 8, 12)
+            BorderFactory.createMatteBorder(0, 3, 0, 0, theme.permissionAccent()),
+            BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(theme.isDark()
+                        ? new Color(0x2E3646) : new Color(0xE2E8F0), 1),
+                BorderFactory.createEmptyBorder(8, 12, 8, 12)
+            )
         ));
 
         // Row 1: icon + prompt message (full width, no truncation)
         JPanel messageRow = new JPanel(new BorderLayout(8, 0));
         messageRow.setOpaque(false);
         JLabel iconLabel = new JLabel(ThemeManager.getIcon("shield.svg", 18));
-        iconLabel.setVerticalAlignment(SwingConstants.TOP);
+        iconLabel.setAlignmentY(TOP_ALIGNMENT);
         messageRow.add(iconLabel, BorderLayout.WEST);
 
         promptLabel = new JLabel(" ");
         promptLabel.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN));
         promptLabel.setForeground(theme.permissionTitle());
+        promptLabel.setAlignmentY(TOP_ALIGNMENT);
         messageRow.add(promptLabel, BorderLayout.CENTER);
         content.add(messageRow);
 
@@ -102,11 +109,11 @@ final class PermissionRequestPanel extends JPanel {
         contentBlocks.setLayout(new BoxLayout(contentBlocks, BoxLayout.Y_AXIS));
         contentBlocks.setOpaque(false);
         contentScroll = new JScrollPane(contentBlocks);
-        contentScroll.setBorder(BorderFactory.createEmptyBorder());
+        contentScroll.setBorder(BorderFactory.createEmptyBorder(2, 4, 2, 4));
         contentScroll.setOpaque(false);
         contentScroll.getViewport().setOpaque(false);
-        contentScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-        contentScroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
+        contentScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        contentScroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
         content.add(contentScroll);
 
         // Row 2: buttons right-aligned
@@ -144,7 +151,7 @@ final class PermissionRequestPanel extends JPanel {
         buttonPanel.repaint();
 
         slideOpen();
-        startWobble();
+        scheduleWobbleStart();
     }
 
     /** Sets a callback that enables/disables the chat input area while this panel is active. */
@@ -168,11 +175,14 @@ final class PermissionRequestPanel extends JPanel {
         ColorTheme theme = ThemeManager.getCurrentTheme();
         allowAction = null;
 
-        // Show Diff button (opens multi-file diff TopComponent like Git Changes)
+        // Show Diff button — secondary style, does not dismiss the prompt
         if (currentFileChanges != null && !currentFileChanges.isEmpty()) {
-            JButton showDiffBtn = new JButton("Show Diff");
-            showDiffBtn.setFocusPainted(false);
-            showDiffBtn.addActionListener(e -> openDiffView(currentFileChanges));
+            JButton showDiffBtn = createButton("Show Diff", null, null, null);
+            showDiffBtn.setMnemonic('D');
+            showDiffBtn.addActionListener(e -> {
+                stopWobble();
+                openDiffView(currentFileChanges);
+            });
             buttonPanel.add(showDiffBtn);
         }
 
@@ -182,14 +192,25 @@ final class PermissionRequestPanel extends JPanel {
                 String name = opt.has("name") ? opt.get("name").asText() : optionId;
                 String kind = opt.has("kind") ? opt.get("kind").asText() : "";
 
-                JButton btn = new JButton(name);
-                btn.setFocusPainted(false);
+                // Skip "always allow" — not clear how to reset it
+                if (kind.contains("always") || name.toLowerCase().contains("always")) continue;
+
+                JButton btn;
                 if (kind.contains("allow")) {
+                    btn = createButton(name, theme.permissionGrantFg(),
+                            theme.permissionGrantBg(), theme.permissionGrantBorder());
+                    btn.setMnemonic('A');
                     allowAction = () -> {
                         pendingResponse.complete(optionId);
                         slideClose();
                         fireResult(name, true);
                     };
+                } else if (kind.contains("reject") || kind.contains("deny")) {
+                    btn = createButton(name, theme.permissionDenyFg(),
+                            theme.permissionDenyBg(), theme.permissionDenyBorder());
+                    btn.setMnemonic('R');
+                } else {
+                    btn = createButton(name, null, null, null);
                 }
                 btn.addActionListener(e -> {
                     pendingResponse.complete(optionId);
@@ -201,10 +222,16 @@ final class PermissionRequestPanel extends JPanel {
                 buttonPanel.add(btn);
             }
         } else {
-            JButton denyBtn = new JButton(NbBundle.getMessage(ChatThreadPanel.class, "BTN_Deny"));
-            denyBtn.setFocusPainted(false);
-            JButton allowBtn = new JButton(NbBundle.getMessage(ChatThreadPanel.class, "BTN_Allow"));
-            allowBtn.setFocusPainted(false);
+            JButton denyBtn = createButton(
+                    NbBundle.getMessage(ChatThreadPanel.class, "BTN_Deny"),
+                    theme.permissionDenyFg(), theme.permissionDenyBg(),
+                    theme.permissionDenyBorder());
+            denyBtn.setMnemonic('R');
+            JButton allowBtn = createButton(
+                    NbBundle.getMessage(ChatThreadPanel.class, "BTN_Allow"),
+                    theme.permissionGrantFg(), theme.permissionGrantBg(),
+                    theme.permissionGrantBorder());
+            allowBtn.setMnemonic('A');
             allowAction = () -> {
                 pendingResponse.complete("allow");
                 slideClose();
@@ -222,6 +249,18 @@ final class PermissionRequestPanel extends JPanel {
             buttonPanel.add(denyBtn);
             buttonPanel.add(allowBtn);
         }
+    }
+
+    /** Creates a styled button. Pass null for any color to use defaults. */
+    private static JButton createButton(String text, Color fg, Color bg, Color border) {
+        JButton btn = new JButton(text);
+        btn.setFocusPainted(false);
+        if (fg != null) btn.setForeground(fg);
+        if (bg != null) btn.setBackground(bg);
+        if (border != null) btn.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(border, 1),
+                BorderFactory.createEmptyBorder(4, 12, 4, 12)));
+        return btn;
     }
 
     private void buildContentBlocks(JsonNode toolCall) {
@@ -273,7 +312,6 @@ final class PermissionRequestPanel extends JPanel {
         }
 
         ColorTheme theme = ThemeManager.getCurrentTheme();
-        Color labelFg = theme.permissionTitle();
         Font monoFont = IconResourceManager.getMonospaceFont();
 
         // Track per-file hunk index
@@ -296,12 +334,23 @@ final class PermissionRequestPanel extends JPanel {
                 labelText = dispPath;
             }
 
-            JLabel nameLabel = new JLabel(labelText);
-            nameLabel.setFont(monoFont);
-            nameLabel.setForeground(labelFg);
+            // Show filename prominently, parent path greyed out
+            JLabel nameLabel = new JLabel();
             nameLabel.setIcon(ThemeManager.getIcon("file.svg", 14));
             nameLabel.setIconTextGap(6);
             nameLabel.setToolTipText(fc.filePath());
+            String name = new File(fc.filePath()).getName();
+            String parent = dispPath.substring(0, Math.max(0, dispPath.length() - name.length()));
+            String fnameHex = Integer.toHexString(theme.permissionFilename().getRGB() & 0xFFFFFF);
+            String pathHex = Integer.toHexString(theme.permissionPath().getRGB() & 0xFFFFFF);
+            if (!parent.isEmpty() && !parent.equals(name)) {
+                nameLabel.setText("<html><font color='#" + fnameHex
+                        + "'><b>" + escapeHtml(name) + "</b></font> <font color='#"
+                        + pathHex + "'>" + escapeHtml(parent) + "</font></html>");
+            } else {
+                nameLabel.setText("<html><font color='#" + fnameHex
+                        + "'><b>" + escapeHtml(name) + "</b></font></html>");
+            }
 
             String statusStr = "(" + fc.status() + ")";
             JLabel statusLabel = new JLabel(statusStr);
@@ -314,7 +363,7 @@ final class PermissionRequestPanel extends JPanel {
         }
     }
 
-    
+
 
     /** Strips the session working directory prefix from a file path for display. */
     static String displayPath(String filePath) {
@@ -396,6 +445,22 @@ final class PermissionRequestPanel extends JPanel {
         if (inputEnableCallback != null) inputEnableCallback.accept(false);
         flashTaskbar();
 
+        // Enter = Allow, Escape = Reject
+        addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                if (e.getKeyCode() == KeyEvent.VK_ENTER && allowAction != null) {
+                    e.consume();
+                    allowAction.run();
+                } else if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
+                    e.consume();
+                    triggerReject();
+                }
+            }
+        });
+        setFocusable(true);
+        requestFocusInWindow();
+
         Timer timer = new Timer(SLIDE_INTERVAL_MS, null);
         final int[] step = {0};
         timer.addActionListener(e -> {
@@ -462,7 +527,7 @@ final class PermissionRequestPanel extends JPanel {
         buttonPanel.repaint();
 
         slideOpen();
-        startWobble();
+        scheduleWobbleStart();
     }
 
     @Override
@@ -474,6 +539,32 @@ final class PermissionRequestPanel extends JPanel {
             g2d.dispose();
         } else {
             super.paint(g);
+        }
+    }
+
+    @Override
+    public void removeNotify() {
+        stopWobble();
+        super.removeNotify();
+    }
+
+    /** Schedules wobble to start after 10 seconds of inactivity. */
+    private void scheduleWobbleStart() {
+        cancelWobbleDelay();
+        wobbleDelayTimer = new Timer(10000, e -> {
+            wobbleDelayTimer.stop();
+            wobbleDelayTimer = null;
+            startWobble();
+        });
+        wobbleDelayTimer.setRepeats(false);
+        wobbleDelayTimer.start();
+    }
+
+    /** Cancels any pending wobble delay. */
+    private void cancelWobbleDelay() {
+        if (wobbleDelayTimer != null) {
+            wobbleDelayTimer.stop();
+            wobbleDelayTimer = null;
         }
     }
 
@@ -514,6 +605,7 @@ final class PermissionRequestPanel extends JPanel {
 
     /** Stops the wobble animation and its repeat cycle. */
     private void stopWobble() {
+        cancelWobbleDelay();
         if (wobbleTimer != null) {
             wobbleTimer.stop();
             wobbleTimer = null;
@@ -534,7 +626,20 @@ final class PermissionRequestPanel extends JPanel {
         }
     }
 
+    /** Triggers the "reject" action, e.g. from Escape key. */
+    void triggerReject() {
+        if (requestActive && isVisible()) {
+            pendingResponse.complete("reject");
+            slideClose();
+            fireResult(NbBundle.getMessage(ChatThreadPanel.class, "MSG_PermissionDenied"), false);
+        }
+    }
+
     boolean isRequestActive() {
         return requestActive;
+    }
+
+    private static String escapeHtml(String s) {
+        return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
     }
 }

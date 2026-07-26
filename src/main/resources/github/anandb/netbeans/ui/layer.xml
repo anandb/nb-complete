@@ -23,6 +23,13 @@
                 <attr name="displayName" bundlevalue="github.anandb.netbeans.ui.Bundle#CTL_SearchWebAction"/>
             </file>
         </folder>
+        <folder name="Assistant">
+            <file name="github-anandb-netbeans-ui-AllowPermissionAction.instance">
+                <attr name="instanceCreate" methodvalue="org.openide.awt.Actions.alwaysEnabled"/>
+                <attr name="delegate" newvalue="github.anandb.netbeans.ui.AllowPermissionAction"/>
+                <attr name="displayName" bundlevalue="github.anandb.netbeans.ui.Bundle#CTL_AllowPermissionAction"/>
+            </file>
+        </folder>
         <folder name="Window">
             <file name="github-anandb-netbeans-ui-ToggleAssistantAction.instance">
                 <attr name="instanceCreate" methodvalue="org.openide.awt.Actions.alwaysEnabled"/>
@@ -57,8 +64,8 @@
         <file name="DA-J.shadow">
             <attr name="originalFile" stringvalue="Actions/Navigate/github-anandb-netbeans-ui-GoToFileAction.instance"/>
         </file>
-        <file name="D-ENTER.shadow">
-            <attr name="originalFile" stringvalue="Actions/Assistant/AllowPermissionAction.instance"/>
+        <file name="D-A-A.shadow">
+            <attr name="originalFile" stringvalue="Actions/Assistant/github-anandb-netbeans-ui-AllowPermissionAction.instance"/>
         </file>
     </folder>
     <folder name="Toolbars">

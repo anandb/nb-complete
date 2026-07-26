@@ -830,7 +830,7 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
         fileList.addListSelectionListener((ListSelectionEvent e) -> {
             if (e.getValueIsAdjusting()) return;
             FileDiff sel = fileList.getSelectedValue();
-            if (sel != null) updatePermissionDiffView(diffPanel, sel);
+            if (sel != null) updatePermissionDiffView(diffPanel, sel, fileList);
         });
 
         JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, listScroll, diffPanel);
@@ -873,7 +873,7 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
     }
 
     /** Builds diff view with prev/next hunk navigation (same as updateDiffView but static). */
-    private static void updatePermissionDiffView(JPanel diffPanel, FileDiff fd) {
+    private static void updatePermissionDiffView(JPanel diffPanel, FileDiff fd, JList<FileDiff> fileList) {
         diffPanel.removeAll();
         try {
             String name = new File(fd.filePath).getName();
@@ -924,6 +924,20 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
             navBar.add(nextBtn);
             wrapper.add(navBar, BorderLayout.NORTH);
             wrapper.add(diffView, BorderLayout.CENTER);
+
+            // Register file-navigation shortcuts on wrapper so they work even
+            // when focus is inside the DiffController component hierarchy.
+            wrapper.getActionMap().put("prevFile", new AbstractAction() {
+                @Override public void actionPerformed(ActionEvent e) { navigateFileToList(fileList, -1); }
+            });
+            wrapper.getActionMap().put("nextFile", new AbstractAction() {
+                @Override public void actionPerformed(ActionEvent e) { navigateFileToList(fileList, 1); }
+            });
+            wrapper.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(
+                    KeyStroke.getKeyStroke(KeyEvent.VK_COMMA, InputEvent.CTRL_DOWN_MASK), "prevFile");
+            wrapper.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(
+                    KeyStroke.getKeyStroke(KeyEvent.VK_PERIOD, InputEvent.CTRL_DOWN_MASK), "nextFile");
+
             diffPanel.add(wrapper, BorderLayout.CENTER);
         } catch (Exception ex) {
             diffPanel.add(new JLabel("Error: " + ExceptionUtils.getMessage(ex)), BorderLayout.CENTER);

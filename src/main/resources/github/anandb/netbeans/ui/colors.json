@@ -143,8 +143,8 @@
   {
     "name": "permissionBg",
     "property": "netbeans.codingassistant.color.permissionBg",
-    "dark": "#263238",
-    "light": "#A3BDD4"
+    "dark": "#1E222A",
+    "light": "#FFFFFF"
   },
   {
     "name": "permissionBorder",
@@ -152,9 +152,28 @@
     "key": "Button.focusColor"
   },
   {
+    "name": "permissionAccent",
+    "property": "netbeans.codingassistant.color.permissionAccent",
+    "dark": "#F59E0B",
+    "light": "#D97706"
+  },
+  {
+    "name": "permissionFilename",
+    "property": "netbeans.codingassistant.color.permissionFilename",
+    "dark": "#E2E8F0",
+    "light": "#0F172A"
+  },
+  {
+    "name": "permissionPath",
+    "property": "netbeans.codingassistant.color.permissionPath",
+    "dark": "#94A3B8",
+    "light": "#475569"
+  },
+  {
     "name": "permissionTitle",
     "property": "netbeans.codingassistant.color.permissionTitle",
-    "key": "OptionPane.messageForeground"
+    "dark": "#F8FAFC",
+    "light": "#0F172A"
   },
   {
     "name": "tableBackground",
@@ -209,38 +228,38 @@
   {
     "name": "permissionGrantFg",
     "property": "netbeans.codingassistant.color.permissionGrantFg",
-    "dark": "#81C784",
-    "light": "#2E7D32"
+    "dark": "#FFFFFF",
+    "light": "#FFFFFF"
   },
   {
     "name": "permissionGrantBg",
     "property": "netbeans.codingassistant.color.permissionGrantBg",
-    "dark": "#1B3A1D",
-    "light": "#E8F5E9"
+    "dark": "#3B82F6",
+    "light": "#2563EB"
   },
   {
     "name": "permissionGrantBorder",
     "property": "netbeans.codingassistant.color.permissionGrantBorder",
-    "dark": "#66BB6A",
-    "light": "#4CAF50"
+    "dark": "#3B82F6",
+    "light": "#2563EB"
   },
   {
     "name": "permissionDenyFg",
     "property": "netbeans.codingassistant.color.permissionDenyFg",
-    "dark": "#EF5350",
-    "light": "#C62828"
+    "dark": "#FCA5A5",
+    "light": "#991B1B"
   },
   {
     "name": "permissionDenyBg",
     "property": "netbeans.codingassistant.color.permissionDenyBg",
-    "dark": "#3A1517",
-    "light": "#FFEBEE"
+    "dark": "#451212",
+    "light": "#FEE2E2"
   },
   {
     "name": "permissionDenyBorder",
     "property": "netbeans.codingassistant.color.permissionDenyBorder",
-    "dark": "#EF5350",
-    "light": "#F44336"
+    "dark": "#F87171",
+    "light": "#FEE2E2"
   },
   {
     "name": "activityAccent",

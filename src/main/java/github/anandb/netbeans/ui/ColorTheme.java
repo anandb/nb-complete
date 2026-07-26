@@ -84,6 +84,9 @@ public final class ColorTheme {
     public Color  thinkingHeaderForeground()                     { return registry.get(ColorKey.thinking_header_foreground); }
     public Color  permissionBg()                                 { return registry.get(ColorKey.permission_bg); }
     public Color  permissionBorder()                             { return registry.get(ColorKey.permission_border); }
+    public Color  permissionAccent()                             { return registry.get(ColorKey.permission_accent); }
+    public Color  permissionFilename()                           { return registry.get(ColorKey.permission_filename); }
+    public Color  permissionPath()                               { return registry.get(ColorKey.permission_path); }
     public Color  permissionTitle()                              { return registry.get(ColorKey.permission_title); }
     public Color  tableBackground()                              { return registry.get(ColorKey.table_background); }
     public Color  tableHeaderBackground()                        { return registry.get(ColorKey.table_header_background); }

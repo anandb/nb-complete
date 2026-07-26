@@ -546,18 +546,23 @@ public class ChatThreadPanel extends JPanel {
             lbl.setIconTextGap(8);
             lbl.setFont(lbl.getFont().deriveFont(java.awt.Font.BOLD));
             lbl.setForeground(fg);
-            lbl.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(border, 1, true),
-                BorderFactory.createEmptyBorder(6, 12, 6, 12)
-            ));
             lbl.setOpaque(true);
             lbl.setBackground(bg);
             lastPermissionLabel = lbl;
 
+            RoundedPanel rp = new RoundedPanel(32);
+            rp.setLayout(new java.awt.BorderLayout());
+            rp.setBackground(bg);
+            rp.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(border, 1, true),
+                BorderFactory.createEmptyBorder(8, 10, 8, 10)
+            ));
+            rp.add(lbl, java.awt.BorderLayout.CENTER);
+
             JPanel wrapper = new JPanel(new java.awt.BorderLayout());
             wrapper.setOpaque(false);
             wrapper.setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 8));
-            wrapper.add(lbl, java.awt.BorderLayout.CENTER);
+            wrapper.add(rp, java.awt.BorderLayout.CENTER);
 
             messagesContainer.add(wrapper);
             messagesContainer.add(Box.createVerticalStrut(4));
