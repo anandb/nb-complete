@@ -3,6 +3,8 @@
 ## v1.12.0 (Changes since v1.11.3)
 
 ### Features
+- **Permission request diffs**: Permission dialogs now render file changes inline using a unified diff view, extracting `oldString`/`newString` from arguments or raw `diff` outputs. Files are listed with status icons.
+- **Pre-preamble config confirm**: Added a slide-in bottom panel for model and thinking-level selection prior to creating a session, featuring a wobble animation for attention.
 - **HTML export**: New self-contained HTML export option alongside existing Markdown.
   Export button shows a MarkDown/HTML popup menu. HTML export includes base64-embedded
   SVG icons, inline CSS matching theme colors, Flexmark markdown rendering, and
@@ -21,6 +23,9 @@
   updates, and a spinner during processing.
 
 ### Fixes
+- **Connection timeout during permission**: The ACP connection idle timeout is now skipped while a permission dialog is open, preventing the connection from dropping while waiting for user approval.
+- **Config combo lock**: Dropdowns for model and thinking level are locked during the config-confirm phase to prevent SSE from overwriting user selections.
+- **Slash command UI transitions**: Fixed button states not re-enabling properly after a slash command like `/title` completes, by adding `onAsyncSendStarted` and `onAsyncSendCompleted` lifecycle hooks.
 - **HTML export page colors**: Replaced `theme.sunkenBackground()` with explicit colors
   (`#ffffff` light / `#1e1f22` dark) to prevent black background with light text.
 - **HTML export segment headers**: Replaced `theme.base2()` with explicit colors
@@ -41,6 +46,10 @@
   geometry across sessions.
 
 ### Improvements
+- **Permission panel UI polish**: Permission requests now feature a wobble animation and a distinct warm amber/cream background color with a red border cue to stand out from the chat panel. Content is wrapped in a 300px scrollable pane.
+- **Permission keyboard shortcut**: Added `Ctrl+Enter` (`Cmd+Enter` on Mac) as a shortcut to quickly "Allow" permission requests.
+- **Keyboard shortcuts dialog UX polish**: Removed clashing blue background on the "Unassigned" button, stripped out blank table headers, increased edge padding, and added subtle borders around tables.
+- **Dynamic shortcut resolution restored**: Fixed hardcoded assignments for "Toggle Assistant Panel", "Open Stash Diff Viewer", "Undo", and "Redo" in the shortcuts dialog to dynamically resolve from NetBeans Keymap.
 - **Export reads displayed messages**: Export now reads from the UI container (what's on
   screen) rather than cached model data, keeping behavior predictable.
 - **Flush timer callback**: Added `onMessagesStable` callback to `ChatThreadPanel` for

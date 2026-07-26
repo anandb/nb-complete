@@ -172,9 +172,70 @@ You can attach files and images to provide more context to the AI. Click the **P
 
 When the AI attempts to execute a tool, modify files, or run shell commands, the plugin ensures you remain in control. An Accept/Deny bubble will appear in the chat with full context of the requested action. You must explicitly grant permission before the operation proceeds. You can configure automatic allowances or denials in your OpenCode configuration.
 
+#### Show Diff
+
+Before granting permission for an action that modifies files, you can view exactly what changes the AI plans to make. The permission request includes a file list with status icons, along with a unified diff viewer that displays the modifications inline within a scrollable pane.
+
+If you are satisfied with the proposed changes, you can quickly grant permission by pressing `Ctrl+Enter` (`Cmd+Enter` on Mac) or by clicking the **Allow** button.
+
+If you want to ensure the AI always asks for permission before modifying or reading files, you can configure the global `opencode.json` configuration file. This file is located at:
+- **Linux:** `~/.config/opencode/opencode.json`
+- **macOS:** `~/.config/opencode/opencode.json`
+- **Windows:** `%USERPROFILE%\.config\opencode\opencode.json`
+
+Here is a sample permission block that denies access to sensitive directories and defaults to asking for permission:
+
+```json
+    "permission": {
+        "read": {
+            "~/.ssh/**": "deny",
+            "~/.gnupg/**": "deny",
+            "~/.aws/**": "deny",
+            "~/.azure/**": "deny",
+            "~/.kube/**": "deny",
+            "~/.docker/**": "deny",
+            "~/.config/gcloud/**": "deny",
+            ".env*": "deny",
+            "*.pem": "deny",
+            "*.key": "deny",
+            "*.p12": "deny",
+            "*.jks": "deny",
+            "*.jceks": "deny",
+            "*.keystore": "deny",
+            "*.kdbx": "deny",
+            "*.pfx": "deny",
+            "*.p8": "deny",
+            "*credentials*": "deny",
+            "*": "ask"
+        },
+        "edit": {
+            "~/.aws/**": "deny",
+            "~/.azure/**": "deny",
+            "~/.ssh/**": "deny",
+            "~/.gnupg/**": "deny",
+            "~/.kube/**": "deny",
+            "~/.docker/**": "deny",
+            "~/.config/gcloud/**": "deny",
+            "*": "ask"
+        },
+        "grep": "allow", // Can also be set to "ask" for strict control
+        "glob": "allow", // Can also be set to "ask" for strict control
+        "bash": {
+            "rm *credentials*": "deny",
+            "rm *.env*": "deny",
+            "git commit *": "ask",
+            "git push *": "ask",
+            "rm *": "ask"
+        },
+        "webfetch": "ask",
+        "external_directory": "ask",
+        "doom_loop": "ask"
+    }
+```
+
 ### Keyboard Shortcuts
 
-Navigate and control the assistant efficiently using keyboard shortcuts. Press `Ctrl + L` to open or switch focus to the assistant panel. Use `Alt + Up / Down` to cycle through previously sent messages, `Page Up / Down` to scroll the chat, and `Ctrl + R` to search message history. You can also open the Jump to File dialog with `Ctrl + Alt + J` (or `Cmd + Option + J` on Mac) and trigger the Stash Diff viewer with `Ctrl + Shift + L`. Press `Escape` to close the options panel.
+Navigate and control the assistant efficiently using keyboard shortcuts. Press `Ctrl + L` to open or switch focus to the assistant panel. Use `Alt + Up / Down` to cycle through previously sent messages, `Page Up / Down` to scroll the chat, and `Ctrl + R` to search message history. You can also open the Jump to File dialog with `Ctrl + Alt + J` (or `Cmd + Option + J` on Mac) and trigger the Stash Diff viewer with `Ctrl + Shift + L`. Type `/` in the chat input to open the slash command autocomplete popup, and press `Tab` to select the currently highlighted command. Press `Escape` to close the options panel.
 
 ### Message History
 
@@ -291,49 +352,7 @@ Use image paste and a vision-capable model to turn screenshots of broken UIs or 
 
 - The plugin sometimes doesn't respond when using nested agents.
 - Switching sessions or reloading the conversation while awaiting a response can cancel the current request.
-- Permission requests aren't always relayed by the ACP server, so while the server is waiting for permission, the
-messages can timeout, this can be mitigated to some extent by allowing external read operations. This is a sample
-snippet from an `opencode.json` configuration.
-```json
-{
-  "permission": {
-    "read": {
-      "~/.ssh/**": "deny",
-      "~/.gnupg/**": "deny",
-      "~/.aws/**": "deny",
-      "~/.azure/**": "deny",
-      "~/.kube/**": "deny",
-      "~/.docker/**": "deny",
-      "~/.config/gcloud/**": "deny",
-      ".env*": "deny",
-      "*.pem": "deny",
-      "*.key": "deny",
-      "*.p12": "deny",
-      "*.jks": "deny",
-      "*credentials*": "deny",
-      "*": "allow"
-    },
-    "edit": {
-      "~/.aws/**": "deny",
-      "~/.azure/**": "deny",
-      "~/.ssh/**": "deny",
-      "~/.gnupg/**": "deny",
-      "~/.kube/**": "deny",
-      "~/.docker/**": "deny",
-      "~/.config/gcloud/**": "deny",
-      "*": "ask"
-    },
-    "bash": {
-      "git push*": "ask",
-      "rm *credentials*": "deny",
-      "rm *.env*": "deny",
-      "rm": "ask"
-    },
-    "webfetch": "allow",
-    "external_directory": "allow"
-  }
-}
-```
+- Permission requests from subagents (delegated agents) aren't always relayed by the ACP server back to the UI. If a subagent makes a tool call that requires permission, the request may hang and eventually time out because you never receive the Accept/Deny prompt. To mitigate this, directly instruct your primary agent to perform file modifications or commands rather than asking it to delegate those tasks to a subagent.
 
 ---
 

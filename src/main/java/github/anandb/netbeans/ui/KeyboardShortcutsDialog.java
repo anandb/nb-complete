@@ -347,9 +347,8 @@ final class KeyboardShortcutsDialog extends JDialog {
             if (i > 0) {
                 html.append(" <span style='color:").append(unassignedFg).append(";'>+</span> ");
             }
-            html.append("<span style='display:inline-block;padding:1px 5px;font-family:monospace;")
-                .append("font-size:12px;font-weight:600;background:").append(kbdBg).append(";color:").append(kbdFg).append(";")
-                .append("border:1px solid ").append(kbdFg).append(";border-radius:3px;white-space:nowrap;'>")
+            html.append("<span style='font-family:monospace;")
+                .append("font-size:12px;font-weight:600;color:").append(kbdFg).append(";white-space:nowrap;'>")
                 .append(parts[i]).append("</span>");
         }
         return html.toString();
@@ -388,7 +387,7 @@ final class KeyboardShortcutsDialog extends JDialog {
 
         return new ShortcutSection[]{
             new ShortcutSection("Navigation & Assistant", new String[][]{
-                {mod + " + L", "Toggle Assistant Panel"},
+                {ShortcutUtils.resolveShortcut("github.anandb.netbeans.ui.ToggleAssistantAction"), "Toggle Assistant Panel"},
                 {mod + " + Home", "Scroll to Top"},
                 {mod + " + End", "Scroll to Bottom"},
                 {"PgUp", "Scroll Up One Page"},
@@ -411,13 +410,14 @@ final class KeyboardShortcutsDialog extends JDialog {
                 {"Enter", "Send Message"},
                 {"Shift + Enter", "Insert Newline"},
                 {"/", "Slash Command Autocomplete"},
+                {"Tab (after /)", "Select Highlighted Command"},
                 {"Tab", "Switch Agent / Open Options"},
                 {"Alt + Up", "Previous in History"},
                 {"Alt + Down", "Next in History"},
             }),
             new ShortcutSection("Editing", new String[][]{
-                {mod + " + Z", "Undo"},
-                {mod + " + Y", "Redo"},
+                {getFallbackShortcut("org.openide.actions.UndoAction", mod + " + Z"), "Undo"},
+                {getFallbackShortcut("org.openide.actions.RedoAction", mod + " + Y"), "Redo"},
                 {mod + " + R", "Search History"},
                 {ShortcutUtils.resolveShortcut("github.anandb.netbeans.ui.ToggleBlocksAction"), "Toggle Expand/Collapse All"},
                 {ShortcutUtils.resolveShortcut("github.anandb.netbeans.ui.SortLinesAction"), "Sort Lines Ascending"},
@@ -427,11 +427,16 @@ final class KeyboardShortcutsDialog extends JDialog {
                 {ShortcutUtils.resolveShortcut("github.anandb.netbeans.ui.GoToFileAction"), "Jump to File"},
             }),
             new ShortcutSection("Stash Diff (Experimental)", new String[][]{
-                {mod + " + Shift + L", "Open Stash Diff Viewer"},
+                {ShortcutUtils.resolveShortcut("github.anandb.netbeans.ui.StashDiffAction"), "Open Stash Diff Viewer"},
                 {mod + " + ,", "Previous Difference"},
                 {mod + " + .", "Next Difference"},
             }),
         };
+    }
+
+    private static String getFallbackShortcut(String actionId, String fallback) {
+        String resolved = ShortcutUtils.resolveShortcut(actionId);
+        return resolved != null && !resolved.isEmpty() ? resolved : fallback;
     }
 
     /** Holds a titled group of shortcut rows. */
