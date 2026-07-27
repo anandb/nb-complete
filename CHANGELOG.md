@@ -1,5 +1,13 @@
 # Release Notes
 
+## v1.12.3
+
+### Fixes
+- **GitHub Actions**: Fixed an issue in `release.yml` where secrets were incorrectly used in an `if` conditional.
+
+### Housekeeping
+- Version bumped to 1.12.3.
+
 ## v1.12.2 (Architectural Fixes)
 
 ### Fixes

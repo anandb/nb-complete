@@ -35,8 +35,12 @@ jobs:
           gpg-passphrase: GPG_PASSPHRASE
 
       - name: Decode NBM keystore
-        if: ${{ secrets.NBM_KEYSTORE_B64 != '' }}
-        run: echo "${{ secrets.NBM_KEYSTORE_B64 }}" | base64 -d > /tmp/nb-complete-keystore.jks
+        env:
+          NBM_KEYSTORE_B64: ${{ secrets.NBM_KEYSTORE_B64 }}
+        run: |
+          if [ -n "$NBM_KEYSTORE_B64" ]; then
+            echo "$NBM_KEYSTORE_B64" | base64 -d > /tmp/nb-complete-keystore.jks
+          fi
 
       - name: Build and Deploy
         run: |
