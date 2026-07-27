@@ -1,6 +1,16 @@
 # Release Notes
 
+## v1.12.1 (Hotfix)
+
+### Fixes
+- **ToolCallDiffParser**: Deduplicate identical file changes in tool call diffs to prevent the same hunk from appearing multiple times.
+- **Tests**: Resolved test failures in `ToolCallDiffParserTest` and `TokenUsageDialogTest` caused by missing bundle keys and deduplication bugs.
+
+### Refactoring
+- **UI**: Removed redundant deduplication logic in the UI layer since it is now handled centrally by the parser.
+
 ## v1.12.0 (Changes since v1.11.3)
+
 
 ### Features
 - **Help Icon Flash**: Doubled help icon flash duration and persist hide on click.
