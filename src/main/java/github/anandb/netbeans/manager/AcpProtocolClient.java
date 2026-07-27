@@ -4,12 +4,10 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
-import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 
@@ -55,7 +53,7 @@ public class AcpProtocolClient implements Closeable {
     private volatile boolean closed = false;
     private volatile long lastDataTime;
     private volatile String closeReason;
-    private volatile boolean permissionRequestPending;
+    private final java.util.concurrent.atomic.AtomicInteger pendingPermissions = new java.util.concurrent.atomic.AtomicInteger(0);
 
     public AcpProtocolClient(Process process) throws IOException {
         this.writer = new BufferedWriter(new OutputStreamWriter(process.getOutputStream(), StandardCharsets.UTF_8));
@@ -159,21 +157,23 @@ public class AcpProtocolClient implements Closeable {
     }
 
     private void readLoop() {
-        try (var reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
-            String line;
-            while (running && (line = reader.readLine()) != null) {
-                if (line.isBlank()) {
-                    continue;
+        try (com.fasterxml.jackson.core.JsonParser parser = MAPPER.getFactory().createParser(inputStream)) {
+            while (running && !parser.isClosed()) {
+                com.fasterxml.jackson.core.JsonToken token = parser.nextToken();
+                if (token == null) {
+                    break;
                 }
-                try {
-                    JsonNode node = MAPPER.readTree(line);
-                    lastDataTime = System.nanoTime();
-                    handleMessage(node);
-                } catch (Exception e) {
-                    // Recover from a single malformed message instead of
-                    // shutting down the entire connection.
-                    if (running) {
-                        LOG.warn("Skipping malformed message: {0}", ExceptionUtils.getMessage(e), e);
+                if (token == com.fasterxml.jackson.core.JsonToken.START_OBJECT) {
+                    try {
+                        JsonNode node = MAPPER.readTree(parser);
+                        lastDataTime = System.nanoTime();
+                        handleMessage(node);
+                    } catch (Exception e) {
+                        // Recover from a single malformed message instead of
+                        // shutting down the entire connection.
+                        if (running) {
+                            LOG.warn("Skipping malformed message: {0}", ExceptionUtils.getMessage(e), e);
+                        }
                     }
                 }
             }
@@ -207,7 +207,7 @@ public class AcpProtocolClient implements Closeable {
         if (!running) return;
 
         // Don't timeout while waiting for user to respond to a permission request
-        if (permissionRequestPending) {
+        if (pendingPermissions.get() > 0) {
             scheduleWatchdogCheck();
             return;
         }
@@ -244,9 +244,11 @@ public class AcpProtocolClient implements Closeable {
     }
 
     public void setPermissionRequestPending(boolean pending) {
-        this.permissionRequestPending = pending;
         if (pending) {
+            pendingPermissions.incrementAndGet();
             touch(); // reset idle timer when permission dialog opens
+        } else {
+            pendingPermissions.decrementAndGet();
         }
     }
 

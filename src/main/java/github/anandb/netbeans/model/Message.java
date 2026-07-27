@@ -70,8 +70,7 @@ public record Message(
         StringBuilder sb = new StringBuilder();
         if ("user".equals(type())) {
             if (prompt() != null) {
-                if (prompt().text() != null) sb.append(prompt().text());
-                if (prompt().parts() != null) {
+                if (prompt().parts() != null && !prompt().parts().isEmpty()) {
                     for (ContentPart part : prompt().parts()) {
                         String pt = part.getDisplayText();
                         if (pt != null && !pt.isEmpty()) {
@@ -79,18 +78,28 @@ public record Message(
                             sb.append(pt);
                         }
                     }
+                } else if (prompt().text() != null) {
+                    sb.append(prompt().text());
                 }
             }
         } else {
             if (completion() != null) {
-                if (completion().text() != null) sb.append(completion().text());
-                if (completion().parts() != null) {
+                if (completion().parts() != null && !completion().parts().isEmpty()) {
                     for (ContentPart part : completion().parts()) {
                         String pt = part.getDisplayText();
                         if (pt != null && !pt.isEmpty()) {
                             if (sb.length() > 0) sb.append("\n\n");
                             sb.append(pt);
                         }
+                    }
+                } else if (completion().text() != null) {
+                    sb.append(completion().text());
+                }
+                
+                if (completion().toolCalls() != null) {
+                    for (ToolCall tc : completion().toolCalls()) {
+                        if (sb.length() > 0) sb.append("\n\n");
+                        sb.append("[Tool Call: ").append(tc.name()).append("]");
                     }
                 }
             }

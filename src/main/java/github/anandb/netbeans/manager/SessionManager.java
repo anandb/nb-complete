@@ -19,7 +19,6 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.BiConsumer;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
@@ -131,10 +130,8 @@ public class SessionManager implements SessionQuery, SessionControl {
     private final SessionCacheManager cacheManager = new SessionCacheManager();
     private final Consumer<SessionUpdate> sseListener = this::handleSseUpdate;
     private final SessionRpcClient rpcClient;
-    private volatile BiConsumer<String, List<SessionConfigOption>> beforePreambleHandler;
+    private volatile java.util.function.BiFunction<String, List<SessionConfigOption>, CompletableFuture<Void>> beforePreambleHandler;
     private volatile boolean sendResumeOnLoad;
-    /** True when the server crashed and we're waiting for reconnect to resume. */
-    private volatile boolean crashedBeforeReconnect;
     /** True once the warm-up prompt has been sent for this connection. */
     private volatile boolean warmupSent;
 
@@ -148,7 +145,7 @@ public class SessionManager implements SessionQuery, SessionControl {
 
         // Reset state machine and notify UI when server crashes
         ProcessManager.getInstance().setCrashHandler(() -> {
-            crashedBeforeReconnect = true;
+            warmupSent = false;
             stateMachine.transitionTo(SessionState.IDLE);
             notifyError(NbBundle.getMessage(SessionManager.class, "ERR_ServerDisconnected"));
         });
@@ -157,11 +154,6 @@ public class SessionManager implements SessionQuery, SessionControl {
         ProcessManager.getInstance().setReadyHandler(() -> {
             String sid = currentSessionId;
             if (sid != null) {
-                // Only send "Proceed" on reconnect after a crash — not on manual restart.
-                if (crashedBeforeReconnect) {
-                    crashedBeforeReconnect = false;
-                    sendResumeOnLoad = true;
-                }
                 SwingUtilities.invokeLater(() -> loadSession(sid));
             }
         });
@@ -276,7 +268,7 @@ public class SessionManager implements SessionQuery, SessionControl {
     }
 
     @Override
-    public void setBeforePreambleHandler(BiConsumer<String, List<SessionConfigOption>> handler) {
+    public void setBeforePreambleHandler(java.util.function.BiFunction<String, List<SessionConfigOption>, CompletableFuture<Void>> handler) {
         this.beforePreambleHandler = handler;
     }
 
@@ -547,12 +539,17 @@ public class SessionManager implements SessionQuery, SessionControl {
                         refreshSessions();
                         // Before preamble, let the UI handler (if set) show a config
                         // dialog so the user can pick agent/model/level.
-                        // The handler runs on this async thread and blocks until done.
                         if (beforePreambleHandler != null) {
-                            beforePreambleHandler.accept(session.id(), session.configOptions());
-                        }
-                        if (!sendPreamble(session.id())) {
-                            notifyPreambleDone();
+                            beforePreambleHandler.apply(session.id(), session.configOptions())
+                                .whenComplete((v, ex) -> {
+                                    if (!sendPreamble(session.id())) {
+                                        notifyPreambleDone();
+                                    }
+                                });
+                        } else {
+                            if (!sendPreamble(session.id())) {
+                                notifyPreambleDone();
+                            }
                         }
                     })
                     .exceptionally(ex -> {
@@ -611,12 +608,7 @@ public class SessionManager implements SessionQuery, SessionControl {
                             stateMachine.transitionTo(SessionState.STREAMING);
                             notifySessionLoaded(sessionId, configOptions, isStartup);
 
-                            // After reconnect, send an invisible "Proceed" prompt so the
-                            // agent resumes execution from where it left off.
-                            if (sendResumeOnLoad) {
-                                sendResumeOnLoad = false;
-                                sendResumePrompt(sessionId);
-                            } else if (!warmupSent) {
+                            if (!warmupSent) {
                                 // Warm-up: send an invisible prompt so the AI model
                                 // is primed before the user's first real message.
                                 // The first prompt after a fresh server start may
@@ -715,17 +707,10 @@ public class SessionManager implements SessionQuery, SessionControl {
         return false;
     }
 
-    /**
-     * Sends an invisible "Proceed" prompt after reconnect so the agent resumes
-     * execution. The audience annotation marks it as assistant-directed, so the
-     * UI does not render it as a user message.
-     */
-    private void sendResumePrompt(String sessionId) {
-        sendAssistantPrompt(sessionId, "Proceed", "resume prompt");
-    }
+
 
     private void sendWarmupPrompt(String sessionId) {
-        sendAssistantPrompt(sessionId, "Pause", "warm-up prompt");
+        sendAssistantPrompt(sessionId, " ", "warm-up prompt");
     }
 
     private void sendAssistantPrompt(String sessionId, String text, String label) {

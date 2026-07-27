@@ -37,10 +37,12 @@ public interface SlashCommandCallback {
     void displayToolMessage(String title, String text);
 
     /** Transition UI to sending mode (Stop button, thinking state).
+     *  Implementations MUST ensure this executes on the Swing EDT.
      *  Default no-op for commands that don't send messages. */
     default void onAsyncSendStarted() {}
 
     /** Transition UI back to idle mode after the RPC completes.
+     *  Implementations MUST ensure this executes on the Swing EDT.
      *  Default no-op. */
     default void onAsyncSendCompleted() {}
 }

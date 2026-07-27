@@ -71,8 +71,8 @@ class ToolCallDiffParserTest {
         String diff = "@@ -1,2 +1,2 @@\n a\n-b\n+c\n@@ -5,3 +5,4 @@\n x\n-y\n+z\n w\n";
         DiffPair dp = ToolCallDiffParser.parseUnifiedDiff(diff);
         assertNotNull(dp);
-        assertEquals("a\nb\nx\ny\nw", dp.oldContent());
-        assertEquals("a\nc\nx\nz\nw", dp.newContent());
+        assertEquals("a\nb\n\n\nx\ny\nw", dp.oldContent());
+        assertEquals("a\nc\n\n\nx\nz\nw", dp.newContent());
     }
 
     @Test

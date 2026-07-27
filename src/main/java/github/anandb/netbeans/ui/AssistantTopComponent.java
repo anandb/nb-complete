@@ -253,9 +253,9 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         // and shows a slide-in confirmation bar (like the permission UI)
         // after session/new, before the preamble.
         sessionService.get().setBeforePreambleHandler((sessionId, configOptions) -> {
-            CompletableFuture<String> configFuture = new CompletableFuture<>();
+            CompletableFuture<Void> configFuture = new CompletableFuture<>();
             try {
-                SwingUtilities.invokeAndWait(() -> {
+                SwingUtilities.invokeLater(() -> {
                     newSessionBtn.setEnabled(false);
 
                     // Populate the bottom config panel combos with the options
@@ -265,35 +265,27 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
                     // Show a slide-in confirm bar below the session dropdown,
                     // reusing the permission-panel look and slide animation.
+                    CompletableFuture<String> uiFuture = new CompletableFuture<>();
                     layoutBuilder.getConfigConfirmPanel().showConfigConfirm(
                         "Select the agent, model and level below, then click <b>Continue</b>.",
-                        configFuture);
+                        uiFuture);
                     // Lock combos — SSE/RPC config_options_update must not
                     // repopulate while the user is choosing model/level.
                     configPanelController.setConfigConfirmActive(true);
-                });
 
-                // Block the async thread until the user clicks Continue
-                configFuture.get();
-                // Unlock combos and close the options panel
-                configPanelController.setConfigConfirmActive(false);
-                SwingUtilities.invokeLater(() -> setOptionsPanelVisible(false));
-                // Send the user's selections (or defaults if unchanged)
-                configPanelController.sendCurrentSelections(sessionId, configOptions);
+                    uiFuture.whenComplete((res, ex) -> {
+                        configPanelController.setConfigConfirmActive(false);
+                        setOptionsPanelVisible(false);
+                        configPanelController.sendCurrentSelections(sessionId, configOptions);
+                        newSessionBtn.setEnabled(true);
+                        configFuture.complete(null);
+                    });
+                });
             } catch (Exception e) {
                 LOG.log(Level.WARNING, "Config confirmation interrupted", e);
-            } finally {
-                SwingUtilities.invokeLater(() -> {
-                    newSessionBtn.setEnabled(true);
-                    configPanelController.setConfigConfirmActive(false);
-                    // If the future was never completed (e.g. InterruptedException),
-                    // slide the panel closed.
-                    if (!configFuture.isDone()) {
-                        configFuture.complete("cancel");
-                        layoutBuilder.getConfigConfirmPanel().slideClose();
-                    }
-                });
+                configFuture.completeExceptionally(e);
             }
+            return configFuture;
         });
 
         messageSender = new MessageSender(

@@ -38,11 +38,7 @@ import github.anandb.netbeans.support.PreferenceKeys;
 public class UpdateCheckerService implements UpdateCheckerControl {
     private static final Logger LOG = Logger.from(UpdateCheckerService.class);
 
-    /** Shared HTTP client — thread-safe, reused across checks. Uses NetBeans proxy settings. */
-    private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(15))
-            .proxy(ProxySelector.getDefault())
-            .build();
+    // HTTP_CLIENT removed to prevent capturing ProxySelector at class load time
 
     /** Delay before the first update check after IDE startup. */
     private static final long FIRST_CHECK_DELAY_MS = 60_000L;
@@ -199,7 +195,12 @@ public class UpdateCheckerService implements UpdateCheckerControl {
                     .GET()
                     .build();
 
-            HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+            HttpClient client = HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofSeconds(15))
+                    .proxy(ProxySelector.getDefault())
+                    .build();
+
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() != 200) {
                 throw new IOException("HTTP update check failed with status code: " + response.statusCode());
             }

@@ -25,8 +25,8 @@ public interface FileCacheQuery {
     /** Registers a listener that fires once when the cache first becomes ready. */
     void onReady(Runnable action);
 
-    /** Returns a version number that increments every time the entire cache is rebuilt. */
-    long getCacheVersion();
+    /** Returns the current version of the cache (increments on mutation). */
+    default long getCacheVersion() { return 0L; }
 
     /** A single entry in the file cache. */
     record CachedFile(FileObject fileObject, String projectName, String relativePath) {}

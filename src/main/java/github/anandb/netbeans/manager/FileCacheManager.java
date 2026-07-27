@@ -51,7 +51,7 @@ public class FileCacheManager implements FileCacheQuery {
     /** Files keyed by absolute path for O(1) dedup across overlapping projects. */
     private final ConcurrentHashMap<String, FileCacheQuery.CachedFile> files = new ConcurrentHashMap<>();
     private volatile boolean ready;
-    private volatile long cacheVersion = 0;
+    private final java.util.concurrent.atomic.AtomicLong cacheVersion = new java.util.concurrent.atomic.AtomicLong(0);
     private final List<Runnable> readyListeners = new CopyOnWriteArrayList<>();
     private final Object readyLock = new Object();
 
@@ -106,7 +106,7 @@ public class FileCacheManager implements FileCacheQuery {
 
     @Override
     public long getCacheVersion() {
-        return cacheVersion;
+        return cacheVersion.get();
     }
 
     @Override
@@ -160,7 +160,7 @@ public class FileCacheManager implements FileCacheQuery {
         List<Runnable> listenersCopy;
         synchronized (readyLock) {
             ready = true;
-            cacheVersion++;
+            cacheVersion.incrementAndGet();
             listenersCopy = new ArrayList<>(readyListeners);
             readyListeners.clear();
         }
@@ -252,6 +252,7 @@ public class FileCacheManager implements FileCacheQuery {
                     if (rel != null) {
                         files.put(f.getAbsolutePath(),
                                 new FileCacheQuery.CachedFile(fo, projectName, rel));
+                        cacheVersion.incrementAndGet();
                     }
                 }
             }
@@ -261,7 +262,9 @@ public class FileCacheManager implements FileCacheQuery {
                 FileObject fo = fe.getFile();
                 File f = FileUtil.toFile(fo);
                 if (f != null) {
-                    files.remove(f.getAbsolutePath());
+                    if (files.remove(f.getAbsolutePath()) != null) {
+                        cacheVersion.incrementAndGet();
+                    }
                 }
             }
 
@@ -277,6 +280,7 @@ public class FileCacheManager implements FileCacheQuery {
                     if (rel != null) {
                         files.put(f.getAbsolutePath(),
                                 new FileCacheQuery.CachedFile(fo, projectName, rel));
+                        cacheVersion.incrementAndGet();
                     }
                 }
             }

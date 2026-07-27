@@ -1,9 +1,9 @@
 package github.anandb.netbeans.manager;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import javax.swing.SwingUtilities;
 
 import github.anandb.netbeans.contract.ProcessControl;
 import github.anandb.netbeans.contract.SessionControl;
@@ -21,7 +21,7 @@ public class DefaultSlashCommandInterceptor implements SlashCommandInterceptor {
 
     private static final Logger LOG = Logger.from(DefaultSlashCommandInterceptor.class);
 
-    private final Map<String, CommandInfo> commands = new HashMap<>();
+    private final Map<String, CommandInfo> commands = new java.util.concurrent.ConcurrentHashMap<>();
 
     private volatile SlashCommandCallback callback;
 
@@ -155,21 +155,28 @@ public class DefaultSlashCommandInterceptor implements SlashCommandInterceptor {
         SlashCommandCallback cb = callback;
         if (cb != null) {
             cb.displayToolMessage("title", "Updating title...");
-            cb.onAsyncSendStarted();
+            javax.swing.SwingUtilities.invokeLater(cb::onAsyncSendStarted);
         }
 
         // Send as regular message — AI needs conversation context to suggest a title
         String prompt = "Suggest a title for this session and call the nb_rename_session tool to rename the session.";
         ProcessControl pc = context.lookup(ProcessControl.class);
         if (pc != null) {
-            pc.sendMessage(sessionId, prompt, Map.of("annotations", Map.of("audience", List.of("assistant"))))
-                    .whenComplete((result, error) -> {
-                        if (cb != null) {
-                            cb.onAsyncSendCompleted();
-                        }
-                    });
+            try {
+                pc.sendMessage(sessionId, prompt, Map.of("annotations", Map.of("audience", List.of("assistant"))))
+                        .whenComplete((result, error) -> {
+                            if (cb != null) {
+                                SwingUtilities.invokeLater(cb::onAsyncSendCompleted);
+                            }
+                        });
+            } catch (Exception e) {
+                LOG.severe("Failed to send title generation message", e);
+                if (cb != null) {
+                    SwingUtilities.invokeLater(cb::onAsyncSendCompleted);
+                }
+            }
         } else if (cb != null) {
-            cb.onAsyncSendCompleted();
+            SwingUtilities.invokeLater(cb::onAsyncSendCompleted);
         }
         return CompletableFuture.completedFuture(true);
     }
@@ -181,6 +188,6 @@ public class DefaultSlashCommandInterceptor implements SlashCommandInterceptor {
 
     @Override
     public Map<String, CommandInfo> getCommands() {
-        return commands;
+        return java.util.Collections.unmodifiableMap(commands);
     }
 }

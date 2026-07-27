@@ -49,15 +49,14 @@ class AssistantTopComponentTest {
 
     @Test
     void testTruncatePathJustOverBoundary() {
-        // No longer truncated — full path returned as-is
         String path = "a".repeat(66);
-        assertEquals(path, ToolContextExtractor.truncatePath(path));
+        assertEquals("..." + "a".repeat(62), ToolContextExtractor.truncatePath(path));
     }
 
     @Test
     void testTruncatePathLong() {
         String path = "a".repeat(100);
-        assertEquals(path, ToolContextExtractor.truncatePath(path));
+        assertEquals("..." + "a".repeat(62), ToolContextExtractor.truncatePath(path));
     }
 
     @Test
@@ -263,13 +262,12 @@ class AssistantTopComponentTest {
 
     @Test
     void testExtractContextTruncatesLongFilePath() {
-        // Paths are no longer truncated — full path returned as-is
         String longPath = "/a/" + "x".repeat(70);
         JsonNode tc = MAPPER.createObjectNode()
                 .set("args", MAPPER.createObjectNode()
                         .put("filePath", longPath));
         String result = ToolContextExtractor.extractToolContext(tc);
-        assertEquals(longPath, result);
+        assertEquals("..." + "x".repeat(62), result);
     }
 
     @Test

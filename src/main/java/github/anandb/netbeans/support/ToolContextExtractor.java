@@ -140,10 +140,13 @@ public final class ToolContextExtractor {
     }
 
     /**
-     * Returns the full path as-is (no truncation).
+     * Truncates a long file path for display, keeping the end of the path (filename).
      */
     public static String truncatePath(String path) {
-        return path;
+        if (path == null || path.length() <= 65) {
+            return path;
+        }
+        return "..." + path.substring(path.length() - 62);
     }
 
     /**
@@ -152,6 +155,9 @@ public final class ToolContextExtractor {
     public static String truncateCommand(String command, int maxLength) {
         if (command == null || command.length() <= maxLength) {
             return command;
+        }
+        if (maxLength <= 3) {
+            return command.substring(0, maxLength);
         }
         return command.substring(0, maxLength - 3) + "...";
     }

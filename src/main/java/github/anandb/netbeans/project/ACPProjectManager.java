@@ -112,6 +112,9 @@ public class ACPProjectManager implements PropertyChangeListener {
 
     public Project[] getAllOpenProjects() {
         Project[] projects = currentProjects.get();
+        if (projects == null) {
+            return new Project[0];
+        }
         return Arrays.copyOf(projects, projects.length);
     }
 }

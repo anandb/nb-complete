@@ -228,36 +228,42 @@
   {
     "name": "permissionGrantFg",
     "property": "netbeans.codingassistant.color.permissionGrantFg",
+    "key": "Button.foreground",
     "dark": "#FFFFFF",
     "light": "#FFFFFF"
   },
   {
     "name": "permissionGrantBg",
     "property": "netbeans.codingassistant.color.permissionGrantBg",
+    "key": "Button.background",
     "dark": "#3B82F6",
     "light": "#2563EB"
   },
   {
     "name": "permissionGrantBorder",
     "property": "netbeans.codingassistant.color.permissionGrantBorder",
+    "key": "Button.borderColor",
     "dark": "#3B82F6",
     "light": "#2563EB"
   },
   {
     "name": "permissionDenyFg",
     "property": "netbeans.codingassistant.color.permissionDenyFg",
+    "key": "Button.foreground",
     "dark": "#FCA5A5",
     "light": "#991B1B"
   },
   {
     "name": "permissionDenyBg",
     "property": "netbeans.codingassistant.color.permissionDenyBg",
+    "key": "Button.background",
     "dark": "#451212",
     "light": "#FEE2E2"
   },
   {
     "name": "permissionDenyBorder",
     "property": "netbeans.codingassistant.color.permissionDenyBorder",
+    "key": "Button.borderColor",
     "dark": "#F87171",
     "light": "#FEE2E2"
   },

@@ -1,5 +1,16 @@
 # Release Notes
 
+## v1.12.2 (Architectural Fixes)
+
+### Fixes
+- **Hexagonal Architecture**: Validated and resolved all architectural debt (upward dependency violations).
+- **Session Lifecycle**: Preamble initialization now correctly uses CompletableFuture flows without blocking the EDT.
+- **Diff Parser**: Completely overhauled `ToolCallDiffParser` to gracefully parse non-contiguous chunks and apply correct line number padding.
+- **UI Components**: Fixed Swing EDT violations in `SlashCommandCallback` implementations and stopped runaway `javax.swing.Timer` objects to plug memory leaks.
+- **Colors**: Added UIManager property fallbacks to all new permission UI colors so they behave correctly across custom NetBeans themes.
+
+### Housekeeping
+- Version bumped to 1.12.2.
 ## v1.12.1 (Hotfix)
 
 ### Fixes

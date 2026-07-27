@@ -2,7 +2,7 @@
 
 ## Project Overview
 - **Project**: Coding Assistant (NetBeans IDE plugin, Java 17, Maven)
-- **Current Stable Version**: 1.12.0
+- **Current Stable Version**: 1.12.2
 - **Key Tech**: NetBeans API (RELEASE220), Flexmark, Jackson, RSyntaxTextArea, JUnit 5.
 
 ## Build Commands
@@ -19,6 +19,7 @@
     - `CollapsibleCodePane`: Syntax highlighted code block rendering.
 
 ## Important Coding Rules
+- **JSON-RPC Parsing**: NEVER use `BufferedReader.readLine()` to parse JSON-RPC streams. It incorrectly assumes single-line formatting and breaks on embedded newlines or throws `OutOfMemoryError` on large payloads. Always use Jackson's streaming `JsonParser` (e.g., `MAPPER.getFactory().createParser()`).
 - **Line Length**: Keep the line length <= 120 characters, but try to fit entire statements into the line without needlessly splitting into small chunks.
 - **Logging**: Use index-based placeholders (`{0}`). NO `warning()` method (use
   `LOG.log(Level.WARNING, ...)` or `severe/warn/info/fine`). Pass exceptions as the LAST argument.

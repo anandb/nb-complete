@@ -61,8 +61,12 @@ public final class ToolCallDiffParser {
 
         // 3. title — only use as file path if it contains a path separator
         //    (avoids false positives like "version 1.2.3" or "Chapter.3")
+        //    Additionally, ensure it does not contain spaces, as AI action titles often
+        //    contain spaces and slashes (e.g., "Fix bug / Update feature").
         String title = textField(toolCall, "title");
-        if (title != null && (title.contains("/") || title.contains("\\"))) return title;
+        if (title != null && !title.contains(" ") && (title.contains("/") || title.contains("\\"))) {
+            return title;
+        }
 
         return null;
     }
@@ -154,6 +158,8 @@ public final class ToolCallDiffParser {
 
     /** Creates a FileChange with inferred status. */
     private static FileChange createChange(String filePath, String oldContent, String newContent) {
+        if (oldContent == null) oldContent = "";
+        if (newContent == null) newContent = "";
         char status;
         if (oldContent.isEmpty() && !newContent.isEmpty()) {
             status = 'A'; // added
@@ -201,9 +207,20 @@ public final class ToolCallDiffParser {
             }
 
             Matcher m = HUNK_HEADER.matcher(line);
-            if (m.matches()) {
+            if (m.find()) {
                 inHunk = true;
                 hasHunk = true;
+                int oldStart = Integer.parseInt(m.group(1));
+                int newStart = Integer.parseInt(m.group(2));
+                
+                // Pad with empty lines to align the hunk to its absolute line number.
+                // This ensures the diff viewer displays the correct line numbers.
+                while (oldLines.size() < oldStart - 1) {
+                    oldLines.add("");
+                }
+                while (newLines.size() < newStart - 1) {
+                    newLines.add("");
+                }
                 continue;
             }
 
