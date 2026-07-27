@@ -258,27 +258,50 @@ public class MessageSender {
         // Only send the cancel notification when the state machine allows it,
         // but ALWAYS reset the UI below — Stop doubles as a manual recovery
         // when the toolbar is stuck disabled.
-        if (sessionService.get().canStopMessage()) {
-            SwingUtilities.invokeLater(() -> {
-                statusController.setStatus("STATUS_Stopping");
-                statusController.startThinking();
-            });
-            // stopCurrentMessage may block on pipe I/O (writer.println).
-            // Run off EDT to avoid freezing the UI.
-            CompletableFuture.runAsync(() ->
-                sessionService.get().stopCurrentMessage()
-            );
-        }
-        // Show "Stopped" immediately — don't wait for cancel notification to be sent.
-        SwingUtilities.invokeLater(() -> {
-            statusController.setStatus("STATUS_Stopped");
-            statusController.stopThinking();
-            chatPanel.stopStreaming();
-            statusController.updateButtonState(false);
-            // Set turnEnded so late SSE displayMessage() doesn't re-enable processing.
-            if (onMessageDoneCallback != null) {
-                onMessageDoneCallback.run();
+        try {
+            if (sessionService != null && sessionService.get() != null && sessionService.get().canStopMessage()) {
+                SwingUtilities.invokeLater(() -> {
+                    statusController.setStatus("STATUS_Stopping");
+                    statusController.startThinking();
+                });
+                // stopCurrentMessage may block on pipe I/O (writer.println).
+                // Run off EDT to avoid freezing the UI.
+                CompletableFuture.runAsync(() -> {
+                    try {
+                        sessionService.get().stopCurrentMessage();
+                    } catch (Exception ex) {
+                        LOG.info("Error stopping message: {0}", ExceptionUtils.getMessage(ex));
+                    }
+                });
             }
-        });
+        } catch (Exception ex) {
+            LOG.info("Error checking canStopMessage: {0}", ExceptionUtils.getMessage(ex));
+        } finally {
+            // Show "Stopped" immediately — don't wait for cancel notification to be sent.
+            SwingUtilities.invokeLater(() -> {
+                try {
+                    statusController.setStatus("STATUS_Stopped");
+                    statusController.stopThinking();
+                    if (chatPanel != null) {
+                        chatPanel.stopStreaming();
+                    }
+                } catch (Exception ex) {
+                    LOG.info("Error during stop UI reset: {0}", ExceptionUtils.getMessage(ex));
+                } finally {
+                    if (statusController != null) {
+                        statusController.updateButtonState(false);
+                        statusController.setInputEnabled(true);
+                    }
+                    // Set turnEnded so late SSE displayMessage() doesn't re-enable processing.
+                    if (onMessageDoneCallback != null) {
+                        try {
+                            onMessageDoneCallback.run();
+                        } catch (Exception ex) {
+                            LOG.info("Error running message done callback: {0}", ExceptionUtils.getMessage(ex));
+                        }
+                    }
+                }
+            });
+        }
     }
 }

@@ -11,7 +11,7 @@
 ## Architecture & UI
 - **ACP & JSON-RPC**: Compliant with ACP v1. Communication via `AcpProtocolClient`
   (JSON-RPC + SSE Streams).
-- **Stop Mechanism**: `session/cancel` MUST be a **notification** (no ID).
+- **Stop Mechanism**: `session/cancel` MUST be a **notification** (no ID). Stop must always work, it should re-enable all toolbar buttons, all dropdowns and the input textarea.
 - **UI Structure**:
     - `AssistantTopComponent`: Main chat panel.
     - `ChatThreadPanel`: Message thread container.

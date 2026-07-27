@@ -7,6 +7,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.List;
 
 
@@ -69,10 +70,10 @@ class SessionManagerTest {
         JsonNode mockResponse = mapper.createObjectNode()
                 .put("id", "new-id")
                 .put("title", "New");
-        when(processManager.sendRequest(eq("session/new"), any()))
+        when(processManager.sendRequest(eq("session/new"), any(), eq(60L), eq(TimeUnit.SECONDS)))
                 .thenReturn(CompletableFuture.completedFuture(mockResponse));
 
         sessionManager.createSession("/test/cwd");
-        verify(processManager).sendRequest(eq("session/new"), any());
+        verify(processManager).sendRequest(eq("session/new"), any(), eq(60L), eq(TimeUnit.SECONDS));
     }
 }

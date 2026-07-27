@@ -43,6 +43,7 @@ public class AcpProtocolClient implements Closeable {
     private final AtomicLong nextId = new AtomicLong(0);
     private final InputStream inputStream;
     private final Map<Long, CompletableFuture<JsonNode>> pendingRequests = new ConcurrentHashMap<>();
+    private final Map<Long, Long> requestIdleTimeouts = new ConcurrentHashMap<>();
 
     private final Map<String, Consumer<JsonNode>> notificationListeners = new ConcurrentHashMap<>();
     private final Map<String, RequestHandler> requestHandlers = new ConcurrentHashMap<>();
@@ -85,17 +86,25 @@ public class AcpProtocolClient implements Closeable {
     }
 
     public CompletableFuture<JsonNode> sendRequest(String method, Object params) {
+        return sendRequest(method, params, 0, TimeUnit.MILLISECONDS);
+    }
+
+    public CompletableFuture<JsonNode> sendRequest(String method, Object params, long timeout, TimeUnit unit) {
         if (closed) {
             return CompletableFuture.failedFuture(new IOException("Client closed"));
         }
         long id = nextId.getAndIncrement();
         CompletableFuture<JsonNode> future = new CompletableFuture<>();
         pendingRequests.put(id, future);
+        if (timeout > 0 && unit != null) {
+            requestIdleTimeouts.put(id, unit.toNanos(timeout));
+        }
 
         // Re-check closed after put — if close() drained the map between
         // our top-level guard and this put, remove the orphaned future.
         if (closed) {
             pendingRequests.remove(id);
+            requestIdleTimeouts.remove(id);
             future.completeExceptionally(new IOException("Client closed"));
             return future;
         }
@@ -124,6 +133,7 @@ public class AcpProtocolClient implements Closeable {
             wireLogger.log(json);
         } catch (IOException e) {
             pendingRequests.remove(id);
+            requestIdleTimeouts.remove(id);
             LOG.severe("IOException sending request method={0}, id={1}", method, id, e);
             future.completeExceptionally(e);
             notifyConnectionError(e);
@@ -220,6 +230,30 @@ public class AcpProtocolClient implements Closeable {
             scheduleWatchdogCheck();
             return;
         }
+
+        // Check per-request idle timeouts
+        java.util.List<Long> toFail = new java.util.ArrayList<>();
+        for (Map.Entry<Long, CompletableFuture<JsonNode>> entry : pendingRequests.entrySet()) {
+            Long id = entry.getKey();
+            Long reqTimeout = requestIdleTimeouts.get(id);
+            if (reqTimeout != null && reqTimeout > 0 && idleNanos >= reqTimeout) {
+                toFail.add(id);
+            }
+        }
+        for (Long id : toFail) {
+            CompletableFuture<JsonNode> future = pendingRequests.remove(id);
+            requestIdleTimeouts.remove(id);
+            if (future != null) {
+                LOG.warn("Request id={0} exceeded idle timeout, failing it.", id);
+                future.completeExceptionally(new java.util.concurrent.TimeoutException("Request idle timeout exceeded"));
+            }
+        }
+        
+        // If all were failed, return early
+        if (pendingRequests.isEmpty()) {
+            scheduleWatchdogCheck();
+            return;
+        }
         long timeout = PluginSettings.getSessionIdleTimeout();
         if (timeout <= 0) {
             scheduleWatchdogCheck();
@@ -273,6 +307,7 @@ public class AcpProtocolClient implements Closeable {
             } else {
                 // Response to Outgoing Request
                 CompletableFuture<JsonNode> future = pendingRequests.remove(id);
+                requestIdleTimeouts.remove(id);
                 if (future != null) {
                     if (node.has("error")) {
                         JsonNode errNode = node.get("error");
@@ -429,6 +464,7 @@ public class AcpProtocolClient implements Closeable {
             }
         });
         pendingRequests.clear();
+        requestIdleTimeouts.clear();
         notificationListeners.clear();
         requestHandlers.clear();
     }

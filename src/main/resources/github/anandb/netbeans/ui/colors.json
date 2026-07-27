@@ -28,9 +28,10 @@
   {
     "name": "sunkenBackground",
     "property": "netbeans.codingassistant.color.sunkenBackground",
-    "key": "Editor.background",
+    "key": "Panel.background",
+    "keyDark": "Editor.background",
     "dark": "#1E1E1E",
-    "light": "#FFFFFF"
+    "fallback": "#ECECEC"
   },
   {
     "name": "bubbleUser",
@@ -254,22 +255,22 @@
     "name": "permissionGrantFg",
     "property": "netbeans.codingassistant.color.permissionGrantFg",
     "key": "Button.foreground",
-    "dark": "#FFFFFF",
-    "light": "#FFFFFF"
+    "dark": "#81C784",
+    "light": "#2E7D32"
   },
   {
     "name": "permissionGrantBg",
     "property": "netbeans.codingassistant.color.permissionGrantBg",
     "key": "Button.background",
-    "dark": "#3B82F6",
-    "light": "#2563EB"
+    "dark": "#1B3A1D",
+    "light": "#E8F5E9"
   },
   {
     "name": "permissionGrantBorder",
     "property": "netbeans.codingassistant.color.permissionGrantBorder",
     "key": "Button.borderColor",
-    "dark": "#3B82F6",
-    "light": "#2563EB"
+    "dark": "#66BB6A",
+    "light": "#4CAF50"
   },
   {
     "name": "permissionDenyFg",

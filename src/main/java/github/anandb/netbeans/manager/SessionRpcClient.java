@@ -32,14 +32,14 @@ final class SessionRpcClient {
         if (directory != null && !directory.isEmpty()) {
             params.put("cwd", directory);
         }
-        return processManager.sendRequest("session/list", params);
+        return processManager.sendRequest("session/list", params, 60, java.util.concurrent.TimeUnit.SECONDS);
     }
 
     CompletableFuture<JsonNode> createSession(String cwd) {
         Map<String, Object> params = new HashMap<>();
         params.put("cwd", cwd);
         params.put("mcpServers", processManager.getToolExecutor().getServerConfig());
-        return processManager.sendRequest("session/new", params);
+        return processManager.sendRequest("session/new", params, 60, java.util.concurrent.TimeUnit.SECONDS);
     }
 
     CompletableFuture<JsonNode> loadSessionFromServer(String sessionId, String cwd) {
@@ -49,7 +49,7 @@ final class SessionRpcClient {
             params.put("cwd", cwd);
         }
         params.put("mcpServers", processManager.getToolExecutor().getServerConfig());
-        return processManager.sendRequest("session/load", params);
+        return processManager.sendRequest("session/load", params, 2, java.util.concurrent.TimeUnit.MINUTES);
     }
 
     CompletableFuture<Void> renameSessionOnServer(String sessionId, String title) {
@@ -64,6 +64,6 @@ final class SessionRpcClient {
                 "sessionId", sessionId,
                 "configId", configId,
                 "value", value
-        ));
+        ), 30, java.util.concurrent.TimeUnit.SECONDS);
     }
 }

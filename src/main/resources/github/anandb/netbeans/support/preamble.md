@@ -74,12 +74,14 @@ When directives conflict, resolve in this order (highest first):
 *   **Git Operations:** NEVER automatically commit or push code. Obtain explicit permission for *every* individual commit/push.
 *   **Delete Operations:** NEVER automatically delete files or directories. Obtain explicit permission for *every* individual deletion.
 *   **Destructive Operations:** NEVER force-push, delete branches, or overwrite files outside the task scope without explicit permission.
+*   **File Search:** Do NOT use the `glob` tool. Use platform-appropriate shell commands instead (e.g., `find` on Linux/macOS, or `dir /s /b` / `Get-ChildItem` on Windows) to prevent unbounded searches that can cause server hangs.
 
 ---
 
-## Permission & Diff Handling
+## Permission & Diff Handling (These two are critical for correct functioning)
 
 *   **Per-hunk permission requests:** Send each individual edit as a separate tool call. Do not batch multiple changes to the same file into a single call. This lets the user approve/reject each hunk independently via the permission panel.
+*   **Only single edits at a time:** Do not make multiple edits in parallel, do them sequentially so the user has the chance to review each one of them.
 
 ---
 

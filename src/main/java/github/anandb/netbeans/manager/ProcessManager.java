@@ -142,6 +142,14 @@ public class ProcessManager implements ProcessControl {
         return client.sendRequest(method, params);
     }
 
+    public CompletableFuture<JsonNode> sendRequest(String method, Object params, long timeout, java.util.concurrent.TimeUnit unit) {
+        AcpProtocolClient client = rpcClient.get();
+        if (client == null) {
+            return CompletableFuture.failedFuture(new RuntimeException(operationalError()));
+        }
+        return client.sendRequest(method, params, timeout, unit);
+    }
+
 
 
     public void sendNotification(String method, Object params) {
@@ -288,7 +296,7 @@ public class ProcessManager implements ProcessControl {
         params.put("prompt", promptBlocks);
         params.put("mcpServers", toolExecutor.getServerConfig());
 
-        return client.sendRequest("session/prompt", params);
+        return client.sendRequest("session/prompt", params, 3, java.util.concurrent.TimeUnit.MINUTES);
     }
 
     @Override

@@ -699,15 +699,14 @@ public class SessionManager implements SessionQuery, SessionControl {
     /** Sends the initial preamble prompt for a new session.
      *  @return true if a preamble was sent, false if empty/skipped */
     private boolean sendPreamble(String sessionId) {
-        String preamble = PluginSettings.getPreamble().trim();
-        if (!preamble.isEmpty()) {
+        String preamble = PluginSettings.getPreamble();
+        if (!isBlank(preamble)) {
             sendAssistantPrompt(sessionId, preamble, "preamble");
             return true;
         }
+
         return false;
     }
-
-
 
     private void sendWarmupPrompt(String sessionId) {
         sendAssistantPrompt(sessionId, " ", "warm-up prompt");
