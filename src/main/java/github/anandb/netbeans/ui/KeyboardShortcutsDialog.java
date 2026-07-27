@@ -431,7 +431,7 @@ final class KeyboardShortcutsDialog extends JDialog {
                 {ShortcutUtils.resolveShortcut("github.anandb.netbeans.ui.SearchWebAction"), "Search Web"},
                 {ShortcutUtils.resolveShortcut("github.anandb.netbeans.ui.GoToFileAction"), "Jump to File"},
             }),
-            new ShortcutSection("Stash Diff (Experimental)", new String[][]{
+            new ShortcutSection("Stash Diff", new String[][]{
                 {ShortcutUtils.resolveShortcut("github.anandb.netbeans.ui.StashDiffAction"), "Open Stash Diff Viewer"},
                 {mod + " + ,", "Previous Difference"},
                 {mod + " + .", "Next Difference"},

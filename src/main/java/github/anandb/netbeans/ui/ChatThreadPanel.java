@@ -563,6 +563,8 @@ public class ChatThreadPanel extends JPanel {
             JPanel wrapper = new JPanel(new java.awt.BorderLayout());
             wrapper.setOpaque(false);
             wrapper.setBorder(BorderFactory.createEmptyBorder(4, 20, 4, 20));
+            wrapper.setAlignmentX(Component.LEFT_ALIGNMENT);
+            wrapper.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
             wrapper.add(rp, java.awt.BorderLayout.CENTER);
 
             messagesContainer.add(wrapper);
