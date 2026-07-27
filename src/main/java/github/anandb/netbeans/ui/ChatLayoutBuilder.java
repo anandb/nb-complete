@@ -338,8 +338,12 @@ final class ChatLayoutBuilder {
             NbBundle.getMessage(AssistantTopComponent.class, "HINT_QuickstartGuide"), null);
         helpBtn.setContentAreaFilled(false);
         helpBtn.setBorderPainted(false);
-        helpBtn.addActionListener(e -> BrowserUtils.openOrCopyUrl(quickstartUrl, "STATUS_QuickstartCopied",
-            (url, key) -> topComponent.setStatus(key, url)));
+        helpBtn.addActionListener(e -> {
+            NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                    .put(PreferenceKeys.HELP_FLASH_PENDING, "false");
+            BrowserUtils.openOrCopyUrl(quickstartUrl, "STATUS_QuickstartCopied",
+                (url, key) -> topComponent.setStatus(key, url));
+        });
 
         JButton keyboardShortcutsBtn = UIUtils.createToolbarButton("keyboard.svg",
             NbBundle.getMessage(AssistantTopComponent.class, "HINT_KeyboardShortcuts"), null);
@@ -367,13 +371,11 @@ final class ChatLayoutBuilder {
         rightButtons.add(helpBtn);
         cwdRow.add(rightButtons, BorderLayout.EAST);
 
-        // Flash the help button only on install/upgrade, not every startup
+        // Flash the help button until the user clicks on it
         String flashPending = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
                 .get(PreferenceKeys.HELP_FLASH_PENDING, "false");
         if ("true".equals(flashPending)) {
             HelpButtonFlash.flash(helpBtn);
-            NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
-                    .put(PreferenceKeys.HELP_FLASH_PENDING, "false");
         }
 
         headerContent.add(cwdRow, BorderLayout.NORTH);
