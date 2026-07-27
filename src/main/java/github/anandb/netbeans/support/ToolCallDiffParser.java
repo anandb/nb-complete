@@ -97,11 +97,13 @@ public final class ToolCallDiffParser {
             if (ri.has("diff") && isNotBlank(ri.get("diff").asText())) {
                 String diffText = ri.get("diff").asText();
                 String fp = extractFilePath(toolCall);
-                DiffPair dp = parseUnifiedDiff(diffText);
-                if (dp != null) {
+                List<DiffPair> dps = parseUnifiedDiff(diffText);
+                if (!dps.isEmpty()) {
                     // Only add if we didn't get it from oldString/newString
                     if (result.isEmpty()) {
-                        result.add(createChange(fp, dp.oldContent, dp.newContent));
+                        for (DiffPair dp : dps) {
+                            result.add(createChange(fp, dp.oldContent(), dp.newContent()));
+                        }
                     }
                 }
             }
@@ -126,9 +128,9 @@ public final class ToolCallDiffParser {
                     String patch = textField(block, "patch");
                     if (patch == null) patch = textField(block, "text");
                     if (patch != null) {
-                        DiffPair dp = parseUnifiedDiff(patch);
-                        if (dp != null) {
-                            result.add(createChange(fp, dp.oldContent, dp.newContent));
+                        List<DiffPair> dps = parseUnifiedDiff(patch);
+                        for (DiffPair dp : dps) {
+                            result.add(createChange(fp, dp.oldContent(), dp.newContent()));
                         }
                     }
                 }
@@ -193,13 +195,13 @@ public final class ToolCallDiffParser {
      * Parses a unified diff string into old/new content by extracting hunk
      * context. Returns null if parsing fails.
      */
-    static DiffPair parseUnifiedDiff(String diff) {
-        if (diff == null || diff.isEmpty()) return null;
+    static List<DiffPair> parseUnifiedDiff(String diff) {
+        if (diff == null || diff.isEmpty()) return List.of();
 
+        List<DiffPair> pairs = new ArrayList<>();
         List<String> oldLines = new ArrayList<>();
         List<String> newLines = new ArrayList<>();
         boolean inHunk = false;
-        boolean hasHunk = false;
 
         for (String line : diff.split("\n")) {
             if (line.startsWith("--- ") || line.startsWith("+++ ")) {
@@ -208,19 +210,12 @@ public final class ToolCallDiffParser {
 
             Matcher m = HUNK_HEADER.matcher(line);
             if (m.find()) {
+                if (inHunk && (!oldLines.isEmpty() || !newLines.isEmpty())) {
+                    pairs.add(new DiffPair(String.join("\n", oldLines), String.join("\n", newLines)));
+                }
+                oldLines.clear();
+                newLines.clear();
                 inHunk = true;
-                hasHunk = true;
-                int oldStart = Integer.parseInt(m.group(1));
-                int newStart = Integer.parseInt(m.group(2));
-                
-                // Pad with empty lines to align the hunk to its absolute line number.
-                // This ensures the diff viewer displays the correct line numbers.
-                while (oldLines.size() < oldStart - 1) {
-                    oldLines.add("");
-                }
-                while (newLines.size() < newStart - 1) {
-                    newLines.add("");
-                }
                 continue;
             }
 
@@ -240,13 +235,10 @@ public final class ToolCallDiffParser {
             }
         }
 
-        if (!hasHunk || (oldLines.isEmpty() && newLines.isEmpty())) {
-            return null;
+        if (inHunk && (!oldLines.isEmpty() || !newLines.isEmpty())) {
+            pairs.add(new DiffPair(String.join("\n", oldLines), String.join("\n", newLines)));
         }
 
-        return new DiffPair(
-            String.join("\n", oldLines),
-            String.join("\n", newLines)
-        );
+        return pairs;
     }
 }

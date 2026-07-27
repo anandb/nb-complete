@@ -10,6 +10,7 @@ import github.anandb.netbeans.support.ToolCallDiffParser.DiffPair;
 import github.anandb.netbeans.support.ToolCallDiffParser.FileChange;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -31,100 +32,102 @@ class ToolCallDiffParserTest {
 
     @Test
     void parseUnifiedDiff_null() {
-        assertNull(ToolCallDiffParser.parseUnifiedDiff(null));
+        assertTrue(ToolCallDiffParser.parseUnifiedDiff(null).isEmpty());
     }
 
     @Test
     void parseUnifiedDiff_empty() {
-        assertNull(ToolCallDiffParser.parseUnifiedDiff(""));
+        assertTrue(ToolCallDiffParser.parseUnifiedDiff("").isEmpty());
     }
 
     @Test
     void parseUnifiedDiff_singleHunk() {
         String diff = "@@ -1,3 +1,4 @@\n a\n-b\n+c\n d\n";
-        DiffPair dp = ToolCallDiffParser.parseUnifiedDiff(diff);
-        assertNotNull(dp);
-        assertEquals("a\nb\nd", dp.oldContent());
-        assertEquals("a\nc\nd", dp.newContent());
+        List<DiffPair> dps = ToolCallDiffParser.parseUnifiedDiff(diff);
+        assertNotNull(dps);
+        assertEquals("a\nb\nd", dps.get(0).oldContent());
+        assertEquals("a\nc\nd", dps.get(0).newContent());
     }
 
     @Test
     void parseUnifiedDiff_additionsOnly() {
         String diff = "@@ -1,0 +1,2 @@\n+a\n+b\n";
-        DiffPair dp = ToolCallDiffParser.parseUnifiedDiff(diff);
-        assertNotNull(dp);
-        assertEquals("", dp.oldContent());
-        assertEquals("a\nb", dp.newContent());
+        List<DiffPair> dps = ToolCallDiffParser.parseUnifiedDiff(diff);
+        assertNotNull(dps);
+        assertEquals("", dps.get(0).oldContent());
+        assertEquals("a\nb", dps.get(0).newContent());
     }
 
     @Test
     void parseUnifiedDiff_deletionsOnly() {
         String diff = "@@ -1,2 +0,0 @@\n-a\n-b\n";
-        DiffPair dp = ToolCallDiffParser.parseUnifiedDiff(diff);
-        assertNotNull(dp);
-        assertEquals("a\nb", dp.oldContent());
-        assertEquals("", dp.newContent());
+        List<DiffPair> dps = ToolCallDiffParser.parseUnifiedDiff(diff);
+        assertNotNull(dps);
+        assertEquals("a\nb", dps.get(0).oldContent());
+        assertEquals("", dps.get(0).newContent());
     }
 
     @Test
     void parseUnifiedDiff_multipleHunks() {
         String diff = "@@ -1,2 +1,2 @@\n a\n-b\n+c\n@@ -5,3 +5,4 @@\n x\n-y\n+z\n w\n";
-        DiffPair dp = ToolCallDiffParser.parseUnifiedDiff(diff);
-        assertNotNull(dp);
-        assertEquals("a\nb\n\n\nx\ny\nw", dp.oldContent());
-        assertEquals("a\nc\n\n\nx\nz\nw", dp.newContent());
+        List<DiffPair> dps = ToolCallDiffParser.parseUnifiedDiff(diff);
+        assertEquals(2, dps.size());
+        assertEquals("a\nb", dps.get(0).oldContent());
+        assertEquals("a\nc", dps.get(0).newContent());
+        assertEquals("x\ny\nw", dps.get(1).oldContent());
+        assertEquals("x\nz\nw", dps.get(1).newContent());
     }
 
     @Test
     void parseUnifiedDiff_withGitHeaders() {
         String diff = "--- a/file.java\n+++ b/file.java\n@@ -1,3 +1,4 @@\n a\n-b\n+c\n d\n";
-        DiffPair dp = ToolCallDiffParser.parseUnifiedDiff(diff);
-        assertNotNull(dp);
-        assertEquals("a\nb\nd", dp.oldContent());
-        assertEquals("a\nc\nd", dp.newContent());
+        List<DiffPair> dps = ToolCallDiffParser.parseUnifiedDiff(diff);
+        assertNotNull(dps);
+        assertEquals("a\nb\nd", dps.get(0).oldContent());
+        assertEquals("a\nc\nd", dps.get(0).newContent());
     }
 
     @Test
     void parseUnifiedDiff_noHunkHeader() {
         String diff = " a\n-b\n+c\n";
-        assertNull(ToolCallDiffParser.parseUnifiedDiff(diff));
+        assertTrue(ToolCallDiffParser.parseUnifiedDiff(diff).isEmpty());
     }
 
     @Test
     void parseUnifiedDiff_contextOnly_noChanges() {
         // Context lines only, no + or - → returns DiffPair with equal content
         String diff = "@@ -1,2 +1,2 @@\n a\n b\n";
-        DiffPair dp = ToolCallDiffParser.parseUnifiedDiff(diff);
-        assertNotNull(dp);
-        assertEquals("a\nb", dp.oldContent());
-        assertEquals("a\nb", dp.newContent());
+        List<DiffPair> dps = ToolCallDiffParser.parseUnifiedDiff(diff);
+        assertFalse(dps.isEmpty());
+        assertEquals("a\nb", dps.get(0).oldContent());
+        assertEquals("a\nb", dps.get(0).newContent());
     }
 
     @Test
     void parseUnifiedDiff_trailingNewline() {
         String diff = "@@ -1,1 +1,1 @@\n-old\n+new\n";
-        DiffPair dp = ToolCallDiffParser.parseUnifiedDiff(diff);
-        assertNotNull(dp);
-        assertEquals("old", dp.oldContent());
-        assertEquals("new", dp.newContent());
+        List<DiffPair> dps = ToolCallDiffParser.parseUnifiedDiff(diff);
+        assertFalse(dps.isEmpty());
+        assertEquals("old", dps.get(0).oldContent());
+        assertEquals("new", dps.get(0).newContent());
     }
 
     @Test
     void parseUnifiedDiff_contentBeforeHunk() {
         String diff = "some header\n@@ -1,1 +1,2 @@\n a\n+b\n";
-        DiffPair dp = ToolCallDiffParser.parseUnifiedDiff(diff);
-        assertNotNull(dp);
-        assertEquals("a", dp.oldContent());
-        assertEquals("a\nb", dp.newContent());
+        List<DiffPair> dps = ToolCallDiffParser.parseUnifiedDiff(diff);
+        assertFalse(dps.isEmpty());
+        assertEquals("a", dps.get(0).oldContent());
+        assertEquals("a\nb", dps.get(0).newContent());
     }
 
     @Test
     void parseUnifiedDiff_emptyLinesInHunk() {
         String diff = "@@ -1,2 +1,2 @@\n a\n-\n+\n";
-        DiffPair dp = ToolCallDiffParser.parseUnifiedDiff(diff);
-        assertNotNull(dp);
-        assertEquals("a\n", dp.oldContent());
-        assertEquals("a\n", dp.newContent());
+        List<DiffPair> dps = ToolCallDiffParser.parseUnifiedDiff(diff);
+        assertFalse(dps.isEmpty());
+        assertEquals("a\n", dps.get(0).oldContent());
+        assertEquals("a\n", dps.get(0).newContent());
     }
 
     // ========================================================
