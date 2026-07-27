@@ -599,5 +599,27 @@
                 </plugins>
             </build>
         </profile>
+        <profile>
+            <id>sign-nbm</id>
+            <activation>
+                <file>
+                    <exists>${env.NBM_KEYSTORE}</exists>
+                </file>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.netbeans.utilities</groupId>
+                        <artifactId>nbm-maven-plugin</artifactId>
+                        <configuration>
+                            <keystore>${env.NBM_KEYSTORE}</keystore>
+                            <keystorealias>${env.NBM_ALIAS}</keystorealias>
+                            <keystorepassword>${env.NBM_KEYPASS}</keystorepassword>
+                            <tsaurl>${env.NBM_TSA}</tsaurl>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
     </profiles>
 </project>
