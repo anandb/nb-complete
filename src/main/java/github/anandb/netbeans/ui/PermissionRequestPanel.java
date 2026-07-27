@@ -274,13 +274,6 @@ final class PermissionRequestPanel extends JPanel {
         List<FileChange> fragmentChanges = ToolCallDiffParser.parse(toolCall);
         if (fragmentChanges.isEmpty()) return;
 
-        // Dedup — the parser can return the same change from args.oldString
-        // and content[] blocks.
-        java.util.LinkedHashSet<FileChange> deduped = new java.util.LinkedHashSet<>(fragmentChanges);
-        if (deduped.size() < fragmentChanges.size()) {
-            fragmentChanges = new ArrayList<>(deduped);
-        }
-
         // Expand each fragment individually (read full file, apply just this
         // fragment's change) without merging. A file with 3 edits produces 3
         // entries, each showing full-file diff with that one hunk applied.
