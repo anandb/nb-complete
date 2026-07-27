@@ -69,7 +69,7 @@ final class PermissionDialogManager {
                         : toolCall.has("name") ? toolCall.get("name").asText() : "tool";
             }
 
-            String context = ToolContextExtractor.extractToolContext(toolCall);
+            String context = ToolContextExtractor.extractToolContext(toolCall, 256);
             // Avoid duplication: when title equals file path, don't show both
             if (context != null && !context.equals(title)
                     && !context.equals(toolCall.has("title") ? toolCall.get("title").asText() : null)) {

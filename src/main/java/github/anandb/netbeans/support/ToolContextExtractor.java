@@ -26,6 +26,13 @@ public final class ToolContextExtractor {
      * </ul>
      */
     public static String extractToolContext(JsonNode toolCall) {
+        return extractToolContext(toolCall, 80);
+    }
+
+    /**
+     * Extracts a human-readable context string with a configurable command truncation limit.
+     */
+    public static String extractToolContext(JsonNode toolCall, int commandMaxLength) {
         JsonNode args = toolCall.has("args") ? toolCall.get("args")
                 : toolCall.has("arguments") ? toolCall.get("arguments") : null;
 
@@ -35,7 +42,7 @@ public final class ToolContextExtractor {
         }
 
         if (args != null && args.isObject()) {
-            String result = extractContextFromArgs(args);
+            String result = extractContextFromArgs(args, commandMaxLength);
             if (result != null) {
                 return result;
             }
@@ -53,7 +60,7 @@ public final class ToolContextExtractor {
             if (pattern.contains("/") || pattern.contains(File.separator) || pattern.startsWith(".")) {
                 return truncatePath(pattern);
             }
-            return truncateCommand(pattern);
+            return truncateCommand(pattern, commandMaxLength);
         }
 
         return null;
@@ -64,7 +71,7 @@ public final class ToolContextExtractor {
      * Checks in priority order: filePath, filepath, file_path, path, command,
      * url, uri, then falls back to the first short string value.
      */
-    private static String extractContextFromArgs(JsonNode args) {
+    private static String extractContextFromArgs(JsonNode args, int commandMaxLength) {
         if (args.has("filePath")) {
             return truncatePath(args.get("filePath").asText());
         }
@@ -78,7 +85,7 @@ public final class ToolContextExtractor {
             return truncatePath(args.get("path").asText());
         }
         if (args.has("command")) {
-            return truncateCommand(args.get("command").asText());
+            return truncateCommand(args.get("command").asText(), commandMaxLength);
         }
         if (args.has("url")) {
             return args.get("url").asText();
@@ -140,12 +147,19 @@ public final class ToolContextExtractor {
     }
 
     /**
+     * Truncates a shell command for display, keeping the first {@code maxLength} chars.
+     */
+    public static String truncateCommand(String command, int maxLength) {
+        if (command == null || command.length() <= maxLength) {
+            return command;
+        }
+        return command.substring(0, maxLength - 3) + "...";
+    }
+
+    /**
      * Truncates a shell command for display, keeping the first ~80 chars.
      */
     public static String truncateCommand(String command) {
-        if (command == null || command.length() <= 80) {
-            return command;
-        }
-        return command.substring(0, 77) + "...";
+        return truncateCommand(command, 80);
     }
 }

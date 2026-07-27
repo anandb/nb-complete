@@ -34,6 +34,10 @@ jobs:
           gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
           gpg-passphrase: GPG_PASSPHRASE
 
+      - name: Decode NBM keystore
+        if: ${{ secrets.NBM_KEYSTORE_B64 != '' }}
+        run: echo "${{ secrets.NBM_KEYSTORE_B64 }}" | base64 -d > /tmp/nb-complete-keystore.jks
+
       - name: Build and Deploy
         run: |
           if [ "${{ github.event.inputs.dryRun }}" == "true" ]; then
@@ -46,3 +50,6 @@ jobs:
           MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
           MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          NBM_KEYSTORE: /tmp/nb-complete-keystore.jks
+          NBM_ALIAS: ${{ secrets.NBM_ALIAS }}
+          NBM_KEYPASS: ${{ secrets.NBM_KEYPASS }}
