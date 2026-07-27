@@ -146,7 +146,10 @@ public final class ToolCallDiffParser {
         // Remove no-op entries where old and new are identical
         result.removeIf(fc -> fc.oldContent().equals(fc.newContent()));
 
-        return result;
+        // Deduplicate identical file changes
+        List<FileChange> deduped = new ArrayList<>(new java.util.LinkedHashSet<>(result));
+
+        return deduped;
     }
 
     /** Creates a FileChange with inferred status. */

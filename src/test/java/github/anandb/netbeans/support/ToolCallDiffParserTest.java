@@ -475,6 +475,21 @@ class ToolCallDiffParserTest {
         assertEquals("/src/A.java", result.get(0).filePath());
     }
 
+    @Test
+    void parse_duplicateDiffs_areDeduplicated() {
+        ObjectNode args = obj()
+                .put("filePath", "/src/A.java")
+                .put("oldString", "a")
+                .put("newString", "b");
+        ObjectNode b1 = obj().put("type", "diff").put("oldText", "a").put("newText", "b");
+        ObjectNode tc = obj();
+        tc.set("args", args);
+        tc.set("content", arr().add(b1));
+        List<FileChange> result = ToolCallDiffParser.parse(tc);
+        assertEquals(1, result.size());
+        assertEquals("/src/A.java", result.get(0).filePath());
+    }
+
     // ========================================================
     // parse — no file path fallback
     // ========================================================
