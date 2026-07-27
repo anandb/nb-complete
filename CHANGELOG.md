@@ -3,6 +3,8 @@
 ## v1.12.0 (Changes since v1.11.3)
 
 ### Features
+- **Help Icon Flash**: Doubled help icon flash duration and persist hide on click.
+- **NBM Signing**: Added sign-nbm profile for self-signed NBM signing.
 - **Permission request diffs**: Permission dialogs now render file changes inline using a unified diff view, extracting `oldString`/`newString` from arguments or raw `diff` outputs. Files are listed with status icons.
 - **Pre-preamble config confirm**: Added a slide-in bottom panel for model and thinking-level selection prior to creating a session, featuring a wobble animation for attention.
 - **HTML export**: New self-contained HTML export option alongside existing Markdown.
