@@ -2,7 +2,9 @@
   {
     "name": "background",
     "property": "netbeans.codingassistant.color.background",
-    "key": "Panel.background"
+    "key": "Panel.background",
+    "dark": "#3C3F41",
+    "light": "#ECECEC"
   },
   {
     "name": "foreground",
@@ -12,17 +14,23 @@
   {
     "name": "selection",
     "property": "netbeans.codingassistant.color.selection",
-    "key": "TextArea.selectionBackground"
+    "key": "TextArea.selectionBackground",
+    "dark": "#4B6EAF",
+    "light": "#C5DBFA"
   },
   {
     "name": "accent",
     "property": "netbeans.codingassistant.color.accent",
-    "key": "Button.focusColor"
+    "key": "Button.focusColor",
+    "dark": "#589DF6",
+    "light": "#268BD2"
   },
   {
     "name": "sunkenBackground",
     "property": "netbeans.codingassistant.color.sunkenBackground",
-    "key": "Editor.background"
+    "key": "Editor.background",
+    "dark": "#1E1E1E",
+    "light": "#FFFFFF"
   },
   {
     "name": "bubbleUser",
@@ -54,22 +62,30 @@
   {
     "name": "panelHeader",
     "property": "netbeans.codingassistant.color.panelHeader",
-    "key": "Panel.background"
+    "key": "Panel.background",
+    "dark": "#3C3F41",
+    "light": "#ECECEC"
   },
   {
     "name": "base1",
     "property": "netbeans.codingassistant.color.base1",
-    "key": "Label.foreground"
+    "key": "Label.foreground",
+    "dark": "#BBBFBF",
+    "light": "#333333"
   },
   {
     "name": "base2",
     "property": "netbeans.codingassistant.color.base2",
-    "key": "controlShadow"
+    "key": "controlShadow",
+    "dark": "#636569",
+    "light": "#A0A0A0"
   },
   {
     "name": "yellow",
     "property": "netbeans.codingassistant.color.yellow",
-    "key": "ComboBox.selectionBackground"
+    "key": "ComboBox.selectionBackground",
+    "dark": "#D4A017",
+    "light": "#FFD700"
   },
   {
     "name": "codeBackground",
@@ -107,12 +123,16 @@
   {
     "name": "codeHeaderBackground",
     "property": "netbeans.codingassistant.color.codeHeaderBackground",
-    "key": "TableHeader.background"
+    "key": "TableHeader.background",
+    "dark": "#323232",
+    "light": "#E0DAD0"
   },
   {
     "name": "codeHeaderForeground",
     "property": "netbeans.codingassistant.color.codeHeaderForeground",
-    "key": "TableHeader.foreground"
+    "key": "TableHeader.foreground",
+    "dark": "#BBBFBF",
+    "light": "#333333"
   },
   {
     "name": "codeHeaderBorder",
@@ -126,12 +146,15 @@
     "property": "netbeans.codingassistant.color.thinkingHeaderBackground",
     "keyDark": "Panel.background",
     "keyLight": "Panel.background",
+    "dark": "#3C3F41",
     "light": "#fdf6e3"
   },
   {
     "name": "thinkingHeaderForeground",
     "property": "netbeans.codingassistant.color.thinkingHeaderForeground",
-    "key": "Label.foreground"
+    "key": "Label.foreground",
+    "dark": "#BBBFBF",
+    "light": "#333333"
   },
   {
     "name": "toolForeground",
@@ -149,7 +172,9 @@
   {
     "name": "permissionBorder",
     "property": "netbeans.codingassistant.color.permissionBorder",
-    "key": "Button.focusColor"
+    "key": "Button.focusColor",
+    "dark": "#589DF6",
+    "light": "#268BD2"
   },
   {
     "name": "permissionAccent",

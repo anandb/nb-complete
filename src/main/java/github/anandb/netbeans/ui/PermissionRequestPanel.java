@@ -195,9 +195,6 @@ final class PermissionRequestPanel extends JPanel {
                 String name = opt.has("name") ? opt.get("name").asText() : optionId;
                 String kind = opt.has("kind") ? opt.get("kind").asText() : "";
 
-                // Skip "always allow" — not clear how to reset it
-                if (kind.contains("always") || name.toLowerCase().contains("always")) continue;
-
                 JButton btn;
                 if (kind.contains("allow")) {
                     btn = createButton(name, theme.permissionGrantFg(),
