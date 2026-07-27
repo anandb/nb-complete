@@ -206,7 +206,7 @@ Here is a sample permission block that denies access to sensitive directories an
             "*.pfx": "deny",
             "*.p8": "deny",
             "*credentials*": "deny",
-            "*": "ask"
+            "*": "allow"
         },
         "edit": {
             "~/.aws/**": "deny",
@@ -219,7 +219,7 @@ Here is a sample permission block that denies access to sensitive directories an
             "*": "ask"
         },
         "grep": "allow", // Can also be set to "ask" for strict control
-        "glob": "allow", // Can also be set to "ask" for strict control
+        "glob": "deny", // glob implementation is slow on large directories, preamble.md asks Agents to use `find`
         "bash": {
             "rm *credentials*": "deny",
             "rm *.env*": "deny",
@@ -227,7 +227,8 @@ Here is a sample permission block that denies access to sensitive directories an
             "git push *": "ask",
             "rm *": "ask"
         },
-        "webfetch": "ask",
+        "webfetch": "allow",
+        "websearch": "allow",
         "external_directory": "ask",
         "doom_loop": "ask"
     }
