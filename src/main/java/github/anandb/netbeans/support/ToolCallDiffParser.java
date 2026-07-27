@@ -103,8 +103,8 @@ public final class ToolCallDiffParser {
             }
         }
 
-        // 3. content[] blocks — skip if args already provided the change
-        if (result.isEmpty() && toolCall.has("content") && toolCall.get("content").isArray()) {
+        // 3. content[] blocks
+        if (toolCall.has("content") && toolCall.get("content").isArray()) {
             String fp = extractFilePath(toolCall);
             for (JsonNode block : toolCall.get("content")) {
                 if (!block.has("type")) continue;
