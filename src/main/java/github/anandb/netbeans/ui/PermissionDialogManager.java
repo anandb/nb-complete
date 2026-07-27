@@ -24,6 +24,9 @@ final class PermissionDialogManager {
     private final ChatThreadPanel chatPanel;
     private final PermissionRequestPanel permissionPanel;
 
+    private final java.util.Queue<Runnable> requestQueue = new java.util.LinkedList<>();
+    private boolean isRequestShowing = false;
+
     PermissionDialogManager(ChatThreadPanel chatPanel, PermissionRequestPanel permissionPanel) {
         this.chatPanel = chatPanel;
         this.permissionPanel = permissionPanel;
@@ -70,9 +73,11 @@ final class PermissionDialogManager {
             }
 
             String context = ToolContextExtractor.extractToolContext(toolCall, 256);
-            // Avoid duplication: when title equals file path, don't show both
-            if (context != null && !context.equals(title)
-                    && !context.equals(toolCall.has("title") ? toolCall.get("title").asText() : null)) {
+            // Avoid duplication: when the display title (kind or title field)
+            // equals the context (e.g. both are the same file path), don't
+            // show both. But when title is a category like "execute" and
+            // context is the actual command, show both.
+            if (context != null && !context.equals(title)) {
                 prompt = NbBundle.getMessage(PermissionDialogManager.class, "MSG_PermissionToolWithContext", title, context);
             } else {
                 prompt = NbBundle.getMessage(PermissionDialogManager.class, "MSG_PermissionTool", title);
@@ -90,14 +95,45 @@ final class PermissionDialogManager {
 
         final String finalPrompt = prompt;
         final JsonNode finalToolCall = toolCall;
+        
+        Runnable showTask = () -> {
+            try {
+                permissionPanel.showRequest(finalPrompt, params.get("options"), response, finalToolCall);
+                activateCallback.run();
+            } catch (Exception e) {
+                LOG.severe("Failed to show permission request", e);
+                if (!response.isDone()) {
+                    response.complete("reject");
+                }
+                processNextRequest();
+            }
+        };
+
         SwingUtilities.invokeLater(() -> {
-            permissionPanel.showRequest(finalPrompt, params.get("options"), response, finalToolCall);
-            activateCallback.run();
+            requestQueue.offer(showTask);
+            if (!isRequestShowing) {
+                processNextRequest();
+            }
         });
+    }
+
+    private void processNextRequest() {
+        if (!SwingUtilities.isEventDispatchThread()) {
+            SwingUtilities.invokeLater(this::processNextRequest);
+            return;
+        }
+        Runnable next = requestQueue.poll();
+        if (next != null) {
+            isRequestShowing = true;
+            next.run();
+        } else {
+            isRequestShowing = false;
+        }
     }
 
     /** Called when a permission result is ready, adds the result to the chat thread. */
     void addResultToChat(String statusText, boolean allowed) {
         chatPanel.addPermissionResult(statusText, allowed);
+        processNextRequest();
     }
 }

@@ -54,7 +54,7 @@ final class PermissionRequestPanel extends JPanel {
     private static final int SLIDE_STEPS = 8;
     private static final int SLIDE_INTERVAL_MS = 20;
 
-    private final JLabel promptLabel;
+    private final FitEditorPane promptLabel;
     private final JPanel buttonPanel;
     private final JPanel contentBlocks;
     private final JScrollPane contentScroll;
@@ -100,7 +100,8 @@ final class PermissionRequestPanel extends JPanel {
         iconLabel.setAlignmentY(TOP_ALIGNMENT);
         messageRow.add(iconLabel, BorderLayout.WEST);
 
-        promptLabel = new JLabel(" ");
+        promptLabel = FitEditorPane.createHtmlPane(" ", null, "system", false);
+        promptLabel.setBorder(BorderFactory.createEmptyBorder());
         promptLabel.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN));
         promptLabel.setForeground(theme.permissionTitle());
         promptLabel.setAlignmentY(TOP_ALIGNMENT);
@@ -268,6 +269,13 @@ final class PermissionRequestPanel extends JPanel {
         currentFileChanges = null;
         if (toolCall == null) return;
 
+        // For execute (bash) tools, show command and workdir inline
+        boolean isExecute = toolCall.has("kind") && "execute".equals(toolCall.get("kind").asText());
+        if (isExecute) {
+            buildExecuteContext(toolCall);
+            return;
+        }
+
         List<FileChange> fragmentChanges = ToolCallDiffParser.parse(toolCall);
         if (fragmentChanges.isEmpty()) return;
 
@@ -298,10 +306,24 @@ final class PermissionRequestPanel extends JPanel {
 
         // Dedup again after expansion — rawInput.diff and content[] can both
         // describe the same change and produce identical expanded files.
-        java.util.LinkedHashSet<FileChange> postExpandDedup = new java.util.LinkedHashSet<>(expanded);
-        if (postExpandDedup.size() < expanded.size()) {
-            expanded = new ArrayList<>(postExpandDedup);
+        // Ignore trailing newlines when comparing to handle diff parser variations.
+        List<FileChange> dedupedExpanded = new ArrayList<>();
+        for (FileChange fc : expanded) {
+            boolean duplicate = false;
+            for (FileChange ex : dedupedExpanded) {
+                if (ex.filePath().equals(fc.filePath()) &&
+                    ex.status() == fc.status() &&
+                    stripTrailing(ex.oldContent()).equals(stripTrailing(fc.oldContent())) &&
+                    stripTrailing(ex.newContent()).equals(stripTrailing(fc.newContent()))) {
+                    duplicate = true;
+                    break;
+                }
+            }
+            if (!duplicate) {
+                dedupedExpanded.add(fc);
+            }
         }
+        expanded = dedupedExpanded;
 
         currentFileChanges = expanded;
 
@@ -365,6 +387,59 @@ final class PermissionRequestPanel extends JPanel {
 
 
 
+    /** Builds context for execute (bash) tool calls: shows command + workdir. */
+    private void buildExecuteContext(JsonNode toolCall) {
+        ColorTheme theme = ThemeManager.getCurrentTheme();
+        Font monoFont = IconResourceManager.getMonospaceFont();
+        String command = null;
+        String workdir = null;
+
+        // Extract from rawInput (ACP permission format)
+        if (toolCall.has("rawInput") && toolCall.get("rawInput").isObject()) {
+            JsonNode rawInput = toolCall.get("rawInput");
+            if (rawInput.has("command")) command = rawInput.get("command").asText();
+            if (rawInput.has("workdir")) workdir = rawInput.get("workdir").asText();
+        }
+        // Fallback to args
+        if (command == null && (toolCall.has("args") || toolCall.has("arguments"))) {
+            JsonNode args = toolCall.has("args") ? toolCall.get("args") : toolCall.get("arguments");
+            if (args.has("command")) command = args.get("command").asText();
+            if (args.has("workdir")) workdir = args.get("workdir").asText();
+        }
+
+        if (command == null) return;
+
+        // Command row
+        JPanel cmdRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
+        cmdRow.setOpaque(false);
+        JLabel cmdIcon = new JLabel(ThemeManager.getIcon("tool.svg", 14));
+        cmdIcon.setIconTextGap(6);
+        JLabel cmdText = new JLabel(command);
+        cmdText.setFont(monoFont);
+        cmdText.setForeground(theme.permissionFilename());
+        cmdText.setToolTipText(command);
+        cmdRow.add(cmdIcon);
+        cmdRow.add(cmdText);
+        contentBlocks.add(cmdRow);
+
+        // Workdir row (if available)
+        if (workdir != null && !workdir.isEmpty()) {
+            JPanel wdRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+            wdRow.setOpaque(false);
+            // Indent with empty label of icon width
+            JLabel wdIcon = new JLabel(ThemeManager.getIcon("file.svg", 14));
+            wdIcon.setIconTextGap(6);
+            String dispWd = displayPath(workdir);
+            JLabel wdText = new JLabel(dispWd);
+            wdText.setFont(monoFont);
+            wdText.setForeground(theme.permissionPath());
+            wdText.setToolTipText(workdir);
+            wdRow.add(wdIcon);
+            wdRow.add(wdText);
+            contentBlocks.add(wdRow);
+        }
+    }
+
     /** Strips the session working directory prefix from a file path for display. */
     static String displayPath(String filePath) {
         String cwd = getSessionDirectory();
@@ -385,6 +460,15 @@ final class PermissionRequestPanel extends JPanel {
         if (path.startsWith("/")) return new File(path);
         if (cwd != null) return new File(cwd, path);
         return new File(path);
+    }
+
+    private static String stripTrailing(String s) {
+        if (s == null) return "";
+        int i = s.length();
+        while (i > 0 && (s.charAt(i - 1) == '\n' || s.charAt(i - 1) == '\r')) {
+            i--;
+        }
+        return s.substring(0, i);
     }
 
     /** Flashes the OS taskbar to draw attention to the permission request. */

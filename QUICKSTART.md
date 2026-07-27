@@ -243,7 +243,7 @@ Here is a sample permission block that denies access to sensitive directories an
 
 ### Keyboard Shortcuts
 
-Navigate and control the assistant efficiently using keyboard shortcuts. Press `Ctrl + L` to open or switch focus to the assistant panel. Use `Alt + Up / Down` to cycle through previously sent messages, `Page Up / Down` to scroll the chat, and `Ctrl + R` to search message history. You can also open the Jump to File dialog with `Ctrl + Alt + J` (or `Cmd + Option + J` on Mac) and trigger the Stash Diff viewer with `Ctrl + Shift + L`. Type `/` in the chat input to open the slash command autocomplete popup, and press `Tab` to select the currently highlighted command. Press `Escape` to close the options panel.
+Navigate and control the assistant efficiently using keyboard shortcuts. Press `Ctrl + L` to open or switch focus to the assistant panel. Use `Alt + Up / Down` to cycle through previously sent messages, `Page Up / Down` to scroll the chat, and `Ctrl + R` to search message history. You can also open the Jump to File dialog with `Ctrl + Alt + J` (or `Cmd + Option + J` on Mac) and trigger the Stash Diff viewer with `Ctrl + Shift + L`. Type `/` in the chat input to open the slash command autocomplete popup. Press `Tab` to accept the highlighted command and insert it into the input area. Press `Escape` to close the options panel.
 
 ### Message History
 
