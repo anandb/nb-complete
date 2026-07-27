@@ -1,6 +1,6 @@
 # Release Notes
 
-## v1.12.4 (Changes since v1.12.3)
+## v1.12.5 (Changes since v1.12.3)
 
 ### Features
 - **Theme color fallbacks**: Every `ColorKey` in `colors.json` now has explicit `dark`/`light` fallback values so colors resolve even when `UIManager` keys return `null`.
@@ -8,6 +8,7 @@
 - **Preamble**: New "Environment & Session Context" section covering role (NetBeans IDE), supported languages (Java, PHP, etc.), English-only responses, concise style, tool-use guidance, and interruptibility behavior.
 
 ### Fixes
+- **Permission dialog**: Resolved permission dialog rendering exceptions and concurrency issues causing hanging chat sessions.
 - **sunkenBackground**: Use `Panel.background` as primary key (matches user color scheme), with `keyDark: Editor.background` for dark mode. Replaced pure white light fallback with `#ECECEC`.
 - **Permission grant colors**: Restored green tones (`E8F5E9`/`2E7D32`/`4CAF50`) that were overwritten to blue in a prior commit.
 - **Diff parser**: Correctly handle non-contiguous diff chunks with accurate line numbers. Each hunk is now returned as a separate `DiffPair` instead of concatenating them.
@@ -29,7 +30,7 @@
 - **AGENTS.md**: Clarified stop mechanism guarantee — must re-enable all toolbar buttons, dropdowns, and the input textarea.
 
 ### Housekeeping
-- Version bumped to 1.12.4.
+- Version bumped to 1.12.5.
 
 ## v1.12.2 (Architectural Fixes)
 
