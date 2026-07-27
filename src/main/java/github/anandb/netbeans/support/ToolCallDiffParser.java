@@ -55,6 +55,8 @@ public final class ToolCallDiffParser {
             JsonNode ri = toolCall.get("rawInput");
             String fp = textField(ri, "filePath");
             if (fp != null) return fp;
+            fp = textField(ri, "filepath");
+            if (fp != null) return fp;
         }
 
         // 3. title — only use as file path if it contains a path separator

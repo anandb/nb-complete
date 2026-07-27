@@ -306,6 +306,13 @@ final class PermissionRequestPanel extends JPanel {
             expanded.add(fc);
         }
 
+        // Dedup again after expansion — rawInput.diff and content[] can both
+        // describe the same change and produce identical expanded files.
+        java.util.LinkedHashSet<FileChange> postExpandDedup = new java.util.LinkedHashSet<>(expanded);
+        if (postExpandDedup.size() < expanded.size()) {
+            expanded = new ArrayList<>(postExpandDedup);
+        }
+
         currentFileChanges = expanded;
 
         // Count occurrences per file path to detect duplicates
