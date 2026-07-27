@@ -58,8 +58,6 @@ import java.util.regex.Pattern;
 import javax.swing.Timer;
 import org.netbeans.api.project.Project;
 
-// DSL-LEAF: a standalone dialog for token usage stats.
-// Built imperatively — no need for the full SwingTree DSL.
 @NbBundle.Messages({
     "LBL_TokenStats=Token Stats",
     "LBL_CurrentProject=Current Project",
@@ -78,9 +76,6 @@ public class TokenUsageDialog extends JDialog {
     private static final Logger LOG = Logger.from(TokenUsageDialog.class);
     private static final long serialVersionUID = 1L;
 
-    private static final String PROJECT_CURRENT = Bundle.LBL_CurrentProject();
-    private static final String PROJECT_ALL = Bundle.LBL_AllProjects();
-    private static final String[] PROJECT_OPTIONS = { PROJECT_CURRENT, PROJECT_ALL };
     private static final Pattern ANSI_ESCAPE =
         Pattern.compile("\u001b\\[[0-9;]*[a-zA-Z~]|\u001b\\][^\u0007]*\u0007");
 
@@ -130,7 +125,7 @@ public class TokenUsageDialog extends JDialog {
         formPanel.add(daysSpinner, new GridBagConstraints(1, 0, 1, 1, 0, 0, GridBagConstraints.WEST, GridBagConstraints.NONE, ins, 0, 0));
 
         // Project (flexible — fills available space)
-        projectCombo = new JComboBox<>(PROJECT_OPTIONS);
+        projectCombo = new JComboBox<>(new String[]{Bundle.LBL_CurrentProject(), Bundle.LBL_AllProjects()});
         projectCombo.setPreferredSize(new Dimension(140, 28));
         projectCombo.setRenderer(new DefaultListCellRenderer() {
             private static final long serialVersionUID = 1L;
@@ -138,7 +133,7 @@ public class TokenUsageDialog extends JDialog {
             public Component getListCellRendererComponent(JList<?> list, Object value,
                     int index, boolean isSelected, boolean cellHasFocus) {
                 super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-                if (PROJECT_CURRENT.equals(value) && !isCurrentProjectAvailable()) {
+                if (Bundle.LBL_CurrentProject().equals(value) && !isCurrentProjectAvailable()) {
                     setEnabled(false);
                     if (!isSelected) {
                         setForeground(Color.GRAY);
@@ -150,13 +145,13 @@ public class TokenUsageDialog extends JDialog {
         // Revert to "All" if "Current Project" is somehow selected when unavailable
         projectCombo.addItemListener(e -> {
             if (e.getStateChange() == ItemEvent.SELECTED
-                    && PROJECT_CURRENT.equals(e.getItem()) && !isCurrentProjectAvailable()) {
-                projectCombo.setSelectedItem(PROJECT_ALL);
+                    && Bundle.LBL_CurrentProject().equals(e.getItem()) && !isCurrentProjectAvailable()) {
+                projectCombo.setSelectedItem(Bundle.LBL_AllProjects());
             }
         });
         // Default to "All" when "Current Project" is unavailable
         if (!isCurrentProjectAvailable()) {
-            projectCombo.setSelectedItem(PROJECT_ALL);
+            projectCombo.setSelectedItem(Bundle.LBL_AllProjects());
         }
 
         JLabel projectLabel = new JLabel(Bundle.LBL_Project());
@@ -237,7 +232,7 @@ public class TokenUsageDialog extends JDialog {
         new Thread(() -> {
             try {
                 String projectDir = null;
-                if (PROJECT_CURRENT.equals(project)) {
+                if (Bundle.LBL_CurrentProject().equals(project)) {
                     SessionQuery sq = Lookup.getDefault().lookup(SessionQuery.class);
                     if (sq != null) {
                         projectDir = sq.getCurrentSessionDirectory();
