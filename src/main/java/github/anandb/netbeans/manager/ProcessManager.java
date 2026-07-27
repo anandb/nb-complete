@@ -27,6 +27,7 @@ import github.anandb.netbeans.contract.SlashCommandInterceptor;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.PreferenceKeys;
 import github.anandb.netbeans.support.LanguageResolver;
+import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.contract.ProcessControl;
 import github.anandb.netbeans.contract.ToolExecutor;
@@ -296,7 +297,8 @@ public class ProcessManager implements ProcessControl {
         params.put("prompt", promptBlocks);
         params.put("mcpServers", toolExecutor.getServerConfig());
 
-        return client.sendRequest("session/prompt", params, 3, java.util.concurrent.TimeUnit.MINUTES);
+        int idleTimeoutSec = PluginSettings.getSessionIdleTimeout();
+        return client.sendRequest("session/prompt", params, idleTimeoutSec, java.util.concurrent.TimeUnit.SECONDS);
     }
 
     @Override

@@ -1,12 +1,35 @@
 # Release Notes
 
-## v1.12.3
+## v1.12.4 (Changes since v1.12.3)
+
+### Features
+- **Theme color fallbacks**: Every `ColorKey` in `colors.json` now has explicit `dark`/`light` fallback values so colors resolve even when `UIManager` keys return `null`.
+- **Permission options**: Removed the "always allow" filter in `PermissionRequestPanel` so all permission options are displayed regardless of name.
+- **Preamble**: New "Environment & Session Context" section covering role (NetBeans IDE), supported languages (Java, PHP, etc.), English-only responses, concise style, tool-use guidance, and interruptibility behavior.
 
 ### Fixes
-- **GitHub Actions**: Fixed an issue in `release.yml` where secrets were incorrectly used in an `if` conditional.
+- **sunkenBackground**: Use `Panel.background` as primary key (matches user color scheme), with `keyDark: Editor.background` for dark mode. Replaced pure white light fallback with `#ECECEC`.
+- **Permission grant colors**: Restored green tones (`E8F5E9`/`2E7D32`/`4CAF50`) that were overwritten to blue in a prior commit.
+- **Diff parser**: Correctly handle non-contiguous diff chunks with accurate line numbers. Each hunk is now returned as a separate `DiffPair` instead of concatenating them.
+- **SessionManagerTest**: Fixed `sendRequest` mock matcher to match the new 4-arg signature (method, params, timeout, unit).
+
+### Improvements
+- **Per-request idle timeouts**: `AcpProtocolClient` now supports per-request idle timeouts tied to `lastDataTime`. Requests fail only when the connection goes silent for the budget (data in-flight resets the clock). Absolute `CompletableFuture.orTimeout()` is no longer used for session RPCs.
+- **Session RPC timeouts**: All `SessionRpcClient` calls now have explicit idle timeouts: `session/list` 60s, `session/new` 60s, `session/load` 2min, `session/set_config_option` 30s.
+- **session/prompt timeout**: Idle timeout is now sourced from NetBeans Options (`Tools > Options > Assistant > Session idle timeout`, default 600s/10min) instead of a hardcoded 3 minutes.
+- **Stop robustness**: `MessageSender.stop()` rewritten with full null-safety on all objects, exception catching per operation, and a single `finally` block that guarantees toolbar buttons, dropdowns, and the input textarea are re-enabled even if intermediate steps throw.
+- **Watchdog ordering**: Per-request idle timeouts are checked before the global connection idle timeout, so requests with custom timeouts fail individually before the entire connection is torn down.
+
+### Documentation
+- **preamble.md**: New "Environment & Session Context" section with role, languages (Java, PHP, HTML, CSS, JS, XML), English-only response requirement, concise style guide, tool-use guardrails, and interruptibility contract.
+- **preamble.md**: Added "File Search" guardrail — do not use `glob` (unbounded), use `find` instead.
+- **preamble.md**: Added "Only single edits at a time" rule for correct permission functioning.
+- **QUICKSTART.md**: Warning to append custom text to the default preamble, not replace it. Reset button documented for restoring defaults.
+- **QUICKSTART.md**: Updated sample permission config: read `*` changed to `allow`, glob changed to `deny`, webfetch to `allow`, added `websearch`.
+- **AGENTS.md**: Clarified stop mechanism guarantee — must re-enable all toolbar buttons, dropdowns, and the input textarea.
 
 ### Housekeeping
-- Version bumped to 1.12.3.
+- Version bumped to 1.12.4.
 
 ## v1.12.2 (Architectural Fixes)
 
