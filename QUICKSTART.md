@@ -97,6 +97,13 @@ Define a global prompt in `Options > Assistant > Preamble`. This is
 added to every new session alongside your OpenCode agent prompts. An example
 comes out of the box, you can change it to suit your needs.
 
+> **Important:** The default preamble (bundled with the plugin) now contains rules
+> that govern correct session functioning — including tool-use guidance, language
+> conventions, and interruptibility behavior. **Append your own instructions to the
+> default rather than replacing it**, otherwise you may lose those guardrails and
+> encounter unexpected session behavior. Use the *Reset* button in the Preamble
+> editor to restore the default before adding your custom text.
+
 ---
 
 ## Features
