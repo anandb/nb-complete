@@ -313,8 +313,8 @@ final class PermissionRequestPanel extends JPanel {
             for (FileChange ex : dedupedExpanded) {
                 if (ex.filePath().equals(fc.filePath()) &&
                     ex.status() == fc.status() &&
-                    stripTrailing(ex.oldContent()).equals(stripTrailing(fc.oldContent())) &&
-                    stripTrailing(ex.newContent()).equals(stripTrailing(fc.newContent()))) {
+                    trimSafe(ex.oldContent()).equals(trimSafe(fc.oldContent())) &&
+                    trimSafe(ex.newContent()).equals(trimSafe(fc.newContent()))) {
                     duplicate = true;
                     break;
                 }
@@ -460,13 +460,9 @@ final class PermissionRequestPanel extends JPanel {
         return new File(path);
     }
 
-    private static String stripTrailing(String s) {
+    private static String trimSafe(String s) {
         if (s == null) return "";
-        int i = s.length();
-        while (i > 0 && (s.charAt(i - 1) == '\n' || s.charAt(i - 1) == '\r')) {
-            i--;
-        }
-        return s.substring(0, i);
+        return s.trim();
     }
 
     /** Flashes the OS taskbar to draw attention to the permission request. */
