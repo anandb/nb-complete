@@ -244,8 +244,8 @@ public class ComponentLifecycleHandler {
             @Override
             public void displayToolMessage(String title, String text) {
                 SwingUtilities.invokeLater(() -> {
-                    chatPanel.addMessage(new github.anandb.netbeans.model.ProcessedMessage(
-                        github.anandb.netbeans.model.MessageType.tool_call_update,
+                    chatPanel.addMessage(new ProcessedMessage(
+                        MessageType.tool_call_update,
                         text, null, null, title, text, false, "completed"));
                 });
             }

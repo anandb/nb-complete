@@ -318,8 +318,8 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         // Wire send/stop AFTER permissionPanel is initialized
         sendBtn.addActionListener(e -> messageSender.sendMessage());
         stopBtn.addActionListener(e -> {
-            if (permissionPanel != null) {
-                permissionPanel.rejectRequest();
+            if (permissionDialogManager != null) {
+                permissionDialogManager.rejectAllRequests();
             }
             messageSender.stopMessage();
         });
@@ -487,8 +487,8 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     }
 
     void stopMessage() {
-        if (permissionPanel != null) {
-            permissionPanel.rejectRequest();
+        if (permissionDialogManager != null) {
+            permissionDialogManager.rejectAllRequests();
         }
         if (messageSender != null) {
             messageSender.stopMessage();

@@ -3,6 +3,8 @@ import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.Dimension;
+import java.awt.Color;
+import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
@@ -19,15 +21,20 @@ import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CompletableFuture;
 import java.util.prefs.Preferences;
 
 import javax.swing.BorderFactory;
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
 import javax.swing.JDialog;
 import javax.swing.JEditorPane;
 import javax.swing.JLabel;
@@ -40,11 +47,12 @@ import javax.swing.Scrollable;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
-import javax.swing.border.BevelBorder;
 
 import org.openide.util.Lookup;
+import org.openide.util.NbBundle;
 import org.openide.util.NbPreferences;
 import org.openide.util.Utilities;
+import com.fasterxml.jackson.databind.JsonNode;
 import org.openide.windows.Mode;
 import org.openide.windows.WindowManager;
 
@@ -71,6 +79,13 @@ public class MiniAssistantDialog extends JDialog {
     );
 
     private AutocompleteManager autocompleteManager;
+
+    // Permission panel components
+    private JPanel miniPermissionPanel;
+    private JLabel miniPermissionLabel;
+    private JLabel miniContextLabel;
+    private JPanel miniPermissionButtons;
+    private CompletableFuture<String> activePermissionFuture;
 
     // Navigation state
     private int currentBubbleIndex = -1;
@@ -279,18 +294,39 @@ public class MiniAssistantDialog extends JDialog {
         splitPane.setDividerSize(2);
         
         updateOverlayText(true);
-        addWindowFocusListener(new java.awt.event.WindowAdapter() {
+        addWindowFocusListener(new WindowAdapter() {
             @Override
-            public void windowGainedFocus(java.awt.event.WindowEvent e) {
+            public void windowGainedFocus(WindowEvent e) {
                 updateOverlayText(true);
             }
             @Override
-            public void windowLostFocus(java.awt.event.WindowEvent e) {
+            public void windowLostFocus(WindowEvent e) {
                 updateOverlayText(false);
             }
         });
         
+        miniPermissionPanel = new JPanel();
+        miniPermissionPanel.setLayout(new BoxLayout(miniPermissionPanel, BoxLayout.Y_AXIS));
+        miniPermissionPanel.setVisible(false);
+        miniPermissionPanel.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(0, 0, 0, 0))); // updated in theme
+        
+        JPanel labelRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
+        labelRow.setOpaque(false);
+        miniPermissionLabel = new JLabel();
+        miniContextLabel = new JLabel();
+        miniContextLabel.setForeground(ThemeManager.getCurrentTheme().mutedForeground());
+        miniContextLabel.setFont(IconResourceManager.getMonospaceFont());
+        labelRow.add(miniPermissionLabel);
+        labelRow.add(miniContextLabel);
+        
+        miniPermissionButtons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 4));
+        miniPermissionButtons.setOpaque(false);
+        
+        miniPermissionPanel.add(labelRow);
+        miniPermissionPanel.add(miniPermissionButtons);
+        
         add(splitPane, BorderLayout.CENTER);
+        add(miniPermissionPanel, BorderLayout.SOUTH);
         
         applyTheme();
     }
@@ -798,18 +834,169 @@ public class MiniAssistantDialog extends JDialog {
         inputArea.setCaretColor(theme.foreground());
         inputArea.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createCompoundBorder(
-                BorderFactory.createEmptyBorder(2, 4, 2, 4),
-                BorderFactory.createSoftBevelBorder(BevelBorder.LOWERED)
+                BorderFactory.createMatteBorder(1, 0, 0, 0, theme.isDark() ? new Color(60, 60, 60) : new Color(200, 200, 200)),
+                BorderFactory.createEmptyBorder(6, 6, 6, 6)
             ),
-            BorderFactory.createEmptyBorder(4, 6, 4, 6)
+            inputArea.getBorder()
         ));
-
+        
+        if (miniPermissionPanel != null) {
+            miniPermissionPanel.setBackground(theme.permissionBg());
+            miniPermissionPanel.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, theme.permissionAccent()));
+            miniPermissionLabel.setForeground(theme.permissionTitle());
+            miniPermissionLabel.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
+        }
+        
         Font f = ThemeManager.getFont();
         inputArea.setFont(f);
 
         applyTokenOverlayColors(isProcessing && maxTokenCountThisTurn > 0);
 
         SwingUtilities.updateComponentTreeUI(this);
+    }
+    
+    public void showPermissionRequest(
+            String prompt, JsonNode options, CompletableFuture<String> responseFuture, JsonNode toolCall,
+            List<github.anandb.netbeans.support.ToolCallDiffParser.FileChange> fileChanges) {
+        SwingUtilities.invokeLater(() -> {
+            this.activePermissionFuture = responseFuture;
+            
+            String toolName = "tool";
+            if (toolCall != null) {
+                if (toolCall.has("kind") && !toolCall.get("kind").asText().isEmpty()) {
+                    toolName = toolCall.get("kind").asText();
+                } else if (toolCall.has("title")) {
+                    toolName = toolCall.get("title").asText();
+                } else if (toolCall.has("name")) {
+                    toolName = toolCall.get("name").asText();
+                }
+            }
+            
+            miniPermissionLabel.setText("Permission required: " + toolName);
+            miniPermissionLabel.setIcon(ThemeManager.getIcon("shield.svg", 16));
+            
+            String contextStr = github.anandb.netbeans.support.ToolContextExtractor.extractToolContext(toolCall, 64);
+            if (contextStr == null) contextStr = "";
+            
+            boolean requiresDiff = "edit".equals(toolName) 
+                    || "replace_file_content".equals(toolName) 
+                    || "multi_replace_file_content".equals(toolName);
+            if (requiresDiff && (fileChanges == null || fileChanges.isEmpty())) {
+                if (!contextStr.isEmpty()) contextStr += " - ";
+                contextStr += "Unable to parse diff preview.";
+            }
+            
+            if (!contextStr.isEmpty()) {
+                miniContextLabel.setText(contextStr);
+                miniContextLabel.setVisible(true);
+            } else {
+                miniContextLabel.setVisible(false);
+            }
+            
+            miniPermissionButtons.removeAll();
+            ColorTheme theme = ThemeManager.getCurrentTheme();
+
+            if (fileChanges != null && !fileChanges.isEmpty()) {
+                JButton showDiffBtn = new JButton(Bundle.BTN_ShowDiff());
+                showDiffBtn.setFocusPainted(false);
+                showDiffBtn.setBorder(BorderFactory.createCompoundBorder(
+                        BorderFactory.createLineBorder(theme.bubbleBorder(), 1),
+                        BorderFactory.createEmptyBorder(4, 12, 4, 12)));
+                showDiffBtn.addActionListener(e -> {
+                    PermissionRequestPanel.openDiffView(fileChanges);
+                });
+                miniPermissionButtons.add(showDiffBtn);
+            }
+            
+            if (options != null && options.isArray() && options.size() > 0) {
+                for (JsonNode opt : options) {
+                    String optionId = opt.has("optionId") ? opt.get("optionId").asText() : "";
+                    String name = opt.has("name") ? opt.get("name").asText() : optionId;
+                    String kind = opt.has("kind") ? opt.get("kind").asText() : "";
+                    
+                    JButton btn = new JButton(name);
+                    btn.setFocusPainted(false);
+                    if (kind.contains("allow")) {
+                        btn.setForeground(theme.permissionGrantFg());
+                        btn.setBackground(theme.permissionGrantBg());
+                        btn.setBorder(BorderFactory.createCompoundBorder(
+                                BorderFactory.createLineBorder(theme.permissionGrantBorder(), 1),
+                                BorderFactory.createEmptyBorder(4, 12, 4, 12)));
+                    } else if (kind.contains("reject") || kind.contains("deny")) {
+                        btn.setForeground(theme.permissionDenyFg());
+                        btn.setBackground(theme.permissionDenyBg());
+                        btn.setBorder(BorderFactory.createCompoundBorder(
+                                BorderFactory.createLineBorder(theme.permissionDenyBorder(), 1),
+                                BorderFactory.createEmptyBorder(4, 12, 4, 12)));
+                    } else {
+                        btn.setBorder(BorderFactory.createCompoundBorder(
+                                BorderFactory.createLineBorder(theme.bubbleBorder(), 1),
+                                BorderFactory.createEmptyBorder(4, 12, 4, 12)));
+                    }
+                    
+                    btn.addActionListener(e -> {
+                        if (activePermissionFuture != null) {
+                            activePermissionFuture.complete(optionId);
+                            AssistantTopComponent tc = AssistantTopComponent.findInstance();
+                            if (tc != null) {
+                                tc.getChatThreadPanel().addPermissionResult(name, kind.contains("allow"));
+                            }
+                        }
+                    });
+                    miniPermissionButtons.add(btn);
+                }
+            } else {
+                JButton denyBtn = new JButton(NbBundle.getMessage(ChatThreadPanel.class, "BTN_Deny"));
+                denyBtn.setFocusPainted(false);
+                denyBtn.setForeground(theme.permissionDenyFg());
+                denyBtn.setBackground(theme.permissionDenyBg());
+                denyBtn.setBorder(BorderFactory.createCompoundBorder(
+                        BorderFactory.createLineBorder(theme.permissionDenyBorder(), 1),
+                        BorderFactory.createEmptyBorder(4, 12, 4, 12)));
+                denyBtn.addActionListener(e -> {
+                    if (activePermissionFuture != null) {
+                        activePermissionFuture.complete("reject");
+                        AssistantTopComponent tc = AssistantTopComponent.findInstance();
+                        if (tc != null) {
+                            tc.getChatThreadPanel().addPermissionResult(NbBundle.getMessage(ChatThreadPanel.class, "MSG_PermissionDenied"), false);
+                        }
+                    }
+                });
+                
+                JButton allowBtn = new JButton(NbBundle.getMessage(ChatThreadPanel.class, "BTN_Allow"));
+                allowBtn.setFocusPainted(false);
+                allowBtn.setForeground(theme.permissionGrantFg());
+                allowBtn.setBackground(theme.permissionGrantBg());
+                allowBtn.setBorder(BorderFactory.createCompoundBorder(
+                        BorderFactory.createLineBorder(theme.permissionGrantBorder(), 1),
+                        BorderFactory.createEmptyBorder(4, 12, 4, 12)));
+                allowBtn.addActionListener(e -> {
+                    if (activePermissionFuture != null) {
+                        activePermissionFuture.complete("allow");
+                        AssistantTopComponent tc = AssistantTopComponent.findInstance();
+                        if (tc != null) {
+                            tc.getChatThreadPanel().addPermissionResult(NbBundle.getMessage(ChatThreadPanel.class, "MSG_PermissionGranted"), true);
+                        }
+                    }
+                });
+                
+                miniPermissionButtons.add(denyBtn);
+                miniPermissionButtons.add(allowBtn);
+            }
+            
+            miniPermissionPanel.setVisible(true);
+            revalidate();
+            repaint();
+        });
+    }
+
+    public void hidePermissionRequest() {
+        SwingUtilities.invokeLater(() -> {
+            activePermissionFuture = null;
+            miniPermissionPanel.setVisible(false);
+            revalidate();
+            repaint();
+        });
     }
     
     private static class ScrollablePanel extends JPanel implements Scrollable {

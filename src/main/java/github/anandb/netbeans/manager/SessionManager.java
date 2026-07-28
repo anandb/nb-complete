@@ -738,10 +738,14 @@ public class SessionManager implements SessionQuery, SessionControl {
         params.put("mcpServers", ProcessManager.getInstance().getToolExecutor().getServerConfig());
 
         ProcessManager.getInstance().sendRequest("session/prompt", params)
-                .exceptionally(ex -> {
-                    LOG.warn("Failed to send {0}: {1}", label, ExceptionUtils.getRootCauseMessage(ex));
-                    notifyError("Connection lost while sending " + label + ": " + ExceptionUtils.getRootCauseMessage(ex));
-                    return null;
+                .whenComplete((res, ex) -> {
+                    if (ex != null) {
+                        LOG.warn("Failed to send {0}: {1}", label, ExceptionUtils.getRootCauseMessage(ex));
+                        notifyError("Connection lost while sending " + label + ": " + ExceptionUtils.getRootCauseMessage(ex));
+                    }
+                    for (SessionListener l : listeners) {
+                        l.onInternalMessageDone();
+                    }
                 });
     }
 

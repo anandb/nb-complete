@@ -122,6 +122,15 @@ public class SessionLifecycleHandler implements SessionListener {
         SwingUtilities.invokeLater(() -> statusController.updateButtonState(true));
     }
 
+    @Override
+    public void onInternalMessageDone() {
+        onMessageDone();
+        SwingUtilities.invokeLater(() -> {
+            statusController.updateButtonState(false);
+            statusController.stopThinking();
+        });
+    }
+
     /** True once an end-of-turn signal arrived (SSE responding_finished/end_turn/
      *  available_commands_update, RPC completion, or session load). Used by
      *  {@code ChatThreadPanel.flushTimer} to gate idle-gap-based finalization

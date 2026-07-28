@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import javax.swing.BorderFactory;
@@ -73,7 +74,7 @@ final class PermissionRequestPanel extends JPanel {
     private Timer wobbleDelayTimer;
 
     /** Called when a permission result is ready — receives (statusText, allowed). */
-    private java.util.function.BiConsumer<String, Boolean> onResult;
+    private BiConsumer<String, Boolean> onResult;
 
     PermissionRequestPanel() {
         setLayout(new BorderLayout());
@@ -129,8 +130,12 @@ final class PermissionRequestPanel extends JPanel {
         add(content, BorderLayout.CENTER);
     }
 
-    void setOnResult(java.util.function.BiConsumer<String, Boolean> onResult) {
+    void setOnResult(BiConsumer<String, Boolean> onResult) {
         this.onResult = onResult;
+    }
+
+    List<FileChange> getCurrentFileChanges() {
+        return currentFileChanges;
     }
 
     void showRequest(String prompt, JsonNode options, CompletableFuture<String> responseFuture) {
@@ -269,15 +274,19 @@ final class PermissionRequestPanel extends JPanel {
         currentFileChanges = null;
         if (toolCall == null) return;
 
-        // For execute (bash) tools, show command and workdir inline
-        boolean isExecute = toolCall.has("kind") && "execute".equals(toolCall.get("kind").asText());
-        if (isExecute) {
-            buildExecuteContext(toolCall);
-            return;
-        }
+        try {
+            // For execute (bash) tools, show command and workdir inline
+            boolean isExecute = toolCall.has("kind") && "execute".equals(toolCall.get("kind").asText());
+            if (isExecute) {
+                buildExecuteContext(toolCall);
+                return;
+            }
 
         List<FileChange> fragmentChanges = ToolCallDiffParser.parse(toolCall);
-        if (fragmentChanges.isEmpty()) return;
+        if (fragmentChanges.isEmpty()) {
+            showUnparseableDiffMessage();
+            return;
+        }
 
         // Expand each fragment individually (read full file, apply just this
         // fragment's change) without merging. A file with 3 edits produces 3
@@ -381,6 +390,19 @@ final class PermissionRequestPanel extends JPanel {
             row.add(statusLabel);
             contentBlocks.add(row);
         }
+        } catch (Exception e) {
+            LOG.warn("Failed to build content blocks for diff viewer", e);
+            showUnparseableDiffMessage();
+        }
+    }
+
+    private void showUnparseableDiffMessage() {
+        JLabel msgLabel = new JLabel("Unable to parse diff preview.");
+        msgLabel.setForeground(ThemeManager.getCurrentTheme().mutedForeground());
+        JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
+        row.setOpaque(false);
+        row.add(msgLabel);
+        contentBlocks.add(row);
     }
 
 

@@ -11,6 +11,7 @@ import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
 import github.anandb.netbeans.support.Logger;
 
@@ -51,7 +52,7 @@ public class FileCacheManager implements FileCacheQuery {
     /** Files keyed by absolute path for O(1) dedup across overlapping projects. */
     private final ConcurrentHashMap<String, FileCacheQuery.CachedFile> files = new ConcurrentHashMap<>();
     private volatile boolean ready;
-    private final java.util.concurrent.atomic.AtomicLong cacheVersion = new java.util.concurrent.atomic.AtomicLong(0);
+    private final AtomicLong cacheVersion = new AtomicLong(0);
     private final List<Runnable> readyListeners = new CopyOnWriteArrayList<>();
     private final Object readyLock = new Object();
 

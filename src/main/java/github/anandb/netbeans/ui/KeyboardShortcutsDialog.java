@@ -1,8 +1,11 @@
 package github.anandb.netbeans.ui;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Component;
+import java.awt.Cursor;
 import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.Frame;
 import java.awt.event.MouseAdapter;
@@ -11,7 +14,9 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.util.ArrayList;
 import java.util.List;
+import javax.swing.BorderFactory;
 import javax.swing.Box;
+import javax.swing.BoxLayout;
 import javax.swing.JDialog;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
@@ -115,7 +120,7 @@ final class KeyboardShortcutsDialog extends JDialog {
 
         // Scrollable content
         contentArea = new JPanel();
-        contentArea.setLayout(new javax.swing.BoxLayout(contentArea, javax.swing.BoxLayout.Y_AXIS));
+        contentArea.setLayout(new BoxLayout(contentArea, BoxLayout.Y_AXIS));
         contentArea.setOpaque(false);
         rebuildContent();
 
@@ -170,10 +175,10 @@ final class KeyboardShortcutsDialog extends JDialog {
         // Section title — left-aligned, larger than cell text
         JLabel sectionLabel = new JLabel(title);
         sectionLabel.setFont(sectionLabel.getFont().deriveFont(Font.BOLD, sectionLabel.getFont().getSize() + 1f));
-        sectionLabel.setForeground(isDark() ? java.awt.Color.decode("#e0e0e0") : java.awt.Color.decode("#333"));
+        sectionLabel.setForeground(isDark() ? Color.decode("#e0e0e0") : Color.decode("#333"));
         sectionLabel.setBorder(new EmptyBorder(10, 0, 6, 0));
         // FlowLayout.LEFT prevents BoxLayout from stretching the label
-        JPanel titleWrapper = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 0, 0));
+        JPanel titleWrapper = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         titleWrapper.setOpaque(false);
         titleWrapper.setAlignmentX(Component.LEFT_ALIGNMENT);
         titleWrapper.setMaximumSize(new Dimension(Integer.MAX_VALUE, titleWrapper.getPreferredSize().height));
@@ -209,11 +214,11 @@ final class KeyboardShortcutsDialog extends JDialog {
         String kbdFg = isDark ? "#d0d0d0" : "#333";
         String unassignedFg = isDark ? "#666" : "#999";
 
-        java.awt.Color bg = java.awt.Color.decode(bgHex);
-        java.awt.Color alt = java.awt.Color.decode(altHex);
-        java.awt.Color hdrBg = java.awt.Color.decode(hdrHex);
-        java.awt.Color border = java.awt.Color.decode(borderHex);
-        java.awt.Color fg = isDark ? java.awt.Color.decode("#e0e0e0") : java.awt.Color.decode("#333");
+        Color bg = Color.decode(bgHex);
+        Color alt = Color.decode(altHex);
+        Color hdrBg = Color.decode(hdrHex);
+        Color border = Color.decode(borderHex);
+        Color fg = isDark ? Color.decode("#e0e0e0") : Color.decode("#333");
 
         DefaultTableModel model = new DefaultTableModel(rows.size(), 2) {
             @Override
@@ -293,10 +298,10 @@ final class KeyboardShortcutsDialog extends JDialog {
         String altHex = theme.toHtmlHex(theme.tableRowAlternate());
         String fgHex = theme.isDark() ? "#e0e0e0" : "#333";
 
-        java.awt.Color border = java.awt.Color.decode(borderHex);
-        java.awt.Color altBg = java.awt.Color.decode(altHex);
-        java.awt.Color fg = java.awt.Color.decode(fgHex);
-        java.awt.Color unassignedFg = theme.isDark() ? java.awt.Color.decode("#999999") : java.awt.Color.decode("#666666");
+        Color border = Color.decode(borderHex);
+        Color altBg = Color.decode(altHex);
+        Color fg = Color.decode(fgHex);
+        Color unassignedFg = theme.isDark() ? Color.decode("#999999") : Color.decode("#666666");
 
         JPanel wrapper = new JPanel(new BorderLayout());
         wrapper.setOpaque(false);
@@ -310,12 +315,12 @@ final class KeyboardShortcutsDialog extends JDialog {
         JLabel summary = new JLabel("  " + Bundle.LBL_Unassigned() + " \u00a0\u00a0\u00a0 " + count + "  \u25BC");
         summary.setFont(summary.getFont().deriveFont(Font.BOLD, summary.getFont().getSize() + 1f));
         summary.setForeground(unassignedFg);
-        summary.setBorder(javax.swing.BorderFactory.createCompoundBorder(
+        summary.setBorder(BorderFactory.createCompoundBorder(
                 new MatteBorder(1, 1, 1, 1, border),
                 new EmptyBorder(6, 4, 6, 4)));
         summary.setOpaque(true);
         summary.setBackground(altBg);
-        summary.setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR));
+        summary.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
         // Detail table — hidden by default
         JTable detailTable = buildTable(unassigned);

@@ -11,10 +11,14 @@ import java.io.InputStream;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
@@ -54,7 +58,7 @@ public class AcpProtocolClient implements Closeable {
     private volatile boolean closed = false;
     private volatile long lastDataTime;
     private volatile String closeReason;
-    private final java.util.concurrent.atomic.AtomicInteger pendingPermissions = new java.util.concurrent.atomic.AtomicInteger(0);
+    private final AtomicInteger pendingPermissions = new AtomicInteger(0);
 
     public AcpProtocolClient(Process process) throws IOException {
         this.writer = new BufferedWriter(new OutputStreamWriter(process.getOutputStream(), StandardCharsets.UTF_8));
@@ -232,7 +236,7 @@ public class AcpProtocolClient implements Closeable {
         }
 
         // Check per-request idle timeouts
-        java.util.List<Long> toFail = new java.util.ArrayList<>();
+        List<Long> toFail = new ArrayList<>();
         for (Map.Entry<Long, CompletableFuture<JsonNode>> entry : pendingRequests.entrySet()) {
             Long id = entry.getKey();
             Long reqTimeout = requestIdleTimeouts.get(id);
@@ -245,7 +249,7 @@ public class AcpProtocolClient implements Closeable {
             requestIdleTimeouts.remove(id);
             if (future != null) {
                 LOG.warn("Request id={0} exceeded idle timeout, failing it.", id);
-                future.completeExceptionally(new java.util.concurrent.TimeoutException("Request idle timeout exceeded"));
+                future.completeExceptionally(new TimeoutException("Request idle timeout exceeded"));
             }
         }
         

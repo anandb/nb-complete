@@ -44,4 +44,7 @@ public interface SessionListener {
 
     /** Fired when an internal message (e.g. warmup, preamble) is sent. */
     default void onInternalMessageSent() {}
+
+    /** Fired when an internal message completes. */
+    default void onInternalMessageDone() {}
 }

@@ -62,7 +62,7 @@ class PermissionDialogManagerTest {
     private ChatPanelSpy chatPanel;
     private PermissionPanelSpy permissionPanel;
     private PermissionDialogManager manager;
-    private Queue<Runnable> requestQueue;
+    private Queue<PermissionDialogManager.PendingRequest> requestQueue;
     private Method processNextRequestMethod;
 
     @SuppressWarnings("unchecked")
@@ -97,7 +97,7 @@ class PermissionDialogManagerTest {
 
         Field queueField = PermissionDialogManager.class.getDeclaredField("requestQueue");
         queueField.setAccessible(true);
-        requestQueue = (Queue<Runnable>) queueField.get(manager);
+        requestQueue = (Queue<PermissionDialogManager.PendingRequest>) queueField.get(manager);
 
         processNextRequestMethod = PermissionDialogManager.class
                 .getDeclaredMethod("processNextRequest");
@@ -137,12 +137,21 @@ class PermissionDialogManagerTest {
         });
     }
 
-    private Runnable buildShowTask(String prompt, CompletableFuture<String> response,
+    private PermissionDialogManager.PendingRequest buildShowTask(String prompt, CompletableFuture<String> response,
             Runnable activateCallback) {
-        return () -> {
+        Runnable task = () -> {
             try {
                 permissionPanel.showRequest(prompt, EMPTY_PARAMS, response, null);
                 activateCallback.run();
+                response.whenComplete((res, err) -> {
+                    SwingUtilities.invokeLater(() -> {
+                        try {
+                            processNextRequestMethod.invoke(manager);
+                        } catch (Exception e) {
+                            throw new RuntimeException(e);
+                        }
+                    });
+                });
             } catch (Exception e) {
                 if (!response.isDone()) {
                     response.complete("reject");
@@ -154,6 +163,7 @@ class PermissionDialogManagerTest {
                 }
             }
         };
+        return new PermissionDialogManager.PendingRequest(task, response);
     }
 
     // ===================================================================
@@ -213,40 +223,62 @@ class PermissionDialogManagerTest {
 
     @Test
     void testQueuedTaskShowsAfterFirstCompletes() throws Exception {
-        requestQueue.offer(buildShowTask("r1", new CompletableFuture<>(), () -> {}));
+        CompletableFuture<String> f1 = new CompletableFuture<>();
+        requestQueue.offer(buildShowTask("r1", f1, () -> {}));
         processNextOnEDT();
         requestQueue.offer(buildShowTask("r2", new CompletableFuture<>(), () -> {}));
         assertEquals(1, permissionPanel.showRequestCount());
 
-        onEDT(() -> manager.addResultToChat("r1 done", true));
+        onEDT(() -> {
+            manager.addResultToChat("r1 done", true);
+            f1.complete("allow");
+        });
+        onEDT(() -> {}); // Flush EDT to wait for response.whenComplete's invokeLater
         assertEquals(2, permissionPanel.showRequestCount());
         assertEquals(0, requestQueue.size());
     }
 
     @Test
     void testThreeTasksProcessSequentially() throws Exception {
-        requestQueue.offer(buildShowTask("r1", new CompletableFuture<>(), () -> {}));
+        CompletableFuture<String> f1 = new CompletableFuture<>();
+        CompletableFuture<String> f2 = new CompletableFuture<>();
+        CompletableFuture<String> f3 = new CompletableFuture<>();
+        
+        requestQueue.offer(buildShowTask("r1", f1, () -> {}));
         processNextOnEDT();
-        requestQueue.offer(buildShowTask("r2", new CompletableFuture<>(), () -> {}));
-        requestQueue.offer(buildShowTask("r3", new CompletableFuture<>(), () -> {}));
+        requestQueue.offer(buildShowTask("r2", f2, () -> {}));
+        requestQueue.offer(buildShowTask("r3", f3, () -> {}));
         assertEquals(1, permissionPanel.showRequestCount());
         assertEquals(2, requestQueue.size());
 
-        onEDT(() -> manager.addResultToChat("r1", true));
+        onEDT(() -> {
+            manager.addResultToChat("r1", true);
+            f1.complete("allow");
+        });
+        onEDT(() -> {});
         assertEquals(2, permissionPanel.showRequestCount());
         assertEquals(1, requestQueue.size());
 
-        onEDT(() -> manager.addResultToChat("r2", true));
+        onEDT(() -> {
+            manager.addResultToChat("r2", true);
+            f2.complete("allow");
+        });
+        onEDT(() -> {});
         assertEquals(3, permissionPanel.showRequestCount());
         assertEquals(0, requestQueue.size());
     }
 
     @Test
     void testIsRequestShowingClearedAfterQueueDrains() throws Exception {
-        requestQueue.offer(buildShowTask("r1", new CompletableFuture<>(), () -> {}));
+        CompletableFuture<String> f1 = new CompletableFuture<>();
+        requestQueue.offer(buildShowTask("r1", f1, () -> {}));
         processNextOnEDT();
         assertTrue(isRequestShowing());
-        onEDT(() -> manager.addResultToChat("done", true));
+        onEDT(() -> {
+            manager.addResultToChat("done", true);
+            f1.complete("allow");
+        });
+        onEDT(() -> {});
         assertFalse(isRequestShowing());
     }
 

@@ -26,7 +26,9 @@ import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -819,11 +821,11 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
      */
     static void openPermissionDiffView(List<FileChange> changes) {
         // Count occurrences per file path to detect multi-hunk files
-        java.util.Map<String, Integer> pathCount = new java.util.HashMap<>();
+        Map<String, Integer> pathCount = new HashMap<>();
         for (FileChange fc : changes) {
             pathCount.merge(fc.filePath(), 1, Integer::sum);
         }
-        java.util.Map<String, Integer> hunkIndex = new java.util.HashMap<>();
+        Map<String, Integer> hunkIndex = new HashMap<>();
 
         List<FileDiff> diffs = new ArrayList<>();
         for (FileChange fc : changes) {

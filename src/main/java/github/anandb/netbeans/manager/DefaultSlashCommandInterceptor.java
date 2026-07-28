@@ -3,6 +3,7 @@ package github.anandb.netbeans.manager;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import javax.swing.SwingUtilities;
 
 import github.anandb.netbeans.contract.ProcessControl;
@@ -21,7 +22,7 @@ public class DefaultSlashCommandInterceptor implements SlashCommandInterceptor {
 
     private static final Logger LOG = Logger.from(DefaultSlashCommandInterceptor.class);
 
-    private final Map<String, CommandInfo> commands = new java.util.concurrent.ConcurrentHashMap<>();
+    private final Map<String, CommandInfo> commands = new ConcurrentHashMap<>();
 
     private volatile SlashCommandCallback callback;
 

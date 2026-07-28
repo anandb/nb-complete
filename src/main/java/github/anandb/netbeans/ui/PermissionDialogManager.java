@@ -1,5 +1,7 @@
 package github.anandb.netbeans.ui;
 
+import java.util.LinkedList;
+import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
 
 import javax.swing.SwingUtilities;
@@ -24,7 +26,8 @@ final class PermissionDialogManager {
     private final ChatThreadPanel chatPanel;
     private final PermissionRequestPanel permissionPanel;
 
-    private final java.util.Queue<Runnable> requestQueue = new java.util.LinkedList<>();
+    record PendingRequest(Runnable task, CompletableFuture<String> response) {}
+    private final Queue<PendingRequest> requestQueue = new LinkedList<>();
     private boolean isRequestShowing = false;
 
     PermissionDialogManager(ChatThreadPanel chatPanel, PermissionRequestPanel permissionPanel) {
@@ -99,7 +102,28 @@ final class PermissionDialogManager {
         Runnable showTask = () -> {
             try {
                 permissionPanel.showRequest(finalPrompt, params.get("options"), response, finalToolCall);
-                activateCallback.run();
+                MiniAssistantDialog miniDialog = MiniAssistantDialog.getInstance();
+                if (miniDialog != null) {
+                    miniDialog.showPermissionRequest(
+                        finalPrompt, params.get("options"), response, finalToolCall,
+                        permissionPanel.getCurrentFileChanges()
+                    );
+                }
+                
+                response.whenComplete((res, err) -> {
+                    SwingUtilities.invokeLater(() -> {
+                        permissionPanel.slideClose();
+                        if (miniDialog != null) {
+                            miniDialog.hidePermissionRequest();
+                        }
+                        processNextRequest();
+                    });
+                });
+                
+                boolean miniDialogShowing = miniDialog != null && miniDialog.isShowing();
+                if (!miniDialogShowing) {
+                    activateCallback.run();
+                }
             } catch (Exception e) {
                 LOG.severe("Failed to show permission request", e);
                 if (!response.isDone()) {
@@ -110,7 +134,7 @@ final class PermissionDialogManager {
         };
 
         SwingUtilities.invokeLater(() -> {
-            requestQueue.offer(showTask);
+            requestQueue.offer(new PendingRequest(showTask, response));
             if (!isRequestShowing) {
                 processNextRequest();
             }
@@ -122,10 +146,10 @@ final class PermissionDialogManager {
             SwingUtilities.invokeLater(this::processNextRequest);
             return;
         }
-        Runnable next = requestQueue.poll();
+        PendingRequest next = requestQueue.poll();
         if (next != null) {
             isRequestShowing = true;
-            next.run();
+            next.task().run();
         } else {
             isRequestShowing = false;
         }
@@ -134,6 +158,22 @@ final class PermissionDialogManager {
     /** Called when a permission result is ready, adds the result to the chat thread. */
     void addResultToChat(String statusText, boolean allowed) {
         chatPanel.addPermissionResult(statusText, allowed);
-        processNextRequest();
+    }
+
+    /** Rejects all pending requests in the queue and the currently active one. */
+    void rejectAllRequests() {
+        permissionPanel.rejectRequest();
+        MiniAssistantDialog miniDialog = MiniAssistantDialog.getInstance();
+        if (miniDialog != null) {
+            miniDialog.hidePermissionRequest();
+        }
+        SwingUtilities.invokeLater(() -> {
+            PendingRequest req;
+            while ((req = requestQueue.poll()) != null) {
+                if (!req.response().isDone()) {
+                    req.response().complete("reject");
+                }
+            }
+        });
     }
 }

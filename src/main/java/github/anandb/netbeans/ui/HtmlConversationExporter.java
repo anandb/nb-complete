@@ -4,6 +4,7 @@ import java.awt.Component;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Base64;
@@ -95,7 +96,7 @@ final class HtmlConversationExporter {
                             : ext.endsWith(".jpg") || ext.endsWith(".jpeg") ? "image/jpeg"
                             : ext.endsWith(".gif") ? "image/gif" : null;
                     if (mime != null) {
-                        byte[] data = java.nio.file.Files.readAllBytes(file.toPath());
+                        byte[] data = Files.readAllBytes(file.toPath());
                         return "data:" + mime + ";base64," + Base64.getEncoder().encodeToString(data);
                     }
                 } catch (Exception e) {

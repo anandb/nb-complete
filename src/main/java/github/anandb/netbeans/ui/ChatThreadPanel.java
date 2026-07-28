@@ -548,15 +548,15 @@ public class ChatThreadPanel extends JPanel {
             lastPermissionLabel = lbl;
 
             RoundedPanel rp = new RoundedPanel(32);
-            rp.setLayout(new java.awt.BorderLayout());
+            rp.setLayout(new BorderLayout());
             rp.setBackground(bg);
             rp.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(border, 1, true),
                 BorderFactory.createEmptyBorder(8, 10, 8, 10)
             ));
-            rp.add(lbl, java.awt.BorderLayout.CENTER);
+            rp.add(lbl, BorderLayout.CENTER);
 
-            JPanel wrapper = new JPanel(new java.awt.BorderLayout());
+            JPanel wrapper = new JPanel(new BorderLayout());
             wrapper.setOpaque(false);
             wrapper.setBorder(BorderFactory.createEmptyBorder(4, 20, 4, 20));
             wrapper.setAlignmentX(Component.LEFT_ALIGNMENT);
