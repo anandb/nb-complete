@@ -875,7 +875,7 @@ public class MiniAssistantDialog extends JDialog {
             miniPermissionLabel.setText("Permission required: " + toolName);
             miniPermissionLabel.setIcon(ThemeManager.getIcon("shield.svg", 16));
             
-            String contextStr = github.anandb.netbeans.support.ToolContextExtractor.extractToolContext(toolCall, 64);
+            String contextStr = toolCall != null ? github.anandb.netbeans.support.ToolContextExtractor.extractToolContext(toolCall, 64) : null;
             if (contextStr == null) contextStr = "";
             
             boolean requiresDiff = "edit".equals(toolName) 

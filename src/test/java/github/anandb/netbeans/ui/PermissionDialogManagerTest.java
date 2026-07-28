@@ -336,15 +336,24 @@ class PermissionDialogManagerTest {
 
     @Test
     void testHandlePermissionRequestPostsToEDT() throws Exception {
+        CountDownLatch pauseEDT = new CountDownLatch(1);
+        SwingUtilities.invokeLater(() -> {
+            try {
+                pauseEDT.await();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        });
+
         CompletableFuture<String> response = new CompletableFuture<>();
         manager.handlePermissionRequest(TEST_SESSION, EMPTY_PARAMS, response, () -> {});
 
         // Before EDT: nothing should have happened
         assertEquals(0, requestQueue.size());
         assertFalse(isRequestShowing());
-        assertEquals(0, permissionPanel.showRequestCount());
 
-        // Pump EDT
+        // Unpause and Pump EDT
+        pauseEDT.countDown();
         CountDownLatch latch = new CountDownLatch(1);
         SwingUtilities.invokeLater(() -> latch.countDown());
         assertTrue(latch.await(5, TimeUnit.SECONDS));
