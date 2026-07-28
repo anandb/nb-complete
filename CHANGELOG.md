@@ -1,5 +1,14 @@
 # Release Notes
 
+## v1.12.7 (Changes since v1.12.6)
+
+### Fixes
+- **MiniAssistantDialog**: Fixed NPE when extracting tool context with a null tool call.
+
+### Housekeeping
+- **Tests**: Fixed intermittent test failure in `PermissionDialogManagerTest` by pausing the EDT properly.
+- Version bumped to 1.12.7.
+
 ## v1.12.6 (Changes since v1.12.5)
 
 ### Features
