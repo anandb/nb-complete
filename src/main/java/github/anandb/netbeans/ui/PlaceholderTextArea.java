@@ -238,7 +238,8 @@ public class PlaceholderTextArea extends JTextArea implements Scrollable {
         if (overlayText != null && !overlayText.isEmpty() && getText().isEmpty()) {
             Graphics2D g2 = (Graphics2D) g.create();
             g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-            g2.setColor(ThemeManager.getCurrentTheme().placeholderForeground());
+            Color base = ThemeManager.getCurrentTheme().placeholderForeground();
+            g2.setColor(new Color((int)(base.getRed() * 0.85), (int)(base.getGreen() * 0.85), (int)(base.getBlue() * 0.85), base.getAlpha()));
             Font overlayFont = getFont().deriveFont(Math.max(9f, getFont().getSize() - 2f));
             g2.setFont(overlayFont);
             FontMetrics fm = g2.getFontMetrics();

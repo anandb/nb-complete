@@ -78,7 +78,7 @@ public class MessageBubble extends JPanel implements Scrollable {
     private boolean pinned;
     private JButton pinBtn;
     private transient Timer showTimer;
-
+    
     @Override
     public float getAlignmentX() {
         return Component.LEFT_ALIGNMENT;
@@ -465,60 +465,6 @@ public class MessageBubble extends JPanel implements Scrollable {
         accordionManager.registerWithAccordionGroup(group);
     }
 
-    public void setExpanded(boolean expanded) {
-        accordionManager.setExpanded(expanded);
-    }
-
-    public void toggleAllBlocks(boolean expanded) {
-        accordionManager.toggleAllBlocks(expanded);
-    }
-
-    public String getRole() {
-        return role;
-    }
-
-    public String getMessageId() {
-        return messageId;
-    }
-
-    public String getToolTitle() {
-        return toolTitle;
-    }
-
-    public String getRawText() {
-        return text.toString();
-    }
-
-    /** Returns true if this bubble is still in streaming mode (not yet converted to HTML)
-     *  or if finalization has been deferred pending a cooldown period. */
-    public boolean isStreaming() {
-        return streamer.isStreaming();
-    }
-
-    /**
-     * Returns true if the boolean streaming flags are set, ignoring the physical
-     * JTextArea presence. Used by {@code ChatThreadPanel} to decide between
-     * normal and force finalization in the sweep failsafe.
-     */
-    boolean streamingFlagsSet() {
-        return streamer.streamingFlagsSet();
-    }
-
-    /**
-     * Returns true if the streaming JTextArea is still present in the component
-     * tree. This is the physical source of truth — unlike {@link #isStreaming()}
-     * it catches cases where boolean flags were corrupted (exception midway
-     * through finalization, double-finalize short-circuit, etc.).
-     * Used by {@code ChatThreadPanel.sweepStreamingBubbles()} as a failsafe.
-     */
-    public boolean hasStreamingTextArea() {
-        return streamer.hasStreamingTextArea();
-    }
-
-    public void setResponseTimeMs(long ms) {
-        themeApplier.setResponseTimeMs(ms);
-    }
-
     private void updateContent(ColorTheme theme, boolean expanded) {
         contentRenderer.updateContent(theme, expanded, toolTitle);
     }
@@ -579,6 +525,125 @@ public class MessageBubble extends JPanel implements Scrollable {
         repaint();
     }
 
+    /** Applies or removes a red left accent on the bubble when pinned. */
+    private void applyPinAccent(boolean apply) {
+        if (bubble instanceof RoundedPanel rp) {
+            rp.setLeftAccent(apply ? new Color(0xCC, 0x33, 0x33, 255) : null);
+        }
+    }
+
+    /**
+     * Finalizes streaming, converting from JTextArea to rich HTML.
+     * @param expanded initial collapse state for code/tool panes
+     */
+    public void finalizeStreaming(boolean expanded) {
+        streamer.finalizeStreaming(expanded, false);
+    }
+
+    /**
+     * Finalizes streaming.
+     * @param expanded  initial collapse state for code/tool panes
+     * @param immediate if true, build HTML now; if false, defer for 300 ms
+     *                  to let additional deltas accumulate (avoids repeated
+     *                  expensive rebuilds during section splits).
+     */
+    public void finalizeStreaming(boolean expanded, boolean immediate) {
+        streamer.finalizeStreaming(expanded, immediate);
+    }
+
+    /**
+     * Force-finalizes streaming without checking boolean flags. Used by the
+     * sweep failsafe when flag corruption is suspected.
+     * @param expanded initial collapse state for code/tool panes
+     */
+    void forceFinalize(boolean expanded) {
+        streamer.forceFinalize(expanded);
+    }
+
+    /**
+     * Updates both the title and segmented content of the combined activity pane.
+     * Used by applyTypeFilters() when re-filtering changes the visible count.
+     */
+    public void updateCombinedContent(List<CollapsibleToolPane.ToolSegment> blocks, String title) {
+        this.toolTitle = title;
+        contentRenderer.updateCombinedContent(blocks, title);
+    }
+
+    /**
+     * Checks whether the mouse pointer is currently within the screen bounds of
+     * the given component. Uses screen coordinates to avoid the unreliable
+     * relative-point check in {@link MouseEvent#getPoint()} when the mouse
+     * moves quickly.
+     */
+    private static boolean isMouseInsideComponent(Component c) {
+        if (!c.isShowing()) return false;
+        PointerInfo pi = MouseInfo.getPointerInfo();
+        if (pi == null) return false;
+        try {
+            Point screenLoc = pi.getLocation();
+            Rectangle bounds = c.getBounds();
+            bounds.setLocation(c.getLocationOnScreen());
+            return bounds.contains(screenLoc);
+        } catch (IllegalComponentStateException ex) {
+            return false;
+        }
+    }
+
+    //<editor-fold defaultstate="collapsed" desc="Properties">
+    public void setExpanded(boolean expanded) {
+        accordionManager.setExpanded(expanded);
+    }
+
+    public void toggleAllBlocks(boolean expanded) {
+        accordionManager.toggleAllBlocks(expanded);
+    }
+
+    public String getRole() {
+        return role;
+    }
+
+    public String getMessageId() {
+        return messageId;
+    }
+
+    public String getToolTitle() {
+        return toolTitle;
+    }
+
+    public String getRawText() {
+        return text.toString();
+    }
+
+    /** Returns true if this bubble is still in streaming mode (not yet converted to HTML)
+     *  or if finalization has been deferred pending a cooldown period. */
+    public boolean isStreaming() {
+        return streamer.isStreaming();
+    }
+
+    /**
+     * Returns true if the boolean streaming flags are set, ignoring the physical
+     * JTextArea presence. Used by {@code ChatThreadPanel} to decide between
+     * normal and force finalization in the sweep failsafe.
+     */
+    boolean streamingFlagsSet() {
+        return streamer.streamingFlagsSet();
+    }
+
+    /**
+     * Returns true if the streaming JTextArea is still present in the component
+     * tree. This is the physical source of truth — unlike {@link #isStreaming()}
+     * it catches cases where boolean flags were corrupted (exception midway
+     * through finalization, double-finalize short-circuit, etc.).
+     * Used by {@code ChatThreadPanel.sweepStreamingBubbles()} as a failsafe.
+     */
+    public boolean hasStreamingTextArea() {
+        return streamer.hasStreamingTextArea();
+    }
+
+    public void setResponseTimeMs(long ms) {
+        themeApplier.setResponseTimeMs(ms);
+    }
+
     /** Returns {@code true} if this message is pinned. */
     public boolean isPinned() {
         return pinned;
@@ -615,41 +680,6 @@ public class MessageBubble extends JPanel implements Scrollable {
         }
     }
 
-    /** Applies or removes a red left accent on the bubble when pinned. */
-    private void applyPinAccent(boolean apply) {
-        if (bubble instanceof RoundedPanel rp) {
-            rp.setLeftAccent(apply ? new Color(0xCC, 0x33, 0x33, 255) : null);
-        }
-    }
-
-    /**
-     * Finalizes streaming, converting from JTextArea to rich HTML.
-     * @param expanded initial collapse state for code/tool panes
-     */
-    public void finalizeStreaming(boolean expanded) {
-        streamer.finalizeStreaming(expanded, false);
-    }
-
-    /**
-     * Finalizes streaming.
-     * @param expanded  initial collapse state for code/tool panes
-     * @param immediate if true, build HTML now; if false, defer for 300 ms
-     *                  to let additional deltas accumulate (avoids repeated
-     *                  expensive rebuilds during section splits).
-     */
-    public void finalizeStreaming(boolean expanded, boolean immediate) {
-        streamer.finalizeStreaming(expanded, immediate);
-    }
-
-    /**
-     * Force-finalizes streaming without checking boolean flags. Used by the
-     * sweep failsafe when flag corruption is suspected.
-     * @param expanded initial collapse state for code/tool panes
-     */
-    void forceFinalize(boolean expanded) {
-        streamer.forceFinalize(expanded);
-    }
-    
     public void setFontSizeOverride(int size) {
         if (contentRenderer != null) {
             contentRenderer.setFontSizeOverride(size);
@@ -664,21 +694,11 @@ public class MessageBubble extends JPanel implements Scrollable {
         contentRenderer.setSegmentedToolContent(blocks);
     }
 
-    /**
-     * Updates both the title and segmented content of the combined activity pane.
-     * Used by applyTypeFilters() when re-filtering changes the visible count.
-     */
-    public void updateCombinedContent(List<CollapsibleToolPane.ToolSegment> blocks, String title) {
-        this.toolTitle = title;
-        contentRenderer.updateCombinedContent(blocks, title);
-    }
-
     @Override
     public boolean getScrollableTracksViewportWidth() {
         return true; // This is the secret sauce for wrapping
     }
 
-    // Other Scrollable methods can return default values
     @Override
     public Dimension getPreferredScrollableViewportSize() {
         return getPreferredSize();
@@ -698,24 +718,5 @@ public class MessageBubble extends JPanel implements Scrollable {
     public boolean getScrollableTracksViewportHeight() {
         return false;
     }
-
-    /**
-     * Checks whether the mouse pointer is currently within the screen bounds of
-     * the given component. Uses screen coordinates to avoid the unreliable
-     * relative-point check in {@link MouseEvent#getPoint()} when the mouse
-     * moves quickly.
-     */
-    private static boolean isMouseInsideComponent(Component c) {
-        if (!c.isShowing()) return false;
-        PointerInfo pi = MouseInfo.getPointerInfo();
-        if (pi == null) return false;
-        try {
-            Point screenLoc = pi.getLocation();
-            Rectangle bounds = c.getBounds();
-            bounds.setLocation(c.getLocationOnScreen());
-            return bounds.contains(screenLoc);
-        } catch (IllegalComponentStateException ex) {
-            return false;
-        }
-    }
+    //</editor-fold>
 }

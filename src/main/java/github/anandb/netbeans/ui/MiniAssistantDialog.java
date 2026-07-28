@@ -278,6 +278,24 @@ public class MiniAssistantDialog extends JDialog {
         splitPane.setTopComponent(responseWrapper);
         splitPane.setDividerSize(2);
         
+        updateOverlayText(true);
+        addWindowFocusListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowGainedFocus(java.awt.event.WindowEvent e) {
+                updateOverlayText(true);
+            }
+            @Override
+            public void windowLostFocus(java.awt.event.WindowEvent e) {
+                updateOverlayText(false);
+            }
+        });
+        
+        add(splitPane, BorderLayout.CENTER);
+        
+        applyTheme();
+    }
+
+    private void updateOverlayText(boolean isFocused) {
         boolean isMac = Utilities.isMac();
         String toggleAction = ShortcutUtils.resolveShortcut("github.anandb.netbeans.ui.ToggleAssistantAction");
         if (toggleAction == null || toggleAction.isEmpty()) toggleAction = isMac ? "Cmd+L" : "Ctrl+L";
@@ -288,12 +306,11 @@ public class MiniAssistantDialog extends JDialog {
         String scrollAction = isMac ? "Cmd+Left/Right: scroll" : "PgUp/PgDn: scroll";
         String copyAction = isMac ? "Cmd+C: copy" : "Ctrl+C: copy";
         
-        inputArea.setOverlayText("Esc: close | " + toggleAction + ": Main Assistant Panel | " + miniToggleAction + ": focus toggle | "
+        String focusText = isFocused ? "Focus Editor" : "Focus Assistant";
+        
+        inputArea.setOverlayText("Esc: close | " + toggleAction + ": Main Assistant Panel | " + miniToggleAction + ": " + focusText + " | "
             + scrollAction + " | " + copyAction + " | Enter: send");
-        
-        add(splitPane, BorderLayout.CENTER);
-        
-        applyTheme();
+        inputArea.repaint();
     }
 
     public PlaceholderTextArea getInputArea() {
