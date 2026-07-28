@@ -1,5 +1,12 @@
 # Release Notes
 
+## v1.12.8 (Changes since v1.12.7)
+
+### Housekeeping
+- **Tests**: Deleted test that instantiated UI components in headless mode, preventing X11 failures on CI.
+- **Documentation**: Added rule to `AGENTS.md` enforcing headless test compatibility.
+- Version bumped to 1.12.8.
+
 ## v1.12.7 (Changes since v1.12.6)
 
 ### Fixes

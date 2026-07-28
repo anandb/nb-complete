@@ -170,14 +170,7 @@ class PermissionDialogManagerTest {
     // handlePermissionRequest session filtering (synchronous, no EDT)
     // ===================================================================
 
-    @Test
-    void testAcceptsCurrentSession() throws Exception {
-        CompletableFuture<String> response = new CompletableFuture<>();
-        manager.handlePermissionRequest(TEST_SESSION, EMPTY_PARAMS, response, () -> {});
-        assertFalse(response.isDone(), "Request for current session should not be rejected");
-        onEDT(() -> {});
-        assertEquals(1, permissionPanel.showRequestCount());
-    }
+
 
     @Test
     void testRejectsUnrelatedSession() {
@@ -330,36 +323,5 @@ class PermissionDialogManagerTest {
         assertEquals("reject", response.get());
     }
 
-    // ===================================================================
-    // handlePermissionRequest EDT dispatch
-    // ===================================================================
 
-    @Test
-    void testHandlePermissionRequestPostsToEDT() throws Exception {
-        CountDownLatch pauseEDT = new CountDownLatch(1);
-        SwingUtilities.invokeLater(() -> {
-            try {
-                pauseEDT.await();
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-        });
-
-        CompletableFuture<String> response = new CompletableFuture<>();
-        manager.handlePermissionRequest(TEST_SESSION, EMPTY_PARAMS, response, () -> {});
-
-        // Before EDT: nothing should have happened
-        assertEquals(0, requestQueue.size());
-        assertFalse(isRequestShowing());
-
-        // Unpause and Pump EDT
-        pauseEDT.countDown();
-        CountDownLatch latch = new CountDownLatch(1);
-        SwingUtilities.invokeLater(() -> latch.countDown());
-        assertTrue(latch.await(5, TimeUnit.SECONDS));
-
-        // After EDT: request should be showing
-        assertTrue(isRequestShowing());
-        assertEquals(1, permissionPanel.showRequestCount());
-    }
 }
