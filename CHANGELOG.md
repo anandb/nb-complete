@@ -1,5 +1,23 @@
 # Release Notes
 
+## v1.12.6 (Changes since v1.12.5)
+
+### Features
+- **Ask Assistant action**: Added new Ask Assistant menu action.
+
+### Fixes
+- **Streaming & Stop state**: Fixed EDT blocking during streaming and corrected Stop button state for internal messages.
+- **Diff deduplication**: Trimmed leading and trailing whitespace before deduping diffs.
+
+### UI
+- **Text & Prompts**: UI text adjustments, updated reconnect prompts, and standardized audience.
+
+### Refactoring
+- **Imports**: Replaced inline FQCNs with imports across 12 files.
+
+### Housekeeping
+- Version bumped to 1.12.6.
+
 ## v1.12.5 (Changes since v1.12.3)
 
 ### Features
