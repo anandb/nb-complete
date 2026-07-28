@@ -134,6 +134,8 @@ public class SessionManager implements SessionQuery, SessionControl {
     private volatile boolean sendResumeOnLoad;
     /** True once the warm-up prompt has been sent for this connection. */
     private volatile boolean warmupSent;
+    /** True if a manual reconnect was initiated by the user. */
+    private volatile boolean manualReconnectPending;
 
     public SessionManager() {
         ACPProjectManager.getInstance().setProjectOpenListener(this::handleProjectOpened);
@@ -270,6 +272,11 @@ public class SessionManager implements SessionQuery, SessionControl {
     @Override
     public void setBeforePreambleHandler(java.util.function.BiFunction<String, List<SessionConfigOption>, CompletableFuture<Void>> handler) {
         this.beforePreambleHandler = handler;
+    }
+
+    @Override
+    public void scheduleManualReconnectPrompt() {
+        this.manualReconnectPending = true;
     }
 
     // --- Session CRUD (moved from ProcessManager) ---
@@ -608,7 +615,10 @@ public class SessionManager implements SessionQuery, SessionControl {
                             stateMachine.transitionTo(SessionState.STREAMING);
                             notifySessionLoaded(sessionId, configOptions, isStartup);
 
-                            if (!warmupSent) {
+                            if (manualReconnectPending) {
+                                manualReconnectPending = false;
+                                sendAssistantPrompt(sessionId, "Ask the user if you should continue ?", "reconnect prompt");
+                            } else if (!warmupSent) {
                                 // Warm-up: send an invisible prompt so the AI model
                                 // is primed before the user's first real message.
                                 // The first prompt after a fresh server start may
@@ -709,7 +719,7 @@ public class SessionManager implements SessionQuery, SessionControl {
     }
 
     private void sendWarmupPrompt(String sessionId) {
-        sendAssistantPrompt(sessionId, " ", "warm-up prompt");
+        sendAssistantPrompt(sessionId, "Ask the user What's Next ?", "warm-up prompt");
     }
 
     private void sendAssistantPrompt(String sessionId, String text, String label) {

@@ -402,6 +402,7 @@ public class ComponentLifecycleHandler {
         safetyTimeout.setRepeats(false);
         safetyTimeout.start();
 
+        sessionService.get().scheduleManualReconnectPrompt();
         processService.get().restartServer();
 
         processService.get().whenReady().thenAccept(v -> {

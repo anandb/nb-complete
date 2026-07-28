@@ -71,4 +71,7 @@ public interface SessionControl extends SessionQuery {
 
     /** Persists context usage (used, size) for a session so it survives reload. */
     void setContextUsage(String sessionId, long used, long size);
+
+    /** Schedules a manual reconnect prompt to be sent on next session load. */
+    void scheduleManualReconnectPrompt();
 }
