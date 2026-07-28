@@ -310,14 +310,10 @@ public class ChatThreadPanel extends JPanel {
 
             if (lastBubble != null && canMerge) {
                 lastBubble.appendText(part, pm.toolTitle());
-                // If the bubble was already finalized (not streaming), re-render
-                // immediately so late deltas are reflected in the HTML content.
+                // If the bubble was already finalized (not streaming), put it back
+                // into streaming mode so late deltas are debounced via the coordinator.
                 if (!lastBubble.isStreaming()) {
-                    boolean wasAtBottom = scrollController.isAtBottom();
-                    lastBubble.flushUpdate(true);
-                    if (wasAtBottom) {
-                        scrollController.scrollToBottom(true);
-                    }
+                    streamingCoordinator.startStreaming(lastBubble);
                 }
             } else {
                 // Capture scroll state BEFORE content mutation — finalize can shrink bubble (JTextArea→HTML),

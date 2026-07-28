@@ -41,4 +41,7 @@ public interface SessionListener {
     /** Fired when all open projects have been closed. The UI should clear
      *  the input area since there is no active project context. */
     default void onAllProjectsClosed() {}
+
+    /** Fired when an internal message (e.g. warmup, preamble) is sent. */
+    default void onInternalMessageSent() {}
 }

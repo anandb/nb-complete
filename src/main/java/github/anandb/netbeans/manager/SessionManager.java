@@ -713,6 +713,10 @@ public class SessionManager implements SessionQuery, SessionControl {
     }
 
     private void sendAssistantPrompt(String sessionId, String text, String label) {
+        for (SessionListener l : listeners) {
+            l.onInternalMessageSent();
+        }
+
         Map<String, Object> textBlock = new HashMap<>();
         textBlock.put("type", "text");
         textBlock.put("text", text);

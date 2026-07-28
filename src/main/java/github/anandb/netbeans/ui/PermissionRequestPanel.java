@@ -347,13 +347,11 @@ final class PermissionRequestPanel extends JPanel {
             row.setOpaque(false);
 
             String dispPath = displayPath(fc.filePath());
-            String labelText;
+            String name = new File(fc.filePath()).getName();
             int count = pathCount.getOrDefault(fc.filePath(), 1);
             if (count > 1) {
                 int n = hunkIndex.merge(fc.filePath(), 1, Integer::sum);
-                labelText = dispPath + " : Hunk " + n;
-            } else {
-                labelText = dispPath;
+                name = name + " (H" + n + ")";
             }
 
             // Show filename prominently, parent path greyed out
@@ -361,11 +359,11 @@ final class PermissionRequestPanel extends JPanel {
             nameLabel.setIcon(ThemeManager.getIcon("file.svg", 14));
             nameLabel.setIconTextGap(6);
             nameLabel.setToolTipText(fc.filePath());
-            String name = new File(fc.filePath()).getName();
-            String parent = dispPath.substring(0, Math.max(0, dispPath.length() - name.length()));
+
+            String parent = dispPath.substring(0, Math.max(0, dispPath.length() - new File(fc.filePath()).getName().length()));
             String fnameHex = Integer.toHexString(theme.permissionFilename().getRGB() & 0xFFFFFF);
             String pathHex = Integer.toHexString(theme.permissionPath().getRGB() & 0xFFFFFF);
-            if (!parent.isEmpty() && !parent.equals(name)) {
+            if (!parent.isEmpty() && !parent.equals(new File(fc.filePath()).getName())) {
                 nameLabel.setText("<html><font color='#" + fnameHex
                         + "'><b>" + escapeHtml(name) + "</b></font> <font color='#"
                         + pathHex + "'>" + escapeHtml(parent) + "</font></html>");
@@ -520,9 +518,16 @@ final class PermissionRequestPanel extends JPanel {
         // Clear any stale preferred-size override from previous slideClose()
         // so getPreferredSize() returns the natural layout height.
         setPreferredSize(null);
+
+        int expectedWidth = getParent() != null ? getParent().getWidth() : 400;
+        if (expectedWidth > 0) {
+            setSize(new Dimension(expectedWidth, Short.MAX_VALUE));
+            doLayout();
+        }
+
         revalidate();
         int targetHeight = getPreferredSize().height;
-        setPreferredSize(new Dimension(getParent() != null ? getParent().getWidth() : 400, 0));
+        setPreferredSize(new Dimension(expectedWidth, 0));
         revalidate();
 
         // Disable chat input while permission dialog is active

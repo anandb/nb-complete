@@ -176,6 +176,9 @@ class BubbleStreamer {
 
     void finalizeStreaming(boolean expanded, boolean immediate) {
         if (state == StreamingState.FINALIZED) {
+            if (hasPendingTextUpdate) {
+                flushUpdate(true);
+            }
             postFinalizeCallback.accept(expanded, false);
             return;
         }

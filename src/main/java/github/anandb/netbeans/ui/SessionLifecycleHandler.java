@@ -116,6 +116,12 @@ public class SessionLifecycleHandler implements SessionListener {
         turnEnded = false;
     }
 
+    @Override
+    public void onInternalMessageSent() {
+        onNewMessageSent();
+        SwingUtilities.invokeLater(() -> statusController.updateButtonState(true));
+    }
+
     /** True once an end-of-turn signal arrived (SSE responding_finished/end_turn/
      *  available_commands_update, RPC completion, or session load). Used by
      *  {@code ChatThreadPanel.flushTimer} to gate idle-gap-based finalization
