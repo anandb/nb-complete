@@ -153,8 +153,9 @@ final class PermissionRequestPanel extends JPanel {
 
         buildContentBlocks(toolCall);
 
-        // Cap scroll height at half the container height
-        int maxH = getParent() != null ? getParent().getHeight() / 2 : 400;
+        // Cap scroll height at 80% of the container height to avoid vertical scrolling if possible
+        int parentHeight = getParent() != null && getParent().getHeight() > 0 ? getParent().getHeight() : 600;
+        int maxH = (int) (parentHeight * 0.8);
         contentScroll.setMaximumSize(new Dimension(Integer.MAX_VALUE, Math.max(maxH, 150)));
 
         buttonPanel.removeAll();
