@@ -4,11 +4,9 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import org.openide.awt.ActionID;
 import org.openide.awt.ActionRegistration;
-import org.openide.awt.ActionReference;
 
 @ActionID(category = "Assistant", id = "github.anandb.netbeans.ui.ToggleBlocksAction")
 @ActionRegistration(displayName = "#CTL_ToggleBlocksAction")
-@ActionReference(path = "Actions/Assistant", position = 1000)
 public class ToggleBlocksAction implements ActionListener {
 
     @Override

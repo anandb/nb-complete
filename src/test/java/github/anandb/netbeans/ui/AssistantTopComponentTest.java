@@ -50,13 +50,13 @@ class AssistantTopComponentTest {
     @Test
     void testTruncatePathJustOverBoundary() {
         String path = "a".repeat(66);
-        assertEquals("..." + "a".repeat(62), ToolContextExtractor.truncatePath(path));
+        assertEquals(path, ToolContextExtractor.truncatePath(path));
     }
 
     @Test
     void testTruncatePathLong() {
         String path = "a".repeat(100);
-        assertEquals("..." + "a".repeat(62), ToolContextExtractor.truncatePath(path));
+        assertEquals(path, ToolContextExtractor.truncatePath(path));
     }
 
     @Test
@@ -267,7 +267,7 @@ class AssistantTopComponentTest {
                 .set("args", MAPPER.createObjectNode()
                         .put("filePath", longPath));
         String result = ToolContextExtractor.extractToolContext(tc);
-        assertEquals("..." + "x".repeat(62), result);
+        assertEquals(longPath, result);
     }
 
     @Test

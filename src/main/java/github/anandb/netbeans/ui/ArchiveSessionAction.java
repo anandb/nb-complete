@@ -4,12 +4,10 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import org.openide.awt.ActionID;
 import org.openide.awt.ActionRegistration;
-import org.openide.awt.ActionReference;
 import org.openide.util.Lookup;
 
 @ActionID(category = "Assistant", id = "github.anandb.netbeans.ui.ArchiveSessionAction")
 @ActionRegistration(displayName = "#CTL_ArchiveSessionAction")
-@ActionReference(path = "Actions/Assistant", position = 400)
 public class ArchiveSessionAction implements ActionListener {
 
     @Override
