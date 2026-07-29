@@ -89,7 +89,9 @@ class ServerProcessLifecycle {
             reconnectRP = new RequestProcessor("ACP-Reconnect", 1, true);
         }
         isClosing = false;
-        readyFuture = new CompletableFuture<>();
+        if (readyFuture == null || readyFuture.isDone()) {
+            readyFuture = new CompletableFuture<>();
+        }
 
         // Ensure MCP server is running (idempotent - start() returns early if already running/disabled)
         toolExecutor.start();
