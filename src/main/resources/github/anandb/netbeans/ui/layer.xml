@@ -123,4 +123,12 @@
             </folder>
         </folder>
     </folder>
+    <folder name="Editors">
+        <folder name="CodeGenerators">
+            <file name="AskAssistantCodeGeneratorSep.instance">
+                <attr name="instanceClass" stringvalue="javax.swing.JSeparator"/>
+                <attr name="position" intvalue="2147483646"/>
+            </file>
+        </folder>
+    </folder>
 </filesystem>
