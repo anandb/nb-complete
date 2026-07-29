@@ -298,13 +298,51 @@ public class PlaceholderTextArea extends JTextArea implements Scrollable {
         }
     }
 
-    // --- Scrollable implementation ---
+    @Override
+    public Dimension getPreferredSize() {
+        Dimension d = super.getPreferredSize();
+        int minHeight = d.height;
+        
+        // Always ensure at least 2 lines of text height
+        int twoLinesHeight = getInsets().top + getInsets().bottom + (getRowHeight() * 2);
+        if (minHeight < twoLinesHeight) {
+            minHeight = twoLinesHeight;
+        }
+
+        if (getText().isEmpty()) {
+            if (overlayText != null && !overlayText.isEmpty()) {
+                Font overlayFont = getFont().deriveFont(Math.max(9f, getFont().getSize() - 2f));
+                FontMetrics fm = getFontMetrics(overlayFont);
+                int availableWidth = getWidth() > 0 ? getWidth() - getInsets().left - getInsets().right - 8 : 400;
+                int numLines = (fm.stringWidth(overlayText) > availableWidth) ? 2 : 1;
+                int overlayHeight = getInsets().top + getInsets().bottom + (fm.getHeight() * numLines);
+                if (overlayHeight > minHeight) minHeight = overlayHeight;
+            } else if (placeholder != null && !placeholder.isEmpty()) {
+                Font placeholderFont = getFont().deriveFont(Font.PLAIN);
+                FontMetrics fm = getFontMetrics(placeholderFont);
+                String[] lines = LINE_SPLIT.split(placeholder, -1);
+                int placeholderHeight = getInsets().top + getInsets().bottom + (fm.getHeight() * lines.length);
+                if (placeholderHeight > minHeight) minHeight = placeholderHeight;
+            }
+        }
+        
+        d.height = minHeight;
+        return d;
+    }
+
+    @Override
+    public Dimension getMinimumSize() {
+        Dimension d = super.getMinimumSize();
+        int twoLinesHeight = getInsets().top + getInsets().bottom + (getRowHeight() * 2);
+        if (d.height < twoLinesHeight) {
+            d.height = twoLinesHeight;
+        }
+        return d;
+    }
 
     @Override
     public Dimension getPreferredScrollableViewportSize() {
-        // Let JTextArea compute its natural preferred size based on content.
-        // Starts at ~2 lines when empty, grows as user types.
-        return super.getPreferredSize();
+        return getPreferredSize();
     }
 
     @Override
