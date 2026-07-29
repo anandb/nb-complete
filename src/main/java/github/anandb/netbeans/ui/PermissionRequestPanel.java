@@ -98,14 +98,19 @@ final class PermissionRequestPanel extends JPanel {
         ));
 
         // Row 1: icon + prompt message (full width, no truncation)
-        JPanel messageRow = new JPanel(new BorderLayout(8, 0));
+        JPanel messageRow = new JPanel(new BorderLayout(8, 0)) {
+            @Override
+            public Dimension getMinimumSize() {
+                return getPreferredSize();
+            }
+        };
         messageRow.setOpaque(false);
         JLabel iconLabel = new JLabel(ThemeManager.getIcon("shield.svg", 18));
         iconLabel.setAlignmentY(TOP_ALIGNMENT);
         messageRow.add(iconLabel, BorderLayout.WEST);
 
         promptLabel = FitEditorPane.createHtmlPane(" ", null, "system", false);
-        promptLabel.setBorder(BorderFactory.createEmptyBorder());
+        promptLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 8, 0));
         promptLabel.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN));
         promptLabel.setForeground(theme.permissionTitle());
         promptLabel.setAlignmentY(TOP_ALIGNMENT);

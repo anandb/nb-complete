@@ -238,7 +238,11 @@ public class MiniAssistantDialog extends JDialog {
         };
         KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(keyDispatcher);
         
-        splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, null, inputArea);
+        JScrollPane inputScrollPane = new JScrollPane(inputArea);
+        inputScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        inputScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        inputScrollPane.setBorder(null);
+        splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, null, inputScrollPane);
         splitPane.setResizeWeight(0.85); // give more space to response
         splitPane.addPropertyChangeListener(JSplitPane.DIVIDER_LOCATION_PROPERTY, e -> saveBounds());
         splitPane.addComponentListener(new ComponentAdapter() {
@@ -830,6 +834,9 @@ public class MiniAssistantDialog extends JDialog {
                 sp.setBackground(theme.background());
                 sp.setOpaque(true);
             }
+        }
+        if (inputArea.getParent() instanceof JViewport vp) {
+            vp.setBackground(theme.background());
         }
         inputArea.setBackground(theme.background());
         inputArea.setForeground(theme.foreground());
