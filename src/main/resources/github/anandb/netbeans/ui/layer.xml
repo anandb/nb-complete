@@ -78,6 +78,14 @@
     </folder>
     <folder name="Windows2">
     </folder>
+    <folder name="Menu">
+        <folder name="Refactoring">
+            <file name="AskAssistantSep.instance">
+                <attr name="instanceClass" stringvalue="javax.swing.JSeparator"/>
+                <attr name="position" intvalue="1855"/>
+            </file>
+        </folder>
+    </folder>
     <folder name="OptionsDialog">
             <file name="github-anandb-netbeans-ui-ACPOptionsPanelController.instance">
             <attr methodvalue="org.netbeans.spi.options.OptionsCategory.createCategory" name="instanceCreate"/>

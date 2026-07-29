@@ -114,7 +114,12 @@ final class PermissionRequestPanel extends JPanel {
         promptLabel.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN));
         promptLabel.setForeground(theme.permissionTitle());
         promptLabel.setAlignmentY(TOP_ALIGNMENT);
-        messageRow.add(promptLabel, BorderLayout.CENTER);
+        
+        JPanel promptWrapper = new JPanel();
+        promptWrapper.setLayout(new BoxLayout(promptWrapper, BoxLayout.Y_AXIS));
+        promptWrapper.setOpaque(false);
+        promptWrapper.add(promptLabel);
+        messageRow.add(promptWrapper, BorderLayout.CENTER);
         content.add(messageRow);
 
         // Row 1b: code/diff content blocks (shown when toolCall has diff data)
@@ -154,7 +159,48 @@ final class PermissionRequestPanel extends JPanel {
         this.pendingResponse = responseFuture;
         this.requestActive = true;
 
-        promptLabel.setText("<html>" + prompt.replace("\n", "<br>") + "</html>");
+        JPanel promptWrapper = (JPanel) promptLabel.getParent();
+        while (promptWrapper.getComponentCount() > 1) {
+            promptWrapper.remove(1); // remove old context label
+        }
+
+        String context = toolCall != null ? 
+            github.anandb.netbeans.support.ToolContextExtractor.extractToolContext(toolCall, Integer.MAX_VALUE) : null;
+        String splitToken = "\n<b>Context:</b> <font face=\"monospace\" color=\"#F44336\"></font>\n";
+        
+        if (context != null && !context.isEmpty() && prompt.contains(splitToken)) {
+            // Split the prompt to inject the context label
+            String[] parts = prompt.split(java.util.regex.Pattern.quote(splitToken));
+            promptLabel.setText("<html>" + parts[0].replace("\n", "<br>") + "</html>");
+            
+            JPanel contextRow = new JPanel(new java.awt.BorderLayout(4, 0));
+            contextRow.setOpaque(false);
+            contextRow.setAlignmentX(java.awt.Component.LEFT_ALIGNMENT);
+            
+            javax.swing.JLabel prefixLabel = new javax.swing.JLabel("<html><b>Context:</b> </html>");
+            prefixLabel.setFont(github.anandb.netbeans.ui.ThemeManager.getFont().deriveFont(java.awt.Font.PLAIN));
+            prefixLabel.setForeground(ThemeManager.getCurrentTheme().permissionTitle());
+            contextRow.add(prefixLabel, java.awt.BorderLayout.WEST);
+            
+            StartTruncatingLabel contextLabel = new StartTruncatingLabel(context);
+            java.awt.Font baseFont = github.anandb.netbeans.ui.ThemeManager.getFont().deriveFont(java.awt.Font.PLAIN);
+            contextLabel.setFont(new java.awt.Font(java.awt.Font.MONOSPACED, baseFont.getStyle(), baseFont.getSize()));
+            contextLabel.setForeground(new java.awt.Color(0xF44336));
+            contextRow.add(contextLabel, java.awt.BorderLayout.CENTER);
+            
+            promptWrapper.add(contextRow);
+            
+            if (parts.length > 1) {
+                String suffixHtml = "<html>" + parts[1].replace("\n", "<br>") + "</html>";
+                FitEditorPane suffixLabel = FitEditorPane.createHtmlPane(suffixHtml, null, "system", false);
+                suffixLabel.setBorder(javax.swing.BorderFactory.createEmptyBorder(8, 0, 8, 0));
+                suffixLabel.setFont(github.anandb.netbeans.ui.ThemeManager.getFont().deriveFont(java.awt.Font.PLAIN));
+                suffixLabel.setForeground(ThemeManager.getCurrentTheme().permissionTitle());
+                promptWrapper.add(suffixLabel);
+            }
+        } else {
+            promptLabel.setText("<html>" + prompt.replace("\n", "<br>") + "</html>");
+        }
 
         buildContentBlocks(toolCall);
 

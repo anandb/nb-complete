@@ -25,7 +25,7 @@ public final class MdLogicalViewProvider implements LogicalViewProvider {
 
     /** Files matching this name pattern are hidden from the project tree. */
     private static final Pattern HIDDEN_NAMES = Pattern.compile(
-        "(?i)^\\.(?!gitignore|gitattributes|editorconfig|npmrc)"  // dotfiles except common ones
+        "(?i)^\\.(?!gitignore|gitattributes|editorconfig|npmrc|hgignore)"  // dotfiles except common ones
         + "|^Thumbs\\.db$|^Desktop\\.ini$|^\\.DS_Store$"
         + "|\\.(?:swp|swo|bak|~)$"                                  // editor swap/backup
     );

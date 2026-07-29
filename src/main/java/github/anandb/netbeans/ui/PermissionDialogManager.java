@@ -75,13 +75,9 @@ final class PermissionDialogManager {
                         : toolCall.has("name") ? toolCall.get("name").asText() : "tool";
             }
 
-            String context = ToolContextExtractor.extractToolContext(toolCall, 256);
-            // Avoid duplication: when the display title (kind or title field)
-            // equals the context (e.g. both are the same file path), don't
-            // show both. But when title is a category like "execute" and
-            // context is the actual command, show both.
+            String context = ToolContextExtractor.extractToolContext(toolCall, Integer.MAX_VALUE);
             if (context != null && !context.equals(title)) {
-                prompt = NbBundle.getMessage(PermissionDialogManager.class, "MSG_PermissionToolWithContext", title, context);
+                prompt = NbBundle.getMessage(PermissionDialogManager.class, "MSG_PermissionToolWithContext", title, "");
             } else {
                 prompt = NbBundle.getMessage(PermissionDialogManager.class, "MSG_PermissionTool", title);
             }
