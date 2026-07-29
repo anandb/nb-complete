@@ -1,4 +1,4 @@
-package github.anandb.netbeans.support;
+package github.anandb.netbeans.manager;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import java.io.IOException;
@@ -13,6 +13,9 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import github.anandb.netbeans.contract.PinnedMessageControl;
+import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.MapperSupplier;
+import github.anandb.netbeans.support.PreferenceKeys;
 import org.openide.util.NbPreferences;
 import org.openide.util.lookup.ServiceProvider;
 

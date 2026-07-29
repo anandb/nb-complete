@@ -1,14 +1,10 @@
 package github.anandb.netbeans.model;
 
-import github.anandb.netbeans.support.Logger;
-
 public class MessageTransformer {
-    private static final Logger LOG = Logger.from(MessageTransformer.class);
 
     public ProcessedMessage convert(Message message) {
         String type = message.type();
         StringBuilder sb = new StringBuilder();
-        LOG.fine("addMessage(Message) called. role={0}, state={1}", new Object[]{type, message.state()});
 
         if ("user".equals(type)) {
             if (message.prompt() != null) {

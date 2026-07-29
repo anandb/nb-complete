@@ -377,6 +377,11 @@ public class MiniAssistantDialog extends JDialog {
     }
     
     private void sendMessage() {
+        String sessionId = Lookup.getDefault().lookup(SessionControl.class).getCurrentSessionId();
+        if (sessionId == null) {
+            return;
+        }
+        
         String text = inputArea.getText();
         if (text.trim().isEmpty()) return;
         
@@ -593,7 +598,6 @@ public class MiniAssistantDialog extends JDialog {
             this.isProcessing = processing;
             String sessionId = Lookup.getDefault()
                     .lookup(SessionControl.class).getCurrentSessionId();
-            inputArea.setEnabled(sessionId != null);
             if (processing) {
                 maxTokenCountThisTurn = 0;
                 displayedMessageId = null;
@@ -709,13 +713,11 @@ public class MiniAssistantDialog extends JDialog {
         if (!bubbles.isEmpty()) {
             currentBubbleIndex = bubbles.size() - 1;
             displayBubble(bubbles.get(currentBubbleIndex));
-            inputArea.setEnabled(true);
         } else {
             currentBubbleIndex = -1;
             responsePane.removeAll();
             
             String msg = (sessionId == null) ? "Start a chat from the main sidebar to begin." : "Ready to help.";
-            inputArea.setEnabled(sessionId != null);
             
             MessageBubble bubble = new MessageBubble(MessageType.agent_message_chunk, 
                 msg, "mini_0", null, 

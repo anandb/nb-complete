@@ -7,7 +7,6 @@ import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
-import javax.swing.UIManager;
 import org.openide.util.NbBundle;
 
 /**
@@ -147,12 +146,8 @@ public class StatusController {
 
     public void setInputEnabled(boolean enabled) {
         SwingUtilities.invokeLater(() -> {
-            inputArea.setEnabled(enabled);
             sendBtn.setEnabled(enabled);
             toggleOptionsBtn.setVisible(enabled);
-            if (!enabled) {
-                inputArea.setBackground(UIManager.getColor("TextArea.background"));
-            }
         });
     }
 

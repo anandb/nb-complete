@@ -213,8 +213,11 @@ class ServerProcessLifecycle {
         Map<String, Object> params = Map.of(
                 "protocolVersion", 1,
                 "clientCapabilities", Map.of(
-                        "fs", Map.of("readTextFile", true),
-                        "terminal", true
+                        "fs", Map.of(
+                                "readTextFile", true,
+                                "writeTextFile", false
+                        ),
+                        "terminal", false
                 )
         );
         AcpProtocolClient client = rpcClient.get();

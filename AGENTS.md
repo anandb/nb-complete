@@ -124,7 +124,12 @@ NbPreferences.forModule(PreferenceKeys.class)
 | Data classes | `model/` | `Session`, `ProcessedMessage` |
 | Utilities, constants | `support/` | `Logger`, `PreferenceKeys` |
 
-### Architectural Debt (Known Violations — All Resolved)
+### Architectural Debt (Known Violations)
+- **model/MessageTransformer → support/Logger (ACCEPTED)**: `model/MessageTransformer`
+  uses `github.anandb.netbeans.support.Logger` instead of `java.util.logging.Logger`
+  to keep consistent logging format with the rest of the codebase. Acceptable because
+  `support/Logger` is a thin wrapper with zero dependencies. Do NOT add further
+  `model/` → `support/` or `model/` → other layer imports.
 - **ui/ → manager/ singletons (RESOLVED)**: All `ui/` → `manager/SessionManager` and
   `ProcessManager` imports have been eliminated. UI now accesses services via
   `Lookup.getDefault().lookup(SessionControl.class)` and

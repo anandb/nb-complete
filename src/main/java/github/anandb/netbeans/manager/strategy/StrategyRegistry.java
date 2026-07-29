@@ -17,7 +17,7 @@ import java.util.concurrent.TimeUnit;
 
 import github.anandb.netbeans.contract.UIHandler;
 import github.anandb.netbeans.contract.UpdateDispatcher;
-import github.anandb.netbeans.support.ToolDataExtractor;
+import github.anandb.netbeans.manager.ToolDataExtractor;
 import github.anandb.netbeans.model.Message;
 import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.ModelRecords.MessageClassification;
