@@ -13,6 +13,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.awt.Rectangle;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -31,6 +32,8 @@ import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.SwingConstants;
+import javax.swing.Scrollable;
 import javax.swing.Timer;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -110,14 +113,14 @@ final class PermissionRequestPanel extends JPanel {
         content.add(messageRow);
 
         // Row 1b: code/diff content blocks (shown when toolCall has diff data)
-        contentBlocks = new JPanel();
+        contentBlocks = new ScrollableBlocksPanel();
         contentBlocks.setLayout(new BoxLayout(contentBlocks, BoxLayout.Y_AXIS));
         contentBlocks.setOpaque(false);
         contentScroll = new JScrollPane(contentBlocks);
         contentScroll.setBorder(BorderFactory.createEmptyBorder(2, 4, 2, 4));
         contentScroll.setOpaque(false);
         contentScroll.getViewport().setOpaque(false);
-        contentScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        contentScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         contentScroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
         content.add(contentScroll);
 
@@ -352,7 +355,8 @@ final class PermissionRequestPanel extends JPanel {
             FileChange fc = expanded.get(i);
             if (i > 0) contentBlocks.add(Box.createVerticalStrut(4));
 
-            JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
+            JPanel row = new JPanel(new BorderLayout(4, 0));
+            row.setBorder(BorderFactory.createEmptyBorder(0, 0, 2, 0));
             row.setOpaque(false);
 
             String dispPath = displayPath(fc.filePath());
@@ -386,8 +390,8 @@ final class PermissionRequestPanel extends JPanel {
             statusLabel.setFont(monoFont);
             statusLabel.setForeground(statusColor(fc.status()));
 
-            row.add(nameLabel);
-            row.add(statusLabel);
+            row.add(nameLabel, BorderLayout.CENTER);
+            row.add(statusLabel, BorderLayout.EAST);
             contentBlocks.add(row);
         }
         } catch (Exception e) {
@@ -430,32 +434,49 @@ final class PermissionRequestPanel extends JPanel {
         if (command == null) return;
 
         // Command row
-        JPanel cmdRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
+        JPanel cmdRow = new JPanel(new BorderLayout(4, 0));
+        cmdRow.setBorder(BorderFactory.createEmptyBorder(0, 0, 4, 0));
         cmdRow.setOpaque(false);
         JLabel cmdIcon = new JLabel(ThemeManager.getIcon("tool.svg", 14));
-        cmdIcon.setIconTextGap(6);
-        JLabel cmdText = new JLabel(command);
+        cmdIcon.setVerticalAlignment(SwingConstants.TOP);
+        
+        javax.swing.JTextArea cmdText = new javax.swing.JTextArea(command);
+        cmdText.setEditable(false);
+        cmdText.setLineWrap(true);
+        cmdText.setWrapStyleWord(true);
         cmdText.setFont(monoFont);
         cmdText.setForeground(theme.permissionFilename());
+        cmdText.setOpaque(false);
+        cmdText.setBackground(new Color(0, 0, 0, 0));
+        cmdText.setBorder(null);
         cmdText.setToolTipText(command);
-        cmdRow.add(cmdIcon);
-        cmdRow.add(cmdText);
+        
+        cmdRow.add(cmdIcon, BorderLayout.WEST);
+        cmdRow.add(cmdText, BorderLayout.CENTER);
         contentBlocks.add(cmdRow);
 
         // Workdir row (if available)
         if (workdir != null && !workdir.isEmpty()) {
-            JPanel wdRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+            JPanel wdRow = new JPanel(new BorderLayout(4, 0));
             wdRow.setOpaque(false);
             // Indent with empty label of icon width
             JLabel wdIcon = new JLabel(ThemeManager.getIcon("file.svg", 14));
-            wdIcon.setIconTextGap(6);
+            wdIcon.setVerticalAlignment(SwingConstants.TOP);
+            
             String dispWd = displayPath(workdir);
-            JLabel wdText = new JLabel(dispWd);
+            javax.swing.JTextArea wdText = new javax.swing.JTextArea(dispWd);
+            wdText.setEditable(false);
+            wdText.setLineWrap(true);
+            wdText.setWrapStyleWord(true);
             wdText.setFont(monoFont);
             wdText.setForeground(theme.permissionPath());
+            wdText.setOpaque(false);
+            wdText.setBackground(new Color(0, 0, 0, 0));
+            wdText.setBorder(null);
             wdText.setToolTipText(workdir);
-            wdRow.add(wdIcon);
-            wdRow.add(wdText);
+            
+            wdRow.add(wdIcon, BorderLayout.WEST);
+            wdRow.add(wdText, BorderLayout.CENTER);
             contentBlocks.add(wdRow);
         }
     }
@@ -748,5 +769,28 @@ final class PermissionRequestPanel extends JPanel {
 
     private static String escapeHtml(String s) {
         return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+    }
+
+    private static class ScrollableBlocksPanel extends JPanel implements Scrollable {
+        @Override
+        public Dimension getPreferredScrollableViewportSize() {
+            return getPreferredSize();
+        }
+        @Override
+        public int getScrollableUnitIncrement(Rectangle r, int orientation, int direction) {
+            return 16;
+        }
+        @Override
+        public int getScrollableBlockIncrement(Rectangle r, int orientation, int direction) {
+            return 16;
+        }
+        @Override
+        public boolean getScrollableTracksViewportWidth() {
+            return true;
+        }
+        @Override
+        public boolean getScrollableTracksViewportHeight() {
+            return false;
+        }
     }
 }
