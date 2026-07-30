@@ -60,6 +60,28 @@ import static org.apache.commons.text.StringEscapeUtils.unescapeHtml4;
 /**
  * Manages the state and lifecycle of chat sessions.
  * Decouples session logic from the AssistantTopComponent UI.
+ *
+ * <h3>Lifecycle</h3>
+ * Sessions transition through states managed by {@link SessionStateMachine}:
+ * {@code IDLE → LOADING → STREAMING → STOPPING → IDLE}. The state machine
+ * enforces valid transitions and fires listeners on change.
+ *
+ * <h3>SSE Message Routing</h3>
+ * Incoming {@code session/update} messages from the ACP server are received
+ * via {@code SessionLifecycleHandler.displayMessage()} and dispatched to
+ * {@code StrategyRegistry.handle()} for type-based routing. See
+ * {@code strategy/StrategyRegistry.java} for the dispatch chain.
+ *
+ * <h3>Preamble &amp; Warmup</h3>
+ * On new session creation, this class sends a combined prompt of
+ * critical rules ({@link PluginSettings#getCriticalRules()}) followed by
+ * the preamble ({@link PluginSettings#getPreamble()}), both as an
+ * assistant-only message with {@code audience: ["assistant"]}.
+ *
+ * <h3>Reconnection</h3>
+ * When the server disconnects, {@code AcpReconnectManager} handles up to 3
+ * reconnection attempts with linear backoff (3s, 6s, 9s). On successful
+ * reconnection, the current session is automatically reloaded.
  */
 @ServiceProvider(service = SessionControl.class)
 public class SessionManager implements SessionQuery, SessionControl {

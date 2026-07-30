@@ -62,6 +62,52 @@ The project follows a hexagonal (ports & adapters) architecture integrated into 
 - **`support/`**: Pure utilities — logging, JSON mapping, text scanning, constants, browser helpers. Zero dependencies on upper layers.
 - **`ui/`**: All Swing components — chat window, message bubbles, streaming animation, theming, options panel, stash diff viewer. Depends only on `contract/` interfaces.
 
+### Layer Dependencies
+
+Dependencies flow downward only — no upward imports between layers:
+
+```
+        ┌─────────┐
+        │   ui/   │  ← presentation (highest)
+        └────┬────┘
+             │
+        ┌────▼────┐
+        │manager/ │  ← business logic
+        └────┬────┘
+             │
+    ┌────────┼────────┐
+    ▼        ▼        ▼
+┌────────┐ ┌────────┐ ┌────────┐
+│ model/ │ │contract│ │support/│  ← data, interfaces, utils (lowest)
+└────────┘ └────────┘ └────────┘
+```
+
+### Connection Flow
+
+```
+┌──────────┐    SSE / JSON-RPC    ┌──────────────────┐
+│  Sidebar │ ◄──────────────────► │ AcpProtocolClient │
+│  (server)│     stdin/stdout     │  (transport)      │
+└──────────┘                      └────────┬─────────┘
+                                           │
+                                      ┌────▼──────┐
+                                      │ ProcessMgr│
+                                      │ (dispatch)│
+                                      └────┬──────┘
+                                           │
+                                      ┌────▼──────┐
+                                      │SessionMgr │
+                                      │ (session) │
+                                      └────┬──────┘
+                                           │
+                              ┌─────────────┼─────────────┐
+                              ▼             ▼             ▼
+                        ┌──────────┐  ┌──────────┐  ┌──────────┐
+                        │ Strategy │  │ Lifecycle│  │   MCP    │
+                        │ Registry │  │ Handler  │  │  Server  │
+                        └──────────┘  └──────────┘  └──────────┘
+```
+
 ---
 
 ## Source Organization

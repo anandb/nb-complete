@@ -36,6 +36,37 @@ import github.anandb.netbeans.contract.ToolExecutor;
 import github.anandb.netbeans.mcp.McpToolAdapter;
 import github.anandb.netbeans.mcp.McpManager;
 
+/**
+ * Spawns and owns the {@code opencode acp} subprocess; central request
+ * dispatch hub for all ACP JSON-RPC calls.
+ *
+ * <h3>Server Lifecycle</h3>
+ * <ul>
+ *   <li>{@link #ensureStarted()} &mdash; idempotent, starts the server once.</li>
+ *   <li>{@link #restartServer()} &mdash; stops, resets state, restarts fresh
+ *       and clears the reconnect throttle.</li>
+ *   <li>{@link #shutdown()} &mdash; guarded by {@code isClosing()} to prevent
+ *       double-stop.</li>
+ * </ul>
+ *
+ * <h3>Request Routing</h3>
+ * {@link #sendRequest(String, Object)} delegates to
+ * {@link AcpProtocolClient#sendRequest(String, Object, long, java.util.concurrent.TimeUnit)}.
+ * Streaming requests ({@code session/prompt}) use per-request <em>idle</em>
+ * timeouts tied to the connection's {@code lastDataTime} &mdash; not absolute
+ * deadlines. Startup RPCs ({@code initialize}, {@code session/list}) use
+ * {@link java.util.concurrent.CompletableFuture#orTimeout(long, java.util.concurrent.TimeUnit)}.
+ *
+ * <h3>Reconnection</h3>
+ * On server disconnection, delegates to {@link AcpReconnectManager} which
+ * retries up to 3 times within a 5-minute sliding window with linear backoff
+ * (3s, 6s, 9s). On exhaustion, gives up until manual restart.
+ *
+ * <h3>Handlers</h3>
+ * Crash, ready, and connection error handlers are wired at startup in
+ * {@link ServerProcessLifecycle}. The crash handler resets
+ * {@code SessionManager} to {@code IDLE} state and notifies the UI.
+ */
 @ServiceProvider(service = ProcessControl.class)
 public class ProcessManager implements ProcessControl {
     private static final Logger LOG = Logger.from(ProcessManager.class);

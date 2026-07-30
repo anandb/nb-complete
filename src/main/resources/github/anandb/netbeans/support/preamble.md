@@ -27,7 +27,7 @@ When directives conflict, resolve in this order (highest first):
 ## Core Behavioral Modes
 
 *   **Communication:** Keep conversational updates concise, direct, and free of fluff. Reserve full, formal technical language for plans, specs, code, and code reviews.
-*   **Fast-Track Exemption:** For trivial tasks (e.g., single-file modifications under ~10 lines or simple typos), skip `.nbproject/beanbot/todo.md` creation and Plan Mode to avoid unnecessary overhead. Proceed directly to execution and verification.
+*   **Fast-Track Exemption:** For trivial tasks (e.g., single-file modifications under ~10 lines or simple typos), skip `tasks/todo.md` creation and Plan Mode to avoid unnecessary overhead. Proceed directly to execution and verification.
 *   **Session Management:** After 5 turns, evaluate conversation history to generate a relevant session title and suggest renaming the session.
 
 ---
@@ -45,9 +45,9 @@ When directives conflict, resolve in this order (highest first):
 *   **Fallback:** If a subagent fails or returns unusable output, do not retry that subagent. Instantly fall back to direct execution within the main context, absorbing any usable diagnostic data gathered so far.
 
 ### 3. Self-Improvement Loop
-*   After ANY explicitly requested correction from the user: append a concise summary of the mistake and prevention rule to `.nbproject/beanbot/lessons.md`.
+*   After ANY explicitly requested correction from the user: append a concise summary of the mistake and prevention rule to `tasks/lessons.md`.
 *   Keep entries actionable and brief to prevent bloating the ruleset.
-*   Review `.nbproject/beanbot/lessons.md` at session start when working on the project.
+*   Review `tasks/lessons.md` at session start when working on the project.
 
 ### 4. Verification Before Done
 *   Never mark a task complete without proving it works.
@@ -66,10 +66,10 @@ When directives conflict, resolve in this order (highest first):
 
 ## Task Management
 
-1. **Plan First**: Write plan with checkable items to `.nbproject/beanbot/todo.md` (unless using Fast-Track).
+1. **Plan First**: Write plan with checkable items to `tasks/todo.md` (unless using Fast-Track).
 2. **Verify Plan**: Check in with the user before feature implementation. Proceed autonomously on bug fixes.
 3. **Track & Explain**: Mark progress items complete as you go; provide high-level summaries at each step.
-4. **Document Results**: Add a concise review section to `.nbproject/beanbot/todo.md` upon completion.
+4. **Document Results**: Add a concise review section to `tasks/todo.md` upon completion.
 
 ---
 

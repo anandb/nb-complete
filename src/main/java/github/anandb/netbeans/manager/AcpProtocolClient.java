@@ -35,6 +35,46 @@ import github.anandb.netbeans.support.WireLogger;
 
 import static github.anandb.netbeans.support.AgentUtils.closeQuietly;
 
+/**
+ * JSON-RPC transport over a subprocess stdin/stdout with SSE stream parsing.
+ *
+ * <h3>Thread Model</h3>
+ * <ul>
+ *   <li><b>Reader thread</b> (daemon) &mdash; blocks on
+ *       {@code Jackson JsonParser.nextToken()} reading server stdout.
+ *       Malformed JSON is logged and skipped (recoverable). An
+ *       {@code IOException} here is fatal and triggers disconnection.</li>
+ *   <li><b>Watchdog</b> ({@code RequestProcessor}, 5s interval) &mdash;
+ *       polls pending request idle times against {@code lastDataTime}.</li>
+ * </ul>
+ *
+ * <h3>Two-Tier Idle Timeout</h3>
+ * <ul>
+ *   <li><b>Per-request idle</b> &mdash; each {@link #sendRequest} can set a
+ *       request-specific timeout in the {@code requestIdleTimeouts} map.
+ *       A request fails only when the connection is idle (no inbound data)
+ *       beyond its timeout.</li>
+ *   <li><b>Connection-level idle</b> &mdash; if any requests are pending but
+ *       no data arrives for the global timeout (default 600s from
+ *       {@link PluginSettings#getSessionIdleTimeout()}), the connection
+ *       closes entirely.</li>
+ * </ul>
+ * Both are <em>idle</em> timers &mdash; a streaming request with data flowing
+ * never times out. Every incoming message calls {@code touch()} to reset
+ * {@code lastDataTime}.
+ *
+ * <h3>Error Detection</h3>
+ * The reader thread can block forever on I/O when the server dies without
+ * closing the pipe. {@link #setConnectionErrorHandler} detects server death
+ * via <b>write-side</b> failures ({@code IOException} on
+ * {@code sendRequest()/sendNotification()}) &mdash; this is the only reliable
+ * way to discover a dead server when the reader is blocked.
+ *
+ * <h3>Close Race Guard</h3>
+ * {@link #sendRequest} double-checks the {@code closed} flag <em>after</em>
+ * inserting the future into {@code pendingRequests}, removing the orphan if
+ * {@code close()} drained the map in the race window.
+ */
 public class AcpProtocolClient implements Closeable {
     private static final Logger LOG = Logger.from(AcpProtocolClient.class);
     private static final ObjectMapper MAPPER = MapperSupplier.get();

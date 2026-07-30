@@ -3,6 +3,43 @@ package github.anandb.netbeans.model;
 import java.util.EnumSet;
 import java.util.Set;
 
+/**
+ * Finite-state machine states for a chat session's lifecycle.
+ *
+ * <h3>Valid Transitions</h3>
+ * <pre>
+ *            ┌─────────┐
+ *   ┌────────│  IDLE   │◄────────┐
+ *   │        └────┬────┘         │
+ *   │             │              │
+ *   │        ┌────▼────┐         │
+ *   ├────────│ LOADING │         │
+ *   │        └────┬────┘         │
+ *   │             │              │
+ *   │        ┌────▼──────┐       │
+ *   ├────────│ STREAMING │       │
+ *   │        └────┬──────┘       │
+ *   │             │              │
+ *   │        ┌────▼──────┐       │
+ *   └────────│ STOPPING  │───────┘
+ *            └───────────┘
+ * </pre>
+ *
+ * <ul>
+ *   <li>{@link #IDLE} &rarr; {@link #LOADING} (start new or open session)</li>
+ *   <li>{@link #LOADING} &rarr; {@link #STREAMING} (session ready)</li>
+ *   <li>{@link #LOADING} &rarr; {@link #IDLE} (load failure)</li>
+ *   <li>{@link #STREAMING} &rarr; {@link #LOADING} (reload)</li>
+ *   <li>{@link #STREAMING} &rarr; {@link #STOPPING} (user stop or turn end)</li>
+ *   <li>{@link #STREAMING} &rarr; {@link #IDLE} (server disconnect)</li>
+ *   <li>{@link #STOPPING} &rarr; {@link #STREAMING} (recovery timeout)</li>
+ *   <li>{@link #STOPPING} &rarr; {@link #IDLE} (server confirmed stop)</li>
+ * </ul>
+ *
+ * The allowed transitions are enforced by {@link #canTransitionTo(SessionState)}
+ * via the precomputed sets {@code FROM_IDLE}, {@code FROM_LOADING},
+ * {@code FROM_STREAMING}, and {@code FROM_STOPPING}.
+ */
 public enum SessionState {
     IDLE,
     LOADING,
