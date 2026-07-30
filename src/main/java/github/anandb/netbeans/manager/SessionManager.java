@@ -706,12 +706,26 @@ public class SessionManager implements SessionQuery, SessionControl {
         }
     }
 
-    /** Sends the initial preamble prompt for a new session.
+    /** Sends the critical rules followed by the preamble prompt for a new session.
      *  @return true if a preamble was sent, false if empty/skipped */
     private boolean sendPreamble(String sessionId) {
+        String rules = PluginSettings.getCriticalRules();
         String preamble = PluginSettings.getPreamble();
+
+        StringBuilder combined = new StringBuilder();
+        if (!isBlank(rules)) {
+            combined.append(rules);
+        }
         if (!isBlank(preamble)) {
-            sendAssistantPrompt(sessionId, preamble, "preamble");
+            if (!combined.isEmpty()) {
+                combined.append("\n\n");
+            }
+            combined.append(preamble);
+        }
+
+        String text = combined.toString().trim();
+        if (!text.isEmpty()) {
+            sendAssistantPrompt(sessionId, text, "critical rules + preamble");
             return true;
         }
 

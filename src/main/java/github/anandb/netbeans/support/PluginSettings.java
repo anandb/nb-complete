@@ -21,6 +21,7 @@ public final class PluginSettings {
     private static final int DEFAULT_MAX_MESSAGES = 100;
     private static final int DEFAULT_TOOLBAR_ICON_SIZE = 24;
     private static final String DEFAULT_PREAMBLE;
+    private static final String DEFAULT_CRITICAL_RULES;
 
     /** Cached session idle timeout in seconds — volatile for cross-thread visibility. */
     private static volatile int cachedSessionIdleTimeout = DEFAULT_SESSION_IDLE_TIMEOUT;
@@ -48,6 +49,16 @@ public final class PluginSettings {
         }
         DEFAULT_PREAMBLE = preamble;
 
+        String rules = "";
+        try (InputStream in = PluginSettings.class.getResourceAsStream("critical_rules.md")) {
+            if (in != null) {
+                rules = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+            }
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "Failed to load critical_rules.md: {0}", ExceptionUtils.getMessage(e));
+        }
+        DEFAULT_CRITICAL_RULES = rules;
+
         // Seed cached value and register listener
         Preferences prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
         cachedSessionIdleTimeout = prefs.getInt(KEY_SESSION_IDLE_TIMEOUT, DEFAULT_SESSION_IDLE_TIMEOUT);
@@ -66,6 +77,11 @@ public final class PluginSettings {
     /** Returns the default preamble loaded from the bundled resources. */
     public static String getDefaultPreamble() {
         return DEFAULT_PREAMBLE;
+    }
+
+    /** Returns the critical rules loaded from the bundled resources, never editable by the user. */
+    public static String getCriticalRules() {
+        return DEFAULT_CRITICAL_RULES;
     }
 
     public static String getPreamble() {
