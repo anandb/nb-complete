@@ -5,6 +5,9 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.Toolkit;
+import java.awt.datatransfer.StringSelection;
+import java.util.Locale;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -28,7 +31,6 @@ class MissingBinaryBubble extends JPanel {
 
         JPanel content = new JPanel(new BorderLayout(0, 10));
         content.setOpaque(true);
-        // We use a light blue-ish background or assistantBubbleBg to match the theme
         content.setBackground(theme.bubbleAssistant() != null ? theme.bubbleAssistant() : theme.sunkenBackground());
         content.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createLineBorder(theme.bubbleBorder() != null ? theme.bubbleBorder() : Color.LIGHT_GRAY, 1, true),
@@ -53,6 +55,7 @@ class MissingBinaryBubble extends JPanel {
 
         content.add(headerPanel, BorderLayout.NORTH);
 
+        // Body text
         String text = NbBundle.getMessage(MissingBinaryBubble.class, "MissingBinaryBubble.Body");
         JTextArea bodyLabel = new JTextArea(text);
         bodyLabel.setLineWrap(true);
@@ -63,10 +66,35 @@ class MissingBinaryBubble extends JPanel {
         bodyLabel.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
         bodyLabel.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN, ThemeManager.getFont().getSize() + 1f));
         bodyLabel.setForeground(theme.foreground());
+
+        // Install command panel
+        String installCmd = getInstallCommand();
+        JPanel cmdPanel = new JPanel(new BorderLayout());
+        cmdPanel.setOpaque(true);
+        cmdPanel.setBackground(theme.isDark() ? new Color(0x1A1B26) : new Color(0xF0F0F0));
+        cmdPanel.setBorder(BorderFactory.createEmptyBorder(8, 10, 8, 10));
+
+        JLabel cmdLabel = new JLabel("$ " + installCmd);
+        cmdLabel.setFont(IconResourceManager.getMonospaceFont());
+        cmdLabel.setForeground(theme.isDark() ? new Color(0xA1EFE4) : new Color(0x333333));
+
+        JButton copyBtn = new JButton(NbBundle.getMessage(MissingBinaryBubble.class, "MissingBinaryBubble.Button.Copy"));
+        copyBtn.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN, ThemeManager.getFont().getSize() - 1f));
+        copyBtn.setFocusPainted(false);
+        copyBtn.setBorder(BorderFactory.createEmptyBorder(4, 10, 4, 10));
+        copyBtn.addActionListener(e -> {
+            Toolkit.getDefaultToolkit().getSystemClipboard()
+                .setContents(new StringSelection(installCmd), null);
+            copyBtn.setText(NbBundle.getMessage(MissingBinaryBubble.class, "MissingBinaryBubble.Copied"));
+        });
         
-        JPanel centerPanel = new JPanel(new BorderLayout());
+        cmdPanel.add(cmdLabel, BorderLayout.CENTER);
+        cmdPanel.add(copyBtn, BorderLayout.EAST);
+
+        JPanel centerPanel = new JPanel(new BorderLayout(0, 8));
         centerPanel.setOpaque(false);
-        centerPanel.add(bodyLabel, BorderLayout.CENTER);
+        centerPanel.add(bodyLabel, BorderLayout.NORTH);
+        centerPanel.add(cmdPanel, BorderLayout.CENTER);
         content.add(centerPanel, BorderLayout.CENTER);
 
         // Buttons
@@ -92,5 +120,17 @@ class MissingBinaryBubble extends JPanel {
         add(content, BorderLayout.CENTER);
 
         setAlignmentX(LEFT_ALIGNMENT);
+    }
+
+    /** Returns the OS-specific install command for OpenCode. */
+    static String getInstallCommand() {
+        String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
+        if (os.contains("win")) {
+            return "winget install opencode";
+        } else if (os.contains("mac")) {
+            return "brew install opencode";
+        } else {
+            return "curl -fsSL https://opencode.ai/install.sh | sh";
+        }
     }
 }
