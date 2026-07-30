@@ -12,6 +12,8 @@ import java.nio.charset.StandardCharsets;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
 
+import static org.apache.commons.lang3.StringUtils.isNotBlank;
+
 /**
  * Utility for performing version control system operations (e.g. Git stashing).
  */
@@ -235,7 +237,7 @@ public class VcsUtils {
     private static String execGit(File cwd, String env, String stdin, String... cmd) throws Exception {
         ProcessBuilder pb = new ProcessBuilder(cmd);
         pb.directory(cwd);
-        if (env != null) {
+        if (isNotBlank(env)) {
             String[] parts = env.split("=", 2);
             pb.environment().put(parts[0], parts[1]);
         }

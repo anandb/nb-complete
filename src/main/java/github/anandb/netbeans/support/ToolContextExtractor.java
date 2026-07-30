@@ -6,6 +6,8 @@ import java.util.Map;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
+import static org.apache.commons.lang3.StringUtils.isNotBlank;
+
 /**
  * Extracts human-readable context strings from tool call arguments.
  * Pure utility with zero dependencies on any application layer.
@@ -56,7 +58,7 @@ public final class ToolContextExtractor {
 
         // Fallback: try patterns array (ACP format)
         String pattern = extractFirstPattern(toolCall);
-        if (pattern != null) {
+        if (isNotBlank(pattern)) {
             if (pattern.contains("/") || pattern.contains(File.separator) || pattern.startsWith(".")) {
                 return truncatePath(pattern);
             }

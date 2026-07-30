@@ -27,6 +27,8 @@ import github.anandb.netbeans.contract.SlashCommandInterceptor;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.PreferenceKeys;
 import github.anandb.netbeans.support.LanguageResolver;
+
+import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.contract.ProcessControl;
@@ -240,7 +242,7 @@ public class ProcessManager implements ProcessControl {
 
         if (context != null) {
             String filePath = (String) context.get("filePath");
-            if (filePath != null) {
+            if (isNotBlank(filePath)) {
                 File file = new File(filePath);
                 String lang = LanguageResolver.fromPath(filePath);
                 String fileName = file.getName();

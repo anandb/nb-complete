@@ -22,6 +22,7 @@ import javax.swing.JPanel;
 import javax.swing.JSeparator;
 
 import static org.apache.commons.lang3.StringUtils.defaultIfBlank;
+import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import static org.apache.commons.lang3.StringUtils.left;
 
 import org.openide.util.NbBundle;
@@ -121,7 +122,7 @@ final class WelcomeScreen {
         mainLabel.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
         textPanel.add(mainLabel);
 
-        if (subtext != null) {
+        if (isNotBlank(subtext)) {
             String folder = new File(subtext).getName();
             JLabel subLabel = new JLabel(NbBundle.getMessage(ChatThreadPanel.class, "LBL_InFolder", folder));
             subLabel.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN));

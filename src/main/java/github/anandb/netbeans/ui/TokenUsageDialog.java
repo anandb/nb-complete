@@ -1,6 +1,9 @@
 package github.anandb.netbeans.ui;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
+
+import static org.apache.commons.lang3.StringUtils.isNotBlank;
+
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
@@ -285,7 +288,7 @@ public class TokenUsageDialog extends JDialog {
             pb.environment().put("NO_COLOR", "1");
         }
         pb.redirectErrorStream(true);
-        if (projectDir != null) {
+        if (isNotBlank(projectDir)) {
             File dir = new File(projectDir);
             if (dir.isDirectory()) {
                 pb.directory(dir);

@@ -7,6 +7,7 @@ import java.util.regex.Pattern;
 import org.openide.util.NbBundle;
 import org.openide.util.NbPreferences;
 
+import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
 public final class BinaryResolver {
@@ -99,7 +100,7 @@ public final class BinaryResolver {
      */
     public static boolean isInPath(String command) {
         String pathEnv = System.getenv("PATH");
-        if (pathEnv == null) {
+        if (isBlank(pathEnv)) {
             return false;
         }
         for (String p : PATH_SPLIT.split(pathEnv)) {
