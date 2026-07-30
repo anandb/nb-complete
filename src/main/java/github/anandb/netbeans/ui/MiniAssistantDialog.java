@@ -917,21 +917,19 @@ public class MiniAssistantDialog extends JDialog {
                 miniPermissionButtons.add(showDiffBtn);
             }
             
-            if (options != null && options.isArray() && options.size() > 0) {
+            if (options != null && options.isArray() && !options.isEmpty()) {
                 for (JsonNode opt : options) {
-                    String optionId = opt.has("optionId") ? opt.get("optionId").asText() : "";
-                    String name = opt.has("name") ? opt.get("name").asText() : optionId;
-                    String kind = opt.has("kind") ? opt.get("kind").asText() : "";
+                    PermissionOption po = PermissionOption.fromJson(opt);
                     
-                    JButton btn = new JButton(name);
+                    JButton btn = new JButton(po.name());
                     btn.setFocusPainted(false);
-                    if (kind.contains("allow")) {
+                    if (po.kind().contains("allow")) {
                         btn.setForeground(theme.permissionGrantFg());
                         btn.setBackground(theme.permissionGrantBg());
                         btn.setBorder(BorderFactory.createCompoundBorder(
                                 BorderFactory.createLineBorder(theme.permissionGrantBorder(), 1),
                                 BorderFactory.createEmptyBorder(4, 12, 4, 12)));
-                    } else if (kind.contains("reject") || kind.contains("deny")) {
+                    } else if (po.kind().contains("reject") || po.kind().contains("deny")) {
                         btn.setForeground(theme.permissionDenyFg());
                         btn.setBackground(theme.permissionDenyBg());
                         btn.setBorder(BorderFactory.createCompoundBorder(
@@ -945,10 +943,10 @@ public class MiniAssistantDialog extends JDialog {
                     
                     btn.addActionListener(e -> {
                         if (activePermissionFuture != null) {
-                            activePermissionFuture.complete(optionId);
+                            activePermissionFuture.complete(po.id());
                             AssistantTopComponent tc = AssistantTopComponent.findInstance();
                             if (tc != null) {
-                                tc.getChatThreadPanel().addPermissionResult(name, kind.contains("allow"));
+                                tc.getChatThreadPanel().addPermissionResult(po.name(), po.kind().contains("allow"));
                             }
                         }
                     });

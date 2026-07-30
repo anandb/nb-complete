@@ -22,6 +22,9 @@ import github.anandb.netbeans.ui.platform.PlatformBridge;
 import github.anandb.netbeans.ui.platform.ProcessService;
 import github.anandb.netbeans.ui.platform.SessionService;
 import java.util.prefs.PreferenceChangeListener;
+import github.anandb.netbeans.support.PluginSettings;
+import github.anandb.netbeans.support.VcsUtils;
+import org.openide.util.RequestProcessor;
 
 /**
  * Handles sending user messages and stopping message processing.
@@ -200,6 +203,32 @@ public class MessageSender {
         if (onUserMessageSentCallback != null) {
             onUserMessageSentCallback.run();
         }
+        if (PluginSettings.isAutoBackupChanges()) {
+            final String sessionDir = sessionService.get().getCurrentSessionDirectory();
+            RequestProcessor.getDefault().post(() -> {
+                try {
+                    VcsUtils.VcsInfo vcsInfo = VcsUtils.findVcsInfo(sessionDir);
+                    if (vcsInfo != null && VcsUtils.hasUncommittedChanges(vcsInfo)) {
+                        String backupMsg = VcsUtils.backupUncommittedChanges(vcsInfo);
+                        if (backupMsg != null) {
+                            SwingUtilities.invokeLater(() -> {
+                                chatPanel.addMessage(new ProcessedMessage.Builder()
+                                    .messageType(MessageType.tool_call_update)
+                                    .text(backupMsg)
+                                    .messageId(UUID.randomUUID().toString())
+                                    .kind("System Backup")
+                                    .toolTitle("Auto-Backup")
+                                    .rawText(backupMsg)
+                                    .build());
+                            });
+                        }
+                    }
+                } catch (Exception ex) {
+                    LOG.info("Auto-backup failed: {0}", ExceptionUtils.getMessage(ex));
+                }
+            });
+        }
+
         processService.get().sendMessage(currentSessionId, messageText, context, fileBlocks)
                 .thenAccept(result -> {
                     SwingUtilities.invokeLater(() -> {

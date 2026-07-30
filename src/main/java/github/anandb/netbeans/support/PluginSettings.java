@@ -35,6 +35,7 @@ public final class PluginSettings {
     private static volatile boolean cachedSortLinesEnabled = true;
     private static volatile boolean cachedStashDiffEnabled = true;
     private static volatile boolean cachedQuickJumpEnabled = true;
+    private static volatile boolean cachedAutoBackupChanges = true;
 
     private static final PreferenceChangeListener listener = PluginSettings::onPreferenceChanged;
 
@@ -68,6 +69,7 @@ public final class PluginSettings {
         cachedSortLinesEnabled = prefs.getBoolean(PreferenceKeys.ACTIONS_SORT_LINES, true);
         cachedStashDiffEnabled = prefs.getBoolean(PreferenceKeys.ACTIONS_STASH_DIFF, true);
         cachedQuickJumpEnabled = prefs.getBoolean(PreferenceKeys.ACTIONS_QUICK_JUMP, true);
+        cachedAutoBackupChanges = prefs.getBoolean(PreferenceKeys.AUTO_BACKUP_CHANGES, true);
         prefs.addPreferenceChangeListener(listener);
     }
 
@@ -150,7 +152,18 @@ public final class PluginSettings {
             cachedStashDiffEnabled = Boolean.parseBoolean(evt.getNewValue());
         } else if (PreferenceKeys.ACTIONS_QUICK_JUMP.equals(evt.getKey())) {
             cachedQuickJumpEnabled = Boolean.parseBoolean(evt.getNewValue());
+        } else if (PreferenceKeys.AUTO_BACKUP_CHANGES.equals(evt.getKey())) {
+            cachedAutoBackupChanges = Boolean.parseBoolean(evt.getNewValue());
         }
+    }
+
+    /** Whether auto backup of uncommitted changes is enabled on turn start. */
+    public static boolean isAutoBackupChanges() {
+        return cachedAutoBackupChanges;
+    }
+
+    public static void setAutoBackupChanges(boolean enabled) {
+        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean(PreferenceKeys.AUTO_BACKUP_CHANGES, enabled);
     }
 
     /** Max visible message bubbles before older ones are trimmed. 0 = unlimited. */

@@ -250,33 +250,31 @@ final class PermissionRequestPanel extends JPanel {
             buttonPanel.add(showDiffBtn);
         }
 
-        if (options != null && options.isArray() && options.size() > 0) {
+        if (options != null && options.isArray() && !options.isEmpty()) {
             for (JsonNode opt : options) {
-                String optionId = opt.has("optionId") ? opt.get("optionId").asText() : "";
-                String name = opt.has("name") ? opt.get("name").asText() : optionId;
-                String kind = opt.has("kind") ? opt.get("kind").asText() : "";
+                PermissionOption po = PermissionOption.fromJson(opt);
 
                 JButton btn;
-                if (kind.contains("allow")) {
-                    btn = createButton(name, theme.permissionGrantFg(),
+                if (po.kind().contains("allow")) {
+                    btn = createButton(po.name(), theme.permissionGrantFg(),
                             theme.permissionGrantBg(), theme.permissionGrantBorder());
                     btn.setMnemonic('A');
                     allowAction = () -> {
-                        pendingResponse.complete(optionId);
+                        pendingResponse.complete(po.id());
                         slideClose();
-                        fireResult(name, true);
+                        fireResult(po.name(), true);
                     };
-                } else if (kind.contains("reject") || kind.contains("deny")) {
-                    btn = createButton(name, theme.permissionDenyFg(),
+                } else if (po.kind().contains("reject") || po.kind().contains("deny")) {
+                    btn = createButton(po.name(), theme.permissionDenyFg(),
                             theme.permissionDenyBg(), theme.permissionDenyBorder());
                     btn.setMnemonic('R');
                 } else {
-                    btn = createButton(name, null, null, null);
+                    btn = createButton(po.name(), null, null, null);
                 }
                 btn.addActionListener(e -> {
-                    pendingResponse.complete(optionId);
-                    boolean allowed = kind.contains("allow");
-                    String statusText = name;
+                    pendingResponse.complete(po.id());
+                    boolean allowed = po.kind().contains("allow");
+                    String statusText = po.name();
                     slideClose();
                     fireResult(statusText, allowed);
                 });

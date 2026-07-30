@@ -159,20 +159,18 @@ class PermissionBubble extends JPanel {
             buttons.add(showDiffBtn);
         }
 
-        if (options != null && options.isArray() && options.size() > 0) {
+        if (options != null && options.isArray() && !options.isEmpty()) {
             LOG.fine("PermissionBubble: rendering {0} options", options.size());
             for (JsonNode opt : options) {
-                String optionId = opt.has("optionId") ? opt.get("optionId").asText() : "";
-                String name = opt.has("name") ? opt.get("name").asText() : optionId;
-                String kind = opt.has("kind") ? opt.get("kind").asText() : "";
+                PermissionOption po = PermissionOption.fromJson(opt);
 
-                JButton btn = new JButton(name);
+                JButton btn = new JButton(po.name());
                 btn.setFocusPainted(false);
                 btn.addActionListener(e -> {
-                    responseFuture.complete(optionId);
-                    boolean allowed = kind.contains("allow");
+                    responseFuture.complete(po.id());
+                    boolean allowed = po.kind().contains("allow");
                     Icon statusIcon = ThemeManager.getIcon(allowed ? "check.svg" : "x.svg", 16);
-                    String statusText = name;
+                    String statusText = po.name();
                     Color fg = allowed ? theme.permissionGrantFg() : theme.permissionDenyFg();
                     Color bg = allowed ? theme.permissionGrantBg() : theme.permissionDenyBg();
                     Color border = allowed ? theme.permissionGrantBorder() : theme.permissionDenyBorder();

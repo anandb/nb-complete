@@ -70,6 +70,7 @@ public class ACPOptionsPanel extends JPanel {
     private JCheckBox sortLinesCheckbox;
     private JCheckBox stashDiffCheckbox;
     private JCheckBox quickJumpCheckbox;
+    private JCheckBox autoBackupChangesCheckbox;
     private JSpinner idleTimeoutSpinner;
     private JSpinner maxMessagesSpinner;
     private JLabel argsLabel;
@@ -109,6 +110,7 @@ public class ACPOptionsPanel extends JPanel {
         sortLinesCheckbox = new JCheckBox();
         stashDiffCheckbox = new JCheckBox();
         quickJumpCheckbox = new JCheckBox();
+        autoBackupChangesCheckbox = new JCheckBox();
         preambleArea = new JTextArea(5, 40);
         preambleScroll = new JScrollPane(preambleArea);
         iconLabel = new JLabel();
@@ -214,6 +216,11 @@ public class ACPOptionsPanel extends JPanel {
         promptOpencodeInitCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_PromptOpencodeInit"));
         promptOpencodeInitCheckbox.addActionListener(evt -> controller.changed());
         behaviorPanel.add(promptOpencodeInitCheckbox, UIUtils.createGbc(0, ++row, 1.0, 0, GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST,
+                new Insets(0, 12, 5, 0)));
+
+        autoBackupChangesCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_AutoBackupChanges"));
+        autoBackupChangesCheckbox.addActionListener(evt -> controller.changed());
+        behaviorPanel.add(autoBackupChangesCheckbox, UIUtils.createGbc(0, ++row, 1.0, 0, GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST,
                 new Insets(0, 12, 5, 0)));
 
         JLabel maxMessagesLabel = new JLabel(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_MaxMessages"));
@@ -435,6 +442,7 @@ public class ACPOptionsPanel extends JPanel {
         combineCheckbox.setSelected(NbPreferences.forModule(ACPOptionsPanel.class).getBoolean("combineToolThought", true));
         promptOpencodeInitCheckbox.setSelected(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
                 .getBoolean(PreferenceKeys.PROMPT_OPENCODE_INIT, true));
+        autoBackupChangesCheckbox.setSelected(PluginSettings.isAutoBackupChanges());
         checkForUpdatesCheckbox.setSelected(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean(PreferenceKeys.CHECK_FOR_UPDATES, true));
         idleTimeoutSpinner.setValue(PluginSettings.getSessionIdleTimeout());
         maxMessagesSpinner.setValue(PluginSettings.getMaxMessages());
@@ -484,6 +492,7 @@ public class ACPOptionsPanel extends JPanel {
         NbPreferences.forModule(ACPOptionsPanel.class).putBoolean("combineToolThought", combineCheckbox.isSelected());
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
                 .putBoolean(PreferenceKeys.PROMPT_OPENCODE_INIT, promptOpencodeInitCheckbox.isSelected());
+        PluginSettings.setAutoBackupChanges(autoBackupChangesCheckbox.isSelected());
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean(PreferenceKeys.CHECK_FOR_UPDATES, checkForUpdatesCheckbox.isSelected());
         PluginSettings.setSessionIdleTimeout((Integer) idleTimeoutSpinner.getValue());
         PluginSettings.setMaxMessages((Integer) maxMessagesSpinner.getValue());
