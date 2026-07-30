@@ -1,5 +1,30 @@
 # Release Notes
 
+## v1.12.9 (Changes since v1.12.8)
+
+### Features
+- **Mercurial support**: Implemented Mercurial auto-backup support (zero-impact shelving) and deduplication for Git.
+- **opencode.json init**: Added opencode.json init prompt and settings, fixed template permissions, reduced warm-up prompt.
+- **Preamble rules**: Added `critical_rules.md` as pre-preamble assistant instructions.
+- **Editor context menu**: Added a separator before "Ask Assistant" in the Insert Code menu.
+
+### Fixes
+- **Placeholder height**: Enforced a minimum 2-line height for `PlaceholderTextArea`.
+- **Capabilities**: Disabled unsupported capabilities and avoided dropping `readyFuture`.
+- **Ask Assistant**: Restored dynamic path truncation, refined ask assistant menu, and fixed ordering warnings.
+- **Permission Dialog**: Fixed permission dialog layout and horizontal scrollbar clipping issues.
+
+### UI
+- **Permission dialog scrolling**: Increased permission dialog max height to minimize vertical scrolling.
+- **Context truncation**: Implemented responsive start-truncation for permission dialog context path.
+- **Context path**: Removed static file path truncation in permission dialog context.
+
+### Refactoring
+- **Hexagonal Architecture**: Fixed upward dependency violations by moving `PinnedMessageStore` and `ToolDataExtractor` to the `manager/` layer.
+
+### Housekeeping
+- Version bumped to 1.12.9.
+
 ## v1.12.8 (Changes since v1.12.7)
 
 ### Housekeeping
