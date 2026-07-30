@@ -223,16 +223,19 @@ Here is a sample permission block that denies access to sensitive directories an
             "~/.kube/**": "deny",
             "~/.docker/**": "deny",
             "~/.config/gcloud/**": "deny",
+            "*credentials*": "deny",
+            "*.env*": "deny",
             "*": "ask"
         },
         "grep": "allow", // Can also be set to "ask" for strict control
         "glob": "deny", // glob implementation is slow on large directories, preamble.md asks Agents to use `find`
         "bash": {
-            "rm *credentials*": "deny",
-            "rm *.env*": "deny",
-            "git commit *": "ask",
-            "git push *": "ask",
-            "rm *": "ask"
+            "git add": "ask",
+            "git rm": "ask",
+            "git reset": "ask",
+            "git commit": "ask",
+            "git push": "ask",
+            "rm": "ask"
         },
         "webfetch": "allow",
         "websearch": "allow",

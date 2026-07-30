@@ -26,6 +26,8 @@ public final class PreferenceKeys {
 
     public static final String INPUT_HISTORY_PREFIX = "inputHistory.";
 
+    public static final String PROMPT_OPENCODE_INIT = "behavior.promptOpencodeInit";
+
     /** Toolbar icon size: 24 (small), 28 (medium), 32 (large). */
     public static final String TOOLBAR_ICON_SIZE = "toolbarIconSize";
 

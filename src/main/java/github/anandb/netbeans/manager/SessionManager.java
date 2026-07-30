@@ -44,6 +44,15 @@ import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.MapperSupplier;
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.openide.DialogDisplayer;
+import org.openide.NotifyDescriptor;
+import github.anandb.netbeans.support.PreferenceKeys;
+import java.io.File;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
+import java.util.Base64;
+import java.nio.charset.StandardCharsets;
 
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.text.StringEscapeUtils.unescapeHtml4;
@@ -543,6 +552,7 @@ public class SessionManager implements SessionQuery, SessionControl {
                             return;
                         }
                         notifySessionLoaded(session.id(), session.configOptions(), true);
+                        checkAndPromptOpencodeInit(session.effectiveDirectory());
                         refreshSessions();
                         // Before preamble, let the UI handler (if set) show a config
                         // dialog so the user can pick agent/model/level.
@@ -614,6 +624,7 @@ public class SessionManager implements SessionQuery, SessionControl {
                             notifySessionProgress(60);
                             stateMachine.transitionTo(SessionState.STREAMING);
                             notifySessionLoaded(sessionId, configOptions, isStartup);
+                            checkAndPromptOpencodeInit(workingCwd);
 
                             if (manualReconnectPending) {
                                 manualReconnectPending = false;
@@ -733,7 +744,7 @@ public class SessionManager implements SessionQuery, SessionControl {
     }
 
     private void sendWarmupPrompt(String sessionId) {
-        sendAssistantPrompt(sessionId, "Ask the user What's Next ?", "warm-up prompt");
+        sendAssistantPrompt(sessionId, "", "warm-up prompt");
     }
 
     private void sendAssistantPrompt(String sessionId, String text, String label) {
@@ -901,6 +912,77 @@ public class SessionManager implements SessionQuery, SessionControl {
             LOG.warn("Failed to parse timestamp: {0}", ts, e);
             return 0;
         }
+    }
+
+    private void checkAndPromptOpencodeInit(String cwd) {
+        if (cwd == null) {
+            return;
+        }
+        boolean promptEnabled = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                .getBoolean(PreferenceKeys.PROMPT_OPENCODE_INIT, true);
+        if (!promptEnabled) {
+            return;
+        }
+
+        String safeKey = Base64.getEncoder().encodeToString(cwd.getBytes(StandardCharsets.UTF_8));
+        String skipPrefKey = "opencode_skip_" + safeKey;
+        boolean skipPrompt = NbPreferences.forModule(SessionManager.class).getBoolean(skipPrefKey, false);
+        if (skipPrompt) {
+            return;
+        }
+
+        File opencodeDir = new File(cwd, ".opencode");
+        File opencodeJson = new File(opencodeDir, "opencode.json");
+        if (opencodeJson.exists()) {
+            return;
+        }
+
+        SwingUtilities.invokeLater(() -> {
+            // Recheck existance in EDT just in case
+            if (opencodeJson.exists()) {
+                return;
+            }
+
+            // Using github.anandb.netbeans.ui.Bundle constants, loaded via NbBundle
+            // Unfortunately, SessionManager is in manager package, so we must load from ui package bundle.
+            String title = NbBundle.getMessage(github.anandb.netbeans.ui.AssistantTopComponent.class, "TITLE_InitOpencode");
+            String msg = NbBundle.getMessage(github.anandb.netbeans.ui.AssistantTopComponent.class, "MSG_InitOpencode");
+            String btnYes = NbBundle.getMessage(github.anandb.netbeans.ui.AssistantTopComponent.class, "BTN_InitYes");
+            String btnNo = NbBundle.getMessage(github.anandb.netbeans.ui.AssistantTopComponent.class, "BTN_InitNo");
+            String btnLater = NbBundle.getMessage(github.anandb.netbeans.ui.AssistantTopComponent.class, "BTN_InitLater");
+
+            NotifyDescriptor nd = new NotifyDescriptor(
+                    msg,
+                    title,
+                    NotifyDescriptor.DEFAULT_OPTION,
+                    NotifyDescriptor.QUESTION_MESSAGE,
+                    new Object[]{btnYes, btnNo, btnLater},
+                    btnYes
+            );
+
+            Object result = DialogDisplayer.getDefault().notify(nd);
+
+            if (btnYes.equals(result)) {
+                try {
+                    if (!opencodeDir.exists() && !opencodeDir.mkdirs()) {
+                        LOG.warn("Failed to create .opencode directory");
+                        return;
+                    }
+                    try (InputStream is = SessionManager.class.getResourceAsStream("/github/anandb/netbeans/support/opencode.json.template")) {
+                        if (is != null) {
+                            Files.copy(is, opencodeJson.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                        } else {
+                            LOG.warn("opencode.json.template not found in resources");
+                        }
+                    }
+                } catch (IOException ex) {
+                    LOG.warn("Error creating opencode.json", ex);
+                }
+            } else if (btnNo.equals(result)) {
+                NbPreferences.forModule(SessionManager.class).putBoolean(skipPrefKey, true);
+            }
+            // If btnLater, do nothing, so it will prompt again
+        });
     }
 
     private boolean isInvalidParamsError(Throwable t) {

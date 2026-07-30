@@ -1,0 +1,50 @@
+{
+    "$schema": "https://opencode.ai/config.json",
+    "autoupdate": false,
+    "permission": {
+        "read": {
+            "~/.ssh/**": "deny",
+            "~/.gnupg/**": "deny",
+            "~/.aws/**": "deny",
+            "~/.azure/**": "deny",
+            "~/.kube/**": "deny",
+            "~/.docker/**": "deny",
+            "~/.config/gcloud/**": "deny",
+            ".env*": "deny",
+            "*.pem": "deny",
+            "*.key": "deny",
+            "*.p12": "deny",
+            "*.jks": "deny",
+            "*.jceks": "deny",
+            "*.keystore": "deny",
+            "*.kdbx": "deny",
+            "*.pfx": "deny",
+            "*.p8": "deny",
+            "*credentials*": "deny",
+            "*": "allow"
+        },
+        "edit": {
+            "~/.aws/**": "deny",
+            "~/.azure/**": "deny",
+            "~/.ssh/**": "deny",
+            "~/.gnupg/**": "deny",
+            "~/.kube/**": "deny",
+            "~/.docker/**": "deny",
+            "~/.config/gcloud/**": "deny",
+            "*credentials*": "deny",
+            "*.env*": "deny",
+            "*": "ask"
+        },
+        "bash": {
+            "git add": "ask",
+            "git rm": "ask",
+            "git reset": "ask",
+            "git commit": "ask",
+            "git push": "ask",
+            "rm": "ask"
+        },
+        "webfetch": "allow",
+        "websearch": "allow",
+        "doom_loop": "ask"
+    }
+}
