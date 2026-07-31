@@ -132,8 +132,9 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     private final transient JSplitPane mainSplitPane;
     private final transient ChatLayoutBuilder layoutBuilder;
 
-    private boolean sessionActive = false;
-    private boolean processing = false;
+    private volatile boolean sessionActive = false;
+    private volatile boolean processing = false;
+    private volatile boolean binaryNotFound = false;
     /** Enables/disables all session toolbar controls. Used by session lifecycle and processing listener. */
     private Consumer<Boolean> sessionActiveCallback;
     private transient Timer attentionPeriodicTimer;
@@ -385,10 +386,11 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         return sessionService.get().getCustomTitle(session.id(), title);
     }
 
-    /** Enable the new-session button only when at least one project is open and not processing. */
+    /** Enable the new-session button only when the binary is available, at
+     *  least one project is open, and not processing. */
     private void updateNewSessionBtnState() {
         Project[] projects = projectContext.getAllOpenProjects();
-        newSessionBtn.setEnabled(projects != null && projects.length > 0 && !processing);
+        newSessionBtn.setEnabled(!binaryNotFound && projects != null && projects.length > 0 && !processing);
         updateAttentionAnimation();
     }
 
@@ -811,6 +813,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
      */
     void setBinaryNotFoundState(boolean notFound) {
         SwingUtilities.invokeLater(() -> {
+            binaryNotFound = notFound;
             if (notFound) {
                 // Disable all session toolbar buttons — only restart stays enabled
                 sessionDropdown.setEnabled(false);
@@ -823,6 +826,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                 refreshBtn.setEnabled(false);
                 exportBtn.setEnabled(false);
                 // restartServerBtn stays enabled so user can retry after installing
+                ButtonPulse.start(restartServerBtn);
 
                 // Disable input area
                 statusController.setInputEnabled(false);
@@ -849,6 +853,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                 refreshBtn.setEnabled(hasSession);
                 exportBtn.setEnabled(hasSession);
                 helpBtn.setEnabled(true);
+                ButtonPulse.stop(restartServerBtn);
 
                 statusController.setInputEnabled(true);
             }

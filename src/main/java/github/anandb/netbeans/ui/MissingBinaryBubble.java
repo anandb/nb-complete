@@ -3,16 +3,21 @@ package github.anandb.netbeans.ui;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Cursor;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.Toolkit;
 import java.awt.datatransfer.StringSelection;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.util.Locale;
 
 import javax.swing.BorderFactory;
+import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.Timer;
 
 import org.openide.util.NbBundle;
 import javax.swing.JTextArea;
@@ -20,6 +25,11 @@ import org.netbeans.api.options.OptionsDisplayer;
 
 class MissingBinaryBubble extends JPanel {
     private static final long serialVersionUID = 1L;
+
+    /** Delay before the copy icon reverts from a check mark (milliseconds). */
+    private static final int COPY_REVERT_MS = 1500;
+
+    private Timer copyRevertTimer;
 
     MissingBinaryBubble(Runnable onGuide, Runnable onRestart) {
         setLayout(new BorderLayout());
@@ -67,27 +77,35 @@ class MissingBinaryBubble extends JPanel {
         bodyLabel.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN, ThemeManager.getFont().getSize() + 1f));
         bodyLabel.setForeground(theme.foreground());
 
-        // Install command panel
+        // Install command panel — clicking anywhere on it copies the command
         String installCmd = getInstallCommand();
-        JPanel cmdPanel = new JPanel(new BorderLayout());
-        cmdPanel.setOpaque(true);
-        cmdPanel.setBackground(theme.isDark() ? new Color(0x1A1B26) : new Color(0xF0F0F0));
-        cmdPanel.setBorder(BorderFactory.createEmptyBorder(8, 10, 8, 10));
+        Color cmdBg = theme.isDark() ? new Color(0x1A1B26) : new Color(0xF0F0F0);
+        Color cmdFg = theme.isDark() ? new Color(0xA1EFE4) : new Color(0x333333);
 
         JLabel cmdLabel = new JLabel("$ " + installCmd);
         cmdLabel.setFont(IconResourceManager.getMonospaceFont());
-        cmdLabel.setForeground(theme.isDark() ? new Color(0xA1EFE4) : new Color(0x333333));
+        cmdLabel.setForeground(cmdFg);
+        cmdLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        cmdLabel.setToolTipText(NbBundle.getMessage(MissingBinaryBubble.class, "MissingBinaryBubble.Hint.Copy"));
 
-        JButton copyBtn = new JButton(NbBundle.getMessage(MissingBinaryBubble.class, "MissingBinaryBubble.Button.Copy"));
-        copyBtn.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN, ThemeManager.getFont().getSize() - 1f));
-        copyBtn.setFocusPainted(false);
-        copyBtn.setBorder(BorderFactory.createEmptyBorder(4, 10, 4, 10));
-        copyBtn.addActionListener(e -> {
-            Toolkit.getDefaultToolkit().getSystemClipboard()
-                .setContents(new StringSelection(installCmd), null);
-            copyBtn.setText(NbBundle.getMessage(MissingBinaryBubble.class, "MissingBinaryBubble.Copied"));
+        final JButton[] copyBtnRef = new JButton[1];
+        copyBtnRef[0] = UIUtils.createToolbarButton("copy.svg", 32,
+            NbBundle.getMessage(MissingBinaryBubble.class, "MissingBinaryBubble.Button.Copy"),
+            e -> copyCommand(copyBtnRef[0], installCmd));
+        copyBtnRef[0].setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
+        JButton copyBtn = copyBtnRef[0];
+
+        JPanel cmdPanel = new JPanel(new BorderLayout());
+        cmdPanel.setOpaque(true);
+        cmdPanel.setBackground(cmdBg);
+        cmdPanel.setBorder(BorderFactory.createEmptyBorder(8, 10, 8, 10));
+        cmdPanel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        cmdPanel.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) {
+                copyCommand(copyBtn, installCmd);
+            }
         });
-        
         cmdPanel.add(cmdLabel, BorderLayout.CENTER);
         cmdPanel.add(copyBtn, BorderLayout.EAST);
 
@@ -120,6 +138,30 @@ class MissingBinaryBubble extends JPanel {
         add(content, BorderLayout.CENTER);
 
         setAlignmentX(LEFT_ALIGNMENT);
+    }
+
+    /** Copies the command and briefly swaps the copy icon for a check mark. */
+    private void copyCommand(JButton copyBtn, String installCmd) {
+        Toolkit.getDefaultToolkit().getSystemClipboard()
+            .setContents(new StringSelection(installCmd), null);
+        Icon originalIcon = copyBtn.getIcon();
+        copyBtn.setIcon(ThemeManager.getIcon("check.svg", 14));
+
+        // Cancel any previous revert timer to avoid leaking timers on rapid clicks.
+        if (copyRevertTimer != null) {
+            copyRevertTimer.stop();
+        }
+        copyRevertTimer = new Timer(COPY_REVERT_MS, e -> copyBtn.setIcon(originalIcon));
+        copyRevertTimer.setRepeats(false);
+        copyRevertTimer.start();
+    }
+
+    @Override
+    public void removeNotify() {
+        super.removeNotify();
+        if (copyRevertTimer != null) {
+            copyRevertTimer.stop();
+        }
     }
 
     /** Returns the OS-specific install command for OpenCode. */

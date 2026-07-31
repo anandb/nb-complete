@@ -60,7 +60,7 @@ The plugin relies on the OpenCode CLI (`opencode`) running as a background serve
   ```bash
   brew install anomalyco/tap/opencode
   ```
-- **Windows:** It is highly recommended to run OpenCode inside **WSL (Windows Subsystem for Linux)** for the best performance and compatibility. You can also use Chocolatey (`choco install opencode`) or Scoop (`scoop install opencode`).
+- **Windows:** It is highly recommended to run OpenCode inside **WSL (Windows Subsystem for Linux)** for the best performance and compatibility. You can also install it with winget (`winget install opencode`), Chocolatey (`choco install opencode`) or Scoop (`scoop install opencode`).
 
 **Configure AI Providers:**
 Once installed, you need to connect an AI provider (unless you only plan to use the free models).
