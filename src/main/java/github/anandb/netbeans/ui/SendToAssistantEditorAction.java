@@ -55,12 +55,12 @@ public final class SendToAssistantEditorAction extends AbstractAction implements
             Document doc = editor.getDocument();
             FileObject fo = NbEditorUtilities.getFileObject(doc);
             if (fo != null) {
-                MiniAssistantDialog.getInstance().showWithText(fo.getPath());
+                AssistantTarget.showWithText(fo.getPath());
             } else {
                 LOG.fine("No file associated with the editor document");
             }
             return;
         }
-        MiniAssistantDialog.getInstance().showWithText(selection);
+        AssistantTarget.showWithText(selection);
     }
 }

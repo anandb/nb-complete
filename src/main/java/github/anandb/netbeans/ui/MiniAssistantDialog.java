@@ -850,6 +850,11 @@ public class MiniAssistantDialog extends JDialog {
         }
         if (inputArea.getParent() instanceof JViewport vp) {
             vp.setBackground(theme.background());
+            vp.setOpaque(true);
+            if (vp.getParent() instanceof JScrollPane sp) {
+                sp.setBackground(theme.background());
+                sp.setOpaque(true);
+            }
         }
         inputArea.setBackground(theme.background());
         inputArea.setForeground(theme.foreground());

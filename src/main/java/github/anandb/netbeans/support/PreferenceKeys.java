@@ -60,6 +60,9 @@ public final class PreferenceKeys {
     public static final String ACTIONS_STASH_DIFF = "actions.stashDiff";
     public static final String ACTIONS_QUICK_JUMP = "actions.quickJump";
 
+    /** Whether the Mini Assistant dialog is the target for send/ask actions (enabled by default). */
+    public static final String MINI_ASSISTANT_ENABLED = "miniAssistant.enabled";
+
     // Mini Assistant window bounds and layout
     public static final String MINI_ASSISTANT_X = "miniAssistant.x";
     public static final String MINI_ASSISTANT_Y = "miniAssistant.y";

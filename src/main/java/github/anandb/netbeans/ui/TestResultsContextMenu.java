@@ -197,7 +197,7 @@ public class TestResultsContextMenu implements Runnable, PropertyChangeListener,
                     if (!fullOutput.isBlank()) {
                         menu.add(new AbstractAction("\uD83D\uDCAC Send Full Output") {
                             @Override public void actionPerformed(ActionEvent ev) {
-                                SwingUtilities.invokeLater(() -> MiniAssistantDialog.getInstance().showWithText(fullOutput));
+                                SwingUtilities.invokeLater(() -> AssistantTarget.showWithText(fullOutput));
                             }
                         });
                     }

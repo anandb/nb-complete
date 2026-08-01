@@ -59,7 +59,7 @@ final class TreePopupSupport {
         if (PluginSettings.isSortLinesEnabled()) {
             menu.add(new AbstractAction("\uD83D\uDCAC Send to Assistant") {
                 @Override public void actionPerformed(ActionEvent ev) {
-                    SwingUtilities.invokeLater(() -> MiniAssistantDialog.getInstance().showWithText(text));
+                    SwingUtilities.invokeLater(() -> AssistantTarget.showWithText(text));
                 }
             });
             if (extraItems != null) {

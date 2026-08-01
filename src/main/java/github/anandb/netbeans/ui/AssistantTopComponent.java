@@ -346,6 +346,17 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         }
     }
 
+    /** Requests focus on the chat input area. Safe to call from any thread. */
+    public void focusInput() {
+        if (!SwingUtilities.isEventDispatchThread()) {
+            SwingUtilities.invokeLater(this::focusInput);
+            return;
+        }
+        if (inputArea != null) {
+            inputArea.requestFocusInWindow();
+        }
+    }
+
     public static void copyToInput(String text) {
         AssistantTopComponent tc = findInstance();
         if (tc != null) {
@@ -705,6 +716,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     public void addNotify() {
         super.addNotify();
         componentLifecycleHandler.registerKeyEventDispatchers();
+        layoutBuilder.registerMiniAssistantPrefListener();
         // Re-layout the outer hierarchy (header, split pane, bottom bar)
         // after a hide/show cycle to prevent blank panels.
         // Force layout recalculation on the split pane and its children

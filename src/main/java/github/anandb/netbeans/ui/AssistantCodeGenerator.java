@@ -1,6 +1,5 @@
 package github.anandb.netbeans.ui;
 
-import java.awt.EventQueue;
 import java.util.Collections;
 import java.util.List;
 import javax.swing.text.JTextComponent;
@@ -37,15 +36,6 @@ public class AssistantCodeGenerator implements CodeGenerator {
 
     @Override
     public void invoke() {
-        MiniAssistantDialog dialog = MiniAssistantDialog.getInstance();
-        if (!dialog.isVisible()) {
-            dialog.toggleVisibility();
-        } else {
-            EventQueue.invokeLater(() -> {
-                dialog.toFront();
-                dialog.requestFocus();
-                dialog.getInputArea().requestFocusInWindow();
-            });
-        }
+        AssistantTarget.open();
     }
 }

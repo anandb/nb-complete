@@ -62,6 +62,7 @@ public class ConfigPanelController {
 
     private final ModelVariantResolver modelResolver = new ModelVariantResolver();
     private SessionConfigOption thinkingConfigOption;
+    private volatile String thinkingConfigId;
 
     private final Consumer<String> tabNameUpdater;
 
@@ -231,7 +232,7 @@ public class ConfigPanelController {
     private void triggerComboSelection(JComboBox<ConfigItem> combo, ConfigItem selected) {
         if (selected == null || isUpdatingConfigControls) return;
 
-        String configId = (combo == modelCombo) ? "model" : (combo == modeCombo) ? "mode" : "thinking";
+        String configId = (combo == modelCombo) ? "model" : (combo == modeCombo) ? "mode" : thinkingConfigId();
         String currentId = sessionService.get().getCurrentSessionId();
 
         if (currentId != null) {
@@ -258,6 +259,11 @@ public class ConfigPanelController {
 
     /** Prevents SSE/RPC-triggered combo repopulation while user picks model/level. */
     void setConfigConfirmActive(boolean active) { this.configConfirmActive = active; }
+
+    /** Returns the server config id for the thinking/effort option ("effort" on OpenCode ACP). */
+    private String thinkingConfigId() {
+        return thinkingConfigId != null ? thinkingConfigId : "effort";
+    }
 
     public void updateConfigControls(List<SessionConfigOption> options) {
         updateConfigControls(options, false);
@@ -353,6 +359,7 @@ public class ConfigPanelController {
                         modelResolver.parseModelVariants(opt);
                     } else if (isThinkingCategory(opt.category())) {
                         thinkingConfigOption = opt;
+                        thinkingConfigId = opt.id();
                     }
                 }
 
@@ -385,7 +392,7 @@ public class ConfigPanelController {
                 thinkingCombo.setEnabled(thinkingCombo.getItemCount() > 0);
                 SwingUtilities.invokeLater(() -> tabNameUpdater.accept(buildTabLabel()));
                 if (thinkingCombo.getActionListeners().length == 0) {
-                    setupConfigCombo(thinkingCombo, "thinking");
+                    setupConfigCombo(thinkingCombo, thinkingConfigId());
                 }
             } finally {
                 isUpdatingConfigControls = false;
@@ -469,13 +476,14 @@ public class ConfigPanelController {
 
         thinkingCombo.removeAllItems();
 
-        // Add variant names as effort levels (skip "default")
+        // Add variant names as effort levels (skip "default"); the value sent to
+        // the server must be the variant key, not the full provider/model id.
         ConfigItem selected = null;
         for (ConfigItem v : modelVariants) {
             if ("default".equalsIgnoreCase(v.name()) || v.name().isEmpty()) continue;
-            ConfigItem item = new ConfigItem(v.name(), v.value());
+            ConfigItem item = new ConfigItem(v.name(), v.name());
             thinkingCombo.addItem(item);
-            if (prevValue != null && v.value().equalsIgnoreCase(prevValue)) {
+            if (prevValue != null && v.name().equalsIgnoreCase(prevValue)) {
                 selected = item;
             }
         }

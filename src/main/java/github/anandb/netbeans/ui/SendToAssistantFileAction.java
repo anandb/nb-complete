@@ -33,7 +33,7 @@ public final class SendToAssistantFileAction extends NodeAction {
         if (fo == null || fo.isFolder()) {
             return;
         }
-        SwingUtilities.invokeLater(() -> MiniAssistantDialog.getInstance().showWithText(fo.getPath()));
+        SwingUtilities.invokeLater(() -> AssistantTarget.showWithText(fo.getPath()));
     }
 
     @Override

@@ -22,6 +22,7 @@ import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import javax.swing.border.EmptyBorder;
 
@@ -78,6 +79,8 @@ final class ChatLayoutBuilder {
     private JButton restartServerBtn;
     private JButton refreshBtn;
     private JButton exportBtn;
+    private JButton launchMiniAssistantBtn;
+    private java.util.prefs.PreferenceChangeListener miniAssistantPrefListener;
     private JPanel rightStatusPanel;
     private PermissionRequestPanel permissionPanel;
     private PermissionRequestPanel configConfirmPanel;
@@ -357,8 +360,10 @@ final class ChatLayoutBuilder {
 
         JButton launchMiniAssistantBtn = UIUtils.createToolbarButton("mini-assistant.svg",
             "Launch Mini Assistant", null);
+        this.launchMiniAssistantBtn = launchMiniAssistantBtn;
         launchMiniAssistantBtn.setContentAreaFilled(false);
         launchMiniAssistantBtn.setBorderPainted(false);
+        launchMiniAssistantBtn.setVisible(PluginSettings.isMiniAssistantEnabled());
         launchMiniAssistantBtn.addActionListener(e -> {
             topComponent.minimizeToDock();
             MiniAssistantDialog.getInstance().toggleVisibility();
@@ -664,9 +669,33 @@ final class ChatLayoutBuilder {
         }
     }
 
-    /** Stops the debounce timer to prevent firing after the component is removed. */
+    /** Stops the debounce timer and unregisters the mini-assistant preference listener. */
     void cleanup() {
         newSessionDebounceTimer.stop();
+        if (miniAssistantPrefListener != null) {
+            NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                    .removePreferenceChangeListener(miniAssistantPrefListener);
+            miniAssistantPrefListener = null;
+        }
+    }
+
+    /**
+     * Registers the mini-assistant preference listener so the header button
+     * reacts to the "Enable Mini-Assistant" toggle. Called from
+     * {@code AssistantTopComponent.addNotify()} so the listener lives exactly
+     * as long as the component is attached, surviving close/reopen cycles.
+     */
+    void registerMiniAssistantPrefListener() {
+        if (miniAssistantPrefListener != null || launchMiniAssistantBtn == null) {
+            return;
+        }
+        miniAssistantPrefListener = evt -> {
+            if (PreferenceKeys.MINI_ASSISTANT_ENABLED.equals(evt.getKey())) {
+                boolean enabled = evt.getNewValue() == null || Boolean.parseBoolean(evt.getNewValue());
+                SwingUtilities.invokeLater(() -> launchMiniAssistantBtn.setVisible(enabled));
+            }
+        };
+        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).addPreferenceChangeListener(miniAssistantPrefListener);
     }
 
     static boolean isShowingHidden() {

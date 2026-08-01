@@ -38,7 +38,7 @@ buildNumber.properties
 *.ipr
 
 # NetBeans
-/nbproject/private/
+/.nbproject
 /nbbuild/
 /dist/
 /nbdist/

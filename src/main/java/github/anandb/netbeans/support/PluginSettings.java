@@ -36,6 +36,8 @@ public final class PluginSettings {
     private static volatile boolean cachedStashDiffEnabled = true;
     private static volatile boolean cachedQuickJumpEnabled = true;
     private static volatile boolean cachedAutoBackupChanges = true;
+    /** Cached mini-assistant toggle — volatile for cross-thread visibility. Defaults to true. */
+    private static volatile boolean cachedMiniAssistantEnabled = true;
 
     private static final PreferenceChangeListener listener = PluginSettings::onPreferenceChanged;
 
@@ -70,6 +72,7 @@ public final class PluginSettings {
         cachedStashDiffEnabled = prefs.getBoolean(PreferenceKeys.ACTIONS_STASH_DIFF, true);
         cachedQuickJumpEnabled = prefs.getBoolean(PreferenceKeys.ACTIONS_QUICK_JUMP, true);
         cachedAutoBackupChanges = prefs.getBoolean(PreferenceKeys.AUTO_BACKUP_CHANGES, true);
+        cachedMiniAssistantEnabled = prefs.getBoolean(PreferenceKeys.MINI_ASSISTANT_ENABLED, true);
         prefs.addPreferenceChangeListener(listener);
     }
 
@@ -154,6 +157,8 @@ public final class PluginSettings {
             cachedQuickJumpEnabled = Boolean.parseBoolean(evt.getNewValue());
         } else if (PreferenceKeys.AUTO_BACKUP_CHANGES.equals(evt.getKey())) {
             cachedAutoBackupChanges = Boolean.parseBoolean(evt.getNewValue());
+        } else if (PreferenceKeys.MINI_ASSISTANT_ENABLED.equals(evt.getKey())) {
+            cachedMiniAssistantEnabled = evt.getNewValue() == null || Boolean.parseBoolean(evt.getNewValue());
         }
     }
 
@@ -221,5 +226,16 @@ public final class PluginSettings {
 
     public static void setQuickJumpEnabled(boolean enabled) {
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean(PreferenceKeys.ACTIONS_QUICK_JUMP, enabled);
+    }
+
+    /** Whether the Mini Assistant dialog is the target for send/ask-to-assistant actions. */
+    public static boolean isMiniAssistantEnabled() {
+        return cachedMiniAssistantEnabled;
+    }
+
+    public static void setMiniAssistantEnabled(boolean enabled) {
+        cachedMiniAssistantEnabled = enabled;
+        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                .putBoolean(PreferenceKeys.MINI_ASSISTANT_ENABLED, enabled);
     }
 }

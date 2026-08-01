@@ -71,6 +71,7 @@ public class ACPOptionsPanel extends JPanel {
     private JCheckBox stashDiffCheckbox;
     private JCheckBox quickJumpCheckbox;
     private JCheckBox autoBackupChangesCheckbox;
+    private JCheckBox miniAssistantCheckbox;
     private JSpinner idleTimeoutSpinner;
     private JSpinner maxMessagesSpinner;
     private JLabel argsLabel;
@@ -111,6 +112,7 @@ public class ACPOptionsPanel extends JPanel {
         stashDiffCheckbox = new JCheckBox();
         quickJumpCheckbox = new JCheckBox();
         autoBackupChangesCheckbox = new JCheckBox();
+        miniAssistantCheckbox = new JCheckBox();
         preambleArea = new JTextArea(5, 40);
         preambleScroll = new JScrollPane(preambleArea);
         iconLabel = new JLabel();
@@ -255,6 +257,11 @@ public class ACPOptionsPanel extends JPanel {
                 + (quickJumpShortcut.isEmpty() ? "" : " (" + quickJumpShortcut + ")"));
         quickJumpCheckbox.addActionListener(evt -> controller.changed());
         actionsPanel.add(quickJumpCheckbox, UIUtils.createGbc(0, 2, 1.0, 0, GridBagConstraints.HORIZONTAL,
+                GridBagConstraints.WEST, new Insets(0, 12, 5, 0)));
+
+        miniAssistantCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_EnableMiniAssistant"));
+        miniAssistantCheckbox.addActionListener(evt -> controller.changed());
+        actionsPanel.add(miniAssistantCheckbox, UIUtils.createGbc(0, 3, 1.0, 0, GridBagConstraints.HORIZONTAL,
                 GridBagConstraints.WEST, new Insets(0, 12, 5, 0)));
 
         add(actionsPanel);
@@ -459,6 +466,7 @@ public class ACPOptionsPanel extends JPanel {
         sortLinesCheckbox.setSelected(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean(PreferenceKeys.ACTIONS_SORT_LINES, true));
         stashDiffCheckbox.setSelected(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean(PreferenceKeys.ACTIONS_STASH_DIFF, true));
         quickJumpCheckbox.setSelected(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean(PreferenceKeys.ACTIONS_QUICK_JUMP, true));
+        miniAssistantCheckbox.setSelected(PluginSettings.isMiniAssistantEnabled());
     }
 
     private void clearHint() {
@@ -519,6 +527,7 @@ public class ACPOptionsPanel extends JPanel {
         PluginSettings.setSortLinesEnabled(sortLinesCheckbox.isSelected());
         PluginSettings.setStashDiffEnabled(stashDiffCheckbox.isSelected());
         PluginSettings.setQuickJumpEnabled(quickJumpCheckbox.isSelected());
+        PluginSettings.setMiniAssistantEnabled(miniAssistantCheckbox.isSelected());
 
         String newIconPath = iconPathField.getText();
         String oldPath = previousIconPath != null ? previousIconPath : "";
