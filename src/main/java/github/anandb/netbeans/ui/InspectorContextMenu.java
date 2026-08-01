@@ -27,6 +27,8 @@ import org.openide.util.Exceptions;
 import org.openide.windows.TopComponent;
 import org.openide.windows.WindowManager;
 
+import github.anandb.netbeans.support.PluginSettings;
+
 /**
  * Adds a right-click context menu to the Inspector window (inspections results,
  * "AnalysisResultTopComponent"). The IDE module cannot be modified, so this hooks
@@ -127,13 +129,15 @@ public class InspectorContextMenu implements Runnable, PropertyChangeListener {
                     clip.setContents(new StringSelection(text), null);
                 }
             });
-            menu.add(new AbstractAction("\uD83D\uDCAC Send to Assistant") {
-                @Override public void actionPerformed(ActionEvent ev) {
-                    SwingUtilities.invokeLater(() -> {
-                        MiniAssistantDialog.getInstance().showWithText(text);
-                    });
-                }
-            });
+            if (PluginSettings.isSortLinesEnabled()) {
+                menu.add(new AbstractAction("\uD83D\uDCAC Send to Assistant") {
+                    @Override public void actionPerformed(ActionEvent ev) {
+                        SwingUtilities.invokeLater(() -> {
+                            MiniAssistantDialog.getInstance().showWithText(text);
+                        });
+                    }
+                });
+            }
             menu.show(tree, e.getX(), e.getY());
         }
     }

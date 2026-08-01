@@ -833,7 +833,7 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
             int count = pathCount.getOrDefault(fc.filePath(), 1);
             if (count > 1) {
                 int n = hunkIndex.merge(fc.filePath(), 1, Integer::sum);
-                hunkLabel = "Hunk " + n;
+                hunkLabel = "H" + n;
             }
             diffs.add(fileChangeToFileDiff(fc, hunkLabel));
         }

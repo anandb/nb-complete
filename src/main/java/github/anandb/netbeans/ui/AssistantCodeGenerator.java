@@ -8,6 +8,8 @@ import org.netbeans.api.editor.mimelookup.MimeRegistration;
 import org.netbeans.spi.editor.codegen.CodeGenerator;
 import org.openide.util.Lookup;
 
+import github.anandb.netbeans.support.PluginSettings;
+
 public class AssistantCodeGenerator implements CodeGenerator {
 
     private AssistantCodeGenerator(Lookup context) {
@@ -17,6 +19,9 @@ public class AssistantCodeGenerator implements CodeGenerator {
     public static class Factory implements CodeGenerator.Factory {
         @Override
         public List<? extends CodeGenerator> create(Lookup context) {
+            if (!PluginSettings.isSortLinesEnabled()) {
+                return Collections.emptyList();
+            }
             JTextComponent component = context.lookup(JTextComponent.class);
             if (component == null) {
                 return Collections.emptyList();

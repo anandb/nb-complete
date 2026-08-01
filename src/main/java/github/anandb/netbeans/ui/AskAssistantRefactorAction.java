@@ -7,6 +7,8 @@ import org.openide.awt.ActionID;
 import org.openide.awt.ActionReference;
 import org.openide.awt.ActionRegistration;
 
+import github.anandb.netbeans.support.PluginSettings;
+
 @ActionID(category = "Refactoring", id = "github.anandb.netbeans.ui.AskAssistantRefactorAction")
 @ActionRegistration(displayName = "#CTL_AskAssistantRefactorAction")
 @ActionReference(path = "Menu/Refactoring", position = 1860)
@@ -14,6 +16,9 @@ public class AskAssistantRefactorAction implements ActionListener {
 
     @Override
     public void actionPerformed(ActionEvent e) {
+        if (!PluginSettings.isSortLinesEnabled()) {
+            return;
+        }
         MiniAssistantDialog dialog = MiniAssistantDialog.getInstance();
         if (!dialog.isVisible()) {
             dialog.toggleVisibility();
