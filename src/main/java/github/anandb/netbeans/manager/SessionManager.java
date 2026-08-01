@@ -162,7 +162,6 @@ public class SessionManager implements SessionQuery, SessionControl {
     private final Consumer<SessionUpdate> sseListener = this::handleSseUpdate;
     private final SessionRpcClient rpcClient;
     private volatile java.util.function.BiFunction<String, List<SessionConfigOption>, CompletableFuture<Void>> beforePreambleHandler;
-    private volatile boolean sendResumeOnLoad;
     /** True once the warm-up prompt has been sent for this connection. */
     private volatile boolean warmupSent;
     /** True if a manual reconnect was initiated by the user. */
@@ -711,6 +710,7 @@ public class SessionManager implements SessionQuery, SessionControl {
                 });
     }
 
+    @SuppressWarnings("unused") // parameter required by the Consumer<String> listener
     private void handleProjectOpened(String openedDir) {
         refreshSessions();
     }

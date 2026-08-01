@@ -1,5 +1,17 @@
 # Release Notes
 
+## v1.12.10 (Changes since v1.12.9)
+
+### Features
+- **Inspector context menu**: Added right-click actions to the Inspector window (inspections results). **Copy** copies the selected problem subtree (filename, line and description) to the clipboard as text, and **💬 Send to Assistant** pre-fills the Mini Assistant input with the same text so you can edit it before sending.
+
+### Fixes
+- **AcpRequestRouter**: Removed an unused `filePath` parameter in the disk-read fallback.
+- **SessionManager**: Removed dead `sendResumeOnLoad` field and marked the required-but-unused project-open listener parameter.
+
+### Housekeeping
+- Version bumped to 1.12.10.
+
 ## v1.12.9 (Changes since v1.12.8)
 
 ### Features

@@ -285,6 +285,10 @@ The plugin integrates deeply with NetBeans beyond just the chat panel to boost y
     *   **Search Web:** Right-click selected text (or the word under the cursor) in the editor and click **Search Web** to quickly search Google using your NetBeans-configured web browser.
     *   **Sort Lines Ascending / Descending:** Select multiple lines, right-click, and choose this option to alphabetically sort them.
     *   **Minify JSON:** Right-click any JSON content to quickly strip out all formatting whitespace.
+*   **Inspector Context Menu:**
+    *   After running inspections (e.g. via `Source > Inspect`), right-click any item in the **Inspector** window to access two actions.
+    *   **Copy** copies the selected subtree (filename, line number and description of each problem) to the clipboard as text.
+    *   **💬 Send to Assistant** pre-fills the Mini Assistant input with the same text, so you can edit it before sending.
 *   **Jump to File Dialog:**
     *   A modeless file search dialog triggered via `Ctrl + Alt + J` (or `Cmd + Option + J` on Mac) that lets you search all open projects by filename prefix, path substring, or glob patterns.
     *   Supports quick keyboard navigation with arrow keys and `Enter` to open.

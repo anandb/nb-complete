@@ -379,6 +379,19 @@ public class MiniAssistantDialog extends JDialog {
             inputArea.requestFocusInWindow();
         }
     }
+
+    /** Shows the dialog and pre-fills the input area. Callable from any thread
+     * (used by the IDE Inspector's "Send to Assistant" action via reflection). */
+    public void showWithText(String text) {
+        if (!SwingUtilities.isEventDispatchThread()) {
+            SwingUtilities.invokeLater(() -> showWithText(text));
+            return;
+        }
+        updateResponsePane();
+        setVisible(true);
+        inputArea.setText(text);
+        inputArea.requestFocusInWindow();
+    }
     
     private void sendMessage() {
         String sessionId = Lookup.getDefault().lookup(SessionControl.class).getCurrentSessionId();

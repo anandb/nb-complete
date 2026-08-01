@@ -150,16 +150,16 @@ class AcpRequestRouter {
                     LOG.warn("Could not read from editor for {0}, falling back to disk", filePath, e);
                 }
 
-                readFromDisk(file, filePath, resultFuture);
+                readFromDisk(file, resultFuture);
             });
         } else {
-            readFromDisk(file, filePath, resultFuture);
+            readFromDisk(file, resultFuture);
         }
 
         return resultFuture;
     }
 
-    private void readFromDisk(File file, String filePath, CompletableFuture<JsonNode> resultFuture) {
+    private void readFromDisk(File file, CompletableFuture<JsonNode> resultFuture) {
         CompletableFuture.supplyAsync(() -> {
             try {
                 byte[] bytes = Files.readAllBytes(file.toPath());
