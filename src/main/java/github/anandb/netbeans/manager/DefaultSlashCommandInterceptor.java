@@ -48,6 +48,12 @@ public class DefaultSlashCommandInterceptor implements SlashCommandInterceptor {
         commands.put("/new", new CommandInfo(this::handleNew, "Create new session"));
         commands.put("/title", new CommandInfo(this::handleTitle, "Generate session title"));
         commands.put("/archive", new CommandInfo(this::handleArchive, "Archive/unarchive session"));
+        // /compact is passed verbatim to the server (no local interception)
+        commands.put("/compact", new CommandInfo(this::handlePassthrough, "Summarise Conversation"));
+    }
+
+    private CompletableFuture<Boolean> handlePassthrough(String args, Lookup context) {
+        return CompletableFuture.completedFuture(false);
     }
 
     @Override
