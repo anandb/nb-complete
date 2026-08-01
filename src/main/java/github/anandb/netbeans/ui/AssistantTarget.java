@@ -50,7 +50,7 @@ public final class AssistantTarget {
         } else {
             AssistantTopComponent tc = openMainSidebar();
             if (tc != null) {
-                tc.setInputText(text);
+                tc.appendInputText(text);
             }
         }
     }

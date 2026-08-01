@@ -389,7 +389,8 @@ public class MiniAssistantDialog extends JDialog {
         }
         updateResponsePane();
         setVisible(true);
-        inputArea.setText(text);
+        String current = inputArea.getText();
+        inputArea.setText((current == null || current.isEmpty()) ? text : current + "\n" + text);
         inputArea.requestFocusInWindow();
     }
     

@@ -346,6 +346,21 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         }
     }
 
+    /** Appends the given text to the chat input, separated by a newline from existing content. */
+    public void appendInputText(String text) {
+        if (!SwingUtilities.isEventDispatchThread()) {
+            SwingUtilities.invokeLater(() -> appendInputText(text));
+            return;
+        }
+        if (inputArea != null) {
+            String current = inputArea.getText();
+            inputArea.setText((current == null || current.isEmpty()) ? text : current + "\n" + text);
+            inputArea.requestFocusInWindow();
+        } else {
+            LOG.warn("appendInputText: inputArea is null");
+        }
+    }
+
     /** Requests focus on the chat input area. Safe to call from any thread. */
     public void focusInput() {
         if (!SwingUtilities.isEventDispatchThread()) {
