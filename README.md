@@ -1,6 +1,6 @@
 # Coding Assistant
 
-[![Version](https://img.shields.io/badge/version-1.12.9-blue.svg)](pom.xml)
+[![Version](https://img.shields.io/badge/version-1.12.10-blue.svg)](pom.xml)
 [![Build Status](https://img.shields.io/badge/build-success-brightgreen.svg)](https://github.com/anandb/nb-complete)
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.anandb/beanbot)](https://central.sonatype.com/artifact/io.github.anandb/beanbot/versions)
 [![NetBeans](https://img.shields.io/badge/NetBeans-RELEASE220-blue.svg)](https://netbeans.apache.org/download/index.html)
@@ -117,12 +117,12 @@ All source lives under `src/main/java/github/anandb/netbeans/`:
 | Package | Files | Role |
 | --- | --- | --- |
 | `contract/` | 19 | Service interfaces (UI callbacks, session & process control, permission & request handlers, pinned message control) |
-| `manager/` | 18 | Core orchestration, protocol clients, session management, process lifecycle (includes `strategy/`, file cache, VCS ignore) |
+| `manager/` | 20 | Core orchestration, protocol clients, session management, process lifecycle (includes `strategy/`, file cache, VCS ignore) |
 | `mcp/` | 13 | MCP server integration (editor tools, tool definitions, message servlet) |
 | `model/` | 15 | ACP-compliant data models (session, messages, updates, config options, color tokens) |
 | `project/` | 12 | NetBeans lifecycle hooks, project manager, markdown project support |
-| `support/` | 18 | Utilities (logging, JSON mapping, text scanning, constants, browser helpers, pinned message store, shortcut utils) |
-| `ui/` | 97 | Swing components, platform integration, markdown project UI (chat, bubbles, theming, options, stash diff, file search) |
+| `support/` | 17 | Utilities (logging, JSON mapping, text scanning, constants, browser helpers, pinned message store, shortcut utils) |
+| `ui/` | 108 | Swing components, platform integration, markdown project UI (chat, bubbles, theming, options, stash diff, file search, send-to-assistant actions) |
 
 ---
 

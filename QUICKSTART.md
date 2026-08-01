@@ -134,7 +134,7 @@ You can copy individual user messages back into the input text-area. Hover over 
 
 ### Commands
 
-Slash commands let you perform quick actions directly from the chat input. Type `/` in the input area to trigger the autocomplete popup. You can use `/new` to create a new session, `/models` to choose a different AI model, `/agents` to select an agent, and `/level` to configure the thinking budget. Other commands include `/sessions` to switch between active chats, `/compact` to summarize and condense the message history when approaching context limits, and `/title` to have the AI suggest and apply a new name for the current session.
+Slash commands let you perform quick actions directly from the chat input. Type `/` in the input area to trigger the autocomplete popup. You can use `/new` to create a new session, `/models` to choose a different AI model, `/agents` to select an agent, and `/level` to configure the thinking budget. Other commands include `/sessions` to switch between active chats, `/compact` to summarize and condense the message history when approaching context limits (listed in the autocomplete popup since v1.12.10), and `/title` to have the AI suggest and apply a new name for the current session.
 
 ### Selecting toolbar buttons
 
@@ -262,7 +262,9 @@ Advanced models use a "thinking" budget to reason before responding. This intern
 
 ### Assistant Options
 
-Customize the plugin behavior by navigating to `Tools > Options > Assistant`. Here, you can configure the path to the OpenCode binary, add process arguments, set a global system Preamble for all sessions, and toggle "Local Echo" for instant message rendering. You can also adjust UI preferences like toolbar icon size, chat font size, enable or disable specific features (like Stash Diff or Jump to file), and set a custom user avatar.
+Customize the plugin behavior by navigating to `Tools > Options > Assistant`. Here, you can configure the path to the OpenCode binary, add process arguments, set a global system Preamble for all sessions, and toggle "Local Echo" for instant message rendering. You can also adjust UI preferences like toolbar icon size, chat font size, enable or disable specific features (like Stash Diff, Jump to file, or the Mini Assistant — see below), and set a custom user avatar.
+
+**Enable Mini Assistant:** Under `Options > Assistant > Actions`, the "Enable Mini Assistant" checkbox decides where **Send to Assistant** / **Ask Assistant** actions open. When enabled, they open the compact floating mini dialog; when disabled, they route to the main sidebar instead.
 
 Additionally, the plugin includes a background **Update Checker Service** that automatically queries for new releases (with randomized intervals between 16 and 24 hours). You can toggle the update checks under `Tools > Options > Assistant > Check for updates`. When an update is found, you will be prompted with a dialog to download the update immediately, get reminded later, or skip the version entirely.
 
@@ -285,10 +287,13 @@ The plugin integrates deeply with NetBeans beyond just the chat panel to boost y
     *   **Search Web:** Right-click selected text (or the word under the cursor) in the editor and click **Search Web** to quickly search Google using your NetBeans-configured web browser.
     *   **Sort Lines Ascending / Descending:** Select multiple lines, right-click, and choose this option to alphabetically sort them.
     *   **Minify JSON:** Right-click any JSON content to quickly strip out all formatting whitespace.
+    *   **💬 Send to Assistant:** Right-click selected code in the editor (or a file in the Projects/Explorer view) and choose **Send to Assistant** to open the assistant with the selection pre-filled. Repeated sends *append* to the input instead of replacing it, so you can gather several snippets before sending.
 *   **Inspector Context Menu:**
     *   After running inspections (e.g. via `Source > Inspect`), right-click any item in the **Inspector** window to access two actions.
     *   **Copy** copies the selected subtree (filename, line number and description of each problem) to the clipboard as text.
     *   **💬 Send to Assistant** pre-fills the Mini Assistant input with the same text, so you can edit it before sending.
+*   **Test Results Context Menu:**
+    *   After running a test suite, right-click any failed test (or failure tree) in the **Test Results** window to access the same **Copy** and **💬 Send to Assistant** actions — copy the failure details or send them to the assistant for diagnosis.
 *   **Jump to File Dialog:**
     *   A modeless file search dialog triggered via `Ctrl + Alt + J` (or `Cmd + Option + J` on Mac) that lets you search all open projects by filename prefix, path substring, or glob patterns.
     *   Supports quick keyboard navigation with arrow keys and `Enter` to open.

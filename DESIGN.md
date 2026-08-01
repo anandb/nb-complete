@@ -1,6 +1,6 @@
 # Architectural Design Review: NetBeans Coding Assistant Plugin
 
-This document provides a detailed architectural review of the **Coding Assistant** NetBeans IDE plugin (v1.9.0). The plugin bridges the NetBeans Platform with an AI subprocess using the **Agent Client Protocol (ACP) v1** via JSON-RPC over stdin/stdout and Server-Sent Events (SSE) streaming.
+This document provides a detailed architectural review of the **Coding Assistant** NetBeans IDE plugin (v1.12.x). The plugin bridges the NetBeans Platform with an AI subprocess using the **Agent Client Protocol (ACP) v1** via JSON-RPC over stdin/stdout and Server-Sent Events (SSE) streaming.
 
 ---
 
@@ -91,7 +91,19 @@ Memory leaks are a common failure point for long-running IDE components. The des
 
 ---
 
-## 5. Architectural Recommendations & Opportunities
+## 5. IDE Integration & Context Actions
+
+Beyond the chat panel, the plugin exposes a growing set of IDE context actions that route selection context into the assistant:
+
+- **`ui/AssistantTarget` (router)**: A single seam that decides where "Send to Assistant" / "Ask Assistant" actions deliver their payload. Based on the cached `MINI_ASSISTANT_ENABLED` preference (`support/PluginSettings`), it either opens the floating `MiniAssistantDialog` or the main `AssistantTopComponent` sidebar. This keeps the target decision testable and avoids scattering `PluginSettings` lookups across every action.
+- **Context actions (`ui/SendToAssistantEditorAction`, `SendToAssistantFileAction`, `InspectorContextMenu`, `TestResultsContextMenu`)**: All actions follow the same contract — extract the selection/file subtree, then call `AssistantTarget.showWithText(...)`. The actions are gated behind the shared "Enable context menu additions" preference. `TreePopupSupport` centralizes the copy/send popup behavior shared by the Inspector and Test Results windows.
+- **Append semantics**: `showWithText` *appends* to the input area (`AssistantTopComponent.appendInputText`) rather than overwriting, so multiple selections accumulate before the user sends — an important behavioral contract for the UI layer.
+- **`ui/AssistantTarget` send flow**: When the mini dialog is the target, the text is appended to its own input area via `MiniAssistantDialog.showWithText`, keeping the two entry points behaviorally consistent.
+- **Missing-binary state (`ui/MissingBinaryBubble`, `ui/ButtonPulse`)**: When `BinaryResolver` reports the `opencode` binary is absent, the chat shows an OS-specific install command with a copy button, a setup-guide link, and a restart button; the toolbar restart button pulses and "New Session" stays disabled until a successful server start. This state is owned centrally by `AssistantTopComponent.setBinaryNotFoundState()`.
+
+---
+
+## 6. Architectural Recommendations & Opportunities
 
 While the architecture is highly decoupled and performant, the following areas present opportunities for refinement:
 

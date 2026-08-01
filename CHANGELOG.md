@@ -3,7 +3,17 @@
 ## v1.12.10 (Changes since v1.12.9)
 
 ### Features
-- **Inspector context menu**: Added right-click actions to the Inspector window (inspections results). **Copy** copies the selected problem subtree (filename, line and description) to the clipboard as text, and **💬 Send to Assistant** pre-fills the Mini Assistant input with the same text so you can edit it before sending.
+- **Send to Assistant context menus**: Added right-click **💬 Send to Assistant** actions across the IDE:
+  - **Editor** (`Edit` menu / editor context menu): sends the selected code or the file under the cursor.
+  - **Projects/Explorer** (file node context menu): sends the selected file's path as context.
+  - **Inspector window**: **Copy** copies the selected problem subtree (filename, line and description) to the clipboard as text, and **💬 Send to Assistant** pre-fills the Mini Assistant input with the same text so you can edit it before sending.
+  - **Test Results window**: same **Copy** / **💬 Send to Assistant** actions on failed-test trees, backed by a shared `TreePopupSupport` helper.
+- **Mini-assistant target preference**: New "Enable Mini Assistant" toggle under `Options > Assistant > Actions`. When enabled, **Send to Assistant** / **Ask Assistant** open the floating mini dialog; when disabled they route to the main sidebar instead. `AssistantTarget` centralizes the routing.
+- **Append instead of overwrite**: Send to Assistant / Ask Assistant now **appends** the sent text to the input area (newline-separated) instead of replacing whatever is already there, so you can accumulate multiple selections before sending.
+- **Context-menu gating**: Ask Assistant and Send to Assistant actions are now gated behind the existing "Enable context menu additions" flag, so they disappear from menus when it is turned off.
+- **/compact in autocomplete**: The `/compact` slash command is now listed in the plugin's local autocomplete popup (forwarded to the server as before).
+- **Missing-binary install help**: When `opencode` is not found, the chat shows an OS-specific install command (`curl -fsSL https://opencode.ai/install | bash`, `npm install -g opencode-ai`, winget/choco/scoop on Windows) with a **copy** button, a **View OpenCode Setup Guide** link, and a **Restart ACP Server** button. The toolbar **Restart** button pulses and **New Session** is disabled until the server starts.
+- **Thinking-level config id fix**: The thinking-level dropdown now sends the correct OpenCode config id (`effort`, category `thought_level`) instead of the hard-coded `thinking`, so selecting a thinking level actually applies server-side.
 
 ### Fixes
 - **AcpRequestRouter**: Removed an unused `filePath` parameter in the disk-read fallback.
