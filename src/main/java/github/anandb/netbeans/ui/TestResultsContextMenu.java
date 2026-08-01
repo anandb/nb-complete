@@ -2,31 +2,27 @@ package github.anandb.netbeans.ui;
 
 import java.awt.Component;
 import java.awt.Container;
-import java.awt.Toolkit;
-import java.awt.datatransfer.Clipboard;
-import java.awt.datatransfer.StringSelection;
 import java.awt.event.ActionEvent;
+import java.awt.event.ContainerEvent;
+import java.awt.event.ContainerListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.Set;
 import java.util.WeakHashMap;
+import java.util.regex.Pattern;
 import javax.swing.AbstractAction;
 import javax.swing.JEditorPane;
-import javax.swing.JPopupMenu;
 import javax.swing.JTabbedPane;
 import javax.swing.JTree;
 import javax.swing.SwingUtilities;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
-import org.openide.explorer.ExplorerManager;
 import org.openide.modules.OnStart;
 import org.openide.nodes.Node;
 import org.openide.windows.TopComponent;
 import org.openide.windows.WindowManager;
-
-import github.anandb.netbeans.support.PluginSettings;
 
 /**
  * Adds a right-click context menu to the Test Results window
@@ -44,9 +40,18 @@ import github.anandb.netbeans.support.PluginSettings;
  * JSplitPane: left = results tree (BeanTreeView), right = output JEditorPane.
  */
 @OnStart
-public class TestResultsContextMenu implements Runnable, PropertyChangeListener, ChangeListener {
+public class TestResultsContextMenu implements Runnable, PropertyChangeListener, ChangeListener, ContainerListener {
 
     private static final String RESULTS_TC_ID = "gsf-testrunner-results"; // NOI18N
+
+    /** Matches HTML tags but NOT comparison text like {@code expected:<1>}. */
+    private static final Pattern HTML_TAG = Pattern.compile("<(?=[a-zA-Z/!])[^>]*>");
+    private static final Pattern HTML_NBSP = Pattern.compile("&nbsp;");
+    private static final Pattern HTML_LT = Pattern.compile("&lt;");
+    private static final Pattern HTML_GT = Pattern.compile("&gt;");
+    private static final Pattern HTML_AMP = Pattern.compile("&amp;");
+    private static final Pattern HTML_QUOT = Pattern.compile("&quot;");
+    private static final Pattern HTML_APOS = Pattern.compile("&#39;");
 
     /** Trees we already hooked, keyed weakly so we never double-install. */
     private static final Set<JTree> HOOKED = java.util.Collections.newSetFromMap(new WeakHashMap<JTree, Boolean>());
@@ -75,6 +80,18 @@ public class TestResultsContextMenu implements Runnable, PropertyChangeListener,
         hookCurrentTab();
     }
 
+    @Override
+    public void componentAdded(ContainerEvent e) {
+        // Rerun replaces the tab content via setComponentAt(), which fires no
+        // stateChanged (selection index is unchanged). Re-hook the new tree.
+        hookCurrentTab();
+    }
+
+    @Override
+    public void componentRemoved(ContainerEvent e) {
+        // No action needed; the removed tab's tree is dropped with its tab.
+    }
+
     private void hookIfOpen() {
         TopComponent tc = WindowManager.getDefault().findTopComponent(RESULTS_TC_ID);
         if (tc != null && tc.isOpened()) {
@@ -83,9 +100,11 @@ public class TestResultsContextMenu implements Runnable, PropertyChangeListener,
                 if (tabPane != pane) {
                     if (tabPane != null) {
                         tabPane.removeChangeListener(this);
+                        tabPane.removeContainerListener(this);
                     }
                     tabPane = pane;
                     pane.addChangeListener(this);
+                    pane.addContainerListener(this);
                 }
                 hookCurrentTab();
             }
@@ -171,43 +190,19 @@ public class TestResultsContextMenu implements Runnable, PropertyChangeListener,
         }
 
         private void maybeShowPopup(MouseEvent e) {
-            if (!e.isPopupTrigger()) {
-                return;
-            }
-            int row = tree.getRowForLocation(e.getX(), e.getY());
-            if (row != -1 && !tree.isRowSelected(row)) {
-                tree.setSelectionRow(row);
-            }
-            Node[] selected = ExplorerManager.find(tree).getSelectedNodes();
-            if (selected.length == 0) {
-                return;
-            }
-            final String text = extractSubtreeText(selected);
             final JEditorPane outputPane = findEditorPane(tab);
-            final String fullOutput = outputPane != null ? outputPane.getText() : null;
-
-            final JPopupMenu menu = new JPopupMenu();
-            menu.add(new AbstractAction("Copy") {
-                @Override public void actionPerformed(ActionEvent ev) {
-                    Clipboard clip = Toolkit.getDefaultToolkit().getSystemClipboard();
-                    clip.setContents(new StringSelection(text), null);
+            TreePopupSupport.showPopup(e, tree, TestResultsContextMenu::extractSubtreeText, menu -> {
+                if (outputPane != null) {
+                    String fullOutput = stripHtml(outputPane.getText());
+                    if (!fullOutput.isBlank()) {
+                        menu.add(new AbstractAction("\uD83D\uDCAC Send Full Output") {
+                            @Override public void actionPerformed(ActionEvent ev) {
+                                SwingUtilities.invokeLater(() -> MiniAssistantDialog.getInstance().showWithText(fullOutput));
+                            }
+                        });
+                    }
                 }
             });
-            if (PluginSettings.isSortLinesEnabled()) {
-                menu.add(new AbstractAction("\uD83D\uDCAC Send to Assistant") {
-                    @Override public void actionPerformed(ActionEvent ev) {
-                        SwingUtilities.invokeLater(() -> MiniAssistantDialog.getInstance().showWithText(text));
-                    }
-                });
-                if (fullOutput != null && !fullOutput.isBlank()) {
-                    menu.add(new AbstractAction("\uD83D\uDCAC Send Full Output") {
-                        @Override public void actionPerformed(ActionEvent ev) {
-                            SwingUtilities.invokeLater(() -> MiniAssistantDialog.getInstance().showWithText(fullOutput));
-                        }
-                    });
-                }
-            }
-            menu.show(tree, e.getX(), e.getY());
         }
     }
 
@@ -217,7 +212,7 @@ public class TestResultsContextMenu implements Runnable, PropertyChangeListener,
         for (Node node : nodes) {
             appendNode(node, sb, 0);
         }
-        return sb.toString();
+        return stripHtml(sb.toString());
     }
 
     private static void appendNode(Node node, StringBuilder sb, int depth) {
@@ -228,5 +223,25 @@ public class TestResultsContextMenu implements Runnable, PropertyChangeListener,
         for (Node child : node.getChildren().getNodes(true)) {
             appendNode(child, sb, depth + 1);
         }
+    }
+
+    /**
+     * Removes HTML tags and decodes common entities so the sent text is plain.
+     * The tag pattern only matches {@code <} followed by a letter, {@code /} or
+     * {@code !}, so JUnit comparison text like {@code expected:<1> but was:<2>}
+     * is preserved.
+     */
+    static String stripHtml(String text) {
+        if (text == null) {
+            return null;
+        }
+        String s = HTML_TAG.matcher(text).replaceAll("");
+        s = HTML_NBSP.matcher(s).replaceAll(" ");
+        s = HTML_LT.matcher(s).replaceAll("<");
+        s = HTML_GT.matcher(s).replaceAll(">");
+        s = HTML_AMP.matcher(s).replaceAll("&");
+        s = HTML_QUOT.matcher(s).replaceAll("\"");
+        s = HTML_APOS.matcher(s).replaceAll("'");
+        return s;
     }
 }

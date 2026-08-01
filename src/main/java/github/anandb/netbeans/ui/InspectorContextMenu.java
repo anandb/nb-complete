@@ -2,10 +2,6 @@ package github.anandb.netbeans.ui;
 
 import java.awt.Component;
 import java.awt.Container;
-import java.awt.Toolkit;
-import java.awt.datatransfer.Clipboard;
-import java.awt.datatransfer.StringSelection;
-import java.awt.event.ActionEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.beans.PropertyChangeEvent;
@@ -13,12 +9,8 @@ import java.beans.PropertyChangeListener;
 import java.io.IOException;
 import java.util.Set;
 import java.util.WeakHashMap;
-import javax.swing.AbstractAction;
-import javax.swing.JPopupMenu;
 import javax.swing.JTree;
-import javax.swing.SwingUtilities;
 import org.netbeans.spi.editor.hints.ErrorDescription;
-import org.openide.explorer.ExplorerManager;
 import org.openide.filesystems.FileUtil;
 import org.openide.modules.OnStart;
 import org.openide.nodes.Node;
@@ -26,8 +18,6 @@ import org.openide.text.PositionBounds;
 import org.openide.util.Exceptions;
 import org.openide.windows.TopComponent;
 import org.openide.windows.WindowManager;
-
-import github.anandb.netbeans.support.PluginSettings;
 
 /**
  * Adds a right-click context menu to the Inspector window (inspections results,
@@ -110,35 +100,7 @@ public class InspectorContextMenu implements Runnable, PropertyChangeListener {
         }
 
         private void maybeShowPopup(MouseEvent e) {
-            if (!e.isPopupTrigger()) {
-                return;
-            }
-            int row = tree.getRowForLocation(e.getX(), e.getY());
-            if (row != -1 && !tree.isRowSelected(row)) {
-                tree.setSelectionRow(row);
-            }
-            Node[] selected = ExplorerManager.find(tree).getSelectedNodes();
-            if (selected.length == 0) {
-                return;
-            }
-            final String text = extractSubtreeText(selected[0]);
-            final JPopupMenu menu = new JPopupMenu();
-            menu.add(new AbstractAction("Copy") {
-                @Override public void actionPerformed(ActionEvent ev) {
-                    Clipboard clip = Toolkit.getDefaultToolkit().getSystemClipboard();
-                    clip.setContents(new StringSelection(text), null);
-                }
-            });
-            if (PluginSettings.isSortLinesEnabled()) {
-                menu.add(new AbstractAction("\uD83D\uDCAC Send to Assistant") {
-                    @Override public void actionPerformed(ActionEvent ev) {
-                        SwingUtilities.invokeLater(() -> {
-                            MiniAssistantDialog.getInstance().showWithText(text);
-                        });
-                    }
-                });
-            }
-            menu.show(tree, e.getX(), e.getY());
+            TreePopupSupport.showPopup(e, tree, nodes -> extractSubtreeText(nodes[0]), null);
         }
     }
 

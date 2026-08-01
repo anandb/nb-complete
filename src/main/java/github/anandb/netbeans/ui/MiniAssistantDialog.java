@@ -343,13 +343,13 @@ public class MiniAssistantDialog extends JDialog {
         String miniToggleAction = ShortcutUtils.resolveShortcut("github.anandb.netbeans.ui.ToggleMiniAssistantAction");
         if (miniToggleAction == null || miniToggleAction.isEmpty()) miniToggleAction = isMac ? "Cmd+Alt+L" : "Ctrl+Alt+L";
         
-        String scrollAction = isMac ? "Cmd+Left/Right: scroll" : "PgUp/PgDn: scroll";
-        String copyAction = isMac ? "Cmd+C: copy" : "Ctrl+C: copy";
+        String scrollAction = isMac ? "Cmd+Left/Right: Scroll" : "PgUp/PgDn: Scroll";
+        String copyAction = isMac ? "Cmd+C: Copy" : "Ctrl+C: Copy";
         
         String focusText = isFocused ? "Focus Editor" : "Focus Assistant";
         
-        inputArea.setOverlayText("Esc: close | " + toggleAction + ": Main Assistant Panel | " + miniToggleAction + ": " + focusText + " | "
-            + scrollAction + " | " + copyAction + " | Enter: send");
+        inputArea.setOverlayText("Esc: Close | " + toggleAction + ": Main Assistant Panel | " + miniToggleAction + ": " + focusText + " | "
+            + scrollAction + " | " + copyAction + " | Enter: Send");
         inputArea.repaint();
     }
 
