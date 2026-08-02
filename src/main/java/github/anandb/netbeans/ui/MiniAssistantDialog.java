@@ -417,9 +417,14 @@ public class MiniAssistantDialog extends JDialog {
         if (interceptor != null && trimmed.startsWith("/")) {
             String cmd = spaceIdx > 0 ? trimmed.substring(0, spaceIdx) : trimmed;
             if (interceptor.getCommands().containsKey(cmd)) {
-                inputArea.setText("");
-                interceptor.intercept(trimmed, Lookup.getDefault());
-                return;
+                CompletableFuture<Boolean> handled = interceptor.intercept(trimmed, Lookup.getDefault());
+                // Local commands return true (consumed). Passthrough commands
+                // like /compact return false — forward them to the server.
+                if (handled != null && handled.isDone() && !handled.isCompletedExceptionally()
+                        && Boolean.TRUE.equals(handled.join())) {
+                    inputArea.setText("");
+                    return;
+                }
             }
         }
         
