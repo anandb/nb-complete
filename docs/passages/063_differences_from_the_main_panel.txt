@@ -6,7 +6,7 @@
   <div>[[Index->Topic Index]]</div>
 </div>
 
-The mini assistant is designed for quick interactions. Some slash commands that require the full options panel (`/models`, `/agents`, `/level`, `/sessions`) are not available in the mini view — use the main panel or its keyboard shortcuts for those.
+The mini assistant is designed for quick interactions. Some slash commands that require the full options panel (`/model`, `/models`, `/agents`, `/level`, `/sessions`) are not available in the mini view — use the main panel or its keyboard shortcuts for those.
 
 The dialog remembers its position and size across sessions, so you can place it wherever is convenient in your workspace.
 

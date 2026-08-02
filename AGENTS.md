@@ -38,8 +38,8 @@
   not `OpenProjects.getDefault().getOpenProjects()`. The cache is populated by `start()` and
   updated via `propertyChange()` on project open/close. Do NOT bypass the cache.
 - **New session debounce**: The toolbar New Session button has a 300ms debounce timer to prevent
-  accidental double-clicks. The keyboard shortcut (`Ctrl+L` via `NewSessionAction`) bypasses the
-  debounce and calls `createNewSession()` directly.
+  accidental double-clicks. There is no keyboard shortcut for a new session; `Ctrl+L` toggles the
+  assistant panel (see the Ctrl+L Toggle section below).
 - **contract/ → manager/ singletons**: `contract/` classes must use `Lookup.getDefault().lookup()`
   to access services, never direct `Manager.getInstance()` calls. The `SlashCommandInterceptor`
   violation was fixed by injecting `ProcessControl` via Lookup.
@@ -295,6 +295,38 @@ public void toggleVisibility() {
    handling in any `KeyEventDispatcher`.
 
 6. MCP tools that we add must have names <= 14 characters in length.
+
+## User Guide (docs/)
+
+The interactive user guide lives at `docs/User Guide.twee` (Twine/Twee format).
+When editing it, use the split passage files — they are the source of truth:
+
+- **Passages**: `docs/passages/NNN_<name>.txt` — one file per page, numbered
+  `001_`..`NNN_`, header line `:: Name {attrs}` followed by the body. The last
+  passage number is the next one to use for new pages.
+- **Images**: `docs/images/<name>-N.png` — binary files; passage bodies
+  reference them as `![alt](../images/<name>-N.png){style="max-width:100%;"}`.
+- **Tooling**: `docs/split.py` unpacks `User Guide.twee` into passages+images;
+  `docs/stitch.py` reassembles them back into `User Guide.twee`.
+- **Reachability check**: after editing, run
+  `python3 docs/check_reachable.py "docs/User Guide.twee"` to verify every
+  passage is reachable from Home without the Topic Index, and that there are
+  no dangling links.
+- **Workflow to add a page**: create `docs/passages/NNN_<topic>.txt` (next
+  number), add a `> [[Page Name]]` link to the Topic Index passage
+  (`051_topic_index.txt`), then run `python3 docs/stitch.py` to regenerate
+  `User Guide.twee`. Do NOT hand-edit the .twee file.
+- **Page header convention**: each passage starts with a flex header div
+  (`Topic Title` + `[[Index->Topic Index]]` link) like existing passages.
+- **Cross-links**: pages link to related pages via `> [[Other Page]]` blocks
+  near the bottom.
+- **Reachability**: every passage must be reachable through the in-page
+  `> [[Other Page]]` cross-links alone — never rely solely on the Topic Index.
+  A user following the links at the bottom of each page must be able to get
+  anywhere in the guide without ever visiting the index.
+- **Topic Index sorting**: keep the `> [[Page Name]]` entries in
+  `051_topic_index.txt` sorted alphabetically; insert new entries in the
+  correct position instead of appending at the end.
 
 <!-- graymatter:instructions:begin — managed by `graymatter init`; edits inside this block are overwritten -->
 ## Memory (GrayMatter)

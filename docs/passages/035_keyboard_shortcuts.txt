@@ -11,7 +11,7 @@ Navigate and control the assistant efficiently using keyboard shortcuts:
 <table class="ug-table">
 <thead><tr><th>Shortcut</th><th>Action</th></tr></thead>
 <tbody>
-<tr><td><code>Ctrl + L</code></td><td>Open or switch focus to the assistant panel</td></tr>
+<tr><td><code>Ctrl + L</code></td><td>Toggle the assistant panel (open or close)</td></tr>
 <tr><td><code>Alt + Up</code> / <code>Alt + Down</code></td><td>Cycle through previously sent messages</td></tr>
 <tr><td><code>Page Up</code> / <code>Page Down</code></td><td>Scroll the chat</td></tr>
 <tr><td><code>Ctrl + R</code></td><td>Search message history</td></tr>

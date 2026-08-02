@@ -1,0 +1,37 @@
+:: Fetch a Coding Model {"position":"2050,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Fetch a Coding Model</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+With Ollama installed, open a terminal and pull a model suited for code. Good options include:
+
+<pre><code>
+ollama pull deepseek-coder
+ollama pull qwen2.5-coder
+ollama pull codellama
+ollama pull llama3.1
+</code></pre>
+
+The first run of `ollama run <model>` will download the model if it is not already present. You can see what is installed at any time with:
+
+<pre><code>
+ollama list
+</code></pre>
+
+Remember the exact model names shown by `ollama list` — you will need them when [[configuring OpenCode->Configure OpenCode for Ollama]].
+
+
+> [[Install Ollama]]
+> [[Configure OpenCode for Ollama]]
+> [[Offline/Private Coding (Local LLMs)]]
+
+
+
+
+
+
+
+

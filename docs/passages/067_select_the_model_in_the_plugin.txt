@@ -1,0 +1,30 @@
+:: Select the Model in the Plugin {"position":"2050,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Select the Model in the Plugin</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+After [[configuring OpenCode->Configure OpenCode for Ollama]], pick your local model in the plugin:
+
+1.  Click the gear icon (or press `Tab` in the input area) to open the chat options panel.
+2.  Pick the **agent** you want to use (e.g. `build` or `plan`).
+3.  Pick your **model** from the model dropdown — the local models configured above will appear there, listed as their provider/model names.
+4.  Choose a suitable **Thinking Level** if the model supports one.
+
+Every query and indexing task now runs entirely on your machine — no data leaves your computer. See [[Offline/Private Coding (Local LLMs)]] for privacy notes and [[Picking an Agent, Model and Thinking Level]] for more on the selectors.
+
+
+> [[Configure OpenCode for Ollama]]
+> [[Offline/Private Coding (Local LLMs)]]
+> [[Picking an Agent, Model and Thinking Level]]
+> [[Options Panel Reference]]
+
+
+
+
+
+
+
+

@@ -1,0 +1,51 @@
+:: Configure OpenCode for Ollama {"position":"2050,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Configure OpenCode for Ollama</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+OpenCode needs to know which provider serves the local model. Open your `opencode.json` configuration file (see [[Configuration Template]] for where this file lives) and add an `ollama` entry to its `provider` section. The rest of your existing file — permissions, etc. — stays untouched, so it looks something like this:
+
+<pre><code>
+`
+{
+    "$schema": "https://opencode.ai/config.json",
+    "autoupdate": false,
+    "permission": {
+        ...
+    },
+    "provider": {
+        "ollama": {
+            "npm": "@ai-sdk/ollama",
+            "options": {
+                "baseURL": "http://localhost:11434/api"
+            },
+            "models": {
+                "deepseek-coder": {},
+                "qwen2.5-coder": {}
+            }
+        }
+    }
+}
+`
+</code></pre>
+
+The `...` stands for whatever permissions and other settings your file already has — keep them, and add the `provider` block alongside them. The exact `models` entries must match the names shown by `ollama list` from the previous step. Qwen models may require `"reasoningEffort": "none"` and `--think=false` if they are configured via Ollama.
+
+Once the provider block is in place, select the model in the plugin.
+
+
+> [[Fetch a Coding Model]]
+> [[Select the Model in the Plugin]]
+> [[Configuration Template]]
+> [[Manage OpenCode Config in NetBeans]]
+
+
+
+
+
+
+
+

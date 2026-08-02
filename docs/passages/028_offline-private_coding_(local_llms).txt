@@ -13,6 +13,7 @@ If you have strict privacy requirements or want to avoid API costs, you can run 
 
 
 > [[Configuration Template]]
+> [[Install Ollama]]
 > [[Manage OpenCode Config in NetBeans]]
 > [[Picking an Agent, Model and Thinking Level]]
 

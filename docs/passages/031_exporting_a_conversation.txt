@@ -6,7 +6,7 @@
   <div>[[Index->Topic Index]]</div>
 </div>
 
-The share button on the toolbar will export the session to a markdown file.
+The share button on the toolbar exports the session to a file. Clicking it opens a small menu where you can choose between **Markdown** and **HTML** — HTML output mimics the sidebar chat view, including the expandable activity panels and chat styling.
 
 
 > [[Customising the Toolbar]]

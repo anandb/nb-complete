@@ -9,8 +9,8 @@
 Since the plugin supports the **Markdown Project** type (which lets you load any folder that has a `.mdproject` file in it), you can use it to manage your OpenCode configuration directly inside the IDE:
 
 1.  Navigate to your OpenCode configuration directory in your terminal:
-    *   **Linux/macOS:** `~/.config/opencode` (or `~/.config/opencode-ai`)
-    *   **Windows:** `%APPDATA%\opencode`
+    *   **Linux/macOS:** `~/.config/opencode`
+    *   **Windows:** `%USERPROFILE%\.config\opencode`
 2.  Create an empty project marker file by running:
     *   `touch .mdproject` (Linux/macOS)
     *   `type nul > .mdproject` (Windows CMD) or `New-Item .mdproject` (PowerShell)

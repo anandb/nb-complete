@@ -9,7 +9,7 @@
 The plugin checks for new releases in the background at randomised 16–24 hour intervals. When an update is available, a dialog offers three choices:
 
 *   **Download Now** — open the release to download and install
-*   **Remind me later**
+*   **Remind me Later**
 *   **Skip this Version**
 
 Disable the check under `Options > Assistant > Updates > Check for Updates`.

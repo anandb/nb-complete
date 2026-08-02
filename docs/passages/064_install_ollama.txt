@@ -1,0 +1,41 @@
+:: Install Ollama {"position":"2050,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Install Ollama</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+[Ollama](https://ollama.com) lets you run open-source models locally on your own machine. The first step is installing it.
+
+Download the installer for your operating system from the [Ollama website](https://ollama.com/download) and run it. On Linux you can also use the install script:
+
+<pre><code>
+curl -fsSL https://ollama.com/install.sh | sh
+</code></pre>
+
+On macOS, Ollama installs as a regular app — launch it once so the background service starts. **Windows (10 or later)** is also supported: install via the standalone `OllamaSetup.exe` download, or run the PowerShell installer:
+
+<pre><code>
+irm https://ollama.com/install.ps1 | iex
+</code></pre>
+
+Verify the installation by opening a terminal (or PowerShell on Windows) and running:
+
+<pre><code>
+ollama --version
+</code></pre>
+
+Once the `ollama` command responds, move on to fetching a coding model.
+
+
+> [[Fetch a Coding Model]]
+> [[Offline/Private Coding (Local LLMs)]]
+
+
+
+
+
+
+
+
