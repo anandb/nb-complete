@@ -44,7 +44,9 @@ public class InspectorContextMenu implements Runnable, PropertyChangeListener {
         if (!registered) {
             registered = true;
             TopComponent.getRegistry().addPropertyChangeListener(this);
-            hookIfOpen();
+            // @OnStart runs on a non-EDT startup thread; defer the component
+            // tree access to the EDT.
+            javax.swing.SwingUtilities.invokeLater(this::hookIfOpen);
         }
     }
 
@@ -55,14 +57,40 @@ public class InspectorContextMenu implements Runnable, PropertyChangeListener {
         }
     }
 
+    /** Retry interval and max attempts when the Inspector tree is not yet built. */
+    private static final int HOOK_RETRY_MS = 250;
+    private static final int HOOK_RETRY_MAX = 20;
+
     private void hookIfOpen() {
         TopComponent tc = WindowManager.getDefault().findTopComponent(INSPECTOR_TC_ID);
         if (tc != null && tc.isOpened()) {
             JTree tree = findTree(tc);
             if (tree != null && HOOKED.add(tree)) {
                 tree.addMouseListener(new PopupHandler(tree));
+            } else if (tree == null) {
+                // Tree may be populated asynchronously after the window opens;
+                // retry a few times instead of missing the hook entirely.
+                retryHook(tc, 0);
             }
         }
+    }
+
+    private void retryHook(TopComponent tc, int attempt) {
+        if (!tc.isOpened() || attempt >= HOOK_RETRY_MAX) {
+            return;
+        }
+        javax.swing.SwingUtilities.invokeLater(() -> {
+            JTree tree = findTree(tc);
+            if (tree != null) {
+                if (HOOKED.add(tree)) {
+                    tree.addMouseListener(new PopupHandler(tree));
+                }
+            } else {
+                javax.swing.Timer timer = new javax.swing.Timer(HOOK_RETRY_MS, e -> retryHook(tc, attempt + 1));
+                timer.setRepeats(false);
+                timer.start();
+            }
+        });
     }
 
     private static JTree findTree(Container container) {
@@ -118,13 +146,16 @@ public class InspectorContextMenu implements Runnable, PropertyChangeListener {
             String line = "";
             try {
                 PositionBounds range = ed.getRange();
-                if (range != null) {
+                if (range != null && range.getBegin() != null) {
                     line = Integer.toString(range.getBegin().getLine() + 1);
                 }
             } catch (IOException ex) {
                 Exceptions.printStackTrace(ex);
             }
-            sb.append(file).append(':').append(line).append(": ").append(ed.getDescription()).append('\n'); // NOI18N
+            String desc = ed.getDescription();
+            if (desc != null) {
+                sb.append(file).append(':').append(line).append(": ").append(desc).append('\n'); // NOI18N
+            }
             return;
         }
         Node[] children = node.getChildren().getNodes(true);

@@ -64,7 +64,9 @@ public class TestResultsContextMenu implements Runnable, PropertyChangeListener,
         if (!registered) {
             registered = true;
             TopComponent.getRegistry().addPropertyChangeListener(this);
-            hookIfOpen();
+            // @OnStart runs on a non-EDT startup thread; defer the component
+            // tree access to the EDT.
+            SwingUtilities.invokeLater(this::hookIfOpen);
         }
     }
 

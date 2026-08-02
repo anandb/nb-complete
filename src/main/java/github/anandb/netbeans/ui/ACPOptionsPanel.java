@@ -524,7 +524,7 @@ public class ACPOptionsPanel extends JPanel {
             PluginSettings.setChatFontSize("Inherited".equals(selectedChatFont) ? -1 : Integer.parseInt(selectedChatFont));
         }
 
-        PluginSettings.setSortLinesEnabled(sortLinesCheckbox.isSelected());
+        PluginSettings.setContextMenuEnabled(sortLinesCheckbox.isSelected());
         PluginSettings.setStashDiffEnabled(stashDiffCheckbox.isSelected());
         PluginSettings.setQuickJumpEnabled(quickJumpCheckbox.isSelected());
         PluginSettings.setMiniAssistantEnabled(miniAssistantCheckbox.isSelected());

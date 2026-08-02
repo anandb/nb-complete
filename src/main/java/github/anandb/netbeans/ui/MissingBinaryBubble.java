@@ -31,6 +31,9 @@ class MissingBinaryBubble extends JPanel {
 
     private Timer copyRevertTimer;
 
+    /** Icon shown before the copy check mark animation (captured once to survive rapid clicks). */
+    private Icon copyIcon;
+
     MissingBinaryBubble(Runnable onGuide, Runnable onRestart) {
         setLayout(new BorderLayout());
         setAlignmentY(Component.CENTER_ALIGNMENT);
@@ -94,6 +97,7 @@ class MissingBinaryBubble extends JPanel {
             e -> copyCommand(copyBtnRef[0], installCmd));
         copyBtnRef[0].setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
         JButton copyBtn = copyBtnRef[0];
+        copyIcon = copyBtn.getIcon();
 
         JPanel cmdPanel = new JPanel(new BorderLayout());
         cmdPanel.setOpaque(true);
@@ -144,14 +148,16 @@ class MissingBinaryBubble extends JPanel {
     private void copyCommand(JButton copyBtn, String installCmd) {
         Toolkit.getDefaultToolkit().getSystemClipboard()
             .setContents(new StringSelection(installCmd), null);
-        Icon originalIcon = copyBtn.getIcon();
+        if (copyIcon == null) {
+            copyIcon = copyBtn.getIcon();
+        }
         copyBtn.setIcon(ThemeManager.getIcon("check.svg", 14));
 
         // Cancel any previous revert timer to avoid leaking timers on rapid clicks.
         if (copyRevertTimer != null) {
             copyRevertTimer.stop();
         }
-        copyRevertTimer = new Timer(COPY_REVERT_MS, e -> copyBtn.setIcon(originalIcon));
+        copyRevertTimer = new Timer(COPY_REVERT_MS, e -> copyBtn.setIcon(copyIcon));
         copyRevertTimer.setRepeats(false);
         copyRevertTimer.start();
     }

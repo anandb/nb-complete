@@ -22,6 +22,9 @@ final class HelpButtonFlash {
 
     private static final String KEY_TIMER = "HelpButtonFlash.timer";
     private static final String KEY_LISTENER = "HelpButtonFlash.listener";
+    private static final String KEY_ORIG_OPAQUE = "HelpButtonFlash.origOpaque";
+    private static final String KEY_ORIG_FILLED = "HelpButtonFlash.origContentAreaFilled";
+    private static final String KEY_ORIG_BG = "HelpButtonFlash.origBackground";
 
     private HelpButtonFlash() {}
 
@@ -37,6 +40,11 @@ final class HelpButtonFlash {
         Color flashBg = theme.isDark()
                 ? new Color(128, 128, 128, 180)
                 : new Color(66, 133, 244, 180);
+
+        // Remember the original appearance so stop() can restore it exactly.
+        button.putClientProperty(KEY_ORIG_OPAQUE, button.isOpaque());
+        button.putClientProperty(KEY_ORIG_FILLED, button.isContentAreaFilled());
+        button.putClientProperty(KEY_ORIG_BG, button.getBackground());
 
         Timer timer = new Timer(TimingConstants.HELP_FLASH_INTERVAL_MS, new ActionListener() {
             private int tick = 0;
@@ -87,8 +95,22 @@ final class HelpButtonFlash {
             button.putClientProperty(KEY_LISTENER, null);
         }
 
-        button.setOpaque(false);
-        button.setContentAreaFilled(false);
+        // Restore the pre-flash appearance, if we captured one.
+        Object origOpaque = button.getClientProperty(KEY_ORIG_OPAQUE);
+        Object origFilled = button.getClientProperty(KEY_ORIG_FILLED);
+        Object origBg = button.getClientProperty(KEY_ORIG_BG);
+        if (origOpaque instanceof Boolean) {
+            button.setOpaque((Boolean) origOpaque);
+        }
+        if (origFilled instanceof Boolean) {
+            button.setContentAreaFilled((Boolean) origFilled);
+        }
+        if (origBg instanceof Color) {
+            button.setBackground((Color) origBg);
+        }
+        button.putClientProperty(KEY_ORIG_OPAQUE, null);
+        button.putClientProperty(KEY_ORIG_FILLED, null);
+        button.putClientProperty(KEY_ORIG_BG, null);
         button.repaint();
     }
 }

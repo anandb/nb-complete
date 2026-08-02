@@ -32,7 +32,7 @@ public final class PluginSettings {
     /** Cached chat font size — volatile for cross-thread visibility. -1 = inherited. */
     private static volatile int cachedChatFontSize = -1;
     /** Cached actions toggles — volatile for cross-thread visibility. All default to true. */
-    private static volatile boolean cachedSortLinesEnabled = true;
+    private static volatile boolean cachedContextMenuEnabled = true;
     private static volatile boolean cachedStashDiffEnabled = true;
     private static volatile boolean cachedQuickJumpEnabled = true;
     private static volatile boolean cachedAutoBackupChanges = true;
@@ -68,7 +68,7 @@ public final class PluginSettings {
         cachedMaxMessages = prefs.getInt(KEY_MAX_MESSAGES, DEFAULT_MAX_MESSAGES);
         cachedToolbarIconSize = prefs.getInt(PreferenceKeys.TOOLBAR_ICON_SIZE, DEFAULT_TOOLBAR_ICON_SIZE);
         cachedChatFontSize = prefs.getInt(PreferenceKeys.CHAT_FONT_SIZE, -1);
-        cachedSortLinesEnabled = prefs.getBoolean(PreferenceKeys.ACTIONS_SORT_LINES, true);
+        cachedContextMenuEnabled = prefs.getBoolean(PreferenceKeys.ACTIONS_SORT_LINES, true);
         cachedStashDiffEnabled = prefs.getBoolean(PreferenceKeys.ACTIONS_STASH_DIFF, true);
         cachedQuickJumpEnabled = prefs.getBoolean(PreferenceKeys.ACTIONS_QUICK_JUMP, true);
         cachedAutoBackupChanges = prefs.getBoolean(PreferenceKeys.AUTO_BACKUP_CHANGES, true);
@@ -150,7 +150,7 @@ public final class PluginSettings {
                 cachedChatFontSize = -1;
             }
         } else if (PreferenceKeys.ACTIONS_SORT_LINES.equals(evt.getKey())) {
-            cachedSortLinesEnabled = Boolean.parseBoolean(evt.getNewValue());
+            cachedContextMenuEnabled = Boolean.parseBoolean(evt.getNewValue());
         } else if (PreferenceKeys.ACTIONS_STASH_DIFF.equals(evt.getKey())) {
             cachedStashDiffEnabled = Boolean.parseBoolean(evt.getNewValue());
         } else if (PreferenceKeys.ACTIONS_QUICK_JUMP.equals(evt.getKey())) {
@@ -201,12 +201,12 @@ public final class PluginSettings {
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putInt(PreferenceKeys.TOOLBAR_ICON_SIZE, size);
     }
 
-    /** Whether sort lines (ascending/descending) and minify JSON actions are enabled. */
-    public static boolean isSortLinesEnabled() {
-        return cachedSortLinesEnabled;
+    /** Whether context-menu additions (Sort Lines, Minify JSON, Search Web) are enabled. */
+    public static boolean isContextMenuEnabled() {
+        return cachedContextMenuEnabled;
     }
 
-    public static void setSortLinesEnabled(boolean enabled) {
+    public static void setContextMenuEnabled(boolean enabled) {
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean(PreferenceKeys.ACTIONS_SORT_LINES, enabled);
     }
 

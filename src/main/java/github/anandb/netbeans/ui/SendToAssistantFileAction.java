@@ -10,8 +10,6 @@ import org.openide.util.NbBundle;
 import org.openide.util.actions.NodeAction;
 import org.openide.nodes.Node;
 
-import github.anandb.netbeans.support.PluginSettings;
-
 /**
  * Projects / Files window action: sends the selected file's path to the
  * Mini Assistant input.
@@ -38,9 +36,6 @@ public final class SendToAssistantFileAction extends NodeAction {
 
     @Override
     protected boolean enable(Node[] activatedNodes) {
-        if (!PluginSettings.isSortLinesEnabled()) {
-            return false;
-        }
         if (activatedNodes.length != 1) {
             return false;
         }

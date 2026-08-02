@@ -15,7 +15,6 @@ import org.openide.util.NbBundle;
 import org.openide.util.actions.Presenter;
 
 import github.anandb.netbeans.support.Logger;
-import github.anandb.netbeans.support.PluginSettings;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 
 /**
@@ -31,11 +30,6 @@ public final class SendToAssistantEditorAction extends AbstractAction implements
 
     @Override
     public JMenuItem getPopupPresenter() {
-        if (!PluginSettings.isSortLinesEnabled()) {
-            JMenuItem item = new JMenuItem();
-            item.setVisible(false);
-            return item;
-        }
         JMenuItem item = new JMenuItem(NbBundle.getMessage(SendToAssistantEditorAction.class, "CTL_SendToAssistantAction"));
         item.addActionListener(this);
         return item;
@@ -43,9 +37,6 @@ public final class SendToAssistantEditorAction extends AbstractAction implements
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        if (!PluginSettings.isSortLinesEnabled()) {
-            return;
-        }
         JTextComponent editor = EditorRegistry.lastFocusedComponent();
         if (editor == null) {
             return;
