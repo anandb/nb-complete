@@ -839,8 +839,11 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
      * are restored to their normal session-aware state.
      */
     void setBinaryNotFoundState(boolean notFound) {
+        // Publish the volatile flag synchronously so any concurrently queued
+        // EDT task (e.g. updateNewSessionBtnState) sees the new value instead
+        // of a stale "binary available" state.
+        binaryNotFound = notFound;
         SwingUtilities.invokeLater(() -> {
-            binaryNotFound = notFound;
             if (notFound) {
                 // Disable all session toolbar buttons — only restart stays enabled
                 sessionDropdown.setEnabled(false);

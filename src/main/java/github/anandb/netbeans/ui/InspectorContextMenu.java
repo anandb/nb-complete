@@ -128,14 +128,16 @@ public class InspectorContextMenu implements Runnable, PropertyChangeListener {
         }
 
         private void maybeShowPopup(MouseEvent e) {
-            TreePopupSupport.showPopup(e, tree, nodes -> extractSubtreeText(nodes[0]), null);
+            TreePopupSupport.showPopup(e, tree, InspectorContextMenu::extractSubtreeText, null);
         }
     }
 
-    /** Walks the node subtree and renders each problem as {@code file:line: description}. */
-    static String extractSubtreeText(Node node) {
+    /** Walks each selected node's subtree and renders problems as {@code file:line: description}. */
+    static String extractSubtreeText(Node[] nodes) {
         StringBuilder sb = new StringBuilder();
-        extract(node, sb);
+        for (Node node : nodes) {
+            extract(node, sb);
+        }
         return sb.toString();
     }
 

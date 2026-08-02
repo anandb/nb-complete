@@ -195,14 +195,15 @@ public class TestResultsContextMenu implements Runnable, PropertyChangeListener,
             final JEditorPane outputPane = findEditorPane(tab);
             TreePopupSupport.showPopup(e, tree, TestResultsContextMenu::extractSubtreeText, menu -> {
                 if (outputPane != null) {
-                    String fullOutput = stripHtml(outputPane.getText());
-                    if (!fullOutput.isBlank()) {
-                        menu.add(new AbstractAction("\uD83D\uDCAC Send Full Output") {
-                            @Override public void actionPerformed(ActionEvent ev) {
+                    menu.add(new AbstractAction("\uD83D\uDCAC Send Full Output") {
+                        @Override public void actionPerformed(ActionEvent ev) {
+                            // Read at action time so the output isn't a stale snapshot.
+                            String fullOutput = stripHtml(outputPane.getText());
+                            if (!fullOutput.isBlank()) {
                                 SwingUtilities.invokeLater(() -> AssistantTarget.showWithText(fullOutput));
                             }
-                        });
-                    }
+                        }
+                    });
                 }
             });
         }
