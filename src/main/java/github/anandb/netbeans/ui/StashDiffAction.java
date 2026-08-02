@@ -309,6 +309,49 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
         return content.contains("<<<<<<<") || content.contains("=======") || content.contains(">>>>>>>");
     }
 
+    /**
+     * Removes unpaired surrogate characters from diff content.
+     * NetBeans' EditableDiffView fails with "Cannot encode input data using
+     * UTF8 encoding" when a Reader-backed StreamSource contains lone
+     * surrogates (e.g. from binary or mis-decoded file content). Replaces
+     * them with U+FFFD so the diff view renders instead of erroring out.
+     */
+    static String sanitizeDiffContent(String content) {
+        if (content == null || content.isEmpty()) {
+            return content;
+        }
+        StringBuilder sb = null;
+        for (int i = 0; i < content.length(); i++) {
+            char c = content.charAt(i);
+            if (Character.isHighSurrogate(c)) {
+                if (i + 1 < content.length() && Character.isLowSurrogate(content.charAt(i + 1))) {
+                    // Valid surrogate pair — keep both.
+                    if (sb != null) {
+                        sb.append(c).append(content.charAt(i + 1));
+                    }
+                    i++;
+                } else {
+                    // Lone high surrogate.
+                    if (sb == null) {
+                        sb = new StringBuilder(content.length());
+                        sb.append(content, 0, i);
+                    }
+                    sb.append('\uFFFD');
+                }
+            } else if (Character.isLowSurrogate(c)) {
+                // Lone low surrogate.
+                if (sb == null) {
+                    sb = new StringBuilder(content.length());
+                    sb.append(content, 0, i);
+                }
+                sb.append('\uFFFD');
+            } else if (sb != null) {
+                sb.append(c);
+            }
+        }
+        return sb != null ? sb.toString() : content;
+    }
+
     private static void deleteTempFile(File f) {
         if (f == null) return;
         try {
@@ -664,9 +707,11 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
             diffPanel.removeAll();
             try {
                 String name = new File(fd.filePath).getName();
+                String baseContent = sanitizeDiffContent(fd.headContent);
+                String stashContent = sanitizeDiffContent(fd.stashContent);
 
                 // Identical content: show clear message instead of empty diff view
-                if (fd.headContent.equals(fd.stashContent)) {
+                if (baseContent.equals(stashContent)) {
                     JLabel identicalLabel = new JLabel(Bundle.CTL_StashDiffAction_FilesIdentical(), JLabel.CENTER);
                     identicalLabel.setFont(identicalLabel.getFont().deriveFont(Font.ITALIC, 16f));
                     identicalLabel.setForeground(new Color(128, 128, 128));
@@ -682,13 +727,13 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
                         : "Base (" + statusName(fd.status) + ")";
                 StreamSource base = StreamSource.createSource(
                         name + " (base)", baseTitle, mime,
-                        new StringReader(fd.headContent));
+                        new StringReader(baseContent));
                 String modifiedTitle = !isStash ? "Modified" : (fd.conflict
                         ? "<html>Stash (<font color='red'>Conflict</font>)</html>"
                         : "Stash");
                 StreamSource modified = StreamSource.createSource(
                         name + " (modified)", modifiedTitle, mime,
-                        new StringReader(fd.stashContent));
+                        new StringReader(stashContent));
                 DiffController ctrl = DiffController.createEnhanced(base, modified);
                 JComponent diffView = ctrl.getJComponent();
                 PropertyChangeListener diffListener = evt -> {
