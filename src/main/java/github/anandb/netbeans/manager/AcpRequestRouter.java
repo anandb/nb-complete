@@ -25,6 +25,7 @@ import javax.swing.SwingUtilities;
 import github.anandb.netbeans.project.ACPProjectManager;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.MapperSupplier;
+import github.anandb.netbeans.support.ToolDataExtractor;
 import org.netbeans.api.project.Project;
 
 class AcpRequestRouter {

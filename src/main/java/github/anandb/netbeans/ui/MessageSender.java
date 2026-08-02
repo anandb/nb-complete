@@ -10,7 +10,7 @@ import javax.swing.SwingUtilities;
 import java.util.concurrent.CompletableFuture;
 
 import github.anandb.netbeans.contract.SlashCommandInterceptor;
-import github.anandb.netbeans.manager.ToolDataExtractor;
+import github.anandb.netbeans.support.ToolDataExtractor;
 import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.support.Logger;

@@ -1,4 +1,4 @@
-package github.anandb.netbeans.manager;
+package github.anandb.netbeans.support;
 
 import github.anandb.netbeans.model.ModelRecords.MessageClassification;
 import github.anandb.netbeans.model.MessageType;

@@ -11,7 +11,7 @@ import javax.swing.Icon;
 import javax.swing.JLabel;
 import javax.swing.Timer;
 
-import github.anandb.netbeans.manager.ToolDataExtractor;
+import github.anandb.netbeans.support.ToolDataExtractor;
 import github.anandb.netbeans.support.Logger;
 
 // DSL-CONTROLLER: not a view — copyRevertTimer handles the click-to-copy → revert-icon
