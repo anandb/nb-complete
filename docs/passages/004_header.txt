@@ -1,0 +1,12 @@
+:: header [header]
+
+
+<div style="display: flex; justify-content: flex-end; margin-bottom: 0.5rem; padding-right: 0.25rem;">
+<a href="#" onclick="window.toggleTheme(); return false;" style="cursor: pointer; font-size: 0.9em; opacity: 0.7;">🌓 Toggle theme</a>
+</div>
+
+
+
+
+
+

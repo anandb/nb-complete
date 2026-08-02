@@ -1,0 +1,28 @@
+:: Windows {"position":"912.5,725","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Windows</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+On Windows, it is better to run OpenCode inside **WSL (Windows Subsystem for Linux)** for the best performance and compatibility. This allows it to execute regular bash commands. You can also use a package manager like chocolatey or scoop if you have them.
+
+##### Using the install script from WSL
+<pre><code>`curl -fsSL https://opencode.ai/install | bash`</code></pre>
+
+##### Chocolatey
+<pre><code>`choco install opencode`</code></pre>
+
+##### Scoop
+<pre><code>`scoop install opencode`</code></pre>
+
+> [[Windows Config]]
+
+
+
+
+
+
+
+

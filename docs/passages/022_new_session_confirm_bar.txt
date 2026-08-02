@@ -1,0 +1,20 @@
+:: New Session Confirm Bar {"position":"687.5,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">New Session Confirm Bar</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+![New Session Confirm Bar](../images/new_session_confirm.png){style="max-width:100%;"}
+
+When you start a new session, a slide-in confirmation bar appears above the input area: *"Select the agent, model and level below, then click Continue."* The agent, model, and thinking-level dropdowns stay locked until you confirm your selection, so the session starts with the configuration you intend. Clicking **Continue** unlocks the dropdowns and starts the session.
+
+
+> [[Starting a Session]]
+> [[Picking an Agent, Model and Thinking Level]]
+
+
+
+
+

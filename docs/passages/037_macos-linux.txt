@@ -1,0 +1,25 @@
+:: macOS/Linux {"position":"850,600","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">macOS/Linux</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+Use one of these options to install OpenCode
+- **macOS / Linux** (Recommended):
+  <pre><code>`curl -fsSL https://opencode.ai/install | bash`</code></pre>
+- **NPM (Global):**
+  <pre><code>`npm install -g opencode-ai`</code></pre>
+- **Homebrew (macOS):**
+  <pre><code>`brew install anomalyco/tap/opencode`</code></pre>
+
+  > [[Unix Config]]
+
+
+
+
+
+
+
+

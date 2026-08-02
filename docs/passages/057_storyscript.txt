@@ -1,0 +1,86 @@
+:: StoryScript [script]
+
+
+window.addEventListener('unhandledrejection', function(event) {
+  if (event.reason && event.reason.name === 'DOMException' && event.reason.message.includes('Skipped view transition')) {
+    event.preventDefault(); // Prevents the error from clogging the console
+  }
+});
+
+// Dark-mode toggle for Harlowe: flips a class on <tw-story> and persists choice.
+window.toggleTheme = function() {
+  var story = document.querySelector('tw-story');
+  if (!story) { return; }
+  var on = story.classList.toggle('dark-mode');
+  try { localStorage.setItem('beanbot-dark', on ? '1' : '0'); } catch (e) {}
+};
+(function applySavedTheme() {
+  function apply() {
+    var story = document.querySelector('tw-story');
+    if (!story) { return; }
+    try {
+      if (localStorage.getItem('beanbot-dark') === '1') {
+        story.classList.add('dark-mode');
+      }
+    } catch (e) {}
+  }
+  // tw-story may not exist yet at boot; retry until it does.
+  var tries = 0;
+  (function retry() {
+    if (document.querySelector('tw-story')) {
+      apply();
+    } else if (tries++ < 50) {
+      setTimeout(retry, 50);
+    }
+  })();
+})();
+
+// Rename the sidebar Undo/Redo icons to Back/Forward.
+// The click handler dispatches on the `alt` attribute, so keep it unchanged
+// and only relabel the visible text and tooltip. Harlowe recreates the
+// sidebar on every passage change, so watch for newly inserted icons.
+(function renameSidebarIcons() {
+  function relabel(icon) {
+    var alt = icon.getAttribute('alt');
+    if (alt === 'Undo') {
+      icon.setAttribute('title', 'Back');
+      icon.setAttribute('data-label', 'Back');
+    } else if (alt === 'Redo') {
+      icon.setAttribute('title', 'Forward');
+      icon.setAttribute('data-label', 'Forward');
+    }
+  }
+  function scan() {
+    var icons = document.querySelectorAll('tw-sidebar tw-icon[alt]');
+    for (var i = 0; i < icons.length; i++) { relabel(icons[i]); }
+  }
+  function start() {
+    scan();
+    var target = document.querySelector('tw-story') || document.documentElement;
+    var observer = new MutationObserver(function(mutations) {
+      for (var i = 0; i < mutations.length; i++) {
+        var added = mutations[i].addedNodes;
+        for (var j = 0; j < added.length; j++) {
+          if (added[j].nodeType === 1 && added[j].matches && added[j].matches('tw-icon[alt]')) {
+            relabel(added[j]);
+          }
+        }
+      }
+    });
+    observer.observe(target, { childList: true, subtree: true });
+  }
+  // tw-story may not exist yet at boot; retry until it does.
+  var tries = 0;
+  (function retry() {
+    if (document.querySelector('tw-story')) {
+      start();
+    } else if (tries++ < 50) {
+      setTimeout(retry, 50);
+    }
+  })();
+})();
+
+
+
+
+

@@ -1,0 +1,22 @@
+:: Differences from the main panel {"position":"1100,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Differences from the main panel</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+The mini assistant is designed for quick interactions. Some slash commands that require the full options panel (`/models`, `/agents`, `/level`, `/sessions`) are not available in the mini view — use the main panel or its keyboard shortcuts for those.
+
+The dialog remembers its position and size across sessions, so you can place it wherever is convenient in your workspace.
+
+
+> [[Mini Assistant]]
+> [[Opening the Mini Assistant]]
+> [[Using the Mini Assistant]]
+> [[Keyboard shortcuts inside the Mini Assistant]]
+> [[Mini Assistant Permission Requests]]
+
+
+
+

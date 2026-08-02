@@ -1,0 +1,17 @@
+:: Slash Command Autocomplete {"position":"87.5,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Slash Command Autocomplete</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+Typing `/` in the input area opens an autocomplete popup listing all available commands — the plugin's local commands plus the server commands advertised by the OpenCode agent. Keep typing to narrow the list. Use Up/Down to highlight an entry, then press `Enter` or `Tab` to insert the highlighted command into the input. If the typed text exactly matches a command name, pressing `Enter` sends it immediately. The popup disappears when you press `Escape`, type a space, or click away.
+
+See [[Commands]] for the full list of available commands and what each one does.
+
+
+
+
+
+

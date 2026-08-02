@@ -1,0 +1,31 @@
+:: Unix Config {"position":"725,850","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Unix Config</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+On macOS/Linux, the OpenCode configuration is located at `$HOME/.config/opencode/opencode.json`.
+
+1. Create this directory if it doesn't exist
+<pre><code>`mkdir -p $HOME/.config/opencode.`</code></pre>
+
+2. Start your editor, whether it be `vi`, `nano` or any other.
+3. Create the file `$HOME/.config/opencode/opencode.json` with the following template.
+
+> [[Configuration Template->Configuration Template]]
+
+Verify that the configuration is valid by running
+<pre><code>`opencode models`</code></pre>
+
+> [[After Installing OpenCode->Post Install]]
+
+
+
+
+
+
+
+
+

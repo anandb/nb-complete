@@ -1,0 +1,31 @@
+:: Manage OpenCode Config in NetBeans {"position":"1787.5,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Manage OpenCode Config in NetBeans</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+Since the plugin supports the **Markdown Project** type (which lets you load any folder that has a `.mdproject` file in it), you can use it to manage your OpenCode configuration directly inside the IDE:
+
+1.  Navigate to your OpenCode configuration directory in your terminal:
+    *   **Linux/macOS:** `~/.config/opencode` (or `~/.config/opencode-ai`)
+    *   **Windows:** `%APPDATA%\opencode`
+2.  Create an empty project marker file by running:
+    *   `touch .mdproject` (Linux/macOS)
+    *   `type nul > .mdproject` (Windows CMD) or `New-Item .mdproject` (PowerShell)
+3.  Open NetBeans and go to `File > Open Project`. Navigate to that configuration directory and open it.
+4.  You can now manage your configuration directly inside the IDE. Since the files are loaded as a project in NetBeans, you can ask the assistant panel to make changes for you (e.g., "Add a new custom agent config to my opencode.json") instead of editing them manually.
+
+
+> [[Markdown Project Type]]
+> [[Configuration Template]]
+> [[Offline/Private Coding (Local LLMs)]]
+
+
+
+
+
+
+
+

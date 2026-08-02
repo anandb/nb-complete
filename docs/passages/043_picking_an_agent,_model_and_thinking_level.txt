@@ -1,0 +1,25 @@
+:: Picking an Agent, Model and Thinking Level {"position":"0,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Picking an Agent, Model and Thinking Level</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+Hitting `Tab` when in the input text-area or pressing the small gear icon, will slide open the chat options panel, by default you'll see two agents build and plan, OpenCode also allows custom agents to be defined, pick one of the models supported by the providers you have configured, and a suitable Thinking Level, the actual levels displayed depend on the exact model selected. The gear would have turned into a down arrow button, click the button to close the options panel. You can also use the `/agents`, `/models`, and `/level` slash commands to open these selectors.
+
+
+> [[Commands]] / [[Slash Command Autocomplete]]
+> [[Input Area Keys]]
+> [[New Session Confirm Bar]]
+> [[Offline/Private Coding (Local LLMs)]]
+
+![Options panel with the agent, model and thinking level selectors](../images/picking_an_agent,_model_and_thinking_level-1.png){style="max-width:100%;"}
+
+
+
+
+
+
+
+

@@ -1,0 +1,23 @@
+:: Jump to File {"position":"387.5,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Jump to File</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+![Jump to File dialog for searching files across open projects](../images/ide_enhancements-1.png){style="max-width:100%;"}
+
+The **Jump to File** dialog (`Ctrl + Alt + J`, or `Cmd + Option + J` on Mac) lets you open any file across all open projects by typing part of its name. It matches case-insensitively by filename prefix, path substring, or glob patterns. Navigate with the arrow keys and press `Enter` to open.
+
+The dialog is backed by an in-memory index that rebuilds in the background and updates live as files change; it respects `.gitignore` and skips common directories like `node_modules/`, `target/`, and `build/`. Enable or disable it under `Options > Assistant`.
+
+
+> [[Keyboard Shortcuts]]
+> [[Options Panel Reference]]
+> [[IDE Enhancements]]
+
+
+
+
+

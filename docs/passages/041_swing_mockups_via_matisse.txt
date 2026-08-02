@@ -1,0 +1,29 @@
+:: Swing Mockups via Matisse {"position":"2287.5,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Swing Mockups via Matisse</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+You can use the assistant to convert visual UI mockups (screenshots or wireframes) into Java Swing code, and enhance your Matisse GUI forms with custom components:
+1.  **Draft a Visual Mockup**: Draw a UI sketch or take a screenshot of a component you want to build.
+2.  **Generate the Custom Component**: Drag-and-drop the mockup image into the chat (or use the paperclip icon) and ask the assistant to code it.
+    *   *Prompt:* `"Analyze this mockup. Write a custom JComponent called GradientHeaderPanel.java that renders a color gradient background, a title label, and a drop shadow that matches this design."`
+3.  **Compile & Palette Import**: Let the assistant write the file, compile your project, and then drag the compiled `GradientHeaderPanel` class directly into the NetBeans **Matisse Palette**.
+4.  **Design visually with Matisse**: Open any Swing GUI form (like a `JFrame` or `JPanel`) in Matisse, and drag-and-drop your new custom AI-generated component directly from the Palette onto your form design.
+5.  **Hook up the Logic**: In your Matisse form, click the "Source" tab. Share the Matisse-generated class with the assistant and ask it to write the event listeners and backend logic for your visual components:
+    *   *Prompt:* `"Help me write the ActionListeners to connect the search button (btnSearch) to fetch results and populate the list model for lstResults."`
+
+
+> [[Attachments]]
+> [[Permission Requests]]
+> [[Experiments]]
+
+
+
+
+
+
+
+

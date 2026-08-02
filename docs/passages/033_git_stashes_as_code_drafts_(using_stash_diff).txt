@@ -1,0 +1,26 @@
+:: Git Stashes as "Code Drafts" (using Stash Diff) {"position":"1912.5,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Git Stashes as "Code Drafts" (using Stash Diff)</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+Instead of creating temporary branches for minor changes or code drafts, you can save your progress as stashes and use the Stash Diff viewer as a visual sandbox:
+1.  Save your experimental code in a stash: `git stash`.
+2.  Open the NetBeans Git Repository Browser, select the stash, and press `Ctrl + Shift + L` (or click **Diff Stash** in the toolbar).
+3.  Simulate a merge by comparing it against **To HEAD**, or see how it fits with other local changes by comparing it against **To Working Tree**.
+4.  If you only want specific changes, right-click files in the diff list and choose **"Apply this change"** to cherry-pick them back into your working tree without applying the entire stash.
+
+
+> [[IDE Enhancements]]
+> [[Keyboard Shortcuts]]
+> [[Auto-Backup on Turn Start]]
+
+
+
+
+
+
+
+

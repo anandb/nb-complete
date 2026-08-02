@@ -1,0 +1,24 @@
+:: Ask Assistant Menu {"position":"287.5,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Ask Assistant Menu</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+Two editor menu entries launch the Mini Assistant for refactoring help:
+
+*   Right-click in the editor and choose **Refactoring > Ask Assistant...** to send the current selection to the assistant for refactoring.
+*   Use the code generator — press `Alt + Insert` (or open the Insert Code menu) and pick **Ask Assistant** to generate code from a prompt.
+
+Both open (or focus) the Mini Assistant with your selected code attached as context.
+
+
+> [[Mini Assistant]]
+> [[Send to Assistant]]
+> [[Attachments]]
+
+
+
+
+

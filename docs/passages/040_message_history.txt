@@ -1,0 +1,24 @@
+:: Message History {"position":"912.5,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Message History</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+![Message history search](../images/history_search.png){style="max-width:100%;"}
+
+Your complete message history is always safely stored on the server. While the local chat view hides older messages to conserve IDE memory, you can always retrieve the full history by clicking **Show All Messages** followed by **Reload** — the session is reloaded but all messages are retained. You can also search through your past input history using `Ctrl + R`. If you want to keep just one or two messages visible (e.g. a plan or to-do list), hover over the response bubble and click the pin icon; pinned messages stay in the chat panel instead of being cleared over time.
+
+
+> [[Pinned Messages]]
+> [[Input Area Keys]]
+> [[Exporting a conversation]]
+
+
+
+
+
+
+
+

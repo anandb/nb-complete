@@ -17,7 +17,7 @@ Coding Assistant is a NetBeans IDE plugin designed to provide integrated AI capa
 
 ## Getting Started
 
-See the [Quickstart Guide](QUICKSTART.md) for setup, feature details, and usage instructions.
+See the [User Guide](https://anandb.github.io/beanbot_user_guide.html) for setup, feature details, and usage instructions.
 
 ### Test Configuration
 

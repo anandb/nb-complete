@@ -1,0 +1,25 @@
+:: Opening the Mini Assistant {"position":"1100,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Opening the Mini Assistant</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+There are several ways to launch it:
+
+*   **Toolbar button:** Click the **Mini Assistant** icon (a small chat bubble) in the assistant toolbar. This will dock the main panel and open the mini dialog.
+*   **Keyboard shortcut:** Press `Ctrl + Alt + L` (or `Cmd + Alt + L` on Mac) to toggle it.
+*   **Refactoring menu:** Right-click in the editor and choose **Ask Assistant** from the Refactoring menu.
+*   **Code generation:** Press `Alt + Insert` (or the code generation shortcut for your platform) and select **Ask Assistant**.
+
+
+> [[Mini Assistant]]
+> [[Using the Mini Assistant]]
+> [[Keyboard shortcuts inside the Mini Assistant]]
+> [[Mini Assistant Permission Requests]]
+> [[Differences from the main panel]]
+
+
+
+

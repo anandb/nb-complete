@@ -1,0 +1,25 @@
+:: Offline/Private Coding (Local LLMs) {"position":"2037.5,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Offline/Private Coding (Local LLMs)</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+If you have strict privacy requirements or want to avoid API costs, you can run the plugin entirely offline using local LLMs:
+1.  Install a local runner like [Ollama](https://ollama.com) and download a coding model (e.g., `ollama run deepseek-coder` or `ollama run qwen2.5-coder`).
+2.  Add a configuration block for the local model in your `opencode.json` configuration file. Note that Qwen models might require `--think=false` if configured via Ollama, and a `"reasoningEffort": "none"` entry.
+3.  Open the chat options panel (click the gear icon or press `Tab` in the input area) and choose your local model from the dropdown list. All code queries and indexing tasks will now execute locally on your machine.
+
+
+> [[Configuration Template]]
+> [[Manage OpenCode Config in NetBeans]]
+> [[Picking an Agent, Model and Thinking Level]]
+
+
+
+
+
+
+
+

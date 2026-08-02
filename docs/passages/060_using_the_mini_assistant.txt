@@ -1,0 +1,22 @@
+:: Using the Mini Assistant {"position":"1100,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Using the Mini Assistant</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+The dialog has a simple layout: a response display area on top and a text input at the bottom. Type your message and press `Enter` to send. Use `Shift + Enter` to add a newline without sending.
+
+While the AI is processing, a spinner and a token counter appear in the header so you can see progress in real time. The latest response is displayed as a compact bubble with a reduced font size.
+
+
+> [[Mini Assistant]]
+> [[Opening the Mini Assistant]]
+> [[Keyboard shortcuts inside the Mini Assistant]]
+> [[Mini Assistant Permission Requests]]
+> [[Differences from the main panel]]
+
+
+
+

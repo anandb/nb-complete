@@ -1,0 +1,23 @@
+:: Time to first token {"position":"1162.5,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Time to first token</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+![Time to first token](../images/ttft.png){style="max-width:100%;"}
+
+The bottom right of the assistant response bubble will have a small time indicator, this is the time taken by the agent to emit the first response token after processing the user prompt.
+
+
+> [[Thinking and Tool Responses]]
+> [[Check token usage]]
+
+
+
+
+
+
+
+

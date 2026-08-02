@@ -69,12 +69,12 @@ src/main/java/github/anandb/netbeans/ui/Bundle.properties
 /scratch
 
 # Others
-docs/
 .opencode/
 .vscode/
 .graymatter/
 tasks/
 research/
+__pycache__/
 
 
 # Application logs
@@ -83,3 +83,5 @@ spring.log
 .agent-trace/
 .opencode-trace/
 _bmad/
+
+*.twee

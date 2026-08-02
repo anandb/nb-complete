@@ -1,0 +1,21 @@
+:: Pinned Messages {"position":"487.5,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Pinned Messages</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+![Message pinning](../images/message_pinning.png){style="max-width:100%;"}
+
+Assistant messages can be pinned so they stay visible even as older messages are trimmed from the chat. Hover over an assistant bubble and click the pin icon to pin (or unpin) it. Pins are stored per session and persist across restarts, making it easy to keep a plan or to-do list on screen while the rest of the conversation scrolls away.
+
+
+> [[Message History]]
+> [[Filtering Chat Messages]]
+> [[Copying a message]]
+
+
+
+
+

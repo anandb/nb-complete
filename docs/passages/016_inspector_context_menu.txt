@@ -1,0 +1,23 @@
+:: Inspector Context Menu {"position":"337.5,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Inspector Context Menu</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+After running inspections (e.g. via `Analyze > Inspect & Transform`), right-click any item in the **Inspector** window to see two actions:
+
+*   **Copy** — copies the selected subtree (filename, line number and description of each problem) to the clipboard as text.
+*   **💬 Send to Assistant** — pre-fills the Mini Assistant input with the same text, so you can edit it before sending.
+
+The same **Copy** / **💬 Send to Assistant** actions are also available in the **Test Results** window on failed tests.
+
+> [[Test Results Context Menu]]
+> [[Send to Assistant]]
+> [[Mini Assistant]]
+
+
+
+
+

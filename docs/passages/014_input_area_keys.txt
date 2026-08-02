@@ -1,0 +1,34 @@
+:: Input Area Keys {"position":"187.5,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Input Area Keys</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+The chat input area supports these keyboard shortcuts:
+
+<table class="ug-table">
+<thead><tr><th>Shortcut</th><th>Action</th></tr></thead>
+<tbody>
+<tr><td><code>Enter</code></td><td>Send the message</td></tr>
+<tr><td><code>Shift + Enter</code></td><td>Insert a newline</td></tr>
+<tr><td><code>Tab</code></td><td>Switch agent / open the options panel</td></tr>
+<tr><td><code>Alt + Up</code> / <code>Alt + Down</code></td><td>Recall previous / next message from history</td></tr>
+<tr><td><code>Ctrl + R</code></td><td>Open the History Search dialog (type to filter, Up/Down to navigate)</td></tr>
+<tr><td><code>Ctrl + Z</code> / <code>Ctrl + Y</code></td><td>Undo / redo</td></tr>
+<tr><td><code>Escape</code></td><td>Close popups and refocus the input</td></tr>
+</tbody>
+</table>
+
+
+> [[Keyboard Shortcuts]]
+> [[Picking an Agent, Model and Thinking Level]]
+> [[Message History]]
+> [[Starting a Session]]
+> [[Slash Command Autocomplete]]
+
+
+
+
+

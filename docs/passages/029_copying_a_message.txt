@@ -1,0 +1,22 @@
+:: Copying a message {"position":"0,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Copying a message</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+You can copy individual user messages back into the input text-area. Hover over the user icon, it'll change into a copy button — clicking it copies the message to the clipboard and adds it to the input text-area so you can resend or edit it. Assistant responses can be copied by hovering over the bubble, you'll see a copy and a pin button, copy will copy to the clipboard.
+
+
+> [[Pinned Messages]]
+> [[Message History]]
+> [[Starting a Session]]
+
+
+
+
+
+
+
+

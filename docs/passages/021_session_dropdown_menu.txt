@@ -1,0 +1,25 @@
+:: Session Dropdown Menu {"position":"587.5,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Session Dropdown Menu</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+Right-click a session in the session dropdown to get a quick action menu:
+
+*   **Rename** — give the session a custom name
+*   **Archive / Unarchive** — hide or show the session
+*   **Reload** — re-fetch the session from the server
+
+This mirrors the toolbar buttons for rename, archive, and reload.
+
+
+> [[Renaming the session]]
+> [[Archiving Sessions]]
+> [[Message History]]
+
+
+
+
+

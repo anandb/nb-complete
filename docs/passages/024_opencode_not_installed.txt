@@ -1,0 +1,27 @@
+:: OpenCode Not Installed {"position":"887.5,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">OpenCode Not Installed</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+If the plugin can't find the `opencode` binary, the chat panel shows an install-help bubble instead of the normal input:
+
+*   A copyable, OS-specific install command (e.g. `curl -fsSL https://opencode.ai/install | bash`)
+*   A **View OpenCode Setup Guide** link
+*   A **Restart ACP Server** button (the toolbar restart button pulses to draw attention)
+
+After installing OpenCode — and optionally setting the binary path under `Options > Assistant` — click **Restart ACP Server** to connect.
+
+
+> [[macOS/Linux]] / [[Windows]]
+> [[Post Install]]
+> [[Restarting the server]]
+> [[Options Panel Reference]]
+> [[Troubleshooting]]
+
+
+
+
+

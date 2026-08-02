@@ -1,0 +1,18 @@
+:: Customising the Toolbar {"position":"1087.5,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Customising the Toolbar</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+Right-click anywhere on the assistant toolbar to open the **Edit ToolBar** popup, which lists every toolbar button with a checkbox. Uncheck buttons you don't use (e.g. export, restart, mini assistant) and they disappear; check them again to restore. Your choices are saved and persist across IDE restarts. The toolbar provides quick access to actions like starting a session, viewing this guide, opening keyboard shortcuts, checking token usage, restarting the server, and exporting conversations. The icon size is set separately under `Options > Assistant > Appearance > Toolbar Icon Size`.
+
+
+> [[Options Panel Reference]]
+> [[Mini Assistant]]
+
+
+
+
+

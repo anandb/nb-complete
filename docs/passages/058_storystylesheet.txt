@@ -1,0 +1,77 @@
+:: StoryStylesheet [stylesheet]
+
+
+@import url('https://fonts.googleapis.com/css2?family=Fira+Sans:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Atkinson+Hyperlegible+Mono:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&display=swap');
+
+:root {
+  --bg-color: #f2f5f1;
+  --panel-bg: #e6ece4;
+  --text-main: #2c3830;
+  --accent-moss: #4a5d4e;
+  --link-color: #3b523e;
+}
+
+tw-story.dark-mode {
+  --bg-color: #161c17;
+  --panel-bg: #1e261f;
+  --text-main: #d4ded6;
+  --accent-moss: #8fae93;
+  --link-color: #8fae93;
+}
+
+body, tw-story, tw-passage {
+  background-color: var(--bg-color) !important;
+  color: var(--text-main) !important;
+  font-family: 'Fira Sans', sans-serif !important;
+  font-weight: 300;
+  transition: background-color 0.4s ease, color 0.4s ease;
+}
+
+/* Faint beanstalk background — light mode only */
+tw-passage {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 320' opacity='0.12'%3E%3Cg fill='%234a8c2f'%3E%3Cpath transform='translate(100 316) rotate(15)' d='M0 0 Q 22 -4 28 12 Q 12 18 0 0'/%3E%3Cpath transform='translate(111 268) rotate(-40)' d='M0 0 Q 22 -4 28 12 Q 12 18 0 0'/%3E%3Cpath transform='translate(96 238) rotate(35)' d='M0 0 Q 22 -4 28 12 Q 12 18 0 0'/%3E%3Cpath transform='translate(113 195) rotate(-35)' d='M0 0 Q 22 -4 28 12 Q 12 18 0 0'/%3E%3Cpath transform='translate(102 158) rotate(45)' d='M0 0 Q 22 -4 28 12 Q 12 18 0 0'/%3E%3Cpath transform='translate(119 128) rotate(-45)' d='M0 0 Q 22 -4 28 12 Q 12 18 0 0'/%3E%3Cpath transform='translate(108 88) rotate(25)' d='M0 0 Q 22 -4 28 12 Q 12 18 0 0'/%3E%3Cpath transform='translate(122 52) rotate(-30)' d='M0 0 Q 22 -4 28 12 Q 12 18 0 0'/%3E%3C/g%3E%3Cpath d='M 100 320 C 88 270, 124 242, 106 200 C 92 162, 132 132, 110 92 C 98 62, 122 42, 114 18' fill='none' stroke='%234a8c2f' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: 100% 100%;
+  background-size: 220px auto;
+}
+tw-story.dark-mode tw-passage {
+  background-image: none;
+}
+
+tw-passage code, tw-passage pre {
+  font-family: 'Atkinson Hyperlegible Mono', monospace !important;
+  white-space: pre;
+}
+
+tw-passage pre {
+  background: var(--panel-bg);
+  padding: 1rem;
+  border-radius: 4px;
+  overflow-x: auto;
+}
+
+tw-passage {
+  max-width: 700px;
+  margin: 0 auto;
+  padding: 3rem 2rem;
+}
+
+h1, h2, h3 {
+  color: var(--accent-moss) !important;
+}
+
+a, tw-link {
+  color: var(--link-color) !important;
+}
+
+/* Shared table styling */
+table.ug-table {
+  border-collapse: collapse;
+  width: 100%;
+}
+table.ug-table th,
+table.ug-table td {
+  border: 1px solid var(--text-main);
+  padding: 0.5rem;
+  text-align: left;
+}

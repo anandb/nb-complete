@@ -1,0 +1,19 @@
+:: Auto-Backup on Turn Start {"position":"787.5,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Auto-Backup on Turn Start</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+Before each turn, the plugin can back up your uncommitted changes by stashing them (git stash, or hg shelve for Mercurial) so work can be rolled back safely if the AI makes unwanted modifications. The backup appears as an **Auto-Backup** tool bubble in the chat. This is enabled by default under `Options > Assistant > Chat Behavior > Auto-backup uncommitted changes on turn start (git/hg stash) (Experimental)` and can be disabled there.
+
+
+> [[Options Panel Reference]]
+> [[Git Stashes as "Code Drafts" (using Stash Diff)]]
+> [[Thinking and Tool Responses]]
+
+
+
+
+

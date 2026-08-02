@@ -1,0 +1,26 @@
+:: Send to Assistant {"position":"425,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Send to Assistant</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+The **💬 Send to Assistant** context action sends code or file context straight into the assistant for you to refine before sending:
+
+*   **Editor:** Right-click selected code in the editor and choose **Send to Assistant** to open the assistant with the selection pre-filled.
+*   **Projects / Explorer:** Right-click a file node and choose **Send to Assistant** to send that file's path as context.
+*   **Inspector / Test Results:** Right-click an inspection problem or a failed test to send its details for diagnosis.
+
+Repeated sends **append** to the input instead of replacing it, so you can gather several snippets before sending. Which assistant opens (the floating Mini Assistant or the main sidebar) is controlled by the **Enable Mini Assistant** checkbox under `Options > Assistant > Actions`. When context-menu additions are disabled there, these actions hide from the menus.
+
+
+> [[Mini Assistant]]
+> [[Ask Assistant Menu]]
+> [[Inspector Context Menu]] / [[Test Results Context Menu]]
+> [[Options Panel Reference]]
+
+
+
+
+

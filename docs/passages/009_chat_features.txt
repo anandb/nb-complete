@@ -1,0 +1,28 @@
+:: Chat Features {"position":"1037.5,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Chat Features</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+The chat panel is packed with features to help you get the most out of the assistant. Jump straight to the topic you're interested in:
+
+> [[Time to first token]]
+> [[Thinking and Tool Responses]]
+> [[Filtering Chat Messages]]
+> [[Copying a message]]
+> [[Pinned Messages]]
+> [[Message History]]
+> [[Resetting context limits (/compact)]]
+> [[Check token usage]]
+> [[Attachments]]
+> [[Permission Requests]]
+> [[Commands]]
+> [[Exporting a conversation]]
+> [[Message History]]
+
+
+
+
+

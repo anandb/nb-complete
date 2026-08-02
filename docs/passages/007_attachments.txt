@@ -1,0 +1,22 @@
+:: Attachments {"position":"537.5,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Attachments</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+You can attach files and images to provide more context to the AI. Click the **Paperclip icon** in the input area to open the attachment menu. The plugin also supports dragging and dropping files directly into the chat, as well as pasting screenshots straight from your clipboard (provided you are using a vision-capable model).
+
+
+> [[Swing Mockups via Matisse]]
+> [[Offline/Private Coding (Local LLMs)]]
+> [[Chat Features]]
+
+
+
+
+
+
+
+

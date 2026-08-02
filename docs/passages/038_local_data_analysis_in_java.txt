@@ -1,0 +1,27 @@
+:: Local Data Analysis in Java {"position":"2162.5,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Local Data Analysis in Java</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+You can use the assistant to run quick data processing tasks on local files (like `.csv` or log files) using single-file Java programs and have the results rendered directly in the chat:
+1.  **Prepare your Data**: Open a project or create a folder with some tabular data (e.g., `sales.csv`).
+2.  **Ask the Assistant to Analyse**: Ask the assistant to write a single-file Java program to analyze this data.
+    *   *Prompt:* `"Write a single-file Java program to read sales.csv, calculate the total revenue grouped by category, and print the results as an ASCII table."`
+3.  **Execute the Code**: Click **Accept** on the permission prompt to let the assistant write the file (e.g., `SalesAnalyzer.java`) and run it using the Java launcher (e.g., `java SalesAnalyzer.java`).
+4.  **View Formatted Output**: Since Java 11+, single-file source code can be run directly using the `java` launcher without manual compilation. Because the plugin renders ASCII tables as formatted HTML tables with alternating row colors, the printed output will display beautifully inside your chat bubble.
+
+
+> [[Permission Requests]]
+> [[Thinking and Tool Responses]]
+> [[Experiments]]
+
+
+
+
+
+
+
+

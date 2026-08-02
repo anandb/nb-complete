@@ -1,0 +1,96 @@
+:: Options Panel Reference {"position":"1537.5,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Options Panel Reference</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+Customise the plugin behavior by navigating to `Tools > Options > Assistant`. Here, you can configure the path to the OpenCode binary, add process arguments, set a global system Preamble for all sessions, and toggle **Local Echo** for instant message rendering. You can also adjust UI preferences like toolbar icon size, chat font size, enable or disable specific features (like Stash Diff or Jump to file), and set a custom user avatar.
+
+Additionally, the plugin includes a background **Update Checker Service** that automatically queries for new releases (with randomised intervals between 16 and 24 hours). You can toggle the update checks under `Tools > Options > Assistant > Check for updates`. When an update is found, you will be prompted with a dialog to download the update immediately, get reminded later, or skip the version entirely.
+
+This page describes every preference in the panel, organised into six sections. All changes take effect when you click **Apply** or **OK**.
+
+##### 1. Assistant Service
+
+<table class="ug-table">
+<thead><tr><th>Preference</th><th>Default</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><strong>Path to Opencode Binary</strong></td><td>Auto-detected</td><td>The full path to the OpenCode executable. If left blank, the plugin searches your <code>PATH</code>. If OpenCode is not found, a muted hint shows <em>"opencode not found on PATH"</em>. Use <strong>Browse...</strong> to pick a binary. Invalid paths show a validation error (e.g. <em>File not found</em>, <em>File is not executable</em>).</td></tr>
+<tr><td><strong>Process Arguments</strong></td><td><code>acp</code></td><td>Extra command-line arguments passed when launching the OpenCode server process.</td></tr>
+<tr><td><strong>Browse...</strong></td><td>—</td><td>Opens a file chooser to select the OpenCode executable.</td></tr>
+</tbody>
+</table>
+
+##### 2. Updates
+
+<table class="ug-table">
+<thead><tr><th>Preference</th><th>Default</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><strong>Check for Updates</strong></td><td>On</td><td>Enables the background <strong>Update Checker Service</strong>, which queries for new releases at randomised intervals between 16 and 24 hours. When an update is found you can download it immediately, get reminded later, or skip that version.</td></tr>
+</tbody>
+</table>
+
+##### 3. Chat Behavior
+
+<table class="ug-table">
+<thead><tr><th>Preference</th><th>Default</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><strong>Echo user input immediately (Local Echo)</strong></td><td>On</td><td>Renders your message instantly in the chat while the server is processing, instead of waiting for the first response.</td></tr>
+<tr><td><strong>Session Idle Timeout (seconds)</strong></td><td>300</td><td>How long (0–3600, step 5) a request may sit idle — with no data arriving from the server — before it is failed. This is an <em>idle</em> timeout, not an absolute deadline, so long-running responses that keep streaming are never cut off.</td></tr>
+<tr><td><strong>Combine tool and thought bubbles into a single accordion</strong></td><td>On</td><td>Groups tool outputs and reasoning into one expandable header instead of separate bubbles. Changing this reloads the current session.</td></tr>
+<tr><td><strong>Prompt to initialize project opencode.json</strong></td><td>On</td><td>Shows a <em>"Initialize opencode.json"</em> dialog when a project without one is opened, so you can create a starter configuration (Yes / No – Don't ask again / Let's do it later).</td></tr>
+<tr><td><strong>Auto-backup uncommitted changes on turn start (git/hg stash) (Experimental)</strong></td><td>On</td><td>Stashes uncommitted changes in git/hg repositories before each turn, so the AI can be rolled back safely.</td></tr>
+<tr><td><strong>Max Messages</strong></td><td>25</td><td>The maximum number of visible bubbles (10–200, step 5) kept in the chat panel before older ones are trimmed from the view to conserve memory. The full history remains on the server and can be reloaded.</td></tr>
+</tbody>
+</table>
+
+##### 4. Actions
+
+<table class="ug-table">
+<thead><tr><th>Preference</th><th>Default</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><strong>Enable context menu additions (Sort, Minify, Search Web)</strong></td><td>On</td><td>Adds the <strong>Sort Lines</strong>, <strong>Minify JSON</strong>, and <strong>Search Web</strong> items to the editor's right-click context menu.</td></tr>
+<tr><td><strong>Enable Stash Diff toolbar button and action</strong></td><td>On</td><td>Enables the <strong>Stash Diff</strong> toolbar button and the <code>Ctrl + Shift + L</code> action for viewing git stash diffs.</td></tr>
+<tr><td><strong>Enable Jump to file dialog</strong></td><td>On</td><td>Enables the <strong>Jump to File</strong> dialog (a shortcut, e.g. <code>Ctrl + Alt + J</code>, is shown next to the label when one is available).</td></tr>
+<tr><td><strong>Enable Mini Assistant</strong></td><td>On</td><td>Decides where <strong>Send to Assistant</strong> / <strong>Ask Assistant</strong> actions open: the floating mini dialog (enabled) or the main sidebar (disabled).</td></tr>
+</tbody>
+</table>
+
+##### 5. Appearance
+
+<table class="ug-table">
+<thead><tr><th>Preference</th><th>Default</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><strong>Custom User Icon (PNG)</strong></td><td>(empty)</td><td>Path to a PNG used as your avatar in chat. Click <strong>Browse...</strong> to pick one, or right-click the preview to clear it. Changing it reloads the session.</td></tr>
+<tr><td><strong>Toolbar Icon Size (requires restart)</strong></td><td>24</td><td>Icon size for the assistant toolbar: 16, 24, 28, 32, 36, 40, or 48. Requires an IDE restart to apply.</td></tr>
+<tr><td><strong>Chat Font Size</strong></td><td>Inherited</td><td>Font size for chat text: Inherited (uses the theme), or 10, 11, 12, 13, 14, 16.</td></tr>
+</tbody>
+</table>
+
+##### 6. Session Preamble
+
+<table class="ug-table">
+<thead><tr><th>Preference</th><th>Default</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><strong>Session preamble</strong></td><td>Bundled default</td><td>Sent as the first user message for new chats. Use <code>---</code> on its own line as a message separator. Right-click the text area to <strong>Clear</strong> it or <strong>Reset to default</strong>.</td></tr>
+</tbody>
+</table>
+
+
+> [[Post Install]]
+> [[OpenCode Not Installed]]
+> [[Update Notifications]]
+> [[Auto-Backup on Turn Start]]
+> [[Message History]] / [[Pinned Messages]]
+> [[Jump to File]]
+> [[Git Stashes as "Code Drafts" (using Stash Diff)]]
+> [[Mini Assistant]] / [[Send to Assistant]]
+> [[Customising the Toolbar]]
+> [[Starting a Session]]
+
+
+
+
+

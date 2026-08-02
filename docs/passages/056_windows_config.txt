@@ -1,0 +1,32 @@
+:: Windows Config {"position":"925,850","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Windows Config</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+1. Press WIN + R to open the Run dialog box.
+2. Enter `cmd` for the Command Prompt.
+3. The config directory might not exist, it can be created
+<pre><code>
+`mkdir "%USERPROFILE%\.config\opencode"
+cd "%USERPROFILE%\.config\opencode"`
+</code></pre>
+4. Start `notepad` and paste in the starter configuration.
+
+> [[Configuration Template->Configuration Template]]
+
+Verify that the configuration is valid by running this from a command prompt
+<pre><code>`opencode models`</code></pre>
+
+> [[After Installing OpenCode->Post Install]]
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,25 @@
+:: Archiving Sessions {"position":"0,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Archiving Sessions</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+![Archiving a session from the session dropdown context menu](../images/archiving_sessions-1.png){style="max-width:100%;"}
+
+Keep your active session list clean by archiving old conversations instead of deleting them. You can archive a session by right-clicking on the session dropdown (not expanding it) and then selecting Archive. This hides it from the session dropdown but keeps it saved on the server. You can toggle the visibility of archived sessions by clicking the eye icon on the toolbar to the left of the dropdown. There is also a toolbar button to archive the session, you can use either option.
+
+
+> [[Session Dropdown Menu]]
+> [[Message History]]
+> [[Renaming the session]]
+
+
+
+
+
+
+
+
+

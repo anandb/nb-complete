@@ -1,0 +1,23 @@
+:: Test Results Context Menu {"position":"475,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Test Results Context Menu</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+After running a test suite, right-click any failed test (or failure tree) in the **Test Results** window to access two actions:
+
+*   **Copy** — copies the selected failure subtree (test name, file, line and failure message) to the clipboard as text.
+*   **💬 Send to Assistant** — pre-fills the Mini Assistant input with the same text so you can ask for a diagnosis or fix.
+
+These actions share the same popup helper (`TreePopupSupport`) as the Inspector window.
+
+> [[Inspector Context Menu]]
+> [[Send to Assistant]]
+> [[Mini Assistant]]
+
+
+
+
+

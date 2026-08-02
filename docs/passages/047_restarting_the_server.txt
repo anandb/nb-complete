@@ -1,0 +1,21 @@
+:: Restarting the server {"position":"0,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Restarting the server</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+If the assistant becomes unresponsive or you experience connection issues, you can restart the underlying OpenCode background server. Click the **Restart ACP Server** button in the toolbar. This will safely terminate the current background process and spin up a new one, reconnecting your IDE without losing your saved sessions.
+
+
+> [[OpenCode Not Installed]]
+> [[Customising the Toolbar]]
+> [[Troubleshooting]]
+
+
+
+
+
+
+

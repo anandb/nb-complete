@@ -1,0 +1,26 @@
+:: Experiments {"position":"1662.5,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Experiments</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+Here are some interesting things you can try with the plugin:
+
+> [[Offline/Private Coding (Local LLMs)]]
+> [[Manage OpenCode Config in NetBeans]]
+> [[Git Stashes as "Code Drafts" (using Stash Diff)]]
+> [[Local Data Analysis in Java]]
+> [[Swing Mockups via Matisse]]
+
+
+> [[Markdown Project Type]]
+
+
+
+
+
+
+
+

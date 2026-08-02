@@ -1,0 +1,67 @@
+:: Topic Index {"position":"725,600","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Topic Index</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+This is a complete list of topics in this guide, use it to directly jump to that page without navigating the entire trail.
+
+> [[Archiving Sessions]]
+> [[Ask Assistant Menu]]
+> [[Attachments]]
+> [[Auto-Backup on Turn Start]]
+> [[Chat Features]]
+> [[Check token usage]]
+> [[Commands]]
+> [[Offline/Private Coding (Local LLMs)]]
+> [[Configuration Template]]
+> [[Copying a message]]
+> [[Customising the Toolbar]]
+> [[Experiments]]
+> [[Exporting a conversation]]
+> [[Filtering Chat Messages]]
+> [[Git Stashes as "Code Drafts" (using Stash Diff)]]
+> [[IDE Enhancements]]
+> [[Input Area Keys]]
+> [[Inspector Context Menu]]
+> [[Jump to File]]
+> [[Keyboard Shortcuts]]
+> [[Known Issues]]
+> [[Local Data Analysis in Java]]
+> [[macOS/Linux]]
+> [[Manage OpenCode Config in NetBeans]]
+> [[Markdown Project Type]]
+> [[Message History]]
+> [[Mini Assistant]]
+> [[New Session Confirm Bar]]
+> [[OpenCode Not Installed]]
+> [[Options Panel Reference]]
+> [[Permission Requests]]
+> [[Picking an Agent, Model and Thinking Level]]
+> [[Pinned Messages]]
+> [[Post Install]]
+> [[Renaming the session]]
+> [[Resetting context limits (/compact)]]
+> [[Restarting the server]]
+> [[Send to Assistant]]
+> [[Session Dropdown Menu]]
+> [[Slash Command Autocomplete]]
+> [[Starting a Session]]
+> [[Swing Mockups via Matisse]]
+> [[Test Results Context Menu]]
+> [[Thinking and Tool Responses]]
+> [[Time to first token]]
+> [[Troubleshooting]]
+> [[Unix Config]]
+> [[Update Notifications]]
+> [[Windows]]
+> [[Windows Config]]
+
+
+
+
+
+
+

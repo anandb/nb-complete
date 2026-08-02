@@ -1,0 +1,38 @@
+:: Troubleshooting {"position":"2537.5,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Troubleshooting</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+<table class="ug-table">
+<thead><tr><th>Problem</th><th>Solution</th></tr></thead>
+<tbody>
+<tr><td><strong>Plugin can't find OpenCode</strong></td><td>Ensure <code>opencode</code> is on your <code>PATH</code>, or set the path manually under <code>Options &gt; Assistant</code>.</td></tr>
+<tr><td><strong>Assistant becomes unresponsive</strong></td><td>Click <strong>Restart ACP Server</strong> in the toolbar.</td></tr>
+<tr><td><strong>Ctrl + L stops working</strong></td><td>Close and reopen the assistant panel from the Window menu. If that doesn't work, restart the IDE.</td></tr>
+<tr><td><strong>Sidebar doesn't open after install/upgrade</strong></td><td>The plugin auto-opens the sidebar on version change. If it doesn't appear, open it from <code>Window &gt; Assistant</code>.</td></tr>
+<tr><td><strong>Image paste doesn't work with Wayland on Linux</strong></td><td>Install the <code>wl-clipboard</code> package (Wayland) or check your clipboard manager.</td></tr>
+<tr><td><strong>Image paste broken after OpenCode upgrade</strong></td><td>Upgrade to OpenCode &gt;= 1.17.17 to resolve the breakage introduced in v1.17.13.</td></tr>
+<tr><td><strong>Model not appearing after upgrade to OpenCode v1.17.9</strong>, upgrade plugin to &gt;= 1.7.3</td><td>Re-select your model via <code>/models</code>. The upgrade resets model selection due to the new <code>`thought_level`</code> split.</td></tr>
+<tr><td><strong>Session config payloads restructured after upgrade</strong></td><td>Upgrade the plugin to &gt;= 1.7.3 and OpenCode to &gt;= 1.17.17. Re-select your model and review any custom preamble or session settings.</td></tr>
+<tr><td><strong>Messages disappear from view</strong></td><td>This is display-only — the session still has all messages. Click <strong>Show All Messages</strong> to keep them visible, and use <strong>Reload</strong> to re-fetch from the server.</td></tr>
+<tr><td><strong>LLM modified files unexpectedly</strong></td><td>Always keep your project under version control (git) before allowing file modifications. Configure OpenCode to 'ask' for the edit permission, Use <strong>Allow Once/Always Allow/Reject</strong> permission prompts to review changes.</td></tr>
+<tr><td><strong>High CPU usage or UI freezes</strong></td><td>Upgrade the plugin to &gt;= 1.9.2, which resolves an infinite layout validation loop in the chat panel.</td></tr>
+<tr><td><strong>Panel goes blank during docking or resizing</strong></td><td>Close and reopen the docked panel from <code>Window &gt; Assistant</code>. NetBeans may not repaint correctly after a drag-dock or undock operation.</td></tr>
+</tbody>
+</table>
+
+
+> [[OpenCode Not Installed]]
+> [[Restarting the server]]
+> [[Message History]]
+> [[Permission Requests]]
+> [[Known Issues]]
+
+
+
+
+
+

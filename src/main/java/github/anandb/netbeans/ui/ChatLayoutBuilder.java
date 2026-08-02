@@ -335,7 +335,7 @@ final class ChatLayoutBuilder {
         cwdRow.setOpaque(false);
         cwdRow.add(cwdLabel, BorderLayout.CENTER);
 
-        String quickstartUrl = "https://github.com/anandb/nb-complete/blob/main/QUICKSTART.md";
+        String quickstartUrl = "https://anandb.github.io/beanbot_user_guide.html";
 
         helpBtn = UIUtils.createToolbarButton("help.svg",
             NbBundle.getMessage(AssistantTopComponent.class, "HINT_QuickstartGuide"), null);

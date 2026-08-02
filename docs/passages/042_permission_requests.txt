@@ -1,0 +1,24 @@
+:: Permission Requests {"position":"662.5,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Permission Requests</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+![Permission Requests](../images/permission_request.png){style="max-width:100%;"}
+
+When the AI attempts to execute a tool, modify files, or run shell commands, the plugin ensures you remain in control. An Accept/Deny bubble will appear in the chat with full context of the requested action. You must explicitly grant permission before the operation proceeds. You can configure automatic allowances or denials in your OpenCode configuration.
+
+
+> [[Configuration Template]]
+> [[Mini Assistant]]
+> [[Known Issues]]
+
+
+
+
+
+
+
+

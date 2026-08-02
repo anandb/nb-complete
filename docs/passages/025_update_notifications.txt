@@ -1,0 +1,24 @@
+:: Update Notifications {"position":"987.5,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Update Notifications</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+The plugin checks for new releases in the background at randomised 16–24 hour intervals. When an update is available, a dialog offers three choices:
+
+*   **Download Now** — open the release to download and install
+*   **Remind me later**
+*   **Skip this Version**
+
+Disable the check under `Options > Assistant > Updates > Check for Updates`.
+
+
+> [[Options Panel Reference]]
+> [[Post Install]]
+
+
+
+
+

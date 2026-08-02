@@ -1,0 +1,21 @@
+:: Resetting context limits (/compact) {"position":"412.5,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Resetting context limits (/compact)</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+If your conversation becomes very long and you notice the AI starting to forget earlier details or slow down as it approaches its context token limits, you can reset the conversation context. Type the `/compact` command in the chat input. The assistant will summarise the history, code changes, and context discussed so far, replacing the verbose message history with a highly condensed summary. This resets the active token budget while preserving the essential goals and context of the thread.
+
+
+> [[Commands]] / [[Slash Command Autocomplete]]
+> [[Check token usage]]
+
+
+
+
+
+
+
+

@@ -1,0 +1,27 @@
+:: Post Install {"position":"975,600","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Post Install</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+![Assistant Options](../images/assistant_options.png){style="max-width:100%;"}
+
+The plugin adds a tab to the NetBeans Options, if you open the Options Window, you'll see an additional Assistant tab at the end. In most cases, you can go with the defaults, but if you have a non-standard OpenCode installation, you can specify the full path to the OpenCode binary.
+
+The preamble is an additional user prompt that's sent to the server when creating a new chat session. The default text contains some directives around code quality, planning and task management, you can customise this with your own instructions.
+
+> [[Starting a Session]]
+> [[Options Panel Reference]]
+> [[Update Notifications]]
+> [[OpenCode Not Installed]]
+
+
+
+
+
+
+
+
+

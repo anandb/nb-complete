@@ -1,0 +1,27 @@
+:: Filtering Chat Messages {"position":"287.5,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Filtering Chat Messages</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+To reduce clutter in your chat history, you can selectively show or hide different message types using the **Filter** button on the toolbar. Clicking this button opens a dropdown menu allowing you to toggle the visibility of:
+*   **Activity**: Hides or shows tool outputs and internal model reasoning chains together.
+*   **Assistant**: Hides or shows the assistant's responses.
+*   **User**: Hides or shows your own messages.
+
+If the option to combine tools and thoughts is disabled in your settings, the menu will dynamically update to show individual checkboxes for **Tool** outputs and **Thought** reasoning. Your filter choices are instantly applied to the active chat thread and are automatically saved so they persist across NetBeans IDE restarts.
+
+
+> [[Thinking and Tool Responses]]
+> [[Options Panel Reference]]
+> [[Chat Features]]
+
+
+
+
+
+
+
+

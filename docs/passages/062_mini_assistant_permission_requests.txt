@@ -1,0 +1,21 @@
+:: Mini Assistant Permission Requests {"position":"1100,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Mini Assistant Permission Requests</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+If the AI requests permission to edit a file or run a command, the permission prompt appears directly inside the mini dialog. You can Allow or Deny the request, and for file edits, a **Show Diff** button lets you inspect the changes before approving.
+
+
+> [[Mini Assistant]]
+> [[Opening the Mini Assistant]]
+> [[Using the Mini Assistant]]
+> [[Keyboard shortcuts inside the Mini Assistant]]
+> [[Differences from the main panel]]
+> [[Permission Requests]]
+
+
+
+

@@ -1,0 +1,22 @@
+:: Renaming the session {"position":"37.5,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Renaming the session</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+To keep your conversations organised, you can rename any session. Click the **Pencil icon** in the chat UI or right-click a session in the session dropdown to give it a custom name. Alternatively, type the `/title` slash command to let the AI automatically generate and apply a suitable title based on the conversation context. These custom names are stored locally by the plugin, not in the OpenCode DB.
+
+
+> [[Session Dropdown Menu]]
+> [[Commands]]
+> [[Archiving Sessions]]
+
+
+
+
+
+
+
+

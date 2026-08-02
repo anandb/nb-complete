@@ -1,0 +1,40 @@
+:: Keyboard Shortcuts {"position":"787.5,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Keyboard Shortcuts</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+Navigate and control the assistant efficiently using keyboard shortcuts:
+
+<table class="ug-table">
+<thead><tr><th>Shortcut</th><th>Action</th></tr></thead>
+<tbody>
+<tr><td><code>Ctrl + L</code></td><td>Open or switch focus to the assistant panel</td></tr>
+<tr><td><code>Alt + Up</code> / <code>Alt + Down</code></td><td>Cycle through previously sent messages</td></tr>
+<tr><td><code>Page Up</code> / <code>Page Down</code></td><td>Scroll the chat</td></tr>
+<tr><td><code>Ctrl + R</code></td><td>Search message history</td></tr>
+<tr><td><code>Ctrl + Alt + J</code> (or <code>Cmd + Option + J</code> on Mac)</td><td>Open the Jump to File dialog</td></tr>
+<tr><td><code>Ctrl + Shift + L</code></td><td>Open the Stash Diff viewer</td></tr>
+<tr><td><code>/</code></td><td>Open the slash command autocomplete popup</td></tr>
+<tr><td><code>Tab</code></td><td>Accept the highlighted autocomplete command and insert it into the input area</td></tr>
+<tr><td><code>Escape</code></td><td>Close the options panel</td></tr>
+</tbody>
+</table>
+
+
+> [[Input Area Keys]]
+> [[Mini Assistant]]
+> [[Message History]]
+> [[Jump to File]]
+> [[Git Stashes as "Code Drafts" (using Stash Diff)]]
+> [[Slash Command Autocomplete]]
+
+
+
+
+
+
+
+

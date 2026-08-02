@@ -1,0 +1,76 @@
+:: Configuration Template {"position":"925,975","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Configuration Template</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+##### opencode.json
+
+<pre><code>
+`
+{
+    "$schema": "https://opencode.ai/config.json",
+    "autoupdate": false,
+    "permission": {
+        "read": {
+            "~/.ssh/**": "deny",
+            "~/.gnupg/**": "deny",
+            "~/.aws/**": "deny",
+            "~/.azure/**": "deny",
+            "~/.kube/**": "deny",
+            "~/.docker/**": "deny",
+            "~/.config/gcloud/**": "deny",
+            ".env*": "deny",
+            "*.pem": "deny",
+            "*.key": "deny",
+            "*.p12": "deny",
+            "*.jks": "deny",
+            "*.jceks": "deny",
+            "*.keystore": "deny",
+            "*.kdbx": "deny",
+            "*.pfx": "deny",
+            "*.p8": "deny",
+            "*credentials*": "deny",
+            "*": "allow"
+        },
+        "edit": {
+            "~/.aws/**": "deny",
+            "~/.azure/**": "deny",
+            "~/.ssh/**": "deny",
+            "~/.gnupg/**": "deny",
+            "~/.kube/**": "deny",
+            "~/.docker/**": "deny",
+            "~/.config/gcloud/**": "deny",
+            "*": "ask"
+        },
+        "bash": {
+            "rm *credentials*": "deny",
+            "rm *.env*": "deny",
+            "git commit *": "ask",
+            "git push *": "ask",
+            "rm *": "ask"
+        },
+        "webfetch": "allow",
+        "doom_loop": "ask",
+        "todowrite": "allow",
+        "todoread": "allow"
+    }
+}
+`
+</code></pre>
+
+
+> [[Permission Requests]]
+> [[Unix Config]] / [[Windows Config]]
+> [[Manage OpenCode Config in NetBeans]]
+> [[Offline/Private Coding (Local LLMs)]]
+
+
+
+
+
+
+
+

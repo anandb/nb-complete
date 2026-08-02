@@ -1,0 +1,25 @@
+:: Starting a Session {"position":"0,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Starting a Session</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+![Assistant toolbar and input area for starting a session](../images/starting_a_session-1.png){style="max-width:100%;"}
+
+Click the '+' button on the toolbar to start a new session, this will initialise the chat interface and post the preamble to the OpenCode server (Tools > Options > Assistant > Preamble). The input text-area is at the bottom of the sidebar panel, you'll see placeholder text that says *Type Message Here*, type your messages and press `Enter` to send to the server, the response will be rendered as a chat bubble, if you need to send multi-line text, press `Shift + Enter` to add a newline to the text-area. You can also type `/new` in the input area to quickly start a new session.
+
+
+> [[New Session Confirm Bar]]
+> [[Picking an Agent, Model and Thinking Level]]
+> [[Commands]] / [[Slash Command Autocomplete]]
+> [[Options Panel Reference]]
+> [[Input Area Keys]]
+
+
+
+
+
+
+

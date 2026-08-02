@@ -1,0 +1,21 @@
+:: Exporting a conversation {"position":"0,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Exporting a conversation</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+The share button on the toolbar will export the session to a markdown file.
+
+
+> [[Customising the Toolbar]]
+> [[Message History]]
+
+
+
+
+
+
+
+

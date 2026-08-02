@@ -1,0 +1,24 @@
+:: Check token usage {"position":"162.5,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Check token usage</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+![Check token usage](../images/check_token_usage.png){style="max-width:100%;"}
+
+Click the **Currency/Token Stats** icon on the toolbar to see how many tokens your current session has used. Hover over the status label (which normally says "Ready") to view the context window fill level. This helps you decide when to run `/compact` to summarise the conversation and free up context.
+
+
+> [[Resetting context limits (/compact)]]
+> [[Time to first token]]
+> [[Customising the Toolbar]]
+
+
+
+
+
+
+
+

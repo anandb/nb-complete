@@ -1,0 +1,30 @@
+:: Mini Assistant {"position":"1100,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Mini Assistant</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+![Mini Assistant](../images/mini_assistant.png){style="max-width:100%;"}
+
+The **Mini Assistant** is a compact, floating chat dialog that gives you quick access to the AI without needing the full sidebar panel. It shares the same session as the main assistant, so conversations stay in sync. You can disable it entirely under `Options > Assistant > Actions > Enable Mini Assistant` — when disabled, "Send to Assistant" / "Ask Assistant" actions open the main sidebar instead.
+
+> [[Opening the Mini Assistant]]
+> [[Using the Mini Assistant]]
+> [[Keyboard shortcuts inside the Mini Assistant]]
+> [[Mini Assistant Permission Requests]]
+> [[Differences from the main panel]]
+
+
+> [[Ask Assistant Menu]] / [[Send to Assistant]]
+> [[Keyboard Shortcuts]]
+> [[Slash Command Autocomplete]]
+> [[Permission Requests]]
+> [[Check token usage]]
+> [[Options Panel Reference]]
+
+
+
+
+

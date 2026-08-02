@@ -1,0 +1,39 @@
+:: Commands {"position":"0,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Commands</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+Slash commands let you perform quick actions directly from the chat input. Type `/` in the input area to trigger the autocomplete popup.
+
+Local commands handled entirely by the plugin (never sent to the server):
+
+*   `/new` — start a new session (shows a project picker when multiple projects are open)
+*   `/title My Title` — rename the current session directly; `/title` without arguments asks the AI to suggest and apply a title
+*   `/archive` — toggle archiving (hiding) the current session
+*   `/model` / `/models` — open the model selector
+*   `/agents` — open the agent selector
+*   `/level` — open the thinking-level selector
+*   `/sessions` — open the session dropdown
+
+Server commands (e.g. `/compact`, `/dcp`) are forwarded to the OpenCode agent and appear in the same popup — `/compact` is listed there since v1.12.10. Note: the Mini Assistant hides the selectors (`/model`, `/models`, `/agents`, `/level`, `/sessions`); use the main panel or keyboard shortcuts for those.
+
+Each command links to a fuller explanation:
+
+> `/new` — [[Starting a Session]]
+> `/models`, `/agents`, `/level` — [[Picking an Agent, Model and Thinking Level]]
+> `/sessions` — [[Session Dropdown Menu]]
+> `/archive` — [[Archiving Sessions]]
+> `/title` — [[Renaming the session]]
+> `/compact` — [[Resetting context limits (/compact)]]
+> Typing `/` — [[Slash Command Autocomplete]]
+
+
+
+
+
+
+
+

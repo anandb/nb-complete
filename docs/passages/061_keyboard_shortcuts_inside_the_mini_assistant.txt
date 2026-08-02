@@ -1,0 +1,34 @@
+:: Keyboard shortcuts inside the Mini Assistant {"position":"1100,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Keyboard shortcuts inside the Mini Assistant</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+<table class="ug-table">
+<thead><tr><th>Shortcut</th><th>Action</th></tr></thead>
+<tbody>
+<tr><td><code>Enter</code></td><td>Send message</td></tr>
+<tr><td><code>Shift + Enter</code></td><td>New line</td></tr>
+<tr><td><code>Tab</code></td><td>Slash command autocomplete</td></tr>
+<tr><td><code>Page Up / Page Down</code></td><td>Navigate between response bubbles</td></tr>
+<tr><td><code>Ctrl + C</code></td><td>Copy code block or full text</td></tr>
+<tr><td><code>Ctrl + L</code></td><td>Toggle the main assistant panel</td></tr>
+<tr><td><code>Ctrl + Alt + L</code></td><td>Toggle the mini assistant itself</td></tr>
+<tr><td><code>Escape</code></td><td>Close popups, then close the dialog</td></tr>
+</tbody>
+</table>
+
+When you navigate away from the latest bubble using Page Up/Down, auto-tracking pauses until you return to the newest response.
+
+
+> [[Mini Assistant]]
+> [[Opening the Mini Assistant]]
+> [[Using the Mini Assistant]]
+> [[Mini Assistant Permission Requests]]
+> [[Differences from the main panel]]
+
+
+
+
