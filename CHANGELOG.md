@@ -18,6 +18,18 @@
 ### Fixes
 - **AcpRequestRouter**: Removed an unused `filePath` parameter in the disk-read fallback.
 - **SessionManager**: Removed dead `sendResumeOnLoad` field and marked the required-but-unused project-open listener parameter.
+- **/compact from the Mini Assistant**: The mini dialog now honors the `intercept()` result — passthrough commands like `/compact` are forwarded to the server instead of being silently consumed.
+- **Mini-assistant routing**: Send/Ask-to-assistant actions are no longer gated behind the "Enable context menu additions" flag; they always route via `AssistantTarget` to the configured target.
+- **Copy feedback**: The missing-binary install-command copy icon no longer sticks on the check mark after rapid clicks.
+- **Button pulse**: Stopping the help/restart button pulse restores the button's original appearance instead of leaving it restyled.
+- **Popup responsiveness**: Tree context-menu text is extracted on menu action, not while building the popup, avoiding EDT freezes on huge test suites.
+- **Inspector hook reliability**: The Inspector context menu now retries until the tree is populated and defers `@OnStart` component-tree access to the EDT.
+- **Inspector extraction**: Null ranges/descriptions and multi-node selections are handled; all selected problems are copied/sent, not just the first.
+- **Stale test output**: "Send Full Output" reads the output at action time instead of at popup-build time.
+- **Binary-not-found race**: The `binaryNotFound` volatile flag is published before the EDT dispatch, so the New Session button is never briefly enabled without a binary.
+
+### Documentation
+- **User Guide**: Added the interactive Twine user guide (`docs/`) with per-passage sources (`docs/passages/*.txt`), binary images (`docs/images/`), and `split.py`/`stitch.py` tooling.
 
 ### Housekeeping
 - Version bumped to 1.12.10.
