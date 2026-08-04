@@ -411,6 +411,26 @@ final class ChatLayoutBuilder {
         statusLabel.setFont(statusLabel.getFont().deriveFont(12f));
         statusPanel.add(statusLabel, BorderLayout.WEST);
 
+        JPanel centerStatusPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0)) {
+            @Override
+            public void doLayout() {
+                if (getParent() != null) {
+                    int maxW = (int) (getParent().getWidth() * 0.40);
+                    JComboBox<?> combo = configPanelController.getModelCombo();
+                    combo.setPreferredSize(null);
+                    Dimension pref = combo.getPreferredSize();
+                    if (maxW > 0 && pref.width > maxW) {
+                        combo.setPreferredSize(new Dimension(maxW, pref.height));
+                    }
+                }
+                super.doLayout();
+            }
+        };
+        centerStatusPanel.setOpaque(false);
+        centerStatusPanel.add(configPanelController.getModelCombo());
+        centerStatusPanel.add(configPanelController.getCopyModelBtn());
+        statusPanel.add(centerStatusPanel, BorderLayout.CENTER);
+
         int tsz = PluginSettings.getToolbarIconSize();
         toggleOptionsBtn = UIUtils.createToolbarButton("settings.svg", tsz,
                 NbBundle.getMessage(AssistantTopComponent.class, "HINT_Options"), null);

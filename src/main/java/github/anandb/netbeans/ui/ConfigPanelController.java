@@ -60,6 +60,9 @@ public class ConfigPanelController {
     private volatile boolean configConfirmActive = false;
     private JPopupMenu activeCustomPopup;
 
+    private final JLabel modelLabel;
+    private final JButton copyModelBtn;
+
     private final ModelVariantResolver modelResolver = new ModelVariantResolver();
     private SessionConfigOption thinkingConfigOption;
     private volatile String thinkingConfigId;
@@ -81,6 +84,7 @@ public class ConfigPanelController {
         modeCombo = new UIUtils.WrappingComboBox<>();
         modelCombo = new UIUtils.WrappingComboBox<>();
         thinkingCombo = new UIUtils.WrappingComboBox<>();
+        thinkingCombo.setPrototypeDisplayValue(new ConfigItem("High (Slow)", "High (Slow)"));
 
         gbc.gridx = 0;
         gbc.gridy = 0;
@@ -88,38 +92,30 @@ public class ConfigPanelController {
         configPanel.add(new JLabel(NbBundle.getMessage(ConfigPanelController.class, "LBL_Agent")), gbc);
 
         gbc.gridx = 1;
-        gbc.weightx = 0.2;
+        gbc.weightx = 1.0;
         configPanel.add(modeCombo, gbc);
+
+        modelLabel = new JLabel(NbBundle.getMessage(ConfigPanelController.class, "LBL_Model"));
+        // Remove from configPanel
 
         gbc.gridx = 2;
         gbc.weightx = 0;
-        configPanel.add(new JLabel(NbBundle.getMessage(ConfigPanelController.class, "LBL_Model")), gbc);
+        configPanel.add(new JLabel(NbBundle.getMessage(ConfigPanelController.class, "LBL_Thinking")), gbc);
 
         gbc.gridx = 3;
-        gbc.weightx = 0.7;
-        configPanel.add(modelCombo, gbc);
+        gbc.weightx = 0.0;
+        configPanel.add(thinkingCombo, gbc);
 
-        gbc.gridx = 4;
-        gbc.weightx = 0;
-        gbc.insets = new Insets(2, 0, 2, 4);
         String copyHint = NbBundle.getMessage(ConfigPanelController.class, "HINT_CopyModelID");
-        JButton copyModelBtn = UIUtils.createToolbarButton("copy.svg", 20, copyHint, e -> {
+        copyModelBtn = UIUtils.createToolbarButton("copy.svg", 20, copyHint, e -> {
             ConfigItem selected = (ConfigItem) modelCombo.getSelectedItem();
             if (selected != null && selected.value() != null) {
                 Toolkit.getDefaultToolkit().getSystemClipboard()
                     .setContents(new StringSelection(selected.value()), null);
             }
         });
-        configPanel.add(copyModelBtn, gbc);
-        gbc.insets = new Insets(2, 0, 2, 8);
-
-        gbc.gridx = 5;
-        gbc.weightx = 0;
-        configPanel.add(new JLabel(NbBundle.getMessage(ConfigPanelController.class, "LBL_Thinking")), gbc);
-
-        gbc.gridx = 6;
-        gbc.weightx = 0.1;
-        configPanel.add(thinkingCombo, gbc);
+        copyModelBtn.setVisible(false);
+        modelCombo.setVisible(false);
     }
 
     public JPanel getComponent() {
@@ -252,6 +248,8 @@ public class ConfigPanelController {
     }
 
     JComboBox<ConfigItem> getModelCombo() { return modelCombo; }
+    public JLabel getModelLabel() { return modelLabel; }
+    public JButton getCopyModelBtn() { return copyModelBtn; }
 
     JComboBox<ConfigItem> getModeCombo() { return modeCombo; }
 

@@ -555,6 +555,9 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         configPanelController.getComponent().setVisible(visible);
         toggleOptionsBtn.setIcon(ThemeManager.getIcon(visible ? "arrow-down.svg" : "settings.svg", 25));
         rocketBtn.setVisible(visible);
+        
+        configPanelController.getModelCombo().setVisible(visible);
+        configPanelController.getCopyModelBtn().setVisible(visible);
 
         // Adjust split pane divider so the textarea keeps its size:
         // expanding moves the divider UP (taking space from chat), collapsing moves it DOWN.
