@@ -411,23 +411,25 @@ final class ChatLayoutBuilder {
         statusLabel.setFont(statusLabel.getFont().deriveFont(12f));
         statusPanel.add(statusLabel, BorderLayout.WEST);
 
-        JPanel centerStatusPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0)) {
+        JPanel modelWrap = new JPanel(new BorderLayout()) {
             @Override
-            public void doLayout() {
+            public Dimension getPreferredSize() {
+                Dimension d = super.getPreferredSize();
                 if (getParent() != null) {
-                    int maxW = (int) (getParent().getWidth() * 0.40);
-                    JComboBox<?> combo = configPanelController.getModelCombo();
-                    combo.setPreferredSize(null);
-                    Dimension pref = combo.getPreferredSize();
-                    if (maxW > 0 && pref.width > maxW) {
-                        combo.setPreferredSize(new Dimension(maxW, pref.height));
+                    int maxW = (int) (getParent().getWidth() * 0.50);
+                    if (maxW > 0 && d.width > maxW) {
+                        d = new Dimension(maxW, d.height);
                     }
                 }
-                super.doLayout();
+                return d;
             }
         };
+        modelWrap.setOpaque(false);
+        modelWrap.add(configPanelController.getModelCombo(), BorderLayout.CENTER);
+
+        JPanel centerStatusPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         centerStatusPanel.setOpaque(false);
-        centerStatusPanel.add(configPanelController.getModelCombo());
+        centerStatusPanel.add(modelWrap);
         centerStatusPanel.add(configPanelController.getCopyModelBtn());
         statusPanel.add(centerStatusPanel, BorderLayout.CENTER);
 

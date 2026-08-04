@@ -60,7 +60,6 @@ public class ConfigPanelController {
     private volatile boolean configConfirmActive = false;
     private JPopupMenu activeCustomPopup;
 
-    private final JLabel modelLabel;
     private final JButton copyModelBtn;
 
     private final ModelVariantResolver modelResolver = new ModelVariantResolver();
@@ -94,9 +93,6 @@ public class ConfigPanelController {
         gbc.gridx = 1;
         gbc.weightx = 1.0;
         configPanel.add(modeCombo, gbc);
-
-        modelLabel = new JLabel(NbBundle.getMessage(ConfigPanelController.class, "LBL_Model"));
-        // Remove from configPanel
 
         gbc.gridx = 2;
         gbc.weightx = 0;
@@ -248,7 +244,6 @@ public class ConfigPanelController {
     }
 
     JComboBox<ConfigItem> getModelCombo() { return modelCombo; }
-    public JLabel getModelLabel() { return modelLabel; }
     public JButton getCopyModelBtn() { return copyModelBtn; }
 
     JComboBox<ConfigItem> getModeCombo() { return modeCombo; }
