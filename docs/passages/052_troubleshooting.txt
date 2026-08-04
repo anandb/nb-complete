@@ -30,6 +30,8 @@
 > [[Message History]]
 > [[Permission Requests]]
 > [[Known Issues]]
+> [[Auto-Reconnect]]
+> [[Reloading a Session]]
 
 
 

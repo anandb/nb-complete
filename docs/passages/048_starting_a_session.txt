@@ -16,6 +16,7 @@ Click the '+' button on the toolbar to start a new session, this will initialise
 > [[Commands]] / [[Slash Command Autocomplete]]
 > [[Options Panel Reference]]
 > [[Input Area Keys]]
+> [[Welcome Screen]]
 
 
 

@@ -20,6 +20,8 @@ The chat panel is packed with features to help you get the most out of the assis
 > [[Permission Requests]]
 > [[Commands]]
 > [[Exporting a conversation]]
+> [[MCP Tools]]
+> [[Automatic Context Capture]]
 
 
 

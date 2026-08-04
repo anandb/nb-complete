@@ -20,6 +20,8 @@ So the first thing we need to do is install OpenCode on your system and ensure t
 
 You should also look at the current documentation maintained at <a href="https://opencode.ai/download" target="_blank" rel="noopener">opencode.ai</a>
 
+To understand what the AI already knows about your code, read [[Automatic Context Capture]].
+
 
 
 

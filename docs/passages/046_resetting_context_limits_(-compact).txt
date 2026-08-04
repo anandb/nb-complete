@@ -11,6 +11,7 @@ If your conversation becomes very long and you notice the AI starting to forget 
 
 > [[Commands]] / [[Slash Command Autocomplete]]
 > [[Check token usage]]
+> [[Reloading a Session]]
 
 
 

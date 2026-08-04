@@ -1,0 +1,22 @@
+:: Auto-Reconnect {"position":"1950,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Auto-Reconnect</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+If the OpenCode server process dies or its pipes break mid-conversation, the plugin handles it automatically:
+
+1. any stale server process is killed and its connections closed
+2. a notification appears: **ACP Server Disconnected — Attempting to reconnect...**
+3. the server is restarted automatically with a short backoff (about 3, 6, then 9 seconds)
+
+The plugin gives up after **3 failed restarts within 5 minutes** and shows a "server crashed" status message. In that case check your OpenCode installation, then click **Restart ACP Server** to try again. Your sessions are not lost during a reconnect — they are stored on the server and simply reloaded.
+
+
+> [[Restarting the server]]
+> [[Troubleshooting]]
+> [[OpenCode Not Installed]]
+
+

@@ -1,0 +1,18 @@
+:: Expand/Collapse All {"position":"2062.5,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Expand/Collapse All</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+Thoughts, tool outputs and code blocks are rendered as collapsible panes so a long assistant response stays readable. Instead of opening or closing them one by one, use the **Expand/Collapse All** toolbar button to toggle every block in the chat at once.
+
+The button icon and tooltip switch between *Expand All* and *Collapse All* so you always know what the next click will do. It's handy right after streaming finishes — collapse everything to see the final summary, or expand everything to inspect every tool result.
+
+
+> [[Thinking and Tool Responses]]
+> [[Keyboard Shortcuts]]
+> [[Filtering Chat Messages]]
+
+

@@ -30,6 +30,8 @@ Navigate and control the assistant efficiently using keyboard shortcuts:
 > [[Jump to File]]
 > [[Git Stashes as "Code Drafts" (using Stash Diff)]]
 > [[Slash Command Autocomplete]]
+> [[Keyboard Shortcuts Dialog]]
+> [[Expand/Collapse All]]
 
 
 

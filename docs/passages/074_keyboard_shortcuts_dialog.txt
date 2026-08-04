@@ -1,0 +1,18 @@
+:: Keyboard Shortcuts Dialog {"position":"2175,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Keyboard Shortcuts Dialog</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+Click the keyboard icon in the assistant panel header to open the **Keyboard Shortcuts** dialog. It lists every shortcut the plugin supports, grouped by section — Navigation &amp; Assistant, Session Management, Chat Input, Editing and Stash Diff — with the keys rendered as keyboard badges.
+
+Type in the filter field at the top to search by key or action name. Shortcuts that are not currently assigned are collapsed into a single clickable *Unassigned* summary row per section; click it to expand the full list. Press <code>Escape</code> to close the dialog.
+
+
+> [[Keyboard Shortcuts]]
+> [[Customising the Toolbar]]
+> [[Input Area Keys]]
+
+

@@ -16,6 +16,7 @@ Instead of creating temporary branches for minor changes or code drafts, you can
 > [[IDE Enhancements]]
 > [[Keyboard Shortcuts]]
 > [[Auto-Backup on Turn Start]]
+> [[MCP Tools]]
 
 
 

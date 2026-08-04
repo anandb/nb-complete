@@ -1,0 +1,18 @@
+:: Welcome Screen {"position":"1837.5,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Welcome Screen</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+When the assistant panel is opened with no session selected, you'll see the welcome screen instead of a chat thread. It shows a **Start New Chat** button plus a list of your existing sessions, each with the project folder it belongs to shown underneath the title.
+
+Click any session to open it, or **Start New Chat** to begin a fresh conversation. Sessions you have archived (hidden) are only listed when hidden sessions are visible — use the eye icon on the toolbar to toggle them.
+
+
+> [[Starting a Session]]
+> [[Session Dropdown Menu]]
+> [[Archiving Sessions]]
+
+

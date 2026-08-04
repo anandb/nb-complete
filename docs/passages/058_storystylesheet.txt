@@ -75,3 +75,29 @@ table.ug-table td {
   padding: 0.5rem;
   text-align: left;
 }
+
+/* Responsive images everywhere (not just inline-styled ones) */
+tw-passage img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  tw-passage {
+    max-width: 100%;
+    padding: 1.25rem 1rem;
+    overflow-wrap: anywhere;
+  }
+  /* Make tables scroll horizontally instead of breaking layout */
+  table.ug-table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+  /* Hide Harlowe's sidebar on phones to save space */
+  #ui-bar {
+    display: none;
+  }
+}

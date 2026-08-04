@@ -1,0 +1,25 @@
+:: Automatic Context Capture {"position":"1612.5,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Automatic Context Capture</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+Every message you send automatically carries supplementary context about your current editor state, so the AI knows what you are working on without you having to explain it. For the active editor this includes:
+
+- the file path of the open document
+- the selected text and its line range, when you have a selection
+- the current cursor line
+
+Your open projects are attached as well, so the AI knows the boundaries of your project. This context is reference-only metadata — your typed message is always the primary input.
+
+If no real file is open (for example an empty editor or a temporary document), no phantom path like <code>/tmp/xxx</code> is sent, so the AI is never confused by made-up file locations. This is what powers the MCP <code>open&#95;pos</code> and <code>get&#95;tabs</code> tools, which let the AI jump you to the exact file and line it is talking about.
+
+
+> [[Home]]
+> [[MCP Tools]]
+> [[Starting a Session]]
+> [[Chat Features]]
+
+

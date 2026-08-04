@@ -1,0 +1,30 @@
+:: MCP Tools {"position":"1500,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">MCP Tools</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+The plugin runs a small built-in MCP (Model Context Protocol) server inside the IDE and exposes it to the OpenCode agent server. When the agent supports MCP, it can call a handful of NetBeans tools directly during your conversation — you don't have to switch to the IDE and click around:
+
+<table class="ug-table">
+<thead><tr><th>Tool</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><code>get&#95;tabs</code></td><td>Lists the file paths currently open in editor tabs (only files inside your open projects).</td></tr>
+<tr><td><code>open&#95;pos</code></td><td>Opens a file at a given line number in the editor and focuses it. Useful when the AI says "Show me where this happens in the code".</td></tr>
+<tr><td><code>list&#95;projects</code></td><td>Lists the absolute paths of all open NetBeans projects.</td></tr>
+<tr><td><code>rename&#95;session</code></td><td>Gives the current (or a specific) session a custom title, just like the rename button.</td></tr>
+<tr><td><code>diff&#95;stash</code></td><td>Opens the side-by-side stash diff viewer for a given stash. Only available when Stash Diff is enabled in Options.</td></tr>
+</tbody>
+</table>
+
+The MCP server binds to <code>127.0.0.1</code> on a random local port with a random token, so it never accepts connections from outside your machine. It only activates when your agent server advertises MCP support. When the AI uses one of these tools, the call and its result appear in the chat as a collapsible tool bubble with the tag icon — same as any other tool output.
+
+
+> [[Thinking and Tool Responses]]
+> [[Git Stashes as "Code Drafts" (using Stash Diff)]]
+> [[Renaming the session]]
+> [[Automatic Context Capture]]
+
+

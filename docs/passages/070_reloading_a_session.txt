@@ -1,0 +1,23 @@
+:: Reloading a Session {"position":"1725,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Reloading a Session</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+The **Reload** button (reload icon) on the toolbar re-fetches the current session from the OpenCode server. Your messages are always stored on the server, so reloading never loses anything — it just refreshes the chat view to match the server state.
+
+You'll want to reload when:
+
+- you ran <code>/compact</code> and want the summarised history displayed
+- older messages were trimmed from the view (click **Show All Messages** first, then **Reload** to bring them all back)
+- the view seems out of sync with the server, for example after a server restart or a session reload from the dropdown
+
+
+> [[Message History]]
+> [[Resetting context limits (/compact)]]
+> [[Starting a Session]]
+> [[Restarting the server]]
+
+

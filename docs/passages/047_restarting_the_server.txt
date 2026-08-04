@@ -12,6 +12,7 @@ If the assistant becomes unresponsive or you experience connection issues, you c
 > [[OpenCode Not Installed]]
 > [[Customising the Toolbar]]
 > [[Troubleshooting]]
+> [[Auto-Reconnect]]
 
 
 

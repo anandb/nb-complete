@@ -14,6 +14,7 @@ Your complete message history is always safely stored on the server. While the l
 > [[Pinned Messages]]
 > [[Input Area Keys]]
 > [[Exporting a conversation]]
+> [[Reloading a Session]]
 
 
 
