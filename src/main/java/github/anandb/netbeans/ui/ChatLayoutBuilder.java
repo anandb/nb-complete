@@ -416,7 +416,7 @@ final class ChatLayoutBuilder {
             public Dimension getPreferredSize() {
                 Dimension d = super.getPreferredSize();
                 if (getParent() != null) {
-                    int maxW = (int) (getParent().getWidth() * 0.50);
+                    int maxW = (int) (getParent().getWidth() * 0.70);
                     if (maxW > 0 && d.width > maxW) {
                         d = new Dimension(maxW, d.height);
                     }
