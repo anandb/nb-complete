@@ -97,12 +97,8 @@ Define a global prompt in `Options > Assistant > Preamble`. This is
 added to every new session alongside your OpenCode agent prompts. An example
 comes out of the box, you can change it to suit your needs.
 
-> **Important:** The default preamble (bundled with the plugin) now contains rules
-> that govern correct session functioning — including tool-use guidance, language
-> conventions, and interruptibility behavior. **Append your own instructions to the
-> default rather than replacing it**, otherwise you may lose those guardrails and
-> encounter unexpected session behavior. Use the *Reset* button in the Preamble
-> editor to restore the default before adding your custom text.
+> Use the *Reset* button in the Preamble editor to restore the default
+> before adding your custom text.
 
 ---
 
@@ -389,7 +385,7 @@ Use image paste and a vision-capable model to turn screenshots of broken UIs or 
 | **Model not appearing after upgrade to OpenCode v1.17.9**, upgrade plugin to >= 1.7.3 | Re-select your model via `/models`. The upgrade resets model selection due to the new `thought_level` split. |
 | **Session config payloads restructured after upgrade** | Upgrade the plugin to >= 1.7.3 and OpenCode to >= 1.17.17. Re-select your model and review any custom preamble or session settings. |
 | **Messages disappear from view** | This is display-only — the session still has all messages. Click **Show All Messages** to keep them visible, and use **Reload** to re-fetch from the server. |
-| **LLM modified files unexpectedly** | Always keep your project under version control (git) before allowing file modifications. Configure OpenCode to 'ask' for the edit permission, Use **Allow Once/Always Allow/Reject** permission prompts to review changes. |
+| **LLM modified files unexpectedly** | It's a good idea to keep your project under version control (git), so you can easily revert any changes you don't want. You can also set OpenCode to 'ask' before editing, and review changes with the **Allow Once/Always Allow/Reject** permission prompts. |
 | **High CPU usage or UI freezes** | Upgrade the plugin to >= 1.9.2, which resolves an infinite layout validation loop in the chat panel. |
 | **Panel goes blank during docking or resizing** | Close and reopen the docked panel from `Window > Assistant`. NetBeans may not repaint correctly after a drag-dock or undock operation. |
 

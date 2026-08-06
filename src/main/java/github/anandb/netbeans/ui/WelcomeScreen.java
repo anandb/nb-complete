@@ -62,6 +62,12 @@ final class WelcomeScreen {
         titleLabel.setBorder(BorderFactory.createEmptyBorder(20, 12, 10, 12));
         messagesContainer.add(titleLabel);
 
+        JLabel valueProp = new JLabel(NbBundle.getMessage(ChatThreadPanel.class, "LBL_ValueProp"));
+        valueProp.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN));
+        valueProp.setForeground(ThemeManager.getCurrentTheme().mutedForeground());
+        valueProp.setBorder(BorderFactory.createEmptyBorder(0, 12, 20, 12));
+        messagesContainer.add(valueProp);
+
         JLabel subtitle = new JLabel(sessions.isEmpty()
             ? NbBundle.getMessage(ChatThreadPanel.class, "MSG_NewChatPrompt")
             : NbBundle.getMessage(ChatThreadPanel.class, "MSG_ExistingChatPrompt"));

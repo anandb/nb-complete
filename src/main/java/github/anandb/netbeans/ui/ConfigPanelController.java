@@ -88,7 +88,9 @@ public class ConfigPanelController {
         gbc.gridx = 0;
         gbc.gridy = 0;
         gbc.weightx = 0;
-        configPanel.add(new JLabel(NbBundle.getMessage(ConfigPanelController.class, "LBL_Agent")), gbc);
+        JLabel agentLabel = new JLabel(NbBundle.getMessage(ConfigPanelController.class, "LBL_Agent"));
+        agentLabel.setToolTipText(NbBundle.getMessage(ConfigPanelController.class, "HINT_Agent"));
+        configPanel.add(agentLabel, gbc);
 
         gbc.gridx = 1;
         gbc.weightx = 1.0;
@@ -96,7 +98,9 @@ public class ConfigPanelController {
 
         gbc.gridx = 2;
         gbc.weightx = 0;
-        configPanel.add(new JLabel(NbBundle.getMessage(ConfigPanelController.class, "LBL_Thinking")), gbc);
+        JLabel thinkingLabel = new JLabel(NbBundle.getMessage(ConfigPanelController.class, "LBL_Thinking"));
+        thinkingLabel.setToolTipText(NbBundle.getMessage(ConfigPanelController.class, "HINT_Thinking"));
+        configPanel.add(thinkingLabel, gbc);
 
         gbc.gridx = 3;
         gbc.weightx = 0.0;

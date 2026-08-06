@@ -9,7 +9,7 @@
 
 <i style="opacity: 0.7;">Last updated for BeanBot v1.12.10.</i>
 
-This guide will help you setup [[BeanBot]], the Coding Assistant for NetBeans, this is a NetBeans plugin that provides an AI assistant panel powered by OpenCode, so you can chat with AI models directly inside the IDE. It automatically attaches active project and source file context to your messages, so the AI always understands what you're working on. It also features a built-in permission handler—allowing you to inspect code diffs before applying changes and explicitly approve file deletions or terminal commands.
+This guide will help you setup [[BeanBot]], a NetBeans plugin that provides an AI assistant panel powered by OpenCode, so you can chat with AI models directly inside the IDE. It automatically attaches active project and source file context to your messages, so the AI always understands what you're working on. It also features a built-in permission handler—allowing you to inspect code diffs before applying changes and explicitly approve file deletions or terminal commands.
 
 The plugin makes use of a new protocol called ACP (Agent Client Protocol) designed to let editors and IDEs like NetBeans interact with AI agents, we use OpenCode as an agent server, running it at IDE startup to send and receive messages from AI agents, this has the advantage that we don't have to add individual support for every AI provider like Anthropic, Gemini or OpenAI, OpenCode already supports multiple providers, and that makes it possible to switch between providers and models with ease.
 
