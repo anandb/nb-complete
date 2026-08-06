@@ -7,9 +7,11 @@ import java.awt.Toolkit;
 import java.awt.datatransfer.StringSelection;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.awt.Point;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
+import java.awt.event.MouseEvent;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -80,10 +82,24 @@ public class ConfigPanelController {
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.insets = new Insets(2, 0, 2, 8);
 
-        modeCombo = new UIUtils.WrappingComboBox<>();
+        modeCombo = new UIUtils.WrappingComboBox<>() {
+            @Override
+            public Point getToolTipLocation(MouseEvent event) {
+                Insets ins = getInsets();
+                return new Point(ins.left, -getHeight() - 8);
+            }
+        };
         modelCombo = new UIUtils.WrappingComboBox<>();
-        thinkingCombo = new UIUtils.WrappingComboBox<>();
+        thinkingCombo = new UIUtils.WrappingComboBox<>() {
+            @Override
+            public Point getToolTipLocation(MouseEvent event) {
+                Insets ins = getInsets();
+                return new Point(ins.left, -getHeight() - 8);
+            }
+        };
         thinkingCombo.setPrototypeDisplayValue(new ConfigItem("High (Slow)", "High (Slow)"));
+        modeCombo.setToolTipText(NbBundle.getMessage(ConfigPanelController.class, "HINT_Agent"));
+        thinkingCombo.setToolTipText(NbBundle.getMessage(ConfigPanelController.class, "HINT_Thinking"));
 
         gbc.gridx = 0;
         gbc.gridy = 0;
