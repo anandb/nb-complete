@@ -254,7 +254,10 @@ public class UpdateCheckerService implements UpdateCheckerControl {
             String title = "Coding Assistant Update Available";
             String body = "A new version of Coding Assistant (" + latestVersion
                     + ") is available.\n\nCurrent: " + AgentUtils.getVersion()
-                    + "\nLatest: " + latestVersion;
+                    + "\nLatest: " + latestVersion
+                    + "\n\nAfter downloading the .nbm file, go to "
+                    + "Tools > Plugins > Downloaded and click \"Add Plugins\" "
+                    + "to select the downloaded file, then click \"Install\".";
 
             Object[] options = new Object[]{"Download Now", "Remind me Later", "Skip this Version"};
             NotifyDescriptor nd = new NotifyDescriptor(
