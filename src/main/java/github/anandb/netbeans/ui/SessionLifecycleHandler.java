@@ -57,6 +57,9 @@ public class SessionLifecycleHandler implements SessionListener {
     private final Consumer<String> cwdLabelUpdater;
     private final Consumer<Boolean> sessionStateHandler;
     private final Consumer<Boolean> optionsPanelToggler;
+    // Dismisses stuck permission/config-confirm panels on session error (server
+    // crash) so the chat input is never left disabled.
+    private final Runnable pendingUiCleanup;
 
     // Shared mutable state
     private boolean optionsPanelCollapsed = true;
@@ -86,7 +89,8 @@ public class SessionLifecycleHandler implements SessionListener {
             Consumer<String> tabNameUpdater,
             Consumer<String> cwdLabelUpdater,
             Consumer<Boolean> sessionStateHandler,
-            Consumer<Boolean> optionsPanelToggler) {
+            Consumer<Boolean> optionsPanelToggler,
+            Runnable pendingUiCleanup) {
         this.chatPanel = chatPanel;
         this.sessionDropdown = sessionDropdown;
         this.hideBtn = hideBtn;
@@ -101,6 +105,7 @@ public class SessionLifecycleHandler implements SessionListener {
         this.cwdLabelUpdater = cwdLabelUpdater;
         this.sessionStateHandler = sessionStateHandler;
         this.optionsPanelToggler = optionsPanelToggler;
+        this.pendingUiCleanup = pendingUiCleanup;
     }
 
     boolean isOptionsPanelCollapsed() {
@@ -577,6 +582,11 @@ public class SessionLifecycleHandler implements SessionListener {
                 NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Error", message),
                 null, null
             ));
+            // On server crash/error, dismiss any stuck permission/config-confirm
+            // panel so the chat input is re-enabled and not left disabled.
+            if (pendingUiCleanup != null) {
+                pendingUiCleanup.run();
+            }
         });
     }
 }

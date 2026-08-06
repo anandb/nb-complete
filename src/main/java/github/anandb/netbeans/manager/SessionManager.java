@@ -766,7 +766,7 @@ public class SessionManager implements SessionQuery, SessionControl {
     }
 
     private void sendWarmupPrompt(String sessionId) {
-        sendAssistantPrompt(sessionId, "", "warm-up prompt");
+        sendAssistantPrompt(sessionId, "Connection test. Acknowledge with a ? ", "warm-up prompt");
     }
 
     private void sendAssistantPrompt(String sessionId, String text, String label) {

@@ -244,7 +244,8 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             toggleOptionsBtn, configPanelController, inputArea, statusController,
             this::showProjectPickerPopup, this::updateTabName, this::updateCwdLabel,
             sessionActiveCallback,
-            this::setOptionsPanelVisible
+            this::setOptionsPanelVisible,
+            this::dismissPendingPermissionUi
         );
         // Track project open/close to disable new-session button when no projects are open
         projectContext.addProjectChangeListener(this::updateNewSessionBtnState);
@@ -520,6 +521,18 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         }
         if (messageSender != null) {
             messageSender.stopMessage();
+        }
+    }
+
+    /** Dismisses any stuck permission/config-confirm panel so the input is re-enabled.
+     *  Invoked on session error (server crash) — see SessionLifecycleHandler. */
+    void dismissPendingPermissionUi() {
+        if (permissionDialogManager != null) {
+            permissionDialogManager.rejectAllRequests();
+        }
+        PermissionRequestPanel confirm = layoutBuilder != null ? layoutBuilder.getConfigConfirmPanel() : null;
+        if (confirm != null) {
+            confirm.dismissActiveRequest();
         }
     }
 

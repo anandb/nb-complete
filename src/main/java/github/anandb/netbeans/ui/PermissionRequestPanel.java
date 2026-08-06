@@ -235,6 +235,25 @@ final class PermissionRequestPanel extends JPanel {
         }
     }
 
+    /**
+     * Force-dismisses the panel (permission or config-confirm) and re-enables the
+     * chat input regardless of state. Used to recover from a server crash so the
+     * input text area is never left disabled with a stuck modal panel.
+     */
+    void dismissActiveRequest() {
+        if (requestActive && pendingResponse != null && !pendingResponse.isDone()) {
+            pendingResponse.complete("reject");
+        }
+        requestActive = false;
+        stopWobble();
+        // slideClose() only re-enables input when the panel is visible; force it
+        // directly too so the input can never be left disabled.
+        if (inputEnableCallback != null) {
+            inputEnableCallback.accept(true);
+        }
+        slideClose();
+    }
+
     private void buildButtons(JsonNode options, CompletableFuture<String> responseFuture) {
         ColorTheme theme = ThemeManager.getCurrentTheme();
         allowAction = null;
