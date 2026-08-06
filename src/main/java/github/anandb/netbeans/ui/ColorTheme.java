@@ -95,6 +95,7 @@ public final class ColorTheme {
     public Color  mutedForeground()                              { return registry.get(ColorKey.muted_foreground); }
     public Color  placeholderForeground()                        { return registry.get(ColorKey.placeholder_foreground); }
     public Color  collapsedHeaderForeground()                    { return registry.get(ColorKey.collapsed_header_foreground); }
+    public Color  secondary2()                                    { return registry.get(ColorKey.secondary2); }
     public Color  inlineCodeForeground()                         { return registry.get(ColorKey.inline_code_foreground); }
     public Color  permissionGrantFg()                            { return registry.get(ColorKey.permission_grant_fg); }
     public Color  permissionGrantBg()                            { return registry.get(ColorKey.permission_grant_bg); }

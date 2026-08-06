@@ -52,7 +52,7 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
 
     @Override
     protected Color getHeaderForeground(ColorTheme theme) {
-        return expanded ? theme.foreground() : theme.thinkingHeaderForeground();
+        return expanded ? theme.foreground() : theme.secondary2();
     }
 
     @Override

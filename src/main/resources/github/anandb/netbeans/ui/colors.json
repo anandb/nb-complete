@@ -246,6 +246,13 @@
     "light": "#969696"
   },
   {
+    "name": "secondary2",
+    "property": "netbeans.codingassistant.color.secondary2",
+    "key": "Label.disabledForeground",
+    "dark": "#9CA3AF",
+    "light": "#777777"
+  },
+  {
     "name": "inlineCodeForeground",
     "property": "netbeans.codingassistant.color.inlineCodeForeground",
     "dark": "#FFFFFF",

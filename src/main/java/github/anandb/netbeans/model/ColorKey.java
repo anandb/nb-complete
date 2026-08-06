@@ -49,6 +49,7 @@ public enum ColorKey {
     muted_foreground("mutedForeground"),
     placeholder_foreground("placeholderForeground"),
     collapsed_header_foreground("collapsedHeaderForeground"),
+    secondary2("secondary2"),
     inline_code_foreground("inlineCodeForeground"),
     permission_grant_fg("permissionGrantFg"),
     permission_grant_bg("permissionGrantBg"),

@@ -149,6 +149,11 @@ public class CollapsibleActivityPane extends BaseCollapsiblePane {
     }
 
     @Override
+    protected Color getHeaderForeground(ColorTheme theme) {
+        return expanded ? theme.foreground() : theme.secondary2();
+    }
+
+    @Override
     protected Color getDefaultHeaderBackground() {
         return expanded ? ThemeManager.getCurrentTheme().base2() : ThemeManager.getCurrentTheme().sunkenBackground();
     }
