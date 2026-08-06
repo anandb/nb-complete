@@ -72,7 +72,7 @@ import static org.apache.commons.text.StringEscapeUtils.unescapeHtml4;
  * {@code StrategyRegistry.handle()} for type-based routing. See
  * {@code strategy/StrategyRegistry.java} for the dispatch chain.
  *
- * <h3>Preamble &amp; Warmup</h3>
+ * <h3>Preamble</h3>
  * On new session creation, this class sends a combined prompt of
  * critical rules ({@link PluginSettings#getCriticalRules()}) followed by
  * the preamble ({@link PluginSettings#getPreamble()}), both as an
@@ -162,8 +162,6 @@ public class SessionManager implements SessionQuery, SessionControl {
     private final Consumer<SessionUpdate> sseListener = this::handleSseUpdate;
     private final SessionRpcClient rpcClient;
     private volatile java.util.function.BiFunction<String, List<SessionConfigOption>, CompletableFuture<Void>> beforePreambleHandler;
-    /** True once the warm-up prompt has been sent for this connection. */
-    private volatile boolean warmupSent;
     /** True if a manual reconnect was initiated by the user. */
     private volatile boolean manualReconnectPending;
 
@@ -177,7 +175,6 @@ public class SessionManager implements SessionQuery, SessionControl {
 
         // Reset state machine and notify UI when server crashes
         ProcessManager.getInstance().setCrashHandler(() -> {
-            warmupSent = false;
             stateMachine.transitionTo(SessionState.IDLE);
             notifyError(NbBundle.getMessage(SessionManager.class, "ERR_ServerDisconnected"));
         });
@@ -650,14 +647,6 @@ public class SessionManager implements SessionQuery, SessionControl {
                             if (manualReconnectPending) {
                                 manualReconnectPending = false;
                                 sendAssistantPrompt(sessionId, "Ask the user if you should continue ?", "reconnect prompt");
-                            } else if (!warmupSent) {
-                                // Warm-up: send an invisible prompt so the AI model
-                                // is primed before the user's first real message.
-                                // The first prompt after a fresh server start may
-                                // be silently dropped while the model initializes.
-                                // Only send once per connection — not on session switch.
-                                warmupSent = true;
-                                sendWarmupPrompt(sessionId);
                             }
                         }
                     })
@@ -763,10 +752,6 @@ public class SessionManager implements SessionQuery, SessionControl {
         }
 
         return false;
-    }
-
-    private void sendWarmupPrompt(String sessionId) {
-        sendAssistantPrompt(sessionId, "Connection test. Acknowledge with a ? ", "warm-up prompt");
     }
 
     private void sendAssistantPrompt(String sessionId, String text, String label) {
@@ -972,13 +957,14 @@ public class SessionManager implements SessionQuery, SessionControl {
             String btnYes = NbBundle.getMessage(github.anandb.netbeans.ui.AssistantTopComponent.class, "BTN_InitYes");
             String btnNo = NbBundle.getMessage(github.anandb.netbeans.ui.AssistantTopComponent.class, "BTN_InitNo");
             String btnLater = NbBundle.getMessage(github.anandb.netbeans.ui.AssistantTopComponent.class, "BTN_InitLater");
+            String btnOff = NbBundle.getMessage(github.anandb.netbeans.ui.AssistantTopComponent.class, "BTN_InitOff");
 
             NotifyDescriptor nd = new NotifyDescriptor(
                     msg,
                     title,
                     NotifyDescriptor.DEFAULT_OPTION,
                     NotifyDescriptor.QUESTION_MESSAGE,
-                    new Object[]{btnYes, btnNo, btnLater},
+                    new Object[]{btnYes, btnNo, btnLater, btnOff},
                     btnYes
             );
 
@@ -1002,6 +988,9 @@ public class SessionManager implements SessionQuery, SessionControl {
                 }
             } else if (btnNo.equals(result)) {
                 NbPreferences.forModule(SessionManager.class).putBoolean(skipPrefKey, true);
+            } else if (btnOff.equals(result)) {
+                NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                        .putBoolean(PreferenceKeys.PROMPT_OPENCODE_INIT, false);
             }
             // If btnLater, do nothing, so it will prompt again
         });
