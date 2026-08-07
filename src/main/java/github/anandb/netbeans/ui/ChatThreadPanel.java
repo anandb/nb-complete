@@ -42,6 +42,7 @@ import github.anandb.netbeans.model.MessageTransformer;
 import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.model.Session;
+import github.anandb.netbeans.support.GlobalOpencodeConfig;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.TimingConstants;
@@ -573,6 +574,18 @@ public class ChatThreadPanel extends JPanel {
     public void addMissingBinaryBubble(Runnable onGuide, Runnable onRestart) {
         SwingUtilities.invokeLater(() -> {
             MissingBinaryBubble bubble = new MissingBinaryBubble(onGuide, onRestart);
+            messagesContainer.add(bubble);
+            messagesContainer.add(Box.createVerticalStrut(4));
+            messagesContainer.revalidate();
+            scrollController.scrollToBottom(true);
+        });
+    }
+
+    /** Shows the global opencode configuration prompt as a sidebar bubble. */
+    public void addGlobalConfigBubble(GlobalOpencodeConfig.CheckResult result,
+            Runnable onYes, Runnable onNo, Runnable onDontAskAgain) {
+        SwingUtilities.invokeLater(() -> {
+            GlobalConfigBubble bubble = new GlobalConfigBubble(result, onYes, onNo, onDontAskAgain);
             messagesContainer.add(bubble);
             messagesContainer.add(Box.createVerticalStrut(4));
             messagesContainer.revalidate();

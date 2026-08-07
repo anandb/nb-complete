@@ -8,6 +8,7 @@ import java.awt.Image;
 import java.awt.Insets;
 import java.awt.LayoutManager;
 import java.awt.Point;
+import java.awt.BorderLayout;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
@@ -18,6 +19,7 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.regex.Pattern;
 
+import javax.swing.BorderFactory;
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
@@ -184,6 +186,20 @@ public class UIUtils {
 
     public static JPanel createTransparentPanel(LayoutManager layout) {
         return createPanel(layout, false, null, null);
+    }
+
+    /** Creates the standard assistant-bubble content chrome used by chat
+     *  bubbles: opaque, 0/10 gaps, assistant background, rounded line border. */
+    public static JPanel createBubbleContentPanel() {
+        ColorTheme theme = ThemeManager.getCurrentTheme();
+        JPanel content = new JPanel(new BorderLayout(0, 10));
+        content.setOpaque(true);
+        content.setBackground(theme.bubbleAssistant() != null ? theme.bubbleAssistant() : theme.sunkenBackground());
+        content.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(theme.bubbleBorder() != null ? theme.bubbleBorder() : Color.LIGHT_GRAY, 1, true),
+            BorderFactory.createEmptyBorder(16, 20, 16, 20)
+        ));
+        return content;
     }
 
     public static GridBagConstraints createGbc(int x, int y, double wx, double wy, int fill, int anchor, Insets insets) {

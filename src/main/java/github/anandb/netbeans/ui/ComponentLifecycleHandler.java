@@ -19,6 +19,7 @@ import org.netbeans.api.project.Project;
 import org.openide.DialogDisplayer;
 import org.openide.NotifyDescriptor;
 import org.openide.util.NbBundle;
+import org.openide.util.NbPreferences;
 import github.anandb.netbeans.contract.SlashCommandCallback;
 import github.anandb.netbeans.contract.ToolExecutor;
 import org.openide.util.Lookup;
@@ -27,7 +28,9 @@ import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.model.SessionItem;
 import github.anandb.netbeans.support.BinaryResolver;
+import github.anandb.netbeans.support.GlobalOpencodeConfig;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.PreferenceKeys;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
 import github.anandb.netbeans.ui.platform.ProcessService;
 import github.anandb.netbeans.ui.platform.ProjectContext;
@@ -129,9 +132,12 @@ public class ComponentLifecycleHandler {
                 return;
             }
 
-            // Start server on a background thread to avoid blocking EDT
-            // (BinaryResolver PATH scan + ProcessBuilder.start() can be slow).
-            RequestProcessor.getDefault().post(() -> processService.get().ensureStarted());
+            // Offer the global opencode configuration prompt BEFORE launching the
+            // server: a starter config written here is picked up on the first
+            // start, so the user does not need to restart a second time.
+            maybeShowGlobalConfigPrompt(() ->
+                RequestProcessor.getDefault().post(() -> processService.get().ensureStarted())
+            );
             processService.get().whenReady().exceptionally(ex -> {
                 Throwable cause = ex;
                 while (cause.getCause() != null) {
@@ -403,45 +409,85 @@ public class ComponentLifecycleHandler {
         safetyTimeout.start();
 
         sessionService.get().scheduleManualReconnectPrompt();
-        processService.get().restartServer();
+        // Ask about the global opencode configuration before the server
+        // restarts, so a starter config is written before the process reads it.
+        maybeShowGlobalConfigPrompt(() -> {
+            processService.get().restartServer();
 
-        processService.get().whenReady().thenAccept(v -> {
-            SwingUtilities.invokeLater(() -> {
-                // After server ready, wait 5 more seconds before re-enabling
-                Timer cooldown = new Timer(5_000, e -> restartServerBtn.setEnabled(true));
-                cooldown.setRepeats(false);
-                cooldown.start();
-                statusController.setStatus("STATUS_ServerRestarted");
-                // Clear binary-not-found state on successful restart
-                topComponent.setBinaryNotFoundState(false);
-                if (currentSessionId != null) {
-                    sessionService.get().loadSession(currentSessionId);
-                } else {
-                    sessionService.get().refreshSessions();
-                }
+            processService.get().whenReady().thenAccept(v -> {
+                SwingUtilities.invokeLater(() -> {
+                    // After server ready, wait 5 more seconds before re-enabling
+                    Timer cooldown = new Timer(5_000, e -> restartServerBtn.setEnabled(true));
+                    cooldown.setRepeats(false);
+                    cooldown.start();
+                    statusController.setStatus("STATUS_ServerRestarted");
+                    // Clear binary-not-found state on successful restart
+                    topComponent.setBinaryNotFoundState(false);
+                    if (currentSessionId != null) {
+                        sessionService.get().loadSession(currentSessionId);
+                    } else {
+                        sessionService.get().refreshSessions();
+                    }
+                });
+            }).exceptionally(ex -> {
+                SwingUtilities.invokeLater(() -> {
+                    safetyTimeout.stop();
+                    restartServerBtn.setEnabled(true);
+                    Throwable cause = ex;
+                    while (cause.getCause() != null) {
+                        cause = cause.getCause();
+                    }
+                    if (cause instanceof IllegalStateException && ExceptionUtils.getMessage(cause) != null
+                            && ExceptionUtils.getMessage(cause).contains("not found")) {
+                        topComponent.setBinaryNotFoundState(true);
+                    } else {
+                        String msg = ExceptionUtils.getMessage(ex) != null ? ExceptionUtils.getMessage(ex) : ex.getClass().getSimpleName();
+                        statusController.setStatus("STATUS_RestartFailed", msg);
+                        chatPanel.stopStreaming();
+                        chatPanel.addMessage(ProcessedMessage.createError(
+                            MessageType.error_response, NbBundle.getMessage(AssistantTopComponent.class, "STATUS_RestartFailed", msg), null, null
+                        ));
+                        statusController.setInputEnabled(true);
+                    }
+                });
+                return null;
             });
-        }).exceptionally(ex -> {
-            SwingUtilities.invokeLater(() -> {
-                safetyTimeout.stop();
-                restartServerBtn.setEnabled(true);
-                Throwable cause = ex;
-                while (cause.getCause() != null) {
-                    cause = cause.getCause();
-                }
-                if (cause instanceof IllegalStateException && ExceptionUtils.getMessage(cause) != null
-                        && ExceptionUtils.getMessage(cause).contains("not found")) {
-                    topComponent.setBinaryNotFoundState(true);
-                } else {
-                    String msg = ExceptionUtils.getMessage(ex) != null ? ExceptionUtils.getMessage(ex) : ex.getClass().getSimpleName();
-                    statusController.setStatus("STATUS_RestartFailed", msg);
-                    chatPanel.stopStreaming();
-                    chatPanel.addMessage(ProcessedMessage.createError(
-                        MessageType.error_response, NbBundle.getMessage(AssistantTopComponent.class, "STATUS_RestartFailed", msg), null, null
-                    ));
-                    statusController.setInputEnabled(true);
-                }
-            });
-            return null;
+        });
+    }
+
+    /**
+     * Offers to set up the global opencode configuration before the server
+     * starts. The file check runs on a background thread and the prompt bubble
+     * is shown in the chat panel. {@code afterAnswer} runs once the user
+     * responds — after the starter config is written on "Yes" — or immediately
+     * when no prompt is needed (real configuration present, or the prompt was
+     * disabled in Options / via "Don't ask again").
+     */
+    private void maybeShowGlobalConfigPrompt(Runnable afterAnswer) {
+        if (!NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                .getBoolean(PreferenceKeys.PROMPT_GLOBAL_OPENCODE_INIT, true)) {
+            afterAnswer.run();
+            return;
+        }
+        RequestProcessor.getDefault().post(() -> {
+            GlobalOpencodeConfig.CheckResult result = GlobalOpencodeConfig.evaluate();
+            if (result.state == GlobalOpencodeConfig.State.REAL_CONTENT) {
+                SwingUtilities.invokeLater(afterAnswer);
+                return;
+            }
+            chatPanel.addGlobalConfigBubble(
+                    result,
+                    () -> RequestProcessor.getDefault().post(() -> {
+                        GlobalOpencodeConfig.writeDefaultConfig();
+                        SwingUtilities.invokeLater(afterAnswer);
+                    }),
+                    afterAnswer,
+                    () -> {
+                        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                                .putBoolean(PreferenceKeys.PROMPT_GLOBAL_OPENCODE_INIT, false);
+                        afterAnswer.run();
+                    }
+            );
         });
     }
 

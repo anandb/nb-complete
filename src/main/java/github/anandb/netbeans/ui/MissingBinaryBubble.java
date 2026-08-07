@@ -42,13 +42,7 @@ class MissingBinaryBubble extends JPanel {
 
         ColorTheme theme = ThemeManager.getCurrentTheme();
 
-        JPanel content = new JPanel(new BorderLayout(0, 10));
-        content.setOpaque(true);
-        content.setBackground(theme.bubbleAssistant() != null ? theme.bubbleAssistant() : theme.sunkenBackground());
-        content.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(theme.bubbleBorder() != null ? theme.bubbleBorder() : Color.LIGHT_GRAY, 1, true),
-            BorderFactory.createEmptyBorder(16, 20, 16, 20)
-        ));
+        JPanel content = UIUtils.createBubbleContentPanel();
 
         // Header
         JPanel headerPanel = new JPanel(new BorderLayout());
