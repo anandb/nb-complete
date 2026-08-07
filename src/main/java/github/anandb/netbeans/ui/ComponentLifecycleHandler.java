@@ -403,16 +403,20 @@ public class ComponentLifecycleHandler {
         statusController.setInputEnabled(false);
         restartServerBtn.setEnabled(false);
 
-        // Safety timeout: re-enable after 10 seconds regardless
-        Timer safetyTimeout = new Timer(10_000, e -> restartServerBtn.setEnabled(true));
-        safetyTimeout.setRepeats(false);
-        safetyTimeout.start();
-
-        sessionService.get().scheduleManualReconnectPrompt();
         // Ask about the global opencode configuration before the server
         // restarts, so a starter config is written before the process reads it.
         maybeShowGlobalConfigPrompt(() -> {
+            // Safety timeout: re-enable after 10 seconds regardless. Started only
+            // once the restart actually begins, so it cannot fire while the config
+            // prompt above is still awaiting an answer.
+            Timer safetyTimeout = new Timer(10_000, e -> restartServerBtn.setEnabled(true));
+            safetyTimeout.setRepeats(false);
+            safetyTimeout.start();
+
             processService.get().restartServer();
+            // Arm the manual-reconnect prompt only after the restart has begun,
+            // so it cannot fire while the config prompt is still open.
+            sessionService.get().scheduleManualReconnectPrompt();
 
             processService.get().whenReady().thenAccept(v -> {
                 SwingUtilities.invokeLater(() -> {
