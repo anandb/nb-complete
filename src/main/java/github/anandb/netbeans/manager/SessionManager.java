@@ -926,7 +926,7 @@ public class SessionManager implements SessionQuery, SessionControl {
             return;
         }
         boolean promptEnabled = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
-                .getBoolean(PreferenceKeys.PROMPT_OPENCODE_INIT, true);
+                .getBoolean(PreferenceKeys.PROMPT_OPENCODE_INIT, false);
         if (!promptEnabled) {
             return;
         }

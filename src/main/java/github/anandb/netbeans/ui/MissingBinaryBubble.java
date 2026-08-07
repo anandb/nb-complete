@@ -57,7 +57,7 @@ class MissingBinaryBubble extends JPanel {
         JLabel titleLabel = new JLabel(NbBundle.getMessage(MissingBinaryBubble.class, "MissingBinaryBubble.Title"));
         titleLabel.setFont(ThemeManager.getFont().deriveFont(Font.BOLD, ThemeManager.getFont().getSize() + 4f));
         titleLabel.setForeground(theme.foreground());
-        
+
         JButton settingsBtn = UIUtils.createToolbarButton("settings.svg", 32, "Open Settings", e -> {
             OptionsDisplayer.getDefault().open("github-anandb-netbeans-ui-ACPOptionsPanelController");
         });
@@ -174,7 +174,7 @@ class MissingBinaryBubble extends JPanel {
     static String getInstallCommand() {
         String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
         if (os.contains("win")) {
-            return "winget install opencode";
+            return "winget install SST.opencode";
         } else if (os.contains("mac")) {
             return "brew install opencode";
         } else {

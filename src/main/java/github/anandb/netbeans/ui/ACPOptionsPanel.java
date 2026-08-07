@@ -478,7 +478,7 @@ public class ACPOptionsPanel extends JPanel {
         echoCheckbox.setSelected(NbPreferences.forModule(ACPOptionsPanel.class).getBoolean("echoUserInput", true));
         combineCheckbox.setSelected(NbPreferences.forModule(ACPOptionsPanel.class).getBoolean("combineToolThought", true));
         promptOpencodeInitCheckbox.setSelected(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
-                .getBoolean(PreferenceKeys.PROMPT_OPENCODE_INIT, true));
+                .getBoolean(PreferenceKeys.PROMPT_OPENCODE_INIT, false));
         autoBackupChangesCheckbox.setSelected(PluginSettings.isAutoBackupChanges());
         checkForUpdatesCheckbox.setSelected(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean(PreferenceKeys.CHECK_FOR_UPDATES, true));
         idleTimeoutSpinner.setValue(PluginSettings.getSessionIdleTimeout());

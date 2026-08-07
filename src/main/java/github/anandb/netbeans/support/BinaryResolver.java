@@ -57,17 +57,48 @@ public final class BinaryResolver {
     }
 
     /**
-     * Searches the system PATH for the given executable name.
+     * Searches the system PATH for the given executable name, falling back to
+     * the Windows WinGet shim directory if not found there.
      */
     public static String findOnPath(String exeName) {
         String pathEnv = System.getenv("PATH");
-        if (pathEnv == null) {
+        if (pathEnv != null) {
+            for (String dir : PATH_SPLIT.split(pathEnv)) {
+                File f = new File(dir, exeName);
+                if (f.exists() && f.canExecute()) {
+                    return f.getAbsolutePath();
+                }
+            }
+        }
+        return findInWellKnownWindowsLocations(exeName);
+    }
+
+    /**
+     * Checks well-known Windows install directories for the executable:
+     * the WinGet shim directory (%LOCALAPPDATA%\Microsoft\WinGet\Links) and
+     * the Chocolatey bin directory (%ProgramData%\chocolatey\bin), both of
+     * which are often not on PATH.
+     */
+    private static String findInWellKnownWindowsLocations(String exeName) {
+        boolean isWindows = System.getProperty("os.name", "").toLowerCase().contains("win");
+        if (!isWindows) {
             return null;
         }
-        for (String dir : PATH_SPLIT.split(pathEnv)) {
-            File f = new File(dir, exeName);
-            if (f.exists() && f.canExecute()) {
-                return f.getAbsolutePath();
+        String localAppData = System.getenv("LOCALAPPDATA");
+        if (isNotBlank(localAppData)) {
+            File winGet = new File(localAppData, "Microsoft" + File.separator + "WinGet" + File.separator
+                    + "Links" + File.separator + exeName);
+            if (winGet.exists() && winGet.canExecute()) {
+                LOG.info("Found opencode in WinGet Links: {0}", winGet.getAbsolutePath());
+                return winGet.getAbsolutePath();
+            }
+        }
+        String programData = System.getenv("ProgramData");
+        if (isNotBlank(programData)) {
+            File choco = new File(programData, "chocolatey" + File.separator + "bin" + File.separator + exeName);
+            if (choco.exists() && choco.canExecute()) {
+                LOG.info("Found opencode in Chocolatey bin: {0}", choco.getAbsolutePath());
+                return choco.getAbsolutePath();
             }
         }
         return null;
