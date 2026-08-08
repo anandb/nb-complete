@@ -178,8 +178,8 @@ The plugin reads the following system properties and environment variables:
 | `user.home` | System | Default folder for Markdown Project creation (`MdProjectPanelVisual`) |
 | `java.io.tmpdir` | System | Temp directory for pasted images (`ImagePasteTransferHandler`) |
 | `os.name` | System | Detect Windows for binary resolution (`BinaryResolver`) |
-| `netbeans.codingassistant.roundedPanels` | System (`true`) | Toggle rounded panel corners (`RoundedPanel`) |
-| `netbeans.codingassistant.color.*` | System (varies) | Override any UI color (`ColorTheme`) |
+| `beanbot.roundedPanels` | System (`true`) | Toggle rounded panel corners (`RoundedPanel`) |
+| `beanbot.color.*` | System (varies) | Override any UI color (`ColorTheme`) |
 | `nb.dark.theme` | UIManager | Detect dark theme for icon resolution (`IconResourceManager`) |
 | `ACP_WIRE_LOG` | Env | Path for ACP wire protocol log file (`WireLogger`) |
 | `OPENCODE_MODEL` | Env | Default model override in config (`ConfigPanelController`) |

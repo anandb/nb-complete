@@ -28,7 +28,7 @@ public class RoundedPanel extends JPanel {
      * and clipping. Useful on slow GPU / remote desktop / accessibility.
      */
     private static final boolean ROUNDED_ENABLED =
-            Boolean.parseBoolean(System.getProperty("netbeans.codingassistant.roundedPanels", "true"));
+            Boolean.parseBoolean(System.getProperty("beanbot.roundedPanels", "true"));
 
     private int radius;
     private Color baseColor; // null = transparent (children fill their own backgrounds)

@@ -1,33 +1,33 @@
 [
   {
     "name": "background",
-    "property": "netbeans.codingassistant.color.background",
+    "property": "beanbot.color.background",
     "key": "Panel.background",
     "dark": "#3C3F41",
     "light": "#ECECEC"
   },
   {
     "name": "foreground",
-    "property": "netbeans.codingassistant.color.foreground",
+    "property": "beanbot.color.foreground",
     "key": "Panel.foreground"
   },
   {
     "name": "selection",
-    "property": "netbeans.codingassistant.color.selection",
+    "property": "beanbot.color.selection",
     "key": "TextArea.selectionBackground",
     "dark": "#4B6EAF",
     "light": "#C5DBFA"
   },
   {
     "name": "accent",
-    "property": "netbeans.codingassistant.color.accent",
+    "property": "beanbot.color.accent",
     "key": "Button.focusColor",
     "dark": "#589DF6",
     "light": "#268BD2"
   },
   {
     "name": "sunkenBackground",
-    "property": "netbeans.codingassistant.color.sunkenBackground",
+    "property": "beanbot.color.sunkenBackground",
     "key": "Panel.background",
     "keyDark": "Editor.background",
     "dark": "#1E1E1E",
@@ -35,87 +35,87 @@
   },
   {
     "name": "bubbleUser",
-    "propertyLight": "netbeans.codingassistant.color.bubbleUserBackground",
-    "propertyDark": "netbeans.codingassistant.color.bubbleUserBackgroundDark",
+    "propertyLight": "beanbot.color.bubbleUserBackground",
+    "propertyDark": "beanbot.color.bubbleUserBackgroundDark",
     "dark": "#2D2A23",
     "light": "#E9E8E2"
   },
   {
     "name": "bubbleAssistant",
-    "property": "netbeans.codingassistant.color.bubbleAssistant",
+    "property": "beanbot.color.bubbleAssistant",
     "dark": "#2d2d2d",
     "light": "#FBF4E1"
   },
   {
     "name": "bubbleBorder",
-    "property": "netbeans.codingassistant.color.bubbleBorder",
+    "property": "beanbot.color.bubbleBorder",
     "key": "Button.borderColor",
     "dark": "#555555",
     "light": "#C0B8A8"
   },
   {
     "name": "assistantForeground",
-    "property": "netbeans.codingassistant.color.assistantForeground",
+    "property": "beanbot.color.assistantForeground",
     "key": "TextArea.foreground",
     "dark": "#E0E0E0",
     "light": "#1A1A1A"
   },
   {
     "name": "panelHeader",
-    "property": "netbeans.codingassistant.color.panelHeader",
+    "property": "beanbot.color.panelHeader",
     "key": "Panel.background",
     "dark": "#3C3F41",
     "light": "#ECECEC"
   },
   {
     "name": "base1",
-    "property": "netbeans.codingassistant.color.base1",
+    "property": "beanbot.color.base1",
     "key": "Label.foreground",
     "dark": "#BBBFBF",
     "light": "#333333"
   },
   {
     "name": "base2",
-    "property": "netbeans.codingassistant.color.base2",
+    "property": "beanbot.color.base2",
     "key": "controlShadow",
     "dark": "#636569",
     "light": "#A0A0A0"
   },
   {
     "name": "yellow",
-    "property": "netbeans.codingassistant.color.yellow",
+    "property": "beanbot.color.yellow",
     "key": "ComboBox.selectionBackground",
     "dark": "#D4A017",
     "light": "#FFD700"
   },
   {
     "name": "codeBackground",
-    "property": "netbeans.codingassistant.color.codeBackground",
+    "property": "beanbot.color.codeBackground",
     "key": "Terminal.background",
     "fallback": "#1e1f22"
   },
   {
     "name": "codeForeground",
-    "property": "netbeans.codingassistant.color.codeForeground",
+    "property": "beanbot.color.codeForeground",
     "key": "Terminal.foreground",
     "fallback": "#bcbec4"
   },
   {
     "name": "codeSelection",
-    "property": "netbeans.codingassistant.color.codeSelection",
+    "property": "beanbot.color.codeSelection",
     "key": "TextArea.selectionBackground",
     "fallback": "#353739"
   },
   {
     "name": "headerForeground",
-    "property": "netbeans.codingassistant.color.headerForeground",
+    "property": "beanbot.color.headerForeground",
     "key": "Label.foreground",
     "dark": "#E0E0E0",
     "light": "#1A1A1A"
   },
   {
     "name": "errorBackground",
-    "property": "netbeans.codingassistant.color.errorBackground",
+    "property": "beanbot.color.errorBackground",
     "keyDark": "OptionPane.errorBackground",
     "keyLight": "OptionPane.warningBackground",
     "dark": "#401010",
@@ -123,28 +123,28 @@
   },
   {
     "name": "codeHeaderBackground",
-    "property": "netbeans.codingassistant.color.codeHeaderBackground",
+    "property": "beanbot.color.codeHeaderBackground",
     "key": "TableHeader.background",
     "dark": "#323232",
     "light": "#E0DAD0"
   },
   {
     "name": "codeHeaderForeground",
-    "property": "netbeans.codingassistant.color.codeHeaderForeground",
+    "property": "beanbot.color.codeHeaderForeground",
     "key": "TableHeader.foreground",
     "dark": "#BBBFBF",
     "light": "#333333"
   },
   {
     "name": "codeHeaderBorder",
-    "property": "netbeans.codingassistant.color.codeHeaderBorder",
+    "property": "beanbot.color.codeHeaderBorder",
     "key": "Button.borderColor",
     "dark": "#AAAAAA",
     "light": "#333333"
   },
   {
     "name": "thinkingHeaderBackground",
-    "property": "netbeans.codingassistant.color.thinkingHeaderBackground",
+    "property": "beanbot.color.thinkingHeaderBackground",
     "keyDark": "Panel.background",
     "keyLight": "Panel.background",
     "dark": "#3C3F41",
@@ -152,163 +152,163 @@
   },
   {
     "name": "thinkingHeaderForeground",
-    "property": "netbeans.codingassistant.color.thinkingHeaderForeground",
+    "property": "beanbot.color.thinkingHeaderForeground",
     "key": "Label.foreground",
     "dark": "#BBBFBF",
     "light": "#333333"
   },
   {
     "name": "toolForeground",
-    "property": "netbeans.codingassistant.color.toolForeground",
+    "property": "beanbot.color.toolForeground",
     "key": "Label.disabledForeground",
     "dark": "#9CA3AF",
     "light": "#777777"
   },
   {
     "name": "permissionBg",
-    "property": "netbeans.codingassistant.color.permissionBg",
+    "property": "beanbot.color.permissionBg",
     "dark": "#1E222A",
     "light": "#FFFFFF"
   },
   {
     "name": "permissionBorder",
-    "property": "netbeans.codingassistant.color.permissionBorder",
+    "property": "beanbot.color.permissionBorder",
     "key": "Button.focusColor",
     "dark": "#589DF6",
     "light": "#268BD2"
   },
   {
     "name": "permissionAccent",
-    "property": "netbeans.codingassistant.color.permissionAccent",
+    "property": "beanbot.color.permissionAccent",
     "dark": "#F59E0B",
     "light": "#D97706"
   },
   {
     "name": "permissionFilename",
-    "property": "netbeans.codingassistant.color.permissionFilename",
+    "property": "beanbot.color.permissionFilename",
     "dark": "#E2E8F0",
     "light": "#0F172A"
   },
   {
     "name": "permissionPath",
-    "property": "netbeans.codingassistant.color.permissionPath",
+    "property": "beanbot.color.permissionPath",
     "dark": "#94A3B8",
     "light": "#475569"
   },
   {
     "name": "permissionTitle",
-    "property": "netbeans.codingassistant.color.permissionTitle",
+    "property": "beanbot.color.permissionTitle",
     "dark": "#F8FAFC",
     "light": "#0F172A"
   },
   {
     "name": "tableBackground",
-    "property": "netbeans.codingassistant.color.tableBackground",
+    "property": "beanbot.color.tableBackground",
     "dark": "#3A3028",
     "light": "#FBF4E1"
   },
   {
     "name": "tableHeaderBackground",
-    "property": "netbeans.codingassistant.color.tableHeaderBackground",
+    "property": "beanbot.color.tableHeaderBackground",
     "dark": "#201C18",
     "light": "#E0DAD0"
   },
   {
     "name": "tableBorder",
-    "property": "netbeans.codingassistant.color.tableBorder",
+    "property": "beanbot.color.tableBorder",
     "key": "controlShadow",
     "dark": "#3A2C20",
     "light": "#B8B0A0"
   },
   {
     "name": "tableRowAlternate",
-    "property": "netbeans.codingassistant.color.tableRowAlternate",
+    "property": "beanbot.color.tableRowAlternate",
     "dark": "#443A2E",
     "light": "#F0E9DB"
   },
   {
     "name": "mutedForeground",
-    "property": "netbeans.codingassistant.color.mutedForeground",
+    "property": "beanbot.color.mutedForeground",
     "key": "Label.disabledForeground",
     "dark": "#888888",
     "light": "#888888"
   },
   {
     "name": "placeholderForeground",
-    "property": "netbeans.codingassistant.color.placeholderForeground",
+    "property": "beanbot.color.placeholderForeground",
     "dark": "#969696",
     "light": "#969696"
   },
   {
     "name": "collapsedHeaderForeground",
-    "property": "netbeans.codingassistant.color.collapsedHeaderForeground",
+    "property": "beanbot.color.collapsedHeaderForeground",
     "dark": "#969696",
     "light": "#969696"
   },
   {
     "name": "secondary2",
-    "property": "netbeans.codingassistant.color.secondary2",
+    "property": "beanbot.color.secondary2",
     "key": "Label.disabledForeground",
     "dark": "#9CA3AF",
     "light": "#777777"
   },
   {
     "name": "inlineCodeForeground",
-    "property": "netbeans.codingassistant.color.inlineCodeForeground",
+    "property": "beanbot.color.inlineCodeForeground",
     "dark": "#FFFFFF",
     "light": "#000000"
   },
   {
     "name": "permissionGrantFg",
-    "property": "netbeans.codingassistant.color.permissionGrantFg",
+    "property": "beanbot.color.permissionGrantFg",
     "key": "Button.foreground",
     "dark": "#81C784",
     "light": "#2E7D32"
   },
   {
     "name": "permissionGrantBg",
-    "property": "netbeans.codingassistant.color.permissionGrantBg",
+    "property": "beanbot.color.permissionGrantBg",
     "key": "Button.background",
     "dark": "#1B3A1D",
     "light": "#E8F5E9"
   },
   {
     "name": "permissionGrantBorder",
-    "property": "netbeans.codingassistant.color.permissionGrantBorder",
+    "property": "beanbot.color.permissionGrantBorder",
     "key": "Button.borderColor",
     "dark": "#66BB6A",
     "light": "#4CAF50"
   },
   {
     "name": "permissionDenyFg",
-    "property": "netbeans.codingassistant.color.permissionDenyFg",
+    "property": "beanbot.color.permissionDenyFg",
     "key": "Button.foreground",
     "dark": "#FCA5A5",
     "light": "#991B1B"
   },
   {
     "name": "permissionDenyBg",
-    "property": "netbeans.codingassistant.color.permissionDenyBg",
+    "property": "beanbot.color.permissionDenyBg",
     "key": "Button.background",
     "dark": "#451212",
     "light": "#FEE2E2"
   },
   {
     "name": "permissionDenyBorder",
-    "property": "netbeans.codingassistant.color.permissionDenyBorder",
+    "property": "beanbot.color.permissionDenyBorder",
     "key": "Button.borderColor",
     "dark": "#F87171",
     "light": "#FEE2E2"
   },
   {
     "name": "activityAccent",
-    "property": "netbeans.codingassistant.color.activityAccent",
+    "property": "beanbot.color.activityAccent",
     "dark": "#589DF6",
     "light": "#268BD2"
   },
   {
     "name": "scrollButtonColor",
-    "property": "netbeans.codingassistant.color.scrollButtonColor",
+    "property": "beanbot.color.scrollButtonColor",
     "dark": "#2962FF",
     "light": "#2962FF"
   }

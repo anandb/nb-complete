@@ -23,6 +23,7 @@ import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.PreferenceKeys;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.BinaryResolver;
+import github.anandb.netbeans.support.FsWriteSettings;
 import github.anandb.netbeans.support.MapperSupplier;
 import github.anandb.netbeans.support.ProcessTerminator;
 
@@ -218,13 +219,13 @@ class ServerProcessLifecycle {
     }
 
     private void initializeProtocol() {
+        Map<String, Object> fsCaps = new java.util.HashMap<>();
+        fsCaps.put("readTextFile", true);
+        fsCaps.put("writeTextFile", FsWriteSettings.isEnabled());
         Map<String, Object> params = Map.of(
                 "protocolVersion", 1,
                 "clientCapabilities", Map.of(
-                        "fs", Map.of(
-                        "readTextFile", true,
-                        "writeTextFile", true
-                        ),
+                        "fs", fsCaps,
                         "terminal", false
                 )
         );

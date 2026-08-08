@@ -41,9 +41,9 @@ import org.openide.util.NbPreferences;
 public class UIUtils {
 
     // --- font stacks (merged from FontStacks) --------------------------------
-    // Override via system properties (aligned with existing netbeans.codingassistant.* namespace)
-    private static final String FONT_OVERRIDE = System.getProperty("netbeans.codingassistant.font.family");
-    private static final String MONO_OVERRIDE = System.getProperty("netbeans.codingassistant.mono.font.family");
+    // Override via system properties (beanbot.* namespace)
+    private static final String FONT_OVERRIDE = System.getProperty("beanbot.font.family");
+    private static final String MONO_OVERRIDE = System.getProperty("beanbot.mono.font.family");
 
     public static final String FONT_STACK = FONT_OVERRIDE != null
             ? "'" + FONT_OVERRIDE + "'"
@@ -283,7 +283,7 @@ public class UIUtils {
      */
     public static class WrappingComboBox<E> extends JComboBox<E> {
         private static final long serialVersionUID = 1L;
-        
+
         @Override
         public void processKeyEvent(KeyEvent e) {
             if (e.getID() == KeyEvent.KEY_PRESSED) {

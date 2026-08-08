@@ -35,7 +35,7 @@ public final class GlobalOpencodeConfig {
     private static final String FILE_JSONC = "opencode.jsonc";
     private static final String TEMPLATE_RESOURCE = "/github/anandb/netbeans/support/opencode.json.template";
     /** Test seam: overrides the config base dir (see {@link #configDir()}). */
-    static final String CONFIG_HOME_PROP = "github.anandb.netbeans.opencodeConfigHome";
+    static final String CONFIG_HOME_PROP = "beanbot.opencode.config-home";
 
     /** Outcome of {@link #evaluate()} used to decide whether to offer setup. */
     public enum State {

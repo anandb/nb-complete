@@ -68,5 +68,13 @@ public final class PreferenceKeys {
     public static final String MINI_ASSISTANT_WIDTH = "miniAssistant.width";
     public static final String MINI_ASSISTANT_HEIGHT = "miniAssistant.height";
     public static final String MINI_ASSISTANT_INPUT_HEIGHT = "miniAssistant.inputHeight";
+
+    /**
+     * System property ({@code -D}) that enables the {@code fs/writeTextFile} /
+     * {@code fs/write_text_file} tools. Disabled by default, so the plugin
+     * neither advertises the write capability nor performs writes. When a write
+     * call is made while disabled the request is rejected with an error.
+     */
+    public static final String FS_WRITE_ENABLED_PROP = "beanbot.fs.write.enabled";
 }
 

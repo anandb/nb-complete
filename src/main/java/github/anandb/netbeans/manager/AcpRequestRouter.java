@@ -26,7 +26,9 @@ import javax.swing.SwingUtilities;
 
 import github.anandb.netbeans.contract.PermissionHandler;
 import github.anandb.netbeans.project.ACPProjectManager;
+import github.anandb.netbeans.support.FsWriteSettings;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.PreferenceKeys;
 import github.anandb.netbeans.support.MapperSupplier;
 import github.anandb.netbeans.support.ToolDataExtractor;
 import org.netbeans.api.project.Project;
@@ -166,6 +168,15 @@ class AcpRequestRouter {
     }
 
     CompletableFuture<JsonNode> handleWriteTextFile(JsonNode params) {
+        // fs/write tools are disabled by default; reject early so no work runs
+        // even if a server ignores the (un)advertised capability.
+        if (!FsWriteSettings.isEnabled()) {
+            LOG.log(Level.FINE, "Rejected fs/writeTextFile — writing is disabled (system property {0})",
+                    PreferenceKeys.FS_WRITE_ENABLED_PROP);
+            return CompletableFuture.failedFuture(new RuntimeException(
+                    NbBundle.getMessage(ProcessManager.class, "ERR_WriteDisabled")));
+        }
+
         String filePath = params.has("filePath") ? params.get("filePath").asText()
                 : params.has("path") ? params.get("path").asText() : null;
         String content = params.has("content") ? params.get("content").asText() : "";
