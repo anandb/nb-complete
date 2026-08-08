@@ -526,7 +526,8 @@ public class ChatThreadPanel extends JPanel {
     }
 
     public void addPermissionResult(String statusText, boolean allowed) {
-        final String displayStatusText = "Allow once".equalsIgnoreCase(statusText) ? "Allowed Once" : statusText;
+        final String displayStatusText = "Allow once".equalsIgnoreCase(statusText)
+                ? NbBundle.getMessage(ChatThreadPanel.class, "MSG_PermissionAllowedOnce") : statusText;
         SwingUtilities.invokeLater(() -> {
             ColorTheme theme = ThemeManager.getCurrentTheme();
             java.awt.Color bg = allowed ? theme.permissionGrantBg() : theme.permissionDenyBg();

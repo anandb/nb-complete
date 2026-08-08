@@ -55,7 +55,8 @@ class MissingBinaryBubble extends JPanel {
         titleLabel.setFont(ThemeManager.getFont().deriveFont(Font.BOLD, ThemeManager.getFont().getSize() + 4f));
         titleLabel.setForeground(theme.foreground());
 
-        JButton settingsBtn = UIUtils.createToolbarButton("settings.svg", 32, "Open Settings", e -> {
+        JButton settingsBtn = UIUtils.createToolbarButton("settings.svg", 32,
+            NbBundle.getMessage(MissingBinaryBubble.class, "MissingBinaryBubble.Button.Settings"), e -> {
             OptionsDisplayer.getDefault().open("github-anandb-netbeans-ui-ACPOptionsPanelController");
         });
         settingsBtn.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));

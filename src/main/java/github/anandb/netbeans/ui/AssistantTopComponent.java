@@ -219,16 +219,18 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         // Add rocket (OpenCode Go) button to the left of the attachment button
         int iconSize = PluginSettings.getToolbarIconSize();
         rocketBtn = UIUtils.createToolbarButton("rocket-ship.svg", iconSize,
-                "Sign up for OpenCode Go, Referral Link", e -> {
+                NbBundle.getMessage(AssistantTopComponent.class, "TT_OpenCodeGo"), e -> {
             BrowserUtils.openOrCopyUrl(
                     "https://opencode.ai/go?ref=DWTNHGN9KX", null, null);
         });
-        rocketBtn.setVisible(false);
+        // The rocket button is always visible, regardless of the options panel
+        // collapse state, so it must not be hidden by setOptionsPanelVisible().
+        rocketBtn.setVisible(true);
         layoutBuilder.getRightStatusPanel().add(rocketBtn, 0);
 
         // Add token usage button after the rocket button
         JButton tokenUsageBtn = UIUtils.createToolbarButton("currency.svg", iconSize,
-                "Token Stats", e -> {
+                NbBundle.getMessage(AssistantTopComponent.class, "TT_TokenStats"), e -> {
             Window win = SwingUtilities.getWindowAncestor(AssistantTopComponent.this);
             if (win instanceof Frame frame) {
                 TokenUsageDialog.show(frame);
@@ -567,7 +569,6 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
         configPanelController.getComponent().setVisible(visible);
         toggleOptionsBtn.setIcon(ThemeManager.getIcon(visible ? "arrow-down.svg" : "settings.svg", 25));
-        rocketBtn.setVisible(visible);
         
         configPanelController.getModelCombo().setVisible(visible);
         configPanelController.getCopyModelBtn().setVisible(visible);
@@ -608,13 +609,16 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         // If messages are being trimmed, ask user whether to show all first.
         if (!chatPanel.isKeepOlderMessages()) {
             int choice = javax.swing.JOptionPane.showOptionDialog(this,
-                    "Some messages may be hidden. What would you like to export?",
-                    "Export Conversation",
+                    NbBundle.getMessage(AssistantTopComponent.class, "MSG_ExportPrompt"),
+                    NbBundle.getMessage(AssistantTopComponent.class, "TITLE_ExportConversation"),
                     javax.swing.JOptionPane.DEFAULT_OPTION,
                     javax.swing.JOptionPane.QUESTION_MESSAGE,
                     null,
-                    new Object[]{"Export displayed messages", "Show all & export messages"},
-                    "Export displayed messages");
+                    new Object[]{
+                        NbBundle.getMessage(AssistantTopComponent.class, "BTN_ExportDisplayed"),
+                        NbBundle.getMessage(AssistantTopComponent.class, "BTN_ExportAll")
+                    },
+                    NbBundle.getMessage(AssistantTopComponent.class, "BTN_ExportDisplayed"));
             if (choice == 1) {
                 // Reload then export via flush timer callback.
                 pendingExportFormat = format;
