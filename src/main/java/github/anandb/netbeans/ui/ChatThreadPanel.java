@@ -4,8 +4,10 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
+import java.awt.Font;
 import java.awt.KeyboardFocusManager;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
@@ -39,6 +41,8 @@ import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import javax.swing.border.EmptyBorder;
+import javax.swing.event.HyperlinkEvent;
+import java.util.logging.Level;
 
 import github.anandb.netbeans.contract.PinnedMessageControl;
 import github.anandb.netbeans.contract.SessionControl;
@@ -530,9 +534,9 @@ public class ChatThreadPanel extends JPanel {
                 ? NbBundle.getMessage(ChatThreadPanel.class, "MSG_PermissionAllowedOnce") : statusText;
         SwingUtilities.invokeLater(() -> {
             ColorTheme theme = ThemeManager.getCurrentTheme();
-            java.awt.Color bg = allowed ? theme.permissionGrantBg() : theme.permissionDenyBg();
-            java.awt.Color fg = allowed ? theme.permissionGrantFg() : theme.permissionDenyFg();
-            java.awt.Color border = allowed ? theme.permissionGrantBorder() : theme.permissionDenyBorder();
+            Color bg = allowed ? theme.permissionGrantBg() : theme.permissionDenyBg();
+            Color fg = allowed ? theme.permissionGrantFg() : theme.permissionDenyFg();
+            Color border = allowed ? theme.permissionGrantBorder() : theme.permissionDenyBorder();
 
             // Merge consecutive same-allowed results into a single bubble
             if (lastPermissionLabel != null && lastPermissionAllowed == allowed
@@ -550,7 +554,7 @@ public class ChatThreadPanel extends JPanel {
                     ThemeManager.getIcon(allowed ? "check.svg" : "x.svg", 16),
                     SwingConstants.LEFT);
             lbl.setIconTextGap(8);
-            lbl.setFont(lbl.getFont().deriveFont(java.awt.Font.BOLD));
+            lbl.setFont(lbl.getFont().deriveFont(Font.BOLD));
             lbl.setForeground(fg);
             lbl.setOpaque(true);
             lbl.setBackground(bg);
@@ -570,7 +574,7 @@ public class ChatThreadPanel extends JPanel {
             wrapper.setBorder(BorderFactory.createEmptyBorder(4, 20, 4, 20));
             wrapper.setAlignmentX(Component.LEFT_ALIGNMENT);
             wrapper.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
-            wrapper.add(rp, java.awt.BorderLayout.CENTER);
+            wrapper.add(rp, BorderLayout.CENTER);
 
             messagesContainer.add(wrapper);
             messagesContainer.add(Box.createVerticalStrut(4));
@@ -636,11 +640,11 @@ public class ChatThreadPanel extends JPanel {
             text.setFocusable(false);
             text.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
             text.addHyperlinkListener(e -> {
-                if (e.getEventType() == javax.swing.event.HyperlinkEvent.EventType.ACTIVATED) {
+                if (e.getEventType() == HyperlinkEvent.EventType.ACTIVATED) {
                     try {
-                        java.awt.Desktop.getDesktop().browse(e.getURL().toURI());
+                        Desktop.getDesktop().browse(e.getURL().toURI());
                     } catch (Exception ex) {
-                        LOG.log(java.util.logging.Level.WARNING, "Failed to open link", ex);
+                        LOG.log(Level.WARNING, "Failed to open link", ex);
                     }
                 }
             });

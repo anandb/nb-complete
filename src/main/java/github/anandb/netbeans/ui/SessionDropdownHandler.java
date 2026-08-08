@@ -5,6 +5,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.event.PopupMenuEvent;
 import javax.swing.event.PopupMenuListener;
 import github.anandb.netbeans.model.SessionItem;
+import github.anandb.netbeans.support.Logger;
 
 import github.anandb.netbeans.ui.platform.PlatformBridge;
 import github.anandb.netbeans.ui.platform.SessionService;
@@ -47,7 +48,7 @@ public class SessionDropdownHandler {
                     lastSessionSwitch[0] = now;
                     boolean success = sessionService.get().loadSession(currentId);
                     if (!success) {
-                        github.anandb.netbeans.support.Logger.from(SessionDropdownHandler.class)
+                        Logger.from(SessionDropdownHandler.class)
                                 .warn("Failed to load session {0} from dropdown", currentId);
                         SwingUtilities.invokeLater(() -> sessionDropdown.setSelectedItem(prePopupSession[0]));
                     }

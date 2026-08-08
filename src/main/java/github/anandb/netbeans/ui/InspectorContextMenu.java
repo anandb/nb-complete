@@ -7,9 +7,12 @@ import java.awt.event.MouseEvent;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.Set;
 import java.util.WeakHashMap;
 import javax.swing.JTree;
+import javax.swing.SwingUtilities;
+import javax.swing.Timer;
 import org.netbeans.spi.editor.hints.ErrorDescription;
 import org.openide.filesystems.FileUtil;
 import org.openide.modules.OnStart;
@@ -35,7 +38,7 @@ public class InspectorContextMenu implements Runnable, PropertyChangeListener {
     private static final String INSPECTOR_TC_ID = "AnalysisResultTopComponent"; // NOI18N
 
     /** Trees we already hooked, keyed weakly so we never double-install. */
-    private static final Set<JTree> HOOKED = java.util.Collections.newSetFromMap(new WeakHashMap<JTree, Boolean>());
+    private static final Set<JTree> HOOKED = Collections.newSetFromMap(new WeakHashMap<JTree, Boolean>());
 
     private boolean registered;
 
@@ -46,7 +49,7 @@ public class InspectorContextMenu implements Runnable, PropertyChangeListener {
             TopComponent.getRegistry().addPropertyChangeListener(this);
             // @OnStart runs on a non-EDT startup thread; defer the component
             // tree access to the EDT.
-            javax.swing.SwingUtilities.invokeLater(this::hookIfOpen);
+            SwingUtilities.invokeLater(this::hookIfOpen);
         }
     }
 
@@ -79,14 +82,14 @@ public class InspectorContextMenu implements Runnable, PropertyChangeListener {
         if (!tc.isOpened() || attempt >= HOOK_RETRY_MAX) {
             return;
         }
-        javax.swing.SwingUtilities.invokeLater(() -> {
+        SwingUtilities.invokeLater(() -> {
             JTree tree = findTree(tc);
             if (tree != null) {
                 if (HOOKED.add(tree)) {
                     tree.addMouseListener(new PopupHandler(tree));
                 }
             } else {
-                javax.swing.Timer timer = new javax.swing.Timer(HOOK_RETRY_MS, e -> retryHook(tc, attempt + 1));
+                Timer timer = new Timer(HOOK_RETRY_MS, e -> retryHook(tc, attempt + 1));
                 timer.setRepeats(false);
                 timer.start();
             }

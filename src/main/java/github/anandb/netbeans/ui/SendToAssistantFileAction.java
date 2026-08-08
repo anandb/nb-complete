@@ -6,6 +6,7 @@ import org.openide.awt.ActionReference;
 import org.openide.awt.ActionReferences;
 import org.openide.awt.ActionRegistration;
 import org.openide.filesystems.FileObject;
+import org.openide.util.HelpCtx;
 import org.openide.util.NbBundle;
 import org.openide.util.actions.NodeAction;
 import org.openide.nodes.Node;
@@ -49,8 +50,8 @@ public final class SendToAssistantFileAction extends NodeAction {
     }
 
     @Override
-    public org.openide.util.HelpCtx getHelpCtx() {
-        return org.openide.util.HelpCtx.DEFAULT_HELP;
+    public HelpCtx getHelpCtx() {
+        return HelpCtx.DEFAULT_HELP;
     }
 
     @Override

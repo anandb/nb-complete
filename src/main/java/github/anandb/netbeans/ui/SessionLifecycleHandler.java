@@ -566,7 +566,7 @@ public class SessionLifecycleHandler implements SessionListener {
         SwingUtilities.invokeLater(() -> {
             inputArea.setText("");
             cwdLabelUpdater.accept("");
-            github.anandb.netbeans.ui.MiniAssistantDialog.getInstance().dispose();
+            MiniAssistantDialog.getInstance().dispose();
         });
     }
 

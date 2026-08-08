@@ -4,6 +4,7 @@ import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.model.SessionConfigOption;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.BiFunction;
 
 /**
  * Write operations for session lifecycle management.
@@ -37,7 +38,7 @@ public interface SessionControl extends SessionQuery {
      *  runs on the async thread — it MUST block until configuration is complete.
      *  Intended for showing a modal config dialog before preamble proceeds. */
     void setBeforePreambleHandler(
-            java.util.function.BiFunction<String, List<SessionConfigOption>, CompletableFuture<Void>> handler);
+            BiFunction<String, List<SessionConfigOption>, CompletableFuture<Void>> handler);
 
     /** Creates a new session in the given directory (convenience). */
     void createNewSession(String explicitCwd);

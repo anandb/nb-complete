@@ -9,6 +9,7 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.util.Collections;
 import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.regex.Pattern;
@@ -54,7 +55,7 @@ public class TestResultsContextMenu implements Runnable, PropertyChangeListener,
     private static final Pattern HTML_APOS = Pattern.compile("&#39;");
 
     /** Trees we already hooked, keyed weakly so we never double-install. */
-    private static final Set<JTree> HOOKED = java.util.Collections.newSetFromMap(new WeakHashMap<JTree, Boolean>());
+    private static final Set<JTree> HOOKED = Collections.newSetFromMap(new WeakHashMap<JTree, Boolean>());
 
     private boolean registered;
     private JTabbedPane tabPane;

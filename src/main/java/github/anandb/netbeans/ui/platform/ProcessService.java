@@ -1,5 +1,7 @@
 package github.anandb.netbeans.ui.platform;
 
+import github.anandb.netbeans.contract.ProcessControl;
+
 /**
  * Access seam for the NetBeans {@code ProcessControl} service. Hides the
  * {@code Lookup.getDefault().lookup(ProcessControl.class)} call so DSL-bound
@@ -8,5 +10,5 @@ package github.anandb.netbeans.ui.platform;
  * Swing-free.
  */
 public interface ProcessService {
-    github.anandb.netbeans.contract.ProcessControl get();
+    ProcessControl get();
 }

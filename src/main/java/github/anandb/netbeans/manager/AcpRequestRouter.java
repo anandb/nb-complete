@@ -3,6 +3,7 @@ package github.anandb.netbeans.manager;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import java.io.File;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.concurrent.CompletableFuture;
@@ -12,6 +13,7 @@ import javax.swing.text.Document;
 
 import org.openide.cookies.EditorCookie;
 import org.openide.filesystems.FileObject;
+import org.openide.filesystems.FileSystem;
 import org.openide.filesystems.FileUtil;
 import org.openide.loaders.DataObject;
 import org.openide.util.NbBundle;
@@ -22,6 +24,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import javax.swing.SwingUtilities;
 
+import github.anandb.netbeans.contract.PermissionHandler;
 import github.anandb.netbeans.project.ACPProjectManager;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.MapperSupplier;
@@ -31,12 +34,12 @@ import org.netbeans.api.project.Project;
 class AcpRequestRouter {
     private static final Logger LOG = Logger.from(AcpRequestRouter.class);
     private static final ObjectMapper MAPPER = MapperSupplier.get();
-    private volatile github.anandb.netbeans.contract.PermissionHandler permissionHandler;
+    private volatile PermissionHandler permissionHandler;
 
     AcpRequestRouter() {
     }
 
-    void setPermissionHandler(github.anandb.netbeans.contract.PermissionHandler handler) {
+    void setPermissionHandler(PermissionHandler handler) {
         this.permissionHandler = handler;
     }
 
@@ -204,7 +207,7 @@ class AcpRequestRouter {
                 if (wasNew) {
                     // New files: write final content first, then open cleanly.
                     // This avoids the "modified externally" reload prompt.
-                    try (java.io.OutputStream os = fo.getOutputStream()) {
+                    try (OutputStream os = fo.getOutputStream()) {
                         os.write(content.getBytes(StandardCharsets.UTF_8));
                     }
                 }
@@ -221,10 +224,10 @@ class AcpRequestRouter {
                 }
                 ec.open();
                 if (!ctx.wasNew) {
-                    javax.swing.text.Document doc = ec.openDocument();
+                    Document doc = ec.openDocument();
                     doc.remove(0, doc.getLength());
                     doc.insertString(0, content, null);
-                    FileUtil.runAtomicAction((org.openide.filesystems.FileSystem.AtomicAction) () -> ec.saveDocument());
+                    FileUtil.runAtomicAction((FileSystem.AtomicAction) () -> ec.saveDocument());
                 }
                 LOG.fine("Wrote fs/writeTextFile via editor: {0}", filePath);
                 result.complete(MAPPER.createObjectNode());

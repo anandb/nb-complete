@@ -3,6 +3,7 @@ package github.anandb.netbeans.manager;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
@@ -64,6 +65,6 @@ final class SessionRpcClient {
                 "sessionId", sessionId,
                 "configId", configId,
                 "value", value
-        ), 30, java.util.concurrent.TimeUnit.SECONDS);
+        ), 30, TimeUnit.SECONDS);
     }
 }

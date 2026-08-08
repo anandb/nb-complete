@@ -1,5 +1,6 @@
 package github.anandb.netbeans.manager;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -162,7 +163,7 @@ public class DefaultSlashCommandInterceptor implements SlashCommandInterceptor {
         SlashCommandCallback cb = callback;
         if (cb != null) {
             cb.displayToolMessage("title", "Updating title...");
-            javax.swing.SwingUtilities.invokeLater(cb::onAsyncSendStarted);
+            SwingUtilities.invokeLater(cb::onAsyncSendStarted);
         }
 
         // Send as regular message — AI needs conversation context to suggest a title
@@ -195,6 +196,6 @@ public class DefaultSlashCommandInterceptor implements SlashCommandInterceptor {
 
     @Override
     public Map<String, CommandInfo> getCommands() {
-        return java.util.Collections.unmodifiableMap(commands);
+        return Collections.unmodifiableMap(commands);
     }
 }

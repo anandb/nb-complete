@@ -1,5 +1,7 @@
 package github.anandb.netbeans.manager;
 
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -211,13 +213,13 @@ public class AcpProtocolClient implements Closeable {
     }
 
     private void readLoop() {
-        try (com.fasterxml.jackson.core.JsonParser parser = MAPPER.getFactory().createParser(inputStream)) {
+        try (JsonParser parser = MAPPER.getFactory().createParser(inputStream)) {
             while (running && !parser.isClosed()) {
-                com.fasterxml.jackson.core.JsonToken token = parser.nextToken();
+                JsonToken token = parser.nextToken();
                 if (token == null) {
                     break;
                 }
-                if (token == com.fasterxml.jackson.core.JsonToken.START_OBJECT) {
+                if (token == JsonToken.START_OBJECT) {
                     try {
                         JsonNode node = MAPPER.readTree(parser);
                         lastDataTime = System.nanoTime();

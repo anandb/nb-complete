@@ -7,6 +7,8 @@ import github.anandb.netbeans.project.ACPProjectManager;
 import github.anandb.netbeans.support.MapperSupplier;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 import org.openide.filesystems.FileUtil;
@@ -37,7 +39,7 @@ public class ProjectToolProvider {
                     @Override
                     public Map<String, Object> execute(EmptyToolInput args) throws Exception {
                         var projects = ACPProjectManager.getInstance().getAllOpenProjects();
-                        java.util.List<String> paths = new java.util.ArrayList<>();
+                        List<String> paths = new ArrayList<>();
                         if (projects != null) {
                             for (var p : projects) {
                                 if (p == null) continue;

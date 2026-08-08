@@ -52,6 +52,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
 import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
 import javax.swing.JPopupMenu;
 import javax.swing.Timer;
 import javax.swing.border.EmptyBorder;
@@ -608,11 +609,11 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     void exportConversationAs(String format) {
         // If messages are being trimmed, ask user whether to show all first.
         if (!chatPanel.isKeepOlderMessages()) {
-            int choice = javax.swing.JOptionPane.showOptionDialog(this,
+            int choice = JOptionPane.showOptionDialog(this,
                     NbBundle.getMessage(AssistantTopComponent.class, "MSG_ExportPrompt"),
                     NbBundle.getMessage(AssistantTopComponent.class, "TITLE_ExportConversation"),
-                    javax.swing.JOptionPane.DEFAULT_OPTION,
-                    javax.swing.JOptionPane.QUESTION_MESSAGE,
+                    JOptionPane.DEFAULT_OPTION,
+                    JOptionPane.QUESTION_MESSAGE,
                     null,
                     new Object[]{
                         NbBundle.getMessage(AssistantTopComponent.class, "BTN_ExportDisplayed"),

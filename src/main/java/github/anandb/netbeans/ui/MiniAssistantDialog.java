@@ -62,6 +62,8 @@ import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.support.PreferenceKeys;
 import github.anandb.netbeans.support.ShortcutUtils;
+import github.anandb.netbeans.support.ToolCallDiffParser.FileChange;
+import github.anandb.netbeans.support.ToolContextExtractor;
 
 public class MiniAssistantDialog extends JDialog {
 
@@ -890,7 +892,7 @@ public class MiniAssistantDialog extends JDialog {
 
     public void showPermissionRequest(
             String prompt, JsonNode options, CompletableFuture<String> responseFuture, JsonNode toolCall,
-            List<github.anandb.netbeans.support.ToolCallDiffParser.FileChange> fileChanges) {
+            List<FileChange> fileChanges) {
         SwingUtilities.invokeLater(() -> {
             this.activePermissionFuture = responseFuture;
 
@@ -908,7 +910,7 @@ public class MiniAssistantDialog extends JDialog {
             miniPermissionLabel.setText("Permission required: " + toolName);
             miniPermissionLabel.setIcon(ThemeManager.getIcon("shield.svg", 16));
 
-            String contextStr = toolCall != null ? github.anandb.netbeans.support.ToolContextExtractor.extractToolContext(toolCall, 64) : null;
+            String contextStr = toolCall != null ? ToolContextExtractor.extractToolContext(toolCall, 64) : null;
             if (contextStr == null) contextStr = "";
 
             boolean requiresDiff = "edit".equals(toolName)

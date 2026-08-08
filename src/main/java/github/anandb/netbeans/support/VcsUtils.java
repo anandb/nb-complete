@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
 
@@ -59,7 +61,7 @@ public class VcsUtils {
      */
     public static boolean hasUncommittedChanges(VcsInfo vcsInfo) {
         if (vcsInfo == null) return false;
-        
+
         try {
             ProcessBuilder pb;
             if (vcsInfo.type() == VcsType.HG) {
@@ -70,7 +72,7 @@ public class VcsUtils {
             pb.directory(vcsInfo.rootDir());
             pb.redirectErrorStream(true);
             Process p = pb.start();
-            
+
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
@@ -80,7 +82,7 @@ public class VcsUtils {
                     }
                 }
             }
-            
+
             p.waitFor(5, TimeUnit.SECONDS);
             return false;
         } catch (Exception e) {
@@ -91,7 +93,7 @@ public class VcsUtils {
 
     /**
      * Backs up uncommitted changes using git stash or hg shelve.
-     * 
+     *
      * @param vcsInfo the VCS info
      * @return a message describing the backup action, or null if no backup was needed or an error occurred.
      */
@@ -102,17 +104,17 @@ public class VcsUtils {
 
         try {
             File vcsRoot = vcsInfo.rootDir();
-            
+
             if (vcsInfo.type() == VcsType.HG) {
                 return backupMercurial(vcsRoot);
             }
-            
+
             // Get changed files for the git stash message
             ProcessBuilder diffPb = new ProcessBuilder("git", "diff", "--name-only", "HEAD");
             diffPb.directory(vcsRoot);
             diffPb.redirectErrorStream(true);
             Process diffProc = diffPb.start();
-            
+
             List<String> files = new ArrayList<>();
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(diffProc.getInputStream()))) {
                 String line;
@@ -134,7 +136,7 @@ public class VcsUtils {
             if (fileList.isEmpty()) {
                 fileList = "untracked files";
             }
-            
+
             String stashMsg = "beanbot: " + fileList;
 
             // 1. Get HEAD
@@ -151,7 +153,7 @@ public class VcsUtils {
             if (!untracked.isEmpty()) {
                 File tmpIndexU = new File(vcsRoot, ".git/beanbot_tmp_index_u");
                 if (tmpIndexU.exists()) tmpIndexU.delete();
-                
+
                 execGit(vcsRoot, "GIT_INDEX_FILE=.git/beanbot_tmp_index_u", untracked, "git", "update-index", "--add", "--stdin");
                 String uTree = execGit(vcsRoot, "GIT_INDEX_FILE=.git/beanbot_tmp_index_u", null, "git", "write-tree");
                 uCommit = execGit(vcsRoot, null, null, "git", "commit-tree", uTree, "-m", "untracked files on beanbot");
@@ -162,7 +164,7 @@ public class VcsUtils {
             File tmpIndexW = new File(vcsRoot, ".git/beanbot_tmp_index_w");
             File realIndex = new File(vcsRoot, ".git/index");
             if (realIndex.exists()) {
-                java.nio.file.Files.copy(realIndex.toPath(), tmpIndexW.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                Files.copy(realIndex.toPath(), tmpIndexW.toPath(), StandardCopyOption.REPLACE_EXISTING);
             }
             execGit(vcsRoot, "GIT_INDEX_FILE=.git/beanbot_tmp_index_w", null, "git", "add", "-A");
             String wTree = execGit(vcsRoot, "GIT_INDEX_FILE=.git/beanbot_tmp_index_w", null, "git", "write-tree");
@@ -197,7 +199,7 @@ public class VcsUtils {
             return null;
         }
     }
-    
+
     private static String backupMercurial(File vcsRoot) throws Exception {
         // Get changed files for the shelf message
         String hgStatus = execGit(vcsRoot, null, null, "hg", "status", "-amru");
@@ -210,7 +212,7 @@ public class VcsUtils {
                 files.add(new File(path).getName());
             }
         }
-        
+
         String fileList = String.join(", ", files);
         if (lines.length > 3) {
             fileList += "...";
@@ -218,19 +220,19 @@ public class VcsUtils {
         if (fileList.isEmpty()) {
             fileList = "changes";
         }
-        
+
         String shelfMsg = "beanbot: " + fileList;
-        
+
         // Delete existing beanbot-backup shelf to avoid duplicate error
         try {
             execGit(vcsRoot, null, null, "hg", "shelve", "-d", "beanbot-backup");
         } catch (Exception e) {
             // Ignore, shelf probably didn't exist
         }
-        
+
         // Shelve changes while keeping working directory intact
         execGit(vcsRoot, null, null, "hg", "shelve", "--keep", "--addremove", "--name", "beanbot-backup", "-m", shelfMsg);
-        
+
         return shelfMsg;
     }
 

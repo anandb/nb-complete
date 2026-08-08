@@ -2,6 +2,7 @@ package github.anandb.netbeans.ui;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
@@ -21,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
+import java.util.regex.Pattern;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -29,6 +31,7 @@ import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
 import javax.swing.SwingConstants;
 import javax.swing.Scrollable;
 import javax.swing.Timer;
@@ -39,6 +42,7 @@ import github.anandb.netbeans.contract.SessionQuery;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.ToolCallDiffParser;
 import github.anandb.netbeans.support.ToolCallDiffParser.FileChange;
+import github.anandb.netbeans.support.ToolContextExtractor;
 import github.anandb.netbeans.support.WobbleAnimator;
 import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
@@ -158,36 +162,36 @@ final class PermissionRequestPanel extends JPanel {
         }
 
         String context = toolCall != null ? 
-            github.anandb.netbeans.support.ToolContextExtractor.extractToolContext(toolCall, Integer.MAX_VALUE) : null;
+            ToolContextExtractor.extractToolContext(toolCall, Integer.MAX_VALUE) : null;
         String splitToken = "\n<b>Context:</b> <font face=\"monospace\" color=\"#F44336\"></font>\n";
         
         if (context != null && !context.isEmpty() && prompt.contains(splitToken)) {
             // Split the prompt to inject the context label
-            String[] parts = prompt.split(java.util.regex.Pattern.quote(splitToken));
+            String[] parts = prompt.split(Pattern.quote(splitToken));
             promptLabel.setText("<html>" + parts[0].replace("\n", "<br>") + "</html>");
             
-            JPanel contextRow = new JPanel(new java.awt.BorderLayout(4, 0));
+            JPanel contextRow = new JPanel(new BorderLayout(4, 0));
             contextRow.setOpaque(false);
-            contextRow.setAlignmentX(java.awt.Component.LEFT_ALIGNMENT);
+            contextRow.setAlignmentX(Component.LEFT_ALIGNMENT);
             
-            javax.swing.JLabel prefixLabel = new javax.swing.JLabel("<html><b>Context:</b> </html>");
-            prefixLabel.setFont(github.anandb.netbeans.ui.ThemeManager.getFont().deriveFont(java.awt.Font.PLAIN));
+            JLabel prefixLabel = new JLabel("<html><b>Context:</b> </html>");
+            prefixLabel.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN));
             prefixLabel.setForeground(ThemeManager.getCurrentTheme().permissionTitle());
-            contextRow.add(prefixLabel, java.awt.BorderLayout.WEST);
+            contextRow.add(prefixLabel, BorderLayout.WEST);
             
             StartTruncatingLabel contextLabel = new StartTruncatingLabel(context);
-            java.awt.Font baseFont = github.anandb.netbeans.ui.ThemeManager.getFont().deriveFont(java.awt.Font.PLAIN);
-            contextLabel.setFont(new java.awt.Font(java.awt.Font.MONOSPACED, baseFont.getStyle(), baseFont.getSize()));
-            contextLabel.setForeground(new java.awt.Color(0xF44336));
-            contextRow.add(contextLabel, java.awt.BorderLayout.CENTER);
+            Font baseFont = ThemeManager.getFont().deriveFont(Font.PLAIN);
+            contextLabel.setFont(new Font(Font.MONOSPACED, baseFont.getStyle(), baseFont.getSize()));
+            contextLabel.setForeground(new Color(0xF44336));
+            contextRow.add(contextLabel, BorderLayout.CENTER);
             
             promptWrapper.add(contextRow);
             
             if (parts.length > 1) {
                 String suffixHtml = "<html>" + parts[1].replace("\n", "<br>") + "</html>";
                 FitEditorPane suffixLabel = FitEditorPane.createHtmlPane(suffixHtml, null, "system", false);
-                suffixLabel.setBorder(javax.swing.BorderFactory.createEmptyBorder(8, 0, 8, 0));
-                suffixLabel.setFont(github.anandb.netbeans.ui.ThemeManager.getFont().deriveFont(java.awt.Font.PLAIN));
+                suffixLabel.setBorder(BorderFactory.createEmptyBorder(8, 0, 8, 0));
+                suffixLabel.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN));
                 suffixLabel.setForeground(ThemeManager.getCurrentTheme().permissionTitle());
                 promptWrapper.add(suffixLabel);
             }
@@ -492,7 +496,7 @@ final class PermissionRequestPanel extends JPanel {
         JLabel cmdIcon = new JLabel(ThemeManager.getIcon("tool.svg", 14));
         cmdIcon.setVerticalAlignment(SwingConstants.TOP);
         
-        javax.swing.JTextArea cmdText = new javax.swing.JTextArea(command);
+        JTextArea cmdText = new JTextArea(command);
         cmdText.setEditable(false);
         cmdText.setLineWrap(true);
         cmdText.setWrapStyleWord(true);
@@ -516,7 +520,7 @@ final class PermissionRequestPanel extends JPanel {
             wdIcon.setVerticalAlignment(SwingConstants.TOP);
             
             String dispWd = displayPath(workdir);
-            javax.swing.JTextArea wdText = new javax.swing.JTextArea(dispWd);
+            JTextArea wdText = new JTextArea(dispWd);
             wdText.setEditable(false);
             wdText.setLineWrap(true);
             wdText.setWrapStyleWord(true);

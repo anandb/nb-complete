@@ -25,6 +25,7 @@ import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import javax.swing.border.EmptyBorder;
+import java.util.prefs.PreferenceChangeListener;
 
 import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
@@ -80,7 +81,7 @@ final class ChatLayoutBuilder {
     private JButton refreshBtn;
     private JButton exportBtn;
     private JButton launchMiniAssistantBtn;
-    private java.util.prefs.PreferenceChangeListener miniAssistantPrefListener;
+    private PreferenceChangeListener miniAssistantPrefListener;
     private JPanel rightStatusPanel;
     private PermissionRequestPanel permissionPanel;
     private PermissionRequestPanel configConfirmPanel;

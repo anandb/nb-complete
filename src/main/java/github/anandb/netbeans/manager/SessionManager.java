@@ -25,6 +25,7 @@ import java.util.concurrent.TimeUnit;
 
 import java.util.function.Supplier;
 import java.util.concurrent.TimeoutException;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 
 import org.openide.util.NbBundle;
@@ -152,7 +153,7 @@ public class SessionManager implements SessionQuery, SessionControl {
     private final SessionCacheManager cacheManager = new SessionCacheManager();
     private final Consumer<SessionUpdate> sseListener = this::handleSseUpdate;
     private final SessionRpcClient rpcClient;
-    private volatile java.util.function.BiFunction<String, List<SessionConfigOption>, CompletableFuture<Void>> beforePreambleHandler;
+    private volatile BiFunction<String, List<SessionConfigOption>, CompletableFuture<Void>> beforePreambleHandler;
     /** True if a manual reconnect was initiated by the user. */
     private volatile boolean manualReconnectPending;
 
@@ -288,7 +289,7 @@ public class SessionManager implements SessionQuery, SessionControl {
     }
 
     @Override
-    public void setBeforePreambleHandler(java.util.function.BiFunction<String, List<SessionConfigOption>, CompletableFuture<Void>> handler) {
+    public void setBeforePreambleHandler(BiFunction<String, List<SessionConfigOption>, CompletableFuture<Void>> handler) {
         this.beforePreambleHandler = handler;
     }
 

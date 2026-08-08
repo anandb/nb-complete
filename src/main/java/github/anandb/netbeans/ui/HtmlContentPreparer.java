@@ -6,6 +6,7 @@ import com.vladsch.flexmark.parser.Parser;
 import com.vladsch.flexmark.util.data.MutableDataSet;
 
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.TextScanner;
 import static github.anandb.netbeans.ui.UIUtils.MONO_STACK;
 
@@ -129,7 +130,7 @@ public final class HtmlContentPreparer {
         if (fontSizeOverride > 0) {
             fontSize = fontSizeOverride;
         } else {
-            int prefSize = github.anandb.netbeans.support.PluginSettings.getChatFontSize();
+            int prefSize = PluginSettings.getChatFontSize();
             fontSize = (prefSize > 0) ? prefSize : ThemeManager.getFont().getSize() - 2;
         }
         String cacheKey = role + "|" + fontSize + "|" + System.identityHashCode(theme);

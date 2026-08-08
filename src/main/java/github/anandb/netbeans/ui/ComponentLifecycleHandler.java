@@ -21,6 +21,7 @@ import org.openide.DialogDisplayer;
 import org.openide.NotifyDescriptor;
 import org.openide.util.NbBundle;
 import github.anandb.netbeans.contract.SlashCommandCallback;
+import github.anandb.netbeans.contract.SessionControl;
 import github.anandb.netbeans.contract.ToolExecutor;
 import org.openide.util.Lookup;
 import org.openide.util.RequestProcessor;
@@ -248,7 +249,7 @@ public class ComponentLifecycleHandler {
 
             @Override
             public void popupArchiveSession() {
-                var sc = Lookup.getDefault().lookup(github.anandb.netbeans.contract.SessionControl.class);
+                var sc = Lookup.getDefault().lookup(SessionControl.class);
                 if (sc == null) return;
                 String sid = sc.getCurrentSessionId();
                 if (sid != null) {
