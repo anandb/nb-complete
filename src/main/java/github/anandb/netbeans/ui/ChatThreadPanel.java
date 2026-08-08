@@ -90,6 +90,10 @@ public class ChatThreadPanel extends JPanel {
     private volatile boolean allBlocksExpanded = false;
     private volatile boolean keepOlderMessages = false;
     private volatile boolean batchAdding = false;
+    /** True while a chunked load/refresh render is in flight; blocks live
+     *  {@link #drainMessageQueue()} so arriving deltas can't interleave with
+     *  half-drawn history (order correctness). */
+    private volatile boolean loadRenderInProgress = false;
     /** True while the "start a session" hint bubble is shown; reset by clearMessages(). */
     private volatile boolean startSessionHintShown;
     private final JProgressBar sessionProgressBar;
@@ -258,6 +262,12 @@ public class ChatThreadPanel extends JPanel {
     private static final int LOAD_RENDER_BATCH_SIZE = 5;
 
     private void drainMessageQueue() {
+        if (loadRenderInProgress) {
+            // A load render is drawing history across chunks; hold live deltas
+            // queued until it completes, then it kicks the drain.
+            draining = false;
+            return;
+        }
         int count = 0;
         Runnable task;
         while (count < MESSAGE_DRAIN_BATCH_SIZE && (task = messageQueue.poll()) != null) {
@@ -893,7 +903,7 @@ public class ChatThreadPanel extends JPanel {
         sessionLoading = false;
         List<ProcessedMessage> buffer = pendingMessagesBySession.remove(sid);
         if (buffer != null && !buffer.isEmpty()) {
-            renderLoadedInChunks(tailWithPinned(buffer, ProcessedMessage::messageId));
+            renderLoadedInChunks(tailWithPinned(buffer, ProcessedMessage::messageId), null);
         }
 
         // Stale-pin cleanup: remove pins for unseen message IDs. Runs for both paths.
@@ -912,11 +922,28 @@ public class ChatThreadPanel extends JPanel {
      * Each tick draws {@link #LOAD_RENDER_BATCH_SIZE} bubbles, then schedules the
      * next chunk via invokeLater. Batch mode stays on across all chunks, so only
      * one revalidate + scroll happens at the very end (avoids O(N^2)).
+     * <p>
+     * While the chunked render is in flight, live {@link #drainMessageQueue()}
+     * is blocked so freshly-arrived SSE deltas can't interleave with the
+     * half-drawn history (they're drained right after the render settles). The
+     * debounced {@link #flushTimer} is parked for the same reason.
+     *
+     * @param toRender messages to render (already filtered via tailWithPinned);
+     *                 empty list is fine — finalize still runs.
+     * @param onDone   run on the EDT after the final chunk (may be null)
      */
-    private void renderLoadedInChunks(List<ProcessedMessage> toRender) {
-        if (toRender == null || toRender.isEmpty()) {
+    private void renderLoadedInChunks(List<ProcessedMessage> toRender, Runnable onDone) {
+        if (toRender == null) {
+            if (onDone != null) onDone.run();
             return;
         }
+        // Park the debounced flush timer so it can't fire between chunks and
+        // prematurely finalize / trip onMessagesStable. Restarted (if it was
+        // running) once the render settles — matching pre-chunk behavior where
+        // the EDT was blocked for the whole render.
+        final boolean flushTimerWasRunning = flushTimer.isRunning();
+        flushTimer.stop();
+        loadRenderInProgress = true;
         batchAdding = true;
         final int[] offset = {0};
         final Runnable[] chunk = new Runnable[1];
@@ -940,6 +967,18 @@ public class ChatThreadPanel extends JPanel {
                 trimMessages();
                 messagesContainer.revalidate();
                 scrollController.scrollToBottom(true);
+                loadRenderInProgress = false;
+                if (flushTimerWasRunning) {
+                    flushTimer.restart();
+                }
+                if (onDone != null) onDone.run();
+                // Drain any live deltas that queued (but couldn't drain) while
+                // the render was in flight — ordering preserved: full history,
+                // then the new delta(s).
+                if (!messageQueue.isEmpty() && !draining) {
+                    draining = true;
+                    SwingUtilities.invokeLater(this::drainMessageQueue);
+                }
             }
         };
         chunk[0].run();
@@ -982,7 +1021,7 @@ public class ChatThreadPanel extends JPanel {
                         converted.add(pm);
                     }
                 }
-                renderLoadedInChunks(converted);
+                renderLoadedInChunks(converted, null);
             } else {
                 trimMessages();
                 messagesContainer.revalidate();
