@@ -581,6 +581,9 @@ public class ChatThreadPanel extends JPanel {
 
     public void addMissingBinaryBubble(Runnable onGuide, RestartCallback restartCallback) {
         SwingUtilities.invokeLater(() -> {
+            // Clear the thread so this is the only bubble shown.
+            messagesContainer.removeAll();
+            startSessionHintShown = false;
             MissingBinaryBubble bubble = new MissingBinaryBubble(onGuide, restartCallback);
             messagesContainer.add(bubble);
             messagesContainer.add(Box.createVerticalStrut(4));
@@ -593,6 +596,9 @@ public class ChatThreadPanel extends JPanel {
     public void addGlobalConfigBubble(GlobalOpencodeConfig.CheckResult result,
             Runnable onYes, Runnable onNo) {
         SwingUtilities.invokeLater(() -> {
+            // Clear the thread so this is the only bubble shown.
+            messagesContainer.removeAll();
+            startSessionHintShown = false;
             GlobalConfigBubble bubble = new GlobalConfigBubble(result, onYes, onNo);
             messagesContainer.add(bubble);
             messagesContainer.add(Box.createVerticalStrut(4));
