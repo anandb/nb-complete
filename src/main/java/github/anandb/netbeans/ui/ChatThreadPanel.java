@@ -619,14 +619,8 @@ public class ChatThreadPanel extends JPanel {
             String fontFamily = ThemeManager.getFont().getFamily();
             int fontSize = ThemeManager.getFont().getSize() + 1;
             String fg = Integer.toHexString(theme.foreground().getRGB() & 0xFFFFFF);
-            String html = "<html><body><p style='margin: 0; font-family: "
-                    + fontFamily + "; font-size: " + fontSize + "pt; color: #" + fg + ";'>"
-                    + "Click OK to continue. If you already have an account with a model provider, "
-                    + "run <code>opencode auth login</code> in a terminal to add your credentials. "
-                    + "Otherwise, explore the free models available at "
-                    + "<a href='https://opencode.ai/docs/zen/'>Opencode Zen</a>. "
-                    + "Once ready, start a new session using the "
-                    + "<b>New Session/Plus Symbol</b> button in the toolbar.</p></body></html>";
+            String html = NbBundle.getMessage(ChatThreadPanel.class,
+                    "StartSessionHint", fontFamily, fontSize, fg);
             JTextPane text = new JTextPane();
             text.setContentType("text/html");
             text.setText(html);
