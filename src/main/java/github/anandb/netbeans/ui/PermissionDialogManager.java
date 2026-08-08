@@ -37,6 +37,8 @@ final class PermissionDialogManager {
 
     void handlePermissionRequest(String sessionId, JsonNode params,
             CompletableFuture<String> response, Runnable activateCallback) {
+        // Session check runs on any thread — safe to reject unrelated
+        // sessions immediately without hopping to EDT.
         SessionControl sessionControl = sessionService.get();
         String currentId = sessionControl != null ? sessionControl.getCurrentSessionId() : null;
 
@@ -50,6 +52,14 @@ final class PermissionDialogManager {
             LOG.info("Received permission request for unrelated session {0}, rejecting (current is {1})",
                     new Object[] { sessionId, currentId });
             response.complete("reject");
+            return;
+        }
+
+        // The remaining work accesses requestQueue (non-thread-safe) and UI,
+        // so it must run on EDT.
+        if (!SwingUtilities.isEventDispatchThread()) {
+            SwingUtilities.invokeLater(() ->
+                handlePermissionRequest(sessionId, params, response, activateCallback));
             return;
         }
 
@@ -129,12 +139,13 @@ final class PermissionDialogManager {
             }
         };
 
-        SwingUtilities.invokeLater(() -> {
-            requestQueue.offer(new PendingRequest(showTask, response));
-            if (!isRequestShowing) {
-                processNextRequest();
-            }
-        });
+        // Caller is already on EDT (scheduled by AcpRequestRouter via invokeLater).
+        // Avoid a redundant invokeLater that would queue behind streaming updates
+        // and delay the permission panel appearance.
+        requestQueue.offer(new PendingRequest(showTask, response));
+        if (!isRequestShowing) {
+            processNextRequest();
+        }
     }
 
     private void processNextRequest() {

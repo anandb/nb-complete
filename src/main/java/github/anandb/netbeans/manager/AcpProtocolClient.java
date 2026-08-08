@@ -410,7 +410,12 @@ public class AcpProtocolClient implements Closeable {
             return;
         }
 
-        future.whenComplete((result, ex) -> {
+        // Use whenCompleteAsync to ensure the response/error is sent on a
+        // background thread, not EDT. The future chain for permission requests
+        // originates from button clicks on EDT; if writer.flush() blocks
+        // (server pipe buffer full), it would deadlock the EDT — preventing
+        // subsequent permission panels from appearing until Stop is pressed.
+        future.whenCompleteAsync((result, ex) -> {
             if (isPermission) setPermissionRequestPending(false);
             if (ex != null) {
                 if (ex instanceof RequestRejectedException) {

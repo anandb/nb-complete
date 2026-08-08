@@ -34,6 +34,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.SwingConstants;
 import javax.swing.Scrollable;
+import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -199,20 +200,72 @@ final class PermissionRequestPanel extends JPanel {
             promptLabel.setText("<html>" + prompt.replace("\n", "<br>") + "</html>");
         }
 
-        buildContentBlocks(toolCall);
+        contentBlocks.removeAll();
+        currentFileChanges = null;
 
         // Cap scroll height at 80% of the container height to avoid vertical scrolling if possible
         int parentHeight = getParent() != null && getParent().getHeight() > 0 ? getParent().getHeight() : 600;
         int maxH = (int) (parentHeight * 0.8);
         contentScroll.setMaximumSize(new Dimension(Integer.MAX_VALUE, Math.max(maxH, 150)));
 
+        // Build buttons without Show Diff initially — file changes load async
         buttonPanel.removeAll();
         buildButtons(options, responseFuture);
         buttonPanel.revalidate();
         buttonPanel.repaint();
 
+        // Show the panel immediately so the user sees the prompt + buttons
         slideOpen();
         wobbleAnimator.scheduleStart();
+
+        // Load content blocks asynchronously to avoid blocking EDT with file I/O
+        if (toolCall != null) {
+            boolean isExecute = toolCall.has("kind") && "execute".equals(toolCall.get("kind").asText());
+            if (isExecute) {
+                // No file I/O needed — safe to build on EDT
+                buildExecuteContext(toolCall);
+                contentScroll.revalidate();
+            } else {
+                loadContentBlocksAsync(toolCall, options, responseFuture);
+            }
+        }
+    }
+
+    /**
+     * Loads file-change content blocks on a background thread (file I/O),
+     * then populates the UI on EDT. This prevents blocking the EDT when the
+     * permission request involves many or large file diffs.
+     */
+    private void loadContentBlocksAsync(JsonNode toolCall, JsonNode options,
+            CompletableFuture<String> responseFuture) {
+        CompletableFuture<List<FileChange>> prepareFuture =
+            CompletableFuture.supplyAsync(() -> prepareFileChanges(toolCall));
+        prepareFuture.thenAcceptAsync(expanded -> {
+                if (!requestActive) return; // panel was dismissed while loading
+                currentFileChanges = expanded;
+                if (expanded.isEmpty()) {
+                    showUnparseableDiffMessage();
+                } else {
+                    populateFileListUI(expanded);
+                }
+                // Rebuild buttons to show/hide Show Diff button now that
+                // currentFileChanges is populated
+                buttonPanel.removeAll();
+                buildButtons(options, responseFuture);
+                buttonPanel.revalidate();
+                buttonPanel.repaint();
+                contentScroll.revalidate();
+                contentScroll.repaint();
+            }, SwingUtilities::invokeLater)
+            .exceptionally(ex -> {
+                LOG.warn("Failed to load content blocks for diff viewer", ex);
+                SwingUtilities.invokeLater(() -> {
+                    if (!requestActive) return;
+                    showUnparseableDiffMessage();
+                    contentScroll.revalidate();
+                });
+                return null;
+            });
     }
 
     /**
@@ -328,23 +381,15 @@ final class PermissionRequestPanel extends JPanel {
         return btn;
     }
 
-    private void buildContentBlocks(JsonNode toolCall) {
-        contentBlocks.removeAll();
-        currentFileChanges = null;
-        if (toolCall == null) return;
-
-        try {
-            // For execute (bash) tools, show command and workdir inline
-            boolean isExecute = toolCall.has("kind") && "execute".equals(toolCall.get("kind").asText());
-            if (isExecute) {
-                buildExecuteContext(toolCall);
-                return;
-            }
-
+    /**
+     * Runs on a background thread. Parses diff data from the tool call,
+     * reads files from disk to expand fragments into full-file diffs,
+     * and deduplicates. No Swing components are created here.
+     */
+    private List<FileChange> prepareFileChanges(JsonNode toolCall) {
         List<FileChange> fragmentChanges = ToolCallDiffParser.parse(toolCall);
         if (fragmentChanges.isEmpty()) {
-            showUnparseableDiffMessage();
-            return;
+            return List.of();
         }
 
         // Expand each fragment individually (read full file, apply just this
@@ -391,10 +436,14 @@ final class PermissionRequestPanel extends JPanel {
                 dedupedExpanded.add(fc);
             }
         }
-        expanded = dedupedExpanded;
+        return dedupedExpanded;
+    }
 
-        currentFileChanges = expanded;
-
+    /**
+     * Runs on EDT. Builds the file-list UI rows from the pre-computed
+     * FileChange list produced by {@link #prepareFileChanges}.
+     */
+    private void populateFileListUI(List<FileChange> expanded) {
         // Count occurrences per file path to detect duplicates
         Map<String, Integer> pathCount = new HashMap<>();
         for (FileChange fc : expanded) {
@@ -449,10 +498,6 @@ final class PermissionRequestPanel extends JPanel {
             row.add(nameLabel, BorderLayout.CENTER);
             row.add(statusLabel, BorderLayout.EAST);
             contentBlocks.add(row);
-        }
-        } catch (Exception e) {
-            LOG.warn("Failed to build content blocks for diff viewer", e);
-            showUnparseableDiffMessage();
         }
     }
 
