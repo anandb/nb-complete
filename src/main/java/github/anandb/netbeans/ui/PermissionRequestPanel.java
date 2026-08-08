@@ -9,8 +9,6 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Taskbar;
 import java.awt.Window;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.Rectangle;
@@ -23,7 +21,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -42,6 +39,7 @@ import github.anandb.netbeans.contract.SessionQuery;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.ToolCallDiffParser;
 import github.anandb.netbeans.support.ToolCallDiffParser.FileChange;
+import github.anandb.netbeans.support.WobbleAnimator;
 import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
 import org.openide.windows.WindowManager;
@@ -67,14 +65,9 @@ final class PermissionRequestPanel extends JPanel {
     private List<FileChange> currentFileChanges;
     private Runnable allowAction;
     private boolean requestActive = false;
-    private Consumer<Boolean> inputEnableCallback;
 
     // Wobble animation state
-    private int wobbleX;
-    private int wobbleY;
-    private Timer wobbleTimer;
-    private Timer wobbleRestartTimer;
-    private Timer wobbleDelayTimer;
+    private final WobbleAnimator wobbleAnimator = new WobbleAnimator(this);
 
     /** Called when a permission result is ready — receives (statusText, allowed). */
     private BiConsumer<String, Boolean> onResult;
@@ -215,12 +208,7 @@ final class PermissionRequestPanel extends JPanel {
         buttonPanel.repaint();
 
         slideOpen();
-        scheduleWobbleStart();
-    }
-
-    /** Sets a callback that enables/disables the chat input area while this panel is active. */
-    void setInputEnableCallback(Consumer<Boolean> callback) {
-        this.inputEnableCallback = callback;
+        wobbleAnimator.scheduleStart();
     }
 
     /**
@@ -246,11 +234,6 @@ final class PermissionRequestPanel extends JPanel {
         }
         requestActive = false;
         stopWobble();
-        // slideClose() only re-enables input when the panel is visible; force it
-        // directly too so the input can never be left disabled.
-        if (inputEnableCallback != null) {
-            inputEnableCallback.accept(true);
-        }
         slideClose();
     }
 
@@ -638,8 +621,6 @@ final class PermissionRequestPanel extends JPanel {
         setPreferredSize(new Dimension(expectedWidth, 0));
         revalidate();
 
-        // Disable chat input while permission dialog is active
-        if (inputEnableCallback != null) inputEnableCallback.accept(false);
         flashTaskbar();
 
         // Enter = Allow, Escape = Reject
@@ -679,8 +660,6 @@ final class PermissionRequestPanel extends JPanel {
     void slideClose() {
         if (!isVisible()) return;
         stopWobble();
-        // Re-enable chat input immediately
-        if (inputEnableCallback != null) inputEnableCallback.accept(true);
         int startHeight = getHeight();
         Timer timer = new Timer(SLIDE_INTERVAL_MS, null);
         final int[] step = {SLIDE_STEPS};
@@ -724,14 +703,14 @@ final class PermissionRequestPanel extends JPanel {
         buttonPanel.repaint();
 
         slideOpen();
-        scheduleWobbleStart();
+        wobbleAnimator.scheduleStart();
     }
 
     @Override
     public void paint(Graphics g) {
-        if (wobbleX != 0 || wobbleY != 0) {
+        if (wobbleAnimator.x() != 0 || wobbleAnimator.y() != 0) {
             Graphics2D g2d = (Graphics2D) g.create();
-            g2d.translate(wobbleX, wobbleY);
+            g2d.translate(wobbleAnimator.x(), wobbleAnimator.y());
             super.paint(g2d);
             g2d.dispose();
         } else {
@@ -741,79 +720,13 @@ final class PermissionRequestPanel extends JPanel {
 
     @Override
     public void removeNotify() {
-        stopWobble();
+        wobbleAnimator.stop();
         super.removeNotify();
-    }
-
-    /** Schedules wobble to start after 10 seconds of inactivity. */
-    private void scheduleWobbleStart() {
-        cancelWobbleDelay();
-        wobbleDelayTimer = new Timer(10000, e -> {
-            wobbleDelayTimer.stop();
-            wobbleDelayTimer = null;
-            startWobble();
-        });
-        wobbleDelayTimer.setRepeats(false);
-        wobbleDelayTimer.start();
-    }
-
-    /** Cancels any pending wobble delay. */
-    private void cancelWobbleDelay() {
-        if (wobbleDelayTimer != null) {
-            wobbleDelayTimer.stop();
-            wobbleDelayTimer = null;
-        }
-    }
-
-    /** Shake the panel side-to-side to attract attention, repeating every few seconds. */
-    void startWobble() {
-        if (wobbleTimer != null && wobbleTimer.isRunning()) {
-            // Already wobbling — just reset the cycle (don't double-start)
-            return;
-        }
-
-        final int[] yOffsets = {0, -2, -4, -6, -7, -6, -4, -2, 0, -1, -3, -4, -3, -1, 0};
-        final int[] xOffsets = {0, -2, 2, -2, 2, -1, 1, 0, 0, 0, 0, 0, 0, 0, 0};
-
-        wobbleTimer = new Timer(30, new ActionListener() {
-            private int frame = 0;
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                if (frame < yOffsets.length) {
-                    wobbleX = xOffsets[frame];
-                    wobbleY = yOffsets[frame];
-                    repaint();
-                    frame++;
-                } else {
-                    wobbleX = 0;
-                    wobbleY = 0;
-                    repaint();
-                    wobbleTimer.stop();
-                    wobbleTimer = null;
-                    // Schedule repeat after 5 seconds
-                    wobbleRestartTimer = new Timer(5000, ev -> startWobble());
-                    wobbleRestartTimer.setRepeats(false);
-                    wobbleRestartTimer.start();
-                }
-            }
-        });
-        wobbleTimer.start();
     }
 
     /** Stops the wobble animation and its repeat cycle. */
     private void stopWobble() {
-        cancelWobbleDelay();
-        if (wobbleTimer != null) {
-            wobbleTimer.stop();
-            wobbleTimer = null;
-        }
-        if (wobbleRestartTimer != null) {
-            wobbleRestartTimer.stop();
-            wobbleRestartTimer = null;
-        }
-        wobbleX = 0;
-        wobbleY = 0;
-        repaint();
+        wobbleAnimator.stop();
     }
 
     /** Triggers the "allow" action, e.g. from a global keyboard shortcut. */

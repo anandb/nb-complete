@@ -457,10 +457,6 @@ final class ChatLayoutBuilder {
         inputArea.setRows(3);
         int chatFontSize = ThemeManager.getFont().getSize() - 2;
         inputArea.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN, chatFontSize + 2f));
-        // Wire permission panels to disable input while open
-        java.util.function.Consumer<Boolean> inputEnabler = inputArea::setEnabled;
-        permissionPanel.setInputEnableCallback(inputEnabler);
-        configConfirmPanel.setInputEnableCallback(inputEnabler);
 
         inputScrollPane = new JScrollPane(inputArea);
         // Prevent the input area from shrinking below its 2-row natural height,

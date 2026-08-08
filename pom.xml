@@ -7,7 +7,7 @@
     <packaging>nbm</packaging>
 
     <name>Coding Assistant</name>
-    <description>Coding Assistant for NetBeans using ACP, connect to OpenCode via the Agent Client Protocol.</description>
+    <description>An AI pair programmer that lives inside your NetBeans editor — ask, explain, generate, and refactor code without leaving the IDE.</description>
     <url>https://github.com/anandb/nb-complete</url>
 
     <licenses>

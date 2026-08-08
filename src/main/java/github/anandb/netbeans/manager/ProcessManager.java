@@ -109,6 +109,7 @@ public class ProcessManager implements ProcessControl {
             () -> reconnectManager.handleDisconnection(serverLifecycle::startServer),
             reason -> reconnectManager.setLastDisconnectReason(reason),
             requestRouter::handleReadTextFile,
+            requestRouter::handleWriteTextFile,
             requestRouter::handleRequestPermission
         );
 

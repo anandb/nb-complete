@@ -41,6 +41,7 @@ class ServerProcessLifecycle {
     private final Runnable onDisconnection;
     private final Consumer<String> onConnectionError;
     private final RequestHandler onReadTextFile;
+    private final RequestHandler onWriteTextFile;
     private final RequestHandler onRequestPermission;
 
     private volatile Process serverProcess;
@@ -55,9 +56,10 @@ class ServerProcessLifecycle {
                            Runnable onReady,
                            Consumer<SessionUpdate> onNotify,
                            Runnable onDisconnection,
-                           Consumer<String> onConnectionError,
-                           RequestHandler onReadTextFile,
-                           RequestHandler onRequestPermission) {
+                            Consumer<String> onConnectionError,
+                            RequestHandler onReadTextFile,
+                            RequestHandler onWriteTextFile,
+                            RequestHandler onRequestPermission) {
         this.rpcClient = rpcClient;
         this.toolExecutor = toolExecutor;
         this.onReady = onReady;
@@ -65,6 +67,7 @@ class ServerProcessLifecycle {
         this.onDisconnection = onDisconnection;
         this.onConnectionError = onConnectionError;
         this.onReadTextFile = onReadTextFile;
+        this.onWriteTextFile = onWriteTextFile;
         this.onRequestPermission = onRequestPermission;
     }
 
@@ -143,8 +146,11 @@ class ServerProcessLifecycle {
                 }
             });
 
-            // Register handlers
+            // Register handlers for both camelCase (legacy) and snake_case (spec) names.
             client.onRequest("fs/readTextFile", onReadTextFile);
+            client.onRequest("fs/read_text_file", onReadTextFile);
+            client.onRequest("fs/writeTextFile", onWriteTextFile);
+            client.onRequest("fs/write_text_file", onWriteTextFile);
             client.onRequest("session/request_permission", onRequestPermission);
 
             // Listen for session updates
@@ -216,8 +222,8 @@ class ServerProcessLifecycle {
                 "protocolVersion", 1,
                 "clientCapabilities", Map.of(
                         "fs", Map.of(
-                                "readTextFile", true,
-                                "writeTextFile", false
+                        "readTextFile", true,
+                        "writeTextFile", true
                         ),
                         "terminal", false
                 )

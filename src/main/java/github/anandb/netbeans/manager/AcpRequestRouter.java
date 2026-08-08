@@ -109,26 +109,10 @@ class AcpRequestRouter {
 
         // Prevent arbitrary file reads — only allow files inside open projects.
         // Resolve both to canonical paths to prevent .. and symlink escapes.
-        try {
-            String canonicalRequested = file.getCanonicalPath();
-            boolean inProject = false;
-            for (Project p : ACPProjectManager.getInstance().getAllOpenProjects()) {
-                File projectDirFile = FileUtil.toFile(p.getProjectDirectory());
-                if (projectDirFile == null) continue;
-                String canonicalProject = projectDirFile.getCanonicalPath();
-                if (canonicalRequested.startsWith(canonicalProject)) {
-                    inProject = true;
-                    break;
-                }
-            }
-            if (!inProject) {
-                LOG.warn("Blocked fs/readTextFile on path outside project: {0}", filePath);
-                return CompletableFuture.failedFuture(new RuntimeException(
+        if (!isPathInProject(file)) {
+            LOG.warn("Blocked fs/readTextFile on path outside project: {0}", filePath);
+            return CompletableFuture.failedFuture(new RuntimeException(
                     NbBundle.getMessage(ProcessManager.class, "ERR_PathOutsideProject")));
-            }
-        } catch (IOException e) {
-            LOG.warn("Failed to resolve canonical path for {0}", filePath);
-            return CompletableFuture.failedFuture(new RuntimeException("Invalid file path"));
         }
 
         CompletableFuture<JsonNode> resultFuture = new CompletableFuture<>();
@@ -176,5 +160,92 @@ class AcpRequestRouter {
               resultFuture.completeExceptionally(ex);
               return null;
           });
+    }
+
+    CompletableFuture<JsonNode> handleWriteTextFile(JsonNode params) {
+        String filePath = params.has("filePath") ? params.get("filePath").asText()
+                : params.has("path") ? params.get("path").asText() : null;
+        String content = params.has("content") ? params.get("content").asText() : "";
+
+        if (filePath == null) {
+            return CompletableFuture.failedFuture(new RuntimeException(
+                    NbBundle.getMessage(ProcessManager.class, "ERR_MissingFilePath")));
+        }
+
+        File file = new File(filePath);
+
+        // Prevent arbitrary file writes — only allow files inside open projects.
+        if (!isPathInProject(file)) {
+            LOG.warn("Blocked fs/writeTextFile on path outside project: {0}", filePath);
+            return CompletableFuture.failedFuture(new RuntimeException(
+                    NbBundle.getMessage(ProcessManager.class, "ERR_PathOutsideProject")));
+        }
+
+        CompletableFuture<JsonNode> result = new CompletableFuture<>();
+        SwingUtilities.invokeLater(() -> {
+            try {
+                boolean wasNew = !file.exists();
+                File parent = file.getParentFile();
+                if (parent != null && !parent.exists()) {
+                    FileUtil.createFolder(parent);
+                }
+                FileObject fo = FileUtil.toFileObject(file);
+                if (fo == null) {
+                    FileObject parentFo = FileUtil.toFileObject(parent);
+                    if (parentFo != null) {
+                        fo = parentFo.createData(file.getName());
+                    }
+                }
+                if (fo == null) {
+                    throw new IOException("Could not create FileObject for " + filePath);
+                }
+
+                DataObject dobj = DataObject.find(fo);
+                EditorCookie ec = dobj != null ? dobj.getLookup().lookup(EditorCookie.class) : null;
+                if (ec == null) {
+                    throw new IOException("File is not editable: " + filePath);
+                }
+
+                if (wasNew) {
+                    // New files: write final content first, then open cleanly.
+                    // This avoids the "modified externally" reload prompt.
+                    try (java.io.OutputStream os = fo.getOutputStream()) {
+                        os.write(content.getBytes(StandardCharsets.UTF_8));
+                    }
+                    ec.open();
+                } else {
+                    ec.open();
+                    javax.swing.text.Document doc = ec.openDocument();
+                    doc.remove(0, doc.getLength());
+                    doc.insertString(0, content, null);
+                    FileUtil.runAtomicAction((org.openide.filesystems.FileSystem.AtomicAction) () -> ec.saveDocument());
+                }
+                LOG.fine("Wrote fs/writeTextFile via editor: {0}", filePath);
+                result.complete(MAPPER.createObjectNode());
+            } catch (Exception e) {
+                LOG.severe("fs/writeTextFile failed: {0}", ExceptionUtils.getMessage(e));
+                LOG.log(Level.FINE, "fs/writeTextFile details", e);
+                result.completeExceptionally(new RuntimeException(
+                        NbBundle.getMessage(ProcessManager.class, "ERR_WriteFileFailed", filePath)));
+            }
+        });
+        return result;
+    }
+
+    private boolean isPathInProject(File file) {
+        try {
+            String canonicalRequested = file.getCanonicalPath();
+            for (Project p : ACPProjectManager.getInstance().getAllOpenProjects()) {
+                File projectDirFile = FileUtil.toFile(p.getProjectDirectory());
+                if (projectDirFile == null) continue;
+                String canonicalProject = projectDirFile.getCanonicalPath();
+                if (canonicalRequested.startsWith(canonicalProject)) {
+                    return true;
+                }
+            }
+        } catch (IOException e) {
+            LOG.warn("Failed to resolve canonical path for {0}", file);
+        }
+        return false;
     }
 }
