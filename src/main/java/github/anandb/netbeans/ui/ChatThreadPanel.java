@@ -5,6 +5,7 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.awt.KeyboardFocusManager;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
@@ -20,12 +21,16 @@ import java.util.function.Function;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
+import org.openide.util.NbBundle;
+
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
+import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JLayeredPane;
 import javax.swing.JPanel;
+import javax.swing.JTextPane;
 import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
 import javax.swing.JViewport;
@@ -81,6 +86,8 @@ public class ChatThreadPanel extends JPanel {
     private volatile boolean allBlocksExpanded = false;
     private volatile boolean keepOlderMessages = false;
     private volatile boolean batchAdding = false;
+    /** True while the "start a session" hint bubble is shown; reset by clearMessages(). */
+    private volatile boolean startSessionHintShown;
     private final JProgressBar sessionProgressBar;
     private String currentSessionId;
 
@@ -571,7 +578,7 @@ public class ChatThreadPanel extends JPanel {
         });
     }
 
-    public void addMissingBinaryBubble(Runnable onGuide, Runnable onRestart) {
+    public void addMissingBinaryBubble(Runnable onGuide, java.util.function.Consumer<Runnable> onRestart) {
         SwingUtilities.invokeLater(() -> {
             MissingBinaryBubble bubble = new MissingBinaryBubble(onGuide, onRestart);
             messagesContainer.add(bubble);
@@ -583,9 +590,79 @@ public class ChatThreadPanel extends JPanel {
 
     /** Shows the global opencode configuration prompt as a sidebar bubble. */
     public void addGlobalConfigBubble(GlobalOpencodeConfig.CheckResult result,
-            Runnable onYes, Runnable onNo, Runnable onDontAskAgain) {
+            Runnable onYes, Runnable onNo) {
         SwingUtilities.invokeLater(() -> {
-            GlobalConfigBubble bubble = new GlobalConfigBubble(result, onYes, onNo, onDontAskAgain);
+            GlobalConfigBubble bubble = new GlobalConfigBubble(result, onYes, onNo);
+            messagesContainer.add(bubble);
+            messagesContainer.add(Box.createVerticalStrut(4));
+            messagesContainer.revalidate();
+            scrollController.scrollToBottom(true);
+        });
+    }
+
+    /** Shows a one-off bubble prompting the user to confirm the server restart.
+     *  The bubble stays until the user clicks OK, which dismisses it and runs
+     *  {@code onOk} (the caller then performs the actual restart). Also removed
+     *  immediately if a session starts (see {@link #clearMessages()}). */
+    public void showStartSessionHint(Runnable onOk) {
+        SwingUtilities.invokeLater(() -> {
+            if (startSessionHintShown) {
+                return;
+            }
+            startSessionHintShown = true;
+            // Clear previous messages (e.g. the missing-binary bubble) so the
+            // hint fills the full panel width.
+            messagesContainer.removeAll();
+            messagesContainer.revalidate();
+            ColorTheme theme = ThemeManager.getCurrentTheme();
+            JPanel bubble = UIUtils.createBubbleContentPanel();
+            String fontFamily = ThemeManager.getFont().getFamily();
+            int fontSize = ThemeManager.getFont().getSize() + 1;
+            String fg = Integer.toHexString(theme.foreground().getRGB() & 0xFFFFFF);
+            String html = "<html><body><p style='margin: 0; font-family: "
+                    + fontFamily + "; font-size: " + fontSize + "pt; color: #" + fg + ";'>"
+                    + "Click OK to continue. If you already have an account with a model provider, "
+                    + "run <code>opencode auth login</code> in a terminal to add your credentials. "
+                    + "Otherwise, explore the free models available at "
+                    + "<a href='https://opencode.ai/docs/zen/'>Opencode Zen</a>. "
+                    + "Once ready, start a new session using the "
+                    + "<b>New Session/Plus Symbol</b> button in the toolbar.</p></body></html>";
+            JTextPane text = new JTextPane();
+            text.setContentType("text/html");
+            text.setText(html);
+            text.setEditable(false);
+            text.setOpaque(false);
+            text.setFocusable(false);
+            text.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
+            text.addHyperlinkListener(e -> {
+                if (e.getEventType() == javax.swing.event.HyperlinkEvent.EventType.ACTIVATED) {
+                    try {
+                        java.awt.Desktop.getDesktop().browse(e.getURL().toURI());
+                    } catch (Exception ex) {
+                        LOG.log(java.util.logging.Level.WARNING, "Failed to open link", ex);
+                    }
+                }
+            });
+            bubble.add(text, BorderLayout.CENTER);
+
+            JButton okBtn = new JButton(NbBundle.getMessage(ChatThreadPanel.class, "StartSessionHint.Ok"));
+            okBtn.setFocusPainted(false);
+            okBtn.addActionListener(e -> {
+                if (!startSessionHintShown) {
+                    return;
+                }
+                startSessionHintShown = false;
+                messagesContainer.removeAll();
+                messagesContainer.revalidate();
+                if (onOk != null) {
+                    onOk.run();
+                }
+            });
+            JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
+            buttonsPanel.setOpaque(false);
+            buttonsPanel.add(okBtn);
+            bubble.add(buttonsPanel, BorderLayout.SOUTH);
+
             messagesContainer.add(bubble);
             messagesContainer.add(Box.createVerticalStrut(4));
             messagesContainer.revalidate();
@@ -789,6 +866,7 @@ public class ChatThreadPanel extends JPanel {
         SwingUtilities.invokeLater(() -> {
             stopStreaming();
             messagesContainer.removeAll();
+            startSessionHintShown = false;
             scrollController.unfixAllMouseWheel();
             lastUserTimestamp = -1L;
             userMessageCount = 0;

@@ -8,6 +8,7 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.function.Consumer;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
@@ -19,7 +20,6 @@ import org.netbeans.api.project.Project;
 import org.openide.DialogDisplayer;
 import org.openide.NotifyDescriptor;
 import org.openide.util.NbBundle;
-import org.openide.util.NbPreferences;
 import github.anandb.netbeans.contract.SlashCommandCallback;
 import github.anandb.netbeans.contract.ToolExecutor;
 import org.openide.util.Lookup;
@@ -30,7 +30,6 @@ import github.anandb.netbeans.model.SessionItem;
 import github.anandb.netbeans.support.BinaryResolver;
 import github.anandb.netbeans.support.GlobalOpencodeConfig;
 import github.anandb.netbeans.support.Logger;
-import github.anandb.netbeans.support.PreferenceKeys;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
 import github.anandb.netbeans.ui.platform.ProcessService;
 import github.anandb.netbeans.ui.platform.ProjectContext;
@@ -65,6 +64,10 @@ public class ComponentLifecycleHandler {
     private KeyAdapter escKeyListener;
 
     private Set<String> closedProjectDirs = Set.of();
+
+    /** True once the user picks "Not now" on the global config prompt; suppresses
+     *  further prompts for the rest of this IDE process (until restart). */
+    private boolean configPromptDeferredThisProcess;
 
     public ComponentLifecycleHandler(
             ChatThreadPanel chatPanel,
@@ -135,19 +138,31 @@ public class ComponentLifecycleHandler {
             // Offer the global opencode configuration prompt BEFORE launching the
             // server: a starter config written here is picked up on the first
             // start, so the user does not need to restart a second time.
-            maybeShowGlobalConfigPrompt(() ->
-                RequestProcessor.getDefault().post(() -> processService.get().ensureStarted())
-            );
-            processService.get().whenReady().exceptionally(ex -> {
-                Throwable cause = ex;
-                while (cause.getCause() != null) {
-                    cause = cause.getCause();
+            maybeShowGlobalConfigPrompt(promptShown -> {
+                Runnable start = () -> {
+                    RequestProcessor.getDefault().post(() -> processService.get().ensureStarted());
+                    // Register the not-found handler only once the start is actually
+                    // proceeding (after any config prompt is answered), matching the
+                    // restart path below.
+                    processService.get().whenReady().exceptionally(ex -> {
+                        Throwable cause = ex;
+                        while (cause.getCause() != null) {
+                            cause = cause.getCause();
+                        }
+                        if (cause instanceof IllegalStateException && ExceptionUtils.getMessage(cause) != null
+                                && ExceptionUtils.getMessage(cause).contains("not found")) {
+                            topComponent.setBinaryNotFoundState(true);
+                        }
+                        return null;
+                    });
+                };
+                // Mirror the restart flow: when a config prompt was shown, present
+                // the start-a-session hint (with OK) before starting the server.
+                if (promptShown) {
+                    chatPanel.showStartSessionHint(start);
+                } else {
+                    start.run();
                 }
-                if (cause instanceof IllegalStateException && ExceptionUtils.getMessage(cause) != null
-                        && ExceptionUtils.getMessage(cause).contains("not found")) {
-                    topComponent.setBinaryNotFoundState(true);
-                }
-                return null;
             });
         });
 
@@ -380,7 +395,20 @@ public class ComponentLifecycleHandler {
     /** Shows a popup listing all open projects to pick which one to create a session for. */
     // -- Server restart --
 
-    public void promptRestartServer() {
+    /** Shows a confirmation dialog (or skips it when no process is running)
+     *  and restarts the server. {@code onRestarted} is called when the restart
+     *  actually begins, so callers can disable buttons / update UI. */
+    public void promptRestartServer(Runnable onRestarted) {
+        // When no server process is running (binary-not-found install flow),
+        // re-check whether the binary is now available. If it is, restart; if
+        // not, stay on the current screen so the user can try again.
+        if (topComponent.isBinaryNotFound()) {
+            if (BinaryResolver.isAvailable()) {
+                if (onRestarted != null) onRestarted.run();
+                restartServer();
+            }
+            return;
+        }
         NotifyDescriptor.Confirmation confirm = new NotifyDescriptor.Confirmation(
             NbBundle.getMessage(AssistantTopComponent.class, "MSG_ConfirmRestart"),
             NbBundle.getMessage(AssistantTopComponent.class, "TITLE_RestartServer"),
@@ -389,6 +417,7 @@ public class ComponentLifecycleHandler {
         );
         Object result = DialogDisplayer.getDefault().notify(confirm);
         if (result == NotifyDescriptor.YES_OPTION) {
+            if (onRestarted != null) onRestarted.run();
             restartServer();
         }
     }
@@ -405,91 +434,102 @@ public class ComponentLifecycleHandler {
 
         // Ask about the global opencode configuration before the server
         // restarts, so a starter config is written before the process reads it.
-        maybeShowGlobalConfigPrompt(() -> {
-            // Safety timeout: re-enable after 10 seconds regardless. Started only
-            // once the restart actually begins, so it cannot fire while the config
-            // prompt above is still awaiting an answer.
-            Timer safetyTimeout = new Timer(10_000, e -> restartServerBtn.setEnabled(true));
-            safetyTimeout.setRepeats(false);
-            safetyTimeout.start();
+        maybeShowGlobalConfigPrompt(promptShown -> {
+            // When a config prompt was shown, ask the user to confirm the restart
+            // with an OK button (the server restarts only once OK is clicked). When
+            // no prompt was needed (config already present, prompt disabled), start
+            // directly without the confirmation hint.
+            if (promptShown) {
+                chatPanel.showStartSessionHint(() -> doRestart(currentSessionId));
+            } else {
+                doRestart(currentSessionId);
+            }
+        });
+    }
 
-            processService.get().restartServer();
-            // Arm the manual-reconnect prompt only after the restart has begun,
-            // so it cannot fire while the config prompt is still open.
-            sessionService.get().scheduleManualReconnectPrompt();
+    /** Performs the actual server restart and re-enables the UI on completion. */
+    private void doRestart(String currentSessionId) {
+        // Safety timeout: re-enable after 10 seconds regardless. Started only
+        // once the restart actually begins, so it cannot fire while any prompt
+        // or hint above is still awaiting confirmation.
+        Timer safetyTimeout = new Timer(10_000, e -> restartServerBtn.setEnabled(true));
+        safetyTimeout.setRepeats(false);
+        safetyTimeout.start();
 
-            processService.get().whenReady().thenAccept(v -> {
-                SwingUtilities.invokeLater(() -> {
-                    // After server ready, wait 5 more seconds before re-enabling
-                    Timer cooldown = new Timer(5_000, e -> restartServerBtn.setEnabled(true));
-                    cooldown.setRepeats(false);
-                    cooldown.start();
-                    statusController.setStatus("STATUS_ServerRestarted");
-                    // Clear binary-not-found state on successful restart
-                    topComponent.setBinaryNotFoundState(false);
-                    if (currentSessionId != null) {
-                        sessionService.get().loadSession(currentSessionId);
-                    } else {
-                        sessionService.get().refreshSessions();
-                    }
-                });
-            }).exceptionally(ex -> {
-                SwingUtilities.invokeLater(() -> {
-                    safetyTimeout.stop();
-                    restartServerBtn.setEnabled(true);
-                    Throwable cause = ex;
-                    while (cause.getCause() != null) {
-                        cause = cause.getCause();
-                    }
-                    if (cause instanceof IllegalStateException && ExceptionUtils.getMessage(cause) != null
-                            && ExceptionUtils.getMessage(cause).contains("not found")) {
-                        topComponent.setBinaryNotFoundState(true);
-                    } else {
-                        String msg = ExceptionUtils.getMessage(ex) != null ? ExceptionUtils.getMessage(ex) : ex.getClass().getSimpleName();
-                        statusController.setStatus("STATUS_RestartFailed", msg);
-                        chatPanel.stopStreaming();
-                        chatPanel.addMessage(ProcessedMessage.createError(
-                            MessageType.error_response, NbBundle.getMessage(AssistantTopComponent.class, "STATUS_RestartFailed", msg), null, null
-                        ));
-                        statusController.setInputEnabled(true);
-                    }
-                });
-                return null;
+        processService.get().restartServer();
+        // Arm the manual-reconnect prompt only after the restart has begun,
+        // so it cannot fire while any prompt is still open.
+        sessionService.get().scheduleManualReconnectPrompt();
+
+        processService.get().whenReady().thenAccept(v -> {
+            SwingUtilities.invokeLater(() -> {
+                // After server ready, wait 5 more seconds before re-enabling
+                Timer cooldown = new Timer(5_000, e -> restartServerBtn.setEnabled(true));
+                cooldown.setRepeats(false);
+                cooldown.start();
+                statusController.setStatus("STATUS_ServerRestarted");
+                // Clear binary-not-found state on successful restart
+                topComponent.setBinaryNotFoundState(false);
+                if (currentSessionId != null) {
+                    sessionService.get().loadSession(currentSessionId);
+                } else {
+                    sessionService.get().refreshSessions();
+                }
             });
+        }).exceptionally(ex -> {
+            SwingUtilities.invokeLater(() -> {
+                safetyTimeout.stop();
+                restartServerBtn.setEnabled(true);
+                Throwable cause = ex;
+                while (cause.getCause() != null) {
+                    cause = cause.getCause();
+                }
+                if (cause instanceof IllegalStateException && ExceptionUtils.getMessage(cause) != null
+                        && ExceptionUtils.getMessage(cause).contains("not found")) {
+                    topComponent.setBinaryNotFoundState(true);
+                } else {
+                    String msg = ExceptionUtils.getMessage(ex) != null ? ExceptionUtils.getMessage(ex) : ex.getClass().getSimpleName();
+                    statusController.setStatus("STATUS_RestartFailed", msg);
+                    chatPanel.stopStreaming();
+                    chatPanel.addMessage(ProcessedMessage.createError(
+                        MessageType.error_response, NbBundle.getMessage(AssistantTopComponent.class, "STATUS_RestartFailed", msg), null, null
+                    ));
+                    statusController.setInputEnabled(true);
+                }
+            });
+            return null;
         });
     }
 
     /**
      * Offers to set up the global opencode configuration before the server
      * starts. The file check runs on a background thread and the prompt bubble
-     * is shown in the chat panel. {@code afterAnswer} runs once the user
-     * responds — after the starter config is written on "Yes" — or immediately
-     * when no prompt is needed (real configuration present, or the prompt was
-     * disabled in Options / via "Don't ask again").
+     * is shown in the chat panel. {@code afterAnswer} is invoked with {@code true}
+     * when a config prompt was shown to the user (and answered), or {@code false}
+     * when no prompt was needed (real configuration present, the prompt was
+     * disabled in Options / via "Don't ask again", or the user already chose
+     * "Not now" earlier this session).
      */
-    private void maybeShowGlobalConfigPrompt(Runnable afterAnswer) {
-        if (!NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
-                .getBoolean(PreferenceKeys.PROMPT_GLOBAL_OPENCODE_INIT, true)) {
-            afterAnswer.run();
+    private void maybeShowGlobalConfigPrompt(Consumer<Boolean> afterAnswer) {
+        if (configPromptDeferredThisProcess) {
+            afterAnswer.accept(false);
             return;
         }
         RequestProcessor.getDefault().post(() -> {
             GlobalOpencodeConfig.CheckResult result = GlobalOpencodeConfig.evaluate();
             if (result.state == GlobalOpencodeConfig.State.REAL_CONTENT) {
-                SwingUtilities.invokeLater(afterAnswer);
+                SwingUtilities.invokeLater(() -> afterAnswer.accept(false));
                 return;
             }
             chatPanel.addGlobalConfigBubble(
                     result,
                     () -> RequestProcessor.getDefault().post(() -> {
                         GlobalOpencodeConfig.writeDefaultConfig();
-                        SwingUtilities.invokeLater(afterAnswer);
+                        SwingUtilities.invokeLater(() -> afterAnswer.accept(true));
                     }),
-                    afterAnswer,
                     () -> {
-                        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
-                                .putBoolean(PreferenceKeys.PROMPT_GLOBAL_OPENCODE_INIT, false);
-                        afterAnswer.run();
+                        configPromptDeferredThisProcess = true;
+                        afterAnswer.accept(true);
                     }
             );
         });

@@ -17,19 +17,17 @@ public class GlobalOpencodeConfigTest {
     @TempDir
     Path tempDir;
 
-    private String originalUserHome;
-
     @BeforeEach
     void setUp() {
-        originalUserHome = System.getProperty("user.home");
-        System.setProperty("user.home", tempDir.toString());
+        // Pin the config base dir to an isolated temp location via the test
+        // seam, so tests are independent of the host's user.home / XDG_CONFIG_HOME.
+        System.setProperty(GlobalOpencodeConfig.CONFIG_HOME_PROP,
+                tempDir.resolve(".config").toString());
     }
 
     @AfterEach
     void tearDown() {
-        if (originalUserHome != null) {
-            System.setProperty("user.home", originalUserHome);
-        }
+        System.clearProperty(GlobalOpencodeConfig.CONFIG_HOME_PROP);
     }
 
     private Path configDir() {
@@ -78,6 +76,16 @@ public class GlobalOpencodeConfigTest {
         Files.createDirectories(configDir());
         Files.writeString(configDir().resolve("opencode.json"), "{ \"auth\": ");
         assertEquals(GlobalOpencodeConfig.State.UNPARSEABLE, GlobalOpencodeConfig.evaluate().state);
+    }
+
+    @Test
+    void realJsoncWinsOverUnparseableJson() throws IOException {
+        Files.createDirectories(configDir());
+        Files.writeString(configDir().resolve("opencode.json"), "{ \"auth\": ");
+        Files.writeString(configDir().resolve("opencode.jsonc"), "{ \"autoupdate\": false }");
+        // A real config in opencode.jsonc must not be overshadowed by a broken
+        // opencode.json — no prompt should be offered to replace it.
+        assertEquals(GlobalOpencodeConfig.State.REAL_CONTENT, GlobalOpencodeConfig.evaluate().state);
     }
 
     @Test

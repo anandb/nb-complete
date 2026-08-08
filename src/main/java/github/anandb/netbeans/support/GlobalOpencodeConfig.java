@@ -34,6 +34,8 @@ public final class GlobalOpencodeConfig {
     private static final String FILE_JSON = "opencode.json";
     private static final String FILE_JSONC = "opencode.jsonc";
     private static final String TEMPLATE_RESOURCE = "/github/anandb/netbeans/support/opencode.json.template";
+    /** Test seam: overrides the config base dir (see {@link #configDir()}). */
+    static final String CONFIG_HOME_PROP = "github.anandb.netbeans.opencodeConfigHome";
 
     /** Outcome of {@link #evaluate()} used to decide whether to offer setup. */
     public enum State {
@@ -67,14 +69,17 @@ public final class GlobalOpencodeConfig {
         File jsonc = new File(configDir, FILE_JSONC);
 
         if (json.exists() || jsonc.exists()) {
+            // A real configuration in either file wins: don't offer to replace
+            // a broken/empty sibling (e.g. an unparseable opencode.json) when
+            // a valid opencode.jsonc already holds the user's config.
+            if (hasRealContent(json) || hasRealContent(jsonc)) {
+                return new CheckResult(State.REAL_CONTENT, null);
+            }
             if (isUnparseable(json)) {
                 return new CheckResult(State.UNPARSEABLE, json.getName());
             }
             if (isUnparseable(jsonc)) {
                 return new CheckResult(State.UNPARSEABLE, jsonc.getName());
-            }
-            if (hasRealContent(json) || hasRealContent(jsonc)) {
-                return new CheckResult(State.REAL_CONTENT, null);
             }
             return new CheckResult(State.NEEDS_SETUP,
                     jsonc.exists() && !json.exists() ? FILE_JSONC : FILE_JSON);
@@ -128,8 +133,24 @@ public final class GlobalOpencodeConfig {
     }
 
     private static File configDir() {
-        return new File(System.getProperty("user.home"),
-                ".config" + File.separator + "opencode");
+        // opencode resolves its global config dir via the XDG convention:
+        // $XDG_CONFIG_HOME/opencode, defaulting to ~/.config/opencode. Respect
+        // XDG_CONFIG_HOME when set so a non-default location is handled too.
+        //
+        // The CONFIG_HOME_PROP system property is a test seam (System.getenv is
+        // read-only): it shadows the XDG lookup so tests can pin an isolated
+        // directory regardless of the host environment.
+        String override = System.getProperty(CONFIG_HOME_PROP);
+        File base;
+        if (override != null && !override.isBlank()) {
+            base = new File(override);
+        } else {
+            String xdg = System.getenv("XDG_CONFIG_HOME");
+            base = (xdg != null && !xdg.isBlank())
+                    ? new File(xdg)
+                    : new File(System.getProperty("user.home"), ".config");
+        }
+        return new File(base, "opencode");
     }
 
     /** True when the file exists, is non-blank, and cannot be parsed as JSON/JSONC. */

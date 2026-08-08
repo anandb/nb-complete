@@ -845,7 +845,11 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     }
 
     void promptRestartServer() {
-        componentLifecycleHandler.promptRestartServer();
+        componentLifecycleHandler.promptRestartServer(null);
+    }
+
+    void promptRestartServer(Runnable onRestarted) {
+        componentLifecycleHandler.promptRestartServer(onRestarted);
     }
 
     /**
@@ -854,6 +858,11 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
      * chat panel, and the status bar displays the error. When exited, buttons
      * are restored to their normal session-aware state.
      */
+    /** Returns true when the opencode binary could not be located. */
+    boolean isBinaryNotFound() {
+        return binaryNotFound;
+    }
+
     void setBinaryNotFoundState(boolean notFound) {
         // Publish the volatile flag synchronously so any concurrently queued
         // EDT task (e.g. updateNewSessionBtnState) sees the new value instead
@@ -872,7 +881,6 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                 refreshBtn.setEnabled(false);
                 exportBtn.setEnabled(false);
                 // restartServerBtn stays enabled so user can retry after installing
-                ButtonPulse.start(restartServerBtn);
 
                 // Disable input area
                 statusController.setInputEnabled(false);
@@ -882,7 +890,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                 chatPanel.clearMessages();
                 chatPanel.addMissingBinaryBubble(
                     () -> BrowserUtils.openOrCopyUrl("https://opencode.ai/docs/", null, null),
-                    this::promptRestartServer
+                    (disableButtons) -> promptRestartServer(disableButtons)
                 );
                 statusController.setStatus("STATUS_BinaryNotFound");
             } else {
@@ -899,7 +907,6 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                 refreshBtn.setEnabled(hasSession);
                 exportBtn.setEnabled(hasSession);
                 helpBtn.setEnabled(true);
-                ButtonPulse.stop(restartServerBtn);
 
                 statusController.setInputEnabled(true);
             }

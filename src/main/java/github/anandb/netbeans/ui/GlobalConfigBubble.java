@@ -24,13 +24,14 @@ class GlobalConfigBubble extends JPanel {
     /** Guards against duplicate action events (e.g. a click plus a focus-lost release). */
     private boolean dismissed;
 
+    private JPanel content;
+
     /**
      * @param result        evaluation outcome driving the message and buttons
      * @param onYes         run when the user accepts (write the starter config)
      * @param onNo          run when the user declines for now
-     * @param onDontAskAgain run when the user wants to stop future prompts
      */
-    GlobalConfigBubble(GlobalOpencodeConfig.CheckResult result, Runnable onYes, Runnable onNo, Runnable onDontAskAgain) {
+    GlobalConfigBubble(GlobalOpencodeConfig.CheckResult result, Runnable onYes, Runnable onNo) {
         boolean overwrite = result.state == GlobalOpencodeConfig.State.UNPARSEABLE;
 
         setLayout(new BorderLayout());
@@ -40,7 +41,7 @@ class GlobalConfigBubble extends JPanel {
 
         ColorTheme theme = ThemeManager.getCurrentTheme();
 
-        JPanel content = UIUtils.createBubbleContentPanel();
+        content = UIUtils.createBubbleContentPanel();
 
         JLabel titleLabel = new JLabel(NbBundle.getMessage(GlobalConfigBubble.class,
                 overwrite ? "GlobalConfigBubble.Title.Overwrite" : "GlobalConfigBubble.Title.Setup"));
@@ -84,17 +85,8 @@ class GlobalConfigBubble extends JPanel {
             }
         });
 
-        JButton dontAskBtn = new JButton(NbBundle.getMessage(GlobalConfigBubble.class, "GlobalConfigBubble.Button.DontAsk"));
-        dontAskBtn.setFocusPainted(false);
-        dontAskBtn.addActionListener(e -> {
-            if (dismiss() && onDontAskAgain != null) {
-                onDontAskAgain.run();
-            }
-        });
-
         buttonsPanel.add(yesBtn);
         buttonsPanel.add(noBtn);
-        buttonsPanel.add(dontAskBtn);
         content.add(buttonsPanel, BorderLayout.SOUTH);
 
         add(content, BorderLayout.CENTER);

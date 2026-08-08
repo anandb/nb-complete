@@ -65,7 +65,6 @@ public class ACPOptionsPanel extends JPanel {
     private JButton browseButton;
     private JCheckBox echoCheckbox;
     private JCheckBox combineCheckbox;
-    private JCheckBox globalOpencodeInitCheckbox;
     private JCheckBox checkForUpdatesCheckbox;
     private JCheckBox sortLinesCheckbox;
     private JCheckBox stashDiffCheckbox;
@@ -106,7 +105,6 @@ public class ACPOptionsPanel extends JPanel {
         argsField = new JTextField(40);
         echoCheckbox = new JCheckBox();
         combineCheckbox = new JCheckBox();
-        globalOpencodeInitCheckbox = new JCheckBox();
         checkForUpdatesCheckbox = new JCheckBox();
         sortLinesCheckbox = new JCheckBox();
         stashDiffCheckbox = new JCheckBox();
@@ -225,12 +223,6 @@ public class ACPOptionsPanel extends JPanel {
         combineCheckbox.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_CombineToolThought"));
         combineCheckbox.addActionListener(evt -> controller.changed());
         behaviorPanel.add(combineCheckbox, UIUtils.createGbc(0, ++row, 1.0, 0, GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST,
-                new Insets(0, 12, 5, 0)));
-
-        globalOpencodeInitCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_PromptGlobalOpencodeInit"));
-        globalOpencodeInitCheckbox.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_PromptGlobalOpencodeInit"));
-        globalOpencodeInitCheckbox.addActionListener(evt -> controller.changed());
-        behaviorPanel.add(globalOpencodeInitCheckbox, UIUtils.createGbc(0, ++row, 1.0, 0, GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST,
                 new Insets(0, 12, 5, 0)));
 
         autoBackupChangesCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_AutoBackupChanges"));
@@ -477,8 +469,6 @@ public class ACPOptionsPanel extends JPanel {
         preambleArea.setText(PluginSettings.getPreamble());
         echoCheckbox.setSelected(NbPreferences.forModule(ACPOptionsPanel.class).getBoolean("echoUserInput", true));
         combineCheckbox.setSelected(NbPreferences.forModule(ACPOptionsPanel.class).getBoolean("combineToolThought", true));
-        globalOpencodeInitCheckbox.setSelected(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
-                .getBoolean(PreferenceKeys.PROMPT_GLOBAL_OPENCODE_INIT, true));
         autoBackupChangesCheckbox.setSelected(PluginSettings.isAutoBackupChanges());
         checkForUpdatesCheckbox.setSelected(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean(PreferenceKeys.CHECK_FOR_UPDATES, true));
         idleTimeoutSpinner.setValue(PluginSettings.getSessionIdleTimeout());
@@ -528,8 +518,6 @@ public class ACPOptionsPanel extends JPanel {
                 != NbPreferences.forModule(ACPOptionsPanel.class).getBoolean("combineToolThought", true);
         NbPreferences.forModule(ACPOptionsPanel.class).putBoolean("echoUserInput", echoCheckbox.isSelected());
         NbPreferences.forModule(ACPOptionsPanel.class).putBoolean("combineToolThought", combineCheckbox.isSelected());
-        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
-                .putBoolean(PreferenceKeys.PROMPT_GLOBAL_OPENCODE_INIT, globalOpencodeInitCheckbox.isSelected());
         PluginSettings.setAutoBackupChanges(autoBackupChangesCheckbox.isSelected());
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean(PreferenceKeys.CHECK_FOR_UPDATES, checkForUpdatesCheckbox.isSelected());
         PluginSettings.setSessionIdleTimeout((Integer) idleTimeoutSpinner.getValue());

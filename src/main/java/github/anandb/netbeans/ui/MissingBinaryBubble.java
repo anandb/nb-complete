@@ -34,7 +34,10 @@ class MissingBinaryBubble extends JPanel {
     /** Icon shown before the copy check mark animation (captured once to survive rapid clicks). */
     private Icon copyIcon;
 
-    MissingBinaryBubble(Runnable onGuide, Runnable onRestart) {
+    /** The buttons panel; disabled when the user clicks Restart. */
+    private JPanel buttonsPanel;
+
+    MissingBinaryBubble(Runnable onGuide, java.util.function.Consumer<Runnable> onRestart) {
         setLayout(new BorderLayout());
         setAlignmentY(Component.CENTER_ALIGNMENT);
         setOpaque(false);
@@ -114,7 +117,7 @@ class MissingBinaryBubble extends JPanel {
         content.add(centerPanel, BorderLayout.CENTER);
 
         // Buttons
-        JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
+        buttonsPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
         buttonsPanel.setOpaque(false);
 
         JButton guideBtn = new JButton(NbBundle.getMessage(MissingBinaryBubble.class, "MissingBinaryBubble.Button.Guide"));
@@ -126,7 +129,7 @@ class MissingBinaryBubble extends JPanel {
         JButton restartBtn = new JButton(NbBundle.getMessage(MissingBinaryBubble.class, "MissingBinaryBubble.Button.Restart"));
         restartBtn.setFocusPainted(false);
         restartBtn.addActionListener(e -> {
-            if (onRestart != null) onRestart.run();
+            if (onRestart != null) onRestart.accept(this::disableButtons);
         });
 
         buttonsPanel.add(guideBtn);
@@ -136,6 +139,14 @@ class MissingBinaryBubble extends JPanel {
         add(content, BorderLayout.CENTER);
 
         setAlignmentX(LEFT_ALIGNMENT);
+    }
+
+    /** Disables all action buttons so the user cannot trigger them twice. */
+    private void disableButtons() {
+        if (buttonsPanel == null) return;
+        for (Component c : buttonsPanel.getComponents()) {
+            c.setEnabled(false);
+        }
     }
 
     /** Copies the command and briefly swaps the copy icon for a check mark. */
