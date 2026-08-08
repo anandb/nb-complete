@@ -239,7 +239,9 @@ class AcpRequestRouter {
                 File projectDirFile = FileUtil.toFile(p.getProjectDirectory());
                 if (projectDirFile == null) continue;
                 String canonicalProject = projectDirFile.getCanonicalPath();
-                if (canonicalRequested.startsWith(canonicalProject)) {
+                if (canonicalRequested.equals(canonicalProject)
+                        || (canonicalRequested.startsWith(canonicalProject)
+                            && canonicalRequested.charAt(canonicalProject.length()) == File.separatorChar)) {
                     return true;
                 }
             }

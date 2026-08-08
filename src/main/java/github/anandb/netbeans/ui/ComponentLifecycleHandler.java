@@ -463,6 +463,7 @@ public class ComponentLifecycleHandler {
 
         processService.get().whenReady().thenAccept(v -> {
             SwingUtilities.invokeLater(() -> {
+                safetyTimeout.stop();
                 // After server ready, wait 5 more seconds before re-enabling
                 Timer cooldown = new Timer(5_000, e -> restartServerBtn.setEnabled(true));
                 cooldown.setRepeats(false);
@@ -521,7 +522,7 @@ public class ComponentLifecycleHandler {
                 SwingUtilities.invokeLater(() -> afterAnswer.accept(false));
                 return;
             }
-            chatPanel.addGlobalConfigBubble(
+            SwingUtilities.invokeLater(() -> chatPanel.addGlobalConfigBubble(
                     result,
                     () -> RequestProcessor.getDefault().post(() -> {
                         GlobalOpencodeConfig.writeDefaultConfig();
@@ -531,7 +532,7 @@ public class ComponentLifecycleHandler {
                         configPromptDeferredThisProcess = true;
                         afterAnswer.accept(true);
                     }
-            );
+            ));
         });
     }
 

@@ -120,7 +120,7 @@ public final class GlobalOpencodeConfig {
                 Files.copy(is, target.toPath(), StandardCopyOption.REPLACE_EXISTING);
                 LOG.info("Wrote global opencode configuration: {0}", target);
             }
-            if (target == json && jsonc.exists() && !hasRealContent(jsonc)) {
+            if (target.equals(json) && jsonc.exists() && !hasRealContent(jsonc)) {
                 if (jsonc.delete()) {
                     LOG.info("Removed empty/schema-only opencode.jsonc: {0}", jsonc);
                 } else {

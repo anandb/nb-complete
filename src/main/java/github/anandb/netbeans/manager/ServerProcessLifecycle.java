@@ -187,7 +187,7 @@ class ServerProcessLifecycle {
                     onNotify.accept(update);
                 } catch (Exception e) {
                     LOG.log(rawType != null ? Level.INFO : Level.FINE,
-                        "Failed to parse session/update notification: " + ExceptionUtils.getMessage(e), e);
+                        "Failed to parse session/update notification: {0}", ExceptionUtils.getMessage(e), e);
                 }
             });
 
