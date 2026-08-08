@@ -429,7 +429,6 @@ public class ComponentLifecycleHandler {
         }
         String currentSessionId = sessionService.get().getCurrentSessionId();
         statusController.setStatus("STATUS_RestartingServer");
-        statusController.setInputEnabled(false);
         restartServerBtn.setEnabled(false);
 
         // Ask about the global opencode configuration before the server
@@ -495,7 +494,6 @@ public class ComponentLifecycleHandler {
                     chatPanel.addMessage(ProcessedMessage.createError(
                         MessageType.error_response, NbBundle.getMessage(AssistantTopComponent.class, "STATUS_RestartFailed", msg), null, null
                     ));
-                    statusController.setInputEnabled(true);
                 }
             });
             return null;

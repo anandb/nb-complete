@@ -182,7 +182,9 @@ class AcpRequestRouter {
         }
 
         CompletableFuture<JsonNode> result = new CompletableFuture<>();
-        SwingUtilities.invokeLater(() -> {
+        // Offload filesystem work (folder creation, file creation, writing new
+        // files) off the EDT so the UI cannot hang on slow disks or large writes.
+        CompletableFuture.supplyAsync(() -> {
             try {
                 boolean wasNew = !file.exists();
                 File parent = file.getParentFile();
@@ -199,22 +201,26 @@ class AcpRequestRouter {
                 if (fo == null) {
                     throw new IOException("Could not create FileObject for " + filePath);
                 }
-
-                DataObject dobj = DataObject.find(fo);
-                EditorCookie ec = dobj != null ? dobj.getLookup().lookup(EditorCookie.class) : null;
-                if (ec == null) {
-                    throw new IOException("File is not editable: " + filePath);
-                }
-
                 if (wasNew) {
                     // New files: write final content first, then open cleanly.
                     // This avoids the "modified externally" reload prompt.
                     try (java.io.OutputStream os = fo.getOutputStream()) {
                         os.write(content.getBytes(StandardCharsets.UTF_8));
                     }
-                    ec.open();
-                } else {
-                    ec.open();
+                }
+                return new WriteContext(fo, wasNew);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }).thenAccept(ctx -> SwingUtilities.invokeLater(() -> {
+            try {
+                DataObject dobj = DataObject.find(ctx.fo);
+                EditorCookie ec = dobj != null ? dobj.getLookup().lookup(EditorCookie.class) : null;
+                if (ec == null) {
+                    throw new IOException("File is not editable: " + filePath);
+                }
+                ec.open();
+                if (!ctx.wasNew) {
                     javax.swing.text.Document doc = ec.openDocument();
                     doc.remove(0, doc.getLength());
                     doc.insertString(0, content, null);
@@ -228,6 +234,12 @@ class AcpRequestRouter {
                 result.completeExceptionally(new RuntimeException(
                         NbBundle.getMessage(ProcessManager.class, "ERR_WriteFileFailed", filePath)));
             }
+        })).exceptionally(ex -> {
+            LOG.severe("fs/writeTextFile failed: {0}", ExceptionUtils.getMessage(ex));
+            LOG.log(Level.FINE, "fs/writeTextFile details", ex);
+            result.completeExceptionally(new RuntimeException(
+                    NbBundle.getMessage(ProcessManager.class, "ERR_WriteFileFailed", filePath)));
+            return null;
         });
         return result;
     }
@@ -246,8 +258,10 @@ class AcpRequestRouter {
                 }
             }
         } catch (IOException e) {
-            LOG.warn("Failed to resolve canonical path for {0}", file);
+            LOG.warn("Failed to resolve canonical path for {0}", file.getPath());
         }
         return false;
     }
+
+    private record WriteContext(FileObject fo, boolean wasNew) {}
 }
