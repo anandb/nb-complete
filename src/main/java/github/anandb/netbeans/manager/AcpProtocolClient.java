@@ -413,7 +413,14 @@ public class AcpProtocolClient implements Closeable {
         future.whenComplete((result, ex) -> {
             if (isPermission) setPermissionRequestPending(false);
             if (ex != null) {
-                LOG.severe("Error handling request {0} ({1})", method, id, ex);
+                if (ex instanceof RequestRejectedException) {
+                    // Expected, client-facing rejection: log concisely (no stack
+                    // trace) and return the error to the client.
+                    LOG.fine("Rejected request {0} ({1}): {2}", method, id,
+                            ExceptionUtils.getRootCauseMessage(ex));
+                } else {
+                    LOG.severe("Error handling request {0} ({1})", method, id, ex);
+                }
                 sendError(id, -32603, ExceptionUtils.getRootCauseMessage(ex));
             } else {
                 sendResponse(id, result);

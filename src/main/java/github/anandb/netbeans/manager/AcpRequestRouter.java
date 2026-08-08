@@ -104,19 +104,20 @@ class AcpRequestRouter {
                 : params.has("path") ? params.get("path").asText() : null;
 
         if (filePath == null) {
-            return CompletableFuture.failedFuture(new RuntimeException(NbBundle.getMessage(ProcessManager.class, "ERR_MissingFilePath")));
+            return CompletableFuture.failedFuture(new RequestRejectedException(
+                    NbBundle.getMessage(ProcessManager.class, "ERR_MissingFilePath")));
         }
 
         File file = new File(filePath);
         if (!file.exists()) {
-            return CompletableFuture.failedFuture(new RuntimeException(NbBundle.getMessage(ProcessManager.class, "ERR_FileNotFound", filePath)));
+            return CompletableFuture.failedFuture(new RequestRejectedException(
+                    NbBundle.getMessage(ProcessManager.class, "ERR_FileNotFound", filePath)));
         }
 
         // Prevent arbitrary file reads — only allow files inside open projects.
         // Resolve both to canonical paths to prevent .. and symlink escapes.
         if (!isPathInProject(file)) {
-            LOG.warn("Blocked fs/readTextFile on path outside project: {0}", filePath);
-            return CompletableFuture.failedFuture(new RuntimeException(
+            return CompletableFuture.failedFuture(new RequestRejectedException(
                     NbBundle.getMessage(ProcessManager.class, "ERR_PathOutsideProject")));
         }
 
@@ -158,7 +159,7 @@ class AcpRequestRouter {
             } catch (Exception e) {
                 LOG.severe("fs/readTextFile failed: {0}", ExceptionUtils.getMessage(e));
                 LOG.log(Level.FINE, "fs/readTextFile details", e);
-                throw new RuntimeException("Failed to read file");
+                throw new RequestRejectedException("Failed to read file");
             }
         }).thenAccept(resultFuture::complete)
           .exceptionally(ex -> {
@@ -173,7 +174,7 @@ class AcpRequestRouter {
         if (!FsWriteSettings.isEnabled()) {
             LOG.log(Level.FINE, "Rejected fs/writeTextFile — writing is disabled (system property {0})",
                     PreferenceKeys.FS_WRITE_ENABLED_PROP);
-            return CompletableFuture.failedFuture(new RuntimeException(
+            return CompletableFuture.failedFuture(new RequestRejectedException(
                     NbBundle.getMessage(ProcessManager.class, "ERR_WriteDisabled")));
         }
 
@@ -182,7 +183,7 @@ class AcpRequestRouter {
         String content = params.has("content") ? params.get("content").asText() : "";
 
         if (filePath == null) {
-            return CompletableFuture.failedFuture(new RuntimeException(
+            return CompletableFuture.failedFuture(new RequestRejectedException(
                     NbBundle.getMessage(ProcessManager.class, "ERR_MissingFilePath")));
         }
 
@@ -190,8 +191,7 @@ class AcpRequestRouter {
 
         // Prevent arbitrary file writes — only allow files inside open projects.
         if (!isPathInProject(file)) {
-            LOG.warn("Blocked fs/writeTextFile on path outside project: {0}", filePath);
-            return CompletableFuture.failedFuture(new RuntimeException(
+            return CompletableFuture.failedFuture(new RequestRejectedException(
                     NbBundle.getMessage(ProcessManager.class, "ERR_PathOutsideProject")));
         }
 
@@ -245,13 +245,13 @@ class AcpRequestRouter {
             } catch (Exception e) {
                 LOG.severe("fs/writeTextFile failed: {0}", ExceptionUtils.getMessage(e));
                 LOG.log(Level.FINE, "fs/writeTextFile details", e);
-                result.completeExceptionally(new RuntimeException(
+                result.completeExceptionally(new RequestRejectedException(
                         NbBundle.getMessage(ProcessManager.class, "ERR_WriteFileFailed", filePath)));
             }
         })).exceptionally(ex -> {
             LOG.severe("fs/writeTextFile failed: {0}", ExceptionUtils.getMessage(ex));
             LOG.log(Level.FINE, "fs/writeTextFile details", ex);
-            result.completeExceptionally(new RuntimeException(
+            result.completeExceptionally(new RequestRejectedException(
                     NbBundle.getMessage(ProcessManager.class, "ERR_WriteFileFailed", filePath)));
             return null;
         });
