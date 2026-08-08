@@ -1,0 +1,29 @@
+:: Global Configuration Setup {"position":"1787.5,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Global Configuration Setup</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+The first time you start the assistant (and on server restarts), the plugin checks for a global OpenCode configuration file at `~/.config/opencode/opencode.json` (or `opencode.jsonc`). This file holds security settings like file-permission rules and which commands require your approval.
+
+If the file is missing, empty, or contains only the `$schema` reference, the chat panel shows a prompt offering to write a starter configuration:
+
+*   **Set up starter config** — writes the bundled starter file (see [[Configuration Template]]) to your config directory.
+*   **Not now** — defers the prompt for the current IDE session. It won't ask again until you restart the IDE.
+
+If an existing file can't be parsed, the prompt instead asks whether to **Replace** it (which overwrites the broken file) or **Keep** it unchanged. Files that already contain real configuration are never touched.
+
+When a config prompt was shown, a confirmation hint with an **OK** button appears before the server starts — click it to proceed. The hint also points you to `opencode auth login` and the free models at **Opencode Zen** (https://opencode.ai/docs/zen/) if you haven't added a model provider yet.
+
+
+> [[Configuration Template]]
+> [[Manage OpenCode Config in NetBeans]]
+> [[OpenCode Not Installed]]
+> [[Post Install]]
+> [[Restarting the server]]
+
+
+
+

@@ -27,6 +27,7 @@ This is a complete list of topics in this guide, use it to directly jump to that
 > [[Fetch a Coding Model]]
 > [[Filtering Chat Messages]]
 > [[Git Stashes as "Code Drafts" (using Stash Diff)]]
+> [[Global Configuration Setup]]
 > [[Home]]
 > [[IDE Enhancements]]
 > [[Input Area Keys]]

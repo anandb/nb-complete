@@ -8,11 +8,14 @@
 
 If the plugin can't find the `opencode` binary, the chat panel shows an install-help bubble instead of the normal input:
 
-*   A copyable, OS-specific install command (e.g. `curl -fsSL https://opencode.ai/install | bash`)
-*   A **View OpenCode Setup Guide** link
-*   A **Restart ACP Server** button (the toolbar restart button pulses to draw attention)
+*   A copyable, OS-specific install command (e.g. `curl -fsSL https://opencode.ai/install.sh | sh` on Linux, `brew install opencode` on macOS, `winget install SST.opencode` on Windows)
+*   A **View OpenCode Setup Guide** button
+*   A **Restart Server** button
+*   A note to open the Assistant settings via the gear icon above the message if OpenCode is already installed
 
-After installing OpenCode — and optionally setting the binary path under `Options > Assistant` — click **Restart ACP Server** to connect.
+Clicking **Restart Server** re-checks for the binary. If it still isn't found, the bubble stays in place so you can try again; if it is found, the server starts and the bubble is replaced by the normal chat input.
+
+After installing OpenCode — and optionally setting the binary path under `Options > Assistant` — click **Restart Server** to connect.
 
 
 > [[macOS/Linux]] / [[Windows]]
@@ -20,6 +23,7 @@ After installing OpenCode — and optionally setting the binary path under `Opti
 > [[Restarting the server]]
 > [[Options Panel Reference]]
 > [[Troubleshooting]]
+> [[Global Configuration Setup]]
 
 
 

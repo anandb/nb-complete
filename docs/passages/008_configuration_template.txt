@@ -8,6 +8,8 @@
 
 ##### opencode.json
 
+This is the starter configuration the plugin writes when you accept the global-config setup prompt. It lives at `~/.config/opencode/opencode.json` (or `opencode.jsonc` on the JSONC variant):
+
 <pre><code>
 `
 {
@@ -43,19 +45,21 @@
             "~/.kube/**": "deny",
             "~/.docker/**": "deny",
             "~/.config/gcloud/**": "deny",
+            "*credentials*": "deny",
+            "*.env*": "deny",
             "*": "ask"
         },
         "bash": {
-            "rm *credentials*": "deny",
-            "rm *.env*": "deny",
-            "git commit *": "ask",
-            "git push *": "ask",
-            "rm *": "ask"
+            "git add": "ask",
+            "git rm": "ask",
+            "git reset": "ask",
+            "git commit": "ask",
+            "git push": "ask",
+            "rm": "ask"
         },
         "webfetch": "allow",
-        "doom_loop": "ask",
-        "todowrite": "allow",
-        "todoread": "allow"
+        "websearch": "allow",
+        "doom_loop": "ask"
     }
 }
 `
@@ -66,6 +70,7 @@
 > [[Unix Config]] / [[Windows Config]]
 > [[Manage OpenCode Config in NetBeans]]
 > [[Offline/Private Coding (Local LLMs)]]
+> [[Global Configuration Setup]]
 
 
 
