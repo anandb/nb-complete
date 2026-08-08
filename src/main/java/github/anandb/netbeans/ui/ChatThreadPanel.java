@@ -253,6 +253,9 @@ public class ChatThreadPanel extends JPanel {
     }
 
     private static final int MESSAGE_DRAIN_BATCH_SIZE = 5;
+    // Max bubbles rendered per EDT tick during a session load, keeping the
+    // IDE responsive while a large history is drawn in chunks.
+    private static final int LOAD_RENDER_BATCH_SIZE = 5;
 
     private void drainMessageQueue() {
         int count = 0;
@@ -890,25 +893,7 @@ public class ChatThreadPanel extends JPanel {
         sessionLoading = false;
         List<ProcessedMessage> buffer = pendingMessagesBySession.remove(sid);
         if (buffer != null && !buffer.isEmpty()) {
-            batchAdding = true;
-            try {
-                List<ProcessedMessage> toRender = tailWithPinned(buffer, ProcessedMessage::messageId);
-                for (ProcessedMessage pm : toRender) {
-                    if (pm.isIgnorable()) continue;
-                    String text = pm.text();
-                    if (text == null) text = "";
-                    if (pm.streaming()) {
-                        processMessageSections(pm, text, pm.messageType().roleName());
-                    } else {
-                        addSingleBubble(pm.messageType(), text, pm.messageId(), pm.toolTitle(), false);
-                    }
-                }
-            } finally {
-                batchAdding = false;
-            }
-            trimMessages();
-            messagesContainer.revalidate();
-            scrollController.scrollToBottom(true);
+            renderLoadedInChunks(tailWithPinned(buffer, ProcessedMessage::messageId));
         }
 
         // Stale-pin cleanup: remove pins for unseen message IDs. Runs for both paths.
@@ -919,6 +904,45 @@ public class ChatThreadPanel extends JPanel {
                 pinStore.retainPinned(sid, seen);
             }
         }
+    }
+
+    /**
+     * Renders a list of loaded messages across multiple EDT ticks so a large
+     * history doesn't freeze the IDE in a single monolithic layout pass.
+     * Each tick draws {@link #LOAD_RENDER_BATCH_SIZE} bubbles, then schedules the
+     * next chunk via invokeLater. Batch mode stays on across all chunks, so only
+     * one revalidate + scroll happens at the very end (avoids O(N^2)).
+     */
+    private void renderLoadedInChunks(List<ProcessedMessage> toRender) {
+        if (toRender == null || toRender.isEmpty()) {
+            return;
+        }
+        batchAdding = true;
+        final int[] offset = {0};
+        final Runnable[] chunk = new Runnable[1];
+        chunk[0] = () -> {
+            int end = Math.min(offset[0] + LOAD_RENDER_BATCH_SIZE, toRender.size());
+            for (; offset[0] < end; offset[0]++) {
+                ProcessedMessage pm = toRender.get(offset[0]);
+                if (pm.isIgnorable()) continue;
+                String text = pm.text();
+                if (text == null) text = "";
+                if (pm.streaming()) {
+                    processMessageSections(pm, text, pm.messageType().roleName());
+                } else {
+                    addSingleBubble(pm.messageType(), text, pm.messageId(), pm.toolTitle(), false);
+                }
+            }
+            if (offset[0] < toRender.size()) {
+                SwingUtilities.invokeLater(chunk[0]);
+            } else {
+                batchAdding = false;
+                trimMessages();
+                messagesContainer.revalidate();
+                scrollController.scrollToBottom(true);
+            }
+        };
+        chunk[0].run();
     }
 
     public void setMessages(List<Message> messages) {
@@ -948,32 +972,22 @@ public class ChatThreadPanel extends JPanel {
             userMessageCount = 0;
 
             if (messages != null) {
-                // Batch mode: skip per-bubble revalidate, sweep, and combine.
-                // Single revalidate + scroll at end cuts O(N²) to O(N).
-                batchAdding = true;
-                try {
-                    List<Message> toRender = tailWithPinned(messages, Message::id);
-                    for (Message m : toRender) {
-                        ProcessedMessage pm = messageTransformer.convert(m);
-                        if (pm.isIgnorable()) {
-                            continue;
-                        }
-                        String text = pm.text();
-                        if (text == null) text = "";
-                        // Bypass addMessage()'s invokeLater — we are already on EDT.
-                        if (pm.streaming()) {
-                            processMessageSections(pm, text, pm.messageType().roleName());
-                        } else {
-                            addSingleBubble(pm.messageType(), text, pm.messageId(), pm.toolTitle(), false);
-                        }
+                // Convert to ProcessedMessage first, then render in chunks so a
+                // large history doesn't freeze the EDT in one layout pass.
+                List<Message> toRender = tailWithPinned(messages, Message::id);
+                List<ProcessedMessage> converted = new ArrayList<>(toRender.size());
+                for (Message m : toRender) {
+                    ProcessedMessage pm = messageTransformer.convert(m);
+                    if (!pm.isIgnorable()) {
+                        converted.add(pm);
                     }
-                } finally {
-                    batchAdding = false;
                 }
+                renderLoadedInChunks(converted);
+            } else {
+                trimMessages();
+                messagesContainer.revalidate();
+                scrollController.scrollToBottom(true);
             }
-            trimMessages();
-            messagesContainer.revalidate();
-            scrollController.scrollToBottom(true);
         });
     }
 
