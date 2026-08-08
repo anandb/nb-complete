@@ -37,7 +37,7 @@ class MissingBinaryBubble extends JPanel {
     /** The buttons panel; disabled when the user clicks Restart. */
     private JPanel buttonsPanel;
 
-    MissingBinaryBubble(Runnable onGuide, java.util.function.Consumer<Runnable> onRestart) {
+    MissingBinaryBubble(Runnable onGuide, RestartCallback restartCallback) {
         setLayout(new BorderLayout());
         setAlignmentY(Component.CENTER_ALIGNMENT);
         setOpaque(false);
@@ -129,7 +129,7 @@ class MissingBinaryBubble extends JPanel {
         JButton restartBtn = new JButton(NbBundle.getMessage(MissingBinaryBubble.class, "MissingBinaryBubble.Button.Restart"));
         restartBtn.setFocusPainted(false);
         restartBtn.addActionListener(e -> {
-            if (onRestart != null) onRestart.accept(this::disableButtons);
+            if (restartCallback != null) restartCallback.onRestart(this::disableButtons);
         });
 
         buttonsPanel.add(guideBtn);

@@ -890,7 +890,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                 chatPanel.clearMessages();
                 chatPanel.addMissingBinaryBubble(
                     () -> BrowserUtils.openOrCopyUrl("https://opencode.ai/docs/", null, null),
-                    (disableButtons) -> promptRestartServer(disableButtons)
+                    onRestarted -> promptRestartServer(onRestarted)
                 );
                 statusController.setStatus("STATUS_BinaryNotFound");
             } else {

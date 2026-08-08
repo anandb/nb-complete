@@ -578,9 +578,9 @@ public class ChatThreadPanel extends JPanel {
         });
     }
 
-    public void addMissingBinaryBubble(Runnable onGuide, java.util.function.Consumer<Runnable> onRestart) {
+    public void addMissingBinaryBubble(Runnable onGuide, RestartCallback restartCallback) {
         SwingUtilities.invokeLater(() -> {
-            MissingBinaryBubble bubble = new MissingBinaryBubble(onGuide, onRestart);
+            MissingBinaryBubble bubble = new MissingBinaryBubble(onGuide, restartCallback);
             messagesContainer.add(bubble);
             messagesContainer.add(Box.createVerticalStrut(4));
             messagesContainer.revalidate();

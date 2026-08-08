@@ -24,7 +24,8 @@ class GlobalConfigBubble extends JPanel {
     /** Guards against duplicate action events (e.g. a click plus a focus-lost release). */
     private boolean dismissed;
 
-    private JPanel content;
+    /** The opaque bubble chrome holding the title, body, and action buttons. */
+    private JPanel bubbleContent;
 
     /**
      * @param result        evaluation outcome driving the message and buttons
@@ -41,13 +42,13 @@ class GlobalConfigBubble extends JPanel {
 
         ColorTheme theme = ThemeManager.getCurrentTheme();
 
-        content = UIUtils.createBubbleContentPanel();
+        bubbleContent = UIUtils.createBubbleContentPanel();
 
         JLabel titleLabel = new JLabel(NbBundle.getMessage(GlobalConfigBubble.class,
                 overwrite ? "GlobalConfigBubble.Title.Overwrite" : "GlobalConfigBubble.Title.Setup"));
         titleLabel.setFont(ThemeManager.getFont().deriveFont(Font.BOLD, ThemeManager.getFont().getSize() + 4f));
         titleLabel.setForeground(theme.foreground());
-        content.add(titleLabel, BorderLayout.NORTH);
+        bubbleContent.add(titleLabel, BorderLayout.NORTH);
 
         String bodyKey = overwrite ? "GlobalConfigBubble.Body.Overwrite" : "GlobalConfigBubble.Body.Setup";
         String body = overwrite
@@ -62,7 +63,7 @@ class GlobalConfigBubble extends JPanel {
         bodyLabel.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
         bodyLabel.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN, ThemeManager.getFont().getSize() + 1f));
         bodyLabel.setForeground(theme.foreground());
-        content.add(bodyLabel, BorderLayout.CENTER);
+        bubbleContent.add(bodyLabel, BorderLayout.CENTER);
 
         JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
         buttonsPanel.setOpaque(false);
@@ -87,9 +88,9 @@ class GlobalConfigBubble extends JPanel {
 
         buttonsPanel.add(yesBtn);
         buttonsPanel.add(noBtn);
-        content.add(buttonsPanel, BorderLayout.SOUTH);
+        bubbleContent.add(buttonsPanel, BorderLayout.SOUTH);
 
-        add(content, BorderLayout.CENTER);
+        add(bubbleContent, BorderLayout.CENTER);
         setAlignmentX(LEFT_ALIGNMENT);
     }
 
