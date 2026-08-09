@@ -7,7 +7,7 @@
   <div>[[Index->Topic Index]]</div>
 </div>
 
-<i style="opacity: 0.7;">Last updated for BeanBot v1.12.10.</i>
+<i style="opacity: 0.7;">Last updated for BeanBot v1.13.1.</i>
 
 This guide will help you setup [[BeanBot]], a NetBeans plugin that provides an AI assistant panel powered by OpenCode, so you can chat with AI models directly inside the IDE. It automatically attaches active project and source file context to your messages, so the AI always understands what you're working on. It also features a built-in permission handler—allowing you to inspect code diffs before applying changes and explicitly approve file deletions or terminal commands.
 
