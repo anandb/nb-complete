@@ -26,6 +26,7 @@
   `LOG.log(Level.WARNING, ...)` or `severe/warn/info/fine`). Pass exceptions as the LAST argument.
 - **Theming**: Use `ThemeManager.getCurrentTheme()`. Dark mode icons require `_dark.svg` suffix.
 - **Asynchrony / EDT**: Wrap all background thread UI updates in `SwingUtilities.invokeLater()`.
+- **No I/O on EDT**: NEVER perform I/O operations (file reads/writes, network calls, pipe writes) on the Event Dispatch Thread (EDT). This includes `Files.readString()`, `writer.flush()`, `sendRequest()`, `sendNotification()`, and similar blocking operations. Doing so can cause deadlocks when the pipe buffer is full or the server is slow to respond, freezing the entire UI. Always wrap I/O in `CompletableFuture.runAsync()` or use background threads. Example: `AcpProtocolClient.sendRequest()` and `sendNotification()` now use `CompletableFuture.runAsync()` to avoid EDT blocking.
 - **Regex in hot paths**: NEVER use `String.matches()` or `String.replaceAll()` in loops or
   per-tick callbacks. Pre-compile with `static final Pattern` and reuse via `matcher()`.
 - **Swing Layout Loops**: NEVER call `revalidate()` synchronously inside sizing methods like `getPreferredSize()` or `setBounds()`. Doing so re-adds the component to Swing's invalidation queue during a layout pass, causing an infinite 100% CPU layout loop. Use a boolean guard (e.g. `suppressRevalidate`) to ignore or defer revalidation during internal size calculations.
