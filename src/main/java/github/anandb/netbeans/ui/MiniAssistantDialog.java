@@ -2,10 +2,12 @@ package github.anandb.netbeans.ui;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Container;
+import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Color;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.FontMetrics;
 import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
 import java.awt.GridBagConstraints;
@@ -39,6 +41,7 @@ import javax.swing.JDialog;
 import javax.swing.JEditorPane;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JTextArea;
 import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
@@ -47,6 +50,8 @@ import javax.swing.Scrollable;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
+
+import org.apache.commons.lang3.StringUtils;
 
 import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
@@ -85,7 +90,7 @@ public class MiniAssistantDialog extends JDialog {
     // Permission panel components
     private final WobblePanel miniPermissionPanel;
     private JLabel miniPermissionLabel;
-    private JLabel miniContextLabel;
+    private JTextArea miniContextLabel;
     private JPanel miniPermissionButtons;
     private CompletableFuture<String> activePermissionFuture;
 
@@ -312,7 +317,7 @@ public class MiniAssistantDialog extends JDialog {
         stopBtn.setContentAreaFilled(false);
         stopBtn.setFocusPainted(false);
         stopBtn.setBorder(BorderFactory.createEmptyBorder(2, 2, 2, 4));
-        stopBtn.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        stopBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
         stopBtn.setToolTipText(NbBundle.getMessage(MiniAssistantDialog.class, "HINT_Stop"));
         stopBtn.setIcon(ThemeManager.getIcon("stop.svg", 16));
         stopBtn.setVisible(false);
@@ -364,16 +369,28 @@ public class MiniAssistantDialog extends JDialog {
         JPanel labelRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
         labelRow.setOpaque(false);
         miniPermissionLabel = new JLabel();
-        miniContextLabel = new JLabel();
+        labelRow.add(miniPermissionLabel);
+
+        // Two-line-capped context/filename display: word-wraps and truncates
+        // (clips) anything beyond two lines instead of growing the panel.
+        miniContextLabel = new JTextArea();
+        miniContextLabel.setEditable(false);
+        miniContextLabel.setFocusable(false);
+        miniContextLabel.setOpaque(false);
+        miniContextLabel.setLineWrap(true);
+        miniContextLabel.setWrapStyleWord(true);
+        miniContextLabel.setRows(2);
+        miniContextLabel.setBorder(BorderFactory.createEmptyBorder());
         miniContextLabel.setForeground(ThemeManager.getCurrentTheme().mutedForeground());
         miniContextLabel.setFont(IconResourceManager.getMonospaceFont());
-        labelRow.add(miniPermissionLabel);
-        labelRow.add(miniContextLabel);
+        FontMetrics fm = miniContextLabel.getFontMetrics(miniContextLabel.getFont());
+        miniContextLabel.setMaximumSize(new Dimension(Integer.MAX_VALUE, fm.getHeight() * 2));
 
         miniPermissionButtons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 4));
         miniPermissionButtons.setOpaque(false);
 
         miniPermissionPanel.add(labelRow);
+        miniPermissionPanel.add(miniContextLabel);
         miniPermissionPanel.add(miniPermissionButtons);
 
         add(splitPane, BorderLayout.CENTER);
@@ -1021,7 +1038,9 @@ public class MiniAssistantDialog extends JDialog {
             }
 
             if (!contextStr.isEmpty()) {
-                miniContextLabel.setText(contextStr);
+                // Keep the leading/trailing parts (e.g. filename) and abbreviate the
+                // middle so it stays within the two-line cap.
+                miniContextLabel.setText(StringUtils.abbreviateMiddle(contextStr, "...", 130));
                 miniContextLabel.setVisible(true);
             } else {
                 miniContextLabel.setVisible(false);
