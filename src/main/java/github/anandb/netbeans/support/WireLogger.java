@@ -30,7 +30,7 @@ public final class WireLogger implements Closeable {
                 ));
             }
         } catch (FileNotFoundException ex) {
-            LOG.warn("Couldn't open Wire Log for writing {0}", wireLogFileName);
+            LOG.warn("Couldn't open Wire Log for writing: " + wireLogFileName, ex);
         } finally {
             this.wireLoggingEnabled = (this.wireLogWriter != null);
         }

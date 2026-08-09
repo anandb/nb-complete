@@ -31,7 +31,7 @@ should work on other versions/operating systems, but your experience may vary.
 | **OS** | openSUSE Tumbleweed-Slowroll |
 | **NetBeans** | RELEASE220 |
 | **Java** | JDK 17+ |
-| **Opencode** | 1.17.17 |
+| **Opencode** | 1.18.15 |
 | **Opencode plugins** | `@franzmoca/opencode-lombok`, `true-mem` |
 | **LLMs** | Big Pickle; GPT 5.4-mini, GPT 5.4-nano; GLM 5.1, GLM 5.2; DeepSeek V4 Pro, DeepSeek V4 Flash; Kimi K2.5, Kimi K2.6; Mimo V2.5; Qwen3.5, Qwen3.6; Gemma4 |
 
