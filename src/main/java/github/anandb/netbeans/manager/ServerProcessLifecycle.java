@@ -3,6 +3,7 @@ package github.anandb.netbeans.manager;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.CompletableFuture;
@@ -115,12 +116,19 @@ class ServerProcessLifecycle {
                 args = args.replaceAll("[;|$`]", "").replace("\\n", " ");
             }
 
-            CommandLine cmd = new CommandLine(executable);
-            cmd.addArguments(args, true);
+            // Wrap with WSL on Windows when available
+            List<String> cmdStrings;
+            if (BinaryResolver.isWslAvailable()) {
+                cmdStrings = List.of(BinaryResolver.buildWslArgs(args));
+                LOG.info("Executing via WSL: wsl.exe {0}", String.join(" ", cmdStrings));
+            } else {
+                CommandLine cmd = new CommandLine(executable);
+                cmd.addArguments(args, true);
+                cmdStrings = Arrays.asList(cmd.toStrings());
+                LOG.info("Executing: {0}", cmd);
+            }
 
-            LOG.info("Executing: {0}", cmd);
-
-            ProcessBuilder pb = new ProcessBuilder(Arrays.asList(cmd.toStrings()));
+            ProcessBuilder pb = new ProcessBuilder(cmdStrings);
             pb.redirectError(ProcessBuilder.Redirect.INHERIT);
 
             Map<String, String> env = pb.environment();

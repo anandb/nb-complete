@@ -267,16 +267,24 @@ public class TokenUsageDialog extends JDialog {
     }
 
     private String runStatsCommand(int days, String projectDir) throws Exception {
-        String binary = BinaryResolver.resolveExecutablePath();
-        List<String> cmd = new ArrayList<>();
-        cmd.add(binary);
-        cmd.add("stats");
-        cmd.add("--days");
-        cmd.add(String.valueOf(days));
-        cmd.add("--models");
-        if (projectDir != null) {
-            cmd.add("--project");
-            cmd.add("");
+        String statsArgs = "stats --days " + days + " --models"
+            + (projectDir != null ? " --project" : "");
+
+        List<String> cmd;
+        if (BinaryResolver.isWslAvailable()) {
+            cmd = List.of(BinaryResolver.buildWslArgs(statsArgs));
+        } else {
+            String binary = BinaryResolver.resolveExecutablePath();
+            cmd = new ArrayList<>();
+            cmd.add(binary);
+            cmd.add("stats");
+            cmd.add("--days");
+            cmd.add(String.valueOf(days));
+            cmd.add("--models");
+            if (projectDir != null) {
+                cmd.add("--project");
+                cmd.add("");
+            }
         }
 
         LOG.info("Running opencode stats command: {0}", String.join(" ", cmd));

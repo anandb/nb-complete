@@ -127,6 +127,34 @@ public final class BinaryResolver {
     }
 
     /**
+     * Returns {@code true} if WSL ({@code wsl.exe}) is available on this
+     * Windows system and the user has not disabled WSL usage in the options.
+     * Always returns {@code false} on non-Windows platforms.
+     */
+    public static boolean isWslAvailable() {
+        boolean isWindows = System.getProperty("os.name", "").toLowerCase().contains("win");
+        if (!isWindows) {
+            return false;
+        }
+        boolean enabled = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                .getBoolean(PreferenceKeys.USE_WSL, true);
+        if (!enabled) {
+            return false;
+        }
+        return findOnPath("wsl.exe") != null;
+    }
+
+    /**
+     * Builds the command-line arguments for a WSL-wrapped opencode invocation.
+     * Returns {@code ["bash", "-lc", "opencode.exe &lt;args&gt;"]}.
+     */
+    public static String[] buildWslArgs(String args) {
+        boolean isWindows = System.getProperty("os.name", "").toLowerCase().contains("win");
+        String innerExe = isWindows ? "opencode.exe" : "opencode";
+        return new String[]{"bash", "-lc", innerExe + " " + args};
+    }
+
+    /**
      * Checks whether the given command name exists and is executable on the system PATH.
      */
     public static boolean isInPath(String command) {

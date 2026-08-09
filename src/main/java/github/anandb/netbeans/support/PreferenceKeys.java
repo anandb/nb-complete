@@ -62,6 +62,9 @@ public final class PreferenceKeys {
     /** Whether the Mini Assistant dialog is the target for send/ask actions (enabled by default). */
     public static final String MINI_ASSISTANT_ENABLED = "miniAssistant.enabled";
 
+    /** Whether to launch opencode through WSL when available (Windows only, enabled by default). */
+    public static final String USE_WSL = "useWsl";
+
     // Mini Assistant window bounds and layout
     public static final String MINI_ASSISTANT_X = "miniAssistant.x";
     public static final String MINI_ASSISTANT_Y = "miniAssistant.y";

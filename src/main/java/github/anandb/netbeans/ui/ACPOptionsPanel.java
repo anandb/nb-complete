@@ -71,6 +71,7 @@ public class ACPOptionsPanel extends JPanel {
     private JCheckBox quickJumpCheckbox;
     private JCheckBox autoBackupChangesCheckbox;
     private JCheckBox miniAssistantCheckbox;
+    private JCheckBox useWslCheckbox;
     private JSpinner idleTimeoutSpinner;
     private JSpinner maxMessagesSpinner;
     private JLabel argsLabel;
@@ -175,6 +176,18 @@ public class ACPOptionsPanel extends JPanel {
         argsField.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_ProcessArguments"));
         servicePanel.add(argsField, UIUtils.createGbc(1, row, 1.0, 0, GridBagConstraints.HORIZONTAL,
                                          GridBagConstraints.WEST, new Insets(0, 0, 5, 5)));
+
+        useWslCheckbox = new JCheckBox();
+        useWslCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_UseWsl"));
+        useWslCheckbox.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_UseWsl"));
+        useWslCheckbox.addActionListener(evt -> controller.changed());
+        boolean isWindows = System.getProperty("os.name", "").toLowerCase().contains("win");
+        if (isWindows) {
+            GridBagConstraints gbcWsl = UIUtils.createGbc(0, ++row, 1.0, 0, GridBagConstraints.HORIZONTAL,
+                    GridBagConstraints.WEST, new Insets(0, 12, 5, 0));
+            gbcWsl.gridwidth = 3;
+            servicePanel.add(useWslCheckbox, gbcWsl);
+        }
 
         add(servicePanel);
         add(Box.createVerticalStrut(8));
@@ -487,6 +500,7 @@ public class ACPOptionsPanel extends JPanel {
         stashDiffCheckbox.setSelected(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean(PreferenceKeys.ACTIONS_STASH_DIFF, true));
         quickJumpCheckbox.setSelected(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean(PreferenceKeys.ACTIONS_QUICK_JUMP, true));
         miniAssistantCheckbox.setSelected(PluginSettings.isMiniAssistantEnabled());
+        useWslCheckbox.setSelected(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean(PreferenceKeys.USE_WSL, true));
     }
 
     private void clearHint() {
@@ -546,6 +560,7 @@ public class ACPOptionsPanel extends JPanel {
         PluginSettings.setStashDiffEnabled(stashDiffCheckbox.isSelected());
         PluginSettings.setQuickJumpEnabled(quickJumpCheckbox.isSelected());
         PluginSettings.setMiniAssistantEnabled(miniAssistantCheckbox.isSelected());
+        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean(PreferenceKeys.USE_WSL, useWslCheckbox.isSelected());
 
         String newIconPath = iconPathField.getText();
         String oldPath = previousIconPath != null ? previousIconPath : "";
