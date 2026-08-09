@@ -10,6 +10,9 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
@@ -25,12 +28,19 @@ public final class WireLogger implements Closeable {
         try {
             wireLogFileName = System.getenv("ACP_WIRE_LOG");
             if (isNotBlank(wireLogFileName)) {
+                Path logPath = Paths.get(wireLogFileName);
+                Path parentDir = logPath.getParent();
+                if (parentDir != null) {
+                    Files.createDirectories(parentDir);
+                }
                 this.wireLogWriter = new BufferedWriter(new PrintWriter(
                     new FileOutputStream(wireLogFileName, true), true, StandardCharsets.UTF_8
                 ));
             }
         } catch (FileNotFoundException ex) {
             LOG.warn("Couldn't open Wire Log for writing: " + wireLogFileName, ex);
+        } catch (IOException ex) {
+            LOG.warn("Couldn't create parent directories for Wire Log: " + wireLogFileName, ex);
         } finally {
             this.wireLoggingEnabled = (this.wireLogWriter != null);
         }
