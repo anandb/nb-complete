@@ -101,6 +101,13 @@ public class MiniAssistantDialog extends JDialog {
     private int wordCount;
     private final Map<String, Integer> wordsByMessageId = new ConcurrentHashMap<>();
 
+    // Processing status components (elapsed time + spinner + stop button)
+    private JLabel elapsedLabel;
+    private JLabel spinnerLabel;
+    private JButton stopBtn;
+    private Timer elapsedTimer;
+    private long processingStartTime;
+
     public static synchronized MiniAssistantDialog getInstance() {
         if (instance == null) {
             instance = new MiniAssistantDialog();
@@ -280,15 +287,53 @@ public class MiniAssistantDialog extends JDialog {
         tokenOverlay.setOpaque(false);
         tokenOverlay.setFont(ThemeManager.getMonospaceFont().deriveFont(10f));
         tokenOverlay.setBorder(BorderFactory.createEmptyBorder(2, 6, 2, 6));
-        tokenOverlay.setPreferredSize(new Dimension(Integer.MAX_VALUE, 20));
-        tokenOverlay.setMinimumSize(new Dimension(0, 20));
         tokenOverlay.setVisible(true);
         tokenOverlay.setHorizontalAlignment(SwingConstants.RIGHT);
+
+        // Elapsed time label (e.g. "(23s)")
+        elapsedLabel = new JLabel();
+        elapsedLabel.setOpaque(false);
+        elapsedLabel.setFont(ThemeManager.getMonospaceFont().deriveFont(10f));
+        elapsedLabel.setBorder(BorderFactory.createEmptyBorder(2, 4, 2, 2));
+        elapsedLabel.setForeground(ThemeManager.getCurrentTheme().mutedForeground());
+        elapsedLabel.setVisible(false);
+        elapsedLabel.setHorizontalAlignment(SwingConstants.RIGHT);
+
+        // Spinner icon label
+        spinnerLabel = new JLabel();
+        spinnerLabel.setOpaque(false);
+        spinnerLabel.setBorder(BorderFactory.createEmptyBorder(2, 2, 2, 2));
+        spinnerLabel.setVisible(false);
+
+        // Stop button
+        stopBtn = new JButton();
+        stopBtn.setOpaque(false);
+        stopBtn.setBorderPainted(false);
+        stopBtn.setContentAreaFilled(false);
+        stopBtn.setFocusPainted(false);
+        stopBtn.setBorder(BorderFactory.createEmptyBorder(2, 2, 2, 4));
+        stopBtn.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        stopBtn.setToolTipText(NbBundle.getMessage(MiniAssistantDialog.class, "HINT_Stop"));
+        stopBtn.setIcon(ThemeManager.getIcon("stop.svg", 16));
+        stopBtn.setVisible(false);
+        stopBtn.addActionListener(e -> stopCurrentMessage());
+
+        // Status panel: spinner + elapsed + stop (right-aligned, next to tokens)
+        JPanel statusPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 2, 0));
+        statusPanel.setOpaque(false);
+        statusPanel.add(spinnerLabel);
+        statusPanel.add(elapsedLabel);
+        statusPanel.add(stopBtn);
+
+        JPanel tokenRow = new JPanel(new BorderLayout());
+        tokenRow.setOpaque(false);
+        tokenRow.add(tokenOverlay, BorderLayout.WEST);
+        tokenRow.add(statusPanel, BorderLayout.EAST);
 
         JPanel topHeader = new JPanel(new BorderLayout());
         topHeader.setOpaque(false);
         topHeader.add(spinnerBar, BorderLayout.NORTH);
-        topHeader.add(tokenOverlay, BorderLayout.SOUTH);
+        topHeader.add(tokenRow, BorderLayout.SOUTH);
 
         // Wrapper so header floats above the scroll pane
         JPanel responseWrapper = new JPanel(new BorderLayout());
@@ -452,6 +497,45 @@ public class MiniAssistantDialog extends JDialog {
         }
         updateTokenOverlay();
         startTokenPolling();
+        startElapsedTimer();
+    }
+
+    /** Stops the currently processing message via ProcessControl. */
+    private void stopCurrentMessage() {
+        AssistantTopComponent tc = AssistantTopComponent.findInstance();
+        if (tc != null) {
+            tc.stopMessage();
+        }
+    }
+
+    /** Starts the elapsed-time timer and shows spinner + stop button. */
+    private void startElapsedTimer() {
+        processingStartTime = System.currentTimeMillis();
+        spinnerLabel.setIcon(ThemeManager.getIcon("spinner.svg", 16));
+        spinnerLabel.setVisible(true);
+        elapsedLabel.setText("(0s)");
+        elapsedLabel.setVisible(true);
+        stopBtn.setVisible(true);
+        if (elapsedTimer != null) {
+            elapsedTimer.stop();
+        }
+        elapsedTimer = new Timer(1000, e -> {
+            long elapsed = System.currentTimeMillis() - processingStartTime;
+            elapsedLabel.setText("(" + BubbleThemeApplier.formatElapsed(elapsed) + ")");
+        });
+        elapsedTimer.start();
+    }
+
+    /** Stops the elapsed-time timer and hides spinner + stop button. */
+    private void stopElapsedTimer() {
+        if (elapsedTimer != null) {
+            elapsedTimer.stop();
+            elapsedTimer = null;
+        }
+        spinnerLabel.setVisible(false);
+        spinnerLabel.setIcon(null);
+        elapsedLabel.setVisible(false);
+        stopBtn.setVisible(false);
     }
 
     private void setTokenOverlayVisible(boolean active, String text) {
@@ -630,6 +714,7 @@ public class MiniAssistantDialog extends JDialog {
                 showSpinner();
             } else {
                 stopTokenPolling();
+                stopElapsedTimer();
                 if (spinnerBar != null) {
                     spinnerBar.setVisible(false);
                 }
@@ -835,6 +920,7 @@ public class MiniAssistantDialog extends JDialog {
         if (isVisible()) {
             saveBounds();
         }
+        stopElapsedTimer();
         if (keyDispatcher != null) {
             KeyboardFocusManager.getCurrentKeyboardFocusManager()
                     .removeKeyEventDispatcher(keyDispatcher);
@@ -886,6 +972,19 @@ public class MiniAssistantDialog extends JDialog {
         inputArea.setFont(f);
 
         applyTokenOverlayColors(isProcessing && maxTokenCountThisTurn > 0);
+
+        // Update elapsed label color for current theme
+        if (elapsedLabel != null) {
+            elapsedLabel.setForeground(theme.mutedForeground());
+        }
+        // Update stop button icon for dark/light theme
+        if (stopBtn != null && stopBtn.isVisible()) {
+            stopBtn.setIcon(ThemeManager.getIcon("stop.svg", 16));
+        }
+        // Update spinner icon for dark/light theme
+        if (spinnerLabel != null && spinnerLabel.isVisible()) {
+            spinnerLabel.setIcon(ThemeManager.getIcon("spinner.svg", 16));
+        }
 
         SwingUtilities.updateComponentTreeUI(this);
     }
