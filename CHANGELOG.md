@@ -1,5 +1,60 @@
 # Release Notes
 
+## v1.13.1 (Changes since v1.12.10)
+
+### Features
+- **Mini Assistant stop control**: Added an elapsed-time timer (e.g. `(23s)`), a spinner, and a **Stop** button to the mini dialog header. The stop button rejects pending permissions and sends `session/cancel`; it appears when processing begins and clears when the turn ends.
+- **Global opencode config setup**: A chat bubble now prompts to set up a global `opencode.json`, detecting OpenCode installed via WinGet/Chocolatey. Server restart is gated: the restart safety timeout only starts after the prompt is answered, with a **Turn off this feature** option to suppress future prompts.
+- **Two-line context cap**: Mini-assistant permission context is capped at two lines with middle abbreviation (`...`), so long file paths no longer grow the panel.
+- **Show Diff button**: The mini-assistant permission panel now shows a **Show Diff** button once file changes finish loading asynchronously.
+- **`list_projects` MCP tool**: Added a `list_projects` tool and removed the fire-and-forget build/test tools.
+- **Options tooltips**: Added detailed tooltips to all Assistant options-panel controls; dropdown tooltips now render above the widget.
+- **Install guidance**: The update dialog now guides the user to install the downloaded `.nbm`.
+- **Chunked preamble**: The preamble is now posted in chunks with an informational bubble to avoid oversized single payloads.
+- **`fs/write` opt-in**: Added an `fs/write` system property (disabled by default) and consolidated system-property names.
+
+### Fixes
+- **Permission panel deadlock**: Permission responses are now sent off the EDT.
+- **WireLogger**: Made the writer chain thread-safe (`synchronized`, `OutputStreamWriter`), create parent directories before opening the log file, and fixed `{0}` parameter substitution (passing the exception as the last argument).
+- **Missing Show Diff**: The mini-permission **Show Diff** button was missing and is now restored.
+- **Review findings**: Fixed path-traversal, EDT violations, timer leaks, and logging issues surfaced during code review.
+- **One-off bubbles**: The chat thread is cleared before showing one-off bubbles; fixed input-disabling, wobble, `fs/write`, and paperclip icon issues.
+- **Stuck permission panel**: The panel is dismissed when the server crashes.
+- **Bubble width**: Chat bubbles now wrap at 70% of the parent width instead of overflowing.
+- **Chunked load render**: Guarded chunked session-load rendering against live deltas and flush-timer races mid-render.
+- **Request logging**: Expected `fs` request rejections are logged without stack traces.
+- **Diff view on corrupted streams**: The permission/stash diff view no longer crashes with `Cannot encode input data using UTF8 encoding` when the diffed content contains emoji or other astral characters. Content is now fed to the diff as UTF-8 bytes, and any residual failure falls back to a read-only monospace view of the sanitized content.
+
+### Improvements
+- **Non-blocking requests**: `sendRequest`/`sendNotification` no longer block the caller thread, preventing EDT deadlocks when pipe buffers fill.
+- **OpenCode version**: Updated OpenCode from 1.17.17 to 1.18.15.
+- **Preamble tidy-up**: Formatted the opencode preamble and removed redundant message separators.
+
+### UI
+- **Theme**: Collapsed activity/tool headers now use the `secondary2` theme color; stash-diff icons were tweaked.
+- **Layout**: Improved model/agent configuration panel layout, removed dead `modelLabel`, and fixed a status-bar layout loop.
+- **Strings**: Externalized remaining UI strings to the bundle and kept the rocket button always visible.
+
+### Performance
+- **Session-load rendering**: Large session loads are rendered on the EDT in chunks to avoid IDE freezes.
+
+### Dependencies
+- Updated OpenCode to 1.18.15 (OpenCode model: `opencode/deepseek-v4-flash`).
+
+### Refactoring
+- **Retry removal**: Removed client-side request retry logic from `AcpProtocolClient`.
+- **Imports**: Replaced fully-qualified class names with imports in managers and elsewhere.
+- **ToolDataExtractor**: Moved to the `support` package (Hexagonal Architecture).
+- **Cleanup**: Removed the warm-up prompt feature, refactored the global-config restart flow callbacks for clarity, and removed message separators from `preamble.md`.
+
+### Documentation
+- **QUICKSTART.md**: Replaced with a link to the interactive User Guide.
+- **User Guide**: Added 7 new guide pages and a mobile-responsive stylesheet; split the Ollama guide into 4 pages; updated the global config setup flow; unified BeanBot branding in docs.
+- **AGENTS.md**: Added the critical "No I/O on EDT" directive to prevent deadlocks.
+
+### Housekeeping
+- Version bumped to 1.13.1.
+
 ## v1.12.10 (Changes since v1.12.9)
 
 ### Features

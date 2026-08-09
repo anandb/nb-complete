@@ -19,10 +19,10 @@ import java.awt.event.MouseEvent;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
@@ -52,6 +52,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JSplitPane;
+import javax.swing.JTextArea;
 import javax.swing.JToggleButton;
 import javax.swing.JToolBar;
 import javax.swing.KeyStroke;
@@ -705,11 +706,10 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
     private static void updateDiffView(JPanel diffPanel, FileDiff fd, JList<FileDiff> fileList, boolean isStash) {
         Runnable task = () -> {
             diffPanel.removeAll();
+            String name = new File(fd.filePath).getName();
+            String baseContent = sanitizeDiffContent(fd.headContent);
+            String stashContent = sanitizeDiffContent(fd.stashContent);
             try {
-                String name = new File(fd.filePath).getName();
-                String baseContent = sanitizeDiffContent(fd.headContent);
-                String stashContent = sanitizeDiffContent(fd.stashContent);
-
                 // Identical content: show clear message instead of empty diff view
                 if (baseContent.equals(stashContent)) {
                     JLabel identicalLabel = new JLabel(Bundle.CTL_StashDiffAction_FilesIdentical(), JLabel.CENTER);
@@ -727,13 +727,17 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
                         : "Base (" + statusName(fd.status) + ")";
                 StreamSource base = StreamSource.createSource(
                         name + " (base)", baseTitle, mime,
-                        new StringReader(baseContent));
+                        new InputStreamReader(
+                            new ByteArrayInputStream(baseContent.getBytes(StandardCharsets.UTF_8)),
+                            StandardCharsets.UTF_8));
                 String modifiedTitle = !isStash ? "Modified" : (fd.conflict
                         ? "<html>Stash (<font color='red'>Conflict</font>)</html>"
                         : "Stash");
                 StreamSource modified = StreamSource.createSource(
                         name + " (modified)", modifiedTitle, mime,
-                        new StringReader(stashContent));
+                        new InputStreamReader(
+                            new ByteArrayInputStream(stashContent.getBytes(StandardCharsets.UTF_8)),
+                            StandardCharsets.UTF_8));
                 DiffController ctrl = DiffController.createEnhanced(base, modified);
                 JComponent diffView = ctrl.getJComponent();
                 PropertyChangeListener diffListener = evt -> {
@@ -794,7 +798,11 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
                     }
                 });
             } catch (Exception ex) {
-                diffPanel.add(new JLabel(Bundle.CTL_StashDiffAction_Error(ExceptionUtils.getMessage(ex))), BorderLayout.CENTER);
+                LOG.warn("Enhanced diff view failed for {0}: {1}", fd.filePath, ExceptionUtils.getMessage(ex));
+                // Resilient fallback: a corrupted/undecodable stream must still
+                // show its (sanitized) content instead of bailing out to an
+                // error pane. Render both sides as read-only monospace text.
+                diffPanel.add(buildPlainTextFallback(name, baseContent, stashContent), BorderLayout.CENTER);
             }
             diffPanel.revalidate();
             diffPanel.repaint();
@@ -811,6 +819,40 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
         setFontRecursive(diffView, diffFont);
         diffView.revalidate();
         diffView.repaint();
+    }
+
+    /**
+     * Read-only fallback shown when the enhanced diff view cannot render a
+     * (possibly corrupted) stream. Presents both sides as monospace text so the
+     * user still sees the data instead of an empty error pane.
+     */
+    private static JComponent buildPlainTextFallback(String name, String baseContent, String stashContent) {
+        Font mono = IconResourceManager.getMonospaceFont();
+        JTextArea baseArea = createReadOnlyTextArea(baseContent, mono);
+        JTextArea modArea = createReadOnlyTextArea(stashContent, mono);
+        JPanel basePane = wrapTextArea(name + " (base)", baseArea);
+        JPanel modPane = wrapTextArea(name + " (modified)", modArea);
+        JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, basePane, modPane);
+        split.setResizeWeight(0.5);
+        return split;
+    }
+
+    private static JTextArea createReadOnlyTextArea(String content, Font font) {
+        JTextArea area = new JTextArea(content);
+        area.setEditable(false);
+        area.setFont(font);
+        area.setLineWrap(false);
+        area.setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
+        return area;
+    }
+
+    private static JPanel wrapTextArea(String title, JTextArea area) {
+        JPanel pane = new JPanel(new BorderLayout());
+        JLabel header = new JLabel(title);
+        header.setBorder(BorderFactory.createEmptyBorder(4, 6, 4, 6));
+        pane.add(header, BorderLayout.NORTH);
+        pane.add(new JScrollPane(area), BorderLayout.CENTER);
+        return pane;
     }
 
     private static void setFontRecursive(Component c, Font font) {
