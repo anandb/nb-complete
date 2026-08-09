@@ -2,6 +2,7 @@ package github.anandb.netbeans.manager;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.CompletableFuture;
@@ -219,7 +220,7 @@ class ServerProcessLifecycle {
     }
 
     private void initializeProtocol() {
-        Map<String, Object> fsCaps = new java.util.HashMap<>();
+        Map<String, Object> fsCaps = new HashMap<>();
         fsCaps.put("readTextFile", true);
         fsCaps.put("writeTextFile", FsWriteSettings.isEnabled());
         Map<String, Object> params = Map.of(

@@ -333,7 +333,7 @@ public class ProcessManager implements ProcessControl {
         params.put("mcpServers", toolExecutor.getServerConfig());
 
         int idleTimeoutSec = PluginSettings.getSessionIdleTimeout();
-        return client.sendRequest("session/prompt", params, idleTimeoutSec, java.util.concurrent.TimeUnit.SECONDS);
+        return client.sendRequest("session/prompt", params, idleTimeoutSec, TimeUnit.SECONDS);
     }
 
     @Override
