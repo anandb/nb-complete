@@ -155,35 +155,45 @@ public class AcpProtocolClient implements Closeable {
             return future;
         }
 
-        long sendStart = System.nanoTime();
-
         ObjectNode request = MAPPER.createObjectNode();
         request.put("jsonrpc", "2.0");
         request.put("id", id);
         request.put("method", method);
         request.set("params", MAPPER.valueToTree(params));
 
-        try {
-            String json = MAPPER.writeValueAsString(request);
-            LOG.fine("[ACP] Sending request: {0}", method);
-            synchronized (writer) {
-                writer.write(json);
-                writer.newLine();
-                writer.flush();
+        // Send the request on a background thread to avoid blocking the caller
+        // (which may be EDT) on pipe I/O. If writer.flush() blocks because the
+        // server's stdin pipe buffer is full, it must not freeze the UI.
+        final long capturedId = id;
+        CompletableFuture.runAsync(() -> {
+            if (closed) {
+                pendingRequests.remove(capturedId);
+                requestIdleTimeouts.remove(capturedId);
+                future.completeExceptionally(new IOException("Client closed"));
+                return;
             }
-            touch();
-            long sendEnd = System.nanoTime();
-            long sendMs = (sendEnd - sendStart) / 1_000_000;
-            LOG.info("[ACP] Request {0} (id={1}) sent in {2}ms", method, id, sendMs);
-
-            wireLogger.log(json);
-        } catch (IOException e) {
-            pendingRequests.remove(id);
-            requestIdleTimeouts.remove(id);
-            LOG.severe("IOException sending request method={0}, id={1}", method, id, e);
-            future.completeExceptionally(e);
-            notifyConnectionError(e);
-        }
+            long sendStart = System.nanoTime();
+            try {
+                String json = MAPPER.writeValueAsString(request);
+                LOG.fine("[ACP] Sending request: {0}", method);
+                synchronized (writer) {
+                    writer.write(json);
+                    writer.newLine();
+                    writer.flush();
+                }
+                touch();
+                long sendEnd = System.nanoTime();
+                long sendMs = (sendEnd - sendStart) / 1_000_000;
+                LOG.info("[ACP] Request {0} (id={1}) sent in {2}ms", method, capturedId, sendMs);
+                wireLogger.log(json);
+            } catch (IOException e) {
+                pendingRequests.remove(capturedId);
+                requestIdleTimeouts.remove(capturedId);
+                LOG.severe("IOException sending request method={0}, id={1}", method, capturedId, e);
+                future.completeExceptionally(e);
+                notifyConnectionError(e);
+            }
+        });
 
         return future;
     }
@@ -195,21 +205,25 @@ public class AcpProtocolClient implements Closeable {
         notification.put("method", method);
         notification.set("params", MAPPER.valueToTree(params));
 
-        try {
-            String json = MAPPER.writeValueAsString(notification);
-            LOG.fine("[ACP] Sending notification: {0}", method);
-            synchronized (writer) {
-                writer.write(json);
-                writer.newLine();
-                writer.flush();
+        // Send on a background thread to avoid blocking the caller (which may
+        // be EDT) on pipe I/O.
+        CompletableFuture.runAsync(() -> {
+            if (closed) return;
+            try {
+                String json = MAPPER.writeValueAsString(notification);
+                LOG.fine("[ACP] Sending notification: {0}", method);
+                synchronized (writer) {
+                    writer.write(json);
+                    writer.newLine();
+                    writer.flush();
+                }
+                touch();
+                wireLogger.log(json);
+            } catch (IOException e) {
+                LOG.severe("Failed to send notification: {0}", method, e);
+                notifyConnectionError(e);
             }
-            touch();
-
-            wireLogger.log(json);
-        } catch (IOException e) {
-            LOG.severe("Failed to send notification: {0}", method, e);
-            notifyConnectionError(e);
-        }
+        });
     }
 
     private void readLoop() {
