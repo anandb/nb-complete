@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -136,6 +137,53 @@ public class AcpProtocolClient implements Closeable {
     }
 
     public CompletableFuture<JsonNode> sendRequest(String method, Object params, long timeout, TimeUnit unit) {
+        return sendRequestWithRetry(method, params, timeout, unit, 0);
+    }
+
+    private CompletableFuture<JsonNode> sendRequestWithRetry(String method, Object params, long timeout, TimeUnit unit, int attempt) {
+        final int maxRetries = 3;
+        CompletableFuture<JsonNode> future = doSendRequest(method, params, timeout, unit);
+        
+        return future.exceptionally(ex -> {
+            Throwable cause = ex instanceof CompletionException ? ex.getCause() : ex;
+            
+            if (attempt < maxRetries && isRetryable(cause)) {
+                LOG.info("[ACP] Request {0} failed (attempt {1}/{2}): {3}. Retrying...",
+                    method, attempt + 1, maxRetries + 1, ExceptionUtils.getMessage(cause));
+                
+                // Exponential backoff: 1s, 2s, 4s
+                long delayMs = (long) Math.pow(2, attempt) * 1000;
+                try {
+                    Thread.sleep(delayMs);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw new CompletionException(cause);
+                }
+                
+                // Retry recursively
+                return sendRequestWithRetry(method, params, timeout, unit, attempt + 1).join();
+            }
+            
+            // Final failure or non-retryable error
+            if (attempt > 0) {
+                LOG.severe("[ACP] Request {0} failed after {1} attempts: {2}",
+                    method, attempt + 1, ExceptionUtils.getMessage(cause));
+            }
+            throw (ex instanceof CompletionException) ? (CompletionException) ex : new CompletionException(cause);
+        });
+    }
+
+    private boolean isRetryable(Throwable error) {
+        if (error instanceof IOException) return true;
+        if (error instanceof TimeoutException) return true;
+        if (error instanceof RuntimeException) {
+            String msg = error.getMessage();
+            if (msg != null && msg.contains("OpenCode service failure")) return true;
+        }
+        return false;
+    }
+
+    private CompletableFuture<JsonNode> doSendRequest(String method, Object params, long timeout, TimeUnit unit) {
         if (closed) {
             return CompletableFuture.failedFuture(new IOException("Client closed"));
         }
