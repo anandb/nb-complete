@@ -10,9 +10,10 @@ public enum MessageType {
     usage_update,
     user_message_chunk,
     config_options_update,
-    session_info_update,
+    session_info_updated,
     message,
     error_response,
+    info,
     responding_finished,
     end_turn;
 
@@ -36,12 +37,17 @@ public enum MessageType {
         return name().contains("error");
     }
 
+    private boolean isInfo() {
+        return name().equals("info");
+    }
+
     public String roleName() {
         if (isThought()) return "thought";
         if (isTool()) return "tool";
         if (isUser()) return "user";
         if (isAssistant()) return "assistant";
         if (isError()) return "error";
+        if (isInfo()) return "info";
         return null;
     }
 

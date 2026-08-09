@@ -719,11 +719,13 @@ public class SessionManager implements SessionQuery, SessionControl {
     }
 
     /** Sends the critical rules followed by the preamble prompt for a new session.
+     *  Splits preamble by "---" separators and sends each chunk separately.
      *  @return true if a preamble was sent, false if empty/skipped */
     private boolean sendPreamble(String sessionId) {
         String rules = PluginSettings.getCriticalRules();
         String preamble = PluginSettings.getPreamble();
 
+        // Combine critical rules and preamble
         StringBuilder combined = new StringBuilder();
         if (!isBlank(rules)) {
             combined.append(rules);
@@ -736,15 +738,54 @@ public class SessionManager implements SessionQuery, SessionControl {
         }
 
         String text = combined.toString().trim();
-        if (!text.isEmpty()) {
-            sendAssistantPrompt(sessionId, text, "critical rules + preamble");
-            return true;
+        if (text.isEmpty()) {
+            return false;
         }
 
-        return false;
+        // Split by "---" separators and send each chunk
+        String[] chunks = text.split("\n---\n");
+        if (chunks.length == 0) {
+            return false;
+        }
+
+        // Notify UI that preamble is being posted
+        for (SessionListener l : listeners) {
+            l.onPreambleStarted();
+        }
+
+        // Send chunks sequentially, waiting for each to complete
+        sendPreambleChunks(sessionId, chunks, 0);
+        return true;
     }
 
-    private void sendAssistantPrompt(String sessionId, String text, String label) {
+    /** Sends preamble chunks sequentially, one at a time */
+    private void sendPreambleChunks(String sessionId, String[] chunks, int index) {
+        if (index >= chunks.length) {
+            // All chunks sent, notify done
+            notifyPreambleDone();
+            return;
+        }
+
+        String chunk = chunks[index].trim();
+        if (chunk.isEmpty()) {
+            // Skip empty chunks
+            sendPreambleChunks(sessionId, chunks, index + 1);
+            return;
+        }
+
+        String label = "preamble chunk " + (index + 1) + "/" + chunks.length;
+        sendAssistantPrompt(sessionId, chunk, label)
+                .whenComplete((res, ex) -> {
+                    if (ex != null) {
+                        LOG.warn("Failed to send {0}: {1}", label, ExceptionUtils.getRootCauseMessage(ex));
+                        // Continue with next chunk even if this one failed
+                    }
+                    // Send next chunk
+                    sendPreambleChunks(sessionId, chunks, index + 1);
+                });
+    }
+
+    private CompletableFuture<JsonNode> sendAssistantPrompt(String sessionId, String text, String label) {
         for (SessionListener l : listeners) {
             l.onInternalMessageSent();
         }
@@ -759,7 +800,7 @@ public class SessionManager implements SessionQuery, SessionControl {
         params.put("prompt", List.of(textBlock));
         params.put("mcpServers", ProcessManager.getInstance().getToolExecutor().getServerConfig());
 
-        ProcessManager.getInstance().sendRequest("session/prompt", params)
+        return ProcessManager.getInstance().sendRequest("session/prompt", params)
                 .whenComplete((res, ex) -> {
                     if (ex != null) {
                         LOG.warn("Failed to send {0}: {1}", label, ExceptionUtils.getRootCauseMessage(ex));

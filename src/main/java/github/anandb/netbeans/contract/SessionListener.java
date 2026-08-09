@@ -34,6 +34,10 @@ public interface SessionListener {
      *  progress bar once the preamble response completes. */
     default void onPreambleDone() {}
 
+    /** Fired when the preamble starts being posted. UI should show a
+     *  bubble indicating that the preamble is being sent. */
+    default void onPreambleStarted() {}
+
     /** Fired when a session has been renamed locally. UI should update the
      *  dropdown display without reloading the entire conversation. */
     default void onSessionRenamed(String sessionId) {}

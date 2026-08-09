@@ -93,7 +93,7 @@ public final class HtmlContentPreparer {
             LOG.fine("Contains ASCII art, not replacing spaces");
         }
 
-        boolean isAssistant = !"user".equals(role) && !"error".equals(role) && !"tool".equals(role);
+        boolean isAssistant = !"user".equals(role) && !"error".equals(role) && !"tool".equals(role) && !"info".equals(role);
 
         // User messages are typically plain text; preserve explicit line breaks
         // by converting newlines to <br/> outside of <pre> blocks.
@@ -138,6 +138,8 @@ public final class HtmlContentPreparer {
             String customCss = theme.toCss(null, isAssistant, fontSize);
             if ("error".equals(role)) {
                 customCss += " body { color: #D32F2F; font-weight: bold; }";
+            } else if ("info".equals(role)) {
+                customCss += " body { color: #666666; font-style: italic; }";
             } else if ("user".equals(role)) {
                 customCss += " body { font-weight: 300; }";
             }

@@ -43,6 +43,10 @@ public record ProcessedMessage(
         return new Builder().messageType(messageType).text(text).messageId(messageId).kind(kind).rawText(text).build();
     }
 
+    public static ProcessedMessage createInfo(String text) {
+        return new Builder().messageType(MessageType.info).text(text).rawText(text).build();
+    }
+
     public static class Builder {
         private MessageType messageType;
         private String text = "";

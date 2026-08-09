@@ -51,6 +51,7 @@ class BubbleThemeApplier {
             case "assistant" -> theme.bubbleAssistant();
             case "user" -> theme.bubbleUser();
             case "error" -> theme.errorBackground();
+            case "info" -> theme.sunkenBackground();
             default -> TRANSPARENT;
         };
 
