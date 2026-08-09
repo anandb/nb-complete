@@ -68,6 +68,7 @@ final class PermissionRequestPanel extends JPanel {
     private final JPanel content;
     private CompletableFuture<String> pendingResponse;
     private List<FileChange> currentFileChanges;
+    private CompletableFuture<List<FileChange>> fileChangesFuture;
     private Runnable allowAction;
     private boolean requestActive = false;
 
@@ -149,6 +150,11 @@ final class PermissionRequestPanel extends JPanel {
         return currentFileChanges;
     }
 
+    /** Returns the async future that computes the file changes, if one is in flight. */
+    CompletableFuture<List<FileChange>> getFileChangesFuture() {
+        return fileChangesFuture;
+    }
+
     void showRequest(String prompt, JsonNode options, CompletableFuture<String> responseFuture) {
         showRequest(prompt, options, responseFuture, null);
     }
@@ -202,6 +208,7 @@ final class PermissionRequestPanel extends JPanel {
 
         contentBlocks.removeAll();
         currentFileChanges = null;
+        fileChangesFuture = null;
 
         // Cap scroll height at 80% of the container height to avoid vertical scrolling if possible
         int parentHeight = getParent() != null && getParent().getHeight() > 0 ? getParent().getHeight() : 600;
@@ -240,6 +247,7 @@ final class PermissionRequestPanel extends JPanel {
             CompletableFuture<String> responseFuture) {
         CompletableFuture<List<FileChange>> prepareFuture =
             CompletableFuture.supplyAsync(() -> prepareFileChanges(toolCall));
+        fileChangesFuture = prepareFuture;
         prepareFuture.thenAcceptAsync(expanded -> {
                 if (!requestActive) return; // panel was dismissed while loading
                 currentFileChanges = expanded;

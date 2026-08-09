@@ -1133,6 +1133,37 @@ public class MiniAssistantDialog extends JDialog {
         });
     }
 
+    /**
+     * Adds the Show Diff button once file changes become available. File changes
+     * are computed asynchronously, so the permission panel is shown first without
+     * the button and this method is called when they are ready.
+     */
+    public void refreshPermissionDiffButton(List<FileChange> fileChanges) {
+        SwingUtilities.invokeLater(() -> {
+            if (!miniPermissionPanel.isVisible() || activePermissionFuture == null) {
+                return;
+            }
+            // Drop any existing Show Diff button (e.g. a stale one from a prior request).
+            for (Component c : miniPermissionButtons.getComponents()) {
+                if (c instanceof JButton b && Bundle.BTN_ShowDiff().equals(b.getText())) {
+                    miniPermissionButtons.remove(b);
+                }
+            }
+            if (fileChanges != null && !fileChanges.isEmpty()) {
+                ColorTheme theme = ThemeManager.getCurrentTheme();
+                JButton showDiffBtn = new JButton(Bundle.BTN_ShowDiff());
+                showDiffBtn.setFocusPainted(false);
+                showDiffBtn.setBorder(BorderFactory.createCompoundBorder(
+                        BorderFactory.createLineBorder(theme.bubbleBorder(), 1),
+                        BorderFactory.createEmptyBorder(4, 12, 4, 12)));
+                showDiffBtn.addActionListener(e -> PermissionRequestPanel.openDiffView(fileChanges));
+                miniPermissionButtons.add(showDiffBtn, 0);
+            }
+            miniPermissionButtons.revalidate();
+            miniPermissionButtons.repaint();
+        });
+    }
+
     private static class ScrollablePanel extends JPanel implements Scrollable {
         ScrollablePanel(LayoutManager layout) { super(layout); }
         @Override public Dimension getPreferredScrollableViewportSize() { return getPreferredSize(); }

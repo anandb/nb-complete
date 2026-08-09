@@ -1,6 +1,7 @@
 package github.anandb.netbeans.ui;
 
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
 
@@ -12,6 +13,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 
 import github.anandb.netbeans.contract.SessionControl;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.ToolCallDiffParser.FileChange;
 import github.anandb.netbeans.support.ToolContextExtractor;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
 import github.anandb.netbeans.ui.platform.SessionService;
@@ -114,6 +116,14 @@ final class PermissionDialogManager {
                         finalPrompt, params.get("options"), response, finalToolCall,
                         permissionPanel.getCurrentFileChanges()
                     );
+                    // File changes load asynchronously in the full panel; refresh the
+                    // mini panel's Show Diff button once they are ready.
+                    CompletableFuture<List<FileChange>> changesFuture =
+                        permissionPanel.getFileChangesFuture();
+                    if (changesFuture != null) {
+                        changesFuture.thenAcceptAsync(miniDialog::refreshPermissionDiffButton,
+                            SwingUtilities::invokeLater);
+                    }
                 }
                 
                 response.whenComplete((res, err) -> {
