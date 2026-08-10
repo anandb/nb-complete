@@ -326,6 +326,9 @@ final class PermissionRequestPanel extends JPanel {
                     btn = createButton(po.name(), theme.permissionGrantFg(),
                             theme.permissionGrantBg(), theme.permissionGrantBorder());
                     btn.setMnemonic('A');
+                    if ("Always Allow".equalsIgnoreCase(po.name())) {
+                        btn.setToolTipText(NbBundle.getMessage(PermissionRequestPanel.class, "HINT_AlwaysAllow"));
+                    }
                     allowAction = () -> {
                         pendingResponse.complete(po.id());
                         slideClose();
