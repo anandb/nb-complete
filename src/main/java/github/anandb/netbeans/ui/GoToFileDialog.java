@@ -173,6 +173,9 @@ public class GoToFileDialog extends JDialog {
         addWindowListener(new WindowAdapter() {
             @Override public void windowOpened(WindowEvent e) {
                 searchField.requestFocusInWindow();
+                // Select the restored prior query so typing replaces it;
+                // arrow keys still let the user edit it in place.
+                searchField.selectAll();
             }
         });
 
