@@ -107,6 +107,7 @@ final class ModelVariantResolver {
 
         if ("model".equals(opt.category())) {
             String envModel = System.getenv("OPENCODE_MODEL");
+            boolean envHandled = false;
             if (envModel != null && !envModel.isEmpty() && currentId != null) {
                 String match = findModelMatch(opt, envModel);
                 if (match != null) {
@@ -114,8 +115,14 @@ final class ModelVariantResolver {
                     sessionService.get().setSessionConfigOption(currentId, opt.id(), match);
                     return match;
                 }
+                // OPENCODE_MODEL names a model not offered by this server config.
+                // Just log it and fall through to the default selection instead of
+                // sending the invalid value, which the server would reject and
+                // surface as an exception in the NetBeans notifications.
+                LOG.info("OPENCODE_MODEL references an unavailable model; using default: {0}", new Object[]{envModel});
+                envHandled = true;
             }
-            if (lastSelectedModelId != null && !lastSelectedModelId.equalsIgnoreCase(currentValue)) {
+            if (!envHandled && lastSelectedModelId != null && !lastSelectedModelId.equalsIgnoreCase(currentValue)) {
                 sessionService.get().setSessionConfigOption(currentId, opt.id(), lastSelectedModelId);
                 return lastSelectedModelId;
             }
