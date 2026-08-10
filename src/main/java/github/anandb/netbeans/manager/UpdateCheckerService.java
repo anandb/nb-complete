@@ -13,8 +13,6 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.logging.Level;
 import java.util.prefs.Preferences;
 
-import javax.swing.SwingUtilities;
-
 import org.openide.DialogDisplayer;
 import org.openide.NotifyDescriptor;
 import org.openide.modules.SpecificationVersion;
@@ -22,6 +20,7 @@ import org.openide.util.Lookup;
 import org.openide.util.NbPreferences;
 import org.openide.util.RequestProcessor;
 import org.openide.util.lookup.ServiceProvider;
+import org.openide.windows.WindowManager;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -250,7 +249,10 @@ public class UpdateCheckerService implements UpdateCheckerControl {
     }
 
     private void showNotification(String latestVersion, String downloadUrl) {
-        SwingUtilities.invokeLater(() -> {
+        // Only show the message box once the IDE is fully loaded — showing it
+        // during startup would cancel/close the dialog. The scheduling of the
+        // check cycle can happen anytime; it's the dialog that must wait.
+        WindowManager.getDefault().invokeWhenUIReady(() -> {
             String title = "Coding Assistant Update Available";
             String body = "A new version of Coding Assistant (" + latestVersion
                     + ") is available.\n\nCurrent: " + AgentUtils.getVersion()
