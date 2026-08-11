@@ -146,12 +146,34 @@ public final class BinaryResolver {
 
     /**
      * Builds the command-line arguments for a WSL-wrapped opencode invocation.
-     * Returns {@code ["bash", "-lc", "opencode.exe &lt;args&gt;"]}.
+     * The resolved Windows executable path is translated to its WSL mount
+     * path (e.g. {@code C:\\tools\\opencode.exe} -> {@code /mnt/c/tools/opencode.exe})
+     * so the command works regardless of whether opencode is on the Windows PATH.
+     *
+     * @param executable the resolved Windows opencode executable path
+     * @param args       the arguments to pass to opencode (e.g. {@code "acp"})
+     * @return {@code ["bash", "-lc", "&lt;wsl-path&gt; &lt;args&gt;"]}
      */
-    public static String[] buildWslArgs(String args) {
-        boolean isWindows = System.getProperty("os.name", "").toLowerCase().contains("win");
-        String innerExe = isWindows ? "opencode.exe" : "opencode";
+    public static String[] buildWslArgs(String executable, String args) {
+        String innerExe = toWslPath(executable);
         return new String[]{"bash", "-lc", innerExe + " " + args};
+    }
+
+    /**
+     * Translates a Windows absolute path (e.g. {@code C:\\Users\\foo\\opencode.exe})
+     * to its WSL mount path ({@code /mnt/c/Users/foo/opencode.exe}). Passes
+     * through non-Windows or already-Linux paths unchanged.
+     */
+    static String toWslPath(String path) {
+        if (isBlank(path)) {
+            return path;
+        }
+        String p = path.replace('\\', '/');
+        if (p.length() >= 2 && Character.isLetter(p.charAt(0)) && p.charAt(1) == ':') {
+            char drive = Character.toLowerCase(p.charAt(0));
+            p = "/mnt/" + drive + p.substring(2);
+        }
+        return p;
     }
 
     /**

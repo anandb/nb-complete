@@ -1,9 +1,5 @@
 package github.anandb.netbeans.support;
 
-import org.apache.commons.lang3.exception.ExceptionUtils;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-import java.util.logging.Level;
 import java.util.prefs.PreferenceChangeEvent;
 import java.util.prefs.PreferenceChangeListener;
 import java.util.prefs.Preferences;
@@ -22,6 +18,7 @@ public final class PluginSettings {
     private static final int DEFAULT_TOOLBAR_ICON_SIZE = 24;
     private static final String DEFAULT_PREAMBLE;
     private static final String DEFAULT_CRITICAL_RULES;
+    private static final String DEFAULT_WSL_RULES;
 
     /** Cached session idle timeout in seconds — volatile for cross-thread visibility. */
     private static volatile int cachedSessionIdleTimeout = DEFAULT_SESSION_IDLE_TIMEOUT;
@@ -42,25 +39,9 @@ public final class PluginSettings {
     private static final PreferenceChangeListener listener = PluginSettings::onPreferenceChanged;
 
     static {
-        String preamble = "";
-        try (InputStream in = PluginSettings.class.getResourceAsStream("preamble.md")) {
-            if (in != null) {
-                preamble = new String(in.readAllBytes(), StandardCharsets.UTF_8);
-            }
-        } catch (Exception e) {
-            LOG.log(Level.WARNING, "Failed to load preamble.md: {0}", ExceptionUtils.getMessage(e));
-        }
-        DEFAULT_PREAMBLE = preamble;
-
-        String rules = "";
-        try (InputStream in = PluginSettings.class.getResourceAsStream("critical_rules.md")) {
-            if (in != null) {
-                rules = new String(in.readAllBytes(), StandardCharsets.UTF_8);
-            }
-        } catch (Exception e) {
-            LOG.log(Level.WARNING, "Failed to load critical_rules.md: {0}", ExceptionUtils.getMessage(e));
-        }
-        DEFAULT_CRITICAL_RULES = rules;
+        DEFAULT_PREAMBLE = nullToEmpty(AgentUtils.readResource("preamble.md"));
+        DEFAULT_CRITICAL_RULES = nullToEmpty(AgentUtils.readResource("critical_rules.md"));
+        DEFAULT_WSL_RULES = nullToEmpty(AgentUtils.readResource("wsl_rules.md"));
 
         // Seed cached value and register listener
         Preferences prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
@@ -84,9 +65,20 @@ public final class PluginSettings {
         return DEFAULT_PREAMBLE;
     }
 
-    /** Returns the critical rules loaded from the bundled resources, never editable by the user. */
+    /** Returns the critical rules loaded from the bundled resources, never editable by the user.
+     *  When running through WSL, WSL-specific guidance (loaded from {@code wsl_rules.md}) is
+     *  appended so the agent can use the Linux environment. */
     public static String getCriticalRules() {
-        return DEFAULT_CRITICAL_RULES;
+        String rules = DEFAULT_CRITICAL_RULES;
+        if (BinaryResolver.isWslAvailable() && !DEFAULT_WSL_RULES.isEmpty()
+                && !rules.contains("WSL Environment")) {
+            rules = rules + "\n\n" + DEFAULT_WSL_RULES;
+        }
+        return rules;
+    }
+
+    private static String nullToEmpty(String s) {
+        return s == null ? "" : s;
     }
 
     public static String getPreamble() {

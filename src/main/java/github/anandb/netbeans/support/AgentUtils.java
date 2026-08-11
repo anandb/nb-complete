@@ -3,9 +3,11 @@ package github.anandb.netbeans.support;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.Properties;
 import java.util.logging.Level;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.openide.modules.ModuleInfo;
 import org.openide.modules.Modules;
 
@@ -23,6 +25,22 @@ public final class AgentUtils {
         } catch (IOException e) {
             LOG.log(Level.WARNING, "Failed to close", e);
         }
+    }
+
+    /**
+     * Reads a bundled classpath resource (relative to this class) as a UTF-8
+     * string. Returns {@code null} if the resource is absent.
+     */
+    public static String readResource(String name) {
+        try (InputStream in = AgentUtils.class.getResourceAsStream(name)) {
+            if (in != null) {
+                return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+            }
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "Failed to read resource {0}: {1}",
+                    new Object[]{name, ExceptionUtils.getMessage(e)});
+        }
+        return null;
     }
 
     public static String getVersion() {

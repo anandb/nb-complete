@@ -119,7 +119,7 @@ class ServerProcessLifecycle {
             // Wrap with WSL on Windows when available
             List<String> cmdStrings;
             if (BinaryResolver.isWslAvailable()) {
-                cmdStrings = List.of(BinaryResolver.buildWslArgs(args));
+                cmdStrings = List.of(BinaryResolver.buildWslArgs(executable, args));
                 LOG.info("Executing via WSL: wsl.exe {0}", String.join(" ", cmdStrings));
             } else {
                 CommandLine cmd = new CommandLine(executable);
