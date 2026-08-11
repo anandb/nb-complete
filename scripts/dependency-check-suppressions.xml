@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
+    <!--
+      False positive: OWASP matched NetBeans org-netbeans-*-base artifacts against
+      CPE base-files_project:base-files (Ubuntu's base-files package, MOTD script).
+      The match is purely a name substring ("-base"), and the CVE describes an
+      Ubuntu package we do not ship. See CVE-2018-6557.
+    -->
+    <suppress>
+        <notes>Ubuntu base-files MOTD vulnerability, not applicable to NetBeans artifacts.</notes>
+        <packageUrl regex="true">^pkg:maven/org\.netbeans\..+/org-netbeans-[^@]+-base@.*$</packageUrl>
+        <cve>CVE-2018-6557</cve>
+    </suppress>
+</suppressions>

@@ -36,6 +36,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.release>17</maven.compiler.release>
         <netbeans.version>RELEASE220</netbeans.version>
+        <dependency-check-maven.version>12.2.2</dependency-check-maven.version>
         <argLine></argLine>
     </properties>
 
@@ -296,7 +297,7 @@
             <dependency>
                 <groupId>com.fasterxml.jackson</groupId>
                 <artifactId>jackson-bom</artifactId>
-                <version>2.22.0</version>
+                <version>2.22.1</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -558,6 +559,33 @@
     </build>
 
     <profiles>
+        <profile>
+            <id>check-cvss</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.owasp</groupId>
+                        <artifactId>dependency-check-maven</artifactId>
+                        <version>${dependency-check-maven.version}</version>
+                        <configuration>
+                            <nvdApiKey>${NVDAPI_KEY}</nvdApiKey>
+                            <prettyPrint>true</prettyPrint>
+                            <suppressionFiles>
+                                <suppressionFile>${project.basedir}/scripts/dependency-check-suppressions.xml</suppressionFile>
+                            </suppressionFiles>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>check</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
         <profile>
             <id>release</id>
             <build>
