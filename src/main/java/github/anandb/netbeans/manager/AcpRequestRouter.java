@@ -53,7 +53,18 @@ class AcpRequestRouter {
         CompletableFuture<String> response = new CompletableFuture<>();
 
         if (permissionHandler != null) {
+            // Capture the message epoch on this (reader) thread, i.e. at the moment the
+            // request is received. If the user sends a new message before the panel is
+            // displayed on the EDT, the epoch advances and this request is stale: it
+            // belongs to a turn that was superseded. Showing it would leave the server
+            // waiting forever on a decision for an abandoned tool call, hanging the plugin.
+            final long epochAtReceipt = permissionHandler.currentPermissionEpoch();
             SwingUtilities.invokeLater(() -> {
+                if (permissionHandler.currentPermissionEpoch() != epochAtReceipt) {
+                    LOG.info("Rejecting stale permission request: superseded by a newer user message");
+                    response.complete("reject");
+                    return;
+                }
                 permissionHandler.handlePermissionRequest(sessionId, params, response);
             });
         } else {

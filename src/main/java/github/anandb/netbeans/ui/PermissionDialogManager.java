@@ -4,6 +4,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicLong;
 
 import javax.swing.SwingUtilities;
 
@@ -32,9 +33,35 @@ final class PermissionDialogManager {
     private final Queue<PendingRequest> requestQueue = new LinkedList<>();
     private boolean isRequestShowing = false;
 
+    /** Advances whenever a new user message is sent; used to reject stale permission
+     *  requests that belong to a turn already superseded by a newer message. */
+    private final AtomicLong permissionEpoch = new AtomicLong(0);
+
     PermissionDialogManager(ChatThreadPanel chatPanel, PermissionRequestPanel permissionPanel) {
         this.chatPanel = chatPanel;
         this.permissionPanel = permissionPanel;
+    }
+
+    long currentEpoch() {
+        return permissionEpoch.get();
+    }
+
+    /** Invoked immediately before a new user message is actually sent to the server.
+     *  Advances the epoch so permission requests still in flight from a turn that was
+     *  superseded by the new message are dropped rather than displayed. */
+    void recordUserMessageSent() {
+        permissionEpoch.incrementAndGet();
+    }
+
+    /** True while a permission request is awaiting a user decision. While pending, the
+     *  input send is blocked so a new message cannot supersede the outstanding request. */
+    boolean isPermissionPending() {
+        return isRequestShowing;
+    }
+
+    /** Shakes the sidebar permission panel to draw attention to the pending request. */
+    void buzzPermissionPanel() {
+        permissionPanel.buzz();
     }
 
     void handlePermissionRequest(String sessionId, JsonNode params,

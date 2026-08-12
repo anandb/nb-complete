@@ -467,6 +467,15 @@ public class MiniAssistantDialog extends JDialog {
         String text = inputArea.getText();
         if (text.trim().isEmpty()) return;
 
+        // Block the send while a permission request awaits a decision: sending a new
+        // message would supersede the pending request and hang the server. Keep the
+        // typed text in the mini input and buzz the panel to draw attention instead.
+        AssistantTopComponent pendingTc = AssistantTopComponent.findInstance();
+        if (pendingTc != null && pendingTc.isPermissionPending()) {
+            buzzPermission();
+            return;
+        }
+
         String trimmed = text.trim();
         int spaceIdx = trimmed.indexOf(' ');
         String firstWord = spaceIdx > 0 ? trimmed.substring(0, spaceIdx).toLowerCase() : trimmed.toLowerCase();
@@ -501,6 +510,15 @@ public class MiniAssistantDialog extends JDialog {
             tc.sendMessage();
 
             showSpinner();
+        }
+    }
+
+    /** Buzzes the mini permission panel and beeps to draw attention to a pending request
+     *  (e.g. when the user tries to send a new message while it is showing). */
+    private void buzzPermission() {
+        miniPermissionPanel.buzz();
+        if (!GraphicsEnvironment.isHeadless()) {
+            Toolkit.getDefaultToolkit().beep();
         }
     }
 

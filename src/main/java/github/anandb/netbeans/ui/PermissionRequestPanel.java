@@ -809,6 +809,16 @@ final class PermissionRequestPanel extends JPanel {
         return requestActive;
     }
 
+    /** Immediately buzzes the panel to draw attention to the pending permission request
+     *  (e.g. when the user tries to send a new message while a request is showing).
+     *  Triggers a rapid wobble burst and an audible beep (when not headless). */
+    void buzz() {
+        wobbleAnimator.buzz();
+        if (!java.awt.GraphicsEnvironment.isHeadless()) {
+            java.awt.Toolkit.getDefaultToolkit().beep();
+        }
+    }
+
     private static String escapeHtml(String s) {
         return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
     }

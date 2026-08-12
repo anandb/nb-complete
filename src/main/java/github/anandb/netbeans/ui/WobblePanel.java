@@ -23,6 +23,12 @@ final class WobblePanel extends JPanel {
         animator.stop();
     }
 
+    /** Performs a rapid "buzz" burst to draw immediate attention (e.g. when the user
+     *  tries to send a new message while a permission request is pending). */
+    void buzz() {
+        animator.buzz();
+    }
+
     @Override
     public void paint(Graphics g) {
         if (animator.x() != 0 || animator.y() != 0) {

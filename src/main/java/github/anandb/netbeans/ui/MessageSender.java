@@ -62,6 +62,9 @@ public class MessageSender {
     private Runnable onNewMessageCallback;
     private Runnable onMessageDoneCallback;
     private Runnable onUserMessageSentCallback;
+    private Runnable onBeforeServerSendCallback;
+    private java.util.function.BooleanSupplier permissionPendingCheck;
+    private Runnable onPermissionBlockedCallback;
 
     public MessageSender(
             PlaceholderTextArea inputArea,
@@ -101,6 +104,24 @@ public class MessageSender {
         this.onUserMessageSentCallback = callback;
     }
 
+    /** Invoked immediately before the message is actually sent to the server. Used to
+     *  advance the permission epoch so stale permission requests are dropped. */
+    public void setOnBeforeServerSendCallback(Runnable callback) {
+        this.onBeforeServerSendCallback = callback;
+    }
+
+    /** Predicate that reports whether a permission request is awaiting a decision. When
+     *  true, the send is blocked so the new message cannot supersede the pending request. */
+    public void setPermissionPendingCheck(java.util.function.BooleanSupplier check) {
+        this.permissionPendingCheck = check;
+    }
+
+    /** Invoked when the send is blocked because a permission request is pending. Draws
+     *  attention to the pending request (e.g. buzzes the panel). */
+    public void setOnPermissionBlockedCallback(Runnable callback) {
+        this.onPermissionBlockedCallback = callback;
+    }
+
     /** Sends (or intercepts) the current message text. */
     public void sendMessage() {
         if (!sessionService.get().canSendMessage()) {
@@ -108,6 +129,17 @@ public class MessageSender {
         }
         String text = inputArea.getText(); // Don't trim user input spaces
         if (text.isEmpty() && attachmentManager.getAttachments().isEmpty()) {
+            return;
+        }
+
+        // Block the send while a permission request awaits a decision: sending a new
+        // message would supersede the pending request and hang the server, which is
+        // still waiting on the tool-call decision. Keep the typed text in the input and
+        // draw attention to the pending request instead of rejecting it.
+        if (permissionPendingCheck != null && permissionPendingCheck.getAsBoolean()) {
+            if (onPermissionBlockedCallback != null) {
+                onPermissionBlockedCallback.run();
+            }
             return;
         }
 
@@ -229,6 +261,9 @@ public class MessageSender {
             });
         }
 
+        if (onBeforeServerSendCallback != null) {
+            onBeforeServerSendCallback.run();
+        }
         processService.get().sendMessage(currentSessionId, messageText, context, fileBlocks)
                 .thenAccept(result -> {
                     SwingUtilities.invokeLater(() -> {

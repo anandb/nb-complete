@@ -319,6 +319,13 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         permissionPanel = layoutBuilder.getPermissionPanel();
         permissionDialogManager = new PermissionDialogManager(chatPanel, permissionPanel);
         permissionPanel.setOnResult(permissionDialogManager::addResultToChat);
+        // While a permission request awaits a decision, block new sends (keep the input
+        // text) and buzz the panel to draw attention — never supersede the request.
+        messageSender.setPermissionPendingCheck(permissionDialogManager::isPermissionPending);
+        messageSender.setOnPermissionBlockedCallback(permissionDialogManager::buzzPermissionPanel);
+        // Advance the permission epoch when a message is actually sent so stale in-flight
+        // permission requests from a superseded turn are dropped.
+        messageSender.setOnBeforeServerSendCallback(permissionDialogManager::recordUserMessageSent);
 
         // Wire send/stop AFTER permissionPanel is initialized
         sendBtn.addActionListener(e -> messageSender.sendMessage());
@@ -525,6 +532,12 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         if (messageSender != null) {
             messageSender.stopMessage();
         }
+    }
+
+    /** True while a permission request is awaiting a decision. The mini-assistant uses
+     *  this to block new sends (keeping the typed text) instead of superseding it. */
+    public boolean isPermissionPending() {
+        return permissionDialogManager != null && permissionDialogManager.isPermissionPending();
     }
 
     /** Dismisses any stuck permission/config-confirm panel so the input is re-enabled.
@@ -925,6 +938,11 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                 requestActive();
                 toFront();
             });
+    }
+
+    @Override
+    public long currentPermissionEpoch() {
+        return permissionDialogManager != null ? permissionDialogManager.currentEpoch() : 0L;
     }
 
 }

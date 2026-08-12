@@ -15,6 +15,7 @@ import javax.swing.SwingUtilities;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
@@ -945,7 +946,13 @@ public class SessionManager implements SessionQuery, SessionControl {
     private long parseTimestamp(String ts) {
         if (ts == null) return 0;
         try {
-            return OffsetDateTime.parse(ts).toInstant().toEpochMilli();
+            // Use full nanosecond resolution rather than truncating to millis: two
+            // sessions updated within the same millisecond (e.g. a sub-agent spawned
+            // by a tool call) would otherwise compare equal, yielding an unstable
+            // "most recent" sort order. Preserving fractional-second precision keeps
+            // the comparison deterministic even for near-simultaneous updates.
+            Instant inst = OffsetDateTime.parse(ts).toInstant();
+            return inst.getEpochSecond() * 1_000_000_000L + inst.getNano();
         } catch (Exception e) {
             LOG.warn("Failed to parse timestamp: {0}", ts, e);
             return 0;

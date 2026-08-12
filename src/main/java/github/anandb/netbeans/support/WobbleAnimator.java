@@ -21,6 +21,12 @@ public final class WobbleAnimator {
     private static final int WOBBLE_INTERVAL_MS = 30;
     private static final int WOBBLE_RESTART_MS = 5_000;
 
+    // Rapid side-to-side "buzz" burst used to draw immediate attention (e.g. when the
+    // user tries to send a new message while a permission request is pending).
+    private static final int BUZZ_INTERVAL_MS = 15;
+    private static final int[] BUZZ_X = {0, -3, 3, -3, 3, -2, 2, -2, 2, -1, 1, -1, 1, -1, 1, 0};
+    private static final int[] BUZZ_Y = {0, -2, 2, -2, 2, -1, 1, -1, 1, 0, -1, 1, -1, 1, 0, 0};
+
     private final JComponent target;
 
     private int x;
@@ -28,6 +34,7 @@ public final class WobbleAnimator {
     private Timer wobbleTimer;
     private Timer wobbleRestartTimer;
     private Timer wobbleDelayTimer;
+    private Timer buzzTimer;
 
     public WobbleAnimator(JComponent target) {
         this.target = target;
@@ -96,6 +103,36 @@ public final class WobbleAnimator {
         wobbleTimer.start();
     }
 
+    /** Performs a rapid side-to-side "buzz" to simulate an alert (e.g. when the user
+     *  tries to send a new message while a permission request is pending). Runs one
+     *  fast burst, then schedules the gentle periodic wobble so attention continues. */
+    public void buzz() {
+        // Stop any pending gentle wobble so the two animations do not fight over x/y.
+        stop();
+        buzzTimer = new Timer(BUZZ_INTERVAL_MS, new ActionListener() {
+            private int frame = 0;
+
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (frame < BUZZ_X.length) {
+                    x = BUZZ_X[frame];
+                    y = BUZZ_Y[frame];
+                    target.repaint();
+                    frame++;
+                } else {
+                    x = 0;
+                    y = 0;
+                    target.repaint();
+                    buzzTimer.stop();
+                    buzzTimer = null;
+                    // Resume periodic attention after the burst.
+                    scheduleStart();
+                }
+            }
+        });
+        buzzTimer.start();
+    }
+
     /** Stops the wobble animation and its repeat cycle. */
     public void stop() {
         cancelDelay();
@@ -106,6 +143,10 @@ public final class WobbleAnimator {
         if (wobbleRestartTimer != null) {
             wobbleRestartTimer.stop();
             wobbleRestartTimer = null;
+        }
+        if (buzzTimer != null) {
+            buzzTimer.stop();
+            buzzTimer = null;
         }
         x = 0;
         y = 0;

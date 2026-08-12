@@ -24,7 +24,6 @@ import github.anandb.netbeans.ui.platform.PlatformBridge;
 import github.anandb.netbeans.ui.platform.ProjectContext;
 import github.anandb.netbeans.ui.platform.SessionService;
 import org.netbeans.api.project.Project;
-import org.netbeans.api.project.ui.OpenProjects;
 import org.openide.util.NbBundle;
 
 /**
@@ -293,7 +292,9 @@ public class SessionLifecycleHandler implements SessionListener {
                 }
 
                 boolean hasSessions = sessionDropdown.getItemCount() > 0;
-                boolean hasProjects = OpenProjects.getDefault().getOpenProjects().length > 0;
+                // Read the cached project list (NOT OpenProjects.getDefault().getOpenProjects(),
+                // which blocks the EDT while projects load during startup/install).
+                boolean hasProjects = projectContext.getAllOpenProjects().length > 0;
                 hideBtn.setEnabled(currentId != null);
                 // Only update icon here when the current session stays selected (selectIdx != -1).
                 // When the session is being filtered out (archived), onSessionLoaded will set the

@@ -256,10 +256,13 @@ public class ChatThreadPanel extends JPanel {
         }
     }
 
-    private static final int MESSAGE_DRAIN_BATCH_SIZE = 5;
+    // Messages drained per EDT tick. Yield after every message so a slow/large
+    // session load or stream never blocks the EDT — one render per tick keeps
+    // the IDE responsive between bubbles.
+    private static final int MESSAGE_DRAIN_BATCH_SIZE = 1;
     // Max bubbles rendered per EDT tick during a session load, keeping the
-    // IDE responsive while a large history is drawn in chunks.
-    private static final int LOAD_RENDER_BATCH_SIZE = 5;
+    // IDE responsive while a large history is drawn one message at a time.
+    private static final int LOAD_RENDER_BATCH_SIZE = 1;
 
     private void drainMessageQueue() {
         if (loadRenderInProgress) {

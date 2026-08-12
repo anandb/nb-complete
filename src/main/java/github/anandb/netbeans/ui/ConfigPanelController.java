@@ -12,8 +12,10 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.awt.event.MouseEvent;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Consumer;
 
 import javax.swing.JButton;
@@ -483,6 +485,17 @@ public class ConfigPanelController {
         List<ConfigItem> modelVariants = variants.get(baseId);
         if (modelVariants == null || modelVariants.isEmpty()) return;
 
+        // Only offer effort levels the server's effort option actually accepts,
+        // so we never send a value the server rejects ("effort not found: X").
+        Set<String> validEffort = new HashSet<>();
+        if (thinkingConfigOption.options() != null) {
+            for (SessionConfigSelectOption o : thinkingConfigOption.options()) {
+                if (o.value() != null && !o.value().isEmpty()) {
+                    validEffort.add(o.value().toLowerCase(Locale.ROOT));
+                }
+            }
+        }
+
         // Remember current selection
         ConfigItem prevSelection = (ConfigItem) thinkingCombo.getSelectedItem();
         String prevValue = prevSelection != null ? prevSelection.value() : null;
@@ -490,14 +503,34 @@ public class ConfigPanelController {
         thinkingCombo.removeAllItems();
 
         // Add variant names as effort levels (skip "default"); the value sent to
-        // the server must be the variant key, not the full provider/model id.
+        // the server must be a valid effort option value, not the full provider/model id.
         ConfigItem selected = null;
         for (ConfigItem v : modelVariants) {
             if ("default".equalsIgnoreCase(v.name()) || v.name().isEmpty()) continue;
-            ConfigItem item = new ConfigItem(v.name(), v.name());
+            String level = v.name();
+            // Skip variant suffixes that are not valid effort values for this server.
+            if (!validEffort.isEmpty() && !validEffort.contains(level.toLowerCase(Locale.ROOT))) {
+                continue;
+            }
+            ConfigItem item = new ConfigItem(level, level);
             thinkingCombo.addItem(item);
-            if (prevValue != null && v.name().equalsIgnoreCase(prevValue)) {
+            if (prevValue != null && level.equalsIgnoreCase(prevValue)) {
                 selected = item;
+            }
+        }
+
+        // If no variant suffix maps to a valid effort level, fall back to the
+        // server-declared effort options so the combo is never empty and only
+        // valid values are sent.
+        if (thinkingCombo.getItemCount() == 0 && thinkingConfigOption.options() != null) {
+            for (SessionConfigSelectOption o : thinkingConfigOption.options()) {
+                String val = o.value();
+                if (val == null || val.isEmpty() || "default".equalsIgnoreCase(val)) continue;
+                ConfigItem item = new ConfigItem(o.name(), val);
+                thinkingCombo.addItem(item);
+                if (prevValue != null && val.equalsIgnoreCase(prevValue)) {
+                    selected = item;
+                }
             }
         }
 

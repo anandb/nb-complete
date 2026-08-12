@@ -2,6 +2,7 @@ package github.anandb.netbeans.project;
 
 import org.openide.modules.OnStart;
 import org.openide.util.NbPreferences;
+import org.openide.util.RequestProcessor;
 import org.openide.windows.Mode;
 import org.openide.windows.WindowManager;
 
@@ -19,20 +20,26 @@ public class ACPStartup implements Runnable {
 
     @Override
     public void run() {
-        // Run before any plugin component reads/writes NbPreferences so data
-        // left behind in a previous NetBeans user dir is copied over (the built-in
-        // IDE migration skips plugin files because the plugin is imported later).
-        PreferencesMigrator.migrateIfNeeded();
+        // @OnStart Runnables execute on the EDT during install/startup. Defer all
+        // heavy work (preference migration file I/O, OpenProjects access) to a
+        // background thread so plugin installation and IDE startup never block on
+        // the EDT (which manifests as a hang/deadlock while installing the plugin).
+        RequestProcessor.getDefault().post(() -> {
+            // Run before any plugin component reads/writes NbPreferences so data
+            // left behind in a previous NetBeans user dir is copied over (the built-in
+            // IDE migration skips plugin files because the plugin is imported later).
+            PreferencesMigrator.migrateIfNeeded();
 
-        LOG.info("ACP Plugin Startup: Initializing Project Manager...");
-        ACPProjectManager.getInstance().start();
-        checkVersionAndOpen();
-        UpdateCheckerControl ucc = Lookup.getDefault().lookup(UpdateCheckerControl.class);
-        if (ucc != null) {
-            ucc.start();
-        } else {
-            LOG.warn("UpdateCheckerControl not found — update checks disabled");
-        }
+            LOG.info("ACP Plugin Startup: Initializing Project Manager...");
+            ACPProjectManager.getInstance().start();
+            checkVersionAndOpen();
+            UpdateCheckerControl ucc = Lookup.getDefault().lookup(UpdateCheckerControl.class);
+            if (ucc != null) {
+                ucc.start();
+            } else {
+                LOG.warn("UpdateCheckerControl not found — update checks disabled");
+            }
+        });
     }
 
     private void checkVersionAndOpen() {
