@@ -9,6 +9,7 @@ import github.anandb.netbeans.contract.UpdateCheckerControl;
 import github.anandb.netbeans.support.AgentUtils;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.PreferenceKeys;
+import github.anandb.netbeans.support.PreferencesMigrator;
 import org.openide.util.Lookup;
 import org.openide.windows.TopComponent;
 
@@ -18,6 +19,11 @@ public class ACPStartup implements Runnable {
 
     @Override
     public void run() {
+        // Run before any plugin component reads/writes NbPreferences so data
+        // left behind in a previous NetBeans user dir is copied over (the built-in
+        // IDE migration skips plugin files because the plugin is imported later).
+        PreferencesMigrator.migrateIfNeeded();
+
         LOG.info("ACP Plugin Startup: Initializing Project Manager...");
         ACPProjectManager.getInstance().start();
         checkVersionAndOpen();
