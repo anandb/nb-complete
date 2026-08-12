@@ -56,6 +56,10 @@ public final class PreferenceKeys {
 
     // Actions toggle keys (enabled by default)
     public static final String ACTIONS_SORT_LINES = "actions.sortLines";
+    public static final String ACTIONS_COMPACT_JSON = "actions.compactJson";
+    public static final String ACTIONS_SEARCH_WEB = "actions.searchWeb";
+    public static final String ACTIONS_SHOW_ANNOTATIONS = "actions.showAnnotations";
+    public static final String ACTIONS_VIEW_FILE_HISTORY = "actions.viewFileHistory";
     public static final String ACTIONS_STASH_DIFF = "actions.stashDiff";
     public static final String ACTIONS_QUICK_JUMP = "actions.quickJump";
 

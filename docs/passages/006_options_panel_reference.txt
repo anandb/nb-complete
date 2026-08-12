@@ -50,7 +50,11 @@ This page describes every preference in the panel, organised into six sections. 
 <table class="ug-table">
 <thead><tr><th>Preference</th><th>Default</th><th>Description</th></tr></thead>
 <tbody>
-<tr><td><strong>Enable context menu additions (Sort, Minify, Search Web)</strong></td><td>On</td><td>Adds the <strong>Sort Lines</strong>, <strong>Minify JSON</strong>, and <strong>Search Web</strong> items to the editor's right-click context menu.</td></tr>
+<tr><td><strong>Enable Sort Lines editor context menu actions</strong></td><td>On</td><td>Adds the <strong>Sort Lines Ascending</strong> and <strong>Sort Lines Descending</strong> items to the editor's right-click context menu.</td></tr>
+<tr><td><strong>Enable Minify JSON editor context menu action</strong></td><td>On</td><td>Adds the <strong>Minify JSON</strong> item to the editor's right-click context menu for stripping formatting whitespace from JSON.</td></tr>
+<tr><td><strong>Enable Search Web editor context menu action</strong></td><td>On</td><td>Adds the <strong>Search Web</strong> item to the editor's right-click context menu for searching the selected text (or the word under the cursor) on Google.</td></tr>
+<tr><td><strong>Enable Toggle Annotations editor context menu action</strong></td><td>On</td><td>Adds the <strong>Toggle Annotations</strong> item to the editor's right-click context menu for toggling the versioning system's blame annotations.</td></tr>
+<tr><td><strong>Enable View File History editor context menu action</strong></td><td>On</td><td>Adds the <strong>View File History</strong> item to the editor's right-click context menu for opening the versioning system's history view.</td></tr>
 <tr><td><strong>Enable Stash Diff toolbar button and action</strong></td><td>On</td><td>Enables the <strong>Stash Diff</strong> toolbar button and the <code>Ctrl + Shift + L</code> action for viewing git stash diffs.</td></tr>
 <tr><td><strong>Enable Jump to file dialog</strong></td><td>On</td><td>Enables the <strong>Jump to File</strong> dialog (a shortcut, e.g. <code>Ctrl + Alt + J</code>, is shown next to the label when one is available).</td></tr>
 <tr><td><strong>Enable Mini Assistant</strong></td><td>On</td><td>Decides where <strong>Send to Assistant</strong> / <strong>Ask Assistant</strong> actions open: the floating mini dialog (enabled) or the main sidebar (disabled).</td></tr>

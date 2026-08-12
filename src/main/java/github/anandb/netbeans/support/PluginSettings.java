@@ -30,7 +30,11 @@ public final class PluginSettings {
     /** Cached chat font size — volatile for cross-thread visibility. -1 = inherited. */
     private static volatile int cachedChatFontSize = -1;
     /** Cached actions toggles — volatile for cross-thread visibility. All default to true. */
-    private static volatile boolean cachedContextMenuEnabled = true;
+    private static volatile boolean cachedSortLinesEnabled = true;
+    private static volatile boolean cachedCompactJsonEnabled = true;
+    private static volatile boolean cachedSearchWebEnabled = true;
+    private static volatile boolean cachedShowAnnotationsEnabled = true;
+    private static volatile boolean cachedViewFileHistoryEnabled = true;
     private static volatile boolean cachedStashDiffEnabled = true;
     private static volatile boolean cachedQuickJumpEnabled = true;
     private static volatile boolean cachedAutoBackupChanges = true;
@@ -51,7 +55,11 @@ public final class PluginSettings {
         cachedMaxMessages = prefs.getInt(KEY_MAX_MESSAGES, DEFAULT_MAX_MESSAGES);
         cachedToolbarIconSize = prefs.getInt(PreferenceKeys.TOOLBAR_ICON_SIZE, DEFAULT_TOOLBAR_ICON_SIZE);
         cachedChatFontSize = prefs.getInt(PreferenceKeys.CHAT_FONT_SIZE, -1);
-        cachedContextMenuEnabled = prefs.getBoolean(PreferenceKeys.ACTIONS_SORT_LINES, true);
+        cachedSortLinesEnabled = prefs.getBoolean(PreferenceKeys.ACTIONS_SORT_LINES, true);
+        cachedCompactJsonEnabled = prefs.getBoolean(PreferenceKeys.ACTIONS_COMPACT_JSON, true);
+        cachedSearchWebEnabled = prefs.getBoolean(PreferenceKeys.ACTIONS_SEARCH_WEB, true);
+        cachedShowAnnotationsEnabled = prefs.getBoolean(PreferenceKeys.ACTIONS_SHOW_ANNOTATIONS, true);
+        cachedViewFileHistoryEnabled = prefs.getBoolean(PreferenceKeys.ACTIONS_VIEW_FILE_HISTORY, true);
         cachedStashDiffEnabled = prefs.getBoolean(PreferenceKeys.ACTIONS_STASH_DIFF, true);
         cachedQuickJumpEnabled = prefs.getBoolean(PreferenceKeys.ACTIONS_QUICK_JUMP, true);
         cachedAutoBackupChanges = prefs.getBoolean(PreferenceKeys.AUTO_BACKUP_CHANGES, true);
@@ -149,7 +157,15 @@ public final class PluginSettings {
                 cachedChatFontSize = -1;
             }
         } else if (PreferenceKeys.ACTIONS_SORT_LINES.equals(evt.getKey())) {
-            cachedContextMenuEnabled = Boolean.parseBoolean(evt.getNewValue());
+            cachedSortLinesEnabled = Boolean.parseBoolean(evt.getNewValue());
+        } else if (PreferenceKeys.ACTIONS_COMPACT_JSON.equals(evt.getKey())) {
+            cachedCompactJsonEnabled = Boolean.parseBoolean(evt.getNewValue());
+        } else if (PreferenceKeys.ACTIONS_SEARCH_WEB.equals(evt.getKey())) {
+            cachedSearchWebEnabled = Boolean.parseBoolean(evt.getNewValue());
+        } else if (PreferenceKeys.ACTIONS_SHOW_ANNOTATIONS.equals(evt.getKey())) {
+            cachedShowAnnotationsEnabled = Boolean.parseBoolean(evt.getNewValue());
+        } else if (PreferenceKeys.ACTIONS_VIEW_FILE_HISTORY.equals(evt.getKey())) {
+            cachedViewFileHistoryEnabled = Boolean.parseBoolean(evt.getNewValue());
         } else if (PreferenceKeys.ACTIONS_STASH_DIFF.equals(evt.getKey())) {
             cachedStashDiffEnabled = Boolean.parseBoolean(evt.getNewValue());
         } else if (PreferenceKeys.ACTIONS_QUICK_JUMP.equals(evt.getKey())) {
@@ -200,13 +216,49 @@ public final class PluginSettings {
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putInt(PreferenceKeys.TOOLBAR_ICON_SIZE, size);
     }
 
-    /** Whether context-menu additions (Sort Lines, Minify JSON, Search Web) are enabled. */
-    public static boolean isContextMenuEnabled() {
-        return cachedContextMenuEnabled;
+    /** Whether the Sort Lines editor context menu actions are enabled. */
+    public static boolean isSortLinesEnabled() {
+        return cachedSortLinesEnabled;
     }
 
-    public static void setContextMenuEnabled(boolean enabled) {
+    public static void setSortLinesEnabled(boolean enabled) {
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean(PreferenceKeys.ACTIONS_SORT_LINES, enabled);
+    }
+
+    /** Whether the Minify JSON editor context menu action is enabled. */
+    public static boolean isCompactJsonEnabled() {
+        return cachedCompactJsonEnabled;
+    }
+
+    public static void setCompactJsonEnabled(boolean enabled) {
+        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean(PreferenceKeys.ACTIONS_COMPACT_JSON, enabled);
+    }
+
+    /** Whether the Search Web editor context menu action is enabled. */
+    public static boolean isSearchWebEnabled() {
+        return cachedSearchWebEnabled;
+    }
+
+    public static void setSearchWebEnabled(boolean enabled) {
+        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean(PreferenceKeys.ACTIONS_SEARCH_WEB, enabled);
+    }
+
+    /** Whether the Toggle Annotations editor context menu action is enabled. */
+    public static boolean isShowAnnotationsEnabled() {
+        return cachedShowAnnotationsEnabled;
+    }
+
+    public static void setShowAnnotationsEnabled(boolean enabled) {
+        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean(PreferenceKeys.ACTIONS_SHOW_ANNOTATIONS, enabled);
+    }
+
+    /** Whether the View File History editor context menu action is enabled. */
+    public static boolean isViewFileHistoryEnabled() {
+        return cachedViewFileHistoryEnabled;
+    }
+
+    public static void setViewFileHistoryEnabled(boolean enabled) {
+        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean(PreferenceKeys.ACTIONS_VIEW_FILE_HISTORY, enabled);
     }
 
     /** Whether the Stash Diff toolbar button and action are enabled. */

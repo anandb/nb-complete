@@ -11,8 +11,6 @@ import org.openide.filesystems.FileObject;
 import org.openide.filesystems.FileUtil;
 import org.openide.util.actions.Presenter;
 
-import github.anandb.netbeans.support.PluginSettings;
-
 /**
  * Shared base for editor context menu actions that operate on the file in the
  * current editor via the versioning SPI. Provides the toggle-gated popup
@@ -23,12 +21,15 @@ public abstract class BaseVersioningEditorAction extends AbstractAction implemen
     /** Bundle key of this action's display name. */
     protected abstract String getDisplayNameKey();
 
+    /** Whether this action's editor context menu toggle is enabled. */
+    protected abstract boolean isMenuEnabled();
+
     /** Performs the action on the file backing the current editor document. */
     protected abstract void perform(File file, java.awt.event.ActionEvent e);
 
     @Override
     public JMenuItem getPopupPresenter() {
-        if (!PluginSettings.isContextMenuEnabled()) {
+        if (!isMenuEnabled()) {
             JMenuItem item = new JMenuItem();
             item.setVisible(false);
             return item;
@@ -41,7 +42,7 @@ public abstract class BaseVersioningEditorAction extends AbstractAction implemen
 
     @Override
     public void actionPerformed(java.awt.event.ActionEvent e) {
-        if (!PluginSettings.isContextMenuEnabled()) {
+        if (!isMenuEnabled()) {
             return;
         }
         File file = currentFile();

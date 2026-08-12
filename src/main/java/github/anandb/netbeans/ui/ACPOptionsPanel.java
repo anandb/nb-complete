@@ -61,6 +61,10 @@ public class ACPOptionsPanel extends JPanel {
     private JCheckBox combineCheckbox;
     private JCheckBox checkForUpdatesCheckbox;
     private JCheckBox sortLinesCheckbox;
+    private JCheckBox compactJsonCheckbox;
+    private JCheckBox searchWebCheckbox;
+    private JCheckBox showAnnotationsCheckbox;
+    private JCheckBox viewFileHistoryCheckbox;
     private JCheckBox stashDiffCheckbox;
     private JCheckBox quickJumpCheckbox;
     private JCheckBox autoBackupChangesCheckbox;
@@ -104,6 +108,10 @@ public class ACPOptionsPanel extends JPanel {
         combineCheckbox = new JCheckBox();
         checkForUpdatesCheckbox = new JCheckBox();
         sortLinesCheckbox = new JCheckBox();
+        compactJsonCheckbox = new JCheckBox();
+        searchWebCheckbox = new JCheckBox();
+        showAnnotationsCheckbox = new JCheckBox();
+        viewFileHistoryCheckbox = new JCheckBox();
         stashDiffCheckbox = new JCheckBox();
         quickJumpCheckbox = new JCheckBox();
         autoBackupChangesCheckbox = new JCheckBox();
@@ -270,25 +278,49 @@ public class ACPOptionsPanel extends JPanel {
         actionsPanel.add(sortLinesCheckbox, UIUtils.createGbc(0, 0, 1.0, 0, GridBagConstraints.HORIZONTAL,
                 GridBagConstraints.WEST, new Insets(0, 12, 5, 0)));
 
+        compactJsonCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_CompactJson"));
+        compactJsonCheckbox.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_CompactJson"));
+        compactJsonCheckbox.addActionListener(evt -> controller.changed());
+        actionsPanel.add(compactJsonCheckbox, UIUtils.createGbc(0, 1, 1.0, 0, GridBagConstraints.HORIZONTAL,
+                GridBagConstraints.WEST, new Insets(0, 12, 5, 0)));
+
+        searchWebCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_SearchWeb"));
+        searchWebCheckbox.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_SearchWeb"));
+        searchWebCheckbox.addActionListener(evt -> controller.changed());
+        actionsPanel.add(searchWebCheckbox, UIUtils.createGbc(0, 2, 1.0, 0, GridBagConstraints.HORIZONTAL,
+                GridBagConstraints.WEST, new Insets(0, 12, 5, 0)));
+
+        showAnnotationsCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_ShowAnnotations"));
+        showAnnotationsCheckbox.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_ShowAnnotations"));
+        showAnnotationsCheckbox.addActionListener(evt -> controller.changed());
+        actionsPanel.add(showAnnotationsCheckbox, UIUtils.createGbc(0, 3, 1.0, 0, GridBagConstraints.HORIZONTAL,
+                GridBagConstraints.WEST, new Insets(0, 12, 5, 0)));
+
+        viewFileHistoryCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_ViewFileHistory"));
+        viewFileHistoryCheckbox.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_ViewFileHistory"));
+        viewFileHistoryCheckbox.addActionListener(evt -> controller.changed());
+        actionsPanel.add(viewFileHistoryCheckbox, UIUtils.createGbc(1, 0, 1.0, 0, GridBagConstraints.HORIZONTAL,
+                GridBagConstraints.WEST, new Insets(0, 25, 5, 0)));
+
         stashDiffCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_StashDiff"));
         stashDiffCheckbox.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_StashDiff"));
         stashDiffCheckbox.addActionListener(evt -> controller.changed());
-        actionsPanel.add(stashDiffCheckbox, UIUtils.createGbc(0, 1, 1.0, 0, GridBagConstraints.HORIZONTAL,
-                GridBagConstraints.WEST, new Insets(0, 12, 5, 0)));
+        actionsPanel.add(stashDiffCheckbox, UIUtils.createGbc(1, 1, 1.0, 0, GridBagConstraints.HORIZONTAL,
+                GridBagConstraints.WEST, new Insets(0, 25, 5, 0)));
 
         String quickJumpShortcut = ShortcutUtils.resolveShortcut("github.anandb.netbeans.ui.GoToFileAction");
         quickJumpCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_QuickJump")
                 + (quickJumpShortcut.isEmpty() ? "" : " (" + quickJumpShortcut + ")"));
         quickJumpCheckbox.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_QuickJump"));
         quickJumpCheckbox.addActionListener(evt -> controller.changed());
-        actionsPanel.add(quickJumpCheckbox, UIUtils.createGbc(0, 2, 1.0, 0, GridBagConstraints.HORIZONTAL,
-                GridBagConstraints.WEST, new Insets(0, 12, 5, 0)));
+        actionsPanel.add(quickJumpCheckbox, UIUtils.createGbc(1, 2, 1.0, 0, GridBagConstraints.HORIZONTAL,
+                GridBagConstraints.WEST, new Insets(0, 25, 5, 0)));
 
         miniAssistantCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_EnableMiniAssistant"));
         miniAssistantCheckbox.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_EnableMiniAssistant"));
         miniAssistantCheckbox.addActionListener(evt -> controller.changed());
-        actionsPanel.add(miniAssistantCheckbox, UIUtils.createGbc(0, 3, 1.0, 0, GridBagConstraints.HORIZONTAL,
-                GridBagConstraints.WEST, new Insets(0, 12, 5, 0)));
+        actionsPanel.add(miniAssistantCheckbox, UIUtils.createGbc(1, 3, 1.0, 0, GridBagConstraints.HORIZONTAL,
+                GridBagConstraints.WEST, new Insets(0, 25, 5, 0)));
 
         add(actionsPanel);
         add(Box.createVerticalStrut(4));
@@ -300,8 +332,8 @@ public class ACPOptionsPanel extends JPanel {
 
         iconLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_UserIcon"));
         iconLabel.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_UserIcon"));
-        appearancePanel.add(iconLabel, UIUtils.createGbc(0, row, 0.0, 0, GridBagConstraints.NONE, GridBagConstraints.WEST,
-                new Insets(0, 12, 5, 5)));
+        appearancePanel.add(iconLabel, UIUtils.createGbc(0, row, 1.5, 0, GridBagConstraints.HORIZONTAL,
+                GridBagConstraints.WEST, new Insets(0, 12, 5, 5)));
 
         iconPathField.addKeyListener(new KeyAdapter() {
             @Override
@@ -312,7 +344,7 @@ public class ACPOptionsPanel extends JPanel {
         });
         iconPathField.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_UserIcon"));
         appearancePanel.add(iconPathField, UIUtils.createGbc(1, row, 1.0, 0, GridBagConstraints.HORIZONTAL,
-                                             GridBagConstraints.WEST, new Insets(0, 0, 5, 5)));
+                                             GridBagConstraints.EAST, new Insets(0, 0, 5, 5)));
 
         iconBrowseButton.setText(NbBundle.getMessage(ACPOptionsPanel.class, "BTN_Browse"));
         iconBrowseButton.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_UserIcon"));
@@ -320,32 +352,34 @@ public class ACPOptionsPanel extends JPanel {
         appearancePanel.add(iconBrowseButton, UIUtils.createGbc(2, row, 0.0, 0, GridBagConstraints.NONE,
                                                 GridBagConstraints.WEST, new Insets(0, 0, 5, 0)));
 
-        appearancePanel.add(iconPreviewLabel, UIUtils.createGbc(3, row, 0.0, 0, GridBagConstraints.NONE,
-                                                GridBagConstraints.WEST, new Insets(0, 8, 5, 12)));
+        GridBagConstraints previewGbc = UIUtils.createGbc(3, 0, 0.0, 0, GridBagConstraints.NONE,
+                GridBagConstraints.CENTER, new Insets(0, 8, 5, 12));
+        previewGbc.gridheight = 3;
+        appearancePanel.add(iconPreviewLabel, previewGbc);
 
         row++;
         JLabel toolbarIconLabel = new JLabel(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_ToolbarIconSize"));
         toolbarIconLabel.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_ToolbarIconSize"));
-        appearancePanel.add(toolbarIconLabel, UIUtils.createGbc(0, row, 0.0, 0, GridBagConstraints.NONE, GridBagConstraints.WEST,
-                new Insets(0, 12, 5, 5)));
+        appearancePanel.add(toolbarIconLabel, UIUtils.createGbc(0, row, 1.5, 0, GridBagConstraints.HORIZONTAL,
+                GridBagConstraints.WEST, new Insets(0, 12, 5, 5)));
 
         toolbarIconCombo = new JComboBox<>(new String[]{"16", "24", "28", "32", "36", "40", "48"});
         toolbarIconCombo.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_ToolbarIconSize"));
         toolbarIconCombo.addActionListener(evt -> controller.changed());
-        appearancePanel.add(toolbarIconCombo, UIUtils.createGbc(1, row, 0.0, 0, GridBagConstraints.NONE,
-                GridBagConstraints.WEST, new Insets(0, 0, 5, 5)));
+        appearancePanel.add(toolbarIconCombo, UIUtils.createGbc(2, row, 0.0, 0, GridBagConstraints.NONE,
+                GridBagConstraints.EAST, new Insets(0, 0, 5, 5)));
 
         row++;
         JLabel chatFontLabel = new JLabel(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_ChatFontSize"));
         chatFontLabel.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_ChatFontSize"));
-        appearancePanel.add(chatFontLabel, UIUtils.createGbc(0, row, 0.0, 0, GridBagConstraints.NONE, GridBagConstraints.WEST,
-                new Insets(0, 12, 5, 5)));
+        appearancePanel.add(chatFontLabel, UIUtils.createGbc(0, row, 1.5, 0, GridBagConstraints.HORIZONTAL,
+                GridBagConstraints.WEST, new Insets(0, 12, 5, 5)));
 
         chatFontCombo = new JComboBox<>(new String[]{"Inherited", "10", "11", "12", "13", "14", "16"});
         chatFontCombo.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_ChatFontSize"));
         chatFontCombo.addActionListener(evt -> controller.changed());
-        appearancePanel.add(chatFontCombo, UIUtils.createGbc(1, row, 0.0, 0, GridBagConstraints.NONE,
-                GridBagConstraints.WEST, new Insets(0, 0, 5, 5)));
+        appearancePanel.add(chatFontCombo, UIUtils.createGbc(2, row, 0.0, 0, GridBagConstraints.NONE,
+                GridBagConstraints.EAST, new Insets(0, 0, 5, 5)));
 
         add(appearancePanel);
         add(Box.createVerticalStrut(4));
@@ -452,6 +486,12 @@ public class ACPOptionsPanel extends JPanel {
         chatFontCombo.setSelectedItem(currentChatFont < 0 ? "Inherited" : String.valueOf(currentChatFont));
 
         sortLinesCheckbox.setSelected(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean(PreferenceKeys.ACTIONS_SORT_LINES, true));
+        compactJsonCheckbox.setSelected(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean(PreferenceKeys.ACTIONS_COMPACT_JSON, true));
+        searchWebCheckbox.setSelected(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean(PreferenceKeys.ACTIONS_SEARCH_WEB, true));
+        showAnnotationsCheckbox.setSelected(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                .getBoolean(PreferenceKeys.ACTIONS_SHOW_ANNOTATIONS, true));
+        viewFileHistoryCheckbox.setSelected(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                .getBoolean(PreferenceKeys.ACTIONS_VIEW_FILE_HISTORY, true));
         stashDiffCheckbox.setSelected(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean(PreferenceKeys.ACTIONS_STASH_DIFF, true));
         quickJumpCheckbox.setSelected(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean(PreferenceKeys.ACTIONS_QUICK_JUMP, true));
         miniAssistantCheckbox.setSelected(PluginSettings.isMiniAssistantEnabled());
@@ -511,7 +551,11 @@ public class ACPOptionsPanel extends JPanel {
             PluginSettings.setChatFontSize("Inherited".equals(selectedChatFont) ? -1 : Integer.parseInt(selectedChatFont));
         }
 
-        PluginSettings.setContextMenuEnabled(sortLinesCheckbox.isSelected());
+        PluginSettings.setSortLinesEnabled(sortLinesCheckbox.isSelected());
+        PluginSettings.setCompactJsonEnabled(compactJsonCheckbox.isSelected());
+        PluginSettings.setSearchWebEnabled(searchWebCheckbox.isSelected());
+        PluginSettings.setShowAnnotationsEnabled(showAnnotationsCheckbox.isSelected());
+        PluginSettings.setViewFileHistoryEnabled(viewFileHistoryCheckbox.isSelected());
         PluginSettings.setStashDiffEnabled(stashDiffCheckbox.isSelected());
         PluginSettings.setQuickJumpEnabled(quickJumpCheckbox.isSelected());
         PluginSettings.setMiniAssistantEnabled(miniAssistantCheckbox.isSelected());

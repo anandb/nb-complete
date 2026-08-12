@@ -15,11 +15,13 @@ import org.openide.filesystems.FileUtil;
 import org.openide.loaders.DataObject;
 import org.openide.nodes.Node;
 
+import github.anandb.netbeans.support.PluginSettings;
+
 /**
  * Editor context menu action: toggles the versioning system's annotations
  * (blame) for the file in the current editor. Works for any versioning system
  * that implements the annotation SPI (git, Mercurial, Subversion, Local
- * History). Gated by the plugin's "Enable context menu additions" toggle.
+ * History). Gated by the plugin's "Toggle Annotations" option.
  */
 @ActionID(category = "Edit", id = "github.anandb.netbeans.ui.ShowAnnotationsAction")
 @ActionRegistration(displayName = "#CTL_ShowAnnotationsAction", lazy = false)
@@ -29,6 +31,11 @@ public final class ShowAnnotationsAction extends BaseVersioningEditorAction {
     @Override
     protected String getDisplayNameKey() {
         return "CTL_ShowAnnotationsAction";
+    }
+
+    @Override
+    protected boolean isMenuEnabled() {
+        return PluginSettings.isShowAnnotationsEnabled();
     }
 
     @Override

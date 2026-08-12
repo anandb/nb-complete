@@ -21,7 +21,7 @@ public abstract class BaseSortLinesAction extends AbstractAction implements Pres
 
     @Override
     public JMenuItem getPopupPresenter() {
-        if (!PluginSettings.isContextMenuEnabled()) {
+        if (!PluginSettings.isSortLinesEnabled()) {
             JMenuItem item = new JMenuItem();
             item.setVisible(false);
             return item;
@@ -33,7 +33,7 @@ public abstract class BaseSortLinesAction extends AbstractAction implements Pres
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        if (!PluginSettings.isContextMenuEnabled()) return;
+        if (!PluginSettings.isSortLinesEnabled()) return;
         JTextComponent editor = EditorRegistry.lastFocusedComponent();
         if (editor == null) {
             return;

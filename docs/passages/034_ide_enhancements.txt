@@ -23,6 +23,9 @@ The plugin integrates deeply with NetBeans beyond just the chat panel to boost y
     *   **Search Web:** Right-click selected text (or the word under the cursor) in the editor and click **Search Web** to quickly search Google using your NetBeans-configured web browser.
     *   **Sort Lines Ascending / Descending:** Select multiple lines, right-click, and choose this option to alphabetically sort them.
     *   **Minify JSON:** Right-click any JSON content to quickly strip out all formatting whitespace.
+    *   **Toggle Annotations:** Right-click in the editor and choose **Toggle Annotations** to toggle the versioning system's blame annotations for the file.
+    *   **View File History:** Right-click in the editor and choose **View File History** to open the versioning system's history view for the file.
+    *   Each of these context menu items can be enabled or disabled independently under `Tools > Options > Assistant`.
 *   **Jump to File Dialog:**
     *   A modeless file search dialog triggered via `Ctrl + Alt + J` (or `Cmd + Option + J` on Mac) that lets you search all open projects by filename prefix, path substring, or glob patterns.
     *   Supports quick keyboard navigation with arrow keys and `Enter` to open.

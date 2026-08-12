@@ -40,7 +40,7 @@ public final class SearchWebAction extends AbstractAction implements Presenter.P
 
     @Override
     public JMenuItem getPopupPresenter() {
-        if (!PluginSettings.isContextMenuEnabled()) {
+        if (!PluginSettings.isSearchWebEnabled()) {
             JMenuItem item = new JMenuItem();
             item.setVisible(false);
             return item;
@@ -52,7 +52,7 @@ public final class SearchWebAction extends AbstractAction implements Presenter.P
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        if (!PluginSettings.isContextMenuEnabled()) return;
+        if (!PluginSettings.isSearchWebEnabled()) return;
         JTextComponent editor = EditorRegistry.lastFocusedComponent();
         if (editor == null) return;
 

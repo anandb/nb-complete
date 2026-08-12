@@ -30,7 +30,7 @@ public class CompactJsonAction extends AbstractAction implements Presenter.Popup
 
     @Override
     public JMenuItem getPopupPresenter() {
-        if (!PluginSettings.isContextMenuEnabled()) {
+        if (!PluginSettings.isCompactJsonEnabled()) {
             JMenuItem item = new JMenuItem();
             item.setVisible(false);
             return item;
@@ -42,7 +42,7 @@ public class CompactJsonAction extends AbstractAction implements Presenter.Popup
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        if (!PluginSettings.isContextMenuEnabled()) return;
+        if (!PluginSettings.isCompactJsonEnabled()) return;
         JTextComponent editor = EditorRegistry.lastFocusedComponent();
         if (editor == null) return;
 
