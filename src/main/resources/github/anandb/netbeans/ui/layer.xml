@@ -124,6 +124,12 @@
         </folder>
     </folder>
     <folder name="Editors">
+        <folder name="Popup">
+            <file name="GitActionsSep.instance">
+                <attr name="instanceClass" stringvalue="javax.swing.JSeparator"/>
+                <attr name="position" intvalue="9010"/>
+            </file>
+        </folder>
         <folder name="CodeGenerators">
             <file name="AskAssistantCodeGeneratorSep.instance">
                 <attr name="instanceClass" stringvalue="javax.swing.JSeparator"/>

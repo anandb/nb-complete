@@ -19,6 +19,7 @@ public final class PluginSettings {
     private static final String DEFAULT_PREAMBLE;
     private static final String DEFAULT_CRITICAL_RULES;
     private static final String DEFAULT_WSL_RULES;
+    private static final String DEFAULT_WSL_NATIVE_RULES;
 
     /** Cached session idle timeout in seconds — volatile for cross-thread visibility. */
     private static volatile int cachedSessionIdleTimeout = DEFAULT_SESSION_IDLE_TIMEOUT;
@@ -42,6 +43,7 @@ public final class PluginSettings {
         DEFAULT_PREAMBLE = nullToEmpty(AgentUtils.readResource("preamble.md"));
         DEFAULT_CRITICAL_RULES = nullToEmpty(AgentUtils.readResource("critical_rules.md"));
         DEFAULT_WSL_RULES = nullToEmpty(AgentUtils.readResource("wsl_rules.md"));
+        DEFAULT_WSL_NATIVE_RULES = nullToEmpty(AgentUtils.readResource("wsl_native_rules.md"));
 
         // Seed cached value and register listener
         Preferences prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
@@ -66,13 +68,18 @@ public final class PluginSettings {
     }
 
     /** Returns the critical rules loaded from the bundled resources, never editable by the user.
-     *  When running through WSL, WSL-specific guidance (loaded from {@code wsl_rules.md}) is
-     *  appended so the agent can use the Linux environment. */
+     *  When running through WSL, WSL-specific guidance is appended so the agent can use the
+     *  Linux environment. The rule set differs by install mode: when opencode is a Windows
+     *  binary hosted through WSL ({@code wsl_rules.md}) native Windows tooling is preferred;
+     *  when opencode is a native WSL binary ({@code wsl_native_rules.md}) Linux is preferred. */
     public static String getCriticalRules() {
         String rules = DEFAULT_CRITICAL_RULES;
-        if (BinaryResolver.isWslAvailable() && !DEFAULT_WSL_RULES.isEmpty()
-                && !rules.contains("WSL Environment")) {
-            rules = rules + "\n\n" + DEFAULT_WSL_RULES;
+        if (BinaryResolver.isWslAvailable() && !rules.contains("WSL Environment")) {
+            String wslBlock = BinaryResolver.isWindowsHostedOpencode()
+                    ? DEFAULT_WSL_RULES : DEFAULT_WSL_NATIVE_RULES;
+            if (!wslBlock.isEmpty()) {
+                rules = rules + "\n\n" + wslBlock;
+            }
         }
         return rules;
     }

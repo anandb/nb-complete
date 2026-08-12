@@ -104,7 +104,6 @@ class ServerProcessLifecycle {
 
         LOG.info("Starting ACP server...");
         try {
-            String executable = BinaryResolver.resolveExecutablePath();
             String args = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).get("processArguments", "acp");
 
             // Strip shell metacharacters — args are passed directly to the binary
@@ -116,12 +115,13 @@ class ServerProcessLifecycle {
                 args = args.replaceAll("[;|$`]", "").replace("\\n", " ");
             }
 
-            // Wrap with WSL on Windows when available
+            // Wrap with WSL on Windows when available; otherwise launch natively.
             List<String> cmdStrings;
             if (BinaryResolver.isWslAvailable()) {
-                cmdStrings = List.of(BinaryResolver.buildWslArgs(executable, args));
+                cmdStrings = List.of(BinaryResolver.buildWslArgs(args));
                 LOG.info("Executing via WSL: wsl.exe {0}", String.join(" ", cmdStrings));
             } else {
+                String executable = BinaryResolver.resolveExecutablePath();
                 CommandLine cmd = new CommandLine(executable);
                 cmd.addArguments(args, true);
                 cmdStrings = Arrays.asList(cmd.toStrings());

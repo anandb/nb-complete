@@ -12,11 +12,11 @@ import org.openide.util.NbBundle;
 import org.openide.util.NbPreferences;
 
 import java.awt.Color;
-import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.awt.Window;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
 import java.awt.event.KeyAdapter;
@@ -30,13 +30,9 @@ import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
-import javax.swing.JMenuItem;
-import javax.swing.JPopupMenu;
 import javax.swing.JSpinner;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.UIManager;
 import javax.swing.SwingUtilities;
@@ -60,8 +56,6 @@ public class ACPOptionsPanel extends JPanel {
     private JLabel jLabel1;
     private JTextField pathField;
     private JLabel pathErrorLabel;
-    private JTextArea preambleArea;
-    private JScrollPane preambleScroll;
     private JButton browseButton;
     private JCheckBox echoCheckbox;
     private JCheckBox combineCheckbox;
@@ -83,10 +77,12 @@ public class ACPOptionsPanel extends JPanel {
     private transient IconPreviewManager iconPreviewManager;
     private JComboBox<String> toolbarIconCombo;
     private JComboBox<String> chatFontCombo;
+    private JButton editPreambleButton;
 
     private String detectedPath;
     private boolean showingHint;
     private boolean userEditedPath;
+    private String preambleText;
 
     private static final Color HINT_COLOR = ThemeManager.getCurrentTheme().mutedForeground();
 
@@ -112,8 +108,6 @@ public class ACPOptionsPanel extends JPanel {
         quickJumpCheckbox = new JCheckBox();
         autoBackupChangesCheckbox = new JCheckBox();
         miniAssistantCheckbox = new JCheckBox();
-        preambleArea = new JTextArea(5, 40);
-        preambleScroll = new JScrollPane(preambleArea);
         iconLabel = new JLabel();
         iconPathField = new JTextField(40);
         iconBrowseButton = new JButton();
@@ -190,7 +184,7 @@ public class ACPOptionsPanel extends JPanel {
         }
 
         add(servicePanel);
-        add(Box.createVerticalStrut(8));
+        add(Box.createVerticalStrut(4));
 
         // --- Updates ---
         JPanel updatesPanel = createSectionPanel("LBL_UpdatesHeader");
@@ -205,7 +199,7 @@ public class ACPOptionsPanel extends JPanel {
         updatesPanel.add(checkForUpdatesCheckbox, gbcUpdates);
 
         add(updatesPanel);
-        add(Box.createVerticalStrut(8));
+        add(Box.createVerticalStrut(4));
 
         // --- Chat Behavior ---
         JPanel behaviorPanel = createSectionPanel("LBL_BehaviorHeader");
@@ -230,18 +224,12 @@ public class ACPOptionsPanel extends JPanel {
         idleTimeoutSpinner.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_SessionIdleTimeout"));
         idleTimeoutSpinner.addChangeListener(evt -> controller.changed());
         behaviorPanel.add(idleTimeoutSpinner, UIUtils.createGbc(3, row, 0.0, 0, GridBagConstraints.NONE,
-                GridBagConstraints.WEST, new Insets(0, 0, 5, 12)));
+                GridBagConstraints.EAST, new Insets(0, 0, 5, 12)));
 
         combineCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_CombineToolThought"));
         combineCheckbox.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_CombineToolThought"));
         combineCheckbox.addActionListener(evt -> controller.changed());
         behaviorPanel.add(combineCheckbox, UIUtils.createGbc(0, ++row, 1.0, 0, GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST,
-                new Insets(0, 12, 5, 0)));
-
-        autoBackupChangesCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_AutoBackupChanges"));
-        autoBackupChangesCheckbox.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_AutoBackupChanges"));
-        autoBackupChangesCheckbox.addActionListener(evt -> controller.changed());
-        behaviorPanel.add(autoBackupChangesCheckbox, UIUtils.createGbc(0, ++row, 1.0, 0, GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST,
                 new Insets(0, 12, 5, 0)));
 
         JLabel maxMessagesLabel = new JLabel(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_MaxMessages"));
@@ -256,10 +244,21 @@ public class ACPOptionsPanel extends JPanel {
         maxMessagesSpinner.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_MaxMessages"));
         maxMessagesSpinner.addChangeListener(evt -> controller.changed());
         behaviorPanel.add(maxMessagesSpinner, UIUtils.createGbc(3, row, 0.0, 0, GridBagConstraints.NONE,
-                GridBagConstraints.WEST, new Insets(0, 0, 5, 12)));
+                GridBagConstraints.EAST, new Insets(0, 0, 5, 12)));
+
+        autoBackupChangesCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_AutoBackupChanges"));
+        autoBackupChangesCheckbox.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_AutoBackupChanges"));
+        autoBackupChangesCheckbox.addActionListener(evt -> controller.changed());
+        behaviorPanel.add(autoBackupChangesCheckbox, UIUtils.createGbc(0, ++row, 1.0, 0, GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST,
+                new Insets(0, 12, 5, 0)));
+
+        editPreambleButton = new JButton(NbBundle.getMessage(ACPOptionsPanel.class, "BTN_EditPreamble"));
+        editPreambleButton.addActionListener(evt -> openPreambleDialog());
+        behaviorPanel.add(editPreambleButton, UIUtils.createGbc(3, row, 0.0, 0, GridBagConstraints.NONE,
+                GridBagConstraints.EAST, new Insets(0, 0, 5, 12)));
 
         add(behaviorPanel);
-        add(Box.createVerticalStrut(8));
+        add(Box.createVerticalStrut(4));
 
         // --- Actions ---
         JPanel actionsPanel = createSectionPanel("LBL_ActionsHeader");
@@ -292,26 +291,16 @@ public class ACPOptionsPanel extends JPanel {
                 GridBagConstraints.WEST, new Insets(0, 12, 5, 0)));
 
         add(actionsPanel);
-        add(Box.createVerticalStrut(8));
+        add(Box.createVerticalStrut(4));
 
-        // --- Appearance (two-column) ---
-        JPanel appearanceOuter = new JPanel(new GridBagLayout());
-        appearanceOuter.setBorder(BorderFactory.createEmptyBorder());
-        GridBagConstraints gbcAppOuter = new GridBagConstraints();
-        gbcAppOuter.gridx = 0;
-        gbcAppOuter.gridy = 0;
-        gbcAppOuter.weightx = 1.0;
-        gbcAppOuter.weighty = 0;
-        gbcAppOuter.fill = GridBagConstraints.HORIZONTAL;
-        gbcAppOuter.anchor = GridBagConstraints.NORTHWEST;
-
-        JPanel appearanceLeft = createSectionPanel("LBL_AppearanceHeader");
-        appearanceLeft.setLayout(new GridBagLayout());
+        // --- Appearance ---
+        JPanel appearancePanel = createSectionPanel("LBL_AppearanceHeader");
+        appearancePanel.setLayout(new GridBagLayout());
         row = 0;
 
         iconLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_UserIcon"));
         iconLabel.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_UserIcon"));
-        appearanceLeft.add(iconLabel, UIUtils.createGbc(0, row, 0.0, 0, GridBagConstraints.NONE, GridBagConstraints.WEST,
+        appearancePanel.add(iconLabel, UIUtils.createGbc(0, row, 0.0, 0, GridBagConstraints.NONE, GridBagConstraints.WEST,
                 new Insets(0, 12, 5, 5)));
 
         iconPathField.addKeyListener(new KeyAdapter() {
@@ -322,88 +311,44 @@ public class ACPOptionsPanel extends JPanel {
             }
         });
         iconPathField.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_UserIcon"));
-        appearanceLeft.add(iconPathField, UIUtils.createGbc(1, row, 1.0, 0, GridBagConstraints.HORIZONTAL,
+        appearancePanel.add(iconPathField, UIUtils.createGbc(1, row, 1.0, 0, GridBagConstraints.HORIZONTAL,
                                              GridBagConstraints.WEST, new Insets(0, 0, 5, 5)));
 
         iconBrowseButton.setText(NbBundle.getMessage(ACPOptionsPanel.class, "BTN_Browse"));
         iconBrowseButton.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_UserIcon"));
         iconBrowseButton.addActionListener(evt -> iconBrowseButtonActionPerformed());
-        appearanceLeft.add(iconBrowseButton, UIUtils.createGbc(2, row, 0.0, 0, GridBagConstraints.NONE,
+        appearancePanel.add(iconBrowseButton, UIUtils.createGbc(2, row, 0.0, 0, GridBagConstraints.NONE,
                                                 GridBagConstraints.WEST, new Insets(0, 0, 5, 0)));
 
+        appearancePanel.add(iconPreviewLabel, UIUtils.createGbc(3, row, 0.0, 0, GridBagConstraints.NONE,
+                                                GridBagConstraints.WEST, new Insets(0, 8, 5, 12)));
+
+        row++;
         JLabel toolbarIconLabel = new JLabel(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_ToolbarIconSize"));
         toolbarIconLabel.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_ToolbarIconSize"));
-        appearanceLeft.add(toolbarIconLabel, UIUtils.createGbc(0, ++row, 0.0, 0, GridBagConstraints.NONE, GridBagConstraints.WEST,
+        appearancePanel.add(toolbarIconLabel, UIUtils.createGbc(0, row, 0.0, 0, GridBagConstraints.NONE, GridBagConstraints.WEST,
                 new Insets(0, 12, 5, 5)));
 
         toolbarIconCombo = new JComboBox<>(new String[]{"16", "24", "28", "32", "36", "40", "48"});
         toolbarIconCombo.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_ToolbarIconSize"));
         toolbarIconCombo.addActionListener(evt -> controller.changed());
-        appearanceLeft.add(toolbarIconCombo, UIUtils.createGbc(1, row, 0.0, 0, GridBagConstraints.NONE,
+        appearancePanel.add(toolbarIconCombo, UIUtils.createGbc(1, row, 0.0, 0, GridBagConstraints.NONE,
                 GridBagConstraints.WEST, new Insets(0, 0, 5, 5)));
 
         row++;
         JLabel chatFontLabel = new JLabel(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_ChatFontSize"));
         chatFontLabel.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_ChatFontSize"));
-        appearanceLeft.add(chatFontLabel, UIUtils.createGbc(0, row, 0.0, 0, GridBagConstraints.NONE, GridBagConstraints.WEST,
+        appearancePanel.add(chatFontLabel, UIUtils.createGbc(0, row, 0.0, 0, GridBagConstraints.NONE, GridBagConstraints.WEST,
                 new Insets(0, 12, 5, 5)));
 
         chatFontCombo = new JComboBox<>(new String[]{"Inherited", "10", "11", "12", "13", "14", "16"});
         chatFontCombo.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_ChatFontSize"));
         chatFontCombo.addActionListener(evt -> controller.changed());
-        appearanceLeft.add(chatFontCombo, UIUtils.createGbc(1, row, 0.0, 0, GridBagConstraints.NONE,
+        appearancePanel.add(chatFontCombo, UIUtils.createGbc(1, row, 0.0, 0, GridBagConstraints.NONE,
                 GridBagConstraints.WEST, new Insets(0, 0, 5, 5)));
 
-        JPanel previewPanel = new JPanel(new GridBagLayout());
-        TitledBorder previewBorder = BorderFactory.createTitledBorder(
-                BorderFactory.createEtchedBorder(),
-                "User Icon Preview",
-                TitledBorder.LEADING,
-                TitledBorder.TOP,
-                previewPanel.getFont().deriveFont(Font.BOLD),
-                ThemeManager.getCurrentTheme().foreground());
-        previewPanel.setBorder(previewBorder);
-        previewPanel.setPreferredSize(new Dimension(380, 160));
-        previewPanel.add(iconPreviewLabel, UIUtils.createGbc(0, 0, 0.0, 0, GridBagConstraints.NONE,
-                                                GridBagConstraints.WEST, new Insets(0, 12, 5, 12)));
-
-        appearanceLeft.setPreferredSize(new Dimension(
-                appearanceLeft.getPreferredSize().width,
-                previewPanel.getPreferredSize().height));
-
-        appearanceOuter.add(appearanceLeft, gbcAppOuter);
-        appearanceOuter.add(previewPanel, UIUtils.createGbc(1, 0, 0.0, 0, GridBagConstraints.NONE,
-                                                GridBagConstraints.NORTHWEST, new Insets(0, 8, 0, 0)));
-
-        add(appearanceOuter);
-        add(Box.createVerticalStrut(8));
-
-        // --- Session Preamble ---
-        JPanel preamblePanel = createSectionPanel("LBL_Preamble");
-        preamblePanel.setLayout(new GridBagLayout());
-
-        preambleArea.setLineWrap(true);
-        preambleArea.setWrapStyleWord(true);
-        preambleArea.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_Preamble"));
-        preambleArea.addKeyListener(new KeyAdapter() {
-            @Override
-            public void keyReleased(KeyEvent evt) { controller.changed(); }
-        });
-        JPopupMenu preambleMenu = new JPopupMenu();
-        JMenuItem clearItem = new JMenuItem(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_PreambleClear"));
-        clearItem.addActionListener(e -> preambleArea.setText(""));
-        preambleMenu.add(clearItem);
-        JMenuItem resetItem = new JMenuItem(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_PreambleReset"));
-        resetItem.addActionListener(e -> preambleArea.setText(PluginSettings.getDefaultPreamble()));
-        preambleMenu.add(resetItem);
-        preambleArea.setComponentPopupMenu(preambleMenu);
-
-        GridBagConstraints gbcPreambleScroll = UIUtils.createGbc(0, 0, 1.0, 1.0, GridBagConstraints.BOTH,
-                GridBagConstraints.WEST, new Insets(0, 12, 15, 0));
-        gbcPreambleScroll.gridwidth = 3;
-        preamblePanel.add(preambleScroll, gbcPreambleScroll);
-
-        add(preamblePanel);
+        add(appearancePanel);
+        add(Box.createVerticalStrut(4));
     }
 
     private JPanel createSectionPanel(String headerKey) {
@@ -456,6 +401,16 @@ public class ACPOptionsPanel extends JPanel {
         }
     }
 
+    private void openPreambleDialog() {
+        Window owner = SwingUtilities.getWindowAncestor(this);
+        PreambleDialog dialog = new PreambleDialog(owner, preambleText);
+        dialog.setVisible(true);
+        if (dialog.isConfirmed()) {
+            preambleText = dialog.getPreambleText();
+            controller.changed();
+        }
+    }
+
     private String previousIconPath;
 
     void load() {
@@ -479,7 +434,7 @@ public class ACPOptionsPanel extends JPanel {
 
         argsField.setText(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).get(PreferenceKeys.PROCESS_ARGUMENTS, "acp"));
 
-        preambleArea.setText(PluginSettings.getPreamble());
+        preambleText = PluginSettings.getPreamble();
         echoCheckbox.setSelected(NbPreferences.forModule(ACPOptionsPanel.class).getBoolean("echoUserInput", true));
         combineCheckbox.setSelected(NbPreferences.forModule(ACPOptionsPanel.class).getBoolean("combineToolThought", true));
         autoBackupChangesCheckbox.setSelected(PluginSettings.isAutoBackupChanges());
@@ -500,7 +455,7 @@ public class ACPOptionsPanel extends JPanel {
         stashDiffCheckbox.setSelected(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean(PreferenceKeys.ACTIONS_STASH_DIFF, true));
         quickJumpCheckbox.setSelected(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean(PreferenceKeys.ACTIONS_QUICK_JUMP, true));
         miniAssistantCheckbox.setSelected(PluginSettings.isMiniAssistantEnabled());
-        useWslCheckbox.setSelected(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean(PreferenceKeys.USE_WSL, true));
+        useWslCheckbox.setSelected(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean(PreferenceKeys.USE_WSL, false));
     }
 
     private void clearHint() {
@@ -527,7 +482,7 @@ public class ACPOptionsPanel extends JPanel {
         String pathToSave = showingHint ? "" : pathField.getText();
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).put(PreferenceKeys.ACP_EXECUTABLE_PATH, pathToSave);
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).put(PreferenceKeys.PROCESS_ARGUMENTS, argsField.getText());
-        PluginSettings.setPreamble(preambleArea.getText());
+        PluginSettings.setPreamble(preambleText);
         boolean changedCombine = combineCheckbox.isSelected()
                 != NbPreferences.forModule(ACPOptionsPanel.class).getBoolean("combineToolThought", true);
         NbPreferences.forModule(ACPOptionsPanel.class).putBoolean("echoUserInput", echoCheckbox.isSelected());

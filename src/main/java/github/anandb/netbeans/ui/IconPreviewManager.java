@@ -43,7 +43,7 @@ final class IconPreviewManager {
     }
 
     private void initPreviewLabel() {
-        previewLabel.setPreferredSize(new Dimension(100, 100));
+        previewLabel.setPreferredSize(new Dimension(64, 64));
         previewLabel.setHorizontalAlignment(SwingConstants.CENTER);
         previewLabel.setToolTipText(Bundle.LBL_IconPreview_RightClickClear());
         previewLabel.addMouseListener(new MouseAdapter() {
@@ -84,7 +84,7 @@ final class IconPreviewManager {
             ImageIcon icon = new ImageIcon(path);
             if (icon.getIconWidth() > 0) {
                 previewLabel.setIcon(new ImageIcon(
-                    icon.getImage().getScaledInstance(96, 96, Image.SCALE_SMOOTH)));
+                    icon.getImage().getScaledInstance(64, 64, Image.SCALE_SMOOTH)));
                 previewLabel.setText("");
             } else {
                 // SVG files are not supported as user icons

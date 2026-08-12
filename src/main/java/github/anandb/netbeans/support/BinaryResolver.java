@@ -22,6 +22,20 @@ public final class BinaryResolver {
      * then searches system PATH. Throws IllegalStateException if not found.
      */
     public static String resolveExecutablePath() {
+        String found = findExecutablePathOrNull();
+        if (found == null) {
+            LOG.warn("Binary not found: no configured path and not on system PATH");
+            throw new IllegalStateException(NbBundle.getMessage(BinaryResolver.class, "ERR_BinaryNotFound"));
+        }
+        return found;
+    }
+
+    /**
+     * Non-throwing variant of {@link #resolveExecutablePath()}: returns the
+     * resolved native opencode executable path, or {@code null} if none is
+     * found (configured path or system PATH).
+     */
+    public static String findExecutablePathOrNull() {
         Preferences nbPrefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
         String configuredPath = nbPrefs.get("acpExecutablePath", null);
         boolean isWindows = System.getProperty("os.name", "").toLowerCase().contains("win");
@@ -39,13 +53,7 @@ public final class BinaryResolver {
         }
 
         // 2. Search system PATH
-        String found = findOnPath(exeName);
-        if (found != null) {
-            return found;
-        }
-
-        LOG.warn("Binary not found: no configured path and not on system PATH");
-        throw new IllegalStateException(NbBundle.getMessage(BinaryResolver.class, "ERR_BinaryNotFound"));
+        return findOnPath(exeName);
     }
 
     /**
@@ -137,7 +145,7 @@ public final class BinaryResolver {
             return false;
         }
         boolean enabled = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
-                .getBoolean(PreferenceKeys.USE_WSL, true);
+                .getBoolean(PreferenceKeys.USE_WSL, false);
         if (!enabled) {
             return false;
         }
@@ -146,17 +154,38 @@ public final class BinaryResolver {
 
     /**
      * Builds the command-line arguments for a WSL-wrapped opencode invocation.
-     * The resolved Windows executable path is translated to its WSL mount
-     * path (e.g. {@code C:\\tools\\opencode.exe} -> {@code /mnt/c/tools/opencode.exe})
-     * so the command works regardless of whether opencode is on the Windows PATH.
      *
-     * @param executable the resolved Windows opencode executable path
-     * @param args       the arguments to pass to opencode (e.g. {@code "acp"})
-     * @return {@code ["bash", "-lc", "&lt;wsl-path&gt; &lt;args&gt;"]}
+     * <p>When a Windows {@code opencode.exe} is resolvable (Windows-hosted),
+     * its path is translated to a WSL mount path (e.g. {@code C:\tools\opencode.exe}
+     * -&gt; {@code /mnt/c/tools/opencode.exe}). When opencode is installed inside
+     * WSL (no Windows binary), the bare {@code opencode} command is used so the
+     * WSL-native binary on the Linux PATH is invoked.
+     *
+     * @param args the arguments to pass to opencode (e.g. {@code "acp"})
+     * @return {@code ["bash", "-lc", "&lt;command&gt; &lt;args&gt;"]}
      */
-    public static String[] buildWslArgs(String executable, String args) {
-        String innerExe = toWslPath(executable);
+    public static String[] buildWslArgs(String args) {
+        String innerExe = wslInnerCommand();
         return new String[]{"bash", "-lc", innerExe + " " + args};
+    }
+
+    /**
+     * Returns {@code true} when WSL is in use and opencode is hosted as a
+     * Windows binary (an {@code opencode.exe} is resolvable on Windows),
+     * rather than installed natively inside the WSL distribution.
+     */
+    public static boolean isWindowsHostedOpencode() {
+        return isWslAvailable() && findExecutablePathOrNull() != null;
+    }
+
+    /** Returns the inner command used inside the WSL {@code bash -lc} wrapper. */
+    private static String wslInnerCommand() {
+        String nativeExe = findExecutablePathOrNull();
+        if (nativeExe != null) {
+            return toWslPath(nativeExe);
+        }
+        // opencode is a Linux binary installed inside WSL; use its bare command.
+        return "opencode";
     }
 
     /**

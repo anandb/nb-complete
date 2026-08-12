@@ -1,7 +1,6 @@
 # WSL Environment
 
-You are running inside Windows Subsystem for Linux (WSL) on a Windows host.
+You are running on a Windows host with access to Windows Subsystem for Linux (WSL).
 
-- Use `wsl.exe` (or run commands via `wsl.exe bash -lc "..."`) to execute Linux tools that are not available natively on Windows.
-- Windows drives are mounted under `/mnt/c`, `/mnt/d`, etc. Use these paths (e.g. `/mnt/c/Users/...`) instead of `C:\...` when interacting with Windows files.
-- Prefer Linux-flavoured commands (bash, grep, sed, etc.) where possible; they behave more reliably inside WSL.
+- Default to native Windows tooling. Use `wsl.exe` (or run commands via `wsl.exe bash -lc "..."`) to execute Linux tools only when required — i.e. when the equivalent is not available natively on Windows.
+- Windows drives are mounted under `/mnt/c`, `/mnt/d`, etc. Use these paths (e.g. `/mnt/c/Users/...`) instead of `C:\...` when interacting with Windows files through WSL.

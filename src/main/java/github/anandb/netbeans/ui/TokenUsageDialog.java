@@ -267,14 +267,13 @@ public class TokenUsageDialog extends JDialog {
     }
 
     private String runStatsCommand(int days, String projectDir) throws Exception {
-        String binary = BinaryResolver.resolveExecutablePath();
-
         List<String> cmd;
         if (BinaryResolver.isWslAvailable()) {
             String statsArgs = "stats --days " + days + " --models"
                 + (projectDir != null ? " --project \"\"" : "");
-            cmd = List.of(BinaryResolver.buildWslArgs(binary, statsArgs));
+            cmd = List.of(BinaryResolver.buildWslArgs(statsArgs));
         } else {
+            String binary = BinaryResolver.resolveExecutablePath();
             cmd = new ArrayList<>();
             cmd.add(binary);
             cmd.add("stats");
