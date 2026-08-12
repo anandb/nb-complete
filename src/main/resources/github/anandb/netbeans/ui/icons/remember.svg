@@ -71,19 +71,6 @@
          stop-color="#4F46E5"
          id="stop6" />
     </linearGradient>
-    <filter
-       id="softShadow"
-       x="-0.02082208"
-       y="0"
-       width="1.0208221"
-       height="1.024983">
-      <feDropShadow
-         dx="0"
-         dy="2"
-         stdDeviation="2"
-         flood-color="#0F172A"
-         flood-opacity="0.15" />
-    </filter>
     <linearGradient
        inkscape:collect="always"
        xlink:href="#bgBubbleGrad"
@@ -170,7 +157,7 @@
        gradientUnits="userSpaceOnUse" />
   </defs>
   <g
-     filter="url(#softShadow)"
+  
      id="g7"
      transform="translate(-5.0005402,-6)">
     <rect
@@ -212,7 +199,7 @@
        id="line7" />
   </g>
   <g
-     filter="url(#softShadow)"
+  
      id="g9"
      transform="translate(-5.0005402,-6)">
     <rect
@@ -254,7 +241,7 @@
        id="line9" />
   </g>
   <g
-     filter="url(#softShadow)"
+  
      id="g11"
      transform="translate(-5.0005402,-6)">
     <rect
