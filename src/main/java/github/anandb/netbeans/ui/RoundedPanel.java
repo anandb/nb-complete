@@ -36,6 +36,9 @@ public class RoundedPanel extends JPanel {
     private Color leftAccent; // null = no accent
     private float borderStrokeWidth = 1f;
     private boolean showBorder = true;
+    private boolean dropShadow; // soft drop shadow drawn behind the rounded fill
+    private int shadowOffset = 3; // shadow offset (px) down/right of the fill
+    private Color shadowColor = new Color(0, 0, 0, 60);
     private RoundRectangle2D.Float cachedShape;
     private RoundRectangle2D.Float cachedBorderShape;
     private int cachedWidth = -1;
@@ -75,6 +78,12 @@ public class RoundedPanel extends JPanel {
 
     public final void setLeftAccent(Color accent) {
         this.leftAccent = accent;
+        repaint();
+    }
+
+    /** Enables a soft drop shadow behind the rounded fill (used for chat bubbles). */
+    public final void setDropShadow(boolean dropShadow) {
+        this.dropShadow = dropShadow;
         repaint();
     }
 
@@ -125,6 +134,9 @@ public class RoundedPanel extends JPanel {
             Graphics2D g2 = (Graphics2D) g.create();
             try {
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                if (dropShadow) {
+                    paintDropShadow(g2);
+                }
                 g2.setColor(baseColor);
                 g2.fill(getShape());
             } finally {
@@ -136,6 +148,36 @@ public class RoundedPanel extends JPanel {
             g.fillRect(ins.left, ins.top,
                     getWidth() - ins.left - ins.right,
                     getHeight() - ins.top - ins.bottom);
+        }
+    }
+
+    /**
+     * Draws a soft drop shadow offset down/right of the rounded fill. Multiple
+     * concentric passes with decreasing alpha approximate a blur without the cost
+     * of a real gaussian blur, which would be expensive on every bubble repaint.
+     */
+    private void paintDropShadow(Graphics2D g2) {
+        // Only render the drop shadow in light mode — shadows are barely visible
+        // on dark backgrounds and add visual noise, so skip them when dark.
+        if (ThemeManager.isDark()) {
+            return;
+        }
+        Insets ins = getInsets();
+        int w = getWidth() - ins.left - ins.right;
+        int h = getHeight() - ins.top - ins.bottom;
+        // Inner pass is darkest (closest to the bubble), outer passes fade out.
+        // Spread is kept small (<=4px) so the shadow stays within the bubble's
+        // own border margin (8px bottom/right) and is never clipped at the panel edge.
+        final int passes = 4;
+        for (int i = passes; i >= 1; i--) {
+            int spread = i;
+            float alpha = shadowColor.getAlpha() * (passes - i + 1f) / passes;
+            g2.setColor(new Color(shadowColor.getRed(), shadowColor.getGreen(),
+                    shadowColor.getBlue(), Math.round(alpha)));
+            RoundRectangle2D.Float sh = new RoundRectangle2D.Float(
+                    ins.left + shadowOffset, ins.top + shadowOffset,
+                    w + spread, h + spread, radius, radius);
+            g2.fill(sh);
         }
     }
 

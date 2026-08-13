@@ -135,12 +135,14 @@ public class MessageBubble extends JPanel implements Scrollable {
         } else switch (role) {
             case "user" -> {
                     RoundedPanel p = new RoundedPanel(32);
+                    p.setDropShadow(true);
                     p.setLayout(new BorderLayout());
                     p.setBorder(new EmptyBorder(10, 8, 10, 8));
                     this.bubble = p;
                 }
             case "assistant" -> {
                     RoundedPanel p = new RoundedPanel(32);
+                    p.setDropShadow(true);
                     p.setLayout(new BorderLayout());
                     p.setBorder(new EmptyBorder(8, 10, 8, 10));
                     this.bubble = p;
