@@ -19,4 +19,9 @@ public final class TimingConstants {
 
     /** Number of flash toggle ticks for the help button. */
     public static final int HELP_FLASH_TICKS = 48;
+
+    /** Delay before the first session is loaded at startup (milliseconds).
+     *  Lets the IDE and any running installer wizard finish settling before the
+     *  initial session/load is issued, so startup never races the install flow. */
+    public static final int SESSION_LOAD_STARTUP_GRACE_MS = 5000;
 }

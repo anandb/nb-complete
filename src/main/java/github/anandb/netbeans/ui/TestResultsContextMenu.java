@@ -23,7 +23,6 @@ import javax.swing.event.ChangeListener;
 import org.openide.modules.OnStart;
 import org.openide.nodes.Node;
 import org.openide.windows.TopComponent;
-import org.openide.windows.WindowManager;
 
 /**
  * Adds a right-click context menu to the Test Results window
@@ -73,9 +72,18 @@ public class TestResultsContextMenu implements Runnable, PropertyChangeListener,
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
+        // PROP_OPENED fires with a Set<TopComponent> as newValue when the set
+        // of opened components changes — not a single component — so scan the
+        // opened set (cheap, no instantiation) to find and hook the results window.
         if (TopComponent.Registry.PROP_OPENED.equals(evt.getPropertyName())) {
             hookIfOpen();
         }
+    }
+
+    /** True if the component is the Test Results window (matched via its description). */
+    private static boolean isResultsWindow(TopComponent tc) {
+        TopComponent.Description desc = tc.getClass().getAnnotation(TopComponent.Description.class);
+        return desc != null && RESULTS_TC_ID.equals(desc.preferredID());
     }
 
     @Override
@@ -96,21 +104,33 @@ public class TestResultsContextMenu implements Runnable, PropertyChangeListener,
     }
 
     private void hookIfOpen() {
-        TopComponent tc = WindowManager.getDefault().findTopComponent(RESULTS_TC_ID);
-        if (tc != null && tc.isOpened()) {
-            JTabbedPane pane = findTabbedPane(tc);
-            if (pane != null) {
-                if (tabPane != pane) {
-                    if (tabPane != null) {
-                        tabPane.removeChangeListener(this);
-                        tabPane.removeContainerListener(this);
-                    }
-                    tabPane = pane;
-                    pane.addChangeListener(this);
-                    pane.addContainerListener(this);
-                }
-                hookCurrentTab();
+        // Do NOT call WindowManager.findTopComponent here: it synchronously
+        // instantiates the target TopComponent when it isn't already created,
+        // loading its icons inline — which blocks the EDT on MediaTracker.
+        // Only hook windows that are already open so nothing is force-created.
+        for (TopComponent tc : TopComponent.getRegistry().getOpened()) {
+            if (isResultsWindow(tc)) {
+                hookIfOpen(tc);
             }
+        }
+    }
+
+    private void hookIfOpen(TopComponent tc) {
+        if (!tc.isOpened()) {
+            return;
+        }
+        JTabbedPane pane = findTabbedPane(tc);
+        if (pane != null) {
+            if (tabPane != pane) {
+                if (tabPane != null) {
+                    tabPane.removeChangeListener(this);
+                    tabPane.removeContainerListener(this);
+                }
+                tabPane = pane;
+                pane.addChangeListener(this);
+                pane.addContainerListener(this);
+            }
+            hookCurrentTab();
         }
     }
 

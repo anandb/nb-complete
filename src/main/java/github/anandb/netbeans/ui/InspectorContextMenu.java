@@ -20,7 +20,6 @@ import org.openide.nodes.Node;
 import org.openide.text.PositionBounds;
 import org.openide.util.Exceptions;
 import org.openide.windows.TopComponent;
-import org.openide.windows.WindowManager;
 
 /**
  * Adds a right-click context menu to the Inspector window (inspections results,
@@ -55,9 +54,18 @@ public class InspectorContextMenu implements Runnable, PropertyChangeListener {
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
+        // PROP_OPENED fires with a Set<TopComponent> as newValue when the set
+        // of opened components changes — not a single component — so scan the
+        // opened set (cheap, no instantiation) to find and hook the Inspector.
         if (TopComponent.Registry.PROP_OPENED.equals(evt.getPropertyName())) {
             hookIfOpen();
         }
+    }
+
+    /** True if the component is the Inspector window (matched via its description). */
+    private static boolean isInspector(TopComponent tc) {
+        TopComponent.Description desc = tc.getClass().getAnnotation(TopComponent.Description.class);
+        return desc != null && INSPECTOR_TC_ID.equals(desc.preferredID());
     }
 
     /** Retry interval and max attempts when the Inspector tree is not yet built. */
@@ -65,16 +73,29 @@ public class InspectorContextMenu implements Runnable, PropertyChangeListener {
     private static final int HOOK_RETRY_MAX = 20;
 
     private void hookIfOpen() {
-        TopComponent tc = WindowManager.getDefault().findTopComponent(INSPECTOR_TC_ID);
-        if (tc != null && tc.isOpened()) {
-            JTree tree = findTree(tc);
-            if (tree != null && HOOKED.add(tree)) {
-                tree.addMouseListener(new PopupHandler(tree));
-            } else if (tree == null) {
-                // Tree may be populated asynchronously after the window opens;
-                // retry a few times instead of missing the hook entirely.
-                retryHook(tc, 0);
+        // Do NOT call WindowManager.findTopComponent here: it synchronously
+        // instantiates the target TopComponent when it isn't already created,
+        // loading its icons inline — which blocks the EDT on MediaTracker
+        // (and can stall on network image fetches). Only hook windows that are
+        // already open so nothing is force-instantiated on the EDT.
+        for (TopComponent tc : TopComponent.getRegistry().getOpened()) {
+            if (isInspector(tc)) {
+                hookOpened(tc);
             }
+        }
+    }
+
+    private void hookOpened(TopComponent tc) {
+        if (!tc.isOpened()) {
+            return;
+        }
+        JTree tree = findTree(tc);
+        if (tree != null && HOOKED.add(tree)) {
+            tree.addMouseListener(new PopupHandler(tree));
+        } else if (tree == null) {
+            // Tree may be populated asynchronously after the window opens;
+            // retry a few times instead of missing the hook entirely.
+            retryHook(tc, 0);
         }
     }
 

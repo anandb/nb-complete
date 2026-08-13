@@ -31,6 +31,7 @@ import github.anandb.netbeans.model.SessionItem;
 import github.anandb.netbeans.support.BinaryResolver;
 import github.anandb.netbeans.support.GlobalOpencodeConfig;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.TimingConstants;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
 import github.anandb.netbeans.ui.platform.ProcessService;
 import github.anandb.netbeans.ui.platform.ProjectContext;
@@ -313,6 +314,17 @@ public class ComponentLifecycleHandler {
             if (inputArea != null) {
                 inputArea.requestFocusInWindow();
             }
+            deferStartupSessionLoad();
+        });
+    }
+
+    /**
+     * Loads (or refreshes) the initial session after a short grace period so the
+     * IDE and any running installer wizard settle first. The load itself is async
+     * and non-blocking; the delay only defers when the first session/load is issued.
+     */
+    private void deferStartupSessionLoad() {
+        Timer startupLoadTimer = new Timer(TimingConstants.SESSION_LOAD_STARTUP_GRACE_MS, e -> {
             String currentSessionId = sessionService.get().getCurrentSessionId();
             if (currentSessionId != null) {
                 sessionService.get().loadSession(currentSessionId);
@@ -320,6 +332,10 @@ public class ComponentLifecycleHandler {
                 sessionService.get().refreshSessions();
             }
         });
+        // Swing Timer repeats by default; make it one-shot so the startup load
+        // fires exactly once instead of reloading the conversation every 5s.
+        startupLoadTimer.setRepeats(false);
+        startupLoadTimer.start();
     }
 
     public void componentActivated() {
