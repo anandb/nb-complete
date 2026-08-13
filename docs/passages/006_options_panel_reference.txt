@@ -19,6 +19,7 @@ This page describes every preference in the panel, organised into six sections. 
 <tbody>
 <tr><td><strong>Path to Opencode Binary</strong></td><td>Auto-detected</td><td>The full path to the OpenCode executable. If left blank, the plugin searches your <code>PATH</code>. If OpenCode is not found, a muted hint shows <em>"opencode not found on PATH"</em>. Use <strong>Browse...</strong> to pick a binary. Invalid paths show a validation error (e.g. <em>File not found</em>, <em>File is not executable</em>).</td></tr>
 <tr><td><strong>Process Arguments</strong></td><td><code>acp</code></td><td>Extra command-line arguments passed when launching the OpenCode server process.</td></tr>
+<tr><td><strong>Launch through WSL (Windows only)</strong></td><td>Off</td><td>When enabled, all OpenCode invocations (the ACP server and token-usage stats) are wrapped through <strong>WSL</strong> using <code>wsl.exe</code>. The resolved Windows executable is automatically translated to its WSL mount path, so custom/WinGet/Choco-shim install locations resolve correctly. If OpenCode is installed as a native Linux binary inside WSL (no Windows executable found), it is invoked directly on the WSL PATH. Recommended when running OpenCode on Windows for best performance and bash compatibility.</td></tr>
 <tr><td><strong>Browse...</strong></td><td>—</td><td>Opens a file chooser to select the OpenCode executable.</td></tr>
 </tbody>
 </table>

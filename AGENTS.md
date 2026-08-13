@@ -2,7 +2,7 @@
 
 ## Project Overview
 - **Project**: Coding Assistant (NetBeans IDE plugin, Java 17, Maven)
-- **Current Stable Version**: 1.13.1
+- **Current Stable Version**: 1.14.0
 - **Key Tech**: NetBeans API (RELEASE220), Flexmark, Jackson, RSyntaxTextArea, JUnit 5.
 
 ## Build Commands
@@ -42,6 +42,15 @@
 - **ACPProjectManager cache**: `getAllOpenProjects()` returns the cached `currentProjects` field,
   not `OpenProjects.getDefault().getOpenProjects()`. The cache is populated by `start()` and
   updated via `propertyChange()` on project open/close. Do NOT bypass the cache.
+- **WSL launch path (security)**: `BinaryResolver.buildWslArgs(String...)` builds
+  `wsl.exe -e bash -lc 'exec "$0" "$@"'` and passes the exe + each arg as **separate argv
+  tokens** (never interpolated into the shell script). Do NOT reintroduce string
+  concatenation into the `bash -lc` script — that enabled shell injection from user-editable
+  process arguments. Use `tokenizeArgs()` (commons-exec quoting) to split the prefs string.
+- **Context-menu hooks (EDT safety)**: `InspectorContextMenu`/`TestResultsContextMenu` must
+  NEVER call `WindowManager.findTopComponent(...)` on the EDT — it synchronously instantiates
+  the target TopComponent and blocks on `MediaTracker` image loading. Match already-open
+  windows via `TopComponent.getRegistry().getOpened()` + `@TopComponent.Description.preferredID()`.
 - **New session debounce**: The toolbar New Session button has a 300ms debounce timer to prevent
   accidental double-clicks. There is no keyboard shortcut for a new session; `Ctrl+L` toggles the
   assistant panel (see the Ctrl+L Toggle section below).

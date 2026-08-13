@@ -12,6 +12,8 @@ The plugin adds a tab to the NetBeans Options, if you open the Options Window, y
 
 The preamble is an additional user prompt that's sent to the server when creating a new chat session. The default text contains some directives around code quality, planning and task management, you can customise this with your own instructions.
 
+When you upgrade the NetBeans IDE to a new major version, the plugin automatically migrates your saved preferences and cached session data from the previous NetBeans user directory, so you do not need to reconfigure the assistant after an upgrade.
+
 > [[Starting a Session]]
 > [[Options Panel Reference]]
 > [[Update Notifications]]

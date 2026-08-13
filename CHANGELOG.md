@@ -1,5 +1,48 @@
 # Release Notes
 
+## v1.14.0 (Changes since v1.13.1)
+
+### Features
+- **WSL support for OpenCode on Windows**: Detect `wsl.exe` on PATH and optionally wrap all opencode invocations (ACP server + token stats) through WSL. The resolved Windows executable is translated to a `/mnt/...` path so custom/WinGet/Choco-shim locations resolve inside WSL, and opencode installed natively as a Linux binary inside WSL is also supported. Opt-in via a new "Launch through WSL" checkbox in Options > Assistant Service; WSL guidance is loaded from a bundled resource and appended to the critical rules only when WSL is active.
+- **Plugin preference migration on IDE upgrade**: NetBeans' built-in user-dir migration runs before the plugin is imported and skips its preference file, so plugin prefs and cached session data were lost on IDE upgrade. The plugin now copies `config/Preferences/io/github/anandb/beanbot.properties` from the most recent previous NetBeans user dir on startup when the current one lacks it (version-aware selection: stable > -rcN, excludes newer user dirs).
+- **Per-action context-menu toggles**: The single "Enable context menu additions" checkbox is replaced with five independent toggles in Tools > Options > Assistant > Actions — Sort Lines, Minify JSON, Search Web, Toggle Annotations, View File History — each gated on its own preference key.
+- **Attachment count badge**: The paperclip toolbar icon now overlays a numeric count (accent-colored with a light ring) so attached files are immediately visible, distinguishing one file from several.
+- **Jump to File restoration**: Reopening the "Jump to File" dialog restores and re-selects the previously typed query.
+- **Always Allow tooltip**: The "Always Allow" control now carries a tooltip explaining it persists until restart.
+
+### Fixes
+- **WSL command injection (security)**: `buildWslArgs` interpolated user-editable process arguments into a `bash -lc` string, allowing shell injection via crafted args (e.g. `acp && <cmd>`). It now invokes `wsl.exe -e bash -lc 'exec "$0" "$@"'` with the exe and each arg as separate argv tokens (never interpolated), and a `tokenizeArgs()` helper reuses commons-exec quoting to split the user prefs string safely. The incomplete metachar-stripper was removed. `TokenUsageDialog` now passes the real `projectDir` to the WSL path instead of an empty string.
+- **Preference migration no-op**: `preferencesFile()` returned the node path with no `.properties` suffix, so the file was never found and IDE-upgrade migration silently did nothing. It now appends `.properties` to match NetBeans' actual layout.
+- **Show Annotations NPE**: `VCSAnnotator.getActions(...)` may return `null` for some VCS implementations; the action now guards before iterating.
+- **Repeated session reload**: A startup `javax.swing.Timer` missing `setRepeats(false)` re-issued `loadSession` every 5s, clearing and re-rendering the conversation forever. It is now one-shot.
+- **Context-menu hook EDT freeze**: `InspectorContextMenu`/`TestResultsContextMenu` called `WindowManager.findTopComponent(...)` on the EDT, which synchronously instantiated the target window and blocked on `MediaTracker` image loading on every `PROP_OPENED`. They now match already-open windows via `TopComponent.getRegistry().getOpened()` and the `@TopComponent.Description.preferredID()` annotation, so nothing is force-instantiated on the EDT.
+- **Installer/startup EDT hangs**: `ACPStartup`'s `@OnStart` ran on the EDT during install and did blocking file I/O and `OpenProjects.getOpenProjects()`; all startup work is now dispatched to a background `RequestProcessor`, and `SessionLifecycleHandler` uses the cached project list instead of querying `OpenProjects` on the EDT.
+- **Effort option validation**: `repopulateThinkingForModel` sent the raw model-variant suffix (e.g. `high`) as the effort value, which the server rejected with "effort not found". Effort levels are now intersected with the server-declared thinking options, falling back to the server options when no variant maps to a valid value.
+- **Blank toolbar/window icons**: Removed `feDropShadow` filters and redundant `<mask>` elements from SVGs that Batik 1.7 (NetBeans 23/24) cannot rasterize, causing blank icons. All 81 SVGs now render under Batik 1.7 and JSVG (NB 25+).
+- **OPENCODE_MODEL fallback**: When `OPENCODE_MODEL` names a model not offered by the current server config, the plugin now logs and uses the default instead of sending an invalid value the server rejects.
+- **Update dialog timing**: The update dialog is now deferred until the IDE is fully loaded.
+- **Stale permission requests**: Permission epoch tracking drops stale permission requests from superseded turns, and sending is blocked while a permission request is pending (with a buzz to draw attention).
+
+### Improvements
+- **WSL launch correctness**: WSL invocations now call `wsl.exe` explicitly instead of relying on a bare `bash` on PATH (which could be Git Bash and not understand `/mnt/...` paths). Resolved executable paths are translated to WSL mount paths.
+
+### UI
+- **Bubble drop shadow**: Added an optional native drop-shadow to user/assistant chat bubbles (enabled via `setDropShadow`), drawn behind the rounded fill as concentric translucent passes to approximate a blur without per-repaint gaussian cost, kept within the bubble's border margin. Disabled in dark mode and on mini-assistant bubbles; later thinned (offset 3→2px, blur passes 4→3) to hug the bubble more tightly in light mode.
+- **Options panel layout**: Reorganized Chat Behavior into three aligned rows (Session Idle Timeout, Max Messages, Edit Session Preamble) with a dialog-based preamble editor; moved the icon preview to a single column and reduced vertical spacing.
+- **Refactoring menu separator**: Moved the Ask Assistant separator into the `Editors/Refactoring` folder so it appears inside the editor refactoring menu where the action lives.
+
+### Performance
+- **Per-message EDT yield**: `MESSAGE_DRAIN_BATCH_SIZE` and `LOAD_RENDER_BATCH_SIZE` reduced from 5 to 1 so the EDT is yielded after every message during session load/streaming, keeping the IDE responsive.
+
+### Dependencies
+- **jackson-bom 2.22.1**: Bumped to fix CVE-2026-54515 in jackson-databind 2.22.0. Added a dependency-check suppression for CVE-2018-6557 (Ubuntu base-files MOTD), a false positive where OWASP matches NetBeans `org-netbeans-*-base` artifacts by the "-base" name substring.
+
+### Documentation
+- Noted that the git-tracked `Bundle.properties` source of truth lives under `src/main/resources/`.
+
+### Housekeeping
+- Version bumped to 1.14.0.
+
 ## v1.13.1 (Changes since v1.12.10)
 
 ### Features

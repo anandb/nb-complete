@@ -8,6 +8,8 @@
 
 On Windows, it is better to run OpenCode inside **WSL (Windows Subsystem for Linux)** for the best performance and compatibility. This allows it to execute regular bash commands. You can also use a package manager like chocolatey or scoop if you have them.
 
+To launch OpenCode through WSL from the plugin, enable **Launch through WSL** under `Tools > Options > Assistant > Assistant Service`. The plugin detects `wsl.exe` on your PATH and wraps all OpenCode invocations through WSL automatically, translating your Windows executable path to its WSL mount location.
+
 ##### Using the install script from WSL
 <pre><code>`curl -fsSL https://opencode.ai/install | bash`</code></pre>
 
@@ -18,6 +20,7 @@ On Windows, it is better to run OpenCode inside **WSL (Windows Subsystem for Lin
 <pre><code>`scoop install opencode`</code></pre>
 
 > [[Windows Config]]
+> [[Options Panel Reference]]
 
 
 
