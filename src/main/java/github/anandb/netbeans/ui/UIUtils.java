@@ -4,7 +4,6 @@ import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.GridBagConstraints;
-import java.awt.Image;
 import java.awt.Insets;
 import java.awt.LayoutManager;
 import java.awt.Point;
@@ -16,6 +15,7 @@ import javax.swing.JComboBox;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.regex.Pattern;
 
@@ -62,14 +62,23 @@ public class UIUtils {
      *  Invalidated by a PreferenceChangeListener on KEY_CUSTOM_USER_ICON. */
     private static volatile String cachedUserIconPath = "";
     private static volatile Icon cachedUserIcon;
+    /** Guards against concurrent background preloads of the same icon. */
+    private static final AtomicBoolean userIconPreloading = new AtomicBoolean(false);
 
     static {
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).addPreferenceChangeListener(evt -> {
             if ("customUserIcon".equals(evt.getKey())) {
                 cachedUserIconPath = "";
                 cachedUserIcon = null;
+                userIconPreloading.set(false);
             }
         });
+        // Preload any saved custom user icon on a background thread so it's
+        // cached before the first user bubble renders (avoids EDT freeze).
+        String savedPath = PluginSettings.getCustomUserIcon();
+        if (savedPath != null && !savedPath.isEmpty()) {
+            preloadUserIcon(savedPath);
+        }
     }
 
     /** CSS font-family stack that respects the system-property override, then
@@ -226,24 +235,71 @@ public class UIUtils {
             if (path.equals(cachedUserIconPath) && cachedUserIcon != null) {
                 return cachedUserIcon;
             }
-            File file = new File(path);
-            if (file.exists()) {
-                try {
-                    ImageIcon icon = new ImageIcon(path);
-                    if (icon.getIconWidth() > 0) {
-                        Icon scaled = new ImageIcon(icon.getImage().getScaledInstance(size, size, Image.SCALE_SMOOTH));
-                        cachedUserIconPath = path;
-                        cachedUserIcon = scaled;
-                        return scaled;
-                    }
-                    // SVG files are not supported — log and fall through to default
-                    LOG.info("Unsupported icon format (SVG) at: {0}", path);
-                } catch (Exception e) {
-                    LOG.log(Level.WARNING, "Failed to load custom user icon", e);
-                }
-            }
+            // Cache cold — kick off a background preload (ImageIO, NOT MediaTracker)
+            // so the EDT never blocks. Return the default SVG icon for now; the
+            // next render cycle after preload completes will pick up the cached
+            // custom icon. This avoids a multi-second EDT freeze (MediaTracker
+            // waitForID) when the image is large or on a slow filesystem.
+            preloadUserIcon(path);
         }
         return ThemeManager.getIcon("user.svg", size);
+    }
+
+    /**
+     * Loads and scales the custom user icon on a background thread using
+     * {@link javax.imageio.ImageIO} (which decodes directly on the calling
+     * thread, bypassing the AWT Toolkit's {@link java.awt.image.ImageFetcher}
+     * pool entirely) and stores the result in the cache. Safe to call from the
+     * EDT — it returns immediately. Idempotent: concurrent calls for the same
+     * path are coalesced via an {@link AtomicBoolean} guard.
+     * <p>
+     * <b>Why ImageIO and not ImageIcon(path)?</b> ImageIcon(path) uses
+     * {@link java.awt.MediaTracker} which delegates image decoding to the
+     * Toolkit's ImageFetcher thread pool. That pool is limited (4 threads) and
+     * shared across ALL image loads. If any image fetch is stuck on a dead
+     * network connection (e.g. an HTTPS URL with no connect timeout), all
+     * subsequent image loads — even local files — block indefinitely waiting
+     * for an ImageFetcher thread to become available, freezing the EDT.
+     * ImageIO.read(File) decodes synchronously on the current thread with no
+     * ImageFetcher dependency. Scaling is done with Graphics2D.drawImage into a
+     * pre-allocated BufferedImage (again, no ImageFetcher) rather than
+     * Image.getScaledInstance, which also routes through the ImageFetcher pool.
+     */
+    static void preloadUserIcon(String path) {
+        if (path == null || path.isEmpty()) return;
+        if (!userIconPreloading.compareAndSet(false, true)) return;
+        org.openide.util.RequestProcessor.getDefault().post(() -> {
+            try {
+                File file = new File(path);
+                if (!file.exists()) return;
+                java.awt.image.BufferedImage img = javax.imageio.ImageIO.read(file);
+                if (img == null) {
+                    LOG.info("Unsupported icon format (SVG?) at: {0}", path);
+                    return;
+                }
+                // Scale with Graphics2D — NOT Image.getScaledInstance(), which
+                // also routes through the ImageFetcher pool and would block if
+                // the pool is starved by stuck network fetches.
+                java.awt.image.BufferedImage scaled = new java.awt.image.BufferedImage(
+                        44, 44, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+                java.awt.Graphics2D g = scaled.createGraphics();
+                g.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION,
+                        java.awt.RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+                g.setRenderingHint(java.awt.RenderingHints.KEY_RENDERING,
+                        java.awt.RenderingHints.VALUE_RENDER_QUALITY);
+                g.drawImage(img, 0, 0, 44, 44, null);
+                g.dispose();
+                // ImageIcon(BufferedImage) still calls MediaTracker internally,
+                // but a BufferedImage is already fully decoded in memory so
+                // waitForID returns instantly (no ImageFetcher needed).
+                cachedUserIcon = new ImageIcon(scaled);
+                cachedUserIconPath = path;
+            } catch (Exception e) {
+                LOG.log(Level.WARNING, "Failed to load custom user icon", e);
+            } finally {
+                userIconPreloading.set(false);
+            }
+        });
     }
 
     public static boolean isSeparatorRowLine(String line) {

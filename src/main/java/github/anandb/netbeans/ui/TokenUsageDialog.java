@@ -274,8 +274,12 @@ public class TokenUsageDialog extends JDialog {
         opencodeArgs.add(String.valueOf(days));
         opencodeArgs.add("--models");
         if (projectDir != null) {
+            // opencode stats --project expects the project ID (a git-hash), not
+            // a directory path. Pass an empty string which means "current
+            // project"; the actual filtering is driven by the working directory
+            // set on the ProcessBuilder below (pb.directory(projectDir)).
             opencodeArgs.add("--project");
-            opencodeArgs.add(projectDir);
+            opencodeArgs.add("");
         }
 
         List<String> cmd;
