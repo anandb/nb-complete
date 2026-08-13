@@ -88,6 +88,36 @@ class ToolCallDiffParserTest {
     }
 
     @Test
+    void parseUnifiedDiff_gitIndexStyle() {
+        // Full git-style unified diff emitted by edit tools (Index: + === + ---/+++),
+        // as seen in real session/request_permission messages. Includes a non-ASCII
+        // em-dash in an added line to guard against encoding/parsing regressions.
+        String diff = "Index: /proj/src/ui/MiniAssistantDialog.java\n"
+            + "===================================================================\n"
+            + "--- /proj/src/ui/MiniAssistantDialog.java\n"
+            + "+++ /proj/src/ui/MiniAssistantDialog.java\n"
+            + "@@ -815,10 +815,11 @@\n"
+            + "             gb.setConstraints(c, gbc);\n"
+            + "-            if (c instanceof RoundedPanel) {\n"
+            + "-                ((JPanel) c).setBorder(BorderFactory.createEmptyBorder());\n"
+            + "+            if (c instanceof RoundedPanel rp) {\n"
+            + "+                rp.setDropShadow(false); // compact mini view \u2014 no bubble shadow\n"
+            + "+                rp.setBorder(BorderFactory.createEmptyBorder());\n"
+            + "             }\n"
+            + "         }\n"
+            + "     }\n"
+            + " }\n";
+        List<DiffPair> dps = ToolCallDiffParser.parseUnifiedDiff(diff);
+        assertNotNull(dps);
+        assertEquals(1, dps.size());
+        assertTrue(dps.get(0).oldContent().contains("if (c instanceof RoundedPanel) {"));
+        assertTrue(dps.get(0).newContent().contains("if (c instanceof RoundedPanel rp) {"));
+        // UTF-8 content (e.g. an em-dash in an added line) must be preserved verbatim.
+        assertTrue(dps.get(0).newContent().contains("\u2014"));
+        assertFalse(dps.get(0).oldContent().equals(dps.get(0).newContent()));
+    }
+
+    @Test
     void parseUnifiedDiff_noHunkHeader() {
         String diff = " a\n-b\n+c\n";
         assertTrue(ToolCallDiffParser.parseUnifiedDiff(diff).isEmpty());

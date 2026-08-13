@@ -816,8 +816,9 @@ public class MiniAssistantDialog extends JDialog {
                 gbc.weighty = 1.0;
                 gbc.fill = GridBagConstraints.BOTH;
                 gb.setConstraints(c, gbc);
-                if (c instanceof RoundedPanel) {
-                    ((JPanel) c).setBorder(BorderFactory.createEmptyBorder());
+                if (c instanceof RoundedPanel rp) {
+                    rp.setDropShadow(false); // compact mini view, no bubble shadow
+                    rp.setBorder(BorderFactory.createEmptyBorder());
                 }
             }
         }

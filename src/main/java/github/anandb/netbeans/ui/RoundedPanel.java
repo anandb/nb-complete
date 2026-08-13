@@ -37,7 +37,7 @@ public class RoundedPanel extends JPanel {
     private float borderStrokeWidth = 1f;
     private boolean showBorder = true;
     private boolean dropShadow; // soft drop shadow drawn behind the rounded fill
-    private int shadowOffset = 3; // shadow offset (px) down/right of the fill
+    private int shadowOffset = 2; // shadow offset (px) down/right of the fill
     private Color shadowColor = new Color(0, 0, 0, 60);
     private RoundRectangle2D.Float cachedShape;
     private RoundRectangle2D.Float cachedBorderShape;
@@ -166,9 +166,9 @@ public class RoundedPanel extends JPanel {
         int w = getWidth() - ins.left - ins.right;
         int h = getHeight() - ins.top - ins.bottom;
         // Inner pass is darkest (closest to the bubble), outer passes fade out.
-        // Spread is kept small (<=4px) so the shadow stays within the bubble's
+        // Spread is kept small (<=3px) so the shadow stays within the bubble's
         // own border margin (8px bottom/right) and is never clipped at the panel edge.
-        final int passes = 4;
+        final int passes = 3;
         for (int i = passes; i >= 1; i--) {
             int spread = i;
             float alpha = shadowColor.getAlpha() * (passes - i + 1f) / passes;
