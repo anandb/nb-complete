@@ -550,9 +550,11 @@ public class ChatThreadPanel extends JPanel {
                 ? NbBundle.getMessage(ChatThreadPanel.class, "MSG_PermissionAllowedOnce") : statusText;
         SwingUtilities.invokeLater(() -> {
             ColorTheme theme = ThemeManager.getCurrentTheme();
-            Color bg = allowed ? theme.permissionGrantBg() : theme.permissionDenyBg();
-            Color fg = allowed ? theme.permissionGrantFg() : theme.permissionDenyFg();
-            Color border = allowed ? theme.permissionGrantBorder() : theme.permissionDenyBorder();
+            // Match the collapsed tool/thought header style: neutral sunken
+            // background, muted foreground, plain smaller font. The icon (check
+            // vs x) distinguishes allow from deny without colored bars.
+            Color bg = theme.sunkenBackground();
+            Color fg = theme.secondary2();
 
             // Merge consecutive same-allowed results into a single bubble
             if (lastPermissionLabel != null && lastPermissionAllowed == allowed
@@ -570,19 +572,17 @@ public class ChatThreadPanel extends JPanel {
                     ThemeManager.getIcon(allowed ? "check.svg" : "x.svg", 16),
                     SwingConstants.LEFT);
             lbl.setIconTextGap(8);
-            lbl.setFont(lbl.getFont().deriveFont(Font.BOLD));
+            lbl.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN,
+                    ThemeManager.getFont().getSize() - 1f));
             lbl.setForeground(fg);
             lbl.setOpaque(true);
             lbl.setBackground(bg);
             lastPermissionLabel = lbl;
 
-            RoundedPanel rp = new RoundedPanel(32);
+            RoundedPanel rp = new RoundedPanel(12);
             rp.setLayout(new BorderLayout());
             rp.setBackground(bg);
-            rp.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(border, 1, true),
-                BorderFactory.createEmptyBorder(8, 10, 8, 10)
-            ));
+            rp.setBorder(BorderFactory.createEmptyBorder(5, 4, 5, 10));
             rp.add(lbl, BorderLayout.CENTER);
 
             JPanel wrapper = new JPanel(new BorderLayout());

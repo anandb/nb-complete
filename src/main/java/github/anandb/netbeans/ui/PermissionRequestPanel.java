@@ -683,14 +683,13 @@ final class PermissionRequestPanel extends JPanel {
 
         flashTaskbar();
 
-        // Enter = Allow, Escape = Reject
+        // Escape = Reject. Enter is intentionally NOT bound: pressing Enter must
+        // never auto-allow or dismiss the permission dialog (it would silently
+        // grant a tool permission the user did not intend to approve).
         addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
-                if (e.getKeyCode() == KeyEvent.VK_ENTER && allowAction != null) {
-                    e.consume();
-                    allowAction.run();
-                } else if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
+                if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
                     e.consume();
                     triggerReject();
                 }
