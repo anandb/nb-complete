@@ -48,6 +48,13 @@
         <folder name="Window">
             <file name="Assistant.shadow">
                 <attr name="originalFile" stringvalue="Actions/Window/github-anandb-netbeans-ui-ToggleAssistantAction.instance"/>
+                <attr name="position" intvalue="950"/>
+            </file>
+        </folder>
+        <folder name="Refactoring">
+            <file name="AskAssistantSep.instance">
+                <attr name="instanceClass" stringvalue="javax.swing.JSeparator"/>
+                <attr name="position" intvalue="1855"/>
             </file>
         </folder>
     </folder>
@@ -77,14 +84,6 @@
         </folder>
     </folder>
     <folder name="Windows2">
-    </folder>
-    <folder name="Menu">
-        <folder name="Refactoring">
-            <file name="AskAssistantSep.instance">
-                <attr name="instanceClass" stringvalue="javax.swing.JSeparator"/>
-                <attr name="position" intvalue="1855"/>
-            </file>
-        </folder>
     </folder>
     <folder name="OptionsDialog">
             <file name="github-anandb-netbeans-ui-ACPOptionsPanelController.instance">

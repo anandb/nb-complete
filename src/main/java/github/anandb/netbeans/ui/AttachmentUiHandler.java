@@ -61,7 +61,8 @@ public class AttachmentUiHandler {
             }
         } else {
             paperclipBtn.setToolTipText(NbBundle.getMessage(AssistantTopComponent.class, "HINT_FilesAttached", attachmentManager.size()));
-            Icon icon = ThemeManager.getIcon("paperclip-dot.svg", PluginSettings.getToolbarIconSize());
+            Icon base = ThemeManager.getIcon("paperclip.svg", PluginSettings.getToolbarIconSize());
+            Icon icon = new AttachmentBadgeIcon(base, attachmentManager.size());
             paperclipBtn.setIcon(icon);
             if (icon != null) {
                 paperclipBtn.setDisabledIcon(ImageUtilities.createDisabledIcon(icon));
