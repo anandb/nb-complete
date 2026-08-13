@@ -267,23 +267,25 @@ public class TokenUsageDialog extends JDialog {
     }
 
     private String runStatsCommand(int days, String projectDir) throws Exception {
+        // Build the opencode stats tokens once; both launch paths use them.
+        List<String> opencodeArgs = new ArrayList<>();
+        opencodeArgs.add("stats");
+        opencodeArgs.add("--days");
+        opencodeArgs.add(String.valueOf(days));
+        opencodeArgs.add("--models");
+        if (projectDir != null) {
+            opencodeArgs.add("--project");
+            opencodeArgs.add(projectDir);
+        }
+
         List<String> cmd;
         if (BinaryResolver.isWslAvailable()) {
-            String statsArgs = "stats --days " + days + " --models"
-                + (projectDir != null ? " --project \"\"" : "");
-            cmd = List.of(BinaryResolver.buildWslArgs(statsArgs));
+            cmd = List.of(BinaryResolver.buildWslArgs(
+                    opencodeArgs.toArray(new String[0])));
         } else {
-            String binary = BinaryResolver.resolveExecutablePath();
             cmd = new ArrayList<>();
-            cmd.add(binary);
-            cmd.add("stats");
-            cmd.add("--days");
-            cmd.add(String.valueOf(days));
-            cmd.add("--models");
-            if (projectDir != null) {
-                cmd.add("--project");
-                cmd.add("");
-            }
+            cmd.add(BinaryResolver.resolveExecutablePath());
+            cmd.addAll(opencodeArgs);
         }
 
         LOG.info("Running opencode stats command: {0}", String.join(" ", cmd));

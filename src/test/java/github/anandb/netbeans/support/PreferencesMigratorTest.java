@@ -34,7 +34,7 @@ class PreferencesMigratorTest {
     void preferencesFilePointsUnderConfigPreferences() {
         File userDir = temp.resolve("31").toFile();
         File prefs = PreferencesMigrator.preferencesFile(userDir);
-        File expected = new File(new File(new File(userDir, "config"), "Preferences"), "io/github/anandb/beanbot");
+        File expected = new File(new File(new File(userDir, "config"), "Preferences"), "io/github/anandb/beanbot.properties");
         assertEquals(expected, prefs);
     }
 

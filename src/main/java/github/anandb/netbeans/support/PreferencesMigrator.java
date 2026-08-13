@@ -59,7 +59,13 @@ public final class PreferencesMigrator {
 
     /** The plugin preference file location inside a NetBeans user directory. */
     static File preferencesFile(File userDir) {
-        return new File(new File(userDir, "config" + File.separator + "Preferences"), MODULE_PREFS_RELATIVE_PATH);
+        // NetBeans stores module preferences as a .properties file located at
+        // config/Preferences/<node-path>/<last-segment>.properties, e.g.
+        // config/Preferences/io/github/anandb/beanbot.properties. The relative
+        // path above is the node path; the .properties suffix is required or
+        // the file is never found and migration silently does nothing.
+        return new File(new File(userDir, "config" + File.separator + "Preferences"),
+                MODULE_PREFS_RELATIVE_PATH + ".properties");
     }
 
     /**

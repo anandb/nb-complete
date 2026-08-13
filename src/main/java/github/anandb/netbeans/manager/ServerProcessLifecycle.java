@@ -106,20 +106,15 @@ class ServerProcessLifecycle {
         try {
             String args = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).get("processArguments", "acp");
 
-            // Strip shell metacharacters — args are passed directly to the binary
-            // (no shell interpretation), but users can accidentally paste dangerous
-            // patterns into the Options panel.
-            if (args != null && (args.contains(";") || args.contains("|") || args.contains("$")
-                    || args.contains("`") || args.contains("\\n"))) {
-                LOG.warn("processArguments contains suspicious characters, stripping: {0}", args);
-                args = args.replaceAll("[;|$`]", "").replace("\\n", " ");
-            }
-
             // Wrap with WSL on Windows when available; otherwise launch natively.
             List<String> cmdStrings;
             if (BinaryResolver.isWslAvailable()) {
-                cmdStrings = List.of(BinaryResolver.buildWslArgs(args));
-                LOG.info("Executing via WSL: wsl.exe {0}", String.join(" ", cmdStrings));
+                // Tokenize once (no shell interpolation); buildWslArgs passes
+                // the tokens as separate argv to a fixed 'exec "$0" "$@"' script
+                // so user arguments cannot inject shell commands.
+                String[] tokens = BinaryResolver.tokenizeArgs(args);
+                cmdStrings = List.of(BinaryResolver.buildWslArgs(tokens));
+                LOG.info("Executing via WSL: {0}", String.join(" ", cmdStrings));
             } else {
                 String executable = BinaryResolver.resolveExecutablePath();
                 CommandLine cmd = new CommandLine(executable);

@@ -161,12 +161,50 @@ public final class BinaryResolver {
      * WSL (no Windows binary), the bare {@code opencode} command is used so the
      * WSL-native binary on the Linux PATH is invoked.
      *
-     * @param args the arguments to pass to opencode (e.g. {@code "acp"})
-     * @return {@code ["bash", "-lc", "&lt;command&gt; &lt;args&gt;"]}
+     * <p>The command and every argument are passed as separate argv tokens —
+     * nothing is interpolated into the shell script — so the user-editable
+     * process arguments cannot inject shell commands. The fixed script
+     * {@code exec "$0" "$@"} runs the resolved binary with its args verbatim.
+     *
+     * @param argTokens the arguments to pass to opencode, already split into
+     *                  individual tokens (e.g. {@code {"acp"}} or
+     *                  {@code {"stats","--days","7"}}); never interpolated
+     * @return {@code ["wsl.exe","-e","bash","-lc","exec \"$0\" \"$@\"", innerExe, arg...]}
      */
-    public static String[] buildWslArgs(String args) {
+    public static String[] buildWslArgs(String... argTokens) {
         String innerExe = wslInnerCommand();
-        return new String[]{"bash", "-lc", innerExe + " " + args};
+        String[] cmd = new String[5 + 1 + argTokens.length];
+        cmd[0] = "wsl.exe";
+        cmd[1] = "-e";
+        cmd[2] = "bash";
+        cmd[3] = "-lc";
+        // Fixed shell script: positional $0 = innerExe, $@ = the arg tokens.
+        // The tokens are delivered as bash argv, not parsed as a command, so
+        // shell metacharacters in user arguments have no effect.
+        cmd[4] = "exec \"$0\" \"$@\"";
+        cmd[5] = innerExe;
+        System.arraycopy(argTokens, 0, cmd, 6, argTokens.length);
+        return cmd;
+    }
+
+    /**
+     * Splits a raw process-arguments string into safe argv tokens using the
+     * same quoting rules as the non-WSL launch path. Use this when the
+     * arguments come from user-editable preferences as a single string.
+     */
+    public static String[] tokenizeArgs(String args) {
+        if (isBlank(args)) {
+            return new String[0];
+        }
+        // Reuse commons-exec's quoting rules (same as the non-WSL launch path)
+        // so a single user-supplied string is split into safe argv tokens.
+        org.apache.commons.exec.CommandLine cl =
+                new org.apache.commons.exec.CommandLine("dummy").addArguments(args, true);
+        String[] all = cl.toStrings();
+        // toStrings() includes the program ("dummy") as element 0; drop it.
+        String[] tokens = new String[all.length - 1];
+        System.arraycopy(all, 1, tokens, 0, tokens.length);
+        return tokens;
     }
 
     /**

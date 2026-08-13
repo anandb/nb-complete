@@ -54,6 +54,9 @@ public final class ShowAnnotationsAction extends BaseVersioningEditorAction {
         }
         VCSContext context = VCSContext.forNodes(new Node[]{node});
         Action[] actions = annotator.getActions(context, VCSAnnotator.ActionDestination.PopupMenu);
+        if (actions == null) {
+            return;
+        }
         for (Action a : actions) {
             if (a == null) {
                 continue;
