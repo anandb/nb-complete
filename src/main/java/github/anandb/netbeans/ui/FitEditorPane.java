@@ -188,17 +188,33 @@ public class FitEditorPane extends JTextPane {
 
     private volatile Dimension cachedMaxSize;
 
+    /** Maximum width for a chat bubble, bounded to a readable fraction of the
+     *  monitor resolution.  Fallback to Short.MAX_VALUE when headless (no screen). */
+    private static volatile int maxBubbleWidth = -1;
+
+    private static int maxBubbleWidth() {
+        if (maxBubbleWidth < 0) {
+            try {
+                int screenW = Toolkit.getDefaultToolkit().getScreenSize().width;
+                maxBubbleWidth = Math.max(200, (int) (screenW * 0.30));
+            } catch (Exception ex) {
+                // Headless or no display: keep a large bounded fallback.
+                maxBubbleWidth = Short.MAX_VALUE;
+            }
+        }
+        return maxBubbleWidth;
+    }
+
     @Override
     public Dimension getMaximumSize() {
-        // Return a width sufficient for BoxLayout(Y_AXIS) to stretch this
-        // component to the full container width. The preferred size height
-        // is used for the returned height; width is set to a large finite
-        // value so that BoxLayout does not clip the component to a small
-        // preferred width (which would prevent text from wrapping to the
-        // sidebar width).
+        // Width is bounded to a readable fraction (30%) of the monitor resolution
+        // so a bubble can never stretch wider than that, even if BoxLayout is given
+        // excess space (which previously let a stale large width stick and ignore
+        // sidebar resizes). The preferred size height is used for the returned
+        // height. BoxLayout(Y_AXIS) stretches the component up to this maximum.
         Dimension pref = getPreferredSize();
         if (cachedMaxSize == null) {
-            cachedMaxSize = new Dimension(Short.MAX_VALUE, pref.height);
+            cachedMaxSize = new Dimension(maxBubbleWidth(), pref.height);
         } else {
             cachedMaxSize.height = pref.height;
         }
