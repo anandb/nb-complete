@@ -1,5 +1,25 @@
 # Release Notes
 
+## v1.15.0 (Changes since v1.14.0)
+
+### UI
+- **Enter no longer grants permission**: The permission dialog no longer auto-approves on Enter, so a tool permission can never be silently granted or the dialog dismissed by accident. Escape still rejects. The Escape binding is now registered once at construction via a focused-window input map, so it works even when focus is elsewhere and no longer leaks a listener.
+- **Permission-result bubble styling**: Allowed/Rejected result bubbles now match the collapsed tool/thought header style (sunken background, secondary foreground, plain smaller font, `RoundedPanel(12)`) instead of the colored grant/deny bars.
+- **Custom user icon quality**: The uploaded custom user icon is now scaled with high-quality progressive area-averaging (progressive halving + final bicubic/antialiasing) instead of a single-step bilinear downscale, eliminating the grainy/pixelated look. Icon scaling was already off the EDT, so it no longer freezes the IDE while loading.
+- **Bubble width cap**: Chat bubbles are now bounded to 30% of the monitor width, so a bubble can no longer stretch across a wide sidebar or leave stale large-width layout that ignores sidebar resizes. The layout width cap is applied inside preferred-size computation so text height always matches the rendered width (no clipped bottoms).
+
+### Fixes
+- **EDT freeze on user icon load**: Loading the custom user icon previously blocked the EDT on `MediaTracker.waitForID`; a starved AWT ImageFetcher pool (from a stuck network fetch) could freeze the IDE for minutes even for local images. Icons are now preloaded via `ImageIO.read(File)` + `Graphics2D` scaling on a background thread (both bypass the ImageFetcher pool) and cached.
+- **Avatar cache race**: The custom-icon cache could return a mismatched path/icon pair, and a preference change during a background preload could resurrect a stale icon. The cache is now an atomic `(path, size, icon)` record, and the preload re-checks the configured path before publishing.
+- **Token stats for current project**: `opencode stats --project` now receives an empty string (current project) instead of the directory path, with the actual project filtering driven by the subprocess working directory — so current-project stats no longer return zero sessions.
+- **Stats subprocess hang**: `opencode stats` is now given a 60s timeout; a hung process is terminated and surfaces an error instead of blocking the background thread forever. Stdout is drained on a separate reader task so the timeout is actually reachable. A non-existent project directory is now surfaced as an error instead of silently running against the JVM's working directory.
+
+### Documentation
+- **Preamble tooling guidance**: Prefer semantic search tools (semble, ast-grep) for intent-based search/refactoring; renamed the 'Compress' context-management command to 'Compact'.
+
+### Housekeeping
+- Version bumped to 1.15.0.
+
 ## v1.14.0 (Changes since v1.13.1)
 
 ### Features
