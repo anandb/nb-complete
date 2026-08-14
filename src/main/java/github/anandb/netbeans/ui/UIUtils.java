@@ -280,15 +280,8 @@ public class UIUtils {
                 // Scale with Graphics2D — NOT Image.getScaledInstance(), which
                 // also routes through the ImageFetcher pool and would block if
                 // the pool is starved by stuck network fetches.
-                java.awt.image.BufferedImage scaled = new java.awt.image.BufferedImage(
-                        44, 44, java.awt.image.BufferedImage.TYPE_INT_ARGB);
-                java.awt.Graphics2D g = scaled.createGraphics();
-                g.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION,
-                        java.awt.RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-                g.setRenderingHint(java.awt.RenderingHints.KEY_RENDERING,
-                        java.awt.RenderingHints.VALUE_RENDER_QUALITY);
-                g.drawImage(img, 0, 0, 44, 44, null);
-                g.dispose();
+                java.awt.image.BufferedImage scaled = scaleSmooth(
+                        img, 44, 44);
                 // ImageIcon(BufferedImage) still calls MediaTracker internally,
                 // but a BufferedImage is already fully decoded in memory so
                 // waitForID returns instantly (no ImageFetcher needed).
@@ -300,6 +293,56 @@ public class UIUtils {
                 userIconPreloading.set(false);
             }
         });
+    }
+
+    /**
+     * High-quality, aliasing-free image scaling using progressive area-averaging.
+     * Repeatedly halves the source until it is within 2x of the target, then does
+     * a final bicubic pass. This avoids the grainy/pixelated result of a single
+     * aggressive bilinear downscale (the previous behavior) when shrinking a large
+     * photo down to a small avatar.
+     */
+    static java.awt.image.BufferedImage scaleSmooth(java.awt.image.BufferedImage src,
+            int targetW, int targetH) {
+        int w = src.getWidth();
+        int h = src.getHeight();
+        if (w == targetW && h == targetH) {
+            return src;
+        }
+        java.awt.image.BufferedImage current = src;
+        boolean isTransparent = src.getColorModel().hasAlpha();
+        // Progressively halve while the image is more than 2x the target dimension,
+        // so each step uses bilinear (area-averaging) at a modest reduction ratio.
+        while (w > targetW * 2 && h > targetH * 2) {
+            int nw = Math.max(targetW, w / 2);
+            int nh = Math.max(targetH, h / 2);
+            java.awt.image.BufferedImage next = new java.awt.image.BufferedImage(
+                    nw, nh, isTransparent
+                            ? java.awt.image.BufferedImage.TYPE_INT_ARGB
+                            : java.awt.image.BufferedImage.TYPE_INT_RGB);
+            java.awt.Graphics2D g = next.createGraphics();
+            g.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION,
+                    java.awt.RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+            g.drawImage(current, 0, 0, nw, nh, null);
+            g.dispose();
+            current = next;
+            w = nw;
+            h = nh;
+        }
+        java.awt.image.BufferedImage out = new java.awt.image.BufferedImage(
+                targetW, targetH, isTransparent
+                        ? java.awt.image.BufferedImage.TYPE_INT_ARGB
+                        : java.awt.image.BufferedImage.TYPE_INT_RGB);
+        java.awt.Graphics2D g = out.createGraphics();
+        g.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION,
+                java.awt.RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+        g.setRenderingHint(java.awt.RenderingHints.KEY_RENDERING,
+                java.awt.RenderingHints.VALUE_RENDER_QUALITY);
+        g.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING,
+                java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+        g.drawImage(current, 0, 0, targetW, targetH, null);
+        g.dispose();
+        return out;
     }
 
     public static boolean isSeparatorRowLine(String line) {
