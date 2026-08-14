@@ -18,6 +18,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.TimeUnit;
 
 import javax.swing.DefaultListCellRenderer;
 import javax.swing.JButton;
@@ -42,6 +43,7 @@ import java.awt.event.KeyEvent;
 
 import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
+import org.openide.util.RequestProcessor;
 
 import github.anandb.netbeans.contract.SessionQuery;
 import github.anandb.netbeans.support.BinaryResolver;
@@ -91,6 +93,10 @@ public class TokenUsageDialog extends JDialog {
     private volatile Process currentProcess;
     private Timer autoRefreshTimer;
     private boolean firstRefresh = true;
+    /** Timeout for the opencode stats subprocess (avoids hanging the background thread). */
+    private static final long STATS_TIMEOUT_SECONDS = 60;
+    /** Background reader pool for subprocess stdout (see runStatsCommand). */
+    private static final RequestProcessor READER_RP = new RequestProcessor("token-stats-reader", 1);
 
     public TokenUsageDialog(Frame owner) {
         super(owner, Bundle.LBL_TokenStats(), false);
@@ -305,26 +311,57 @@ public class TokenUsageDialog extends JDialog {
             File dir = new File(projectDir);
             if (dir.isDirectory()) {
                 pb.directory(dir);
+            } else {
+                // A non-directory project path would silently run stats against
+                // the JVM's CWD. Surface it as an error instead.
+                throw new IllegalArgumentException(
+                        "Project directory does not exist: " + projectDir);
             }
         }
         Process proc = pb.start();
         currentProcess = proc;
 
-        StringBuilder sb = new StringBuilder();
-        try (BufferedReader r = new BufferedReader(
-                new InputStreamReader(proc.getInputStream(), StandardCharsets.UTF_8))) {
-            String line;
-            while ((line = r.readLine()) != null) {
-                sb.append(line).append('\n');
+        // Read stdout on a background reader task, then use waitFor(timeout) on this
+        // (already background) thread as the timeout mechanism. Reading inline before
+        // waitFor would block forever on a hung process that never closes its stdout,
+        // making the timeout unreachable. On timeout we destroyForcibly, which closes
+        // the pipe and unblocks the reader.
+        StringBuffer sb = new StringBuffer();
+        RequestProcessor.Task readerTask = READER_RP.post(() -> {
+            try (BufferedReader r = new BufferedReader(
+                    new InputStreamReader(proc.getInputStream(), StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = r.readLine()) != null) {
+                    sb.append(line).append('\n');
+                }
+            } catch (java.io.IOException e) {
+                // Expected when the process is destroyed before all output is read.
             }
+        });
+        try {
+            boolean timedOut = !proc.waitFor(STATS_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+            if (timedOut) {
+                ProcessTerminator.terminate(proc);
+            }
+            // destroyForcibly above closes stdout, unblocking readLine; wait before reading sb.
+            readerTask.waitFinished(5000);
+            if (timedOut) {
+                throw new RuntimeException("opencode stats timed out after "
+                        + STATS_TIMEOUT_SECONDS + "s");
+            }
+            int exitCode = proc.exitValue();
+            if (exitCode != 0) {
+                String output = sb.toString().trim();
+                throw new RuntimeException("opencode stats exited with code "
+                    + exitCode + (output.isEmpty() ? "" : ": " + output));
+            }
+            return sb.toString().trim();
+        } finally {
+            if (proc.isAlive()) {
+                ProcessTerminator.terminate(proc);
+            }
+            readerTask.waitFinished(5000);
         }
-        int exitCode = proc.waitFor();
-        if (exitCode != 0) {
-            String output = sb.toString().trim();
-            throw new RuntimeException("opencode stats exited with code "
-                + exitCode + (output.isEmpty() ? "" : ": " + output));
-        }
-        return sb.toString().trim();
     }
 
     /** Gracefully terminates any running opencode processes. */

@@ -10,7 +10,7 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Taskbar;
 import java.awt.Window;
-import java.awt.event.KeyAdapter;
+import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import java.awt.Rectangle;
 import java.io.File;
@@ -24,6 +24,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
 import java.util.regex.Pattern;
 
+import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -32,6 +33,7 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
+import javax.swing.KeyStroke;
 import javax.swing.SwingConstants;
 import javax.swing.Scrollable;
 import javax.swing.SwingUtilities;
@@ -140,6 +142,21 @@ final class PermissionRequestPanel extends JPanel {
         content.add(buttonPanel);
 
         add(content, BorderLayout.CENTER);
+
+        // Escape = Reject, bound once at construction via WHEN_IN_FOCUSED_WINDOW so it
+        // works even when focus is elsewhere in the window and never leaks a listener.
+        // Enter is intentionally NOT bound: pressing Enter must never auto-allow or
+        // dismiss the permission dialog (it would silently grant a tool permission the
+        // user did not intend to approve).
+        getInputMap(WHEN_IN_FOCUSED_WINDOW).put(
+                KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "rejectPermission");
+        getActionMap().put("rejectPermission", new AbstractAction() {
+            private static final long serialVersionUID = 1L;
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                triggerReject();
+            }
+        });
     }
 
     void setOnResult(BiConsumer<String, Boolean> onResult) {
@@ -682,21 +699,6 @@ final class PermissionRequestPanel extends JPanel {
         revalidate();
 
         flashTaskbar();
-
-        // Escape = Reject. Enter is intentionally NOT bound: pressing Enter must
-        // never auto-allow or dismiss the permission dialog (it would silently
-        // grant a tool permission the user did not intend to approve).
-        addKeyListener(new KeyAdapter() {
-            @Override
-            public void keyPressed(KeyEvent e) {
-                if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
-                    e.consume();
-                    triggerReject();
-                }
-            }
-        });
-        setFocusable(true);
-        requestFocusInWindow();
 
         Timer timer = new Timer(SLIDE_INTERVAL_MS, null);
         final int[] step = {0};

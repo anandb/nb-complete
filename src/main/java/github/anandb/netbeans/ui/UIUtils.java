@@ -58,17 +58,19 @@ public class UIUtils {
     private static String cachedFontStack;
     private static String cachedFontFamily;
 
+    /** Immutable cache entry for the custom user icon. Holds path + size + icon
+     *  atomically so a reader can never observe a mismatched (path, icon) pair. */
+    private record UserIconCache(String path, int size, Icon icon) {}
+
     /** Cached custom user icon — avoids disk load + scale per user bubble.
      *  Invalidated by a PreferenceChangeListener on KEY_CUSTOM_USER_ICON. */
-    private static volatile String cachedUserIconPath = "";
-    private static volatile Icon cachedUserIcon;
+    private static volatile UserIconCache cachedUserIcon;
     /** Guards against concurrent background preloads of the same icon. */
     private static final AtomicBoolean userIconPreloading = new AtomicBoolean(false);
 
     static {
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).addPreferenceChangeListener(evt -> {
-            if ("customUserIcon".equals(evt.getKey())) {
-                cachedUserIconPath = "";
+            if (PluginSettings.KEY_CUSTOM_USER_ICON.equals(evt.getKey())) {
                 cachedUserIcon = null;
                 userIconPreloading.set(false);
             }
@@ -77,7 +79,7 @@ public class UIUtils {
         // cached before the first user bubble renders (avoids EDT freeze).
         String savedPath = PluginSettings.getCustomUserIcon();
         if (savedPath != null && !savedPath.isEmpty()) {
-            preloadUserIcon(savedPath);
+            preloadUserIcon(savedPath, 44);
         }
     }
 
@@ -230,17 +232,18 @@ public class UIUtils {
     public static Icon loadUserIcon(int size) {
         String path = PluginSettings.getCustomUserIcon();
         if (path != null && !path.isEmpty()) {
-            // Return cached icon if the path hasn't changed (avoids disk load
+            // Return cached icon if the path and size match (avoids disk load
             // + scale per user bubble on the EDT hot path).
-            if (path.equals(cachedUserIconPath) && cachedUserIcon != null) {
-                return cachedUserIcon;
+            UserIconCache cache = cachedUserIcon;
+            if (cache != null && path.equals(cache.path()) && size == cache.size()) {
+                return cache.icon();
             }
             // Cache cold — kick off a background preload (ImageIO, NOT MediaTracker)
             // so the EDT never blocks. Return the default SVG icon for now; the
             // next render cycle after preload completes will pick up the cached
             // custom icon. This avoids a multi-second EDT freeze (MediaTracker
             // waitForID) when the image is large or on a slow filesystem.
-            preloadUserIcon(path);
+            preloadUserIcon(path, size);
         }
         return ThemeManager.getIcon("user.svg", size);
     }
@@ -265,7 +268,7 @@ public class UIUtils {
      * pre-allocated BufferedImage (again, no ImageFetcher) rather than
      * Image.getScaledInstance, which also routes through the ImageFetcher pool.
      */
-    static void preloadUserIcon(String path) {
+    static void preloadUserIcon(String path, int size) {
         if (path == null || path.isEmpty()) return;
         if (!userIconPreloading.compareAndSet(false, true)) return;
         org.openide.util.RequestProcessor.getDefault().post(() -> {
@@ -281,12 +284,15 @@ public class UIUtils {
                 // also routes through the ImageFetcher pool and would block if
                 // the pool is starved by stuck network fetches.
                 java.awt.image.BufferedImage scaled = scaleSmooth(
-                        img, 44, 44);
+                        img, size, size);
                 // ImageIcon(BufferedImage) still calls MediaTracker internally,
                 // but a BufferedImage is already fully decoded in memory so
                 // waitForID returns instantly (no ImageFetcher needed).
-                cachedUserIcon = new ImageIcon(scaled);
-                cachedUserIconPath = path;
+                // Only publish if the path is still the configured one; otherwise
+                // a preference change during preload would resurrect a stale icon.
+                if (path.equals(PluginSettings.getCustomUserIcon())) {
+                    cachedUserIcon = new UserIconCache(path, size, new ImageIcon(scaled));
+                }
             } catch (Exception e) {
                 LOG.log(Level.WARNING, "Failed to load custom user icon", e);
             } finally {
@@ -311,9 +317,10 @@ public class UIUtils {
         }
         java.awt.image.BufferedImage current = src;
         boolean isTransparent = src.getColorModel().hasAlpha();
-        // Progressively halve while the image is more than 2x the target dimension,
-        // so each step uses bilinear (area-averaging) at a modest reduction ratio.
-        while (w > targetW * 2 && h > targetH * 2) {
+        // Progressively halve while EITHER dimension is more than 2x the target,
+        // so each step uses bilinear (area-averaging) at a modest reduction ratio
+        // even for wide-but-short or tall-but-narrow sources.
+        while (w > targetW * 2 || h > targetH * 2) {
             int nw = Math.max(targetW, w / 2);
             int nh = Math.max(targetH, h / 2);
             java.awt.image.BufferedImage next = new java.awt.image.BufferedImage(
@@ -321,10 +328,13 @@ public class UIUtils {
                             ? java.awt.image.BufferedImage.TYPE_INT_ARGB
                             : java.awt.image.BufferedImage.TYPE_INT_RGB);
             java.awt.Graphics2D g = next.createGraphics();
-            g.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION,
-                    java.awt.RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-            g.drawImage(current, 0, 0, nw, nh, null);
-            g.dispose();
+            try {
+                g.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION,
+                        java.awt.RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+                g.drawImage(current, 0, 0, nw, nh, null);
+            } finally {
+                g.dispose();
+            }
             current = next;
             w = nw;
             h = nh;
@@ -334,14 +344,17 @@ public class UIUtils {
                         ? java.awt.image.BufferedImage.TYPE_INT_ARGB
                         : java.awt.image.BufferedImage.TYPE_INT_RGB);
         java.awt.Graphics2D g = out.createGraphics();
-        g.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION,
-                java.awt.RenderingHints.VALUE_INTERPOLATION_BICUBIC);
-        g.setRenderingHint(java.awt.RenderingHints.KEY_RENDERING,
-                java.awt.RenderingHints.VALUE_RENDER_QUALITY);
-        g.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING,
-                java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
-        g.drawImage(current, 0, 0, targetW, targetH, null);
-        g.dispose();
+        try {
+            g.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION,
+                    java.awt.RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+            g.setRenderingHint(java.awt.RenderingHints.KEY_RENDERING,
+                    java.awt.RenderingHints.VALUE_RENDER_QUALITY);
+            g.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING,
+                    java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+            g.drawImage(current, 0, 0, targetW, targetH, null);
+        } finally {
+            g.dispose();
+        }
         return out;
     }
 
