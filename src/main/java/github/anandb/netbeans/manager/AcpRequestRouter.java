@@ -111,8 +111,7 @@ class AcpRequestRouter {
     }
 
     CompletableFuture<JsonNode> handleReadTextFile(JsonNode params) {
-        String filePath = params.has("filePath") ? params.get("filePath").asText()
-                : params.has("path") ? params.get("path").asText() : null;
+        String filePath = extractFilePath(params);
 
         if (filePath == null) {
             return CompletableFuture.failedFuture(new RequestRejectedException(
@@ -189,8 +188,7 @@ class AcpRequestRouter {
                     NbBundle.getMessage(ProcessManager.class, "ERR_WriteDisabled")));
         }
 
-        String filePath = params.has("filePath") ? params.get("filePath").asText()
-                : params.has("path") ? params.get("path").asText() : null;
+        String filePath = extractFilePath(params);
         String content = params.has("content") ? params.get("content").asText() : "";
 
         if (filePath == null) {
@@ -289,4 +287,10 @@ class AcpRequestRouter {
     }
 
     private record WriteContext(FileObject fo, boolean wasNew) {}
+
+    /** Resolves the file path param, which may be named "filePath" or "path". */
+    private static String extractFilePath(JsonNode params) {
+        return params.has("filePath") ? params.get("filePath").asText()
+                : params.has("path") ? params.get("path").asText() : null;
+    }
 }

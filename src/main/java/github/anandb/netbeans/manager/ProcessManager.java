@@ -158,8 +158,6 @@ public class ProcessManager implements ProcessControl {
                     ProcessControl pc = Lookup.getDefault().lookup(ProcessControl.class);
                     if (pc instanceof ProcessManager mgr) {
                         pm = mgr;
-                    } else if (pc != null) {
-                        pm = new ProcessManager();
                     } else {
                         pm = new ProcessManager();
                     }
@@ -202,10 +200,6 @@ public class ProcessManager implements ProcessControl {
         serverLifecycle.ensureStarted();
     }
 
-    private synchronized void startServer() {
-        serverLifecycle.startServer();
-    }
-
     @Override
     public void shutdown() {
         if (serverLifecycle.isClosing()) {
@@ -220,10 +214,6 @@ public class ProcessManager implements ProcessControl {
     public synchronized void restartServer() {
         serverLifecycle.restartServer();
         reconnectManager.resetThrottle();
-    }
-
-    private synchronized void stopServer() {
-        serverLifecycle.stopServer();
     }
 
     public void addSseListener(Consumer<SessionUpdate> listener) {

@@ -44,11 +44,6 @@ final class SessionCacheManager {
         return sessionCacheMap.get(sessionId);
     }
 
-    /** Clears the ID-keyed cache map. */
-    void clearSessionMap() {
-        sessionCacheMap.clear();
-    }
-
     /**
      * Determines whether {@code sessionId} is a descendant of the current session
      * by walking the parentID chain in the cache.

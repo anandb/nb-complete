@@ -127,9 +127,7 @@ class ServerProcessLifecycle {
             pb.redirectError(ProcessBuilder.Redirect.INHERIT);
 
             Map<String, String> env = pb.environment();
-            for (Map.Entry<String, String> entry : System.getenv().entrySet()) {
-                env.putIfAbsent(entry.getKey(), entry.getValue());
-            }
+            System.getenv().forEach(env::putIfAbsent);
 
             this.serverProcess = pb.start();
 
@@ -318,10 +316,6 @@ class ServerProcessLifecycle {
     CompletableFuture<Void> readyFuture() { return readyFuture; }
 
     RequestProcessor reconnectRP() { return reconnectRP; }
-
-    RequestProcessor.Task reconnectTask() { return reconnectTask; }
-
-    void setReconnectRP(RequestProcessor rp) { this.reconnectRP = rp; }
 
     void setReconnectTask(RequestProcessor.Task t) { this.reconnectTask = t; }
 }

@@ -183,26 +183,20 @@ public class SessionManager implements SessionQuery, SessionControl {
         // Fire onSessionLoading for UI backward compatibility
         stateMachine.addListener(newState -> {
             boolean loading = newState == SessionState.LOADING;
-            for (SessionListener l : listeners) {
-                l.onSessionLoading(loading);
-            }
+            listeners.forEach(l -> l.onSessionLoading(loading));
         });
     }
 
     private void handleSseUpdate(SessionUpdate update) {
         if (update.update() != null && update.update().sessions() != null) {
-            for (Session s : update.update().sessions()) {
-                cacheManager.cacheSession(s);
-            }
+            update.update().sessions().forEach(cacheManager::cacheSession);
         }
 
         String updateSessionId = update.params() != null ? update.params().sessionId() : null;
         if (updateSessionId != null
                 && (updateSessionId.equals(currentSessionId)
                     || cacheManager.isDescendantOfCurrent(updateSessionId, currentSessionId))) {
-            for (SessionListener l : listeners) {
-                l.onSessionUpdate(update);
-            }
+            listeners.forEach(l -> l.onSessionUpdate(update));
         } else {
             LOG.fine("Ignoring update for background session: {0}", updateSessionId);
         }
@@ -712,9 +706,7 @@ public class SessionManager implements SessionQuery, SessionControl {
                 && remaining[0].getProjectDirectory().getPath().equals(closedDir))) {
             lastProjectDir = "";
             if (remaining == null || remaining.length == 0) {
-                for (SessionListener l : listeners) {
-                    l.onAllProjectsClosed();
-                }
+                listeners.forEach(SessionListener::onAllProjectsClosed);
             }
         }
     }
@@ -750,9 +742,7 @@ public class SessionManager implements SessionQuery, SessionControl {
         }
 
         // Notify UI that preamble is being posted
-        for (SessionListener l : listeners) {
-            l.onPreambleStarted();
-        }
+        listeners.forEach(SessionListener::onPreambleStarted);
 
         // Send chunks sequentially, waiting for each to complete
         sendPreambleChunks(sessionId, chunks, 0);
@@ -787,9 +777,7 @@ public class SessionManager implements SessionQuery, SessionControl {
     }
 
     private CompletableFuture<JsonNode> sendAssistantPrompt(String sessionId, String text, String label) {
-        for (SessionListener l : listeners) {
-            l.onInternalMessageSent();
-        }
+        listeners.forEach(SessionListener::onInternalMessageSent);
 
         Map<String, Object> textBlock = new HashMap<>();
         textBlock.put("type", "text");
@@ -807,9 +795,7 @@ public class SessionManager implements SessionQuery, SessionControl {
                         LOG.warn("Failed to send {0}: {1}", label, ExceptionUtils.getRootCauseMessage(ex));
                         notifyError("Connection lost while sending " + label + ": " + ExceptionUtils.getRootCauseMessage(ex));
                     }
-                    for (SessionListener l : listeners) {
-                        l.onInternalMessageDone();
-                    }
+                    listeners.forEach(SessionListener::onInternalMessageDone);
                 });
     }
 
@@ -818,9 +804,7 @@ public class SessionManager implements SessionQuery, SessionControl {
         String sessionId = this.currentSessionId;
         if (stateMachine.transitionTo(SessionState.IDLE)) {
             this.currentSessionId = null;
-            for (SessionListener l : listeners) {
-                l.onSessionLoading(false);
-            }
+            listeners.forEach(l -> l.onSessionLoading(false));
         }
         if (sessionId != null) {
             StrategyRegistry.invalidateSession(sessionId);
@@ -866,45 +850,31 @@ public class SessionManager implements SessionQuery, SessionControl {
     }
 
     private void notifyPreambleDone() {
-        for (SessionListener l : listeners) {
-            l.onPreambleDone();
-        }
+        listeners.forEach(SessionListener::onPreambleDone);
     }
 
     private void notifySessionListUpdated(List<Session> sessions) {
-        for (SessionListener l : listeners) {
-            l.onSessionListUpdated(sessions);
-        }
+        listeners.forEach(l -> l.onSessionListUpdated(sessions));
     }
 
     private void notifySessionRenamed(String sessionId) {
-        for (SessionListener l : listeners) {
-            l.onSessionRenamed(sessionId);
-        }
+        listeners.forEach(l -> l.onSessionRenamed(sessionId));
     }
 
     private void notifySessionStarted(String sessionId) {
-        for (SessionListener l : listeners) {
-            l.onSessionStarted(sessionId);
-        }
+        listeners.forEach(l -> l.onSessionStarted(sessionId));
     }
 
     private void notifySessionLoaded(String sessionId, List<SessionConfigOption> options, boolean isStartup) {
-        for (SessionListener l : listeners) {
-            l.onSessionLoaded(sessionId, options, isStartup);
-        }
+        listeners.forEach(l -> l.onSessionLoaded(sessionId, options, isStartup));
     }
 
     private void notifySessionProgress(int percent) {
-        for (SessionListener l : listeners) {
-            l.onSessionProgress(percent);
-        }
+        listeners.forEach(l -> l.onSessionProgress(percent));
     }
 
     private void notifyError(String message) {
-        for (SessionListener l : listeners) {
-            l.onSessionError(message);
-        }
+        listeners.forEach(l -> l.onSessionError(message));
     }
 
     /**

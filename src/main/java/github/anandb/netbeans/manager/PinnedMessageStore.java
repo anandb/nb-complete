@@ -122,8 +122,7 @@ public final class PinnedMessageStore implements PinnedMessageControl {
             NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
                     .put(key, json);
         } catch (IOException ex) {
-            Logger.from(PinnedMessageStore.class)
-                    .warn("Failed to serialize pinned messages for session {0}: {1}",
+            LOG.warn("Failed to serialize pinned messages for session {0}: {1}",
                             sessionId, ExceptionUtils.getMessage(ex));
         }
     }
@@ -138,8 +137,7 @@ public final class PinnedMessageStore implements PinnedMessageControl {
         try {
             return MAPPER.readValue(json, LIST_TYPE);
         } catch (IOException ex) {
-            Logger.from(PinnedMessageStore.class)
-                    .warn("Failed to parse pinned messages for session {0}: {1}",
+            LOG.warn("Failed to parse pinned messages for session {0}: {1}",
                             sessionId, ExceptionUtils.getMessage(ex));
             return Collections.emptyList();
         }
