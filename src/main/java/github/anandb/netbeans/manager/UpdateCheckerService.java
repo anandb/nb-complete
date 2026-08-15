@@ -8,7 +8,9 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.logging.Level;
 import java.util.prefs.Preferences;
@@ -222,7 +224,7 @@ public class UpdateCheckerService implements UpdateCheckerControl {
                     LOG.info("New update found: {0} (current: {1}). Download URL: {2}",
                             new Object[]{info.latestVersion, currentVersionStr, info.downloadUrl});
 
-                    showNotification(info.latestVersion, info.downloadUrl);
+                    showNotification(info.latestVersion, info.downloadUrl, info.changeLog);
                 }
             } else {
                 LOG.info("Already on the latest version: {0}", currentVersionStr);
@@ -248,7 +250,7 @@ public class UpdateCheckerService implements UpdateCheckerControl {
         }
     }
 
-    private void showNotification(String latestVersion, String downloadUrl) {
+    private void showNotification(String latestVersion, String downloadUrl, String changeLog) {
         // Only show the message box once the IDE is fully loaded — showing it
         // during startup would cancel/close the dialog. The scheduling of the
         // check cycle can happen anytime; it's the dialog that must wait.
@@ -261,13 +263,18 @@ public class UpdateCheckerService implements UpdateCheckerControl {
                     + "Tools > Plugins > Downloaded and click \"Add Plugins\" "
                     + "to select the downloaded file, then click \"Install\".";
 
-            Object[] options = new Object[]{"Download Now", "Remind me Later", "Skip this Version"};
+            List<String> options = new ArrayList<>(List.of(
+                    "Download Now", "Remind me Later", "Skip this Version"));
+            if (changeLog != null && !changeLog.isEmpty()) {
+                // Add the release-notes link when the server provides one.
+                options.add(0, "View Release Notes");
+            }
             NotifyDescriptor nd = new NotifyDescriptor(
                     body,
                     title,
                     NotifyDescriptor.DEFAULT_OPTION,
                     NotifyDescriptor.INFORMATION_MESSAGE,
-                    options,
+                    options.toArray(new Object[0]),
                     "Remind me Later"
             );
             Object result = DialogDisplayer.getDefault().notify(nd);
@@ -275,6 +282,8 @@ public class UpdateCheckerService implements UpdateCheckerControl {
                 BrowserUtils.openOrCopyUrl(downloadUrl, null, null);
             } else if ("Skip this Version".equals(result)) {
                 prefs().put(PreferenceKeys.SKIPPED_UPDATE_VERSION, latestVersion);
+            } else if ("View Release Notes".equals(result)) {
+                BrowserUtils.openOrCopyUrl(changeLog, null, null);
             }
             // "Remind me Later" — just dismiss, next cycle prompts again
         });
@@ -294,5 +303,7 @@ public class UpdateCheckerService implements UpdateCheckerControl {
         public String releaseDate;
         @JsonProperty("download_url")
         public String downloadUrl;
+        @JsonProperty("change_log")
+        public String changeLog;
     }
 }

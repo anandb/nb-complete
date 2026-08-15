@@ -144,6 +144,12 @@ NbPreferences.forModule(PreferenceKeys.class)
   to keep consistent logging format with the rest of the codebase. Acceptable because
   `support/Logger` is a thin wrapper with zero dependencies. Do NOT add further
   `model/` → `support/` or `model/` → other layer imports.
+- **support/ToolDataExtractor → model/ (ACCEPTED)**: `support/ToolDataExtractor` is a
+  pure static utility (string/pattern parsing, classification) that is typed against
+  `model/` records (`MessageClassification`, `MessageType`, `SessionUpdate`) and is
+  consumed by both `manager/` and `ui/`. It is not a data class, so it does not belong
+  in `model/`; the peer-level `support/` → `model/` dependency is accepted. Do NOT add
+  further `support/` → `model/` imports.
 - **ui/ → manager/ singletons (RESOLVED)**: All `ui/` → `manager/SessionManager` and
   `ProcessManager` imports have been eliminated. UI now accesses services via
   `Lookup.getDefault().lookup(SessionControl.class)` and
