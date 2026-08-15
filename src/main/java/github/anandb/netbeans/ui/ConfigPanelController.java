@@ -504,12 +504,15 @@ public class ConfigPanelController {
 
         // Add variant names as effort levels (skip "default"); the value sent to
         // the server must be a valid effort option value, not the full provider/model id.
+        // Only offer a variant name when the server's effort option is known and lists
+        // it as a valid value. If the effort option is unknown (empty validEffort), do
+        // NOT offer variant names — sending one would make the server reject it with
+        // "effort not found: X", which surfaces as an exception in the notifications.
         ConfigItem selected = null;
         for (ConfigItem v : modelVariants) {
             if ("default".equalsIgnoreCase(v.name()) || v.name().isEmpty()) continue;
             String level = v.name();
-            // Skip variant suffixes that are not valid effort values for this server.
-            if (!validEffort.isEmpty() && !validEffort.contains(level.toLowerCase(Locale.ROOT))) {
+            if (validEffort.isEmpty() || !validEffort.contains(level.toLowerCase(Locale.ROOT))) {
                 continue;
             }
             ConfigItem item = new ConfigItem(level, level);
@@ -522,7 +525,8 @@ public class ConfigPanelController {
         // If no variant suffix maps to a valid effort level, fall back to the
         // server-declared effort options so the combo is never empty and only
         // valid values are sent.
-        if (thinkingCombo.getItemCount() == 0 && thinkingConfigOption.options() != null) {
+        if (thinkingCombo.getItemCount() == 0
+                && thinkingConfigOption != null && thinkingConfigOption.options() != null) {
             for (SessionConfigSelectOption o : thinkingConfigOption.options()) {
                 String val = o.value();
                 if (val == null || val.isEmpty() || "default".equalsIgnoreCase(val)) continue;

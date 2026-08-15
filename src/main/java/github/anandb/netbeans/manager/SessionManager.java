@@ -461,7 +461,11 @@ public class SessionManager implements SessionQuery, SessionControl {
                 })
                 .whenComplete((res, ex) -> {
                     if (ex != null) {
-                        LOG.warn("Failed to set config {0}: {1}", configId, ExceptionUtils.getMessage(ex), ex);
+                        // A rejected config value is an expected, recoverable outcome
+                        // (e.g. the server does not accept the selected effort level).
+                        // Log the message WITHOUT the Throwable — passing it routes the
+                        // record to NetBeans' Exceptions/Notifications panel.
+                        LOG.warn("Failed to set config {0}: {1}", configId, ExceptionUtils.getMessage(ex));
                     }
                 });
     }
