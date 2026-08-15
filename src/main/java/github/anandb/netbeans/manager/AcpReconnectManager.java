@@ -1,6 +1,5 @@
 package github.anandb.netbeans.manager;
 
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
@@ -58,23 +57,19 @@ class AcpReconnectManager {
             // value cannot change between the null check and pid().
             Process p = serverProcess.get();
             LOG.warn("handleDisconnection called while closing — returning early (PID: {0})",
-                    p != null ? p.pid() : "unknown");
+                    pidLabel(p));
             return;
         }
 
         Process proc = serverProcess.get();
         LOG.warn("ACP server disconnected unexpectedly (PID: {0})",
-                proc != null ? proc.pid() : "unknown");
+                pidLabel(proc));
 
         if (proc != null && proc.isAlive()) {
             LOG.warn("Stale process PID {0} is still alive but pipes are broken — killing it",
                     proc.pid());
-            List<ProcessHandle> descendants = proc.descendants().toList();
-            for (ProcessHandle h : descendants) {
-                if (h.isAlive()) {
-                    h.destroyForcibly();
-                }
-            }
+            // destroyForcibly() is a no-op on already-dead handles, so no isAlive guard needed.
+            proc.descendants().forEach(ProcessHandle::destroyForcibly);
             proc.destroyForcibly();
             try {
                 proc.waitFor(3, TimeUnit.SECONDS);
@@ -145,5 +140,9 @@ class AcpReconnectManager {
 
     void setLastDisconnectReason(String reason) {
         this.lastDisconnectReason = reason;
+    }
+
+    private static String pidLabel(Process p) {
+        return p != null ? String.valueOf(p.pid()) : "unknown";
     }
 }
