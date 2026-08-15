@@ -97,6 +97,10 @@ public class TokenUsageDialog extends JDialog {
     private static final long STATS_TIMEOUT_SECONDS = 60;
     /** Background reader pool for subprocess stdout (see runStatsCommand). */
     private static final RequestProcessor READER_RP = new RequestProcessor("token-stats-reader", 1);
+    /** Background worker for the stats command itself. Kept separate from READER_RP
+     *  (which is single-threaded) so a stats run posting a reader task to READER_RP
+     *  and waiting on it cannot deadlock against its own worker. */
+    private static final RequestProcessor STATS_RP = new RequestProcessor("token-stats", 1);
 
     public TokenUsageDialog(Frame owner) {
         super(owner, Bundle.LBL_TokenStats(), false);
@@ -238,7 +242,7 @@ public class TokenUsageDialog extends JDialog {
         ColorTheme currentTheme = ThemeManager.getCurrentTheme();
         statsPane.setText(buildPlaceholderHtml(currentTheme, Bundle.LBL_FetchingStats()));
 
-        new Thread(() -> {
+        STATS_RP.post(() -> {
             try {
                 String projectDir = null;
                 if (Bundle.LBL_CurrentProject().equals(project)) {
@@ -269,7 +273,7 @@ public class TokenUsageDialog extends JDialog {
                 SwingUtilities.invokeLater(() -> refreshBtn.setEnabled(true));
                 running.set(false);
             }
-        }, "token-stats").start();
+        });
     }
 
     private String runStatsCommand(int days, String projectDir) throws Exception {

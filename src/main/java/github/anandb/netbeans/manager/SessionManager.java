@@ -218,11 +218,9 @@ public class SessionManager implements SessionQuery, SessionControl {
                     SessionControl sc = Lookup.getDefault().lookup(SessionControl.class);
                     if (sc instanceof SessionManager mgr) {
                         sm = mgr;
-                    } else if (sc != null) {
-                        // Interface found but different implementation — use it
-                        // wrapped, or fall back to direct construction.
-                        sm = new SessionManager();
                     } else {
+                        // No registered instance (e.g. headless test env) — fall back
+                        // to direct construction.
                         sm = new SessionManager();
                     }
                     INSTANCE = sm;

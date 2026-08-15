@@ -85,17 +85,6 @@
     </folder>
     <folder name="Windows2">
     </folder>
-    <folder name="OptionsDialog">
-            <file name="github-anandb-netbeans-ui-ACPOptionsPanelController.instance">
-            <attr methodvalue="org.netbeans.spi.options.OptionsCategory.createCategory" name="instanceCreate"/>
-            <attr name="controller" newvalue="github.anandb.netbeans.ui.ACPOptionsPanelController"/>
-            <attr bundlevalue="github.anandb.netbeans.ui.Bundle#OptionsCategory_Name_Assistant" name="categoryName"/>
-            <attr intvalue="1100" name="position"/>
-            <attr name="iconBase" stringvalue="github/anandb/netbeans/ui/icons/logo.svg"/>
-            <attr bundlevalue="github.anandb.netbeans.ui.Bundle#OptionsCategory_Keywords_Assistant" name="keywords"/>
-            <attr name="keywordsCategory" stringvalue="Assistant"/>
-            </file>
-        </folder>
     <folder name="Projects">
         <folder name="github-anandb-netbeans-mdproject">
             <attr name="iconBase" stringvalue="github/anandb/netbeans/ui/icons/mdproject.svg"/>

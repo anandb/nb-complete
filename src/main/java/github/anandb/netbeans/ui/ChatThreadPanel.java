@@ -4,7 +4,6 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
-import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
@@ -658,7 +657,7 @@ public class ChatThreadPanel extends JPanel {
             text.addHyperlinkListener(e -> {
                 if (e.getEventType() == HyperlinkEvent.EventType.ACTIVATED) {
                     try {
-                        Desktop.getDesktop().browse(e.getURL().toURI());
+                        org.openide.awt.HtmlBrowser.URLDisplayer.getDefault().showURL(e.getURL());
                     } catch (Exception ex) {
                         LOG.log(Level.WARNING, "Failed to open link", ex);
                     }

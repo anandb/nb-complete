@@ -30,8 +30,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.prefs.PreferenceChangeListener;
 import java.util.regex.Matcher;
@@ -48,7 +47,6 @@ import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JMenuItem;
-import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JSplitPane;
@@ -75,6 +73,8 @@ import org.openide.util.actions.Presenter;
 import org.openide.windows.TopComponent;
 import org.openide.windows.WindowManager;
 import org.openide.util.lookup.ServiceProvider;
+import org.openide.NotifyDescriptor;
+import org.openide.DialogDisplayer;
 
 import github.anandb.netbeans.contract.StashDiffControl;
 import github.anandb.netbeans.support.LanguageResolver;
@@ -232,12 +232,10 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
 
     private static final RequestProcessor GIT_RP = new RequestProcessor("StashDiff-git", 1);
     private static final RequestProcessor READER_RP = new RequestProcessor("StashDiff-reader", 2);
-    /** Dedicated executor for loadDiffs to avoid starving ForkJoinPool.commonPool. */
-    private static final ExecutorService LOAD_EXECUTOR = Executors.newFixedThreadPool(4, r -> {
-        Thread t = new Thread(r, "StashDiff-load");
-        t.setDaemon(true);
-        return t;
-    });
+    /** Managed executor for loadDiffs — avoids starving ForkJoinPool.commonPool while
+     *  delegating to a daemon RequestProcessor instead of an unmanaged fixed pool. */
+    private static final RequestProcessor LOAD_RP = new RequestProcessor("StashDiff-load", 4);
+    private static final Executor LOAD_EXECUTOR = r -> LOAD_RP.post(r);
 
     private static String runGit(File dir, String... cmd) throws Exception {
         ProcessBuilder pb = new ProcessBuilder(cmd);
@@ -484,9 +482,9 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
 
     static void openPanel(DiffContext data) {
         if (data.primaryDiffs.isEmpty() && data.headDiffs.isEmpty() && data.workTreeDiffs.isEmpty()) {
-            JOptionPane.showMessageDialog(null,
+            DialogDisplayer.getDefault().notify(new NotifyDescriptor.Message(
                     data.title + " has no changes or could not be loaded.",
-                    "Diff Viewer", JOptionPane.WARNING_MESSAGE);
+                    NotifyDescriptor.WARNING_MESSAGE));
             return;
         }
 
@@ -570,9 +568,9 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
                     String stashRef = "stash@{" + data.stashIndex + "}";
                     runGit(data.repoDir, "git", "stash", "apply", stashRef);
                     SwingUtilities.invokeLater(() -> {
-                        JOptionPane.showMessageDialog(tcRef[0],
-                                "Stash applied successfully.", "Apply Stash",
-                                JOptionPane.INFORMATION_MESSAGE);
+                        DialogDisplayer.getDefault().notify(new NotifyDescriptor.Message(
+                                "Stash applied successfully.",
+                                NotifyDescriptor.INFORMATION_MESSAGE));
                         btnApplyStash.setEnabled(true);
                         btnDropStash.setEnabled(true);
                     });
@@ -590,10 +588,12 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
         btnDropStash.setHorizontalTextPosition(SwingConstants.RIGHT);
         btnDropStash.setToolTipText(Bundle.CTL_StashDiffAction_DropStashTooltip());
         btnDropStash.addActionListener(ev -> {
-            int confirm = JOptionPane.showConfirmDialog(tcRef[0],
+            Object confirm = DialogDisplayer.getDefault().notify(new NotifyDescriptor.Confirmation(
                     "Are you sure you want to drop stash@{" + data.stashIndex + "}?",
-                    "Drop Stash", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
-            if (confirm != JOptionPane.YES_OPTION) return;
+                    "Drop Stash",
+                    NotifyDescriptor.YES_NO_OPTION,
+                    NotifyDescriptor.WARNING_MESSAGE));
+            if (confirm != NotifyDescriptor.YES_OPTION) return;
 
             btnApplyStash.setEnabled(false);
             btnDropStash.setEnabled(false);
@@ -872,9 +872,9 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
     /** Show a user-friendly error dialog. */
     private static void showStashError(Component parent, Exception ex) {
         String msg = ExceptionUtils.getMessage(ex);
-        JOptionPane.showMessageDialog(parent,
+        DialogDisplayer.getDefault().notify(new NotifyDescriptor.Message(
                 msg != null ? msg : "Unknown error",
-                "Stash Operation Failed", JOptionPane.ERROR_MESSAGE);
+                NotifyDescriptor.ERROR_MESSAGE));
     }
 
     // --- Inner types ---

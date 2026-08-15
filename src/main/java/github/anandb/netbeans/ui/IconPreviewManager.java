@@ -1,7 +1,6 @@
 package github.anandb.netbeans.ui;
 
 import java.awt.Dimension;
-import java.awt.Image;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.io.File;
@@ -11,6 +10,7 @@ import javax.swing.JMenuItem;
 import javax.swing.JPopupMenu;
 import javax.swing.JTextField;
 import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
 
 import github.anandb.netbeans.support.Logger;
 import org.openide.util.NbBundle;
@@ -36,7 +36,8 @@ final class IconPreviewManager {
     private final JLabel previewLabel;
     private final JTextField pathField;
     private final Runnable onChangeCallback;
-    private Image rawImage;
+    /** Original decoded image, kept for re-scaling when the label resizes. */
+    private java.awt.image.BufferedImage originalImage;
 
     IconPreviewManager(JLabel previewLabel, JTextField pathField, Runnable onChangeCallback) {
         this.previewLabel = previewLabel;
@@ -54,7 +55,7 @@ final class IconPreviewManager {
         previewLabel.addComponentListener(new ComponentAdapter() {
             @Override
             public void componentResized(ComponentEvent e) {
-                if (rawImage != null) {
+                if (originalImage != null) {
                     scaleToLabel();
                 }
             }
@@ -83,42 +84,53 @@ final class IconPreviewManager {
 
     void updatePreview(String path) {
         if (path == null || path.isEmpty()) {
-            rawImage = null;
+            originalImage = null;
             previewLabel.setIcon(null);
             previewLabel.setText("");
             return;
         }
         File file = new File(path);
         if (!file.exists()) {
-            rawImage = null;
+            originalImage = null;
             previewLabel.setIcon(null);
             previewLabel.setText("");
             return;
         }
-        try {
-            ImageIcon icon = new ImageIcon(path);
-            if (icon.getIconWidth() > 0) {
-                rawImage = icon.getImage();
-                scaleToLabel();
-                previewLabel.setText("");
-            } else {
-                rawImage = null;
-                previewLabel.setIcon(null);
-                previewLabel.setText("<html><center>" + Bundle.LBL_IconPreview_SvgNoPreview() + "</center></html>");
+        // Load + scale on a background thread (ImageIO, NOT ImageIcon/MediaTracker)
+        // so the EDT never blocks, then publish to the label. Same constraint as
+        // UIUtils.preloadUserIcon — ImageIcon routes through the shared ImageFetcher
+        // pool which can freeze the EDT if any fetch is stuck.
+        org.openide.util.RequestProcessor.getDefault().post(() -> {
+            try {
+                java.awt.image.BufferedImage img = javax.imageio.ImageIO.read(file);
+                if (img == null) {
+                    SwingUtilities.invokeLater(() -> {
+                        originalImage = null;
+                        previewLabel.setIcon(null);
+                        previewLabel.setText("<html><center>" + Bundle.LBL_IconPreview_SvgNoPreview() + "</center></html>");
+                    });
+                    return;
+                }
+                SwingUtilities.invokeLater(() -> {
+                    originalImage = img;
+                    previewLabel.setText("");
+                    scaleToLabel();
+                });
+            } catch (Exception e) {
+                LOG.warn("Failed to update icon preview for: {0}", path, e);
+                SwingUtilities.invokeLater(() -> {
+                    originalImage = null;
+                    previewLabel.setIcon(null);
+                    previewLabel.setText("?");
+                });
             }
-        } catch (Exception e) {
-            LOG.warn("Failed to update icon preview for: {0}", path, e);
-            rawImage = null;
-            previewLabel.setIcon(null);
-            previewLabel.setText("?");
-        }
+        });
     }
 
     private void scaleToLabel() {
         int w = previewLabel.getWidth();
         int h = previewLabel.getHeight();
-        if (w < 1 || h < 1 || rawImage == null) return;
-        previewLabel.setIcon(new ImageIcon(
-            rawImage.getScaledInstance(w, h, Image.SCALE_SMOOTH)));
+        if (w < 1 || h < 1 || originalImage == null) return;
+        previewLabel.setIcon(new ImageIcon(UIUtils.scaleSmooth(originalImage, w, h)));
     }
 }

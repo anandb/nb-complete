@@ -14,7 +14,6 @@ import java.util.regex.Pattern;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 
 import javax.swing.JFileChooser;
-import javax.swing.JOptionPane;
 
 import github.anandb.netbeans.model.Message;
 import github.anandb.netbeans.support.Logger;
@@ -27,6 +26,8 @@ import org.openide.filesystems.FileUtil;
 import org.openide.loaders.DataObject;
 import org.openide.util.NbBundle;
 import org.openide.util.RequestProcessor;
+import org.openide.NotifyDescriptor;
+import org.openide.DialogDisplayer;
 
 /**
  * Stateless utility for exporting conversation history to Markdown files.
@@ -172,12 +173,12 @@ final class ConversationExporter {
         if (chooser.showSaveDialog(parent) == JFileChooser.APPROVE_OPTION) {
             File file = chooser.getSelectedFile();
             if (file.exists()) {
-                int confirm = JOptionPane.showConfirmDialog(parent,
+                Object confirm = DialogDisplayer.getDefault().notify(new NotifyDescriptor.Confirmation(
                         NbBundle.getMessage(ConversationExporter.class, "MSG_OverwriteConfirm", file.getName()),
                         NbBundle.getMessage(ConversationExporter.class, "TITLE_ExportConv"),
-                        JOptionPane.YES_NO_OPTION,
-                        JOptionPane.WARNING_MESSAGE);
-                if (confirm != JOptionPane.YES_OPTION) {
+                        NotifyDescriptor.YES_NO_OPTION,
+                        NotifyDescriptor.WARNING_MESSAGE));
+                if (confirm != NotifyDescriptor.YES_OPTION) {
                     return;
                 }
             }

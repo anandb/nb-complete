@@ -52,7 +52,6 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
 import javax.swing.JMenuItem;
-import javax.swing.JOptionPane;
 import javax.swing.JPopupMenu;
 import javax.swing.Timer;
 import javax.swing.border.EmptyBorder;
@@ -622,18 +621,18 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     void exportConversationAs(String format) {
         // If messages are being trimmed, ask user whether to show all first.
         if (!chatPanel.isKeepOlderMessages()) {
-            int choice = JOptionPane.showOptionDialog(this,
+            NotifyDescriptor nd = new NotifyDescriptor(
                     NbBundle.getMessage(AssistantTopComponent.class, "MSG_ExportPrompt"),
                     NbBundle.getMessage(AssistantTopComponent.class, "TITLE_ExportConversation"),
-                    JOptionPane.DEFAULT_OPTION,
-                    JOptionPane.QUESTION_MESSAGE,
-                    null,
+                    NotifyDescriptor.DEFAULT_OPTION,
+                    NotifyDescriptor.QUESTION_MESSAGE,
                     new Object[]{
                         NbBundle.getMessage(AssistantTopComponent.class, "BTN_ExportDisplayed"),
                         NbBundle.getMessage(AssistantTopComponent.class, "BTN_ExportAll")
                     },
                     NbBundle.getMessage(AssistantTopComponent.class, "BTN_ExportDisplayed"));
-            if (choice == 1) {
+            Object choice = DialogDisplayer.getDefault().notify(nd);
+            if (choice == NbBundle.getMessage(AssistantTopComponent.class, "BTN_ExportAll")) {
                 // Reload then export via flush timer callback.
                 pendingExportFormat = format;
                 chatPanel.setOnMessagesStable(() -> {
@@ -645,7 +644,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                 chatPanel.setKeepOlderMessages(true);
                 return;
             }
-            if (choice == -1) return;
+            if (choice == null || choice == NotifyDescriptor.CLOSED_OPTION) return;
         }
         pendingExportFormat = null;
         String currentId = sessionService.get().getCurrentSessionId();
