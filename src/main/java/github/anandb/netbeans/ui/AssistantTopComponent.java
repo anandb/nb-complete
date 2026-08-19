@@ -632,7 +632,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                     },
                     NbBundle.getMessage(AssistantTopComponent.class, "BTN_ExportDisplayed"));
             Object choice = DialogDisplayer.getDefault().notify(nd);
-            if (choice == NbBundle.getMessage(AssistantTopComponent.class, "BTN_ExportAll")) {
+            if (NbBundle.getMessage(AssistantTopComponent.class, "BTN_ExportAll").equals(choice)) {
                 // Reload then export via flush timer callback.
                 pendingExportFormat = format;
                 chatPanel.setOnMessagesStable(() -> {

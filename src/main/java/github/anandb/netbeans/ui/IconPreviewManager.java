@@ -100,11 +100,14 @@ final class IconPreviewManager {
         // so the EDT never blocks, then publish to the label. Same constraint as
         // UIUtils.preloadUserIcon — ImageIcon routes through the shared ImageFetcher
         // pool which can freeze the EDT if any fetch is stuck.
+        final String requestedPath = path;
         org.openide.util.RequestProcessor.getDefault().post(() -> {
             try {
                 java.awt.image.BufferedImage img = javax.imageio.ImageIO.read(file);
                 if (img == null) {
                     SwingUtilities.invokeLater(() -> {
+                        if (!previewLabel.isDisplayable()
+                                || !requestedPath.equals(pathField.getText())) return;
                         originalImage = null;
                         previewLabel.setIcon(null);
                         previewLabel.setText("<html><center>" + Bundle.LBL_IconPreview_SvgNoPreview() + "</center></html>");
@@ -112,6 +115,8 @@ final class IconPreviewManager {
                     return;
                 }
                 SwingUtilities.invokeLater(() -> {
+                    if (!previewLabel.isDisplayable()
+                            || !requestedPath.equals(pathField.getText())) return;
                     originalImage = img;
                     previewLabel.setText("");
                     scaleToLabel();
@@ -119,6 +124,8 @@ final class IconPreviewManager {
             } catch (Exception e) {
                 LOG.warn("Failed to update icon preview for: {0}", path, e);
                 SwingUtilities.invokeLater(() -> {
+                    if (!previewLabel.isDisplayable()
+                            || !requestedPath.equals(pathField.getText())) return;
                     originalImage = null;
                     previewLabel.setIcon(null);
                     previewLabel.setText("?");

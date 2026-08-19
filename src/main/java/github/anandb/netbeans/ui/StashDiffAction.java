@@ -232,8 +232,13 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
 
     private static final RequestProcessor GIT_RP = new RequestProcessor("StashDiff-git", 1);
     private static final RequestProcessor READER_RP = new RequestProcessor("StashDiff-reader", 2);
-    /** Managed executor for loadDiffs — avoids starving ForkJoinPool.commonPool while
-     *  delegating to a daemon RequestProcessor instead of an unmanaged fixed pool. */
+    /** Lifecycle-managed pool for diff loading. Replaces the previous unmanaged
+     *  {@code Executors.newFixedThreadPool(4)} to avoid starving
+     *  {@code ForkJoinPool.commonPool} and to tie threads to the NetBeans
+     *  lifecycle (daemon, auto-cleanup). Thin {@link Executor} adapter delegates
+     *  to {@link RequestProcessor#post(Runnable)} — fire-and-forget; no
+     *  cancellation/backpressure is needed as diff tasks are short-lived and
+     *  bounded by stash count. */
     private static final RequestProcessor LOAD_RP = new RequestProcessor("StashDiff-load", 4);
     private static final Executor LOAD_EXECUTOR = r -> LOAD_RP.post(r);
 
