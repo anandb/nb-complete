@@ -1,5 +1,26 @@
 # Release Notes
 
+## v1.16.0 (Changes since v1.15.0)
+
+### Features
+- **Release-notes link in update dialog**: When the server provides a change log, the update dialog offers a "View Release Notes" button that opens it in the browser.
+
+### Fixes
+- **Rejected effort levels surfacing in NB notifications**: `repopulateThinkingForModel` offered model-variant names (e.g. `low`) as effort levels even when the server's effort option was unknown (empty `validEffort`), sending a value the server rejects with "Invalid params: effort not found". Only variant names the server declares as valid are offered now; otherwise it falls back to server-declared options, guarded against a null thinking option.
+- **Export All dialog comparison**: `AssistantTopComponent` compared the selected export button with `==`, which never matched, so the Export All path was unreachable. The comparison now uses `.equals()`.
+- **Stale icon preview publish**: `IconPreviewManager` could publish a stale image to a disposed label after a rapid path change or panel close. The async callback now checks label displayability and re-verifies the requested path before applying the result.
+- **Listener dispatch CME**: `SessionManager` iterated its listener list directly while listeners could mutate it, risking `ConcurrentModificationException`. Dispatch now iterates on an `ArrayList` copy.
+
+### Improvements
+- **Lifecycle-managed diff loading**: `StashDiffAction`'s diff loader now uses a NetBeans `RequestProcessor` instead of an unmanaged fixed thread pool, tying threads to the platform lifecycle while avoiding starving `ForkJoinPool.commonPool`.
+
+### Refactoring
+- **Adopt NetBeans Platform APIs**: `JOptionPane`/`Desktop`/raw threads replaced with `DialogDisplayer`, `NotifyDescriptor`, `HtmlBrowser.URLDisplayer`, and `RequestProcessor` across `AssistantTopComponent`, `ConversationExporter`, `IconPreviewManager`, `StashDiffAction`, and `TokenUsageDialog`; options registered via annotation.
+- **Simplify manager loops and dead code**: session listener loops use `forEach`; deduped `extractFilePath` helper and `pidLabel()`; removed unused `ProcessManager.startServer/stopServer`, `SessionCacheManager.clearSessionMap`, `ServerProcessLifecycle.reconnectTask/setReconnectRP`.
+
+### Housekeeping
+- Version bumped to 1.16.0.
+
 ## v1.15.0 (Changes since v1.14.0)
 
 ### UI
