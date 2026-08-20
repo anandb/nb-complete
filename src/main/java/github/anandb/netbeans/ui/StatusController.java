@@ -148,6 +148,7 @@ public class StatusController {
         SwingUtilities.invokeLater(() -> {
             sendBtn.setEnabled(enabled);
             toggleOptionsBtn.setVisible(enabled);
+            inputArea.setEnabled(enabled);
         });
     }
 
