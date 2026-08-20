@@ -207,19 +207,37 @@ class BubbleStreamer {
         if (deferredFinalizeTimer != null) {
             deferredFinalizeTimer.stop();
         }
-        if (streamingTextArea != null) {
-            try {
-                segments.remove(streamingTextArea);
-            } catch (Exception ex) {
-                LOG.warn("Failed to remove streaming text area during finalization", ex);
-            }
-            streamingTextArea = null;
-        }
+        // Build the final HTML BEFORE removing the streaming text area, so if
+        // the HTML rendering fails we still have the JTextArea as fallback.
+        JTextArea savedTextArea = streamingTextArea;
         try {
             contentUpdater.update(ThemeManager.getCurrentTheme(), savedCollapseState);
+            // HTML built successfully — safe to remove the JTextArea now.
+            if (savedTextArea != null) {
+                segments.remove(savedTextArea);
+                streamingTextArea = null;
+            }
             postFinalizeCallback.accept(savedCollapseState, false);
         } catch (Exception ex) {
             LOG.warn("Failed to build final HTML content during streaming finalization", ex);
+            // HTML rendering failed. If the JTextArea was already removed by
+            // contentUpdater.update() mid-flight, add a minimal fallback so
+            // the bubble is not left blank.
+            if (segments.getComponentCount() == 0 && text.length() > 0) {
+                JTextArea fallback = new JTextArea(text.toString());
+                fallback.setEditable(false);
+                fallback.setLineWrap(true);
+                fallback.setWrapStyleWord(true);
+                fallback.setOpaque(false);
+                fallback.setBackground(new Color(0, 0, 0, 0));
+                fallback.setFont(ThemeManager.getFont());
+                segments.add(fallback);
+                streamingTextArea = null;
+            } else if (savedTextArea != null && savedTextArea.getParent() == null) {
+                // TextArea was removed but content update failed — re-add it.
+                segments.add(savedTextArea);
+                streamingTextArea = savedTextArea;
+            }
         }
         segments.revalidate();
         segments.repaint();
