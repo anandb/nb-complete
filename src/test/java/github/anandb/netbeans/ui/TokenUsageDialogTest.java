@@ -64,6 +64,15 @@ class TokenUsageDialogTest {
     }
 
     @Test
+    void testParsePercentage() {
+        assertEquals(31, TokenUsageDialog.parsePercentage("420 (31.4%)"));
+        assertEquals(0, TokenUsageDialog.parsePercentage("1 (0.0%)"));
+        assertEquals(100, TokenUsageDialog.parsePercentage("980 (99.6%)"));
+        assertEquals(0, TokenUsageDialog.parsePercentage("$0.15"));
+        assertEquals(0, TokenUsageDialog.parsePercentage(null));
+    }
+
+    @Test
     void testConvertStatsToHtml() {
         // Mock a box-drawing output to convert
         String rawText = 
@@ -81,7 +90,9 @@ class TokenUsageDialogTest {
         assertNotNull(html);
         assertTrue(html.contains("colspan='3'"));
         assertTrue(html.contains("read"));
-        assertTrue(html.contains("██████████████████████████████████████"));
+        // Progress bars are rendered as percentage-width divs, not the CLI's █ chars
+        assertTrue(html.contains("width:31%;"));
+        assertTrue(html.contains("height:10px;"));
         assertTrue(html.contains("420 (31.4%)"));
         assertTrue(html.contains("nb_get_opened_fi.."));
         assertTrue(html.contains("1 (0.1%)"));

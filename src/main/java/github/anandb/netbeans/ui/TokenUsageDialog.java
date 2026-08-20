@@ -436,6 +436,23 @@ public class TokenUsageDialog extends JDialog {
         return new String[]{content, ""};
     }
 
+    /** Extracts an integer percentage (0-100) from a stats value like "420 (31.4%)". */
+    static int parsePercentage(String value) {
+        if (value == null) {
+            return 0;
+        }
+        int open = value.lastIndexOf('(');
+        int close = value.lastIndexOf('%');
+        if (open >= 0 && close > open) {
+            try {
+                return (int) Math.round(Double.parseDouble(value.substring(open + 1, close).trim()));
+            } catch (NumberFormatException ex) {
+                LOG.log(Level.FINE, "Unparseable stats percentage: {0}", value);
+            }
+        }
+        return 0;
+    }
+
     /** Escapes HTML special characters. */
     private static String escapeHtml(String s) {
         return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
@@ -452,6 +469,7 @@ public class TokenUsageDialog extends JDialog {
         String tableBg = theme.toHtmlHex(theme.tableBackground());
         String altBg = theme.toHtmlHex(theme.tableRowAlternate());
         String linkColor = ThemeManager.isDark() ? "#589DF6" : "#268BD2";
+        String barColor = ThemeManager.isDark() ? "#589DF6" : "#268BD2";
 
         sb.append("<html><head><style>")
           .append("html,body{margin:0;padding:8px;background:").append(bg)
@@ -509,12 +527,21 @@ public class TokenUsageDialog extends JDialog {
                       .append(headerBg).append("'>").append(escapeHtml(row[0])).append("</td></tr>");
                     alt = false;
                 } else if (row.length == 3) {
-                    // Progress bar row
+                    // Progress bar row — render a real HTML bar sized by the
+                    // percentage instead of the CLI's █ characters (which the
+                    // CLI scales down to 1 block for low-percentage entries).
+                    int pct = Math.max(parsePercentage(row[2]), 1);
                     String rowStyle = "";
                     if (alt) rowStyle += "style='background-color: " + altBg + "'";
                     sb.append("<tr ").append(rowStyle).append(">")
                       .append("<td style='white-space:nowrap;'>").append(escapeHtml(row[0])).append("</td>")
-                      .append("<td style='text-align:right;'>").append(escapeHtml(row[1])).append("</td>")
+                      .append("<td style='width:100%;'>")
+                      .append("<table style='margin:0;border:0;width:100%;'><tr>")
+                      .append("<td style='border:0;padding:1px;width:").append(pct).append("%;'>")
+                      .append("<div style='height:10px;background:").append(barColor).append(";'></div>")
+                      .append("</td><td style='border:0;padding:1px;'></td>")
+                      .append("</tr></table>")
+                      .append("</td>")
                       .append("<td style='text-align:right;white-space:nowrap;'>").append(escapeHtml(row[2])).append("</td>")
                       .append("</tr>");
                     alt = !alt;
