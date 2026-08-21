@@ -1,5 +1,24 @@
 # Release Notes
 
+## v1.16.1 (Changes since v1.16.0)
+
+### Fixes
+- **Input area disabled when no session is active**: The chat input text area is now disabled while the assistant has no active session, preventing send attempts into a dead session.
+- **Blank bubbles on streaming finalization failure**: `BubbleStreamer` removed its streaming `JTextArea` before building the final HTML, so if HTML rendering threw, the exception was swallowed and an empty (blank) bubble was left behind. The HTML is now built first, with a fallback `JTextArea` (or re-add of the original) so the bubble is never left blank. Empty segments are also skipped entirely.
+- **Missing `ACR_MessageBubble_info` resource keys**: `MessageType.info` bubbles (e.g. the "Posting preamble..." status) hit a missing bundle key, throwing `MissingResourceException` on the EDT and dropping the message. The two keys are added so info bubbles render.
+- **Token stats tool bars collapsed**: The CLI scales its Unicode block bars to a single block for low-percentage tools, so the token stats dialog showed one block per entry. It now parses the percentage from each row and renders a themed HTML bar sized by percentage (1% floor).
+
+### UI
+- **Proportional token-usage bars**: The tool-usage table in the token stats dialog now renders real percentage-width bars (themed with a dark/light accent) instead of echoing the CLI's scaled block characters.
+
+### Documentation
+- **Architecture refresh**: Updated `DESIGN.md` to match the v1.16 architecture — fixed version/artifactId, corrected stale claims (PlatformBridge adoption, Ctrl+L vs New Session debounce, two-tier stream flushing, Caffeine cache, removed ButtonPulse), and documented subsystems added since v1.12 (embedded MCP server, project/process/session lifecycle, config/slash commands/file cache/pinned messages/update checker/export & history services, and the UI permission/attachment/bubble-rendering stack).
+- **Updated assistant options screenshot**.
+
+### Housekeeping
+- Reverted the blank-part spacing filter in `ChatThreadPanel` parts handling.
+- Version bumped to 1.16.1.
+
 ## v1.16.0 (Changes since v1.15.0)
 
 ### Features
