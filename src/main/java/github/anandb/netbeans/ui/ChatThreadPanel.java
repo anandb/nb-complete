@@ -4,6 +4,7 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
@@ -483,7 +484,11 @@ public class ChatThreadPanel extends JPanel {
         }
         // Failsafe sweep for remaining streaming bubbles (missed by activeStreamBubble).
         anyFinalized |= sweepStreamingBubbles(wasAtBottom);
-        if (anyFinalized) {
+        // Now that all bubbles are finalized, drop any whose complete message is
+        // blank (e.g. an agent_message_chunk of just "\n\n"). Runs after the sweep
+        // so getRawText() reflects the finished text.
+        boolean anyRemoved = removeBlankBubbles(wasAtBottom);
+        if (anyFinalized || anyRemoved) {
             messagesContainer.revalidate();
             if (wasAtBottom) {
                 scrollController.scrollToBottom(true);
@@ -493,7 +498,81 @@ public class ChatThreadPanel extends JPanel {
     }
 
     /**
-     * Sweeps all bubbles for orphaned streaming JTextAreas (dual source of truth).
+     * Returns the component index marking the start of the current turn's bubbles:
+     * one past the last user bubble in {@code children}, or 0 if none. Streaming
+     * and blank bubbles can only be produced by the in-flight turn (after the last
+     * user message), so callers bound their tail-only scans to this index instead
+     * of sweeping the whole thread.
+     */
+    private static int currentTurnStartIndex(Component[] children) {
+        // Scan backward: the last user bubble is near the end, so break at the
+        // first one found — O(tail) rather than O(whole thread).
+        for (int i = children.length - 1; i >= 0; i--) {
+            if (children[i] instanceof MessageBubble mb && "user".equals(mb.getRole())) {
+                return i + 1;
+            }
+        }
+        return 0;
+    }
+
+    /**
+     * Removes assistant/thought bubbles whose complete final text is blank or
+     * whitespace-only (e.g. an {@code agent_message_chunk} whose content is just
+     * "\n\n" before a tool call). Must run only AFTER streaming finalization so
+     * {@link MessageBubble#getRawText()} reflects the whole message — blankness is
+     * judged per message, never per chunk, so whitespace between real content
+     * ("Hello\n\nWorld") is preserved and only truly empty bubbles are dropped.
+     *
+     * @param wasAtBottom whether the scroll was at bottom before this removal
+     * @return true if any bubble was removed
+     */
+    private boolean removeBlankBubbles(boolean wasAtBottom) {
+        Component[] all = messagesContainer.getComponents();
+        // Only the current turn (after the last user bubble) can contain blanks.
+        int start = currentTurnStartIndex(all);
+        List<MessageBubble> blankBubbles = new ArrayList<>();
+        for (int i = start; i < all.length; i++) {
+            if (all[i] instanceof MessageBubble mb) {
+                String role = mb.getRole();
+                if (("assistant".equals(role) || "thought".equals(role)) && isBlank(mb.getRawText())) {
+                    blankBubbles.add(mb);
+                }
+            }
+        }
+        if (blankBubbles.isEmpty()) {
+            return false;
+        }
+        for (MessageBubble mb : blankBubbles) {
+            Container parent = mb.getParent();
+            if (parent == null) {
+                continue;
+            }
+            Component[] children = parent.getComponents();
+            for (int i = 0; i < children.length; i++) {
+                if (children[i] != mb) {
+                    continue;
+                }
+                parent.remove(i);
+                // Each bubble was added with a trailing vertical strut; drop it
+                // too so no gap remains. After remove(i) the strut shifts to i.
+                if (i < parent.getComponentCount() && parent.getComponent(i) instanceof Box.Filler) {
+                    parent.remove(i);
+                }
+                break;
+            }
+        }
+        messagesContainer.revalidate();
+        messagesContainer.repaint();
+        if (wasAtBottom) {
+            scrollController.scrollToBottom(true);
+        }
+        return true;
+    }
+
+    /**
+     * Sweeps the current turn's bubbles for orphaned streaming JTextAreas (dual
+     * source of truth). Streaming bubbles only exist after the last user bubble;
+     * earlier turns are already finalized, so only the tail is scanned.
      * <p>
      * Three cases:
      * <ol>
@@ -512,8 +591,12 @@ public class ChatThreadPanel extends JPanel {
      */
     private boolean sweepStreamingBubbles(boolean wasAtBottom) {
         boolean anyFinalized = false;
-        for (Component c : messagesContainer.getComponents()) {
-            if (c instanceof MessageBubble mb) {
+        Component[] all = messagesContainer.getComponents();
+        // Streaming bubbles only exist in the current turn (after the last user
+        // bubble); earlier turns are already finalized, so skip the thread prefix.
+        int start = currentTurnStartIndex(all);
+        for (int i = start; i < all.length; i++) {
+            if (all[i] instanceof MessageBubble mb) {
                 boolean flagSaysStreaming = mb.streamingFlagsSet();
                 boolean hasTextArea = mb.hasStreamingTextArea();
                 if (hasTextArea) {
