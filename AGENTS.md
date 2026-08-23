@@ -166,6 +166,17 @@ NbPreferences.forModule(PreferenceKeys.class)
   `manager/FileCacheManager` directly instead of using `contract/FileCacheQuery` via Lookup.
   Fixed by accessing `Lookup.getDefault().lookup(FileCacheQuery.class)`. Do NOT reintroduce
   `FileCacheManager.getDefault()` calls in `ui/`.
+- **tasks/TaskRepositoryController → ui/ (ACCEPTED — deferred)**: `tasks/TaskRepositoryController`
+  reads open projects via `Lookup.getDefault().lookup(PlatformBridge.class).projectContext()`,
+  so it imports `github.anandb.netbeans.ui.platform.PlatformBridge` and
+  `github.anandb.netbeans.ui.platform.ProjectContext` — an upward dependency from a feature
+  controller into the presentation `ui/` layer. The platform seams live in `ui/platform/`; moving
+  the seam interfaces down to `contract/` would touch ~18 `ui/` consumers plus the
+  `DefaultPlatformBridge` adapter, so it is deferred (see `PlatformBridge` MIGRATION.md). The
+  violation is isolated: no `model/`/`contract/`/`support/`/`manager/`/`ui/` imports `tasks/`, and no
+  `manager/`/`model/`/`contract/`/`support/` → `ui/` imports exist. Do NOT add further
+  non-`ui/` consumers of the `ui/platform` seams; obtain open-project data through `ui/platform/`
+  only from `ui/` until the seams are relocated.
 - **New extraction pattern**: When extracting utilities from `ui/` god components, place
   pure logic in `support/` (e.g. `ToolContextExtractor`, `ShortcutUtils`). Keep Swing-coupled code in `ui/`.
 
