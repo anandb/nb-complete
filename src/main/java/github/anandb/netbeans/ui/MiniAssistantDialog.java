@@ -93,6 +93,8 @@ public class MiniAssistantDialog extends JDialog {
     private JTextArea miniContextLabel;
     private JPanel miniPermissionButtons;
     private CompletableFuture<String> activePermissionFuture;
+    private String miniPermissionBaseContext;
+    private boolean miniPermissionParseFailed;
 
     // Navigation state
     private int currentBubbleIndex = -1;
@@ -472,7 +474,10 @@ public class MiniAssistantDialog extends JDialog {
         // typed text in the mini input and buzz the panel to draw attention instead.
         AssistantTopComponent pendingTc = AssistantTopComponent.findInstance();
         if (pendingTc != null && pendingTc.isPermissionPending()) {
-            buzzPermission();
+            // Bring the (possibly missed) pending permission dialog back to the
+            // front so the user can answer it, rather than only buzzing. Without
+            // this the server stays blocked until an idle timeout.
+            pendingTc.resurfacePendingPermission();
             return;
         }
 
@@ -510,15 +515,6 @@ public class MiniAssistantDialog extends JDialog {
             tc.sendMessage();
 
             showSpinner();
-        }
-    }
-
-    /** Buzzes the mini permission panel and beeps to draw attention to a pending request
-     *  (e.g. when the user tries to send a new message while it is showing). */
-    private void buzzPermission() {
-        miniPermissionPanel.buzz();
-        if (!GraphicsEnvironment.isHeadless()) {
-            Toolkit.getDefaultToolkit().beep();
         }
     }
 
@@ -1047,11 +1043,14 @@ public class MiniAssistantDialog extends JDialog {
 
             String contextStr = toolCall != null ? ToolContextExtractor.extractToolContext(toolCall, 64) : null;
             if (contextStr == null) contextStr = "";
+            miniPermissionBaseContext = contextStr;
+            miniPermissionParseFailed = false;
 
             boolean requiresDiff = "edit".equals(toolName)
                     || "replace_file_content".equals(toolName)
                     || "multi_replace_file_content".equals(toolName);
             if (requiresDiff && (fileChanges == null || fileChanges.isEmpty())) {
+                miniPermissionParseFailed = true;
                 if (!contextStr.isEmpty()) contextStr += " - ";
                 contextStr += "Unable to parse diff preview.";
             }
@@ -1188,6 +1187,17 @@ public class MiniAssistantDialog extends JDialog {
                 }
             }
             if (fileChanges != null && !fileChanges.isEmpty()) {
+                // The diff parsed successfully after an async load; drop the
+                // stale "Unable to parse diff preview." fallback message.
+                if (miniPermissionParseFailed) {
+                    miniPermissionParseFailed = false;
+                    if (miniPermissionBaseContext != null && !miniPermissionBaseContext.isEmpty()) {
+                        miniContextLabel.setText(StringUtils.abbreviateMiddle(miniPermissionBaseContext, "...", 130));
+                        miniContextLabel.setVisible(true);
+                    } else {
+                        miniContextLabel.setVisible(false);
+                    }
+                }
                 ColorTheme theme = ThemeManager.getCurrentTheme();
                 JButton showDiffBtn = new JButton(Bundle.BTN_ShowDiff());
                 showDiffBtn.setFocusPainted(false);

@@ -59,9 +59,21 @@ final class PermissionDialogManager {
         return isRequestShowing;
     }
 
-    /** Shakes the sidebar permission panel to draw attention to the pending request. */
+    /** Shakes the sidebar permission panel to draw attention to the pending request.
+     *  If the panel was dismissed without being answered (missed dialog), re-surface it
+     *  and bring the assistant to the front so the user can actually decide. This is the
+     *  only way to get back a permission request whose dialog was missed — otherwise the
+     *  server stays blocked on the tool-call decision until an idle timeout. */
     void buzzPermissionPanel() {
+        if (!permissionPanel.isVisible() && permissionPanel.isRequestActive()) {
+            permissionPanel.resurface();
+        }
         permissionPanel.buzz();
+        AssistantTopComponent top = AssistantTopComponent.findInstance();
+        if (top != null) {
+            top.requestActive();
+            top.toFront();
+        }
     }
 
     void handlePermissionRequest(String sessionId, JsonNode params,

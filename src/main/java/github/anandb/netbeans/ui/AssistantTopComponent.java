@@ -539,6 +539,15 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         return permissionDialogManager != null && permissionDialogManager.isPermissionPending();
     }
 
+    /** Re-surfaces a pending permission request (which may have been missed) and brings
+     *  the assistant to the front so the user can answer it. Used when a new message
+     *  send is blocked while a permission is pending. */
+    public void resurfacePendingPermission() {
+        if (permissionDialogManager != null) {
+            permissionDialogManager.buzzPermissionPanel();
+        }
+    }
+
     /** Dismisses any stuck permission/config-confirm panel so the input is re-enabled.
      *  Invoked on session error (server crash) — see SessionLifecycleHandler. */
     void dismissPendingPermissionUi() {

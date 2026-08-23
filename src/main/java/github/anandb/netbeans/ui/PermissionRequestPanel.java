@@ -810,6 +810,20 @@ final class PermissionRequestPanel extends JPanel {
         return requestActive;
     }
 
+    /**
+     * Re-shows a pending permission request whose panel was dismissed without
+     * being answered (e.g. the assistant window lost focus or the panel was
+     * closed). Re-runs the slide-open animation over the still-active request.
+     * No-op when no request is active. This is the recovery path that lets the
+     * user get back a missed permission dialog instead of leaving the server
+     * hanging until an idle timeout.
+     */
+    void resurface() {
+        if (!requestActive) return;
+        slideOpen();
+        wobbleAnimator.scheduleStart();
+    }
+
     /** Immediately buzzes the panel to draw attention to the pending permission request
      *  (e.g. when the user tries to send a new message while a request is showing).
      *  Triggers a rapid wobble burst and an audible beep (when not headless). */
