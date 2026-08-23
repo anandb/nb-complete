@@ -16,8 +16,10 @@ public final class TasksModel {
     /** Globally-unique connector id (keys the framework's persisted repositories). */
     public static final String CONNECTOR_ID = "beanbot.tasks";
 
-    /** The single fixed query every repository exposes. */
+    /** The fixed queries every repository exposes. */
     public static final String DEFAULT_QUERY_NAME = "All tasks";
+    public static final String OPEN_QUERY_NAME = "Open tasks";
+    public static final String CLOSED_QUERY_NAME = "Closed tasks";
 
     /** RepositoryInfo value key holding the external CSV path. */
     public static final String VALUE_CSV_PATH = "csvPath";
@@ -65,16 +67,29 @@ public final class TasksModel {
     /** The implementation-specific query ({@code Q}); currently a fixed view. */
     public static final class TaskQuery {
 
+        /** The status scope this query shows; {@link #ALL} shows every task. */
+        public enum Kind {
+            ALL,
+            OPEN,
+            CLOSED
+        }
+
         private final String name;
         private final TaskRepository repository;
+        private final Kind kind;
         // Transient, session-only search criteria (not persisted): when non-empty
         // the Find Issues dialog filters the repository's tasks to those carrying
         // at least one of the selected tags.
         private volatile java.util.Set<String> tagFilter = java.util.Set.of();
 
         public TaskQuery(String name, TaskRepository repository) {
+            this(name, repository, Kind.ALL);
+        }
+
+        public TaskQuery(String name, TaskRepository repository, Kind kind) {
             this.name = name;
             this.repository = repository;
+            this.kind = kind == null ? Kind.ALL : kind;
         }
 
         public String getName() {
@@ -83,6 +98,10 @@ public final class TasksModel {
 
         public TaskRepository getRepository() {
             return repository;
+        }
+
+        public Kind getKind() {
+            return kind;
         }
 
         public java.util.Set<String> getTagFilter() {

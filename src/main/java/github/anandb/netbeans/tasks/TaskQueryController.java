@@ -5,18 +5,14 @@ import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
-import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
-import javax.swing.BorderFactory;
 import javax.swing.JButton;
-import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JTextField;
 import org.netbeans.modules.bugtracking.spi.QueryController;
 import org.openide.util.HelpCtx;
 import org.openide.util.Lookup;
@@ -43,7 +39,7 @@ public final class TaskQueryController implements QueryController {
     private final TaskQueryProvider provider;
     private final TaskQuery query;
     private final PropertyChangeSupport pcs = new PropertyChangeSupport(this);
-    private final TagFilterEditor editor = new TagFilterEditor();
+    private final TagsEditor editor = new TagsEditor();
     private JComponent component;
 
     public TaskQueryController(TaskQueryProvider provider, TaskQuery query) {
@@ -167,135 +163,5 @@ public final class TaskQueryController implements QueryController {
             }
         }
         return tags;
-    }
-
-    /** Chip-based multi-select: selected tags shown as removable pills + a suggestions dropdown. */
-    private static final class TagFilterEditor extends JPanel {
-
-        private final LinkedHashSet<String> selected = new LinkedHashSet<>();
-        private final Set<String> available = new LinkedHashSet<>();
-        private final JPanel tagField = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 4, 2));
-        private final JTextField field = new JTextField(14);
-        private final JComboBox<String> suggestions = new JComboBox<>();
-        private final List<Runnable> changeListeners = new ArrayList<>();
-
-        TagFilterEditor() {
-            super(new GridBagLayout());
-            GridBagConstraints g = new GridBagConstraints();
-            g.insets = new Insets(2, 0, 2, 0);
-            g.gridy = 0;
-            g.gridx = 0;
-            g.weightx = 0;
-            g.fill = GridBagConstraints.NONE;
-            g.anchor = GridBagConstraints.WEST;
-            tagField.setBorder(BorderFactory.createEmptyBorder(1, 1, 1, 1));
-            add(tagField, g);
-
-            g.gridx = 1;
-            g.weightx = 0;
-            g.fill = GridBagConstraints.NONE;
-            suggestions.setPrototypeDisplayValue("help wanted");
-            suggestions.setPreferredSize(new java.awt.Dimension(160, suggestions.getPreferredSize().height));
-            add(suggestions, g);
-
-            field.addActionListener(e -> {
-                addTag(field.getText());
-                field.setText("");
-            });
-            suggestions.addActionListener(e -> {
-                Object sel = suggestions.getSelectedItem();
-                if (sel != null) {
-                    addTag(sel.toString());
-                }
-                suggestions.setSelectedIndex(-1);
-            });
-            refresh();
-        }
-
-        void setAvailableTags(Set<String> tags) {
-            available.clear();
-            available.addAll(tags);
-            suggestions.removeAllItems();
-            for (String t : available) {
-                suggestions.addItem(t);
-            }
-        }
-
-        void setSelectedTags(Set<String> tags) {
-            selected.clear();
-            if (tags != null) {
-                selected.addAll(tags);
-            }
-            refresh();
-        }
-
-        Set<String> getSelectedTags() {
-            return new LinkedHashSet<>(selected);
-        }
-
-        void addChangeListener(Runnable r) {
-            changeListeners.add(r);
-        }
-
-        private void addTag(String raw) {
-            String tag = raw == null ? "" : raw.trim();
-            if (tag.isEmpty()) {
-                return;
-            }
-            boolean exists = selected.stream().anyMatch(v -> v.equalsIgnoreCase(tag));
-            if (!exists) {
-                selected.add(tag);
-                refresh();
-                notifyChanged();
-            }
-        }
-
-        private void removeTag(String raw) {
-            String tag = raw == null ? "" : raw.trim();
-            if (tag.isEmpty()) {
-                return;
-            }
-            String match = selected.stream()
-                    .filter(v -> v.equalsIgnoreCase(tag)).findFirst().orElse(null);
-            if (match != null) {
-                selected.remove(match);
-                refresh();
-                notifyChanged();
-            }
-        }
-
-        private void refresh() {
-            tagField.removeAll();
-            for (String tag : selected) {
-                tagField.add(buildChip(tag));
-            }
-            tagField.add(field);
-            tagField.revalidate();
-            tagField.repaint();
-        }
-
-        private JPanel buildChip(String tag) {
-            JPanel chip = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 2, 0));
-            chip.setBorder(BorderFactory.createCompoundBorder(
-                    BorderFactory.createLineBorder(new java.awt.Color(52, 120, 246), 1, true),
-                    BorderFactory.createEmptyBorder(1, 5, 1, 3)));
-            chip.setBackground(new java.awt.Color(52, 120, 246, 40));
-            chip.add(new JLabel(tag));
-            JButton remove = new JButton("x");
-            remove.setBorderPainted(false);
-            remove.setContentAreaFilled(false);
-            remove.setFocusPainted(false);
-            remove.setMargin(new Insets(0, 2, 0, 2));
-            remove.setToolTipText("Remove " + tag);
-            remove.addActionListener(ev -> removeTag(tag));
-            chip.add(remove);
-            return chip;
-        }
-
-        private void notifyChanged() {
-            for (Runnable r : changeListeners) {
-                r.run();
-            }
-        }
     }
 }

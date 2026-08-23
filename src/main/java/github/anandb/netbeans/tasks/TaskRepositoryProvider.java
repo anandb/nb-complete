@@ -124,7 +124,10 @@ public final class TaskRepositoryProvider implements RepositoryProvider<TaskRepo
 
     @Override
     public Collection<TaskQuery> getQueries(TaskRepository r) {
-        return List.of(new TaskQuery(TasksModel.DEFAULT_QUERY_NAME, r));
+        return List.of(
+            new TaskQuery(TasksModel.DEFAULT_QUERY_NAME, r, TaskQuery.Kind.ALL),
+            new TaskQuery(TasksModel.OPEN_QUERY_NAME, r, TaskQuery.Kind.OPEN),
+            new TaskQuery(TasksModel.CLOSED_QUERY_NAME, r, TaskQuery.Kind.CLOSED));
     }
 
     @Override
