@@ -72,7 +72,7 @@ src/main/java/github/anandb/netbeans/ui/Bundle.properties
 .opencode/
 .vscode/
 .graymatter/
-tasks/
+/tasks/
 research/
 __pycache__/
 
@@ -86,3 +86,5 @@ _bmad/
 
 *.twee
 .serena/
+_bmad-output/
+.node-version

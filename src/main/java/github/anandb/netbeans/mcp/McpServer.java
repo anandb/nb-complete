@@ -52,6 +52,9 @@ public class McpServer {
         ProjectToolProvider projectTools = new ProjectToolProvider();
         projectTools.registerTools(mcpTools);
 
+        TaskToolProvider taskTools = new TaskToolProvider();
+        taskTools.registerTools(mcpTools);
+
         server = new Server(0);
 
         connector = new ServerConnector(server);
