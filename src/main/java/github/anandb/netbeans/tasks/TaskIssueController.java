@@ -1,6 +1,6 @@
 package github.anandb.netbeans.tasks;
 
-import java.awt.BorderLayout;
+import java.awt.Component;
 import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -9,17 +9,20 @@ import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
 
+import javax.swing.BorderFactory;
 import javax.swing.JButton;
-import javax.swing.JComponent;
 import javax.swing.JComboBox;
+import javax.swing.JComponent;
 import javax.swing.JLabel;
+import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
+import javax.swing.ListCellRenderer;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 
@@ -220,6 +223,7 @@ public final class TaskIssueController implements IssueController {
         descArea = new JTextArea(6, 30);
         descArea.setLineWrap(true);
         statusBox = new JComboBox<>(TaskStatus.values());
+        statusBox.setRenderer(new TaskStatusRenderer());
         priorityBox = new JComboBox<>(PRIORITIES);
         tagsEditor = new TagsEditor();
 
@@ -299,10 +303,32 @@ public final class TaskIssueController implements IssueController {
         }
     }
 
+    /** Renders a {@link TaskStatus} using its lowercase display label. */
+    private static final class TaskStatusRenderer extends JLabel
+            implements ListCellRenderer<TaskStatus> {
+
+        @Override
+        public Component getListCellRendererComponent(JList<? extends TaskStatus> list,
+                TaskStatus value, int index, boolean isSelected, boolean cellHasFocus) {
+            setText(value == null ? "" : value.display());
+            if (isSelected) {
+                setBackground(list.getSelectionBackground());
+                setForeground(list.getSelectionForeground());
+                setOpaque(true);
+            } else {
+                setBackground(list.getBackground());
+                setForeground(list.getForeground());
+                setOpaque(false);
+            }
+            return this;
+        }
+    }
+
     /**
-     * Multi-select tag editor: a text field holding comma-separated tags plus a
-     * combobox of predefined values; picking one appends it (avoiding
-     * duplicates). The text field remains editable so new tags can be typed.
+     * Chip-based multi-select tag editor. Selected tags are shown as removable
+     * pills; a combobox of predefined suggestions adds a tag on selection, and a
+     * free-text field adds custom tags on Enter. State is kept as a
+     * case-insensitive, order-preserving set and serialized comma-separated.
      */
     private static final class TagsEditor extends JPanel {
 
@@ -311,66 +337,129 @@ public final class TaskIssueController implements IssueController {
             "enhancement", "feedback", "invalid", "wontfix"
         };
 
-        private final JTextField field = new JTextField(30);
-        private final JComboBox<String> picker = new JComboBox<>(PREDEFINED_TAGS);
+        private final LinkedHashSet<String> selected = new LinkedHashSet<>();
+        private final JPanel tagField = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
+        private final JTextField field = new JTextField(14);
+        private final JComboBox<String> suggestions = new JComboBox<>(PREDEFINED_TAGS);
         private final List<Runnable> changeListeners = new ArrayList<>();
 
         TagsEditor() {
-            super(new BorderLayout(4, 0));
-            field.setToolTipText("Comma-separated tags (type to add your own)");
-            add(field, BorderLayout.CENTER);
-            add(picker, BorderLayout.EAST);
-            field.getDocument().addDocumentListener(new DocumentListener() {
-                @Override
-                public void insertUpdate(DocumentEvent e) {
-                    notifyChanged();
-                }
+            super(new GridBagLayout());
+            GridBagConstraints g = new GridBagConstraints();
+            g.insets = new Insets(2, 0, 2, 0);
+            g.gridy = 0;
+            g.gridx = 0;
+            g.weightx = 1;
+            g.fill = GridBagConstraints.HORIZONTAL;
+            g.anchor = GridBagConstraints.WEST;
 
-                @Override
-                public void removeUpdate(DocumentEvent e) {
-                    notifyChanged();
-                }
+            // The tags field shows the selected-tag pills inline, with the free-text
+            // input on the right so custom tags can be typed into the same box.
+            tagField.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(ColorPalette.TAG_BORDER, 1, true),
+                    BorderFactory.createEmptyBorder(2, 3, 2, 3)));
+            add(tagField, g);
 
-                @Override
-                public void changedUpdate(DocumentEvent e) {
-                    notifyChanged();
-                }
+            // Suggestions combobox sits on the same row, to the right of the field.
+            g.gridx = 1;
+            g.weightx = 0;
+            g.fill = GridBagConstraints.NONE;
+            suggestions.setPrototypeDisplayValue("help wanted");
+            add(suggestions, g);
+
+            field.addActionListener(e -> {
+                addTag(field.getText());
+                field.setText("");
             });
-            picker.addActionListener(e -> appendSelected());
+            // Choosing a suggestion adds it (deduped) and resets the picker so it
+            // can be chosen again without first selecting another item.
+            suggestions.addActionListener(e -> {
+                Object sel = suggestions.getSelectedItem();
+                if (sel != null) {
+                    addTag(sel.toString());
+                }
+                suggestions.setSelectedIndex(-1);
+            });
+            refresh();
         }
 
         String getTags() {
-            return field.getText().trim();
+            return String.join(", ", selected);
         }
 
         void setTags(String tags) {
-            field.setText(tags == null ? "" : tags);
+            selected.clear();
+            if (tags != null) {
+                for (String t : tags.split(",")) {
+                    String v = t.trim();
+                    if (!v.isEmpty()) {
+                        selected.add(v);
+                    }
+                }
+            }
+            refresh();
         }
 
         void addChangeListener(Runnable r) {
             changeListeners.add(r);
         }
 
-        private void appendSelected() {
-            Object sel = picker.getSelectedItem();
-            if (sel == null) {
+        private void addTag(String raw) {
+            String tag = raw == null ? "" : raw.trim();
+            if (tag.isEmpty()) {
                 return;
             }
-            String tag = sel.toString().trim();
-            java.util.List<String> tags = new ArrayList<>(Arrays.asList(field.getText().split(",")));
-            List<String> cleaned = new ArrayList<>();
-            for (String t : tags) {
-                String v = t.trim();
-                if (!v.isEmpty()) {
-                    cleaned.add(v);
-                }
+            // dedupe case-insensitively, keep first-seen canonical form
+            boolean exists = selected.stream().anyMatch(v -> v.equalsIgnoreCase(tag));
+            if (!exists) {
+                selected.add(tag);
+                refresh();
+                notifyChanged();
             }
-            boolean present = cleaned.stream().anyMatch(v -> v.equalsIgnoreCase(tag));
-            if (!present) {
-                cleaned.add(tag);
-                field.setText(String.join(", ", cleaned));
+        }
+
+        private void removeTag(String raw) {
+            String tag = raw == null ? "" : raw.trim();
+            if (tag.isEmpty()) {
+                return;
             }
-            picker.setSelectedIndex(-1);
+            String match = selected.stream()
+                    .filter(v -> v.equalsIgnoreCase(tag)).findFirst().orElse(null);
+            if (match != null) {
+                selected.remove(match);
+                refresh();
+                notifyChanged();
+            }
+        }
+
+        private void refresh() {
+            tagField.removeAll();
+            for (String tag : selected) {
+                tagField.add(buildChip(tag));
+            }
+            // Keep the text field as the trailing element so custom tags are typed
+            // inline after the pills.
+            tagField.add(field);
+            tagField.revalidate();
+            tagField.repaint();
+        }
+
+        private JPanel buildChip(String tag) {
+            JPanel chip = new JPanel(new FlowLayout(FlowLayout.LEFT, 2, 0));
+            chip.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(ColorPalette.TAG_BORDER, 1, true),
+                    BorderFactory.createEmptyBorder(1, 5, 1, 3)));
+            chip.setBackground(ColorPalette.TAG_BG);
+            chip.add(new JLabel(tag));
+            JButton remove = new JButton("x");
+            remove.setBorderPainted(false);
+            remove.setContentAreaFilled(false);
+            remove.setFocusPainted(false);
+            remove.setMargin(new Insets(0, 2, 0, 2));
+            remove.setToolTipText("Remove " + tag);
+            remove.addActionListener(ev -> removeTag(tag));
+            chip.add(remove);
+            return chip;
         }
 
         private void notifyChanged() {
@@ -378,5 +467,11 @@ public final class TaskIssueController implements IssueController {
                 r.run();
             }
         }
+    }
+
+    /** Small palette so the chip colours track the active theme. */
+    private static final class ColorPalette {
+        static final java.awt.Color TAG_BG = new java.awt.Color(52, 120, 246, 40);
+        static final java.awt.Color TAG_BORDER = new java.awt.Color(52, 120, 246);
     }
 }

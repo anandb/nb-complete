@@ -23,6 +23,11 @@ public enum TaskStatus {
         return value;
     }
 
+    /** Human-readable label shown in the UI (lowercase, e.g. "in-progress"). */
+    public String display() {
+        return value;
+    }
+
     /** Maps a stored status string to this enum, defaulting to {@link #OPEN}. */
     public static TaskStatus fromValue(String status) {
         if (status == null) {
