@@ -19,8 +19,6 @@ import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.ListCellRenderer;
 import javax.swing.event.DocumentEvent;
@@ -55,7 +53,6 @@ public final class TaskIssueController implements IssueController {
     private final PropertyChangeSupport pcs = new PropertyChangeSupport(this);
 
     private JTextField summaryField;
-    private JTextArea descArea;
     private JComboBox<TaskStatus> statusBox;
     private JComboBox<String> priorityBox;
     private TagsEditor tagsEditor;
@@ -157,8 +154,11 @@ public final class TaskIssueController implements IssueController {
         return summaryField == null ? "" : summaryField.getText().trim();
     }
 
+    // Description is no longer editable in this form (the field was removed).
+    // Preserve the record's existing value rather than blanking it on save.
     private String description() {
-        return descArea == null ? "" : descArea.getText().trim();
+        TaskRecord r = issue.getRecord();
+        return r == null ? "" : (r.description() == null ? "" : r.description());
     }
 
     private String status() {
@@ -191,9 +191,6 @@ public final class TaskIssueController implements IssueController {
         if (summaryField != null) {
             summaryField.setText(r.summary());
         }
-        if (descArea != null) {
-            descArea.setText(r.description());
-        }
         if (statusBox != null) {
             statusBox.setSelectedItem(TaskStatus.fromValue(r.status()));
         }
@@ -220,8 +217,6 @@ public final class TaskIssueController implements IssueController {
 
     private JComponent buildComponent() {
         summaryField = new JTextField(30);
-        descArea = new JTextArea(6, 30);
-        descArea.setLineWrap(true);
         statusBox = new JComboBox<>(TaskStatus.values());
         statusBox.setRenderer(new TaskStatusRenderer());
         priorityBox = new JComboBox<>(PRIORITIES);
@@ -244,7 +239,6 @@ public final class TaskIssueController implements IssueController {
             }
         };
         summaryField.getDocument().addDocumentListener(dl);
-        descArea.getDocument().addDocumentListener(dl);
         priorityBox.addActionListener(ev -> markChanged());
         statusBox.addActionListener(ev -> markChanged());
         tagsEditor.addChangeListener(() -> markChanged());
@@ -252,38 +246,27 @@ public final class TaskIssueController implements IssueController {
         JPanel panel = new JPanel(new GridBagLayout());
         GridBagConstraints g = new GridBagConstraints();
         g.insets = new Insets(3, 4, 3, 4);
-        g.anchor = GridBagConstraints.WEST;
+        g.anchor = GridBagConstraints.NORTHWEST;
         g.fill = GridBagConstraints.HORIZONTAL;
         g.gridx = 0;
 
         addRow(panel, g, 0, "Summary*:", summaryField);
-        g.gridy = 1;
-        g.gridx = 0;
-        g.weightx = 0;
-        panel.add(new JLabel("Description:"), g);
-        g.gridx = 1;
-        g.weightx = 1;
-        panel.add(new JScrollPane(descArea), g);
-        g.gridx = 0;
-        g.weightx = 0;
-        addRow(panel, g, 2, "Status:", statusBox);
-        addRow(panel, g, 3, "Priority:", priorityBox);
-        addRow(panel, g, 4, "Tags:", tagsEditor);
+        addRow(panel, g, 1, "Status:", statusBox);
+        addRow(panel, g, 2, "Priority:", priorityBox);
+        addRow(panel, g, 3, "Tags:", tagsEditor);
 
-        JButton saveBtn = new JButton("Save");
-        saveBtn.addActionListener(ev -> saveChanges());
-        JButton discardBtn = new JButton("Discard");
-        discardBtn.addActionListener(ev -> discardUnsavedChanges());
-        JPanel buttonRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 4));
-        buttonRow.add(saveBtn);
-        buttonRow.add(discardBtn);
-        g.gridy = 6;
-        g.gridx = 0;
-        g.gridwidth = 2;
-        g.weightx = 0;
-        panel.add(buttonRow, g);
-        g.gridwidth = 1;
-        return panel;
+        // No in-form Save/Cancel buttons: the bugtracking framework supplies the
+        // standard Save action (enabled when isChanged() reports a change) and
+        // the close-time "Task has changes. Save?" prompt via IssueSavable.
+        // Keeping to the framework's defaults avoids a competing Save path and
+        // duplicate warn-on-close logic.
+
+        // Wrap in a top-aligned BorderLayout so the form sits at the top of the
+        // editor area and any extra vertical space falls below (not above) the
+        // form, instead of the GridBagLayout panel being vertically centered.
+        JPanel wrapper = new JPanel(new java.awt.BorderLayout());
+        wrapper.add(panel, java.awt.BorderLayout.NORTH);
+        return wrapper;
     }
 
     private void addRow(JPanel panel, GridBagConstraints g, int y, String label, JComponent field) {
@@ -355,16 +338,18 @@ public final class TaskIssueController implements IssueController {
 
             // The tags field shows the selected-tag pills inline, with the free-text
             // input on the right so custom tags can be typed into the same box.
-            tagField.setBorder(BorderFactory.createCompoundBorder(
-                    BorderFactory.createLineBorder(ColorPalette.TAG_BORDER, 1, true),
-                    BorderFactory.createEmptyBorder(2, 3, 2, 3)));
+            // No outer border: the chips carry their own outline, so an extra box
+            // around the whole field just adds visual noise.
+            tagField.setBorder(BorderFactory.createEmptyBorder(1, 1, 1, 1));
             add(tagField, g);
 
-            // Suggestions combobox sits on the same row, to the right of the field.
+            // Suggestions combobox sits on the same row, to the right of the field,
+            // widened to a fixed preferred size so its dropdown is comfortably usable.
             g.gridx = 1;
             g.weightx = 0;
             g.fill = GridBagConstraints.NONE;
             suggestions.setPrototypeDisplayValue("help wanted");
+            suggestions.setPreferredSize(new java.awt.Dimension(160, suggestions.getPreferredSize().height));
             add(suggestions, g);
 
             field.addActionListener(e -> {

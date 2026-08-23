@@ -67,6 +67,10 @@ public final class TasksModel {
 
         private final String name;
         private final TaskRepository repository;
+        // Transient, session-only search criteria (not persisted): when non-empty
+        // the Find Issues dialog filters the repository's tasks to those carrying
+        // at least one of the selected tags.
+        private volatile java.util.Set<String> tagFilter = java.util.Set.of();
 
         public TaskQuery(String name, TaskRepository repository) {
             this.name = name;
@@ -79,6 +83,14 @@ public final class TasksModel {
 
         public TaskRepository getRepository() {
             return repository;
+        }
+
+        public java.util.Set<String> getTagFilter() {
+            return tagFilter;
+        }
+
+        public void setTagFilter(java.util.Set<String> tagFilter) {
+            this.tagFilter = tagFilter == null ? java.util.Set.of() : tagFilter;
         }
     }
 }
