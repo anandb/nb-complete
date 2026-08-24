@@ -9,7 +9,6 @@ class TaskStatusTest {
     @Test
     void mapsKnownValues() {
         assertEquals(TaskStatus.OPEN, TaskStatus.fromValue("open"));
-        assertEquals(TaskStatus.IN_PROGRESS, TaskStatus.fromValue("in-progress"));
         assertEquals(TaskStatus.CLOSED, TaskStatus.fromValue("closed"));
     }
 
@@ -19,6 +18,7 @@ class TaskStatusTest {
         assertEquals(TaskStatus.OPEN, TaskStatus.fromValue("completed"));
         assertEquals(TaskStatus.OPEN, TaskStatus.fromValue("finished"));
         assertEquals(TaskStatus.OPEN, TaskStatus.fromValue("cancelled"));
+        assertEquals(TaskStatus.OPEN, TaskStatus.fromValue("in-progress"));
     }
 
     @Test
@@ -31,7 +31,6 @@ class TaskStatusTest {
     @Test
     void valueRoundTripsLowercase() {
         assertEquals("open", TaskStatus.OPEN.value());
-        assertEquals("in-progress", TaskStatus.IN_PROGRESS.value());
         assertEquals("closed", TaskStatus.CLOSED.value());
     }
 }

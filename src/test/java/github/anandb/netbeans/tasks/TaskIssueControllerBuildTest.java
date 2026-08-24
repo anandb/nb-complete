@@ -30,8 +30,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class TaskIssueControllerBuildTest {
 
     private static TaskRecord rec(String id, String status, String summary) {
-        return new TaskRecord(id, status, "normal", summary, "desc", "", "bug, help wanted", "",
-            List.of(), "2026-08-01T00:00:00Z", "2026-08-01T00:00:00Z");
+        return new TaskRecord(id, status, "N", summary, List.of("bug", "help wanted"),
+            List.of(), "", 0, 0, "2026-08-01", "2026-08-01T00:00:00Z");
     }
 
     @Test
@@ -54,15 +54,15 @@ class TaskIssueControllerBuildTest {
     @Test
     void statusComboIsEnumDrivenAndPopulated() {
         TaskIssueProvider provider = new TaskIssueProvider();
-        TaskIssue issue = new TaskIssue("r1", rec("t-2", "in-progress", "Edit tags"));
+        TaskIssue issue = new TaskIssue("r1", rec("t-2", "closed", "Edit tags"));
         TaskIssueController ctrl = new TaskIssueController(null, provider, issue);
         ctrl.getComponent();
 
         // Reach into the built component to confirm the status dropdown is the enum.
         JComboBox<TaskStatus> statusBox = findStatusBox(ctrl.getComponent());
         assertNotNull(statusBox, "status combo must be present");
-        assertSame(TaskStatus.IN_PROGRESS, statusBox.getSelectedItem(),
-            "existing in-progress task must select the matching enum value");
+        assertSame(TaskStatus.CLOSED, statusBox.getSelectedItem(),
+            "existing closed task must select the matching enum value");
         assertTrue(statusBox.getItemCount() == TaskStatus.values().length,
             "status combo must offer exactly the enum values");
     }

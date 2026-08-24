@@ -21,8 +21,8 @@ public final class TasksModel {
     public static final String OPEN_QUERY_NAME = "Open tasks";
     public static final String CLOSED_QUERY_NAME = "Closed tasks";
 
-    /** RepositoryInfo value key holding the external CSV path. */
-    public static final String VALUE_CSV_PATH = "csvPath";
+    /** RepositoryInfo value key holding the external tasks-file (todo.txt) path. */
+    public static final String VALUE_TASKS_PATH = "tasksPath";
 
     private TasksModel() {
     }

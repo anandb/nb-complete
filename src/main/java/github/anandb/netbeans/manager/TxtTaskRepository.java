@@ -24,12 +24,12 @@ import github.anandb.netbeans.contract.TaskInput;
 import github.anandb.netbeans.contract.TaskRepositoryControl;
 import github.anandb.netbeans.model.TaskRecord;
 import github.anandb.netbeans.support.Logger;
-import github.anandb.netbeans.support.TaskCsvCodec;
+import github.anandb.netbeans.support.TaskTxtCodec;
 import github.anandb.netbeans.support.TasksMetadata;
 
 /**
- * CSV-backed store for all Beanbot Tasks repositories. Single Lookup-registered
- * instance implementing {@link TaskRepositoryControl}.
+ * todo.txt-backed store for all Beanbot Tasks repositories. Single
+ * Lookup-registered instance implementing {@link TaskRepositoryControl}.
  *
  * <p>All calls mutate the in-memory cache synchronously and schedule the file
  * write on a background {@link RequestProcessor}; no file I/O happens on the
@@ -39,19 +39,19 @@ import github.anandb.netbeans.support.TasksMetadata;
  * re-synchronized from disk.</p>
  */
 @ServiceProvider(service = TaskRepositoryControl.class)
-public final class CsvTaskRepository implements TaskRepositoryControl {
+public final class TxtTaskRepository implements TaskRepositoryControl {
 
-    private static final Logger LOG = Logger.from(CsvTaskRepository.class);
+    private static final Logger LOG = Logger.from(TxtTaskRepository.class);
 
     /**
-     * File-modification snapshot keyed by canonical CSV path. Shared across all
+     * File-modification snapshot keyed by canonical path. Shared across all
      * repository states that point at the same file, so multiple repositories
-     * on one CSV don't treat each other's writes as external changes (which
+     * on one file don't treat each other's writes as external changes (which
      * would otherwise trigger false overwrite-conflicts).
      */
     private static final Map<String, long[]> FILE_STATS = new ConcurrentHashMap<>();
 
-    private final RequestProcessor io = new RequestProcessor("BeanbotTasks-Csv", 1, true);
+    private final RequestProcessor io = new RequestProcessor("BeanbotTasks-Txt", 1, true);
 
     private final List<RepositoryListener> listeners = new CopyOnWriteArrayList<>();
     private final List<RepoState> state = new CopyOnWriteArrayList<>();
@@ -148,11 +148,11 @@ public final class CsvTaskRepository implements TaskRepositoryControl {
             orEmpty(input == null ? null : input.status()),
             orEmpty(input == null ? null : input.priority()),
             orEmpty(input == null ? null : input.summary()),
-            orEmpty(input == null ? null : input.description()),
-            orEmpty(input == null ? null : input.filePath()),
-            orEmpty(input == null ? null : input.tags()),
+            input == null ? List.of() : input.tagsList(),
+            input == null ? List.of() : input.projectsList(),
             orEmpty(input == null ? null : input.dueDate()),
-            List.of(),
+            input == null ? 0 : input.estimate(),
+            input == null ? 0 : input.consumed(),
             now,
             now);
         synchronized (s) {
@@ -201,8 +201,8 @@ public final class CsvTaskRepository implements TaskRepositoryControl {
             for (int i = 0; i < s.cache.size(); i++) {
                 if (s.cache.get(i).id().equals(task.id())) {
                     TaskRecord updated = new TaskRecord(task.id(), task.status(), task.priority(),
-                        task.summary(), task.description(), task.filePath(), task.tags(),
-                        task.dueDate(), task.subtasks(), task.createdAt(), Instant.now().toString());
+                        task.summary(), task.tags(), task.projects(), task.dueDate(),
+                        task.estimate(), task.consumed(), task.createdAt(), Instant.now().toString());
                     s.cache.set(i, updated);
                     s.gen++;
                     existed = true;
@@ -278,7 +278,7 @@ public final class CsvTaskRepository implements TaskRepositoryControl {
         io.post(() -> loadSync(s));
     }
 
-    /** Loads the repository CSV from disk into the cache and updates the snapshot. */
+    /** Loads the repository todo.txt from disk into the cache and updates the snapshot. */
     private boolean loadSync(RepoState s) {
         File f = new File(s.csvPath);
         List<TaskRecord> loaded = new ArrayList<>();
@@ -300,7 +300,7 @@ public final class CsvTaskRepository implements TaskRepositoryControl {
             long lm = f.lastModified();
             long sz = f.length();
             String content = Files.readString(f.toPath(), StandardCharsets.UTF_8);
-            loaded = new ArrayList<>(TaskCsvCodec.parse(content));
+            loaded = new ArrayList<>(TaskTxtCodec.parse(content));
             synchronized (s) {
                 // Do not clobber tasks mutated while this load was in flight.
                 if (s.gen == s.genAtLoadStart) {
@@ -312,7 +312,7 @@ public final class CsvTaskRepository implements TaskRepositoryControl {
             markFileStat(s.csvPath, lm, sz);
             LOG.fine("Loaded {0} tasks from {1}", loaded.size(), s.csvPath);
         } catch (IOException | RuntimeException ex) {
-            LOG.warn("Failed to load tasks CSV {0}: {1}", s.csvPath, ex.getMessage());
+            LOG.warn("Failed to load tasks file {0}: {1}", s.csvPath, ex.getMessage());
             return false;
         }
         fire(s.repoId, ChangeType.RELOADED, null);
@@ -345,7 +345,7 @@ public final class CsvTaskRepository implements TaskRepositoryControl {
         }
         if (conflict && !confirmOverwrite(f)) {
             // User declined — drop the optimistic change and resync from disk.
-            LOG.warn("CSV {0} changed externally; discard local change", f.getPath());
+            LOG.warn("File {0} changed externally; discard local change", f.getPath());
             loadSync(s);
             DialogDisplayer.getDefault().notifyLater(new NotifyDescriptor.Message(
                 "The local change to " + f.getName() + " was discarded because the file was modified outside the IDE.",
@@ -355,7 +355,7 @@ public final class CsvTaskRepository implements TaskRepositoryControl {
         try {
             String content;
             synchronized (s) {
-                content = TaskCsvCodec.serialize(s.cache);
+                content = TaskTxtCodec.serialize(s.cache);
             }
             File parent = f.getParentFile();
             if (parent != null && !parent.exists()) {
@@ -368,7 +368,7 @@ public final class CsvTaskRepository implements TaskRepositoryControl {
             }
             markFileStat(s.csvPath, f.lastModified(), f.length());
         } catch (IOException | RuntimeException ex) {
-            LOG.warn("Failed to write tasks CSV {0}: {1}", f.getPath(), ex.getMessage());
+            LOG.warn("Failed to write tasks file {0}: {1}", f.getPath(), ex.getMessage());
         }
     }
 

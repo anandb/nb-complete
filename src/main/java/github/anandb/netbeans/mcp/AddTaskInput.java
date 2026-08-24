@@ -7,10 +7,11 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 public record AddTaskInput(
     String repoId,
     String summary,
-    String description,
     String status,
     String priority,
-    String filePath,
+    String projects,
     String tags,
-    String dueDate
+    String dueDate,
+    Integer estimate,
+    Integer consumed
 ) {}

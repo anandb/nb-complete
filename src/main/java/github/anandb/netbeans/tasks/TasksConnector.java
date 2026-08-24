@@ -18,15 +18,15 @@ import org.openide.util.Lookup;
  * {@code @BugtrackingConnector.Registration} (the Processor in the bugtracking
  * module turns it into a {@code Services/Bugtracking} layer entry).
  *
- * <p>Each repository owns one external CSV file whose path is stored in its
- * {@link RepositoryInfo}; the connector restores repositories on startup via
- * {@link #createRepository(RepositoryInfo)} and registers them with the CSV
- * store.</p>
+ * <p>Each repository owns one external todo.txt file whose path is stored in
+ * its {@link RepositoryInfo}; the connector restores repositories on startup
+ * via {@link #createRepository(RepositoryInfo)} and registers them with the
+ * tasks store.</p>
  */
 @BugtrackingConnector.Registration(
     id = TasksModel.CONNECTOR_ID,
-    displayName = "Beanbot Tasks",
-    tooltip = "Beanbot Tasks repositories backed by CSV files.",
+    displayName = "BeanBot",
+    tooltip = "BeanBot Tasks repositories backed by todo.txt files.",
     iconPath = "github/anandb/netbeans/tasks/icons/tasks.png",
     providesRepositoryManagement = true
 )
@@ -52,12 +52,12 @@ public final class TasksConnector implements BugtrackingConnector {
     public Repository createRepository(RepositoryInfo info) {
         TaskRepository r = new TaskRepository();
         r.setRepositoryId(info.getID());
-        r.setCsvPath(info.getValue(TasksModel.VALUE_CSV_PATH));
+        r.setCsvPath(info.getValue(TasksModel.VALUE_TASKS_PATH));
         r.setDisplayName(info.getDisplayName());
         TaskRepositoryControl s = Lookup.getDefault().lookup(TaskRepositoryControl.class);
         if (s != null && info.getID() != null) {
             s.registerRepository(info.getID(),
-                info.getValue(TasksModel.VALUE_CSV_PATH), info.getDisplayName());
+                info.getValue(TasksModel.VALUE_TASKS_PATH), info.getDisplayName());
         }
         return support.createRepository(r, null, scheduleProvider, priorityProvider, null);
     }
@@ -77,7 +77,7 @@ public final class TasksConnector implements BugtrackingConnector {
         // pointing at the same CSV) doesn't re-create duplicate repositories.
         java.util.Set<String> claimed = new java.util.HashSet<>();
         for (String id : TasksMetadata.allIds()) {
-            String csvPath = TasksMetadata.csvPathOf(id);
+            String csvPath = TasksMetadata.tasksPathOf(id);
             if (csvPath.isEmpty()) {
                 continue;
             }
@@ -88,7 +88,7 @@ public final class TasksConnector implements BugtrackingConnector {
                 continue;
             }
             if (!claimed.add(canonical)) {
-                // Another repository already owns this CSV path — do not duplicate it.
+                // Another repository already owns this tasks file — do not duplicate it.
                 continue;
             }
             TaskRepository r = new TaskRepository();

@@ -42,9 +42,10 @@ import org.openide.util.Lookup;
 
 /**
  * Create/edit-repository panel: user provides the display name and the external
- * CSV path (prompted via a file chooser). On {@link #applyChanges()} the values
- * are written to the {@link TaskRepository}, an id is assigned on first save,
- * and the backing store registers the repository.
+ * tasks-file (todo.txt) path (prompted via a file chooser). On
+ * {@link #applyChanges()} the values are written to the {@link TaskRepository},
+ * an id is assigned on first save, and the backing store registers the
+ * repository.
  */
 public final class TaskRepositoryController implements RepositoryController {
 
@@ -114,7 +115,7 @@ public final class TaskRepositoryController implements RepositoryController {
             if (id.equals(myId)) {
                 continue;
             }
-            if (canonical.equals(canonical(TasksMetadata.csvPathOf(id)))) {
+            if (canonical.equals(canonical(TasksMetadata.tasksPathOf(id)))) {
                 return true;
             }
         }
@@ -139,7 +140,7 @@ public final class TaskRepositoryController implements RepositoryController {
 
     /**
      * For a brand-new repository, pre-fill the display name with the current
-     * project's name and the path with {@code beanbot_tasks.csv} in its root.
+     * project's name and the path with {@code beanbot_tasks.txt} in its root.
      * The user may override either value.
      */
     private void applyDefaultsIfNew() {
@@ -159,7 +160,7 @@ public final class TaskRepositoryController implements RepositoryController {
         if (pathField.getText().trim().isEmpty()) {
             File root = FileUtil.toFile(current.getProjectDirectory());
             if (root != null) {
-                pathField.setText(new File(root, "beanbot_tasks.csv").getAbsolutePath());
+                pathField.setText(new File(root, "beanbot_tasks.txt").getAbsolutePath());
             }
         }
     }
@@ -211,10 +212,10 @@ public final class TaskRepositoryController implements RepositoryController {
             return "A display name is required.";
         }
         if (pathField.getText().trim().isEmpty()) {
-            return "A CSV file path is required.";
+            return "A tasks file path is required.";
         }
         if (duplicatePath()) {
-            return "Another repository already uses this CSV file.";
+            return "Another repository already uses this tasks file.";
         }
         return null;
     }
@@ -311,7 +312,7 @@ public final class TaskRepositoryController implements RepositoryController {
         gbc.gridx = 0;
         gbc.gridy = 1;
         gbc.weightx = 0;
-        panel.add(new JLabel("CSV file:"), gbc);
+        panel.add(new JLabel("Tasks file:"), gbc);
         JPanel pathRow = new JPanel(new BorderLayout(4, 0));
         pathRow.add(pathField, BorderLayout.CENTER);
         pathRow.add(browse, BorderLayout.EAST);

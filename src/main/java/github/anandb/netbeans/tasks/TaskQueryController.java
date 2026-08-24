@@ -152,8 +152,8 @@ public final class TaskQueryController implements QueryController {
         String repoId = query.getRepository() == null ? null : query.getRepository().getRepositoryId();
         if (s != null && repoId != null) {
             for (TaskRecord t : s.list(repoId)) {
-                if (t.tags() != null && !t.tags().isBlank()) {
-                    for (String tag : t.tags().split(",")) {
+                if (t.tags() != null) {
+                    for (String tag : t.tags()) {
                         String v = tag.trim();
                         if (!v.isEmpty()) {
                             tags.add(v);

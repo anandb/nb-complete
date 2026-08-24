@@ -7,15 +7,15 @@ import java.util.prefs.Preferences;
 import org.openide.util.NbPreferences;
 
 /**
- * Persists each Beanbot Tasks repository's CSV path + display name in this
- * module's preference node.
+ * Persists each Beanbot Tasks repository's tasks-file (todo.txt) path +
+ * display name in this module's preference node.
  *
  * <p>Because it lives in the module node ({@code io.github.anandb.beanbot}),
  * {@link PreferencesMigrator} copies it across NetBeans user directories on
- * upgrade. Only <em>paths/metadata</em> migrate — the external CSV files
+ * upgrade. Only <em>paths/metadata</em> migrate — the external todo.txt files
  * themselves are user-maintained and never copied. This mirrors (as a
  * fallback) the framework-persisted {@code RepositoryInfo}, which also holds
- * the {@code csvPath}.</p>
+ * the tasks-file path.</p>
  */
 public final class TasksMetadata {
 
@@ -34,15 +34,15 @@ public final class TasksMetadata {
         return repoId == null ? "" : repoId.replaceAll("[^A-Za-z0-9._-]", "_");
     }
 
-    public static void put(String repoId, String csvPath, String displayName) {
+    public static void put(String repoId, String tasksPath, String displayName) {
         String k = KEY_PREFIX + sanitize(repoId);
         Preferences p = prefs();
-        p.put(k + ".csvPath", csvPath == null ? "" : csvPath);
+        p.put(k + ".tasksPath", tasksPath == null ? "" : tasksPath);
         p.put(k + ".displayName", displayName == null ? "" : displayName);
     }
 
-    public static String csvPathOf(String repoId) {
-        return prefs().get(KEY_PREFIX + sanitize(repoId) + ".csvPath", "");
+    public static String tasksPathOf(String repoId) {
+        return prefs().get(KEY_PREFIX + sanitize(repoId) + ".tasksPath", "");
     }
 
     public static String displayNameOf(String repoId) {
@@ -52,7 +52,7 @@ public final class TasksMetadata {
     public static void remove(String repoId) {
         String k = KEY_PREFIX + sanitize(repoId);
         Preferences p = prefs();
-        p.remove(k + ".csvPath");
+        p.remove(k + ".tasksPath");
         p.remove(k + ".displayName");
     }
 
@@ -62,9 +62,9 @@ public final class TasksMetadata {
             String[] keys = prefs().keys();
             List<String> ids = new ArrayList<>();
             for (String key : keys) {
-                if (key.startsWith(KEY_PREFIX) && key.endsWith(".csvPath")) {
+                if (key.startsWith(KEY_PREFIX) && key.endsWith(".tasksPath")) {
                     ids.add(key.substring(KEY_PREFIX.length(),
-                            key.length() - ".csvPath".length()));
+                            key.length() - ".tasksPath".length()));
                 }
             }
             ids.sort(String::compareTo);

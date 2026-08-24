@@ -10,40 +10,40 @@ import org.netbeans.modules.bugtracking.spi.IssuePriorityInfo;
 import org.netbeans.modules.bugtracking.spi.IssuePriorityProvider;
 
 /**
- * {@link IssuePriorityProvider} mapping the free-text {@code priority} column
- * ({@code high|normal|low}) to the Tasks Dashboard priority column. Unknown or
- * blank values fall back to {@code normal}.
+ * {@link IssuePriorityProvider} mapping the {@code priority} letter ({@code A}–
+ * {@code Z}) to the Tasks Dashboard priority column. {@code A}–{@code M} render
+ * red (high urgency), {@code N}–{@code Z} gray. Unknown or blank values fall
+ * back to {@code N}.
  *
- * <p>Each priority supplies a locally-generated icon so the framework never falls
- * back to {@code IssuePrioritySupport.getDefaultIcon()}: that class eagerly loads
- * images via {@code ImageUtilities.loadImage(..., true)} in a static initializer
- * and resolving it per task row on the EDT re-triggers the image-loading freeze.</p>
+ * <p>Each priority supplies a locally-generated icon so the framework never
+ * falls back to {@code IssuePrioritySupport.getDefaultIcon()}: that class
+ * eagerly loads images via {@code ImageUtilities.loadImage(..., true)} in a
+ * static initializer and resolving it per task row on the EDT re-triggers the
+ * image-loading freeze.</p>
  */
 public final class TaskPriorityProvider implements IssuePriorityProvider<TaskIssue> {
 
     private static final IconHolder HIGH = new IconHolder(new Color(220, 60, 60));
     private static final IconHolder NORMAL = new IconHolder(new Color(120, 120, 120));
-    private static final IconHolder LOW = new IconHolder(new Color(60, 160, 90));
 
     @Override
     public String getPriorityID(TaskIssue i) {
         String p = i.getRecord() == null ? null : i.getRecord().priority();
-        if (p != null) {
-            String s = p.trim().toLowerCase(Locale.ROOT);
-            if (s.equals("high") || s.equals("low") || s.equals("normal")) {
-                return s;
-            }
+        if (p != null && p.trim().toUpperCase(Locale.ROOT).matches("[A-Z]")) {
+            return p.trim().toUpperCase(Locale.ROOT);
         }
-        return "normal";
+        return "N";
     }
 
     @Override
     public IssuePriorityInfo[] getPriorityInfos() {
-        return new IssuePriorityInfo[] {
-            new IssuePriorityInfo("high", "High", HIGH.image()),
-            new IssuePriorityInfo("normal", "Normal", NORMAL.image()),
-            new IssuePriorityInfo("low", "Low", LOW.image())
-        };
+        IssuePriorityInfo[] infos = new IssuePriorityInfo[26];
+        for (int n = 0; n < 26; n++) {
+            String letter = String.valueOf((char) ('A' + n));
+            boolean high = n < 13; // A–M
+            infos[n] = new IssuePriorityInfo(letter, letter, (high ? HIGH : NORMAL).image());
+        }
+        return infos;
     }
 
     /** Lazily builds a small colored square icon (avoids any image loading on EDT). */

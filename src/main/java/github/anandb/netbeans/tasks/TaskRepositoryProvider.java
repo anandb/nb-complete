@@ -21,9 +21,9 @@ import github.anandb.netbeans.tasks.TasksModel.TaskRepository;
 import org.openide.util.Lookup;
 
 /**
- * {@link RepositoryProvider} for Beanbot Tasks. The CSV path lives in the
- * {@link RepositoryInfo} under {@link TasksModel#VALUE_CSV_PATH} so the
- * framework persists it alongside the repository definition.
+ * {@link RepositoryProvider} for Beanbot Tasks. The tasks-file (todo.txt) path
+ * lives in the {@link RepositoryInfo} under {@link TasksModel#VALUE_TASKS_PATH}
+ * so the framework persists it alongside the repository definition.
  */
 public final class TaskRepositoryProvider implements RepositoryProvider<TaskRepository, TaskQuery, TaskIssue> {
 
@@ -47,19 +47,29 @@ public final class TaskRepositoryProvider implements RepositoryProvider<TaskRepo
         }
         // The RepositoryInfo "url" is the repository's web URL shown by the
         // Dashboard and used to build Open-In-Browser links / favicon fetches.
-        // Beanbot Tasks are backed by a local CSV file, not a remote tracker, so
-        // we must NOT set url to the CSV path: a non-empty, non-http value makes
-        // the bugtracking framework attempt a remote icon/link fetch on the EDT
-        // (see the MediaTracker/Image Fetcher freeze in a.txt). The CSV path is
-        // persisted separately under VALUE_CSV_PATH and is never treated as a URL.
+        // Beanbot Tasks are backed by a local todo.txt file, not a remote
+        // tracker, so we must NOT set url to the tasks-file path: a non-empty,
+        // non-http value makes the bugtracking framework attempt a remote
+        // icon/link fetch on the EDT (see the MediaTracker/Image Fetcher freeze
+        // in a.txt). The tasks-file path is persisted separately under
+        // VALUE_TASKS_PATH and is never treated as a URL.
         RepositoryInfo info = new RepositoryInfo(
             r.getRepositoryId(),
             TasksModel.CONNECTOR_ID,
             "",
-            r.getDisplayName() == null ? r.getRepositoryId() : r.getDisplayName(),
+            displayNameOf(r),
             "");
-        info.putValue(TasksModel.VALUE_CSV_PATH, r.getCsvPath() == null ? "" : r.getCsvPath());
+        info.putValue(TasksModel.VALUE_TASKS_PATH, r.getCsvPath() == null ? "" : r.getCsvPath());
         return info;
+    }
+
+    /** Display name for the repository, defaulting to "BeanBot" when unset. */
+    private static String displayNameOf(TaskRepository r) {
+        String dn = r == null ? null : r.getDisplayName();
+        if (dn == null || dn.trim().isEmpty()) {
+            return "BeanBot";
+        }
+        return dn;
     }
 
     @Override
@@ -118,7 +128,7 @@ public final class TaskRepositoryProvider implements RepositoryProvider<TaskRepo
         String now = Instant.now().toString();
         TaskRecord t = new TaskRecord(
             store() == null ? "t-tmp" : store().createTaskId(),
-            "", "", summary, description, "", "", "", List.of(), now, now);
+            "", "", summary, List.of(), List.of(), "", 0, 0, now, now);
         return TaskIssueCache.get(r.getRepositoryId(), t);
     }
 

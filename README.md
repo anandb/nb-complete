@@ -189,6 +189,39 @@ The color properties are declared in [`colors.json`](src/main/resources/github/a
 
 ---
 
+## Tasks File Format
+
+BeanBot's **Tasks** repositories are stored as plain [todo.txt](https://github.com/todotxt/todo.txt) files, so they are readable and editable with any standard todo.txt tool. Each task is one line; the format builds on the todo.txt spec and adds a small set of BeanBot-specific extensions.
+
+### Line layout
+
+```
+x (B) 2026-08-02 2026-08-01 Fix the bug @urgent @bug +myproject due:2026-09-01 id:t-1a2b3c4d estimate:5 consumed:2 upd:2026-08-02T10:00:00Z
+```
+
+| Position / token | Meaning |
+| --- | --- |
+| `x ` (optional) | Marks the task **closed**. Its absence means **open** (open is the implicit default — there is no `status:` token). |
+| `(A)`–`(Z)` | Priority letter, immediately after `x ` or as the first token when open. Native todo.txt syntax; only one letter. |
+| `YYYY-MM-DD` | Up to two positional dates **before the summary**: a completion date (only when `x ` is present) followed by the creation date. Date-only. |
+| *summary* | Free text, preserved verbatim on save. |
+| `@word` | A **tag** (e.g. `@urgent`). |
+| `+word` | A **project** (e.g. `+myproject`). |
+| `due:YYYY-MM-DD` | Due date (standard todo.txt `due:` extension). |
+| `id:t-XXXXXXXX` | Stable task id. If a line has no `id:`, BeanBot assigns one in NetBeans format (`t-` + 8 hex chars), unique within the file. |
+| `estimate:<int>` | Estimated effort in arbitrary user-inferred units. |
+| `consumed:<int>` | Consumed effort in the same units. |
+| `upd:<iso>` | Last-modified timestamp (full ISO-8601), preserving edit time across saves. |
+
+### Notes & conventions
+
+- Tags and projects are stored **only** as `@`/`+` tokens — there is no redundant `tags:`/`projects:` mirror, so a load→save round-trip never duplicates them.
+- `estimate`/`consumed` are integers representing **arbitrary, user-defined units** (BeanBot does not assign them meaning); they are for personal tracking only.
+- Unknown tokens are tolerated on read and ignored, so files edited by other todo.txt tools remain compatible.
+- Lines without a parseable task (e.g. blank lines) are skipped.
+
+---
+
 ## Contributing
 
 Development follows standard NetBeans Platform patterns. Contributors are expected to maintain consistency with existing styling and logging conventions. New components must be validated against both light and dark IDE themes.

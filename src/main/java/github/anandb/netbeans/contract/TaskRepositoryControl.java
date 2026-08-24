@@ -21,7 +21,7 @@ public interface TaskRepositoryControl {
     /** The ids of all known repositories. */
     List<String> repositoryIds();
 
-    /** The CSV file path backing the given repository, or empty string. */
+    /** The tasks-file (todo.txt) path backing the given repository, or empty string. */
     String csvPathOf(String repoId);
 
     /** The user-visible name of the given repository, or empty string. */

@@ -1,15 +1,14 @@
 package github.anandb.netbeans.model;
 
 /**
- * The fixed set of task statuses. The CSV stores the lowercase
- * {@link #value()} string, so this enum is a typed view over the free-text
- * {@code status} column (legacy values such as "done"/"completed" are accepted
- * on read and mapped to {@link #CLOSED}).
+ * The fixed set of task statuses. The todo.txt file uses the {@code x }
+ * completion prefix (no {@code status:} token), so this enum is a typed view
+ * over the free-text {@code status} field where only {@code closed} marks
+ * completion; any other value (including blank) is treated as {@code open}.
  */
 public enum TaskStatus {
 
     OPEN("open"),
-    IN_PROGRESS("in-progress"),
     CLOSED("closed");
 
     private final String value;
@@ -18,12 +17,12 @@ public enum TaskStatus {
         this.value = value;
     }
 
-    /** The stored CSV value. */
+    /** The stored status value. */
     public String value() {
         return value;
     }
 
-    /** Human-readable label shown in the UI (lowercase, e.g. "in-progress"). */
+    /** Human-readable label shown in the UI (lowercase). */
     public String display() {
         return value;
     }

@@ -7,6 +7,8 @@ import java.awt.Insets;
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -24,10 +26,15 @@ import org.netbeans.modules.bugtracking.spi.IssueController;
 import org.openide.DialogDisplayer;
 import org.openide.NotifyDescriptor;
 import org.openide.util.HelpCtx;
+import org.openide.util.Lookup;
+
+import org.netbeans.api.project.Project;
+import org.netbeans.api.project.ProjectInformation;
 
 import github.anandb.netbeans.contract.TaskRepositoryControl;
 import github.anandb.netbeans.model.TaskRecord;
 import github.anandb.netbeans.model.TaskStatus;
+import github.anandb.netbeans.ui.platform.PlatformBridge;
 
 /**
  * Edit panel for a single task, used both for editing existing tasks and for
@@ -41,7 +48,15 @@ import github.anandb.netbeans.model.TaskStatus;
  */
 public final class TaskIssueController implements IssueController {
 
-    private static final String[] PRIORITIES = {"normal", "high", "low"};
+    /** NATO phonetic words, indexed by letter (A=Alpha ... Z=Zulu). */
+    private static final String[] NATO = {
+        "Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "Golf", "Hotel",
+        "India", "Juliet", "Kilo", "Lima", "Mike", "November", "Oscar", "Papa",
+        "Quebec", "Romeo", "Sierra", "Tango", "Uniform", "Victor", "Whiskey",
+        "Xray", "Yankee", "Zulu"
+    };
+
+    private static final List<String> PRIORITIES = buildPriorities();
 
     private final TaskRepositoryControl store;
     private final TaskIssueProvider provider;
@@ -52,6 +67,9 @@ public final class TaskIssueController implements IssueController {
     private JComboBox<TaskStatus> statusBox;
     private JComboBox<String> priorityBox;
     private TagsEditor tagsEditor;
+    private ChipEditor projectsEditor;
+    private JTextField estimateField;
+    private JTextField consumedField;
     private JComponent component;
     private boolean changed;
 
@@ -98,16 +116,18 @@ public final class TaskIssueController implements IssueController {
         String now = Instant.now().toString();
         if (provider.isNew(issue)) {
             TaskRecord saved = new TaskRecord(
-                cur.id(), status(), priority(), summary(), description(), cur.filePath(),
-                tags(), dueDate(), List.of(), now, now);
+                cur.id(), status(), priority(), summary(),
+                List.copyOf(tags()), List.copyOf(projects()), dueDate(),
+                estimate(), consumed(), now, now);
             if (store != null) {
                 saved = store.addRecord(issue.getRepositoryId(), saved);
             }
             issue.setRecord(saved);
         } else {
             TaskRecord updated = new TaskRecord(
-                cur.id(), status(), priority(), summary(), description(), cur.filePath(),
-                tags(), dueDate(), cur.subtasks(), cur.createdAt(), now);
+                cur.id(), status(), priority(), summary(),
+                List.copyOf(tags()), List.copyOf(projects()), dueDate(),
+                estimate(), consumed(), cur.createdAt(), now);
             if (store != null) {
                 store.update(issue.getRepositoryId(), updated);
             }
@@ -150,24 +170,32 @@ public final class TaskIssueController implements IssueController {
         return summaryField == null ? "" : summaryField.getText().trim();
     }
 
-    // Description is no longer editable in this form (the field was removed).
-    // Preserve the record's existing value rather than blanking it on save.
-    private String description() {
-        TaskRecord r = issue.getRecord();
-        return r == null ? "" : (r.description() == null ? "" : r.description());
-    }
-
     private String status() {
         TaskStatus s = (TaskStatus) (statusBox == null ? null : statusBox.getSelectedItem());
         return s == null ? "" : s.value();
     }
 
     private String priority() {
-        return priorityBox == null ? "normal" : (String) priorityBox.getSelectedItem();
+        if (priorityBox == null) {
+            return "N";
+        }
+        return natoToLetter((String) priorityBox.getSelectedItem());
     }
 
-    private String tags() {
-        return tagsEditor == null ? "" : tagsEditor.getTags();
+    private Set<String> tags() {
+        return tagsEditor == null ? Set.of() : tagsEditor.getSelected();
+    }
+
+    private Set<String> projects() {
+        return projectsEditor == null ? Set.of() : projectsEditor.getSelected();
+    }
+
+    private int estimate() {
+        return parsePositive(estimateField);
+    }
+
+    private int consumed() {
+        return parsePositive(consumedField);
     }
 
     private String dueDate() {
@@ -185,41 +213,119 @@ public final class TaskIssueController implements IssueController {
             return;
         }
         if (summaryField != null) {
-            summaryField.setText(r.summary());
+            String s = r.summary() == null ? "" : r.summary();
+            if (s.isEmpty()) {
+                summaryField.setForeground(java.awt.Color.GRAY);
+                summaryField.setText(SUMMARY_PLACEHOLDER);
+            } else {
+                summaryField.setForeground(java.awt.Color.BLACK);
+                summaryField.setText(s);
+            }
         }
         if (statusBox != null) {
             statusBox.setSelectedItem(TaskStatus.fromValue(r.status()));
         }
         if (priorityBox != null) {
-            priorityBox.setSelectedItem(resolvePriority(r.priority()));
+            priorityBox.setSelectedItem(letterToNato(r.priority()));
         }
         if (tagsEditor != null) {
-            tagsEditor.setTags(r.tags());
+            tagsEditor.setTags(String.join(", ", r.tags()));
+        }
+        if (projectsEditor != null) {
+            projectsEditor.setSelected(Set.copyOf(r.projects()));
+        }
+        if (estimateField != null) {
+            estimateField.setText(Integer.toString(r.estimate()));
+        }
+        if (consumedField != null) {
+            consumedField.setText(Integer.toString(r.consumed()));
         }
         changed = false;
     }
 
     private static String resolvePriority(String stored) {
         if (stored == null) {
-            return "normal";
+            return "N";
         }
-        for (String p : PRIORITIES) {
-            if (p.equalsIgnoreCase(stored.trim())) {
-                return p;
+        String p = stored.trim().toUpperCase(java.util.Locale.ROOT);
+        return p.matches("[A-Z]") ? p : "N";
+    }
+
+    /** Maps a NATO word to its uppercase letter (default N). */
+    private static String natoToLetter(String nato) {
+        if (nato == null) {
+            return "N";
+        }
+        for (int i = 0; i < NATO.length; i++) {
+            if (NATO[i].equalsIgnoreCase(nato.trim())) {
+                return String.valueOf((char) ('A' + i));
             }
         }
-        return "normal";
+        // Allow a bare letter to pass through (defensive).
+        String p = nato.trim().toUpperCase(java.util.Locale.ROOT);
+        return p.matches("[A-Z]") ? p : "N";
     }
+
+    /** Maps an uppercase letter to its NATO word (default November). */
+    private static String letterToNato(String letter) {
+        if (letter == null) {
+            return NATO[13]; // N = November
+        }
+        String p = letter.trim().toUpperCase(java.util.Locale.ROOT);
+        if (p.matches("[A-Z]")) {
+            return NATO[p.charAt(0) - 'A'];
+        }
+        return NATO[13];
+    }
+
+    private static int parsePositive(JTextField f) {
+        if (f == null) {
+            return 0;
+        }
+        String v = f.getText().trim();
+        if (v.isEmpty()) {
+            return 0;
+        }
+        try {
+            return Math.max(0, Integer.parseInt(v));
+        } catch (NumberFormatException ex) {
+            return 0;
+        }
+    }
+
+    private static final String SUMMARY_PLACEHOLDER = "Enter summary";
 
     private JComponent buildComponent() {
         summaryField = new JTextField(30);
+        summaryField.setForeground(java.awt.Color.GRAY);
+        summaryField.setText(SUMMARY_PLACEHOLDER);
+        summaryField.addFocusListener(new java.awt.event.FocusAdapter() {
+            @Override
+            public void focusGained(java.awt.event.FocusEvent e) {
+                if (summaryField.getText().equals(SUMMARY_PLACEHOLDER)) {
+                    summaryField.setText("");
+                    summaryField.setForeground(java.awt.Color.BLACK);
+                }
+            }
+
+            @Override
+            public void focusLost(java.awt.event.FocusEvent e) {
+                if (summaryField.getText().isEmpty()) {
+                    summaryField.setForeground(java.awt.Color.GRAY);
+                    summaryField.setText(SUMMARY_PLACEHOLDER);
+                }
+            }
+        });
         statusBox = new JComboBox<>(TaskStatus.values());
         statusBox.setRenderer(new TaskStatusRenderer());
-        priorityBox = new JComboBox<>(PRIORITIES);
+        priorityBox = new JComboBox<>(PRIORITIES.toArray(new String[0]));
         tagsEditor = new TagsEditor();
         tagsEditor.setAvailableTags(Set.of(
-            "bug", "documentation", "help wanted", "dependencies", "duplicate",
-            "enhancement", "feedback", "invalid", "wontfix"));
+            "bug", "documentation", "duplicate",
+            "enhancement", "feedback", "home", "invalid", "wontfix", "work"));
+        projectsEditor = new ChipEditor("+", "Project", collectOpenProjectNames());
+        estimateField = new JTextField(8);
+        consumedField = new JTextField(8);
 
         DocumentListener dl = new DocumentListener() {
             @Override
@@ -238,21 +344,59 @@ public final class TaskIssueController implements IssueController {
             }
         };
         summaryField.getDocument().addDocumentListener(dl);
+        estimateField.getDocument().addDocumentListener(dl);
+        consumedField.getDocument().addDocumentListener(dl);
         priorityBox.addActionListener(ev -> markChanged());
         statusBox.addActionListener(ev -> markChanged());
         tagsEditor.addChangeListener(() -> markChanged());
+        projectsEditor.addChangeListener(() -> markChanged());
 
         JPanel panel = new JPanel(new GridBagLayout());
         GridBagConstraints g = new GridBagConstraints();
         g.insets = new Insets(3, 4, 3, 4);
-        g.anchor = GridBagConstraints.NORTHWEST;
-        g.fill = GridBagConstraints.HORIZONTAL;
-        g.gridx = 0;
+        g.anchor = GridBagConstraints.WEST;
 
-        addRow(panel, g, 0, "Summary*:", summaryField);
-        addRow(panel, g, 1, "Status:", statusBox);
-        addRow(panel, g, 2, "Priority:", priorityBox);
-        addRow(panel, g, 3, "Tags:", tagsEditor);
+        // ── ChipEditor section ─────────────────────────────────────────
+        // Summary, Tags, Projects: label in col 0, field spans cols 1–3
+        // so the ChipEditor's internal dropdown sits at the right edge of
+        // col 3 — aligned with Priority / Consumed below.
+        addCell(panel, g, 0, 0, "Summary*:", summaryField, true, 3);
+        addCell(panel, g, 1, 0, "Tags:", tagsEditor, true, 3);
+        addCell(panel, g, 2, 0, "Projects:", projectsEditor, true, 3);
+
+        // ── Separator ─────────────────────────────────────────────────
+        g.gridy = 3;
+        g.gridx = 0;
+        g.gridwidth = 4;
+        g.weightx = 1;
+        g.fill = GridBagConstraints.HORIZONTAL;
+        g.insets = new Insets(6, 4, 2, 4);
+        panel.add(new javax.swing.JSeparator(), g);
+        g.insets = new Insets(3, 4, 3, 4);
+        g.gridwidth = 1;
+
+        // ── Controls section ──────────────────────────────────────────
+        // Status + Priority on one row; Estimate + Consumed on the next.
+        // This sub-panel uses weightx=0 on all columns so controls keep
+        // their natural width; fill=HORIZONTAL makes each pair match
+        // within its column.
+        JPanel controls = new JPanel(new GridBagLayout());
+        GridBagConstraints gc = new GridBagConstraints();
+        gc.insets = new Insets(3, 4, 3, 4);
+        gc.anchor = GridBagConstraints.WEST;
+        addCell(controls, gc, 0, 0, "Status:", statusBox, true, 1);
+        addCell(controls, gc, 0, 2, "Priority:", priorityBox, true, 1);
+        addCell(controls, gc, 1, 0, "Estimate:", estimateField, true, 1);
+        addCell(controls, gc, 1, 2, "Consumed:", consumedField, true, 1);
+
+        g.gridy = 4;
+        g.gridx = 0;
+        g.gridwidth = 4;
+        g.weightx = 0;
+        g.fill = GridBagConstraints.NONE;
+        g.anchor = GridBagConstraints.WEST;
+        panel.add(controls, g);
+        g.gridwidth = 1;
 
         // No in-form Save/Cancel buttons: the bugtracking framework supplies the
         // standard Save action (enabled when isChanged() reports a change) and
@@ -268,14 +412,29 @@ public final class TaskIssueController implements IssueController {
         return wrapper;
     }
 
-    private void addRow(JPanel panel, GridBagConstraints g, int y, String label, JComponent field) {
+    /**
+     * Adds a labelled cell at (row y, column-pair xPair). xPair 0 occupies
+     * grid columns 0–1, xPair 2 occupies 2–3. {@code span} sets the field's
+     * gridwidth (1 = single column, 3 = spans cols 1–3 for full-width rows).
+     * {@code fill} stretches the field horizontally; when false the control
+     * keeps its preferred size.
+     */
+    private void addCell(JPanel panel, GridBagConstraints g, int y, int xPair,
+            String label, JComponent field, boolean fill, int span) {
         g.gridy = y;
-        g.gridx = 0;
+        g.gridx = xPair;
+        g.gridwidth = 1;
         g.weightx = 0;
+        g.fill = GridBagConstraints.NONE;
+        g.anchor = GridBagConstraints.WEST;
         panel.add(new JLabel(label), g);
-        g.gridx = 1;
-        g.weightx = 1;
+        g.gridx = xPair + 1;
+        g.gridwidth = span;
+        g.weightx = fill ? 1 : 0;
+        g.fill = fill ? GridBagConstraints.HORIZONTAL : GridBagConstraints.NONE;
+        g.anchor = GridBagConstraints.WEST;
         panel.add(field, g);
+        g.gridwidth = 1; // reset for next call
     }
 
     private void markChanged() {
@@ -283,6 +442,40 @@ public final class TaskIssueController implements IssueController {
             changed = true;
             pcs.firePropertyChange(PROP_CHANGED, false, true);
         }
+    }
+
+    /** Builds the priority list as NATO phonetic words (A=Alpha ... Z=Zulu). */
+    private static List<String> buildPriorities() {
+        return new ArrayList<>(java.util.Arrays.asList(NATO));
+    }
+
+    /** Collects open project names from the cached project list, spaces→hyphens. */
+    private static Set<String> collectOpenProjectNames() {
+        Set<String> names = new LinkedHashSet<>();
+        PlatformBridge bridge = Lookup.getDefault().lookup(PlatformBridge.class);
+        if (bridge == null) {
+            return names;
+        }
+        Project[] projects = bridge.projectContext().getAllOpenProjects();
+        if (projects == null) {
+            return names;
+        }
+        for (Project p : projects) {
+            String name = projectName(p);
+            if (name != null && !name.isEmpty()) {
+                names.add(name.replace(" ", "-"));
+            }
+        }
+        return names;
+    }
+
+    /** Resolves a project's display name, falling back to the directory name. */
+    private static String projectName(Project project) {
+        ProjectInformation info = project.getLookup().lookup(ProjectInformation.class);
+        if (info != null && info.getDisplayName() != null && !info.getDisplayName().isEmpty()) {
+            return info.getDisplayName();
+        }
+        return project.getProjectDirectory().getName();
     }
 
     /** Renders a {@link TaskStatus} using its lowercase display label. */

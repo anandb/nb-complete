@@ -37,29 +37,33 @@ public class TaskToolProvider {
         summary.put("type", "string");
         summary.put("description", "Short task summary/title.");
 
-        ObjectNode description = properties.putObject("description");
-        description.put("type", "string");
-        description.put("description", "Optional longer task description.");
-
         ObjectNode status = properties.putObject("status");
         status.put("type", "string");
-        status.put("description", "Free-text status, e.g. 'open', 'inprogress'. done/closed/completed/finished/cancelled mark completion.");
+        status.put("description", "Free-text status, e.g. 'open', 'closed'. 'closed' marks completion.");
 
         ObjectNode priority = properties.putObject("priority");
         priority.put("type", "string");
-        priority.put("description", "One of high, normal, low.");
+        priority.put("description", "Single uppercase letter A-Z (priority ranking).");
 
-        ObjectNode filePath = properties.putObject("filePath");
-        filePath.put("type", "string");
-        filePath.put("description", "Optional file path the task relates to.");
+        ObjectNode projects = properties.putObject("projects");
+        projects.put("type", "string");
+        projects.put("description", "Comma-separated project names (stored as +project in todo.txt).");
 
         ObjectNode tags = properties.putObject("tags");
         tags.put("type", "string");
-        tags.put("description", "Comma-separated tags.");
+        tags.put("description", "Comma-separated tags (stored as @tag in todo.txt).");
 
         ObjectNode dueDate = properties.putObject("dueDate");
         dueDate.put("type", "string");
         dueDate.put("description", "ISO-8601 due date, optional.");
+
+        ObjectNode estimate = properties.putObject("estimate");
+        estimate.put("type", "integer");
+        estimate.put("description", "Estimated effort in arbitrary user-inferred units.");
+
+        ObjectNode consumed = properties.putObject("consumed");
+        consumed.put("type", "integer");
+        consumed.put("description", "Consumed effort in arbitrary user-inferred units.");
 
         ArrayNode required = schema.putArray("required");
         required.add("summary");
@@ -96,9 +100,9 @@ public class TaskToolProvider {
                     }
                     TaskInput input = new TaskInput(
                         emptyIfNull(args.status()), emptyIfNull(args.priority()),
-                        args.summary().trim(), emptyIfNull(args.description()),
-                        emptyIfNull(args.filePath()), emptyIfNull(args.tags()),
-                        emptyIfNull(args.dueDate()));
+                        args.summary().trim(), emptyIfNull(args.tags()),
+                        emptyIfNull(args.projects()), emptyIfNull(args.dueDate()),
+                        toInt(args.estimate()), toInt(args.consumed()));
                     TaskRecord created = control.add(repoId, input);
                     LOG.info("add_task tool called: repo={0} id={1} summary={2}", repoId, created.id(), args.summary());
                     return Map.of("status", "ok", "id", created.id(),
@@ -109,5 +113,9 @@ public class TaskToolProvider {
 
     private static String emptyIfNull(String s) {
         return s == null ? "" : s;
+    }
+
+    private static int toInt(Integer v) {
+        return v == null ? 0 : v;
     }
 }

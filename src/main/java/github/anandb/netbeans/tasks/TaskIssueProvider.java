@@ -58,8 +58,9 @@ public final class TaskIssueProvider implements IssueProvider<TaskIssue> {
 
     @Override
     public Collection<String> getSubtasks(TaskIssue i) {
-        TaskRecord r = i.getRecord();
-        return r == null || r.subtasks() == null ? List.of() : r.subtasks();
+        // Subtasks are no longer modeled; the Beanbot Tasks format has no
+        // subtask concept, so this is always empty.
+        return List.of();
     }
 
     @Override

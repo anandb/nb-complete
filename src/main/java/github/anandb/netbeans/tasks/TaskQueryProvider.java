@@ -222,10 +222,10 @@ public final class TaskQueryProvider implements QueryProvider<TaskQuery, TaskIss
         if (wanted.isEmpty()) {
             return true;
         }
-        if (t.tags() == null || t.tags().isBlank()) {
+        List<String> have = t.tags();
+        if (have == null || have.isEmpty()) {
             return false;
         }
-        Set<String> have = new HashSet<>(List.of(t.tags().split(",")));
         for (String w : wanted) {
             for (String h : have) {
                 if (h.trim().equalsIgnoreCase(w)) {

@@ -5,25 +5,26 @@ import java.util.Locale;
 import java.util.Set;
 
 /**
- * A single task persisted in a Beanbot Tasks repository CSV file.
+ * A single task persisted in a Beanbot Tasks repository as one todo.txt line.
  *
- * <p>Field ordering is the canonical CSV column order; see {@code TaskCsvCodec}.
- * {@code status} is an enum value (see {@link github.anandb.netbeans.model.TaskStatus});
- * a task is finished only when its status is {@code closed}, which drives the Tasks
- * Dashboard "Open / Finished" grouping.
- * {@code tags} is a comma-separated list; {@code subtasks} a typed list of parent
- * task ids serialized by the codec as a delimited string.</p>
+ * <p>On-disk layout (see {@code TaskTxtCodec}): {@code x (P) <completionDate>
+ * <creationDate> <summary free text> @tags +projects due: id: estimate: consumed:
+ * upd:}. {@code status} is open/closed; a task is finished only when its status
+ * is {@code closed}, which drives the Tasks Dashboard "Open / Finished"
+ * grouping. {@code tags} are {@code @}-prefixed tokens; {@code projects} are
+ * {@code +}-prefixed tokens. {@code estimate}/{@code consumed} are arbitrary
+ * user-inferred integer units.</p>
  */
 public record TaskRecord(
     String id,
     String status,
     String priority,
     String summary,
-    String description,
-    String filePath,
-    String tags,
+    List<String> tags,
+    List<String> projects,
     String dueDate,
-    List<String> subtasks,
+    int estimate,
+    int consumed,
     String createdAt,
     String updatedAt
 ) {
@@ -43,8 +44,9 @@ public record TaskRecord(
 
     /** Creates a copy with all mutable display fields replaced. */
     public TaskRecord withDetails(String status, String priority, String summary,
-            String description, String filePath, String tags, String dueDate) {
-        return new TaskRecord(id, status, priority, summary, description, filePath,
-                tags, dueDate, subtasks, createdAt, updatedAt);
+            List<String> tags, List<String> projects, String dueDate,
+            int estimate, int consumed) {
+        return new TaskRecord(id, status, priority, summary, tags, projects,
+                dueDate, estimate, consumed, createdAt, updatedAt);
     }
 }
