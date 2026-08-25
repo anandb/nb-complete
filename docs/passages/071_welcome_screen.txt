@@ -6,9 +6,9 @@
   <div>[[Index->Topic Index]]</div>
 </div>
 
-When the assistant panel is opened with no session selected, you'll see the welcome screen instead of a chat thread. It shows a **Start New Chat** button plus a list of your existing sessions, each with the project folder it belongs to shown underneath the title.
+When the assistant panel is opened with no session selected, you'll see the welcome screen instead of a chat thread. Click the **New Session** button (green plus icon) on the toolbar to begin a new conversation.
 
-Click any session to open it, or **Start New Chat** to begin a fresh conversation. Sessions you have archived (hidden) are only listed when hidden sessions are visible — use the eye icon on the toolbar to toggle them.
+![Welcome Screen Toolbar](../images/welcome_screen-1.png){style="max-width:100%;"}
 
 
 > [[Starting a Session]]

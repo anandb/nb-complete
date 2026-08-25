@@ -6,6 +6,8 @@
   <div>[[Index->Topic Index]]</div>
 </div>
 
+![Using the Tasks Dashboard](../images/task_dashboard-1.png){style="max-width:100%;"}
+
 Once a repository is registered, your tasks appear in the NetBeans <b>Tasks Dashboard</b> (Window &gt; Tasks). You can:
 
 <ul>
