@@ -312,16 +312,11 @@ public class SessionLifecycleHandler implements SessionListener {
                 configPanelController.ensureDefaultModelSelected();
 
                 if (hasSessions) {
-                    // Current session is archived but visible in dropdown because
-                    // show-hidden is active. Auto-select a non-archived fallback so
-                    // the user doesn't end up with a hidden session selected and the
-                    // input area stuck enabled.
-                    boolean currentArchived = currentId != null
-                            && selectIdx != -1
-                            && sessionService.get().isHidden(currentId);
-                    if (currentArchived) {
-                        selectIdx = -1; // force fallback selection below
-                    }
+                    // Keep the current session selected even when it is archived while
+                    // show-hidden is active: the user explicitly asked to view archived
+                    // sessions, so forcing the selection away (and then falling through
+                    // to a blank dropdown / WelcomeScreen when no non-archived session
+                    // exists) made the dropdown render empty.
                     if (selectIdx != -1) {
                         sessionDropdown.setSelectedIndex(selectIdx);
                         // When transitioning from WelcomeScreen (no visible sessions) back to
@@ -342,17 +337,18 @@ public class SessionLifecycleHandler implements SessionListener {
                             SessionItem item = sessionDropdown.getItemAt(i);
                             if (item != null && prevDir != null
                                     && prevDir.equals(item.getSession().effectiveDirectory())
-                                    && !sessionService.get().isHidden(item.getSession().id())) {
+                                    && (showHidden || !sessionService.get().isHidden(item.getSession().id()))) {
                                 sameProjectMatch = item;
                                 break;
                             }
                         }
-                        // Exclude archived sessions from the most-recent fallback too
+                        // Exclude archived sessions from the fallback unless the
+                        // show-archived toggle is active.
                         SessionItem fallback = sameProjectMatch;
                         if (fallback == null) {
                             for (int i = 0; i < sessionDropdown.getItemCount(); i++) {
                                 SessionItem item = sessionDropdown.getItemAt(i);
-                                if (item != null && !sessionService.get().isHidden(item.getSession().id())) {
+                                if (item != null && (showHidden || !sessionService.get().isHidden(item.getSession().id()))) {
                                     fallback = item;
                                     break;
                                 }
