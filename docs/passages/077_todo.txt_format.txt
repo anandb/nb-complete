@@ -1,0 +1,55 @@
+:: Todo.txt Format {"position":"1600,1400","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Todo.txt Format</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+BeanBot stores tasks as plain todo.txt files — one task per line (see the <a href="https://github.com/todotxt/todo.txt" target="_blank">todo.txt spec</a>). The format extends the spec with a small set of BeanBot-specific tokens. Because it's plain text, you can edit your tasks with any todo.txt tool, a text editor, or version control.
+
+<div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0.2em;">Line layout</div>
+<pre>x (B) 2026-08-02 2026-08-01 Fix the bug @urgent @bug +myproject due:2026-09-01 id:t-1a2b3c4d estimate:5 consumed:2 upd:2026-08-02T10:00:00Z</pre>
+
+<table class="ug-table">
+<thead><tr><th>Token</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>x </code> (optional prefix)</td><td>Marks the task <b>closed</b>. Its absence means <b>open</b> — there is no <code>status:</code> token.</td></tr>
+<tr><td><code>(A)</code>–<code>(Z)</code></td><td>Priority letter. Placed immediately after <code>x </code> (or as the first token when open). Native todo.txt syntax.</td></tr>
+<tr><td><code>YYYY-MM-DD</code> (first date)</td><td>Completion date — only present when the task is closed (<code>x </code>).</td></tr>
+<tr><td><code>YYYY-MM-DD</code> (second date)</td><td>Creation date — present for both open and closed tasks.</td></tr>
+<tr><td><i>free text</i></td><td>The task summary. Preserved verbatim on save.</td></tr>
+<tr><td><code>@word</code></td><td>A <b>tag</b> (e.g. <code>@urgent</code>).</td></tr>
+<tr><td><code>+word</code></td><td>A <b>project</b> (e.g. <code>+myproject</code>).</td></tr>
+<tr><td><code>due:YYYY-MM-DD</code></td><td>Due date — a standard todo.txt extension.</td></tr>
+<tr><td><code>id:t-XXXXXXXX</code></td><td>Stable task id. If missing, BeanBot generates one in NetBeans format.</td></tr>
+<tr><td><code>estimate:&lt;int&gt;</code></td><td>Estimated effort in arbitrary user-inferred units.</td></tr>
+<tr><td><code>consumed:&lt;int&gt;</code></td><td>Consumed effort in the same units.</td></tr>
+<tr><td><code>upd:&lt;iso&gt;</code></td><td>Last-modified timestamp (full ISO-8601).</td></tr>
+</tbody>
+</table>
+
+<div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0.2em;">Priority letters</div>
+BeanBot uses the full A–Z range for priority. In the task editor, priorities are shown as NATO phonetic words (Alpha, Bravo, Charlie … Zulu) but stored as single uppercase letters. A is the highest priority; N (November) is the default.
+
+<div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0.2em;">Tags and projects</div>
+Tags and projects are stored <b>only</b> as <code>@</code> and <code>+</code> tokens — there is no redundant <code>tags:</code> or <code>projects:</code> mirror. This ensures a load→save round-trip never duplicates them. Tags appear in the dashboard's tag filter; projects are a separate dimension for grouping.
+
+<div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0.2em;">Estimate and consumed</div>
+<code>estimate</code> and <code>consumed</code> are integers representing <b>arbitrary, user-defined units</b> — BeanBot does not assign them meaning. They are for personal tracking only (e.g. story points, hours, t-shirt sizes).
+
+<div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0.2em;">External tool compatibility</div>
+Unknown tokens are tolerated on read and ignored, so files edited by other todo.txt tools remain compatible. Lines without a parseable task (e.g. blank lines) are skipped.
+
+<div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0.2em;">Reserialization safety</div>
+When BeanBot reads a task file and writes it back, it preserves:
+<ul>
+<li>The summary text byte-for-byte (no reformatting).</li>
+<li>All <code>@</code>/<code>+</code> tokens exactly as read.</li>
+<li>All <code>key:value</code> tokens (id, estimate, consumed, upd, due).</li>
+<li>The positional dates and priority letter.</li>
+</ul>
+This means external edits survive a BeanBot save without spurious diffs.
+
+> [[Task Repositories]]
+> [[Task Editor]]

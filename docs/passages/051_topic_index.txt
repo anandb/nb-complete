@@ -8,6 +8,7 @@
 
 This is a complete list of topics in this guide, use it to directly jump to that page without navigating the entire trail.
 
+> [[Adding Tasks via AI]]
 > [[Archiving Sessions]]
 > [[Ask Assistant Menu]]
 > [[Attachments]]
@@ -20,6 +21,7 @@ This is a complete list of topics in this guide, use it to directly jump to that
 > [[Configuration Template]]
 > [[Configure OpenCode for Ollama]]
 > [[Copying a message]]
+> [[Creating a Task Repository]]
 > [[Customising the Toolbar]]
 > [[Expand/Collapse All]]
 > [[Experiments]]
@@ -62,12 +64,16 @@ This is a complete list of topics in this guide, use it to directly jump to that
 > [[Slash Command Autocomplete]]
 > [[Starting a Session]]
 > [[Swing Mockups via Matisse]]
+> [[Task Editor]]
+> [[Task Repositories]]
 > [[Test Results Context Menu]]
 > [[Thinking and Tool Responses]]
 > [[Time to first token]]
+> [[Todo.txt Format]]
 > [[Troubleshooting]]
 > [[Unix Config]]
 > [[Update Notifications]]
+> [[Using the Tasks Dashboard]]
 > [[Welcome Screen]]
 > [[Windows]]
 > [[Windows Config]]

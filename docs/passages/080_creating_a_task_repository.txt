@@ -1,0 +1,27 @@
+:: Creating a Task Repository {"position":"1600,1300","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Creating a Task Repository</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+Each BeanBot task repository maps to a plain todo.txt file on disk. Creating one takes a few clicks:
+
+<ol>
+<li>Go to <b>Tools &gt; Options &gt; Miscellaneous &gt; Tasks</b> (the BeanBot Tasks options panel).</li>
+<li>Click <b>Add</b> and fill in:
+  <ul>
+  <li><b>Display name</b> — a human-readable label (defaults to your current project name).</li>
+  <li><b>Tasks file</b> — the path to the <code>.txt</code> file. Defaults to <code>beanbot&#95;tasks.txt</code> in the project root.</li>
+  </ul></li>
+<li>Click <b>OK</b>. The repository is registered and its file is loaded (or created if it doesn't exist yet).</li>
+</ol>
+
+You can register multiple repositories (e.g. one per project). Each repository is remembered across IDE restarts; the underlying todo.txt file is user-maintained and never moved by the plugin.
+
+Once created, your tasks appear in the NetBeans Tasks Dashboard — see [[Using the Tasks Dashboard]].
+
+> [[Task Repositories]]
+> [[Using the Tasks Dashboard]]
+> [[Todo.txt Format]]

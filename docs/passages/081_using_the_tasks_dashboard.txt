@@ -1,0 +1,24 @@
+:: Using the Tasks Dashboard {"position":"1600,1500","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Using the Tasks Dashboard</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+Once a repository is registered, your tasks appear in the NetBeans <b>Tasks Dashboard</b> (Window &gt; Tasks). You can:
+
+<ul>
+<li><b>Create tasks</b> via the dashboard's "New Task" button or from the assistant's toolbar.</li>
+<li><b>Edit tasks</b> by double-clicking them — the task editor opens with Summary, Status, Priority, Tags, Projects, Estimate, and Consumed fields. See [[Task Editor]].</li>
+<li><b>Set due dates</b> via the dashboard's Schedule submenu (right-click a task &gt; Schedule).</li>
+<li><b>Filter by tags</b> using the Find Tasks query dialog.</li>
+</ul>
+
+The dashboard's Open / Finished grouping follows the task status: tasks marked closed (the todo.txt <code>x </code> prefix) appear under Finished; everything else is Open.
+
+Tasks can also be created conversationally via the AI — see [[Adding Tasks via AI]].
+
+> [[Task Repositories]]
+> [[Task Editor]]
+> [[Adding Tasks via AI]]

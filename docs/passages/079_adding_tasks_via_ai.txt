@@ -1,0 +1,49 @@
+:: Adding Tasks via AI {"position":"1600,1800","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Adding Tasks via AI</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+You can create tasks conversationally by asking BeanBot to add one. The assistant uses the built-in <code>add&#95;task</code> MCP tool to write directly to your task repository.
+
+<div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0.2em;">Example prompts</div>
+<ul>
+<li><i>"Add a task to fix the login bug"</i></li>
+<li><i>"Create a high-priority task: refactor the database layer"</i></li>
+<li><i>"Track a task: write unit tests for the parser, estimate 3 points"</i></li>
+</ul>
+
+<div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0.2em;">What you can specify</div>
+<table class="ug-table">
+<thead><tr><th>Parameter</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>summary</code></td><td>The task title (required).</td></tr>
+<tr><td><code>status</code></td><td><code>open</code> or <code>closed</code>. Defaults to open.</td></tr>
+<tr><td><code>priority</code></td><td>A single uppercase letter A–Z.</td></tr>
+<tr><td><code>tags</code></td><td>Comma-separated tags (stored as <code>@tag</code> in the file).</td></tr>
+<tr><td><code>projects</code></td><td>Comma-separated project names (stored as <code>+project</code> in the file).</td></tr>
+<tr><td><code>dueDate</code></td><td>ISO-8601 date string.</td></tr>
+<tr><td><code>estimate</code></td><td>Integer (arbitrary effort units).</td></tr>
+<tr><td><code>consumed</code></td><td>Integer (effort consumed so far).</td></tr>
+</tbody>
+</table>
+
+<div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0.2em;">Repository selection</div>
+If you have multiple task repositories, specify which one to add to:
+
+<ul>
+<li><i>"Add a task to the Backend repo: fix the cache invalidation"</i></li>
+<li><i>"In the Frontend project, create a task to update the login form"</i></li>
+</ul>
+
+If only one repository exists, it is used automatically.
+
+<div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0.2em;">How it works</div>
+The AI calls the <code>add&#95;task</code> tool, which creates a new task in the repository's in-memory cache, persists it to the todo.txt file (in a background thread), and returns the task id. The task then appears in the NetBeans Tasks Dashboard immediately.
+
+> [[MCP Tools]]
+> [[Task Repositories]]
+> [[Task Editor]]
+> [[Todo.txt Format]]

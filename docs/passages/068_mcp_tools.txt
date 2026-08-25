@@ -15,6 +15,7 @@ The plugin runs a small built-in MCP (Model Context Protocol) server inside the 
 <tr><td><code>open&#95;pos</code></td><td>Opens a file at a given line number in the editor and focuses it. Useful when the AI says "Show me where this happens in the code".</td></tr>
 <tr><td><code>list&#95;projects</code></td><td>Lists the absolute paths of all open NetBeans projects.</td></tr>
 <tr><td><code>rename&#95;session</code></td><td>Gives the current (or a specific) session a custom title, just like the rename button.</td></tr>
+<tr><td><code>add&#95;task</code></td><td>Creates a task in a BeanBot Tasks repository. Accepts summary, status, priority (A–Z), tags, projects, due date, estimate, and consumed. See [[Adding Tasks via AI]].</td></tr>
 <tr><td><code>diff&#95;stash</code></td><td>Opens the side-by-side stash diff viewer for a given stash. Only available when Stash Diff is enabled in Options.</td></tr>
 </tbody>
 </table>

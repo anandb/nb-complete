@@ -1,0 +1,43 @@
+:: Task Editor {"position":"1600,1600","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Task Editor</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+The task editor opens when you create or edit a task from the NetBeans Tasks Dashboard or via the assistant toolbar. It has two sections separated by a divider.
+
+<div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0.2em;">Top section — Summary, Tags, Projects</div>
+<table class="ug-table">
+<thead><tr><th>Field</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><b>Summary*</b></td><td>The task title (required). Shows a grey placeholder ("Enter summary") when empty.</td></tr>
+<tr><td><b>Tags</b></td><td>Chip-based editor for <code>@</code>-prefixed tags. Type a tag and press Enter, or pick from the dropdown. Predefined: bug, documentation, duplicate, enhancement, feedback, home, invalid, wontfix, work.</td></tr>
+<tr><td><b>Projects</b></td><td>Chip-based editor for <code>+</code>-prefixed projects. The dropdown is pre-populated with your currently open NetBeans project names (spaces replaced with hyphens).</td></tr>
+</tbody>
+</table>
+
+Tags and projects are shown as removable pills. Click the <b>x</b> on a pill to remove it.
+
+<div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0.2em;">Bottom section — Status, Priority, Estimate, Consumed</div>
+<table class="ug-table">
+<thead><tr><th>Field</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><b>Status</b></td><td>Open or closed. Defaults to open.</td></tr>
+<tr><td><b>Priority</b></td><td>A–Z letter, shown as NATO phonetic words (Alpha, Bravo, Charlie … Zulu). November (N) is the default.</td></tr>
+<tr><td><b>Estimate</b></td><td>Arbitrary effort units (integer). Defaults to 0.</td></tr>
+<tr><td><b>Consumed</b></td><td>Arbitrary effort units consumed so far (integer). Defaults to 0.</td></tr>
+</tbody>
+</table>
+
+<div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0.2em;">Due dates</div>
+Due dates are managed via the dashboard's native <b>Schedule</b> submenu (right-click a task &gt; Schedule), not through the task editor. The editor preserves any existing due date rather than exposing one.
+
+<div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0.2em;">Saving</div>
+The editor uses the bugtracking framework's standard save mechanism — changes are saved when you close the editor and confirm, or when the framework auto-saves. There is no explicit Save button in the form.
+
+> [[Task Repositories]]
+> [[Using the Tasks Dashboard]]
+> [[Todo.txt Format]]
+> [[Adding Tasks via AI]]
