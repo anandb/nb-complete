@@ -222,6 +222,30 @@ NbPreferences.forModule(PreferenceKeys.class)
 - Clamping: `McpServer` connector idle timeout is clamped to a minimum of 30s.
 - MCP tools/call: Response is sent immediately after tool execution (no artificial delay). The old 5,000ms minimum latency was removed in v1.7.2 because it caused client abort errors on macOS.
 
+### Task Repository Toggle
+- The `taskRepository.enabled` preference (default `true`) gates the entire todo.txt feature.
+- **Two entry points are guarded**: `TasksStartup.run()` (skips `restoreFromMetadata()`) and
+  `TasksConnector.createRepository(RepositoryInfo)` (returns `null` when disabled). Both must
+  be gated because the bugtracking framework calls `createRepository()` during its own
+  `loadRepositories()` startup, which races with `TasksStartup`.
+- The checkbox lives in Preferences > Advanced > Actions section.
+- The preference key is `PreferenceKeys.TASK_REPOSITORY_ENABLED`; cached via
+  `PluginSettings.isTaskRepositoryEnabled()`.
+
+### Task Scheduler & Closed Tasks
+- `TaskScheduleProvider.getSchedule()` and `getDueDate()` return `null` when
+  `TaskRecord.isFinished()` is true (status == "closed"). This prevents the bugtracking
+  framework from showing closed tasks in the Scheduled category or sending notifications.
+- Do NOT remove the `isFinished()` guard — it is the only thing preventing stale
+  notifications for completed tasks.
+
+### Mini-Assistant Toolbar Launch
+- The toolbar "Launch Mini Assistant" button opens the `MiniAssistantDialog` **without**
+  closing the main sidebar (`AssistantTopComponent`). The old `minimizeToDock()` call was
+  removed so both panels can coexist.
+- The `ToggleMiniAssistantAction` (Alt+L shortcut) also does NOT close the sidebar — it
+  only toggles the dialog's visibility/focus.
+
 ### SSE → EDT Session Race Guard
 `SessionLifecycleHandler.displayMessage()` captures `update.params().sessionId()` before scheduling the EDT callback via `invokeLater`. Inside the runnable, it re-checks against `SessionControl.getCurrentSessionId()` and silently drops the message if the session no longer matches. This prevents stale SSE messages from appearing in the wrong session's chat panel when the user switches sessions during streaming.
 
