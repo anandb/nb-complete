@@ -140,7 +140,7 @@ public final class TaskRepositoryController implements RepositoryController {
 
     /**
      * For a brand-new repository, pre-fill the display name with the current
-     * project's name and the path with {@code beanbot_tasks.txt} in its root.
+     * project's name and the path with {@code beanbot_todo.txt} in its root.
      * The user may override either value.
      */
     private void applyDefaultsIfNew() {
@@ -160,7 +160,7 @@ public final class TaskRepositoryController implements RepositoryController {
         if (pathField.getText().trim().isEmpty()) {
             File root = FileUtil.toFile(current.getProjectDirectory());
             if (root != null) {
-                pathField.setText(new File(root, "beanbot_tasks.txt").getAbsolutePath());
+                pathField.setText(new File(root, "beanbot_todo.txt").getAbsolutePath());
             }
         }
     }

@@ -40,6 +40,8 @@ public final class PluginSettings {
     private static volatile boolean cachedAutoBackupChanges = true;
     /** Cached mini-assistant toggle — volatile for cross-thread visibility. Defaults to true. */
     private static volatile boolean cachedMiniAssistantEnabled = true;
+    /** Cached task-repository toggle — volatile for cross-thread visibility. Defaults to true. */
+    private static volatile boolean cachedTaskRepositoryEnabled = true;
 
     private static final PreferenceChangeListener listener = PluginSettings::onPreferenceChanged;
 
@@ -64,6 +66,7 @@ public final class PluginSettings {
         cachedQuickJumpEnabled = prefs.getBoolean(PreferenceKeys.ACTIONS_QUICK_JUMP, true);
         cachedAutoBackupChanges = prefs.getBoolean(PreferenceKeys.AUTO_BACKUP_CHANGES, true);
         cachedMiniAssistantEnabled = prefs.getBoolean(PreferenceKeys.MINI_ASSISTANT_ENABLED, true);
+        cachedTaskRepositoryEnabled = prefs.getBoolean(PreferenceKeys.TASK_REPOSITORY_ENABLED, true);
         prefs.addPreferenceChangeListener(listener);
     }
 
@@ -174,6 +177,8 @@ public final class PluginSettings {
             cachedAutoBackupChanges = Boolean.parseBoolean(evt.getNewValue());
         } else if (PreferenceKeys.MINI_ASSISTANT_ENABLED.equals(evt.getKey())) {
             cachedMiniAssistantEnabled = evt.getNewValue() == null || Boolean.parseBoolean(evt.getNewValue());
+        } else if (PreferenceKeys.TASK_REPOSITORY_ENABLED.equals(evt.getKey())) {
+            cachedTaskRepositoryEnabled = evt.getNewValue() == null || Boolean.parseBoolean(evt.getNewValue());
         }
     }
 
@@ -288,5 +293,16 @@ public final class PluginSettings {
         cachedMiniAssistantEnabled = enabled;
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
                 .putBoolean(PreferenceKeys.MINI_ASSISTANT_ENABLED, enabled);
+    }
+
+    /** Whether the TaskRepository (todo.txt) feature is enabled. */
+    public static boolean isTaskRepositoryEnabled() {
+        return cachedTaskRepositoryEnabled;
+    }
+
+    public static void setTaskRepositoryEnabled(boolean enabled) {
+        cachedTaskRepositoryEnabled = enabled;
+        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                .putBoolean(PreferenceKeys.TASK_REPOSITORY_ENABLED, enabled);
     }
 }

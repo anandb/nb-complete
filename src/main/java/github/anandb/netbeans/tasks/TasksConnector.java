@@ -8,6 +8,7 @@ import org.netbeans.modules.bugtracking.spi.RepositoryInfo;
 
 import github.anandb.netbeans.contract.TaskRepositoryControl;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.TasksMetadata;
 import github.anandb.netbeans.tasks.TasksModel.TaskQuery;
 import github.anandb.netbeans.tasks.TasksModel.TaskRepository;
@@ -50,6 +51,9 @@ public final class TasksConnector implements BugtrackingConnector {
 
     @Override
     public Repository createRepository(RepositoryInfo info) {
+        if (!PluginSettings.isTaskRepositoryEnabled()) {
+            return null;
+        }
         TaskRepository r = new TaskRepository();
         r.setRepositoryId(info.getID());
         r.setCsvPath(info.getValue(TasksModel.VALUE_TASKS_PATH));

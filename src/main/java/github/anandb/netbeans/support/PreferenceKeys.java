@@ -66,6 +66,9 @@ public final class PreferenceKeys {
     /** Whether the Mini Assistant dialog is the target for send/ask actions (enabled by default). */
     public static final String MINI_ASSISTANT_ENABLED = "miniAssistant.enabled";
 
+    /** Whether the TaskRepository (todo.txt) feature is enabled (enabled by default). */
+    public static final String TASK_REPOSITORY_ENABLED = "taskRepository.enabled";
+
     /** Whether to launch opencode through WSL when available (Windows only, enabled by default). */
     public static final String USE_WSL = "useWsl";
 

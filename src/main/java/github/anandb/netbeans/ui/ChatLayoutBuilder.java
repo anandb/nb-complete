@@ -366,7 +366,6 @@ final class ChatLayoutBuilder {
         launchMiniAssistantBtn.setBorderPainted(false);
         launchMiniAssistantBtn.setVisible(PluginSettings.isMiniAssistantEnabled());
         launchMiniAssistantBtn.addActionListener(e -> {
-            topComponent.minimizeToDock();
             MiniAssistantDialog.getInstance().toggleVisibility();
         });
 

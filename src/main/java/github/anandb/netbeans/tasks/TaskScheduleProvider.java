@@ -43,11 +43,19 @@ public final class TaskScheduleProvider implements IssueScheduleProvider<TaskIss
 
     @Override
     public Date getDueDate(TaskIssue i) {
+        TaskRecord r = i.getRecord();
+        if (r == null || r.isFinished()) {
+            return null;
+        }
         return parse(record(i));
     }
 
     @Override
     public IssueScheduleInfo getSchedule(TaskIssue i) {
+        TaskRecord r = i.getRecord();
+        if (r == null || r.isFinished()) {
+            return null;
+        }
         Date d = parse(record(i));
         return d == null ? null : new IssueScheduleInfo(d);
     }

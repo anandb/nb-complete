@@ -3,6 +3,8 @@ package github.anandb.netbeans.tasks;
 import org.openide.modules.OnStart;
 import org.openide.util.RequestProcessor;
 
+import github.anandb.netbeans.support.PluginSettings;
+
 /**
  * Safer than relying on the bugtracking framework's one-shot repository restore
  * (which may run before this connector is registered): at module startup,
@@ -20,6 +22,9 @@ public final class TasksStartup implements Runnable {
 
     @Override
     public void run() {
+        if (!PluginSettings.isTaskRepositoryEnabled()) {
+            return;
+        }
         RP.post(() -> new TasksConnector().restoreFromMetadata(), 1500);
     }
 }

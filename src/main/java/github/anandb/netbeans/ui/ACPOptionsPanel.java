@@ -69,6 +69,7 @@ public class ACPOptionsPanel extends JPanel {
     private JCheckBox quickJumpCheckbox;
     private JCheckBox autoBackupChangesCheckbox;
     private JCheckBox miniAssistantCheckbox;
+    private JCheckBox taskRepositoryCheckbox;
     private JCheckBox useWslCheckbox;
     private JSpinner idleTimeoutSpinner;
     private JSpinner maxMessagesSpinner;
@@ -116,6 +117,7 @@ public class ACPOptionsPanel extends JPanel {
         quickJumpCheckbox = new JCheckBox();
         autoBackupChangesCheckbox = new JCheckBox();
         miniAssistantCheckbox = new JCheckBox();
+        taskRepositoryCheckbox = new JCheckBox();
         iconLabel = new JLabel();
         iconPathField = new JTextField(40);
         iconBrowseButton = new JButton();
@@ -322,6 +324,12 @@ public class ACPOptionsPanel extends JPanel {
         actionsPanel.add(miniAssistantCheckbox, UIUtils.createGbc(1, 3, 1.0, 0, GridBagConstraints.HORIZONTAL,
                 GridBagConstraints.WEST, new Insets(0, 25, 5, 0)));
 
+        taskRepositoryCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_EnableTaskRepository"));
+        taskRepositoryCheckbox.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_EnableTaskRepository"));
+        taskRepositoryCheckbox.addActionListener(evt -> controller.changed());
+        actionsPanel.add(taskRepositoryCheckbox, UIUtils.createGbc(1, 4, 1.0, 0, GridBagConstraints.HORIZONTAL,
+                GridBagConstraints.WEST, new Insets(0, 25, 5, 0)));
+
         add(actionsPanel);
         add(Box.createVerticalStrut(4));
 
@@ -495,6 +503,7 @@ public class ACPOptionsPanel extends JPanel {
         stashDiffCheckbox.setSelected(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean(PreferenceKeys.ACTIONS_STASH_DIFF, true));
         quickJumpCheckbox.setSelected(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean(PreferenceKeys.ACTIONS_QUICK_JUMP, true));
         miniAssistantCheckbox.setSelected(PluginSettings.isMiniAssistantEnabled());
+        taskRepositoryCheckbox.setSelected(PluginSettings.isTaskRepositoryEnabled());
         useWslCheckbox.setSelected(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean(PreferenceKeys.USE_WSL, false));
     }
 
@@ -559,6 +568,7 @@ public class ACPOptionsPanel extends JPanel {
         PluginSettings.setStashDiffEnabled(stashDiffCheckbox.isSelected());
         PluginSettings.setQuickJumpEnabled(quickJumpCheckbox.isSelected());
         PluginSettings.setMiniAssistantEnabled(miniAssistantCheckbox.isSelected());
+        PluginSettings.setTaskRepositoryEnabled(taskRepositoryCheckbox.isSelected());
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean(PreferenceKeys.USE_WSL, useWslCheckbox.isSelected());
 
         String newIconPath = iconPathField.getText();
