@@ -742,14 +742,6 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         }
     }
 
-    /**
-     * Toggles minimize/restore for the assistant panel.
-     * Resources (listeners, handlers, messages) stay alive across all close/reopen cycles.
-     */
-    public void minimizeToDock() {
-        toggleVisibility();
-    }
-
     /** Tracks whether first-time initialization has run. */
     private transient boolean initialized = false;
 

@@ -104,32 +104,6 @@ public final class LanguageResolver {
     }
 
     /**
-     * Resolves a MIME type to a language identifier suitable for markdown
-     * code-fence labels.
-     *
-     * @param mime the MIME type (e.g. "text/x-java", "application/json")
-     * @return the language identifier, or "text" if unknown
-     */
-    public static String fromMime(String mime) {
-        if (mime == null) return "text";
-        return switch (mime) {
-            case "text/x-java", "text/x-java-source" -> "java";
-            case "text/javascript" -> "javascript";
-            case "text/typescript" -> "typescript";
-            case "text/x-python" -> "python";
-            case "text/xml", "application/xml" -> "xml";
-            case "text/html" -> "html";
-            case "text/css" -> "css";
-            case "application/json" -> "json";
-            case "text/x-yaml" -> "yaml";
-            case "text/x-shellscript" -> "bash";
-            case "text/x-diff" -> "diff";
-            case "image/png", "image/jpeg", "image/gif", "image/svg+xml" -> "";
-            default -> "text";
-        };
-    }
-
-    /**
      * Resolves a file path to its language identifier.
      *
      * @param path the file path
@@ -167,17 +141,5 @@ public final class LanguageResolver {
             return "text/plain";
         }
         return EXT_TO_MIME.getOrDefault(path.substring(lastDot + 1).toLowerCase(), "text/plain");
-    }
-
-    /**
-     * Registers a custom extension to language mapping.
-     *
-     * @param extension the file extension (without dot)
-     * @param language the language identifier
-     */
-    public static void registerExtension(String extension, String language) {
-        if (extension != null && !extension.isEmpty() && language != null) {
-            EXT_TO_LANGUAGE.put(extension.toLowerCase(), language);
-        }
     }
 }

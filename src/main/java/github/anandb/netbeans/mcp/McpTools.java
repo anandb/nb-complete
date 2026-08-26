@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -29,12 +28,6 @@ public class McpTools {
         LOG.info("Registered MCP tool: {0}", name);
     }
 
-    public void unregisterTool(String name) {
-        tools.remove(name);
-        executors.remove(name);
-        LOG.info("Unregistered MCP tool: {0}", name);
-    }
-
     public ArrayNode getToolList() {
         ArrayNode arr = MAPPER.createArrayNode();
         for (McpToolDefinition def : tools.values()) {
@@ -45,14 +38,6 @@ public class McpTools {
             arr.add(tool);
         }
         return arr;
-    }
-
-    public boolean hasTool(String name) {
-        return tools.containsKey(name);
-    }
-
-    public List<String> getToolNames() {
-        return List.copyOf(tools.keySet());
     }
 
     public JsonNode callTool(String name, JsonNode arguments) throws Exception {

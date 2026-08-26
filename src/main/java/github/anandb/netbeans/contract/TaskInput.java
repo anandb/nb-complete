@@ -23,11 +23,6 @@ public record TaskInput(
     int consumed
 ) {
 
-    /** Alias for readability; an unset field is an empty string. */
-    public String summaryOrEmpty() {
-        return summary == null ? "" : summary;
-    }
-
     /** Tags as a list, splitting on commas (used by the store). */
     public List<String> tagsList() {
         return split(tags);
