@@ -17,12 +17,16 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+
+import java.io.File;
+import java.nio.file.Path;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -38,6 +42,9 @@ import org.openide.util.Lookup;
 class TaskToolProviderTest {
 
     private static final ObjectMapper MAPPER = MapperSupplier.get();
+
+    @TempDir
+    Path tempDir;
 
     @Mock
     private McpTools mcpTools;
@@ -63,6 +70,26 @@ class TaskToolProviderTest {
         if (lookupMock != null) {
             lookupMock.close();
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private ToolExecutor<AddTaskInput, Map<String, Object>> registerAndGetExecutor() {
+        provider.registerTools(mcpTools);
+        ArgumentCaptor<ToolExecutor> executorCaptor = ArgumentCaptor.forClass(ToolExecutor.class);
+        verify(mcpTools).registerTool(eq("add_task"), any(), any(), executorCaptor.capture());
+        return executorCaptor.getValue();
+    }
+
+    private File createTempCsvFile(String repoId) throws Exception {
+        File csvFile = tempDir.resolve("tasks_" + repoId + ".txt").toFile();
+        csvFile.createNewFile();
+        when(taskRepositoryControl.csvPathOf(repoId)).thenReturn(csvFile.getAbsolutePath());
+        return csvFile;
+    }
+
+    private TaskRecord mockTaskRecord(String id, String summary) {
+        return new TaskRecord(id, "open", "B", summary, List.of(), List.of(),
+            "", 0, 0, "", "");
     }
 
     @Test
@@ -111,16 +138,10 @@ class TaskToolProviderTest {
     void successfulTaskCreation() throws Exception {
         when(taskRepositoryControl.repositoryIds()).thenReturn(List.of("repo1"));
         when(taskRepositoryControl.displayNameOf("repo1")).thenReturn("My Tasks");
-        TaskRecord mockRecord = new TaskRecord("t-1", "open", "B", "Fix bug", List.of(), List.of(),
-            "", 0, 0, "", "");
-        when(taskRepositoryControl.add(eq("repo1"), any(TaskInput.class))).thenReturn(mockRecord);
+        createTempCsvFile("repo1");
+        when(taskRepositoryControl.add(eq("repo1"), any(TaskInput.class))).thenReturn(mockTaskRecord("t-1", "Fix bug"));
 
-        provider.registerTools(mcpTools);
-
-        ArgumentCaptor<ToolExecutor> executorCaptor = ArgumentCaptor.forClass(ToolExecutor.class);
-        verify(mcpTools).registerTool(eq("add_task"), any(), any(), executorCaptor.capture());
-
-        ToolExecutor<AddTaskInput, Map<String, Object>> executor = executorCaptor.getValue();
+        ToolExecutor<AddTaskInput, Map<String, Object>> executor = registerAndGetExecutor();
         AddTaskInput input = new AddTaskInput(null, "Fix bug", null, null, null, null, null, null, null);
         Map<String, Object> result = executor.execute(input);
 
@@ -130,19 +151,13 @@ class TaskToolProviderTest {
 
         ArgumentCaptor<TaskInput> inputCaptor = ArgumentCaptor.forClass(TaskInput.class);
         verify(taskRepositoryControl).add(eq("repo1"), inputCaptor.capture());
-        TaskInput captured = inputCaptor.getValue();
-        assertEquals("Fix bug", captured.summary());
+        assertEquals("Fix bug", inputCaptor.getValue().summary());
     }
 
     @SuppressWarnings("unchecked")
     @Test
     void returnsErrorWhenSummaryIsBlank() throws Exception {
-        provider.registerTools(mcpTools);
-
-        ArgumentCaptor<ToolExecutor> executorCaptor = ArgumentCaptor.forClass(ToolExecutor.class);
-        verify(mcpTools).registerTool(eq("add_task"), any(), any(), executorCaptor.capture());
-
-        ToolExecutor<AddTaskInput, Map<String, Object>> executor = executorCaptor.getValue();
+        ToolExecutor<AddTaskInput, Map<String, Object>> executor = registerAndGetExecutor();
         AddTaskInput input = new AddTaskInput(null, "  ", null, null, null, null, null, null, null);
         Map<String, Object> result = executor.execute(input);
 
@@ -155,12 +170,7 @@ class TaskToolProviderTest {
     void returnsErrorWhenNoRepositoriesConfigured() throws Exception {
         when(taskRepositoryControl.repositoryIds()).thenReturn(List.of());
 
-        provider.registerTools(mcpTools);
-
-        ArgumentCaptor<ToolExecutor> executorCaptor = ArgumentCaptor.forClass(ToolExecutor.class);
-        verify(mcpTools).registerTool(eq("add_task"), any(), any(), executorCaptor.capture());
-
-        ToolExecutor<AddTaskInput, Map<String, Object>> executor = executorCaptor.getValue();
+        ToolExecutor<AddTaskInput, Map<String, Object>> executor = registerAndGetExecutor();
         AddTaskInput input = new AddTaskInput(null, "Fix bug", null, null, null, null, null, null, null);
         Map<String, Object> result = executor.execute(input);
 
@@ -173,12 +183,7 @@ class TaskToolProviderTest {
     void returnsErrorWhenMultipleReposAndNoRepoId() throws Exception {
         when(taskRepositoryControl.repositoryIds()).thenReturn(List.of("repo1", "repo2"));
 
-        provider.registerTools(mcpTools);
-
-        ArgumentCaptor<ToolExecutor> executorCaptor = ArgumentCaptor.forClass(ToolExecutor.class);
-        verify(mcpTools).registerTool(eq("add_task"), any(), any(), executorCaptor.capture());
-
-        ToolExecutor<AddTaskInput, Map<String, Object>> executor = executorCaptor.getValue();
+        ToolExecutor<AddTaskInput, Map<String, Object>> executor = registerAndGetExecutor();
         AddTaskInput input = new AddTaskInput(null, "Fix bug", null, null, null, null, null, null, null);
         Map<String, Object> result = executor.execute(input);
 
@@ -191,12 +196,7 @@ class TaskToolProviderTest {
     void returnsErrorWhenUnknownRepoId() throws Exception {
         when(taskRepositoryControl.repositoryIds()).thenReturn(List.of("repo1"));
 
-        provider.registerTools(mcpTools);
-
-        ArgumentCaptor<ToolExecutor> executorCaptor = ArgumentCaptor.forClass(ToolExecutor.class);
-        verify(mcpTools).registerTool(eq("add_task"), any(), any(), executorCaptor.capture());
-
-        ToolExecutor<AddTaskInput, Map<String, Object>> executor = executorCaptor.getValue();
+        ToolExecutor<AddTaskInput, Map<String, Object>> executor = registerAndGetExecutor();
         AddTaskInput input = new AddTaskInput("unknown", "Fix bug", null, null, null, null, null, null, null);
         Map<String, Object> result = executor.execute(input);
 
@@ -209,16 +209,10 @@ class TaskToolProviderTest {
     void autoSelectsSingleRepository() throws Exception {
         when(taskRepositoryControl.repositoryIds()).thenReturn(List.of("only-repo"));
         when(taskRepositoryControl.displayNameOf("only-repo")).thenReturn("Only Repo");
-        TaskRecord mockRecord = new TaskRecord("t-1", "open", "B", "Fix bug", List.of(), List.of(),
-            "", 0, 0, "", "");
-        when(taskRepositoryControl.add(eq("only-repo"), any(TaskInput.class))).thenReturn(mockRecord);
+        createTempCsvFile("only-repo");
+        when(taskRepositoryControl.add(eq("only-repo"), any(TaskInput.class))).thenReturn(mockTaskRecord("t-1", "Fix bug"));
 
-        provider.registerTools(mcpTools);
-
-        ArgumentCaptor<ToolExecutor> executorCaptor = ArgumentCaptor.forClass(ToolExecutor.class);
-        verify(mcpTools).registerTool(eq("add_task"), any(), any(), executorCaptor.capture());
-
-        ToolExecutor<AddTaskInput, Map<String, Object>> executor = executorCaptor.getValue();
+        ToolExecutor<AddTaskInput, Map<String, Object>> executor = registerAndGetExecutor();
         AddTaskInput input = new AddTaskInput(null, "Fix bug", null, null, null, null, null, null, null);
         Map<String, Object> result = executor.execute(input);
 
@@ -231,16 +225,12 @@ class TaskToolProviderTest {
     void passesAllFieldsToTaskInput() throws Exception {
         when(taskRepositoryControl.repositoryIds()).thenReturn(List.of("repo1"));
         when(taskRepositoryControl.displayNameOf("repo1")).thenReturn("My Tasks");
+        createTempCsvFile("repo1");
         TaskRecord mockRecord = new TaskRecord("t-1", "open", "A", "Critical fix", List.of("urgent"), List.of("backend"),
             "2026-09-01", 5, 2, "", "");
         when(taskRepositoryControl.add(eq("repo1"), any(TaskInput.class))).thenReturn(mockRecord);
 
-        provider.registerTools(mcpTools);
-
-        ArgumentCaptor<ToolExecutor> executorCaptor = ArgumentCaptor.forClass(ToolExecutor.class);
-        verify(mcpTools).registerTool(eq("add_task"), any(), any(), executorCaptor.capture());
-
-        ToolExecutor<AddTaskInput, Map<String, Object>> executor = executorCaptor.getValue();
+        ToolExecutor<AddTaskInput, Map<String, Object>> executor = registerAndGetExecutor();
         AddTaskInput input = new AddTaskInput("repo1", "Critical fix", "open", "A", "backend", "urgent",
             "2026-09-01", 5, 2);
         Map<String, Object> result = executor.execute(input);
@@ -265,16 +255,10 @@ class TaskToolProviderTest {
     void worksWithExplicitRepoId() throws Exception {
         when(taskRepositoryControl.repositoryIds()).thenReturn(List.of("repo1", "repo2"));
         when(taskRepositoryControl.displayNameOf("repo2")).thenReturn("Second Repo");
-        TaskRecord mockRecord = new TaskRecord("t-1", "open", "B", "Task", List.of(), List.of(),
-            "", 0, 0, "", "");
-        when(taskRepositoryControl.add(eq("repo2"), any(TaskInput.class))).thenReturn(mockRecord);
+        createTempCsvFile("repo2");
+        when(taskRepositoryControl.add(eq("repo2"), any(TaskInput.class))).thenReturn(mockTaskRecord("t-1", "Task"));
 
-        provider.registerTools(mcpTools);
-
-        ArgumentCaptor<ToolExecutor> executorCaptor = ArgumentCaptor.forClass(ToolExecutor.class);
-        verify(mcpTools).registerTool(eq("add_task"), any(), any(), executorCaptor.capture());
-
-        ToolExecutor<AddTaskInput, Map<String, Object>> executor = executorCaptor.getValue();
+        ToolExecutor<AddTaskInput, Map<String, Object>> executor = registerAndGetExecutor();
         AddTaskInput input = new AddTaskInput("repo2", "Task", null, null, null, null, null, null, null);
         Map<String, Object> result = executor.execute(input);
 
@@ -287,16 +271,10 @@ class TaskToolProviderTest {
     void handlesNullOptionalFields() throws Exception {
         when(taskRepositoryControl.repositoryIds()).thenReturn(List.of("repo1"));
         when(taskRepositoryControl.displayNameOf("repo1")).thenReturn("My Tasks");
-        TaskRecord mockRecord = new TaskRecord("t-1", "open", "B", "Minimal task", List.of(), List.of(),
-            "", 0, 0, "", "");
-        when(taskRepositoryControl.add(eq("repo1"), any(TaskInput.class))).thenReturn(mockRecord);
+        createTempCsvFile("repo1");
+        when(taskRepositoryControl.add(eq("repo1"), any(TaskInput.class))).thenReturn(mockTaskRecord("t-1", "Minimal task"));
 
-        provider.registerTools(mcpTools);
-
-        ArgumentCaptor<ToolExecutor> executorCaptor = ArgumentCaptor.forClass(ToolExecutor.class);
-        verify(mcpTools).registerTool(eq("add_task"), any(), any(), executorCaptor.capture());
-
-        ToolExecutor<AddTaskInput, Map<String, Object>> executor = executorCaptor.getValue();
+        ToolExecutor<AddTaskInput, Map<String, Object>> executor = registerAndGetExecutor();
         AddTaskInput input = new AddTaskInput(null, "Minimal task", null, null, null, null, null, null, null);
         Map<String, Object> result = executor.execute(input);
 
@@ -313,5 +291,33 @@ class TaskToolProviderTest {
         assertEquals("", captured.dueDate());
         assertEquals(0, captured.estimate());
         assertEquals(0, captured.consumed());
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void returnsErrorWhenRepositoryFileNotFound() throws Exception {
+        when(taskRepositoryControl.repositoryIds()).thenReturn(List.of("repo1"));
+        when(taskRepositoryControl.csvPathOf("repo1")).thenReturn("/nonexistent/path/tasks.txt");
+
+        ToolExecutor<AddTaskInput, Map<String, Object>> executor = registerAndGetExecutor();
+        AddTaskInput input = new AddTaskInput("repo1", "Fix bug", null, null, null, null, null, null, null);
+        Map<String, Object> result = executor.execute(input);
+
+        assertEquals("error", result.get("status"));
+        assertTrue(result.get("message").toString().contains("Repository file not found"));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void returnsErrorWhenRepositoryHasNoFilePath() throws Exception {
+        when(taskRepositoryControl.repositoryIds()).thenReturn(List.of("repo1"));
+        when(taskRepositoryControl.csvPathOf("repo1")).thenReturn("");
+
+        ToolExecutor<AddTaskInput, Map<String, Object>> executor = registerAndGetExecutor();
+        AddTaskInput input = new AddTaskInput("repo1", "Fix bug", null, null, null, null, null, null, null);
+        Map<String, Object> result = executor.execute(input);
+
+        assertEquals("error", result.get("status"));
+        assertTrue(result.get("message").toString().contains("has no file path configured"));
     }
 }

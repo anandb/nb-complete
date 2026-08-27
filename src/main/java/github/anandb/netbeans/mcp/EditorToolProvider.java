@@ -104,9 +104,29 @@ public class EditorToolProvider {
 
         mcpTools.registerTool(
                 "open_pos",
-                "Opens a file at the specified line number in the editor. Only works for files within the current project. " +
-                "Call when you see phrases like 'Show me where this happens in the code, or 'open the files where we use this'" +
-                "'Where all do we have this kind of pattern', 'Show me the code where XXX'",
+                """
+                Opens a file at the specified line number in the editor. The cursor jumps to that line and the file
+                is focused. Only works for files within the current project (files outside the project are rejected).
+
+                Use when the user wants to:
+                - Navigate to a specific location in the code
+                - See where something is defined or used
+                - Jump to an error, warning, or referenced location
+                - Explore code structure visually
+
+                Trigger phrases:
+                - 'Show me where this happens'
+                - 'Open the file at line X'
+                - 'Where is this defined?'
+                - 'Show me the code for...'
+                - 'Jump to...'
+                - 'Where all do we have this pattern?'
+
+                Examples:
+                - 'Show me the login method in AuthController' -> filePath='.../AuthController.java', line=42
+                - 'Open pom.xml at line 15' -> filePath='.../pom.xml', line=15
+                - 'Where is ProcessManager used?' -> nb_open_pos at each call site
+                """,
                 schema,
                 new ToolExecutor<OpenFileInput, Map<String, Object>>(OpenFileInput.class) {
                     @Override
@@ -175,8 +195,26 @@ public class EditorToolProvider {
 
         mcpTools.registerTool(
                 "rename_session",
-                "Sets a custom title for a chat session. Use this to give sessions meaningful names. " +
-                "Omit sessionId to rename the current active session.",
+                """
+                Sets a custom title for a chat session. Use this to give sessions meaningful names instead of
+                auto-generated ones. Omit sessionId to rename the current active session.
+
+                Use when the user wants to:
+                - Name a session after its topic (e.g., "Debug login bug", "Refactor auth module")
+                - Organize multiple sessions by giving them descriptive titles
+                - Rename the current session to something memorable
+
+                Trigger phrases:
+                - 'Rename this session to...'
+                - 'Call this session...'
+                - 'Set the title to...'
+                - 'Name this chat...'
+
+                Examples:
+                - 'Rename this session to API refactoring' -> title='API refactoring'
+                - 'Call this one database migration work' -> title='database migration work'
+                - 'Set session title to debug auth flow' -> title='debug auth flow'
+                """,
                 schema,
                 new ToolExecutor<RenameSessionInput, Map<String, Object>>(RenameSessionInput.class) {
                     @Override

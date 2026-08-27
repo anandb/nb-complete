@@ -121,6 +121,21 @@ public class TaskToolProvider {
                         return Map.of("status", "error", "message",
                             "Unknown repository '" + repoId + "'. Available: " + String.join(", ", ids));
                     }
+                    // Validate the repository is accessible
+                    String csvPath = control.csvPathOf(repoId);
+                    if (csvPath == null || csvPath.isBlank()) {
+                        return Map.of("status", "error", "message",
+                            "Repository '" + repoId + "' has no file path configured.");
+                    }
+                    java.io.File csvFile = new java.io.File(csvPath);
+                    if (!csvFile.exists()) {
+                        return Map.of("status", "error", "message",
+                            "Repository file not found: " + csvPath + ". Repository may not be open or configured correctly.");
+                    }
+                    if (!csvFile.canRead()) {
+                        return Map.of("status", "error", "message",
+                            "Repository file is not readable: " + csvPath + ". Check file permissions.");
+                    }
                     TaskInput input = new TaskInput(
                         emptyIfNull(args.status()), emptyIfNull(args.priority()),
                         args.summary().trim(), emptyIfNull(args.tags()),
