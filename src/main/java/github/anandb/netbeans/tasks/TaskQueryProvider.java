@@ -204,6 +204,26 @@ public final class TaskQueryProvider implements QueryProvider<TaskQuery, TaskIss
         }
     }
 
+    /**
+     * Removes all containers and the store listener registration for every
+     * query kind of the given repository. Called by
+     * {@link TaskRepositoryProvider#removed} so listeners don't outlive their
+     * repository and containers don't accumulate stale references.
+     */
+    public void cleanup(String repoId) {
+        if (repoId == null) {
+            return;
+        }
+        registeredQueries.removeIf(k -> {
+            if (k.repoId().equals(repoId)) {
+                containers.remove(k);
+                tagFilters.remove(k);
+                return true;
+            }
+            return false;
+        });
+    }
+
     /** Applies the query's status scope; {@link Kind#ALL} shows every task. */
     private static boolean matchesStatus(TaskRecord t, TaskQuery.Kind kind) {
         switch (kind) {

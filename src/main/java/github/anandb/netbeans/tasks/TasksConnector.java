@@ -34,8 +34,8 @@ import org.openide.util.Lookup;
 public final class TasksConnector implements BugtrackingConnector {
 
     private static final Logger LOG = Logger.from(TasksConnector.class);
-    private final TaskRepositoryProvider repositoryProvider = new TaskRepositoryProvider();
     private final TaskQueryProvider queryProvider = new TaskQueryProvider();
+    private final TaskRepositoryProvider repositoryProvider = new TaskRepositoryProvider(queryProvider);
     private final TaskIssueProvider issueProvider = new TaskIssueProvider();
     private final TaskScheduleProvider scheduleProvider = new TaskScheduleProvider();
     private final TaskPriorityProvider priorityProvider = new TaskPriorityProvider();

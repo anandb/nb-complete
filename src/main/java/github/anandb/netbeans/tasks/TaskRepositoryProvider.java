@@ -36,6 +36,12 @@ public final class TaskRepositoryProvider implements RepositoryProvider<TaskRepo
     private final Map<TaskRepository, TaskRepositoryController> controllers =
         new ConcurrentHashMap<>();
 
+    private final TaskQueryProvider queryProvider;
+
+    public TaskRepositoryProvider(TaskQueryProvider queryProvider) {
+        this.queryProvider = queryProvider;
+    }
+
     private TaskRepositoryControl store() {
         return Lookup.getDefault().lookup(TaskRepositoryControl.class);
     }
@@ -102,6 +108,8 @@ public final class TaskRepositoryProvider implements RepositoryProvider<TaskRepo
         if (s != null && r.getRepositoryId() != null) {
             s.unregisterRepository(r.getRepositoryId());
         }
+        // Drop containers/listeners for this repo's queries so they don't leak.
+        queryProvider.cleanup(r.getRepositoryId());
     }
 
     @Override
