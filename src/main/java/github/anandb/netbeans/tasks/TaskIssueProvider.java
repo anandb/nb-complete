@@ -139,11 +139,27 @@ public final class TaskIssueProvider implements IssueProvider<TaskIssue> {
                         pcs.firePropertyChange(EVENT_ISSUE_DATA_CHANGED, null, taskId);
                     } else if (type == TaskRepositoryControl.ChangeType.REMOVED) {
                         TaskIssueCache.invalidate(repoId, taskId);
+                        evictController(repoId, taskId);
                         pcs.firePropertyChange(EVENT_ISSUE_DELETED, null, taskId);
                     }
                 });
             }
         }
+    }
+
+    /**
+     * Drops the cached controller for a deleted task so the {@link #controllers}
+     * map doesn't accumulate stale entries keyed by an identity the cache has
+     * already forgotten. No-op when no controller was ever built for the task.
+     */
+    private void evictController(String repoId, String taskId) {
+        if (repoId == null || taskId == null) {
+            return;
+        }
+        controllers.keySet().removeIf(issue ->
+            repoId.equals(issue.getRepositoryId())
+                && issue.getRecord() != null
+                && taskId.equals(issue.getRecord().id()));
     }
 
     private static boolean blank(String s) {
