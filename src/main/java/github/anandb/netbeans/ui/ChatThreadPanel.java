@@ -263,6 +263,11 @@ public class ChatThreadPanel extends JPanel {
     // Max bubbles rendered per EDT tick during a session load, keeping the
     // IDE responsive while a large history is drawn one message at a time.
     private static final int LOAD_RENDER_BATCH_SIZE = 1;
+    // How many user turns back (from the tail) blank-bubble cleanup inspects
+    // after a session load. Blanks can precede the last user turn in loaded
+    // history, but we bound the scan to recent turns instead of sweeping the
+    // whole thread on a large history.
+    private static final int RECENT_TURNS = 4;
 
     private void drainMessageQueue() {
         if (loadRenderInProgress) {
@@ -400,14 +405,11 @@ public class ChatThreadPanel extends JPanel {
             messagesContainer.add(bubble);
             messagesContainer.add(strut);
 
-            // Streaming bubbles revalidate via deferred-finalize; skip per-chunk layout.
+            // Non-streaming: run the same finalize step the streaming path gets,
+            // so both agree on which bubbles survive. Streaming defers to
+            // deferred-finalize/removeBlankBubbles at stopStreaming().
             if (!streaming) {
-                if (!batchAdding) {
-                    messagesContainer.revalidate();
-                    if (wasAtBottom) {
-                        scrollController.scrollToBottom(true);
-                    }
-                }
+                finalizeNonStreaming(wasAtBottom);
             } else if (wasAtBottom && !batchAdding) {
                 scrollController.scrollToBottom(true);
             }
@@ -442,17 +444,28 @@ public class ChatThreadPanel extends JPanel {
         strut.setVisible(visible);
         messagesContainer.add(bubble);
         messagesContainer.add(strut);
-        // Non-streaming: force layout. Streaming: deferred-finalize handles it. Skip in batch mode.
+        // Non-streaming: run the same finalize step as the streaming path.
+        // Streaming: deferred-finalize handles layout/blanks at stopStreaming().
         if (!streaming) {
-            if (!batchAdding) {
-                messagesContainer.revalidate();
-            }
-        }
-        if (wasAtBottom && !batchAdding) {
+            finalizeNonStreaming(wasAtBottom);
+        } else if (wasAtBottom && !batchAdding) {
             scrollController.scrollToBottom(true);
         }
         if (streaming) {
             streamingCoordinator.startStreaming(bubble);
+        }
+    }
+
+    /**
+     * Shared finalize step for non-streamed bubbles, mirroring the streaming
+     * finalize ({@link #removeBlankBubbles}) so both paths keep the same set of
+     * bubbles. Runs eagerly for live adds; session loads (batchAdding) defer to
+     * a single pass at the end of {@link #renderLoadedInChunks}.
+     */
+    private void finalizeNonStreaming(boolean wasAtBottom) {
+        if (!batchAdding) {
+            // Live adds: only the current turn is unfinalized, so scan its tail.
+            removeBlankBubbles(1, wasAtBottom);
         }
     }
 
@@ -488,8 +501,9 @@ public class ChatThreadPanel extends JPanel {
         anyFinalized |= sweepStreamingBubbles(wasAtBottom);
         // Now that all bubbles are finalized, drop any whose complete message is
         // blank (e.g. an agent_message_chunk of just "\n\n"). Runs after the sweep
-        // so getRawText() reflects the finished text.
-        boolean anyRemoved = removeBlankBubbles(wasAtBottom);
+        // so getRawText() reflects the finished text. Only the streamed turn (the
+        // last one) can hold blanks here.
+        boolean anyRemoved = removeBlankBubbles(1, wasAtBottom);
         if (anyFinalized || anyRemoved) {
             messagesContainer.revalidate();
             if (wasAtBottom) {
@@ -500,18 +514,23 @@ public class ChatThreadPanel extends JPanel {
     }
 
     /**
-     * Returns the component index marking the start of the current turn's bubbles:
-     * one past the last user bubble in {@code children}, or 0 if none. Streaming
-     * and blank bubbles can only be produced by the in-flight turn (after the last
-     * user message), so callers bound their tail-only scans to this index instead
-     * of sweeping the whole thread.
+     * Returns the component index marking the start of the most recent {@code
+     * recentTurns} turns' bubbles: one past the {@code recentTurns}-th user
+     * bubble (counting from the end of {@code children}), or 0 if fewer than
+     * {@code recentTurns} user bubbles exist. Streaming and blank bubbles can
+     * only be produced by recent turns, so callers bound their tail-only scans
+     * to this index instead of sweeping the whole thread.
      */
-    private static int currentTurnStartIndex(Component[] children) {
-        // Scan backward: the last user bubble is near the end, so break at the
-        // first one found — O(tail) rather than O(whole thread).
+    private static int currentTurnStartIndex(Component[] children, int recentTurns) {
+        int usersSeen = 0;
+        // Scan backward: recent user bubbles are near the end, so break quickly —
+        // O(recent turns' bubbles) rather than O(whole thread).
         for (int i = children.length - 1; i >= 0; i--) {
             if (children[i] instanceof MessageBubble mb && "user".equals(mb.getRole())) {
-                return i + 1;
+                usersSeen++;
+                if (usersSeen >= recentTurns) {
+                    return i + 1;
+                }
             }
         }
         return 0;
@@ -525,13 +544,15 @@ public class ChatThreadPanel extends JPanel {
      * judged per message, never per chunk, so whitespace between real content
      * ("Hello\n\nWorld") is preserved and only truly empty bubbles are dropped.
      *
+     * @param recentTurns how many turns back (from the tail) to scan for blanks;
+     *                    pass {@code 1} to scan only the current turn
      * @param wasAtBottom whether the scroll was at bottom before this removal
      * @return true if any bubble was removed
      */
-    private boolean removeBlankBubbles(boolean wasAtBottom) {
+    private boolean removeBlankBubbles(int recentTurns, boolean wasAtBottom) {
         Component[] all = messagesContainer.getComponents();
-        // Only the current turn (after the last user bubble) can contain blanks.
-        int start = currentTurnStartIndex(all);
+        // Only recent turns (after the last few user bubbles) can contain blanks.
+        int start = currentTurnStartIndex(all, recentTurns);
         List<MessageBubble> blankBubbles = new ArrayList<>();
         for (int i = start; i < all.length; i++) {
             if (all[i] instanceof MessageBubble mb) {
@@ -596,7 +617,7 @@ public class ChatThreadPanel extends JPanel {
         Component[] all = messagesContainer.getComponents();
         // Streaming bubbles only exist in the current turn (after the last user
         // bubble); earlier turns are already finalized, so skip the thread prefix.
-        int start = currentTurnStartIndex(all);
+        int start = currentTurnStartIndex(all, 1);
         for (int i = start; i < all.length; i++) {
             if (all[i] instanceof MessageBubble mb) {
                 boolean flagSaysStreaming = mb.streamingFlagsSet();
@@ -1052,6 +1073,12 @@ public class ChatThreadPanel extends JPanel {
             } else {
                 batchAdding = false;
                 trimMessages();
+                // Batch adds deferred blank-bubble cleanup per-message; do the
+                // single finalize pass now so loaded history drops empty
+                // assistant/thought bubbles like the streaming path does.
+                // Scan a few recent turns only — blanks can precede the last
+                // user turn in multi-turn history, but we bound to recent turns.
+                removeBlankBubbles(RECENT_TURNS, true);
                 messagesContainer.revalidate();
                 scrollController.scrollToBottom(true);
                 loadRenderInProgress = false;
