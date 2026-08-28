@@ -375,11 +375,15 @@ public class ChatThreadPanel extends JPanel {
     }
 
     private void addSingleBubble(MessageType type, String text, String messageId, String toolTitle, boolean streaming) {
-        // Reset permission grouping when a non-permission message arrives
-        lastPermissionLabel = null;
-
         // Capture scroll state BEFORE modifying content
         boolean wasAtBottom = scrollController.isAtBottom();
+
+        // Reset permission grouping when a VISIBLE non-permission message arrives.
+        // Hidden (filtered) messages must not break consecutive Allowed results.
+        boolean visible = !MessageFilterManager.isTypeHidden(type.roleName());
+        if (visible) {
+            lastPermissionLabel = null;
+        }
 
         // Sweep orphaned streaming JTextAreas before creating new bubble. Skip in batch mode.
         if (!batchAdding) {
@@ -390,7 +394,6 @@ public class ChatThreadPanel extends JPanel {
         if (type.isTool() || type.isThought()) {
             MessageBubble bubble = BubbleFactory.createToolThoughtBubble(type, text, messageId, toolTitle, streaming);
 
-            boolean visible = !MessageFilterManager.isTypeHidden(type.roleName());
             bubble.setVisible(visible);
             Component strut = Box.createVerticalStrut(4);
             strut.setVisible(visible);
@@ -434,7 +437,6 @@ public class ChatThreadPanel extends JPanel {
             lastUserTimestamp = -1L;
         }
 
-        boolean visible = !MessageFilterManager.isTypeHidden(type.roleName());
         bubble.setVisible(visible);
         Component strut = Box.createVerticalStrut(4);
         strut.setVisible(visible);
