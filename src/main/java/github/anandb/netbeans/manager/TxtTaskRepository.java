@@ -143,9 +143,11 @@ public final class TxtTaskRepository implements TaskRepositoryControl {
             return null;
         }
         String now = Instant.now().toString();
+        String status = orEmpty(input == null ? null : input.status());
+        String completedAt = TaskRecord.isFinishedStatus(status) ? now : "";
         TaskRecord task = new TaskRecord(
             createTaskId(),
-            orEmpty(input == null ? null : input.status()),
+            status,
             orEmpty(input == null ? null : input.priority()),
             orEmpty(input == null ? null : input.summary()),
             input == null ? List.of() : input.tagsList(),
@@ -154,6 +156,7 @@ public final class TxtTaskRepository implements TaskRepositoryControl {
             input == null ? 0 : input.estimate(),
             input == null ? 0 : input.consumed(),
             now,
+            completedAt,
             now);
         synchronized (s) {
             s.cache.add(task);
@@ -200,9 +203,19 @@ public final class TxtTaskRepository implements TaskRepositoryControl {
             existed = false;
             for (int i = 0; i < s.cache.size(); i++) {
                 if (s.cache.get(i).id().equals(task.id())) {
+                    TaskRecord prev = s.cache.get(i);
+                    String completedAt = prev.completedAt();
+                    boolean wasFinished = prev.isFinished();
+                    boolean nowFinished = task.isFinished();
+                    if (nowFinished && !wasFinished) {
+                        completedAt = Instant.now().toString();
+                    } else if (!nowFinished) {
+                        completedAt = "";
+                    }
                     TaskRecord updated = new TaskRecord(task.id(), task.status(), task.priority(),
                         task.summary(), task.tags(), task.projects(), task.dueDate(),
-                        task.estimate(), task.consumed(), task.createdAt(), Instant.now().toString());
+                        task.estimate(), task.consumed(), task.createdAt(), completedAt,
+                        Instant.now().toString());
                     s.cache.set(i, updated);
                     s.gen++;
                     existed = true;

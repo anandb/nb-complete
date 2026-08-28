@@ -18,7 +18,7 @@ class TaskTxtCodecTest {
         List<TaskRecord> tasks = List.of(new TaskRecord(
             "t-1", "open", "B", "Do the thing", List.of("a", "b"),
             List.of("proj-x", "proj-y"), "2026-09-01", 5, 2,
-            "2026-08-01", "2026-08-02T10:00:00Z"));
+            "2026-08-01", "", "2026-08-02T10:00:00Z"));
 
         String txt = TaskTxtCodec.serialize(tasks);
         List<TaskRecord> parsed = TaskTxtCodec.parse(txt);
@@ -42,7 +42,7 @@ class TaskTxtCodecTest {
     void closedUsesXPrefixAndNoStatusToken() {
         List<TaskRecord> tasks = List.of(new TaskRecord(
             "t-2", "closed", "A", "Done item", List.of(), List.of(), "",
-            0, 0, "2026-08-01", "2026-08-03T10:00:00Z"));
+            0, 0, "2026-08-01", "2026-08-02", "2026-08-03T10:00:00Z"));
         String txt = TaskTxtCodec.serialize(tasks);
         assertTrue(txt.contains("x (A) "), "closed task must carry x prefix + priority");
         assertFalse(txt.contains("status:"), "no status: token on disk");
@@ -53,10 +53,38 @@ class TaskTxtCodecTest {
     }
 
     @Test
+    void closedTaskWritesTwoDatesAndRoundTrips() {
+        List<TaskRecord> tasks = List.of(new TaskRecord(
+            "t-4", "closed", "B", "Done", List.of(), List.of(), "",
+            0, 0, "2026-08-01", "2026-08-05", "2026-08-05T12:00:00Z"));
+        String txt = TaskTxtCodec.serialize(tasks);
+        // Must write both completion and creation dates for closed tasks.
+        assertTrue(txt.startsWith("x (B) 2026-08-05 2026-08-01 "),
+            "closed task must write completion date before creation date, got: " + txt);
+        List<TaskRecord> parsed = TaskTxtCodec.parse(txt);
+        assertEquals(1, parsed.size());
+        TaskRecord t = parsed.get(0);
+        assertTrue(t.isFinished());
+        assertEquals("2026-08-05", t.completedAt(), "completion date must round-trip");
+        assertEquals("2026-08-01", t.createdAt(), "creation date must round-trip");
+    }
+
+    @Test
+    void closedTaskWithoutCompletedAtWritesCreationDateTwice() {
+        // No separate completion date: both positional dates are the creation date.
+        List<TaskRecord> tasks = List.of(new TaskRecord(
+            "t-5", "closed", "C", "Auto-closed", List.of(), List.of(), "",
+            0, 0, "2026-08-01", "", "2026-08-01T00:00:00Z"));
+        String txt = TaskTxtCodec.serialize(tasks);
+        assertTrue(txt.startsWith("x (C) 2026-08-01 2026-08-01 "),
+            "closed task without completedAt must write creation date twice, got: " + txt);
+    }
+
+    @Test
     void tagsAndProjectsUseNativeTokens() {
         List<TaskRecord> tasks = List.of(new TaskRecord(
             "t-3", "open", "", "Sum", List.of("urgent"), List.of("alpha"),
-            "", 0, 0, "2026-08-01", "2026-08-01T00:00:00Z"));
+            "", 0, 0, "2026-08-01", "", "2026-08-01T00:00:00Z"));
         String txt = TaskTxtCodec.serialize(tasks);
         assertTrue(txt.contains("@urgent"), "tag emitted as @token");
         assertTrue(txt.contains("+alpha"), "project emitted as +token");

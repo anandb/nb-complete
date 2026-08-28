@@ -30,8 +30,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class TaskIssueControllerBuildTest {
 
     private static TaskRecord rec(String id, String status, String summary) {
+        String completedAt = "closed".equals(status) ? "2026-08-01T00:00:00Z" : "";
         return new TaskRecord(id, status, "N", summary, List.of("bug", "help wanted"),
-            List.of(), "", 0, 0, "2026-08-01", "2026-08-01T00:00:00Z");
+            List.of(), "", 0, 0, "2026-08-01", completedAt, "2026-08-01T00:00:00Z");
     }
 
     @Test

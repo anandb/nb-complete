@@ -114,20 +114,30 @@ public final class TaskIssueController implements IssueController {
             return false;
         }
         String now = Instant.now().toString();
+        String statusVal = status();
         if (provider.isNew(issue)) {
+            String completedAt = TaskRecord.isFinishedStatus(statusVal) ? now : "";
             TaskRecord saved = new TaskRecord(
-                cur.id(), status(), priority(), summary(),
+                cur.id(), statusVal, priority(), summary(),
                 List.copyOf(tags()), List.copyOf(projects()), dueDate(),
-                estimate(), consumed(), now, now);
+                estimate(), consumed(), now, completedAt, now);
             if (store != null) {
                 saved = store.addRecord(issue.getRepositoryId(), saved);
             }
             issue.setRecord(saved);
         } else {
+            String completedAt = cur.completedAt();
+            boolean wasFinished = cur.isFinished();
+            boolean nowFinished = TaskRecord.isFinishedStatus(statusVal);
+            if (nowFinished && !wasFinished) {
+                completedAt = now;
+            } else if (!nowFinished) {
+                completedAt = "";
+            }
             TaskRecord updated = new TaskRecord(
-                cur.id(), status(), priority(), summary(),
+                cur.id(), statusVal, priority(), summary(),
                 List.copyOf(tags()), List.copyOf(projects()), dueDate(),
-                estimate(), consumed(), cur.createdAt(), now);
+                estimate(), consumed(), cur.createdAt(), completedAt, now);
             if (store != null) {
                 store.update(issue.getRepositoryId(), updated);
             }

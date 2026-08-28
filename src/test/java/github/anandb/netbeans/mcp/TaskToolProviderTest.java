@@ -89,7 +89,7 @@ class TaskToolProviderTest {
 
     private TaskRecord mockTaskRecord(String id, String summary) {
         return new TaskRecord(id, "open", "B", summary, List.of(), List.of(),
-            "", 0, 0, "", "");
+            "", 0, 0, "", "", "");
     }
 
     @Test
@@ -227,7 +227,7 @@ class TaskToolProviderTest {
         when(taskRepositoryControl.displayNameOf("repo1")).thenReturn("My Tasks");
         createTempCsvFile("repo1");
         TaskRecord mockRecord = new TaskRecord("t-1", "open", "A", "Critical fix", List.of("urgent"), List.of("backend"),
-            "2026-09-01", 5, 2, "", "");
+            "2026-09-01", 5, 2, "", "", "");
         when(taskRepositoryControl.add(eq("repo1"), any(TaskInput.class))).thenReturn(mockRecord);
 
         ToolExecutor<AddTaskInput, Map<String, Object>> executor = registerAndGetExecutor();

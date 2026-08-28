@@ -26,6 +26,7 @@ public record TaskRecord(
     int estimate,
     int consumed,
     String createdAt,
+    String completedAt,
     String updatedAt
 ) {
 
@@ -47,6 +48,12 @@ public record TaskRecord(
             List<String> tags, List<String> projects, String dueDate,
             int estimate, int consumed) {
         return new TaskRecord(id, status, priority, summary, tags, projects,
-                dueDate, estimate, consumed, createdAt, updatedAt);
+                dueDate, estimate, consumed, createdAt, completedAt, updatedAt);
+    }
+
+    /** Creates a copy with {@code completedAt} set (used when closing a task). */
+    public TaskRecord withCompletedAt(String completedAt) {
+        return new TaskRecord(id, status, priority, summary, tags, projects,
+                dueDate, estimate, consumed, createdAt, completedAt, updatedAt);
     }
 }

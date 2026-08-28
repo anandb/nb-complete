@@ -128,7 +128,7 @@ public final class TaskRepositoryProvider implements RepositoryProvider<TaskRepo
         String now = Instant.now().toString();
         TaskRecord t = new TaskRecord(
             store() == null ? "t-tmp" : store().createTaskId(),
-            "", "", summary, List.of(), List.of(), "", 0, 0, now, now);
+            "", "", summary, List.of(), List.of(), "", 0, 0, now, "", now);
         return TaskIssueCache.get(r.getRepositoryId(), t);
     }
 

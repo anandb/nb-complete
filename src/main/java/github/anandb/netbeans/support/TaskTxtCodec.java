@@ -61,7 +61,8 @@ public final class TaskTxtCodec {
 
     private static String serializeLine(TaskRecord t) {
         StringBuilder sb = new StringBuilder(128);
-        if (TaskRecord.isFinishedStatus(t.status())) {
+        boolean finished = TaskRecord.isFinishedStatus(t.status());
+        if (finished) {
             sb.append(DONE_PREFIX);
         }
         String pri = normalizePriority(t.priority());
@@ -69,7 +70,21 @@ public final class TaskTxtCodec {
             sb.append('(').append(pri).append(") ");
         }
         String created = dateOnly(t.createdAt());
-        if (created != null) {
+        if (finished) {
+            // Closed tasks write TWO positional dates: completion date first,
+            // then creation date. If no separate completion date was set, use
+            // the creation date for both.
+            String completed = dateOnly(t.completedAt());
+            if (completed == null) {
+                completed = created;
+            }
+            if (completed != null) {
+                sb.append(completed).append(' ');
+            }
+            if (created != null) {
+                sb.append(created).append(' ');
+            }
+        } else if (created != null) {
             sb.append(created).append(' ');
         }
         // Summary is the free text; emit verbatim. If blank, fall back to id so
@@ -159,16 +174,24 @@ public final class TaskTxtCodec {
             }
         }
         // Positional dates: a completion date only follows x; a creation date
-        // follows the completion date (or the priority when open).
+        // follows the completion date (or stands alone when open).
         String createdAt = null;
+        String completedAt = null;
         if (isDateToken(line)) {
-            // completion date (only meaningful when done) — consumed, not stored.
             int sp = line.indexOf(' ');
             String rest = sp < 0 ? "" : line.substring(sp + 1).stripLeading();
-            if (isDateToken(rest)) {
+            if (done && isDateToken(rest)) {
+                // Closed task with two dates: completion then creation.
+                completedAt = line.substring(0, 10);
                 createdAt = rest.substring(0, 10);
                 line = rest.substring(10).stripLeading();
+            } else if (done) {
+                // Closed task with one date: treat as completion date.
+                completedAt = line.substring(0, 10);
+                createdAt = completedAt;
+                line = rest;
             } else {
+                // Open task: single creation date.
                 createdAt = line.substring(0, 10);
                 line = rest;
             }
@@ -225,7 +248,8 @@ public final class TaskTxtCodec {
                 : upd;
         return new TaskRecord(id, status, priority == null ? "" : priority,
                 summary, tags, projects, due, estimate, consumed,
-                createdAt == null ? "" : createdAt, updatedAt);
+                createdAt == null ? "" : createdAt,
+                completedAt == null ? "" : completedAt, updatedAt);
     }
 
     /** True if the start of the line is a {@code YYYY-MM-DD} token. */

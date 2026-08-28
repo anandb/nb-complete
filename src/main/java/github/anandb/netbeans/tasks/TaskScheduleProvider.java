@@ -34,7 +34,7 @@ public final class TaskScheduleProvider implements IssueScheduleProvider<TaskIss
         String dueDate = scheduleInfo.getDate().toInstant().toString();
         TaskRecord updated = new TaskRecord(r.id(), r.status(), r.priority(), r.summary(),
             r.tags(), r.projects(), dueDate, r.estimate(), r.consumed(),
-            r.createdAt(), r.updatedAt());
+            r.createdAt(), r.completedAt(), r.updatedAt());
         if (s != null) {
             s.update(i.getRepositoryId(), updated);
         }

@@ -13,7 +13,7 @@ class TaskIssueCacheTest {
 
     private static TaskRecord rec(String id, String summary) {
         return new TaskRecord(id, "open", "N", summary, List.of(), List.of(),
-            "", 0, 0, "2026-08-01", "2026-08-01T00:00:00Z");
+            "", 0, 0, "2026-08-01", "", "2026-08-01T00:00:00Z");
     }
 
     @Test
