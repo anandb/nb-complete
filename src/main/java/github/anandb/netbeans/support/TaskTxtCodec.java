@@ -90,7 +90,9 @@ public final class TaskTxtCodec {
         // Summary is the free text; emit verbatim. If blank, fall back to id so
         // the line is never empty.
         String summary = t.summary() == null ? "" : t.summary();
-        sb.append(summary.isBlank() ? "" : summary).append(' ');
+        // Trim so a summary ending in whitespace doesn't yield a doubled
+        // separator before the tail tokens; parse() already trims the summary.
+        sb.append(summary.isBlank() ? "" : summary.trim()).append(' ');
         List<String> tail = new ArrayList<>();
         if (t.tags() != null) {
             for (String tag : t.tags()) {

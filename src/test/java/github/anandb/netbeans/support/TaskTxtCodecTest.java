@@ -70,6 +70,20 @@ class TaskTxtCodecTest {
     }
 
     @Test
+    void summaryTrailingSpaceDoesNotDoubleSeparator() {
+        List<TaskRecord> tasks = List.of(new TaskRecord(
+            "t-6", "open", "", "Fix bug ", List.of("urgent"), List.of(), "",
+            0, 0, "2026-08-01", "", "2026-08-01T00:00:00Z"));
+        String txt = TaskTxtCodec.serialize(tasks);
+        // A single space must separate the summary from the first @tag token.
+        assertTrue(txt.contains("Fix bug @urgent"),
+            "summary trailing space must not produce a doubled separator, got: " + txt);
+        assertFalse(txt.contains("Fix bug  @urgent"), "double space before tag: " + txt);
+        // The summary is trimmed, matching parse() behavior on reload.
+        assertEquals("Fix bug", TaskTxtCodec.parse(txt).get(0).summary());
+    }
+
+    @Test
     void closedTaskWithoutCompletedAtWritesCreationDateTwice() {
         // No separate completion date: both positional dates are the creation date.
         List<TaskRecord> tasks = List.of(new TaskRecord(

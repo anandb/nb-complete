@@ -12,6 +12,7 @@ import org.openide.util.Lookup;
 import github.anandb.netbeans.contract.TaskInput;
 import github.anandb.netbeans.contract.TaskRepositoryControl;
 import github.anandb.netbeans.model.TaskRecord;
+import github.anandb.netbeans.model.TaskStatus;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.MapperSupplier;
 
@@ -141,8 +142,13 @@ public class TaskToolProvider {
                         return Map.of("status", "error", "message",
                             "Invalid priority '" + args.priority() + "'. Priority must be a single uppercase letter A-Z.");
                     }
+                    String status = emptyIfNull(args.status());
+                    if (!status.isEmpty() && !isValidStatus(status)) {
+                        return Map.of("status", "error", "message",
+                            "Invalid status '" + args.status() + "'. Status must be 'open' or 'closed'.");
+                    }
                     TaskInput input = new TaskInput(
-                        emptyIfNull(args.status()), priority,
+                        status, priority,
                         args.summary().trim(), emptyIfNull(args.tags()),
                         emptyIfNull(args.projects()), emptyIfNull(args.dueDate()),
                         toInt(args.estimate()), toInt(args.consumed()));
@@ -152,6 +158,15 @@ public class TaskToolProvider {
                         "message", "Task added to '" + control.displayNameOf(repoId) + "'.");
                 }
             });
+    }
+
+    /**
+     * True if the status maps to an explicit {@link TaskStatus}; null/blank and
+     * unknown values like "in-progress" or "cancelled" are rejected so a typo
+     * never silently becomes "open".
+     */
+    private static boolean isValidStatus(String status) {
+        return TaskStatus.fromValue(status).value().equalsIgnoreCase(status.trim());
     }
 
     private static String emptyIfNull(String s) {

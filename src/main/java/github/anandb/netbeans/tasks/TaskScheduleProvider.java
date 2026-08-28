@@ -28,7 +28,11 @@ public final class TaskScheduleProvider implements IssueScheduleProvider<TaskIss
     public void setSchedule(TaskIssue i, IssueScheduleInfo scheduleInfo) {
         TaskRecord r = i.getRecord();
         TaskRepositoryControl s = store();
-        if (r == null || scheduleInfo == null || scheduleInfo.getDate() == null) {
+        // Keep consistent with getSchedule/getDueDate, which report no schedule
+        // for finished tasks — never set a due date that would linger and
+        // reappear if the task is reopened.
+        if (r == null || r.isFinished()
+                || scheduleInfo == null || scheduleInfo.getDate() == null) {
             return;
         }
         String dueDate = scheduleInfo.getDate().toInstant().toString();

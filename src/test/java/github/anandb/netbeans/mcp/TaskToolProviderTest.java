@@ -334,4 +334,18 @@ class TaskToolProviderTest {
         assertEquals("error", result.get("status"));
         assertTrue(result.get("message").toString().contains("Invalid priority"));
     }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void returnsErrorWhenStatusIsInvalid() throws Exception {
+        when(taskRepositoryControl.repositoryIds()).thenReturn(List.of("repo1"));
+        createTempCsvFile("repo1");
+
+        ToolExecutor<AddTaskInput, Map<String, Object>> executor = registerAndGetExecutor();
+        AddTaskInput input = new AddTaskInput("repo1", "Fix bug", "in-progress", null, null, null, null, null, null);
+        Map<String, Object> result = executor.execute(input);
+
+        assertEquals("error", result.get("status"));
+        assertTrue(result.get("message").toString().contains("Invalid status"));
+    }
 }
