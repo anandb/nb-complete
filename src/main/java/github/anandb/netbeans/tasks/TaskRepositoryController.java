@@ -125,7 +125,9 @@ public final class TaskRepositoryController implements RepositoryController {
         try {
             return new java.io.File(p).getCanonicalPath();
         } catch (java.io.IOException ex) {
-            return p;
+            // Best effort: resolve against CWD and collapse . / .. so duplicate
+            // detection still works when canonicalization fails.
+            return new java.io.File(p).getAbsoluteFile().toPath().normalize().toString();
         }
     }
 

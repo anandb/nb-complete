@@ -116,7 +116,10 @@ public final class TasksConnector implements BugtrackingConnector {
         try {
             return new java.io.File(p).getCanonicalPath();
         } catch (java.io.IOException ex) {
-            return p;
+            // Best effort: resolve against CWD and collapse . / .. so two raw
+            // paths to the same file (e.g. "./tasks.txt" and "tasks.txt") still
+            // map to one key even when canonicalization fails.
+            return new java.io.File(p).getAbsoluteFile().toPath().normalize().toString();
         }
     }
 }
