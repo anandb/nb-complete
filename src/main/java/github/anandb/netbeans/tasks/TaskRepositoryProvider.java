@@ -124,15 +124,16 @@ public final class TaskRepositoryProvider implements RepositoryProvider<TaskRepo
 
     @Override
     public TaskIssue createIssue(TaskRepository r) {
-        return newIssue(r, "", "");
+        return newIssue(r, "");
     }
 
     @Override
     public TaskIssue createIssue(TaskRepository r, String summary, String description) {
-        return newIssue(r, summary == null ? "" : summary, description == null ? "" : description);
+        // description is not part of the todo.txt format; summary is used.
+        return newIssue(r, summary == null ? "" : summary);
     }
 
-    private TaskIssue newIssue(TaskRepository r, String summary, String description) {
+    private TaskIssue newIssue(TaskRepository r, String summary) {
         String now = Instant.now().toString();
         TaskRecord t = new TaskRecord(
             store() == null ? "t-tmp" : store().createTaskId(),
