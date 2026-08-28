@@ -813,14 +813,21 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             return;
         }
         SwingUtilities.invokeLater(() -> {
-            Mode mode = WindowManager.getDefault().findMode(savedMode);
-            if (mode != null) {
-                mode.dockInto(this);
+            // Idempotent restore: only re-dock when the window is not already in
+            // the saved mode, and only force a re-layout when the width actually
+            // changed. Re-docking an already-docked window on every open re-triggers
+            // the window lifecycle and makes the sidebar flash and disappear.
+            Mode current = WindowManager.getDefault().findMode(this);
+            Mode target = WindowManager.getDefault().findMode(savedMode);
+            if (target != null && !target.equals(current)) {
+                target.dockInto(this);
             }
             if (savedWidth > 0) {
                 int w = Math.max(180, savedWidth);
-                setPreferredSize(new Dimension(w, getPreferredSize().height));
-                revalidate();
+                if (w != getPreferredSize().width) {
+                    setPreferredSize(new Dimension(w, getPreferredSize().height));
+                    revalidate();
+                }
             }
         });
     }
