@@ -136,8 +136,13 @@ public class TaskToolProvider {
                         return Map.of("status", "error", "message",
                             "Repository file is not readable: " + tasksPath + ". Check file permissions.");
                     }
+                    String priority = emptyIfNull(args.priority());
+                    if (!priority.isEmpty() && !priority.matches("[A-Z]")) {
+                        return Map.of("status", "error", "message",
+                            "Invalid priority '" + args.priority() + "'. Priority must be a single uppercase letter A-Z.");
+                    }
                     TaskInput input = new TaskInput(
-                        emptyIfNull(args.status()), emptyIfNull(args.priority()),
+                        emptyIfNull(args.status()), priority,
                         args.summary().trim(), emptyIfNull(args.tags()),
                         emptyIfNull(args.projects()), emptyIfNull(args.dueDate()),
                         toInt(args.estimate()), toInt(args.consumed()));

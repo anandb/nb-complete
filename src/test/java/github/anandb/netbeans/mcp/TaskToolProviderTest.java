@@ -320,4 +320,18 @@ class TaskToolProviderTest {
         assertEquals("error", result.get("status"));
         assertTrue(result.get("message").toString().contains("has no file path configured"));
     }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void returnsErrorWhenPriorityIsInvalid() throws Exception {
+        when(taskRepositoryControl.repositoryIds()).thenReturn(List.of("repo1"));
+        createTempCsvFile("repo1");
+
+        ToolExecutor<AddTaskInput, Map<String, Object>> executor = registerAndGetExecutor();
+        AddTaskInput input = new AddTaskInput("repo1", "Fix bug", null, "URGENT", null, null, null, null, null);
+        Map<String, Object> result = executor.execute(input);
+
+        assertEquals("error", result.get("status"));
+        assertTrue(result.get("message").toString().contains("Invalid priority"));
+    }
 }
