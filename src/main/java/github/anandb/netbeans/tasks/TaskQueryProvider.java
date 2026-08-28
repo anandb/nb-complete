@@ -21,7 +21,7 @@ import org.openide.util.Lookup;
 
 /**
  * {@link QueryProvider} for the single fixed "All tasks" query per repository.
- * {@link #refresh} reloads the repository's CSV from disk (off the EDT) and
+ * {@link #refresh} reloads the repository's tasks file from disk (off the EDT) and
  * republishes the list; store {@link TaskRepositoryControl.RepositoryListener}s
  * republish on in-session changes.
  */
@@ -151,8 +151,8 @@ public final class TaskQueryProvider implements QueryProvider<TaskQuery, TaskIss
             return;
         }
         LOG.info("refresh: repo {0} kind {1} tagFilter={2}", key.repoId(), key.kind(), q.getTagFilter());
-        // Reload from disk (off the EDT) so external edits/deletions to the CSV
-        // are picked up, then publish the results. The RELOADED event fired by
+        // Reload from disk (off the EDT) so external edits/deletions to the
+        // tasks file are picked up, then publish the results. The RELOADED event fired by
         // reload() also re-pushes via the (repo, kind)-scoped store listener;
         // both paths read the same filter map, so they cannot diverge.
         RP.post(() -> {

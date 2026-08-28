@@ -122,19 +122,19 @@ public class TaskToolProvider {
                             "Unknown repository '" + repoId + "'. Available: " + String.join(", ", ids));
                     }
                     // Validate the repository is accessible
-                    String csvPath = control.csvPathOf(repoId);
-                    if (csvPath == null || csvPath.isBlank()) {
+                    String tasksPath = control.tasksPathOf(repoId);
+                    if (tasksPath == null || tasksPath.isBlank()) {
                         return Map.of("status", "error", "message",
                             "Repository '" + repoId + "' has no file path configured.");
                     }
-                    java.io.File csvFile = new java.io.File(csvPath);
-                    if (!csvFile.exists()) {
+                    java.io.File tasksFile = new java.io.File(tasksPath);
+                    if (!tasksFile.exists()) {
                         return Map.of("status", "error", "message",
-                            "Repository file not found: " + csvPath + ". Repository may not be open or configured correctly.");
+                            "Repository file not found: " + tasksPath + ". Repository may not be open or configured correctly.");
                     }
-                    if (!csvFile.canRead()) {
+                    if (!tasksFile.canRead()) {
                         return Map.of("status", "error", "message",
-                            "Repository file is not readable: " + csvPath + ". Check file permissions.");
+                            "Repository file is not readable: " + tasksPath + ". Check file permissions.");
                     }
                     TaskInput input = new TaskInput(
                         emptyIfNull(args.status()), emptyIfNull(args.priority()),

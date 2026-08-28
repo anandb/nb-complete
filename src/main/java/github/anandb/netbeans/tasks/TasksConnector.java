@@ -56,7 +56,7 @@ public final class TasksConnector implements BugtrackingConnector {
         }
         TaskRepository r = new TaskRepository();
         r.setRepositoryId(info.getID());
-        r.setCsvPath(info.getValue(TasksModel.VALUE_TASKS_PATH));
+        r.setTasksPath(info.getValue(TasksModel.VALUE_TASKS_PATH));
         r.setDisplayName(info.getDisplayName());
         TaskRepositoryControl s = Lookup.getDefault().lookup(TaskRepositoryControl.class);
         if (s != null && info.getID() != null) {
@@ -78,7 +78,7 @@ public final class TasksConnector implements BugtrackingConnector {
     public void restoreFromMetadata() {
         RepositoryManager mgr = RepositoryManager.getInstance();
         // Track paths already claimed so stale metadata (multiple repository ids
-        // pointing at the same CSV) doesn't re-create duplicate repositories.
+        // pointing at the same tasks file) doesn't re-create duplicate repositories.
         java.util.Set<String> claimed = new java.util.HashSet<>();
         for (String id : TasksMetadata.allIds()) {
             String csvPath = TasksMetadata.tasksPathOf(id);
@@ -97,7 +97,7 @@ public final class TasksConnector implements BugtrackingConnector {
             }
             TaskRepository r = new TaskRepository();
             r.setRepositoryId(id);
-            r.setCsvPath(csvPath);
+            r.setTasksPath(csvPath);
             r.setDisplayName(TasksMetadata.displayNameOf(id));
             RepositoryInfo info = repositoryProvider.getInfo(r);
             if (info == null) {

@@ -6,8 +6,8 @@ package github.anandb.netbeans.tasks;
  * ({@code Q}). The issue type ({@code I}) is {@code TaskRecord}.
  *
  * <p>{@link TaskRepository} carries the metadata that backs a Beanbot Tasks
- * repository: display name and the external CSV path (both user-editable in the
- * repository dialog). Its id is {@code null} until the repository is first
+ * repository: display name and the external tasks-file path (both user-editable in
+ * the repository dialog). Its id is {@code null} until the repository is first
  * saved, at which point {@code TaskRepositoryController.applyChanges()}
  * assigns one.</p>
  */
@@ -32,7 +32,7 @@ public final class TasksModel {
 
         private volatile String repositoryId;
         private volatile String displayName;
-        private volatile String csvPath;
+        private volatile String tasksPath;
 
         public String getRepositoryId() {
             return repositoryId;
@@ -50,12 +50,12 @@ public final class TasksModel {
             this.displayName = displayName;
         }
 
-        public String getCsvPath() {
-            return csvPath;
+        public String getTasksPath() {
+            return tasksPath;
         }
 
-        public void setCsvPath(String csvPath) {
-            this.csvPath = csvPath;
+        public void setTasksPath(String tasksPath) {
+            this.tasksPath = tasksPath;
         }
 
         @Override

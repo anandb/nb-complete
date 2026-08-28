@@ -88,7 +88,7 @@ public final class TaskRepositoryController implements RepositoryController {
             && !duplicatePath();
     }
 
-    /** True if another repository already uses the chosen CSV path. */
+    /** True if another repository already uses the chosen tasks-file path. */
     private boolean duplicatePath() {
         String path = pathField.getText().trim();
         if (path.isEmpty()) {
@@ -104,7 +104,7 @@ public final class TaskRepositoryController implements RepositoryController {
                 if (id.equals(myId)) {
                     continue; // editing this repository's own current path
                 }
-                if (canonical.equals(canonical(s.csvPathOf(id)))) {
+                if (canonical.equals(canonical(s.tasksPathOf(id)))) {
                     return true;
                 }
             }
@@ -134,7 +134,7 @@ public final class TaskRepositoryController implements RepositoryController {
     public void populate() {
         ensureBuilt();
         nameField.setText(repository.getDisplayName() == null ? "" : repository.getDisplayName());
-        pathField.setText(repository.getCsvPath() == null ? "" : repository.getCsvPath());
+        pathField.setText(repository.getTasksPath() == null ? "" : repository.getTasksPath());
         applyDefaultsIfNew();
     }
 
@@ -235,10 +235,10 @@ public final class TaskRepositoryController implements RepositoryController {
             repository.setRepositoryId(id);
         }
         repository.setDisplayName(nameField.getText().trim());
-        repository.setCsvPath(pathField.getText().trim());
+        repository.setTasksPath(pathField.getText().trim());
         TaskRepositoryControl store = Lookup.getDefault().lookup(TaskRepositoryControl.class);
         if (store != null) {
-            store.registerRepository(id, repository.getCsvPath(), repository.getDisplayName());
+            store.registerRepository(id, repository.getTasksPath(), repository.getDisplayName());
         }
     }
 

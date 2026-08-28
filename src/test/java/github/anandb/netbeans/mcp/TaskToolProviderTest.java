@@ -83,7 +83,7 @@ class TaskToolProviderTest {
     private File createTempCsvFile(String repoId) throws Exception {
         File csvFile = tempDir.resolve("tasks_" + repoId + ".txt").toFile();
         csvFile.createNewFile();
-        when(taskRepositoryControl.csvPathOf(repoId)).thenReturn(csvFile.getAbsolutePath());
+        when(taskRepositoryControl.tasksPathOf(repoId)).thenReturn(csvFile.getAbsolutePath());
         return csvFile;
     }
 
@@ -297,7 +297,7 @@ class TaskToolProviderTest {
     @Test
     void returnsErrorWhenRepositoryFileNotFound() throws Exception {
         when(taskRepositoryControl.repositoryIds()).thenReturn(List.of("repo1"));
-        when(taskRepositoryControl.csvPathOf("repo1")).thenReturn("/nonexistent/path/tasks.txt");
+        when(taskRepositoryControl.tasksPathOf("repo1")).thenReturn("/nonexistent/path/tasks.txt");
 
         ToolExecutor<AddTaskInput, Map<String, Object>> executor = registerAndGetExecutor();
         AddTaskInput input = new AddTaskInput("repo1", "Fix bug", null, null, null, null, null, null, null);
@@ -311,7 +311,7 @@ class TaskToolProviderTest {
     @Test
     void returnsErrorWhenRepositoryHasNoFilePath() throws Exception {
         when(taskRepositoryControl.repositoryIds()).thenReturn(List.of("repo1"));
-        when(taskRepositoryControl.csvPathOf("repo1")).thenReturn("");
+        when(taskRepositoryControl.tasksPathOf("repo1")).thenReturn("");
 
         ToolExecutor<AddTaskInput, Map<String, Object>> executor = registerAndGetExecutor();
         AddTaskInput input = new AddTaskInput("repo1", "Fix bug", null, null, null, null, null, null, null);

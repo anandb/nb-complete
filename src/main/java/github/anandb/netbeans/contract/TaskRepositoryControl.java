@@ -6,10 +6,10 @@ import github.anandb.netbeans.model.TaskRecord;
 
 /**
  * Port used by the Beanbot Tasks connector (Dashboard), the MCP {@code add_task}
- * tool and the chat plugin to read and mutate the CSV-backed task repositories.
+ * tool and the chat plugin to read and mutate the todo.txt-backed task repositories.
  *
  * <p>All operations are keyed by repository id; a single repository maps to one
- * CSV file. Implementations keep the in-memory cache up to date synchronously,
+ * todo.txt file. Implementations keep the in-memory cache up to date synchronously,
  * perform all file I/O off the EDT, and fire {@link RepositoryListener}s so the
  * Dashboard can republish changed tasks.</p>
  *
@@ -22,15 +22,15 @@ public interface TaskRepositoryControl {
     List<String> repositoryIds();
 
     /** The tasks-file (todo.txt) path backing the given repository, or empty string. */
-    String csvPathOf(String repoId);
+    String tasksPathOf(String repoId);
 
     /** The user-visible name of the given repository, or empty string. */
     String displayNameOf(String repoId);
 
-    /** Registers (or re-registers) a repository and loads its CSV from disk. */
-    void registerRepository(String repoId, String csvPath, String displayName);
+    /** Registers (or re-registers) a repository and loads its tasks file from disk. */
+    void registerRepository(String repoId, String tasksPath, String displayName);
 
-    /** Removes a repository and its cached state (the CSV file is not deleted). */
+    /** Removes a repository and its cached state (the tasks file is not deleted). */
     void unregisterRepository(String repoId);
 
     /** The tasks of the given repository (snapshot of the in-memory cache). */
@@ -55,7 +55,7 @@ public interface TaskRepositoryControl {
     boolean delete(String repoId, String id);
 
     /**
-     * Reloads the given repository's CSV from disk and refreshes the cached
+     * Reloads the given repository's tasks file from disk and refreshes the cached
      * stat snapshot; true on success (missing file yields an empty repository).
      */
     boolean reload(String repoId);

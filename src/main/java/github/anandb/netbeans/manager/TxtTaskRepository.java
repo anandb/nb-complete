@@ -67,9 +67,9 @@ public final class TxtTaskRepository implements TaskRepositoryControl {
     }
 
     @Override
-    public String csvPathOf(String repoId) {
+    public String tasksPathOf(String repoId) {
         RepoState s = find(repoId);
-        return s == null ? "" : s.csvPath;
+        return s == null ? "" : s.tasksPath;
     }
 
     @Override
@@ -79,19 +79,19 @@ public final class TxtTaskRepository implements TaskRepositoryControl {
     }
 
     @Override
-    public void registerRepository(String repoId, String csvPath, String displayName) {
+    public void registerRepository(String repoId, String tasksPath, String displayName) {
         if (repoId == null || repoId.isEmpty()) {
             return;
         }
         RepoState s = find(repoId);
         if (s == null) {
-            s = new RepoState(repoId, csvPath, displayName);
+            s = new RepoState(repoId, tasksPath, displayName);
             state.add(s);
         } else {
-            s.csvPath = csvPath;
+            s.tasksPath = tasksPath;
             s.displayName = displayName;
         }
-        TasksMetadata.put(repoId, csvPath, displayName);
+        TasksMetadata.put(repoId, tasksPath, displayName);
         loadAsync(s);
     }
 
@@ -293,7 +293,7 @@ public final class TxtTaskRepository implements TaskRepositoryControl {
 
     /** Loads the repository todo.txt from disk into the cache and updates the snapshot. */
     private boolean loadSync(RepoState s) {
-        File f = new File(s.csvPath);
+        File f = new File(s.tasksPath);
         List<TaskRecord> loaded = new ArrayList<>();
         synchronized (s) {
             s.genAtLoadStart = s.gen;
@@ -304,7 +304,7 @@ public final class TxtTaskRepository implements TaskRepositoryControl {
                 s.lastModified = 0;
                 s.size = 0;
             }
-            markFileStat(s.csvPath, 0, 0);
+            markFileStat(s.tasksPath, 0, 0);
             fire(s.repoId, ChangeType.RELOADED, null);
             return true;
         }
@@ -322,10 +322,10 @@ public final class TxtTaskRepository implements TaskRepositoryControl {
                     s.size = sz;
                 }
             }
-            markFileStat(s.csvPath, lm, sz);
-            LOG.fine("Loaded {0} tasks from {1}", loaded.size(), s.csvPath);
+            markFileStat(s.tasksPath, lm, sz);
+            LOG.fine("Loaded {0} tasks from {1}", loaded.size(), s.tasksPath);
         } catch (IOException | RuntimeException ex) {
-            LOG.warn("Failed to load tasks file {0}: {1}", s.csvPath, ex.getMessage());
+            LOG.warn("Failed to load tasks file {0}: {1}", s.tasksPath, ex.getMessage());
             return false;
         }
         fire(s.repoId, ChangeType.RELOADED, null);
@@ -349,12 +349,12 @@ public final class TxtTaskRepository implements TaskRepositoryControl {
      * modified outside the IDE. Must run off the EDT.
      */
     private void persist(RepoState s) {
-        File f = new File(s.csvPath);
+        File f = new File(s.tasksPath);
         boolean conflict = false;
         if (f.exists()) {
             long lm = f.lastModified();
             long sz = f.length();
-            conflict = !matchesSharedStat(s.csvPath, lm, sz);
+            conflict = !matchesSharedStat(s.tasksPath, lm, sz);
         }
         if (conflict && !confirmOverwrite(f)) {
             // User declined — drop the optimistic change and resync from disk.
@@ -379,7 +379,7 @@ public final class TxtTaskRepository implements TaskRepositoryControl {
                 s.lastModified = f.lastModified();
                 s.size = f.length();
             }
-            markFileStat(s.csvPath, f.lastModified(), f.length());
+            markFileStat(s.tasksPath, f.lastModified(), f.length());
         } catch (IOException | RuntimeException ex) {
             LOG.warn("Failed to write tasks file {0}: {1}", f.getPath(), ex.getMessage());
         }
@@ -441,7 +441,7 @@ public final class TxtTaskRepository implements TaskRepositoryControl {
     /** Per-repository mutable state; guarded via synchronized(this). */
     private static final class RepoState {
         final String repoId;
-        volatile String csvPath;
+        volatile String tasksPath;
         volatile String displayName;
         List<TaskRecord> cache = new ArrayList<>();
         long lastModified;
@@ -450,9 +450,9 @@ public final class TxtTaskRepository implements TaskRepositoryControl {
         long genAtLoadStart;
         final AtomicBoolean persistScheduled = new AtomicBoolean();
 
-        RepoState(String repoId, String csvPath, String displayName) {
+        RepoState(String repoId, String tasksPath, String displayName) {
             this.repoId = repoId;
-            this.csvPath = csvPath;
+            this.tasksPath = tasksPath;
             this.displayName = displayName;
         }
     }

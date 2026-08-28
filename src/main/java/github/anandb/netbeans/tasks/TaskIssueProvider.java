@@ -15,8 +15,8 @@ import github.anandb.netbeans.model.TaskRecord;
 import org.openide.util.Lookup;
 
 /**
- * {@link IssueProvider} for Beanbot Tasks. Task records live in a local CSV
- * repository (no remote), so submit/comment/attach operations are no-ops. A
+ * {@link IssueProvider} for Beanbot Tasks. Task records live in a local
+ * todo.txt repository (no remote), so submit/comment/attach operations are no-ops. A
  * single provider instance is shared across repositories and dispatches via
  * {@link TaskIssue#getRepositoryId()}.
  */

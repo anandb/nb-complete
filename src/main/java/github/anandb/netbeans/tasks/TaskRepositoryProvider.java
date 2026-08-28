@@ -59,7 +59,7 @@ public final class TaskRepositoryProvider implements RepositoryProvider<TaskRepo
             "",
             displayNameOf(r),
             "");
-        info.putValue(TasksModel.VALUE_TASKS_PATH, r.getCsvPath() == null ? "" : r.getCsvPath());
+        info.putValue(TasksModel.VALUE_TASKS_PATH, r.getTasksPath() == null ? "" : r.getTasksPath());
         return info;
     }
 
