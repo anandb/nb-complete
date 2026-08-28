@@ -8,8 +8,8 @@ package github.anandb.netbeans.model;
  */
 public enum TaskStatus {
 
-    OPEN("open"),
-    CLOSED("closed");
+    OPEN("Open"),
+    CLOSED("Closed");
 
     private final String value;
 
@@ -21,12 +21,7 @@ public enum TaskStatus {
     public String value() {
         return value;
     }
-
-    /** Human-readable label shown in the UI (lowercase). */
-    public String display() {
-        return value;
-    }
-
+    
     /** Maps a stored status string to this enum, defaulting to {@link #OPEN}. */
     public static TaskStatus fromValue(String status) {
         if (status == null) {
@@ -34,7 +29,7 @@ public enum TaskStatus {
         }
         String v = status.trim().toLowerCase(java.util.Locale.ROOT);
         for (TaskStatus s : values()) {
-            if (s.value.equals(v)) {
+            if (s.value.equalsIgnoreCase(v)) {
                 return s;
             }
         }

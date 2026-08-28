@@ -473,14 +473,14 @@ public final class TaskIssueController implements IssueController {
         return names;
     }
 
-    /** Renders a {@link TaskStatus} using its lowercase display label. */
+    /** Renders a {@link TaskStatus} using its title-case display label. */
     private static final class TaskStatusRenderer extends JLabel
             implements ListCellRenderer<TaskStatus> {
 
         @Override
         public Component getListCellRendererComponent(JList<? extends TaskStatus> list,
                 TaskStatus value, int index, boolean isSelected, boolean cellHasFocus) {
-            setText(value == null ? "" : value.display());
+            setText(value == null ? "" : value.value());
             if (isSelected) {
                 setBackground(list.getSelectionBackground());
                 setForeground(list.getSelectionForeground());

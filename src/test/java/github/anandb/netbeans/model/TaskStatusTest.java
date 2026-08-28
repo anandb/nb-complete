@@ -29,8 +29,8 @@ class TaskStatusTest {
     }
 
     @Test
-    void valueRoundTripsLowercase() {
-        assertEquals("open", TaskStatus.OPEN.value());
-        assertEquals("closed", TaskStatus.CLOSED.value());
+    void valueRoundTripsTitlecase() {
+        assertEquals("Open", TaskStatus.OPEN.value());
+        assertEquals("Closed", TaskStatus.CLOSED.value());
     }
 }
