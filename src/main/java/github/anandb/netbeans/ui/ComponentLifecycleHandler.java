@@ -472,6 +472,16 @@ public class ComponentLifecycleHandler {
         safetyTimeout.setRepeats(false);
         safetyTimeout.start();
 
+        // Clear sticky permission/config-confirm state BEFORE restarting, exactly
+        // like the crash path does (onSessionError -> dismissPendingPermissionUi).
+        // An unanswered/missed permission request leaves isPermissionPending()
+        // true, which blocks EVERY new message send in both the full and mini
+        // assistant AND suspends the transport idle timeouts. Killing the server
+        // does not clear that flag — only this dismissal does. Without it,
+        // "restart the server" appears to do nothing and the UI stays dead
+        // until the whole IDE is restarted.
+        topComponent.dismissPendingPermissionUi();
+
         processService.get().restartServer();
         // Arm the manual-reconnect prompt only after the restart has begun,
         // so it cannot fire while any prompt is still open.

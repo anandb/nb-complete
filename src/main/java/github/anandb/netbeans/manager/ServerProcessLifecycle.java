@@ -293,14 +293,21 @@ class ServerProcessLifecycle {
 
         toolExecutor.stop();
 
-        AcpProtocolClient client = rpcClient.getAndSet(null);
-        if (client != null) {
-            client.close();
-        }
-
+        // Terminate the process FIRST, then close the client. The previous order
+        // (close client, then kill process) could hang the entire restart: if the
+        // server stopped draining its stdin (wedged thread/pipe buffer full),
+        // writer.flush() blocks forever inside the writer monitor and close()
+        // (which synchronizes on the same monitor) never returns — so the
+        // process is never killed and startServer() never runs again.
+        // Killing the process first breaks the pipes, unblocking the flush.
         if (serverProcess != null && serverProcess.isAlive()) {
             LOG.fine("Stopping ACP server (PID: {0})...", serverProcess.pid());
             ProcessTerminator.terminate(serverProcess);
+        }
+
+        AcpProtocolClient client = rpcClient.getAndSet(null);
+        if (client != null) {
+            client.close();
         }
 
         serverProcess = null;

@@ -172,6 +172,14 @@ public class SessionManager implements SessionQuery, SessionControl {
             notifyError(NbBundle.getMessage(SessionManager.class, "ERR_ServerDisconnected"));
         });
 
+        // Reset sticky session state on EVERY manual server restart (Restart
+        // Server button, global-config flow, executable-path preference change).
+        // The crash handler above covers the disconnect path; without this the
+        // manual restart path leaves a LOADING/STOPPING state machine in place,
+        // which makes the post-restart loadSession() refuse to run and freezes
+        // the panel until the whole IDE is restarted.
+        ProcessManager.getInstance().setPreRestartHandler(this::resetForServerRestart);
+
         // Auto-reload last session after successful reconnect
         ProcessManager.getInstance().setReadyHandler(() -> {
             String sid = currentSessionId;
@@ -811,6 +819,27 @@ public class SessionManager implements SessionQuery, SessionControl {
         if (sessionId != null) {
             StrategyRegistry.invalidateSession(sessionId);
         }
+    }
+
+    /**
+     * Resets sticky session state before a MANUAL server restart (not a crash).
+     * The crash path already transitions to IDLE via {@code setCrashHandler};
+     * the manual restart path (Restart Server button, executable-path
+     * preference change, MissingBinaryBubble) never touched the state machine.
+     * A state stuck in LOADING/STOPPING makes the post-restart loadSession()
+     * (which requires IDLE or STREAMING) refuse to run, so the panel stays
+     * frozen until the whole IDE is restarted. Called synchronously by
+     * {@link ProcessManager#restartServer()} before the process is torn down.
+     */
+    public void resetForServerRestart() {
+        if (stateMachine.getState() != SessionState.IDLE
+                && stateMachine.transitionTo(SessionState.IDLE)) {
+            LOG.info("resetForServerRestart: transitioning to IDLE");
+            new ArrayList<>(listeners).forEach(l -> l.onSessionLoading(false));
+        }
+        // The current session id is kept: ComponentLifecycleHandler.doRestart()
+        // reloads it once the restarted server is ready. In-flight prompts
+        // belong to the dying connection and are failed by AcpProtocolClient.close().
     }
 
     /** Release resources and unregister from ProcessManager SSE stream. */

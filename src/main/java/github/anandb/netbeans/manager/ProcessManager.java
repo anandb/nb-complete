@@ -88,6 +88,11 @@ public class ProcessManager implements ProcessControl {
     private volatile List<SessionUpdate.AvailableCommand> availableCommands = List.of();
     private volatile Runnable crashHandler;
     private volatile Runnable readyHandler;
+    /** Runs just before ANY manual server restart (button, global-config flow,
+     *  executable-path preference change). Lets SessionManager reset sticky
+     *  session state that otherwise survives the restart and wedges the UI
+     *  until the whole IDE is restarted. See SessionManager#resetForServerRestart. */
+    private volatile Runnable preRestartHandler;
 
     public ProcessManager() {
         toolExecutor.start();
@@ -212,8 +217,24 @@ public class ProcessManager implements ProcessControl {
 
     @Override
     public synchronized void restartServer() {
+        // Reset sticky session/UI state BEFORE the process is torn down: a
+        // state machine stuck in LOADING/STOPPING blocks the post-restart
+        // session reload, and an unanswered permission request blocks every
+        // new send. Neither is cleared by stopServer()/startServer() alone.
+        Runnable handler = preRestartHandler;
+        if (handler != null) {
+            try {
+                handler.run();
+            } catch (Exception e) {
+                LOG.warn("Pre-restart handler failed", e);
+            }
+        }
         serverLifecycle.restartServer();
         reconnectManager.resetThrottle();
+    }
+
+    public void setPreRestartHandler(Runnable handler) {
+        this.preRestartHandler = handler;
     }
 
     public void addSseListener(Consumer<SessionUpdate> listener) {

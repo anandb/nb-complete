@@ -170,6 +170,17 @@ public class McpManager {
         if (!supportsMcp && !mcpDisabled.get()) {
             LOG.info("Server does not advertise MCP support, disabling {0}", mcpCaps.asText());
             disable();
+            return;
+        }
+        if (supportsMcp && mcpDisabled.get()) {
+            // MCP was auto-disabled by an earlier server's handshake (no
+            // advertised capabilities) or a transient InvalidParams retry.
+            // The restarted server supports MCP again, so re-enable and bring
+            // up a fresh embedded server. Previously this flag survived every
+            // server restart and could only be cleared by an IDE restart.
+            LOG.info("Restarted server advertises MCP support — re-enabling MCP");
+            mcpDisabled.set(false);
+            start();
         } else {
             LOG.info("Server advertises MCP support {0}", mcpCaps.asText());
         }
