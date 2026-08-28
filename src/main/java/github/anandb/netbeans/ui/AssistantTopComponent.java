@@ -34,6 +34,8 @@ import org.openide.NotifyDescriptor;
 import org.openide.util.NbBundle;
 import org.openide.windows.TopComponent;
 import org.openide.windows.WindowManager;
+import org.openide.windows.Mode;
+import org.openide.util.NbPreferences;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
@@ -42,12 +44,14 @@ import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.model.SessionItem;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.PluginSettings;
+import github.anandb.netbeans.support.PreferenceKeys;
 
 import github.anandb.netbeans.ui.platform.PlatformBridge;
 import github.anandb.netbeans.ui.platform.ProjectContext;
 import github.anandb.netbeans.ui.platform.SessionService;
 import java.awt.Frame;
 import java.awt.Window;
+import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
@@ -748,6 +752,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     @Override
     public void componentClosed() {
         // Resources (listeners, handlers, messages) stay alive across all close/reopen cycles.
+        saveDockState();
         stopAttentionAnimation();
     }
 
@@ -758,6 +763,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             componentLifecycleHandler.componentOpened();
         }
         // On subsequent opens, resources are already alive — no reinit needed.
+        restoreDockState();
         updateAttentionAnimation();
     }
 
@@ -792,6 +798,44 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     }
 
     void readProperties(Properties p) {
+    }
+
+    /**
+     * Restores a previously saved dock position and width, so the sidebar
+     * stays where the user put it (e.g. moved to another dock) even across
+     * plugin reinstalls where NetBeans resets its own window layout.
+     */
+    private void restoreDockState() {
+        java.util.prefs.Preferences prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
+        String savedMode = prefs.get(PreferenceKeys.ASSISTANT_DOCK_MODE, null);
+        int savedWidth = prefs.getInt(PreferenceKeys.ASSISTANT_DOCK_WIDTH, 0);
+        if (savedMode == null || savedMode.isEmpty()) {
+            return;
+        }
+        SwingUtilities.invokeLater(() -> {
+            Mode mode = WindowManager.getDefault().findMode(savedMode);
+            if (mode != null) {
+                mode.dockInto(this);
+            }
+            if (savedWidth > 0) {
+                int w = Math.max(180, savedWidth);
+                setPreferredSize(new Dimension(w, getPreferredSize().height));
+                revalidate();
+            }
+        });
+    }
+
+    /** Persists the current dock mode name and dock width. */
+    private void saveDockState() {
+        java.util.prefs.Preferences prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
+        Mode mode = WindowManager.getDefault().findMode(this);
+        if (mode != null) {
+            prefs.put(PreferenceKeys.ASSISTANT_DOCK_MODE, mode.getName());
+        }
+        Rectangle dockBounds = mode == null ? null : mode.getBounds();
+        if (dockBounds != null && dockBounds.width > 0) {
+            prefs.putInt(PreferenceKeys.ASSISTANT_DOCK_WIDTH, dockBounds.width);
+        }
     }
 
     public static synchronized AssistantTopComponent findInstance() {

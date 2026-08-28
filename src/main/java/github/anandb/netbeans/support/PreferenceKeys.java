@@ -79,6 +79,12 @@ public final class PreferenceKeys {
     public static final String MINI_ASSISTANT_HEIGHT = "miniAssistant.height";
     public static final String MINI_ASSISTANT_INPUT_HEIGHT = "miniAssistant.inputHeight";
 
+    /** Dock area (mode name) the main assistant sidebar was last docked in. */
+    public static final String ASSISTANT_DOCK_MODE = "assistant.dockMode";
+
+    /** Preferred width (px) of the assistant sidebar dock. */
+    public static final String ASSISTANT_DOCK_WIDTH = "assistant.dockWidth";
+
     /**
      * System property ({@code -D}) that enables the {@code fs/writeTextFile} /
      * {@code fs/write_text_file} tools. Disabled by default, so the plugin
