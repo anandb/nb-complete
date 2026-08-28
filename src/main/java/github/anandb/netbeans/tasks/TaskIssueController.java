@@ -10,7 +10,6 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import javax.swing.JComboBox;
@@ -57,9 +56,6 @@ public final class TaskIssueController implements IssueController {
     };
 
     private static final List<String> PRIORITIES = buildPriorities();
-
-    /** NATO word (lowercased) → its uppercase letter; built once for O(1) lookup. */
-    private static final Map<String, String> NATO_TO_LETTER = buildNatoToLetter();
 
     private final TaskRepositoryControl store;
     private final TaskIssueProvider provider;
@@ -264,18 +260,14 @@ public final class TaskIssueController implements IssueController {
         return p.matches("[A-Z]") ? p : "N";
     }
 
-    /** Maps a NATO word to its uppercase letter (default N). */
+    /** Maps a NATO word to its uppercase letter (default N). The letter is just
+     *  the word's first character, so no lookup is needed. */
     private static String natoToLetter(String nato) {
-        if (nato == null) {
+        if (nato == null || nato.isBlank()) {
             return "N";
         }
-        String letter = NATO_TO_LETTER.get(nato.trim().toLowerCase(java.util.Locale.ROOT));
-        if (letter != null) {
-            return letter;
-        }
-        // Allow a bare letter to pass through (defensive).
-        String p = nato.trim().toUpperCase(java.util.Locale.ROOT);
-        return p.matches("[A-Z]") ? p : "N";
+        char c = Character.toUpperCase(nato.trim().charAt(0));
+        return (c >= 'A' && c <= 'Z') ? String.valueOf(c) : "N";
     }
 
     /** Maps an uppercase letter to its NATO word (default November). */
@@ -459,14 +451,6 @@ public final class TaskIssueController implements IssueController {
     /** Builds the priority list as NATO phonetic words (A=Alpha ... Z=Zulu). */
     private static List<String> buildPriorities() {
         return new ArrayList<>(java.util.Arrays.asList(NATO));
-    }
-
-    private static Map<String, String> buildNatoToLetter() {
-        Map<String, String> m = new java.util.HashMap<>(NATO.length);
-        for (int i = 0; i < NATO.length; i++) {
-            m.put(NATO[i].toLowerCase(java.util.Locale.ROOT), String.valueOf((char) ('A' + i)));
-        }
-        return java.util.Collections.unmodifiableMap(m);
     }
 
     /** Collects open project names from the cached project list, spaces→hyphens. */
