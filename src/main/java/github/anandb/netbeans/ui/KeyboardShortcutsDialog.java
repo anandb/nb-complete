@@ -262,18 +262,31 @@ final class KeyboardShortcutsDialog extends JDialog {
         };
         cm.getColumn(0).setCellRenderer(keyRenderer);
 
-        // Cell renderer: alternating row background for action column
+        // Cell renderer: alternating row background + HTML wrapping for action column
         DefaultTableCellRenderer actionRenderer = new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable t, Object val,
                     boolean sel, boolean focus, int row, int column) {
                 super.getTableCellRendererComponent(t, val, sel, focus, row, column);
+                String text = val != null ? val.toString() : "";
+                setText("<html><body style='width:285px;'>" + escapeHtml(text) + "</body></html>");
                 setBackground(sel ? t.getSelectionBackground() : (row % 2 == 0 ? bg : alt));
+                setForeground(fg);
                 setBorder(new EmptyBorder(4, 4, 4, 4));
                 return this;
             }
         };
         cm.getColumn(1).setCellRenderer(actionRenderer);
+
+        // Expand each row so wrapped action descriptions render fully.
+        for (int r = 0; r < table.getRowCount(); r++) {
+            JLabel probe = new JLabel();
+            probe.setFont(table.getFont());
+            String text = (String) table.getValueAt(r, 1);
+            probe.setText("<html><body style='width:285px;'>" + escapeHtml(text) + "</body></html>");
+            int wrapH = probe.getPreferredSize().height;
+            table.setRowHeight(r, Math.max(32, wrapH + 8));
+        }
 
         // Wrap in panel with no border (JScrollPane manages its own)
         JPanel wrapper = new JPanel(new BorderLayout());
@@ -347,6 +360,11 @@ final class KeyboardShortcutsDialog extends JDialog {
         wrapper.add(summary, BorderLayout.NORTH);
         wrapper.add(detailWrapper, BorderLayout.CENTER);
         return wrapper;
+    }
+
+    /** Escape text for safe embedding in HTML. */
+    private static String escapeHtml(String text) {
+        return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
     }
 
     /** Format a key string as an HTML kbd badge span. */
@@ -437,7 +455,8 @@ final class KeyboardShortcutsDialog extends JDialog {
                 {ShortcutUtils.resolveShortcut("github.anandb.netbeans.ui.GoToFileAction"), "Jump to File"},
             }),
             new ShortcutSection("Stash Diff", new String[][]{
-                {ShortcutUtils.resolveShortcut("github.anandb.netbeans.ui.StashDiffAction"), "Open Stash Diff Viewer"},
+                {ShortcutUtils.resolveShortcut("github.anandb.netbeans.ui.StashDiffAction"),
+                        "Open Stash Diff Viewer (requires a stash selected in the Git repository browser)"},
                 {mod + " + ,", "Previous Difference"},
                 {mod + " + .", "Next Difference"},
             }),
