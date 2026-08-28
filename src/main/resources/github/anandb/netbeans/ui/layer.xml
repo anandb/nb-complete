@@ -106,6 +106,7 @@
                     <attr name="instantiatingIterator" newvalue="github.anandb.netbeans.ui.mdproject.MdProjectWizardIterator"/>
                     <attr name="iconBase" stringvalue="github/anandb/netbeans/ui/icons/mdproject.svg"/>
                     <attr name="displayName" bundlevalue="github.anandb.netbeans.ui.mdproject.Bundle#LBL_WizardName"/>
+                    <attr name="templateWizardURL" urlvalue="nbresloc:/github/anandb/netbeans/ui/mdproject/MdProjectDescription.html"/>
                     <attr name="template" boolvalue="true"/>
                 </file>
             </folder>
