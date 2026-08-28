@@ -29,7 +29,6 @@ import org.openide.util.HelpCtx;
 import org.openide.util.Lookup;
 
 import org.netbeans.api.project.Project;
-import org.netbeans.api.project.ProjectInformation;
 
 import github.anandb.netbeans.contract.TaskRepositoryControl;
 import github.anandb.netbeans.model.TaskRecord;
@@ -471,21 +470,12 @@ public final class TaskIssueController implements IssueController {
             return names;
         }
         for (Project p : projects) {
-            String name = projectName(p);
+            String name = TasksProject.displayName(p);
             if (name != null && !name.isEmpty()) {
                 names.add(name.replace(" ", "-"));
             }
         }
         return names;
-    }
-
-    /** Resolves a project's display name, falling back to the directory name. */
-    private static String projectName(Project project) {
-        ProjectInformation info = project.getLookup().lookup(ProjectInformation.class);
-        if (info != null && info.getDisplayName() != null && !info.getDisplayName().isEmpty()) {
-            return info.getDisplayName();
-        }
-        return project.getProjectDirectory().getName();
     }
 
     /** Renders a {@link TaskStatus} using its lowercase display label. */

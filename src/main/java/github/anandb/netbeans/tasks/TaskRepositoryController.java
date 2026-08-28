@@ -22,7 +22,6 @@ import javax.swing.event.EventListenerList;
 import org.netbeans.api.editor.EditorRegistry;
 import org.netbeans.api.project.FileOwnerQuery;
 import org.netbeans.api.project.Project;
-import org.netbeans.api.project.ProjectInformation;
 import org.netbeans.api.project.ui.OpenProjects;
 import org.netbeans.modules.bugtracking.spi.RepositoryController;
 import org.netbeans.modules.editor.NbEditorUtilities;
@@ -152,7 +151,7 @@ public final class TaskRepositoryController implements RepositoryController {
             return;
         }
         if (nameField.getText().trim().isEmpty()) {
-            String name = projectName(current);
+            String name = TasksProject.displayName(current);
             if (name != null && !name.isEmpty()) {
                 nameField.setText(name);
             }
@@ -195,14 +194,6 @@ public final class TaskRepositoryController implements RepositoryController {
         Document doc = editor.getDocument();
         FileObject fo = NbEditorUtilities.getFileObject(doc);
         return fo == null ? null : FileOwnerQuery.getOwner(fo);
-    }
-
-    private static String projectName(Project project) {
-        ProjectInformation info = project.getLookup().lookup(ProjectInformation.class);
-        if (info != null && info.getDisplayName() != null && !info.getDisplayName().isEmpty()) {
-            return info.getDisplayName();
-        }
-        return project.getProjectDirectory().getName();
     }
 
     @Override
