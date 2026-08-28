@@ -7,6 +7,7 @@ import java.awt.Insets;
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -112,7 +113,7 @@ public final class TaskIssueController implements IssueController {
                 "A task summary is required.", NotifyDescriptor.WARNING_MESSAGE));
             return false;
         }
-        String now = Instant.now().toString();
+        String now = Instant.now().truncatedTo(ChronoUnit.MINUTES).toString();
         String statusVal = status();
         if (provider.isNew(issue)) {
             String completedAt = TaskRecord.isFinishedStatus(statusVal) ? now : "";

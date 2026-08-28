@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoUnit;
 import java.util.Date;
 
 import org.netbeans.modules.bugtracking.spi.IssueScheduleInfo;
@@ -35,7 +36,7 @@ public final class TaskScheduleProvider implements IssueScheduleProvider<TaskIss
                 || scheduleInfo == null || scheduleInfo.getDate() == null) {
             return;
         }
-        String dueDate = scheduleInfo.getDate().toInstant().toString();
+        String dueDate = scheduleInfo.getDate().toInstant().truncatedTo(ChronoUnit.MINUTES).toString();
         TaskRecord updated = new TaskRecord(r.id(), r.status(), r.priority(), r.summary(),
             r.tags(), r.projects(), dueDate, r.estimate(), r.consumed(),
             r.createdAt(), r.completedAt(), r.updatedAt());

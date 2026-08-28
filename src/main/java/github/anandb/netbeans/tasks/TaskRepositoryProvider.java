@@ -3,6 +3,7 @@ package github.anandb.netbeans.tasks;
 import java.awt.Image;
 import java.beans.PropertyChangeListener;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -134,7 +135,7 @@ public final class TaskRepositoryProvider implements RepositoryProvider<TaskRepo
     }
 
     private TaskIssue newIssue(TaskRepository r, String summary) {
-        String now = Instant.now().toString();
+        String now = Instant.now().truncatedTo(ChronoUnit.MINUTES).toString();
         TaskRecord t = new TaskRecord(
             store() == null ? "t-tmp" : store().createTaskId(),
             "", "", summary, List.of(), List.of(), "", 0, 0, now, "", now);
