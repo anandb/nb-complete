@@ -8,7 +8,7 @@
 
 There are several ways to launch it:
 
-*   **Toolbar button:** Click the **Mini Assistant** icon (a small chat bubble) in the assistant toolbar. This will dock the main panel and open the mini dialog.
+*   **Toolbar button:** Click the **Mini Assistant** icon (a small chat bubble) in the assistant toolbar. This will open the mini dialog alongside the main panel.
 *   **Keyboard shortcut:** Press `Ctrl + Alt + L` (or `Cmd + Alt + L` on Mac) to toggle it.
 *   **Refactoring menu:** Right-click in the editor and choose **Ask Assistant** from the Refactoring menu.
 *   **Code generation:** Press `Alt + Insert` (or the code generation shortcut for your platform) and select **Ask Assistant**.

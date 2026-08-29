@@ -13,7 +13,7 @@ Each BeanBot task repository maps to a plain todo.txt file on disk. Creating one
 <li>Click <b>Add</b> and fill in:
   <ul>
   <li><b>Display name</b> — a human-readable label (defaults to your current project name).</li>
-  <li><b>Tasks file</b> — the path to the <code>.txt</code> file. Defaults to <code>beanbot&#95;tasks.txt</code> in the project root.</li>
+  <li><b>Tasks file</b> — the path to the <code>.txt</code> file. Defaults to <code>beanbot&#95;todo.txt</code> in the project root.</li>
   </ul></li>
 <li>Click <b>OK</b>. The repository is registered and its file is loaded (or created if it doesn't exist yet).</li>
 </ol>
