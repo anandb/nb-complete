@@ -4,8 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import github.anandb.netbeans.contract.ProjectQuery;
 import github.anandb.netbeans.contract.StashDiffControl;
-import github.anandb.netbeans.project.ACPProjectManager;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.MapperSupplier;
 import github.anandb.netbeans.support.PluginSettings;
@@ -114,7 +114,11 @@ public class StashDiffToolProvider {
     }
 
     private static File findFirstGitRepo() {
-        Project[] projects = ACPProjectManager.getInstance().getAllOpenProjects();
+        ProjectQuery query = Lookup.getDefault().lookup(ProjectQuery.class);
+        if (query == null) {
+            return null;
+        }
+        Project[] projects = query.getAllOpenProjects();
         for (Project p : projects) {
             if (p == null) continue;
             File projectDir = FileUtil.toFile(p.getProjectDirectory());

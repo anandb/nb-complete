@@ -7,7 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.model.SessionConfigOption;
 import github.anandb.netbeans.support.PluginSettings;
-import github.anandb.netbeans.project.ACPProjectManager;
+import github.anandb.netbeans.contract.ProjectQuery;
 import org.netbeans.api.project.Project;
 
 import javax.swing.SwingUtilities;
@@ -159,8 +159,11 @@ public class SessionManager implements SessionQuery, SessionControl {
     private volatile boolean manualReconnectPending;
 
     public SessionManager() {
-        ACPProjectManager.getInstance().setProjectOpenListener(this::handleProjectOpened);
-        ACPProjectManager.getInstance().setProjectCloseListener(this::handleProjectClosed);
+        ProjectQuery projectQuery = Lookup.getDefault().lookup(ProjectQuery.class);
+        if (projectQuery != null) {
+            projectQuery.setProjectOpenListener(this::handleProjectOpened);
+            projectQuery.setProjectCloseListener(this::handleProjectClosed);
+        }
 
         // Register for SSE updates to route them to the active session
         ProcessManager.getInstance().addSseListener(sseListener);
@@ -489,7 +492,9 @@ public class SessionManager implements SessionQuery, SessionControl {
     public void refreshSessions() {
         ProcessManager.getInstance().whenReady()
                 .thenCompose(v -> {
-                    Project[] openProjects = ACPProjectManager.getInstance().getAllOpenProjects();
+                    ProjectQuery projectQuery = Lookup.getDefault().lookup(ProjectQuery.class);
+                    Project[] openProjects = projectQuery == null
+                            ? new Project[0] : projectQuery.getAllOpenProjects();
                     List<String> openProjectDirs = new ArrayList<>();
                     for (Project p : openProjects) {
                         if (p != null) {
@@ -710,7 +715,8 @@ public class SessionManager implements SessionQuery, SessionControl {
         refreshSessions();
         // Reset lastProjectDir when no more open projects remain, preventing
         // stale path matches from a prior session that was never set via a project.
-        Project[] remaining = ACPProjectManager.getInstance().getAllOpenProjects();
+        ProjectQuery projectQuery = Lookup.getDefault().lookup(ProjectQuery.class);
+        Project[] remaining = projectQuery == null ? new Project[0] : projectQuery.getAllOpenProjects();
         if (remaining == null || remaining.length == 0
                 || (remaining.length == 1 && remaining[0] != null
                 && remaining[0].getProjectDirectory().getPath().equals(closedDir))) {

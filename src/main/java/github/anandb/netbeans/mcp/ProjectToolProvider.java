@@ -3,7 +3,7 @@ package github.anandb.netbeans.mcp;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
-import github.anandb.netbeans.project.ACPProjectManager;
+import github.anandb.netbeans.contract.ProjectQuery;
 import github.anandb.netbeans.support.MapperSupplier;
 
 import java.io.File;
@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.openide.filesystems.FileUtil;
+import org.openide.util.Lookup;
 
 /**
  * Registers MCP tools that expose read-only IDE state to the AI agent.
@@ -57,7 +58,8 @@ public class ProjectToolProvider {
                 new ToolExecutor<EmptyToolInput, Map<String, Object>>(EmptyToolInput.class) {
                     @Override
                     public Map<String, Object> execute(EmptyToolInput args) throws Exception {
-                        var projects = ACPProjectManager.getInstance().getAllOpenProjects();
+                        ProjectQuery query = Lookup.getDefault().lookup(ProjectQuery.class);
+                        var projects = query == null ? null : query.getAllOpenProjects();
                         List<String> paths = new ArrayList<>();
                         if (projects != null) {
                             for (var p : projects) {

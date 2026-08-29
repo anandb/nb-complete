@@ -3,6 +3,7 @@ package github.anandb.netbeans.ui.platform;
 import java.beans.PropertyChangeEvent;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Consumer;
 import java.util.prefs.Preferences;
 import java.util.logging.Level;
 
@@ -16,6 +17,7 @@ import org.openide.util.NbPreferences;
 import org.openide.util.lookup.ServiceProvider;
 
 import github.anandb.netbeans.contract.ProcessControl;
+import github.anandb.netbeans.contract.ProjectQuery;
 import github.anandb.netbeans.contract.SessionControl;
 import github.anandb.netbeans.project.ACPProjectManager;
 import github.anandb.netbeans.support.Logger;
@@ -32,7 +34,7 @@ import github.anandb.netbeans.support.PreferenceKeys;
  * this class.
  */
 @ServiceProvider(service = PlatformBridge.class)
-public final class DefaultPlatformBridge implements PlatformBridge {
+public final class DefaultPlatformBridge implements PlatformBridge, ProjectQuery {
 
     private final SessionService sessionService = new SessionServiceImpl();
     private final ProcessService processService = new ProcessServiceImpl();
@@ -45,6 +47,24 @@ public final class DefaultPlatformBridge implements PlatformBridge {
     @Override public PrefStore prefStore() { return prefStore; }
     @Override public Bundle bundle() { return bundle; }
     @Override public ProjectContext projectContext() { return projectContext; }
+
+    /** @see ProjectQuery#getAllOpenProjects() */
+    @Override
+    public Project[] getAllOpenProjects() {
+        return projectContext.getAllOpenProjects();
+    }
+
+    /** @see ProjectQuery#setProjectOpenListener(Consumer) */
+    @Override
+    public void setProjectOpenListener(Consumer<String> listener) {
+        ACPProjectManager.getInstance().setProjectOpenListener(listener);
+    }
+
+    /** @see ProjectQuery#setProjectCloseListener(Consumer) */
+    @Override
+    public void setProjectCloseListener(Consumer<String> listener) {
+        ACPProjectManager.getInstance().setProjectCloseListener(listener);
+    }
 
     private static final class SessionServiceImpl implements SessionService {
         private static final Logger LOG = Logger.from(SessionServiceImpl.class);

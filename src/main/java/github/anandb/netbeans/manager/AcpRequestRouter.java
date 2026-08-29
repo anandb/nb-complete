@@ -25,13 +25,14 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import javax.swing.SwingUtilities;
 
 import github.anandb.netbeans.contract.PermissionHandler;
-import github.anandb.netbeans.project.ACPProjectManager;
+import github.anandb.netbeans.contract.ProjectQuery;
 import github.anandb.netbeans.support.FsWriteSettings;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.PreferenceKeys;
 import github.anandb.netbeans.support.MapperSupplier;
 import github.anandb.netbeans.support.ToolDataExtractor;
 import org.netbeans.api.project.Project;
+import org.openide.util.Lookup;
 
 class AcpRequestRouter {
     private static final Logger LOG = Logger.from(AcpRequestRouter.class);
@@ -270,7 +271,11 @@ class AcpRequestRouter {
     private boolean isPathInProject(File file) {
         try {
             String canonicalRequested = file.getCanonicalPath();
-            for (Project p : ACPProjectManager.getInstance().getAllOpenProjects()) {
+            ProjectQuery query = Lookup.getDefault().lookup(ProjectQuery.class);
+            if (query == null) {
+                return false;
+            }
+            for (Project p : query.getAllOpenProjects()) {
                 File projectDirFile = FileUtil.toFile(p.getProjectDirectory());
                 if (projectDirFile == null) continue;
                 String canonicalProject = projectDirFile.getCanonicalPath();

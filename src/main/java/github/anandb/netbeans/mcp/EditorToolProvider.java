@@ -5,8 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import github.anandb.netbeans.contract.ProjectQuery;
 import github.anandb.netbeans.contract.SessionControl;
-import github.anandb.netbeans.project.ACPProjectManager;
 import github.anandb.netbeans.support.Logger;
 import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
@@ -57,7 +57,8 @@ public class EditorToolProvider {
                         // EditorRegistry.componentList() reads a CopyOnWriteArrayList
                         // and NbEditorUtilities.getFileObject() takes a Document (model
                         // object, not a Swing component) — both are safe off-EDT.
-                        Project[] projects = ACPProjectManager.getInstance().getAllOpenProjects();
+                        ProjectQuery pq = Lookup.getDefault().lookup(ProjectQuery.class);
+                        Project[] projects = pq == null ? new Project[0] : pq.getAllOpenProjects();
                         List<String> paths = new ArrayList<>();
                         for (var editor : EditorRegistry.componentList()) {
                             FileObject fo = NbEditorUtilities.getFileObject(editor.getDocument());
@@ -138,7 +139,9 @@ public class EditorToolProvider {
                             File requestedFile = new File(args.filePath()).getCanonicalFile();
                             String canonicalRequested = requestedFile.getCanonicalPath();
                             boolean inProject = false;
-                            for (Project p : ACPProjectManager.getInstance().getAllOpenProjects()) {
+                            ProjectQuery pq = Lookup.getDefault().lookup(ProjectQuery.class);
+                            Project[] openProjects = pq == null ? new Project[0] : pq.getAllOpenProjects();
+                            for (Project p : openProjects) {
                                 FileObject projectDirFO = p.getProjectDirectory();
                                 File projectDirFile = FileUtil.toFile(projectDirFO);
                                 if (projectDirFile == null) continue;
