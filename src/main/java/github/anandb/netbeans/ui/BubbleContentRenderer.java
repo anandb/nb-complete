@@ -70,7 +70,8 @@ class BubbleContentRenderer {
                 // scrollToBottom or the next EDT dispatch) handles layout.
                 return;
             }
-        } else {
+            // Unexpected state: first component is not a collapsible pane.
+            // Clear it before adding the correct pane.
             segments.removeAll();
         }
         // If setSegmentedToolContent was called before the initial render
