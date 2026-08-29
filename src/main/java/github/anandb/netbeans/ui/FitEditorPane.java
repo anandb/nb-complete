@@ -10,7 +10,6 @@ import java.awt.datatransfer.StringSelection;
 import java.awt.event.ActionEvent;
 import java.io.StringReader;
 import java.io.IOException;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.swing.JMenuItem;
 import javax.swing.JPopupMenu;
@@ -35,12 +34,15 @@ public class FitEditorPane extends JTextPane {
     private volatile int lastComputedHeight = 0;
     private volatile int lastComputedWidth = 0;
     private String lastText = null;
-    private volatile Dimension cachedSize = null;
-    private volatile boolean revalidatePending = false;
+    private volatile Dimension cachedSize = null;    
     private volatile boolean suppressRevalidate = false;
-
-    /** Prevents cascading revalidates across multiple FitEditorPane instances. */
-    private static final AtomicBoolean GLOBAL_REVALIDATE_QUEUED = new AtomicBoolean(false);
+    /**
+     * Cached width from the parent tree walk in getPreferredSize(). 
+     * Avoids re-walking the component hierarchy on every layout pass when the component
+     * has not yet been assigned a real width (getWidth() <= 0).
+     */
+    private int cachedParentWidth = -1;
+    private int cachedParentWidthFor = -1; // the getWidth() value when cached
 
     @Override
     public void revalidate() {
@@ -91,13 +93,22 @@ public class FitEditorPane extends JTextPane {
 
             int w = getWidth();
             if (w <= 0) {
-                Component p = getParent();
-                while (p != null) {
-                    if (p.getWidth() > 0) {
-                        w = p.getWidth();
-                        break;
+                // Cache the parent tree walk result to avoid re-walking on
+                // every layout pass while the component is still unsized.
+                int currentW = getWidth();
+                if (currentW == cachedParentWidthFor && cachedParentWidth > 0) {
+                    w = cachedParentWidth;
+                } else {
+                    Component p = getParent();
+                    while (p != null) {
+                        if (p.getWidth() > 0) {
+                            w = p.getWidth();
+                            break;
+                        }
+                        p = p.getParent();
                     }
-                    p = p.getParent();
+                    cachedParentWidth = w;
+                    cachedParentWidthFor = currentW;
                 }
             }
 

@@ -22,7 +22,6 @@ import javax.swing.JLayeredPane;
 import javax.swing.JScrollBar;
 import javax.swing.JScrollPane;
 import javax.swing.SwingUtilities;
-import javax.swing.Timer;
 
 import github.anandb.netbeans.support.Logger;
 import org.openide.util.NbBundle;
@@ -42,7 +41,6 @@ public class ScrollController implements KeyEventDispatcher {
     private final JScrollPane scrollPane;
     private final Component parentComponent;
     private final JButton scrollDownBtn;
-    private final Timer scrollTimer;
     private final Map<Component, MouseWheelListener> wheelListeners = new ConcurrentHashMap<>();
     private BooleanSupplier scrollBlocker;
 
@@ -51,7 +49,6 @@ public class ScrollController implements KeyEventDispatcher {
         this.parentComponent = parentComponent;
 
         this.scrollDownBtn = createScrollDownBtn();
-        this.scrollTimer = createScrollTimer();
 
         layeredPane.add(scrollDownBtn, JLayeredPane.PALETTE_LAYER);
 
@@ -98,14 +95,6 @@ public class ScrollController implements KeyEventDispatcher {
         return btn;
     }
 
-    private Timer createScrollTimer() {
-        Timer t = new Timer(100, e -> {
-            JScrollBar vertical = scrollPane.getVerticalScrollBar();
-            vertical.setValue(vertical.getMaximum());
-        });
-        t.setRepeats(false);
-        return t;
-    }
 
     public void setScrollBlocker(BooleanSupplier scrollBlocker) {
         this.scrollBlocker = scrollBlocker;
@@ -232,17 +221,11 @@ public class ScrollController implements KeyEventDispatcher {
             JScrollBar vertical = scrollPane.getVerticalScrollBar();
             vertical.setValue(vertical.getMaximum());
             scrollDownBtn.setVisible(false);
-            if (!scrollTimer.isRunning()) {
-                scrollTimer.start();
-            }
         });
     }
 
     public void cleanup() {
         KeyboardFocusManager.getCurrentKeyboardFocusManager().removeKeyEventDispatcher(this);
         unfixAllMouseWheel();
-        if (scrollTimer.isRunning()) {
-            scrollTimer.stop();
-        }
     }
 }

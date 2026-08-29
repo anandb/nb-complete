@@ -63,31 +63,39 @@ class BubbleContentRenderer {
             Component first = segments.getComponent(0);
             if (first instanceof BaseCollapsiblePane pane) {
                 updatePaneContent(pane, title, displayContent, expanded);
+                // No explicit segments.revalidate() — JTextArea.append() inside
+                // appendContent() already invalidates the text area and all
+                // ancestors via BasicTextUI.update(). The natural invalidation
+                // chain is sufficient; the container layout pass (triggered by
+                // scrollToBottom or the next EDT dispatch) handles layout.
+                return;
             }
         } else {
             segments.removeAll();
-            // If setSegmentedToolContent was called before the initial render
-            // (e.g. ToolThoughtCombiner constructs the bubble, calls
-            // setSegmentedToolContent, then adds it to the tree — only at
-            // addNotify() does the initial render run), the segments panel is
-            // empty and the segmented content was captured in the pending
-            // field. Create the activity pane with segmented content; if no
-            // segments are pending, fall back to the raw text.
-            CollapsibleActivityPane pane;
-            if (pendingSegmentedContent != null) {
-                pane = new CollapsibleActivityPane(title, expanded);
-                pane.setSegmentedContent(pendingSegmentedContent);
-                pendingSegmentedContent = null;
-                // The pane now owns its own content; track length 0 since
-                // the text StringBuilder is empty for the combined bubble.
-                streamer.setLastDisplayedLength(0);
-            } else {
-                pane = new CollapsibleActivityPane(title, displayContent, expanded);
-                streamer.setLastDisplayedLength(displayContent.length());
-            }
-            segments.add(pane);
         }
-        segments.revalidate();
+        // If setSegmentedToolContent was called before the initial render
+        // (e.g. ToolThoughtCombiner constructs the bubble, calls
+        // setSegmentedToolContent, then adds it to the tree — only at
+        // addNotify() does the initial render run), the segments panel is
+        // empty and the segmented content was captured in the pending
+        // field. Create the activity pane with segmented content; if no
+        // segments are pending, fall back to the raw text.
+        CollapsibleActivityPane pane;
+        if (pendingSegmentedContent != null) {
+            pane = new CollapsibleActivityPane(title, expanded);
+            pane.setSegmentedContent(pendingSegmentedContent);
+            pendingSegmentedContent = null;
+            // The pane now owns its own content; track length 0 since
+            // the text StringBuilder is empty for the combined bubble.
+            streamer.setLastDisplayedLength(0);
+        } else {
+            pane = new CollapsibleActivityPane(title, displayContent, expanded);
+            streamer.setLastDisplayedLength(displayContent.length());
+        }
+        segments.add(pane);
+        // No segments.revalidate() here — JTextArea.append() inside
+        // CollapsibleActivityPane constructor already invalidates the
+        // component hierarchy. The container layout pass handles layout.
     }
 
     private void updatePaneContent(BaseCollapsiblePane pane, String title, String content, boolean expanded) {
