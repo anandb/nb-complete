@@ -224,10 +224,27 @@ public class ScrollController implements KeyEventDispatcher {
             // Force layout so getMaximum() reflects newly added components.
             // Without this, invokeLater fires before Swing's layout pass,
             // and getMaximum() returns the stale (pre-add) value.
+            doScrollToBottom();
+        });
+    }
+
+    /**
+     * Applies the actual bottom scroll and schedules a single follow-up
+     * "settle" pass on the next EDT tick. Content (especially streaming
+     * JTextAreas) can grow asynchronously — the validate() in the first pass
+     * may compute a preferred size that is itself invalidated again once the
+     * document/layout fully settles. The settle pass re-reads getMaximum()
+     * after that second layout pass and re-pins to the true bottom, without a
+     * fixed delay so there is no added streaming lag.
+     */
+    private void doScrollToBottom() {
+        scrollPane.getViewport().getView().validate();
+        JScrollBar vertical = scrollPane.getVerticalScrollBar();
+        vertical.setValue(vertical.getMaximum());
+        scrollDownBtn.setVisible(false);
+        SwingUtilities.invokeLater(() -> {
             scrollPane.getViewport().getView().validate();
-            JScrollBar vertical = scrollPane.getVerticalScrollBar();
             vertical.setValue(vertical.getMaximum());
-            scrollDownBtn.setVisible(false);
         });
     }
 
