@@ -39,7 +39,7 @@ public class FitEditorPane extends JTextPane {
     /**
      * Cached width from the parent tree walk in getPreferredSize(). 
      * Avoids re-walking the component hierarchy on every layout pass when the component
-     * has not yet been assigned a real width (getWidth() <= 0).
+     * has not yet been assigned a real width ({@code getWidth() <= 0}).
      */
     private int cachedParentWidth = -1;
     private int cachedParentWidthFor = -1; // the getWidth() value when cached
