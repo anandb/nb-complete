@@ -208,23 +208,21 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         checkForUpdatesCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_CheckForUpdates"));
         checkForUpdatesCheckbox.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_CheckForUpdates"));
         checkForUpdatesCheckbox.addActionListener(evt -> controller.changed());
-        GridBagConstraints gbcSystem = UIUtils.createGbc(0, 0, 1.0, 0, GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST,
-                new Insets(0, 12, 5, 0));
-        gbcSystem.gridwidth = 3;
-        systemPanel.add(checkForUpdatesCheckbox, gbcSystem);
+        systemPanel.add(checkForUpdatesCheckbox, UIUtils.createGbc(0, 0, 1.0, 0, GridBagConstraints.HORIZONTAL,
+                GridBagConstraints.WEST, new Insets(0, 12, 5, 0)));
 
         JLabel lineHeightLabel = new JLabel(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_LineHeightCorrection"));
         lineHeightLabel.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_LineHeightCorrection"));
-        systemPanel.add(lineHeightLabel, UIUtils.createGbc(0, 1, 0.0, 0, GridBagConstraints.NONE,
-                GridBagConstraints.WEST, new Insets(0, 12, 5, 5)));
+        systemPanel.add(lineHeightLabel, UIUtils.createGbc(2, 0, 0.0, 0, GridBagConstraints.NONE,
+                GridBagConstraints.WEST, new Insets(0, 15, 5, 5)));
 
         SpinnerNumberModel lineHeightModel = new SpinnerNumberModel(1.0d, 0.5d, 3.0d, 0.1d);
         lineHeightCorrectionSpinner = new JSpinner(lineHeightModel);
         lineHeightCorrectionSpinner.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_LineHeightCorrection"));
         ((JSpinner.DefaultEditor) lineHeightCorrectionSpinner.getEditor()).getTextField().setColumns(5);
         lineHeightCorrectionSpinner.addChangeListener(evt -> controller.changed());
-        systemPanel.add(lineHeightCorrectionSpinner, UIUtils.createGbc(1, 1, 0.0, 0, GridBagConstraints.NONE,
-                GridBagConstraints.WEST, new Insets(0, 0, 5, 0)));
+        systemPanel.add(lineHeightCorrectionSpinner, UIUtils.createGbc(3, 0, 0.0, 0, GridBagConstraints.NONE,
+                GridBagConstraints.EAST, new Insets(0, 0, 5, 12)));
 
         add(systemPanel);
         add(Box.createVerticalStrut(4));

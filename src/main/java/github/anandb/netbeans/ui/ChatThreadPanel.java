@@ -448,6 +448,11 @@ public class ChatThreadPanel extends JPanel {
         } else if (wasAtBottom && !batchAdding) {
             scrollController.scrollToBottom(true);
         }
+        // User bubbles always pin to bottom — the user just sent a message,
+        // so the latest content must be visible regardless of prior scroll.
+        if (type.isUser() && !batchAdding) {
+            scrollController.scrollToBottom(true);
+        }
         if (streaming) {
             streamingCoordinator.startStreaming(bubble);
         }
