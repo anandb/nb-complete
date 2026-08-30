@@ -1,6 +1,7 @@
 package github.anandb.netbeans.ui;
 
 import java.io.File;
+import java.util.prefs.Preferences;
 
 import javax.swing.JFileChooser;
 import javax.swing.filechooser.FileNameExtensionFilter;
@@ -8,6 +9,9 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 import github.anandb.netbeans.support.BinaryResolver;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.ShortcutUtils;
+import org.netbeans.api.editor.mimelookup.MimeLookup;
+import org.netbeans.api.editor.mimelookup.MimePath;
+import org.netbeans.api.editor.settings.SimpleValueNames;
 import org.openide.util.NbBundle;
 import org.openide.util.NbPreferences;
 
@@ -48,7 +52,7 @@ import github.anandb.netbeans.ui.platform.SessionService;
 // DSL-LEAF: keep imperative, wrap via UI.of(...) — NetBeans Options panel
 // (GridBagLayout form). When the DSL lands, port the form to OptionsFormSpec;
 // ACPOptionsPanelController (NetBeans SPI) stays as-is.
-public class ACPOptionsPanel extends JPanel {
+public class ACPOptionsPanel extends JPanel implements OptionsPanel {
     private static final Logger LOG = Logger.from(ACPOptionsPanel.class);
     private static final long serialVersionUID = 1L;
     private final SessionService sessionService = PlatformBridge.sessionServiceSafe();
@@ -83,6 +87,7 @@ public class ACPOptionsPanel extends JPanel {
     private JComboBox<String> toolbarIconCombo;
     private JComboBox<String> chatFontCombo;
     private JButton editPreambleButton;
+    private JSpinner lineHeightCorrectionSpinner;
 
     private String detectedPath;
     private boolean showingHint;
@@ -196,19 +201,32 @@ public class ACPOptionsPanel extends JPanel {
         add(servicePanel);
         add(Box.createVerticalStrut(4));
 
-        // --- Updates ---
-        JPanel updatesPanel = createSectionPanel("LBL_UpdatesHeader");
-        updatesPanel.setLayout(new GridBagLayout());
+        // --- System ---
+        JPanel systemPanel = createSectionPanel("LBL_SystemHeader");
+        systemPanel.setLayout(new GridBagLayout());
 
         checkForUpdatesCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_CheckForUpdates"));
         checkForUpdatesCheckbox.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_CheckForUpdates"));
         checkForUpdatesCheckbox.addActionListener(evt -> controller.changed());
-        GridBagConstraints gbcUpdates = UIUtils.createGbc(0, 0, 1.0, 0, GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST,
+        GridBagConstraints gbcSystem = UIUtils.createGbc(0, 0, 1.0, 0, GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST,
                 new Insets(0, 12, 5, 0));
-        gbcUpdates.gridwidth = 3;
-        updatesPanel.add(checkForUpdatesCheckbox, gbcUpdates);
+        gbcSystem.gridwidth = 3;
+        systemPanel.add(checkForUpdatesCheckbox, gbcSystem);
 
-        add(updatesPanel);
+        JLabel lineHeightLabel = new JLabel(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_LineHeightCorrection"));
+        lineHeightLabel.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_LineHeightCorrection"));
+        systemPanel.add(lineHeightLabel, UIUtils.createGbc(0, 1, 0.0, 0, GridBagConstraints.NONE,
+                GridBagConstraints.WEST, new Insets(0, 12, 5, 5)));
+
+        SpinnerNumberModel lineHeightModel = new SpinnerNumberModel(1.0d, 0.5d, 3.0d, 0.1d);
+        lineHeightCorrectionSpinner = new JSpinner(lineHeightModel);
+        lineHeightCorrectionSpinner.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_LineHeightCorrection"));
+        ((JSpinner.DefaultEditor) lineHeightCorrectionSpinner.getEditor()).getTextField().setColumns(5);
+        lineHeightCorrectionSpinner.addChangeListener(evt -> controller.changed());
+        systemPanel.add(lineHeightCorrectionSpinner, UIUtils.createGbc(1, 1, 0.0, 0, GridBagConstraints.NONE,
+                GridBagConstraints.WEST, new Insets(0, 0, 5, 0)));
+
+        add(systemPanel);
         add(Box.createVerticalStrut(4));
 
         // --- Chat Behavior ---
@@ -455,7 +473,7 @@ public class ACPOptionsPanel extends JPanel {
 
     private String previousIconPath;
 
-    void load() {
+    public void load() {
         userEditedPath = false;
         String savedPath = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).get(PreferenceKeys.ACP_EXECUTABLE_PATH, null);
         detectedPath = BinaryResolver.findOnPath();
@@ -481,6 +499,8 @@ public class ACPOptionsPanel extends JPanel {
         combineCheckbox.setSelected(NbPreferences.forModule(ACPOptionsPanel.class).getBoolean("combineToolThought", true));
         autoBackupChangesCheckbox.setSelected(PluginSettings.isAutoBackupChanges());
         checkForUpdatesCheckbox.setSelected(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean(PreferenceKeys.CHECK_FOR_UPDATES, true));
+        Preferences editorPrefs = MimeLookup.getLookup(MimePath.EMPTY).lookup(Preferences.class);
+        lineHeightCorrectionSpinner.setValue((double) editorPrefs.getFloat(SimpleValueNames.LINE_HEIGHT_CORRECTION, 1.0f));
         idleTimeoutSpinner.setValue(PluginSettings.getSessionIdleTimeout());
         maxMessagesSpinner.setValue(PluginSettings.getMaxMessages());
         previousIconPath = PluginSettings.getCustomUserIcon();
@@ -527,7 +547,7 @@ public class ACPOptionsPanel extends JPanel {
         }
     }
 
-    void store() {
+    public void store() {
         String pathToSave = showingHint ? "" : pathField.getText();
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).put(PreferenceKeys.ACP_EXECUTABLE_PATH, pathToSave);
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).put(PreferenceKeys.PROCESS_ARGUMENTS, argsField.getText());
@@ -538,6 +558,8 @@ public class ACPOptionsPanel extends JPanel {
         NbPreferences.forModule(ACPOptionsPanel.class).putBoolean("combineToolThought", combineCheckbox.isSelected());
         PluginSettings.setAutoBackupChanges(autoBackupChangesCheckbox.isSelected());
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean(PreferenceKeys.CHECK_FOR_UPDATES, checkForUpdatesCheckbox.isSelected());
+        Preferences editorPrefs = MimeLookup.getLookup(MimePath.EMPTY).lookup(Preferences.class);
+        editorPrefs.putFloat(SimpleValueNames.LINE_HEIGHT_CORRECTION, ((Number) lineHeightCorrectionSpinner.getValue()).floatValue());
         PluginSettings.setSessionIdleTimeout((Integer) idleTimeoutSpinner.getValue());
         PluginSettings.setMaxMessages((Integer) maxMessagesSpinner.getValue());
 
@@ -587,7 +609,7 @@ public class ACPOptionsPanel extends JPanel {
         }
     }
 
-    boolean valid() {
+    public boolean valid() {
         if (!userEditedPath) {
             pathErrorLabel.setText("");
             return true;
