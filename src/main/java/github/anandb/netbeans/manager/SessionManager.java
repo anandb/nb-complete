@@ -498,10 +498,13 @@ public class SessionManager implements SessionQuery, SessionControl {
                     List<String> openProjectDirs = new ArrayList<>();
                     for (Project p : openProjects) {
                         if (p != null) {
-                            openProjectDirs.add(p.getProjectDirectory().getPath());
+                            String path = p.getProjectDirectory().getPath();
+                            if (!openProjectDirs.contains(path)) {
+                                openProjectDirs.add(path);
+                            }
                         }
                     }
-                    LOG.fine("refreshSessions: starting refresh for {0} projects", openProjectDirs.size());
+                    LOG.fine("refreshSessions: starting refresh for {0} unique projects", openProjectDirs.size());
                     if (openProjectDirs.isEmpty()) {
                         return CompletableFuture.completedFuture(new ArrayList<Session>());
                     }
@@ -572,7 +575,9 @@ public class SessionManager implements SessionQuery, SessionControl {
                             return;
                         }
                         notifySessionLoaded(session.id(), session.configOptions(), true);
-                        refreshSessions();
+                        // Do NOT call refreshSessions() here — the server may not have
+                        // added the new session to its list yet, causing onSessionListUpdated
+                        // to fall back to loading an old session instead of the new one.
                         // Before preamble, let the UI handler (if set) show a config
                         // dialog so the user can pick agent/model/level.
                         if (beforePreambleHandler != null) {
@@ -655,6 +660,9 @@ public class SessionManager implements SessionQuery, SessionControl {
                         if (sessionId.equals(this.currentSessionId)) {
                             stateMachine.transitionTo(SessionState.IDLE);
                             notifyError(NbBundle.getMessage(SessionManager.class, "ERR_LoadSessionFailed", rootMessage(ex)));
+                            // Re-sync session list from server so the dropdown reflects
+                            // the actual server state and loads the most recent session.
+                            refreshSessions();
                         }
                         return null;
                     });
@@ -662,6 +670,7 @@ public class SessionManager implements SessionQuery, SessionControl {
             LOG.severe("Failed to load session", ex);
             stateMachine.transitionTo(SessionState.IDLE);
             notifyError(NbBundle.getMessage(SessionManager.class, "ERR_LoadSessionFailed", rootMessage(ex)));
+            refreshSessions();
         }
         return true;
     }

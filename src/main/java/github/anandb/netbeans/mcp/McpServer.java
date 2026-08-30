@@ -55,6 +55,12 @@ public class McpServer {
         TaskToolProvider taskTools = new TaskToolProvider();
         taskTools.registerTools(mcpTools);
 
+        FileSystemToolProvider fileSystemTools = new FileSystemToolProvider();
+        fileSystemTools.registerTools(mcpTools);
+
+        GitToolProvider gitTools = new GitToolProvider();
+        gitTools.registerTools(mcpTools);
+
         server = new Server(0);
 
         connector = new ServerConnector(server);

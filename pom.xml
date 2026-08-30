@@ -242,6 +242,13 @@
             <version>0.64.8</version>
         </dependency>
 
+        <!-- java-diff-utils - parse and apply unified diffs -->
+        <dependency>
+            <groupId>io.github.java-diff-utils</groupId>
+            <artifactId>java-diff-utils</artifactId>
+            <version>4.12</version>
+        </dependency>
+
         <!-- Jackson JSON (versions managed by jackson-bom 2.18.6) -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>

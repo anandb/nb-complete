@@ -13,7 +13,7 @@ public final class FsWriteSettings {
     private FsWriteSettings() {}
 
     private static final boolean ENABLED = Boolean.parseBoolean(
-            System.getProperty(PreferenceKeys.FS_WRITE_ENABLED_PROP, "false"));
+            System.getProperty(PreferenceKeys.FS_WRITE_ENABLED_PROP, "true"));
 
     /** @return {@code true} iff {@code fs/write*} tools are enabled. */
     public static boolean isEnabled() {
