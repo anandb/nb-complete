@@ -238,12 +238,19 @@ public class ScrollController implements KeyEventDispatcher {
      * fixed delay so there is no added streaming lag.
      */
     private void doScrollToBottom() {
-        scrollPane.getViewport().getView().validate();
+        // Validate the scrollPane (not just the view) so ScrollPaneLayout runs
+        // and updates the scrollbar model with the view's current preferred
+        // size. Validating only the view re-layouts children but leaves the
+        // scrollbar's getMaximum() stale — setValue(max) then scrolls to the
+        // old bottom, not the true one after a bubble was just added.
+        scrollPane.revalidate();
+        scrollPane.validate();
         JScrollBar vertical = scrollPane.getVerticalScrollBar();
         vertical.setValue(vertical.getMaximum());
         scrollDownBtn.setVisible(false);
         SwingUtilities.invokeLater(() -> {
-            scrollPane.getViewport().getView().validate();
+            scrollPane.revalidate();
+            scrollPane.validate();
             vertical.setValue(vertical.getMaximum());
         });
     }
