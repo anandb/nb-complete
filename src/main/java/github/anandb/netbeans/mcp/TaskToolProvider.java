@@ -4,7 +4,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import org.openide.util.Lookup;
@@ -26,6 +28,12 @@ public class TaskToolProvider {
     private static final ObjectMapper MAPPER = MapperSupplier.get();
 
     public void registerTools(McpTools mcpTools) {
+        registerAddTask(mcpTools);
+        registerCloseTask(mcpTools);
+        registerSearchTask(mcpTools);
+    }
+
+    private void registerAddTask(McpTools mcpTools) {
         ObjectNode schema = MAPPER.createObjectNode();
         schema.put("type", "object");
         ObjectNode properties = schema.putObject("properties");
@@ -106,21 +114,9 @@ public class TaskToolProvider {
                     if (args.summary() == null || args.summary().isBlank()) {
                         return Map.of("status", "error", "message", "summary is required");
                     }
-                    List<String> ids = control.repositoryIds();
-                    if (ids.isEmpty()) {
-                        return Map.of("status", "error", "message", "No Beanbot Tasks repository configured. Add one in Tasks options first.");
-                    }
-                    String repoId = args.repoId();
-                    if (repoId == null || repoId.isBlank()) {
-                        if (ids.size() == 1) {
-                            repoId = ids.get(0);
-                        } else {
-                            return Map.of("status", "error", "message",
-                                "Multiple repositories exist; provide repoId. Available: " + String.join(", ", ids));
-                        }
-                    } else if (!ids.contains(repoId)) {
-                        return Map.of("status", "error", "message",
-                            "Unknown repository '" + repoId + "'. Available: " + String.join(", ", ids));
+                    String repoId = resolveRepository(control, args.repoId());
+                    if (repoId == null) {
+                        return resolveError(control, args.repoId());
                     }
                     // Validate the repository is accessible
                     String tasksPath = control.tasksPathOf(repoId);
@@ -158,6 +154,194 @@ public class TaskToolProvider {
                         "message", "Task added to '" + control.displayNameOf(repoId) + "'.");
                 }
             });
+    }
+
+    private void registerCloseTask(McpTools mcpTools) {
+        ObjectNode schema = MAPPER.createObjectNode();
+        schema.put("type", "object");
+        ObjectNode properties = schema.putObject("properties");
+
+        ObjectNode repoId = properties.putObject("repoId");
+        repoId.put("type", "string");
+        repoId.put("description", "Id of the repository holding the task. Optional if only one repository exists.");
+
+        ObjectNode taskId = properties.putObject("taskId");
+        taskId.put("type", "string");
+        taskId.put("description", "Id of the task to close (as returned by add_task).");
+
+        ArrayNode required = schema.putArray("required");
+        required.add("taskId");
+
+        mcpTools.registerTool(
+            "close_task",
+            """
+            Closes (marks as done) a task in a Beanbot Tasks repository.
+
+            Use when the user wants to complete, finish, close, or mark a task as done, including:
+            - 'close that task', 'mark it as done', 'task is complete'
+            - 'finish the login-bug task', 'that todo is done'
+
+            Only sets status to 'closed'; other task fields (summary, priority, tags, due date)
+            are left untouched. The completion timestamp is recorded automatically.
+
+            Examples:
+            - 'Close task t-3' -> taskId='t-3'
+            - 'The deploy task is done, close it' -> taskId=<id from add_task or list>
+            """,
+            schema,
+            new ToolExecutor<CloseTaskInput, Map<String, Object>>(CloseTaskInput.class) {
+                @Override
+                public Map<String, Object> execute(CloseTaskInput args) throws Exception {
+                    TaskRepositoryControl control = Lookup.getDefault().lookup(TaskRepositoryControl.class);
+                    if (control == null) {
+                        return Map.of("status", "error", "message", "TaskRepositoryControl not available");
+                    }
+                    if (args.taskId() == null || args.taskId().isBlank()) {
+                        return Map.of("status", "error", "message", "taskId is required");
+                    }
+                    String repoId = resolveRepository(control, args.repoId());
+                    if (repoId == null) {
+                        return resolveError(control, args.repoId());
+                    }
+                    TaskRecord task = control.get(repoId, args.taskId().trim());
+                    if (task == null) {
+                        return Map.of("status", "error", "message",
+                            "Task '" + args.taskId() + "' not found in '" + control.displayNameOf(repoId) + "'.");
+                    }
+                    if (task.isFinished()) {
+                        return Map.of("status", "ok", "id", task.id(),
+                            "message", "Task '" + task.summary() + "' is already closed.");
+                    }
+                    TaskRecord closed = task.withDetails("closed", task.priority(), task.summary(),
+                        task.tags(), task.projects(), task.dueDate(), task.estimate(), task.consumed());
+                    boolean updated = control.update(repoId, closed);
+                    if (!updated) {
+                        return Map.of("status", "error", "message",
+                            "Failed to close task '" + args.taskId() + "'.");
+                    }
+                    LOG.info("close_task tool called: repo={0} id={1}", repoId, task.id());
+                    return Map.of("status", "ok", "id", task.id(),
+                        "message", "Task '" + task.summary() + "' closed in '" + control.displayNameOf(repoId) + "'.");
+                }
+            });
+    }
+
+    private void registerSearchTask(McpTools mcpTools) {
+        ObjectNode schema = MAPPER.createObjectNode();
+        schema.put("type", "object");
+        ObjectNode properties = schema.putObject("properties");
+
+        ObjectNode repoId = properties.putObject("repoId");
+        repoId.put("type", "string");
+        repoId.put("description", "Id of the repository to search. Optional; searches all repositories when omitted.");
+
+        ObjectNode query = properties.putObject("query");
+        query.put("type", "string");
+        query.put("description", "Case-insensitive substring to match against open task summaries.");
+
+        ArrayNode required = schema.putArray("required");
+        required.add("query");
+
+        mcpTools.registerTool(
+            "search_task",
+            """
+            Searches open tasks in Beanbot Tasks repositories by a substring of their summary.
+
+            Returns at most the top 10 matching open tasks, each with its repoId and taskId so the
+            result can be passed directly to close_task. Closed tasks are excluded.
+
+            Use when the user wants to find, look up, or list tasks, especially before closing one:
+            - 'which tasks mention login?'
+            - 'find the bug task', 'search for the deploy task'
+
+            Examples:
+            - 'search_task query=login' -> matches tasks whose summary contains 'login'
+            - 'search_task repoId=backend query=test' -> search only the backend repo
+            """,
+            schema,
+            new ToolExecutor<SearchTaskInput, Map<String, Object>>(SearchTaskInput.class) {
+                @Override
+                public Map<String, Object> execute(SearchTaskInput args) throws Exception {
+                    TaskRepositoryControl control = Lookup.getDefault().lookup(TaskRepositoryControl.class);
+                    if (control == null) {
+                        return Map.of("status", "error", "message", "TaskRepositoryControl not available");
+                    }
+                    if (args.query() == null || args.query().isBlank()) {
+                        return Map.of("status", "error", "message", "query is required");
+                    }
+                    String needle = args.query().trim().toLowerCase(Locale.ROOT);
+
+                    List<String> ids = control.repositoryIds();
+                    if (ids.isEmpty()) {
+                        return Map.of("status", "error", "message",
+                            "No Beanbot Tasks repository configured. Add one in Tasks options first.");
+                    }
+                    List<String> scope = ids;
+                    if (args.repoId() != null && !args.repoId().isBlank()) {
+                        if (!ids.contains(args.repoId())) {
+                            return Map.of("status", "error", "message",
+                                "Unknown repository '" + args.repoId() + "'. Available: " + String.join(", ", ids));
+                        }
+                        scope = List.of(args.repoId());
+                    }
+
+                    List<Map<String, Object>> matches = new ArrayList<>();
+                    for (String repo : scope) {
+                        for (TaskRecord task : control.list(repo)) {
+                            if (task.isFinished()) {
+                                continue;
+                            }
+                            if (task.summary() != null
+                                    && task.summary().toLowerCase(Locale.ROOT).contains(needle)) {
+                                matches.add(Map.of(
+                                    "repoId", repo,
+                                    "taskId", task.id(),
+                                    "summary", task.summary(),
+                                    "displayName", control.displayNameOf(repo)));
+                                if (matches.size() >= SEARCH_MAX_RESULTS) {
+                                    LOG.info("search_task tool called: query={0} matched={1}", args.query(), matches.size());
+                                    return Map.of("status", "ok", "matches", matches);
+                                }
+                            }
+                        }
+                    }
+                    LOG.info("search_task tool called: query={0} matched={1}", args.query(), matches.size());
+                    return Map.of("status", "ok", "matches", matches);
+                }
+            });
+    }
+
+    /** Maximum number of matching tasks returned by {@code search_task}. */
+    private static final int SEARCH_MAX_RESULTS = 10;
+
+    /**
+     * Resolves the repository id to operate on: the given id if valid, the
+     * single existing repository, or null when it cannot be resolved.
+     */
+    private static String resolveRepository(TaskRepositoryControl control, String repoId) {
+        List<String> ids = control.repositoryIds();
+        if (ids.isEmpty()) {
+            return null;
+        }
+        if (repoId == null || repoId.isBlank()) {
+            return ids.size() == 1 ? ids.get(0) : null;
+        }
+        return ids.contains(repoId) ? repoId : null;
+    }
+
+    /** Builds the error map for an unresolvable repository id. */
+    private static Map<String, Object> resolveError(TaskRepositoryControl control, String repoId) {
+        List<String> ids = control.repositoryIds();
+        if (ids.isEmpty()) {
+            return Map.of("status", "error", "message",
+                "No Beanbot Tasks repository configured. Add one in Tasks options first.");
+        }
+        if (repoId == null || repoId.isBlank()) {
+            return Map.of("status", "error", "message",
+                "Multiple repositories exist; provide repoId. Available: " + String.join(", ", ids));
+        }
+        return Map.of("status", "error", "message",
+            "Unknown repository '" + repoId + "'. Available: " + String.join(", ", ids));
     }
 
     /**

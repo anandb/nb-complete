@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -80,6 +81,22 @@ class TaskToolProviderTest {
         return executorCaptor.getValue();
     }
 
+    @SuppressWarnings("unchecked")
+    private ToolExecutor<CloseTaskInput, Map<String, Object>> registerAndGetCloseExecutor() {
+        provider.registerTools(mcpTools);
+        ArgumentCaptor<ToolExecutor> executorCaptor = ArgumentCaptor.forClass(ToolExecutor.class);
+        verify(mcpTools).registerTool(eq("close_task"), any(), any(), executorCaptor.capture());
+        return executorCaptor.getValue();
+    }
+
+    @SuppressWarnings("unchecked")
+    private ToolExecutor<SearchTaskInput, Map<String, Object>> registerAndGetSearchExecutor() {
+        provider.registerTools(mcpTools);
+        ArgumentCaptor<ToolExecutor> executorCaptor = ArgumentCaptor.forClass(ToolExecutor.class);
+        verify(mcpTools).registerTool(eq("search_task"), any(), any(), executorCaptor.capture());
+        return executorCaptor.getValue();
+    }
+
     private File createTempCsvFile(String repoId) throws Exception {
         File csvFile = tempDir.resolve("tasks_" + repoId + ".txt").toFile();
         csvFile.createNewFile();
@@ -96,13 +113,10 @@ class TaskToolProviderTest {
     void registersAddTaskTool() {
         provider.registerTools(mcpTools);
 
-        ArgumentCaptor<String> nameCaptor = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<String> descCaptor = ArgumentCaptor.forClass(String.class);
-        ArgumentCaptor<ObjectNode> schemaCaptor = ArgumentCaptor.forClass(ObjectNode.class);
 
-        verify(mcpTools).registerTool(nameCaptor.capture(), descCaptor.capture(), schemaCaptor.capture(), any());
+        verify(mcpTools).registerTool(eq("add_task"), descCaptor.capture(), any(), any());
 
-        assertEquals("add_task", nameCaptor.getValue());
         assertNotNull(descCaptor.getValue());
         assertTrue(descCaptor.getValue().contains("Creates a task"));
     }
@@ -112,7 +126,7 @@ class TaskToolProviderTest {
         provider.registerTools(mcpTools);
 
         ArgumentCaptor<ObjectNode> schemaCaptor = ArgumentCaptor.forClass(ObjectNode.class);
-        verify(mcpTools).registerTool(any(), any(), schemaCaptor.capture(), any());
+        verify(mcpTools).registerTool(eq("add_task"), any(), schemaCaptor.capture(), any());
 
         ObjectNode schema = schemaCaptor.getValue();
         assertEquals("object", schema.get("type").asText());
@@ -347,5 +361,274 @@ class TaskToolProviderTest {
 
         assertEquals("error", result.get("status"));
         assertTrue(result.get("message").toString().contains("Invalid status"));
+    }
+
+    // --- close_task ---
+
+    @Test
+    void registersCloseTaskTool() {
+        provider.registerTools(mcpTools);
+
+        ArgumentCaptor<String> descCaptor = ArgumentCaptor.forClass(String.class);
+
+        verify(mcpTools).registerTool(eq("close_task"), descCaptor.capture(), any(ObjectNode.class), any());
+
+        assertTrue(descCaptor.getValue().contains("Closes (marks as done)"));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void closeTaskSucceeds() throws Exception {
+        when(taskRepositoryControl.repositoryIds()).thenReturn(List.of("repo1"));
+        when(taskRepositoryControl.displayNameOf("repo1")).thenReturn("My Tasks");
+        when(taskRepositoryControl.get("repo1", "t-1")).thenReturn(mockTaskRecord("t-1", "Fix bug"));
+        when(taskRepositoryControl.update(eq("repo1"), any(TaskRecord.class))).thenReturn(true);
+
+        ToolExecutor<CloseTaskInput, Map<String, Object>> executor = registerAndGetCloseExecutor();
+        Map<String, Object> result = executor.execute(new CloseTaskInput(null, "t-1"));
+
+        assertEquals("ok", result.get("status"));
+        assertEquals("t-1", result.get("id"));
+        assertEquals("Task 'Fix bug' closed in 'My Tasks'.", result.get("message"));
+
+        ArgumentCaptor<TaskRecord> captor = ArgumentCaptor.forClass(TaskRecord.class);
+        verify(taskRepositoryControl).update(eq("repo1"), captor.capture());
+        assertEquals("closed", captor.getValue().status());
+        assertEquals("Fix bug", captor.getValue().summary());
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void closeTaskReturnsOkWhenAlreadyClosed() throws Exception {
+        when(taskRepositoryControl.repositoryIds()).thenReturn(List.of("repo1"));
+        when(taskRepositoryControl.displayNameOf("repo1")).thenReturn("My Tasks");
+        TaskRecord closedTask = new TaskRecord("t-1", "closed", "B", "Fix bug", List.of(), List.of(),
+            "", 0, 0, "", "", "");
+        when(taskRepositoryControl.get("repo1", "t-1")).thenReturn(closedTask);
+
+        ToolExecutor<CloseTaskInput, Map<String, Object>> executor = registerAndGetCloseExecutor();
+        Map<String, Object> result = executor.execute(new CloseTaskInput(null, "t-1"));
+
+        assertEquals("ok", result.get("status"));
+        assertTrue(result.get("message").toString().contains("already closed"));
+        verify(taskRepositoryControl, never()).update(any(), any());
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void closeTaskReturnsErrorWhenTaskNotFound() throws Exception {
+        when(taskRepositoryControl.repositoryIds()).thenReturn(List.of("repo1"));
+        when(taskRepositoryControl.displayNameOf("repo1")).thenReturn("My Tasks");
+        when(taskRepositoryControl.get("repo1", "missing")).thenReturn(null);
+
+        ToolExecutor<CloseTaskInput, Map<String, Object>> executor = registerAndGetCloseExecutor();
+        Map<String, Object> result = executor.execute(new CloseTaskInput(null, "missing"));
+
+        assertEquals("error", result.get("status"));
+        assertTrue(result.get("message").toString().contains("not found"));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void closeTaskReturnsErrorWhenTaskIdBlank() throws Exception {
+        ToolExecutor<CloseTaskInput, Map<String, Object>> executor = registerAndGetCloseExecutor();
+        Map<String, Object> result = executor.execute(new CloseTaskInput(null, "  "));
+
+        assertEquals("error", result.get("status"));
+        assertEquals("taskId is required", result.get("message"));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void closeTaskReturnsErrorWhenNoRepositories() throws Exception {
+        when(taskRepositoryControl.repositoryIds()).thenReturn(List.of());
+
+        ToolExecutor<CloseTaskInput, Map<String, Object>> executor = registerAndGetCloseExecutor();
+        Map<String, Object> result = executor.execute(new CloseTaskInput(null, "t-1"));
+
+        assertEquals("error", result.get("status"));
+        assertTrue(result.get("message").toString().contains("No Beanbot Tasks repository configured"));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void closeTaskReturnsErrorWhenMultipleReposNoId() throws Exception {
+        when(taskRepositoryControl.repositoryIds()).thenReturn(List.of("repo1", "repo2"));
+
+        ToolExecutor<CloseTaskInput, Map<String, Object>> executor = registerAndGetCloseExecutor();
+        Map<String, Object> result = executor.execute(new CloseTaskInput(null, "t-1"));
+
+        assertEquals("error", result.get("status"));
+        assertTrue(result.get("message").toString().contains("Multiple repositories exist"));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void closeTaskPreservesTaskFields() throws Exception {
+        when(taskRepositoryControl.repositoryIds()).thenReturn(List.of("repo1"));
+        when(taskRepositoryControl.displayNameOf("repo1")).thenReturn("My Tasks");
+        TaskRecord open = new TaskRecord("t-1", "open", "A", "Critical fix", List.of("urgent"), List.of("backend"),
+            "2026-09-01", 5, 2, "2026-08-01", "", "2026-08-02");
+        when(taskRepositoryControl.get("repo1", "t-1")).thenReturn(open);
+        when(taskRepositoryControl.update(eq("repo1"), any(TaskRecord.class))).thenReturn(true);
+
+        ToolExecutor<CloseTaskInput, Map<String, Object>> executor = registerAndGetCloseExecutor();
+        Map<String, Object> result = executor.execute(new CloseTaskInput("repo1", "t-1"));
+
+        assertEquals("ok", result.get("status"));
+
+        ArgumentCaptor<TaskRecord> captor = ArgumentCaptor.forClass(TaskRecord.class);
+        verify(taskRepositoryControl).update(eq("repo1"), captor.capture());
+        TaskRecord updated = captor.getValue();
+        assertEquals("closed", updated.status());
+        assertEquals("A", updated.priority());
+        assertEquals("Critical fix", updated.summary());
+        assertEquals(List.of("urgent"), updated.tags());
+        assertEquals(List.of("backend"), updated.projects());
+        assertEquals("2026-09-01", updated.dueDate());
+        assertEquals(5, updated.estimate());
+        assertEquals(2, updated.consumed());
+    }
+
+    // --- search_task ---
+
+    @Test
+    void registersSearchTaskTool() {
+        provider.registerTools(mcpTools);
+
+        ArgumentCaptor<String> descCaptor = ArgumentCaptor.forClass(String.class);
+
+        verify(mcpTools).registerTool(eq("search_task"), descCaptor.capture(), any(ObjectNode.class), any());
+
+        assertTrue(descCaptor.getValue().contains("Searches open tasks"));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void searchMatchesOpenTasksAcrossRepos() throws Exception {
+        when(taskRepositoryControl.repositoryIds()).thenReturn(List.of("repo1", "repo2"));
+        when(taskRepositoryControl.displayNameOf("repo1")).thenReturn("My Tasks");
+        when(taskRepositoryControl.displayNameOf("repo2")).thenReturn("Other Tasks");
+        TaskRecord openLogin = new TaskRecord("t-1", "open", "B", "Fix the login bug", List.of(), List.of(),
+            "", 0, 0, "", "", "");
+        TaskRecord closedLogin = new TaskRecord("t-2", "closed", "B", "Login refactor", List.of(), List.of(),
+            "", 0, 0, "", "", "");
+        TaskRecord openDeploy = new TaskRecord("t-3", "open", "C", "Deploy new version", List.of(), List.of(),
+            "", 0, 0, "", "", "");
+        when(taskRepositoryControl.list("repo1")).thenReturn(List.of(openLogin, closedLogin));
+        when(taskRepositoryControl.list("repo2")).thenReturn(List.of(openDeploy));
+
+        ToolExecutor<SearchTaskInput, Map<String, Object>> executor = registerAndGetSearchExecutor();
+        Map<String, Object> result = executor.execute(new SearchTaskInput(null, "login"));
+
+        assertEquals("ok", result.get("status"));
+        List<Map<String, Object>> matches = (List<Map<String, Object>>) result.get("matches");
+        assertEquals(1, matches.size());
+        assertEquals("repo1", matches.get(0).get("repoId"));
+        assertEquals("t-1", matches.get(0).get("taskId"));
+        assertEquals("Fix the login bug", matches.get(0).get("summary"));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void searchIsCaseInsensitive() throws Exception {
+        when(taskRepositoryControl.repositoryIds()).thenReturn(List.of("repo1"));
+        when(taskRepositoryControl.displayNameOf("repo1")).thenReturn("My Tasks");
+        when(taskRepositoryControl.list("repo1")).thenReturn(List.of(mockTaskRecord("t-1", "FIX THE LOGIN BUG")));
+
+        ToolExecutor<SearchTaskInput, Map<String, Object>> executor = registerAndGetSearchExecutor();
+        Map<String, Object> result = executor.execute(new SearchTaskInput(null, "login"));
+
+        assertEquals("ok", result.get("status"));
+        List<Map<String, Object>> matches = (List<Map<String, Object>>) result.get("matches");
+        assertEquals(1, matches.size());
+        assertEquals("t-1", matches.get(0).get("taskId"));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void searchExcludesClosedTasks() throws Exception {
+        when(taskRepositoryControl.repositoryIds()).thenReturn(List.of("repo1"));
+        TaskRecord closed = new TaskRecord("t-1", "closed", "B", "Login bug fixed", List.of(), List.of(),
+            "", 0, 0, "", "", "");
+        when(taskRepositoryControl.list("repo1")).thenReturn(List.of(closed));
+
+        ToolExecutor<SearchTaskInput, Map<String, Object>> executor = registerAndGetSearchExecutor();
+        Map<String, Object> result = executor.execute(new SearchTaskInput(null, "login"));
+
+        assertEquals("ok", result.get("status"));
+        List<Map<String, Object>> matches = (List<Map<String, Object>>) result.get("matches");
+        assertEquals(0, matches.size());
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void searchLimitsResultsToTen() throws Exception {
+        when(taskRepositoryControl.repositoryIds()).thenReturn(List.of("repo1"));
+        when(taskRepositoryControl.displayNameOf("repo1")).thenReturn("My Tasks");
+        List<TaskRecord> many = new java.util.ArrayList<>();
+        for (int i = 0; i < 15; i++) {
+            many.add(mockTaskRecord("t-" + i, "Login item " + i));
+        }
+        when(taskRepositoryControl.list("repo1")).thenReturn(many);
+
+        ToolExecutor<SearchTaskInput, Map<String, Object>> executor = registerAndGetSearchExecutor();
+        Map<String, Object> result = executor.execute(new SearchTaskInput(null, "Login"));
+
+        assertEquals("ok", result.get("status"));
+        List<Map<String, Object>> matches = (List<Map<String, Object>>) result.get("matches");
+        assertEquals(10, matches.size());
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void searchScopesToExplicitRepoId() throws Exception {
+        when(taskRepositoryControl.repositoryIds()).thenReturn(List.of("repo1", "repo2"));
+        when(taskRepositoryControl.displayNameOf("repo1")).thenReturn("My Tasks");
+        when(taskRepositoryControl.list("repo1")).thenReturn(List.of(mockTaskRecord("t-1", "Login issue")));
+        when(taskRepositoryControl.list("repo2")).thenReturn(List.of(mockTaskRecord("t-2", "Deploy")));
+
+        ToolExecutor<SearchTaskInput, Map<String, Object>> executor = registerAndGetSearchExecutor();
+        Map<String, Object> result = executor.execute(new SearchTaskInput("repo1", "Login"));
+
+        assertEquals("ok", result.get("status"));
+        List<Map<String, Object>> matches = (List<Map<String, Object>>) result.get("matches");
+        assertEquals(1, matches.size());
+        assertEquals("repo1", matches.get(0).get("repoId"));
+        verify(taskRepositoryControl, never()).list("repo2");
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void searchReturnsErrorWhenQueryBlank() throws Exception {
+        ToolExecutor<SearchTaskInput, Map<String, Object>> executor = registerAndGetSearchExecutor();
+        Map<String, Object> result = executor.execute(new SearchTaskInput(null, "   "));
+
+        assertEquals("error", result.get("status"));
+        assertEquals("query is required", result.get("message"));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void searchReturnsErrorWhenNoRepositories() throws Exception {
+        when(taskRepositoryControl.repositoryIds()).thenReturn(List.of());
+
+        ToolExecutor<SearchTaskInput, Map<String, Object>> executor = registerAndGetSearchExecutor();
+        Map<String, Object> result = executor.execute(new SearchTaskInput(null, "login"));
+
+        assertEquals("error", result.get("status"));
+        assertTrue(result.get("message").toString().contains("No Beanbot Tasks repository configured"));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void searchReturnsErrorWhenUnknownRepoId() throws Exception {
+        when(taskRepositoryControl.repositoryIds()).thenReturn(List.of("repo1"));
+
+        ToolExecutor<SearchTaskInput, Map<String, Object>> executor = registerAndGetSearchExecutor();
+        Map<String, Object> result = executor.execute(new SearchTaskInput("unknown", "login"));
+
+        assertEquals("error", result.get("status"));
+        assertTrue(result.get("message").toString().contains("Unknown repository 'unknown'"));
     }
 }
