@@ -154,10 +154,6 @@ public final class HtmlContentPreparer {
         HTML_WRAPPER_CACHE.invalidateAll();
     }
 
-    public static boolean containsAsciiArt(String markdown) {
-        return TextScanner.containsAsciiArt(markdown);
-    }
-
     /**
      * Returns cached HTML for markdown input, or parses + caches on miss.
      * The cache is bounded to 256 entries.  Text longer than 32 KB is not

@@ -177,8 +177,11 @@ public class ScrollController implements KeyEventDispatcher {
         int extent = vertical.getModel().getExtent();
         int value = vertical.getValue();
         int maximum = vertical.getMaximum();
-        // Small tolerance for rounding errors, but no big sticky zone
-        return (value + extent >= maximum - 50);
+        // Sticky zone: if the user is within 150px of the bottom, treat it
+        // as "at bottom" so new bubbles auto-scroll. A tight margin (50px)
+        // fails because adding a bubble shifts the viewport past the threshold
+        // before we capture wasAtBottom.
+        return (value + extent >= maximum - 150);
     }
 
     public void positionScrollDownBtn(int parentWidth, int parentHeight) {
@@ -218,6 +221,10 @@ public class ScrollController implements KeyEventDispatcher {
             if (!force && !isAtBottom()) {
                 return;
             }
+            // Force layout so getMaximum() reflects newly added components.
+            // Without this, invokeLater fires before Swing's layout pass,
+            // and getMaximum() returns the stale (pre-add) value.
+            scrollPane.getViewport().getView().validate();
             JScrollBar vertical = scrollPane.getVerticalScrollBar();
             vertical.setValue(vertical.getMaximum());
             scrollDownBtn.setVisible(false);

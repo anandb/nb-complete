@@ -300,18 +300,20 @@ public class ChatThreadPanel extends JPanel {
         String text = pm.text();
         if (text == null) text = "";
         final String role = pm.messageType().roleName();
+        // Capture scroll position BEFORE any mutations (stopStreaming, addSingleBubble, etc.)
+        boolean wasAtBottom = scrollController.isAtBottom();
 
         if (pm.streaming()) {
-            processMessageSections(pm, text, role);
+            processMessageSections(pm, text, role, wasAtBottom);
         } else {
             stopStreaming();
-            addSingleBubble(pm.messageType(), text, pm.messageId(), pm.toolTitle(), false);
+            addSingleBubble(pm.messageType(), text, pm.messageId(), pm.toolTitle(), false, wasAtBottom);
         }
         trimMessages();
     }
 
     /** Process message sections on EDT (shared by addMessage and setMessages). */
-    private void processMessageSections(ProcessedMessage pm, String text, String role) {
+    private void processMessageSections(ProcessedMessage pm, String text, String role, boolean wasAtBottom) {
         if (text == null) return;
         String[] parts = SECTION_SPLIT.split(text);
         MessageBubble lastBubble = findLastNonIgnorableBubble();
@@ -349,9 +351,6 @@ public class ChatThreadPanel extends JPanel {
                     streamingCoordinator.startStreaming(lastBubble);
                 }
             } else {
-                // Capture scroll state BEFORE content mutation — finalize can shrink bubble (JTextArea→HTML),
-                // wasAtBottom. Per auto-scroll contract, capture before any content mutation.
-                boolean wasAtBottomBeforeFinalize = scrollController.isAtBottom();
                 if (lastBubble != null) {
                     if (lastBubble == streamingCoordinator.getActiveStreamBubble()) {
                         streamingCoordinator.stopStreaming();
@@ -360,10 +359,10 @@ public class ChatThreadPanel extends JPanel {
                     lastBubble.finalizeStreaming(allBlocksExpanded);
                 }
 
-                addSingleBubble(pm.messageType(), part, pm.messageId(), pm.toolTitle(), pm.streaming());
+                addSingleBubble(pm.messageType(), part, pm.messageId(), pm.toolTitle(), pm.streaming(), wasAtBottom);
                 lastBubble = findLastNonIgnorableBubble();
                 // Force-scroll if user was at bottom before finalize; addSingleBubble may have seen a post-shrink viewport.
-                if (wasAtBottomBeforeFinalize) {
+                if (wasAtBottom) {
                     scrollController.scrollToBottom(true);
                 }
             }
@@ -379,9 +378,7 @@ public class ChatThreadPanel extends JPanel {
         return currentSessionId;
     }
 
-    private void addSingleBubble(MessageType type, String text, String messageId, String toolTitle, boolean streaming) {
-        // Capture scroll state BEFORE modifying content
-        boolean wasAtBottom = scrollController.isAtBottom();
+    private void addSingleBubble(MessageType type, String text, String messageId, String toolTitle, boolean streaming, boolean wasAtBottom) {
 
         // Reset permission grouping when a VISIBLE non-permission message arrives.
         // Hidden (filtered) messages must not break consecutive Allowed results.
@@ -466,6 +463,12 @@ public class ChatThreadPanel extends JPanel {
         if (!batchAdding) {
             // Live adds: only the current turn is unfinalized, so scan its tail.
             removeBlankBubbles(1, wasAtBottom);
+            // Always scroll after adding a non-streaming bubble if user was at bottom.
+            // removeBlankBubbles only scrolls when it removes blanks — user and
+            // thought bubbles are rarely blank, so scroll would never fire.
+            if (wasAtBottom) {
+                scrollController.scrollToBottom(true);
+            }
         }
     }
 
@@ -1063,9 +1066,9 @@ public class ChatThreadPanel extends JPanel {
                 String text = pm.text();
                 if (text == null) text = "";
                 if (pm.streaming()) {
-                    processMessageSections(pm, text, pm.messageType().roleName());
+                    processMessageSections(pm, text, pm.messageType().roleName(), false);
                 } else {
-                    addSingleBubble(pm.messageType(), text, pm.messageId(), pm.toolTitle(), false);
+                    addSingleBubble(pm.messageType(), text, pm.messageId(), pm.toolTitle(), false, false);
                 }
             }
             if (offset[0] < toRender.size()) {

@@ -4,6 +4,7 @@ import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
 import java.io.File;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import javax.swing.text.Document;
@@ -34,6 +35,14 @@ public final class EditorContextCapture {
     public static Map<String, Object> capture() {
         JTextComponent editor = EditorRegistry.lastFocusedComponent();
         if (editor == null) {
+            return null;
+        }
+
+        // EditorRegistry.lastFocusedComponent() can return a stale reference
+        // after all editor tabs are closed — the registry doesn't null it out.
+        // Validate that the component is still in the live editor list.
+        List<? extends JTextComponent> liveEditors = EditorRegistry.componentList();
+        if (!liveEditors.contains(editor)) {
             return null;
         }
 
