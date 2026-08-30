@@ -8,8 +8,14 @@ public final class TimingConstants {
 
     private TimingConstants() {}
 
-    /** Cooldown/flush delay for streaming content updates (milliseconds). */
-    public static final int STREAM_FLUSH_MS = 300;
+    /** Cooldown/flush delay for streaming content updates (milliseconds).
+     *  Lower values produce smoother streaming but more EDT layout passes. */
+    public static final int STREAM_FLUSH_MS = 80;
+
+    /** Maximum characters inserted per streaming flush tick. Large deltas
+     *  arriving between ticks are drip-fed across multiple ticks for a smooth
+     *  typewriter effect instead of a single blocky dump. */
+    public static final int STREAM_DRIP_MAX_CHARS = 120;
 
     /** Startup help button flash toggle interval (milliseconds). */
     public static final int HELP_FLASH_INTERVAL_MS = 700;

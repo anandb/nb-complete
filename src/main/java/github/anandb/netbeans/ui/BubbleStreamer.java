@@ -21,6 +21,8 @@ import org.openide.util.NbBundle;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.TimingConstants;
 
+import static github.anandb.netbeans.support.TimingConstants.STREAM_DRIP_MAX_CHARS;
+
 // DSL-CONTROLLER: not a view — deferredFinalizeTimer + streaming-text accumulation state. Stays imperative; the bubble shell it drives is a DSL-LEAF.
 class BubbleStreamer {
 
@@ -144,20 +146,43 @@ class BubbleStreamer {
         if (!hasPendingTextUpdate && !force) {
             return false;
         }
-        hasPendingTextUpdate = false;
 
         if (state != StreamingState.FINALIZED) {
             int totalLen = text.length();
             if (streamingTextArea != null && totalLen > lastDisplayedLength) {
-                // Use substring to get a copy of only the new delta.
-                String delta = text.substring(lastDisplayedLength, totalLen);
-                Document doc = streamingTextArea.getDocument();
+                // Drip-feed: insert at most STREAM_DRIP_MAX_CHARS per tick so
+                // large chunks render progressively across multiple ticks,
+                // producing a smooth typewriter effect. Force flush bypasses
+                // the cap to dump everything at once (stopStreaming/finalize).
+                int insertLen = force
+                        ? totalLen - lastDisplayedLength
+                        : Math.min(totalLen - lastDisplayedLength, STREAM_DRIP_MAX_CHARS);
+                String delta = text.substring(lastDisplayedLength, lastDisplayedLength + insertLen);
+                int offset = lastDisplayedLength;
                 try {
+                    Document doc = streamingTextArea.getDocument();
                     doc.insertString(doc.getLength(), delta, null);
                 } catch (BadLocationException ignored) {
-                    streamingTextArea.append(delta);
+                    // Fallback: append swallows its own BadLocationException
+                    // internally, but could still fail with an unchecked
+                    // exception (NPE if text area disposed mid-flight).
+                    try {
+                        streamingTextArea.append(delta);
+                    } catch (RuntimeException ex) {
+                        // Insertion failed — leave lastDisplayedLength and
+                        // hasPendingTextUpdate untouched so the next tick
+                        // retries the same delta instead of losing it.
+                        LOG.warn("Streaming flush failed, will retry next tick", ex);
+                        return true;
+                    }
+                } catch (RuntimeException ex) {
+                    // Same defensive retry for unexpected failures.
+                    LOG.warn("Streaming flush failed, will retry next tick", ex);
+                    return true;
                 }
-                lastDisplayedLength = totalLen;
+                // Only advance state after successful insertion.
+                lastDisplayedLength = offset + insertLen;
+                hasPendingTextUpdate = lastDisplayedLength < totalLen;
                 return true;
             }
             // Tool/thought streaming: no streaming text area — update via
@@ -165,11 +190,14 @@ class BubbleStreamer {
             if (totalLen > lastDisplayedLength) {
                 contentUpdater.update(ThemeManager.getCurrentTheme(), true);
                 lastDisplayedLength = totalLen;
+                hasPendingTextUpdate = false;
                 return true;
             }
+            hasPendingTextUpdate = false;
             return false;
         }
 
+        hasPendingTextUpdate = false;
         contentUpdater.update(ThemeManager.getCurrentTheme(), true);
         return true;
     }
