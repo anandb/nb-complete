@@ -490,6 +490,21 @@ class TaskToolProviderTest {
         assertEquals(2, updated.consumed());
     }
 
+    @SuppressWarnings("unchecked")
+    @Test
+    void closeTaskReturnsErrorWhenUpdateFails() throws Exception {
+        when(taskRepositoryControl.repositoryIds()).thenReturn(List.of("repo1"));
+        when(taskRepositoryControl.displayNameOf("repo1")).thenReturn("My Tasks");
+        when(taskRepositoryControl.get("repo1", "t-1")).thenReturn(mockTaskRecord("t-1", "Fix bug"));
+        when(taskRepositoryControl.update(eq("repo1"), any(TaskRecord.class))).thenReturn(false);
+
+        ToolExecutor<CloseTaskInput, Map<String, Object>> executor = registerAndGetCloseExecutor();
+        Map<String, Object> result = executor.execute(new CloseTaskInput(null, "t-1"));
+
+        assertEquals("error", result.get("status"));
+        assertTrue(result.get("message").toString().contains("Failed to close task"));
+    }
+
     // --- search_task ---
 
     @Test

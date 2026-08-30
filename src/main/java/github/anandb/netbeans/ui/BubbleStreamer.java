@@ -197,8 +197,10 @@ class BubbleStreamer {
             return false;
         }
 
-        hasPendingTextUpdate = false;
         contentUpdater.update(ThemeManager.getCurrentTheme(), true);
+        // Clear only after successful update — if update() throws, the flag
+        // stays true so the next flushUpdate() retries instead of losing data.
+        hasPendingTextUpdate = false;
         return true;
     }
 

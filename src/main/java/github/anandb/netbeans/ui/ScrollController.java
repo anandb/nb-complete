@@ -243,13 +243,14 @@ public class ScrollController implements KeyEventDispatcher {
         // size. Validating only the view re-layouts children but leaves the
         // scrollbar's getMaximum() stale — setValue(max) then scrolls to the
         // old bottom, not the true one after a bubble was just added.
-        scrollPane.revalidate();
+        // Note: revalidate() is intentionally omitted — validate() already
+        // processes all pending layout requests, so marking invalid first is
+        // redundant overhead on this hot path (called every streaming tick).
         scrollPane.validate();
         JScrollBar vertical = scrollPane.getVerticalScrollBar();
         vertical.setValue(vertical.getMaximum());
         scrollDownBtn.setVisible(false);
         SwingUtilities.invokeLater(() -> {
-            scrollPane.revalidate();
             scrollPane.validate();
             vertical.setValue(vertical.getMaximum());
         });
