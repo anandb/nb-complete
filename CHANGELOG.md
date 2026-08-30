@@ -1,5 +1,59 @@
 # Release Notes
 
+## v1.17.0 (Changes since v1.16.1)
+
+### Features
+- **Task repository with todo.txt format**: Replaced CSV-backed task storage with a plain [todo.txt](https://github.com/todotxt/todo.txt) file format. Tasks now support `@tags`, `+projects`, `estimate`/`consumed` effort units, and `A–Z` NATO priority letters. The default task file is `beanbot_todo.txt`.
+- **NetBeans Tasks dashboard integration**: New `BugtrackingConnector` (`beanbot.tasks`) exposes local todo.txt repos in the NetBeans Tasks Dashboard with create/edit via `TaskIssueController`, tag filtering, and Open/Closed query views.
+- **MCP `add_task`, `close_task`, `search_task` tools**: The AI can create tasks (with tags, projects, priority, estimate/consumed), mark them done, and find open tasks by summary substring — all from within a chat session.
+- **Task repository toggle**: A new "Enable Task Repository" preference in Options > Advanced lets users disable the entire task feature. Both `TasksStartup` and `TasksConnector` are gated.
+- **Remember sidebar dock position and width**: The assistant sidebar now persists its dock position and width across IDE restarts.
+- **Tag filter in Find Tasks dialog**: The task query editor provides a chip-based tag multi-select with suggestions and a Search button for filtering by tags.
+
+### Fixes
+- **Streaming scroll consistency**: Improved `scrollToBottom` to validate the scrollPane (not just the view) so the scrollbar model is up-to-date before pinning, added a settle pass on the next EDT tick for streaming content, and force-scrolls on user messages regardless of prior scroll position.
+- **Streaming rendering performance**: Removed the 100ms `scrollTimer` delay, added drip-feed flushing (120 chars/tick) for smooth typewriter rendering, cached the parent tree walk in `getPreferredSize()`, and removed redundant `revalidate()` calls.
+- **Streaming state safety**: Exception-safe state advancement ensures `lastDisplayedLength` and `hasPendingTextUpdate` are only updated after document insertion succeeds, so the next tick retries on failure.
+- **Sidebar flashing and disappearance**: Fixed the sidebar flashing and disappearing on open by clearing stale state.
+- **Sticky state on reconnect**: Server restart now clears the sticky reconnect state so the UI no longer wedges after a reconnect.
+- **Blank bubbles on streaming finalization**: Assistant/thought bubbles containing only whitespace are now dropped at finalization, and stale segments are cleared before adding the activity pane.
+- **Permission merge across hidden messages**: Consecutive "Allowed" permission results no longer split into separate bubbles when hidden (filtered) messages appear between them.
+- **Permission dialog surfacing**: A blocked send now re-surfaces the permission panel and brings the assistant to front instead of only buzzing, so the server is not left hanging.
+- **Archived session selection**: The selected session is now kept selected when viewing archived sessions.
+- **Task timestamps truncated to minute precision**: Task creation and update timestamps are now truncated to minute precision for cleaner display.
+- **Closed task completion date**: The todo.txt round-trip now preserves the completion date for closed tasks, matching the spec.
+- **Query container cleanup**: Query containers and store listeners are now properly removed when a repository is unregistered.
+- **Issue controller eviction**: `TaskIssueProvider` now evicts controllers when their task is deleted, preventing unbounded growth.
+- **Priority validation in `add_task`**: Non `A–Z` priority values are now rejected with a clear error message.
+- **Long action descriptions wrapped**: The keyboard shortcuts dialog now wraps long action descriptions instead of clipping.
+- **Canonical path fallback**: `File.getCanonicalPath()` failures now fall back to an absolute normalized path so duplicate-repository detection still works.
+- **Review findings addressed**: Never schedule a finished task, trim trailing whitespace in task summaries before serialization, reject invalid status values other than `open`/`closed`.
+- **Remove unused `newIssue` parameter**: The unused `description` parameter was removed from `newIssue()`.
+
+### Performance
+- **O(1) NATO priority lookup**: Replaced the linear scan in `natoToLetter()` with a static case-insensitive map, and derived the NATO letter directly from the first character of the word.
+
+### Refactoring
+- **Extract `contract/ProjectQuery`**: Decoupled `manager/` and `mcp/` layers from the `project/ACPProjectManager` singleton by extracting a read-only `ProjectQuery` interface surfaced via Lookup.
+- **Rename "Updates" to "System"**: The assistant options section was renamed, and the Line Height Correction spinner moved into it from the separate Custom tab.
+- **Title-case `TaskStatus` display values**: Status labels now render in title case for cleaner presentation.
+- **Extract `TasksProject`**: Shared project-name resolution logic was extracted from `TaskRepositoryController` and `TaskIssueController`.
+- **Remove unused methods**: Deleted 7 confirmed unused methods and added `ToolCallData` round-trip test coverage.
+
+### UI
+- **Streaming drip-feed flush**: Large SSE chunks now render progressively across multiple 80ms ticks (120 chars/tick) for a smooth typewriter effect instead of blocky 300ms jumps.
+- **Force-scroll on user messages**: The chat now always scrolls to the latest user bubble regardless of prior scroll position.
+- **Inline line height correction**: The Line Height Correction spinner is now in the System section of the Assistant options panel, matching the two-column layout used in Chat Behavior.
+- **Stale segment cleanup**: If a tool/thought bubble already has non-collapsible content, all stale components are removed before adding the correct pane.
+- **Remove blank whitespace-only bubbles**: Agent message chunks containing only whitespace are no longer finalized into empty bubbles.
+
+### Documentation
+- **Task management user guide**: Added 6 new pages covering Task Repositories, Creating a Repository, Using the Dashboard, Todo.txt Format, Task Editor, and Adding Tasks via AI. Updated existing MCP Tools and Topic Index pages.
+- **Outdated passage fixes**: Corrected 3 outdated user guide passages (mini assistant dock behavior, task repository preference, default task filename).
+
+### Housekeeping
+- Version bumped to 1.17.0.
+
 ## v1.16.1 (Changes since v1.16.0)
 
 ### Fixes
