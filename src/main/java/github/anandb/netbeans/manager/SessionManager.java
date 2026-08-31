@@ -872,7 +872,9 @@ public class SessionManager implements SessionQuery, SessionControl {
         Map<String, Object> params = new HashMap<>();
         params.put("sessionId", sessionId);
         params.put("prompt", List.of(textBlock));
-        params.put("mcpServers", ProcessManager.getInstance().getToolExecutor().getServerConfig());
+        if (!"pi-acp".equals(agentName())) {
+            params.put("mcpServers", ProcessManager.getInstance().getToolExecutor().getServerConfig());
+        }
 
         return ProcessManager.getInstance().sendRequest("session/prompt", params)
                 .whenComplete((res, ex) -> {

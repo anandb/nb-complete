@@ -309,7 +309,7 @@ public class ProcessManager implements ProcessControl {
 
         List<Map<String, Object>> promptBlocks = new ArrayList<>();
 
-        if (context != null) {
+        if (context != null && !isPiAcp()) {
             String filePath = (String) context.get("filePath");
             if (isNotBlank(filePath)) {
                 File file = new File(filePath);
@@ -366,7 +366,9 @@ public class ProcessManager implements ProcessControl {
         Map<String, Object> params = new HashMap<>();
         params.put("sessionId", sessionId);
         params.put("prompt", promptBlocks);
-        params.put("mcpServers", toolExecutor.getServerConfig());
+        if (!isPiAcp()) {
+            params.put("mcpServers", toolExecutor.getServerConfig());
+        }
 
         int idleTimeoutSec = PluginSettings.getSessionIdleTimeout();
         return client.sendRequest("session/prompt", params, idleTimeoutSec, TimeUnit.SECONDS);
@@ -410,6 +412,11 @@ public class ProcessManager implements ProcessControl {
     @Override
     public String getAgentName() {
         return serverLifecycle.getAgentName();
+    }
+
+    /** Returns {@code true} when the connected agent is pi-acp. */
+    private boolean isPiAcp() {
+        return "pi-acp".equals(getAgentName());
     }
 
     public void setReadyHandler(Runnable handler) {

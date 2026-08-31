@@ -1,5 +1,6 @@
 package github.anandb.netbeans.manager;
 
+import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.concurrent.CompletableFuture;
@@ -39,7 +40,9 @@ final class SessionRpcClient {
     CompletableFuture<JsonNode> createSession(String cwd) {
         Map<String, Object> params = new HashMap<>();
         params.put("cwd", cwd);
-        params.put("mcpServers", processManager.getToolExecutor().getServerConfig());
+        if (!isPiAcp()) {
+            params.put("mcpServers", processManager.getToolExecutor().getServerConfig());
+        }
         return processManager.sendRequest("session/new", params, 60, TimeUnit.SECONDS);
     }
 
@@ -49,13 +52,17 @@ final class SessionRpcClient {
         if (cwd != null) {
             params.put("cwd", cwd);
         }
-        params.put("mcpServers", processManager.getToolExecutor().getServerConfig());
+        if (isPiAcp()) {
+            params.put("mcpServers", List.of());
+        } else {
+            params.put("mcpServers", processManager.getToolExecutor().getServerConfig());
+        }
         return processManager.sendRequest("session/load", params, 2, TimeUnit.MINUTES);
     }
 
     CompletableFuture<Void> renameSessionOnServer(String sessionId, String title) {
-        // The OpenCode ACP server currently does not implement a session/update 
-        // or session/rename RPC endpoint. We only rename the session locally in 
+        // The OpenCode ACP server currently does not implement a session/update
+        // or session/rename RPC endpoint. We only rename the session locally in
         // the IDE and return a completed future here.
         return CompletableFuture.completedFuture(null);
     }
@@ -66,5 +73,9 @@ final class SessionRpcClient {
                 "configId", configId,
                 "value", value
         ), 30, TimeUnit.SECONDS);
+    }
+
+    private boolean isPiAcp() {
+        return "pi-acp".equals(processManager.getAgentName());
     }
 }
