@@ -56,6 +56,18 @@ final class IconResourceManager {
     }
 
     private static Icon loadAndCreateIcon(String name, int size) {
+        String baseName = name.substring(0, name.lastIndexOf('.'));
+        String ext = name.substring(name.lastIndexOf('.'));
+
+        // Try pre-rendered PNG at exact size first (Inkscape-quality, no scaling)
+        if (size > 0) {
+            String pngPath = "github/anandb/netbeans/ui/icons/" + getThemeAwareName(baseName + "_" + size + ".png");
+            Image png = ImageUtilities.loadImage(pngPath, true);
+            if (png != null) {
+                return ImageUtilities.image2Icon(png);
+            }
+        }
+
         String resourcePath = "github/anandb/netbeans/ui/icons/" + getThemeAwareName(name);
         Image img = ImageUtilities.loadImage(resourcePath, true);
         if (img == null) {
@@ -69,11 +81,26 @@ final class IconResourceManager {
             return null;
         }
         if (size > 0 && (img.getWidth(null) != size || img.getHeight(null) != size)) {
+            // Multi-pass downscale: first render at 2x, then to target size.
+            // This avoids aliasing artifacts from a single large downscale.
+            int intermediate = Math.min(img.getWidth(null), Math.max(size * 2, size + 16));
+            if (intermediate != img.getWidth(null) && intermediate > size) {
+                BufferedImage scaled = new BufferedImage(intermediate, intermediate, BufferedImage.TYPE_INT_ARGB);
+                Graphics2D gs = scaled.createGraphics();
+                gs.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+                gs.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+                gs.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                gs.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
+                gs.drawImage(img, 0, 0, intermediate, intermediate, null);
+                gs.dispose();
+                img = scaled;
+            }
             BufferedImage bi = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
             Graphics2D g2 = bi.createGraphics();
             g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
             g2.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
             g2.drawImage(img, 0, 0, size, size, null);
             g2.dispose();
             img = bi;

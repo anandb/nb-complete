@@ -61,8 +61,7 @@ import javax.swing.Timer;
 import javax.swing.border.EmptyBorder;
 import org.netbeans.api.project.Project;
 import github.anandb.netbeans.support.BrowserUtils;
-
-
+import java.util.prefs.Preferences;
 
 
 @ConvertAsProperties(
@@ -111,6 +110,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     private final JButton refreshBtn;
     private final JButton exportBtn;
     private final JButton rocketBtn;
+    private final MessageQueueManager queueManager;
     private final JLabel statusLabel;
     private final JLabel versionLabel;
     private final JLabel cwdLabel;
@@ -230,7 +230,11 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         // The rocket button is always visible, regardless of the options panel
         // collapse state, so it must not be hidden by setOptionsPanelVisible().
         rocketBtn.setVisible(true);
-        layoutBuilder.getRightStatusPanel().add(rocketBtn, 0);
+
+        // Message queue button — left of rocket, visible only when messages are queued.
+        queueManager = new MessageQueueManager();
+        layoutBuilder.getRightStatusPanel().add(queueManager.getButton(), 0);
+        layoutBuilder.getRightStatusPanel().add(rocketBtn, 1);
 
         // Add token usage button after the rocket button
         JButton tokenUsageBtn = UIUtils.createToolbarButton("currency.svg", iconSize,
@@ -242,7 +246,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                 TokenUsageDialog.show(null);
             }
         });
-        layoutBuilder.getRightStatusPanel().add(tokenUsageBtn, 1);
+        layoutBuilder.getRightStatusPanel().add(tokenUsageBtn, 2);
 
         sessionDropdownHandler = new SessionDropdownHandler(sessionDropdown, inputArea);
         sessionLifecycleHandler = new SessionLifecycleHandler(
@@ -303,6 +307,28 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         messageSender.setOnNewMessageCallback(sessionLifecycleHandler::onNewMessageSent);
         messageSender.setOnMessageDoneCallback(sessionLifecycleHandler::onMessageDone);
         messageSender.setOnUserMessageSentCallback(chatPanel::recordUserMessageSent);
+        messageSender.setQueueManager(queueManager);
+        messageSender.setTurnEndedCheck(sessionLifecycleHandler::isTurnEnded);
+
+        // Turn-end callback: flush queued messages as a single combined prompt.
+        // Returns true if messages were flushed (callers must NOT set Ready/Go).
+        java.util.function.Supplier<Boolean> turnEndFlush = () -> {
+            String combined = queueManager.flushAll();
+            if (combined != null) {
+                chatPanel.clearQueuedMessageIds();
+                // Briefly show Ready/Go so the user sees the turn ended,
+                // then switch to Sending/Stop when the queued message fires.
+                javax.swing.Timer delay = new javax.swing.Timer(400, e -> {
+                    messageSender.sendQueuedMessage(combined);
+                });
+                delay.setRepeats(false);
+                delay.start();
+                return true;
+            }
+            return false;
+        };
+        messageSender.setOnTurnEndedCallback(turnEndFlush);
+        sessionLifecycleHandler.setOnTurnEndedCallback(turnEndFlush);
 
         toggleOptionsBtn.addActionListener(e -> {
             boolean collapsed = !sessionLifecycleHandler.isOptionsPanelCollapsed();
@@ -810,7 +836,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
      * plugin reinstalls where NetBeans resets its own window layout.
      */
     private void restoreDockState() {
-        java.util.prefs.Preferences prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
+        Preferences prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
         String savedMode = prefs.get(PreferenceKeys.ASSISTANT_DOCK_MODE, null);
         int savedWidth = prefs.getInt(PreferenceKeys.ASSISTANT_DOCK_WIDTH, 0);
         if (savedMode == null || savedMode.isEmpty()) {
@@ -838,7 +864,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
     /** Persists the current dock mode name and dock width. */
     private void saveDockState() {
-        java.util.prefs.Preferences prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
+        Preferences prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
         Mode mode = WindowManager.getDefault().findMode(this);
         if (mode != null) {
             prefs.put(PreferenceKeys.ASSISTANT_DOCK_MODE, mode.getName());

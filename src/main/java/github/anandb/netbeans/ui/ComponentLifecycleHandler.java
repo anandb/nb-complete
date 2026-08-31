@@ -269,7 +269,7 @@ public class ComponentLifecycleHandler {
                 SwingUtilities.invokeLater(() -> {
                     chatPanel.addMessage(new ProcessedMessage(
                         MessageType.tool_call_update,
-                        text, null, null, title, text, false, "completed"));
+                        text, null, null, title, text, false, "completed", false));
                 });
             }
 

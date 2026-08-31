@@ -64,6 +64,7 @@ public class SessionLifecycleHandler implements SessionListener {
     private boolean optionsPanelCollapsed = true;
     private boolean isSwitchingSessionDropdown = false;
     private volatile boolean turnEnded = false;
+    private java.util.function.Supplier<Boolean> onTurnEndedCallback;
 
     /** True while waiting for the preamble response on a new session.
      *  Keeps the progress bar visible until the preamble turn ends. */
@@ -118,6 +119,10 @@ public class SessionLifecycleHandler implements SessionListener {
     /** Reset turn-ended flag when a new message is sent. */
     public void onNewMessageSent() {
         turnEnded = false;
+    }
+
+    public void setOnTurnEndedCallback(java.util.function.Supplier<Boolean> callback) {
+        this.onTurnEndedCallback = callback;
     }
 
     @Override
@@ -259,8 +264,13 @@ public class SessionLifecycleHandler implements SessionListener {
             // arrive late, and this SSE signal is the authoritative end of turn.
             SwingUtilities.invokeLater(() -> {
                 chatPanel.restartFlushTimer();
+                // Always show Ready/Go. If messages were flushed,
+                // a delayed timer will switch back to Sending/Stop.
                 statusController.updateButtonState(false);
                 statusController.stopThinking();
+                if (onTurnEndedCallback != null) {
+                    onTurnEndedCallback.get();
+                }
             });
         }
     }

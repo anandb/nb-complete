@@ -176,10 +176,26 @@ public class UIUtils {
         btn.setRolloverEnabled(true);
         btn.setOpaque(false);
         btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        if (btn.getIcon() != null) {
-            int w = btn.getIcon().getIconWidth();
-            int h = btn.getIcon().getIconHeight();
-            btn.setPreferredSize(new Dimension(w + 8, h + 8));
+        recalcToolbarButtonSize(btn);
+    }
+
+    /** Recalculate the preferred size of a toolbar button based on its current
+     *  icon and text. Call after setting icon or text on a styled toolbar button. */
+    public static void recalcToolbarButtonSize(JButton btn) {
+        javax.swing.Icon icon = btn.getIcon();
+        if (icon == null) {
+            return;
+        }
+        int iw = icon.getIconWidth();
+        int ih = icon.getIconHeight();
+        String text = btn.getText();
+        if (text != null && !text.isEmpty()) {
+            java.awt.FontMetrics fm = btn.getFontMetrics(btn.getFont());
+            int textWidth = fm.stringWidth(text) + 8; // 4px gap each side
+            btn.setPreferredSize(
+                    new Dimension(iw + textWidth + 8, Math.max(ih + 8, fm.getHeight() + 8)));
+        } else {
+            btn.setPreferredSize(new Dimension(iw + 8, ih + 8));
         }
     }
 

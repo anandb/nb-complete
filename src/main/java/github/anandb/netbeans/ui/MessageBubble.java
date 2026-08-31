@@ -76,7 +76,9 @@ public class MessageBubble extends JPanel implements Scrollable {
     /** Session ID — passed through from ChatThreadPanel for pin state persistence. */
     private final String sessionId;
     private boolean pinned;
+    private boolean queued;
     private JButton pinBtn;
+    private JLabel queuedLabel;
     private transient Timer showTimer;
     
     @Override
@@ -531,6 +533,34 @@ public class MessageBubble extends JPanel implements Scrollable {
     private void applyPinAccent(boolean apply) {
         if (bubble instanceof RoundedPanel rp) {
             rp.setLeftAccent(apply ? new Color(0xCC, 0x33, 0x33, 255) : null);
+        }
+    }
+
+    /** Applies or removes a queued indicator on the bubble — an amber left accent
+     *  bar and a small hourglass icon in the theme foreground color at the bottom-right. */
+    void setQueued(boolean queued) {
+        this.queued = queued;
+        applyQueuedAccent(queued);
+        if (queued) {
+            if (queuedLabel == null) {
+                queuedLabel = new JLabel("\u23F3"); // hourglass emoji
+                queuedLabel.setFont(ThemeManager.getFont().deriveFont(12f));
+                queuedLabel.setForeground(ThemeManager.getCurrentTheme().foreground());
+            }
+            GridBagConstraints gbc = UIUtils.createGbc(0, 1, 1.0, 0,
+                    GridBagConstraints.NONE, GridBagConstraints.SOUTHEAST,
+                    new Insets(0, 12, 2, 12));
+            add(queuedLabel, gbc);
+        } else if (queuedLabel != null) {
+            remove(queuedLabel);
+        }
+        revalidate();
+        repaint();
+    }
+
+    private void applyQueuedAccent(boolean apply) {
+        if (bubble instanceof RoundedPanel rp) {
+            rp.setLeftAccent(apply ? MessageQueueManager.getAccentColor() : null);
         }
     }
 

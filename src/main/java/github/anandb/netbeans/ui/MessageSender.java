@@ -4,6 +4,7 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.BooleanSupplier;
 
 import javax.swing.SwingUtilities;
 
@@ -37,7 +38,7 @@ import org.openide.util.RequestProcessor;
 public class MessageSender {
 
     private static final Logger LOG = Logger.from(MessageSender.class);
-    
+
     private static volatile boolean localEchoEnabled = true;
     private static final PreferenceChangeListener PREF_LISTENER = evt -> {
         if ("echoUserInput".equals(evt.getKey())) {
@@ -63,8 +64,11 @@ public class MessageSender {
     private Runnable onMessageDoneCallback;
     private Runnable onUserMessageSentCallback;
     private Runnable onBeforeServerSendCallback;
-    private java.util.function.BooleanSupplier permissionPendingCheck;
+    private BooleanSupplier permissionPendingCheck;
     private Runnable onPermissionBlockedCallback;
+    private MessageQueueManager queueManager;
+    private java.util.function.Supplier<Boolean> onTurnEndedCallback;
+    private BooleanSupplier turnEndedCheck;
 
     public MessageSender(
             PlaceholderTextArea inputArea,
@@ -112,7 +116,7 @@ public class MessageSender {
 
     /** Predicate that reports whether a permission request is awaiting a decision. When
      *  true, the send is blocked so the new message cannot supersede the pending request. */
-    public void setPermissionPendingCheck(java.util.function.BooleanSupplier check) {
+    public void setPermissionPendingCheck(BooleanSupplier check) {
         this.permissionPendingCheck = check;
     }
 
@@ -122,9 +126,50 @@ public class MessageSender {
         this.onPermissionBlockedCallback = callback;
     }
 
+    public void setQueueManager(MessageQueueManager queueManager) {
+        this.queueManager = queueManager;
+    }
+
+    public void setOnTurnEndedCallback(java.util.function.Supplier<Boolean> callback) {
+        this.onTurnEndedCallback = callback;
+    }
+
+    /** Provides a check for whether the current turn has ended.
+     *  Used by the queue guard to detect active processing. */
+    public void setTurnEndedCheck(BooleanSupplier check) {
+        this.turnEndedCheck = check;
+    }
+
     /** Sends (or intercepts) the current message text. */
     public void sendMessage() {
-        if (!sessionService.get().canSendMessage()) {
+        boolean turnEnded = turnEndedCheck != null ? turnEndedCheck.getAsBoolean() : true;
+        if (!sessionService.get().canSendMessage() || !turnEnded) {
+            // Bot is actively processing (streaming / awaiting RPC completion) —
+            // queue the message for later delivery when the turn ends.
+            String text = inputArea.getText();
+            if (!text.isEmpty() && queueManager != null) {
+                String clientMessageId = UUID.randomUUID().toString();
+                queueManager.enqueue(text);
+                chatPanel.addQueuedMessageId(clientMessageId);
+                // Show local echo with queued indicator so the user sees their message.
+                chatPanel.addMessage(new ProcessedMessage.Builder()
+                    .messageType(MessageType.user_message_chunk)
+                    .text(text)
+                    .rawText(text)
+                    .messageId(clientMessageId)
+                    .queued(true)
+                    .build());
+                inputArea.setText("");
+                messageHistory.add(text);
+                // Attachments are intentionally dropped, not queued: when several
+                // messages are queued they are later concatenated into ONE combined
+                // prompt (see MessageQueueManager.flushAll), so per-message file
+                // blocks would be ambiguous — there is no well-defined mapping of
+                // "attach file X to queued message N" onto a single merged prompt.
+                // The input is cleared so the user must re-attach after the turn ends.
+                attachmentManager.clear();
+                paperclipUpdater.run();
+            }
             return;
         }
         String text = inputArea.getText(); // Don't trim user input spaces
@@ -266,20 +311,23 @@ public class MessageSender {
         }
         processService.get().sendMessage(currentSessionId, messageText, context, fileBlocks)
                 .thenAccept(result -> {
+                    // CPD-OFF — structural twin of sendQueuedMessage(); differences are
+                    // per-method (logging, messageText vs combinedText, turn-end callback).
                     SwingUtilities.invokeLater(() -> {
                         LOG.info("RPC thenAccept fired (status during = {0}, hasStopReason = {1})",
                             statusController.getStatusText(),
                             result != null && result.has("stopReason"));
-                        // Always reset button/flag on RPC completion — the status text guard
-                        // is unreliable because SSE may have already changed the status away
-                        // from "Sending". Setting turnEnded=true prevents displayMessage()
-                        // from calling updateButtonState(true) on any late SSE messages.
-                        statusController.updateButtonState(false);
-                        statusController.stopThinking();
                         if (onMessageDoneCallback != null) {
                             onMessageDoneCallback.run();
                         }
+                        // Always show Ready/Go. If messages were flushed,
+                        // a delayed timer will switch back to Sending/Stop.
+                        statusController.updateButtonState(false);
+                        statusController.stopThinking();
                         statusController.setStatus("STATUS_Ready");
+                        if (onTurnEndedCallback != null) {
+                            onTurnEndedCallback.get();
+                        }
                         inputFocusRequester.run();
 
                         // Handle turn completion from RPC result
@@ -311,10 +359,14 @@ public class MessageSender {
                         if (onMessageDoneCallback != null) {
                             onMessageDoneCallback.run();
                         }
+                        if (onTurnEndedCallback != null) {
+                            onTurnEndedCallback.get();
+                        }
                         inputFocusRequester.run();
                     });
                     return null;
                 });
+        // CPD-ON
     }
 
     /** Stops the currently processing message. */
@@ -367,5 +419,79 @@ public class MessageSender {
                 }
             });
         }
+    }
+
+    /**
+     * Sends a combined queued message through the normal pipeline.
+     * Called when the turn ends and there are queued messages waiting.
+     * Skips the queue check and local echo (individual echoes were shown when queued).
+     */
+    public void sendQueuedMessage(String combinedText) {
+        if (combinedText == null || combinedText.isEmpty()) {
+            return;
+        }
+        String currentSessionId = sessionService.get().getCurrentSessionId();
+        if (currentSessionId == null) {
+            statusController.setStatus("STATUS_NoSession");
+            return;
+        }
+
+        final String clientMessageId = UUID.randomUUID().toString();
+        statusController.setStatus("STATUS_Sending");
+        statusController.startThinking();
+        statusController.updateButtonState(true);
+
+        // No local echo — individual echoes were shown when queued.
+        // No attachments — they were cleared when queued.
+        Map<String, Object> context = EditorContextCapture.capture();
+
+        // Reset turnEnded so SSE chunks for this combined turn correctly
+        // switch the UI to the Stop (processing) state.
+        if (onNewMessageCallback != null) {
+            onNewMessageCallback.run();
+        }
+
+        if (onBeforeServerSendCallback != null) {
+            onBeforeServerSendCallback.run();
+        }
+        processService.get().sendMessage(currentSessionId, combinedText, context, List.of())
+                .thenAccept(result -> {
+                    // CPD-OFF — structural twin of sendMessage(); differences are
+                    // per-method (no logging, combinedText, no turn-end callback here).
+                    SwingUtilities.invokeLater(() -> {
+                        statusController.updateButtonState(false);
+                        statusController.stopThinking();
+                        if (onMessageDoneCallback != null) {
+                            onMessageDoneCallback.run();
+                        }
+                        statusController.setStatus("STATUS_Ready");
+                        inputFocusRequester.run();
+                        if (result != null && result.has("stopReason")) {
+                            chatPanel.restartFlushTimer();
+                        }
+                    });
+                })
+                .exceptionally(ex -> {
+                    SwingUtilities.invokeLater(() -> {
+                        statusController.setStatus("STATUS_Error",
+                            ExceptionUtils.getMessage(ex) != null ? ExceptionUtils.getMessage(ex) : ex.getClass().getSimpleName());
+                        statusController.stopThinking();
+                        chatPanel.stopStreaming();
+                        chatPanel.addMessage(ProcessedMessage.createError(
+                                MessageType.error_response,
+                                NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Error",
+                                        ExceptionUtils.getMessage(ex) != null ? ExceptionUtils.getMessage(ex) : ex.getClass().getSimpleName()),
+                                null, null
+                        ));
+                        inputArea.setText(combinedText);
+                        statusController.updateButtonState(false);
+                        if (onMessageDoneCallback != null) {
+                            onMessageDoneCallback.run();
+                        }
+                        inputFocusRequester.run();
+                    });
+                    return null;
+                });
+        // CPD-ON
     }
 }

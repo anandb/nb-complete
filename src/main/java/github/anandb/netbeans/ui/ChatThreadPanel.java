@@ -74,6 +74,13 @@ public class ChatThreadPanel extends JPanel {
     private final ConcurrentLinkedQueue<Runnable> messageQueue = new ConcurrentLinkedQueue<>();
     private volatile boolean draining = false;
 
+    /** Message IDs that are queued (not yet posted to the server). Used to
+     *  apply the "queued" visual indicator (amber accent + label) on bubbles. */
+    private final Set<String> queuedMessageIds = ConcurrentHashMap.newKeySet();
+    /** Queued user bubbles, keyed by message ID, so the indicator can be
+     *  removed when the message is actually posted or the queue is cancelled. */
+    private final Map<String, MessageBubble> queuedBubbles = new ConcurrentHashMap<>();
+
     // Debounced flush timer. Reset on each processed message, fires 300ms after last drain.
     private final Timer flushTimer;
 
@@ -228,6 +235,33 @@ public class ChatThreadPanel extends JPanel {
 
     public void setScrollBlocker(BooleanSupplier scrollBlocker) {
         scrollController.setScrollBlocker(scrollBlocker);
+    }
+
+    /** Registers a message ID as queued (not yet posted to the server). */
+    public void addQueuedMessageId(String messageId) {
+        if (messageId != null) {
+            queuedMessageIds.add(messageId);
+        }
+    }
+
+    /** Unregisters a message ID from the queued set (message has been posted). */
+    public void removeQueuedMessageId(String messageId) {
+        if (messageId != null) {
+            queuedMessageIds.remove(messageId);
+            MessageBubble b = queuedBubbles.remove(messageId);
+            if (b != null) {
+                b.setQueued(false);
+            }
+        }
+    }
+
+    /** Clears all queued message IDs and removes the queued indicator from bubbles. */
+    public void clearQueuedMessageIds() {
+        for (MessageBubble bubble : queuedBubbles.values()) {
+            bubble.setQueued(false);
+        }
+        queuedBubbles.clear();
+        queuedMessageIds.clear();
     }
 
     public void addMessage(ProcessedMessage pm) {
@@ -434,6 +468,13 @@ public class ChatThreadPanel extends JPanel {
             long elapsed = System.currentTimeMillis() - lastUserTimestamp;
             bubble.setResponseTimeMs(elapsed);
             lastUserTimestamp = -1L;
+        }
+
+        // Apply queued indicator (amber accent bar + "Queued" label) if this
+        // message is in the pending queue — user bubble shown before turn ends.
+        if ("user".equals(type.roleName()) && queuedMessageIds.contains(messageId)) {
+            bubble.setQueued(true);
+            queuedBubbles.put(messageId, bubble);
         }
 
         bubble.setVisible(visible);

@@ -9,7 +9,7 @@ class ProcessedMessageTest {
 
     private static ProcessedMessage tool(String toolTitle, String status) {
         return new ProcessedMessage(MessageType.tool_call, "", "mid", null,
-                toolTitle, "", false, status);
+                toolTitle, "", false, status, false);
     }
 
     @Test

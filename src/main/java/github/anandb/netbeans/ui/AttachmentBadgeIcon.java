@@ -20,10 +20,17 @@ final class AttachmentBadgeIcon implements Icon {
 
     private final Icon base;
     private final int count;
+    private final Color badgeColor;
 
     AttachmentBadgeIcon(Icon base, int count) {
+        this(base, count, null);
+    }
+
+    /** @param badgeColor override color for the badge fill; {@code null} = theme accent. */
+    AttachmentBadgeIcon(Icon base, int count, Color badgeColor) {
         this.base = base;
         this.count = count;
+        this.badgeColor = badgeColor;
     }
 
     @Override
@@ -49,16 +56,19 @@ final class AttachmentBadgeIcon implements Icon {
 
             int w = getIconWidth();
             int digits = Integer.toString(count).length();
-            int badgeSize = (int) Math.round(w * (digits > 1 ? 0.62 : 0.52));
-            badgeSize = Math.max(badgeSize, 9);
+            int badgeSize = (int) Math.round(w * (digits > 1 ? 0.75 : 0.65));
+            badgeSize = Math.max(badgeSize, 11);
 
             // Top-right corner, clamped inside the icon bounds.
             int bx = x + w - badgeSize;
             bx = Math.max(bx, x);
             int by = y;
 
-            ColorTheme theme = ThemeManager.getCurrentTheme();
-            Color fill = theme.accent();
+            Color fill = badgeColor;
+            if (fill == null) {
+                ColorTheme theme = ThemeManager.getCurrentTheme();
+                fill = theme.accent();
+            }
             if (fill == null) {
                 fill = Color.GRAY;
             }
@@ -72,7 +82,7 @@ final class AttachmentBadgeIcon implements Icon {
             g2.drawRoundRect(bx, by, badgeSize, badgeSize, badgeSize, badgeSize);
 
             String s = Integer.toString(count);
-            Font f = c.getFont().deriveFont(Font.BOLD, badgeSize * 0.6f);
+            Font f = c.getFont().deriveFont(Font.BOLD, badgeSize * 0.65f);
             g2.setFont(f);
             FontMetrics fm = g2.getFontMetrics();
             int tx = bx + (badgeSize - fm.stringWidth(s)) / 2;

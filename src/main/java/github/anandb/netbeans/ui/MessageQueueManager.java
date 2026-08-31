@@ -1,0 +1,239 @@
+package github.anandb.netbeans.ui;
+
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.event.ActionEvent;
+import java.awt.geom.AffineTransform;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Queue;
+import java.util.StringJoiner;
+import java.util.concurrent.ConcurrentLinkedQueue;
+
+import javax.swing.Icon;
+import javax.swing.JButton;
+import javax.swing.JMenuItem;
+import javax.swing.JPopupMenu;
+import javax.swing.Timer;
+
+import org.openide.util.NbBundle;
+
+import github.anandb.netbeans.support.PluginSettings;
+
+/**
+ * Manages a queue of user messages posted while the bot is processing.
+ * Provides a toolbar button with a badge count, context menu to cancel,
+ * and a wobble animation that fires every 5 seconds while the queue has items.
+ */
+final class MessageQueueManager {
+
+    private static final Color ACCENT_COLOR = new Color(0xFF, 0x8C, 0x00); // amber for queued bubbles
+    private static final int WOBBLE_INTERVAL_MS = 5000;
+    private static final int WOBBLE_DURATION_MS = 300;
+    private static final double WOBBLE_ANGLE = Math.toRadians(5);
+
+    private final Queue<String> queuedMessages = new ConcurrentLinkedQueue<>();
+    private final JButton queueBtn;
+    private final Icon baseIcon;
+    private final int iconSize;
+    private Timer wobbleTimer;
+    private boolean wobbling;
+
+    MessageQueueManager() {
+        int iconSize = Math.max(PluginSettings.getToolbarIconSize(), 32);
+        this.iconSize = iconSize;
+        baseIcon = ThemeManager.getIcon("queue.svg", iconSize);
+        queueBtn = UIUtils.createToolbarButton("queue.svg", iconSize,
+                NbBundle.getMessage(MessageQueueManager.class, "HINT_MessageQueue", 0), null);
+        queueBtn.setIcon(baseIcon);
+        queueBtn.setVisible(false);
+        // Show popup on right-click (and platform-native popup trigger).
+        queueBtn.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mousePressed(java.awt.event.MouseEvent e) {
+                if (e.isPopupTrigger()) {
+                    showPopupAt(e.getX(), e.getY());
+                }
+            }
+            @Override
+            public void mouseReleased(java.awt.event.MouseEvent e) {
+                if (e.isPopupTrigger()) {
+                    showPopupAt(e.getX(), e.getY());
+                }
+            }
+        });
+    }
+
+    /** Returns the toolbar button to be added to the layout. */
+    JButton getButton() {
+        return queueBtn;
+    }
+
+    /** Returns the accent color used for queued bubble indicators. */
+    static Color getAccentColor() {
+        return ACCENT_COLOR;
+    }
+
+    /** Returns the current queue size. */
+    int size() {
+        return queuedMessages.size();
+    }
+
+    /** Returns true if the queue is empty. */
+    boolean isEmpty() {
+        return queuedMessages.isEmpty();
+    }
+
+    /**
+     * Adds a message to the queue. The message text will be sent as part of
+     * the combined prompt when the turn ends.
+     */
+    void enqueue(String text) {
+        queuedMessages.add(text);
+        updateBadge();
+        startWobbleIfNeeded();
+    }
+
+    /**
+     * Returns all queued messages as a single combined text (newline-separated),
+     * then clears the queue and hides the button.
+     *
+     * @return combined text, or {@code null} if the queue was empty
+     */
+    String flushAll() {
+        if (queuedMessages.isEmpty()) {
+            return null;
+        }
+        List<String> messages = new ArrayList<>();
+        String msg;
+        while ((msg = queuedMessages.poll()) != null) {
+            messages.add(msg);
+        }
+        updateBadge();
+        stopWobble();
+        StringJoiner joiner = new StringJoiner("\n");
+        messages.forEach(joiner::add);
+        // Returns text only — attachments are not queued (see MessageSender queue
+        // branch). Concatenating several queued messages into one prompt makes
+        // per-message file blocks ambiguous, so the merged send carries no files.
+        return joiner.toString();
+    }
+
+    /** Clears the queue and hides the button. Called by the Cancel menu item. */
+    void cancelAll() {
+        queuedMessages.clear();
+        updateBadge();
+        stopWobble();
+    }
+
+    private void updateBadge() {
+        int count = queuedMessages.size();
+        queueBtn.setVisible(count > 0);
+        if (count > 0) {
+            queueBtn.setIcon(baseIcon);
+            queueBtn.setToolTipText(
+                    NbBundle.getMessage(MessageQueueManager.class, "HINT_MessageQueue", count));
+        } else {
+            queueBtn.setIcon(baseIcon);
+            queueBtn.setToolTipText(
+                    NbBundle.getMessage(MessageQueueManager.class, "HINT_MessageQueue", 0));
+        }
+        queueBtn.revalidate();
+        queueBtn.repaint();
+    }
+
+    private void showPopupAt(int x, int y) {
+        JPopupMenu popup = new JPopupMenu();
+        JMenuItem cancelItem = new JMenuItem(
+                NbBundle.getMessage(MessageQueueManager.class, "MENU_CancelQueue"));
+        cancelItem.addActionListener(ev -> cancelAll());
+        popup.add(cancelItem);
+        popup.show(queueBtn, x, y);
+    }
+
+    private void startWobbleIfNeeded() {
+        if (wobbling || wobbleTimer != null) {
+            return;
+        }
+        wobbling = true;
+        wobbleTimer = new Timer(WOBBLE_INTERVAL_MS, e -> triggerWobble());
+        wobbleTimer.setInitialDelay(0);
+        wobbleTimer.start();
+    }
+
+    private void triggerWobble() {
+        if (queuedMessages.isEmpty()) {
+            stopWobble();
+            return;
+        }
+        Timer wobbleAnim = new Timer(30, null) {
+            long start = System.currentTimeMillis();
+            @Override
+            protected void fireActionPerformed(ActionEvent ae) {
+                long elapsed = System.currentTimeMillis() - start;
+                if (elapsed > WOBBLE_DURATION_MS) {
+                    updateBadge();
+                    queueBtn.repaint();
+                    stop();
+                    return;
+                }
+                double progress = (double) elapsed / WOBBLE_DURATION_MS;
+                double angle = WOBBLE_ANGLE * Math.sin(progress * Math.PI * 4);
+                Icon currentIcon = queueBtn.getIcon();
+                Icon badgedBase = (currentIcon instanceof WobbleIcon wi) ? wi.base : currentIcon;
+                queueBtn.setIcon(new WobbleIcon(badgedBase, angle));
+                queueBtn.repaint();
+            }
+        };
+        wobbleAnim.setInitialDelay(0);
+        wobbleAnim.start();
+    }
+
+    private void stopWobble() {
+        wobbling = false;
+        if (wobbleTimer != null) {
+            wobbleTimer.stop();
+            wobbleTimer = null;
+        }
+    }
+
+    /** Icon wrapper that applies a rotation transform for the wobble animation. */
+    private static final class WobbleIcon implements Icon {
+        private final Icon base;
+        private final double angle;
+
+        WobbleIcon(Icon base, double angle) {
+            this.base = base;
+            this.angle = angle;
+        }
+
+        @Override
+        public int getIconWidth() {
+            return base.getIconWidth();
+        }
+
+        @Override
+        public int getIconHeight() {
+            return base.getIconHeight();
+        }
+
+        @Override
+        public void paintIcon(Component c, Graphics g, int x, int y) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            try {
+                int w = getIconWidth();
+                int h = getIconHeight();
+                double cx = x + w / 2.0;
+                double cy = y + h / 2.0;
+                AffineTransform old = g2.getTransform();
+                g2.rotate(angle, cx, cy);
+                base.paintIcon(c, g2, x, y);
+                g2.setTransform(old);
+            } finally {
+                g2.dispose();
+            }
+        }
+    }
+}

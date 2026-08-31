@@ -12,7 +12,8 @@ public record ProcessedMessage(
         String toolTitle,
         String rawText,
         boolean streaming,
-        String status) {
+        String status,
+        boolean queued) {
 
     private static final Set<String> TASK_STATUS_VALUES = Set.of(
         "completed", "failed", "in-progress", "in progress", "in_progress",
@@ -56,6 +57,7 @@ public record ProcessedMessage(
         private String rawText;
         private boolean streaming;
         private String status;
+        private boolean queued;
 
         public Builder messageType(MessageType messageType) {
             this.messageType = messageType;
@@ -97,8 +99,13 @@ public record ProcessedMessage(
             return this;
         }
 
+        public Builder queued(boolean queued) {
+            this.queued = queued;
+            return this;
+        }
+
         public ProcessedMessage build() {
-            return new ProcessedMessage(messageType, text, messageId, kind, toolTitle, rawText, streaming, status);
+            return new ProcessedMessage(messageType, text, messageId, kind, toolTitle, rawText, streaming, status, queued);
         }
     }
 }
