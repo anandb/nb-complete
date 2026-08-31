@@ -242,7 +242,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         SpinnerNumberModel lineHeightModel = new SpinnerNumberModel(1.0d, 0.5d, 3.0d, 0.1d);
         lineHeightCorrectionSpinner = new JSpinner(lineHeightModel);
         lineHeightCorrectionSpinner.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_LineHeightCorrection"));
-        ((JSpinner.DefaultEditor) lineHeightCorrectionSpinner.getEditor()).getTextField().setColumns(5);
+        ((JSpinner.DefaultEditor) lineHeightCorrectionSpinner.getEditor()).getTextField().setColumns(6);
         lineHeightCorrectionSpinner.addChangeListener(evt -> controller.changed());
         systemPanel.add(lineHeightCorrectionSpinner, UIUtils.createGbc(3, 0, 0.0, 0, GridBagConstraints.NONE,
                 GridBagConstraints.EAST, new Insets(0, 0, 5, 12)));

@@ -472,7 +472,7 @@ public class ChatThreadPanel extends JPanel {
 
         // Apply queued indicator (amber accent bar + "Queued" label) if this
         // message is in the pending queue — user bubble shown before turn ends.
-        if ("user".equals(type.roleName()) && queuedMessageIds.contains(messageId)) {
+        if ("user".equals(type.roleName()) && messageId != null && queuedMessageIds.contains(messageId)) {
             bubble.setQueued(true);
             queuedBubbles.put(messageId, bubble);
         }
