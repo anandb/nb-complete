@@ -121,8 +121,7 @@ public final class ToolDataExtractor {
             tag = firstNonBlank(kind, "Tool");
         }
 
-        String title = update != null && update.update() != null ? update.update().title() : null;
-        String identifier = firstNonBlank(title, "");
+        String identifier = extractIdentifier(update);
         if (isBlank(identifier) && rawText != null) {
             for (var entry : TOOL_CONTENT_PATTERNS) {
                 Matcher m = entry.getValue().matcher(rawText);
@@ -146,6 +145,13 @@ public final class ToolDataExtractor {
         }
 
         return tag + " " + abbreviateMiddle(defaultString(identifier), "...", maxLen);
+    }
+
+    private static String extractIdentifier(SessionUpdate update) {
+        String title = update != null && update.update() != null ? update.update().title() : null;
+        String toolName = update != null && update.update() != null
+                && update.update().rawInput() != null ? update.update().rawInput().tool() : null;
+        return firstNonBlank(title, toolName, "");
     }
 
     public static String getLocalEchoText(String commandText) {

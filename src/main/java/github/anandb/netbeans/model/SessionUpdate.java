@@ -69,7 +69,9 @@ public record SessionUpdate(
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record RawInput(
         String command,
-        String description
+        String description,
+        String tool,
+        String path
     ) {}
 
     // Convenience methods to maintain backward compatibility in some logic if needed

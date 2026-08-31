@@ -407,7 +407,13 @@ public class StrategyRegistry implements UpdateDispatcher {
             String effectiveCommand = data.setCommand(command);
             data.setStatus(defaultIfBlank(update.status(), "completed"));
 
+            // For edit tools, include the file path in the body
+            String filePath = update.update() != null && update.update().rawInput() != null
+                    ? update.update().rawInput().path() : null;
+            String pathPrefix = isNotBlank(filePath) ? filePath + "\n\n" : "";
+
             text = data.setText(new StringBuilder()
+                    .append(pathPrefix)
                     .append(isNotBlank(effectiveCommand) ? "$ " : "")
                     .append(abbreviate(effectiveCommand, 80))
                     .append(isNotBlank(effectiveCommand) ? "\n\n" : "")
