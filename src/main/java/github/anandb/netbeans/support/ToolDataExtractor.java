@@ -123,7 +123,7 @@ public final class ToolDataExtractor {
 
         String title = update != null && update.update() != null ? update.update().title() : null;
         String identifier = firstNonBlank(title, "");
-        if (isBlank(identifier)) {
+        if (isBlank(identifier) && rawText != null) {
             for (var entry : TOOL_CONTENT_PATTERNS) {
                 Matcher m = entry.getValue().matcher(rawText);
                 if (m.find()) {

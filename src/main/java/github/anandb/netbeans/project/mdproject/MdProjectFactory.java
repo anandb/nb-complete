@@ -7,9 +7,15 @@ import org.netbeans.spi.project.ProjectState;
 import org.openide.filesystems.FileObject;
 import org.openide.util.lookup.ServiceProvider;
 
+import github.anandb.netbeans.support.PluginSettings;
+
 /**
  * {@link ProjectFactory} that recognises a folder as a project when it
  * contains a {@code .mdproject} marker file.
+ *
+ * <p>Gated by the {@code actions.markdownProject} preference (default on):
+ * when disabled, the factory declines all directories so no Markdown
+ * projects are recognised. Already-open projects are unaffected.
  */
 @ServiceProvider(service = ProjectFactory.class)
 public final class MdProjectFactory implements ProjectFactory {
@@ -18,6 +24,9 @@ public final class MdProjectFactory implements ProjectFactory {
 
     @Override
     public boolean isProject(FileObject projectDirectory) {
+        if (!PluginSettings.isMarkdownProjectEnabled()) {
+            return false;
+        }
         return projectDirectory.getFileObject(MARKER) != null;
     }
 

@@ -4,6 +4,7 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.PluginSettings;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -13,6 +14,11 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.prefs.PreferenceChangeEvent;
+import java.util.prefs.PreferenceChangeListener;
+import java.util.prefs.Preferences;
+import org.openide.util.NbPreferences;
+import github.anandb.netbeans.support.PreferenceKeys;
 
 public class McpManager {
     private static final Logger LOG = Logger.from(McpManager.class);
@@ -32,9 +38,30 @@ public class McpManager {
      *  future exceptionally without interrupting the running task. */
     private volatile Thread startThread;
 
+    /** Listens for the MCP server preference toggle and tears down the
+     *  embedded MCP server when the user disables it. */
+    private final PreferenceChangeListener prefListener = this::onPreferenceChanged;
+
+    public McpManager() {
+        Preferences prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
+        prefs.addPreferenceChangeListener(prefListener);
+    }
+
+    private void onPreferenceChanged(PreferenceChangeEvent evt) {
+        if (!PreferenceKeys.MCP_SERVER_ENABLED.equals(evt.getKey())) {
+            return;
+        }
+        boolean enabled = evt.getNewValue() == null || Boolean.parseBoolean(evt.getNewValue());
+        if (!enabled) {
+            LOG.info("MCP server preference disabled — stopping embedded MCP server");
+            stop();
+        }
+    }
+
     public void start() {
-        LOG.info("McpManager.start() called, disabled={0}", mcpDisabled.get());
-        if (mcpDisabled.get()) {
+        LOG.info("McpManager.start() called, disabled={0}, preferenceEnabled={1}",
+                mcpDisabled.get(), PluginSettings.isMcpServerEnabled());
+        if (mcpDisabled.get() || !PluginSettings.isMcpServerEnabled()) {
             LOG.info("MCP disabled, completing ready future immediately");
             readyFuture.complete(null);
             return;
@@ -131,7 +158,7 @@ public class McpManager {
 
     public List<Map<String, Object>> getServerConfig() {
         List<Map<String, Object>> mcpServerList = new ArrayList<>();
-        if (mcpDisabled.get()) return mcpServerList;
+        if (mcpDisabled.get() || !PluginSettings.isMcpServerEnabled()) return mcpServerList;
 
         synchronized (this) {
             if (mcpServer == null || !mcpServer.isRunning()) {
@@ -176,8 +203,12 @@ public class McpManager {
             // MCP was auto-disabled by an earlier server's handshake (no
             // advertised capabilities) or a transient InvalidParams retry.
             // The restarted server supports MCP again, so re-enable and bring
-            // up a fresh embedded server. Previously this flag survived every
-            // server restart and could only be cleared by an IDE restart.
+            // up a fresh embedded server — but only if the user preference
+            // still allows it.
+            if (!PluginSettings.isMcpServerEnabled()) {
+                LOG.info("Server supports MCP but user preference disables it — staying disabled");
+                return;
+            }
             LOG.info("Restarted server advertises MCP support — re-enabling MCP");
             mcpDisabled.set(false);
             start();

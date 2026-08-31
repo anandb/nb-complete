@@ -65,6 +65,12 @@ public class McpServer {
 
         connector = new ServerConnector(server);
         connector.setHost("127.0.0.1");
+        // Fixed port from preferences when configured; 0 (default) lets the
+        // OS pick a random free port.
+        int configuredPort = PluginSettings.getMcpServerPort();
+        if (configuredPort > 0) {
+            connector.setPort(configuredPort);
+        }
         // Clamp idle timeout: 0 or negative disables idle detection, which
         // leaks connections under load.  Minimum 30 s avoids undefined behaviour.
         int idleSec = PluginSettings.getSessionIdleTimeout();

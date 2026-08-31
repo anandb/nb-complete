@@ -42,6 +42,12 @@ public final class PluginSettings {
     private static volatile boolean cachedMiniAssistantEnabled = true;
     /** Cached task-repository toggle — volatile for cross-thread visibility. Defaults to true. */
     private static volatile boolean cachedTaskRepositoryEnabled = true;
+    /** Cached MCP server toggle — volatile for cross-thread visibility. Defaults to true. */
+    private static volatile boolean cachedMcpServerEnabled = true;
+    /** Cached internal MCP server port. 0 = pick a random free port. */
+    private static volatile int cachedMcpServerPort = 0;
+    /** Cached markdown project type toggle — volatile for cross-thread visibility. Defaults to true. */
+    private static volatile boolean cachedMarkdownProjectEnabled = true;
 
     private static final PreferenceChangeListener listener = PluginSettings::onPreferenceChanged;
 
@@ -67,6 +73,9 @@ public final class PluginSettings {
         cachedAutoBackupChanges = prefs.getBoolean(PreferenceKeys.AUTO_BACKUP_CHANGES, true);
         cachedMiniAssistantEnabled = prefs.getBoolean(PreferenceKeys.MINI_ASSISTANT_ENABLED, true);
         cachedTaskRepositoryEnabled = prefs.getBoolean(PreferenceKeys.TASK_REPOSITORY_ENABLED, true);
+        cachedMcpServerEnabled = prefs.getBoolean(PreferenceKeys.MCP_SERVER_ENABLED, true);
+        cachedMcpServerPort = prefs.getInt(PreferenceKeys.MCP_SERVER_PORT, 0);
+        cachedMarkdownProjectEnabled = prefs.getBoolean(PreferenceKeys.ACTIONS_MARKDOWN_PROJECT, true);
         prefs.addPreferenceChangeListener(listener);
     }
 
@@ -179,6 +188,16 @@ public final class PluginSettings {
             cachedMiniAssistantEnabled = evt.getNewValue() == null || Boolean.parseBoolean(evt.getNewValue());
         } else if (PreferenceKeys.TASK_REPOSITORY_ENABLED.equals(evt.getKey())) {
             cachedTaskRepositoryEnabled = evt.getNewValue() == null || Boolean.parseBoolean(evt.getNewValue());
+        } else if (PreferenceKeys.MCP_SERVER_ENABLED.equals(evt.getKey())) {
+            cachedMcpServerEnabled = evt.getNewValue() == null || Boolean.parseBoolean(evt.getNewValue());
+        } else if (PreferenceKeys.MCP_SERVER_PORT.equals(evt.getKey())) {
+            try {
+                cachedMcpServerPort = (evt.getNewValue() == null) ? 0 : Integer.parseInt(evt.getNewValue());
+            } catch (NumberFormatException e) {
+                cachedMcpServerPort = 0;
+            }
+        } else if (PreferenceKeys.ACTIONS_MARKDOWN_PROJECT.equals(evt.getKey())) {
+            cachedMarkdownProjectEnabled = evt.getNewValue() == null || Boolean.parseBoolean(evt.getNewValue());
         }
     }
 
@@ -304,5 +323,43 @@ public final class PluginSettings {
         cachedTaskRepositoryEnabled = enabled;
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
                 .putBoolean(PreferenceKeys.TASK_REPOSITORY_ENABLED, enabled);
+    }
+
+    /** Whether the embedded MCP server is enabled. */
+    public static boolean isMcpServerEnabled() {
+        return cachedMcpServerEnabled;
+    }
+
+    public static void setMcpServerEnabled(boolean enabled) {
+        cachedMcpServerEnabled = enabled;
+        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                .putBoolean(PreferenceKeys.MCP_SERVER_ENABLED, enabled);
+    }
+
+    /**
+     * Internal MCP server HTTP port. Returns 0 (default) to pick a random
+     * free port at startup; a positive value binds the embedded server to
+     * that fixed port.
+     */
+    public static int getMcpServerPort() {
+        return Math.max(0, cachedMcpServerPort);
+    }
+
+    public static void setMcpServerPort(int port) {
+        int safe = Math.max(0, port);
+        cachedMcpServerPort = safe;
+        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                .putInt(PreferenceKeys.MCP_SERVER_PORT, safe);
+    }
+
+    /** Whether the Markdown project type is enabled (default true). */
+    public static boolean isMarkdownProjectEnabled() {
+        return cachedMarkdownProjectEnabled;
+    }
+
+    public static void setMarkdownProjectEnabled(boolean enabled) {
+        cachedMarkdownProjectEnabled = enabled;
+        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                .putBoolean(PreferenceKeys.ACTIONS_MARKDOWN_PROJECT, enabled);
     }
 }

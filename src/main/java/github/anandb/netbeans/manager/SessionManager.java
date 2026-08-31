@@ -7,7 +7,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.model.SessionConfigOption;
 import github.anandb.netbeans.support.PluginSettings;
+import github.anandb.netbeans.contract.ProcessControl;
 import github.anandb.netbeans.contract.ProjectQuery;
+import org.apache.commons.lang3.StringUtils;
 import org.netbeans.api.project.Project;
 
 import javax.swing.SwingUtilities;
@@ -35,6 +37,7 @@ import org.openide.util.RequestProcessor;
 import org.openide.util.Lookup;
 import org.openide.util.lookup.ServiceProvider;
 
+import java.util.prefs.Preferences;
 import java.util.logging.Level;
 
 import github.anandb.netbeans.contract.SessionControl;
@@ -79,17 +82,43 @@ import static org.apache.commons.text.StringEscapeUtils.unescapeHtml4;
 @ServiceProvider(service = SessionControl.class)
 public class SessionManager implements SessionQuery, SessionControl {
 
-    // --- custom session titles (merged from SessionTitleMapper) --------------
     private static final String TITLE_PREFIX = "session_title_";
+    private static final String HIDDEN_PREFIX = "session_hidden_";
+    private static final String USAGE_PREFIX = "session_usage_";
+
+    /**
+     * Returns the current agent name (lowercased) from the ACP server handshake,
+     * or {@code null} if the server has not been initialized yet.
+     */
+    private static String agentName() {
+        ProcessControl pc = Lookup.getDefault().lookup(ProcessControl.class);
+        return pc != null ? pc.getAgentName() : null;
+    }
+
+    /** Builds an agent-qualified preference key. */
+    private static String qualifiedKey(String prefix, String sessionId) {
+        String agent = agentName();
+        if (agent != null) {
+            return prefix + agent + "_" + sessionId;
+        }
+        return prefix + sessionId;
+    }
 
     /** @see SessionQuery#getCustomTitle(String, String) */
     @Override
     public String getCustomTitle(String sessionId, String defaultTitle) {
-        return decodeHtmlEntities(resolveCustomTitle(sessionId, defaultTitle));
-    }
-
-    private static String resolveCustomTitle(String sessionId, String defaultTitle) {
-        return NbPreferences.forModule(SessionManager.class).get(TITLE_PREFIX + sessionId, defaultTitle);
+        String qualified = qualifiedKey(TITLE_PREFIX, sessionId);
+        Preferences prefs = NbPreferences.forModule(SessionManager.class);
+        String val = prefs.get(qualified, null);
+        if (val == null) {
+            // Migration: check old-format key (no agent prefix)
+            String legacy = prefs.get(TITLE_PREFIX + sessionId, null);
+            if (legacy != null) {
+                prefs.put(qualified, legacy);
+                val = legacy;
+            }
+        }
+        return decodeHtmlEntities(val != null ? val : defaultTitle);
     }
 
     /** @see SessionQuery#getSessionTitle(String) */
@@ -111,34 +140,54 @@ public class SessionManager implements SessionQuery, SessionControl {
     }
 
     static void setCustomTitle(String sessionId, String title) {
-        NbPreferences.forModule(SessionManager.class).put(TITLE_PREFIX + sessionId, title);
+        NbPreferences.forModule(SessionManager.class).put(qualifiedKey(TITLE_PREFIX, sessionId), title);
     }
 
     // --- hidden session flag (stored locally) -------------------------------
-    private static final String HIDDEN_PREFIX = "session_hidden_";
 
     @Override
     public boolean isHidden(String sessionId) {
-        return NbPreferences.forModule(SessionManager.class).getBoolean(HIDDEN_PREFIX + sessionId, false);
+        String qualified = qualifiedKey(HIDDEN_PREFIX, sessionId);
+        Preferences prefs = NbPreferences.forModule(SessionManager.class);
+        boolean val = prefs.getBoolean(qualified, false);
+        if (!val) {
+            // Migration: check old-format key (no agent prefix)
+            boolean legacy = prefs.getBoolean(HIDDEN_PREFIX + sessionId, false);
+            if (legacy) {
+                prefs.putBoolean(qualified, true);
+                val = true;
+            }
+        }
+        return val;
     }
 
     @Override
     public void setHidden(String sessionId, boolean hidden) {
-        NbPreferences.forModule(SessionManager.class).putBoolean(HIDDEN_PREFIX + sessionId, hidden);
+        NbPreferences.forModule(SessionManager.class).putBoolean(qualifiedKey(HIDDEN_PREFIX, sessionId), hidden);
     }
     // -------------------------------------------------------------------------
 
     // --- persisted context usage (used/size) ---------------------------------
-    private static final String USAGE_PREFIX = "session_usage_";
 
     @Override
     public String getContextUsage(String sessionId) {
-        return NbPreferences.forModule(SessionManager.class).get(USAGE_PREFIX + sessionId, null);
+        String qualified = qualifiedKey(USAGE_PREFIX, sessionId);
+        Preferences prefs = NbPreferences.forModule(SessionManager.class);
+        String val = prefs.get(qualified, null);
+        if (val == null) {
+            // Migration: check old-format key (no agent prefix)
+            String legacy = prefs.get(USAGE_PREFIX + sessionId, null);
+            if (legacy != null) {
+                prefs.put(qualified, legacy);
+                val = legacy;
+            }
+        }
+        return val;
     }
 
     @Override
     public void setContextUsage(String sessionId, long used, long size) {
-        NbPreferences.forModule(SessionManager.class).put(USAGE_PREFIX + sessionId, used + "," + size);
+        NbPreferences.forModule(SessionManager.class).put(qualifiedKey(USAGE_PREFIX, sessionId), used + "," + size);
     }
     // -------------------------------------------------------------------------
 
@@ -409,8 +458,18 @@ public class SessionManager implements SessionQuery, SessionControl {
                     LOG.info("session/new completed in {0}ms", durationMs);
                     try {
                         Session s = MAPPER.treeToValue(res, Session.class);
+                        LOG.info("session/new extracted sessionId: {0}, title: {1}", s.id(), s.title());
+                        
+                        // Use session ID as title if server didn't provide one
+                        if (StringUtils.isBlank(s.title())) {
+                            s = new Session(s.id(), s.id(), s.cwd(), s.directory(), s.parentID(), s.updatedAt(), s.mcpServers(), s.configOptions());
+                            LOG.info("session/new: using sessionId as title");
+                        }
+                        
                         if (s.effectiveDirectory() == null) {
+                            LOG.fine("session/new: effectiveDirectory is null, reconstructing with finalCwd: {0}", finalCwd);
                             s = new Session(s.id(), s.title(), finalCwd, finalCwd, s.parentID(), s.updatedAt(), s.mcpServers(), s.configOptions());
+                            LOG.info("session/new reconstructed session, id is now: {0}", s.id());
                         }
                         cacheManager.cacheSession(s);
                         return s;
@@ -560,6 +619,7 @@ public class SessionManager implements SessionQuery, SessionControl {
                                     session.id(), stateMachine.getState());
                             return;
                         }
+                        LOG.info("createNewSession: setting currentSessionId to {0}", session.id());
                         this.currentSessionId = session.id();
                         this.lastProjectDir = session.effectiveDirectory();
                         Logger.setSession(session.id(), session.title());

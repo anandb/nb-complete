@@ -15,6 +15,8 @@ import java.util.prefs.PreferenceChangeEvent;
 import java.util.prefs.PreferenceChangeListener;
 import java.util.prefs.Preferences;
 
+import javax.swing.Timer;
+
 import org.openide.util.NbBundle;
 import org.openide.util.NbPreferences;
 
@@ -94,11 +96,22 @@ public class ProcessManager implements ProcessControl {
      *  until the whole IDE is restarted. See SessionManager#resetForServerRestart. */
     private volatile Runnable preRestartHandler;
 
+    /** Debounce timer for preference-triggered restarts — avoids restarting with
+     *  stale values when {@code ACPOptionsPanel.store()} writes multiple
+     *  preferences in sequence. */
+    private final Timer prefRestartTimer;
+
     public ProcessManager() {
         toolExecutor.start();
         Preferences prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
         preferenceChangeListener = this::onPreferenceChanged;
         prefs.addPreferenceChangeListener(preferenceChangeListener);
+
+        // Debounce timer: fires restart after 300ms of preference silence.
+        // This ensures all preference writes from ACPOptionsPanel.store()
+        // complete before the server reads them during startServer().
+        prefRestartTimer = new Timer(300, e -> doRestartServer());
+        prefRestartTimer.setRepeats(false);
 
         // Wire helpers with callbacks
         requestRouter = new AcpRequestRouter();
@@ -138,12 +151,14 @@ public class ProcessManager implements ProcessControl {
     private void onPreferenceChanged(PreferenceChangeEvent evt) {
         String key = evt.getKey();
         if (!PreferenceKeys.ACP_EXECUTABLE_PATH.equals(key)
-                && !PreferenceKeys.PROCESS_ARGUMENTS.equals(key)) {
+                && !PreferenceKeys.PROCESS_ARGUMENTS.equals(key)
+                && !PreferenceKeys.MCP_SERVER_ENABLED.equals(key)) {
             return;
         }
-        LOG.fine("Preference changed: {0} — triggering server restart", key);
+        LOG.fine("Preference changed: {0} — scheduling debounced restart", key);
         if (serverLifecycle.serverStarted() && serverLifecycle.serverProcess() != null && serverLifecycle.serverProcess().isAlive()) {
-            restartServer();
+            // Restart the debounce timer — each new write resets the 300ms window.
+            prefRestartTimer.restart();
         }
     }
 
@@ -210,6 +225,7 @@ public class ProcessManager implements ProcessControl {
         if (serverLifecycle.isClosing()) {
             return;
         }
+        prefRestartTimer.stop();
         Preferences prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
         prefs.removePreferenceChangeListener(preferenceChangeListener);
         serverLifecycle.stopServer();
@@ -217,6 +233,15 @@ public class ProcessManager implements ProcessControl {
 
     @Override
     public synchronized void restartServer() {
+        // Cancel any pending debounced restart — manual restart takes precedence.
+        prefRestartTimer.stop();
+        doRestartServer();
+    }
+
+    /** Performs the actual server restart (stop + start). Called from both the
+     *  debounce timer (preference changes) and the public {@link #restartServer()}
+     *  method (manual restarts). */
+    private void doRestartServer() {
         // Reset sticky session/UI state BEFORE the process is torn down: a
         // state machine stuck in LOADING/STOPPING blocks the post-restart
         // session reload, and an unanswered permission request blocks every
@@ -380,6 +405,11 @@ public class ProcessManager implements ProcessControl {
     @Override
     public void setCrashHandler(Runnable handler) {
         this.crashHandler = handler;
+    }
+
+    @Override
+    public String getAgentName() {
+        return serverLifecycle.getAgentName();
     }
 
     public void setReadyHandler(Runnable handler) {

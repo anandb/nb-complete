@@ -51,6 +51,8 @@ class ServerProcessLifecycle {
     private volatile CompletableFuture<Void> readyFuture = new CompletableFuture<>();
     private volatile boolean isClosing = false;
     private volatile boolean serverStarted = false;
+    /** Agent name from the ACP initialize response, lowercased. */
+    private volatile String agentName;
     private RequestProcessor reconnectRP;
     private RequestProcessor.Task reconnectTask;
 
@@ -72,6 +74,11 @@ class ServerProcessLifecycle {
         this.onReadTextFile = onReadTextFile;
         this.onWriteTextFile = onWriteTextFile;
         this.onRequestPermission = onRequestPermission;
+    }
+
+    /** Returns the lowercased agent name from the initialize handshake. */
+    String getAgentName() {
+        return agentName;
     }
 
     synchronized void ensureStarted() {
@@ -244,6 +251,18 @@ class ServerProcessLifecycle {
                 .thenAccept(res -> {
                     if (res != null) {
                         toolExecutor.checkServerSupport(res);
+                        JsonNode agentInfo = res.get("agentInfo");
+                        if (agentInfo != null && agentInfo.has("name")) {
+                            String raw = agentInfo.get("name").asText().toLowerCase();
+                            int slash = raw.lastIndexOf('/');
+                            if (slash >= 0) {
+                                raw = raw.substring(slash + 1);
+                            }
+                            // Collapse whitespace, replace with hyphens, strip invalid chars.
+                            agentName = raw.replaceAll("[^a-z0-9\\s_-]", "")
+                                    .replaceAll("\\s+", "-").replaceAll("^-+|-+$", "");
+                            LOG.fine("Agent name: {0}", agentName);
+                        }
                     }
                     readyFuture.complete(null);
                     LOG.fine("ACP initialized successfully");

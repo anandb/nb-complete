@@ -74,6 +74,9 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
     private JCheckBox autoBackupChangesCheckbox;
     private JCheckBox miniAssistantCheckbox;
     private JCheckBox taskRepositoryCheckbox;
+    private JCheckBox markdownProjectCheckbox;
+    private JCheckBox mcpServerCheckbox;
+    private JSpinner mcpPortSpinner;
     private JCheckBox useWslCheckbox;
     private JSpinner idleTimeoutSpinner;
     private JSpinner maxMessagesSpinner;
@@ -123,6 +126,8 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         autoBackupChangesCheckbox = new JCheckBox();
         miniAssistantCheckbox = new JCheckBox();
         taskRepositoryCheckbox = new JCheckBox();
+        markdownProjectCheckbox = new JCheckBox();
+        mcpServerCheckbox = new JCheckBox();
         iconLabel = new JLabel();
         iconPathField = new JTextField(40);
         iconBrowseButton = new JButton();
@@ -210,6 +215,24 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         checkForUpdatesCheckbox.addActionListener(evt -> controller.changed());
         systemPanel.add(checkForUpdatesCheckbox, UIUtils.createGbc(0, 0, 1.0, 0, GridBagConstraints.HORIZONTAL,
                 GridBagConstraints.WEST, new Insets(0, 12, 5, 0)));
+
+        mcpServerCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_EnableMcpServers"));
+        mcpServerCheckbox.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_EnableMcpServers"));
+        mcpServerCheckbox.addActionListener(evt -> controller.changed());
+        systemPanel.add(mcpServerCheckbox, UIUtils.createGbc(0, 1, 1.0, 0, GridBagConstraints.HORIZONTAL,
+                GridBagConstraints.WEST, new Insets(0, 12, 5, 0)));
+
+        JLabel mcpPortLabel = new JLabel(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_McpServerPort"));
+        mcpPortLabel.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_McpServerPort"));
+        systemPanel.add(mcpPortLabel, UIUtils.createGbc(2, 1, 0.0, 0, GridBagConstraints.NONE,
+                GridBagConstraints.WEST, new Insets(0, 15, 5, 5)));
+        SpinnerNumberModel mcpPortModel = new SpinnerNumberModel(0, 0, 65535, 1);
+        mcpPortSpinner = new JSpinner(mcpPortModel);
+        mcpPortSpinner.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_McpServerPort"));
+        ((JSpinner.DefaultEditor) mcpPortSpinner.getEditor()).getTextField().setColumns(6);
+        mcpPortSpinner.addChangeListener(evt -> controller.changed());
+        systemPanel.add(mcpPortSpinner, UIUtils.createGbc(3, 1, 0.0, 0, GridBagConstraints.NONE,
+                GridBagConstraints.EAST, new Insets(0, 0, 5, 12)));
 
         JLabel lineHeightLabel = new JLabel(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_LineHeightCorrection"));
         lineHeightLabel.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_LineHeightCorrection"));
@@ -312,6 +335,12 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         showAnnotationsCheckbox.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_ShowAnnotations"));
         showAnnotationsCheckbox.addActionListener(evt -> controller.changed());
         actionsPanel.add(showAnnotationsCheckbox, UIUtils.createGbc(0, 3, 1.0, 0, GridBagConstraints.HORIZONTAL,
+                GridBagConstraints.WEST, new Insets(0, 12, 5, 0)));
+
+        markdownProjectCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_EnableMarkdownProject"));
+        markdownProjectCheckbox.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_EnableMarkdownProject"));
+        markdownProjectCheckbox.addActionListener(evt -> controller.changed());
+        actionsPanel.add(markdownProjectCheckbox, UIUtils.createGbc(0, 4, 1.0, 0, GridBagConstraints.HORIZONTAL,
                 GridBagConstraints.WEST, new Insets(0, 12, 5, 0)));
 
         viewFileHistoryCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_ViewFileHistory"));
@@ -522,6 +551,9 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         quickJumpCheckbox.setSelected(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean(PreferenceKeys.ACTIONS_QUICK_JUMP, true));
         miniAssistantCheckbox.setSelected(PluginSettings.isMiniAssistantEnabled());
         taskRepositoryCheckbox.setSelected(PluginSettings.isTaskRepositoryEnabled());
+        markdownProjectCheckbox.setSelected(PluginSettings.isMarkdownProjectEnabled());
+        mcpServerCheckbox.setSelected(PluginSettings.isMcpServerEnabled());
+        mcpPortSpinner.setValue(PluginSettings.getMcpServerPort());
         useWslCheckbox.setSelected(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean(PreferenceKeys.USE_WSL, false));
     }
 
@@ -589,6 +621,9 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         PluginSettings.setQuickJumpEnabled(quickJumpCheckbox.isSelected());
         PluginSettings.setMiniAssistantEnabled(miniAssistantCheckbox.isSelected());
         PluginSettings.setTaskRepositoryEnabled(taskRepositoryCheckbox.isSelected());
+        PluginSettings.setMarkdownProjectEnabled(markdownProjectCheckbox.isSelected());
+        PluginSettings.setMcpServerEnabled(mcpServerCheckbox.isSelected());
+        PluginSettings.setMcpServerPort((Integer) mcpPortSpinner.getValue());
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean(PreferenceKeys.USE_WSL, useWslCheckbox.isSelected());
 
         String newIconPath = iconPathField.getText();

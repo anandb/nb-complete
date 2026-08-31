@@ -63,11 +63,20 @@ public final class PreferenceKeys {
     public static final String ACTIONS_STASH_DIFF = "actions.stashDiff";
     public static final String ACTIONS_QUICK_JUMP = "actions.quickJump";
 
+    /** Whether the Markdown project type factory is enabled (enabled by default). */
+    public static final String ACTIONS_MARKDOWN_PROJECT = "actions.markdownProject";
+
     /** Whether the Mini Assistant dialog is the target for send/ask actions (enabled by default). */
     public static final String MINI_ASSISTANT_ENABLED = "miniAssistant.enabled";
 
     /** Whether the TaskRepository (todo.txt) feature is enabled (enabled by default). */
     public static final String TASK_REPOSITORY_ENABLED = "taskRepository.enabled";
+
+    /** Whether the embedded MCP server is enabled (enabled by default). */
+    public static final String MCP_SERVER_ENABLED = "mcpServer.enabled";
+
+    /** Internal MCP server HTTP port. 0 (default) = pick a random free port. */
+    public static final String MCP_SERVER_PORT = "mcpServer.port";
 
     /** Whether to launch opencode through WSL when available (Windows only, enabled by default). */
     public static final String USE_WSL = "useWsl";

@@ -54,4 +54,11 @@ public interface ProcessControl {
 
     /** Shuts down the server process and releases resources. */
     void shutdown();
+
+    /**
+     * Returns the agent name from the ACP server's {@code initialize} response
+     * ({@code agentInfo.name}), lowercased. Returns {@code null} until the
+     * server handshake completes.
+     */
+    String getAgentName();
 }

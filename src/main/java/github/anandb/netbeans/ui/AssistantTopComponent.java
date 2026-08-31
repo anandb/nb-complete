@@ -795,6 +795,10 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
     void writeProperties(Properties p) {
         p.setProperty("version", "2.0");
+        // Persist dock state during NetBeans' own save cycle (before window
+        // system teardown). componentClosed() fires too late during upgrades
+        // because findMode(this) is already null by then.
+        saveDockState();
     }
 
     void readProperties(Properties p) {
