@@ -418,6 +418,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
 
         toolbarIconCombo = new JComboBox<>(new String[]{"16", "24", "28", "32", "36", "40", "48"});
         toolbarIconCombo.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_ToolbarIconSize"));
+        toolbarIconCombo.setPrototypeDisplayValue("100");
         toolbarIconCombo.addActionListener(evt -> controller.changed());
         appearancePanel.add(toolbarIconCombo, UIUtils.createGbc(2, row, 0.0, 0, GridBagConstraints.NONE,
                 GridBagConstraints.EAST, new Insets(0, 0, 5, 5)));
@@ -430,6 +431,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
 
         chatFontCombo = new JComboBox<>(new String[]{"Inherited", "10", "11", "12", "13", "14", "16"});
         chatFontCombo.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_ChatFontSize"));
+        chatFontCombo.setPrototypeDisplayValue("100");
         chatFontCombo.addActionListener(evt -> controller.changed());
         appearancePanel.add(chatFontCombo, UIUtils.createGbc(2, row, 0.0, 0, GridBagConstraints.NONE,
                 GridBagConstraints.EAST, new Insets(0, 0, 5, 5)));
