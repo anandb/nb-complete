@@ -8,7 +8,6 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.util.logging.Level;
 
 import github.anandb.netbeans.support.MapperSupplier;
@@ -34,28 +33,14 @@ class MessageServlet extends HttpServlet {
     private static final ObjectMapper MAPPER = MapperSupplier.get();
     private final transient RequestProcessor asyncExecutor;
     private final transient McpTools mcpTools;
-    private final String token;
 
-    MessageServlet(RequestProcessor asyncExecutor, McpTools mcpTools, String token) {
+    MessageServlet(RequestProcessor asyncExecutor, McpTools mcpTools) {
         this.asyncExecutor = asyncExecutor;
         this.mcpTools = mcpTools;
-        this.token = token;
     }
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        // Verify auth token (constant-time comparison to prevent timing attacks)
-        String reqToken = request.getParameter("token");
-        if (reqToken == null || !MessageDigest.isEqual(
-                reqToken.getBytes(StandardCharsets.UTF_8),
-                token.getBytes(StandardCharsets.UTF_8))) {
-            LOG.warn("MCP request rejected: missing or invalid token");
-            response.setStatus(403);
-            response.setContentType("application/json");
-            response.getWriter().write("{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32001,\"message\":\"Unauthorized\"}}");
-            return;
-        }
-
         long start = System.nanoTime();
         LOG.fine("MCP request received: {0} {1}", request.getMethod(), request.getRequestURI());
         AsyncContext asyncContext = request.startAsync();
