@@ -273,8 +273,9 @@ public class MessageSender {
             }
         }
 
-        // Editor Context
-        Map<String, Object> context = isForwardedSlash ? null : EditorContextCapture.capture();
+        // Editor Context — gated by system property to disable auto-injection
+        Map<String, Object> context = (isForwardedSlash || !Boolean.getBoolean("beanbot.passCurrentEditorContext"))
+                ? null : EditorContextCapture.capture();
 
         final String messageText = text;
         if (onUserMessageSentCallback != null) {
@@ -443,7 +444,9 @@ public class MessageSender {
 
         // No local echo — individual echoes were shown when queued.
         // No attachments — they were cleared when queued.
-        Map<String, Object> context = EditorContextCapture.capture();
+        // Editor Context — gated by system property to disable auto-injection
+        Map<String, Object> context = Boolean.getBoolean("beanbot.passCurrentEditorContext")
+                ? EditorContextCapture.capture() : null;
 
         // Reset turnEnded so SSE chunks for this combined turn correctly
         // switch the UI to the Stop (processing) state.

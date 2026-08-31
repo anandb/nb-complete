@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import github.anandb.netbeans.contract.ProjectQuery;
 import github.anandb.netbeans.contract.SessionControl;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.ui.EditorContextCapture;
 import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
 import github.anandb.netbeans.support.MapperSupplier;
@@ -38,9 +39,34 @@ public class EditorToolProvider {
     private static final ObjectMapper MAPPER = MapperSupplier.get();
 
     public void registerTools(McpTools mcpTools) {
+        registerGetCurrentFileContext(mcpTools);
         registerGetOpenedFiles(mcpTools);
         registerOpenFileAtLine(mcpTools);
         registerRenameSession(mcpTools);
+    }
+
+    private void registerGetCurrentFileContext(McpTools mcpTools) {
+        ObjectNode schema = MAPPER.createObjectNode();
+        schema.put("type", "object");
+
+        mcpTools.registerTool(
+                "get_current_file_context",
+                """
+                Returns the current file path, cursor position, and any text selection from the active editor tab.
+                Call when you see phrases like 'this file', 'highlighted text', 'selected text', 'selected code',
+                'current file', 'current line' or similar phrases indicating current editing context.
+                """,
+                schema,
+                new ToolExecutor<EmptyToolInput, Map<String, Object>>(EmptyToolInput.class) {
+                    @Override
+                    public Map<String, Object> execute(EmptyToolInput args) throws Exception {
+                        Map<String, Object>[] result = new Map[1];
+                        SwingUtilities.invokeAndWait(() -> {
+                            result[0] = EditorContextCapture.capture();
+                        });
+                        return result[0];
+                    }
+                });
     }
 
     private void registerGetOpenedFiles(McpTools mcpTools) {
