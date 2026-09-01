@@ -273,10 +273,6 @@ public class MessageSender {
             }
         }
 
-        // Editor Context — gated by system property to disable auto-injection
-        Map<String, Object> context = (isForwardedSlash || !Boolean.getBoolean("beanbot.passCurrentEditorContext"))
-                ? null : EditorContextCapture.capture();
-
         final String messageText = text;
         if (onUserMessageSentCallback != null) {
             onUserMessageSentCallback.run();
@@ -310,6 +306,8 @@ public class MessageSender {
         if (onBeforeServerSendCallback != null) {
             onBeforeServerSendCallback.run();
         }
+
+        Map<String, Object> context = null;
         processService.get().sendMessage(currentSessionId, messageText, context, fileBlocks)
                 .thenAccept(result -> {
                     // CPD-OFF — structural twin of sendQueuedMessage(); differences are
@@ -437,7 +435,6 @@ public class MessageSender {
             return;
         }
 
-        final String clientMessageId = UUID.randomUUID().toString();
         statusController.setStatus("STATUS_Sending");
         statusController.startThinking();
         statusController.updateButtonState(true);
@@ -445,9 +442,6 @@ public class MessageSender {
         // No local echo — individual echoes were shown when queued.
         // No attachments — they were cleared when queued.
         // Editor Context — gated by system property to disable auto-injection
-        Map<String, Object> context = Boolean.getBoolean("beanbot.passCurrentEditorContext")
-                ? EditorContextCapture.capture() : null;
-
         // Reset turnEnded so SSE chunks for this combined turn correctly
         // switch the UI to the Stop (processing) state.
         if (onNewMessageCallback != null) {
@@ -457,6 +451,8 @@ public class MessageSender {
         if (onBeforeServerSendCallback != null) {
             onBeforeServerSendCallback.run();
         }
+
+        Map<String, Object> context = null;
         processService.get().sendMessage(currentSessionId, combinedText, context, List.of())
                 .thenAccept(result -> {
                     // CPD-OFF — structural twin of sendMessage(); differences are

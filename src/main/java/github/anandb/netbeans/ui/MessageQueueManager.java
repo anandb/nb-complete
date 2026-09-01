@@ -27,7 +27,7 @@ import github.anandb.netbeans.support.PluginSettings;
  * Provides a toolbar button with a badge count, context menu to cancel,
  * and a wobble animation that fires every 5 seconds while the queue has items.
  */
-final class MessageQueueManager {
+public final class MessageQueueManager {
 
     private static final Color ACCENT_COLOR = new Color(0xFF, 0x8C, 0x00); // amber for queued bubbles
     private static final int WOBBLE_INTERVAL_MS = 5000;
