@@ -160,7 +160,7 @@ public class ProcessManager implements ProcessControl {
             NotificationDisplayer.getDefault().notify(
                 NbBundle.getMessage(ProcessManager.class, "MSG_RestartRequired"),
                 NotificationDisplayer.Priority.HIGH.getIcon(),
-                null, null);
+                "", null);
             return;
         }
         if (!PreferenceKeys.PROCESS_ARGUMENTS.equals(key)
