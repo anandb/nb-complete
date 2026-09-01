@@ -426,6 +426,7 @@ public class MessageBubble extends JPanel implements Scrollable {
         // Stop timers and remove listeners BEFORE super.removeNotify()
         // to avoid callbacks firing on a partially-dismantled component tree.
         streamer.stopTimer();
+        stopQueuedAnimation();
         if (copyRevertTimer != null) {
             copyRevertTimer.stop();
             copyRevertTimer = null;
@@ -537,7 +538,7 @@ public class MessageBubble extends JPanel implements Scrollable {
     }
 
     /** Applies or removes a queued indicator on the bubble — an amber left accent
-     *  bar and a small hourglass icon in the theme foreground color at the bottom-right. */
+     *  bar and a pulsing hourglass icon in the theme foreground color at the bottom-right. */
     void setQueued(boolean queued) {
         this.queued = queued;
         applyQueuedAccent(queued);
@@ -551,11 +552,40 @@ public class MessageBubble extends JPanel implements Scrollable {
                     GridBagConstraints.NONE, GridBagConstraints.SOUTHEAST,
                     new Insets(0, 12, 2, 12));
             add(queuedLabel, gbc);
+            startQueuedAnimation();
         } else if (queuedLabel != null) {
+            stopQueuedAnimation();
             remove(queuedLabel);
         }
         revalidate();
         repaint();
+    }
+
+    private static final String[] QUEUED_FRAMES = {"\u23F3", "\u23F4", "\u23F5", "\u23F6"};
+    private int queuedFrameIndex = 0;
+    private Timer queuedAnimationTimer;
+
+    private void startQueuedAnimation() {
+        if (queuedAnimationTimer != null && queuedAnimationTimer.isRunning()) {
+            return;
+        }
+        queuedFrameIndex = 0;
+        queuedAnimationTimer = new Timer(400, e -> {
+            if (queuedLabel != null && queued) {
+                queuedFrameIndex = (queuedFrameIndex + 1) % QUEUED_FRAMES.length;
+                queuedLabel.setText(QUEUED_FRAMES[queuedFrameIndex]);
+            }
+        });
+        queuedAnimationTimer.setRepeats(true);
+        queuedAnimationTimer.start();
+    }
+
+    private void stopQueuedAnimation() {
+        if (queuedAnimationTimer != null) {
+            queuedAnimationTimer.stop();
+            queuedAnimationTimer = null;
+        }
+        queuedFrameIndex = 0;
     }
 
     private void applyQueuedAccent(boolean apply) {

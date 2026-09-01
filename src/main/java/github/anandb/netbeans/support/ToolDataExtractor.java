@@ -148,10 +148,12 @@ public final class ToolDataExtractor {
     }
 
     private static String extractIdentifier(SessionUpdate update) {
-        String title = update != null && update.update() != null ? update.update().title() : null;
-        String toolName = update != null && update.update() != null
-                && update.update().rawInput() != null ? update.update().rawInput().tool() : null;
-        return firstNonBlank(title, toolName, "");
+        SessionUpdate.UpdateData ud = update != null ? update.update() : null;
+        SessionUpdate.RawInput ri = ud != null ? ud.rawInput() : null;
+        String path = ri != null ? ri.path() : null;
+        String title = ud != null ? ud.title() : null;
+        String toolName = ri != null ? ri.tool() : null;
+        return firstNonBlank(path, title, toolName, "");
     }
 
     public static String getLocalEchoText(String commandText) {

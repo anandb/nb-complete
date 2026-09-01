@@ -32,7 +32,7 @@ public final class MessageQueueManager {
     private static final Color ACCENT_COLOR = new Color(0xFF, 0x8C, 0x00); // amber for queued bubbles
     private static final int WOBBLE_INTERVAL_MS = 5000;
     private static final int WOBBLE_DURATION_MS = 300;
-    private static final double WOBBLE_ANGLE = Math.toRadians(5);
+    private static final double WOBBLE_ANGLE = Math.toRadians(12);
 
     private final Queue<String> queuedMessages = new ConcurrentLinkedQueue<>();
     private final JButton queueBtn;

@@ -186,7 +186,7 @@ public class ChatThreadPanel extends JPanel {
             @Override
             public void componentAdded(ContainerEvent e) {
                 Component c = e.getChild();
-                if (c instanceof MessageBubble || c instanceof PermissionBubble) {
+                if (c instanceof MessageBubble || c instanceof PermissionBubble || c instanceof StartupInfoBubble) {
                     scrollController.fixMouseWheel(c);
                 }
             }
@@ -337,6 +337,15 @@ public class ChatThreadPanel extends JPanel {
         // Capture scroll position BEFORE any mutations (stopStreaming, addSingleBubble, etc.)
         boolean wasAtBottom = scrollController.isAtBottom();
 
+        // Detect startup info message early — it arrives with streaming=true
+        // but should be rendered as a compact card, not a regular message bubble.
+        if (pm.messageType().isAssistant() && StartupInfoBubble.isStartupMessage(text)) {
+            stopStreaming();
+            addStartupInfoBubble(text, wasAtBottom);
+            trimMessages();
+            return;
+        }
+
         if (pm.streaming()) {
             processMessageSections(pm, text, role, wasAtBottom);
         } else {
@@ -344,6 +353,20 @@ public class ChatThreadPanel extends JPanel {
             addSingleBubble(pm.messageType(), text, pm.messageId(), pm.toolTitle(), false, wasAtBottom);
         }
         trimMessages();
+    }
+
+    /** Adds a compact startup info bubble instead of a regular message bubble. */
+    private void addStartupInfoBubble(String text, boolean wasAtBottom) {
+        SwingUtilities.invokeLater(() -> {
+            StartupInfoBubble bubble = new StartupInfoBubble(text);
+            bubble.setVisible(!MessageFilterManager.isTypeHidden("assistant"));
+            messagesContainer.add(bubble);
+            messagesContainer.add(Box.createVerticalStrut(4));
+            messagesContainer.revalidate();
+            if (wasAtBottom) {
+                scrollController.scrollToBottom(true);
+            }
+        });
     }
 
     /** Process message sections on EDT (shared by addMessage and setMessages). */
