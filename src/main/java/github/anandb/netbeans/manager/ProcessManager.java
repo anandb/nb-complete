@@ -1,6 +1,5 @@
 package github.anandb.netbeans.manager;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -29,7 +28,6 @@ import github.anandb.netbeans.contract.PermissionHandler;
 import github.anandb.netbeans.contract.SlashCommandInterceptor;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.PreferenceKeys;
-import github.anandb.netbeans.support.LanguageResolver;
 
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import github.anandb.netbeans.support.PluginSettings;
@@ -312,45 +310,13 @@ public class ProcessManager implements ProcessControl {
         if (context != null && !isPiAcp()) {
             String filePath = (String) context.get("filePath");
             if (isNotBlank(filePath)) {
-                File file = new File(filePath);
-                String lang = LanguageResolver.fromPath(filePath);
-                String fileName = file.getName();
-
                 StringBuilder xml = new StringBuilder();
-                xml.append("<metadata>\n");
-                xml.append("  <purpose>reference</purpose>\n");
-                xml.append("  <note>The file path, cursor, and selection below are reference-only")
-                   .append(" context about the user's editor state. The user's text message")
-                   .append(" that follows is the primary instruction.</note>\n");
-                xml.append("  <language>").append(lang).append("</language>\n");
-                xml.append("  <file_path>").append(filePath).append("</file_path>\n");
-
-                Object cursorObj = context.get("cursor");
-                if (cursorObj != null) {
-                    xml.append("  <cursor>").append(cursorObj.toString()).append("</cursor>\n");
-                }
-
-                Object selObj = context.get("selection");
-                if (selObj != null) {
-                    xml.append("  <selection>").append(selObj.toString()).append("</selection>\n");
-                }
-                xml.append("</metadata>");
-
                 Map<String, Object> metadataPart = new HashMap<>();
                 metadataPart.put("type", "text");
                 metadataPart.put("text", xml.toString());
                 metadataPart.put("annotations", Map.of("audience", List.of("assistant")));
 
                 promptBlocks.add(metadataPart);
-
-                String selectionContent = (String) context.get("selectionContent");
-                if (selectionContent != null && !selectionContent.isEmpty()) {
-                    Map<String, Object> selectionPart = new HashMap<>();
-                    selectionPart.put("type", "text");
-                    selectionPart.put("text", "\nSelection from `" + fileName + "`:\n```" + lang + "\n" + selectionContent + "\n```\n");
-                    selectionPart.put("annotations", Map.of("audience", List.of("assistant")));
-                    promptBlocks.add(selectionPart);
-                }
             }
         }
 
