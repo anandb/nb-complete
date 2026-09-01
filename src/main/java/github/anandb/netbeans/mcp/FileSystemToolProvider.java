@@ -49,6 +49,7 @@ public class FileSystemToolProvider {
         registerWriteToFile(mcpTools);
         registerReplaceLines(mcpTools);
         registerInsertInFile(mcpTools);
+        registerDeleteLines(mcpTools);
         registerSearchProject(mcpTools);
         registerListDirectory(mcpTools);
         registerRunCommand(mcpTools);
@@ -268,6 +269,72 @@ public class FileSystemToolProvider {
                     }
                 });
     }
+
+    private void registerDeleteLines(McpTools mcpTools) {
+        ObjectNode schema = MAPPER.createObjectNode();
+        schema.put("type", "object");
+        ObjectNode properties = schema.putObject("properties");
+
+        ObjectNode filePathProp = properties.putObject("filePath");
+        filePathProp.put("type", "string");
+        filePathProp.put("description", "Absolute path to file");
+
+        ObjectNode startLineProp = properties.putObject("startLine");
+        startLineProp.put("type", "integer");
+        startLineProp.put("description", "Start line to delete (1-indexed, inclusive)");
+
+        ObjectNode endLineProp = properties.putObject("endLine");
+        endLineProp.put("type", "integer");
+        endLineProp.put("description", "End line to delete (1-indexed, inclusive)");
+
+        ArrayNode required = schema.putArray("required");
+        required.add("filePath");
+        required.add("startLine");
+        required.add("endLine");
+
+        mcpTools.registerTool(
+                "delete_lines",
+                "Delete a range of lines from a file (end inclusive). "
+                        + "Accepts both \\r\\n and \\n line endings.",
+                schema,
+                new ToolExecutor<DeleteLinesInput, Map<String, Object>>(DeleteLinesInput.class) {
+                    @Override
+                    public Map<String, Object> execute(DeleteLinesInput args) throws Exception {
+                        File file = new File(args.filePath());
+                        if (!file.exists()) {
+                            return Map.of("status", "error", "message",
+                                    "File not found: " + args.filePath());
+                        }
+                        // Read raw bytes to detect original line separator
+                        byte[] raw = Files.readAllBytes(file.toPath());
+                        String content = new String(raw, StandardCharsets.UTF_8);
+
+                        // Detect line separator: prefer \r\n if present, else \n
+                        String separator = content.contains("\r\n") ? "\r\n" : "\n";
+
+                        // Split preserving empty trailing segment when file ends with separator
+                        String[] lines = content.split(
+                                separator.equals("\r\n") ? "\r\n" : "\n", -1);
+
+                        int start = Math.max(1, args.startLine());
+                        int end = Math.min(lines.length, args.endLine());
+                        if (start > end) {
+                            return Map.of("status", "error", "message",
+                                    "startLine (" + start + ") > endLine (" + end + ")");
+                        }
+
+                        // Build new array excluding the deleted range
+                        String[] result = new String[lines.length - (end - start + 1)];
+                        System.arraycopy(lines, 0, result, 0, start - 1);
+                        System.arraycopy(lines, end, result, start - 1, lines.length - end);
+
+                        Files.writeString(file.toPath(),
+                                String.join(separator, result), StandardCharsets.UTF_8);
+                        return Map.of("status", "ok", "linesDeleted", end - start + 1);
+                    }
+                });
+    }
+
 
     private void registerSearchProject(McpTools mcpTools) {
         ObjectNode schema = MAPPER.createObjectNode();

@@ -71,7 +71,9 @@ public record SessionUpdate(
         String command,
         String description,
         String tool,
-        String path
+        String path,
+        String filePath,
+        String filePattern
     ) {}
 
     // Convenience methods to maintain backward compatibility in some logic if needed

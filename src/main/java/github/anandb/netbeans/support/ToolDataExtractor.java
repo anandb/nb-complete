@@ -150,9 +150,11 @@ public final class ToolDataExtractor {
     private static String extractIdentifier(SessionUpdate update) {
         SessionUpdate.UpdateData ud = update != null ? update.update() : null;
         SessionUpdate.RawInput ri = ud != null ? ud.rawInput() : null;
-        String path = ri != null ? ri.path() : null;
+        
+        String path = ri != null ? firstNonBlank(ri.path(), ri.filePath()) : null;
         String title = ud != null ? ud.title() : null;
         String toolName = ri != null ? ri.tool() : null;
+        
         return firstNonBlank(path, title, toolName, "");
     }
 

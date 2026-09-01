@@ -32,10 +32,12 @@ import github.anandb.netbeans.support.PreferenceKeys;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.Logger;
-import github.anandb.netbeans.contract.ProcessControl;
 import github.anandb.netbeans.contract.ToolExecutor;
+import github.anandb.netbeans.contract.ProcessControl;
+
 import github.anandb.netbeans.mcp.McpToolAdapter;
 import github.anandb.netbeans.mcp.McpManager;
+import org.openide.awt.NotificationDisplayer;
 
 /**
  * Spawns and owns the {@code opencode acp} subprocess; central request
@@ -146,23 +148,31 @@ public class ProcessManager implements ProcessControl {
         return slashCommandInterceptor;
     }
 
+    @Override
+    public ToolExecutor getToolExecutor() {
+        return toolExecutor;
+    }
+
     private void onPreferenceChanged(PreferenceChangeEvent evt) {
         String key = evt.getKey();
-        if (!PreferenceKeys.ACP_EXECUTABLE_PATH.equals(key)
-                && !PreferenceKeys.PROCESS_ARGUMENTS.equals(key)
+        if (PreferenceKeys.ACP_EXECUTABLE_PATH.equals(key)) {
+            LOG.fine("Binary path preference changed — showing restart notification");
+            NotificationDisplayer.getDefault().notify(
+                NbBundle.getMessage(ProcessManager.class, "MSG_RestartRequired"),
+                NotificationDisplayer.Priority.HIGH.getIcon(),
+                null, null);
+            return;
+        }
+        if (!PreferenceKeys.PROCESS_ARGUMENTS.equals(key)
                 && !PreferenceKeys.MCP_SERVER_ENABLED.equals(key)) {
             return;
         }
         LOG.fine("Preference changed: {0} — scheduling debounced restart", key);
-        if (serverLifecycle.serverStarted() && serverLifecycle.serverProcess() != null && serverLifecycle.serverProcess().isAlive()) {
+        if (serverLifecycle.serverStarted() && serverLifecycle.serverProcess() != null
+                && serverLifecycle.serverProcess().isAlive()) {
             // Restart the debounce timer — each new write resets the 300ms window.
             prefRestartTimer.restart();
         }
-    }
-
-    @Override
-    public ToolExecutor getToolExecutor() {
-        return toolExecutor;
     }
 
     public static ProcessManager getInstance() {
@@ -185,7 +195,6 @@ public class ProcessManager implements ProcessControl {
         }
         return pm;
     }
-
     public CompletableFuture<JsonNode> sendRequest(String method, Object params) {
         AcpProtocolClient client = rpcClient.get();
         if (client == null) {
