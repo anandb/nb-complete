@@ -6,6 +6,8 @@ import java.awt.geom.Rectangle2D;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.HashSet;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -225,11 +227,13 @@ public class AutocompleteManager {
             allCommands.addAll(processService.get().getAvailableCommands());
         }
 
+        // Deduplicate by name, keeping local interceptor entries (added first)
+        Set<String> seen = new HashSet<>();
         List<SessionUpdate.AvailableCommand> filtered = allCommands.stream()
+                .filter(c -> seen.add(c.name().toLowerCase()))
                 .filter(c -> !excludedCommands.contains(c.name().toLowerCase()))
                 .filter(c -> c.name().toLowerCase().startsWith(prefix))
                 .toList();
-
         if (filtered.isEmpty()) {
             autocompletePopup.setVisible(false);
             lastPrefix = null;
