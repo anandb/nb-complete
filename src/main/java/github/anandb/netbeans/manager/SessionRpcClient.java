@@ -40,9 +40,7 @@ final class SessionRpcClient {
     CompletableFuture<JsonNode> createSession(String cwd) {
         Map<String, Object> params = new HashMap<>();
         params.put("cwd", cwd);
-        if (!isPiAcp()) {
-            params.put("mcpServers", processManager.getToolExecutor().getServerConfig());
-        }
+        params.put("mcpServers", isPiAcp() ? List.of() : processManager.getToolExecutor().getServerConfig());
         return processManager.sendRequest("session/new", params, 60, TimeUnit.SECONDS);
     }
 
