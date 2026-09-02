@@ -151,14 +151,21 @@ public class MessageSender {
             if (!text.isEmpty() && queueManager != null) {
                 String clientMessageId = UUID.randomUUID().toString();
                 queueManager.enqueue(text);
-                chatPanel.addQueuedMessageId(clientMessageId);
-                // Show local echo with queued indicator so the user sees their message.
+                // Show queued indicator (amber accent + hourglass) only for agents
+                // that support message queuing (goose). Other agents still queue
+                // the text for later sending but skip the visual treatment.
+                boolean showQueuedIndicator = processService != null
+                    && processService.get() != null
+                    && processService.get().getCapabilities().supportsMessageQueue();
+                if (showQueuedIndicator) {
+                    chatPanel.addQueuedMessageId(clientMessageId);
+                }
                 chatPanel.addMessage(new ProcessedMessage.Builder()
                     .messageType(MessageType.user_message_chunk)
                     .text(text)
                     .rawText(text)
                     .messageId(clientMessageId)
-                    .queued(true)
+                    .queued(showQueuedIndicator)
                     .build());
                 inputArea.setText("");
                 messageHistory.add(text);

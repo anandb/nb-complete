@@ -117,18 +117,15 @@ public class StatusController {
         this.processingListener = listener;
     }
 
-    /** Record whether a session is currently active. When false, the send/stop
-     *  buttons are forced disabled regardless of processing state, so the Go/Stop
-     *  control cannot be left enabled when there are no open sessions. */
+    /** Record whether a session is currently active. UI enablement deriving
+     *  from this flag is handled by {@link #updateButtonState(boolean)}. */
     public void setSessionActive(boolean active) {
         sessionActive = active;
-        sendBtn.setEnabled(!active ? false : sendBtn.isEnabled());
-        stopBtn.setEnabled(!active ? false : stopBtn.isEnabled());
     }
 
     /** MUST be called on EDT. */
     public void updateButtonState(boolean isProcessing) {
-        sendBtn.setEnabled(!isProcessing && sessionActive);
+        sendBtn.setEnabled(sessionActive);
         stopBtn.setEnabled(isProcessing && sessionActive);
         if (sendBtn.getParent() != null && sendBtn.getParent().getLayout() instanceof CardLayout cl) {
             cl.show(sendBtn.getParent(), isProcessing ? "STOP" : "SEND");
@@ -156,7 +153,6 @@ public class StatusController {
 
     public void setInputEnabled(boolean enabled) {
         SwingUtilities.invokeLater(() -> {
-            sendBtn.setEnabled(enabled && sessionActive);
             toggleOptionsBtn.setVisible(enabled);
             inputArea.setEnabled(enabled);
         });

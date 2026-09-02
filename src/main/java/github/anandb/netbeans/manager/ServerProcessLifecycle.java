@@ -22,6 +22,7 @@ import github.anandb.netbeans.contract.RequestHandler;
 import github.anandb.netbeans.contract.ToolExecutor;
 import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.SessionUpdate;
+import github.anandb.netbeans.model.AgentCapabilities;
 import github.anandb.netbeans.support.PreferenceKeys;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.BinaryResolver;
@@ -53,8 +54,10 @@ class ServerProcessLifecycle {
     private volatile boolean serverStarted = false;
     /** Agent name from the ACP initialize response, lowercased. */
     private volatile String agentName;
-    /** Listener fired once the agent name is known after the initialize handshake. */
-    private volatile Consumer<String> agentNameListener;
+    /** Capability flags derived from {@link #agentName} in the initialize handler. */
+    private volatile AgentCapabilities capabilities = AgentCapabilities.DEFAULT;
+    /** Listener fired once the agent name (and capabilities) are known after the initialize handshake. */
+    private volatile Consumer<AgentCapabilities> agentNameListener;
     private RequestProcessor reconnectRP;
     private RequestProcessor.Task reconnectTask;
 
@@ -83,9 +86,14 @@ class ServerProcessLifecycle {
         return agentName;
     }
 
+    /** Returns the capability flags derived from the initialize handshake. */
+    AgentCapabilities getCapabilities() {
+        return capabilities;
+    }
+
     /** Registers a listener fired (on the initialize completion thread) when the
-     *  agent name becomes known. */
-    void setAgentNameListener(Consumer<String> listener) {
+     *  agent capabilities become known. */
+    void setAgentNameListener(Consumer<AgentCapabilities> listener) {
         this.agentNameListener = listener;
     }
 
@@ -269,10 +277,11 @@ class ServerProcessLifecycle {
                             // Collapse whitespace, replace with hyphens, strip invalid chars.
                             agentName = raw.replaceAll("[^a-z0-9\\s_-]", "")
                                     .replaceAll("\\s+", "-").replaceAll("^-+|-+$", "");
+                            capabilities = AgentCapabilities.forName(agentName);
                             LOG.fine("Agent name: {0}", agentName);
-                            Consumer<String> listener = agentNameListener;
+                            Consumer<AgentCapabilities> listener = agentNameListener;
                             if (listener != null) {
-                                listener.accept(agentName);
+                                listener.accept(capabilities);
                             }
                         }
                     }

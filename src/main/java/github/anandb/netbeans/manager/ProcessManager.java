@@ -35,6 +35,7 @@ import org.openide.util.lookup.ServiceProvider;
 import github.anandb.netbeans.contract.PermissionHandler;
 import github.anandb.netbeans.contract.SlashCommandInterceptor;
 import github.anandb.netbeans.model.SessionUpdate;
+import github.anandb.netbeans.model.AgentCapabilities;
 import github.anandb.netbeans.support.PreferenceKeys;
 
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
@@ -176,7 +177,7 @@ public class ProcessManager implements ProcessControl {
                 NbBundle.getMessage(ProcessManager.class, "MSG_RestartRequired"),
                 NotificationDisplayer.Priority.HIGH.getIcon(),
                 details,
-                null,
+                details,
                 NotificationDisplayer.Priority.HIGH);
             return;
         }
@@ -363,7 +364,7 @@ public class ProcessManager implements ProcessControl {
             promptBlocks.add(instructionBlock);
         }
 
-        if (context != null && !isPiAcp()) {
+        if (context != null && getCapabilities().injectsEditorContext()) {
             String filePath = (String) context.get("filePath");
             if (isNotBlank(filePath)) {
                 StringBuilder xml = new StringBuilder();
@@ -388,7 +389,7 @@ public class ProcessManager implements ProcessControl {
         Map<String, Object> params = new HashMap<>();
         params.put("sessionId", sessionId);
         params.put("prompt", promptBlocks);
-        if (!isPiAcp()) {
+        if (getCapabilities().sendsMcpServerConfig()) {
             params.put("mcpServers", toolExecutor.getServerConfig());
         }
 
@@ -437,13 +438,13 @@ public class ProcessManager implements ProcessControl {
     }
 
     @Override
-    public void setAgentNameListener(Consumer<String> listener) {
+    public void setAgentNameListener(Consumer<AgentCapabilities> listener) {
         serverLifecycle.setAgentNameListener(listener);
     }
 
-    /** Returns {@code true} when the connected agent is pi-acp. */
-    private boolean isPiAcp() {
-        return "pi-acp".equals(getAgentName());
+    @Override
+    public AgentCapabilities getCapabilities() {
+        return serverLifecycle.getCapabilities();
     }
 
     public void setReadyHandler(Runnable handler) {

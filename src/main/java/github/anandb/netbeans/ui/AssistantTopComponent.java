@@ -43,6 +43,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 
 import github.anandb.netbeans.contract.PermissionHandler;
 import github.anandb.netbeans.contract.ProcessControl;
+import github.anandb.netbeans.model.AgentCapabilities;
 import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.model.SessionItem;
 import github.anandb.netbeans.support.Logger;
@@ -110,6 +111,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     private final JButton helpBtn;
     private final JButton toggleOptionsBtn;
     private final JButton restartServerBtn;
+    private final JButton tokenUsageBtn;
     private final JButton refreshBtn;
     private final JButton exportBtn;
     private final JButton rocketBtn;
@@ -195,12 +197,6 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                     this.processing = processing;
                     configPanelController.setCombosEnabled(!processing);
                     MiniAssistantDialog.getInstance().onProcessingChanged(processing);
-                    // Reuse session-active callback to disable/restore all session controls.
-                    // Use getCurrentSessionId() (the real source of truth) instead of the
-                    // sessionActive field, which the callback itself overwrites to false
-                    // when processing starts — that would prevent restoration at end-of-turn.
-                    boolean hasSession = sessionService.get().getCurrentSessionId() != null;
-                    sessionActiveCallback.accept(!processing && hasSession);
                 });
         attachmentUiHandler = new AttachmentUiHandler(attachmentManager, statusController, inputArea, AssistantTopComponent.this);
 
@@ -243,12 +239,13 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         layoutBuilder.getRightStatusPanel().add(rocketBtn, 1);
         ProcessControl pc = Lookup.getDefault().lookup(ProcessControl.class);
         if (pc != null) {
-            pc.setAgentNameListener(name -> SwingUtilities.invokeLater(
-                    () -> applyQueueForAgent(name)));
+            pc.setAgentNameListener(caps -> SwingUtilities.invokeLater(
+                    () -> applyAgentCapabilities(caps)));
         }
 
-        // Add token usage button after the rocket button
-        JButton tokenUsageBtn = UIUtils.createToolbarButton("currency.svg", iconSize,
+        // Add token usage button after the rocket button (visible only when the
+        // agent supports the stats subprocess — see applyAgentCapabilities)
+        tokenUsageBtn = UIUtils.createToolbarButton("currency.svg", iconSize,
                 NbBundle.getMessage(AssistantTopComponent.class, "TT_TokenStats"), e -> {
             Window win = SwingUtilities.getWindowAncestor(AssistantTopComponent.this);
             if (win instanceof Frame frame) {
@@ -480,11 +477,13 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         updateAttentionAnimation();
     }
 
-    /** Enables message queueing only for the goose agent. opencode and pi agents
-     *  send immediately, so the queue button is disabled and hidden. */
-    private void applyQueueForAgent(String agentName) {
-        boolean useQueue = "goose".equals(agentName);
-        queueManager.setEnabled(useQueue);
+    /** Applies agent capability flags to queueing and token-stats UI.
+     *  Queueing (envelope icon) is enabled only for goose; token stats
+     *  (currency icon) only when the agent supports the stats subprocess. */
+    private void applyAgentCapabilities(AgentCapabilities caps) {
+        queueManager.setEnabled(caps.supportsMessageQueue());
+        tokenUsageBtn.setEnabled(caps.supportsTokenStats());
+        tokenUsageBtn.setVisible(caps.supportsTokenStats());
     }
 
     private void updateAttentionAnimation() {
@@ -1034,6 +1033,9 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                 exportBtn.setEnabled(hasSession);
                 helpBtn.setEnabled(true);
 
+                // updateButtonState derives the Go button from sessionActive;
+                // setInputEnabled no longer touches buttons.
+                statusController.updateButtonState(false);
                 statusController.setInputEnabled(true);
             }
         });

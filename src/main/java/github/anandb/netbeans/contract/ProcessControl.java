@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import github.anandb.netbeans.model.SessionUpdate;
+import github.anandb.netbeans.model.AgentCapabilities;
 
 /**
  * Control interface for the ACP process and message sending.
@@ -62,7 +63,14 @@ public interface ProcessControl {
      */
     String getAgentName();
 
-    /** Registers a listener invoked when the agent name becomes known after the
-     *  {@code initialize} handshake. Fires once per server start. */
-    void setAgentNameListener(Consumer<String> listener);
+    /** Registers a listener invoked when the agent capabilities become known
+     *  after the {@code initialize} handshake. Fires once per server start. */
+    void setAgentNameListener(Consumer<AgentCapabilities> listener);
+
+    /**
+     * Returns the capability flags derived from the {@code initialize}
+     * handshake. Returns {@link AgentCapabilities#DEFAULT} until the handshake
+     * completes.
+     */
+    AgentCapabilities getCapabilities();
 }

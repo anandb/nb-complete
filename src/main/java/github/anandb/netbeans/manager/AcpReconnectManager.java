@@ -109,7 +109,7 @@ class AcpReconnectManager {
                 "ACP Server Disconnected",
                 NotificationDisplayer.Priority.HIGH.getIcon(),
                 details,
-                null,
+                details,
                 NotificationDisplayer.Priority.HIGH
             );
         });

@@ -516,7 +516,6 @@ public class SessionLifecycleHandler implements SessionListener {
             chatPanel.restartFlushTimer();
             statusController.setStatus("STATUS_Ready");
             statusController.stopThinking();
-            statusController.updateButtonState(false);
             // Restore persisted context usage tooltip
             String usage = sessionService.get().getContextUsage(sessionId);
             if (usage != null) {
@@ -532,6 +531,12 @@ public class SessionLifecycleHandler implements SessionListener {
                 }
             }
             cwdLabelUpdater.accept(null);
+            // Set sessionActive BEFORE updateButtonState: updateButtonState now
+            // derives the Go button state from sessionActive directly.
+            sessionStateHandler.accept(true);
+            statusController.updateButtonState(false);
+            statusController.setInputEnabled(true);
+            hideBtn.setEnabled(true);
             if (configOptions != null) {
                 configPanelController.updateConfigControls(configOptions, isStartup);
             }
@@ -541,9 +546,6 @@ public class SessionLifecycleHandler implements SessionListener {
                 configPanelController.applyPreSelectedConfigValues(sessionId, configOptions);
             }
 
-            statusController.setInputEnabled(true);
-            sessionStateHandler.accept(true);
-            hideBtn.setEnabled(true);
             boolean hidden = sessionService.get().isHidden(sessionId);
             hideBtn.setIcon(ThemeManager.getIcon(hidden ? "unarchive.svg" : "archive.svg", PluginSettings.getToolbarIconSize()));
             hideBtn.setToolTipText(hidden
@@ -590,6 +592,10 @@ public class SessionLifecycleHandler implements SessionListener {
         SwingUtilities.invokeLater(() -> {
             statusController.setStatus("STATUS_Error", message);
             statusController.stopThinking();
+            statusController.updateButtonState(false);
+            statusController.setInputEnabled(true);
+            turnEnded = true;
+            sessionService.get().onTurnEnded();
             chatPanel.setSessionLoading(false);
             chatPanel.stopStreaming();
             chatPanel.addMessage(ProcessedMessage.createError(

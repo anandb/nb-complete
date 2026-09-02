@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.MapperSupplier;
+import github.anandb.netbeans.model.AgentCapabilities;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -40,7 +41,8 @@ final class SessionRpcClient {
     CompletableFuture<JsonNode> createSession(String cwd) {
         Map<String, Object> params = new HashMap<>();
         params.put("cwd", cwd);
-        params.put("mcpServers", isPiAcp() ? List.of() : processManager.getToolExecutor().getServerConfig());
+        params.put("mcpServers", caps().sendsMcpServerConfig()
+                ? processManager.getToolExecutor().getServerConfig() : List.of());
         return processManager.sendRequest("session/new", params, 60, TimeUnit.SECONDS);
     }
 
@@ -50,10 +52,10 @@ final class SessionRpcClient {
         if (cwd != null) {
             params.put("cwd", cwd);
         }
-        if (isPiAcp()) {
-            params.put("mcpServers", List.of());
-        } else {
+        if (caps().sendsMcpServerConfig()) {
             params.put("mcpServers", processManager.getToolExecutor().getServerConfig());
+        } else {
+            params.put("mcpServers", List.of());
         }
         return processManager.sendRequest("session/load", params, 2, TimeUnit.MINUTES);
     }
@@ -73,7 +75,7 @@ final class SessionRpcClient {
         ), 30, TimeUnit.SECONDS);
     }
 
-    private boolean isPiAcp() {
-        return "pi-acp".equals(processManager.getAgentName());
+    private AgentCapabilities caps() {
+        return processManager.getCapabilities();
     }
 }
