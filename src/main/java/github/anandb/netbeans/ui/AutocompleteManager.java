@@ -171,6 +171,7 @@ public class AutocompleteManager {
             }
         }
         if (exactMatch) {
+            e.consume();
             autocompletePopup.setVisible(false);
             sendMessageAction.run();
         } else {
