@@ -37,10 +37,12 @@ import org.openide.windows.TopComponent;
 import org.openide.windows.WindowManager;
 import org.openide.windows.Mode;
 import org.openide.util.NbPreferences;
+import org.openide.util.Lookup;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
 import github.anandb.netbeans.contract.PermissionHandler;
+import github.anandb.netbeans.contract.ProcessControl;
 import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.model.SessionItem;
 import github.anandb.netbeans.support.Logger;
@@ -204,6 +206,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
         sessionActiveCallback = sessionActive -> {
             this.sessionActive = sessionActive;
+            statusController.setSessionActive(sessionActive);
             sessionDropdown.setEnabled(sessionActive);
             hideBtn.setEnabled(sessionActive);
             renameSessionBtn.setEnabled(sessionActive);
@@ -233,9 +236,16 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         rocketBtn.setVisible(true);
 
         // Message queue button — left of rocket, visible only when messages are queued.
+        // Queueing is used only by the goose agent; for opencode/pi the button is
+        // disabled and hidden once the agent name is known (see applyQueueForAgent).
         queueManager = new MessageQueueManager();
         layoutBuilder.getRightStatusPanel().add(queueManager.getButton(), 0);
         layoutBuilder.getRightStatusPanel().add(rocketBtn, 1);
+        ProcessControl pc = Lookup.getDefault().lookup(ProcessControl.class);
+        if (pc != null) {
+            pc.setAgentNameListener(name -> SwingUtilities.invokeLater(
+                    () -> applyQueueForAgent(name)));
+        }
 
         // Add token usage button after the rocket button
         JButton tokenUsageBtn = UIUtils.createToolbarButton("currency.svg", iconSize,
@@ -470,6 +480,13 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         updateAttentionAnimation();
     }
 
+    /** Enables message queueing only for the goose agent. opencode and pi agents
+     *  send immediately, so the queue button is disabled and hidden. */
+    private void applyQueueForAgent(String agentName) {
+        boolean useQueue = "goose".equals(agentName);
+        queueManager.setEnabled(useQueue);
+    }
+
     private void updateAttentionAnimation() {
         Project[] projects = projectContext.getAllOpenProjects();
         boolean projectsOpen = (projects != null && projects.length > 0);
@@ -631,7 +648,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
         configPanelController.getComponent().setVisible(visible);
         toggleOptionsBtn.setIcon(ThemeManager.getIcon(visible ? "arrow-down.svg" : "settings.svg", 25));
-        
+
         configPanelController.getModelCombo().setVisible(visible);
         configPanelController.getCopyModelBtn().setVisible(visible);
 

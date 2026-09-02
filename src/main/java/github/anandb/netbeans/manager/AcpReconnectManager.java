@@ -10,6 +10,13 @@ import org.openide.util.NbBundle;
 import org.openide.util.RequestProcessor;
 import org.openide.awt.NotificationDisplayer;
 
+import java.awt.BorderLayout;
+import java.awt.Cursor;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import javax.swing.JComponent;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 
 import github.anandb.netbeans.support.Logger;
@@ -97,10 +104,11 @@ class AcpReconnectManager {
             String reason = lastDisconnectReason;
             lastDisconnectReason = null;
             String detail = (reason != null && !reason.isEmpty()) ? reason : "Unknown error";
+            JComponent details = createRestartNowDetails(detail, onStartServer);
             NotificationDisplayer.getDefault().notify(
                 "ACP Server Disconnected",
                 NotificationDisplayer.Priority.HIGH.getIcon(),
-                detail + " — Attempting to reconnect...",
+                details,
                 null,
                 NotificationDisplayer.Priority.HIGH
             );
@@ -131,6 +139,29 @@ class AcpReconnectManager {
                 listener.accept(NbBundle.getMessage(ProcessManager.class, "ERR_ServerCrashed", MAX_RESTARTS));
             }
         }
+    }
+
+    /** Builds the clickable "Restart now" details shown in the disconnect
+     *  notification. Mirrors the LafPanel theme-switch pattern: a hand-cursor
+     *  label that triggers an immediate server restart on click. The reason
+     *  text is included so the balloon still conveys why it appeared. */
+    private static JComponent createRestartNowDetails(String detail, Runnable onStartServer) {
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        panel.setOpaque(false);
+        JLabel msg = new JLabel(detail + " — Attempting to reconnect...");
+        panel.add(msg, BorderLayout.NORTH);
+        JLabel link = new JLabel("<html><a href=\"#\">Restart server now</a></html>");
+        link.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        link.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (onStartServer != null) {
+                    onStartServer.run();
+                }
+            }
+        });
+        panel.add(link, BorderLayout.SOUTH);
+        return panel;
     }
 
     synchronized void resetThrottle() {

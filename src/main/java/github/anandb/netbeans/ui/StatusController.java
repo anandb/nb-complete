@@ -33,6 +33,7 @@ public class StatusController {
 
     private volatile boolean animatedStatus = false;
     private int thinkingDots = 0;
+    private volatile boolean sessionActive = true;
 
     public StatusController(
             JLabel statusLabel,
@@ -116,10 +117,19 @@ public class StatusController {
         this.processingListener = listener;
     }
 
+    /** Record whether a session is currently active. When false, the send/stop
+     *  buttons are forced disabled regardless of processing state, so the Go/Stop
+     *  control cannot be left enabled when there are no open sessions. */
+    public void setSessionActive(boolean active) {
+        sessionActive = active;
+        sendBtn.setEnabled(!active ? false : sendBtn.isEnabled());
+        stopBtn.setEnabled(!active ? false : stopBtn.isEnabled());
+    }
+
     /** MUST be called on EDT. */
     public void updateButtonState(boolean isProcessing) {
-        sendBtn.setEnabled(!isProcessing);
-        stopBtn.setEnabled(isProcessing);
+        sendBtn.setEnabled(!isProcessing && sessionActive);
+        stopBtn.setEnabled(isProcessing && sessionActive);
         if (sendBtn.getParent() != null && sendBtn.getParent().getLayout() instanceof CardLayout cl) {
             cl.show(sendBtn.getParent(), isProcessing ? "STOP" : "SEND");
         }
@@ -146,7 +156,7 @@ public class StatusController {
 
     public void setInputEnabled(boolean enabled) {
         SwingUtilities.invokeLater(() -> {
-            sendBtn.setEnabled(enabled);
+            sendBtn.setEnabled(enabled && sessionActive);
             toggleOptionsBtn.setVisible(enabled);
             inputArea.setEnabled(enabled);
         });

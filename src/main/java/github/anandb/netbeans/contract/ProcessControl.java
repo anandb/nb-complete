@@ -61,4 +61,8 @@ public interface ProcessControl {
      * server handshake completes.
      */
     String getAgentName();
+
+    /** Registers a listener invoked when the agent name becomes known after the
+     *  {@code initialize} handshake. Fires once per server start. */
+    void setAgentNameListener(Consumer<String> listener);
 }

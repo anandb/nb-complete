@@ -53,6 +53,8 @@ class ServerProcessLifecycle {
     private volatile boolean serverStarted = false;
     /** Agent name from the ACP initialize response, lowercased. */
     private volatile String agentName;
+    /** Listener fired once the agent name is known after the initialize handshake. */
+    private volatile Consumer<String> agentNameListener;
     private RequestProcessor reconnectRP;
     private RequestProcessor.Task reconnectTask;
 
@@ -79,6 +81,12 @@ class ServerProcessLifecycle {
     /** Returns the lowercased agent name from the initialize handshake. */
     String getAgentName() {
         return agentName;
+    }
+
+    /** Registers a listener fired (on the initialize completion thread) when the
+     *  agent name becomes known. */
+    void setAgentNameListener(Consumer<String> listener) {
+        this.agentNameListener = listener;
     }
 
     synchronized void ensureStarted() {
@@ -262,6 +270,10 @@ class ServerProcessLifecycle {
                             agentName = raw.replaceAll("[^a-z0-9\\s_-]", "")
                                     .replaceAll("\\s+", "-").replaceAll("^-+|-+$", "");
                             LOG.fine("Agent name: {0}", agentName);
+                            Consumer<String> listener = agentNameListener;
+                            if (listener != null) {
+                                listener.accept(agentName);
+                            }
                         }
                     }
                     readyFuture.complete(null);

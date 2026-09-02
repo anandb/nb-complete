@@ -14,10 +14,18 @@ import java.util.prefs.PreferenceChangeEvent;
 import java.util.prefs.PreferenceChangeListener;
 import java.util.prefs.Preferences;
 
+import javax.swing.JComponent;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
 import javax.swing.Timer;
+import java.awt.BorderLayout;
+import java.awt.Cursor;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 
 import org.openide.util.NbBundle;
 import org.openide.util.NbPreferences;
+import org.openide.LifecycleManager;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
@@ -163,10 +171,13 @@ public class ProcessManager implements ProcessControl {
         String key = evt.getKey();
         if (PreferenceKeys.ACP_EXECUTABLE_PATH.equals(key)) {
             LOG.fine("Binary path preference changed — showing restart notification");
+            JComponent details = createIdeRestartDetails();
             NotificationDisplayer.getDefault().notify(
                 NbBundle.getMessage(ProcessManager.class, "MSG_RestartRequired"),
                 NotificationDisplayer.Priority.HIGH.getIcon(),
-                "", null);
+                details,
+                null,
+                NotificationDisplayer.Priority.HIGH);
             return;
         }
         if (!PreferenceKeys.PROCESS_ARGUMENTS.equals(key)
@@ -179,6 +190,26 @@ public class ProcessManager implements ProcessControl {
             // Restart the debounce timer — each new write resets the 300ms window.
             prefRestartTimer.restart();
         }
+    }
+
+    /** Clickable "Restart IDE now" link for the binary-path change notification.
+     *  Mirrors the LafPanel theme-switch restart action (LifecycleManager). */
+    private static JComponent createIdeRestartDetails() {
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        panel.setOpaque(false);
+        JLabel msg = new JLabel("The ACP server binary path changed — a restart is required.");
+        panel.add(msg, BorderLayout.NORTH);
+        JLabel link = new JLabel("<html><a href=\"#\">Restart IDE now</a></html>");
+        link.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        link.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                LifecycleManager.getDefault().markForRestart();
+                LifecycleManager.getDefault().exit();
+            }
+        });
+        panel.add(link, BorderLayout.SOUTH);
+        return panel;
     }
 
     public static ProcessManager getInstance() {
@@ -403,6 +434,11 @@ public class ProcessManager implements ProcessControl {
     @Override
     public String getAgentName() {
         return serverLifecycle.getAgentName();
+    }
+
+    @Override
+    public void setAgentNameListener(Consumer<String> listener) {
+        serverLifecycle.setAgentNameListener(listener);
     }
 
     /** Returns {@code true} when the connected agent is pi-acp. */

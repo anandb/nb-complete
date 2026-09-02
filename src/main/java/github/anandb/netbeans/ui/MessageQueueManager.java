@@ -43,6 +43,8 @@ public final class MessageQueueManager {
     private Timer wobbleTimer;
     private boolean wobbling;
     private Runnable sendNowCallback;
+    /** When false (e.g. non-goose agents), queueing is disabled and the button stays hidden. */
+    private volatile boolean enabled = true;
 
     MessageQueueManager() {
         int iconSize = Math.max(PluginSettings.getToolbarIconSize(), 32);
@@ -79,6 +81,16 @@ public final class MessageQueueManager {
         this.sendNowCallback = callback;
     }
 
+    /** Enables or disables queueing. When disabled, {@link #enqueue} is a no-op
+     *  and the toolbar button is forced hidden (queueing is only used by the
+     *  goose agent). */
+    void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+        if (!enabled) {
+            cancelAll();
+        }
+    }
+
     /** Returns the accent color used for queued bubble indicators. */
     static Color getAccentColor() {
         return ACCENT_COLOR;
@@ -99,6 +111,9 @@ public final class MessageQueueManager {
      * the combined prompt when the turn ends.
      */
     void enqueue(String text) {
+        if (!enabled) {
+            return;
+        }
         queuedMessages.add(text);
         updateBadge();
         startWobbleIfNeeded();
@@ -138,7 +153,7 @@ public final class MessageQueueManager {
 
     private void updateBadge() {
         int count = queuedMessages.size();
-        queueBtn.setVisible(count > 0);
+        queueBtn.setVisible(enabled && count > 0);
         if (count > 0) {
             queueBtn.setIcon(baseIcon);
             queueBtn.setToolTipText(
