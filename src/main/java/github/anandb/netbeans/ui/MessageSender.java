@@ -464,7 +464,7 @@ public class MessageSender {
         processService.get().sendMessage(currentSessionId, combinedText, context, List.of())
                 .thenAccept(result -> {
                     // CPD-OFF — structural twin of sendMessage(); differences are
-                    // per-method (no logging, combinedText, no turn-end callback here).
+                    // per-method (no logging, combinedText).
                     SwingUtilities.invokeLater(() -> {
                         statusController.updateButtonState(false);
                         statusController.stopThinking();
@@ -472,6 +472,9 @@ public class MessageSender {
                             onMessageDoneCallback.run();
                         }
                         statusController.setStatus("STATUS_Ready");
+                        if (onTurnEndedCallback != null) {
+                            onTurnEndedCallback.get();
+                        }
                         inputFocusRequester.run();
                         if (result != null && result.has("stopReason")) {
                             chatPanel.restartFlushTimer();
@@ -496,6 +499,9 @@ public class MessageSender {
                             onMessageDoneCallback.run();
                         }
                         inputFocusRequester.run();
+                        if (onTurnEndedCallback != null) {
+                            onTurnEndedCallback.get();
+                        }
                     });
                     return null;
                 });
