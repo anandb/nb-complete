@@ -1,5 +1,6 @@
 package github.anandb.netbeans.ui;
 
+import java.awt.event.ActionEvent;
 import java.io.File;
 import javax.swing.AbstractAction;
 import javax.swing.JMenuItem;
@@ -25,7 +26,7 @@ public abstract class BaseVersioningEditorAction extends AbstractAction implemen
     protected abstract boolean isMenuEnabled();
 
     /** Performs the action on the file backing the current editor document. */
-    protected abstract void perform(File file, java.awt.event.ActionEvent e);
+    protected abstract void perform(File file, ActionEvent e);
 
     @Override
     public JMenuItem getPopupPresenter() {
@@ -41,7 +42,7 @@ public abstract class BaseVersioningEditorAction extends AbstractAction implemen
     }
 
     @Override
-    public void actionPerformed(java.awt.event.ActionEvent e) {
+    public void actionPerformed(ActionEvent e) {
         if (!isMenuEnabled()) {
             return;
         }

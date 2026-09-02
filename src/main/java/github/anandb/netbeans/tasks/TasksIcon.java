@@ -1,5 +1,6 @@
 package github.anandb.netbeans.tasks;
 
+import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.image.BufferedImage;
@@ -31,7 +32,7 @@ public final class TasksIcon {
         BufferedImage img = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g = img.createGraphics();
         try {
-            g.setColor(new java.awt.Color(52, 120, 246));
+            g.setColor(new Color(52, 120, 246));
             g.fillRect(0, 0, 16, 16);
         } finally {
             g.dispose();

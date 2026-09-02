@@ -1,5 +1,10 @@
 package github.anandb.netbeans.tasks;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.HashSet;
+import java.util.Set;
+
 import org.netbeans.modules.bugtracking.api.Repository;
 import org.netbeans.modules.bugtracking.api.RepositoryManager;
 import org.netbeans.modules.bugtracking.spi.BugtrackingConnector;
@@ -79,7 +84,7 @@ public final class TasksConnector implements BugtrackingConnector {
         RepositoryManager mgr = RepositoryManager.getInstance();
         // Track paths already claimed so stale metadata (multiple repository ids
         // pointing at the same tasks file) doesn't re-create duplicate repositories.
-        java.util.Set<String> claimed = new java.util.HashSet<>();
+        Set<String> claimed = new HashSet<>();
         for (String id : TasksMetadata.allIds()) {
             String csvPath = TasksMetadata.tasksPathOf(id);
             if (csvPath.isEmpty()) {
@@ -114,12 +119,12 @@ public final class TasksConnector implements BugtrackingConnector {
 
     private static String canonical(String p) {
         try {
-            return new java.io.File(p).getCanonicalPath();
-        } catch (java.io.IOException ex) {
+            return new File(p).getCanonicalPath();
+        } catch (IOException ex) {
             // Best effort: resolve against CWD and collapse . / .. so two raw
             // paths to the same file (e.g. "./tasks.txt" and "tasks.txt") still
             // map to one key even when canonicalization fails.
-            return new java.io.File(p).getAbsoluteFile().toPath().normalize().toString();
+            return new File(p).getAbsoluteFile().toPath().normalize().toString();
         }
     }
 }

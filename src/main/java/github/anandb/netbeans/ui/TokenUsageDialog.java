@@ -13,6 +13,7 @@ import java.awt.Font;
 import java.awt.Insets;
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -338,7 +339,7 @@ public class TokenUsageDialog extends JDialog {
                 while ((line = r.readLine()) != null) {
                     sb.append(line).append('\n');
                 }
-            } catch (java.io.IOException e) {
+            } catch (IOException e) {
                 // Expected when the process is destroyed before all output is read.
             }
         });

@@ -2,6 +2,7 @@ package github.anandb.netbeans.tasks;
 
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
+import java.io.File;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -94,7 +95,7 @@ public final class TaskIssueProvider implements IssueProvider<TaskIssue> {
     }
 
     @Override
-    public void attachFile(TaskIssue i, java.io.File file, String description, boolean isPatch) {
+    public void attachFile(TaskIssue i, File file, String description, boolean isPatch) {
         // attachments not supported (canAttachFiles == false)
     }
 

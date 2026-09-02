@@ -3,7 +3,10 @@ package github.anandb.netbeans.ui;
 import java.awt.Dimension;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
+import java.awt.image.BufferedImage;
 import java.io.File;
+
+import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
 import javax.swing.JLabel;
 import javax.swing.JMenuItem;
@@ -37,7 +40,7 @@ final class IconPreviewManager {
     private final JTextField pathField;
     private final Runnable onChangeCallback;
     /** Original decoded image, kept for re-scaling when the label resizes. */
-    private java.awt.image.BufferedImage originalImage;
+    private BufferedImage originalImage;
 
     IconPreviewManager(JLabel previewLabel, JTextField pathField, Runnable onChangeCallback) {
         this.previewLabel = previewLabel;
@@ -103,7 +106,7 @@ final class IconPreviewManager {
         final String requestedPath = path;
         org.openide.util.RequestProcessor.getDefault().post(() -> {
             try {
-                java.awt.image.BufferedImage img = javax.imageio.ImageIO.read(file);
+                BufferedImage img = ImageIO.read(file);
                 if (img == null) {
                     SwingUtilities.invokeLater(() -> {
                         if (!previewLabel.isDisplayable()

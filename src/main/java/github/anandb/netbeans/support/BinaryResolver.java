@@ -4,6 +4,7 @@ import java.io.File;
 import java.util.prefs.Preferences;
 import java.util.regex.Pattern;
 
+import org.apache.commons.exec.CommandLine;
 import org.openide.util.NbBundle;
 import org.openide.util.NbPreferences;
 
@@ -198,8 +199,8 @@ public final class BinaryResolver {
         }
         // Reuse commons-exec's quoting rules (same as the non-WSL launch path)
         // so a single user-supplied string is split into safe argv tokens.
-        org.apache.commons.exec.CommandLine cl =
-                new org.apache.commons.exec.CommandLine("dummy").addArguments(args, true);
+        CommandLine cl =
+                new CommandLine("dummy").addArguments(args, true);
         String[] all = cl.toStrings();
         // toStrings() includes the program ("dummy") as element 0; drop it.
         String[] tokens = new String[all.length - 1];

@@ -3,15 +3,18 @@ package github.anandb.netbeans.ui;
 import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.Dimension;
+import java.awt.FontMetrics;
+import java.awt.Graphics2D;
 import java.awt.GridBagConstraints;
 import java.awt.Insets;
 import java.awt.LayoutManager;
 import java.awt.Point;
 import java.awt.BorderLayout;
+import java.awt.RenderingHints;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
-import javax.swing.JComboBox;
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
@@ -19,10 +22,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.regex.Pattern;
 
+import javax.imageio.ImageIO;
 import javax.swing.BorderFactory;
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
+import javax.swing.JComboBox;
 import javax.swing.JPanel;
 import javax.swing.border.Border;
 import javax.swing.border.EmptyBorder;
@@ -182,7 +187,7 @@ public class UIUtils {
     /** Recalculate the preferred size of a toolbar button based on its current
      *  icon and text. Call after setting icon or text on a styled toolbar button. */
     public static void recalcToolbarButtonSize(JButton btn) {
-        javax.swing.Icon icon = btn.getIcon();
+        Icon icon = btn.getIcon();
         if (icon == null) {
             return;
         }
@@ -190,7 +195,7 @@ public class UIUtils {
         int ih = icon.getIconHeight();
         String text = btn.getText();
         if (text != null && !text.isEmpty()) {
-            java.awt.FontMetrics fm = btn.getFontMetrics(btn.getFont());
+            FontMetrics fm = btn.getFontMetrics(btn.getFont());
             int textWidth = fm.stringWidth(text) + 8; // 4px gap each side
             btn.setPreferredSize(
                     new Dimension(iw + textWidth + 8, Math.max(ih + 8, fm.getHeight() + 8)));
@@ -291,7 +296,7 @@ public class UIUtils {
             try {
                 File file = new File(path);
                 if (!file.exists()) return;
-                java.awt.image.BufferedImage img = javax.imageio.ImageIO.read(file);
+                BufferedImage img = ImageIO.read(file);
                 if (img == null) {
                     LOG.info("Unsupported icon format (SVG?) at: {0}", path);
                     return;
@@ -299,7 +304,7 @@ public class UIUtils {
                 // Scale with Graphics2D — NOT Image.getScaledInstance(), which
                 // also routes through the ImageFetcher pool and would block if
                 // the pool is starved by stuck network fetches.
-                java.awt.image.BufferedImage scaled = scaleSmooth(
+                BufferedImage scaled = scaleSmooth(
                         img, size, size);
                 // ImageIcon(BufferedImage) still calls MediaTracker internally,
                 // but a BufferedImage is already fully decoded in memory so
@@ -324,14 +329,14 @@ public class UIUtils {
      * aggressive bilinear downscale (the previous behavior) when shrinking a large
      * photo down to a small avatar.
      */
-    static java.awt.image.BufferedImage scaleSmooth(java.awt.image.BufferedImage src,
+    static BufferedImage scaleSmooth(BufferedImage src,
             int targetW, int targetH) {
         int w = src.getWidth();
         int h = src.getHeight();
         if (w == targetW && h == targetH) {
             return src;
         }
-        java.awt.image.BufferedImage current = src;
+        BufferedImage current = src;
         boolean isTransparent = src.getColorModel().hasAlpha();
         // Progressively halve while EITHER dimension is more than 2x the target,
         // so each step uses bilinear (area-averaging) at a modest reduction ratio
@@ -339,14 +344,14 @@ public class UIUtils {
         while (w > targetW * 2 || h > targetH * 2) {
             int nw = Math.max(targetW, w / 2);
             int nh = Math.max(targetH, h / 2);
-            java.awt.image.BufferedImage next = new java.awt.image.BufferedImage(
+            BufferedImage next = new BufferedImage(
                     nw, nh, isTransparent
-                            ? java.awt.image.BufferedImage.TYPE_INT_ARGB
-                            : java.awt.image.BufferedImage.TYPE_INT_RGB);
-            java.awt.Graphics2D g = next.createGraphics();
+                            ? BufferedImage.TYPE_INT_ARGB
+                            : BufferedImage.TYPE_INT_RGB);
+            Graphics2D g = next.createGraphics();
             try {
-                g.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION,
-                        java.awt.RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+                g.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
+                        RenderingHints.VALUE_INTERPOLATION_BILINEAR);
                 g.drawImage(current, 0, 0, nw, nh, null);
             } finally {
                 g.dispose();
@@ -355,18 +360,18 @@ public class UIUtils {
             w = nw;
             h = nh;
         }
-        java.awt.image.BufferedImage out = new java.awt.image.BufferedImage(
+        BufferedImage out = new BufferedImage(
                 targetW, targetH, isTransparent
-                        ? java.awt.image.BufferedImage.TYPE_INT_ARGB
-                        : java.awt.image.BufferedImage.TYPE_INT_RGB);
-        java.awt.Graphics2D g = out.createGraphics();
+                        ? BufferedImage.TYPE_INT_ARGB
+                        : BufferedImage.TYPE_INT_RGB);
+        Graphics2D g = out.createGraphics();
         try {
-            g.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION,
-                    java.awt.RenderingHints.VALUE_INTERPOLATION_BICUBIC);
-            g.setRenderingHint(java.awt.RenderingHints.KEY_RENDERING,
-                    java.awt.RenderingHints.VALUE_RENDER_QUALITY);
-            g.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING,
-                    java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+            g.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
+                    RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+            g.setRenderingHint(RenderingHints.KEY_RENDERING,
+                    RenderingHints.VALUE_RENDER_QUALITY);
+            g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                    RenderingHints.VALUE_ANTIALIAS_ON);
             g.drawImage(current, 0, 0, targetW, targetH, null);
         } finally {
             g.dispose();

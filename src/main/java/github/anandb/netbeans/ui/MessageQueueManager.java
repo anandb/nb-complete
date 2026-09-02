@@ -5,6 +5,8 @@ import java.awt.Component;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.event.ActionEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.geom.AffineTransform;
 import java.util.ArrayList;
 import java.util.List;
@@ -51,15 +53,15 @@ public final class MessageQueueManager {
         queueBtn.setIcon(baseIcon);
         queueBtn.setVisible(false);
         // Show popup on right-click (and platform-native popup trigger).
-        queueBtn.addMouseListener(new java.awt.event.MouseAdapter() {
+        queueBtn.addMouseListener(new MouseAdapter() {
             @Override
-            public void mousePressed(java.awt.event.MouseEvent e) {
+            public void mousePressed(MouseEvent e) {
                 if (e.isPopupTrigger()) {
                     showPopupAt(e.getX(), e.getY());
                 }
             }
             @Override
-            public void mouseReleased(java.awt.event.MouseEvent e) {
+            public void mouseReleased(MouseEvent e) {
                 if (e.isPopupTrigger()) {
                     showPopupAt(e.getX(), e.getY());
                 }

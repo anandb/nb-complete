@@ -2,6 +2,7 @@ package github.anandb.netbeans.support;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.prefs.BackingStoreException;
 import java.util.prefs.Preferences;
 
 import org.openide.util.NbPreferences;
@@ -69,7 +70,7 @@ public final class TasksMetadata {
             }
             ids.sort(String::compareTo);
             return ids;
-        } catch (java.util.prefs.BackingStoreException ex) {
+        } catch (BackingStoreException ex) {
             return List.of();
         }
     }

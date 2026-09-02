@@ -7,6 +7,7 @@ import java.awt.Insets;
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
 import java.io.File;
+import java.io.IOException;
 import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JFileChooser;
@@ -123,11 +124,11 @@ public final class TaskRepositoryController implements RepositoryController {
 
     private static String canonical(String p) {
         try {
-            return new java.io.File(p).getCanonicalPath();
-        } catch (java.io.IOException ex) {
+            return new File(p).getCanonicalPath();
+        } catch (IOException ex) {
             // Best effort: resolve against CWD and collapse . / .. so duplicate
             // detection still works when canonicalization fails.
-            return new java.io.File(p).getAbsoluteFile().toPath().normalize().toString();
+            return new File(p).getAbsoluteFile().toPath().normalize().toString();
         }
     }
 
@@ -318,7 +319,7 @@ public final class TaskRepositoryController implements RepositoryController {
     private void browsePath() {
         JFileChooser chooser = new JFileChooser();
         if (pathField != null && !pathField.getText().trim().isEmpty()) {
-            chooser.setSelectedFile(new java.io.File(pathField.getText().trim()));
+            chooser.setSelectedFile(new File(pathField.getText().trim()));
         }
         if (chooser.showSaveDialog(component) == JFileChooser.APPROVE_OPTION) {
             pathField.setText(chooser.getSelectedFile().getAbsolutePath());

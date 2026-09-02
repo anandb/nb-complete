@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.BooleanSupplier;
+import java.util.function.Supplier;
 
 import javax.swing.SwingUtilities;
 
@@ -67,7 +68,7 @@ public class MessageSender {
     private BooleanSupplier permissionPendingCheck;
     private Runnable onPermissionBlockedCallback;
     private MessageQueueManager queueManager;
-    private java.util.function.Supplier<Boolean> onTurnEndedCallback;
+    private Supplier<Boolean> onTurnEndedCallback;
     private BooleanSupplier turnEndedCheck;
 
     public MessageSender(
@@ -130,7 +131,7 @@ public class MessageSender {
         this.queueManager = queueManager;
     }
 
-    public void setOnTurnEndedCallback(java.util.function.Supplier<Boolean> callback) {
+    public void setOnTurnEndedCallback(Supplier<Boolean> callback) {
         this.onTurnEndedCallback = callback;
     }
 

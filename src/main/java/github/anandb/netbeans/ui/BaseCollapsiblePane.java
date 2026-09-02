@@ -372,7 +372,7 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
         if (avgCharWidth <= 0) avgCharWidth = fm.stringWidth("M");
         int usable = Math.max(50, w - 90);
         int chars = usable / avgCharWidth;
-        ToolDataExtractor.setMaxTitleLength(chars);
+        ToolDataExtractor.setMaxTitleLength(chars/2);
     }
 
     protected void copyContentToClipboard() {

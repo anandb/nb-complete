@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -124,7 +125,7 @@ public class TaskToolProvider {
                         return Map.of("status", "error", "message",
                             "Repository '" + repoId + "' has no file path configured.");
                     }
-                    java.io.File tasksFile = new java.io.File(tasksPath);
+                    File tasksFile = new File(tasksPath);
                     if (!tasksFile.exists()) {
                         return Map.of("status", "error", "message",
                             "Repository file not found: " + tasksPath + ". Repository may not be open or configured correctly.");

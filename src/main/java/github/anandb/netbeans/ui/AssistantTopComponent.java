@@ -15,6 +15,7 @@ import java.io.File;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.logging.Level;
 
 import javax.swing.BorderFactory;
@@ -312,13 +313,13 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
         // Turn-end callback: flush queued messages as a single combined prompt.
         // Returns true if messages were flushed (callers must NOT set Ready/Go).
-        java.util.function.Supplier<Boolean> turnEndFlush = () -> {
+        Supplier<Boolean> turnEndFlush = () -> {
             String combined = queueManager.flushAll();
             if (combined != null) {
                 chatPanel.clearQueuedMessageIds();
                 // Briefly show Ready/Go so the user sees the turn ended,
                 // then switch to Sending/Stop when the queued message fires.
-                javax.swing.Timer delay = new javax.swing.Timer(400, e -> {
+                Timer delay = new Timer(400, e -> {
                     messageSender.sendQueuedMessage(combined);
                 });
                 delay.setRepeats(false);

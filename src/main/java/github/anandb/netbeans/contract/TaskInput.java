@@ -1,5 +1,6 @@
 package github.anandb.netbeans.contract;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -37,7 +38,7 @@ public record TaskInput(
         if (s == null || s.isBlank()) {
             return List.of();
         }
-        java.util.List<String> out = new java.util.ArrayList<>();
+        List<String> out = new ArrayList<>();
         for (String part : s.split(",")) {
             String v = part.trim();
             if (!v.isEmpty()) {

@@ -2,6 +2,7 @@ package github.anandb.netbeans.ui;
 
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
@@ -64,7 +65,7 @@ public class SessionLifecycleHandler implements SessionListener {
     private boolean optionsPanelCollapsed = true;
     private boolean isSwitchingSessionDropdown = false;
     private volatile boolean turnEnded = false;
-    private java.util.function.Supplier<Boolean> onTurnEndedCallback;
+    private Supplier<Boolean> onTurnEndedCallback;
 
     /** True while waiting for the preamble response on a new session.
      *  Keeps the progress bar visible until the preamble turn ends. */
@@ -121,7 +122,7 @@ public class SessionLifecycleHandler implements SessionListener {
         turnEnded = false;
     }
 
-    public void setOnTurnEndedCallback(java.util.function.Supplier<Boolean> callback) {
+    public void setOnTurnEndedCallback(Supplier<Boolean> callback) {
         this.onTurnEndedCallback = callback;
     }
 

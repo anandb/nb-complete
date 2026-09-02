@@ -1,5 +1,6 @@
 package github.anandb.netbeans.tasks;
 
+import java.awt.BorderLayout;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
@@ -141,8 +142,8 @@ public final class TaskQueryController implements QueryController {
         // Wrap in a top-aligned BorderLayout so the form pins to the top of the
         // query editor area and any extra vertical space falls below, instead of
         // the GridBagLayout panel being vertically centered.
-        JPanel wrapper = new JPanel(new java.awt.BorderLayout());
-        wrapper.add(panel, java.awt.BorderLayout.NORTH);
+        JPanel wrapper = new JPanel(new BorderLayout());
+        wrapper.add(panel, BorderLayout.NORTH);
         return wrapper;
     }
 

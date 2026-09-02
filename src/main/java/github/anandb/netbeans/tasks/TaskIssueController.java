@@ -1,9 +1,13 @@
 package github.anandb.netbeans.tasks;
 
+import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Component;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
 import java.time.Instant;
@@ -18,6 +22,7 @@ import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JPanel;
+import javax.swing.JSeparator;
 import javax.swing.JTextField;
 import javax.swing.ListCellRenderer;
 import javax.swing.event.DocumentEvent;
@@ -225,10 +230,10 @@ public final class TaskIssueController implements IssueController {
         if (summaryField != null) {
             String s = r.summary() == null ? "" : r.summary();
             if (s.isEmpty()) {
-                summaryField.setForeground(java.awt.Color.GRAY);
+                summaryField.setForeground(Color.GRAY);
                 summaryField.setText(SUMMARY_PLACEHOLDER);
             } else {
-                summaryField.setForeground(java.awt.Color.BLACK);
+                summaryField.setForeground(Color.BLACK);
                 summaryField.setText(s);
             }
         }
@@ -302,21 +307,21 @@ public final class TaskIssueController implements IssueController {
 
     private JComponent buildComponent() {
         summaryField = new JTextField(30);
-        summaryField.setForeground(java.awt.Color.GRAY);
+        summaryField.setForeground(Color.GRAY);
         summaryField.setText(SUMMARY_PLACEHOLDER);
-        summaryField.addFocusListener(new java.awt.event.FocusAdapter() {
+        summaryField.addFocusListener(new FocusAdapter() {
             @Override
-            public void focusGained(java.awt.event.FocusEvent e) {
+            public void focusGained(FocusEvent e) {
                 if (summaryField.getText().equals(SUMMARY_PLACEHOLDER)) {
                     summaryField.setText("");
-                    summaryField.setForeground(java.awt.Color.BLACK);
+                    summaryField.setForeground(Color.BLACK);
                 }
             }
 
             @Override
-            public void focusLost(java.awt.event.FocusEvent e) {
+            public void focusLost(FocusEvent e) {
                 if (summaryField.getText().isEmpty()) {
-                    summaryField.setForeground(java.awt.Color.GRAY);
+                    summaryField.setForeground(Color.GRAY);
                     summaryField.setText(SUMMARY_PLACEHOLDER);
                 }
             }
@@ -376,7 +381,7 @@ public final class TaskIssueController implements IssueController {
         g.weightx = 1;
         g.fill = GridBagConstraints.HORIZONTAL;
         g.insets = new Insets(6, 4, 2, 4);
-        panel.add(new javax.swing.JSeparator(), g);
+        panel.add(new JSeparator(), g);
         g.insets = new Insets(3, 4, 3, 4);
         g.gridwidth = 1;
 
@@ -412,8 +417,8 @@ public final class TaskIssueController implements IssueController {
         // Wrap in a top-aligned BorderLayout so the form sits at the top of the
         // editor area and any extra vertical space falls below (not above) the
         // form, instead of the GridBagLayout panel being vertically centered.
-        JPanel wrapper = new JPanel(new java.awt.BorderLayout());
-        wrapper.add(panel, java.awt.BorderLayout.NORTH);
+        JPanel wrapper = new JPanel(new BorderLayout());
+        wrapper.add(panel, BorderLayout.NORTH);
         return wrapper;
     }
 

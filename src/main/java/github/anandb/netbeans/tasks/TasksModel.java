@@ -1,5 +1,7 @@
 package github.anandb.netbeans.tasks;
 
+import java.util.Set;
+
 /**
  * Implementation-specific container types used by the generic bugtracking SPI
  * ({@code RepositoryProvider<R,Q,I>}): the repository ({@code R}) and the query
@@ -80,7 +82,7 @@ public final class TasksModel {
         // Transient, session-only search criteria (not persisted): when non-empty
         // the Find Issues dialog filters the repository's tasks to those carrying
         // at least one of the selected tags.
-        private volatile java.util.Set<String> tagFilter = java.util.Set.of();
+        private volatile Set<String> tagFilter = Set.of();
 
         public TaskQuery(String name, TaskRepository repository) {
             this(name, repository, Kind.ALL);
@@ -104,12 +106,12 @@ public final class TasksModel {
             return kind;
         }
 
-        public java.util.Set<String> getTagFilter() {
+        public Set<String> getTagFilter() {
             return tagFilter;
         }
 
-        public void setTagFilter(java.util.Set<String> tagFilter) {
-            this.tagFilter = tagFilter == null ? java.util.Set.of() : tagFilter;
+        public void setTagFilter(Set<String> tagFilter) {
+            this.tagFilter = tagFilter == null ? Set.of() : tagFilter;
         }
     }
 }

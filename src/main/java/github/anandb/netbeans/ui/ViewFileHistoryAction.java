@@ -1,5 +1,6 @@
 package github.anandb.netbeans.ui;
 
+import java.awt.event.ActionEvent;
 import java.io.File;
 import javax.swing.Action;
 import org.netbeans.modules.versioning.spi.VCSHistoryProvider;
@@ -33,7 +34,7 @@ public final class ViewFileHistoryAction extends BaseVersioningEditorAction {
     }
 
     @Override
-    protected void perform(File file, java.awt.event.ActionEvent e) {
+    protected void perform(File file, ActionEvent e) {
         VersioningSystem vcs = VersioningSupport.getOwner(file);
         if (vcs == null) {
             return;

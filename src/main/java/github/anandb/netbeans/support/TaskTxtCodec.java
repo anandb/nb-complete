@@ -3,6 +3,7 @@ package github.anandb.netbeans.support;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -135,7 +136,7 @@ public final class TaskTxtCodec {
         if (content == null || content.isBlank()) {
             return result;
         }
-        Set<String> usedIds = new java.util.HashSet<>();
+        Set<String> usedIds = new HashSet<>();
         for (String rawLine : content.split("\n", -1)) {
             String line = rawLine.strip();
             if (line.isEmpty()) {
