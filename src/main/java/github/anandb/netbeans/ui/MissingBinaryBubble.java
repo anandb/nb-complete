@@ -35,7 +35,7 @@ class MissingBinaryBubble extends JPanel {
     private Icon copyIcon;
 
     /** The buttons panel; disabled when the user clicks Restart. */
-    private JPanel buttonsPanel;
+    private final JPanel buttonsPanel;
 
     MissingBinaryBubble(Runnable onGuide, RestartCallback restartCallback) {
         setLayout(new BorderLayout());

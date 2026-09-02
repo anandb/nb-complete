@@ -76,8 +76,8 @@ public class MiniAssistantDialog extends JDialog {
     private PlaceholderTextArea inputArea;
     private JPanel responsePane;
     private JSplitPane splitPane;
-    private JLabel tokenOverlay;
-    private JProgressBar spinnerBar;
+    private final JLabel tokenOverlay;
+    private final JProgressBar spinnerBar;
     private Timer tokenTimer;
     private KeyEventDispatcher keyDispatcher;
 
@@ -89,9 +89,9 @@ public class MiniAssistantDialog extends JDialog {
 
     // Permission panel components
     private final WobblePanel miniPermissionPanel;
-    private JLabel miniPermissionLabel;
-    private JTextArea miniContextLabel;
-    private JPanel miniPermissionButtons;
+    private final JLabel miniPermissionLabel;
+    private final JTextArea miniContextLabel;
+    private final JPanel miniPermissionButtons;
     private CompletableFuture<String> activePermissionFuture;
     private String miniPermissionBaseContext;
     private boolean miniPermissionParseFailed;
@@ -109,9 +109,9 @@ public class MiniAssistantDialog extends JDialog {
     private final Map<String, Integer> wordsByMessageId = new ConcurrentHashMap<>();
 
     // Processing status components (elapsed time + spinner + stop button)
-    private JLabel elapsedLabel;
-    private JLabel spinnerLabel;
-    private JButton stopBtn;
+    private final JLabel elapsedLabel;
+    private final JLabel spinnerLabel;
+    private final JButton stopBtn;
     private Timer elapsedTimer;
     private long processingStartTime;
 

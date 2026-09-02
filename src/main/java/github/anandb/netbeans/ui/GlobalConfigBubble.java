@@ -25,7 +25,7 @@ class GlobalConfigBubble extends JPanel {
     private boolean dismissed;
 
     /** The opaque bubble chrome holding the title, body, and action buttons. */
-    private JPanel bubbleContent;
+    private final JPanel bubbleContent;
 
     /**
      * @param result        evaluation outcome driving the message and buttons
