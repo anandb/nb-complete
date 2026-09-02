@@ -96,6 +96,12 @@ public class ProcessManager implements ProcessControl {
      *  until the whole IDE is restarted. See SessionManager#resetForServerRestart. */
     private volatile Runnable preRestartHandler;
 
+    /** Caveman instruction text — terse replies to save output tokens. */
+    private static final String CAVEMAN_INSTRUCTION =
+        "Respond in minimal, terse prose. Short sentences. No filler. " +
+        "Code, commands, and file paths stay exact. " +
+        "When explaining, use the fewest words that convey the meaning.";
+
     /** Debounce timer for preference-triggered restarts — avoids restarting with
      *  stale values when {@code ACPOptionsPanel.store()} writes multiple
      *  preferences in sequence. */
@@ -315,6 +321,16 @@ public class ProcessManager implements ProcessControl {
         }
 
         List<Map<String, Object>> promptBlocks = new ArrayList<>();
+
+        // Caveman mode — terse instruction for output token savings
+        Preferences prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
+        if (prefs.getBoolean(PreferenceKeys.CAVEMAN_MODE, false)) {
+            Map<String, Object> instructionBlock = new HashMap<>();
+            instructionBlock.put("type", "text");
+            instructionBlock.put("text", CAVEMAN_INSTRUCTION);
+            instructionBlock.put("annotations", Map.of("audience", List.of("assistant")));
+            promptBlocks.add(instructionBlock);
+        }
 
         if (context != null && !isPiAcp()) {
             String filePath = (String) context.get("filePath");

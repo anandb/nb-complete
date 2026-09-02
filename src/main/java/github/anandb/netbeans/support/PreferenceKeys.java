@@ -75,6 +75,9 @@ public final class PreferenceKeys {
     /** Whether the embedded MCP server is enabled (enabled by default). */
     public static final String MCP_SERVER_ENABLED = "mcpServer.enabled";
 
+    /** Whether caveman mode is enabled — terse replies to save output tokens (disabled by default). */
+    public static final String CAVEMAN_MODE = "caveman.enabled";
+
     /** Internal MCP server HTTP port. 0 (default) = pick a random free port. */
     public static final String MCP_SERVER_PORT = "mcpServer.port";
 

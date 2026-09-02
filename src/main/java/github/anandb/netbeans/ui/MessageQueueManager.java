@@ -40,6 +40,7 @@ public final class MessageQueueManager {
     private final int iconSize;
     private Timer wobbleTimer;
     private boolean wobbling;
+    private Runnable sendNowCallback;
 
     MessageQueueManager() {
         int iconSize = Math.max(PluginSettings.getToolbarIconSize(), 32);
@@ -69,6 +70,11 @@ public final class MessageQueueManager {
     /** Returns the toolbar button to be added to the layout. */
     JButton getButton() {
         return queueBtn;
+    }
+
+    /** Sets the callback invoked when "Send Now" is chosen from the context menu. */
+    void setSendNowCallback(Runnable callback) {
+        this.sendNowCallback = callback;
     }
 
     /** Returns the accent color used for queued bubble indicators. */
@@ -146,6 +152,14 @@ public final class MessageQueueManager {
 
     private void showPopupAt(int x, int y) {
         JPopupMenu popup = new JPopupMenu();
+        JMenuItem sendNowItem = new JMenuItem(
+                NbBundle.getMessage(MessageQueueManager.class, "MENU_SendNow"));
+        sendNowItem.addActionListener(ev -> {
+            if (sendNowCallback != null) {
+                sendNowCallback.run();
+            }
+        });
+        popup.add(sendNowItem);
         JMenuItem cancelItem = new JMenuItem(
                 NbBundle.getMessage(MessageQueueManager.class, "MENU_CancelQueue"));
         cancelItem.addActionListener(ev -> cancelAll());

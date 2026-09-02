@@ -330,6 +330,15 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         messageSender.setOnTurnEndedCallback(turnEndFlush);
         sessionLifecycleHandler.setOnTurnEndedCallback(turnEndFlush);
 
+        // Wire send-now callback for the queue context menu
+        queueManager.setSendNowCallback(() -> {
+            String combined = queueManager.flushAll();
+            if (combined != null) {
+                chatPanel.clearQueuedMessageIds();
+                messageSender.sendQueuedMessage(combined);
+            }
+        });
+
         toggleOptionsBtn.addActionListener(e -> {
             boolean collapsed = !sessionLifecycleHandler.isOptionsPanelCollapsed();
             setOptionsPanelVisible(!collapsed);

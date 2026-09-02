@@ -76,6 +76,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
     private JCheckBox taskRepositoryCheckbox;
     private JCheckBox markdownProjectCheckbox;
     private JCheckBox mcpServerCheckbox;
+    private JCheckBox cavemanModeCheckbox;
     private JSpinner mcpPortSpinner;
     private JCheckBox useWslCheckbox;
     private JSpinner idleTimeoutSpinner;
@@ -128,6 +129,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         taskRepositoryCheckbox = new JCheckBox();
         markdownProjectCheckbox = new JCheckBox();
         mcpServerCheckbox = new JCheckBox();
+        cavemanModeCheckbox = new JCheckBox();
         iconLabel = new JLabel();
         iconPathField = new JTextField(40);
         iconBrowseButton = new JButton();
@@ -299,6 +301,12 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         autoBackupChangesCheckbox.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_AutoBackupChanges"));
         autoBackupChangesCheckbox.addActionListener(evt -> controller.changed());
         behaviorPanel.add(autoBackupChangesCheckbox, UIUtils.createGbc(0, ++row, 1.0, 0, GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST,
+                new Insets(0, 12, 5, 0)));
+
+        cavemanModeCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_CavemanMode"));
+        cavemanModeCheckbox.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_CavemanMode"));
+        cavemanModeCheckbox.addActionListener(evt -> controller.changed());
+        behaviorPanel.add(cavemanModeCheckbox, UIUtils.createGbc(0, ++row, 1.0, 0, GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST,
                 new Insets(0, 12, 5, 0)));
 
         editPreambleButton = new JButton(NbBundle.getMessage(ACPOptionsPanel.class, "BTN_EditPreamble"));
@@ -557,6 +565,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         mcpServerCheckbox.setSelected(PluginSettings.isMcpServerEnabled());
         mcpPortSpinner.setValue(PluginSettings.getMcpServerPort());
         useWslCheckbox.setSelected(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean(PreferenceKeys.USE_WSL, false));
+        cavemanModeCheckbox.setSelected(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean(PreferenceKeys.CAVEMAN_MODE, false));
     }
 
     private void clearHint() {
@@ -627,6 +636,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         PluginSettings.setMcpServerEnabled(mcpServerCheckbox.isSelected());
         PluginSettings.setMcpServerPort((Integer) mcpPortSpinner.getValue());
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean(PreferenceKeys.USE_WSL, useWslCheckbox.isSelected());
+        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean(PreferenceKeys.CAVEMAN_MODE, cavemanModeCheckbox.isSelected());
 
         String newIconPath = iconPathField.getText();
         String oldPath = previousIconPath != null ? previousIconPath : "";
