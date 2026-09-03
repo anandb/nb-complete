@@ -12,6 +12,7 @@ import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 
 import static org.apache.commons.lang3.StringUtils.isBlank;
 
@@ -22,6 +23,11 @@ public class GitToolProvider {
 
     private static final Logger LOG = Logger.from(GitToolProvider.class);
     private static final ObjectMapper MAPPER = MapperSupplier.get();
+
+    /** Accepts git revision tokens only (hashes, refs, ranges like a..b,
+     *  HEAD~1, ref:path). Rejects option injection — a leading '-' would let
+     *  a caller smuggle git flags such as --output into the diff command. */
+    private static final Pattern SAFE_DIFF_TARGET = Pattern.compile("^[A-Za-z0-9._/~^:-]+$");
 
     public void registerTools(McpTools mcpTools) {
         registerGitStatus(mcpTools);
@@ -82,6 +88,8 @@ public class GitToolProvider {
                             return runGitCommand(repoDir, "git", "diff", "--cached");
                         } else if (isBlank(target)) {
                             return runGitCommand(repoDir, "git", "diff");
+                        } else if (!SAFE_DIFF_TARGET.matcher(target).matches()) {
+                            return Map.of("status", "error", "message", "Invalid diff target: " + target);
                         } else {
                             return runGitCommand(repoDir, "git", "diff", target);
                         }
