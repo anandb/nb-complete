@@ -45,6 +45,41 @@ public class FileSystemToolProvider {
     private static final Logger LOG = Logger.from(FileSystemToolProvider.class);
     private static final ObjectMapper MAPPER = MapperSupplier.get();
 
+    /**
+     * Returns true when {@code path} lies inside one of the currently open
+     * projects. Both the requested path and the project roots are
+     * canonicalized, so relative escapes ({@code ../}) and symlinks pointing
+     * outside a project are rejected.
+     */
+    private static boolean isInOpenProject(String path) {
+        ProjectQuery pq = Lookup.getDefault().lookup(ProjectQuery.class);
+        Project[] openProjects = pq == null ? new Project[0] : pq.getAllOpenProjects();
+        if (openProjects.length == 0) {
+            return false;
+        }
+        try {
+            String canonical = new File(path).getCanonicalPath();
+            for (Project p : openProjects) {
+                File projectDirFile = org.openide.filesystems.FileUtil.toFile(p.getProjectDirectory());
+                if (projectDirFile == null) {
+                    continue;
+                }
+                String projectRoot = projectDirFile.getCanonicalPath();
+                if (canonical.equals(projectRoot) || canonical.startsWith(projectRoot + File.separator)) {
+                    return true;
+                }
+            }
+        } catch (IOException e) {
+            LOG.warn("Path containment check failed for {0}: {1}", path, e.getMessage());
+        }
+        return false;
+    }
+
+    /** Standard rejection response for paths outside the open projects. */
+    private static Map<String, Object> outsideProjectError(String path) {
+        return Map.of("status", "error", "message", "Path is outside the open projects: " + path);
+    }
+
     public void registerTools(McpTools mcpTools) {
         registerReadFile(mcpTools);
         registerWriteToFile(mcpTools);
@@ -86,6 +121,9 @@ public class FileSystemToolProvider {
                     public Map<String, Object> execute(ReadFileInput args) throws Exception {
                         if (isBlank(args.filePath())) {
                             return Map.of("status", "error", "message", "filePath is required");
+                        }
+                        if (!isInOpenProject(args.filePath())) {
+                            return outsideProjectError(args.filePath());
                         }
                         File file = new File(args.filePath());
                         if (!file.exists()) {
@@ -143,6 +181,9 @@ public class FileSystemToolProvider {
                         }
                         if (args.content() == null) {
                             return Map.of("status", "error", "message", "content is required");
+                        }
+                        if (!isInOpenProject(args.filePath())) {
+                            return outsideProjectError(args.filePath());
                         }
                         File file = new File(args.filePath());
                         File parent = file.getParentFile();
@@ -205,10 +246,13 @@ public class FileSystemToolProvider {
                 new ToolExecutor<ReplaceLinesInput, Map<String, Object>>(ReplaceLinesInput.class) {
                     @Override
                     public Map<String, Object> execute(ReplaceLinesInput args) throws Exception {
-                        List<String> lines = readLinesFromPath(args.filePath());
-                        if (lines == null) {
+                        if (isBlank(args.filePath())) {
                             return Map.of("status", "error", "message", "filePath is required");
                         }
+                        if (!isInOpenProject(args.filePath())) {
+                            return outsideProjectError(args.filePath());
+                        }
+                        List<String> lines = readLinesFromPath(args.filePath());
                         File file = new File(args.filePath());
                         int start = Math.max(1, args.startLine());
                         int end = Math.min(lines.size(), args.endLine());
@@ -255,10 +299,13 @@ public class FileSystemToolProvider {
                 new ToolExecutor<InsertInFileInput, Map<String, Object>>(InsertInFileInput.class) {
                     @Override
                     public Map<String, Object> execute(InsertInFileInput args) throws Exception {
-                        List<String> lines = readLinesFromPath(args.filePath());
-                        if (lines == null) {
+                        if (isBlank(args.filePath())) {
                             return Map.of("status", "error", "message", "filePath is required");
                         }
+                        if (!isInOpenProject(args.filePath())) {
+                            return outsideProjectError(args.filePath());
+                        }
+                        List<String> lines = readLinesFromPath(args.filePath());
                         File file = new File(args.filePath());
                         int line = Math.max(1, Math.min(lines.size() + 1, args.line()));
                         String[] insertionLines = args.content().split("\n", -1);
@@ -301,6 +348,12 @@ public class FileSystemToolProvider {
                 new ToolExecutor<DeleteLinesInput, Map<String, Object>>(DeleteLinesInput.class) {
                     @Override
                     public Map<String, Object> execute(DeleteLinesInput args) throws Exception {
+                        if (isBlank(args.filePath())) {
+                            return Map.of("status", "error", "message", "filePath is required");
+                        }
+                        if (!isInOpenProject(args.filePath())) {
+                            return outsideProjectError(args.filePath());
+                        }
                         File file = new File(args.filePath());
                         if (!file.exists()) {
                             return Map.of("status", "error", "message",
@@ -384,8 +437,14 @@ public class FileSystemToolProvider {
                         for (Project p : projects) {
                             File projectDirFile = org.openide.filesystems.FileUtil.toFile(p.getProjectDirectory());
                             if (projectDirFile == null) continue;
-                            Path projectDir = projectDirFile.toPath();
-                            Path searchRoot = searchDir != null ? projectDir.resolve(searchDir) : projectDir;
+                            Path projectDir = projectDirFile.toPath().normalize();
+                            Path searchRoot = searchDir != null ? projectDir.resolve(searchDir).normalize() : projectDir;
+                            // Reject traversal escapes (e.g. "../../..") so the
+                            // search cannot scan directories outside the project.
+                            if (!searchRoot.startsWith(projectDir)) {
+                                return Map.of("status", "error", "message",
+                                        "directory escapes the project root: " + searchDir);
+                            }
                             if (!Files.isDirectory(searchRoot)) continue;
                             Files.walkFileTree(searchRoot, new SimpleFileVisitor<>() {
                                 @Override
@@ -458,6 +517,9 @@ public class FileSystemToolProvider {
                     public Map<String, Object> execute(ListDirectoryInput args) throws Exception {
                         if (isBlank(args.dirPath())) {
                             return Map.of("status", "error", "message", "dirPath is required");
+                        }
+                        if (!isInOpenProject(args.dirPath())) {
+                            return outsideProjectError(args.dirPath());
                         }
                         File dir = new File(args.dirPath());
                         if (!dir.exists()) {
@@ -620,6 +682,9 @@ public class FileSystemToolProvider {
                         }
                         if (isBlank(args.patch())) {
                             return Map.of("status", "error", "message", "patch is required");
+                        }
+                        if (!isInOpenProject(args.filePath())) {
+                            return outsideProjectError(args.filePath());
                         }
                         File file = new File(args.filePath());
                         if (!file.exists()) {
