@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.function.Consumer;
@@ -72,7 +73,8 @@ public class ChatThreadPanel extends JPanel {
     private long lastUserTimestamp = -1L;
     private int userMessageCount = 0;
     private final ConcurrentLinkedQueue<Runnable> messageQueue = new ConcurrentLinkedQueue<>();
-    private volatile boolean draining = false;
+    /** CAS-guarded so concurrent addMessage() calls can't double-schedule the drain. */
+    private final AtomicBoolean draining = new AtomicBoolean(false);
 
     /** Message IDs that are queued (not yet posted to the server). Used to
      *  apply the "queued" visual indicator (amber accent + label) on bubbles. */
@@ -284,8 +286,7 @@ public class ChatThreadPanel extends JPanel {
         }
 
         messageQueue.add(() -> processMessageOnEDT(pm));
-        if (!draining) {
-            draining = true;
+        if (draining.compareAndSet(false, true)) {
             SwingUtilities.invokeLater(this::drainMessageQueue);
         }
     }
@@ -307,7 +308,7 @@ public class ChatThreadPanel extends JPanel {
         if (loadRenderInProgress) {
             // A load render is drawing history across chunks; hold live deltas
             // queued until it completes, then it kicks the drain.
-            draining = false;
+            draining.set(false);
             return;
         }
         int count = 0;
@@ -326,7 +327,7 @@ public class ChatThreadPanel extends JPanel {
         if (!messageQueue.isEmpty()) {
             SwingUtilities.invokeLater(this::drainMessageQueue);
         } else {
-            draining = false;
+            draining.set(false);
         }
     }
 
@@ -685,32 +686,40 @@ public class ChatThreadPanel extends JPanel {
      * @return true if any bubble was finalized
      */
     private boolean sweepStreamingBubbles(boolean wasAtBottom) {
-        boolean anyFinalized = false;
+        // Collect first, finalize after: finalizeStreaming()/flushUpdate() can
+        // mutate the container, so deciding from the snapshot and acting in a
+        // second pass keeps the sweep safe against tree changes.
         Component[] all = messagesContainer.getComponents();
         // Streaming bubbles only exist in the current turn (after the last user
         // bubble); earlier turns are already finalized, so skip the thread prefix.
         int start = currentTurnStartIndex(all, 1);
+        List<MessageBubble> streaming = new ArrayList<>();
         for (int i = start; i < all.length; i++) {
             if (all[i] instanceof MessageBubble mb) {
-                boolean flagSaysStreaming = mb.streamingFlagsSet();
-                boolean hasTextArea = mb.hasStreamingTextArea();
-                if (hasTextArea) {
-                    mb.flushUpdate(true);
-                    if (flagSaysStreaming) {
-                        mb.finalizeStreaming(allBlocksExpanded, true);
-                    } else {
-                        // Flags corrupted — finalizeStreaming would short-circuit
-                        // because it checks the private isStreaming flag directly.
-                        mb.forceFinalize(allBlocksExpanded);
-                    }
-                    anyFinalized = true;
-                } else if (flagSaysStreaming) {
-                    // No JTextArea (tool/thought content-updater path),
-                    // but flags still say streaming. Normal finalize.
-                    mb.flushUpdate(true);
-                    mb.finalizeStreaming(allBlocksExpanded, true);
-                    anyFinalized = true;
+                if (mb.hasStreamingTextArea() || mb.streamingFlagsSet()) {
+                    streaming.add(mb);
                 }
+            }
+        }
+        boolean anyFinalized = false;
+        for (MessageBubble mb : streaming) {
+            boolean flagSaysStreaming = mb.streamingFlagsSet();
+            if (mb.hasStreamingTextArea()) {
+                mb.flushUpdate(true);
+                if (flagSaysStreaming) {
+                    mb.finalizeStreaming(allBlocksExpanded, true);
+                } else {
+                    // Flags corrupted — finalizeStreaming would short-circuit
+                    // because it checks the private isStreaming flag directly.
+                    mb.forceFinalize(allBlocksExpanded);
+                }
+                anyFinalized = true;
+            } else if (flagSaysStreaming) {
+                // No JTextArea (tool/thought content-updater path),
+                // but flags still say streaming. Normal finalize.
+                mb.flushUpdate(true);
+                mb.finalizeStreaming(allBlocksExpanded, true);
+                anyFinalized = true;
             }
         }
         if (anyFinalized) {
@@ -1054,14 +1063,17 @@ public class ChatThreadPanel extends JPanel {
 
     public void clearMessages() {
         cachedMessages = null;
-        messageQueue.clear();
-        pendingMessagesBySession.clear();
-        seenMessageIdsBySession.clear();
         // Stop the repeating flush timer off-EDT. The per-bubble streaming
         // finalization (stopStreaming) must run on EDT inside invokeLater
         // to safely touch the component tree before removeAll.
         streamingCoordinator.cleanup();
         SwingUtilities.invokeLater(() -> {
+            // Clear queue/buffers on the EDT: clearing the queue off-EDT and
+            // wiping the container a tick later let a racing addMessage()
+            // enqueue between the two, leaving ghost bubbles on an empty panel.
+            messageQueue.clear();
+            pendingMessagesBySession.clear();
+            seenMessageIdsBySession.clear();
             stopStreaming();
             messagesContainer.removeAll();
             startSessionHintShown = false;
@@ -1134,10 +1146,17 @@ public class ChatThreadPanel extends JPanel {
                 if (pm.isIgnorable()) continue;
                 String text = pm.text();
                 if (text == null) text = "";
-                if (pm.streaming()) {
-                    processMessageSections(pm, text, pm.messageType().roleName(), false);
-                } else {
-                    addSingleBubble(pm.messageType(), text, pm.messageId(), pm.toolTitle(), false, false);
+                // Per-message guard: one malformed bubble must not abort the
+                // chunk chain — an uncaught throw here would leave
+                // loadRenderInProgress/batchAdding stuck and freeze the drain.
+                try {
+                    if (pm.streaming()) {
+                        processMessageSections(pm, text, pm.messageType().roleName(), false);
+                    } else {
+                        addSingleBubble(pm.messageType(), text, pm.messageId(), pm.toolTitle(), false, false);
+                    }
+                } catch (Exception ex) {
+                    LOG.warn("Error rendering loaded message: {0}", ExceptionUtils.getMessage(ex));
                 }
             }
             if (offset[0] < toRender.size()) {
@@ -1161,8 +1180,7 @@ public class ChatThreadPanel extends JPanel {
                 // Drain any live deltas that queued (but couldn't drain) while
                 // the render was in flight — ordering preserved: full history,
                 // then the new delta(s).
-                if (!messageQueue.isEmpty() && !draining) {
-                    draining = true;
+                if (!messageQueue.isEmpty() && draining.compareAndSet(false, true)) {
                     SwingUtilities.invokeLater(this::drainMessageQueue);
                 }
             }
