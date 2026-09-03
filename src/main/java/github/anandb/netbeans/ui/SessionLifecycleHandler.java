@@ -1,6 +1,7 @@
 package github.anandb.netbeans.ui;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import javax.swing.JButton;
@@ -155,7 +156,14 @@ public class SessionLifecycleHandler implements SessionListener {
     public void onMessageDone() {
         LOG.info("onMessageDone called (turnEnded -> true, triggering onTurnEnded)");
         turnEnded = true;
-        sessionService.get().onTurnEnded();
+        runTurnEndedOffEdt();
+    }
+
+    /** Runs the state-machine turn-end transition off the EDT: SessionControl
+     *  is a contract port that must stay free to do blocking work without
+     *  freezing the UI thread. */
+    private void runTurnEndedOffEdt() {
+        CompletableFuture.runAsync(() -> sessionService.get().onTurnEnded());
     }
 
     boolean isSwitchingSessionDropdown() {
@@ -608,7 +616,7 @@ public class SessionLifecycleHandler implements SessionListener {
             statusController.updateButtonState(false);
             statusController.setInputEnabled(true);
             turnEnded = true;
-            sessionService.get().onTurnEnded();
+            runTurnEndedOffEdt();
             chatPanel.setSessionLoading(false);
             chatPanel.stopStreaming();
             chatPanel.addMessage(ProcessedMessage.createError(
