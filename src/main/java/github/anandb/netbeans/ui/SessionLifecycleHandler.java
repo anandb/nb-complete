@@ -1,6 +1,8 @@
 package github.anandb.netbeans.ui;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -286,8 +288,20 @@ public class SessionLifecycleHandler implements SessionListener {
 
     @Override
     public void onSessionListUpdated(List<Session> allSessions) {
+        // Precompute per-session preference lookups OFF the EDT: isHidden()/
+        // getCustomTitle() hit NbPreferences once per session (and the legacy
+        // migration path can even WRITE), so running them inside the EDT
+        // runnable would stall the UI for long session lists. Only Swing
+        // mutations happen on the EDT below.
+        Map<String, Boolean> hiddenById = new HashMap<>();
+        Map<String, String> titlesById = new HashMap<>();
+        for (Session s : allSessions) {
+            hiddenById.put(s.id(), sessionService.get().isHidden(s.id()));
+            titlesById.put(s.id(), sessionService.get().getCustomTitle(s.id(), s.title()));
+        }
         SwingUtilities.invokeLater(() -> {
             List<Session> sessions = allSessions;
+            boolean showHidden = ChatLayoutBuilder.isShowingHidden();
             isSwitchingSessionDropdown = true;
             try {
                 String currentId = sessionService.get().getCurrentSessionId();
@@ -295,14 +309,13 @@ public class SessionLifecycleHandler implements SessionListener {
                 LOG.fine("onSessionListUpdated: adding {0} sessions to dropdown", sessions.size());
                 int selectIdx = -1;
                 int itemIdx = 0;
-                boolean showHidden = ChatLayoutBuilder.isShowingHidden();
                 for (int i = 0; i < sessions.size(); i++) {
                     Session s = sessions.get(i);
                     // Filter hidden sessions unless show-hidden toggle is active
-                    if (!showHidden && sessionService.get().isHidden(s.id())) {
+                    if (!showHidden && hiddenById.getOrDefault(s.id(), false)) {
                         continue;
                     }
-                    String customTitle = sessionService.get().getCustomTitle(s.id(), s.title());
+                    String customTitle = titlesById.getOrDefault(s.id(), s.title());
                     sessionDropdown.addItem(new SessionItem(s, customTitle));
                     if (currentId != null && s.id().equals(currentId)) {
                         selectIdx = itemIdx;
@@ -319,7 +332,7 @@ public class SessionLifecycleHandler implements SessionListener {
                 // When the session is being filtered out (archived), onSessionLoaded will set the
                 // correct icon for the replacement session — updating here causes a brief icon flip.
                 if (currentId != null && selectIdx != -1) {
-                    boolean hidden = sessionService.get().isHidden(currentId);
+                    boolean hidden = hiddenById.getOrDefault(currentId, false);
                     hideBtn.setIcon(ThemeManager.getIcon(hidden ? "unarchive.svg" : "archive.svg", PluginSettings.getToolbarIconSize()));
                     hideBtn.setToolTipText(hidden
                         ? NbBundle.getMessage(AssistantTopComponent.class, "HINT_UnarchiveSession")
@@ -356,7 +369,7 @@ public class SessionLifecycleHandler implements SessionListener {
                             SessionItem item = sessionDropdown.getItemAt(i);
                             if (item != null && prevDir != null
                                     && prevDir.equals(item.getSession().effectiveDirectory())
-                                    && (showHidden || !sessionService.get().isHidden(item.getSession().id()))) {
+                                    && (showHidden || !hiddenById.getOrDefault(item.getSession().id(), false))) {
                                 sameProjectMatch = item;
                                 break;
                             }
@@ -367,7 +380,7 @@ public class SessionLifecycleHandler implements SessionListener {
                         if (fallback == null) {
                             for (int i = 0; i < sessionDropdown.getItemCount(); i++) {
                                 SessionItem item = sessionDropdown.getItemAt(i);
-                                if (item != null && (showHidden || !sessionService.get().isHidden(item.getSession().id()))) {
+                                if (item != null && (showHidden || !hiddenById.getOrDefault(item.getSession().id(), false))) {
                                     fallback = item;
                                     break;
                                 }
@@ -403,7 +416,7 @@ public class SessionLifecycleHandler implements SessionListener {
                     // Filter hidden sessions for WelcomeScreen too
                     List<Session> visibleSessions = showHidden ? sessions
                         : sessions.stream()
-                            .filter(s -> !sessionService.get().isHidden(s.id()))
+                            .filter(s -> !hiddenById.getOrDefault(s.id(), false))
                             .toList();
                     chatPanel.setSessionList(visibleSessions, id -> sessionService.get().loadSession(id), () -> {
                         Project[] projects = projectContext.getAllOpenProjects();

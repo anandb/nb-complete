@@ -30,7 +30,11 @@ import org.openide.util.NbBundle;
 class StartupInfoBubble extends JPanel {
 
     private static final long serialVersionUID = 1L;
-    private static final Pattern VERSION_PATTERN = Pattern.compile("^pi v(.+)$", Pattern.MULTILINE);
+    /** Matches an {@code <agent> v<version>} banner line (e.g. "pi v0.84.4",
+     *  "pi-agent v1.2"). The agent token is captured so detection and display
+     *  stay in sync with whatever harness emits the banner — no hardcoded
+     *  prefix. */
+    private static final Pattern BANNER_PATTERN = Pattern.compile("^(\\S+) v(\\S+)$");
     private static final Pattern CONTEXT_PATTERN = Pattern.compile("## Context\\s*\n((?:- .+\n?)+)", Pattern.MULTILINE);
     private static final Pattern EXTENSION_PATTERN = Pattern.compile("## Extensions\\s*\n((?:- .+\n?(?:  - .+\n?)*)*)", Pattern.MULTILINE);
 
@@ -45,10 +49,10 @@ class StartupInfoBubble extends JPanel {
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
         card.setBorder(new EmptyBorder(8, 12, 8, 12));
 
-        // Parse version
-        String version = extractVersion(text);
-        if (version != null) {
-            JLabel versionLabel = new JLabel("pi v" + version);
+        // Parse "<agent> v<version>" banner
+        String bannerLabel = extractBannerLabel(text);
+        if (bannerLabel != null) {
+            JLabel versionLabel = new JLabel(bannerLabel);
             versionLabel.setFont(ThemeManager.getFont().deriveFont(Font.BOLD, ThemeManager.getFont().getSize() + 1f));
             versionLabel.setForeground(theme.foreground());
             versionLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -101,10 +105,10 @@ class StartupInfoBubble extends JPanel {
         setAlignmentX(LEFT_ALIGNMENT);
     }
 
-    private static String extractVersion(String text) {
-        Matcher m = VERSION_PATTERN.matcher(text);
+    private static String extractBannerLabel(String text) {
+        Matcher m = BANNER_PATTERN.matcher(text);
         if (m.find()) {
-            return m.group(1).trim();
+            return m.group(1) + " v" + m.group(2).trim();
         }
         return null;
     }
@@ -163,9 +167,16 @@ class StartupInfoBubble extends JPanel {
         return path;
     }
 
-    /** Returns true if the text matches the startup message pattern. */
+    /** Returns true if the text is a harness startup banner: an
+     *  {@code <agent> v<version>} first line plus the Context/Extensions
+     *  markers. */
     static boolean isStartupMessage(String text) {
-        if (text == null || !text.startsWith("pi v")) {
+        if (text == null || text.isEmpty()) {
+            return false;
+        }
+        int firstNl = text.indexOf('\n');
+        String firstLine = firstNl >= 0 ? text.substring(0, firstNl) : text;
+        if (!BANNER_PATTERN.matcher(firstLine).matches()) {
             return false;
         }
         return text.contains("## Context") && text.contains("## Extensions");

@@ -291,10 +291,11 @@ public class ChatThreadPanel extends JPanel {
         }
     }
 
-    // Messages drained per EDT tick. Yield after every message so a slow/large
-    // session load or stream never blocks the EDT — one render per tick keeps
-    // the IDE responsive between bubbles.
-    private static final int MESSAGE_DRAIN_BATCH_SIZE = 1;
+    // Messages drained per EDT tick. Yield after every batch so a slow/large
+    // session load or stream never blocks the EDT, while still draining bursty
+    // SSE arrivals (e.g. several queued tool calls) in fewer ticks than the
+    // old single-message batches.
+    private static final int MESSAGE_DRAIN_BATCH_SIZE = 4;
     // Max bubbles rendered per EDT tick during a session load, keeping the
     // IDE responsive while a large history is drawn one message at a time.
     private static final int LOAD_RENDER_BATCH_SIZE = 1;
@@ -638,23 +639,25 @@ public class ChatThreadPanel extends JPanel {
         if (blankBubbles.isEmpty()) {
             return false;
         }
-        for (MessageBubble mb : blankBubbles) {
-            Container parent = mb.getParent();
-            if (parent == null) {
-                continue;
-            }
-            Component[] children = parent.getComponents();
-            for (int i = 0; i < children.length; i++) {
-                if (children[i] != mb) {
-                    continue;
+        // Remove by component identity, pairing each bubble with its trailing
+        // strut via the snapshot — no index arithmetic, so removals can't
+        // shift positions under us.
+        for (int i = 0; i < all.length; i++) {
+            Component c = all[i];
+            if (c instanceof MessageBubble mb && blankBubbles.contains(mb)) {
+                Container parent = mb.getParent();
+                if (parent != null) {
+                    parent.remove(mb);
                 }
-                parent.remove(i);
                 // Each bubble was added with a trailing vertical strut; drop it
-                // too so no gap remains. After remove(i) the strut shifts to i.
-                if (i < parent.getComponentCount() && parent.getComponent(i) instanceof Box.Filler) {
-                    parent.remove(i);
+                // too so no gap remains.
+                if (i + 1 < all.length && all[i + 1] instanceof Box.Filler) {
+                    Component strut = all[i + 1];
+                    Container strutParent = strut.getParent();
+                    if (strutParent != null) {
+                        strutParent.remove(strut);
+                    }
                 }
-                break;
             }
         }
         messagesContainer.revalidate();
