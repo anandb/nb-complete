@@ -98,7 +98,12 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
     private boolean userEditedPath;
     private String preambleText;
 
-    private static final Color HINT_COLOR = ThemeManager.getCurrentTheme().mutedForeground();
+    /** Muted foreground for field hint text. Computed on demand so theme
+     *  switches are picked up (a static initializer would freeze the color
+     *  from whichever theme was current at class-load time). */
+    private static Color hintColor() {
+        return ThemeManager.getCurrentTheme().mutedForeground();
+    }
 
     ACPOptionsPanel(ACPOptionsPanelController controller) {
         this.controller = controller;
@@ -521,19 +526,19 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
             showingHint = false;
         } else if (detectedPath != null) {
             pathField.setText(detectedPath);
-            pathField.setForeground(HINT_COLOR);
+            pathField.setForeground(hintColor());
             showingHint = true;
         } else {
             pathField.setText(NbBundle.getMessage(ACPOptionsPanel.class, "HINT_NotFoundOnPath"));
-            pathField.setForeground(HINT_COLOR);
+            pathField.setForeground(hintColor());
             showingHint = true;
         }
 
         argsField.setText(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).get(PreferenceKeys.PROCESS_ARGUMENTS, "acp"));
 
         preambleText = PluginSettings.getPreamble();
-        echoCheckbox.setSelected(NbPreferences.forModule(ACPOptionsPanel.class).getBoolean("echoUserInput", true));
-        combineCheckbox.setSelected(NbPreferences.forModule(ACPOptionsPanel.class).getBoolean("combineToolThought", true));
+        echoCheckbox.setSelected(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean(PreferenceKeys.ECHO_USER_INPUT, true));
+        combineCheckbox.setSelected(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean(PreferenceKeys.COMBINE_TOOL_THOUGHT, true));
         autoBackupChangesCheckbox.setSelected(PluginSettings.isAutoBackupChanges());
         checkForUpdatesCheckbox.setSelected(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean(PreferenceKeys.CHECK_FOR_UPDATES, true));
         Preferences editorPrefs = MimeLookup.getLookup(MimePath.EMPTY).lookup(Preferences.class);
@@ -583,7 +588,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
             } else {
                 pathField.setText(NbBundle.getMessage(ACPOptionsPanel.class, "HINT_NotFoundOnPath"));
             }
-            pathField.setForeground(HINT_COLOR);
+            pathField.setForeground(hintColor());
             showingHint = true;
         }
     }
@@ -594,9 +599,9 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).put(PreferenceKeys.PROCESS_ARGUMENTS, argsField.getText());
         PluginSettings.setPreamble(preambleText);
         boolean changedCombine = combineCheckbox.isSelected()
-                != NbPreferences.forModule(ACPOptionsPanel.class).getBoolean("combineToolThought", true);
-        NbPreferences.forModule(ACPOptionsPanel.class).putBoolean("echoUserInput", echoCheckbox.isSelected());
-        NbPreferences.forModule(ACPOptionsPanel.class).putBoolean("combineToolThought", combineCheckbox.isSelected());
+                != NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean(PreferenceKeys.COMBINE_TOOL_THOUGHT, true);
+        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean(PreferenceKeys.ECHO_USER_INPUT, echoCheckbox.isSelected());
+        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean(PreferenceKeys.COMBINE_TOOL_THOUGHT, combineCheckbox.isSelected());
         PluginSettings.setAutoBackupChanges(autoBackupChangesCheckbox.isSelected());
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean(PreferenceKeys.CHECK_FOR_UPDATES, checkForUpdatesCheckbox.isSelected());
         Preferences editorPrefs = MimeLookup.getLookup(MimePath.EMPTY).lookup(Preferences.class);

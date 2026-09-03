@@ -6,6 +6,8 @@ import java.util.prefs.Preferences;
 
 import org.openide.util.NbPreferences;
 
+import github.anandb.netbeans.support.PreferenceKeys;
+
 /**
  * Manages message type visibility filters via NbPreferences.
  * Extracted from ChatThreadPanel.
@@ -32,9 +34,9 @@ final class MessageFilterManager {
     private static final PreferenceChangeListener listener = MessageFilterManager::onPreferenceChanged;
 
     static {
-        Preferences prefs = NbPreferences.forModule(ACPOptionsPanel.class);
+        Preferences prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
         // Seed initial values
-        combineToolThought = prefs.getBoolean("combineToolThought", true);
+        combineToolThought = prefs.getBoolean(PreferenceKeys.COMBINE_TOOL_THOUGHT, true);
         filterTool        = prefs.getBoolean(PREF_PREFIX + "tool", false);
         filterThought     = prefs.getBoolean(PREF_PREFIX + "thought", false);
         filterAssistant   = prefs.getBoolean(PREF_PREFIX + "assistant", false);
@@ -78,7 +80,7 @@ final class MessageFilterManager {
             NbPreferences.forModule(ACPOptionsPanel.class).putBoolean(PREF_PREFIX + "thought", hidden);
             return;
         }
-        NbPreferences.forModule(ACPOptionsPanel.class).putBoolean(PREF_PREFIX + type, hidden);
+        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean(PREF_PREFIX + type, hidden);
     }
 
     /** Refreshes cached values when any preference changes. */
@@ -86,7 +88,7 @@ final class MessageFilterManager {
         String key = evt.getKey();
         if (key == null) return;
         switch (key) {
-            case "combineToolThought" -> combineToolThought = Boolean.parseBoolean(evt.getNewValue());
+            case PreferenceKeys.COMBINE_TOOL_THOUGHT -> combineToolThought = Boolean.parseBoolean(evt.getNewValue());
             case PREF_PREFIX + "tool" -> filterTool = Boolean.parseBoolean(evt.getNewValue());
             case PREF_PREFIX + "thought" -> filterThought = Boolean.parseBoolean(evt.getNewValue());
             case PREF_PREFIX + "assistant" -> filterAssistant = Boolean.parseBoolean(evt.getNewValue());

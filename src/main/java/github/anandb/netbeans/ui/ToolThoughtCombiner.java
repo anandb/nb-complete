@@ -12,6 +12,7 @@ import org.openide.util.NbBundle;
 import org.openide.util.NbPreferences;
 
 import github.anandb.netbeans.model.MessageType;
+import github.anandb.netbeans.support.PreferenceKeys;
 
 /**
  * Combines individual tool/thought bubbles into a single "Execution Steps"
@@ -27,14 +28,14 @@ public final class ToolThoughtCombiner {
     private static final Pattern TOOL_PREFIX = Pattern.compile("(?i)TOOL:?\\s*");
 
     static {
-        NbPreferences.forModule(ACPOptionsPanel.class)
+        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
             .addPreferenceChangeListener(e -> {
-                if ("combineToolThought".equals(e.getKey())) {
+                if (PreferenceKeys.COMBINE_TOOL_THOUGHT.equals(e.getKey())) {
                     combineEnabled = Boolean.parseBoolean(e.getNewValue());
                 }
             });
-        combineEnabled = NbPreferences.forModule(ACPOptionsPanel.class)
-            .getBoolean("combineToolThought", true);
+        combineEnabled = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+            .getBoolean(PreferenceKeys.COMBINE_TOOL_THOUGHT, true);
     }
 
     private ToolThoughtCombiner() {

@@ -12,6 +12,7 @@ import javax.swing.SwingUtilities;
 import java.util.concurrent.CompletableFuture;
 
 import github.anandb.netbeans.contract.SlashCommandInterceptor;
+import github.anandb.netbeans.support.PreferenceKeys;
 import github.anandb.netbeans.support.ToolDataExtractor;
 import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.ProcessedMessage;
@@ -42,13 +43,14 @@ public class MessageSender {
 
     private static volatile boolean localEchoEnabled = true;
     private static final PreferenceChangeListener PREF_LISTENER = evt -> {
-        if ("echoUserInput".equals(evt.getKey())) {
+        if (PreferenceKeys.ECHO_USER_INPUT.equals(evt.getKey())) {
             localEchoEnabled = Boolean.parseBoolean(evt.getNewValue());
         }
     };
     static {
-        localEchoEnabled = NbPreferences.forModule(ACPOptionsPanel.class).getBoolean("echoUserInput", true);
-        NbPreferences.forModule(ACPOptionsPanel.class).addPreferenceChangeListener(PREF_LISTENER);
+        localEchoEnabled = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                .getBoolean(PreferenceKeys.ECHO_USER_INPUT, true);
+        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).addPreferenceChangeListener(PREF_LISTENER);
     }
 
     private final SessionService sessionService;

@@ -21,6 +21,12 @@ public final class PreferenceKeys {
     /** Max visible message bubbles before older ones are trimmed (0 = unlimited). */
     public static final String MAX_MESSAGES = "maxMessages";
 
+    /** Echo the user's message locally before the server confirms. */
+    public static final String ECHO_USER_INPUT = "echoUserInput";
+
+    /** Merge adjacent tool-call + thought bubbles into one activity panel. */
+    public static final String COMBINE_TOOL_THOUGHT = "combineToolThought";
+
     // Input history keys
     public static final String INPUT_HISTORY_COUNT = "inputHistory.count";
 
