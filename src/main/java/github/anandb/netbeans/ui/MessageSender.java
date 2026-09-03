@@ -143,6 +143,11 @@ public class MessageSender {
 
     /** Sends (or intercepts) the current message text. */
     public void sendMessage() {
+        if (sessionService == null || processService == null) {
+            LOG.severe("sendMessage ignored — platform services unavailable (PlatformBridge missing from Lookup)");
+            statusController.setStatus("STATUS_Error", "Assistant services unavailable");
+            return;
+        }
         boolean turnEnded = turnEndedCheck != null ? turnEndedCheck.getAsBoolean() : true;
         if (!sessionService.get().canSendMessage() || !turnEnded) {
             // Bot is actively processing (streaming / awaiting RPC completion) —
@@ -435,6 +440,10 @@ public class MessageSender {
      */
     public void sendQueuedMessage(String combinedText) {
         if (combinedText == null || combinedText.isEmpty()) {
+            return;
+        }
+        if (sessionService == null || processService == null) {
+            LOG.severe("sendQueuedMessage ignored — platform services unavailable (PlatformBridge missing from Lookup)");
             return;
         }
         String currentSessionId = sessionService.get().getCurrentSessionId();
