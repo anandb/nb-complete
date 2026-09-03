@@ -1,6 +1,8 @@
 package github.anandb.netbeans.support;
 
 import java.io.File;
+import java.util.Locale;
+import java.util.Set;
 import java.util.prefs.Preferences;
 import java.util.regex.Pattern;
 
@@ -16,7 +18,48 @@ public final class BinaryResolver {
     private static final Logger LOG = Logger.from(BinaryResolver.class);
     private static final Pattern PATH_SPLIT = Pattern.compile(Pattern.quote(File.pathSeparator));
 
+    /** ACP harness binaries that cannot carry auth tokens on MCP server URLs.
+     *  The embedded MCP server skips token enforcement when one of these runs.
+     *  Package-visible for tests. */
+    static final Set<String> PI_HARNESS = Set.of("pi", "pi-acp", "pi-agent");
+
     private BinaryResolver() {}
+
+    /**
+     * Returns the lowercase basename (with any {@code .exe} suffix stripped) of
+     * the resolved ACP server binary, or {@code "opencode"} when the default
+     * binary is used. This is the same binary that {@link #buildWslArgs(String...)}
+     * wraps on WSL, since both derive from {@link #findExecutablePathOrNull()}.
+     */
+    public static String resolveBinaryName() {
+        return binaryNameFromPath(findExecutablePathOrNull());
+    }
+
+    /** Maps a resolved executable path to its lowercase binary name, stripping
+     *  a {@code .exe} suffix (Windows), or {@code "opencode"} when no path is
+     *  resolved. Windows-style backslash separators are normalized so basename
+     *  extraction works on any OS. Package-private for tests. */
+    static String binaryNameFromPath(String path) {
+        if (path == null || path.isBlank()) {
+            return "opencode";
+        }
+        String name = new File(path.replace('\\', '/')).getName();
+        if (name.toLowerCase(Locale.ROOT).endsWith(".exe")) {
+            name = name.substring(0, name.length() - 4);
+        }
+        return name.toLowerCase(Locale.ROOT);
+    }
+
+    /**
+     * Returns {@code true} when the configured ACP binary is a PI harness
+     * variant ({@code pi}, {@code pi-acp}, {@code pi-agent}). These harnesses
+     * do not support auth tokens on MCP server URLs, so the embedded MCP
+     * server runs without token auth for them; all other agents (opencode,
+     * goose, ...) get token-protected URLs.
+     */
+    public static boolean isPiHarness() {
+        return PI_HARNESS.contains(resolveBinaryName());
+    }
 
     /**
      * Resolves the opencode executable path: checks configured path first,

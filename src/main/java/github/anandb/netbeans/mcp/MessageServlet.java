@@ -8,6 +8,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.function.BooleanSupplier;
 import java.util.logging.Level;
 
 import github.anandb.netbeans.support.MapperSupplier;
@@ -33,14 +35,37 @@ class MessageServlet extends HttpServlet {
     private static final ObjectMapper MAPPER = MapperSupplier.get();
     private final transient RequestProcessor asyncExecutor;
     private final transient McpTools mcpTools;
+    private final transient String token;
+    /** Read per-request so a mid-flight auth toggle takes effect immediately. */
+    private final transient BooleanSupplier authRequired;
 
-    MessageServlet(RequestProcessor asyncExecutor, McpTools mcpTools) {
+    MessageServlet(RequestProcessor asyncExecutor, McpTools mcpTools,
+                   String token, BooleanSupplier authRequired) {
         this.asyncExecutor = asyncExecutor;
         this.mcpTools = mcpTools;
+        this.token = token;
+        this.authRequired = authRequired;
     }
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        // Verify auth token when the connected agent supports it (constant-time
+        // comparison to prevent timing attacks). PI-family harnesses cannot
+        // carry tokens, so enforcement is skipped for them.
+        if (authRequired.getAsBoolean()) {
+            String reqToken = request.getParameter("token");
+            if (reqToken == null || !MessageDigest.isEqual(
+                    reqToken.getBytes(StandardCharsets.UTF_8),
+                    token.getBytes(StandardCharsets.UTF_8))) {
+                LOG.warn("MCP request rejected: missing or invalid token");
+                response.setStatus(403);
+                response.setContentType("application/json");
+                response.getWriter().write(
+                        "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32001,\"message\":\"Unauthorized\"}}");
+                return;
+            }
+        }
+
         long start = System.nanoTime();
         LOG.fine("MCP request received: {0} {1}", request.getMethod(), request.getRequestURI());
         AsyncContext asyncContext = request.startAsync();

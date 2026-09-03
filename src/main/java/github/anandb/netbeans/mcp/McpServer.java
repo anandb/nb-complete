@@ -1,6 +1,7 @@
 package github.anandb.netbeans.mcp;
 
 import java.io.IOException;
+import java.security.SecureRandom;
 import java.util.logging.Level;
 
 import github.anandb.netbeans.support.PluginSettings;
@@ -17,13 +18,31 @@ public class McpServer {
 
     private static final Logger LOG = Logger.from(McpServer.class);
     private static final int MAX_THREADS = 20;
+    private static final SecureRandom RANDOM = new SecureRandom();
 
     private final McpTools mcpTools = new McpTools();
+    /** Per-instance random token; enforced by the servlet when authRequired is set. */
+    private final String token;
     private Server server;
     private ServerConnector connector;
     private RequestProcessor asyncExecutor;
+    /** Whether clients must present {@link #token}. False only for PI-family
+     *  harness binaries, which cannot carry tokens on MCP URLs. */
+    private volatile boolean authRequired;
 
     public McpServer() {
+        byte[] bytes = new byte[16];
+        RANDOM.nextBytes(bytes);
+        StringBuilder sb = new StringBuilder(32);
+        for (byte b : bytes) {
+            sb.append(String.format("%02x", b));
+        }
+        token = sb.toString();
+    }
+
+    /** Sets whether the servlet enforces token verification. */
+    public void setAuthRequired(boolean required) {
+        this.authRequired = required;
     }
 
     public synchronized void start() throws IOException {
@@ -71,7 +90,8 @@ public class McpServer {
         ServletContextHandler context = new ServletContextHandler(ServletContextHandler.NO_SESSIONS);
         context.setContextPath("/");
 
-        context.addServlet(new ServletHolder(new MessageServlet(asyncExecutor, mcpTools)), "/mcp");
+        context.addServlet(new ServletHolder(
+                new MessageServlet(asyncExecutor, mcpTools, token, () -> authRequired)), "/mcp");
 
         server.setHandler(context);
         try {
@@ -109,6 +129,14 @@ public class McpServer {
             return null;
         }
         return "http://127.0.0.1:" + connector.getLocalPort() + "/mcp";
+    }
+
+    /** Returns the URL with the auth token appended for token-capable agents. */
+    public synchronized String getAuthenticatedUrl() {
+        if (connector == null) {
+            return null;
+        }
+        return getUrl() + "?token=" + token;
     }
 
     public McpTools getMcpTools() {

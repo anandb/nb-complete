@@ -122,7 +122,11 @@ class ServerProcessLifecycle {
             readyFuture = new CompletableFuture<>();
         }
 
-        // Ensure MCP server is running (idempotent - start() returns early if already running/disabled)
+        // Token auth for the embedded MCP server is skipped only for the PI
+        // harness binaries (pi, pi-acp, pi-agent) — they cannot carry tokens
+        // on MCP URLs. Must be set BEFORE the MCP server starts so there is
+        // no unauthenticated window.
+        toolExecutor.setMcpAuthRequired(!BinaryResolver.isPiHarness());
         toolExecutor.start();
 
         LOG.info("Starting ACP server...");

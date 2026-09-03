@@ -21,6 +21,9 @@ public class McpToolAdapter implements ToolExecutor {
     public void start() { delegate.start(); }
 
     @Override
+    public void setMcpAuthRequired(boolean required) { delegate.setMcpAuthRequired(required); }
+
+    @Override
     public void stop() { delegate.stop(); }
 
     @Override

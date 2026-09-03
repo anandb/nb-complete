@@ -31,6 +31,10 @@ public class McpManager {
 
     private McpServer mcpServer;
     private final AtomicBoolean mcpDisabled = new AtomicBoolean(false);
+    /** When true, session configs hand out a token-protected MCP URL and the
+     *  servlet enforces it. Skipped only for PI-family harness binaries that
+     *  cannot carry tokens. Set by the manager before the server starts. */
+    private volatile boolean mcpAuthRequired;
     private CompletableFuture<Void> serverStartFuture;
     private volatile CompletableFuture<Void> readyFuture = new CompletableFuture<>();
     /** Thread running the server start task — used for explicit interruption
@@ -80,12 +84,14 @@ public class McpManager {
                     try {
                         LOG.info("Creating new McpServer instance...");
                         server = new McpServer();
+                        server.setAuthRequired(mcpAuthRequired);
                         LOG.info("Starting MCP server...");
                         server.start();
                         synchronized (McpManager.this) {
                             mcpServer = server;
                             serverStartFuture = null;
-                            LOG.info("MCP Server running at {0}", server.getUrl().replaceAll("token=.*", "token=REDACTED"));
+                            LOG.info("MCP Server running at {0} (auth required: {1})",
+                                    server.getUrl(), mcpAuthRequired);
                             // Complete inside the synchronized block to prevent a
                             // race where a concurrent start() replaces readyFuture
                             // between our null-out and the complete, which would
@@ -116,6 +122,17 @@ public class McpManager {
 
     public CompletableFuture<Void> waitForReady() {
         return readyFuture;
+    }
+
+    /** Sets whether MCP clients must present the per-instance token. The live
+     *  server (if any) is updated immediately so enforcement and the URL
+     *  handed out in session configs always flip together. */
+    public void setMcpAuthRequired(boolean required) {
+        this.mcpAuthRequired = required;
+        McpServer server = this.mcpServer;
+        if (server != null) {
+            server.setAuthRequired(required);
+        }
     }
 
     public void stop() {
@@ -164,11 +181,14 @@ public class McpManager {
             if (mcpServer == null || !mcpServer.isRunning()) {
                 return mcpServerList;
             }
+            // Auth-capable agents (opencode, goose, ...) get the token-protected
+            // URL; the PI harness cannot carry tokens, so it gets the plain one.
+            String url = mcpAuthRequired ? mcpServer.getAuthenticatedUrl() : mcpServer.getUrl();
             mcpServerList.add(Map.of(
                     "headers", List.of(),
                     "type", "http",
                     "name", "nb",
-                    "url", mcpServer.getUrl()
+                    "url", url
             ));
         }
         return mcpServerList;
