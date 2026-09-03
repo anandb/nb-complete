@@ -18,6 +18,7 @@ import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.JMenuItem;
 import javax.swing.JPopupMenu;
+import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
 import org.openide.util.NbBundle;
@@ -41,6 +42,7 @@ public final class MessageQueueManager {
     private final Icon baseIcon;
     private final int iconSize;
     private Timer wobbleTimer;
+    private Timer wobbleAnimTimer;
     private boolean wobbling;
     private Runnable sendNowCallback;
     /** When false (e.g. non-goose agents), queueing is disabled and the button stays hidden. */
@@ -115,8 +117,12 @@ public final class MessageQueueManager {
             return;
         }
         queuedMessages.add(text);
-        updateBadge();
-        startWobbleIfNeeded();
+        // enqueue() may be invoked off the EDT (send pipeline paths) — badge
+        // and timer state are EDT-confined, so marshal the UI side.
+        runOnEdt(() -> {
+            updateBadge();
+            startWobbleIfNeeded();
+        });
     }
 
     /**
@@ -134,8 +140,10 @@ public final class MessageQueueManager {
         while ((msg = queuedMessages.poll()) != null) {
             messages.add(msg);
         }
-        updateBadge();
-        stopWobble();
+        runOnEdt(() -> {
+            updateBadge();
+            stopWobble();
+        });
         StringJoiner joiner = new StringJoiner("\n");
         messages.forEach(joiner::add);
         // Returns text only — attachments are not queued (see MessageSender queue
@@ -147,10 +155,22 @@ public final class MessageQueueManager {
     /** Clears the queue and hides the button. Called by the Cancel menu item. */
     void cancelAll() {
         queuedMessages.clear();
-        updateBadge();
-        stopWobble();
+        runOnEdt(() -> {
+            updateBadge();
+            stopWobble();
+        });
     }
 
+    /** Marshals {@code r} onto the EDT — queue entry points may be called from any thread. */
+    private static void runOnEdt(Runnable r) {
+        if (SwingUtilities.isEventDispatchThread()) {
+            r.run();
+        } else {
+            SwingUtilities.invokeLater(r);
+        }
+    }
+
+    /** Updates button visibility and tooltip. Must run on the EDT. */
     private void updateBadge() {
         int count = queuedMessages.size();
         queueBtn.setVisible(enabled && count > 0);
@@ -184,7 +204,11 @@ public final class MessageQueueManager {
         popup.show(queueBtn, x, y);
     }
 
+    /** Starts the periodic wobble timer. EDT-confined: every entry point
+     *  marshals through {@link #runOnEdt}, so this check-then-create sequence
+     *  is race-free (previously two threads could create duplicate timers). */
     private void startWobbleIfNeeded() {
+        assert SwingUtilities.isEventDispatchThread();
         if (wobbling || wobbleTimer != null) {
             return;
         }
@@ -195,11 +219,17 @@ public final class MessageQueueManager {
     }
 
     private void triggerWobble() {
+        assert SwingUtilities.isEventDispatchThread();
         if (queuedMessages.isEmpty()) {
             stopWobble();
             return;
         }
-        Timer wobbleAnim = new Timer(30, null) {
+        // Keep the animation timer in a field so stopWobble() can cancel an
+        // in-flight animation; otherwise the 30ms timer kept running (leak,
+        // holding queueBtn) and a new wobble could stack a second animation
+        // on top of it.
+        stopWobbleAnim();
+        wobbleAnimTimer = new Timer(30, null) {
             long start = System.currentTimeMillis();
             @Override
             protected void fireActionPerformed(ActionEvent ae) {
@@ -207,7 +237,7 @@ public final class MessageQueueManager {
                 if (elapsed > WOBBLE_DURATION_MS) {
                     updateBadge();
                     queueBtn.repaint();
-                    stop();
+                    stopWobbleAnim();
                     return;
                 }
                 double progress = (double) elapsed / WOBBLE_DURATION_MS;
@@ -218,15 +248,25 @@ public final class MessageQueueManager {
                 queueBtn.repaint();
             }
         };
-        wobbleAnim.setInitialDelay(0);
-        wobbleAnim.start();
+        wobbleAnimTimer.setInitialDelay(0);
+        wobbleAnimTimer.start();
     }
 
     private void stopWobble() {
+        assert SwingUtilities.isEventDispatchThread();
         wobbling = false;
+        stopWobbleAnim();
         if (wobbleTimer != null) {
             wobbleTimer.stop();
             wobbleTimer = null;
+        }
+    }
+
+    /** Stops and releases the one-shot wobble animation timer. */
+    private void stopWobbleAnim() {
+        if (wobbleAnimTimer != null) {
+            wobbleAnimTimer.stop();
+            wobbleAnimTimer = null;
         }
     }
 
