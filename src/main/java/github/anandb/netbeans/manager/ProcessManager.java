@@ -285,9 +285,11 @@ public class ProcessManager implements ProcessControl {
     }
 
     /** Performs the actual server restart (stop + start). Called from both the
-     *  debounce timer (preference changes) and the public {@link #restartServer()}
-     *  method (manual restarts). */
-    private void doRestartServer() {
+     *  debounce timer (preference changes, on the EDT) and the public
+     *  {@link #restartServer()} method (manual restarts). Synchronized so a
+     *  timer-driven restart cannot interleave with ensureStarted()/restartServer()
+     *  on other threads. */
+    private synchronized void doRestartServer() {
         // Reset sticky session/UI state BEFORE the process is torn down: a
         // state machine stuck in LOADING/STOPPING blocks the post-restart
         // session reload, and an unanswered permission request blocks every

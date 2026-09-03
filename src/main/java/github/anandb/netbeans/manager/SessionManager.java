@@ -257,10 +257,14 @@ public class SessionManager implements SessionQuery, SessionControl {
             update.update().sessions().forEach(cacheManager::cacheSession);
         }
 
+        // Capture once: currentSessionId is volatile and can change between the
+        // equality check and the descendant query, routing updates to the wrong
+        // session (TOCTOU).
+        String currentSid = this.currentSessionId;
         String updateSessionId = update.params() != null ? update.params().sessionId() : null;
         if (updateSessionId != null
-                && (updateSessionId.equals(currentSessionId)
-                    || cacheManager.isDescendantOfCurrent(updateSessionId, currentSessionId))) {
+                && (updateSessionId.equals(currentSid)
+                    || cacheManager.isDescendantOfCurrent(updateSessionId, currentSid))) {
             new ArrayList<>(listeners).forEach(l -> l.onSessionUpdate(update));
         } else {
             LOG.fine("Ignoring update for background session: {0}", updateSessionId);
@@ -723,6 +727,9 @@ public class SessionManager implements SessionQuery, SessionControl {
                     .exceptionally(ex -> {
                         LOG.severe("Failed to load session async: {0}", ExceptionUtils.getMessage(ex), ex);
                         if (sessionId.equals(this.currentSessionId)) {
+                            // The session never became active — clear the pointer
+                            // so SSE routing and the UI don't treat it as current.
+                            this.currentSessionId = null;
                             stateMachine.transitionTo(SessionState.IDLE);
                             notifyError(NbBundle.getMessage(SessionManager.class, "ERR_LoadSessionFailed", rootMessage(ex)));
                             // Re-sync session list from server so the dropdown reflects
@@ -733,6 +740,7 @@ public class SessionManager implements SessionQuery, SessionControl {
                     });
         } catch (Exception ex) {
             LOG.severe("Failed to load session", ex);
+            this.currentSessionId = null;
             stateMachine.transitionTo(SessionState.IDLE);
             notifyError(NbBundle.getMessage(SessionManager.class, "ERR_LoadSessionFailed", rootMessage(ex)));
             refreshSessions();
