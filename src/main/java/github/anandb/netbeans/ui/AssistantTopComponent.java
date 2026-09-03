@@ -148,6 +148,10 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     private Consumer<Boolean> sessionActiveCallback;
     private transient Timer attentionPeriodicTimer;
     private transient Timer attentionShakeTimer;
+    /** One-shot timer that fires the combined queued-message send 400ms after
+     *  turn end. Kept in a field so removeNotify() can cancel a pending send
+     *  instead of leaking a timer that holds the panel. */
+    private transient Timer turnEndFlushTimer;
 
     public AssistantTopComponent() {
         setName(NbBundle.getMessage(AssistantTopComponent.class, "CTL_AssistantTopComponent"));
@@ -294,11 +298,28 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                     configPanelController.setConfigConfirmActive(true);
 
                     uiFuture.whenComplete((res, ex) -> {
-                        configPanelController.setConfigConfirmActive(false);
-                        setOptionsPanelVisible(false);
-                        configPanelController.sendCurrentSelections(sessionId, configOptions);
-                        newSessionBtn.setEnabled(true);
-                        configFuture.complete(null);
+                        // Hop to the EDT no matter which thread completes the
+                        // future (normally the Continue button on the EDT).
+                        SwingUtilities.invokeLater(() -> {
+                            configPanelController.setConfigConfirmActive(false);
+                            setOptionsPanelVisible(false);
+                            newSessionBtn.setEnabled(true);
+                            if (ex != null) {
+                                configFuture.completeExceptionally(ex);
+                                return;
+                            }
+                            // setSessionConfigOption performs pipe I/O — keep it
+                            // off the EDT. Complete the gate only after the sends
+                            // finish so the preamble starts with config applied.
+                            CompletableFuture.runAsync(() -> {
+                                try {
+                                    configPanelController.sendCurrentSelections(sessionId, configOptions);
+                                    configFuture.complete(null);
+                                } catch (Exception e) {
+                                    configFuture.completeExceptionally(e);
+                                }
+                            });
+                        });
                     });
                 });
             } catch (Exception e) {
@@ -326,11 +347,14 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                 chatPanel.clearQueuedMessageIds();
                 // Briefly show Ready/Go so the user sees the turn ended,
                 // then switch to Sending/Stop when the queued message fires.
-                Timer delay = new Timer(400, e -> {
+                if (turnEndFlushTimer != null) {
+                    turnEndFlushTimer.stop();
+                }
+                turnEndFlushTimer = new Timer(400, e -> {
                     messageSender.sendQueuedMessage(combined);
                 });
-                delay.setRepeats(false);
-                delay.start();
+                turnEndFlushTimer.setRepeats(false);
+                turnEndFlushTimer.start();
                 return true;
             }
             return false;
@@ -840,6 +864,9 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     @Override
     public void removeNotify() {
         stopAttentionAnimation();
+        if (turnEndFlushTimer != null) {
+            turnEndFlushTimer.stop();
+        }
         layoutBuilder.cleanup();
         componentLifecycleHandler.removeNotify();
         super.removeNotify();
