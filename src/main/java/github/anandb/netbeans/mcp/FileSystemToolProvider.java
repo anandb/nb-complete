@@ -48,6 +48,29 @@ public class FileSystemToolProvider {
     private static final Logger LOG = Logger.from(FileSystemToolProvider.class);
     private static final ObjectMapper MAPPER = MapperSupplier.get();
 
+    /**
+     * Validates a {@code filePath} argument for tools that operate on an
+     * existing file: blank check, open-project containment, existence and
+     * file-ness. Returns the error map to send back, or {@code null} when
+     * the path is valid.
+     */
+    private static Map<String, Object> validateExistingFile(String filePath) {
+        if (isBlank(filePath)) {
+            return Map.of("status", "error", "message", "filePath is required");
+        }
+        if (!isInOpenProject(filePath)) {
+            return outsideProjectError(filePath);
+        }
+        File file = new File(filePath);
+        if (!file.exists()) {
+            return Map.of("status", "error", "message", "File not found: " + filePath);
+        }
+        if (!file.isFile()) {
+            return Map.of("status", "error", "message", "Not a file: " + filePath);
+        }
+        return null;
+    }
+
     public void registerTools(McpTools mcpTools) {
         registerReadFile(mcpTools);
         registerWriteToFile(mcpTools);
@@ -87,19 +110,11 @@ public class FileSystemToolProvider {
                 new ToolExecutor<ReadFileInput, Map<String, Object>>(ReadFileInput.class) {
                     @Override
                     public Map<String, Object> execute(ReadFileInput args) throws Exception {
-                        if (isBlank(args.filePath())) {
-                            return Map.of("status", "error", "message", "filePath is required");
-                        }
-                        if (!isInOpenProject(args.filePath())) {
-                            return outsideProjectError(args.filePath());
+                        Map<String, Object> err = validateExistingFile(args.filePath());
+                        if (err != null) {
+                            return err;
                         }
                         File file = new File(args.filePath());
-                        if (!file.exists()) {
-                            return Map.of("status", "error", "message", "File not found: " + args.filePath());
-                        }
-                        if (!file.isFile()) {
-                            return Map.of("status", "error", "message", "Not a file: " + args.filePath());
-                        }
                         List<String> lines = Files.readAllLines(file.toPath(), StandardCharsets.UTF_8);
                         int start = args.startLine() != null ? args.startLine() : 1;
                         int end = args.endLine() != null ? args.endLine() : lines.size();
@@ -672,22 +687,14 @@ public class FileSystemToolProvider {
                 new ToolExecutor<ApplyPatchInput, Map<String, Object>>(ApplyPatchInput.class) {
                     @Override
                     public Map<String, Object> execute(ApplyPatchInput args) throws Exception {
-                        if (isBlank(args.filePath())) {
-                            return Map.of("status", "error", "message", "filePath is required");
-                        }
                         if (isBlank(args.patch())) {
                             return Map.of("status", "error", "message", "patch is required");
                         }
-                        if (!isInOpenProject(args.filePath())) {
-                            return outsideProjectError(args.filePath());
+                        Map<String, Object> err = validateExistingFile(args.filePath());
+                        if (err != null) {
+                            return err;
                         }
                         File file = new File(args.filePath());
-                        if (!file.exists()) {
-                            return Map.of("status", "error", "message", "File not found: " + args.filePath());
-                        }
-                        if (!file.isFile()) {
-                            return Map.of("status", "error", "message", "Not a file: " + args.filePath());
-                        }
 
                         List<String> fileLines = Files.readAllLines(file.toPath(), StandardCharsets.UTF_8);
                         List<String> trimmedFileLines = new ArrayList<>(fileLines.size());
