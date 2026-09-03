@@ -152,7 +152,10 @@ public final class MessageQueueManager {
         return joiner.toString();
     }
 
-    /** Clears the queue and hides the button. Called by the Cancel menu item. */
+    /** Clears the queue and hides the button. Called by the Cancel menu item
+     *  and by {@link #setEnabled(boolean)} when queueing is switched off —
+     *  deliberately unconditional: the disable path relies on the wipe even
+     *  though {@code enabled} is already false. */
     void cancelAll() {
         queuedMessages.clear();
         runOnEdt(() -> {

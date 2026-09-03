@@ -905,6 +905,10 @@ public class SessionManager implements SessionQuery, SessionControl {
         String sessionId = this.currentSessionId;
         if (stateMachine.transitionTo(SessionState.IDLE)) {
             this.currentSessionId = null;
+            // No active session — drop the stale project-dir fallback so
+            // getCurrentSessionDirectory() no longer reports the closed
+            // session's directory (e.g. to auto-backup or context capture).
+            this.lastProjectDir = null;
             new ArrayList<>(listeners).forEach(l -> l.onSessionLoading(false));
         }
         if (sessionId != null) {
