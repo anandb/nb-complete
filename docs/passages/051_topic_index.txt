@@ -54,6 +54,7 @@ This is a complete list of topics in this guide, use it to directly jump to that
 > [[Picking an Agent, Model and Thinking Level]]
 > [[Pinned Messages]]
 > [[Post Install]]
+> [[Queuing Messages]]
 > [[Reloading a Session]]
 > [[Renaming the session]]
 > [[Resetting context limits (/compact)]]

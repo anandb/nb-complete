@@ -1,0 +1,23 @@
+:: Queuing Messages {"position":"1550,1200","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Queuing Messages</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+You don't have to wait for the assistant to finish before typing your next message. While the agent is working (Go/Stop button shows the running state), anything you send is <b>queued</b> instead of interrupting the current turn.
+
+When the turn ends, all queued messages are combined into a single prompt and sent automatically. The queue button appears on the toolbar with a small wobble animation while messages are waiting:
+
+<ul>
+<li><b>Send Now</b> — open the queue button's popup menu to flush the queued messages immediately, without waiting for the turn to end.</li>
+<li><b>Cancel Queue</b> — discard all queued messages.</li>
+</ul>
+
+Queueing is available when your agent supports it (currently Goose; other agents send messages directly). If you close or switch sessions before the turn ends, pending messages are cancelled with the rest of the panel state.
+
+
+> [[Chat Features]]
+> [[Permission Requests]]
+> [[Auto-Backup on Turn Start]]

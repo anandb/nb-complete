@@ -1,5 +1,47 @@
 # Release Notes
 
+## v1.18.0 (Changes since v1.17.0)
+
+### Features
+- **Embedded MCP filesystem and git tools**: New `read_file`, `write_to_file`, `replace_lines`, `insert_in_file`, `delete_lines`, `apply_patch`, `list_directory`, `search_project`, `git_status` and `git_diff` tools, all confined to the currently open projects (canonical-path containment, subdirectory traversal rejection, symlink-safe checks).
+- **MCP token auth with per-harness exception**: The embedded MCP server regained a per-instance SecureRandom token with constant-time verification. Token-protected URLs are handed to auth-capable agents (opencode, goose); the PI harness binaries (`pi`, `pi-acp`, `pi-agent`) — which cannot carry tokens — get the plain URL and skip enforcement.
+- **Message queue with end-of-turn processing**: While the agent is working, new messages are queued (badge + wobble indicator) and sent as one combined prompt when the turn ends. Includes a Send Now context-menu action and per-agent capability gating.
+- **Startup info bubble**: The harness banner (`<agent> v<version>` + Context/Extensions lists) renders as a compact card instead of a raw text bubble.
+- **Caveman mode**: Ultra-compressed assistant output style toggle.
+- **Agent-qualified sessions, MCP port preference, markdown project toggle**: Session dropdown qualified by agent, fixed or random MCP server port configurable, and a per-project markdown rendering toggle.
+- **Binary path change notification**: A desktop notification prompts a server restart when the configured ACP binary path changes.
+- **Restored `get_current_file_context` tool**: Re-added with auto-injection gating per agent.
+
+### Fixes
+- **Message queue threading**: Timer race, animation-timer leak and off-EDT badge updates in `MessageQueueManager` fixed by EDT-confining all timer and Swing state; queue drain scheduling now uses atomic compare-and-set, and `clearMessages()` clears queue/buffers on the EDT so racing messages can't leave ghost bubbles.
+- **MessageSender NPE guard**: Sending no longer crashes when `PlatformBridge` services are unavailable.
+- **Session load failure cleanup**: A failed session load now clears `currentSessionId` so SSE routing and the UI don't treat the dead session as current; `closeSession()` also clears the stale session directory.
+- **SSE update TOCTOU**: `handleSseUpdate()` captures the current session id once so updates can't be routed to the wrong session mid-check.
+- **Server restart synchronization**: Debounced and manual restarts no longer interleave with `ensureStarted()`.
+- **Turn-end state transition off the EDT**: `SessionControl.onTurnEnded()` runs on a background thread.
+- **Agent capabilities normalization**: Handshake agent names are trimmed and lowercased in `AgentCapabilities.forName()`, so casing variations can't fall through to the wrong capability set.
+- **git_diff option injection**: Diff targets are validated against a revision-token allowlist.
+- **search_project glob ReDoS**: Globs compile once per search with all non-glob characters escaped.
+- **Chunked history rendering**: A malformed loaded message can no longer abort the render chain and wedge the drain flags; blank-bubble removal now works by component identity.
+- **Config-confirm callback**: Pre-preamble config sends run off the EDT and are skipped on exceptional completion; the 400ms turn-end flush timer is cancellable and stopped in `removeNotify()`.
+- **Preference anchor unification**: `echoUserInput`, `combineToolThought` and `messageFilter.*` keys read/write through the standard module-anchored node; the options-panel hint color is now theme-reactive.
+- **Session list updates**: Per-session preference lookups (`isHidden`, `getCustomTitle`) moved off the EDT; drain batch raised to 4 messages per EDT tick.
+- **Go/Stop button state**: Disabled when no sessions exist; queued-message indicator gated by agent capabilities; Enter-key ordering fixed with autocomplete suggestions.
+- **Notification fixes**: `NotificationDisplayer` NPE on null details text; JComponent parent conflict; null-guarded message ids.
+- **Miscellaneous**: Startup session sync, permission display, deduplicated slash commands, aligned spinner/toolbar combos, tool title truncation.
+
+### Improvements
+- **Toolbar and chat font combo alignment** and consistent spinner sizing.
+- **Tool call titles and labels** clarified, with longer title truncation in collapsible panes.
+
+### Refactoring
+- **Review-driven hardening**: All CRITICAL, HIGH, MEDIUM and LOW adversarial-review findings addressed across `mcp/`, `manager/` and `ui/` (see commit history: `2544dfb3`…`48dfa356`).
+- **Simplified field declarations** and removed FQCNs in MCP tool providers.
+- **Public `MessageQueueManager`** with editor-context injection disabled for agents that don't support it.
+
+### Housekeeping
+- Version bumped to 1.18.0.
+
 ## v1.17.0 (Changes since v1.16.1)
 
 ### Features
@@ -721,17 +763,17 @@
 ## v1.9.2 (Changes since v1.9.1)
 
 ### Stability
-- **Per-request idle timeouts replace absolute orTimeout**: `AcpProtocolClient` now tracks  
-  idle timeouts per pending request via `pendingRequestIdleTimeouts` map. The watchdog fails  
-  individual requests with `TimeoutException` when the connection is idle beyond their timeout,  
-  without closing the entire connection. `SessionRpcClient` passes: `session/list`=60s,  
+- **Per-request idle timeouts replace absolute orTimeout**: `AcpProtocolClient` now tracks
+  idle timeouts per pending request via `pendingRequestIdleTimeouts` map. The watchdog fails
+  individual requests with `TimeoutException` when the connection is idle beyond their timeout,
+  without closing the entire connection. `SessionRpcClient` passes: `session/list`=60s,
   `session/load`=120s, `session/update`=30s, `session/set_config_option`=30s idle timeout.
-- **StashDiffAction.runGit()**: Rewrote to read process stdout via `RequestProcessor` daemon  
-  thread so `proc.waitFor(60, SECONDS)` operates as the timeout mechanism. On timeout,  
-  `destroyForcibly()` closes stdout, unblocking the reader. `waitFinished(1000)` called in  
+- **StashDiffAction.runGit()**: Rewrote to read process stdout via `RequestProcessor` daemon
+  thread so `proc.waitFor(60, SECONDS)` operates as the timeout mechanism. On timeout,
+  `destroyForcibly()` closes stdout, unblocking the reader. `waitFinished(1000)` called in
   both try and finally to ensure the reader exits before `sb` is read.
-- **Codebase-wide stability review**: Six parallel subagent audits covered threading/EDT  
-  violations, resource leaks, error handling, lifecycle management, and structure. Findings  
+- **Codebase-wide stability review**: Six parallel subagent audits covered threading/EDT
+  violations, resource leaks, error handling, lifecycle management, and structure. Findings
   documented in `.opencode/review.md`.
 
 ### Fixes

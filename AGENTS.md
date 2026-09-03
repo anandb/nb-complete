@@ -2,7 +2,7 @@
 
 ## Project Overview
 - **Project**: Coding Assistant (NetBeans IDE plugin, Java 17, Maven)
-- **Current Stable Version**: 1.17.0
+- **Current Stable Version**: 1.18.0
 - **Key Tech**: NetBeans API (RELEASE220), Flexmark, Jackson, RSyntaxTextArea, JUnit 5.
 
 ## Build Commands
@@ -350,6 +350,15 @@ public void toggleVisibility() {
    handling in any `KeyEventDispatcher`.
 
 6. MCP tools that we add must have names <= 14 characters in length.
+
+7. MCP token auth: `MessageServlet` verifies a per-instance token whenever
+   `authRequired` is set. `BinaryResolver.isPiHarness()` exempts the PI family
+   (`pi`, `pi-acp`, `pi-agent`) — they cannot carry tokens. `ServerProcessLifecycle`
+   sets the flag BEFORE `toolExecutor.start()`; do NOT move it after, and do NOT
+   hand authenticated URLs to PI harness sessions (`McpManager.getServerConfig()`).
+   Filesystem/git tools are confined to open projects via `ProjectPathGuard` —
+   never add MCP tools that touch paths without it. `run_command` is intentionally
+   UNGATED (deferred hardening).
 
 ## User Guide (docs/)
 

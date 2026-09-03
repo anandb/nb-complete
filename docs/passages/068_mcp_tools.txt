@@ -17,10 +17,16 @@ The plugin runs a small built-in MCP (Model Context Protocol) server inside the 
 <tr><td><code>rename&#95;session</code></td><td>Gives the current (or a specific) session a custom title, just like the rename button.</td></tr>
 <tr><td><code>add&#95;task</code></td><td>Creates a task in a BeanBot Tasks repository. Accepts summary, status, priority (A–Z), tags, projects, due date, estimate, and consumed. See [[Adding Tasks via AI]].</td></tr>
 <tr><td><code>diff&#95;stash</code></td><td>Opens the side-by-side stash diff viewer for a given stash. Only available when Stash Diff is enabled in Options.</td></tr>
+<tr><td><code>read&#95;file</code> / <code>write&#95;to&#95;file</code></td><td>Reads or writes a file inside one of your open projects. <code>write&#95;to&#95;file</code> can create missing parent directories.</td></tr>
+<tr><td><code>replace&#95;lines</code> / <code>insert&#95;in&#95;file</code> / <code>delete&#95;lines</code></td><td>Line-range edits inside project files: replace a range, insert before a line, or delete a range (both 1-indexed, end inclusive).</td></tr>
+<tr><td><code>apply&#95;patch</code></td><td>Applies a unified diff to a project file, with an optional dry run.</td></tr>
+<tr><td><code>list&#95;directory</code></td><td>Lists files and subdirectories of a project directory, optionally recursively.</td></tr>
+<tr><td><code>search&#95;project</code></td><td>Searches project files for a text pattern or regex, with an optional glob filter and subdirectory restriction.</td></tr>
+<tr><td><code>git&#95;status</code> / <code>git&#95;diff</code></td><td>Runs git status (short form) or git diff (unstaged, staged, or a specific revision) for a repository inside an open project.</td></tr>
 </tbody>
 </table>
 
-The MCP server binds to <code>127.0.0.1</code> on a random local port with a random token, so it never accepts connections from outside your machine. It only activates when your agent server advertises MCP support. When the AI uses one of these tools, the call and its result appear in the chat as a collapsible tool bubble with the tag icon — same as any other tool output.
+All filesystem and git tools are confined to your currently open projects — paths outside them (including symlinks that point outside) are rejected. The MCP server binds to <code>127.0.0.1</code> and verifies a per-instance token, so it never accepts connections from outside your machine; agents that cannot carry tokens (the PI harness) connect without one. The server port can be fixed in Options (Assistant > System); by default the OS picks a random free port. It only activates when your agent server advertises MCP support. When the AI uses one of these tools, the call and its result appear in the chat as a collapsible tool bubble with the tag icon — same as any other tool output.
 
 
 > [[Thinking and Tool Responses]]

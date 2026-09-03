@@ -18,6 +18,7 @@ The chat panel is packed with features to help you get the most out of the assis
 > [[Check token usage]]
 > [[Attachments]]
 > [[Permission Requests]]
+> [[Queuing Messages]]
 > [[Commands]]
 > [[Exporting a conversation]]
 > [[MCP Tools]]
