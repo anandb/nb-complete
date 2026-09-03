@@ -172,12 +172,13 @@ public class ProcessManager implements ProcessControl {
         String key = evt.getKey();
         if (PreferenceKeys.ACP_EXECUTABLE_PATH.equals(key)) {
             LOG.fine("Binary path preference changed — showing restart notification");
-            JComponent details = createIdeRestartDetails();
+            // Two separate instances: one goes into the balloon/popup, the other
+            // into the notifications tab — a JComponent can only have one parent.
             NotificationDisplayer.getDefault().notify(
                 NbBundle.getMessage(ProcessManager.class, "MSG_RestartRequired"),
                 NotificationDisplayer.Priority.HIGH.getIcon(),
-                details,
-                details,
+                createIdeRestartDetails(),
+                createIdeRestartDetails(),
                 NotificationDisplayer.Priority.HIGH);
             return;
         }

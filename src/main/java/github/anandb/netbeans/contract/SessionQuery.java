@@ -1,5 +1,7 @@
 package github.anandb.netbeans.contract;
 
+import github.anandb.netbeans.model.Session;
+
 import github.anandb.netbeans.model.SessionConfigOption;
 import github.anandb.netbeans.model.SessionState;
 import java.util.List;
@@ -37,5 +39,8 @@ public interface SessionQuery {
 
     /** Returns persisted context usage string ("used,size") for a session, or null. */
     String getContextUsage(String sessionId);
-}
 
+    /** Returns the cached session for the given ID, or null. */
+    Session getSession(String sessionId);
+
+}

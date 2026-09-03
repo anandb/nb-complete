@@ -186,6 +186,11 @@ public class SessionManager implements SessionQuery, SessionControl {
     }
 
     @Override
+    public Session getSession(String sessionId) {    
+        return cacheManager.getCachedSession(sessionId);
+    }
+
+    @Override
     public void setContextUsage(String sessionId, long used, long size) {
         NbPreferences.forModule(SessionManager.class).put(qualifiedKey(USAGE_PREFIX, sessionId), used + "," + size);
     }

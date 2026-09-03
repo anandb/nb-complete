@@ -104,12 +104,13 @@ class AcpReconnectManager {
             String reason = lastDisconnectReason;
             lastDisconnectReason = null;
             String detail = (reason != null && !reason.isEmpty()) ? reason : "Unknown error";
-            JComponent details = createRestartNowDetails(detail, onStartServer);
+            // Two separate instances: one goes into the balloon/popup, the other
+            // into the notifications tab — a JComponent can only have one parent.
             NotificationDisplayer.getDefault().notify(
                 "ACP Server Disconnected",
                 NotificationDisplayer.Priority.HIGH.getIcon(),
-                details,
-                details,
+                createRestartNowDetails(detail, onStartServer),
+                createRestartNowDetails(detail, onStartServer),
                 NotificationDisplayer.Priority.HIGH
             );
         });

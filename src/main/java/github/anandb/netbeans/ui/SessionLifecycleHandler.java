@@ -552,11 +552,24 @@ public class SessionLifecycleHandler implements SessionListener {
                 ? NbBundle.getMessage(AssistantTopComponent.class, "HINT_UnarchiveSession")
                 : NbBundle.getMessage(AssistantTopComponent.class, "HINT_ArchiveSession"));
             // Sync the dropdown to the loaded session so it always reflects what's displayed.
+            boolean found = false;
             for (int i = 0; i < sessionDropdown.getItemCount(); i++) {
                 SessionItem item = sessionDropdown.getItemAt(i);
                 if (item != null && sessionId.equals(item.getSession().id())) {
                     sessionDropdown.setSelectedItem(item);
+                    found = true;
                     break;
+                }
+            }
+            // New session not in dropdown yet (refreshSessions was deferred post-preamble).
+            // Add it from cache so the dropdown shows the correct session immediately.
+            if (!found && isStartup) {
+                Session cached = sessionService.get().getSession(sessionId);
+                if (cached != null) {
+                    String customTitle = sessionService.get().getCustomTitle(sessionId, cached.title());
+                    SessionItem newItem = new SessionItem(cached, customTitle);
+                    sessionDropdown.insertItemAt(newItem, 0);
+                    sessionDropdown.setSelectedIndex(0);
                 }
             }
             if (!sessionDropdown.isPopupVisible()) {
