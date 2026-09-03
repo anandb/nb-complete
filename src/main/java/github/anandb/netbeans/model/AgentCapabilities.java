@@ -1,5 +1,7 @@
 package github.anandb.netbeans.model;
 
+import java.util.Locale;
+
 /**
  * Immutable capability flags for the connected ACP agent. Derived once from the
  * agent name returned by the {@code initialize} handshake — the factory method
@@ -27,15 +29,17 @@ public record AgentCapabilities(
     /**
      * Derives capabilities from the agent name reported by the ACP
      * {@code initialize} handshake. Unknown or null names default to
-     * opencode-like capabilities (no queueing).
+     * opencode-like capabilities (no queueing). The name is normalized
+     * (trim + lowercase) here so casing variations from the handshake
+     * can't fall through to the default branch.
      *
-     * @param agentName lowercased agent name, e.g. {@code "goose"}, {@code "pi-acp"}
+     * @param agentName agent name, e.g. {@code "goose"}, {@code "pi-acp"}
      */
     public static AgentCapabilities forName(String agentName) {
         if (agentName == null) {
             return new AgentCapabilities(false, true, true, true);
         }
-        return switch (agentName) {
+        return switch (agentName.trim().toLowerCase(Locale.ROOT)) {
             case "goose" -> new AgentCapabilities(true, true, true, false);
             case "pi-acp" -> new AgentCapabilities(false, false, false, false);
             default -> new AgentCapabilities(false, true, true, true);
