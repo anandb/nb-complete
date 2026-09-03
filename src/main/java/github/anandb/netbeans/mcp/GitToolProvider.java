@@ -14,6 +14,8 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
+import static github.anandb.netbeans.mcp.ProjectPathGuard.isInOpenProject;
+import static github.anandb.netbeans.mcp.ProjectPathGuard.outsideProjectError;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 
 /**
@@ -54,6 +56,11 @@ public class GitToolProvider {
                         if (repoDir == null) {
                             return Map.of("status", "error", "message", "No git repository found");
                         }
+                        // Containment: without this, a caller could read status
+                        // (file names) of any git repository on disk.
+                        if (!isInOpenProject(repoDir)) {
+                            return outsideProjectError(repoDir);
+                        }
                         return runGitCommand(repoDir, "git", "status", "--short");
                     }
                 });
@@ -82,6 +89,9 @@ public class GitToolProvider {
                         String repoDir = isBlank(args.repoDir()) ? findGitRoot() : args.repoDir();
                         if (repoDir == null) {
                             return Map.of("status", "error", "message", "No git repository found");
+                        }
+                        if (!isInOpenProject(repoDir)) {
+                            return outsideProjectError(repoDir);
                         }
                         String target = args.target();
                         if ("staged".equalsIgnoreCase(target)) {

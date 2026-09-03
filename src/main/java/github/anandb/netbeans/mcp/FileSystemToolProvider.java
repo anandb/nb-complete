@@ -14,6 +14,9 @@ import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.MapperSupplier;
 import org.openide.util.Lookup;
 
+import static github.anandb.netbeans.mcp.ProjectPathGuard.isInOpenProject;
+import static github.anandb.netbeans.mcp.ProjectPathGuard.outsideProjectError;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
@@ -44,41 +47,6 @@ public class FileSystemToolProvider {
 
     private static final Logger LOG = Logger.from(FileSystemToolProvider.class);
     private static final ObjectMapper MAPPER = MapperSupplier.get();
-
-    /**
-     * Returns true when {@code path} lies inside one of the currently open
-     * projects. Both the requested path and the project roots are
-     * canonicalized, so relative escapes ({@code ../}) and symlinks pointing
-     * outside a project are rejected.
-     */
-    private static boolean isInOpenProject(String path) {
-        ProjectQuery pq = Lookup.getDefault().lookup(ProjectQuery.class);
-        Project[] openProjects = pq == null ? new Project[0] : pq.getAllOpenProjects();
-        if (openProjects.length == 0) {
-            return false;
-        }
-        try {
-            String canonical = new File(path).getCanonicalPath();
-            for (Project p : openProjects) {
-                File projectDirFile = org.openide.filesystems.FileUtil.toFile(p.getProjectDirectory());
-                if (projectDirFile == null) {
-                    continue;
-                }
-                String projectRoot = projectDirFile.getCanonicalPath();
-                if (canonical.equals(projectRoot) || canonical.startsWith(projectRoot + File.separator)) {
-                    return true;
-                }
-            }
-        } catch (IOException e) {
-            LOG.warn("Path containment check failed for {0}: {1}", path, e.getMessage());
-        }
-        return false;
-    }
-
-    /** Standard rejection response for paths outside the open projects. */
-    private static Map<String, Object> outsideProjectError(String path) {
-        return Map.of("status", "error", "message", "Path is outside the open projects: " + path);
-    }
 
     public void registerTools(McpTools mcpTools) {
         registerReadFile(mcpTools);
@@ -433,6 +401,13 @@ public class FileSystemToolProvider {
                         }
                         String searchDir = args.directory();
                         String fileGlob = args.filePattern();
+                        // Compile the glob once per search and match with a
+                        // precompiled Pattern — matchGlob() used String.matches()
+                        // per file (recompiles on every call) and left regex
+                        // metacharacters unescaped, so a crafted filePattern
+                        // could backtrack catastrophically (ReDoS).
+                        Pattern globPattern = (fileGlob != null && !fileGlob.isEmpty())
+                                ? compileGlob(fileGlob) : null;
                         List<Map<String, Object>> matches = new ArrayList<>();
                         for (Project p : projects) {
                             File projectDirFile = org.openide.filesystems.FileUtil.toFile(p.getProjectDirectory());
@@ -449,9 +424,9 @@ public class FileSystemToolProvider {
                             Files.walkFileTree(searchRoot, new SimpleFileVisitor<>() {
                                 @Override
                                 public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
-                                    if (fileGlob != null && !fileGlob.isEmpty()) {
+                                    if (globPattern != null) {
                                         String fileName = file.getFileName().toString();
-                                        if (!matchGlob(fileName, fileGlob)) {
+                                        if (!globPattern.matcher(fileName).matches()) {
                                             return FileVisitResult.CONTINUE;
                                         }
                                     }
@@ -484,13 +459,33 @@ public class FileSystemToolProvider {
                         return result;
                     }
 
-                    private boolean matchGlob(String fileName, String glob) {
-                        String regex = glob.replace(".", "\\.").replace("*", ".*").replace("?", ".");
-                        return fileName.matches(regex);
-                    }
                 });
     }
 
+    /**
+     * Converts a simple glob ({@code *} = any run, {@code ?} = any single char)
+     * to a compiled Pattern. Every other character — including regex
+     * metacharacters like {@code [ ( { + .} — is escaped literally, so a
+     * crafted filePattern can neither inject regex syntax nor backtrack
+     * catastrophically.
+     */
+    private static Pattern compileGlob(String glob) {
+        StringBuilder sb = new StringBuilder(glob.length() * 2);
+        for (int i = 0; i < glob.length(); i++) {
+            char c = glob.charAt(i);
+            switch (c) {
+                case '*' -> sb.append(".*");
+                case '?' -> sb.append('.');
+                default -> {
+                    if ("\\[](){}<>^$|.?*+-=".indexOf(c) >= 0) {
+                        sb.append('\\');
+                    }
+                    sb.append(c);
+                }
+            }
+        }
+        return Pattern.compile(sb.toString());
+    }
     private void registerListDirectory(McpTools mcpTools) {
         ObjectNode schema = MAPPER.createObjectNode();
         schema.put("type", "object");
