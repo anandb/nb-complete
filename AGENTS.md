@@ -190,10 +190,7 @@ NbPreferences.forModule(PreferenceKeys.class)
 - End-of-turn signals: `responding_finished`, `end_turn`, or `available_commands_update` set
   `turnEnded=true` and start a flush timer (`TimingConstants.STREAM_FLUSH_MS`, currently 300ms).
   `session/load` configOptions also triggers a flush.
-- `MessageType` enum contains all valid session updates (e.g. `agent_message_chunk`,
-
-(Showing lines 110-122 of 153. Use offset=112 to continue.)
-  `agent_thought_chunk`, `plan`, `tool_call`). Check this enum before adding message types.
+- `MessageType` enum contains all valid session updates (e.g. `agent_message_chunk`, `agent_thought_chunk`, `plan`, `tool_call`). Check this enum before adding message types.
 
 ### Connection & Lifecycle
 - `AcpProtocolClient.setConnectionErrorHandler()` is a noop. Disconnection handles
