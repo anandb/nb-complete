@@ -15,7 +15,12 @@ To use Pi with BeanBot, install the harness plus two Pi extensions:
 - **pi-acp** — an ACP adapter that exposes Pi over the [Agent Client Protocol](https://agentclientprotocol.com), which is what BeanBot speaks.
 - **pi-mcp-adapter** — bridges MCP servers into Pi, letting it call the plugin's [[MCP Tools]].
 
-The executable you configure in BeanBot is <code>pi-acp</code> (the adapter, not <code>pi</code> itself). When the session starts, Pi posts a startup banner with its version, context files and extensions, which the plugin renders as a compact info card.
+The executable you configure in BeanBot is <code>pi-acp</code> (the adapter, not <code>pi</code> itself). When the session starts, Pi posts a startup banner with its version, context files and extensions, which the plugin renders as a compact info card. Pi is also exempt from MCP token authentication, since the harness cannot carry tokens.
+
+Pi needs two extra setup steps for the plugin's [[MCP Tools]]:
+
+- **Fixed MCP port** — enable <i>Use fixed MCP port</i> in Options (Assistant > System) and pick a port. Pi cannot pick up the random port the server would otherwise use per session.
+- **MCP server registration** — add the plugin's MCP server entry to <code>~/.pi/agent/mcp.json</code>; unlike other agents, Pi does not receive the server automatically during session creation.
 
 > [[Starting a Session]]
 > [[MCP Tools]]
