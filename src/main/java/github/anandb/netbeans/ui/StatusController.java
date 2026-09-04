@@ -117,8 +117,10 @@ public class StatusController {
         this.processingListener = listener;
     }
 
-    /** Record whether a session is currently active. UI enablement deriving
-     *  from this flag is handled by {@link #updateButtonState(boolean)}. */
+    /** Record whether a session is currently active. Distinct from the
+     *  per-message processing flag: an active session exists for the Go button
+     *  even when idle; processing reflects an in-flight message. The actual
+     *  Go/Stop disable-on-inactive is applied in the sessionActiveCallback. */
     public void setSessionActive(boolean active) {
         sessionActive = active;
     }

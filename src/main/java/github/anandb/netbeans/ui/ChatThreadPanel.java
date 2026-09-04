@@ -1133,10 +1133,10 @@ public class ChatThreadPanel extends JPanel {
             return;
         }
         // Park the debounced flush timer so it can't fire between chunks and
-        // prematurely finalize / trip onMessagesStable. Restarted (if it was
-        // running) once the render settles — matching pre-chunk behavior where
-        // the EDT was blocked for the whole render.
-        final boolean flushTimerWasRunning = flushTimer.isRunning();
+        // prematurely finalize / trip onMessagesStable. Re-armed unconditionally
+        // once the render settles so a reloaded streaming tail bubble is always
+        // finalized (the drain path restarts it per-message, so this only matters
+        // for the load/reload render path).
         flushTimer.stop();
         loadRenderInProgress = true;
         batchAdding = true;
@@ -1176,9 +1176,10 @@ public class ChatThreadPanel extends JPanel {
                 messagesContainer.revalidate();
                 scrollController.scrollToBottom(true);
                 loadRenderInProgress = false;
-                if (flushTimerWasRunning) {
-                    flushTimer.restart();
-                }
+                // Always re-arm finalization (300ms after the last chunk) so the
+                // tail streaming bubble is finalized even when the render was not
+                // entered with the flush timer already running.
+                restartFlushTimer();
                 if (onDone != null) onDone.run();
                 // Drain any live deltas that queued (but couldn't drain) while
                 // the render was in flight — ordering preserved: full history,

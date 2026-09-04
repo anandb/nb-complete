@@ -207,6 +207,14 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         sessionActiveCallback = sessionActive -> {
             this.sessionActive = sessionActive;
             statusController.setSessionActive(sessionActive);
+            // No-sessions / all-archived path disables Go/Stop here; once a session
+            // loads, onSessionLoaded's updateButtonState() re-enables them. Not driven
+            // by isProcessing (that flag reflects an in-flight message, not session
+            // presence).
+            if (!sessionActive) {
+                statusController.getSendBtn().setEnabled(false);
+                statusController.getStopBtn().setEnabled(false);
+            }
             sessionDropdown.setEnabled(sessionActive);
             hideBtn.setEnabled(sessionActive);
             renameSessionBtn.setEnabled(sessionActive);
