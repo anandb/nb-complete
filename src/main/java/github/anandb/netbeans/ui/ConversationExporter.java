@@ -167,6 +167,18 @@ final class ConversationExporter {
      * @param defaultName suggested file name (e.g. "session.md")
      */
     static void export(Component parent, String markdown, String defaultName) {
+        export(parent, markdown, defaultName, true);
+    }
+
+    /**
+     * Export conversation to a file.
+     *
+     * @param parent      parent component for the dialog
+     * @param markdown    the content to write
+     * @param defaultName suggested file name (e.g. "session.md")
+     * @param openAfter   whether to open the file in the editor after saving
+     */
+    static void export(Component parent, String markdown, String defaultName, boolean openAfter) {
         JFileChooser chooser = new JFileChooser();
         chooser.setDialogTitle(NbBundle.getMessage(ConversationExporter.class, "TITLE_ExportConv"));
         chooser.setSelectedFile(new File(defaultName));
@@ -187,12 +199,14 @@ final class ConversationExporter {
                         new FileOutputStream(file), StandardCharsets.UTF_8)) {
                     writer.write(markdown);
                     LOG.log(Level.FINE, "Conversation exported to {0}", file.getAbsolutePath());
-                    FileObject fo = FileUtil.toFileObject(FileUtil.normalizeFile(file));
-                    if (fo != null) {
-                        DataObject dobj = DataObject.find(fo);
-                        EditorCookie ec = dobj.getLookup().lookup(EditorCookie.class);
-                        if (ec != null) {
-                            SwingUtilities.invokeLater(() -> ec.open());
+                    if (openAfter) {
+                        FileObject fo = FileUtil.toFileObject(FileUtil.normalizeFile(file));
+                        if (fo != null) {
+                            DataObject dobj = DataObject.find(fo);
+                            EditorCookie ec = dobj.getLookup().lookup(EditorCookie.class);
+                            if (ec != null) {
+                                SwingUtilities.invokeLater(() -> ec.open());
+                            }
                         }
                     }
                 } catch (IOException ex) {

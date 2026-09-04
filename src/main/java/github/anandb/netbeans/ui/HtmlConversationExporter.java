@@ -670,7 +670,7 @@ body {
      * in the IDE editor.
      */
     static void export(Component parent, String html, String defaultName) {
-        ConversationExporter.export(parent, html, defaultName);
+        ConversationExporter.export(parent, html, defaultName, false);
     }
 
     /**
