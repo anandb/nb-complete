@@ -1,5 +1,27 @@
 # Release Notes
 
+## v1.19.0 (Changes since v1.18.0)
+
+### Fixes
+- **PI agent permission context**: Fixed permission context extraction and moved caveman to preamble.
+- **PI agent permission title**: Extracted command from PI agent permission title.
+- **Stall watchdog**: Surface stalled agent runs with run-stall watchdog (`e3eb088e`).
+- **Go/Stop button state**: Disabled when no sessions exist; finalize reloaded tail bubble (`8a49b79b`).
+- **Exported HTML auto-open**: Don't auto-open exported HTML files (`05143578`).
+
+### UI
+- **Compact preamble bubble**: Show compact bubble for preamble on session reload (`528bfbdc`).
+
+### Refactoring
+- **ChatThreadPanel cleanup**: Remove unused members, rename batchAdding, organize fields (`4146d8ea`).
+- **MCP CPD duplication**: Extract `validateExistingFile` to fix copy-paste duplication (`4957d264`).
+
+### Documentation
+- Fix AGENTS.md formatting — join split MessageType bullet into single line (`15528f5a`).
+
+### Housekeeping
+- Version bumped to 1.19.0.
+
 ## v1.18.0 (Changes since v1.17.0)
 
 ### Features

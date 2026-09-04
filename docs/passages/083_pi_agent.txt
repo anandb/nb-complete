@@ -1,0 +1,23 @@
+:: PI Agent {"position":"1600,1200","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">PI Agent</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+<i style="opacity: 0.7;">Experimental — BeanBot's support for this harness is under active development and may change without notice.</i>
+
+[Pi](https://pi.dev) is a minimal, extensible **agent harness** — an open-source coding agent CLI (npm: <code>@earendil-works/pi-coding-agent</code>) built around a unified multi-provider LLM API, an agent runtime with tool calling, and a self-extensible extension system. It deliberately ships no built-in permission system: it runs with the permissions of the user who launched it, so sandbox or containerize it yourself if you need stronger boundaries.
+
+To use Pi with BeanBot, install the harness plus two Pi extensions:
+
+- **pi-acp** — an ACP adapter that exposes Pi over the [Agent Client Protocol](https://agentclientprotocol.com), which is what BeanBot speaks.
+- **pi-mcp-adapter** — bridges MCP servers into Pi, letting it call the plugin's [[MCP Tools]].
+
+The executable you configure in BeanBot is <code>pi-acp</code> (the adapter, not <code>pi</code> itself). When the session starts, Pi posts a startup banner with its version, context files and extensions, which the plugin renders as a compact info card.
+
+> [[Starting a Session]]
+> [[MCP Tools]]
+> [[Permission Requests]]
+> [[Picking an Agent, Model and Thinking Level]]

@@ -10,7 +10,7 @@
 
 Click the '+' button on the toolbar to start a new session, this will initialise the chat interface and post the preamble to the OpenCode server (Tools > Options > Assistant > Preamble). The input text-area is at the bottom of the sidebar panel, you'll see placeholder text that says *Type Message Here*, type your messages and press `Enter` to send to the server, the response will be rendered as a chat bubble, if you need to send multi-line text, press `Shift + Enter` to add a newline to the text-area. You can also type `/new` in the input area to quickly start a new session.
 
-Once the session is up, some agents (like the PI harness) post a startup banner with their version, context files and extensions — the plugin renders it as a compact info card instead of a raw text bubble.
+Once the session is up, some agents (like the [[PI Agent]]) post a startup banner with their version, context files and extensions — the plugin renders it as a compact info card instead of a raw text bubble.
 
 
 > [[New Session Confirm Bar]]

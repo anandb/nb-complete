@@ -26,7 +26,7 @@ The plugin runs a small built-in MCP (Model Context Protocol) server inside the 
 </tbody>
 </table>
 
-All filesystem and git tools are confined to your currently open projects — paths outside them (including symlinks that point outside) are rejected. The MCP server binds to <code>127.0.0.1</code> and verifies a per-instance token, so it never accepts connections from outside your machine; agents that cannot carry tokens (the PI harness) connect without one. The server port can be fixed in Options (Assistant > System); by default the OS picks a random free port. It only activates when your agent server advertises MCP support. When the AI uses one of these tools, the call and its result appear in the chat as a collapsible tool bubble with the tag icon — same as any other tool output.
+All filesystem and git tools are confined to your currently open projects — paths outside them (including symlinks that point outside) are rejected. The MCP server binds to <code>127.0.0.1</code> and verifies a per-instance token, so it never accepts connections from outside your machine; agents that cannot carry tokens (the [[PI Agent]]) connect without one. The server port can be fixed in Options (Assistant > System); by default the OS picks a random free port. It only activates when your agent server advertises MCP support. When the AI uses one of these tools, the call and its result appear in the chat as a collapsible tool bubble with the tag icon — same as any other tool output.
 
 
 > [[Thinking and Tool Responses]]

@@ -15,7 +15,7 @@ When the turn ends, all queued messages are combined into a single prompt and se
 <li><b>Cancel Queue</b> — discard all queued messages.</li>
 </ul>
 
-Queueing is available when your agent supports it (currently Goose; other agents send messages directly). If you close or switch sessions before the turn ends, pending messages are cancelled with the rest of the panel state.
+Queueing is available when your agent supports it (currently [[Goose Agent]]; other agents send messages directly). If you close or switch sessions before the turn ends, pending messages are cancelled with the rest of the panel state.
 
 
 > [[Chat Features]]
