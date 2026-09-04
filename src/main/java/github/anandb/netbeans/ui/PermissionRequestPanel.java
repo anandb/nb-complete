@@ -268,9 +268,7 @@ final class PermissionRequestPanel extends JPanel {
         prepareFuture.thenAcceptAsync(expanded -> {
                 if (!requestActive) return; // panel was dismissed while loading
                 currentFileChanges = expanded;
-                if (expanded.isEmpty()) {
-                    showUnparseableDiffMessage();
-                } else {
+                if (!expanded.isEmpty()) {
                     populateFileListUI(expanded);
                 }
                 // Rebuild buttons to show/hide Show Diff button now that

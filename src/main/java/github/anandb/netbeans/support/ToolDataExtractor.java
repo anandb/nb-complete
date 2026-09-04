@@ -149,13 +149,42 @@ public final class ToolDataExtractor {
 
     private static String extractIdentifier(SessionUpdate update) {
         SessionUpdate.UpdateData ud = update != null ? update.update() : null;
-        SessionUpdate.RawInput ri = ud != null ? ud.rawInput() : null;
+        JsonNode ri = ud != null ? ud.rawInput() : null;
         
-        String path = ri != null ? firstNonBlank(ri.path(), ri.filePath()) : null;
+        String path = null;
+        if (ri != null && ri.isObject()) {
+            path = firstNonBlank(
+                ri.has("path") ? ri.get("path").asText(null) : null,
+                ri.has("filePath") ? ri.get("filePath").asText(null) : null
+            );
+        }
+        // Fallback: extract from locations array (PI agent format)
+        if (path == null && ud != null) {
+            path = extractFirstLocationPath(ud);
+        }
         String title = ud != null ? ud.title() : null;
-        String toolName = ri != null ? ri.tool() : null;
+        String toolName = ri != null && ri.has("tool") ? ri.get("tool").asText(null) : null;
         
         return firstNonBlank(path, title, toolName, "");
+    }
+
+    private static String extractPathFromRawInputJson(SessionUpdate.UpdateData ud) {
+        // No longer needed - rawInput is now a JsonNode
+        return null;
+    }
+
+    private static String extractFirstLocationPath(SessionUpdate.UpdateData ud) {
+        JsonNode locations = ud.locations();
+        if (locations != null && locations.isArray() && locations.size() > 0) {
+            JsonNode first = locations.get(0);
+            if (first.has("path") && first.get("path").isTextual()) {
+                String path = first.get("path").asText();
+                // Return just the filename for display
+                int lastSep = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
+                return lastSep >= 0 ? path.substring(lastSep + 1) : path;
+            }
+        }
+        return null;
     }
 
     public static String getLocalEchoText(String commandText) {

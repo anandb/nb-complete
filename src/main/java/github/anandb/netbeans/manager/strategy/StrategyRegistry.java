@@ -408,8 +408,12 @@ public class StrategyRegistry implements UpdateDispatcher {
             data.setStatus(defaultIfBlank(update.status(), "completed"));
 
             // For edit tools, include the file path in the body
-            String filePath = update.update() != null && update.update().rawInput() != null
-                    ? update.update().rawInput().path() : null;
+            String filePath = null;
+            if (update.update() != null && update.update().rawInput() != null
+                    && update.update().rawInput().isObject()) {
+                JsonNode ri = update.update().rawInput();
+                filePath = ri.has("path") ? ri.get("path").asText(null) : null;
+            }
             String pathPrefix = isNotBlank(filePath) ? filePath + "\n\n" : "";
 
             text = data.setText(new StringBuilder()

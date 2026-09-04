@@ -48,6 +48,7 @@ import github.anandb.netbeans.model.SessionState;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.MapperSupplier;
+import github.anandb.netbeans.support.PreferenceKeys;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 
 import static org.apache.commons.lang3.StringUtils.isBlank;
@@ -815,11 +816,21 @@ public class SessionManager implements SessionQuery, SessionControl {
     private boolean sendPreamble(String sessionId) {
         String rules = PluginSettings.getCriticalRules();
         String preamble = PluginSettings.getPreamble();
+        Preferences prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
+        boolean cavemanMode = prefs.getBoolean(PreferenceKeys.CAVEMAN_MODE, false);
 
-        // Combine critical rules and preamble
+        // Combine critical rules, caveman instruction, and preamble
         StringBuilder combined = new StringBuilder();
         if (!isBlank(rules)) {
             combined.append(rules);
+        }
+        if (cavemanMode) {
+            if (!combined.isEmpty()) {
+                combined.append("\n\n");
+            }
+            combined.append("Respond in minimal, terse prose. Short sentences. No filler. ")
+                .append("Code, commands, and file paths stay exact. ")
+                .append("When explaining, use the fewest words that convey the meaning.");
         }
         if (!isBlank(preamble)) {
             if (!combined.isEmpty()) {

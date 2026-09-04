@@ -25,7 +25,7 @@ public record SessionUpdate(
     public record UpdateData(
         @JsonProperty("sessionUpdate") MessageType type,
         String title,
-        RawInput rawInput,
+        JsonNode rawInput,
         String messageId,
         JsonNode content,
         Message message,
@@ -40,7 +40,8 @@ public record SessionUpdate(
         List<SessionConfigOption> configOptions,
         Long used,
         Long size,
-        JsonNode entries
+        JsonNode entries,
+        JsonNode locations
     ) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -120,8 +121,9 @@ public record SessionUpdate(
 
     public String command() {
         UpdateData ud = update();
-        if (ud == null) return "";
-        return ud.rawInput() != null ? defaultString(ud.rawInput().command()) : "";
+        if (ud == null || ud.rawInput() == null) return "";
+        JsonNode ri = ud.rawInput();
+        return ri.has("command") ? defaultString(ri.get("command").asText()) : "";
     }
 
     public UpdateData update() {

@@ -205,7 +205,7 @@ class ServerProcessLifecycle {
                             ? params.get("sessionId").asText() : null;
                         SessionUpdate.UpdateData syntheticUpdate = new SessionUpdate.UpdateData(
                             mt, null, null, null, null, null, null, null, null, null,
-                            null, null, null, null, null, null, null, null);
+                            null, null, null, null, null, null, null, null, null);
                         SessionUpdate.Params p = new SessionUpdate.Params(ssId, syntheticUpdate);
                         onNotify.accept(new SessionUpdate("2.0", "session/update", p));
                         return;
