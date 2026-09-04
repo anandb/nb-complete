@@ -3,6 +3,8 @@ package github.anandb.netbeans.support;
 import java.io.File;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
@@ -63,6 +65,13 @@ public final class ToolContextExtractor {
                 return truncatePath(pattern);
             }
             return truncateCommand(pattern, commandMaxLength);
+        }
+
+        // Fallback: extract from PI agent title format
+        // "Current agent requested bash command '...' (matched '*'). Allow this command?"
+        String titleCmd = extractCommandFromTitle(toolCall);
+        if (titleCmd != null) {
+            return truncateCommand(titleCmd, commandMaxLength);
         }
 
         return null;
@@ -136,6 +145,34 @@ public final class ToolContextExtractor {
             JsonNode first = toolCall.get("patterns").get(0);
             if (first.isTextual()) {
                 return first.asText();
+            }
+        }
+        return null;
+    }
+
+    // PI agent title pattern: "Current agent requested bash command '...' (matched '*')."
+    private static final Pattern PI_AGENT_CMD_PATTERN =
+            Pattern.compile("Current agent requested bash command '(.+?)' ");
+
+    /**
+     * Extracts the command from PI agent permission request title.
+     * Checks both top-level 'title' and 'rawInput.title'.
+     */
+    private static String extractCommandFromTitle(JsonNode toolCall) {
+        String title = null;
+        if (toolCall.has("title") && toolCall.get("title").isTextual()) {
+            title = toolCall.get("title").asText();
+        }
+        if (title == null && toolCall.has("rawInput") && toolCall.get("rawInput").isObject()) {
+            JsonNode rawInput = toolCall.get("rawInput");
+            if (rawInput.has("title") && rawInput.get("title").isTextual()) {
+                title = rawInput.get("title").asText();
+            }
+        }
+        if (title != null) {
+            Matcher m = PI_AGENT_CMD_PATTERN.matcher(title);
+            if (m.find()) {
+                return m.group(1);
             }
         }
         return null;
