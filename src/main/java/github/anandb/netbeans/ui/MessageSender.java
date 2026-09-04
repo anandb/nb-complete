@@ -256,6 +256,7 @@ public class MessageSender {
         statusController.setStatus("STATUS_Sending");
         statusController.startThinking();
         statusController.updateButtonState(true);
+        statusController.armRunWatchdog();
 
         // Build file attachment blocks (skip for forwarded slash commands)
         List<Map<String, Object>> fileBlocks = isForwardedSlash ? List.of() : attachmentManager.buildFileBlocks();
@@ -339,6 +340,7 @@ public class MessageSender {
                         statusController.updateButtonState(false);
                         statusController.stopThinking();
                         statusController.setStatus("STATUS_Ready");
+                        statusController.disarmRunWatchdog();
                         if (onTurnEndedCallback != null) {
                             onTurnEndedCallback.get();
                         }
@@ -361,6 +363,7 @@ public class MessageSender {
                         statusController.setStatus("STATUS_Error",
                     ExceptionUtils.getMessage(ex) != null ? ExceptionUtils.getMessage(ex) : ex.getClass().getSimpleName());
                         statusController.stopThinking();
+                        statusController.disarmRunWatchdog();
                         chatPanel.stopStreaming();
                         chatPanel.addMessage(ProcessedMessage.createError(
                                 MessageType.error_response,
@@ -412,6 +415,7 @@ public class MessageSender {
                 try {
                     statusController.setStatus("STATUS_Stopped");
                     statusController.stopThinking();
+                    statusController.disarmRunWatchdog();
                     if (chatPanel != null) {
                         chatPanel.stopStreaming();
                     }
@@ -457,6 +461,7 @@ public class MessageSender {
         statusController.setStatus("STATUS_Sending");
         statusController.startThinking();
         statusController.updateButtonState(true);
+        statusController.armRunWatchdog();
 
         // No local echo — individual echoes were shown when queued.
         // No attachments — they were cleared when queued.
@@ -483,6 +488,7 @@ public class MessageSender {
                             onMessageDoneCallback.run();
                         }
                         statusController.setStatus("STATUS_Ready");
+                        statusController.disarmRunWatchdog();
                         if (onTurnEndedCallback != null) {
                             onTurnEndedCallback.get();
                         }
@@ -497,6 +503,7 @@ public class MessageSender {
                         statusController.setStatus("STATUS_Error",
                             ExceptionUtils.getMessage(ex) != null ? ExceptionUtils.getMessage(ex) : ex.getClass().getSimpleName());
                         statusController.stopThinking();
+                        statusController.disarmRunWatchdog();
                         chatPanel.stopStreaming();
                         chatPanel.addMessage(ProcessedMessage.createError(
                                 MessageType.error_response,

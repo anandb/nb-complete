@@ -1,0 +1,6 @@
+# File Editing Rules
+- Prefer targeted string replacements or localized patches over full file rewrites.
+- Always use `cat`, `grep`, or `ls` to verify a file's structure before editing it.
+- If a tool execution or shell command fails, stop and re-evaluate; do not repeat the exact same edit.
+
+

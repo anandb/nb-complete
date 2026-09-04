@@ -158,6 +158,7 @@ public class SessionLifecycleHandler implements SessionListener {
     public void onMessageDone() {
         LOG.info("onMessageDone called (turnEnded -> true, triggering onTurnEnded)");
         turnEnded = true;
+        statusController.disarmRunWatchdog();
         runTurnEndedOffEdt();
     }
 
@@ -185,6 +186,14 @@ public class SessionLifecycleHandler implements SessionListener {
         String type = update.update() != null && update.update().type() != null ? update.update().type().name() : null;
         String msgId = update.update() != null ? update.update().messageId() : null;
         LOG.fine("UI received session update: type={0}, msgId={1}", type, msgId);
+
+        // Any inbound session/update for the CURRENT session proves the run is alive.
+        // Updates from a switched-away session (SSE race guard, same check as
+        // displayMessage) must not reset this run's stall clock.
+        String updSessionId = update.params() != null ? update.params().sessionId() : null;
+        if (updSessionId == null || updSessionId.equals(sessionService.get().getCurrentSessionId())) {
+            statusController.touchRunActivity();
+        }
 
         Lookup.getDefault().lookup(UpdateDispatcher.class).handle(update, new UIHandler() {
             @Override
@@ -275,6 +284,7 @@ public class SessionLifecycleHandler implements SessionListener {
             // arrive late, and this SSE signal is the authoritative end of turn.
             SwingUtilities.invokeLater(() -> {
                 chatPanel.restartFlushTimer();
+                statusController.disarmRunWatchdog();
                 // Always show Ready/Go. If messages were flushed,
                 // a delayed timer will switch back to Sending/Stop.
                 statusController.updateButtonState(false);
@@ -536,6 +546,7 @@ public class SessionLifecycleHandler implements SessionListener {
             // fires 300ms after the last reloaded message drains from the queue.
             chatPanel.restartFlushTimer();
             statusController.setStatus("STATUS_Ready");
+            statusController.disarmRunWatchdog();
             statusController.stopThinking();
             // Restore persisted context usage tooltip
             String usage = sessionService.get().getContextUsage(sessionId);
@@ -626,6 +637,7 @@ public class SessionLifecycleHandler implements SessionListener {
         SwingUtilities.invokeLater(() -> {
             statusController.setStatus("STATUS_Error", message);
             statusController.stopThinking();
+            statusController.disarmRunWatchdog();
             statusController.updateButtonState(false);
             statusController.setInputEnabled(true);
             turnEnded = true;

@@ -35,6 +35,17 @@ public class StatusController {
     private int thinkingDots = 0;
     private volatile boolean sessionActive = true;
 
+    /** How long (ms) a run may be silent before the status flags a stall.
+     *  A heads-up only: the connection is NOT closed, Stop stays enabled, and
+     *  any resumed inbound data clears the stall (see {@link #touchRunActivity()}). */
+    private static final int RUN_STALL_MS = 60_000;
+
+    /** Stalls are detected on a 5s tick while the run is active. */
+    private final Timer runWatchdogTimer;
+    private volatile boolean runWatchdogArmed = false;
+    private volatile boolean runWatchdogStalled = false;
+    private volatile long lastRunActivityNanos = 0L;
+
     public StatusController(
             JLabel statusLabel,
             JButton sendBtn,
@@ -54,6 +65,9 @@ public class StatusController {
             }
         });
         this.statusResetTimer.setRepeats(false);
+
+        this.runWatchdogTimer = new Timer(5000, e -> checkRunWatchdog());
+        this.runWatchdogTimer.setRepeats(true);
     }
 
     public JButton getSendBtn() {
@@ -109,6 +123,69 @@ public class StatusController {
 
     public void scheduleReset() {
         statusResetTimer.restart();
+    }
+
+    // -- Run-stall watchdog --
+
+    /** Arms the run-stall watchdog. Call when a message/task send begins. Safe
+     *  from any thread (timer ops are marshalled to the EDT). */
+    public void armRunWatchdog() {
+        lastRunActivityNanos = System.nanoTime();
+        runWatchdogArmed = true;
+        runWatchdogStalled = false;
+        SwingUtilities.invokeLater(() -> {
+            if (!runWatchdogTimer.isRunning()) {
+                runWatchdogTimer.start();
+            }
+        });
+    }
+
+    /** Reports inbound activity from the agent (any processed message), resetting
+     *  the stall clock. If a stall had been flagged, restores the Running UI. */
+    public void touchRunActivity() {
+        if (!runWatchdogArmed) {
+            return;
+        }
+        lastRunActivityNanos = System.nanoTime();
+        if (runWatchdogStalled) {
+            runWatchdogStalled = false;
+            SwingUtilities.invokeLater(() -> {
+                setStatus("STATUS_Thinking");
+                startThinking();
+            });
+        }
+    }
+
+    /** Disarms the run-stall watchdog. Call on turn end, error, or stop. */
+    public void disarmRunWatchdog() {
+        runWatchdogArmed = false;
+        runWatchdogStalled = false;
+        SwingUtilities.invokeLater(() -> {
+            if (runWatchdogTimer.isRunning()) {
+                runWatchdogTimer.stop();
+            }
+        });
+    }
+
+    public boolean isRunWatchdogArmed() {
+        return runWatchdogArmed;
+    }
+
+    private void checkRunWatchdog() {
+        if (!runWatchdogArmed || !animatedStatus) {
+            // Not armed, or the run UI is not in an active state (Stopping/
+            // Stopped/terminal) — never override those statuses with a stall.
+            return;
+        }
+        long idleMs = (System.nanoTime() - lastRunActivityNanos) / 1_000_000;
+        if (idleMs >= RUN_STALL_MS && !runWatchdogStalled) {
+            runWatchdogStalled = true;
+            // Agent has produced no data for RUN_STALL_MS. Surface it so the
+            // user knows the run stalled instead of silently hanging. Stop stays
+            // enabled (processing is still true) so they can recover. The stall
+            // clears automatically on the next touchRunActivity().
+            setStatus("STATUS_Stalled");
+        }
     }
 
     // -- Button state --
@@ -169,6 +246,11 @@ public class StatusController {
         if (statusResetTimer != null && statusResetTimer.isRunning()) {
             statusResetTimer.stop();
         }
+        if (runWatchdogTimer != null && runWatchdogTimer.isRunning()) {
+            runWatchdogTimer.stop();
+        }
+        runWatchdogArmed = false;
+        runWatchdogStalled = false;
     }
 
     private void animateThinkingTick() {

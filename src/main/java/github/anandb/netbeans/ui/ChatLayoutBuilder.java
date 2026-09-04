@@ -7,6 +7,8 @@ import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.KeyEvent;
@@ -403,13 +405,24 @@ final class ChatLayoutBuilder {
     JPanel buildBottomPanel() {
         JPanel bottomPanel = new JPanel(new BorderLayout());
 
-        JPanel statusPanel = new JPanel(new BorderLayout());
+        // GridBagLayout, not BorderLayout: the status text width varies constantly
+        // ("Sending" -> "Sending..."), and a BorderLayout.WEST label would resize
+        // on every animation tick, shifting the model dropdown (CENTER/EAST).
+        // weightx=1 on the label makes it absorb all width changes; the dropdown
+        // cluster on the right never moves.
+        JPanel statusPanel = new JPanel(new GridBagLayout());
         statusPanel.setBorder(new EmptyBorder(4, 12, 4, 12));
         statusPanel.setOpaque(false);
 
         statusLabel = new JLabel(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Ready"));
         statusLabel.setFont(statusLabel.getFont().deriveFont(12f));
-        statusPanel.add(statusLabel, BorderLayout.WEST);
+        GridBagConstraints statusGbc = new GridBagConstraints();
+        statusGbc.gridx = 0;
+        statusGbc.gridy = 0;
+        statusGbc.weightx = 0.0;
+        statusGbc.fill = GridBagConstraints.NONE;
+        statusGbc.anchor = GridBagConstraints.WEST;
+        statusPanel.add(statusLabel, statusGbc);
 
         JPanel modelWrap = new JPanel(new BorderLayout()) {
             @Override
@@ -431,7 +444,10 @@ final class ChatLayoutBuilder {
         centerStatusPanel.setOpaque(false);
         centerStatusPanel.add(modelWrap);
         centerStatusPanel.add(configPanelController.getCopyModelBtn());
-        statusPanel.add(centerStatusPanel, BorderLayout.CENTER);
+        statusGbc.gridx = 1;
+        statusGbc.weightx = 1.0;
+        statusGbc.fill = GridBagConstraints.HORIZONTAL;
+        statusPanel.add(centerStatusPanel, statusGbc);
 
         int tsz = PluginSettings.getToolbarIconSize();
         toggleOptionsBtn = UIUtils.createToolbarButton("settings.svg", tsz,
@@ -442,7 +458,11 @@ final class ChatLayoutBuilder {
 
         rightStatusPanel.add(toggleOptionsBtn);
 
-        statusPanel.add(rightStatusPanel, BorderLayout.EAST);
+        statusGbc.gridx = 2;
+        statusGbc.weightx = 0.0;
+        statusGbc.fill = GridBagConstraints.VERTICAL;
+        statusGbc.anchor = GridBagConstraints.EAST;
+        statusPanel.add(rightStatusPanel, statusGbc);
 
         JPanel bottomNorth = new JPanel();
         bottomNorth.setLayout(new BoxLayout(bottomNorth, BoxLayout.Y_AXIS));
