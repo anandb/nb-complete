@@ -65,17 +65,28 @@ import static org.apache.commons.lang3.StringUtils.isBlank;
 // DSL-CONTROLLER: not a view — flushTimer/messageQueue EDT bridge + trimMessages/cachedMessages.
 public class ChatThreadPanel extends JPanel {
 
+    // --- Static constants ---
     private static final Logger LOG = Logger.from(ChatThreadPanel.class);
     private static final long serialVersionUID = 1L;
     private static final Pattern SECTION_SPLIT = Pattern.compile("(?m)^---[ \\t]*$");
-    // Max visible bubbles via PluginSettings.getMaxMessages(); 0 = unlimited.
 
-    private long lastUserTimestamp = -1L;
-    private int userMessageCount = 0;
+    // --- UI components ---
+    private final JPanel messagesContainer;
+    private final JScrollPane scrollPane;
+    private final JLayeredPane layeredPane;
+    private final JProgressBar sessionProgressBar;
+    private JLabel lastPermissionLabel;
+
+    // --- Collaborators ---
+    private final transient ScrollController scrollController;
+    private final transient MessageTransformer messageTransformer;
+    private final transient StreamingCoordinator streamingCoordinator;
+    private final transient MessageTrimmer messageTrimmer;
+
+    // --- Message queue ---
     private final ConcurrentLinkedQueue<Runnable> messageQueue = new ConcurrentLinkedQueue<>();
     /** CAS-guarded so concurrent addMessage() calls can't double-schedule the drain. */
     private final AtomicBoolean draining = new AtomicBoolean(false);
-
     /** Message IDs that are queued (not yet posted to the server). Used to
      *  apply the "queued" visual indicator (amber accent + label) on bubbles. */
     private final Set<String> queuedMessageIds = ConcurrentHashMap.newKeySet();
@@ -83,49 +94,39 @@ public class ChatThreadPanel extends JPanel {
      *  removed when the message is actually posted or the queue is cancelled. */
     private final Map<String, MessageBubble> queuedBubbles = new ConcurrentHashMap<>();
 
-    // Debounced flush timer. Reset on each processed message, fires 300ms after last drain.
-    private final Timer flushTimer;
-
-    private final JPanel messagesContainer;
-    private final JScrollPane scrollPane;
-    private final JLayeredPane layeredPane;
-
-    // Cached full message list for re-render on filter/pref changes.
-    private transient volatile List<Message> cachedMessages;
-    private final transient ScrollController scrollController;
-    private final transient MessageTransformer messageTransformer;
-    private final transient StreamingCoordinator streamingCoordinator;
-
+    // --- State flags ---
     private volatile boolean allBlocksExpanded = false;
     private volatile boolean keepOlderMessages = false;
-    private volatile boolean batchAdding = false;
+    private volatile boolean isBatchMode = false;
     /** True while a chunked load/refresh render is in flight; blocks live
      *  {@link #drainMessageQueue()} so arriving deltas can't interleave with
      *  half-drawn history (order correctness). */
     private volatile boolean loadRenderInProgress = false;
     /** True while the "start a session" hint bubble is shown; reset by clearMessages(). */
     private volatile boolean startSessionHintShown;
-    private final JProgressBar sessionProgressBar;
-    private String currentSessionId;
-
     private volatile boolean sessionLoading = false;
-    private JLabel lastPermissionLabel;
-    private boolean lastPermissionAllowed;
-    private int permissionCount = 0;
-    // Session-keyed buffer for loading; switch-session-safe.
+
+    // --- Session state ---
+    private String currentSessionId;
+    private long lastUserTimestamp = -1L;
+    private int userMessageCount = 0;
+    /** Max visible bubbles via PluginSettings.getMaxMessages(); 0 = unlimited. */
+    private transient volatile List<Message> cachedMessages;
+    /** Session-keyed buffer for loading; switch-session-safe. */
     private final transient Map<String, List<ProcessedMessage>> pendingMessagesBySession = new ConcurrentHashMap<>();
-
-    // Callback fired when flush timer completes (messages stable). Used for post-reload export.
-    private transient volatile Runnable onMessagesStable;
-
-    // Seen message IDs during loading, for stale-pin cleanup in flushSessionBuffer().
+    /** Seen message IDs during loading, for stale-pin cleanup in flushSessionBuffer(). */
     private final transient Map<String, Set<String>> seenMessageIdsBySession = new ConcurrentHashMap<>();
 
-    private final transient MessageTrimmer messageTrimmer;
+    // --- Permission state ---
+    private boolean lastPermissionAllowed;
+    private int permissionCount = 0;
 
+    // --- Callbacks ---
+    /** Debounced flush timer. Reset on each processed message, fires 300ms after last drain. */
+    private final Timer flushTimer;
+    /** Callback fired when flush timer completes (messages stable). Used for post-reload export. */
+    private transient volatile Runnable onMessagesStable;
 
-    // Turn-end gate for flushTimer. When null or false, the timer restarts instead of firing,
-    private transient volatile BooleanSupplier turnEndedSupplier;
 
     public ChatThreadPanel() {
         ColorTheme theme = ThemeManager.getCurrentTheme();
@@ -447,7 +448,7 @@ public class ChatThreadPanel extends JPanel {
         }
 
         // Sweep orphaned streaming JTextAreas before creating new bubble. Skip in batch mode.
-        if (!batchAdding) {
+        if (!isBatchMode) {
             sweepStreamingBubbles(wasAtBottom);
         }
 
@@ -466,7 +467,7 @@ public class ChatThreadPanel extends JPanel {
             // deferred-finalize/removeBlankBubbles at stopStreaming().
             if (!streaming) {
                 finalizeNonStreaming(wasAtBottom);
-            } else if (wasAtBottom && !batchAdding) {
+            } else if (wasAtBottom && !isBatchMode) {
                 scrollController.scrollToBottom(true);
             }
 
@@ -511,12 +512,12 @@ public class ChatThreadPanel extends JPanel {
         // Streaming: deferred-finalize handles layout/blanks at stopStreaming().
         if (!streaming) {
             finalizeNonStreaming(wasAtBottom);
-        } else if (wasAtBottom && !batchAdding) {
+        } else if (wasAtBottom && !isBatchMode) {
             scrollController.scrollToBottom(true);
         }
         // User bubbles always pin to bottom — the user just sent a message,
         // so the latest content must be visible regardless of prior scroll.
-        if (type.isUser() && !batchAdding) {
+        if (type.isUser() && !isBatchMode) {
             scrollController.scrollToBottom(true);
         }
         if (streaming) {
@@ -527,11 +528,11 @@ public class ChatThreadPanel extends JPanel {
     /**
      * Shared finalize step for non-streamed bubbles, mirroring the streaming
      * finalize ({@link #removeBlankBubbles}) so both paths keep the same set of
-     * bubbles. Runs eagerly for live adds; session loads (batchAdding) defer to
+     * bubbles. Runs eagerly for live adds; session loads (isBatchMode=true) defer to
      * a single pass at the end of {@link #renderLoadedInChunks}.
      */
     private void finalizeNonStreaming(boolean wasAtBottom) {
-        if (!batchAdding) {
+        if (!isBatchMode) {
             // Live adds: only the current turn is unfinalized, so scan its tail.
             removeBlankBubbles(1, wasAtBottom);
             // Always scroll after adding a non-streaming bubble if user was at bottom.
@@ -735,8 +736,11 @@ public class ChatThreadPanel extends JPanel {
     }
 
     public void addPermissionResult(String statusText, boolean allowed) {
-        final String displayStatusText = ("Allow once".equalsIgnoreCase(statusText) || "allow_once".equalsIgnoreCase(statusText))
-                ? NbBundle.getMessage(ChatThreadPanel.class, "MSG_PermissionAllowedOnce") : statusText;
+        final String displayStatusText =
+                ("Allow once".equalsIgnoreCase(statusText) || "allow_once".equalsIgnoreCase(statusText))
+                    ? NbBundle.getMessage(ChatThreadPanel.class, "MSG_PermissionAllowedOnce")
+                    : statusText;
+        
         SwingUtilities.invokeLater(() -> {
             ColorTheme theme = ThemeManager.getCurrentTheme();
             // Match the collapsed tool/thought header style: neutral sunken
@@ -1139,7 +1143,7 @@ public class ChatThreadPanel extends JPanel {
         // for the load/reload render path).
         flushTimer.stop();
         loadRenderInProgress = true;
-        batchAdding = true;
+        isBatchMode = true;
         final int[] offset = {0};
         final Runnable[] chunk = new Runnable[1];
         chunk[0] = () -> {
@@ -1151,7 +1155,7 @@ public class ChatThreadPanel extends JPanel {
                 if (text == null) text = "";
                 // Per-message guard: one malformed bubble must not abort the
                 // chunk chain — an uncaught throw here would leave
-                // loadRenderInProgress/batchAdding stuck and freeze the drain.
+                // loadRenderInProgress/isBatchMode stuck and freeze the drain.
                 try {
                     if (pm.streaming()) {
                         processMessageSections(pm, text, pm.messageType().roleName(), false);
@@ -1165,7 +1169,7 @@ public class ChatThreadPanel extends JPanel {
             if (offset[0] < toRender.size()) {
                 SwingUtilities.invokeLater(chunk[0]);
             } else {
-                batchAdding = false;
+                isBatchMode = false;
                 trimMessages();
                 // Batch adds deferred blank-bubble cleanup per-message; do the
                 // single finalize pass now so loaded history drops empty

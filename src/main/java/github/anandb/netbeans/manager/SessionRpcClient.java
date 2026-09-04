@@ -8,20 +8,14 @@ import java.util.concurrent.TimeUnit;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
-import github.anandb.netbeans.support.Logger;
-import github.anandb.netbeans.support.MapperSupplier;
 import github.anandb.netbeans.model.AgentCapabilities;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * Handles all session-related RPC calls to the ACP server.
  * Extracted from SessionManager to isolate transport-layer logic.
  */
 final class SessionRpcClient {
-
-    private static final Logger LOG = Logger.from(SessionRpcClient.class);
-    private static final ObjectMapper MAPPER = MapperSupplier.get();
 
     private final ProcessManager processManager;
 

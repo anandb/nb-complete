@@ -258,14 +258,6 @@ public final class TaskIssueController implements IssueController {
         changed = false;
     }
 
-    private static String resolvePriority(String stored) {
-        if (stored == null) {
-            return "N";
-        }
-        String p = stored.trim().toUpperCase(java.util.Locale.ROOT);
-        return p.matches("[A-Z]") ? p : "N";
-    }
-
     /** Maps a NATO word to its uppercase letter (default N). The letter is just
      *  the word's first character, so no lookup is needed. */
     private static String natoToLetter(String nato) {
