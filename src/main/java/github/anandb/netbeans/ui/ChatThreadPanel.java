@@ -1145,6 +1145,8 @@ public class ChatThreadPanel extends JPanel {
         loadRenderInProgress = true;
         isBatchMode = true;
         final int[] offset = {0};
+        final boolean[] seenFirstUserMsg = {false};
+        final String criticalRules = PluginSettings.getCriticalRules().trim();
         final Runnable[] chunk = new Runnable[1];
         chunk[0] = () -> {
             int end = Math.min(offset[0] + LOAD_RENDER_BATCH_SIZE, toRender.size());
@@ -1153,6 +1155,14 @@ public class ChatThreadPanel extends JPanel {
                 if (pm.isIgnorable()) continue;
                 String text = pm.text();
                 if (text == null) text = "";
+                // Replace first user message if it matches critical rules verbatim.
+                if (!seenFirstUserMsg[0] && pm.messageType().isUser() && text.trim().startsWith(criticalRules)) {
+                    pm = ProcessedMessage.createInfo("Posting preamble...");
+                    text = pm.text();
+                    seenFirstUserMsg[0] = true;
+                } else if (pm.messageType().isUser()) {
+                    seenFirstUserMsg[0] = true;
+                }
                 // Per-message guard: one malformed bubble must not abort the
                 // chunk chain — an uncaught throw here would leave
                 // loadRenderInProgress/isBatchMode stuck and freeze the drain.
