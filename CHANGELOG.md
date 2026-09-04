@@ -1,5 +1,16 @@
 # Release Notes
 
+## v1.19.1 (Changes since v1.19.0)
+
+### Fixes
+- **Missing resource bundle keys**: 51 `@NbBundle.Messages` keys (StashDiffAction, TokenUsageDialog, GoToFileDialog, ChatLayoutBuilder, CollapsibleCodePane, HistorySearchDialog, IconPreviewManager, KeyboardShortcutsDialog, PermissionBubble, PermissionRequestPanel) were absent from the packaged `Bundle.properties`, causing `MissingResourceException` at startup (e.g. `CTL_StashDiffAction_Tip`). All keys now live in the source-of-truth `src/main/resources` copy, so packaging no longer depends on annotation-processor build ordering.
+
+### Documentation
+- **PI Agent guide**: documented the fixed MCP port requirement and manual MCP server registration in `~/.pi/agent/mcp.json`.
+
+### Housekeeping
+- Version bumped to 1.19.1.
+
 ## v1.19.0 (Changes since v1.18.0)
 
 ### Fixes
