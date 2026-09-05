@@ -21,6 +21,7 @@
 ## Important Coding Rules
 - **Headless Testing**: All tests must be able to run in a headless environment (without X11). Do not instantiate UI components (like `JFrame` or `JDialog` via `MiniAssistantDialog.getInstance()`) in tests unless properly mocked, as this will trigger `HeadlessException`.
 - **JSON-RPC Parsing**: NEVER use `BufferedReader.readLine()` to parse JSON-RPC streams. It incorrectly assumes single-line formatting and breaks on embedded newlines or throws `OutOfMemoryError` on large payloads. Always use Jackson's streaming `JsonParser` (e.g., `MAPPER.getFactory().createParser()`).
+- **JSON-RPC ids may be strings**: goose sends requests with UUID string ids (`"id":"517ef9d2-…"`). NEVER coerce an incoming id with `asLong()` (non-numeric → 0) — echoing `id=0` back makes the agent wait forever for a matching response (goose hung on `fs/read_text_file`). Echo the id `JsonNode` verbatim in responses.
 - **Line Length**: Keep the line length <= 120 characters, but try to fit entire statements into the line without needlessly splitting into small chunks.
 - **Logging**: Use index-based placeholders (`{0}`). NO `warning()` method (use
   `LOG.log(Level.WARNING, ...)` or `severe/warn/info/fine`). Pass exceptions as the LAST argument.
@@ -187,8 +188,11 @@ NbPreferences.forModule(PreferenceKeys.class)
   `SessionManager` → `SessionLifecycleHandler.onSessionUpdate()` → `StrategyRegistry.handle()`
   → UI. Returning early anywhere drops the message.
 - Streaming is finalized via `ChatThreadPanel.stopStreaming()` → `finalizeStreaming()`.
-- End-of-turn signals: `responding_finished`, `end_turn`, or `available_commands_update` set
+- End-of-turn signals: `responding_finished` or `end_turn` set
   `turnEnded=true` and start a flush timer (`TimingConstants.STREAM_FLUSH_MS`, currently 300ms).
+  The RPC result's `stopReason` also ends the turn. `available_commands_update` must NOT be
+  treated as turn-end: goose emits it at turn START, which made turnEnded flip mid-stream and
+  let the next message bypass the queue guard (goose drops the in-flight prompt and hangs).
   `session/load` configOptions also triggers a flush.
 - `MessageType` enum contains all valid session updates (e.g. `agent_message_chunk`, `agent_thought_chunk`, `plan`, `tool_call`). Check this enum before adding message types.
 

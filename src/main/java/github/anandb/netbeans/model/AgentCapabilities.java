@@ -8,8 +8,10 @@ import java.util.Locale;
  * {@link #forName(String)} is the ONLY place where agent names are inspected;
  * all other code branches on these flags.
  *
- * @param supportsMessageQueue  true when messages may be queued during a turn
- *                              (envelope icon + MessageQueueManager)
+ * @param supportsMessageQueue  true when messages sent during a turn must be
+ *                              queued locally and delivered as one combined
+ *                              prompt at turn end (goose); false when the agent
+ *                              accepts interleaved prompts directly (opencode)
  * @param sendsMcpServerConfig  true when {@code mcpServers} is sent with
  *                              session/prompt requests
  * @param injectsEditorContext  true when editor context (file path XML) is

@@ -144,8 +144,8 @@ public class SessionLifecycleHandler implements SessionListener {
         });
     }
 
-    /** True once an end-of-turn signal arrived (SSE responding_finished/end_turn/
-     *  available_commands_update, RPC completion, or session load). Used by
+    /** True once an end-of-turn signal arrived (SSE responding_finished/end_turn,
+     *  RPC completion, or session load). Used by
      *  {@code ChatThreadPanel.flushTimer} to gate idle-gap-based finalization
      *  on the turn actually being over. */
     public boolean isTurnEnded() {
@@ -265,9 +265,16 @@ public class SessionLifecycleHandler implements SessionListener {
             });
         }
 
-        // End of turn signals
-        if ("responding_finished".equals(type) || "end_turn".equals(type)
-                || "available_commands_update".equals(type)) {
+        // End of turn signals.
+        // NOTE: available_commands_update is deliberately NOT an end-of-turn
+        // signal: goose emits it at the START of a turn, and treating it as
+        // turn-end set turnEnded=true mid-stream — the next user message then
+        // bypassed the queue guard and hit goose while the first prompt was
+        // still in flight, which drops the in-flight prompt (goose returns no
+        // result for it) and wedges the session. End of turn is signalled by
+        // responding_finished/end_turn here and authoritatively by the RPC
+        // result's stopReason (see MessageSender).
+        if ("responding_finished".equals(type) || "end_turn".equals(type)) {
             LOG.fine("SSE turn-end signal received: type={0} (this confirms SSE path WORKS)", type);
             turnEnded = true;
             // If waiting for the preamble response, hide the progress bar now.
