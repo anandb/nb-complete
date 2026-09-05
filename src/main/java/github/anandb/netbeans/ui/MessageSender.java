@@ -483,7 +483,10 @@ public class MessageSender {
             onNewMessageCallback.run();
         }
 
-        if (onBeforeServerSendCallback != null) {
+        // Advance the permission epoch — consistent with sendMessage(). Guard
+        // with turnEnded so the epoch is never bumped mid-turn (latent safety).
+        boolean turnEnded = turnEndedCheck != null ? turnEndedCheck.getAsBoolean() : true;
+        if (turnEnded && onBeforeServerSendCallback != null) {
             onBeforeServerSendCallback.run();
         }
 

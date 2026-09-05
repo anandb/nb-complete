@@ -1,5 +1,17 @@
 # Release Notes
 
+## v1.19.3 (Changes since v1.19.2)
+
+### Fixes
+- **Permission epoch mid-turn guard**: `onBeforeServerSendCallback` (which advances the permission epoch) now only fires when `turnEnded` is true in both `sendMessage()` and `sendQueuedMessage()`. Mid-turn interleaved sends must not advance the epoch — a permission request captured on the reader thread between two interleaved sends would be rejected as stale (`914472b9`).
+- **User bubble sizing**: Restore `revalidate()` in `finalizeNonStreaming()` so `FitEditorPane` gets its real width on first paint. Wrap each user line in `<p>` blocks instead of `<br/>` — Swing sizes block-level elements correctly on first layout but clips inline breaks before widths are known (`619e05f3`).
+
+### Refactoring
+- **BubbleActionBar extraction**: Copy/pin button hover logic, pin state management, queued animation, and clipboard operations extracted from `MessageBubble` into `BubbleActionBar`. `MessageBubble` reduced from 784 to 441 lines (−44%). External API surface unchanged (`fe7ddda5`).
+
+### Housekeeping
+- Version bumped to 1.19.3.
+
 ## v1.19.2 (Changes since v1.19.1)
 
 ### Fixes
