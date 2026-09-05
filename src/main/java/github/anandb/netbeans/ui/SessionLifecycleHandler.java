@@ -15,6 +15,7 @@ import github.anandb.netbeans.contract.UIHandler;
 import github.anandb.netbeans.contract.PinnedMessageControl;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.contract.SessionControl;
+import github.anandb.netbeans.contract.ProcessControl;
 import org.openide.util.Lookup;
 import github.anandb.netbeans.contract.UpdateDispatcher;
 import github.anandb.netbeans.model.ProcessedMessage;
@@ -279,8 +280,8 @@ public class SessionLifecycleHandler implements SessionListener {
         // pending-preamble wait early (progress bar + buffered messages) without
         // touching turnEnded.
         boolean endOfTurn = "responding_finished".equals(type) || "end_turn".equals(type);
-        boolean queueingAgent = processService != null && processService.get() != null
-                && processService.get().getCapabilities().supportsMessageQueue();
+        ProcessControl proc = processService != null ? processService.get() : null;
+        boolean queueingAgent = proc != null && proc.getCapabilities().supportsMessageQueue();
         boolean preambleReady = "available_commands_update".equals(type) && !queueingAgent;
 
         if (endOfTurn) {

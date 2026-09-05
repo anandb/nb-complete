@@ -8,6 +8,7 @@ import com.vladsch.flexmark.util.data.MutableDataSet;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.TextScanner;
+import github.anandb.netbeans.support.XmlUtils;
 import static github.anandb.netbeans.ui.UIUtils.MONO_STACK;
 
 import com.github.benmanes.caffeine.cache.Cache;
@@ -138,24 +139,22 @@ public final class HtmlContentPreparer {
      */
     private static String wrapUserPlainText(String text, ColorTheme theme, int fontSizeOverride) {
         String normalized = text.replace("\r\n", "\n").replace('\r', '\n');
-        String escaped = escapeHtml(normalized);
+        String escaped = XmlUtils.escapeHtml(normalized);
         String withTabs = escaped.replace("\t", "&nbsp;&nbsp;&nbsp;&nbsp;");
         String withSpaces = PRESERVE_SPACE.matcher(withTabs).replaceAll("&nbsp;");
         String body = withSpaces.replace("\n", "<br/>");
 
         String wrapper = getCachedWrapper(theme, "user", false, fontSizeOverride);
-        String headOpen = wrapper.substring(0, wrapper.indexOf("__BODY__"));
-        String headCloseAndBodyOpen = wrapper.substring(wrapper.indexOf("__BODY__") + "__BODY__".length());
+        int bodyIdx = wrapper.indexOf("__BODY__");
+        if (bodyIdx < 0) {
+            LOG.warn("__BODY__ sentinel missing from wrapper, falling back to raw text");
+            return "<pre>" + body + "</pre>";
+        }
+        String headOpen = wrapper.substring(0, bodyIdx);
+        String headCloseAndBodyOpen = wrapper.substring(bodyIdx + "__BODY__".length());
         return headOpen + headCloseAndBodyOpen
                 + "<div align='left' style='text-align: left !important;'>" + body + "</div>"
                 + "</body></html>";
-    }
-
-    private static String escapeHtml(String text) {
-        return text.replace("&", "&amp;")
-                   .replace("<", "&lt;")
-                   .replace(">", "&gt;")
-                   .replace("\"", "&quot;");
     }
 
     /**

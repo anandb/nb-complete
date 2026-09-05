@@ -24,6 +24,7 @@ import org.openide.util.NbBundle;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
 import github.anandb.netbeans.ui.platform.ProcessService;
 import github.anandb.netbeans.ui.platform.SessionService;
+import github.anandb.netbeans.contract.ProcessControl;
 import java.util.prefs.PreferenceChangeListener;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.VcsUtils;
@@ -155,8 +156,8 @@ public class MessageSender {
         // drop in-flight prompts, so messages wait for turn end and go out as one
         // combined prompt at flush time. Interleaved agents (opencode) accept a
         // new session/prompt while a previous one is running — send immediately.
-        boolean queueingAgent = processService.get() != null
-            && processService.get().getCapabilities().supportsMessageQueue();
+        ProcessControl proc = processService.get();
+        boolean queueingAgent = proc != null && proc.getCapabilities().supportsMessageQueue();
         if ((!sessionService.get().canSendMessage() || !turnEnded) && queueingAgent) {
             // Bot is actively processing (streaming / awaiting RPC completion) —
             // queue the message for later delivery when the turn ends.
@@ -167,10 +168,7 @@ public class MessageSender {
                 // Show queued indicator (amber accent + hourglass) only for agents
                 // that support message queuing (goose). Other agents still queue
                 // the text for later sending but skip the visual treatment.
-                boolean showQueuedIndicator = processService != null
-                    && processService.get() != null
-                    && processService.get().getCapabilities().supportsMessageQueue();
-                if (showQueuedIndicator) {
+                if (queueingAgent) {
                     chatPanel.addQueuedMessageId(clientMessageId);
                 }
                 chatPanel.addMessage(new ProcessedMessage.Builder()
@@ -178,7 +176,7 @@ public class MessageSender {
                     .text(text)
                     .rawText(text)
                     .messageId(clientMessageId)
-                    .queued(showQueuedIndicator)
+                    .queued(queueingAgent)
                     .build());
                 inputArea.setText("");
                 messageHistory.add(text);
@@ -329,9 +327,11 @@ public class MessageSender {
             onBeforeServerSendCallback.run();
         }
 
-        // Editor Context        
-        Map<String, Object> context = isForwardedSlash ? null : EditorContextCapture.capture();
-        processService.get().sendMessage(currentSessionId, messageText, context, fileBlocks)
+        // Editor Context — only capture when the agent injects it into prompts
+        ProcessControl sendProc = processService.get();
+        boolean injectsContext = sendProc != null && sendProc.getCapabilities().injectsEditorContext();
+        Map<String, Object> context = (isForwardedSlash || !injectsContext) ? null : EditorContextCapture.capture();
+        sendProc.sendMessage(currentSessionId, messageText, context, fileBlocks)
                 .thenAccept(result -> {
                     // CPD-OFF — structural twin of sendQueuedMessage(); differences are
                     // per-method (logging, messageText vs combinedText, turn-end callback).

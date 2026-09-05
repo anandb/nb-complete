@@ -47,6 +47,7 @@ import github.anandb.netbeans.contract.ProcessControl;
 import github.anandb.netbeans.mcp.McpToolAdapter;
 import github.anandb.netbeans.mcp.McpManager;
 import github.anandb.netbeans.support.LanguageResolver;
+import github.anandb.netbeans.support.XmlUtils;
 import java.io.File;
 import org.openide.awt.NotificationDisplayer;
 
@@ -367,17 +368,17 @@ public class ProcessManager implements ProcessControl {
                 xml.append("  <note>The file path, cursor, and selection below are reference-only")
                    .append(" context about the user's editor state. The user's text message")
                    .append(" that follows is the primary instruction.</note>\n");
-                xml.append("  <language>").append(lang).append("</language>\n");
-                xml.append("  <file_path>").append(filePath).append("</file_path>\n");
+                xml.append("  <language>").append(XmlUtils.escapeXml(lang)).append("</language>\n");
+                xml.append("  <file_path>").append(XmlUtils.escapeXml(filePath)).append("</file_path>\n");
 
                 Object cursorObj = context.get("cursor");
                 if (cursorObj != null) {
-                    xml.append("  <cursor>").append(cursorObj.toString()).append("</cursor>\n");
+                    xml.append("  <cursor>").append(XmlUtils.escapeXml(cursorObj.toString())).append("</cursor>\n");
                 }
 
                 Object selObj = context.get("selection");
                 if (selObj != null) {
-                    xml.append("  <selection>").append(selObj.toString()).append("</selection>\n");
+                    xml.append("  <selection>").append(XmlUtils.escapeXml(selObj.toString())).append("</selection>\n");
                 }
                 xml.append("</metadata>");
 
@@ -388,8 +389,8 @@ public class ProcessManager implements ProcessControl {
 
                 promptBlocks.add(metadataPart);
 
-                String selectionContent = (String) context.get("selectionContent");
-                if (selectionContent != null && !selectionContent.isEmpty()) {
+                Object selContentObj = context.get("selectionContent");
+                if (selContentObj instanceof String selectionContent && !selectionContent.isEmpty()) {
                     Map<String, Object> selectionPart = new HashMap<>();
                     selectionPart.put("type", "text");
                     selectionPart.put("text", "\nSelection from `" + fileName + "`:\n```" + lang + "\n" + selectionContent + "\n```\n");
@@ -410,7 +411,7 @@ public class ProcessManager implements ProcessControl {
 
         Map<String, Object> params = new HashMap<>();
         params.put("sessionId", sessionId);
-        params.put("prompt", promptBlocks);        
+        params.put("prompt", promptBlocks);
 
         int idleTimeoutSec = PluginSettings.getSessionIdleTimeout();
         return client.sendRequest("session/prompt", params, idleTimeoutSec, TimeUnit.SECONDS);

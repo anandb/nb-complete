@@ -539,10 +539,11 @@ public class AcpProtocolClient implements Closeable {
                         reason != null ? reason : "Client closed"));
             }
         });
+        // Notify disconnection before clearing maps so handlers can still access state
+        notifyDisconnection();
         pendingRequests.clear();
         requestIdleTimeouts.clear();
         notificationListeners.clear();
         requestHandlers.clear();
-        notifyDisconnection();
     }
 }
