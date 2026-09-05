@@ -66,9 +66,9 @@ public class PlaceholderTextArea extends JTextArea implements Scrollable {
 
     private void initDocumentListener() {
         getDocument().addDocumentListener(new DocumentListener() {
-            @Override public void insertUpdate(DocumentEvent e) { repaint(); }
-            @Override public void removeUpdate(DocumentEvent e) { repaint(); }
-            @Override public void changedUpdate(DocumentEvent e) { repaint(); }
+            @Override public void insertUpdate(DocumentEvent e) { revalidate(); }
+            @Override public void removeUpdate(DocumentEvent e) { revalidate(); }
+            @Override public void changedUpdate(DocumentEvent e) { revalidate(); }
         });
     }
 
