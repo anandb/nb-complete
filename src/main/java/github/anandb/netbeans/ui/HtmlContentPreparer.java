@@ -15,6 +15,7 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 
 public final class HtmlContentPreparer {
 
@@ -24,7 +25,7 @@ public final class HtmlContentPreparer {
 
     private static final Parser FLEXMARK_PARSER;
     private static final HtmlRenderer FLEXMARK_RENDERER;
-    
+
     /** Bounded LRU cache for markdown→HTML output. Caffeine handles concurrency,
      *  size eviction, and access-order tracking internally. */
     private static final Cache<String, String> MARKDOWN_HTML_CACHE =
@@ -49,11 +50,28 @@ public final class HtmlContentPreparer {
                     .maximumSize(32)
                     .build();
 
+    /**
+     * Matches a space that must be preserved as a non-breaking space:
+     * leading spaces on a line, or any space immediately preceded by another space.
+     * Used for plain-text user messages where HTML collapsing would otherwise
+     * destroy pasted indentation and alignment.
+     */
+    private static final Pattern PRESERVE_SPACE = Pattern.compile("(^ +|(?<= ) )", Pattern.MULTILINE);
+
     public static String prepareHtml(String markdown, ColorTheme theme, String role, boolean incremental) {
         return prepareHtml(markdown, theme, role, incremental, -1);
     }
-    
+
     public static String prepareHtml(String markdown, ColorTheme theme, String role, boolean incremental, int fontSizeOverride) {
+        boolean isUser = "user".equals(role);
+        boolean isAssistant = !isUser && !"error".equals(role) && !"tool".equals(role) && !"info".equals(role);
+
+        // User messages are plain text; render them literally so pasted content
+        // (indentation, multiple spaces, markdown metacharacters) is not mangled.
+        if (isUser && markdown != null) {
+            return wrapUserPlainText(markdown, theme, fontSizeOverride);
+        }
+
         String html = computeOrGetCachedHtml(markdown);
 
         if (incremental) {
@@ -87,18 +105,10 @@ public final class HtmlContentPreparer {
         html = highlightAlternateRows(html, alternateBg);
 
         boolean hasArt = TextScanner.containsAsciiArt(markdown);
-        if (!hasArt && !"user".equals(role)) {
+        if (!hasArt && !isUser) {
             html = html.replace("  ", " &nbsp;");
         } else if (hasArt) {
             LOG.fine("Contains ASCII art, not replacing spaces");
-        }
-
-        boolean isAssistant = !"user".equals(role) && !"error".equals(role) && !"tool".equals(role) && !"info".equals(role);
-
-        // User messages are typically plain text; preserve explicit line breaks
-        // by converting newlines to <br/> outside of <pre> blocks.
-        if ("user".equals(role)) {
-            html = newlinesToBrOutsidePre(html);
         }
 
         String wrapper = getCachedWrapper(theme, role, isAssistant, fontSizeOverride);
@@ -117,6 +127,35 @@ public final class HtmlContentPreparer {
         }
 
         return headOpen + headCloseAndBodyOpen + html + "</body></html>";
+    }
+
+    /**
+     * Renders a user message as literal plain text: HTML entities are escaped,
+     * line endings are normalized, tabs and preserved spaces become non-breaking
+     * spaces, and newlines become {@code <br/>}. This avoids relying on Swing's
+     * limited CSS support (e.g. {@code white-space: pre-wrap}) while still keeping
+     * pasted indentation and markdown metacharacters intact.
+     */
+    private static String wrapUserPlainText(String text, ColorTheme theme, int fontSizeOverride) {
+        String normalized = text.replace("\r\n", "\n").replace('\r', '\n');
+        String escaped = escapeHtml(normalized);
+        String withTabs = escaped.replace("\t", "&nbsp;&nbsp;&nbsp;&nbsp;");
+        String withSpaces = PRESERVE_SPACE.matcher(withTabs).replaceAll("&nbsp;");
+        String body = withSpaces.replace("\n", "<br/>");
+
+        String wrapper = getCachedWrapper(theme, "user", false, fontSizeOverride);
+        String headOpen = wrapper.substring(0, wrapper.indexOf("__BODY__"));
+        String headCloseAndBodyOpen = wrapper.substring(wrapper.indexOf("__BODY__") + "__BODY__".length());
+        return headOpen + headCloseAndBodyOpen
+                + "<div align='left' style='text-align: left !important;'>" + body + "</div>"
+                + "</body></html>";
+    }
+
+    private static String escapeHtml(String text) {
+        return text.replace("&", "&amp;")
+                   .replace("<", "&lt;")
+                   .replace(">", "&gt;")
+                   .replace("\"", "&quot;");
     }
 
     /**
