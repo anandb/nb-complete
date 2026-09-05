@@ -25,6 +25,7 @@ import github.anandb.netbeans.model.SessionItem;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
+import github.anandb.netbeans.ui.platform.ProcessService;
 import github.anandb.netbeans.ui.platform.ProjectContext;
 import github.anandb.netbeans.ui.platform.SessionService;
 import org.netbeans.api.project.Project;
@@ -41,6 +42,7 @@ public class SessionLifecycleHandler implements SessionListener {
 
     private final SessionService sessionService = PlatformBridge.sessionServiceSafe();
     private final ProjectContext projectContext = PlatformBridge.projectContextSafe();
+    private final ProcessService processService = PlatformBridge.processServiceSafe();
 
     private static final Logger LOG = Logger.from(SessionLifecycleHandler.class);
 
@@ -265,26 +267,38 @@ public class SessionLifecycleHandler implements SessionListener {
             });
         }
 
-        // End of turn signals.
+        // End of turn signals: responding_finished/end_turn (also authoritative
+        // via the RPC result's stopReason — see MessageSender).
         // NOTE: available_commands_update is deliberately NOT an end-of-turn
-        // signal: goose emits it at the START of a turn, and treating it as
-        // turn-end set turnEnded=true mid-stream — the next user message then
-        // bypassed the queue guard and hit goose while the first prompt was
-        // still in flight, which drops the in-flight prompt (goose returns no
-        // result for it) and wedges the session. End of turn is signalled by
-        // responding_finished/end_turn here and authoritatively by the RPC
-        // result's stopReason (see MessageSender).
-        if ("responding_finished".equals(type) || "end_turn".equals(type)) {
+        // signal: queueing agents (goose) emit it at the START of a turn, and
+        // treating it as turn-end set turnEnded=true mid-stream — the next user
+        // message then bypassed the queue guard and hit goose while the first
+        // prompt was still in flight, which drops the in-flight prompt (goose
+        // returns no result for it) and wedges the session. For interleaved
+        // agents it does prove the session is live, so it may clear the
+        // pending-preamble wait early (progress bar + buffered messages) without
+        // touching turnEnded.
+        boolean endOfTurn = "responding_finished".equals(type) || "end_turn".equals(type);
+        boolean queueingAgent = processService != null && processService.get() != null
+                && processService.get().getCapabilities().supportsMessageQueue();
+        boolean preambleReady = "available_commands_update".equals(type) && !queueingAgent;
+
+        if (endOfTurn) {
             LOG.fine("SSE turn-end signal received: type={0} (this confirms SSE path WORKS)", type);
             turnEnded = true;
-            // If waiting for the preamble response, hide the progress bar now.
-            if (pendingPreambleResponse) {
-                pendingPreambleResponse = false;
-                SwingUtilities.invokeLater(() -> {
-                    chatPanel.setSessionLoading(false);
-                    chatPanel.flushSessionBuffer();
-                });
-            }
+        }
+
+        // Preamble wait done: on end-of-turn for all agents, or early via
+        // available_commands_update for interleaved agents.
+        if ((endOfTurn || preambleReady) && pendingPreambleResponse) {
+            pendingPreambleResponse = false;
+            SwingUtilities.invokeLater(() -> {
+                chatPanel.setSessionLoading(false);
+                chatPanel.flushSessionBuffer();
+            });
+        }
+
+        if (endOfTurn) {
             // Debounce finalization via the panel's shared flush timer (reset on
             // every processed message), so it fires 300ms after the last one drains.
             // Also re-enable send/toolbar here — the RPC result may be lost or

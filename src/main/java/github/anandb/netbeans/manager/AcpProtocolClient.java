@@ -1,7 +1,6 @@
 package github.anandb.netbeans.manager;
 
 import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -21,8 +20,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
@@ -97,11 +96,11 @@ public class AcpProtocolClient implements Closeable {
     private final BufferedWriter writer;
     private final WireLogger wireLogger;
 
+    private volatile boolean running = true;
     private volatile boolean closed = false;
     private volatile long lastDataTime;
     private volatile String closeReason;
     private final AtomicInteger pendingPermissions = new AtomicInteger(0);
-    private final AtomicBoolean disconnectionNotified = new AtomicBoolean(false);
 
     public AcpProtocolClient(Process process) throws IOException {
         this.writer = new BufferedWriter(new OutputStreamWriter(process.getOutputStream(), StandardCharsets.UTF_8));
@@ -110,15 +109,10 @@ public class AcpProtocolClient implements Closeable {
     }
 
     public void start() {
-        synchronized (this) {
-            if (readerThread != null) {
-                return;
-            }
-            readerThread = new Thread(this::readLoop, "ACP-Reader");
-            readerThread.setDaemon(true);
-            readerThread.start();
-            startWatchdog();
-        }
+        readerThread = new Thread(this::readLoop, "ACP-Reader");
+        readerThread.setDaemon(true);
+        readerThread.start();
+        startWatchdog();
     }
 
     public void onNotification(String method, Consumer<JsonNode> listener) {
@@ -152,12 +146,6 @@ public class AcpProtocolClient implements Closeable {
         long id = nextId.getAndIncrement();
         CompletableFuture<JsonNode> future = new CompletableFuture<>();
         pendingRequests.put(id, future);
-        try {
-            LOG.info("Posted Request {0} {1} {2}", id, method, MAPPER.writeValueAsString(params));
-        } catch (JsonProcessingException e) {
-            LOG.warn("Conversion to JSON Failed for {0} {1} {2}", id, method, e);
-        }
-
         if (timeout > 0 && unit != null) {
             requestIdleTimeouts.put(id, unit.toNanos(timeout));
         }
@@ -244,7 +232,7 @@ public class AcpProtocolClient implements Closeable {
 
     private void readLoop() {
         try (JsonParser parser = MAPPER.getFactory().createParser(inputStream)) {
-            while (!closed && !parser.isClosed()) {
+            while (running && !parser.isClosed()) {
                 JsonToken token = parser.nextToken();
                 if (token == null) {
                     break;
@@ -257,14 +245,14 @@ public class AcpProtocolClient implements Closeable {
                     } catch (Exception e) {
                         // Recover from a single malformed message instead of
                         // shutting down the entire connection.
-                        if (!closed) {
+                        if (running) {
                             LOG.warn("Skipping malformed message: {0}", ExceptionUtils.getMessage(e), e);
                         }
                     }
                 }
             }
         } catch (Exception e) {
-            if (!closed) {
+            if (running) {
                 LOG.severe("JSON-RPC reader thread error", e);
                 notifyConnectionError(e);
             } else {
@@ -284,13 +272,13 @@ public class AcpProtocolClient implements Closeable {
     }
 
     private void scheduleWatchdogCheck() {
-        if (!closed && watchdogRP != null) {
+        if (running && watchdogRP != null) {
             watchdogRP.post(this::checkIdleTimeout, 5000);
         }
     }
 
     private void checkIdleTimeout() {
-        if (closed) return;
+        if (!running) return;
 
         // Don't timeout while waiting for user to respond to a permission request
         if (pendingPermissions.get() > 0) {
@@ -321,7 +309,7 @@ public class AcpProtocolClient implements Closeable {
             requestIdleTimeouts.remove(id);
             if (future != null) {
                 LOG.warn("Request id={0} exceeded idle timeout, failing it.", id);
-                future.completeExceptionally(new TimeoutException("Request idle timeout exceeded for " + String.valueOf(id)));
+                future.completeExceptionally(new TimeoutException("Request idle timeout exceeded"));
             }
         }
 
@@ -507,7 +495,7 @@ public class AcpProtocolClient implements Closeable {
     }
 
     private void notifyDisconnection() {
-        if (disconnectionNotified.compareAndSet(false, true) && disconnectionHandler != null) {
+        if (disconnectionHandler != null) {
             try {
                 disconnectionHandler.run();
             } catch (Exception e) {
@@ -518,12 +506,9 @@ public class AcpProtocolClient implements Closeable {
 
     @Override
     public void close() {
-        // Synchronize the idempotency check so only one thread runs the body.
-        // All other paths read the volatile flag, so they see the update immediately.
-        synchronized (this) {
-            if (closed) return;
-            closed = true;
-        }
+        if (closed) return;
+        closed = true;
+        running = false;
         stopWatchdog();
         closeQuietly(wireLogger);
 
@@ -539,9 +524,8 @@ public class AcpProtocolClient implements Closeable {
 
         // Interrupt reader thread — cancel() on RequestProcessor tasks does not
         // stop running threads, leaving them hung on blocking I/O indefinitely.
-        Thread reader = readerThread;
-        if (reader != null) {
-            reader.interrupt();
+        if (readerThread != null) {
+            readerThread.interrupt();
         }
 
         String reason = closeReason;
