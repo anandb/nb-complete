@@ -215,8 +215,7 @@ final class KeyboardShortcutsDialog extends JDialog {
         String unassignedFg = isDark ? "#666" : "#999";
 
         Color bg = Color.decode(bgHex);
-        Color alt = Color.decode(altHex);
-        Color hdrBg = Color.decode(hdrHex);
+        Color alt = Color.decode(altHex);        
         Color border = Color.decode(borderHex);
         Color fg = isDark ? Color.decode("#e0e0e0") : Color.decode("#333");
 
@@ -312,8 +311,7 @@ final class KeyboardShortcutsDialog extends JDialog {
         String fgHex = theme.isDark() ? "#e0e0e0" : "#333";
 
         Color border = Color.decode(borderHex);
-        Color altBg = Color.decode(altHex);
-        Color fg = Color.decode(fgHex);
+        Color altBg = Color.decode(altHex);        
         Color unassignedFg = theme.isDark() ? Color.decode("#999999") : Color.decode("#666666");
 
         JPanel wrapper = new JPanel(new BorderLayout());

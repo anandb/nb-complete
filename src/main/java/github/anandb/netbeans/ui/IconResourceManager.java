@@ -57,7 +57,6 @@ final class IconResourceManager {
 
     private static Icon loadAndCreateIcon(String name, int size) {
         String baseName = name.substring(0, name.lastIndexOf('.'));
-        String ext = name.substring(name.lastIndexOf('.'));
 
         // Try pre-rendered PNG at exact size first (Inkscape-quality, no scaling)
         if (size > 0) {

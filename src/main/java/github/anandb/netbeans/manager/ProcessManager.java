@@ -46,6 +46,8 @@ import github.anandb.netbeans.contract.ProcessControl;
 
 import github.anandb.netbeans.mcp.McpToolAdapter;
 import github.anandb.netbeans.mcp.McpManager;
+import github.anandb.netbeans.support.LanguageResolver;
+import java.io.File;
 import org.openide.awt.NotificationDisplayer;
 
 /**
@@ -104,12 +106,6 @@ public class ProcessManager implements ProcessControl {
      *  session state that otherwise survives the restart and wedges the UI
      *  until the whole IDE is restarted. See SessionManager#resetForServerRestart. */
     private volatile Runnable preRestartHandler;
-
-    /** Caveman instruction text — terse replies to save output tokens. */
-    private static final String CAVEMAN_INSTRUCTION =
-        "Respond in minimal, terse prose. Short sentences. No filler. " +
-        "Code, commands, and file paths stay exact. " +
-        "When explaining, use the fewest words that convey the meaning.";
 
     /** Debounce timer for preference-triggered restarts — avoids restarting with
      *  stale values when {@code ACPOptionsPanel.store()} writes multiple
@@ -361,13 +357,45 @@ public class ProcessManager implements ProcessControl {
         if (context != null && getCapabilities().injectsEditorContext()) {
             String filePath = (String) context.get("filePath");
             if (isNotBlank(filePath)) {
+                File file = new File(filePath);
+                String lang = LanguageResolver.fromPath(filePath);
+                String fileName = file.getName();
+
                 StringBuilder xml = new StringBuilder();
+                xml.append("<metadata>\n");
+                xml.append("  <purpose>reference</purpose>\n");
+                xml.append("  <note>The file path, cursor, and selection below are reference-only")
+                   .append(" context about the user's editor state. The user's text message")
+                   .append(" that follows is the primary instruction.</note>\n");
+                xml.append("  <language>").append(lang).append("</language>\n");
+                xml.append("  <file_path>").append(filePath).append("</file_path>\n");
+
+                Object cursorObj = context.get("cursor");
+                if (cursorObj != null) {
+                    xml.append("  <cursor>").append(cursorObj.toString()).append("</cursor>\n");
+                }
+
+                Object selObj = context.get("selection");
+                if (selObj != null) {
+                    xml.append("  <selection>").append(selObj.toString()).append("</selection>\n");
+                }
+                xml.append("</metadata>");
+
                 Map<String, Object> metadataPart = new HashMap<>();
                 metadataPart.put("type", "text");
                 metadataPart.put("text", xml.toString());
                 metadataPart.put("annotations", Map.of("audience", List.of("assistant")));
 
                 promptBlocks.add(metadataPart);
+
+                String selectionContent = (String) context.get("selectionContent");
+                if (selectionContent != null && !selectionContent.isEmpty()) {
+                    Map<String, Object> selectionPart = new HashMap<>();
+                    selectionPart.put("type", "text");
+                    selectionPart.put("text", "\nSelection from `" + fileName + "`:\n```" + lang + "\n" + selectionContent + "\n```\n");
+                    selectionPart.put("annotations", Map.of("audience", List.of("assistant")));
+                    promptBlocks.add(selectionPart);
+                }
             }
         }
 
@@ -382,10 +410,7 @@ public class ProcessManager implements ProcessControl {
 
         Map<String, Object> params = new HashMap<>();
         params.put("sessionId", sessionId);
-        params.put("prompt", promptBlocks);
-        if (getCapabilities().sendsMcpServerConfig()) {
-            params.put("mcpServers", toolExecutor.getServerConfig());
-        }
+        params.put("prompt", promptBlocks);        
 
         int idleTimeoutSec = PluginSettings.getSessionIdleTimeout();
         return client.sendRequest("session/prompt", params, idleTimeoutSec, TimeUnit.SECONDS);

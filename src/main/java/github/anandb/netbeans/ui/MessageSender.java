@@ -323,7 +323,8 @@ public class MessageSender {
             onBeforeServerSendCallback.run();
         }
 
-        Map<String, Object> context = null;
+        // Editor Context        
+        Map<String, Object> context = isForwardedSlash ? null : EditorContextCapture.capture();
         processService.get().sendMessage(currentSessionId, messageText, context, fileBlocks)
                 .thenAccept(result -> {
                     // CPD-OFF — structural twin of sendQueuedMessage(); differences are

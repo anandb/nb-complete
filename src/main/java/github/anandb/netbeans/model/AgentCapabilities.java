@@ -40,7 +40,7 @@ public record AgentCapabilities(
             return new AgentCapabilities(false, true, true, true);
         }
         return switch (agentName.trim().toLowerCase(Locale.ROOT)) {
-            case "goose" -> new AgentCapabilities(true, true, true, false);
+            case "goose" -> new AgentCapabilities(true, true, false, false);
             case "pi-acp" -> new AgentCapabilities(false, false, false, false);
             default -> new AgentCapabilities(false, true, true, true);
         };

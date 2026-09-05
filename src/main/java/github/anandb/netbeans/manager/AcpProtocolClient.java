@@ -1,6 +1,7 @@
 package github.anandb.netbeans.manager;
 
 import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -83,8 +84,8 @@ public class AcpProtocolClient implements Closeable {
 
     private volatile Consumer<Throwable> connectionErrorHandler;
     private volatile Runnable disconnectionHandler;
-    private volatile Thread readerThread;
-    private volatile RequestProcessor watchdogRP;
+    private Thread readerThread;
+    private RequestProcessor watchdogRP;
 
     private final AtomicLong nextId = new AtomicLong(0);
     private final InputStream inputStream;
@@ -96,10 +97,9 @@ public class AcpProtocolClient implements Closeable {
     private final BufferedWriter writer;
     private final WireLogger wireLogger;
 
-    private volatile boolean running = true;
     private volatile boolean closed = false;
     private volatile long lastDataTime;
-    private volatile String closeReason;
+    private String closeReason;
     private final AtomicInteger pendingPermissions = new AtomicInteger(0);
 
     public AcpProtocolClient(Process process) throws IOException {
@@ -146,6 +146,12 @@ public class AcpProtocolClient implements Closeable {
         long id = nextId.getAndIncrement();
         CompletableFuture<JsonNode> future = new CompletableFuture<>();
         pendingRequests.put(id, future);
+        try {
+            LOG.info("Posted Request {0} {1} {2}", id, method, MAPPER.writeValueAsString(params));
+        } catch (JsonProcessingException e) {
+            LOG.warn("Conversion to JSON Failed for {0} {1} {2}", id, method, e);
+        }
+        
         if (timeout > 0 && unit != null) {
             requestIdleTimeouts.put(id, unit.toNanos(timeout));
         }
@@ -232,7 +238,7 @@ public class AcpProtocolClient implements Closeable {
 
     private void readLoop() {
         try (JsonParser parser = MAPPER.getFactory().createParser(inputStream)) {
-            while (running && !parser.isClosed()) {
+            while (!closed && !parser.isClosed()) {
                 JsonToken token = parser.nextToken();
                 if (token == null) {
                     break;
@@ -245,14 +251,14 @@ public class AcpProtocolClient implements Closeable {
                     } catch (Exception e) {
                         // Recover from a single malformed message instead of
                         // shutting down the entire connection.
-                        if (running) {
+                        if (!closed) {
                             LOG.warn("Skipping malformed message: {0}", ExceptionUtils.getMessage(e), e);
                         }
                     }
                 }
             }
         } catch (Exception e) {
-            if (running) {
+            if (!closed) {
                 LOG.severe("JSON-RPC reader thread error", e);
                 notifyConnectionError(e);
             } else {
@@ -272,13 +278,13 @@ public class AcpProtocolClient implements Closeable {
     }
 
     private void scheduleWatchdogCheck() {
-        if (running && watchdogRP != null) {
+        if (!closed && watchdogRP != null) {
             watchdogRP.post(this::checkIdleTimeout, 5000);
         }
     }
 
     private void checkIdleTimeout() {
-        if (!running) return;
+        if (closed) return;
 
         // Don't timeout while waiting for user to respond to a permission request
         if (pendingPermissions.get() > 0) {
@@ -309,7 +315,7 @@ public class AcpProtocolClient implements Closeable {
             requestIdleTimeouts.remove(id);
             if (future != null) {
                 LOG.warn("Request id={0} exceeded idle timeout, failing it.", id);
-                future.completeExceptionally(new TimeoutException("Request idle timeout exceeded"));
+                future.completeExceptionally(new TimeoutException("Request idle timeout exceeded for " + String.valueOf(id)));
             }
         }
 
@@ -508,7 +514,6 @@ public class AcpProtocolClient implements Closeable {
     public void close() {
         if (closed) return;
         closed = true;
-        running = false;
         stopWatchdog();
         closeQuietly(wireLogger);
 

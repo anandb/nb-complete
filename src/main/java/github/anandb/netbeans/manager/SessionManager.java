@@ -895,11 +895,7 @@ public class SessionManager implements SessionQuery, SessionControl {
 
         Map<String, Object> params = new HashMap<>();
         params.put("sessionId", sessionId);
-        params.put("prompt", List.of(textBlock));
-        ProcessControl pc = Lookup.getDefault().lookup(ProcessControl.class);
-        if (pc == null || pc.getCapabilities().sendsMcpServerConfig()) {
-            params.put("mcpServers", ProcessManager.getInstance().getToolExecutor().getServerConfig());
-        }
+        params.put("prompt", List.of(textBlock));        
 
         return ProcessManager.getInstance().sendRequest("session/prompt", params)
                 .whenComplete((res, ex) -> {
