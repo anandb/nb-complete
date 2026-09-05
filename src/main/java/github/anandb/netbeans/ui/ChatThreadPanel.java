@@ -535,6 +535,11 @@ public class ChatThreadPanel extends JPanel {
         if (!isBatchMode) {
             // Live adds: only the current turn is unfinalized, so scan its tail.
             removeBlankBubbles(1, wasAtBottom);
+            // Force layout so FitEditorPane (and other components added by
+            // addSingleBubble) get their real width on first paint. Without
+            // this the preferred height is computed before the container has
+            // validated, leaving user bubbles stuck at one line.
+            messagesContainer.revalidate();
             // Always scroll after adding a non-streaming bubble if user was at bottom.
             // removeBlankBubbles only scrolls when it removes blanks — user and
             // thought bubbles are rarely blank, so scroll would never fire.

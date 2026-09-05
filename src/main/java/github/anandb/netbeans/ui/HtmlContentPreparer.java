@@ -133,21 +133,23 @@ public final class HtmlContentPreparer {
     /**
      * Renders a user message as literal plain text: HTML entities are escaped,
      * line endings are normalized, tabs and preserved spaces become non-breaking
-     * spaces, and newlines become {@code <br/>}. This avoids relying on Swing's
-     * limited CSS support (e.g. {@code white-space: pre-wrap}) while still keeping
-     * pasted indentation and markdown metacharacters intact.
+     * spaces, and each line is wrapped in a {@code <p>} block. Swing's HTML
+     * engine sizes block-level elements correctly but clips inline
+     * {@code <br/>} breaks when the first layout pass runs before real widths
+     * are known. The {@code <p>} structure mirrors the Flexmark output from
+     * 1.15.0 that sized correctly.
      */
     private static String wrapUserPlainText(String text, ColorTheme theme, int fontSizeOverride) {
         String normalized = text.replace("\r\n", "\n").replace('\r', '\n');
         String escaped = XmlUtils.escapeHtml(normalized);
         String withTabs = escaped.replace("\t", "&nbsp;&nbsp;&nbsp;&nbsp;");
         String withSpaces = PRESERVE_SPACE.matcher(withTabs).replaceAll("&nbsp;");
-        // Insert a source newline after every <br/> and one before the closing
-        // tag. Swing's HTML engine measures block height from line boxes; without
-        // trailing whitespace in the source the last rendered line gets clipped
-        // at the bottom of the bubble. The old Flexmark path emitted these
-        // newlines implicitly; the plain-text path must do it explicitly.
-        String body = withSpaces.replace("\n", "<br/>\n");
+        // Wrap each line in <p> blocks — Swing sizes these correctly on first layout.
+        String[] lines = withSpaces.split("\n", -1);
+        StringBuilder body = new StringBuilder();
+        for (String line : lines) {
+            body.append("<p style='margin:0'>").append(line).append("</p>\n");
+        }
 
         String wrapper = getCachedWrapper(theme, "user", false, fontSizeOverride);
         int bodyIdx = wrapper.indexOf("__BODY__");
@@ -158,7 +160,7 @@ public final class HtmlContentPreparer {
         String headOpen = wrapper.substring(0, bodyIdx);
         String headCloseAndBodyOpen = wrapper.substring(bodyIdx + "__BODY__".length());
         return headOpen + headCloseAndBodyOpen
-                + "<div align='left' style='text-align: left !important;'>" + body + "\n</div>"
+                + "<div align='left' style='text-align: left !important;'>" + body + "</div>"
                 + "</body></html>";
     }
 

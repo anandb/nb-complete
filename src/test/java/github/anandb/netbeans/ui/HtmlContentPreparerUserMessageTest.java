@@ -33,8 +33,8 @@ class HtmlContentPreparerUserMessageTest {
 
         assertTrue(html.contains("&nbsp;"),
                 "Leading spaces should be preserved as non-breaking spaces\n" + html);
-        assertTrue(html.contains("<br/>"),
-                "Newlines should render as <br/>\n" + html);
+        assertTrue(html.contains("<p"),
+                "Lines should be wrapped in <p> blocks for correct Swing sizing\n" + html);
     }
 
     @Test
@@ -68,8 +68,9 @@ class HtmlContentPreparerUserMessageTest {
 
         assertFalse(html.contains("\r"),
                 "No raw \\r characters should remain in rendered user HTML\n" + html);
-        assertTrue(html.contains("line1<br/>") && html.contains("line2<br/>")
-                        && html.contains("line3"),
-                "Windows/Mac line endings should normalize to <br/>\n" + html);
+        assertTrue(html.contains("<p style='margin:0'>line1</p>")
+                        && html.contains("<p style='margin:0'>line2</p>")
+                        && html.contains("<p style='margin:0'>line3</p>"),
+                "Windows/Mac line endings should normalize to separate <p> blocks\n" + html);
     }
 }

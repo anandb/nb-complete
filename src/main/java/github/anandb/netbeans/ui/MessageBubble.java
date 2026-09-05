@@ -210,10 +210,16 @@ public class MessageBubble extends JPanel implements Scrollable {
 
         // Fix for "garbled" text in scroll panes: force a repaint when the component becomes visible.
         // Only repaint the outermost component — Swing's repaint manager handles children.
+        // revalidate recomputes the preferred height once real widths are known —
+        // the first layout pass can size the FitEditorPane before it has a real
+        // width, leaving the bubble one line short.
         if ("user".equals(role)) {
             this.hierarchyListener = e -> {
                 if ((e.getChangeFlags() & HierarchyEvent.SHOWING_CHANGED) != 0 && isShowing()) {
-                    SwingUtilities.invokeLater(() -> repaint());
+                    SwingUtilities.invokeLater(() -> {
+                        revalidate();
+                        repaint();
+                    });
                 }
             };
             addHierarchyListener(this.hierarchyListener);
