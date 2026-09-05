@@ -323,7 +323,11 @@ public class MessageSender {
             });
         }
 
-        if (onBeforeServerSendCallback != null) {
+        // Advance the permission epoch only when starting a new turn. Mid-turn
+        // interleaved sends (opencode) must NOT advance: a permission request
+        // captured on the reader thread between two interleaved sends would be
+        // rejected as stale because the second send bumped the epoch.
+        if (turnEnded && onBeforeServerSendCallback != null) {
             onBeforeServerSendCallback.run();
         }
 
