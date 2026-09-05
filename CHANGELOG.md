@@ -1,5 +1,23 @@
 # Release Notes
 
+## v1.19.2 (Changes since v1.19.1)
+
+### Fixes
+- **Editor context XML injection**: Escape file paths, cursor, selection and selection content in editor context metadata to prevent XML injection from paths containing `<`, `>`, or `&` (`d6cbab06`).
+- **TOCTOU race conditions**: Cache `processService.get()` results in `MessageSender` and `SessionLifecycleHandler` to prevent NPEs when the process terminates between calls (`d6cbab06`).
+- **Queueing vs interleaved agent distinction**: Differentiate agents that queue messages (goose) from those that accept interleaved prompts (opencode). `available_commands_update` no longer treated as turn-end for queueing agents — it was emitted at turn START, flipping `turnEnded=true` mid-stream and wedging the session (`aacaf089`).
+- **User message plain text rendering**: Render user messages as literal plain text so pasted indentation, multiple spaces, and markdown metacharacters are preserved (`7ed44e44`).
+- **AcpProtocolClient lifecycle**: Simplified lifecycle with `volatile boolean running`, moved `notifyDisconnection()` before clearing listener maps so handlers can still access state (`c55bcb1e`, `d6cbab06`).
+- **JSON-RPC string IDs**: Echo UUID string IDs verbatim instead of coercing to long (which returned 0 for non-numeric IDs and hung the agent waiting for a matching response) (`aacaf089`).
+- **Input area expansion**: User input area properly expands on clipboard paste (`04b91e00`).
+- **Defensive checks**: `__BODY__` sentinel validation in `wrapUserPlainText`, safe `instanceof` type check for `selectionContent`, editor context capture gated on `injectsEditorContext()` capability (`d6cbab06`).
+
+### Refactoring
+- **XmlUtils utility**: Consolidated XML/HTML escaping into `support/XmlUtils` — used by `ProcessManager` (editor context metadata) and `HtmlContentPreparer` (user messages) (`d6cbab06`).
+
+### Housekeeping
+- Version bumped to 1.19.2.
+
 ## v1.19.0 (Changes since v1.18.0)
 
 ### Fixes
