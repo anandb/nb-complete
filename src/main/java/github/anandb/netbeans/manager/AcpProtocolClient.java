@@ -21,8 +21,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
@@ -84,8 +84,8 @@ public class AcpProtocolClient implements Closeable {
 
     private volatile Consumer<Throwable> connectionErrorHandler;
     private volatile Runnable disconnectionHandler;
-    private Thread readerThread;
-    private RequestProcessor watchdogRP;
+    private volatile Thread readerThread;
+    private volatile RequestProcessor watchdogRP;
 
     private final AtomicLong nextId = new AtomicLong(0);
     private final InputStream inputStream;
@@ -99,8 +99,9 @@ public class AcpProtocolClient implements Closeable {
 
     private volatile boolean closed = false;
     private volatile long lastDataTime;
-    private String closeReason;
+    private volatile String closeReason;
     private final AtomicInteger pendingPermissions = new AtomicInteger(0);
+    private final AtomicBoolean disconnectionNotified = new AtomicBoolean(false);
 
     public AcpProtocolClient(Process process) throws IOException {
         this.writer = new BufferedWriter(new OutputStreamWriter(process.getOutputStream(), StandardCharsets.UTF_8));
@@ -109,10 +110,15 @@ public class AcpProtocolClient implements Closeable {
     }
 
     public void start() {
-        readerThread = new Thread(this::readLoop, "ACP-Reader");
-        readerThread.setDaemon(true);
-        readerThread.start();
-        startWatchdog();
+        synchronized (this) {
+            if (readerThread != null) {
+                return;
+            }
+            readerThread = new Thread(this::readLoop, "ACP-Reader");
+            readerThread.setDaemon(true);
+            readerThread.start();
+            startWatchdog();
+        }
     }
 
     public void onNotification(String method, Consumer<JsonNode> listener) {
@@ -151,7 +157,7 @@ public class AcpProtocolClient implements Closeable {
         } catch (JsonProcessingException e) {
             LOG.warn("Conversion to JSON Failed for {0} {1} {2}", id, method, e);
         }
-        
+
         if (timeout > 0 && unit != null) {
             requestIdleTimeouts.put(id, unit.toNanos(timeout));
         }
@@ -501,7 +507,7 @@ public class AcpProtocolClient implements Closeable {
     }
 
     private void notifyDisconnection() {
-        if (disconnectionHandler != null) {
+        if (disconnectionNotified.compareAndSet(false, true) && disconnectionHandler != null) {
             try {
                 disconnectionHandler.run();
             } catch (Exception e) {
@@ -512,8 +518,12 @@ public class AcpProtocolClient implements Closeable {
 
     @Override
     public void close() {
-        if (closed) return;
-        closed = true;
+        // Synchronize the idempotency check so only one thread runs the body.
+        // All other paths read the volatile flag, so they see the update immediately.
+        synchronized (this) {
+            if (closed) return;
+            closed = true;
+        }
         stopWatchdog();
         closeQuietly(wireLogger);
 
@@ -529,8 +539,9 @@ public class AcpProtocolClient implements Closeable {
 
         // Interrupt reader thread — cancel() on RequestProcessor tasks does not
         // stop running threads, leaving them hung on blocking I/O indefinitely.
-        if (readerThread != null) {
-            readerThread.interrupt();
+        Thread reader = readerThread;
+        if (reader != null) {
+            reader.interrupt();
         }
 
         String reason = closeReason;
@@ -548,5 +559,6 @@ public class AcpProtocolClient implements Closeable {
         requestIdleTimeouts.clear();
         notificationListeners.clear();
         requestHandlers.clear();
+        notifyDisconnection();
     }
 }
