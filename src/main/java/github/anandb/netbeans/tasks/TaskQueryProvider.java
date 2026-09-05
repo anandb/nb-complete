@@ -108,13 +108,13 @@ public final class TaskQueryProvider implements QueryProvider<TaskQuery, TaskIss
             LOG.warn("setIssueContainer: repository id is null for query {0}", q.getName());
             return;
         }
-        LOG.info("setIssueContainer: registering container for repo {0} kind {1}", key.repoId(), key.kind());
+        LOG.fine("setIssueContainer: registering container for repo {0} kind {1}", key.repoId(), key.kind());
         containers.computeIfAbsent(key, k -> ConcurrentHashMap.newKeySet()).add(container);
         if (registeredQueries.add(key)) {
             TaskRepositoryControl s = store();
             if (s != null) {
                 s.addListener((r, type, taskId) -> {
-                    LOG.info("setIssueContainer: store change {0} for repo {1}", type, r);
+                    LOG.fine("setIssueContainer: store change {0} for repo {1}", type, r);
                     if (r.equals(key.repoId())) {
                         // Re-run every query kind of this repo (All/Open/Closed)
                         // so each Dashboard node reflects the store change.
@@ -150,7 +150,7 @@ public final class TaskQueryProvider implements QueryProvider<TaskQuery, TaskIss
         if (key == null) {
             return;
         }
-        LOG.info("refresh: repo {0} kind {1} tagFilter={2}", key.repoId(), key.kind(), q.getTagFilter());
+        LOG.fine("refresh: repo {0} kind {1} tagFilter={2}", key.repoId(), key.kind(), q.getTagFilter());
         // Reload from disk (off the EDT) so external edits/deletions to the
         // tasks file are picked up, then publish the results. The RELOADED event fired by
         // reload() also re-pushes via the (repo, kind)-scoped store listener;
@@ -186,7 +186,7 @@ public final class TaskQueryProvider implements QueryProvider<TaskQuery, TaskIss
                 }
             }
         }
-        LOG.info("push: repo {0} kind {1} matched {2}/{3} tasks, tagFilter={4}",
+        LOG.fine("push: repo {0} kind {1} matched {2}/{3} tasks, tagFilter={4}",
                 key.repoId(), key.kind(), issues.size(), s == null ? 0 : s.list(key.repoId()).size(), wanted);
         TaskIssue[] arr = issues.toArray(new TaskIssue[0]);
         Runnable deliver = () -> {

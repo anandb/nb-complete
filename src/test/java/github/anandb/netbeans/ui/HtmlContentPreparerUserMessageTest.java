@@ -68,7 +68,8 @@ class HtmlContentPreparerUserMessageTest {
 
         assertFalse(html.contains("\r"),
                 "No raw \\r characters should remain in rendered user HTML\n" + html);
-        assertTrue(html.contains("line1<br/>line2<br/>line3"),
+        assertTrue(html.contains("line1<br/>") && html.contains("line2<br/>")
+                        && html.contains("line3"),
                 "Windows/Mac line endings should normalize to <br/>\n" + html);
     }
 }

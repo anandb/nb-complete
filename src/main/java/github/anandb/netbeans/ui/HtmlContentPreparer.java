@@ -142,7 +142,12 @@ public final class HtmlContentPreparer {
         String escaped = XmlUtils.escapeHtml(normalized);
         String withTabs = escaped.replace("\t", "&nbsp;&nbsp;&nbsp;&nbsp;");
         String withSpaces = PRESERVE_SPACE.matcher(withTabs).replaceAll("&nbsp;");
-        String body = withSpaces.replace("\n", "<br/>");
+        // Insert a source newline after every <br/> and one before the closing
+        // tag. Swing's HTML engine measures block height from line boxes; without
+        // trailing whitespace in the source the last rendered line gets clipped
+        // at the bottom of the bubble. The old Flexmark path emitted these
+        // newlines implicitly; the plain-text path must do it explicitly.
+        String body = withSpaces.replace("\n", "<br/>\n");
 
         String wrapper = getCachedWrapper(theme, "user", false, fontSizeOverride);
         int bodyIdx = wrapper.indexOf("__BODY__");
@@ -153,7 +158,7 @@ public final class HtmlContentPreparer {
         String headOpen = wrapper.substring(0, bodyIdx);
         String headCloseAndBodyOpen = wrapper.substring(bodyIdx + "__BODY__".length());
         return headOpen + headCloseAndBodyOpen
-                + "<div align='left' style='text-align: left !important;'>" + body + "</div>"
+                + "<div align='left' style='text-align: left !important;'>" + body + "\n</div>"
                 + "</body></html>";
     }
 

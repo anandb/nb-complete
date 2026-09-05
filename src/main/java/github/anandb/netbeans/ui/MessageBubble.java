@@ -1,32 +1,18 @@
 package github.anandb.netbeans.ui;
 
 import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
-import java.awt.FlowLayout;
-import java.awt.IllegalComponentStateException;
 import java.awt.Insets;
-import java.awt.MouseInfo;
-import java.awt.Point;
-import java.awt.PointerInfo;
 import java.awt.Rectangle;
-import java.awt.Toolkit;
-import java.awt.datatransfer.StringSelection;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
-import javax.swing.Icon;
-import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.Scrollable;
 import javax.swing.JTextArea;
-import javax.swing.Timer;
 
 import java.awt.event.HierarchyEvent;
 import java.awt.event.HierarchyListener;
@@ -36,11 +22,8 @@ import java.awt.GridBagLayout;
 import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
 
-import github.anandb.netbeans.contract.PinnedMessageControl;
-import github.anandb.netbeans.contract.SessionControl;
 import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.support.Logger;
-import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
 
 import static org.apache.commons.lang3.StringUtils.length;
@@ -60,7 +43,6 @@ public class MessageBubble extends JPanel implements Scrollable {
 
     private JPanel bubble;
     private String toolTitle;
-    private Timer copyRevertTimer;
     private final ArrayList<BubbleContentRenderer.CollapsibleState> codeStates = new ArrayList<>();
     private final JPanel segments;
     private final MessageType type;
@@ -71,16 +53,12 @@ public class MessageBubble extends JPanel implements Scrollable {
     private final transient BubbleContentRenderer contentRenderer;
     private final transient BubbleStreamer streamer;
     private final transient BubbleThemeApplier themeApplier;
+    private final transient BubbleActionBar actionBar;
     private transient HierarchyListener hierarchyListener;
 
     /** Session ID — passed through from ChatThreadPanel for pin state persistence. */
     private final String sessionId;
-    private boolean pinned;
-    private boolean queued;
-    private JButton pinBtn;
-    private JLabel queuedLabel;
-    private transient Timer showTimer;
-    
+
     @Override
     public float getAlignmentX() {
         return Component.LEFT_ALIGNMENT;
@@ -205,180 +183,9 @@ public class MessageBubble extends JPanel implements Scrollable {
             gbcInsets.right = 12;
         }
 
-        // Pin + copy buttons for assistant messages at bottom right — visible on hover.
-        // Pin first, copy last. When pinned, the pinned icon is always visible.
-        // messageId must be known; sessionId is resolved lazily if not passed in.
-        if ("assistant".equals(role) && messageId != null) {
-            final PinnedMessageControl pinStore = Lookup.getDefault().lookup(PinnedMessageControl.class);
-            this.pinned = (pinStore != null && pinStore.isPinned(sessionId, messageId));
-
-            pinBtn = UIUtils.createToolbarButton("pin.svg", 32,
-                    NbBundle.getMessage(MessageBubble.class,
-                            pinned ? "HINT_UnpinMessage" : "HINT_PinMessage"),
-                    e -> flipPin(pinStore));
-            pinBtn.setBorder(BorderFactory.createEmptyBorder());
-            pinBtn.setContentAreaFilled(false);
-            pinBtn.setOpaque(false);
-            pinBtn.setForeground(theme.foreground());
-            pinBtn.setVisible(pinned);
-
-            if (pinned) {
-                pinBtn.setIcon(ThemeManager.getIcon("pinned.svg", 32));
-                applyPinAccent(true);
-            }
-
-            final JButton[] copyBtnArr = new JButton[1];
-            copyBtnArr[0] = UIUtils.createToolbarButton("copy.svg", 32,
-                NbBundle.getMessage(MessageBubble.class, "HINT_CopyAssistantMessage"),
-                e -> copyMessageToClipboard(copyBtnArr[0]));
-            copyBtnArr[0].setBorder(BorderFactory.createEmptyBorder());
-            copyBtnArr[0].setContentAreaFilled(false);
-            copyBtnArr[0].setOpaque(false);
-            copyBtnArr[0].setForeground(theme.foreground());
-            copyBtnArr[0].setVisible(false);
-            final Icon copyBtnArrIcon = copyBtnArr[0].getIcon();
-
-            // Reserve space with both buttons so layout never shifts.
-            // FlowLayout ignores invisible components when sizing, so compute
-            // the size from the button preferred sizes directly.
-            Dimension pinSize = pinBtn.getPreferredSize();
-            Dimension copySize = copyBtnArr[0].getPreferredSize();
-            int actionsW = pinSize.width + copySize.width + 4;
-            int actionsH = Math.max(pinSize.height, copySize.height);
-            Dimension actionsSize = new Dimension(actionsW, actionsH);
-
-            JPanel actionsPlaceholder = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
-            actionsPlaceholder.setOpaque(false);
-            actionsPlaceholder.add(copyBtnArr[0]);
-            actionsPlaceholder.add(pinBtn);
-            actionsPlaceholder.setPreferredSize(actionsSize);
-            actionsPlaceholder.setMinimumSize(actionsSize);
-            actionsPlaceholder.setMaximumSize(actionsSize);
-            bubble.add(actionsPlaceholder, BorderLayout.SOUTH);
-
-            // Hover: show copy/pin after 400ms delay (timer created lazily).
-            bubble.addMouseListener(new MouseAdapter() {
-                @Override
-                public void mouseEntered(MouseEvent e) {
-                    if (showTimer == null) {
-                        showTimer = new Timer(400, evt -> {
-                            if (isMouseInsideComponent(bubble)) {
-                                copyBtnArr[0].setVisible(true);
-                                // Reset icon — a stale check icon may remain from a
-                                // copy where the timer fired while the button was hidden.
-                                if (copyRevertTimer != null && copyRevertTimer.isRunning()) {
-                                    copyRevertTimer.stop();
-                                }
-                                if (copyBtnArr.length > 0) {
-                                    copyBtnArr[0].setIcon(copyBtnArrIcon);
-                                }
-                                if (!pinned) {
-                                    pinBtn.setVisible(true);
-                                }
-                            }
-                        });
-                        showTimer.setRepeats(false);
-                    }
-                    showTimer.start();
-                }
-
-                @Override
-                public void mouseExited(MouseEvent e) {
-                    if (!isMouseInsideComponent(bubble)) {
-                        if (showTimer != null) {
-                            showTimer.stop();
-                        }
-                        copyBtnArr[0].setVisible(false);
-                        if (!pinned) {
-                            pinBtn.setVisible(false);
-                        }
-                    }
-                }
-            });
-            // Also hide when mouse exits a child button — mouseExited on bubble
-            // only fires once (when entering the child), so we re-check here.
-            MouseAdapter childExit = new MouseAdapter() {
-                @Override
-                public void mouseExited(MouseEvent e) {
-                    SwingUtilities.invokeLater(() -> {
-                        if (!isMouseInsideComponent(bubble)) {
-                            copyBtnArr[0].setVisible(false);
-                            if (!pinned) {
-                                pinBtn.setVisible(false);
-                            }
-                        }
-                    });
-                }
-            };
-            copyBtnArr[0].addMouseListener(childExit);
-            pinBtn.addMouseListener(childExit);
-        } else if ("assistant".equals(role)) {
-            // Assistant without messageId — copy only
-            final JButton[] copyBtn = new JButton[1];
-            copyBtn[0] = UIUtils.createToolbarButton("copy.svg", 32,
-                NbBundle.getMessage(MessageBubble.class, "HINT_CopyAssistantMessage"),
-                e -> copyMessageToClipboard(copyBtn[0]));
-            copyBtn[0].setBorder(BorderFactory.createEmptyBorder());
-            copyBtn[0].setContentAreaFilled(false);
-            copyBtn[0].setOpaque(false);
-            copyBtn[0].setForeground(theme.foreground());
-            copyBtn[0].setVisible(false);
-            final Icon copyBtnIcon = copyBtn[0].getIcon();
-
-            // Reserve space in SOUTH with a fixed-size placeholder so the
-            // layout never shifts when toggling button visibility (avoids jitter).
-            JPanel copyPlaceholder = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
-            copyPlaceholder.setOpaque(false);
-            Dimension btnSize = copyBtn[0].getPreferredSize();
-            copyPlaceholder.setPreferredSize(btnSize);
-            copyPlaceholder.setMinimumSize(btnSize);
-            copyPlaceholder.setMaximumSize(btnSize);
-            copyPlaceholder.add(copyBtn[0]);
-            bubble.add(copyPlaceholder, BorderLayout.SOUTH);
-
-            // Show copy button after 400ms hover delay (timer created lazily).
-            bubble.addMouseListener(new MouseAdapter() {
-                @Override
-                public void mouseEntered(MouseEvent e) {
-                    if (showTimer == null) {
-                        showTimer = new Timer(400, evt -> {
-                            if (isMouseInsideComponent(bubble)) {
-                                copyBtn[0].setVisible(true);
-                                // Reset icon — a stale check icon may remain from a
-                                // copy where the timer fired while the button was hidden.
-                                if (copyRevertTimer != null && copyRevertTimer.isRunning()) {
-                                    copyRevertTimer.stop();
-                                }
-                                copyBtn[0].setIcon(copyBtnIcon);
-                            }
-                        });
-                        showTimer.setRepeats(false);
-                    }
-                    showTimer.start();
-                }
-
-                @Override
-                public void mouseExited(MouseEvent e) {
-                    if (!isMouseInsideComponent(bubble)) {
-                        if (showTimer != null) {
-                            showTimer.stop();
-                        }
-                        copyBtn[0].setVisible(false);
-                    }
-                }
-            });
-            // Also hide when mouse exits child button (same reason as above).
-            copyBtn[0].addMouseListener(new MouseAdapter() {
-                @Override
-                public void mouseExited(MouseEvent e) {
-                    SwingUtilities.invokeLater(() -> {
-                        if (!isMouseInsideComponent(bubble)) {
-                            copyBtn[0].setVisible(false);
-                        }
-                    });
-                }
-            });
-        }
+        // Action buttons (copy, pin) — hover logic, timers, pin state all managed by BubbleActionBar.
+        this.actionBar = new BubbleActionBar(bubble, role, messageId, sessionId, this.text, theme, this);
+        actionBar.setupActionButtons(theme);
 
         if ("user".equals(role) && avatarPosition != AvatarPosition.NONE) {
             // Wrap bubble + external avatar in a content row
@@ -426,14 +233,7 @@ public class MessageBubble extends JPanel implements Scrollable {
         // Stop timers and remove listeners BEFORE super.removeNotify()
         // to avoid callbacks firing on a partially-dismantled component tree.
         streamer.stopTimer();
-        stopQueuedAnimation();
-        if (copyRevertTimer != null) {
-            copyRevertTimer.stop();
-            copyRevertTimer = null;
-        }
-        if (showTimer != null) {
-            showTimer.stop();
-        }
+        actionBar.stopAllTimers();
         if (hierarchyListener != null) {
             removeHierarchyListener(hierarchyListener);
             hierarchyListener = null;
@@ -474,124 +274,9 @@ public class MessageBubble extends JPanel implements Scrollable {
         contentRenderer.updateContent(theme, expanded, toolTitle);
     }
 
-    private void copyMessageToClipboard(JButton copyBtn) {
-        String textToCopy = text.toString();
-        if (textToCopy.isEmpty()) {
-            return;
-        }
-
-        StringSelection selection = new StringSelection(textToCopy);
-        Toolkit.getDefaultToolkit().getSystemClipboard().setContents(selection, selection);
-
-        Icon originalIcon = copyBtn.getIcon();
-        Icon checkIcon = ThemeManager.getIcon("check.svg", 14);
-        copyBtn.setIcon(checkIcon);
-
-        // Cancel any previous revert timer to avoid leaking timers on rapid clicks.
-        if (copyRevertTimer != null) {
-            copyRevertTimer.stop();
-        }
-        copyRevertTimer = new Timer(1500, e -> {
-            copyBtn.setIcon(originalIcon);
-        });
-        copyRevertTimer.setRepeats(false);
-        copyRevertTimer.start();
-    }
-
-    /** Resolves the current session ID via Lookup (defensive fallback only). */
-    private String resolveSessionId() {
-        if (sessionId != null) {
-            return sessionId;
-        }
-        LOG.warn("MessageBubble sessionId was null at construction; falling back to Lookup. messageId={0}", messageId);
-        SessionControl sc = Lookup.getDefault().lookup(SessionControl.class);
-        return sc != null ? sc.getCurrentSessionId() : null;
-    }
-
-    /** Toggles pin state, persists via store, updates icon and accent. */
-    private void flipPin(PinnedMessageControl store) {
-        if (store == null) {
-            return;
-        }
-        String sid = resolveSessionId();
-        if (sid == null) {
-            return;
-        }
-        pinned = !pinned;
-        store.setPinned(sid, messageId, pinned);
-        pinBtn.setIcon(ThemeManager.getIcon(
-                pinned ? "pinned.svg" : "pin.svg", 32));
-        pinBtn.setToolTipText(NbBundle.getMessage(MessageBubble.class,
-                pinned ? "HINT_UnpinMessage" : "HINT_PinMessage"));
-        pinBtn.getAccessibleContext().setAccessibleName(pinBtn.getToolTipText());
-        pinBtn.getAccessibleContext().setAccessibleDescription(pinBtn.getToolTipText());
-        applyPinAccent(pinned);
-        revalidate();
-        repaint();
-    }
-
-    /** Applies or removes a red left accent on the bubble when pinned. */
-    private void applyPinAccent(boolean apply) {
-        if (bubble instanceof RoundedPanel rp) {
-            rp.setLeftAccent(apply ? new Color(0xCC, 0x33, 0x33, 255) : null);
-        }
-    }
-
-    /** Applies or removes a queued indicator on the bubble — an amber left accent
-     *  bar and a pulsing hourglass icon in the theme foreground color at the bottom-right. */
+    /** Applies or removes a queued indicator on the bubble. */
     void setQueued(boolean queued) {
-        this.queued = queued;
-        applyQueuedAccent(queued);
-        if (queued) {
-            if (queuedLabel == null) {
-                queuedLabel = new JLabel("\u23F3"); // hourglass emoji
-                queuedLabel.setFont(ThemeManager.getFont().deriveFont(12f));
-                queuedLabel.setForeground(ThemeManager.getCurrentTheme().foreground());
-            }
-            GridBagConstraints gbc = UIUtils.createGbc(0, 1, 1.0, 0,
-                    GridBagConstraints.NONE, GridBagConstraints.SOUTHEAST,
-                    new Insets(0, 12, 2, 12));
-            add(queuedLabel, gbc);
-            startQueuedAnimation();
-        } else if (queuedLabel != null) {
-            stopQueuedAnimation();
-            remove(queuedLabel);
-        }
-        revalidate();
-        repaint();
-    }
-
-    private static final String[] QUEUED_FRAMES = {"\u23F3", "\u23F4", "\u23F5", "\u23F6"};
-    private int queuedFrameIndex = 0;
-    private Timer queuedAnimationTimer;
-
-    private void startQueuedAnimation() {
-        if (queuedAnimationTimer != null && queuedAnimationTimer.isRunning()) {
-            return;
-        }
-        queuedFrameIndex = 0;
-        queuedAnimationTimer = new Timer(400, e -> {
-            if (queuedLabel != null && queued) {
-                queuedFrameIndex = (queuedFrameIndex + 1) % QUEUED_FRAMES.length;
-                queuedLabel.setText(QUEUED_FRAMES[queuedFrameIndex]);
-            }
-        });
-        queuedAnimationTimer.setRepeats(true);
-        queuedAnimationTimer.start();
-    }
-
-    private void stopQueuedAnimation() {
-        if (queuedAnimationTimer != null) {
-            queuedAnimationTimer.stop();
-            queuedAnimationTimer = null;
-        }
-        queuedFrameIndex = 0;
-    }
-
-    private void applyQueuedAccent(boolean apply) {
-        if (bubble instanceof RoundedPanel rp) {
-            rp.setLeftAccent(apply ? MessageQueueManager.getAccentColor() : null);
-        }
+        actionBar.setQueued(queued);
     }
 
     /**
@@ -629,26 +314,6 @@ public class MessageBubble extends JPanel implements Scrollable {
     public void updateCombinedContent(List<CollapsibleToolPane.ToolSegment> blocks, String title) {
         this.toolTitle = title;
         contentRenderer.updateCombinedContent(blocks, title);
-    }
-
-    /**
-     * Checks whether the mouse pointer is currently within the screen bounds of
-     * the given component. Uses screen coordinates to avoid the unreliable
-     * relative-point check in {@link MouseEvent#getPoint()} when the mouse
-     * moves quickly.
-     */
-    private static boolean isMouseInsideComponent(Component c) {
-        if (!c.isShowing()) return false;
-        PointerInfo pi = MouseInfo.getPointerInfo();
-        if (pi == null) return false;
-        try {
-            Point screenLoc = pi.getLocation();
-            Rectangle bounds = c.getBounds();
-            bounds.setLocation(c.getLocationOnScreen());
-            return bounds.contains(screenLoc);
-        } catch (IllegalComponentStateException ex) {
-            return false;
-        }
     }
 
     //<editor-fold defaultstate="collapsed" desc="Properties">
@@ -708,21 +373,12 @@ public class MessageBubble extends JPanel implements Scrollable {
 
     /** Returns {@code true} if this message is pinned. */
     public boolean isPinned() {
-        return pinned;
+        return actionBar.isPinned();
     }
 
     /** Sets the pinned state (visual only — does NOT persist to store). */
     public void setPinned(boolean pinned) {
-        this.pinned = pinned;
-        if (pinBtn != null) {
-            pinBtn.setIcon(ThemeManager.getIcon(
-                    pinned ? "pinned.svg" : "pin.svg", 32));
-            pinBtn.setToolTipText(NbBundle.getMessage(MessageBubble.class,
-                    pinned ? "HINT_UnpinMessage" : "HINT_PinMessage"));
-            pinBtn.getAccessibleContext().setAccessibleName(pinBtn.getToolTipText());
-            pinBtn.getAccessibleContext().setAccessibleDescription(pinBtn.getToolTipText());
-        }
-        applyPinAccent(pinned);
+        actionBar.setPinned(pinned);
     }
 
     /**
@@ -732,14 +388,7 @@ public class MessageBubble extends JPanel implements Scrollable {
      */
     public void setMessageId(String messageId) {
         this.messageId = messageId;
-        if (pinBtn != null) {
-            PinnedMessageControl pinStore = Lookup.getDefault().lookup(PinnedMessageControl.class);
-            String sid = resolveSessionId();
-            if (pinStore != null && sid != null) {
-                this.pinned = pinStore.isPinned(sid, messageId);
-            }
-            setPinned(this.pinned);
-        }
+        actionBar.setMessageId(messageId);
     }
 
     public void setFontSizeOverride(int size) {

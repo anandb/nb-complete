@@ -362,14 +362,19 @@ public class AcpProtocolClient implements Closeable {
         touch();
         wireLogger.log(node);
         if (node.has("id")) {
-            long id = node.get("id").asLong();
+            JsonNode idNode = node.get("id");
             if (node.has("method")) {
-                // Incoming Request
+                // Incoming Request — the id may be a number OR a string (goose
+                // sends UUID string ids). NEVER coerce it with asLong(): a
+                // non-numeric id becomes 0 and echoing id=0 back leaves the
+                // agent waiting forever for a matching response. Echo the id
+                // JsonNode verbatim.
                 String method = node.get("method").asText();
                 JsonNode params = node.has("params") ? node.get("params") : MAPPER.createObjectNode();
-                handleIncomingRequest(id, method, params);
-            } else {
-                // Response to Outgoing Request
+                handleIncomingRequest(idNode, method, params);
+            } else if (idNode.isNumber()) {
+                // Response to Outgoing Request — our own ids are numeric.
+                long id = idNode.asLong();
                 CompletableFuture<JsonNode> future = pendingRequests.remove(id);
                 requestIdleTimeouts.remove(id);
                 if (future != null) {
@@ -387,6 +392,8 @@ public class AcpProtocolClient implements Closeable {
                 } else {
                     LOG.warn("Received response for unknown request id: {0}", id);
                 }
+            } else {
+                LOG.fine("Ignoring non-numeric response id: {0}", idNode.toString());
             }
         } else if (node.has("method")) {
             // Incoming Notification
@@ -407,11 +414,11 @@ public class AcpProtocolClient implements Closeable {
         }
     }
 
-    private void handleIncomingRequest(long id, String method, JsonNode params) {
+    private void handleIncomingRequest(JsonNode idNode, String method, JsonNode params) {
         RequestHandler handler = requestHandlers.get(method);
         if (handler == null) {
             LOG.warn("No handler for request method: {0}", method);
-            sendError(id, -32601, "Method not found: " + method);
+            sendError(idNode, -32601, "Method not found: " + method);
             return;
         }
 
@@ -423,8 +430,8 @@ public class AcpProtocolClient implements Closeable {
             future = handler.handle(params);
         } catch (Exception ex) {
             if (isPermission) setPermissionRequestPending(false);
-            LOG.severe("Error handling request {0} ({1})", method, id, ex);
-            sendError(id, -32603, ExceptionUtils.getRootCauseMessage(ex));
+            LOG.severe("Error handling request {0} ({1})", method, idNode.toString(), ex);
+            sendError(idNode, -32603, ExceptionUtils.getRootCauseMessage(ex));
             return;
         }
 
@@ -439,14 +446,14 @@ public class AcpProtocolClient implements Closeable {
                 if (ex instanceof RequestRejectedException) {
                     // Expected, client-facing rejection: log concisely (no stack
                     // trace) and return the error to the client.
-                    LOG.fine("Rejected request {0} ({1}): {2}", method, id,
+                    LOG.fine("Rejected request {0} ({1}): {2}", method, idNode.toString(),
                             ExceptionUtils.getRootCauseMessage(ex));
                 } else {
-                    LOG.severe("Error handling request {0} ({1})", method, id, ex);
+                    LOG.severe("Error handling request {0} ({1})", method, idNode.toString(), ex);
                 }
-                sendError(id, -32603, ExceptionUtils.getRootCauseMessage(ex));
+                sendError(idNode, -32603, ExceptionUtils.getRootCauseMessage(ex));
             } else {
-                sendResponse(id, result);
+                sendResponse(idNode, result);
             }
         });
     }
@@ -465,18 +472,18 @@ public class AcpProtocolClient implements Closeable {
         }
     }
 
-    private void sendResponse(long id, JsonNode result) {
+    private void sendResponse(JsonNode idNode, JsonNode result) {
         ObjectNode response = MAPPER.createObjectNode();
         response.put("jsonrpc", "2.0");
-        response.put("id", id);
+        response.set("id", idNode);
         response.set("result", result != null ? result : MAPPER.createObjectNode());
         sendJsonMessage(response);
     }
 
-    private void sendError(long id, int code, String message) {
+    private void sendError(JsonNode idNode, int code, String message) {
         ObjectNode response = MAPPER.createObjectNode();
         response.put("jsonrpc", "2.0");
-        response.put("id", id);
+        response.set("id", idNode);
         ObjectNode error = MAPPER.createObjectNode();
         error.put("code", code);
         error.put("message", message);
