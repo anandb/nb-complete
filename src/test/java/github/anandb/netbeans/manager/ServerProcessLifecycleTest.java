@@ -1,6 +1,7 @@
 package github.anandb.netbeans.manager;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import github.anandb.netbeans.contract.ToolExecutor;
 import github.anandb.netbeans.model.AgentCapabilities;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -110,7 +111,7 @@ class ServerProcessLifecycleTest {
     }
 
     /** Minimal ToolExecutor that does nothing. */
-    private static class NoOpToolExecutor implements github.anandb.netbeans.contract.ToolExecutor {
+    private static class NoOpToolExecutor implements ToolExecutor {
         @Override public void start() {}
         @Override public void setMcpAuthRequired(boolean required) {}
         @Override public void stop() {}

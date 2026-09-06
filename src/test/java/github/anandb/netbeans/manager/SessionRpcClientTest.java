@@ -2,6 +2,7 @@ package github.anandb.netbeans.manager;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import github.anandb.netbeans.contract.ToolExecutor;
 import github.anandb.netbeans.model.AgentCapabilities;
 import github.anandb.netbeans.support.MapperSupplier;
 import org.junit.jupiter.api.BeforeEach;
@@ -78,8 +79,8 @@ class SessionRpcClientTest {
         verify(processManager).sendRequest(eq("session/load"), any(), eq(2L), eq(TimeUnit.MINUTES));
     }
 
-    private github.anandb.netbeans.contract.ToolExecutor createMockToolExecutor() {
-        return new github.anandb.netbeans.contract.ToolExecutor() {
+    private ToolExecutor createMockToolExecutor() {
+        return new ToolExecutor() {
             @Override public void start() {}
             @Override public void stop() {}
             @Override public CompletableFuture<Void> waitForReady() { return CompletableFuture.completedFuture(null); }

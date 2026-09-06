@@ -205,7 +205,7 @@ class DefaultSlashCommandInterceptorTest {
 
     @Test
     void testRegisterCustomCommand() throws Exception {
-        var handler = mock(github.anandb.netbeans.contract.SlashCommandHandler.class);
+        var handler = mock(SlashCommandHandler.class);
         when(handler.handle(anyString(), any(Lookup.class)))
                 .thenReturn(CompletableFuture.completedFuture(true));
 

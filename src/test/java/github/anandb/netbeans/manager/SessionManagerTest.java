@@ -30,7 +30,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import github.anandb.netbeans.contract.ToolExecutor;
 import github.anandb.netbeans.contract.SessionListener;
+import github.anandb.netbeans.model.Session;
+import github.anandb.netbeans.model.SessionConfigOption;
 import github.anandb.netbeans.model.SessionState;
+import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.MapperSupplier;
 
 @ExtendWith(MockitoExtension.class)
@@ -182,12 +185,12 @@ class SessionManagerTest {
     void testAddAndRemoveSessionListener() {
         // Just verify no exception on add/remove
         SessionListener listener = new SessionListener() {
-            @Override public void onSessionListUpdated(List<github.anandb.netbeans.model.Session> s) {}
+            @Override public void onSessionListUpdated(List<Session> s) {}
             @Override public void onSessionStarted(String id) {}
-            @Override public void onSessionLoaded(String id, List<github.anandb.netbeans.model.SessionConfigOption> o, boolean b) {}
+            @Override public void onSessionLoaded(String id, List<SessionConfigOption> o, boolean b) {}
             @Override public void onSessionLoading(boolean l) {}
             @Override public void onSessionError(String m) {}
-            @Override public void onSessionUpdate(github.anandb.netbeans.model.SessionUpdate u) {}
+            @Override public void onSessionUpdate(SessionUpdate u) {}
         };
         sessionManager.addSessionListener(listener);
         sessionManager.removeSessionListener(listener);
