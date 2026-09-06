@@ -493,7 +493,9 @@ public class ChatThreadPanel extends JPanel {
         // Generate messageId for non-streaming assistant messages that lack one.
         // Streaming messages get their ID assigned after finalization in assignMissingMessageIds().
         if (type.isAssistant() && messageId == null && !streaming && sid != null) {
-            messageId = MessageIdGenerator.generate(sid, text, userMessageCount);
+            messageId = MessageIdGenerator.generate(sid, text.strip(), userMessageCount);
+            // Add to seen set so retainPinned() doesn't remove pins for this ID
+            seenMessageIdsBySession.computeIfAbsent(sid, k -> ConcurrentHashMap.newKeySet()).add(messageId);
         }
 
         MessageBubble bubble = BubbleFactory.createRoleBubble(type, text, messageId, toolTitle, streaming, userMessageCount, sid);
@@ -1302,16 +1304,23 @@ public class ChatThreadPanel extends JPanel {
      *  a stable identifier for pinning across reloads. Must run AFTER finalization so
      *  getRawText() returns the complete message text. */
     private void assignMissingMessageIds() {
+        // Skip during reload — server should provide IDs for loaded messages.
+        // Generated IDs would use wrong userMessageIndex (all 0 after reset).
+        if (isBatchMode) return;
         String sid = ensureCurrentSessionId();
         if (sid == null) return;
         int userMessageIndex = userMessageCount;
+        Set<String> seen = seenMessageIdsBySession.computeIfAbsent(sid, k -> ConcurrentHashMap.newKeySet());
         Component[] all = messagesContainer.getComponents();
         for (Component c : all) {
             if (c instanceof MessageBubble mb && mb.getMessageId() == null
                     && "assistant".equals(mb.getRole())) {
                 String text = mb.getRawText();
                 if (text != null && !text.isEmpty()) {
-                    mb.setMessageId(MessageIdGenerator.generate(sid, text, userMessageIndex));
+                    String normalized = text.strip();
+                    String generatedId = MessageIdGenerator.generate(sid, normalized, userMessageIndex);
+                    mb.setMessageId(generatedId);
+                    seen.add(generatedId);
                 }
             }
         }
