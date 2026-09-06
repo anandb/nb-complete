@@ -59,17 +59,7 @@ class SessionRpcClientTest {
     @Test
     void createSessionIncludesMcpServersWhenCapabilityEnabled() {
         when(processManager.getCapabilities()).thenReturn(AgentCapabilities.DEFAULT);
-        when(processManager.getToolExecutor()).thenReturn(
-                new github.anandb.netbeans.contract.ToolExecutor() {
-                    @Override public void start() {}
-                    @Override public void stop() {}
-                    @Override public CompletableFuture<Void> waitForReady() { return CompletableFuture.completedFuture(null); }
-                    @Override public java.util.List<Map<String, Object>> getServerConfig() { return java.util.List.of(); }
-                    @Override public void checkServerSupport(JsonNode res) {}
-                    @Override public void setMcpAuthRequired(boolean required) {}
-                    @Override public void disable() {}
-                    @Override public boolean isDisabled() { return false; }
-                });
+        when(processManager.getToolExecutor()).thenReturn(createMockToolExecutor());
         when(processManager.sendRequest(eq("session/new"), any(), eq(60L), eq(TimeUnit.SECONDS)))
                 .thenReturn(CompletableFuture.completedFuture(mapper.createObjectNode()));
 
@@ -80,22 +70,25 @@ class SessionRpcClientTest {
     @Test
     void loadSessionFromServerCallsCorrectMethod() {
         when(processManager.getCapabilities()).thenReturn(AgentCapabilities.DEFAULT);
-        when(processManager.getToolExecutor()).thenReturn(
-                new github.anandb.netbeans.contract.ToolExecutor() {
-                    @Override public void start() {}
-                    @Override public void stop() {}
-                    @Override public CompletableFuture<Void> waitForReady() { return CompletableFuture.completedFuture(null); }
-                    @Override public java.util.List<Map<String, Object>> getServerConfig() { return java.util.List.of(); }
-                    @Override public void checkServerSupport(JsonNode res) {}
-                    @Override public void setMcpAuthRequired(boolean required) {}
-                    @Override public void disable() {}
-                    @Override public boolean isDisabled() { return false; }
-                });
+        when(processManager.getToolExecutor()).thenReturn(createMockToolExecutor());
         when(processManager.sendRequest(eq("session/load"), any(), eq(2L), eq(TimeUnit.MINUTES)))
                 .thenReturn(CompletableFuture.completedFuture(mapper.createObjectNode()));
 
         client.loadSessionFromServer("sid", "/cwd");
         verify(processManager).sendRequest(eq("session/load"), any(), eq(2L), eq(TimeUnit.MINUTES));
+    }
+
+    private github.anandb.netbeans.contract.ToolExecutor createMockToolExecutor() {
+        return new github.anandb.netbeans.contract.ToolExecutor() {
+            @Override public void start() {}
+            @Override public void stop() {}
+            @Override public CompletableFuture<Void> waitForReady() { return CompletableFuture.completedFuture(null); }
+            @Override public java.util.List<Map<String, Object>> getServerConfig() { return java.util.List.of(); }
+            @Override public void checkServerSupport(JsonNode res) {}
+            @Override public void setMcpAuthRequired(boolean required) {}
+            @Override public void disable() {}
+            @Override public boolean isDisabled() { return false; }
+        };
     }
 
     @Test

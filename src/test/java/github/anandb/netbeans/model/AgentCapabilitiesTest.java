@@ -23,7 +23,7 @@ class AgentCapabilitiesTest {
         assertFalse(goose.supportsTokenStats());
 
         AgentCapabilities pi = AgentCapabilities.forName("pi-acp");
-        assertFalse(pi.supportsMessageQueue());
+        assertTrue(pi.supportsMessageQueue());
         assertFalse(pi.sendsMcpServerConfig());
     }
 
