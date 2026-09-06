@@ -419,7 +419,8 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     }
 
     private void initChat() {
-        sessionService.get().refreshSessions();
+        // refreshSessions() is called by ComponentLifecycleHandler.componentOpened()
+        // and deferStartupSessionLoad() — no need to call it here too.
     }
 
     public void setInputText(String text) {

@@ -150,6 +150,8 @@ public final class HtmlContentPreparer {
         for (String line : lines) {
             body.append("<p style='margin:0'>").append(line).append("</p>\n");
         }
+        // Trailing <br/> prevents Swing's HTML engine from clipping the last line.
+        body.append("<br/>");
 
         String wrapper = getCachedWrapper(theme, "user", false, fontSizeOverride);
         int bodyIdx = wrapper.indexOf("__BODY__");

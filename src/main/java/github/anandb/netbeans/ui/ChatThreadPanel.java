@@ -54,6 +54,7 @@ import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.support.GlobalOpencodeConfig;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.MessageIdGenerator;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.TimingConstants;
 import java.util.concurrent.ConcurrentHashMap;
@@ -488,6 +489,13 @@ public class ChatThreadPanel extends JPanel {
         }
 
         String sid = ensureCurrentSessionId();
+
+        // Generate messageId for non-streaming assistant messages that lack one.
+        // Streaming messages get their ID assigned after finalization in assignMissingMessageIds().
+        if (type.isAssistant() && messageId == null && !streaming && sid != null) {
+            messageId = MessageIdGenerator.generate(sid, text, userMessageCount);
+        }
+
         MessageBubble bubble = BubbleFactory.createRoleBubble(type, text, messageId, toolTitle, streaming, userMessageCount, sid);
 
         if (lastUserTimestamp > 0 && !"user".equals(type.roleName())) {
@@ -579,6 +587,9 @@ public class ChatThreadPanel extends JPanel {
         }
         // Failsafe sweep for remaining streaming bubbles (missed by activeStreamBubble).
         anyFinalized |= sweepStreamingBubbles(wasAtBottom);
+        // After finalization, assign messageId to assistant bubbles that lack one.
+        // Must run after sweep so getRawText() has the complete text.
+        assignMissingMessageIds();
         // Now that all bubbles are finalized, drop any whose complete message is
         // blank (e.g. an agent_message_chunk of just "\n\n"). Runs after the sweep
         // so getRawText() reflects the finished text. Only the streamed turn (the
@@ -1284,6 +1295,26 @@ public class ChatThreadPanel extends JPanel {
         }
 
         return null;
+    }
+
+    /** Assigns messageId to assistant bubbles that lack one after streaming finalization.
+     *  The ID is a SHA-256 hash of (sessionId + fullText + userMessageIndex), providing
+     *  a stable identifier for pinning across reloads. Must run AFTER finalization so
+     *  getRawText() returns the complete message text. */
+    private void assignMissingMessageIds() {
+        String sid = ensureCurrentSessionId();
+        if (sid == null) return;
+        int userMessageIndex = userMessageCount;
+        Component[] all = messagesContainer.getComponents();
+        for (Component c : all) {
+            if (c instanceof MessageBubble mb && mb.getMessageId() == null
+                    && "assistant".equals(mb.getRole())) {
+                String text = mb.getRawText();
+                if (text != null && !text.isEmpty()) {
+                    mb.setMessageId(MessageIdGenerator.generate(sid, text, userMessageIndex));
+                }
+            }
+        }
     }
 
     private static boolean canMergeMessages(String messageId, String existingMessageId) {

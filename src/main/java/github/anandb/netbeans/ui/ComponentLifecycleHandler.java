@@ -125,9 +125,7 @@ public class ComponentLifecycleHandler {
                     currentDirs.add(p.getProjectDirectory().getPath());
                 }
             }
-            if (!currentDirs.equals(closedProjectDirs)) {
-                sessionService.get().refreshSessions();
-            }
+            // Refresh is handled by deferStartupSessionLoad() after the grace period.
             closedProjectDirs = Set.of();
 
             // Proactive binary check: if opencode is not installed, enter
