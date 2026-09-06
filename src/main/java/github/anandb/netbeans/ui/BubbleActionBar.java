@@ -341,7 +341,14 @@ class BubbleActionBar {
      * by the server-assigned ID). Re-queries pin state for the new ID.
      */
     void setMessageId(String messageId) {
+        String oldId = this.messageId;
         this.messageId = messageId;
+        // If messageId was null at construction (streaming), pin button was never
+        // created. Re-run setup to install copy+pin buttons now that we have an ID.
+        if (oldId == null && messageId != null && pinBtn == null) {
+            setupActionButtons(ThemeManager.getCurrentTheme());
+            return;
+        }
         if (pinBtn != null) {
             PinnedMessageControl pinStore = Lookup.getDefault().lookup(PinnedMessageControl.class);
             String sid = resolveSessionId();
