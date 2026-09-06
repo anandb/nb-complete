@@ -117,14 +117,7 @@ final class PermissionDialogManager {
             prompt = params.get("content").asText();
         } else if (params.has("toolCall") || params.has("tool_call")) {
             toolCall = params.has("toolCall") ? params.get("toolCall") : params.get("tool_call");
-            // Use kind as tool name (e.g. "edit", "write") when title is a file path
-            String title;
-            if (toolCall.has("kind") && !toolCall.get("kind").asText().isEmpty()) {
-                title = toolCall.get("kind").asText();
-            } else {
-                title = toolCall.has("title") ? toolCall.get("title").asText()
-                        : toolCall.has("name") ? toolCall.get("name").asText() : "tool";
-            }
+            String title = resolveToolTitle(toolCall);
 
             String context = ToolContextExtractor.extractToolContext(toolCall, Integer.MAX_VALUE);
             if (context != null && !context.equals(title)) {
@@ -208,6 +201,32 @@ final class PermissionDialogManager {
         if (!isRequestShowing) {
             processNextRequest();
         }
+    }
+
+    /**
+     * Prefers a human title ("Write /path") over a bare kind ("edit").
+     * Uses kind only when the title is a raw file path with no spaces.
+     */
+    private static String resolveToolTitle(JsonNode toolCall) {
+        String kind = null;
+        if (toolCall.has("kind") && !toolCall.get("kind").asText().isEmpty()) {
+            kind = toolCall.get("kind").asText();
+        }
+        String named = null;
+        if (toolCall.has("title") && !toolCall.get("title").asText().isEmpty()) {
+            named = toolCall.get("title").asText();
+        } else if (toolCall.has("name") && !toolCall.get("name").asText().isEmpty()) {
+            named = toolCall.get("name").asText();
+        }
+        if (named == null) {
+            return kind != null ? kind : "tool";
+        }
+        boolean titleIsPath = !named.contains(" ")
+                && (named.contains("/") || named.contains("\\"));
+        if (titleIsPath && kind != null) {
+            return kind;
+        }
+        return named;
     }
 
     private void processNextRequest() {

@@ -1,14 +1,18 @@
 # AI Agent Workflow
 
-Acknowledge these instructions with a single phrase: "How may I help?". Maintain these operational constraints across all subsequent turns.
+At session start:
+1. Review `AGENTS.md` for project-specific rules.
+2. Review `tasks/lessons.md` when it exists.
+3. Acknowledge these instructions with a single phrase: "How may I help?".
+
+Maintain these operational constraints across all subsequent turns.
 
 ## Priority Order
 
 When directives conflict, resolve in this order (highest first):
-1. **Critical Guardrails** (never violate)
-2. **Core Principles** (simplicity > elegance)
-3. **Workflow Orchestration** (process rules)
-4. **Task Management** (tracking steps)
+1. **Core Principles** (simplicity > elegance)
+2. **Workflow Orchestration** (process rules)
+3. **Task Management** (tracking steps)
 
 ## Environment & Session Context
 
@@ -41,7 +45,6 @@ When directives conflict, resolve in this order (highest first):
 ### 3. Self-Improvement Loop
 *   After ANY explicitly requested correction from the user: append a concise summary of the mistake and prevention rule to `tasks/lessons.md`.
 *   Keep entries actionable and brief to prevent bloating the ruleset.
-*   Review `tasks/lessons.md` at session start when working on the project.
 
 ### 4. Verification Before Done
 *   Never mark a task complete without proving it works.

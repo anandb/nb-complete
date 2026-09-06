@@ -18,7 +18,8 @@ import static org.apache.commons.lang3.StringUtils.isNotBlank;
  *   <li>{@code args.oldString/newString} with {@code args.filePath}</li>
  *   <li>{@code rawInput.diff} with {@code rawInput.filePath}</li>
  *   <li>{@code arguments.oldString/newString} with {@code arguments.filePath}</li>
- *   <li>{@code content[]} blocks with {@code oldText/newText} or unified diff</li>
+ *   <li>{@code content[]} blocks with {@code oldText/newText} (JSON {@code null} oldText = new file)
+ *       or unified diff; path may be on the block as {@code path}</li>
  * </ul>
  */
 public final class ToolCallDiffParser {
@@ -59,7 +60,17 @@ public final class ToolCallDiffParser {
             if (fp != null) return fp;
         }
 
-        // 3. title — only use as file path if it contains a path separator
+        // 3. content[] diff/write blocks — Cursor ACP puts the path on each block
+        if (toolCall.has("content") && toolCall.get("content").isArray()) {
+            for (JsonNode block : toolCall.get("content")) {
+                String fp = textField(block, "path");
+                if (fp != null) return fp;
+                fp = textField(block, "filePath");
+                if (fp != null) return fp;
+            }
+        }
+
+        // 4. title — only use as file path if it contains a path separator
         //    (avoids false positives like "version 1.2.3" or "Chapter.3")
         //    Additionally, ensure it does not contain spaces, as AI action titles often
         //    contain spaces and slashes (e.g., "Fix bug / Update feature").
@@ -117,12 +128,17 @@ public final class ToolCallDiffParser {
                 String type = block.get("type").asText();
 
                 if ("diff".equals(type)) {
-                    // Use has() + asText() directly — empty string is valid
-                    // content (e.g., "oldText": "" for a new file).
-                    String oldT = block.has("oldText") ? block.get("oldText").asText() : null;
-                    String newT = block.has("newText") ? block.get("newText").asText() : null;
+                    String blockPath = textField(block, "path");
+                    if (blockPath == null) {
+                        blockPath = textField(block, "filePath");
+                    }
+                    String changePath = blockPath != null ? blockPath : fp;
+                    // JSON null oldText means a new file (Cursor write). Empty string
+                    // is also valid. Missing fields fall through to patch/text.
+                    String oldT = jsonTextAllowingNull(block, "oldText");
+                    String newT = jsonTextAllowingNull(block, "newText");
                     if (oldT != null && newT != null) {
-                        result.add(createChange(fp, oldT, newT));
+                        result.add(createChange(changePath, oldT, newT));
                         continue;
                     }
                     String patch = textField(block, "patch");
@@ -130,7 +146,7 @@ public final class ToolCallDiffParser {
                     if (patch != null) {
                         List<DiffPair> dps = parseUnifiedDiff(patch);
                         for (DiffPair dp : dps) {
-                            result.add(createChange(fp, dp.oldContent(), dp.newContent()));
+                            result.add(createChange(changePath, dp.oldContent(), dp.newContent()));
                         }
                     }
                 }
@@ -197,6 +213,22 @@ public final class ToolCallDiffParser {
             return isNotBlank(val) ? val : null;
         }
         return null;
+    }
+
+    /**
+     * Reads a text field that may be JSON {@code null} or empty.
+     * Missing field → {@code null}. JSON null → empty string.
+     * {@code NullNode.asText()} is {@code "null"} and must not be used as content.
+     */
+    private static String jsonTextAllowingNull(JsonNode node, String field) {
+        if (!node.has(field)) {
+            return null;
+        }
+        JsonNode val = node.get(field);
+        if (val == null || val.isNull()) {
+            return "";
+        }
+        return val.asText();
     }
 
     // --- Unified diff parser ---

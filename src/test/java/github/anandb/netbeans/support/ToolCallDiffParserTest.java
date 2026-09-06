@@ -193,6 +193,16 @@ class ToolCallDiffParserTest {
     }
 
     @Test
+    void extractFilePath_fromContentBlockPath() {
+        ObjectNode block = obj()
+                .put("type", "diff")
+                .put("path", "/home/anand/.cursor/cli-config.json");
+        ObjectNode tc = obj().set("content", arr().add(block));
+        tc.put("title", "Write /home/anand/.cursor/cli-config.json");
+        assertEquals("/home/anand/.cursor/cli-config.json", ToolCallDiffParser.extractFilePath(tc));
+    }
+
+    @Test
     void extractFilePath_argsTakesPriority() {
         ObjectNode args = obj().put("filePath", "/from/args.java");
         ObjectNode ri = obj().put("filePath", "/from/raw.java");
@@ -435,6 +445,24 @@ class ToolCallDiffParserTest {
         ObjectNode tc = obj().set("content", arr().add(block));
         List<FileChange> result = ToolCallDiffParser.parse(tc);
         assertEquals(1, result.size());
+        assertEquals('A', result.get(0).status());
+    }
+
+    @Test
+    void parse_contentDiff_jsonNullOldText_isNewFile() {
+        ObjectNode block = obj()
+                .put("type", "diff")
+                .put("path", "/home/anand/.cursor/cli-config.json")
+                .put("newText", "{\n  \"version\": 1\n}\n");
+        block.putNull("oldText");
+        ObjectNode tc = obj().set("content", arr().add(block));
+        tc.put("kind", "edit");
+        tc.put("title", "Write /home/anand/.cursor/cli-config.json");
+        List<FileChange> result = ToolCallDiffParser.parse(tc);
+        assertEquals(1, result.size());
+        assertEquals("/home/anand/.cursor/cli-config.json", result.get(0).filePath());
+        assertEquals("", result.get(0).oldContent());
+        assertEquals("{\n  \"version\": 1\n}\n", result.get(0).newContent());
         assertEquals('A', result.get(0).status());
     }
 

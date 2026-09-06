@@ -1,6 +1,6 @@
 # Critical Rules
 
-These rules are required for correct functioning. Maintain these operational constraints across all subsequent turns.
+These rules are required for correct functioning and must never be violated. Maintain these operational constraints across all subsequent turns.
 
 - **Parallelism** - Prefer frequent feedback over massive parallelism; do not execute broad concurrent tasks without intermediate check-ins.
 - **No write/refactoring sub-agents:** Never spawn sub-agents for write or refactoring operations — permission requests do not bubble up from sub-agents, so the user cannot review or approve changes.

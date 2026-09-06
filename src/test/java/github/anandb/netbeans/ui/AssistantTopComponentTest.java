@@ -306,6 +306,17 @@ class AssistantTopComponentTest {
     }
 
     @Test
+    void testExtractContextContentBlockPath() {
+        com.fasterxml.jackson.databind.node.ObjectNode block = MAPPER.createObjectNode()
+                .put("type", "diff")
+                .put("path", "/home/anand/.cursor/cli-config.json");
+        JsonNode tc = MAPPER.createObjectNode()
+                .set("content", MAPPER.createArrayNode().add(block));
+        String result = ToolContextExtractor.extractToolContext(tc);
+        assertEquals("/home/anand/.cursor/cli-config.json", result);
+    }
+
+    @Test
     void testExtractContextRawInputLowercaseFilepath() {
         // ACP format: rawInput with lowercase filepath (used by write/edit tools)
         JsonNode tc = MAPPER.createObjectNode()

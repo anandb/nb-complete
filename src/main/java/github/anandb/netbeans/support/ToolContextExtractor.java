@@ -58,6 +58,12 @@ public final class ToolContextExtractor {
             return truncatePath(locPath);
         }
 
+        // Fallback: Cursor write/edit permission — path on content[] blocks
+        String contentPath = extractFirstContentPath(toolCall);
+        if (contentPath != null) {
+            return truncatePath(contentPath);
+        }
+
         // Fallback: try patterns array (ACP format)
         String pattern = extractFirstPattern(toolCall);
         if (isNotBlank(pattern)) {
@@ -130,6 +136,24 @@ public final class ToolContextExtractor {
             for (JsonNode loc : locs) {
                 if (loc.has("path") && loc.get("path").isTextual()) {
                     return loc.get("path").asText();
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Extracts the first path from content[] blocks (Cursor ACP write/edit).
+     * Blocks are structured as {@code [{ type: "diff", path: "/path/to/file", ... }]}.
+     */
+    private static String extractFirstContentPath(JsonNode toolCall) {
+        if (toolCall.has("content") && toolCall.get("content").isArray()) {
+            for (JsonNode block : toolCall.get("content")) {
+                if (block.has("path") && block.get("path").isTextual()) {
+                    String path = block.get("path").asText();
+                    if (isNotBlank(path)) {
+                        return path;
+                    }
                 }
             }
         }

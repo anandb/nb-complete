@@ -1,6 +1,7 @@
 package github.anandb.netbeans.support;
 
 import java.io.File;
+import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.prefs.Preferences;
@@ -23,7 +24,49 @@ public final class BinaryResolver {
      *  Package-visible for tests. */
     static final Set<String> PI_HARNESS = Set.of("pi", "pi-acp", "pi-agent");
 
+    /** Known ACP harness binaries, in discovery order. Linux names without {@code .exe}. */
+    public static final List<String> KNOWN_HARNESSES =
+            List.of("opencode", "pi-agent", "pi-acp", "goose", "agent");
+
     private BinaryResolver() {}
+
+    /** Linux / WSL binary names for known harnesses. */
+    public static String[] linuxHarnessNames() {
+        return KNOWN_HARNESSES.toArray(String[]::new);
+    }
+
+    /** Native binary names for this OS ({@code .exe} suffix on Windows).
+     *  Native Windows also includes {@code cursor-agent.cmd} (Cursor Agent launcher).
+     *  WSL / Linux discovery does not use the {@code .cmd} name. */
+    public static String[] nativeHarnessNames() {
+        boolean isWindows = System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("win");
+        return nativeHarnessNames(isWindows);
+    }
+
+    /** Package-visible so tests can cover the Windows list without a Windows JVM. */
+    static String[] nativeHarnessNames(boolean isWindows) {
+        if (!isWindows) {
+            return linuxHarnessNames();
+        }
+        String[] names = new String[KNOWN_HARNESSES.size() + 1];
+        int i = 0;
+        for (String n : KNOWN_HARNESSES) {
+            names[i++] = n + ".exe";
+        }
+        names[i] = "cursor-agent.cmd";
+        return names;
+    }
+
+    /** First known harness found on PATH, or {@code null}. */
+    private static String findFirstKnownOnPath() {
+        for (String name : nativeHarnessNames()) {
+            String found = findOnPath(name);
+            if (found != null) {
+                return found;
+            }
+        }
+        return null;
+    }
 
     /**
      * Returns the lowercase basename (with any {@code .exe} suffix stripped) of
@@ -44,8 +87,9 @@ public final class BinaryResolver {
             return "opencode";
         }
         String name = new File(path.replace('\\', '/')).getName();
-        if (name.toLowerCase(Locale.ROOT).endsWith(".exe")) {
-            name = name.substring(0, name.length() - 4);
+        String lower = name.toLowerCase(Locale.ROOT);
+        if (lower.endsWith(".exe") || lower.endsWith(".cmd") || lower.endsWith(".bat")) {
+            name = name.substring(0, name.lastIndexOf('.'));
         }
         return name.toLowerCase(Locale.ROOT);
     }
@@ -82,8 +126,6 @@ public final class BinaryResolver {
     public static String findExecutablePathOrNull() {
         Preferences nbPrefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
         String configuredPath = nbPrefs.get("acpExecutablePath", null);
-        boolean isWindows = System.getProperty("os.name", "").toLowerCase().contains("win");
-        String exeName = isWindows ? "opencode.exe" : "opencode";
 
         // 1. Configured absolute path
         if (isNotBlank(configuredPath)) {
@@ -96,16 +138,15 @@ public final class BinaryResolver {
             }
         }
 
-        // 2. Search system PATH
-        return findOnPath(exeName);
+        // 2. Search system PATH for any known harness
+        return findFirstKnownOnPath();
     }
 
     /**
-     * Searches the system PATH for the default opencode binary.
+     * Searches the system PATH for the first known ACP harness binary.
      */
     public static String findOnPath() {
-        boolean isWindows = System.getProperty("os.name", "").toLowerCase().contains("win");
-        return findOnPath(isWindows ? "opencode.exe" : "opencode");
+        return findFirstKnownOnPath();
     }
 
     /**
@@ -163,8 +204,6 @@ public final class BinaryResolver {
     public static boolean isAvailable() {
         Preferences nbPrefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
         String configuredPath = nbPrefs.get("acpExecutablePath", null);
-        boolean isWindows = System.getProperty("os.name", "").toLowerCase().contains("win");
-        String exeName = isWindows ? "opencode.exe" : "opencode";
 
         // 1. Check configured absolute path
         if (isNotBlank(configuredPath)) {
@@ -174,8 +213,8 @@ public final class BinaryResolver {
             }
         }
 
-        // 2. Search system PATH
-        return findOnPath(exeName) != null;
+        // 2. Search system PATH for any known harness
+        return findFirstKnownOnPath() != null;
     }
 
     /**

@@ -514,12 +514,9 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         String savedPath = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).get(PreferenceKeys.ACP_EXECUTABLE_PATH, null);
 
         // Discover known binaries on PATH
-        boolean isWindows = System.getProperty("os.name", "").toLowerCase().contains("win");
         boolean useWsl = BinaryResolver.isWslAvailable();
-        String[] wslCandidates = {"opencode", "pi-agent", "pi-acp", "goose"};
-        String[] nativeCandidates = isWindows
-                ? new String[]{"opencode.exe", "pi-agent.exe", "pi-acp.exe", "goose.exe"}
-                : wslCandidates;
+        String[] wslCandidates = BinaryResolver.linuxHarnessNames();
+        String[] nativeCandidates = BinaryResolver.nativeHarnessNames();
         pathLabels.clear();
         pathCombo.removeAllItems();
         String detectedFirst = null;
