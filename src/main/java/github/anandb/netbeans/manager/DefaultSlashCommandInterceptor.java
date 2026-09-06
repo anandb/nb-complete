@@ -15,9 +15,11 @@ import github.anandb.netbeans.contract.SlashCommandInterceptor;
 import github.anandb.netbeans.contract.SlashCommandProvider;
 import github.anandb.netbeans.model.ModelRecords.CommandInfo;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.LookupProvider;
 import org.openide.util.Lookup;
 
 import static org.apache.commons.lang3.StringUtils.isBlank;
+import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
 public class DefaultSlashCommandInterceptor implements SlashCommandInterceptor {
 
@@ -29,26 +31,28 @@ public class DefaultSlashCommandInterceptor implements SlashCommandInterceptor {
 
     public DefaultSlashCommandInterceptor() {
         registerDefaultCommands();
-        // Discover additional commands registered via @ServiceProvider
-        for (SlashCommandProvider provider : Lookup.getDefault().lookupAll(SlashCommandProvider.class)) {
-            if (provider.getCommand() != null && provider.getHandler() != null) {
-                // Wrap SlashCommandHandler → BiFunction to match CommandInfo type
-                SlashCommandHandler h = provider.getHandler();
-                commands.put(provider.getCommand(), new CommandInfo(h::handle, provider.getDescription()));
-                LOG.fine("Registered slash command from provider: {0}", provider.getCommand());
-            }
+        // Discover additional command registered via @ServiceProvider
+        SlashCommandProvider provider = LookupProvider.getDefault().lookup(SlashCommandProvider.class);
+        if (provider != null && provider.getCommand() != null && provider.getHandler() != null) {
+            SlashCommandHandler h = provider.getHandler();
+            commands.put(provider.getCommand(), new CommandInfo(h::handle, provider.getDescription()));
+            LOG.fine("Registered slash command from provider: {0}", provider.getCommand());
         }
     }
 
     private void registerDefaultCommands() {
-        commands.put("/models", new CommandInfo(this::handleModels, "Select model"));
-        commands.put("/model", new CommandInfo(this::handleModels, "Select model"));
+        commands.put("/agent", new CommandInfo(this::handleAgents, "Select agent or mode"));
         commands.put("/agents", new CommandInfo(this::handleAgents, "Select agent or mode"));
-        commands.put("/level", new CommandInfo(this::handleLevel, "Select thinking level"));
-        commands.put("/sessions", new CommandInfo(this::handleSession, "Select session"));
-        commands.put("/new", new CommandInfo(this::handleNew, "Create new session"));
-        commands.put("/title", new CommandInfo(this::handleTitle, "Generate session title"));
         commands.put("/archive", new CommandInfo(this::handleArchive, "Archive/unarchive session"));
+        commands.put("/level", new CommandInfo(this::handleLevel, "Select thinking level"));
+        commands.put("/levels", new CommandInfo(this::handleLevel, "Select thinking level"));
+        commands.put("/model", new CommandInfo(this::handleModels, "Select model"));
+        commands.put("/models", new CommandInfo(this::handleModels, "Select model"));
+        commands.put("/new", new CommandInfo(this::handleNew, "Create new session"));
+        commands.put("/session", new CommandInfo(this::handleSession, "Select session"));
+        commands.put("/sessions", new CommandInfo(this::handleSession, "Select session"));
+        commands.put("/title", new CommandInfo(this::handleTitle, "Generate session title"));
+        
         // /compact is passed verbatim to the server (no local interception)
         commands.put("/compact", new CommandInfo(this::handlePassthrough, "Summarise Conversation"));
     }
@@ -92,6 +96,7 @@ public class DefaultSlashCommandInterceptor implements SlashCommandInterceptor {
         if (cb != null) {
             cb.popupModelCombo();
         }
+        
         return CompletableFuture.completedFuture(true);
     }
 
@@ -100,6 +105,7 @@ public class DefaultSlashCommandInterceptor implements SlashCommandInterceptor {
         if (cb != null) {
             cb.popupAgentCombo();
         }
+
         return CompletableFuture.completedFuture(true);
     }
 
@@ -108,6 +114,7 @@ public class DefaultSlashCommandInterceptor implements SlashCommandInterceptor {
         if (cb != null) {
             cb.popupThinkingCombo();
         }
+
         return CompletableFuture.completedFuture(true);
     }
 
@@ -116,6 +123,7 @@ public class DefaultSlashCommandInterceptor implements SlashCommandInterceptor {
         if (cb != null) {
             cb.popupSessionCombo();
         }
+
         return CompletableFuture.completedFuture(true);
     }
 
@@ -124,6 +132,7 @@ public class DefaultSlashCommandInterceptor implements SlashCommandInterceptor {
         if (cb != null) {
             cb.popupArchiveSession();
         }
+
         return CompletableFuture.completedFuture(true);
     }
 
@@ -132,6 +141,7 @@ public class DefaultSlashCommandInterceptor implements SlashCommandInterceptor {
         if (cb != null) {
             cb.popupNewSession();
         }
+
         return CompletableFuture.completedFuture(true);
     }
 
@@ -140,6 +150,7 @@ public class DefaultSlashCommandInterceptor implements SlashCommandInterceptor {
         if (sc == null) {
             return CompletableFuture.completedFuture(false);
         }
+
         String sessionId = sc.getCurrentSessionId();
         if (isBlank(sessionId)) {
             return CompletableFuture.completedFuture(false);
@@ -147,7 +158,7 @@ public class DefaultSlashCommandInterceptor implements SlashCommandInterceptor {
 
         // If user provided a title directly (e.g. /title My Title), rename immediately
         // without relying on AI tool calling — works even when MCP tools are not available.
-        if (!args.isBlank()) {
+        if (isNotBlank(args)) {
             String newTitle = args.trim();
             LOG.info("Direct rename via /title: sessionId={0}, title=\"{1}\"", sessionId, newTitle);
             sc.renameSession(sessionId, newTitle);
