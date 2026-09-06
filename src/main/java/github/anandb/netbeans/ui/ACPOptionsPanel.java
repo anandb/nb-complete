@@ -15,14 +15,11 @@ import org.netbeans.api.editor.settings.SimpleValueNames;
 import org.openide.util.NbBundle;
 import org.openide.util.NbPreferences;
 
-import java.awt.Color;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.Window;
-import java.awt.event.FocusAdapter;
-import java.awt.event.FocusEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import javax.swing.BorderFactory;
@@ -58,7 +55,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
     private final SessionService sessionService = PlatformBridge.sessionServiceSafe();
     private final ACPOptionsPanelController controller;
     private JLabel jLabel1;
-    private JTextField pathField;
+    private JComboBox<String> pathCombo;
     private JLabel pathErrorLabel;
     private JButton browseButton;
     private JCheckBox echoCheckbox;
@@ -93,17 +90,10 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
     private JButton editPreambleButton;
     private JSpinner lineHeightCorrectionSpinner;
 
-    private String detectedPath;
-    private boolean showingHint;
     private boolean userEditedPath;
     private String preambleText;
 
-    /** Muted foreground for field hint text. Computed on demand so theme
-     *  switches are picked up (a static initializer would freeze the color
-     *  from whichever theme was current at class-load time). */
-    private static Color hintColor() {
-        return ThemeManager.getCurrentTheme().mutedForeground();
-    }
+    private String previousIconPath;
 
     ACPOptionsPanel(ACPOptionsPanelController controller) {
         this.controller = controller;
@@ -115,7 +105,8 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
 
         jLabel1 = new JLabel();
-        pathField = new JTextField(40);
+        pathCombo = new JComboBox<>();
+        pathCombo.setEditable(true);
         browseButton = new JButton();
         argsLabel = new JLabel();
         argsField = new JTextField(40);
@@ -152,22 +143,21 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         servicePanel.add(jLabel1, UIUtils.createGbc(0, row, 0.0, 0, GridBagConstraints.NONE, GridBagConstraints.WEST,
                                        new Insets(0, 12, 5, 5)));
 
-        pathField.addKeyListener(new KeyAdapter() {
+        pathCombo.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_ExecutablePath"));
+        pathCombo.addActionListener(evt -> {
+            if (pathCombo.isPopupVisible()) {
+                userEditedPath = true;
+                controller.changed();
+            }
+        });
+        pathCombo.getEditor().getEditorComponent().addKeyListener(new KeyAdapter() {
             @Override
             public void keyReleased(KeyEvent evt) {
                 userEditedPath = true;
                 controller.changed();
             }
         });
-        pathField.addFocusListener(new FocusAdapter() {
-            @Override
-            public void focusGained(FocusEvent e) { clearHint(); }
-
-            @Override
-            public void focusLost(FocusEvent e) { restoreHintIfEmpty(); }
-        });
-        pathField.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_ExecutablePath"));
-        servicePanel.add(pathField, UIUtils.createGbc(1, row, 1.0, 0, GridBagConstraints.HORIZONTAL,
+        servicePanel.add(pathCombo, UIUtils.createGbc(1, row, 1.0, 0, GridBagConstraints.HORIZONTAL,
                                          GridBagConstraints.WEST, new Insets(0, 0, 0, 5)));
 
         browseButton.setText(NbBundle.getMessage(ACPOptionsPanel.class, "BTN_Browse"));
@@ -468,7 +458,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
 
     private void browseButtonActionPerformed() {
         JFileChooser chooser = new JFileChooser();
-        String currentPath = pathField.getText();
+        String currentPath = getExecutablePath();
         if (!currentPath.isEmpty()) {
             File currentFile = new File(currentPath);
             if (currentFile.exists()) {
@@ -477,9 +467,8 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         }
         chooser.setDialogTitle(NbBundle.getMessage(ACPOptionsPanel.class, "TITLE_SelectExecutable"));
         if (chooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
-            clearHint();
             userEditedPath = true;
-            pathField.setText(chooser.getSelectedFile().getAbsolutePath());
+            pathCombo.getEditor().setItem(chooser.getSelectedFile().getAbsolutePath());
             controller.changed();
         }
     }
@@ -513,25 +502,37 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         }
     }
 
-    private String previousIconPath;
-
     public void load() {
         userEditedPath = false;
         String savedPath = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).get(PreferenceKeys.ACP_EXECUTABLE_PATH, null);
-        detectedPath = BinaryResolver.findOnPath();
+
+        // Discover known binaries on PATH
+        boolean isWindows = System.getProperty("os.name", "").toLowerCase().contains("win");
+        String[] candidates = isWindows
+                ? new String[]{"opencode.exe", "pi-agent.exe", "pi-acp.exe", "goose.exe"}
+                : new String[]{"opencode", "pi-agent", "pi-acp", "goose"};
+        pathCombo.removeAllItems();
+        String detectedFirst = null;
+        for (String name : candidates) {
+            String found = BinaryResolver.findOnPath(name);
+            if (found != null) {
+                pathCombo.addItem(found);
+                if (detectedFirst == null) {
+                    detectedFirst = found;
+                }
+            }
+        }
 
         if (savedPath != null && !savedPath.isEmpty()) {
-            pathField.setText(savedPath);
-            pathField.setForeground(null);
-            showingHint = false;
-        } else if (detectedPath != null) {
-            pathField.setText(detectedPath);
-            pathField.setForeground(hintColor());
-            showingHint = true;
+            // Ensure the saved path is in the combo (may be a manual entry)
+            if (pathCombo.getItemCount() == 0 || !pathCombo.getItemAt(0).equals(savedPath)) {
+                pathCombo.insertItemAt(savedPath, 0);
+            }
+            pathCombo.setSelectedItem(savedPath);
+        } else if (detectedFirst != null) {
+            pathCombo.setSelectedItem(detectedFirst);
         } else {
-            pathField.setText(NbBundle.getMessage(ACPOptionsPanel.class, "HINT_NotFoundOnPath"));
-            pathField.setForeground(hintColor());
-            showingHint = true;
+            pathCombo.getEditor().setItem("");
         }
 
         argsField.setText(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).get(PreferenceKeys.PROCESS_ARGUMENTS, "acp"));
@@ -573,28 +574,14 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         cavemanModeCheckbox.setSelected(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean(PreferenceKeys.CAVEMAN_MODE, false));
     }
 
-    private void clearHint() {
-        if (showingHint) {
-            pathField.setText("");
-            pathField.setForeground(null);
-            showingHint = false;
-        }
-    }
-
-    private void restoreHintIfEmpty() {
-        if (pathField.getText().isEmpty()) {
-            if (detectedPath != null) {
-                pathField.setText(detectedPath);
-            } else {
-                pathField.setText(NbBundle.getMessage(ACPOptionsPanel.class, "HINT_NotFoundOnPath"));
-            }
-            pathField.setForeground(hintColor());
-            showingHint = true;
-        }
+    /** Returns the currently selected/entered executable path from the combo. */
+    private String getExecutablePath() {
+        Object item = pathCombo.getSelectedItem();
+        return item != null ? item.toString().trim() : "";
     }
 
     public void store() {
-        String pathToSave = showingHint ? "" : pathField.getText();
+        String pathToSave = getExecutablePath();
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).put(PreferenceKeys.ACP_EXECUTABLE_PATH, pathToSave);
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).put(PreferenceKeys.PROCESS_ARGUMENTS, argsField.getText());
         PluginSettings.setPreamble(preambleText);
@@ -664,7 +651,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
             pathErrorLabel.setText("");
             return true;
         }
-        String path = pathField.getText();
+        String path = getExecutablePath();
         if (isBlank(path)) {
             pathErrorLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "ERR_EmptyPath"));
             pathErrorLabel.setForeground(UIManager.getColor("Label.errorForeground"));
