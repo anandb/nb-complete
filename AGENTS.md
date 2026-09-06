@@ -203,6 +203,34 @@ NbPreferences.forModule(PreferenceKeys.class)
   (server start, session load) via `SwingUtilities.invokeLater()` to avoid blocking plugin
   installation.
 
+### User Message Truncation Fix
+- `HtmlContentPreparer.wrapUserPlainText()` wraps each line in `<p style='margin:0'>` blocks.
+- A trailing `<br/>` is appended after the last `</p>` to prevent Swing's HTML engine from
+  clipping the last line when text word-wraps. Hard newlines render fine without this;
+  the issue is specifically with word-wrapped sentences.
+- Both typed and reloaded user messages go through this path.
+
+### Assistant MessageId Generation
+- Assistant messages from the server may lack a `messageId`. For pinning support, we generate
+  deterministic IDs using `MessageIdGenerator.generate(sessionId, body, userMessageIndex)`.
+- **During streaming**: messageId remains null (or from server) so `canMergeMessages(null, null)`
+  returns true and chunks merge into one bubble.
+- **After finalization**: `assignMissingMessageIds()` runs in `stopStreaming()` after
+  `sweepStreamingBubbles()`, assigning SHA-256 IDs to assistant bubbles that lack one.
+- **Non-streaming messages**: messageId is generated in `addSingleBubble()` when
+  `messageId == null && !streaming`.
+- The user message index (`userMessageCount`) increments per user message and resets on
+  session create/load. Same inputs always produce same hash (stable across reloads).
+
+### Startup Session/List Optimization
+- `session/list` RPC was called 3 times at startup: `initChat()`, `componentOpened()`,
+  and `deferStartupSessionLoad()`.
+- Removed redundant calls from `AssistantTopComponent.initChat()` and
+  `ComponentLifecycleHandler.componentOpened()`. Only the deferred call in
+  `deferStartupSessionLoad()` remains (after `SESSION_LOAD_STARTUP_GRACE_MS`).
+- Do NOT re-add `refreshSessions()` to `initChat()` or the immediate path in
+  `componentOpened()` — it causes duplicate RPC calls.
+
 ### UI Sizing & Document Re-use
 - Bubbles use a cheap `JTextArea` during streaming (timer flush every `TimingConstants.STREAM_FLUSH_MS` ms).
 - `finalizeStreaming(expanded, immediate=false)` starts a cooldown timer (`TimingConstants.STREAM_FLUSH_MS` ms). New content
