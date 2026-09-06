@@ -88,3 +88,4 @@ _bmad/
 .serena/
 _bmad-output/
 .node-version
+/.agents
