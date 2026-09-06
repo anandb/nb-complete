@@ -1,6 +1,8 @@
 package github.anandb.netbeans.ui;
 
 import java.io.File;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.prefs.Preferences;
 
 import javax.swing.JFileChooser;
@@ -15,6 +17,7 @@ import org.netbeans.api.editor.settings.SimpleValueNames;
 import org.openide.util.NbBundle;
 import org.openide.util.NbPreferences;
 
+import java.awt.Component;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -31,6 +34,8 @@ import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
+import javax.swing.JList;
+import javax.swing.ListCellRenderer;
 import javax.swing.JSpinner;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.JPanel;
@@ -92,8 +97,9 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
 
     private boolean userEditedPath;
     private String preambleText;
-
     private String previousIconPath;
+    /** Maps raw path → display label (e.g. "/usr/local/bin/opencode" → "/usr/local/bin/opencode (WSL)"). */
+    private final Map<String, String> pathLabels = new LinkedHashMap<>();
 
     ACPOptionsPanel(ACPOptionsPanelController controller) {
         this.controller = controller;
@@ -107,6 +113,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         jLabel1 = new JLabel();
         pathCombo = new JComboBox<>();
         pathCombo.setEditable(true);
+        pathCombo.setRenderer(new PathComboRenderer());
         browseButton = new JButton();
         argsLabel = new JLabel();
         argsField = new JTextField(40);
@@ -508,27 +515,66 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
 
         // Discover known binaries on PATH
         boolean isWindows = System.getProperty("os.name", "").toLowerCase().contains("win");
-        String[] candidates = isWindows
+        boolean useWsl = BinaryResolver.isWslAvailable();
+        String[] wslCandidates = {"opencode", "pi-agent", "pi-acp", "goose"};
+        String[] nativeCandidates = isWindows
                 ? new String[]{"opencode.exe", "pi-agent.exe", "pi-acp.exe", "goose.exe"}
-                : new String[]{"opencode", "pi-agent", "pi-acp", "goose"};
+                : wslCandidates;
+        pathLabels.clear();
         pathCombo.removeAllItems();
         String detectedFirst = null;
-        for (String name : candidates) {
+        // Native Windows/hosted binaries
+        for (String name : nativeCandidates) {
             String found = BinaryResolver.findOnPath(name);
             if (found != null) {
-                pathCombo.addItem(found);
+                String path = useWsl ? BinaryResolver.toWslPath(found) : found;
+                pathCombo.addItem(path);
+                pathLabels.put(path, path);
                 if (detectedFirst == null) {
-                    detectedFirst = found;
+                    detectedFirst = path;
+                }
+            }
+        }
+        // WSL-native binaries (inside the distro)
+        if (useWsl) {
+            for (String name : wslCandidates) {
+                String found = BinaryResolver.findOnWslPath(name);
+                if (found != null) {
+                    // Skip if already present (native + WSL could resolve to the same path)
+                    boolean alreadyAdded = false;
+                    for (int i = 0; i < pathCombo.getItemCount(); i++) {
+                        if (found.equals(pathCombo.getItemAt(i))) {
+                            alreadyAdded = true;
+                            break;
+                        }
+                    }
+                    if (!alreadyAdded) {
+                        pathCombo.addItem(found);
+                        pathLabels.put(found, found + " (WSL)");
+                        if (detectedFirst == null) {
+                            detectedFirst = found;
+                        }
+                    }
                 }
             }
         }
 
         if (savedPath != null && !savedPath.isEmpty()) {
+            // Convert Windows path to WSL mount path when WSL mode is on
+            String matchPath = useWsl ? BinaryResolver.toWslPath(savedPath) : savedPath;
             // Ensure the saved path is in the combo (may be a manual entry)
-            if (pathCombo.getItemCount() == 0 || !pathCombo.getItemAt(0).equals(savedPath)) {
-                pathCombo.insertItemAt(savedPath, 0);
+            boolean found = false;
+            for (int i = 0; i < pathCombo.getItemCount(); i++) {
+                if (matchPath.equals(pathCombo.getItemAt(i))) {
+                    found = true;
+                    break;
+                }
             }
-            pathCombo.setSelectedItem(savedPath);
+            if (!found) {
+                pathCombo.insertItemAt(matchPath, 0);
+                pathLabels.put(matchPath, matchPath);
+            }
+            pathCombo.setSelectedItem(matchPath);
         } else if (detectedFirst != null) {
             pathCombo.setSelectedItem(detectedFirst);
         } else {
@@ -681,6 +727,25 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         }
         pathErrorLabel.setText("");
         return true;
+    }
+
+    /** Renderer that shows WSL suffix on WSL-native entries. */
+    private class PathComboRenderer extends JLabel implements ListCellRenderer<String> {
+        @Override
+        public Component getListCellRendererComponent(JList<? extends String> list, String value,
+                int index, boolean isSelected, boolean cellHasFocus) {
+            setText(value != null ? pathLabels.getOrDefault(value, value) : "");
+            setFont(list.getFont());
+            if (isSelected) {
+                setBackground(list.getSelectionBackground());
+                setForeground(list.getSelectionForeground());
+            } else {
+                setBackground(list.getBackground());
+                setForeground(list.getForeground());
+            }
+            setOpaque(true);
+            return this;
+        }
     }
 
 }

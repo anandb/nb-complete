@@ -197,6 +197,36 @@ public final class BinaryResolver {
     }
 
     /**
+     * Probes inside the WSL distribution for the given executable.
+     *
+     * Runs {@code wsl.exe -e bash -lc "which <exeName>"} and returns the
+     * Linux path (e.g. {@code /usr/local/bin/opencode}) if found, or
+     * {@code null} if the binary is not on the distro's PATH.
+     *
+     * @param exeName bare Linux binary name (e.g. {@code "opencode"})
+     */
+    public static String findOnWslPath(String exeName) {
+        try {
+            ProcessBuilder pb = new ProcessBuilder(
+                    "wsl.exe", "-e", "bash", "-lc",
+                    "which " + exeName + " 2>/dev/null");
+            pb.redirectErrorStream(true);
+            Process proc = pb.start();
+            String result;
+            try (var reader = proc.inputReader()) {
+                result = reader.readLine();
+            }
+            proc.waitFor(2, java.util.concurrent.TimeUnit.SECONDS);
+            if (result != null && !result.isBlank() && proc.exitValue() == 0) {
+                return result.strip();
+            }
+        } catch (Exception e) {
+            LOG.fine("WSL probe failed for {0}: {1}", exeName, e.getMessage());
+        }
+        return null;
+    }
+
+    /**
      * Builds the command-line arguments for a WSL-wrapped opencode invocation.
      *
      * <p>When a Windows {@code opencode.exe} is resolvable (Windows-hosted),
@@ -275,7 +305,7 @@ public final class BinaryResolver {
      * to its WSL mount path ({@code /mnt/c/Users/foo/opencode.exe}). Passes
      * through non-Windows or already-Linux paths unchanged.
      */
-    static String toWslPath(String path) {
+    public static String toWslPath(String path) {
         if (isBlank(path)) {
             return path;
         }
