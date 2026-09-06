@@ -74,6 +74,11 @@ final class PermissionRequestPanel extends JPanel {
     private Runnable allowAction;
     private boolean requestActive = false;
 
+    /** Active slide animation timer. Stored so {@link #slideOpen()} and
+     *  {@link #slideClose()} can stop any running animation before starting a
+     *  new one, preventing two timers from fighting over the panel height. */
+    private Timer slideTimer;
+
     // Wobble animation state
     private final WobbleAnimator wobbleAnimator = new WobbleAnimator(this);
 
@@ -680,6 +685,10 @@ final class PermissionRequestPanel extends JPanel {
     }
 
     private void slideOpen() {
+        if (slideTimer != null) {
+            slideTimer.stop();
+            slideTimer = null;
+        }
         setVisible(true);
         // Clear any stale preferred-size override from previous slideClose()
         // so getPreferredSize() returns the natural layout height.
@@ -698,43 +707,49 @@ final class PermissionRequestPanel extends JPanel {
 
         flashTaskbar();
 
-        Timer timer = new Timer(SLIDE_INTERVAL_MS, null);
+        slideTimer = new Timer(SLIDE_INTERVAL_MS, null);
         final int[] step = {0};
-        timer.addActionListener(e -> {
+        slideTimer.addActionListener(e -> {
             step[0]++;
             int h = targetHeight * step[0] / SLIDE_STEPS;
             setPreferredSize(new Dimension(getParent() != null ? getParent().getWidth() : 400, h));
             setSize(new Dimension(getWidth(), h));
             revalidate();
             if (step[0] >= SLIDE_STEPS) {
-                timer.stop();
+                slideTimer.stop();
+                slideTimer = null;
                 // Release preferred-size override so layout uses natural height
                 setPreferredSize(null);
                 revalidate();
             }
         });
-        timer.start();
+        slideTimer.start();
     }
 
     void slideClose() {
         if (!isVisible()) return;
+        if (slideTimer != null) {
+            slideTimer.stop();
+            slideTimer = null;
+        }
         stopWobble();
         int startHeight = getHeight();
-        Timer timer = new Timer(SLIDE_INTERVAL_MS, null);
+        slideTimer = new Timer(SLIDE_INTERVAL_MS, null);
         final int[] step = {SLIDE_STEPS};
-        timer.addActionListener(e -> {
+        slideTimer.addActionListener(e -> {
             step[0]--;
             int h = startHeight * step[0] / SLIDE_STEPS;
             setPreferredSize(new Dimension(getParent() != null ? getParent().getWidth() : 400, h));
             revalidate();
             if (step[0] <= 0) {
-                timer.stop();
+                slideTimer.stop();
+                slideTimer = null;
                 setVisible(false);
                 setPreferredSize(new Dimension(0, 0));
                 revalidate();
             }
         });
-        timer.start();
+        slideTimer.start();
     }
 
     /**
@@ -779,6 +794,10 @@ final class PermissionRequestPanel extends JPanel {
 
     @Override
     public void removeNotify() {
+        if (slideTimer != null) {
+            slideTimer.stop();
+            slideTimer = null;
+        }
         wobbleAnimator.stop();
         super.removeNotify();
     }

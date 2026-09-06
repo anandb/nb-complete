@@ -141,34 +141,23 @@ final class PermissionDialogManager {
         
         Runnable showTask = () -> {
             try {
+                permissionPanel.showRequest(finalPrompt, params.get("options"),
+                        response, finalToolCall);
                 MiniAssistantDialog miniDialog = MiniAssistantDialog.getInstance();
-
-                // Defer the main panel's UI update to the next EDT pulse, same
-                // pattern as MiniAssistantDialog.showPermissionRequest().  This
-                // ensures slideOpen() starts on a fresh EDT pulse after any prior
-                // slideClose timer has completed, preventing the two animation
-                // timers from fighting over the panel's height and visibility.
-                SwingUtilities.invokeLater(() -> {
-                    permissionPanel.showRequest(finalPrompt, params.get("options"),
-                            response, finalToolCall);
-                    // File changes load asynchronously in the full panel; refresh
-                    // the mini panel's Show Diff button once they are ready.
-                    if (miniDialog != null) {
-                        CompletableFuture<List<FileChange>> changesFuture =
-                            permissionPanel.getFileChangesFuture();
-                        if (changesFuture != null) {
-                            changesFuture.thenAcceptAsync(
-                                    miniDialog::refreshPermissionDiffButton,
-                                    SwingUtilities::invokeLater);
-                        }
-                    }
-                });
-
                 if (miniDialog != null) {
                     miniDialog.showPermissionRequest(
                         finalPrompt, params.get("options"), response, finalToolCall,
                         permissionPanel.getCurrentFileChanges()
                     );
+                    // File changes load asynchronously in the full panel; refresh
+                    // the mini panel's Show Diff button once they are ready.
+                    CompletableFuture<List<FileChange>> changesFuture =
+                        permissionPanel.getFileChangesFuture();
+                    if (changesFuture != null) {
+                        changesFuture.thenAcceptAsync(
+                                miniDialog::refreshPermissionDiffButton,
+                                SwingUtilities::invokeLater);
+                    }
                 }
                 
                 response.whenComplete((res, err) -> {
