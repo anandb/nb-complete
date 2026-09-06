@@ -6,7 +6,7 @@ import java.security.NoSuchAlgorithmException;
 
 /**
  * Generates deterministic message IDs for assistant messages that lack one.
- * The ID is an SHA-256 hash of (sessionId + messageBody + userMessageIndex),
+ * The ID is an SHA-256 hash of (sessionId + messageBody),
  * providing a stable identifier for pinning across reloads.
  */
 public final class MessageIdGenerator {
@@ -18,13 +18,11 @@ public final class MessageIdGenerator {
      *
      * @param sessionId       the current session ID
      * @param messageBody     the full text content of the assistant message
-     * @param userMessageIndex the 0-based index of the last user message in this session
      * @return a hex-encoded SHA-256 hash string
      */
-    public static String generate(String sessionId, String messageBody, int userMessageIndex) {
+    public static String generate(String sessionId, String messageBody) {
         String input = (sessionId != null ? sessionId : "")
-                + (messageBody != null ? messageBody : "")
-                + userMessageIndex;
+                + (messageBody != null ? messageBody : "");
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] hash = digest.digest(input.getBytes(StandardCharsets.UTF_8));

@@ -52,6 +52,8 @@ import github.anandb.netbeans.model.MessageTransformer;
 import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.model.Session;
+import github.anandb.netbeans.contract.ProcessControl;
+import github.anandb.netbeans.model.AgentCapabilities;
 import github.anandb.netbeans.support.GlobalOpencodeConfig;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.MessageIdGenerator;
@@ -400,7 +402,15 @@ public class ChatThreadPanel extends JPanel {
                                 || (pm.toolTitle() != null && pm.toolTitle().equals(lastTitle))
                                 || (pm.toolTitle() != null && pm.streaming() && (isBlank(lastTitle)));
                     }
-                    default -> canMerge = !"user".equals(role) && canMergeMessages(pm.messageId(), lastBubble.getMessageId());
+                    default -> {
+                        // pi-agent sends streaming chunks with inconsistent
+                        // messageIds — bypass the ID check for this agent.
+                        if (pm.streaming() && ignoresMessageIdForStreaming()) {
+                            canMerge = !"user".equals(role);
+                        } else {
+                            canMerge = !"user".equals(role) && canMergeMessages(pm.messageId(), lastBubble.getMessageId());
+                        }
+                    }
                 }
             }
 
@@ -493,7 +503,8 @@ public class ChatThreadPanel extends JPanel {
         // Generate messageId for non-streaming assistant messages that lack one.
         // Streaming messages get their ID assigned after finalization in assignMissingMessageIds().
         if (type.isAssistant() && messageId == null && !streaming && sid != null) {
-            messageId = MessageIdGenerator.generate(sid, text.strip(), userMessageCount);
+            messageId = MessageIdGenerator.generate(sid, text);
+            LOG.info("Generated messageId={0} text={1}", messageId, text.substring(0, Math.min(80, text.length())));
             // Add to seen set so retainPinned() doesn't remove pins for this ID
             seenMessageIdsBySession.computeIfAbsent(sid, k -> ConcurrentHashMap.newKeySet()).add(messageId);
         }
@@ -1205,6 +1216,8 @@ public class ChatThreadPanel extends JPanel {
                 // Scan a few recent turns only — blanks can precede the last
                 // user turn in multi-turn history, but we bound to recent turns.
                 removeBlankBubbles(RECENT_TURNS, true);
+                // Assign messageId to assistant bubbles that lack one after reload.
+                assignMissingMessageIds();
                 messagesContainer.revalidate();
                 scrollController.scrollToBottom(true);
                 loadRenderInProgress = false;
@@ -1300,16 +1313,12 @@ public class ChatThreadPanel extends JPanel {
     }
 
     /** Assigns messageId to assistant bubbles that lack one after streaming finalization.
-     *  The ID is a SHA-256 hash of (sessionId + fullText + userMessageIndex), providing
+     *  The ID is a SHA-256 hash of (sessionId + fullText), providing
      *  a stable identifier for pinning across reloads. Must run AFTER finalization so
      *  getRawText() returns the complete message text. */
     private void assignMissingMessageIds() {
-        // Skip during reload — server should provide IDs for loaded messages.
-        // Generated IDs would use wrong userMessageIndex (all 0 after reset).
-        if (isBatchMode) return;
         String sid = ensureCurrentSessionId();
         if (sid == null) return;
-        int userMessageIndex = userMessageCount;
         Set<String> seen = seenMessageIdsBySession.computeIfAbsent(sid, k -> ConcurrentHashMap.newKeySet());
         Component[] all = messagesContainer.getComponents();
         for (Component c : all) {
@@ -1317,8 +1326,8 @@ public class ChatThreadPanel extends JPanel {
                     && "assistant".equals(mb.getRole())) {
                 String text = mb.getRawText();
                 if (text != null && !text.isEmpty()) {
-                    String normalized = text.strip();
-                    String generatedId = MessageIdGenerator.generate(sid, normalized, userMessageIndex);
+                    String generatedId = MessageIdGenerator.generate(sid, text);
+                    LOG.info("Generated messageId={0} text={1}", generatedId, text.substring(0, Math.min(80, text.length())));
                     mb.setMessageId(generatedId);
                     seen.add(generatedId);
                 }
@@ -1337,5 +1346,16 @@ public class ChatThreadPanel extends JPanel {
         // If one is a strict prefix of the other followed by a separator, merge.
         return messageId.startsWith(existingMessageId + "-") || existingMessageId.startsWith(messageId + "-")
             || messageId.startsWith(existingMessageId + "_") || existingMessageId.startsWith(messageId + "_");
+    }
+
+    /**
+     * Returns true if the current agent sends streaming chunks with
+     * inconsistent or changing messageIds, requiring us to ignore the
+     * messageId check during merge decisions.
+     */
+    private boolean ignoresMessageIdForStreaming() {
+        ProcessControl pc = Lookup.getDefault().lookup(ProcessControl.class);
+        AgentCapabilities caps = pc != null ? pc.getCapabilities() : null;
+        return caps != null && !caps.supportsMessageIds();
     }
 }
