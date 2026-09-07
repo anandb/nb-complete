@@ -250,10 +250,6 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         layoutBuilder.getRightStatusPanel().add(queueManager.getButton(), 0);
         layoutBuilder.getRightStatusPanel().add(rocketBtn, 1);
         ProcessControl pc = Lookup.getDefault().lookup(ProcessControl.class);
-        if (pc != null) {
-            pc.setAgentNameListener(caps -> SwingUtilities.invokeLater(
-                    () -> applyAgentCapabilities(caps)));
-        }
 
         // Add token usage button after the rocket button (visible only when the
         // agent supports the stats subprocess — see applyAgentCapabilities)
@@ -267,6 +263,12 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             }
         });
         layoutBuilder.getRightStatusPanel().add(tokenUsageBtn, 2);
+        if (pc != null) {
+            pc.setAgentNameListener(caps -> SwingUtilities.invokeLater(
+                    () -> applyAgentCapabilities(caps)));
+            // Handshake may have finished before this listener was registered.
+            applyAgentCapabilities(pc.getCapabilities());
+        }
 
         sessionDropdownHandler = new SessionDropdownHandler(sessionDropdown, inputArea);
         sessionLifecycleHandler = new SessionLifecycleHandler(

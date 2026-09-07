@@ -281,12 +281,15 @@ class ServerProcessLifecycle {
                             // Collapse whitespace, replace with hyphens, strip invalid chars.
                             agentName = raw.replaceAll("[^a-z0-9\\s_-]", "")
                                     .replaceAll("\\s+", "-").replaceAll("^-+|-+$", "");
-                            capabilities = AgentCapabilities.forName(agentName);
-                            LOG.fine("Agent name: {0}", agentName);
-                            Consumer<AgentCapabilities> listener = agentNameListener;
-                            if (listener != null) {
-                                listener.accept(capabilities);
-                            }
+                        }
+                        if (agentName == null || agentName.isEmpty()) {
+                            agentName = BinaryResolver.resolveBinaryName();
+                        }
+                        capabilities = AgentCapabilities.forName(agentName);
+                        LOG.info("Agent name: {0}", agentName);
+                        Consumer<AgentCapabilities> listener = agentNameListener;
+                        if (listener != null) {
+                            listener.accept(capabilities);
                         }
                     }
                     readyFuture.complete(null);

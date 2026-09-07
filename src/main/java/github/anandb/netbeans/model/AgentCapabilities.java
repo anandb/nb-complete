@@ -49,7 +49,15 @@ public final class AgentCapabilities {
         if (agentName == null) {
             agentName = "opencode";
         }
-        return switch (agentName.trim().toLowerCase(Locale.ROOT)) {
+        String name = agentName.trim().toLowerCase(Locale.ROOT);
+        // Handshake names include "cursor-agent-acp"; the CLI binary is "agent" / "cursor-agent".
+        if (name.startsWith("cursor") || "agent".equals(name)) {
+            return builder()
+                    .sendsMcpServerConfig(true)
+                    .injectsEditorContext(true)
+                    .build();
+        }
+        return switch (name) {
             case "goose" -> builder()
                     .supportsMessageQueue(true)
                     .sendsMcpServerConfig(true)
@@ -57,10 +65,6 @@ public final class AgentCapabilities {
                     .build();
             case "pi-acp" -> builder()
                     .supportsMessageQueue(true)
-                    .build();
-            case "cursor", "cursor-agent", "agent" -> builder()
-                    .sendsMcpServerConfig(true)
-                    .injectsEditorContext(true)
                     .build();
             default -> builder()
                     .sendsMcpServerConfig(true)

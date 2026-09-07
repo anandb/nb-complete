@@ -28,6 +28,7 @@ class AgentCapabilitiesTest {
 
         AgentCapabilities cursor = AgentCapabilities.forName("cursor");
         assertEquals(cursor, AgentCapabilities.forName("cursor-agent"));
+        assertEquals(cursor, AgentCapabilities.forName("cursor-agent-acp"));
         assertEquals(cursor, AgentCapabilities.forName("agent"));
         assertTrue(cursor.sendsMcpServerConfig());
         assertTrue(cursor.injectsEditorContext());
