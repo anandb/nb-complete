@@ -711,7 +711,8 @@ public class MiniAssistantDialog extends JDialog {
         responsePane.add(localBubble, BorderLayout.CENTER);
 
         localBubble.setFontSizeOverride(Math.max(9, ThemeManager.getFont().getSize() - 2));
-        localBubble.finalizeStreaming(true);
+        // Keep code blocks collapsed, matching the main sidebar's streaming behavior.
+        localBubble.finalizeStreaming(false);
 
         responsePane.revalidate();
         responsePane.repaint();
@@ -871,7 +872,7 @@ public class MiniAssistantDialog extends JDialog {
             responsePane.add(bubble, BorderLayout.CENTER);
 
             bubble.setFontSizeOverride(Math.max(9, ThemeManager.getFont().getSize() - 2));
-            bubble.finalizeStreaming(true);
+            bubble.finalizeStreaming(false);
 
             responsePane.revalidate();
             responsePane.repaint();
