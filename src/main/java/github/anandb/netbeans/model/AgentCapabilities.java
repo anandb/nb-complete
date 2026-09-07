@@ -43,7 +43,7 @@ public final class AgentCapabilities {
      * {@code initialize} handshake. Unknown or null names default to
      * opencode-like capabilities.
      *
-     * @param agentName agent name, e.g. {@code "goose"}, {@code "pi-acp"}
+     * @param agentName agent name, e.g. {@code "goose"}, {@code "pi-acp"}, {@code "cursor"}
      */
     public static AgentCapabilities forName(String agentName) {
         if (agentName == null) {
@@ -57,6 +57,10 @@ public final class AgentCapabilities {
                     .build();
             case "pi-acp" -> builder()
                     .supportsMessageQueue(true)
+                    .build();
+            case "cursor", "cursor-agent", "agent" -> builder()
+                    .sendsMcpServerConfig(true)
+                    .injectsEditorContext(true)
                     .build();
             default -> builder()
                     .sendsMcpServerConfig(true)

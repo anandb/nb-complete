@@ -25,6 +25,15 @@ class AgentCapabilitiesTest {
         AgentCapabilities pi = AgentCapabilities.forName("pi-acp");
         assertTrue(pi.supportsMessageQueue());
         assertFalse(pi.sendsMcpServerConfig());
+
+        AgentCapabilities cursor = AgentCapabilities.forName("cursor");
+        assertEquals(cursor, AgentCapabilities.forName("cursor-agent"));
+        assertEquals(cursor, AgentCapabilities.forName("agent"));
+        assertTrue(cursor.sendsMcpServerConfig());
+        assertTrue(cursor.injectsEditorContext());
+        assertFalse(cursor.supportsMessageIds());
+        assertFalse(cursor.supportsTokenStats());
+        assertFalse(cursor.supportsMessageQueue());
     }
 
     @Test
