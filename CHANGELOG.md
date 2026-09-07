@@ -1,6 +1,19 @@
 # Release Notes
 
+## v1.19.5 (Changes since v1.19.4)
+
+### Fixes
+- **Cursor agent capabilities**: Treat Cursor (`cursor`, `cursor-agent`, handshake `cursor-agent-acp`, binary `agent`) as default capabilities minus token stats and message IDs — hide the stats button and skip generated-id pinning (`1efe5219`, `39ffcdd9`).
+- **Handshake name fallback**: Match any agent name starting with `cursor`, fall back to the binary name when `initialize` omits `agentInfo`, and apply capabilities if handshake finished before the toolbar listener was registered (`39ffcdd9`).
+- **Pin persistence**: Persist pins across reload; pin cleanup no longer drops assistant hashes before they exist; pin store uses durable storage as source of truth (`7e30d341`).
+- **User bubbles**: Render user text as wrapping `JTextArea` so pasted markdown is not HTML-mangled (`7e30d341`).
+- **Stale stall status**: Clear "No response from agent" when re-arming the run-stall watchdog on a new send (`b32c378c`).
+
+### Housekeeping
+- Version bumped to 1.19.5.
+
 ## v1.19.4 (Changes since v1.19.3)
+
 
 ### Features
 - **Cursor agent harness support**: `BinaryResolver` now discovers `cursor-agent.cmd` on Windows, and `ToolCallDiffParser` / `ToolContextExtractor` handle Cursor ACP `content[]` diff blocks with `path` and `oldText: null` semantics (`bf289413`).
