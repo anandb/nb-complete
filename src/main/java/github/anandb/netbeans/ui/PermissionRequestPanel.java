@@ -76,8 +76,14 @@ final class PermissionRequestPanel extends JPanel {
 
     /** Active slide animation timer. Stored so {@link #slideOpen()} and
      *  {@link #slideClose()} can stop any running animation before starting a
-     *  new one, preventing two timers from fighting over the panel height. */
+     *  new one, preventing two timers from fighting over the panel height.
+     *  EDT-only: every mutation must happen on the Event Dispatch Thread. */
     private Timer slideTimer;
+
+    /** True while {@link #slideClose()} animation is running. Guards against
+     *  the redundant second close call (button handler + response.whenComplete)
+     *  restarting the close animation from a partially-collapsed height. */
+    private boolean slideClosing;
 
     // Wobble animation state
     private final WobbleAnimator wobbleAnimator = new WobbleAnimator(this);
@@ -685,10 +691,9 @@ final class PermissionRequestPanel extends JPanel {
     }
 
     private void slideOpen() {
-        if (slideTimer != null) {
-            slideTimer.stop();
-            slideTimer = null;
-        }
+        assert SwingUtilities.isEventDispatchThread();
+        stopSlideTimer();
+        slideClosing = false;
         setVisible(true);
         // Clear any stale preferred-size override from previous slideClose()
         // so getPreferredSize() returns the natural layout height.
@@ -727,11 +732,11 @@ final class PermissionRequestPanel extends JPanel {
     }
 
     void slideClose() {
+        assert SwingUtilities.isEventDispatchThread();
         if (!isVisible()) return;
-        if (slideTimer != null) {
-            slideTimer.stop();
-            slideTimer = null;
-        }
+        if (slideClosing) return; // close animation already running
+        stopSlideTimer();
+        slideClosing = true;
         stopWobble();
         int startHeight = getHeight();
         slideTimer = new Timer(SLIDE_INTERVAL_MS, null);
@@ -744,12 +749,21 @@ final class PermissionRequestPanel extends JPanel {
             if (step[0] <= 0) {
                 slideTimer.stop();
                 slideTimer = null;
+                slideClosing = false;
                 setVisible(false);
                 setPreferredSize(new Dimension(0, 0));
                 revalidate();
             }
         });
         slideTimer.start();
+    }
+
+    /** Stops the running slide animation, if any. EDT-only. */
+    private void stopSlideTimer() {
+        if (slideTimer != null) {
+            slideTimer.stop();
+            slideTimer = null;
+        }
     }
 
     /**
@@ -794,10 +808,8 @@ final class PermissionRequestPanel extends JPanel {
 
     @Override
     public void removeNotify() {
-        if (slideTimer != null) {
-            slideTimer.stop();
-            slideTimer = null;
-        }
+        stopSlideTimer();
+        slideClosing = false;
         wobbleAnimator.stop();
         super.removeNotify();
     }
