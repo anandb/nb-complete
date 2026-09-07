@@ -10,8 +10,6 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Taskbar;
 import java.awt.Window;
-import java.awt.event.ActionEvent;
-import java.awt.event.KeyEvent;
 import java.awt.Rectangle;
 import java.io.File;
 import java.io.IOException;
@@ -24,7 +22,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
 import java.util.regex.Pattern;
 
-import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -33,7 +30,6 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
-import javax.swing.KeyStroke;
 import javax.swing.SwingConstants;
 import javax.swing.Scrollable;
 import javax.swing.SwingUtilities;
@@ -126,7 +122,7 @@ final class PermissionRequestPanel extends JPanel {
         promptLabel.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN));
         promptLabel.setForeground(theme.permissionTitle());
         promptLabel.setAlignmentY(TOP_ALIGNMENT);
-        
+
         JPanel promptWrapper = new JPanel();
         promptWrapper.setLayout(new BoxLayout(promptWrapper, BoxLayout.Y_AXIS));
         promptWrapper.setOpaque(false);
@@ -154,20 +150,11 @@ final class PermissionRequestPanel extends JPanel {
 
         add(content, BorderLayout.CENTER);
 
-        // Escape = Reject, bound once at construction via WHEN_IN_FOCUSED_WINDOW so it
-        // works even when focus is elsewhere in the window and never leaks a listener.
-        // Enter is intentionally NOT bound: pressing Enter must never auto-allow or
-        // dismiss the permission dialog (it would silently grant a tool permission the
-        // user did not intend to approve).
-        getInputMap(WHEN_IN_FOCUSED_WINDOW).put(
-                KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "rejectPermission");
-        getActionMap().put("rejectPermission", new AbstractAction() {
-            private static final long serialVersionUID = 1L;
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                triggerReject();
-            }
-        });
+        // NOTE: No Escape-to-reject key binding here. A WHEN_IN_FOCUSED_WINDOW
+        // Escape binding fires for ANY Escape press anywhere in the window
+        // (input box, editor tab, diff view — same top-level window), silently
+        // rejecting a pending tool permission the user never intended to deny.
+        // triggerReject() is kept for programmatic use only.
     }
 
     void setOnResult(BiConsumer<String, Boolean> onResult) {
@@ -196,32 +183,32 @@ final class PermissionRequestPanel extends JPanel {
             promptWrapper.remove(1); // remove old context label
         }
 
-        String context = toolCall != null ? 
+        String context = toolCall != null ?
             ToolContextExtractor.extractToolContext(toolCall, Integer.MAX_VALUE) : null;
         String splitToken = "\n<b>Context:</b> <font face=\"monospace\" color=\"#F44336\"></font>\n";
-        
+
         if (context != null && !context.isEmpty() && prompt.contains(splitToken)) {
             // Split the prompt to inject the context label
             String[] parts = prompt.split(Pattern.quote(splitToken));
             promptLabel.setText("<html>" + parts[0].replace("\n", "<br>") + "</html>");
-            
+
             JPanel contextRow = new JPanel(new BorderLayout(4, 0));
             contextRow.setOpaque(false);
             contextRow.setAlignmentX(Component.LEFT_ALIGNMENT);
-            
+
             JLabel prefixLabel = new JLabel("<html><b>Context:</b> </html>");
             prefixLabel.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN));
             prefixLabel.setForeground(ThemeManager.getCurrentTheme().permissionTitle());
             contextRow.add(prefixLabel, BorderLayout.WEST);
-            
+
             StartTruncatingLabel contextLabel = new StartTruncatingLabel(context);
             Font baseFont = ThemeManager.getFont().deriveFont(Font.PLAIN);
             contextLabel.setFont(new Font(Font.MONOSPACED, baseFont.getStyle(), baseFont.getSize()));
             contextLabel.setForeground(new Color(0xF44336));
             contextRow.add(contextLabel, BorderLayout.CENTER);
-            
+
             promptWrapper.add(contextRow);
-            
+
             if (parts.length > 1) {
                 String suffixHtml = "<html>" + parts[1].replace("\n", "<br>") + "</html>";
                 FitEditorPane suffixLabel = FitEditorPane.createHtmlPane(suffixHtml, null, "system", false);
@@ -577,7 +564,7 @@ final class PermissionRequestPanel extends JPanel {
         cmdRow.setOpaque(false);
         JLabel cmdIcon = new JLabel(ThemeManager.getIcon("tool.svg", 14));
         cmdIcon.setVerticalAlignment(SwingConstants.TOP);
-        
+
         JTextArea cmdText = new JTextArea(command);
         cmdText.setEditable(false);
         cmdText.setLineWrap(true);
@@ -588,7 +575,7 @@ final class PermissionRequestPanel extends JPanel {
         cmdText.setBackground(new Color(0, 0, 0, 0));
         cmdText.setBorder(null);
         cmdText.setToolTipText(command);
-        
+
         cmdRow.add(cmdIcon, BorderLayout.WEST);
         cmdRow.add(cmdText, BorderLayout.CENTER);
         contentBlocks.add(cmdRow);
@@ -600,7 +587,7 @@ final class PermissionRequestPanel extends JPanel {
             // Indent with empty label of icon width
             JLabel wdIcon = new JLabel(ThemeManager.getIcon("file.svg", 14));
             wdIcon.setVerticalAlignment(SwingConstants.TOP);
-            
+
             String dispWd = displayPath(workdir);
             JTextArea wdText = new JTextArea(dispWd);
             wdText.setEditable(false);
@@ -612,7 +599,7 @@ final class PermissionRequestPanel extends JPanel {
             wdText.setBackground(new Color(0, 0, 0, 0));
             wdText.setBorder(null);
             wdText.setToolTipText(workdir);
-            
+
             wdRow.add(wdIcon, BorderLayout.WEST);
             wdRow.add(wdText, BorderLayout.CENTER);
             contentBlocks.add(wdRow);
@@ -829,6 +816,7 @@ final class PermissionRequestPanel extends JPanel {
     /** Triggers the "reject" action, e.g. from Escape key. */
     void triggerReject() {
         if (requestActive && isVisible()) {
+            LOG.info("Permission rejected via Escape key binding");
             pendingResponse.complete("reject");
             slideClose();
             fireResult(NbBundle.getMessage(ChatThreadPanel.class, "MSG_PermissionDenied"), false);
@@ -849,6 +837,8 @@ final class PermissionRequestPanel extends JPanel {
      */
     void resurface() {
         if (!requestActive) return;
+        // Already fully shown (non-zero height) — nothing to recover.
+        if (isVisible() && getHeight() > 0) return;
         slideOpen();
         wobbleAnimator.scheduleStart();
     }

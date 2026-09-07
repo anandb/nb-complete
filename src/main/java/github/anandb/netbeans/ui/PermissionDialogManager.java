@@ -65,7 +65,11 @@ final class PermissionDialogManager {
      *  only way to get back a permission request whose dialog was missed — otherwise the
      *  server stays blocked on the tool-call decision until an idle timeout. */
     void buzzPermissionPanel() {
-        if (!permissionPanel.isVisible() && permissionPanel.isRequestActive()) {
+        // Resurface whenever a request is still active, regardless of isVisible():
+        // the panel can be stuck in a visible-but-zero-height state (killed slide
+        // animation) where isVisible() is true but nothing is shown — gating on
+        // !isVisible() made recovery impossible in exactly the broken state.
+        if (permissionPanel.isRequestActive()) {
             permissionPanel.resurface();
         }
         permissionPanel.buzz();
@@ -162,6 +166,8 @@ final class PermissionDialogManager {
                 
                 response.whenComplete((res, err) -> {
                     SwingUtilities.invokeLater(() -> {
+                        LOG.info("Permission response completed: res={0}, err={1}",
+                                new Object[] { res, err == null ? "none" : err.toString() });
                         permissionPanel.slideClose();
                         if (miniDialog != null) {
                             miniDialog.hidePermissionRequest();
