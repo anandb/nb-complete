@@ -24,6 +24,9 @@ final class PermissionDialogManager {
 
     private static final Logger LOG = Logger.from(PermissionDialogManager.class);
 
+    /** Max chars of an execute command shown in the permission dialog title/context. */
+    private static final int COMMAND_DISPLAY_MAX = 60;
+
     private final SessionService sessionService = PlatformBridge.sessionServiceSafe();
 
     private final ChatThreadPanel chatPanel;
@@ -124,7 +127,25 @@ final class PermissionDialogManager {
             String title = resolveToolTitle(toolCall);
 
             String context = ToolContextExtractor.extractToolContext(toolCall, Integer.MAX_VALUE);
-            if (context != null && !context.equals(title)) {
+
+            // Execute tool calls use the raw command as the title. A long compound
+            // command (e.g. "git add … && git commit -m …") would flood the dialog —
+            // cap both title and context to a short prefix.
+            boolean isExecute = toolCall.has("kind") && "execute".equals(toolCall.get("kind").asText());
+            if (isExecute) {
+                title = ToolContextExtractor.truncateCommand(title, COMMAND_DISPLAY_MAX);
+                if (context != null) {
+                    context = ToolContextExtractor.truncateCommand(context, COMMAND_DISPLAY_MAX);
+                }
+            }
+
+            // Drop the context when it restates the title (e.g. the command shown
+            // twice) — whitespace-insensitive so formatting differences don't defeat it.
+            if (context != null && normalizeWhitespace(context).equals(normalizeWhitespace(title))) {
+                context = null;
+            }
+
+            if (context != null) {
                 prompt = NbBundle.getMessage(PermissionDialogManager.class, "MSG_PermissionToolWithContext", title, "");
             } else {
                 prompt = NbBundle.getMessage(PermissionDialogManager.class, "MSG_PermissionTool", title);
@@ -142,7 +163,7 @@ final class PermissionDialogManager {
 
         final String finalPrompt = prompt;
         final JsonNode finalToolCall = toolCall;
-        
+
         Runnable showTask = () -> {
             try {
                 permissionPanel.showRequest(finalPrompt, params.get("options"),
@@ -163,7 +184,7 @@ final class PermissionDialogManager {
                                 SwingUtilities::invokeLater);
                     }
                 }
-                
+
                 response.whenComplete((res, err) -> {
                     SwingUtilities.invokeLater(() -> {
                         LOG.info("Permission response completed: res={0}, err={1}",
@@ -175,7 +196,7 @@ final class PermissionDialogManager {
                         processNextRequest();
                     });
                 });
-                
+
                 boolean miniDialogShowing = miniDialog != null && miniDialog.isShowing();
                 if (!miniDialogShowing) {
                     activateCallback.run();
@@ -222,6 +243,12 @@ final class PermissionDialogManager {
             return kind;
         }
         return named;
+    }
+
+    /** Collapses all whitespace (incl. newlines) to single spaces and trims,
+     *  so trivially-different renderings of the same command compare equal. */
+    private static String normalizeWhitespace(String s) {
+        return s == null ? "" : s.replaceAll("\\s+", " ").trim();
     }
 
     private void processNextRequest() {
