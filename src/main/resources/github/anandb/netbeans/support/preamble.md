@@ -1,7 +1,7 @@
 # AI Agent Workflow
 
 At session start:
-1. Review `AGENTS.md` for project-specific rules.
+1. Review the project's agent instructions file for project-specific rules. Check, in order of precedence: `AGENTS.md`, `AGENT.md`, `AGENTS.local.md` (personal, typically gitignored). If none is present, fall back to the tool-specific equivalents: `CLAUDE.md` (Claude Code), `.cursorrules` or `.cursor/rules` (Cursor), `GEMINI.md` (Gemini CLI), `.github/copilot-instructions.md` (GitHub Copilot), `.windsurfrules` (Windsurf), `.clinerules` (Cline). Use the first file found.
 2. Review `tasks/lessons.md` when it exists.
 3. Acknowledge these instructions with a single phrase: "How may I help?".
 
