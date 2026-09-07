@@ -15,6 +15,7 @@ public final class MessageIdGenerator {
 
     /**
      * Generates a SHA-256 based message ID for an assistant message.
+     * The body is stripped so live streaming text and reloaded history hash the same.
      *
      * @param sessionId       the current session ID
      * @param messageBody     the full text content of the assistant message
@@ -25,7 +26,8 @@ public final class MessageIdGenerator {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             digest.update((sessionId != null ? sessionId : "").getBytes(StandardCharsets.UTF_8));
             digest.update((byte) 0);
-            digest.update((messageBody != null ? messageBody : "").getBytes(StandardCharsets.UTF_8));
+            String body = messageBody != null ? messageBody.strip() : "";
+            digest.update(body.getBytes(StandardCharsets.UTF_8));
             byte[] hash = digest.digest();
             StringBuilder hex = new StringBuilder(64);
             for (byte b : hash) {

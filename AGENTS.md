@@ -203,16 +203,16 @@ NbPreferences.forModule(PreferenceKeys.class)
   (server start, session load) via `SwingUtilities.invokeLater()` to avoid blocking plugin
   installation.
 
-### User Message Truncation Fix
-- `HtmlContentPreparer.wrapUserPlainText()` wraps each line in `<p style='margin:0'>` blocks.
-- A trailing `<br/>` is appended after the last `</p>` to prevent Swing's HTML engine from
-  clipping the last line when text word-wraps. Hard newlines render fine without this;
-  the issue is specifically with word-wrapped sentences.
-- Both typed and reloaded user messages go through this path.
+### User Message Display
+- User bubbles are a wrapping `JTextArea` (stream and finalize). Do not use
+  `FitEditorPane` or HTML for user text.
+- `MessageBubble.finalizeStreaming` strips `<metadata>` via `ToolDataExtractor.stripMetadata`
+  then refreshes the `JTextArea`. The one-arg overload must delegate to the two-arg overload.
 
 ### Assistant MessageId Generation
 - Assistant messages from the server may lack a `messageId`. For pinning support, we generate
-  deterministic IDs using `MessageIdGenerator.generate(sessionId, body, userMessageIndex)`.
+  deterministic IDs using `MessageIdGenerator.generate(sessionId, body)`. The body is
+  `strip()`ped so live stream text and reloaded history produce the same hash.
 - **During streaming**: messageId remains null (or from server) so `canMergeMessages(null, null)`
   returns true and chunks merge into one bubble.
 - **After finalization**: `assignMissingMessageIds()` runs in `stopStreaming()` after

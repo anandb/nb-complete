@@ -8,7 +8,6 @@ import com.vladsch.flexmark.util.data.MutableDataSet;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.TextScanner;
-import github.anandb.netbeans.support.XmlUtils;
 import static github.anandb.netbeans.ui.UIUtils.MONO_STACK;
 
 import com.github.benmanes.caffeine.cache.Cache;
@@ -16,7 +15,6 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Pattern;
 
 public final class HtmlContentPreparer {
 
@@ -51,27 +49,12 @@ public final class HtmlContentPreparer {
                     .maximumSize(32)
                     .build();
 
-    /**
-     * Matches a space that must be preserved as a non-breaking space:
-     * leading spaces on a line, or any space immediately preceded by another space.
-     * Used for plain-text user messages where HTML collapsing would otherwise
-     * destroy pasted indentation and alignment.
-     */
-    private static final Pattern PRESERVE_SPACE = Pattern.compile("(^ +|(?<= ) )", Pattern.MULTILINE);
-
     public static String prepareHtml(String markdown, ColorTheme theme, String role, boolean incremental) {
         return prepareHtml(markdown, theme, role, incremental, -1);
     }
 
     public static String prepareHtml(String markdown, ColorTheme theme, String role, boolean incremental, int fontSizeOverride) {
-        boolean isUser = "user".equals(role);
-        boolean isAssistant = !isUser && !"error".equals(role) && !"tool".equals(role) && !"info".equals(role);
-
-        // User messages are plain text; render them literally so pasted content
-        // (indentation, multiple spaces, markdown metacharacters) is not mangled.
-        if (isUser && markdown != null) {
-            return wrapUserPlainText(markdown, theme, fontSizeOverride);
-        }
+        boolean isAssistant = !"error".equals(role) && !"tool".equals(role) && !"info".equals(role);
 
         String html = computeOrGetCachedHtml(markdown);
 
@@ -106,7 +89,7 @@ public final class HtmlContentPreparer {
         html = highlightAlternateRows(html, alternateBg);
 
         boolean hasArt = TextScanner.containsAsciiArt(markdown);
-        if (!hasArt && !isUser) {
+        if (!hasArt) {
             html = html.replace("  ", " &nbsp;");
         } else if (hasArt) {
             LOG.fine("Contains ASCII art, not replacing spaces");
@@ -128,42 +111,6 @@ public final class HtmlContentPreparer {
         }
 
         return headOpen + headCloseAndBodyOpen + html + "</body></html>";
-    }
-
-    /**
-     * Renders a user message as literal plain text: HTML entities are escaped,
-     * line endings are normalized, tabs and preserved spaces become non-breaking
-     * spaces, and each line is wrapped in a {@code <p>} block. Swing's HTML
-     * engine sizes block-level elements correctly but clips inline
-     * {@code <br/>} breaks when the first layout pass runs before real widths
-     * are known. The {@code <p>} structure mirrors the Flexmark output from
-     * 1.15.0 that sized correctly.
-     */
-    private static String wrapUserPlainText(String text, ColorTheme theme, int fontSizeOverride) {
-        String normalized = text.replace("\r\n", "\n").replace('\r', '\n');
-        String escaped = XmlUtils.escapeHtml(normalized);
-        String withTabs = escaped.replace("\t", "&nbsp;&nbsp;&nbsp;&nbsp;");
-        String withSpaces = PRESERVE_SPACE.matcher(withTabs).replaceAll("&nbsp;");
-        // Wrap each line in <p> blocks — Swing sizes these correctly on first layout.
-        String[] lines = withSpaces.split("\n", -1);
-        StringBuilder body = new StringBuilder();
-        for (String line : lines) {
-            body.append("<p style='margin:0'>").append(line).append("</p>\n");
-        }
-        // Trailing <br/> prevents Swing's HTML engine from clipping the last line.
-        body.append("<br/>");
-
-        String wrapper = getCachedWrapper(theme, "user", false, fontSizeOverride);
-        int bodyIdx = wrapper.indexOf("__BODY__");
-        if (bodyIdx < 0) {
-            LOG.warn("__BODY__ sentinel missing from wrapper, falling back to raw text");
-            return "<pre>" + body + "</pre>";
-        }
-        String headOpen = wrapper.substring(0, bodyIdx);
-        String headCloseAndBodyOpen = wrapper.substring(bodyIdx + "__BODY__".length());
-        return headOpen + headCloseAndBodyOpen
-                + "<div align='left' style='text-align: left !important;'>" + body + "</div>"
-                + "</body></html>";
     }
 
     /**

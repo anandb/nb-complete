@@ -1131,10 +1131,19 @@ public class ChatThreadPanel extends JPanel {
         sessionLoading = false;
         List<ProcessedMessage> buffer = pendingMessagesBySession.remove(sid);
         if (buffer != null && !buffer.isEmpty()) {
-            renderLoadedInChunks(tailWithPinned(buffer, ProcessedMessage::messageId), null);
+            // Pin cleanup must wait until every assistant hash is in `seen`.
+            // User/history messages often carry an id; assistants often do not
+            // until addSingleBubble/assignMissingMessageIds. Cleaning immediately
+            // would retain only those user ids and drop stored assistant pins.
+            renderLoadedInChunks(tailWithPinned(buffer, ProcessedMessage::messageId),
+                    () -> retainActivePins(sid));
+        } else if (!loadRenderInProgress) {
+            retainActivePins(sid);
         }
+    }
 
-        // Stale-pin cleanup: remove pins for unseen message IDs. Runs for both paths.
+    /** Drop stored pins whose message IDs were not seen in this session load/render. */
+    private void retainActivePins(String sid) {
         Set<String> seen = seenMessageIdsBySession.remove(sid);
         if (seen != null && !seen.isEmpty()) {
             PinnedMessageControl pinStore = Lookup.getDefault().lookup(PinnedMessageControl.class);
@@ -1253,6 +1262,13 @@ public class ChatThreadPanel extends JPanel {
         // streaming finalization happens inside invokeLater before removeAll.
         streamingCoordinator.cleanup();
 
+        final String sid = currentSessionId;
+        if (messages != null) {
+            // Hold flushSessionBuffer pin cleanup until chunked render assigns
+            // generated assistant IDs (see retainActivePins).
+            loadRenderInProgress = true;
+        }
+
         SwingUtilities.invokeLater(() -> {
             // Finalize any in-flight streaming bubbles before removing content.
             stopStreaming();
@@ -1274,7 +1290,7 @@ public class ChatThreadPanel extends JPanel {
                         converted.add(pm);
                     }
                 }
-                renderLoadedInChunks(converted, null);
+                renderLoadedInChunks(converted, () -> retainActivePins(sid));
             } else {
                 trimMessages();
                 messagesContainer.revalidate();

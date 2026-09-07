@@ -65,6 +65,15 @@ class BubbleStreamer {
     }
 
     JTextArea createStreamingTextArea(ColorTheme theme, String initialText) {
+        JTextArea ta = createWrappingTextArea(theme, initialText);
+        ta.setForeground(theme.assistantForeground());
+        ta.setCaretPosition(ta.getDocument().getLength());
+        state = StreamingState.STREAMING;
+        return ta;
+    }
+
+    /** Wrapping, auto-sizing plain text area. Does not change streaming state. */
+    JTextArea createWrappingTextArea(ColorTheme theme, String initialText) {
         JTextArea ta = new JTextArea(initialText) {
             @Override
             public Dimension getMaximumSize() {
@@ -98,11 +107,9 @@ class BubbleStreamer {
         ta.setWrapStyleWord(true);
         ta.setOpaque(false);
         ta.setBackground(TRANSPARENT);
-        ta.setForeground(theme.assistantForeground());
+        ta.setForeground(theme.foreground());
         ta.setFont(ThemeManager.getFont());
         ta.setBorder(new EmptyBorder(4, 20, 8, 6));
-        ta.setCaretPosition(ta.getDocument().getLength());
-        state = StreamingState.STREAMING;
         return ta;
     }
 

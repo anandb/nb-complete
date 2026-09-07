@@ -9,6 +9,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import javax.swing.JPanel;
+import javax.swing.JTextArea;
 import javax.swing.border.EmptyBorder;
 
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
@@ -126,7 +127,16 @@ class BubbleContentRenderer {
             lastRenderedTextLength = userLen;
             lastRenderedTextHash = userHash;
             String userText = text.toString();
-            updateOrAddTextSegment(userText, theme, 0, false);
+            if (segments.getComponentCount() > 0 && segments.getComponent(0) instanceof JTextArea ta) {
+                if (!userText.equals(ta.getText())) {
+                    ta.setText(userText);
+                }
+            } else {
+                segments.removeAll();
+                JTextArea pane = streamer.createWrappingTextArea(theme, userText);
+                pane.setBorder(new EmptyBorder(8, 16, 8, 16));
+                segments.add(pane);
+            }
             while (segments.getComponentCount() > 1) {
                 segments.remove(segments.getComponentCount() - 1);
             }

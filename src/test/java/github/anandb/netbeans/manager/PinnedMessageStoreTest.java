@@ -118,12 +118,21 @@ class PinnedMessageStoreTest {
     }
 
     @Test
-    void unloadSessionRemovesFromCache() {
+    void unloadSessionDoesNotDropPersistedPins() {
         store.setPinned(SESSION, "msg1", true);
         assertTrue(store.isPinned(SESSION, "msg1"));
 
         store.unloadSession(SESSION);
-        assertFalse(store.isPinned(SESSION, "msg1"));
+        // Cache eviction must not hide prefs; isPinned reloads from disk.
+        assertTrue(store.isPinned(SESSION, "msg1"));
+    }
+
+    @Test
+    void isPinnedReadsPrefsWithoutPriorLoadSession() {
+        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                .put("pinnedMessages." + SESSION, "[\"msg1\"]");
+
+        assertTrue(store.isPinned(SESSION, "msg1"));
     }
 
     @Test

@@ -118,7 +118,7 @@ public class MessageBubble extends JPanel implements Scrollable {
                     RoundedPanel p = new RoundedPanel(32);
                     p.setDropShadow(true);
                     p.setLayout(new BorderLayout());
-                    p.setBorder(new EmptyBorder(10, 8, 10, 8));
+                    p.setBorder(new EmptyBorder(16, 8, 16, 8));
                     this.bubble = p;
                 }
             case "assistant" -> {
@@ -212,7 +212,7 @@ public class MessageBubble extends JPanel implements Scrollable {
         // Fix for "garbled" text in scroll panes: force a repaint when the component becomes visible.
         // Only repaint the outermost component — Swing's repaint manager handles children.
         // revalidate recomputes the preferred height once real widths are known —
-        // the first layout pass can size the FitEditorPane before it has a real
+        // the first layout pass can size the wrapping JTextArea before it has a real
         // width, leaving the bubble one line short.
         if ("user".equals(role)) {
             this.hierarchyListener = e -> {
@@ -287,11 +287,11 @@ public class MessageBubble extends JPanel implements Scrollable {
     }
 
     /**
-     * Finalizes streaming, converting from JTextArea to rich HTML.
+     * Finalizes streaming. User bubbles stay plain text; assistant converts to HTML.
      * @param expanded initial collapse state for code/tool panes
      */
     public void finalizeStreaming(boolean expanded) {
-        streamer.finalizeStreaming(expanded, false);
+        finalizeStreaming(expanded, false);
     }
 
     /**
@@ -303,7 +303,7 @@ public class MessageBubble extends JPanel implements Scrollable {
      */
     public void finalizeStreaming(boolean expanded, boolean immediate) {
         // User bubbles accumulate trailing metadata blocks (preamble echo, DCP
-        // blocks, etc.); strip them before the final HTML render. Copy already
+        // blocks, etc.); strip them before the final display. Copy already
         // strips via MessageCopyMouseAdapter — this fixes the on-screen text.
         if ("user".equals(role)) {
             String stripped = ToolDataExtractor.stripMetadata(text.toString()).trim();
@@ -311,6 +311,7 @@ public class MessageBubble extends JPanel implements Scrollable {
                 text.setLength(0);
                 text.append(stripped);
             }
+            updateContent(ThemeManager.getCurrentTheme(), expanded);
         }
         streamer.finalizeStreaming(expanded, immediate);
     }

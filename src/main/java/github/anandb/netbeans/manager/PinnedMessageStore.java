@@ -4,10 +4,11 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.prefs.BackingStoreException;
+import java.util.prefs.Preferences;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -15,14 +16,16 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import github.anandb.netbeans.contract.PinnedMessageControl;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.MapperSupplier;
+import github.anandb.netbeans.support.MessageIdGenerator;
 import github.anandb.netbeans.support.PreferenceKeys;
 import org.openide.util.NbPreferences;
+import org.openide.util.RequestProcessor;
 import org.openide.util.lookup.ServiceProvider;
 
 /**
- * In-memory + NbPreferences-persisted store for pinned messages.
- * Each session stores its pinned message IDs as a JSON array under
- * the pref key {@code "pinnedMessages." + sessionId}.
+ * Persists pinned message IDs per session in NbPreferences (JSON array under
+ * {@code pinnedMessages.<sessionId>}). An in-memory cache is a hot-path view of
+ * that store, not the source of truth.
  * <p>
  * Registers via {@code @ServiceProvider} so the UI layer can discover it
  * through {@code Lookup.getDefault().lookup(PinnedMessageControl.class)}.
@@ -35,11 +38,13 @@ public final class PinnedMessageStore implements PinnedMessageControl {
             new TypeReference<>() {};
 
     private static final String PREF_PREFIX = "pinnedMessages.";
+    private static final RequestProcessor FLUSH_RP =
+            new RequestProcessor(PinnedMessageStore.class);
 
     /** Logger. */
     private static final Logger LOG = Logger.from(PinnedMessageStore.class);
 
-    /** In-memory cache: sessionId → mutable set of pinned message IDs. */
+    /** Hot-path cache: sessionId → pinned message IDs (mirrors prefs). */
     private final ConcurrentHashMap<String, Set<String>> cache = new ConcurrentHashMap<>();
 
     // ── PinnedMessageControl ──────────────────────────────────────────────
@@ -49,8 +54,7 @@ public final class PinnedMessageStore implements PinnedMessageControl {
         if (sessionId == null || messageId == null) {
             return false;
         }
-        Set<String> pinned = cache.get(sessionId);
-        return pinned != null && pinned.contains(messageId);
+        return ensureLoaded(sessionId).contains(messageId);
     }
 
     @Override
@@ -58,8 +62,7 @@ public final class PinnedMessageStore implements PinnedMessageControl {
         if (sessionId == null || messageId == null) {
             return;
         }
-        Set<String> pinnedSet = cache.computeIfAbsent(sessionId,
-                k -> ConcurrentHashMap.newKeySet());
+        Set<String> pinnedSet = ensureLoaded(sessionId);
         if (pinned) {
             pinnedSet.add(messageId);
         } else {
@@ -74,9 +77,8 @@ public final class PinnedMessageStore implements PinnedMessageControl {
             return;
         }
         List<String> stored = loadFromPrefs(sessionId);
-        Set<String> pinned = new HashSet<>(stored);
-        cache.put(sessionId, ConcurrentHashMap.newKeySet());
-        cache.get(sessionId).addAll(pinned);
+        Set<String> pinned = cache.computeIfAbsent(sessionId, k -> ConcurrentHashMap.newKeySet());
+        pinned.addAll(stored);
     }
 
     @Override
@@ -84,10 +86,7 @@ public final class PinnedMessageStore implements PinnedMessageControl {
         if (sessionId == null || activeMessageIds == null) {
             return;
         }
-        Set<String> pinned = cache.get(sessionId);
-        if (pinned == null) {
-            return;
-        }
+        Set<String> pinned = ensureLoaded(sessionId);
         int before = pinned.size();
         pinned.removeIf(id -> !activeMessageIds.contains(id));
         int removed = before - pinned.size();
@@ -103,28 +102,47 @@ public final class PinnedMessageStore implements PinnedMessageControl {
         if (sessionId == null) {
             return;
         }
+        persistSession(sessionId);
         cache.remove(sessionId);
     }
 
     // ── Persistence ───────────────────────────────────────────────────────
 
-    /** Persists one session's pinned set to its dedicated pref key. */
+    /** Merge persisted pins into the cache; no-op if this session is already loaded. */
+    private Set<String> ensureLoaded(String sessionId) {
+        Set<String> existing = cache.get(sessionId);
+        if (existing != null) {
+            return existing;
+        }
+        loadSession(sessionId);
+        return cache.computeIfAbsent(sessionId, k -> ConcurrentHashMap.newKeySet());
+    }
+
+    /** Writes this session's pinned set to prefs and flushes the backing store. */
     private void persistSession(String sessionId) {
         Set<String> pinnedSet = cache.get(sessionId);
         String key = prefKey(sessionId);
+        Preferences prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
         if (pinnedSet == null || pinnedSet.isEmpty()) {
-            NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
-                    .remove(key);
-            return;
+            prefs.remove(key);
+        } else {
+            try {
+                String json = MAPPER.writeValueAsString(new ArrayList<>(pinnedSet));
+                prefs.put(key, json);
+            } catch (IOException | IllegalArgumentException ex) {
+                LOG.warn("Failed to persist pinned messages for session {0}: {1}",
+                        sessionId, ExceptionUtils.getMessage(ex));
+                return;
+            }
         }
-        try {
-            String json = MAPPER.writeValueAsString(new ArrayList<>(pinnedSet));
-            NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
-                    .put(key, json);
-        } catch (IOException ex) {
-            LOG.warn("Failed to serialize pinned messages for session {0}: {1}",
-                            sessionId, ExceptionUtils.getMessage(ex));
-        }
+        FLUSH_RP.post(() -> {
+            try {
+                prefs.flush();
+            } catch (BackingStoreException ex) {
+                LOG.warn("Failed to flush pinned messages for session {0}: {1}",
+                        sessionId, ExceptionUtils.getMessage(ex));
+            }
+        });
     }
 
     /** Loads one session's pinned message IDs from its pref key. */
@@ -144,6 +162,11 @@ public final class PinnedMessageStore implements PinnedMessageControl {
     }
 
     private static String prefKey(String sessionId) {
-        return PREF_PREFIX + sessionId;
+        String key = PREF_PREFIX + sessionId;
+        if (key.length() <= Preferences.MAX_KEY_LENGTH) {
+            return key;
+        }
+        // Java Preferences keys are capped at 80 chars; hash long session ids.
+        return PREF_PREFIX + MessageIdGenerator.generate("pinned", sessionId);
     }
 }
