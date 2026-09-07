@@ -21,11 +21,12 @@ public final class MessageIdGenerator {
      * @return a hex-encoded SHA-256 hash string
      */
     public static String generate(String sessionId, String messageBody) {
-        String input = (sessionId != null ? sessionId : "")
-                + (messageBody != null ? messageBody : "");
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(input.getBytes(StandardCharsets.UTF_8));
+            digest.update((sessionId != null ? sessionId : "").getBytes(StandardCharsets.UTF_8));
+            digest.update((byte) 0);
+            digest.update((messageBody != null ? messageBody : "").getBytes(StandardCharsets.UTF_8));
+            byte[] hash = digest.digest();
             StringBuilder hex = new StringBuilder(64);
             for (byte b : hash) {
                 hex.append(String.format("%02x", b));

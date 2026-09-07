@@ -1,5 +1,45 @@
 # Release Notes
 
+## v1.19.4 (Changes since v1.19.3)
+
+### Features
+- **Cursor agent harness support**: `BinaryResolver` now discovers `cursor-agent.cmd` on Windows, and `ToolCallDiffParser` / `ToolContextExtractor` handle Cursor ACP `content[]` diff blocks with `path` and `oldText: null` semantics (`bf289413`).
+- **WSL-aware binary dropdown**: `ACPOptionsPanel` replaced the text field with a combo dropdown that discovers known harness binaries (`opencode`, `pi-agent`, `pi-acp`, `goose`, `cursor-agent`) on both native PATH and WSL distro PATH. WSL-native entries are labeled with a "(WSL)" suffix (`4f03d83c`, `b6867ed1`).
+
+### Fixes
+- **Permission dialog slide animation**: Guard redundant `slideClose`, assert EDT for slide animation, stop animation timer before starting new one, and defer `showRequest` to a fresh EDT pulse (`2701ae37`, `6b8e1d87`, `a698c2db`).
+- **Permission reject Escape removal**: Removed over-broad `WHEN_IN_FOCUSED_WINDOW` Escape binding that silently rejected permissions from unrelated key presses (`e6b81780`).
+- **Permission dialog command truncation**: Cap execute command display to 60 characters (`c0316899`).
+- **Mini-assistant code blocks**: Keep code blocks collapsed in the mini-assistant dialog (`c11ab687`).
+- **User bubble metadata**: Strip metadata from user bubbles on finalization (`a21aee8f`).
+- **User message truncation**: Prevent Swing HTML engine from clipping the last word-wrapped line in user messages (`d6f0f89b`).
+- **Assistant messageId generation**: Generate deterministic SHA-256 IDs for assistant messages that lack one, with null-byte separator to prevent hash collisions (`d6f0f89b`).
+- **Pin preservation**: Preserve pins after session reload; trim messageId text (`60a2ebb9`).
+- **Action button re-setup**: Re-setup copy+pin buttons when messageId is assigned after construction, removing the old placeholder to prevent duplicate buttons (`ce002b38`).
+- **Streaming bubble splitting**: Fix pi-agent streaming chunks with inconsistent messageIds bypassing the ID check (`98a634bf`).
+- **WSL shell injection**: Pass `exeName` as argv token (not interpolated) in `findOnWslPath`, with `destroyForcibly()` on timeout to prevent zombie processes (`review fix`).
+- **`.cmd`/`.bat` validation**: `ACPOptionsPanel.valid()` now accepts `.cmd` and `.bat` extensions on Windows (`review fix`).
+- **Regex precompilation**: Pre-compile `WS_PATTERN` in `PermissionDialogManager.normalizeWhitespace` (`review fix`).
+- **LookupProvider for testability**: `DefaultSlashCommandInterceptor` uses `LookupProvider` wrapper instead of `Lookup.getDefault()` directly, enabling mock injection in tests (`ad328088`).
+
+### Improvements
+- **Slash command aliases**: Added `/agent`, `/levels`, `/session` as aliases for existing commands (`bf289413`).
+- **Startup optimization**: Removed redundant `session/list` RPC calls from `initChat()` and `componentOpened()` — only the deferred call remains (`041817ca`).
+- **Agent capabilities builder**: Refactored `AgentCapabilities` from record to builder pattern with `supportsMessageIds` flag, enabling per-agent messageId generation (`98a634bf`).
+
+### Tests
+- **Manager package coverage**: Added `AcpReconnectManagerTest`, `FileCacheInitializerTest`, `FileCacheManagerTest`, `GitIgnoreStrategyTest`, `HgIgnoreStrategyTest`, `PinnedMessageStoreTest`, `ProcessManagerTest`, `RequestRejectedExceptionTest`, `ServerProcessLifecycleTest`, `SessionCacheManagerTest`, `SessionManagerTest`, `SessionRpcClientTest`, `SubAgentTitleResolverTest` (`98a634bf`).
+- **Slash command tests**: `DefaultSlashCommandInterceptorTest` (388 lines) covering all command handlers, alias routing, and passthrough (`ad328088`).
+- **BinaryResolver and ToolCallDiffParser tests** (`1138d5c6`, `f283be1f`).
+
+### Documentation
+- **AGENTS.md**: Documented user message truncation fix, assistant messageId generation, startup session/list optimization, and pi-agent streaming chunk handling (`041817ca`).
+- **Preamble**: Accept agent-instruction file variations (`fbeeb30a`).
+
+### Housekeeping
+- Added `/.agents` to `.gitignore` (`ffa189f1`).
+- Version bumped to 1.19.4.
+
 ## v1.19.3 (Changes since v1.19.2)
 
 ### Fixes

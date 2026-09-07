@@ -717,10 +717,13 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
             return false;
         }
         boolean isWindows = System.getProperty("os.name", "").toLowerCase().contains("win");
-        if (isWindows && !path.toLowerCase().endsWith(".exe")) {
-            pathErrorLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "ERR_MissingExeExtension"));
-            pathErrorLabel.setForeground(UIManager.getColor("Label.errorForeground"));
-            return false;
+        if (isWindows) {
+            String lower = path.toLowerCase();
+            if (!lower.endsWith(".exe") && !lower.endsWith(".cmd") && !lower.endsWith(".bat")) {
+                pathErrorLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "ERR_MissingExeExtension"));
+                pathErrorLabel.setForeground(UIManager.getColor("Label.errorForeground"));
+                return false;
+            }
         }
         pathErrorLabel.setText("");
         return true;

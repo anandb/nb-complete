@@ -248,16 +248,22 @@ public final class BinaryResolver {
         try {
             ProcessBuilder pb = new ProcessBuilder(
                     "wsl.exe", "-e", "bash", "-lc",
-                    "which " + exeName + " 2>/dev/null");
+                    "exec which \"$1\" 2>/dev/null", "--", exeName);
             pb.redirectErrorStream(true);
             Process proc = pb.start();
-            String result;
-            try (var reader = proc.inputReader()) {
-                result = reader.readLine();
-            }
-            proc.waitFor(2, java.util.concurrent.TimeUnit.SECONDS);
-            if (result != null && !result.isBlank() && proc.exitValue() == 0) {
-                return result.strip();
+            try {
+                String result;
+                try (var reader = proc.inputReader()) {
+                    result = reader.readLine();
+                }
+                proc.waitFor(2, java.util.concurrent.TimeUnit.SECONDS);
+                if (result != null && !result.isBlank() && proc.exitValue() == 0) {
+                    return result.strip();
+                }
+            } finally {
+                if (proc.isAlive()) {
+                    proc.destroyForcibly();
+                }
             }
         } catch (Exception e) {
             LOG.fine("WSL probe failed for {0}: {1}", exeName, e.getMessage());

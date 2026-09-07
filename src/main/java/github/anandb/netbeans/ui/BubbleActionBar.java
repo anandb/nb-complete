@@ -60,6 +60,7 @@ class BubbleActionBar {
     // Copy button
     private JButton copyBtn;
     private Icon copyBtnIcon;
+    private JPanel actionsPlaceholder;
 
     // Hover timers
     private Timer showTimer;
@@ -155,6 +156,7 @@ class BubbleActionBar {
         actionsPlaceholder.setPreferredSize(actionsSize);
         actionsPlaceholder.setMinimumSize(actionsSize);
         actionsPlaceholder.setMaximumSize(actionsSize);
+        this.actionsPlaceholder = actionsPlaceholder;
         bubble.add(actionsPlaceholder, BorderLayout.SOUTH);
 
         installHoverListeners();
@@ -178,6 +180,7 @@ class BubbleActionBar {
         copyPlaceholder.setMinimumSize(btnSize);
         copyPlaceholder.setMaximumSize(btnSize);
         copyPlaceholder.add(copyBtn);
+        this.actionsPlaceholder = copyPlaceholder;
         bubble.add(copyPlaceholder, BorderLayout.SOUTH);
 
         installHoverListeners();
@@ -346,6 +349,10 @@ class BubbleActionBar {
         // If messageId was null at construction (streaming), pin button was never
         // created. Re-run setup to install copy+pin buttons now that we have an ID.
         if (oldId == null && messageId != null && pinBtn == null) {
+            // Remove the old copy-only placeholder before installing copy+pin.
+            if (actionsPlaceholder != null) {
+                bubble.remove(actionsPlaceholder);
+            }
             setupActionButtons(ThemeManager.getCurrentTheme());
             return;
         }

@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.regex.Pattern;
 
 import javax.swing.SwingUtilities;
 
@@ -23,6 +24,7 @@ import github.anandb.netbeans.ui.platform.SessionService;
 final class PermissionDialogManager {
 
     private static final Logger LOG = Logger.from(PermissionDialogManager.class);
+    private static final Pattern WS_PATTERN = Pattern.compile("\\s+");
 
     /** Max chars of an execute command shown in the permission dialog title/context. */
     private static final int COMMAND_DISPLAY_MAX = 60;
@@ -248,7 +250,7 @@ final class PermissionDialogManager {
     /** Collapses all whitespace (incl. newlines) to single spaces and trims,
      *  so trivially-different renderings of the same command compare equal. */
     private static String normalizeWhitespace(String s) {
-        return s == null ? "" : s.replaceAll("\\s+", " ").trim();
+        return s == null ? "" : WS_PATTERN.matcher(s).replaceAll(" ").trim();
     }
 
     private void processNextRequest() {
