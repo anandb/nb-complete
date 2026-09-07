@@ -134,6 +134,16 @@ public class StatusController {
         runWatchdogArmed = true;
         runWatchdogStalled = false;
         SwingUtilities.invokeLater(() -> {
+            // A stale "No response" message from a previous run must not be left
+            // on the label when a new run begins: it persists because re-arming
+            // cleared the flag touchRunActivity checks. Any fresh send therefore
+            // resets the status to the running baseline.
+            if (statusLabel != null
+                    && statusLabel.getText() != null
+                    && statusLabel.getText().startsWith(
+                            NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Stalled"))) {
+                setStatus("STATUS_Thinking");
+            }
             if (!runWatchdogTimer.isRunning()) {
                 runWatchdogTimer.start();
             }
