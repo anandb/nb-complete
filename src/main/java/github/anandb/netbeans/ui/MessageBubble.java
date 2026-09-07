@@ -24,6 +24,7 @@ import javax.swing.border.EmptyBorder;
 
 import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.ToolDataExtractor;
 import org.openide.util.NbBundle;
 
 import static org.apache.commons.lang3.StringUtils.length;
@@ -301,6 +302,16 @@ public class MessageBubble extends JPanel implements Scrollable {
      *                  expensive rebuilds during section splits).
      */
     public void finalizeStreaming(boolean expanded, boolean immediate) {
+        // User bubbles accumulate trailing metadata blocks (preamble echo, DCP
+        // blocks, etc.); strip them before the final HTML render. Copy already
+        // strips via MessageCopyMouseAdapter — this fixes the on-screen text.
+        if ("user".equals(role)) {
+            String stripped = ToolDataExtractor.stripMetadata(text.toString()).trim();
+            if (!stripped.equals(text.toString())) {
+                text.setLength(0);
+                text.append(stripped);
+            }
+        }
         streamer.finalizeStreaming(expanded, immediate);
     }
 
