@@ -386,7 +386,7 @@ public class SessionManager implements SessionQuery, SessionControl {
                                 if (s.effectiveDirectory() == null) {
                                     resolved = new Session(s.id(), s.title(), directory, directory,
                                                            s.parentID(), s.updatedAt(), s.mcpServers(),
-                                                           s.configOptions());
+                                                           s.configOptions(), null, null);
                                 }
                                 sessions.add(resolved);
                                 cacheManager.cacheSession(resolved);
@@ -472,14 +472,31 @@ public class SessionManager implements SessionQuery, SessionControl {
                         
                         // Use session ID as title if server didn't provide one
                         if (StringUtils.isBlank(s.title())) {
-                            s = new Session(s.id(), s.id(), s.cwd(), s.directory(), s.parentID(), s.updatedAt(), s.mcpServers(), s.configOptions());
+                            s = new Session(s.id(), s.id(), s.cwd(), s.directory(),
+                                    s.parentID(), s.updatedAt(), s.mcpServers(),
+                                    s.configOptions(), null, null);
                             LOG.info("session/new: using sessionId as title");
                         }
                         
                         if (s.effectiveDirectory() == null) {
-                            LOG.fine("session/new: effectiveDirectory is null, reconstructing with finalCwd: {0}", finalCwd);
-                            s = new Session(s.id(), s.title(), finalCwd, finalCwd, s.parentID(), s.updatedAt(), s.mcpServers(), s.configOptions());
+                            LOG.fine("session/new: effectiveDirectory is null, " +
+                                    "reconstructing with finalCwd: {0}", finalCwd);
+                            s = new Session(s.id(), s.title(), finalCwd, finalCwd,
+                                    s.parentID(), s.updatedAt(), s.mcpServers(),
+                                    s.configOptions(), null, null);
                             LOG.info("session/new reconstructed session, id is now: {0}", s.id());
+                        }
+                        
+                        // Log models and modes if present
+                        if (s.models() != null) {
+                            LOG.info("session/new: models available={0}, current={1}",
+                                    s.models().availableModels() != null ? s.models().availableModels().size() : 0,
+                                    s.models().currentModelId());
+                        }
+                        if (s.modes() != null) {
+                            LOG.info("session/new: modes available={0}, current={1}",
+                                    s.modes().availableModes() != null ? s.modes().availableModes().size() : 0,
+                                    s.modes().currentModeId());
                         }
                         cacheManager.cacheSession(s);
                         return s;
@@ -759,7 +776,8 @@ public class SessionManager implements SessionQuery, SessionControl {
         Session s = cacheManager.getCachedSession(sessionId);
         if (s != null) {
             Session updated = new Session(s.id(), newTitle, s.cwd(), s.directory(),
-                    s.parentID(), s.updatedAt(), s.mcpServers(), s.configOptions());
+                    s.parentID(), s.updatedAt(), s.mcpServers(), s.configOptions(),
+                    s.models(), s.modes());
             cacheManager.cacheSession(updated);
             // Refresh the cached list to include the updated session
             List<Session> cached = cacheManager.getCachedSessions();

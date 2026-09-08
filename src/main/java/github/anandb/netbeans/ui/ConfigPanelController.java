@@ -285,6 +285,7 @@ public class ConfigPanelController {
     }
 
     public void applyPreSelectedConfigValues(String sessionId, List<SessionConfigOption> configOptions) {
+        if (configOptions == null) return;
         for (SessionConfigOption opt : configOptions) {
             JComboBox<ConfigItem> combo = null;
             if ("mode".equals(opt.category())) {
@@ -364,6 +365,7 @@ public class ConfigPanelController {
         // Skip repopulation while the config-confirm panel is active — the user
         // is choosing model/level and SSE updates would overwrite their picks.
         if (configConfirmActive) return;
+        if (options == null) return;
         SwingUtilities.invokeLater(() -> {
             isUpdatingConfigControls = true;
             try {

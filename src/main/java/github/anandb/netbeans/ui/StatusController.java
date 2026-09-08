@@ -1,5 +1,6 @@
 package github.anandb.netbeans.ui;
 
+import github.anandb.netbeans.support.Logger;
 import java.awt.CardLayout;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
@@ -18,6 +19,7 @@ import org.openide.util.NbBundle;
 // it drives is bound via the future StatusView spec.
 public class StatusController {
 
+    private static final Logger LOG = Logger.from(StatusController.class);
     private static final String[] DOT_STRINGS = {"", ".", "..", "..."};
     private static final Pattern TRAILING_DOTS = Pattern.compile("\\.+$");
 
@@ -142,6 +144,7 @@ public class StatusController {
                     && statusLabel.getText() != null
                     && statusLabel.getText().startsWith(
                             NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Stalled"))) {
+                LOG.info("Clearing Stalled Status during arm");
                 setStatus("STATUS_Thinking");
             }
             if (!runWatchdogTimer.isRunning()) {
@@ -156,6 +159,8 @@ public class StatusController {
         if (!runWatchdogArmed) {
             return;
         }
+
+        LOG.info("Touching Run Activity");
         lastRunActivityNanos = System.nanoTime();
         if (runWatchdogStalled) {
             runWatchdogStalled = false;
@@ -169,7 +174,7 @@ public class StatusController {
     /** Disarms the run-stall watchdog. Call on turn end, error, or stop. */
     public void disarmRunWatchdog() {
         runWatchdogArmed = false;
-        runWatchdogStalled = false;
+        runWatchdogStalled = false;        
         SwingUtilities.invokeLater(() -> {
             if (runWatchdogTimer.isRunning()) {
                 runWatchdogTimer.stop();

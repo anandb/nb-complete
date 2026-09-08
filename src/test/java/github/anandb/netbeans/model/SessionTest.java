@@ -9,7 +9,7 @@ class SessionTest {
 
     @Test
     void testSessionCreation() {
-        Session session = new Session("id123", "Title", "/path/to/cwd", "/path/to/dir", null, null, null, null);
+        Session session = new Session("id123", "Title", "/path/to/cwd", "/path/to/dir", null, null, null, null, null, null);
         assertEquals("id123", session.id());
         assertEquals("Title", session.title());
         assertEquals("/path/to/cwd", session.cwd());
@@ -18,10 +18,10 @@ class SessionTest {
 
     @Test
     void testEffectiveDirectory() {
-        Session sessionWithCwd = new Session("1", "T", "/some/cwd", null, null, null, null, null);
+        Session sessionWithCwd = new Session("1", "T", "/some/cwd", null, null, null, null, null, null, null);
         assertEquals("/some/cwd", sessionWithCwd.effectiveDirectory());
 
-        Session sessionWithDir = new Session("2", "T", null, "/some/dir", null, null, null, null);
+        Session sessionWithDir = new Session("2", "T", null, "/some/dir", null, null, null, null, null, null);
         assertEquals("/some/dir", sessionWithDir.effectiveDirectory());
     }
 

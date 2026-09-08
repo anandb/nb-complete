@@ -111,7 +111,7 @@ class SessionLifecycleHandlerTest {
 
     private Session session(String id, boolean hidden) {
         when(sessionControl.isHidden(id)).thenReturn(hidden);
-        return new Session(id, "Session " + id, "/tmp/" + id, null, null, "2026-01-01T00:00:00Z", null, null);
+        return new Session(id, "Session " + id, "/tmp/" + id, null, null, "2026-01-01T00:00:00Z", null, null, null, null);
     }
 
     private List<Session> sessions(Session... s) {

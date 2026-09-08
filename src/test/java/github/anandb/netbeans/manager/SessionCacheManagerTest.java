@@ -23,7 +23,7 @@ class SessionCacheManagerTest {
 
     /** Creates a Session with sensible defaults for test convenience. */
     private static Session sess(String id, String title, String parentID) {
-        return new Session(id, title, null, null, parentID, null, null, null);
+        return new Session(id, title, null, null, parentID, null, null, null, null, null);
     }
 
     @Test

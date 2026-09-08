@@ -21,6 +21,7 @@ import github.anandb.netbeans.contract.UpdateDispatcher;
 import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.model.MessageType;
+import github.anandb.netbeans.model.ConfigOptionConverter;
 import github.anandb.netbeans.model.SessionConfigOption;
 import github.anandb.netbeans.model.SessionItem;
 import github.anandb.netbeans.model.SessionUpdate;
@@ -591,13 +592,23 @@ public class SessionLifecycleHandler implements SessionListener {
             statusController.updateButtonState(false);
             statusController.setInputEnabled(true);
             hideBtn.setEnabled(true);
-            if (configOptions != null) {
-                configPanelController.updateConfigControls(configOptions, isStartup);
+            // Fall back to models/modes from cached session if configOptions is null
+            // (Claude sends models/modes in session/new, not session/load)
+            List<SessionConfigOption> resolvedConfigOptions = configOptions;
+            if (resolvedConfigOptions == null) {
+                Session cachedSession = sessionService.get().getSession(sessionId);
+                if (cachedSession != null) {
+                    resolvedConfigOptions = ConfigOptionConverter.fromModelsAndModes(
+                            cachedSession.models(), cachedSession.modes());
+                }
+            }
+            if (resolvedConfigOptions != null) {
+                configPanelController.updateConfigControls(resolvedConfigOptions, isStartup);
             }
             // If this is a new session (isStartup=true), apply any pre-selected config values
             // from the config panel that the user may have set before creating the chat
             if (isStartup) {
-                configPanelController.applyPreSelectedConfigValues(sessionId, configOptions);
+                configPanelController.applyPreSelectedConfigValues(sessionId, resolvedConfigOptions);
             }
 
             boolean hidden = sessionService.get().isHidden(sessionId);
