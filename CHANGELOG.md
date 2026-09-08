@@ -1,10 +1,32 @@
 # Release Notes
 
+## v1.19.6 (Changes since v1.19.5)
+
+### Features
+- **Models/modes session data**: Parse `models` and `modes` from the `session/new` response into new `ModelsInfo`/`ModesInfo`/`AvailableModel`/`AvailableMode` records on `Session`; convert them to config options (`ConfigOptionConverter`) and populate the Model/Mode dropdowns when the agent does not send `session/load` configOptions (`4217e3c8`, `caf75355`).
+- **Session mode switching**: `session/set_mode` RPC via `SessionControl.setSessionMode()`; the Mode dropdown uses it when the agent advertises `supportsSessionSetMode` (`d64689e7`).
+- **Agent display name**: `AgentCapabilities.displayName()` maps handshake/binary names to OpenCode, Cursor, Claude, Goose, or Pi. The Go button tooltip shows `Go (Name)` and updates after handshake.
+- **Harness identity on the Go button**: Map agent names to theme-aware icons (including `pi`, `pi-acp`, `pi-agent` aliases) and show the icon above the Go label; drop `OPENCODE_MODEL` injection as a session default (`fa8bed55`).
+- **Pi name aliases**: Treat `pi`, `pi-acp`, and `pi-agent` as the same Pi capabilities (not a `pi*` prefix).
+
+### Fixes
+- **Go-button tooltip padding**: Top inset is a third of the label stack so the icon is not shoved down; tooltip Y uses tip height instead of the tall button height (`7ed83942`).
+- **Run-stall logging**: Log run activity only when clearing a stall, not on every inbound message (`52dbb269`).
+- **apply_patch tool description**: Document unified diff format requirements, common failure modes, and prefer `replace_lines`/`edit` for simple edits (`ddeed6c6`).
+
+### Improvements
+- **AcpProtocolClient close safety**: Make `closed` reactive with `AtomicBoolean` and re-check it inside the writer lock before writing, preventing writes after close (`f4a36e2f`).
+- **Null-safety in config handling**: Null-guard `configOptions` in `updateConfigControls`/`applyPreSelectedConfigValues` (`caf75355`).
+
+### Refactoring
+- **checkServerSupport signature**: Take `AgentCapabilities` instead of raw `JsonNode`; call it after capabilities are derived from the handshake (`420c3d92`). MCP stays disabled for the rest of the IDE lifetime once an error disables it.
+
+### Housekeeping
+- Version bumped to 1.19.6.
+
 ## v1.19.5 (Changes since v1.19.4)
 
 ### Features
-- **Agent display name**: `AgentCapabilities.displayName()` maps handshake/binary names to OpenCode, Cursor, Claude, Goose, or Pi. The Go button tooltip shows `Go (Name)` and updates after handshake.
-- **Pi name aliases**: Treat `pi`, `pi-acp`, and `pi-agent` as the same Pi capabilities (not a `pi*` prefix).
 
 ### Fixes
 - **Cursor agent capabilities**: Treat Cursor (`cursor`, `cursor-agent`, handshake `cursor-agent-acp`, binary `agent`) as default capabilities minus token stats and message IDs — hide the stats button and skip generated-id pinning (`1efe5219`, `39ffcdd9`).
