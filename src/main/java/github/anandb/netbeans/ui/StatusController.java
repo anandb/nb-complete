@@ -160,7 +160,6 @@ public class StatusController {
             return;
         }
 
-        LOG.info("Touching Run Activity");
         lastRunActivityNanos = System.nanoTime();
         if (runWatchdogStalled) {
             runWatchdogStalled = false;
@@ -174,7 +173,7 @@ public class StatusController {
     /** Disarms the run-stall watchdog. Call on turn end, error, or stop. */
     public void disarmRunWatchdog() {
         runWatchdogArmed = false;
-        runWatchdogStalled = false;        
+        runWatchdogStalled = false;
         SwingUtilities.invokeLater(() -> {
             if (runWatchdogTimer.isRunning()) {
                 runWatchdogTimer.stop();
