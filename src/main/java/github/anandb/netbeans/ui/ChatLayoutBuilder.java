@@ -9,6 +9,7 @@ import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
+import java.awt.Insets;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.KeyEvent;
@@ -501,11 +502,10 @@ final class ChatLayoutBuilder {
         applyHarnessIcon(sendBtn, goText);
         String agentName = AgentCapabilities.forName(BinaryResolver.resolveBinaryName()).displayName();
         sendBtn.setToolTipText(goText + " (" + agentName + ")");
-        sendBtn.setPreferredSize(new Dimension(96, 80));
         sendBtn.setMnemonic(KeyEvent.VK_G);
         sendBtn.setDisplayedMnemonicIndex(0);
         stopBtn = UIUtils.createTextButton(NbBundle.getMessage(AssistantTopComponent.class, "BTN_Stop"), null);
-        stopBtn.setPreferredSize(new Dimension(100, 80));
+        stopBtn.setPreferredSize(new Dimension(100, sendBtn.getPreferredSize().height));
         stopBtn.setMnemonic(KeyEvent.VK_S);
         stopBtn.setDisplayedMnemonicIndex(0);
 
@@ -704,6 +704,7 @@ final class ChatLayoutBuilder {
     private void applyHarnessIcon(JButton btn, String text) {
         Icon icon = ThemeManager.getIcon(AgentCapabilities.harnessIconName(BinaryResolver.resolveBinaryName()), 42);
         if (icon == null) {
+            btn.setPreferredSize(new Dimension(96, 80));
             return;
         }
         btn.setIcon(icon);
@@ -712,6 +713,15 @@ final class ChatLayoutBuilder {
         btn.setVerticalTextPosition(SwingConstants.BOTTOM);
         btn.setHorizontalTextPosition(SwingConstants.CENTER);
         btn.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN, 10f));
+        // Light top inset (~1/3 of the Go-label stack) so the icon isn't
+        // shoved down. Grow the button if that stack is taller than 80px.
+        int gap = btn.getIconTextGap();
+        int textH = btn.getFontMetrics(btn.getFont()).getHeight();
+        int bottom = 2;
+        int top = Math.max(2, (bottom + textH + gap) / 3);
+        btn.setMargin(new Insets(top, 12, bottom, 12));
+        int height = top + icon.getIconHeight() + gap + textH + bottom;
+        btn.setPreferredSize(new Dimension(96, Math.max(80, height)));
     }
 
     JButton getStopBtn() { return stopBtn; }

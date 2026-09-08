@@ -28,6 +28,7 @@ import javax.swing.Icon;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
+import javax.swing.JToolTip;
 import javax.swing.JPanel;
 import javax.swing.border.Border;
 import javax.swing.border.EmptyBorder;
@@ -187,10 +188,12 @@ public class UIUtils {
         JButton btn = new JButton(text) {
             @Override
             public Point getToolTipLocation(MouseEvent event) {
-                // Same convention as AttentionButton: tooltip fully above the
-                // component, left-aligned to its content insets.
+                // Sit just above the button. Do not use button height — a tall
+                // Go button would park the tooltip a full extra row away.
                 Insets ins = getInsets();
-                return new Point(ins.left, -getHeight() - 8);
+                JToolTip tip = createToolTip();
+                tip.setTipText(getToolTipText());
+                return new Point(ins.left, -tip.getPreferredSize().height - 4);
             }
         };
         btn.setFocusPainted(false);
