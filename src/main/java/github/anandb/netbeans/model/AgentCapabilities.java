@@ -20,6 +20,7 @@ public final class AgentCapabilities {
     private final boolean supportsTokenStats;
     private final boolean supportsMessageIds;
     private final boolean supportsMcpServer;
+    private final boolean supportsSessionSetMode;
 
     private AgentCapabilities(Builder builder) {
         this.supportsMessageQueue = builder.supportsMessageQueue;
@@ -28,6 +29,7 @@ public final class AgentCapabilities {
         this.supportsTokenStats = builder.supportsTokenStats;
         this.supportsMessageIds = builder.supportsMessageIds;
         this.supportsMcpServer = builder.supportsMcpServer;
+        this.supportsSessionSetMode = builder.supportsSessionSetMode;
     }
 
     public static Builder builder() {
@@ -40,6 +42,7 @@ public final class AgentCapabilities {
     public boolean supportsTokenStats() { return supportsTokenStats; }
     public boolean supportsMessageIds() { return supportsMessageIds; }
     public boolean supportsMcpServer() { return supportsMcpServer; }
+    public boolean supportsSessionSetMode() { return supportsSessionSetMode; }
 
     /**
      * Derives capabilities from the agent name reported by the ACP
@@ -61,6 +64,17 @@ public final class AgentCapabilities {
                     .supportsMcpServer(true)
                     .build();
         }
+        // Exact agent name is unknown (e.g. claude, claude-acp, claude-code); match by prefix.
+        if (name.startsWith("claude")) {
+            return builder()
+                    .sendsMcpServerConfig(true)
+                    .injectsEditorContext(true)
+                    .supportsTokenStats(true)
+                    .supportsMessageIds(true)
+                    .supportsMcpServer(true)
+                    .supportsSessionSetMode(true)
+                    .build();
+        }
         return switch (name) {
             case "goose" -> builder()
                     .supportsMessageQueue(true)
@@ -78,6 +92,7 @@ public final class AgentCapabilities {
                     .supportsTokenStats(true)
                     .supportsMessageIds(true)
                     .supportsMcpServer(true)
+                    .supportsSessionSetMode(false)
                     .build();
         };
     }
@@ -91,14 +106,15 @@ public final class AgentCapabilities {
                 && injectsEditorContext == that.injectsEditorContext
                 && supportsTokenStats == that.supportsTokenStats
                 && supportsMessageIds == that.supportsMessageIds
-                && supportsMcpServer == that.supportsMcpServer;
+                && supportsMcpServer == that.supportsMcpServer
+                && supportsSessionSetMode == that.supportsSessionSetMode;
     }
 
     @Override
     public int hashCode() {
         return Objects.hash(supportsMessageQueue, sendsMcpServerConfig,
                 injectsEditorContext, supportsTokenStats, supportsMessageIds,
-                supportsMcpServer);
+                supportsMcpServer, supportsSessionSetMode);
     }
 
     public static final class Builder {
@@ -108,6 +124,7 @@ public final class AgentCapabilities {
         private boolean supportsTokenStats;
         private boolean supportsMessageIds;
         private boolean supportsMcpServer;
+        private boolean supportsSessionSetMode;
 
         private Builder() {}
 
@@ -138,6 +155,11 @@ public final class AgentCapabilities {
 
         public Builder supportsMcpServer(boolean value) {
             this.supportsMcpServer = value;
+            return this;
+        }
+
+        public Builder supportsSessionSetMode(boolean value) {
+            this.supportsSessionSetMode = value;
             return this;
         }
 

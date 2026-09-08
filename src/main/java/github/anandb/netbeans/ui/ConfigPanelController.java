@@ -31,6 +31,8 @@ import javax.swing.event.PopupMenuListener;
 import github.anandb.netbeans.model.ModelRecords.ConfigItem;
 import github.anandb.netbeans.model.SessionConfigOption;
 import github.anandb.netbeans.model.SessionConfigSelectOption;
+import github.anandb.netbeans.model.AvailableMode;
+import github.anandb.netbeans.model.ModeAgentMapping;
 import github.anandb.netbeans.support.Logger;
 import org.openide.util.NbBundle;
 
@@ -250,7 +252,11 @@ public class ConfigPanelController {
         String currentId = sessionService.get().getCurrentSessionId();
 
         if (currentId != null) {
-            sessionService.get().setSessionConfigOption(currentId, configId, selected.value());
+            if (combo == modeCombo && agentSupportsSessionSetMode()) {
+                sessionService.get().setSessionMode(currentId, selected.value());
+            } else {
+                sessionService.get().setSessionConfigOption(currentId, configId, selected.value());
+            }
         }
 
         if (combo == modelCombo) {
@@ -278,6 +284,11 @@ public class ConfigPanelController {
     /** Returns the server config id for the thinking/effort option ("effort" on OpenCode ACP). */
     private String thinkingConfigId() {
         return thinkingConfigId != null ? thinkingConfigId : "effort";
+    }
+
+    /** True when the connected agent delivers modes via the session/new field and supports ACP session/set_mode. */
+    private boolean agentSupportsSessionSetMode() {
+        return PlatformBridge.processServiceSafe().get().getCapabilities().supportsSessionSetMode();
     }
 
     public void updateConfigControls(List<SessionConfigOption> options) {
@@ -430,6 +441,22 @@ public class ConfigPanelController {
 
     private ConfigItem populateComboBox(JComboBox<ConfigItem> combo, String category, List<SessionConfigSelectOption> options, String valueToSelect) {
         ConfigItem selected = null;
+        if ("mode".equals(category)) {
+            // Prefer the server-reported modes held in ModeAgentMapping (the
+            // canonical source populated from the session/new message).
+            List<AvailableMode> modes = ModeAgentMapping.getAvailableModes();
+            if (modes != null && !modes.isEmpty()) {
+                for (AvailableMode m : modes) {
+                    ConfigItem item = new ConfigItem(m.name(), m.id());
+                    combo.addItem(item);
+                    if (m.id() != null && valueToSelect != null && m.id().equalsIgnoreCase(valueToSelect)) {
+                        selected = item;
+                    }
+                }
+                return selected;
+            }
+            // Else fall through to the config-option path used by other agents.
+        }
         if ("model".equals(category)) {
             for (Map.Entry<String, List<ConfigItem>> entry : modelResolver.getModelVariants().entrySet()) {
                 List<ConfigItem> variants = entry.getValue();
@@ -613,22 +640,30 @@ public class ConfigPanelController {
                     String currentId = sessionService.get().getCurrentSessionId();
                     String prevModelId = combo == modelCombo ? modelResolver.getLastSelectedModelId() : null;
                     LOG.fine("Config update: {0}={1} for session {2}", new Object[]{configId, selected.value(), currentId});
-                    sessionService.get().setSessionConfigOption(currentId, configId, selected.value())
-                        .exceptionally(ex -> {
-                            LOG.warn("Failed to set config {0}: {1}", configId, ExceptionUtils.getMessage(ex));
-                            if (combo == modelCombo && prePopupSelection[0] != null && prevModelId != null) {
-                                SwingUtilities.invokeLater(() -> {
-                                    isUpdatingConfigControls = true;
-                                    try {
-                                        modelResolver.setLastSelectedModelId(prevModelId);
-                                        combo.setSelectedItem(prePopupSelection[0]);
-                                    } finally {
-                                        isUpdatingConfigControls = false;
-                                    }
-                                });
-                            }
-                            return null;
-                        });
+                    if (combo == modeCombo && agentSupportsSessionSetMode()) {
+                        sessionService.get().setSessionMode(currentId, selected.value())
+                            .exceptionally(ex -> {
+                                LOG.warn("Failed to set mode {0}: {1}", selected.value(), ExceptionUtils.getMessage(ex));
+                                return null;
+                            });
+                    } else {
+                        sessionService.get().setSessionConfigOption(currentId, configId, selected.value())
+                            .exceptionally(ex -> {
+                                LOG.warn("Failed to set config {0}: {1}", configId, ExceptionUtils.getMessage(ex));
+                                if (combo == modelCombo && prePopupSelection[0] != null && prevModelId != null) {
+                                    SwingUtilities.invokeLater(() -> {
+                                        isUpdatingConfigControls = true;
+                                        try {
+                                            modelResolver.setLastSelectedModelId(prevModelId);
+                                            combo.setSelectedItem(prePopupSelection[0]);
+                                        } finally {
+                                            isUpdatingConfigControls = false;
+                                        }
+                                    });
+                                }
+                                return null;
+                            });
+                    }
                 }
 
                 if (combo == modelCombo) {

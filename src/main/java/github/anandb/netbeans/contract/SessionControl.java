@@ -30,6 +30,9 @@ public interface SessionControl extends SessionQuery {
     /** Sets a configuration option for a session. */
     CompletableFuture<Void> setSessionConfigOption(String sessionId, String configId, String value);
 
+    /** Switches the active agent mode for a session (ACP session/set_mode). */
+    CompletableFuture<Void> setSessionMode(String sessionId, String modeId);
+
     /** Renames a session. */
     void renameSession(String sessionId, String newTitle);
 

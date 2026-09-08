@@ -1,58 +1,60 @@
 package github.anandb.netbeans.model;
 
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
- * Maps Claude mode IDs to agent permission profiles.
- * Modes control the permission/behavior level of the agent.
+ * Holds the agent modes reported by the server in a session handshake (the same
+ * message that carries Claude's models). Fully populated from the incoming
+ * {@link ModesInfo}; nothing is hardcoded.
  */
 public final class ModeAgentMapping {
 
-    /** Permission profile for a mode. */
-    public record PermissionProfile(
-        boolean autoAcceptEdits,
-        boolean skipPermissionPrompts,
-        boolean planModeOnly,
-        String description
-    ) {}
-
-    private static final Map<String, PermissionProfile> MODE_PROFILES = Map.of(
-        "default", new PermissionProfile(
-                false, false, false,
-                "Standard behavior, prompts for dangerous operations"),
-        "acceptEdits", new PermissionProfile(
-                true, false, false,
-                "Auto-accept file edit operations"),
-        "plan", new PermissionProfile(
-                false, false, true,
-                "Planning mode, no actual tool execution"),
-        "dontAsk", new PermissionProfile(
-                false, true, false,
-                "Don't prompt for permissions, deny if not pre-approved"),
-        "bypassPermissions", new PermissionProfile(
-                true, true, false,
-                "Bypass all permission checks")
-    );
-
-    private static final PermissionProfile DEFAULT_PROFILE = MODE_PROFILES.get("default");
+    private static volatile Map<String, AvailableMode> liveModes = Collections.emptyMap();
+    private static volatile String currentModeId;
 
     private ModeAgentMapping() {}
 
     /**
-     * Returns the permission profile for the given mode ID.
-     * Falls back to the default profile if the mode is unknown.
+     * Populates the mapping from the modes reported in an incoming session
+     * message. Every mode is taken from the server response; no defaults or
+     * built-in profiles are assumed.
      */
-    public static PermissionProfile getProfile(String modeId) {
-        if (modeId == null) {
-            return DEFAULT_PROFILE;
+    public static void populate(ModesInfo modes) {
+        if (modes == null || modes.availableModes() == null) {
+            liveModes = Collections.emptyMap();
+            currentModeId = null;
+            return;
         }
-        return MODE_PROFILES.getOrDefault(modeId, DEFAULT_PROFILE);
+        Map<String, AvailableMode> byId = new LinkedHashMap<>();
+        for (AvailableMode m : modes.availableModes()) {
+            if (m.id() != null) {
+                byId.put(m.id(), m);
+            }
+        }
+        liveModes = byId;
+        currentModeId = modes.currentModeId();
     }
 
-    /**
-     * Returns true if the mode ID is a valid known mode.
-     */
+    /** All modes advertised by the server in the latest handshake. */
+    public static List<AvailableMode> getAvailableModes() {
+        return List.copyOf(liveModes.values());
+    }
+
+    /** The server-selected current mode, or null if none was reported. */
+    public static String getCurrentModeId() {
+        return currentModeId;
+    }
+
+    /** Returns the advertised mode with the given id, or null if unknown. */
+    public static AvailableMode getMode(String modeId) {
+        return modeId == null ? null : liveModes.get(modeId);
+    }
+
+    /** True if the mode id was advertised by the server in the latest handshake. */
     public static boolean isValidMode(String modeId) {
-        return modeId != null && MODE_PROFILES.containsKey(modeId);
+        return modeId != null && liveModes.containsKey(modeId);
     }
 }

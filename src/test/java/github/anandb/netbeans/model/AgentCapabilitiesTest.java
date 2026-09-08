@@ -43,4 +43,21 @@ class AgentCapabilitiesTest {
         assertEquals(def, AgentCapabilities.forName(null));
         assertEquals(def, AgentCapabilities.forName("mystery-agent"));
     }
+
+    @Test
+    void sessionSetModeCapabilityDerivedPerAgent() {
+        // Only agents whose name starts with "claude" support ACP session/set_mode,
+        // since the exact agent name (claude, claude-acp, claude-code, …) is unknown.
+        assertTrue(AgentCapabilities.forName("claude").supportsSessionSetMode());
+        assertTrue(AgentCapabilities.forName("claude-acp").supportsSessionSetMode());
+        assertTrue(AgentCapabilities.forName("claude-code").supportsSessionSetMode());
+
+        // All other agents (pi-acp, opencode/unknown, goose, cursor) keep the
+        // set_config_option("mode", …) path.
+        assertFalse(AgentCapabilities.forName("pi-acp").supportsSessionSetMode());
+        assertFalse(AgentCapabilities.DEFAULT.supportsSessionSetMode());
+        assertFalse(AgentCapabilities.forName("goose").supportsSessionSetMode());
+        assertFalse(AgentCapabilities.forName("cursor").supportsSessionSetMode());
+        assertFalse(AgentCapabilities.forName("agent").supportsSessionSetMode());
+    }
 }

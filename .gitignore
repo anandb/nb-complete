@@ -76,6 +76,9 @@ src/main/java/github/anandb/netbeans/ui/Bundle.properties
 research/
 __pycache__/
 
+# Process attachment files
+.attach_pid*
+
 
 # Application logs
 spring.log

@@ -567,6 +567,17 @@ public class SessionManager implements SessionQuery, SessionControl {
                 });
     }
 
+    @Override
+    public CompletableFuture<Void> setSessionMode(String sessionId, String modeId) {
+        return rpcClient.setSessionMode(sessionId, modeId)
+                .thenApply(res -> (Void) null)
+                .whenComplete((res, ex) -> {
+                    if (ex != null) {
+                        LOG.warn("Failed to set mode {0}: {1}", modeId, ExceptionUtils.getMessage(ex));
+                    }
+                });
+    }
+
     public CompletableFuture<JsonNode> renameSessionOnServer(String sessionId, String newTitle) {
         return rpcClient.renameSessionOnServer(sessionId, newTitle)
                 .thenApply(v -> MAPPER.createObjectNode());

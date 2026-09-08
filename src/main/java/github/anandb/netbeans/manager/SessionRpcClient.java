@@ -69,6 +69,13 @@ final class SessionRpcClient {
         ), 30, TimeUnit.SECONDS);
     }
 
+    CompletableFuture<JsonNode> setSessionMode(String sessionId, String modeId) {
+        return processManager.sendRequest("session/set_mode", Map.of(
+                "sessionId", sessionId,
+                "modeId", modeId
+        ), 30, TimeUnit.SECONDS);
+    }
+
     private AgentCapabilities caps() {
         return processManager.getCapabilities();
     }
