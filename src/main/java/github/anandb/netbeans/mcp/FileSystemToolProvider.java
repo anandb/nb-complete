@@ -682,7 +682,13 @@ public class FileSystemToolProvider {
 
         mcpTools.registerTool(
                 "apply_patch",
-                "Apply a unified diff patch to a single file. Trailing whitespace is trimmed on patched lines so they don't cause conflicts.",
+                "Apply a unified diff patch to a single file. Format: standard unified diff with @@ hunk headers. " +
+                "Context lines (no prefix) and +/- lines must match the current file content exactly, including indentation. " +
+                "Line numbers in @@ headers are hints; the tool searches for the context block. " +
+                "Trailing whitespace is auto-trimmed to reduce conflicts. " +
+                "Common failures: (1) context lines don't match file content, (2) wrong file path, " +
+                "(3) patch is not valid unified diff format. " +
+                "For simple single-hunk edits, prefer replace_lines or edit instead.",
                 schema,
                 new ToolExecutor<ApplyPatchInput, Map<String, Object>>(ApplyPatchInput.class) {
                     @Override
