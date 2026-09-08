@@ -270,7 +270,6 @@ class ServerProcessLifecycle {
                 .orTimeout(30, TimeUnit.SECONDS)
                 .thenAccept(res -> {
                     if (res != null) {
-                        toolExecutor.checkServerSupport(res);
                         JsonNode agentInfo = res.get("agentInfo");
                         if (agentInfo != null && agentInfo.has("name")) {
                             String raw = agentInfo.get("name").asText().toLowerCase();
@@ -286,6 +285,7 @@ class ServerProcessLifecycle {
                             agentName = BinaryResolver.resolveBinaryName();
                         }
                         capabilities = AgentCapabilities.forName(agentName);
+                        toolExecutor.checkServerSupport(capabilities);
                         LOG.info("Agent name: {0}", agentName);
                         Consumer<AgentCapabilities> listener = agentNameListener;
                         if (listener != null) {

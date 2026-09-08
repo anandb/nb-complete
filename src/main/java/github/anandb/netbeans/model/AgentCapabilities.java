@@ -19,6 +19,7 @@ public final class AgentCapabilities {
     private final boolean injectsEditorContext;
     private final boolean supportsTokenStats;
     private final boolean supportsMessageIds;
+    private final boolean supportsMcpServer;
 
     private AgentCapabilities(Builder builder) {
         this.supportsMessageQueue = builder.supportsMessageQueue;
@@ -26,6 +27,7 @@ public final class AgentCapabilities {
         this.injectsEditorContext = builder.injectsEditorContext;
         this.supportsTokenStats = builder.supportsTokenStats;
         this.supportsMessageIds = builder.supportsMessageIds;
+        this.supportsMcpServer = builder.supportsMcpServer;
     }
 
     public static Builder builder() {
@@ -37,6 +39,7 @@ public final class AgentCapabilities {
     public boolean injectsEditorContext() { return injectsEditorContext; }
     public boolean supportsTokenStats() { return supportsTokenStats; }
     public boolean supportsMessageIds() { return supportsMessageIds; }
+    public boolean supportsMcpServer() { return supportsMcpServer; }
 
     /**
      * Derives capabilities from the agent name reported by the ACP
@@ -55,6 +58,7 @@ public final class AgentCapabilities {
             return builder()
                     .sendsMcpServerConfig(true)
                     .injectsEditorContext(true)
+                    .supportsMcpServer(true)
                     .build();
         }
         return switch (name) {
@@ -62,15 +66,18 @@ public final class AgentCapabilities {
                     .supportsMessageQueue(true)
                     .sendsMcpServerConfig(true)
                     .supportsMessageIds(true)
+                    .supportsMcpServer(true)
                     .build();
             case "pi-acp" -> builder()
                     .supportsMessageQueue(true)
+                    .supportsMcpServer(true)
                     .build();
             default -> builder()
                     .sendsMcpServerConfig(true)
                     .injectsEditorContext(true)
                     .supportsTokenStats(true)
                     .supportsMessageIds(true)
+                    .supportsMcpServer(true)
                     .build();
         };
     }
@@ -83,13 +90,15 @@ public final class AgentCapabilities {
                 && sendsMcpServerConfig == that.sendsMcpServerConfig
                 && injectsEditorContext == that.injectsEditorContext
                 && supportsTokenStats == that.supportsTokenStats
-                && supportsMessageIds == that.supportsMessageIds;
+                && supportsMessageIds == that.supportsMessageIds
+                && supportsMcpServer == that.supportsMcpServer;
     }
 
     @Override
     public int hashCode() {
         return Objects.hash(supportsMessageQueue, sendsMcpServerConfig,
-                injectsEditorContext, supportsTokenStats, supportsMessageIds);
+                injectsEditorContext, supportsTokenStats, supportsMessageIds,
+                supportsMcpServer);
     }
 
     public static final class Builder {
@@ -98,6 +107,7 @@ public final class AgentCapabilities {
         private boolean injectsEditorContext;
         private boolean supportsTokenStats;
         private boolean supportsMessageIds;
+        private boolean supportsMcpServer;
 
         private Builder() {}
 
@@ -123,6 +133,11 @@ public final class AgentCapabilities {
 
         public Builder supportsMessageIds(boolean value) {
             this.supportsMessageIds = value;
+            return this;
+        }
+
+        public Builder supportsMcpServer(boolean value) {
+            this.supportsMcpServer = value;
             return this;
         }
 

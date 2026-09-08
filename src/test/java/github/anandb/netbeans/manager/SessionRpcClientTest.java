@@ -1,6 +1,5 @@
 package github.anandb.netbeans.manager;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import github.anandb.netbeans.contract.ToolExecutor;
 import github.anandb.netbeans.model.AgentCapabilities;
@@ -85,7 +84,7 @@ class SessionRpcClientTest {
             @Override public void stop() {}
             @Override public CompletableFuture<Void> waitForReady() { return CompletableFuture.completedFuture(null); }
             @Override public java.util.List<Map<String, Object>> getServerConfig() { return java.util.List.of(); }
-            @Override public void checkServerSupport(JsonNode res) {}
+            @Override public void checkServerSupport(github.anandb.netbeans.model.AgentCapabilities caps) {}
             @Override public void setMcpAuthRequired(boolean required) {}
             @Override public void disable() {}
             @Override public boolean isDisabled() { return false; }

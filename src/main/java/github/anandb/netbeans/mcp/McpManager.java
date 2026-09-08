@@ -1,10 +1,9 @@
 package github.anandb.netbeans.mcp;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
-import com.fasterxml.jackson.databind.JsonNode;
-
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.PluginSettings;
+import github.anandb.netbeans.model.AgentCapabilities;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -198,42 +197,18 @@ public class McpManager {
         if (mcpServer == null) {
             return null;
         }
+
         return mcpServer.getMcpTools();
     }
 
-    public void checkServerSupport(JsonNode res) {
-        JsonNode caps = res.has("agentCapabilities") ? res.get("agentCapabilities") : null;
-        if (caps == null || !caps.has("mcpCapabilities")) {
-            if (!mcpDisabled.get()) {
-                LOG.info("Server does not advertise MCP support, disabling");
-                disable();
-            }
+    public void checkServerSupport(AgentCapabilities caps) {
+        if (caps == null || !caps.supportsMcpServer()) {
             return;
         }
-        JsonNode mcpCaps = caps.get("mcpCapabilities");
-        boolean supportsMcp = mcpCaps.has("http") && mcpCaps.get("http").asBoolean(false) ||
-                              mcpCaps.has("sse") && mcpCaps.get("sse").asBoolean(false);
-
-        if (!supportsMcp && !mcpDisabled.get()) {
-            LOG.info("Server does not advertise MCP support, disabling {0}", mcpCaps.asText());
-            disable();
-            return;
-        }
-        if (supportsMcp && mcpDisabled.get()) {
-            // MCP was auto-disabled by an earlier server's handshake (no
-            // advertised capabilities) or a transient InvalidParams retry.
-            // The restarted server supports MCP again, so re-enable and bring
-            // up a fresh embedded server — but only if the user preference
-            // still allows it.
-            if (!PluginSettings.isMcpServerEnabled()) {
-                LOG.info("Server supports MCP but user preference disables it — staying disabled");
-                return;
-            }
-            LOG.info("Restarted server advertises MCP support — re-enabling MCP");
-            mcpDisabled.set(false);
+        
+        if (!mcpDisabled.get() && PluginSettings.isMcpServerEnabled() && mcpServer == null && serverStartFuture == null) {
+            LOG.info("Starting MCP server");
             start();
-        } else {
-            LOG.info("Server advertises MCP support {0}", mcpCaps.asText());
         }
     }
 }

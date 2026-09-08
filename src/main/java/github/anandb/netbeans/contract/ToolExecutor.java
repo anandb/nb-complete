@@ -1,6 +1,6 @@
 package github.anandb.netbeans.contract;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import github.anandb.netbeans.model.AgentCapabilities;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -43,10 +43,10 @@ public interface ToolExecutor {
     boolean isDisabled();
 
     /**
-     * Checks if the ACP server supports MCP tool integration.
-     * @param initializeResponse the response from the ACP initialize call
+     * Ensures the embedded MCP server is started when the agent supports it.
+     * @param capabilities agent capabilities derived from the handshake
      */
-    void checkServerSupport(JsonNode initializeResponse);
+    void checkServerSupport(AgentCapabilities capabilities);
 
     /**
      * Returns the MCP server configuration to include in session prompts.

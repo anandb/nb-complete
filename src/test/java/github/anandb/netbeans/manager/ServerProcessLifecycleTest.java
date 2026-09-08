@@ -1,6 +1,5 @@
 package github.anandb.netbeans.manager;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import github.anandb.netbeans.contract.ToolExecutor;
 import github.anandb.netbeans.model.AgentCapabilities;
 import org.junit.jupiter.api.BeforeEach;
@@ -118,7 +117,7 @@ class ServerProcessLifecycleTest {
         @Override public CompletableFuture<Void> waitForReady() { return CompletableFuture.completedFuture(null); }
         @Override public void disable() {}
         @Override public boolean isDisabled() { return false; }
-        @Override public void checkServerSupport(JsonNode r) {}
+        @Override public void checkServerSupport(github.anandb.netbeans.model.AgentCapabilities c) {}
         @Override public java.util.List<java.util.Map<String, Object>> getServerConfig() { return java.util.List.of(); }
     }
 }

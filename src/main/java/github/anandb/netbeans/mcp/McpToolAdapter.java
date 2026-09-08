@@ -1,7 +1,7 @@
 package github.anandb.netbeans.mcp;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import github.anandb.netbeans.contract.ToolExecutor;
+import github.anandb.netbeans.model.AgentCapabilities;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -36,7 +36,7 @@ public class McpToolAdapter implements ToolExecutor {
     public boolean isDisabled() { return delegate.isDisabled(); }
 
     @Override
-    public void checkServerSupport(JsonNode res) { delegate.checkServerSupport(res); }
+    public void checkServerSupport(AgentCapabilities caps) { delegate.checkServerSupport(caps); }
 
     @Override
     public List<Map<String, Object>> getServerConfig() { return delegate.getServerConfig(); }
