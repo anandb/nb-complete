@@ -2,6 +2,10 @@
 
 ## v1.19.5 (Changes since v1.19.4)
 
+### Features
+- **Agent display name**: `AgentCapabilities.displayName()` maps handshake/binary names to OpenCode, Cursor, Claude, Goose, or Pi. The Go button tooltip shows `Go (Name)` and updates after handshake.
+- **Pi name aliases**: Treat `pi`, `pi-acp`, and `pi-agent` as the same Pi capabilities (not a `pi*` prefix).
+
 ### Fixes
 - **Cursor agent capabilities**: Treat Cursor (`cursor`, `cursor-agent`, handshake `cursor-agent-acp`, binary `agent`) as default capabilities minus token stats and message IDs — hide the stats button and skip generated-id pinning (`1efe5219`, `39ffcdd9`).
 - **Handshake name fallback**: Match any agent name starting with `cursor`, fall back to the binary name when `initialize` omits `agentInfo`, and apply capabilities if handshake finished before the toolbar listener was registered (`39ffcdd9`).

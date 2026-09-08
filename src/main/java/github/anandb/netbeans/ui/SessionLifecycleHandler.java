@@ -375,7 +375,7 @@ public class SessionLifecycleHandler implements SessionListener {
                 newSessionBtn.setEnabled(hasProjects);
                 renameSessionBtn.setEnabled(hasSessions);
 
-                configPanelController.ensureDefaultModelSelected();
+                configPanelController.ensureFirstModelSelected();
 
                 if (hasSessions) {
                     // Keep the current session selected even when it is archived while
@@ -472,7 +472,6 @@ public class SessionLifecycleHandler implements SessionListener {
                     optionsPanelToggler.accept(true);
                     statusController.setInputEnabled(false);
                     sessionStateHandler.accept(false);
-                    configPanelController.ensureDefaultModelAdded();
                 }
             } finally {
                 isSwitchingSessionDropdown = false;

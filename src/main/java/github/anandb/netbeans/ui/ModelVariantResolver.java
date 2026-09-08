@@ -6,7 +6,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 import github.anandb.netbeans.model.ModelRecords.ConfigItem;
 import github.anandb.netbeans.model.SessionConfigOption;
@@ -106,23 +105,7 @@ final class ModelVariantResolver {
         }
 
         if ("model".equals(opt.category())) {
-            String envModel = System.getenv("OPENCODE_MODEL");
-            boolean envHandled = false;
-            if (envModel != null && !envModel.isEmpty() && currentId != null) {
-                String match = findModelMatch(opt, envModel);
-                if (match != null) {
-                    LOG.fine("Using OPENCODE_MODEL: {0}", new Object[]{match});
-                    sessionService.get().setSessionConfigOption(currentId, opt.id(), match);
-                    return match;
-                }
-                // OPENCODE_MODEL names a model not offered by this server config.
-                // Just log it and fall through to the default selection instead of
-                // sending the invalid value, which the server would reject and
-                // surface as an exception in the NetBeans notifications.
-                LOG.info("OPENCODE_MODEL references an unavailable model; using default: {0}", new Object[]{envModel});
-                envHandled = true;
-            }
-            if (!envHandled && lastSelectedModelId != null && !lastSelectedModelId.equalsIgnoreCase(currentValue)) {
+            if (lastSelectedModelId != null && !lastSelectedModelId.equalsIgnoreCase(currentValue)) {
                 sessionService.get().setSessionConfigOption(currentId, opt.id(), lastSelectedModelId);
                 return lastSelectedModelId;
             }
@@ -140,17 +123,5 @@ final class ModelVariantResolver {
         return opt.currentValue();
     }
 
-    private String findModelMatch(SessionConfigOption opt, String envModel) {
-        for (SessionConfigSelectOption o : opt.options()) {
-            if (o.value().equalsIgnoreCase(envModel)) {
-                return o.value();
-            }
-        }
-        for (Map.Entry<String, List<ConfigItem>> entry : modelVariants.entrySet()) {
-            if (entry.getKey().equalsIgnoreCase(envModel)) {
-                return entry.getValue().get(0).value();
-            }
-        }
-        return null;
-    }
+
 }

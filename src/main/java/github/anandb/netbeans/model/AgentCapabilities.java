@@ -21,6 +21,7 @@ public final class AgentCapabilities {
     private final boolean supportsMessageIds;
     private final boolean supportsMcpServer;
     private final boolean supportsSessionSetMode;
+    private final String displayName;
 
     private AgentCapabilities(Builder builder) {
         this.supportsMessageQueue = builder.supportsMessageQueue;
@@ -30,6 +31,7 @@ public final class AgentCapabilities {
         this.supportsMessageIds = builder.supportsMessageIds;
         this.supportsMcpServer = builder.supportsMcpServer;
         this.supportsSessionSetMode = builder.supportsSessionSetMode;
+        this.displayName = builder.displayName;
     }
 
     public static Builder builder() {
@@ -43,6 +45,7 @@ public final class AgentCapabilities {
     public boolean supportsMessageIds() { return supportsMessageIds; }
     public boolean supportsMcpServer() { return supportsMcpServer; }
     public boolean supportsSessionSetMode() { return supportsSessionSetMode; }
+    public String displayName() { return displayName; }
 
     /**
      * Derives capabilities from the agent name reported by the ACP
@@ -59,6 +62,7 @@ public final class AgentCapabilities {
         // Handshake names include "cursor-agent-acp"; the CLI binary is "agent" / "cursor-agent".
         if (name.startsWith("cursor") || "agent".equals(name)) {
             return builder()
+                    .displayName("Cursor")
                     .sendsMcpServerConfig(true)
                     .injectsEditorContext(true)
                     .supportsMcpServer(true)
@@ -67,6 +71,7 @@ public final class AgentCapabilities {
         // Exact agent name is unknown (e.g. claude, claude-acp, claude-code); match by prefix.
         if (name.startsWith("claude")) {
             return builder()
+                    .displayName("Claude")
                     .sendsMcpServerConfig(true)
                     .injectsEditorContext(true)
                     .supportsTokenStats(true)
@@ -77,16 +82,19 @@ public final class AgentCapabilities {
         }
         return switch (name) {
             case "goose" -> builder()
+                    .displayName("Goose")
                     .supportsMessageQueue(true)
                     .sendsMcpServerConfig(true)
                     .supportsMessageIds(true)
                     .supportsMcpServer(true)
                     .build();
-            case "pi-acp" -> builder()
+            case "pi", "pi-acp", "pi-agent" -> builder()
+                    .displayName("Pi")
                     .supportsMessageQueue(true)
                     .supportsMcpServer(true)
                     .build();
             default -> builder()
+                    .displayName("OpenCode")
                     .sendsMcpServerConfig(true)
                     .injectsEditorContext(true)
                     .supportsTokenStats(true)
@@ -94,6 +102,27 @@ public final class AgentCapabilities {
                     .supportsMcpServer(true)
                     .supportsSessionSetMode(false)
                     .build();
+        };
+    }
+
+    /**
+     * Maps a resolved harness binary name to its toolbar icon file name
+     * (theme-aware base name; the dark variant is selected by the icon loader).
+     * Falls back to the plugin logo for harnesses without a dedicated icon.
+     *
+     * @param binaryName resolved harness binary name, e.g. {@code "cursor-agent"}
+     * @return icon file name, never null
+     */
+    public static String harnessIconName(String binaryName) {
+        if (binaryName == null) {
+            return "logo.svg";
+        }
+        return switch (binaryName) {
+            case "agent", "cursor-agent" -> "cursor.svg";
+            case "claude", "claude-code", "claude-code-acp" -> "claude.svg";
+            case "goose" -> "goose.svg";
+            case "pi", "pi-acp", "pi-agent" -> "pi-logo.svg";
+            default -> "logo.svg";
         };
     }
 
@@ -107,14 +136,15 @@ public final class AgentCapabilities {
                 && supportsTokenStats == that.supportsTokenStats
                 && supportsMessageIds == that.supportsMessageIds
                 && supportsMcpServer == that.supportsMcpServer
-                && supportsSessionSetMode == that.supportsSessionSetMode;
+                && supportsSessionSetMode == that.supportsSessionSetMode
+                && Objects.equals(displayName, that.displayName);
     }
 
     @Override
     public int hashCode() {
         return Objects.hash(supportsMessageQueue, sendsMcpServerConfig,
                 injectsEditorContext, supportsTokenStats, supportsMessageIds,
-                supportsMcpServer, supportsSessionSetMode);
+                supportsMcpServer, supportsSessionSetMode, displayName);
     }
 
     public static final class Builder {
@@ -125,6 +155,7 @@ public final class AgentCapabilities {
         private boolean supportsMessageIds;
         private boolean supportsMcpServer;
         private boolean supportsSessionSetMode;
+        private String displayName = "OpenCode";
 
         private Builder() {}
 
@@ -160,6 +191,11 @@ public final class AgentCapabilities {
 
         public Builder supportsSessionSetMode(boolean value) {
             this.supportsSessionSetMode = value;
+            return this;
+        }
+
+        public Builder displayName(String value) {
+            this.displayName = value;
             return this;
         }
 

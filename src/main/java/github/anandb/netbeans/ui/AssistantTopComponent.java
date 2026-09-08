@@ -519,8 +519,12 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         queueManager.setEnabled(caps.supportsMessageQueue());
         tokenUsageBtn.setEnabled(caps.supportsTokenStats());
         tokenUsageBtn.setVisible(caps.supportsTokenStats());
+        JButton sendBtn = layoutBuilder.getSendBtn();
+        if (sendBtn != null) {
+            String goText = NbBundle.getMessage(AssistantTopComponent.class, "BTN_Go");
+            sendBtn.setToolTipText(goText + " (" + caps.displayName() + ")");
+        }
     }
-
     private void updateAttentionAnimation() {
         Project[] projects = projectContext.getAllOpenProjects();
         boolean projectsOpen = (projects != null && projects.length > 0);

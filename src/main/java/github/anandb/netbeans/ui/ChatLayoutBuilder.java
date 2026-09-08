@@ -15,6 +15,7 @@ import java.awt.event.KeyEvent;
 
 import javax.swing.Box;
 import javax.swing.BoxLayout;
+import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JComboBox;
@@ -29,16 +30,19 @@ import javax.swing.UIManager;
 import javax.swing.border.EmptyBorder;
 import java.util.prefs.PreferenceChangeListener;
 
+import org.openide.util.ImageUtilities;
 import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
 import org.openide.util.NbPreferences;
 
 import github.anandb.netbeans.support.AgentUtils;
+import github.anandb.netbeans.support.BinaryResolver;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.PreferenceKeys;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
 
 import github.anandb.netbeans.contract.SessionControl;
+import github.anandb.netbeans.model.AgentCapabilities;
 import github.anandb.netbeans.model.SessionItem;
 import github.anandb.netbeans.support.BrowserUtils;
 import javax.swing.JComponent;
@@ -492,12 +496,16 @@ final class ChatLayoutBuilder {
         inputMainPanel.add(inputScrollPane, BorderLayout.CENTER);
 
         JPanel btnCard = UIUtils.createTransparentPanel(new CardLayout());
-        sendBtn = UIUtils.createTextButton(NbBundle.getMessage(AssistantTopComponent.class, "BTN_Go"), null);
-        sendBtn.setPreferredSize(new Dimension(80, 64));
+        String goText = NbBundle.getMessage(AssistantTopComponent.class, "BTN_Go");
+        sendBtn = UIUtils.createTextButton(goText, null, true);
+        applyHarnessIcon(sendBtn, goText);
+        String agentName = AgentCapabilities.forName(BinaryResolver.resolveBinaryName()).displayName();
+        sendBtn.setToolTipText(goText + " (" + agentName + ")");
+        sendBtn.setPreferredSize(new Dimension(96, 80));
         sendBtn.setMnemonic(KeyEvent.VK_G);
         sendBtn.setDisplayedMnemonicIndex(0);
         stopBtn = UIUtils.createTextButton(NbBundle.getMessage(AssistantTopComponent.class, "BTN_Stop"), null);
-        stopBtn.setPreferredSize(new Dimension(100, 64));
+        stopBtn.setPreferredSize(new Dimension(100, 80));
         stopBtn.setMnemonic(KeyEvent.VK_S);
         stopBtn.setDisplayedMnemonicIndex(0);
 
@@ -687,6 +695,24 @@ final class ChatLayoutBuilder {
     JPanel getHeader() { return header; }
 
     JButton getSendBtn() { return sendBtn; }
+
+    /**
+     * Shows the resolved harness's icon on the Go button with a small
+     * "Go" label below it, when an icon exists for the harness. Falls back
+     * to the plain text label when the harness has no known icon.
+     */
+    private void applyHarnessIcon(JButton btn, String text) {
+        Icon icon = ThemeManager.getIcon(AgentCapabilities.harnessIconName(BinaryResolver.resolveBinaryName()), 42);
+        if (icon == null) {
+            return;
+        }
+        btn.setIcon(icon);
+        btn.setDisabledIcon(ImageUtilities.createDisabledIcon(icon));
+        btn.setText(text);
+        btn.setVerticalTextPosition(SwingConstants.BOTTOM);
+        btn.setHorizontalTextPosition(SwingConstants.CENTER);
+        btn.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN, 10f));
+    }
 
     JButton getStopBtn() { return stopBtn; }
 

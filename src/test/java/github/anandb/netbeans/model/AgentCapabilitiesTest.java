@@ -21,10 +21,14 @@ class AgentCapabilitiesTest {
         AgentCapabilities goose = AgentCapabilities.forName("goose");
         assertTrue(goose.supportsMessageQueue());
         assertFalse(goose.supportsTokenStats());
+        assertEquals("Goose", goose.displayName());
 
         AgentCapabilities pi = AgentCapabilities.forName("pi-acp");
+        assertEquals(pi, AgentCapabilities.forName("pi"));
+        assertEquals(pi, AgentCapabilities.forName("pi-agent"));
         assertTrue(pi.supportsMessageQueue());
         assertFalse(pi.sendsMcpServerConfig());
+        assertEquals("Pi", pi.displayName());
 
         AgentCapabilities cursor = AgentCapabilities.forName("cursor");
         assertEquals(cursor, AgentCapabilities.forName("cursor-agent"));
@@ -33,8 +37,10 @@ class AgentCapabilitiesTest {
         assertTrue(cursor.sendsMcpServerConfig());
         assertTrue(cursor.injectsEditorContext());
         assertFalse(cursor.supportsMessageIds());
-        assertFalse(cursor.supportsTokenStats());
         assertFalse(cursor.supportsMessageQueue());
+        assertEquals("Cursor", cursor.displayName());
+        assertEquals("Claude", AgentCapabilities.forName("claude").displayName());
+        assertEquals("OpenCode", AgentCapabilities.DEFAULT.displayName());
     }
 
     @Test
@@ -50,7 +56,9 @@ class AgentCapabilitiesTest {
         // since the exact agent name (claude, claude-acp, claude-code, …) is unknown.
         assertTrue(AgentCapabilities.forName("claude").supportsSessionSetMode());
         assertTrue(AgentCapabilities.forName("claude-acp").supportsSessionSetMode());
-        assertTrue(AgentCapabilities.forName("claude-code").supportsSessionSetMode());
+        assertFalse(AgentCapabilities.forName("pi-acp").supportsSessionSetMode());
+        assertFalse(AgentCapabilities.forName("pi").supportsSessionSetMode());
+        assertFalse(AgentCapabilities.forName("pi-agent").supportsSessionSetMode());
 
         // All other agents (pi-acp, opencode/unknown, goose, cursor) keep the
         // set_config_option("mode", …) path.

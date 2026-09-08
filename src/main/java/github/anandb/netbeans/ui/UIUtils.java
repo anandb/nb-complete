@@ -175,6 +175,35 @@ public class UIUtils {
         return btn;
     }
 
+    /**
+     * Creates a text button whose tooltip is anchored above the cursor instead
+     * of the default below-right position. Swing clamps it back on-screen near
+     * window edges.
+     */
+    public static JButton createTextButton(String text, ActionListener l, boolean tooltipAboveCursor) {
+        if (!tooltipAboveCursor) {
+            return createTextButton(text, l);
+        }
+        JButton btn = new JButton(text) {
+            @Override
+            public Point getToolTipLocation(MouseEvent event) {
+                // Same convention as AttentionButton: tooltip fully above the
+                // component, left-aligned to its content insets.
+                Insets ins = getInsets();
+                return new Point(ins.left, -getHeight() - 8);
+            }
+        };
+        btn.setFocusPainted(false);
+        btn.setMargin(new Insets(2, 12, 2, 12));
+        btn.setPreferredSize(new Dimension(80, 32));
+        btn.getAccessibleContext().setAccessibleName(text);
+        btn.getAccessibleContext().setAccessibleDescription(text);
+        if (l != null) {
+            btn.addActionListener(l);
+        }
+        return btn;
+    }
+
     public static void styleToolbarButton(JButton btn) {
         btn.putClientProperty("JButton.buttonType", "toolBarButton");
         btn.setFocusPainted(false);

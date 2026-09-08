@@ -336,7 +336,7 @@ public class ConfigPanelController {
         }
     }
 
-    public void ensureDefaultModelSelected() {
+    public void ensureFirstModelSelected() {
         isUpdatingConfigControls = true;
         try {
             if (modelCombo.getItemCount() > 0 && modelCombo.getSelectedIndex() < 0) {
@@ -347,13 +347,7 @@ public class ConfigPanelController {
         }
     }
 
-    public void ensureDefaultModelAdded() {
-        String envModel = System.getenv("OPENCODE_MODEL");
-        if (modelResolver.getLastSelectedModelId() == null && envModel != null && !envModel.isEmpty() && modelCombo.getItemCount() == 0) {
-            modelCombo.addItem(new ConfigItem(envModel, envModel));
-            modelResolver.setLastSelectedModelId(envModel);
-        }
-    }
+
 
     public boolean isAnyPopupVisible() {
         if (activeCustomPopup != null && activeCustomPopup.isVisible()) {
