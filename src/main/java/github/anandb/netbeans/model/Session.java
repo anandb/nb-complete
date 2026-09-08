@@ -16,7 +16,9 @@ public record Session(
     String parentID,
     @JsonProperty("updatedAt") String updatedAt,
     List<Object> mcpServers,
-    List<SessionConfigOption> configOptions
+    List<SessionConfigOption> configOptions,
+    ModelsInfo models,
+    ModesInfo modes
 ) {
     public String effectiveDirectory() {
         return cwd() != null ? cwd() : directory();
@@ -28,5 +30,11 @@ public record Session(
             return null;
         }
         return new File(dir).getName();
+    }
+
+    /** Creates a copy with models and modes filled in. */
+    public Session withModelsAndModes(ModelsInfo models, ModesInfo modes) {
+        return new Session(id, title, cwd, directory, parentID, updatedAt,
+                mcpServers, configOptions, models, modes);
     }
 }
