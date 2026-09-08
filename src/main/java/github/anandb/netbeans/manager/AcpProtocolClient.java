@@ -20,6 +20,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import java.util.concurrent.atomic.AtomicLong;
@@ -97,7 +98,7 @@ public class AcpProtocolClient implements Closeable {
     private final WireLogger wireLogger;
 
     private volatile boolean running = true;
-    private volatile boolean closed = false;
+    private final AtomicBoolean closed = new AtomicBoolean(false);
     private volatile long lastDataTime;
     private volatile String closeReason;
     private final AtomicInteger pendingPermissions = new AtomicInteger(0);
@@ -140,7 +141,7 @@ public class AcpProtocolClient implements Closeable {
     }
 
     private CompletableFuture<JsonNode> doSendRequest(String method, Object params, long timeout, TimeUnit unit) {
-        if (closed) {
+        if (closed.get()) {
             return CompletableFuture.failedFuture(new IOException("Client closed"));
         }
         long id = nextId.getAndIncrement();
@@ -152,7 +153,7 @@ public class AcpProtocolClient implements Closeable {
 
         // Re-check closed after put — if close() drained the map between
         // our top-level guard and this put, remove the orphaned future.
-        if (closed) {
+        if (closed.get()) {
             pendingRequests.remove(id);
             requestIdleTimeouts.remove(id);
             future.completeExceptionally(new IOException("Client closed"));
@@ -170,7 +171,7 @@ public class AcpProtocolClient implements Closeable {
         // server's stdin pipe buffer is full, it must not freeze the UI.
         final long capturedId = id;
         CompletableFuture.runAsync(() -> {
-            if (closed) {
+            if (closed.get()) {
                 pendingRequests.remove(capturedId);
                 requestIdleTimeouts.remove(capturedId);
                 future.completeExceptionally(new IOException("Client closed"));
@@ -181,6 +182,12 @@ public class AcpProtocolClient implements Closeable {
                 String json = MAPPER.writeValueAsString(request);
                 LOG.fine("[ACP] Sending request: {0}", method);
                 synchronized (writer) {
+                    if (closed.get()) {
+                        pendingRequests.remove(capturedId);
+                        requestIdleTimeouts.remove(capturedId);
+                        future.completeExceptionally(new IOException("Client closed"));
+                        return;
+                    }
                     writer.write(json);
                     writer.newLine();
                     writer.flush();
@@ -203,7 +210,7 @@ public class AcpProtocolClient implements Closeable {
     }
 
     public void sendNotification(String method, Object params) {
-        if (closed) return;
+        if (closed.get()) return;
         ObjectNode notification = MAPPER.createObjectNode();
         notification.put("jsonrpc", "2.0");
         notification.put("method", method);
@@ -212,11 +219,12 @@ public class AcpProtocolClient implements Closeable {
         // Send on a background thread to avoid blocking the caller (which may
         // be EDT) on pipe I/O.
         CompletableFuture.runAsync(() -> {
-            if (closed) return;
+            if (closed.get()) return;
             try {
                 String json = MAPPER.writeValueAsString(notification);
                 LOG.fine("[ACP] Sending notification: {0}", method);
                 synchronized (writer) {
+                    if (closed.get()) return;
                     writer.write(json);
                     writer.newLine();
                     writer.flush();
@@ -259,7 +267,7 @@ public class AcpProtocolClient implements Closeable {
                 LOG.warn("JSON-RPC reader thread error after close: {0}", ExceptionUtils.getMessage(e));
             }
         } finally {
-            if (!closed) {
+            if (!closed.get()) {
                 notifyDisconnection();
             }
         }
@@ -513,8 +521,7 @@ public class AcpProtocolClient implements Closeable {
 
     @Override
     public void close() {
-        if (closed) return;
-        closed = true;
+        if (!closed.compareAndSet(false, true)) return;
         running = false;
         stopWatchdog();
         closeQuietly(wireLogger);
