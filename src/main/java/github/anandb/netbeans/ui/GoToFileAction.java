@@ -22,11 +22,10 @@ import github.anandb.netbeans.support.PluginSettings;
  * </ul>
  */
 @ActionID(category = "Navigate", id = "github.anandb.netbeans.ui.GoToFileAction")
-@NbBundle.Messages("CTL_GoToFileAction=Jump to file")
 public class GoToFileAction extends AbstractAction {
 
     public GoToFileAction() {
-        putValue(NAME, Bundle.CTL_GoToFileAction());
+        putValue(NAME, NbBundle.getMessage(GoToFileAction.class, "CTL_GoToFileAction"));
     }
 
     @Override

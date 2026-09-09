@@ -7,6 +7,7 @@ import github.anandb.netbeans.model.HarnessCatalog;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -96,10 +97,12 @@ class BinaryResolverTest {
     }
 
     @Test
-    void missingPathFallsBackToOpencode() {
-        assertEquals("opencode", BinaryResolver.binaryNameFromPath(null));
-        assertEquals("opencode", BinaryResolver.binaryNameFromPath(""));
-        assertEquals("opencode", BinaryResolver.binaryNameFromPath("  "));
+    void missingPathFallsBackToNull() {
+        // No configured binary = null (generic pre-selection default), which
+        // maps to the generic agent icon/display name, not opencode.
+        assertNull(BinaryResolver.binaryNameFromPath(null));
+        assertNull(BinaryResolver.binaryNameFromPath(""));
+        assertNull(BinaryResolver.binaryNameFromPath("  "));
     }
 
     @Test

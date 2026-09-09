@@ -129,9 +129,10 @@ public class ComponentLifecycleHandler {
             // Refresh is handled by deferStartupSessionLoad() after the grace period.
             closedProjectDirs = Set.of();
 
-            // Proactive binary check: if the agent binary is not installed,
-            // detect every catalog harness on a background thread and show
-            // the harness chooser (always, even when exactly one was found).
+            // Proactive binary check: PATH discovery never auto-selects a
+            // binary. When none is explicitly configured, detect every catalog
+            // harness on a background thread and show the harness chooser —
+            // always, even when exactly one was found.
             if (!BinaryResolver.isAvailable()) {
                 RequestProcessor.getDefault().post(() -> {
                     List<BinaryResolver.FoundBinary> found = BinaryResolver.findAllKnownOnPath();

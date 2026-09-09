@@ -2,6 +2,8 @@ package github.anandb.netbeans.ui;
 
 import github.anandb.netbeans.support.Logger;
 import java.awt.CardLayout;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
 import javax.swing.JButton;
@@ -248,7 +250,18 @@ public class StatusController {
         SwingUtilities.invokeLater(() -> {
             toggleOptionsBtn.setVisible(enabled);
             inputArea.setEnabled(enabled);
+            for (Consumer<Boolean> listener : inputEnabledListeners) {
+                listener.accept(enabled);
+            }
         });
+    }
+
+    /** Listeners notified (on the EDT) whenever the input-enabled state changes. */
+    private final List<Consumer<Boolean>> inputEnabledListeners = new CopyOnWriteArrayList<>();
+
+    /** Registers a listener that follows the input text area's enabled state. */
+    public void addInputEnabledListener(Consumer<Boolean> listener) {
+        inputEnabledListeners.add(listener);
     }
 
     // -- Cleanup --

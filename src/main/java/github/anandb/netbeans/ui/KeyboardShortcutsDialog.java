@@ -45,11 +45,6 @@ import github.anandb.netbeans.support.ShortcutUtils;
  */
 // DSL-LEAF: keep imperative, wrap via UI.of(...) — JDialog modal form. Low-risk DSL pilot candidate
 // (self-contained; no streaming/timer bridge). Migration target: DialogSpec family.
-@NbBundle.Messages({
-    "LBL_Unassigned=Unassigned",
-    "LBL_Action= Action",
-    "LBL_Actions= Actions"
-})
 final class KeyboardShortcutsDialog extends JDialog {
 
     private static final long serialVersionUID = 1L;
@@ -249,7 +244,8 @@ final class KeyboardShortcutsDialog extends JDialog {
                     boolean sel, boolean focus, int row, int column) {
                 String key = val != null ? val.toString() : "";
                 if (isUnassigned(key)) {
-                    setText("<html><i style='color:" + unassignedFg + ";'>" + Bundle.LBL_Unassigned() + "</i></html>");
+                    setText("<html><i style='color:" + unassignedFg + ";'>"
+                            + NbBundle.getMessage(KeyboardShortcutsDialog.class, "LBL_Unassigned") + "</i></html>");
                 } else {
                     setText("<html>" + renderKbdBadge(key, kbdBg, kbdFg, unassignedFg) + "</html>");
                 }
@@ -322,8 +318,13 @@ final class KeyboardShortcutsDialog extends JDialog {
         }
 
         // Summary label — full width, looks like a table row
-        String count = unassigned.size() + (unassigned.size() == 1 ? Bundle.LBL_Action() : Bundle.LBL_Actions());
-        JLabel summary = new JLabel("  " + Bundle.LBL_Unassigned() + " \u00a0\u00a0\u00a0 " + count + "  \u25BC");
+        String actionWord = unassigned.size() == 1
+                ? NbBundle.getMessage(KeyboardShortcutsDialog.class, "LBL_Action")
+                : NbBundle.getMessage(KeyboardShortcutsDialog.class, "LBL_Actions");
+        String count = unassigned.size() + actionWord;
+        JLabel summary = new JLabel("  "
+                + NbBundle.getMessage(KeyboardShortcutsDialog.class, "LBL_Unassigned")
+                + " \u00a0\u00a0\u00a0 " + count + "  \u25BC");
         summary.setFont(summary.getFont().deriveFont(Font.BOLD, summary.getFont().getSize() + 1f));
         summary.setForeground(unassignedFg);
         summary.setBorder(BorderFactory.createCompoundBorder(

@@ -76,8 +76,8 @@ public final class BinaryResolver {
 
     /**
      * Returns the lowercase basename (with any {@code .exe} suffix stripped) of
-     * the resolved ACP server binary, or {@code "opencode"} when the default
-     * binary is used. This is the same binary that {@link #buildWslArgs(String...)}
+     * the configured ACP server binary, or {@code null} when no binary is
+     * configured (the pre-selection default). This is the same binary that {@link #buildWslArgs(String...)}
      * wraps on WSL, since both derive from {@link #findExecutablePathOrNull()}.
      */
     public static String resolveBinaryName() {
@@ -85,12 +85,13 @@ public final class BinaryResolver {
     }
 
     /** Maps a resolved executable path to its lowercase binary name, stripping
-     *  a {@code .exe} suffix (Windows), or {@code "opencode"} when no path is
-     *  resolved. Windows-style backslash separators are normalized so basename
-     *  extraction works on any OS. Package-private for tests. */
+     *  a {@code .exe} suffix (Windows), or {@code null} when no path is
+     *  resolved (no harness configured — the pre-selection default). Windows-
+     *  style backslash separators are normalized so basename extraction works
+     *  on any OS. Package-private for tests. */
     static String binaryNameFromPath(String path) {
         if (path == null || path.isBlank()) {
-            return "opencode";
+            return null;
         }
         String name = new File(path.replace('\\', '/')).getName();
         String lower = name.toLowerCase(Locale.ROOT);
@@ -108,7 +109,8 @@ public final class BinaryResolver {
      * goose, ...) get token-protected URLs.
      */
     public static boolean isPiHarness() {
-        return PI_HARNESS.contains(resolveBinaryName());
+        String name = resolveBinaryName();
+        return name != null && PI_HARNESS.contains(name);
     }
 
     /**
@@ -133,19 +135,26 @@ public final class BinaryResolver {
         Preferences nbPrefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
         String configuredPath = nbPrefs.get("acpExecutablePath", null);
 
-        // 1. Configured absolute path
+        // 1. Configured absolute path (native binary that exists)
         if (isNotBlank(configuredPath)) {
             File f = new File(configuredPath);
             if (f.isAbsolute() && f.exists()) {
                 LOG.fine("Using configured absolute path: {0}", configuredPath);
                 return configuredPath;
-            } else {
-                LOG.warn("Configured path not found: {0}", configuredPath);
             }
+            // WSL-internal paths (e.g. /usr/local/bin/goose) never exist on
+            // the Windows filesystem; accept them when WSL launching is enabled.
+            if (configuredPath.startsWith("/") && isWslAvailable()) {
+                LOG.fine("Using configured WSL-internal path: {0}", configuredPath);
+                return configuredPath;
+            }
+            LOG.warn("Configured path not found: {0}", configuredPath);
         }
 
-        // 2. Search system PATH for any known harness
-        return findFirstKnownOnPath();
+        // 2. Binaries found on PATH are never auto-used — the user must pick
+        // one through the onboarding selection UI, which persists the choice
+        // as the configured path above.
+        return null;
     }
 
     /**
@@ -204,23 +213,14 @@ public final class BinaryResolver {
     }
 
     /**
-     * Returns true if the agent binary is available (either configured or on PATH).
-     * Unlike resolveExecutablePath(), this does not throw.
+     * Returns true if an agent binary is explicitly configured (a native path
+     * that exists, or a WSL-internal path while WSL launching is enabled).
+     * Binaries merely found on PATH do not count — the user must select one
+     * through the onboarding UI first. Unlike resolveExecutablePath(), this
+     * does not throw.
      */
     public static boolean isAvailable() {
-        Preferences nbPrefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
-        String configuredPath = nbPrefs.get("acpExecutablePath", null);
-
-        // 1. Check configured absolute path
-        if (isNotBlank(configuredPath)) {
-            File f = new File(configuredPath);
-            if (f.isAbsolute() && f.exists()) {
-                return true;
-            }
-        }
-
-        // 2. Search system PATH for any known harness
-        return findFirstKnownOnPath() != null;
+        return findExecutablePathOrNull() != null;
     }
 
     /** One harness binary found on this system: the catalog id, the binary

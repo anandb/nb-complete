@@ -1069,7 +1069,7 @@ public class MiniAssistantDialog extends JDialog {
             ColorTheme theme = ThemeManager.getCurrentTheme();
 
             if (fileChanges != null && !fileChanges.isEmpty()) {
-                JButton showDiffBtn = new JButton(Bundle.BTN_ShowDiff());
+                JButton showDiffBtn = new JButton(NbBundle.getMessage(PermissionBubble.class, "BTN_ShowDiff"));
                 showDiffBtn.setFocusPainted(false);
                 showDiffBtn.setBorder(BorderFactory.createCompoundBorder(
                         BorderFactory.createLineBorder(theme.bubbleBorder(), 1),
@@ -1183,7 +1183,7 @@ public class MiniAssistantDialog extends JDialog {
             }
             // Drop any existing Show Diff button (e.g. a stale one from a prior request).
             for (Component c : miniPermissionButtons.getComponents()) {
-                if (c instanceof JButton b && Bundle.BTN_ShowDiff().equals(b.getText())) {
+                if (c instanceof JButton b && NbBundle.getMessage(PermissionBubble.class, "BTN_ShowDiff").equals(b.getText())) {
                     miniPermissionButtons.remove(b);
                 }
             }
@@ -1200,7 +1200,7 @@ public class MiniAssistantDialog extends JDialog {
                     }
                 }
                 ColorTheme theme = ThemeManager.getCurrentTheme();
-                JButton showDiffBtn = new JButton(Bundle.BTN_ShowDiff());
+                JButton showDiffBtn = new JButton(NbBundle.getMessage(PermissionBubble.class, "BTN_ShowDiff"));
                 showDiffBtn.setFocusPainted(false);
                 showDiffBtn.setBorder(BorderFactory.createCompoundBorder(
                         BorderFactory.createLineBorder(theme.bubbleBorder(), 1),

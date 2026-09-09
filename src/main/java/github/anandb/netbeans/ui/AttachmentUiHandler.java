@@ -42,6 +42,9 @@ public class AttachmentUiHandler {
         this.paperclipBtn = UIUtils.createToolbarButton("paperclip.svg",
                 NbBundle.getMessage(AssistantTopComponent.class, "HINT_AttachFiles"), null);
         this.paperclipBtn.addActionListener(e -> showPaperclipMenu(e));
+        // The paperclip follows the input text area's enabled state (disabled
+        // while no session is active or a message is in flight).
+        statusController.addInputEnabledListener(enabled -> paperclipBtn.setEnabled(enabled));
 
         setupImagePasteHandler(inputArea);
     }

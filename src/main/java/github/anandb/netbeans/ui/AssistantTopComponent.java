@@ -84,9 +84,6 @@ import java.util.prefs.Preferences;
     displayName = "#CTL_AssistantAction",
     preferredID = "AssistantTopComponent"
 )
-@NbBundle.Messages({
-    "CTL_LocateInSystem=Locate in System"
-})
 // DSL-LEAF: not a controller — TopComponent is the root view shell. The DSL
 // migration ports the BorderLayout.add(...) + JSplitPane assembly to a
 // declarative tree; the lifecycle handlers (componentOpened/componentClosed)
@@ -505,16 +502,23 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
     /** Applies agent capability flags to queueing and token-stats UI.
      *  Queueing (envelope icon) is enabled only for goose; token stats
-     *  (currency icon) only when the agent supports the stats subprocess. */
+     *  (currency icon) only when the harness supports the stats subprocess
+     *  AND a harness is actually configured. */
     private void applyAgentCapabilities(AgentCapabilities caps) {
         queueManager.setEnabled(caps.supportsMessageQueue());
-        tokenUsageBtn.setEnabled(caps.supportsTokenStats());
-        tokenUsageBtn.setVisible(caps.supportsTokenStats());
+        updateTokenStatsButton(caps);
         JButton sendBtn = layoutBuilder.getSendBtn();
         if (sendBtn != null) {
             String goText = NbBundle.getMessage(AssistantTopComponent.class, "BTN_Go");
             sendBtn.setToolTipText(goText + " (" + caps.displayName() + ")");
         }
+    }
+
+    /** Enables the token-stats button only when the harness supports the stats
+     *  subprocess and a harness binary is configured. */
+    private void updateTokenStatsButton(AgentCapabilities caps) {
+        tokenUsageBtn.setVisible(caps.supportsTokenStats());
+        tokenUsageBtn.setEnabled(caps.supportsTokenStats() && BinaryResolver.isAvailable());
     }
     private void updateAttentionAnimation() {
         Project[] projects = projectContext.getAllOpenProjects();
@@ -952,7 +956,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         if (cwd == null || cwd.isEmpty()) return;
 
         JPopupMenu popup = new JPopupMenu();
-        JMenuItem locateItem = new JMenuItem(Bundle.CTL_LocateInSystem());
+        JMenuItem locateItem = new JMenuItem(NbBundle.getMessage(AssistantTopComponent.class, "CTL_LocateInSystem"));
         locateItem.addActionListener(ev -> openCwdInSystemBrowser(cwd));
         popup.add(locateItem);
         popup.show(cwdLabel, e.getX(), e.getY());
@@ -1050,6 +1054,8 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                 filterBtn.setEnabled(false);
                 refreshBtn.setEnabled(false);
                 exportBtn.setEnabled(false);
+                // No harness configured — token stats cannot be available.
+                tokenUsageBtn.setEnabled(false);
                 // restartServerBtn stays enabled so user can retry after installing
 
                 // Disable input area
@@ -1078,6 +1084,11 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                 refreshBtn.setEnabled(hasSession);
                 exportBtn.setEnabled(hasSession);
                 helpBtn.setEnabled(true);
+                // Re-gate token stats: capabilities + whether a harness is now configured.
+                ProcessControl pc = Lookup.getDefault().lookup(ProcessControl.class);
+                if (pc != null) {
+                    updateTokenStatsButton(pc.getCapabilities());
+                }
 
                 // updateButtonState derives the Go button from sessionActive;
                 // setInputEnabled no longer touches buttons.
