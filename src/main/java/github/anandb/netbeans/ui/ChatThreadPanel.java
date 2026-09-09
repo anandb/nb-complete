@@ -78,7 +78,6 @@ public class ChatThreadPanel extends JPanel {
     private final JScrollPane scrollPane;
     private final JLayeredPane layeredPane;
     private final JProgressBar sessionProgressBar;
-    private JLabel lastPermissionLabel;
 
     // --- Collaborators ---
     private final transient ScrollController scrollController;
@@ -121,8 +120,9 @@ public class ChatThreadPanel extends JPanel {
     private final transient Map<String, Set<String>> seenMessageIdsBySession = new ConcurrentHashMap<>();
 
     // --- Permission state ---
-    private boolean lastPermissionAllowed;
-    private int permissionCount = 0;
+    /** Client-property keys stored on permission result labels. */
+    private static final String PERM_ALLOWED_KEY = "permission.allowed";
+    private static final String PERM_COUNT_KEY = "permission.count";
 
     // --- Callbacks ---
     /** Debounced flush timer. Reset on each processed message, fires 300ms after last drain. */
@@ -451,12 +451,11 @@ public class ChatThreadPanel extends JPanel {
 
     private void addSingleBubble(MessageType type, String text, String messageId, String toolTitle, boolean streaming, boolean wasAtBottom) {
 
-        // Reset permission grouping when a VISIBLE non-permission message arrives.
-        // Hidden (filtered) messages must not break consecutive Allowed results.
+        // Permission grouping is resolved at addPermissionResult() time by
+        // scanning the container for the last visible permission wrapper, so
+        // no reset is needed here — bubbles that are later hidden, blank-swept
+        // or combined no longer break consecutive permission results.
         boolean visible = !MessageFilterManager.isTypeHidden(type.roleName());
-        if (visible) {
-            lastPermissionLabel = null;
-        }
 
         // Sweep orphaned streaming JTextAreas before creating new bubble. Skip in batch mode.
         if (!isBatchMode) {
@@ -778,18 +777,24 @@ public class ChatThreadPanel extends JPanel {
             Color bg = theme.sunkenBackground();
             Color fg = theme.secondary2();
 
-            // Merge consecutive same-allowed results into a single bubble
-            if (lastPermissionLabel != null && lastPermissionAllowed == allowed
-                    && lastPermissionLabel.getParent() != null) {
-                permissionCount++;
-                lastPermissionLabel.setText(displayStatusText + " \u00D7" + permissionCount);
-                lastPermissionLabel.getParent().revalidate();
+            // Merge consecutive same-allowed results into a single bubble.
+            // Resolved by scanning the container (not by a cached label
+            // reference): intermediate messages that are later hidden,
+            // blank-swept or combined no longer break the grouping. A visible
+            // user/assistant bubble between two results still prevents merge;
+            // tool/thought activity does not.
+            JLabel lastLabel = findLastPermissionLabel();
+            Boolean lastAllowed = lastLabel == null ? null : (Boolean) lastLabel.getClientProperty(PERM_ALLOWED_KEY);
+            boolean sameAllowed = lastAllowed != null && lastAllowed == allowed;
+            if (lastLabel != null && sameAllowed) {
+                int count = (Integer) lastLabel.getClientProperty(PERM_COUNT_KEY) + 1;
+                lastLabel.putClientProperty(PERM_COUNT_KEY, count);
+                lastLabel.setText(displayStatusText + " \u00D7" + count);
+                lastLabel.getParent().revalidate();
                 scrollController.scrollToBottom(true);
                 return;
             }
 
-            permissionCount = 1;
-            lastPermissionAllowed = allowed;
             JLabel lbl = new JLabel(displayStatusText,
                     ThemeManager.getIcon(allowed ? "check.svg" : "x.svg", 16),
                     SwingConstants.LEFT);
@@ -799,7 +804,9 @@ public class ChatThreadPanel extends JPanel {
             lbl.setForeground(fg);
             lbl.setOpaque(true);
             lbl.setBackground(bg);
-            lastPermissionLabel = lbl;
+
+            lbl.putClientProperty(PERM_ALLOWED_KEY, allowed);
+            lbl.putClientProperty(PERM_COUNT_KEY, 1);
 
             RoundedPanel rp = new RoundedPanel(12);
             rp.setLayout(new BorderLayout());
@@ -819,6 +826,46 @@ public class ChatThreadPanel extends JPanel {
             messagesContainer.revalidate();
             scrollController.scrollToBottom(true);
         });
+    }
+
+    /**
+     * Scans the message container backwards and returns the label of the
+     * closest preceding permission-result bubble, or {@code null} when the
+     * merge should not happen.
+     *
+     * <p>Invisible components (filtered/blank-swept bubbles, struts) are
+     * skipped. Any visible message bubble stops the scan — its content
+     * belongs between the two permission results.</p>
+     */
+    private JLabel findLastPermissionLabel() {
+        Component[] comps = messagesContainer.getComponents();
+        for (int i = comps.length - 1; i >= 0; i--) {
+            Component c = comps[i];
+            if (c instanceof Box.Filler || !c.isVisible()) {
+                continue;
+            }
+            JLabel lbl = findPermissionLabel(c);
+            if (lbl != null) {
+                return lbl;
+            }
+            if (c instanceof MessageBubble) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    /** Unwraps the tagged permission label from a container component, if any. */
+    private static JLabel findPermissionLabel(Component c) {
+        if (c instanceof JPanel p && p.getComponentCount() == 1) {
+            Component inner = p.getComponent(0);
+            if (inner instanceof RoundedPanel rp && rp.getComponentCount() == 1
+                    && rp.getComponent(0) instanceof JLabel lbl
+                    && lbl.getClientProperty(PERM_ALLOWED_KEY) != null) {
+                return lbl;
+            }
+        }
+        return null;
     }
 
     public void addMissingBinaryBubble(Runnable onGuide, RestartCallback restartCallback) {
