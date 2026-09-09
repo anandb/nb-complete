@@ -1,6 +1,7 @@
 package github.anandb.netbeans.support;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -10,6 +11,8 @@ import java.util.regex.Pattern;
 import org.apache.commons.exec.CommandLine;
 import org.openide.util.NbBundle;
 import org.openide.util.NbPreferences;
+
+import github.anandb.netbeans.model.HarnessCatalog;
 
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
@@ -24,9 +27,12 @@ public final class BinaryResolver {
      *  Package-visible for tests. */
     static final Set<String> PI_HARNESS = Set.of("pi", "pi-acp", "pi-agent");
 
-    /** Known ACP harness binaries, in discovery order. Linux names without {@code .exe}. */
-    public static final List<String> KNOWN_HARNESSES =
-            List.of("opencode", "pi-agent", "pi-acp", "goose", "agent");
+    /** Known ACP harness binaries (launch-capable entry points), derived from
+     *  {@link HarnessCatalog}. Linux names without {@code .exe}. */
+    public static final List<String> KNOWN_HARNESSES = HarnessCatalog.ALL.stream()
+            .flatMap(h -> h.binaryNames().stream())
+            .distinct()
+            .toList();
 
     private BinaryResolver() {}
 
@@ -217,6 +223,95 @@ public final class BinaryResolver {
         return findFirstKnownOnPath() != null;
     }
 
+    /** One harness binary found on this system: the catalog id, the binary
+     *  basename, and the absolute path (native or WSL-internal). */
+    public record FoundBinary(String harnessId, String displayName, String path) { }
+
+    /**
+     * Detects every catalog harness available on this system.
+     *
+     * <p>Scans the native PATH (plus well-known Windows install dirs) for each
+     * harness's launch binaries. When WSL is available and enabled, the WSL
+     * distribution is additionally probed (in a single batched {@code wsl.exe}
+     * call) so Linux-side installs are detected too; WSL paths are reported
+     * when the native PATH has no hit for that harness.
+     *
+     * <p>Runs blocking filesystem/probe I/O — call from a background thread.
+     *
+     * @return one entry per detected harness, in catalog order; empty when none
+     */
+    public static List<FoundBinary> findAllKnownOnPath() {
+        List<FoundBinary> found = new ArrayList<>();
+        for (HarnessCatalog.Harness harness : HarnessCatalog.ALL) {
+            String nativePath = null;
+            for (String name : harness.binaryNames()) {
+                String p = findOnPath(name);
+                if (p != null) {
+                    nativePath = p;
+                    break;
+                }
+            }
+            if (nativePath != null) {
+                found.add(new FoundBinary(harness.id(), harness.displayName(), nativePath));
+                continue;
+            }
+            if (isWslAvailable()) {
+                String wslPath = findFirstKnownOnWslPath(harness.binaryNames());
+                if (wslPath != null) {
+                    found.add(new FoundBinary(harness.id(), harness.displayName(), wslPath));
+                }
+            }
+        }
+        return found;
+    }
+
+    /**
+     * Probes the WSL distribution for the first of the given binary names
+     * that exists, using a single {@code wsl.exe} invocation.
+     *
+     * @param names bare Linux binary names, in preference order
+     * @return the Linux path of the first binary found, or {@code null}
+     */
+    static String findFirstKnownOnWslPath(List<String> names) {
+        try {
+            List<String> cmd = new ArrayList<>(List.of(
+                    "wsl.exe", "-e", "bash", "-lc",
+                    "for n in \"$@\"; do p=$(command -v \"$n\" 2>/dev/null) && "
+                            + "{ printf '%s=%s\\n' \"$n\" \"$p\"; }; done",
+                    "--"));
+            cmd.addAll(names);
+            ProcessBuilder pb = new ProcessBuilder(cmd);
+            pb.redirectErrorStream(true);
+            Process proc = pb.start();
+            try {
+                java.util.Map<String, String> hits = new java.util.LinkedHashMap<>();
+                try (var reader = proc.inputReader()) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        int eq = line.indexOf('=');
+                        if (eq > 0) {
+                            hits.putIfAbsent(line.substring(0, eq).trim(), line.substring(eq + 1).trim());
+                        }
+                    }
+                }
+                proc.waitFor(10, java.util.concurrent.TimeUnit.SECONDS);
+                for (String name : names) {
+                    String p = hits.get(name);
+                    if (p != null && !p.isBlank()) {
+                        return p;
+                    }
+                }
+            } finally {
+                if (proc.isAlive()) {
+                    proc.destroyForcibly();
+                }
+            }
+        } catch (Exception e) {
+            LOG.fine("WSL batch probe failed: {0}", e.getMessage());
+        }
+        return null;
+    }
+
     /**
      * Returns {@code true} if WSL ({@code wsl.exe}) is available on this
      * Windows system and the user has not disabled WSL usage in the options.
@@ -337,6 +432,14 @@ public final class BinaryResolver {
 
     /** Returns the inner command used inside the WSL {@code bash -lc} wrapper. */
     private static String wslInnerCommand() {
+        // A configured WSL-internal path (e.g. /usr/local/bin/goose) does not
+        // exist on the Windows filesystem, so findExecutablePathOrNull() skips
+        // it — honor it here so non-default harnesses launch inside WSL.
+        Preferences nbPrefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
+        String configuredPath = nbPrefs.get("acpExecutablePath", null);
+        if (isNotBlank(configuredPath) && configuredPath.startsWith("/")) {
+            return configuredPath;
+        }
         String nativeExe = findExecutablePathOrNull();
         if (nativeExe != null) {
             return toWslPath(nativeExe);

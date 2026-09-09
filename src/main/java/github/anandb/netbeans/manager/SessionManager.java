@@ -956,7 +956,7 @@ public class SessionManager implements SessionQuery, SessionControl {
      * Resets sticky session state before a MANUAL server restart (not a crash).
      * The crash path already transitions to IDLE via {@code setCrashHandler};
      * the manual restart path (Restart Server button, executable-path
-     * preference change, MissingBinaryBubble) never touched the state machine.
+     * preference change, OnboardingBubble) never touched the state machine.
      * A state stuck in LOADING/STOPPING makes the post-restart loadSession()
      * (which requires IDLE or STREAMING) refuse to run, so the panel stays
      * frozen until the whole IDE is restarted. Called synchronously by

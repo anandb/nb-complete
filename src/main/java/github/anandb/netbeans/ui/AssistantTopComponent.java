@@ -48,6 +48,8 @@ import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.model.SessionItem;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.PluginSettings;
+import github.anandb.netbeans.model.HarnessCatalog;
+import github.anandb.netbeans.support.BinaryResolver;
 import github.anandb.netbeans.support.PreferenceKeys;
 
 import github.anandb.netbeans.ui.platform.PlatformBridge;
@@ -64,7 +66,6 @@ import javax.swing.JPopupMenu;
 import javax.swing.Timer;
 import javax.swing.border.EmptyBorder;
 import org.netbeans.api.project.Project;
-import github.anandb.netbeans.support.BrowserUtils;
 import java.util.prefs.Preferences;
 
 
@@ -1021,6 +1022,18 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     }
 
     void setBinaryNotFoundState(boolean notFound) {
+        showHarnessChooser(notFound ? java.util.List.of() : null);
+    }
+
+    /**
+     * Enters or exits the harness-chooser (binary-not-found) state. When
+     * entered with a non-null list, the onboarding bubble lists each catalog
+     * harness with its detection status; an empty list means nothing was
+     * found (install-only view). When exited (null), buttons are restored to
+     * their normal session-aware state.
+     */
+    void showHarnessChooser(java.util.List<BinaryResolver.FoundBinary> foundBinaries) {
+        boolean notFound = foundBinaries != null;
         // Publish the volatile flag synchronously so any concurrently queued
         // EDT task (e.g. updateNewSessionBtnState) sees the new value instead
         // of a stale "binary available" state.
@@ -1042,14 +1055,15 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                 // Disable input area
                 statusController.setInputEnabled(false);
 
-                // Show warning in chat panel
+                // Show the harness chooser / install wizard in chat panel
                 chatPanel.stopStreaming();
                 chatPanel.clearMessages();
-                chatPanel.addMissingBinaryBubble(
-                    () -> BrowserUtils.openOrCopyUrl("https://opencode.ai/docs/", null, null),
+                chatPanel.addOnboardingBubble(foundBinaries,
+                    this::onHarnessSelected,
                     onRestarted -> promptRestartServer(onRestarted)
                 );
-                statusController.setStatus("STATUS_BinaryNotFound");
+                statusController.setStatus(foundBinaries.isEmpty()
+                        ? "STATUS_BinaryNotFound" : "STATUS_ChooseAgent");
             } else {
                 // Restore normal session-aware state. Do not touch the status
                 // bar — the caller (e.g. restartServer success) manages it.
@@ -1070,6 +1084,27 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                 statusController.updateButtonState(false);
                 statusController.setInputEnabled(true);
             }
+        });
+    }
+
+    /**
+     * Persists the user's harness choice (executable path + harness-specific
+     * launch arguments) on a background thread, then restarts the server.
+     * Called from the onboarding bubble's "Use" button.
+     */
+    private void onHarnessSelected(String harnessId, String path) {
+        HarnessCatalog.Harness harness = HarnessCatalog.byId(harnessId);
+        if (harness == null) {
+            LOG.severe("Unknown harness id in onboarding selection: {0}", harnessId);
+            return;
+        }
+        java.util.prefs.Preferences prefs =
+                NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
+        java.util.concurrent.CompletableFuture.runAsync(() -> {
+            prefs.put("acpExecutablePath", path);
+            prefs.put(PreferenceKeys.PROCESS_ARGUMENTS, harness.launchArgs());
+            LOG.info("Harness selected during onboarding: {0} at {1}", harnessId, path);
+            SwingUtilities.invokeLater(() -> componentLifecycleHandler.restartServer());
         });
     }
 

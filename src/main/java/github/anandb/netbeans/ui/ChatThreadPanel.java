@@ -54,6 +54,7 @@ import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.contract.ProcessControl;
 import github.anandb.netbeans.model.AgentCapabilities;
+import github.anandb.netbeans.support.BinaryResolver;
 import github.anandb.netbeans.support.GlobalOpencodeConfig;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.MessageIdGenerator;
@@ -868,12 +869,14 @@ public class ChatThreadPanel extends JPanel {
         return null;
     }
 
-    public void addMissingBinaryBubble(Runnable onGuide, RestartCallback restartCallback) {
+    /** Shows the harness onboarding bubble (detection + choice + install) as a sidebar bubble. */
+    public void addOnboardingBubble(java.util.List<BinaryResolver.FoundBinary> found,
+            OnboardingBubble.SelectionCallback selectionCallback, RestartCallback restartCallback) {
         SwingUtilities.invokeLater(() -> {
             // Clear the thread so this is the only bubble shown.
             messagesContainer.removeAll();
             startSessionHintShown = false;
-            MissingBinaryBubble bubble = new MissingBinaryBubble(onGuide, restartCallback);
+            OnboardingBubble bubble = new OnboardingBubble(found, selectionCallback, restartCallback);
             messagesContainer.add(bubble);
             messagesContainer.add(Box.createVerticalStrut(4));
             messagesContainer.revalidate();

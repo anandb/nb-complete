@@ -2,8 +2,11 @@ package github.anandb.netbeans.support;
 
 import org.junit.jupiter.api.Test;
 
+import github.anandb.netbeans.model.HarnessCatalog;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -36,11 +39,41 @@ class BinaryResolverTest {
     @Test
     void knownHarnessesIncludeCursorAgentAndOthers() {
         assertTrue(BinaryResolver.KNOWN_HARNESSES.contains("opencode"));
-        assertTrue(BinaryResolver.KNOWN_HARNESSES.contains("pi-agent"));
         assertTrue(BinaryResolver.KNOWN_HARNESSES.contains("pi-acp"));
         assertTrue(BinaryResolver.KNOWN_HARNESSES.contains("goose"));
         assertTrue(BinaryResolver.KNOWN_HARNESSES.contains("agent"));
+        // Detection is by ACP entry point only — bare pi / pi-agent are not probed.
+        assertFalse(BinaryResolver.KNOWN_HARNESSES.contains("pi"));
+        assertFalse(BinaryResolver.KNOWN_HARNESSES.contains("pi-agent"));
         assertFalse(BinaryResolver.PI_HARNESS.contains("agent"));
+    }
+
+    @Test
+    void knownHarnessesDerivedFromCatalog() {
+        // Every catalog launch binary must be part of the detection set...
+        for (HarnessCatalog.Harness harness : HarnessCatalog.ALL) {
+            for (String name : harness.binaryNames()) {
+                assertTrue(BinaryResolver.KNOWN_HARNESSES.contains(name),
+                        harness.id() + "/" + name + " missing from KNOWN_HARNESSES");
+            }
+        }
+        // ...and the set must not contain duplicates or non-catalog binaries.
+        long catalogCount = HarnessCatalog.ALL.stream()
+                .flatMap(h -> h.binaryNames().stream()).distinct().count();
+        assertEquals(catalogCount, BinaryResolver.KNOWN_HARNESSES.size());
+    }
+
+    @Test
+    void findAllKnownOnPathReturnsCatalogEntries() {
+        // Exact detection results depend on the machine, but every returned
+        // entry must reference a known catalog harness and a non-blank path.
+        for (BinaryResolver.FoundBinary fb : BinaryResolver.findAllKnownOnPath()) {
+            assertNotNull(HarnessCatalog.byId(fb.harnessId()), fb.harnessId());
+            assertNotNull(HarnessCatalog.byBinaryName(
+                    fb.path().substring(fb.path().replace('\\', '/').lastIndexOf('/') + 1)
+                            .toLowerCase(java.util.Locale.ROOT)));
+            assertFalse(fb.path().isBlank());
+        }
     }
 
     @Test

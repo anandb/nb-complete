@@ -1,7 +1,7 @@
 package github.anandb.netbeans.ui;
 
 /**
- * Callback for the missing-binary bubble's restart action. Instead of a plain
+ * Callback for the onboarding bubble's restart action. Instead of a plain
  * {@link Runnable} (which would run unconditionally), the bubble passes a
  * {@code disableButtons} callback so the {@code onRestart} implementation can
  * gate it: the buttons are disabled only once a restart actually begins.

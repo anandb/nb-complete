@@ -7,6 +7,7 @@ import java.awt.KeyboardFocusManager;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
 import javax.swing.JButton;
@@ -128,42 +129,18 @@ public class ComponentLifecycleHandler {
             // Refresh is handled by deferStartupSessionLoad() after the grace period.
             closedProjectDirs = Set.of();
 
-            // Proactive binary check: if the agent binary is not installed, enter
-            // the "binary not found" state immediately and skip starting the server.
+            // Proactive binary check: if the agent binary is not installed,
+            // detect every catalog harness on a background thread and show
+            // the harness chooser (always, even when exactly one was found).
             if (!BinaryResolver.isAvailable()) {
-                topComponent.setBinaryNotFoundState(true);
+                RequestProcessor.getDefault().post(() -> {
+                    List<BinaryResolver.FoundBinary> found = BinaryResolver.findAllKnownOnPath();
+                    topComponent.showHarnessChooser(found);
+                });
                 return;
             }
 
-            // Offer the global OpenCode configuration prompt BEFORE launching the
-            // server: a starter config written here is picked up on the first
-            // start, so the user does not need to restart a second time.
-            maybeShowGlobalConfigPrompt(promptShown -> {
-                Runnable start = () -> {
-                    RequestProcessor.getDefault().post(() -> processService.get().ensureStarted());
-                    // Register the not-found handler only once the start is actually
-                    // proceeding (after any config prompt is answered), matching the
-                    // restart path below.
-                    processService.get().whenReady().exceptionally(ex -> {
-                        Throwable cause = ex;
-                        while (cause.getCause() != null) {
-                            cause = cause.getCause();
-                        }
-                        if (cause instanceof IllegalStateException && ExceptionUtils.getMessage(cause) != null
-                                && ExceptionUtils.getMessage(cause).contains("not found")) {
-                            topComponent.setBinaryNotFoundState(true);
-                        }
-                        return null;
-                    });
-                };
-                // Mirror the restart flow: when a config prompt was shown, present
-                // the start-a-session hint (with OK) before starting the server.
-                if (promptShown) {
-                    chatPanel.showStartSessionHint(start);
-                } else {
-                    start.run();
-                }
-            });
+            beginStartupAfterBinaryCheck();
         });
 
         // Update status label when MCP server is starting/ready
@@ -520,6 +497,42 @@ public class ComponentLifecycleHandler {
                 }
             });
             return null;
+        });
+    }
+
+    /**
+     * The startup path after the binary check passes: offer the global
+     * OpenCode configuration prompt, then start the server.
+     */
+    private void beginStartupAfterBinaryCheck() {
+        // Offer the global OpenCode configuration prompt BEFORE launching the
+        // server: a starter config written here is picked up on the first
+        // start, so the user does not need to restart a second time.
+        maybeShowGlobalConfigPrompt(promptShown -> {
+            Runnable start = () -> {
+                RequestProcessor.getDefault().post(() -> processService.get().ensureStarted());
+                // Register the not-found handler only once the start is actually
+                // proceeding (after any config prompt is answered), matching the
+                // restart path below.
+                processService.get().whenReady().exceptionally(ex -> {
+                    Throwable cause = ex;
+                    while (cause.getCause() != null) {
+                        cause = cause.getCause();
+                    }
+                    if (cause instanceof IllegalStateException && ExceptionUtils.getMessage(cause) != null
+                            && ExceptionUtils.getMessage(cause).contains("not found")) {
+                        topComponent.setBinaryNotFoundState(true);
+                    }
+                    return null;
+                });
+            };
+            // Mirror the restart flow: when a config prompt was shown, present
+            // the start-a-session hint (with OK) before starting the server.
+            if (promptShown) {
+                chatPanel.showStartSessionHint(start);
+            } else {
+                start.run();
+            }
         });
     }
 

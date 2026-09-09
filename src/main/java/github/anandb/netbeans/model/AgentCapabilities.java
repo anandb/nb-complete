@@ -126,10 +126,10 @@ public final class AgentCapabilities {
             return "logo.svg";
         }
         return switch (binaryName) {
-            case "agent", "cursor-agent" -> "cursor.svg";
-            case "claude", "claude-code-acp", "claude-agent-acp" -> "claude.svg";
+            case "cursor-agent" -> "cursor.svg";
+            case "claude-agent-acp" -> "claude.svg";
             case "goose" -> "goose.svg";
-            case "pi", "pi-acp", "pi-agent" -> "pi-logo.svg";
+            case "pi-acp", "pi-agent" -> "pi-logo.svg";
             default -> "logo.svg";
         };
     }
