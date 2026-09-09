@@ -2,6 +2,7 @@ package github.anandb.netbeans.ui;
 
 import java.awt.BorderLayout;
 import java.awt.Component;
+import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.Insets;
 import java.awt.Rectangle;
@@ -9,6 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import javax.swing.BoxLayout;
+import javax.swing.Box;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.Scrollable;
@@ -310,6 +312,27 @@ public class MessageBubble extends JPanel implements Scrollable {
             if (!stripped.equals(text.toString())) {
                 text.setLength(0);
                 text.append(stripped);
+            }
+            // If the user message is empty after stripping metadata, hide and
+            // remove the bubble so it doesn't appear as a blank gap.
+            if (text.isEmpty()) {
+                setVisible(false);
+                Container parent = getParent();
+                if (parent != null) {
+                    parent.remove(this);
+                    // Remove the trailing strut that was added with the bubble.
+                    Component[] siblings = parent.getComponents();
+                    for (int i = 0; i < siblings.length; i++) {
+                        if (siblings[i] == this && i + 1 < siblings.length
+                                && siblings[i + 1] instanceof Box.Filler) {
+                            parent.remove(siblings[i + 1]);
+                            break;
+                        }
+                    }
+                    parent.revalidate();
+                    parent.repaint();
+                }
+                return;
             }
             updateContent(ThemeManager.getCurrentTheme(), expanded);
         }
