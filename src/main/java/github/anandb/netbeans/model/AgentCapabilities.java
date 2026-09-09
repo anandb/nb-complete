@@ -74,7 +74,7 @@ public final class AgentCapabilities {
                     .displayName("Claude")
                     .sendsMcpServerConfig(true)
                     .injectsEditorContext(true)
-                    .supportsTokenStats(true)
+                    .supportsTokenStats(false)
                     .supportsMessageIds(true)
                     .supportsMcpServer(true)
                     .supportsSessionSetMode(true)
@@ -119,7 +119,7 @@ public final class AgentCapabilities {
         }
         return switch (binaryName) {
             case "agent", "cursor-agent" -> "cursor.svg";
-            case "claude", "claude-code", "claude-code-acp" -> "claude.svg";
+            case "claude", "claude-code-acp", "claude-agent-acp" -> "claude.svg";
             case "goose" -> "goose.svg";
             case "pi", "pi-acp", "pi-agent" -> "pi-logo.svg";
             default -> "logo.svg";
