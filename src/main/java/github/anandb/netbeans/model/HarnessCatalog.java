@@ -38,7 +38,7 @@ public final class HarnessCatalog {
             "acp",
             "winget install SST.opencode",
             "brew install opencode",
-            "curl -fsSL https://opencode.ai/install.sh | sh",
+            "curl -fsSL https://opencode.ai/install | bash",
             "",
             "https://opencode.ai/docs/");
 
