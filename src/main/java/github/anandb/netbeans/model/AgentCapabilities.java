@@ -11,7 +11,7 @@ import java.util.Objects;
  */
 public final class AgentCapabilities {
 
-    /** Capabilities used when the agent name is unknown (opencode-like). */
+    /** Capabilities used when the agent name is unknown (generic default). */
     public static final AgentCapabilities DEFAULT = forName(null);
 
     private final boolean supportsMessageQueue;
@@ -50,15 +50,12 @@ public final class AgentCapabilities {
     /**
      * Derives capabilities from the agent name reported by the ACP
      * {@code initialize} handshake. Unknown or null names default to
-     * opencode-like capabilities.
+     * generic default capabilities.
      *
      * @param agentName agent name, e.g. {@code "goose"}, {@code "pi-acp"}, {@code "cursor"}
      */
     public static AgentCapabilities forName(String agentName) {
-        if (agentName == null) {
-            agentName = "opencode";
-        }
-        String name = agentName.trim().toLowerCase(Locale.ROOT);
+        String name = agentName == null ? "" : agentName.trim().toLowerCase(Locale.ROOT);
         // Handshake names include "cursor-agent-acp"; the CLI binary is "agent" / "cursor-agent".
         if (name.startsWith("cursor") || "agent".equals(name)) {
             return builder()
@@ -93,8 +90,19 @@ public final class AgentCapabilities {
                     .supportsMessageQueue(true)
                     .supportsMcpServer(true)
                     .build();
-            default -> builder()
+            // OpenCode is the original default harness; give it an explicit entry
+            // so unknown agents no longer present themselves as "OpenCode".
+            case "opencode" -> builder()
                     .displayName("OpenCode")
+                    .sendsMcpServerConfig(true)
+                    .injectsEditorContext(true)
+                    .supportsTokenStats(true)
+                    .supportsMessageIds(true)
+                    .supportsMcpServer(true)
+                    .supportsSessionSetMode(false)
+                    .build();
+            default -> builder()
+                    .displayName("Agent")
                     .sendsMcpServerConfig(true)
                     .injectsEditorContext(true)
                     .supportsTokenStats(true)
@@ -155,7 +163,7 @@ public final class AgentCapabilities {
         private boolean supportsMessageIds;
         private boolean supportsMcpServer;
         private boolean supportsSessionSetMode;
-        private String displayName = "OpenCode";
+        private String displayName = "Agent";
 
         private Builder() {}
 

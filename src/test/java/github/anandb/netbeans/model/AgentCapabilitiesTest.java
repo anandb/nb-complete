@@ -40,7 +40,8 @@ class AgentCapabilitiesTest {
         assertFalse(cursor.supportsMessageQueue());
         assertEquals("Cursor", cursor.displayName());
         assertEquals("Claude", AgentCapabilities.forName("claude").displayName());
-        assertEquals("OpenCode", AgentCapabilities.DEFAULT.displayName());
+        assertEquals("OpenCode", AgentCapabilities.forName("opencode").displayName());
+        assertEquals("Agent", AgentCapabilities.DEFAULT.displayName());
     }
 
     @Test
@@ -48,6 +49,29 @@ class AgentCapabilitiesTest {
         AgentCapabilities def = AgentCapabilities.DEFAULT;
         assertEquals(def, AgentCapabilities.forName(null));
         assertEquals(def, AgentCapabilities.forName("mystery-agent"));
+    }
+
+    @Test
+    void opencodeHasOwnEntryWithDefaultFlags() {
+        // OpenCode keeps the exact capability flags the unknown-default used to carry.
+        AgentCapabilities opencode = AgentCapabilities.forName("opencode");
+        assertEquals(opencode, AgentCapabilities.forName("OpenCode")); // case-insensitive
+        assertEquals("OpenCode", opencode.displayName());
+        assertTrue(opencode.sendsMcpServerConfig());
+        assertTrue(opencode.injectsEditorContext());
+        assertTrue(opencode.supportsTokenStats());
+        assertTrue(opencode.supportsMessageIds());
+        assertTrue(opencode.supportsMcpServer());
+        assertFalse(opencode.supportsSessionSetMode());
+        // Same flags as the generic default — only the display name differs.
+        AgentCapabilities def = AgentCapabilities.DEFAULT;
+        assertEquals(def.sendsMcpServerConfig(), opencode.sendsMcpServerConfig());
+        assertEquals(def.injectsEditorContext(), opencode.injectsEditorContext());
+        assertEquals(def.supportsTokenStats(), opencode.supportsTokenStats());
+        assertEquals(def.supportsMessageIds(), opencode.supportsMessageIds());
+        assertEquals(def.supportsMcpServer(), opencode.supportsMcpServer());
+        assertEquals(def.supportsSessionSetMode(), opencode.supportsSessionSetMode());
+        assertEquals(def.supportsMessageQueue(), opencode.supportsMessageQueue());
     }
 
     @Test
@@ -60,8 +84,9 @@ class AgentCapabilitiesTest {
         assertFalse(AgentCapabilities.forName("pi").supportsSessionSetMode());
         assertFalse(AgentCapabilities.forName("pi-agent").supportsSessionSetMode());
 
-        // All other agents (pi-acp, opencode/unknown, goose, cursor) keep the
-        // set_config_option("mode", …) path.
+        // Unknown agents and pi/goose/cursor keep the
+        // set_config_option("mode", …) path; opencode now has its own case
+        // with the same (non-set_mode) behavior.
         assertFalse(AgentCapabilities.forName("pi-acp").supportsSessionSetMode());
         assertFalse(AgentCapabilities.DEFAULT.supportsSessionSetMode());
         assertFalse(AgentCapabilities.forName("goose").supportsSessionSetMode());
