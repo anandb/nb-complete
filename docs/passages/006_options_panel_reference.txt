@@ -85,7 +85,7 @@ This page describes every preference in the panel, organised into six sections. 
 
 
 > [[Post Install]]
-> [[OpenCode Not Installed]]
+> [[Choose Your Coding Harness]]
 > [[Update Notifications]]
 > [[Auto-Backup on Turn Start]]
 > [[Message History]] / [[Pinned Messages]]

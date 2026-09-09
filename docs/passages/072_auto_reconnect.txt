@@ -17,6 +17,6 @@ The plugin gives up after **3 failed restarts within 5 minutes** and shows a "se
 
 > [[Restarting the server]]
 > [[Troubleshooting]]
-> [[OpenCode Not Installed]]
+> [[Choose Your Coding Harness]]
 
 

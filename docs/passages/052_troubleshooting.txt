@@ -9,7 +9,7 @@
 <table class="ug-table">
 <thead><tr><th>Problem</th><th>Solution</th></tr></thead>
 <tbody>
-<tr><td><strong>Plugin can't find OpenCode</strong></td><td>Ensure <code>opencode</code> is on your <code>PATH</code>, or set the path manually under <code>Options &gt; Assistant</code>.</td></tr>
+<tr><td><strong>Plugin can't find the harness</strong></td><td>Use the [[Choose Your Coding Harness]] screen to pick an installed harness, copy its install command, or set the path manually under <code>Options &gt; Assistant</code>.</td></tr>
 <tr><td><strong>Assistant becomes unresponsive</strong></td><td>Click <strong>Restart ACP Server</strong> in the toolbar.</td></tr>
 <tr><td><strong>Ctrl + L stops working</strong></td><td>Close and reopen the assistant panel from the Window menu. If that doesn't work, restart the IDE.</td></tr>
 <tr><td><strong>Sidebar doesn't open after install/upgrade</strong></td><td>The plugin auto-opens the sidebar on version change. If it doesn't appear, open it from <code>Window &gt; Assistant</code>.</td></tr>
@@ -25,7 +25,7 @@
 </table>
 
 
-> [[OpenCode Not Installed]]
+> [[Choose Your Coding Harness]]
 > [[Restarting the server]]
 > [[Message History]]
 > [[Permission Requests]]

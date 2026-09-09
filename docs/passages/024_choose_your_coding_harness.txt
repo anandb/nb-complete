@@ -1,0 +1,27 @@
+:: Choose Your Coding Harness {"position":"887.5,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Choose Your Coding Harness</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+![The harness chooser listing installed and supported harnesses](../images/agent_selection.png){style="max-width:100%;"}
+
+The plugin works with several coding harnesses that speak the Agent Client Protocol: **OpenCode**, **Pi**, **Goose**, **Cursor** and **Claude**. When no harness binary is configured, the chat panel shows a chooser instead of the normal input — it lists all five supported harnesses with their icons and whether each one was found on your system.
+
+*   Found harnesses show the detected binary path and a **Use** button — clicking **Use** remembers that harness (and its launch arguments) and starts the server.
+*   Harnesses that aren't installed show an **Install** button — clicking it reveals an OS-specific install command for that harness. Click the command to copy it to the clipboard, install the harness in a terminal, then use **Start Server** (or the **Use** button after re-detection). Each install panel also has a **Documentation** button and any prerequisites the harness needs (for example, Node.js for the Claude adapter).
+*   The **Manual Configuration** button (gear icon) opens the Assistant settings where you can browse for any binary path yourself — useful if your harness lives outside your `PATH`.
+
+Binaries found on `PATH` are never used automatically — you always make the choice through this screen. If a configured binary later disappears (for example after an uninstall), the chooser appears again.
+
+After installing a harness — and optionally setting the binary path under `Options > Assistant` — click **Start Server** to connect.
+
+
+> [[macOS/Linux]] / [[Windows]]
+> [[Post Install]]
+> [[Restarting the server]]
+> [[Options Panel Reference]]
+> [[Troubleshooting]]
+> [[Global Configuration Setup]]
