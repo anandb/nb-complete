@@ -123,14 +123,15 @@ public final class AgentCapabilities {
      */
     public static String harnessIconName(String binaryName) {
         if (binaryName == null) {
-            return "logo.svg";
+            return "agent.svg";
         }
         return switch (binaryName) {
             case "cursor-agent" -> "cursor.svg";
             case "claude-agent-acp" -> "claude.svg";
             case "goose" -> "goose.svg";
             case "pi-acp", "pi-agent" -> "pi-logo.svg";
-            default -> "logo.svg";
+            case "opencode" -> "logo.svg";
+            default -> "agent.svg";
         };
     }
 

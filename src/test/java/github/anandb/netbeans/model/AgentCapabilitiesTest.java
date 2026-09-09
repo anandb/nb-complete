@@ -75,6 +75,18 @@ class AgentCapabilitiesTest {
     }
 
     @Test
+    void harnessIconNameCoversCatalogHarnesses() {
+        assertEquals("logo.svg", AgentCapabilities.harnessIconName("opencode"));
+        assertEquals("goose.svg", AgentCapabilities.harnessIconName("goose"));
+        assertEquals("pi-logo.svg", AgentCapabilities.harnessIconName("pi-acp"));
+        assertEquals("cursor.svg", AgentCapabilities.harnessIconName("cursor-agent"));
+        assertEquals("claude.svg", AgentCapabilities.harnessIconName("claude-agent-acp"));
+        // Unknown / null binary falls back to the generic agent icon.
+        assertEquals("agent.svg", AgentCapabilities.harnessIconName(null));
+        assertEquals("agent.svg", AgentCapabilities.harnessIconName("mystery"));
+    }
+
+    @Test
     void sessionSetModeCapabilityDerivedPerAgent() {
         // Only agents whose name starts with "claude" support ACP session/set_mode,
         // since the exact agent name (claude, claude-acp, claude-code, …) is unknown.

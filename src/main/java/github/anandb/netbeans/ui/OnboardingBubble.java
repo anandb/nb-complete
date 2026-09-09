@@ -128,7 +128,7 @@ class OnboardingBubble extends JPanel {
         // Icon (theme-aware; falls back to the plugin logo)
         Icon icon = ThemeManager.getIcon(harness.iconBase() + ".svg", 20);
         if (icon == null) {
-            icon = ThemeManager.getIcon("logo.svg", 20);
+            icon = ThemeManager.getIcon("agent.svg", 20);
         }
         JLabel iconLabel = new JLabel(icon);
         iconLabel.setVerticalAlignment(JLabel.TOP);
