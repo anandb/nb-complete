@@ -89,9 +89,9 @@ public final class PluginSettings {
 
     /** Returns the critical rules loaded from the bundled resources, never editable by the user.
      *  When running through WSL, WSL-specific guidance is appended so the agent can use the
-     *  Linux environment. The rule set differs by install mode: when opencode is a Windows
+     *  Linux environment. The rule set differs by install mode: when the agent is a Windows
      *  binary hosted through WSL ({@code wsl_rules.md}) native Windows tooling is preferred;
-     *  when opencode is a native WSL binary ({@code wsl_native_rules.md}) Linux is preferred. */
+     *  when it is a native WSL binary ({@code wsl_native_rules.md}) Linux is preferred. */
     public static String getCriticalRules() {
         String rules = DEFAULT_CRITICAL_RULES;
         if (BinaryResolver.isWslAvailable() && !rules.contains("WSL Environment")) {

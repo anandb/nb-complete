@@ -281,7 +281,7 @@ public class ConfigPanelController {
     /** Prevents SSE/RPC-triggered combo repopulation while user picks model/level. */
     void setConfigConfirmActive(boolean active) { this.configConfirmActive = active; }
 
-    /** Returns the server config id for the thinking/effort option ("effort" on OpenCode ACP). */
+    /** Returns the server config id for the thinking/effort option ("effort" on OpenCode's ACP). */
     private String thinkingConfigId() {
         return thinkingConfigId != null ? thinkingConfigId : "effort";
     }

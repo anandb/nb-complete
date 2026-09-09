@@ -55,7 +55,7 @@ final class SessionRpcClient {
     }
 
     CompletableFuture<Void> renameSessionOnServer(String sessionId, String title) {
-        // The OpenCode ACP server currently does not implement a session/update
+        // OpenCode's ACP server does not implement a session/update
         // or session/rename RPC endpoint. We only rename the session locally in
         // the IDE and return a completed future here.
         return CompletableFuture.completedFuture(null);

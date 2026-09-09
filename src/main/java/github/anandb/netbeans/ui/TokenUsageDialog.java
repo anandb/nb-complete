@@ -369,7 +369,7 @@ public class TokenUsageDialog extends JDialog {
         }
     }
 
-    /** Gracefully terminates any running opencode processes. */
+    /** Gracefully terminates the running stats subprocess. */
     private void cancelProcess() {
         ProcessTerminator.terminate(currentProcess);
         currentProcess = null;

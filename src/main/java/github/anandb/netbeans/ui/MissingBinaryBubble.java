@@ -176,7 +176,7 @@ class MissingBinaryBubble extends JPanel {
         }
     }
 
-    /** Returns the OS-specific install command for OpenCode. */
+    /** Returns the OS-specific install command for OpenCode, the default harness. */
     static String getInstallCommand() {
         String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
         if (os.contains("win")) {

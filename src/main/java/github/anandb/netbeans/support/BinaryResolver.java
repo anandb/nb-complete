@@ -106,7 +106,7 @@ public final class BinaryResolver {
     }
 
     /**
-     * Resolves the opencode executable path: checks configured path first,
+     * Resolves the agent executable path: checks configured path first,
      * then searches system PATH. Throws IllegalStateException if not found.
      */
     public static String resolveExecutablePath() {
@@ -120,7 +120,7 @@ public final class BinaryResolver {
 
     /**
      * Non-throwing variant of {@link #resolveExecutablePath()}: returns the
-     * resolved native opencode executable path, or {@code null} if none is
+     * resolved native agent executable path, or {@code null} if none is
      * found (configured path or system PATH).
      */
     public static String findExecutablePathOrNull() {
@@ -198,7 +198,7 @@ public final class BinaryResolver {
     }
 
     /**
-     * Returns true if the opencode binary is available (either configured or on PATH).
+     * Returns true if the agent binary is available (either configured or on PATH).
      * Unlike resolveExecutablePath(), this does not throw.
      */
     public static boolean isAvailable() {
@@ -272,7 +272,7 @@ public final class BinaryResolver {
     }
 
     /**
-     * Builds the command-line arguments for a WSL-wrapped opencode invocation.
+     * Builds the command-line arguments for a WSL-wrapped agent invocation.
      *
      * <p>When a Windows {@code opencode.exe} is resolvable (Windows-hosted),
      * its path is translated to a WSL mount path (e.g. {@code C:\tools\opencode.exe}
@@ -285,7 +285,7 @@ public final class BinaryResolver {
      * process arguments cannot inject shell commands. The fixed script
      * {@code exec "$0" "$@"} runs the resolved binary with its args verbatim.
      *
-     * @param argTokens the arguments to pass to opencode, already split into
+     * @param argTokens the arguments to pass to the agent, already split into
      *                  individual tokens (e.g. {@code {"acp"}} or
      *                  {@code {"stats","--days","7"}}); never interpolated
      * @return {@code ["wsl.exe","-e","bash","-lc","exec \"$0\" \"$@\"", innerExe, arg...]}
@@ -327,7 +327,7 @@ public final class BinaryResolver {
     }
 
     /**
-     * Returns {@code true} when WSL is in use and opencode is hosted as a
+     * Returns {@code true} when WSL is in use and the agent is hosted as a
      * Windows binary (an {@code opencode.exe} is resolvable on Windows),
      * rather than installed natively inside the WSL distribution.
      */
@@ -341,7 +341,7 @@ public final class BinaryResolver {
         if (nativeExe != null) {
             return toWslPath(nativeExe);
         }
-        // opencode is a Linux binary installed inside WSL; use its bare command.
+        // The agent is a Linux binary installed inside WSL; use its bare command.
         return "opencode";
     }
 

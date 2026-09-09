@@ -52,7 +52,7 @@ import java.io.File;
 import org.openide.awt.NotificationDisplayer;
 
 /**
- * Spawns and owns the {@code opencode acp} subprocess; central request
+ * Spawns and owns the ACP server subprocess; central request
  * dispatch hub for all ACP JSON-RPC calls.
  *
  * <h3>Server Lifecycle</h3>

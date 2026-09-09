@@ -114,7 +114,6 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     private final JButton tokenUsageBtn;
     private final JButton refreshBtn;
     private final JButton exportBtn;
-    private final JButton rocketBtn;
     private final MessageQueueManager queueManager;
     private final JLabel statusLabel;
     private final JLabel versionLabel;
@@ -232,26 +231,17 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         // Add attachment button to the right status panel (before settings button)
         layoutBuilder.getRightStatusPanel().add(attachmentUiHandler.getButton(), 0);
 
-        // Add rocket (OpenCode Go) button to the left of the attachment button
         int iconSize = PluginSettings.getToolbarIconSize();
-        rocketBtn = UIUtils.createToolbarButton("rocket-ship.svg", iconSize,
-                NbBundle.getMessage(AssistantTopComponent.class, "TT_OpenCodeGo"), e -> {
-            BrowserUtils.openOrCopyUrl(
-                    "https://opencode.ai/go?ref=DWTNHGN9KX", null, null);
-        });
-        // The rocket button is always visible, regardless of the options panel
-        // collapse state, so it must not be hidden by setOptionsPanelVisible().
-        rocketBtn.setVisible(true);
 
-        // Message queue button — left of rocket, visible only when messages are queued.
-        // Queueing is used only by the goose agent; for opencode/pi the button is
+        // Message queue button — left of the attachment button, visible only when
+        // messages are queued.
+        // Queueing is used only by the goose agent; for OpenCode/pi the button is
         // disabled and hidden once the agent name is known (see applyQueueForAgent).
         queueManager = new MessageQueueManager();
         layoutBuilder.getRightStatusPanel().add(queueManager.getButton(), 0);
-        layoutBuilder.getRightStatusPanel().add(rocketBtn, 1);
         ProcessControl pc = Lookup.getDefault().lookup(ProcessControl.class);
 
-        // Add token usage button after the rocket button (visible only when the
+        // Add token usage button (visible only when the
         // agent supports the stats subprocess — see applyAgentCapabilities)
         tokenUsageBtn = UIUtils.createToolbarButton("currency.svg", iconSize,
                 NbBundle.getMessage(AssistantTopComponent.class, "TT_TokenStats"), e -> {
@@ -1025,7 +1015,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
      * chat panel, and the status bar displays the error. When exited, buttons
      * are restored to their normal session-aware state.
      */
-    /** Returns true when the opencode binary could not be located. */
+    /** Returns true when the agent binary could not be located. */
     boolean isBinaryNotFound() {
         return binaryNotFound;
     }

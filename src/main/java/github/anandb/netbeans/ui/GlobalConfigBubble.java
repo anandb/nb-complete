@@ -15,7 +15,7 @@ import org.openide.util.NbBundle;
 
 /**
  * Sidebar bubble shown in the chat panel (instead of a modal dialog) that
- * offers to set up the starter global opencode configuration, or — with the
+ * offers to set up the starter global OpenCode configuration, or — with the
  * user's consent — to replace a file that cannot be parsed.
  */
 class GlobalConfigBubble extends JPanel {

@@ -128,14 +128,14 @@ public class ComponentLifecycleHandler {
             // Refresh is handled by deferStartupSessionLoad() after the grace period.
             closedProjectDirs = Set.of();
 
-            // Proactive binary check: if opencode is not installed, enter
+            // Proactive binary check: if the agent binary is not installed, enter
             // the "binary not found" state immediately and skip starting the server.
             if (!BinaryResolver.isAvailable()) {
                 topComponent.setBinaryNotFoundState(true);
                 return;
             }
 
-            // Offer the global opencode configuration prompt BEFORE launching the
+            // Offer the global OpenCode configuration prompt BEFORE launching the
             // server: a starter config written here is picked up on the first
             // start, so the user does not need to restart a second time.
             maybeShowGlobalConfigPrompt(promptShown -> {
@@ -444,7 +444,7 @@ public class ComponentLifecycleHandler {
         statusController.setStatus("STATUS_RestartingServer");
         restartServerBtn.setEnabled(false);
 
-        // Ask about the global opencode configuration before the server
+        // Ask about the global OpenCode configuration before the server
         // restarts, so a starter config is written before the process reads it.
         maybeShowGlobalConfigPrompt(promptShown -> {
             // When a config prompt was shown, ask the user to confirm the restart
@@ -524,7 +524,7 @@ public class ComponentLifecycleHandler {
     }
 
     /**
-     * Offers to set up the global opencode configuration before the server
+     * Offers to set up the global OpenCode configuration before the server
      * starts. The file check runs on a background thread and the prompt bubble
      * is shown in the chat panel. {@code afterAnswer} is invoked with {@code true}
      * when a config prompt was shown to the user (and answered), or {@code false}
