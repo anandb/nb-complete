@@ -1,17 +1,36 @@
 package github.anandb.netbeans.ui;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Component;
+import java.awt.Cursor;
+import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
+import java.awt.Point;
+import java.awt.Toolkit;
+import java.awt.GraphicsDevice;
+import java.awt.GraphicsEnvironment;
+import java.awt.HeadlessException;
+import java.awt.Window;
+import java.awt.datatransfer.StringSelection;
+import java.util.HashMap;
+import java.util.Locale;
+import java.util.Map;
 
 import javax.swing.BorderFactory;
-import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
+import javax.swing.Popup;
+import javax.swing.PopupFactory;
+import javax.swing.Timer;
 
 import org.netbeans.api.options.OptionsDisplayer;
 import org.openide.util.NbBundle;
@@ -34,9 +53,14 @@ class OnboardingBubble extends JPanel {
         void onUse(String harnessId, String path);
     }
 
+    /** Delay before the copied-tip popup starts fading out (milliseconds). */
+    private static final int COPY_POPUP_MS = 1200;
+
+
     private final SelectionCallback selectionCallback;
     private final RestartCallback restartCallback;
     private final java.util.List<BinaryResolver.FoundBinary> foundBinaries;
+    private final Map<String, JPanel> installPanels = new HashMap<>();
     private final JPanel rowsPanel;
     private final JPanel buttonsPanel;
 
@@ -67,19 +91,31 @@ class OnboardingBubble extends JPanel {
         titleLabel.setForeground(theme.foreground());
         content.add(titleLabel, BorderLayout.NORTH);
 
-        // Body text
-        String text = NbBundle.getMessage(OnboardingBubble.class, "OnboardingBubble.Body");
+        // Body text — depends on whether any harness was detected
+        String bodyKey = foundBinaries.isEmpty()
+                ? "OnboardingBubble.Body.None" : "OnboardingBubble.Body.Mixed";
+        String text = NbBundle.getMessage(OnboardingBubble.class, bodyKey);
         JTextAreaNoWrap body = new JTextAreaNoWrap(text);
         body.setBorder(BorderFactory.createEmptyBorder(10, 0, 20, 0));
         content.add(body, BorderLayout.CENTER);
 
-        // One row per catalog harness
-        rowsPanel = new JPanel();
-        rowsPanel.setLayout(new BoxLayout(rowsPanel, BoxLayout.Y_AXIS));
+        // One row per catalog harness — GridBagLayout keeps every cell full-width
+        // (a Y-axis BoxLayout mis-sizes a row to its preferred width once its
+        // install panel becomes visible and wide).
+        rowsPanel = new JPanel(new GridBagLayout());
         rowsPanel.setOpaque(false);
+        var last = HarnessCatalog.ALL.get(HarnessCatalog.ALL.size() - 1);
         for (HarnessCatalog.Harness harness : HarnessCatalog.ALL) {
-            rowsPanel.add(createHarnessRow(harness, theme));
-            rowsPanel.add(Box.createVerticalStrut(18));
+            GridBagConstraints gbc = new GridBagConstraints();
+            gbc.gridx = 0;
+            gbc.gridy = GridBagConstraints.RELATIVE;
+            gbc.weightx = 1.0;
+            gbc.fill = GridBagConstraints.HORIZONTAL;
+            gbc.anchor = GridBagConstraints.NORTHWEST;
+            if (harness != last) {
+                gbc.insets = new Insets(0, 0, 18, 0);
+            }
+            rowsPanel.add(createHarnessRow(harness, theme), gbc);
         }
         content.add(rowsPanel, BorderLayout.SOUTH);
 
@@ -141,11 +177,15 @@ class OnboardingBubble extends JPanel {
         statusLabel.setForeground(theme.mutedForeground());
         textPanel.add(nameLabel);
         textPanel.add(statusLabel);
+        // Left-align the labels inside the row so the list reads as a table.
+        nameLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        statusLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        // "Use" for detected harnesses; "Install" (opens the harness's install
-        // docs) for the missing ones.
+        // "Use" for detected harnesses; "Install" toggles the show-and-copy
+        // install panel for the missing ones.
         JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
         btnPanel.setOpaque(false);
+        JPanel installPanel = null;
         if (foundBinary != null) {
             JButton useBtn = new JButton(NbBundle.getMessage(
                     OnboardingBubble.class, "OnboardingBubble.Button.Use"));
@@ -161,15 +201,182 @@ class OnboardingBubble extends JPanel {
             JButton installBtn = new JButton(NbBundle.getMessage(
                     OnboardingBubble.class, "OnboardingBubble.Button.Install"));
             installBtn.setFocusPainted(false);
-            installBtn.addActionListener(e ->
-                    BrowserUtils.openOrCopyUrl(harness.docsUrl(), null, null));
+            installPanel = createInstallPanel(harness, theme);
+            final JPanel togglePanel = installPanel;
+            installPanels.put(harness.id(), togglePanel);
+            togglePanel.setVisible(false);
+            installBtn.addActionListener(e -> {
+                boolean showing = togglePanel.isVisible();
+                hideAllInstallPanels();
+                togglePanel.setVisible(!showing);
+                revalidate();
+                repaint();
+            });
             btnPanel.add(installBtn);
         }
 
         row.add(iconLabel, BorderLayout.WEST);
         row.add(textPanel, BorderLayout.CENTER);
         row.add(btnPanel, BorderLayout.EAST);
-        return row;
+
+        // Row + its (hidden) install panel stack vertically in a cell.
+        // BorderLayout: the row always spans the full cell width and the panel
+        // fills what remains; invisible panels are skipped by BorderLayout.
+        JPanel cell = new JPanel(new BorderLayout(0, 2));
+        cell.setOpaque(false);
+        cell.add(row, BorderLayout.NORTH);
+        if (installPanel != null) {
+            cell.add(installPanel, BorderLayout.CENTER);
+        }
+        return cell;
+    }
+
+    /** Show-and-copy install panel: per-OS command, copy-on-click, prerequisites note,
+     *  and a documentation link. Hidden by default; toggled by the Install button. */
+    private JPanel createInstallPanel(HarnessCatalog.Harness harness, ColorTheme theme) {
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setOpaque(false);
+        // Indent to align with the harness name (icon width + row gap) and add
+        // breathing room above the command.
+        panel.setBorder(BorderFactory.createEmptyBorder(10, 40, 4, 0));
+
+        String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
+        String cmd = os.contains("win") ? harness.installWindows()
+                : os.contains("mac") ? harness.installMac()
+                : harness.installLinux();
+
+        // Command line with copy-on-click
+        Color cmdBg = theme.isDark() ? new Color(0x1A1B26) : new Color(0xF0F0F0);
+        Color cmdFg = theme.isDark() ? new Color(0xA1EFE4) : new Color(0x333333);
+        JLabel cmdLabel = new JLabel("$ " + cmd);
+        cmdLabel.setFont(IconResourceManager.getMonospaceFont());
+        cmdLabel.setForeground(cmdFg);
+        cmdLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        cmdLabel.setToolTipText(NbBundle.getMessage(OnboardingBubble.class, "OnboardingBubble.Hint.Copy"));
+        JPanel cmdPanel = new JPanel(new BorderLayout());
+        cmdPanel.setOpaque(true);
+        cmdPanel.setBackground(cmdBg);
+        cmdPanel.setBorder(BorderFactory.createEmptyBorder(6, 10, 6, 10));
+        cmdPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
+        cmdPanel.add(cmdLabel, BorderLayout.CENTER);
+        cmdPanel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        // Listener on BOTH the panel and the label: mouse events are delivered
+        // to the deepest component under the cursor, so clicks on the command
+        // text itself would never reach a panel-only listener.
+        java.awt.event.MouseAdapter copyOnClick = new java.awt.event.MouseAdapter() {
+            @Override
+            public void mousePressed(java.awt.event.MouseEvent e) {
+                copyCommand(cmdLabel, cmd);
+            }
+        };
+        cmdPanel.addMouseListener(copyOnClick);
+        cmdLabel.addMouseListener(copyOnClick);
+        panel.add(cmdPanel);
+
+        if (!harness.prerequisites().isBlank()) {
+            JTextAreaNoWrap prereq = new JTextAreaNoWrap(harness.prerequisites(), 10f);
+            prereq.setForeground(theme.mutedForeground());
+            prereq.setBorder(BorderFactory.createEmptyBorder(4, 0, 4, 0));
+            prereq.setAlignmentX(Component.LEFT_ALIGNMENT);
+            panel.add(prereq);
+        }
+
+        JButton docsBtn = new JButton(NbBundle.getMessage(
+                OnboardingBubble.class, "OnboardingBubble.Button.Docs"));
+        docsBtn.setFocusPainted(false);
+        docsBtn.addActionListener(e ->
+                BrowserUtils.openOrCopyUrl(harness.docsUrl(), null, null));
+        JPanel docsRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        docsRow.setOpaque(false);
+        docsRow.setBorder(BorderFactory.createEmptyBorder(8, 0, 0, 0));
+        docsRow.add(docsBtn);
+        panel.add(docsRow);
+        return panel;
+    }
+
+    /** Collapses every open install panel. */
+    private void hideAllInstallPanels() {
+        for (JPanel p : installPanels.values()) {
+            p.setVisible(false);
+        }
+    }
+
+    /** Copies the command to the clipboard and shows a tooltip-style popup
+     *  near the command that fades out after a moment. */
+    private void copyCommand(JLabel label, String command) {
+        Toolkit.getDefaultToolkit().getSystemClipboard()
+                .setContents(new StringSelection(command), null);
+        showCopiedTip(label);
+    }
+
+    /** Shows a brief "Copied to clipboard" tooltip-style popup next to the
+     *  given anchor, fading out after a moment. */
+    private void showCopiedTip(Component anchor) {
+        ColorTheme theme = ThemeManager.getCurrentTheme();
+        JLabel tip = new JLabel(NbBundle.getMessage(OnboardingBubble.class, "OnboardingBubble.Copied"));
+        tip.setOpaque(true);
+        tip.setBackground(theme.isDark() ? new Color(0x2A2B33) : new Color(0xFFFFE1));
+        tip.setForeground(theme.foreground());
+        tip.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(theme.bubbleBorder()),
+                BorderFactory.createEmptyBorder(4, 8, 4, 8)));
+        Point p = anchor.getLocationOnScreen();
+        int x = p.x + 16;
+        int y = p.y - tip.getPreferredSize().height - 4;
+        Popup popup = PopupFactory.getSharedInstance().getPopup(anchor, tip, x, y);
+        popup.show();
+        resetOpacity(tip);
+        Timer fadeTimer = new Timer(COPY_POPUP_MS, e -> fadeOutAndHide(popup, tip));
+        fadeTimer.setRepeats(false);
+        fadeTimer.start();
+    }
+
+    /** Restores full opacity on the tip's window (PopupFactory may reuse it;
+     *  a previously faded window would make the next tip start out faded). */
+    private static void resetOpacity(Component content) {
+        Window window = SwingUtilities.getWindowAncestor(content);
+        if (window != null) {
+            try {
+                window.setOpacity(1.0f);
+            } catch (UnsupportedOperationException e) {
+                // translucency unsupported — leave as-is
+            }
+        }
+    }
+
+    /** Fades the copied-tip window out (where translucency is supported) and hides it. */
+    private static void fadeOutAndHide(Popup popup, Component content) {
+        Window window = SwingUtilities.getWindowAncestor(content);
+        if (window == null) {
+            popup.hide();
+            return;
+        }
+        try {
+            boolean translucent = !GraphicsEnvironment.getLocalGraphicsEnvironment()
+                    .getDefaultScreenDevice()
+                    .isWindowTranslucencySupported(GraphicsDevice.WindowTranslucency.TRANSLUCENT);
+            if (translucent) {
+                popup.hide();
+                return;
+            }
+        } catch (HeadlessException e) {
+            popup.hide();
+            return;
+        }
+        javax.swing.Timer fade = new javax.swing.Timer(30, null);
+        final float[] alpha = {1.0f};
+        fade.addActionListener(e -> {
+            alpha[0] -= 0.12f;
+            if (alpha[0] <= 0.05f) {
+                fade.stop();
+                window.setOpacity(1.0f);
+                popup.hide();
+            } else {
+                window.setOpacity(alpha[0]);
+            }
+        });
+        fade.start();
     }
 
     private BinaryResolver.FoundBinary findFoundBinary(String harnessId) {
@@ -188,6 +395,7 @@ class OnboardingBubble extends JPanel {
                 c.setEnabled(false);
             }
         }
+        hideAllInstallPanels();
         setButtonsEnabledRecursive(rowsPanel, false);
     }
 
@@ -206,6 +414,10 @@ class OnboardingBubble extends JPanel {
         private static final long serialVersionUID = 1L;
 
         JTextAreaNoWrap(String text) {
+            this(text, ThemeManager.getFont().getSize() + 1f);
+        }
+
+        JTextAreaNoWrap(String text, float fontSize) {
             super(text);
             setLineWrap(true);
             setWrapStyleWord(true);
@@ -213,8 +425,7 @@ class OnboardingBubble extends JPanel {
             setOpaque(false);
             setFocusable(false);
             setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
-            setFont(ThemeManager.getFont().deriveFont(Font.PLAIN,
-                    ThemeManager.getFont().getSize() + 1f));
+            setFont(ThemeManager.getFont().deriveFont(Font.PLAIN, fontSize));
             setForeground(ThemeManager.getCurrentTheme().foreground());
         }
     }
