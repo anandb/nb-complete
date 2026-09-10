@@ -444,8 +444,14 @@ public final class BinaryResolver {
         if (nativeExe != null) {
             return toWslPath(nativeExe);
         }
-        // The agent is a Linux binary installed inside WSL; use its bare command.
-        return "opencode";
+        // Check all known harness binaries inside WSL — no hardcoded fallback.
+        String wslPath = findFirstKnownOnWslPath(KNOWN_HARNESSES);
+        if (wslPath != null) {
+            return wslPath;
+        }
+        // Nothing found; return first known name so the WSL command still
+        // runs — the server start will surface the "not found" error.
+        return KNOWN_HARNESSES.get(0);
     }
 
     /**

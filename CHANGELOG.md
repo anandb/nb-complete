@@ -1,5 +1,30 @@
 # Release Notes
 
+## v1.19.7 (Changes since v1.19.6)
+
+### Features
+- **Multi-harness onboarding**: Detect all installed ACP harnesses (OpenCode, Pi, Goose, Cursor, Claude, Hermes) on native PATH and WSL, present a chooser bubble with icons, install commands, and prerequisites, then persist the selection (`22507f27`, `61d53850`).
+- **Harness catalog**: New `HarnessCatalog` record in `model/` — single source of truth for display names, icons, binary names, launch args, per-OS install commands, and docs links (`22507f27`).
+- **Hermes harness support**: Add Hermes to the catalog and agent capabilities; parse `models`/`modes` from `session/load` for agents that report structured state instead of `configOptions` (`bc35c0c2`).
+- **Default harness icon**: Use `agent.svg` (light + dark) as the fallback icon for unknown harnesses (`6bb0c953`).
+
+### Fixes
+- **Permission bubble merging**: Consecutive "Allowed Once" results now reliably merge into a single bubble — the grouping is resolved at add-time by scanning the container for the last visible permission wrapper, so intermediate messages later hidden/blank-swept/combined no longer break it (`febe3360`).
+- **Claude agent icon mapping**: Map `claude-code-acp` and `claude-agent-acp` to `claude.svg`; disable `supportsTokenStats` for Claude (`18139700`).
+- **OpenCode install command**: Fix broken install command in the harness catalog (`5c974dcc`).
+- **Empty user bubbles**: Hide user bubble when message is empty after metadata strip (`b8a5840c`).
+- **Bundle-key runtime crashes**: Fix missing bundle keys causing attachment and token-stats button failures (`6935ff0e`).
+- **Session/load model state**: Preserve `models`/`modes` across session reconstruction so dropdowns stay populated (`bc35c0c2`).
+
+### Improvements
+- **Genericized wording**: Replace OpenCode-specific wording across code and resources with agent-agnostic language (`e6621ac9`).
+- **Onboarding bubble polish**: Improved install panel layout, copy-to-clipboard feedback, and key interaction fixes (`61d53850`).
+- **Agent capabilities**: Add explicit OpenCode case; generic unknown default for unrecognized harnesses (`de4614ca`).
+- **User guide**: Replace OpenCode-only install page with the harness chooser walkthrough (`4cd71a8b`).
+
+### Housekeeping
+- Version bumped to 1.19.7.
+
 ## v1.19.6 (Changes since v1.19.5)
 
 ### Features
