@@ -6,7 +6,7 @@
   <div>[[Index->Topic Index]]</div>
 </div>
 
-The **Reload** button (reload icon) on the toolbar re-fetches the current session from the OpenCode server. Your messages are always stored on the server, so reloading never loses anything — it just refreshes the chat view to match the server state.
+The **Reload** button (reload icon) on the toolbar re-fetches the current session from the server. Your messages are always stored on the server, so reloading never loses anything — it just refreshes the chat view to match the server state.
 
 You'll want to reload when:
 

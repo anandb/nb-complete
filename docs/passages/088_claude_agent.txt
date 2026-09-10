@@ -18,7 +18,7 @@ The package bundles the Claude Agent SDK, so a separate `claude` CLI install is 
 
 ### About
 
-[Claude Agent ACP](https://github.com/agentclientprotocol/claude-agent-acp) is an ACP adapter that exposes Claude's coding agent over the [Agent Client Protocol](https://agentclientprotocol.com), which is what BeanBot speaks. It supports session mode switching, MCP server injection, and editor context.
+<a href="https://github.com/agentclientprotocol/claude-agent-acp" target="_blank" rel="noopener">Claude Agent ACP</a> is an ACP adapter that exposes Claude's coding agent over the <a href="https://agentclientprotocol.com" target="_blank" rel="noopener">Agent Client Protocol</a>, which is what BeanBot speaks. It supports session mode switching, MCP server injection, and editor context.
 
 The executable you configure in BeanBot is <code>claude-agent-acp</code>.
 

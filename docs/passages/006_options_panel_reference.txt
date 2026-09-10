@@ -6,7 +6,7 @@
   <div>[[Index->Topic Index]]</div>
 </div>
 
-Customise the plugin behavior by navigating to `Tools > Options > Assistant`. Here, you can configure the path to the OpenCode binary, add process arguments, set a global system Preamble for all sessions, and toggle **Local Echo** for instant message rendering. You can also adjust UI preferences like toolbar icon size, chat font size, enable or disable specific features (like Stash Diff or Jump to file), and set a custom user avatar.
+Customise the plugin behavior by navigating to `Tools > Options > Assistant`. Here, you can configure the path to the Harness, add process arguments, set a global system Preamble for all sessions, and toggle **Local Echo** for instant message rendering. You can also adjust UI preferences like toolbar icon size, chat font size, enable or disable specific features (like Stash Diff or Jump to file), and set a custom user avatar.
 
 Additionally, the plugin includes a background **Update Checker Service** that automatically queries for new releases (with randomised intervals between 16 and 24 hours). You can toggle the update checks under `Tools > Options > Assistant > Check for updates`. When an update is found, you will be prompted with a dialog to download the update immediately, get reminded later, or skip the version entirely.
 
@@ -18,9 +18,9 @@ This page describes every preference in the panel, organised into six sections. 
 <thead><tr><th>Preference</th><th>Default</th><th>Description</th></tr></thead>
 <tbody>
 <tr><td><strong>Path to Agent Server Binary</strong></td><td>Empty</td><td>The full path to the harness executable. If left blank, nothing runs until you pick a harness through the [[Choose Your Coding Harness]] screen. Use <strong>Browse...</strong> to pick a binary. Invalid paths show a validation error (e.g. <em>File not found</em>, <em>File is not executable</em>).</td></tr>
-<tr><td><strong>Process Arguments</strong></td><td><code>acp</code></td><td>Extra command-line arguments passed when launching the OpenCode server process.</td></tr>
-<tr><td><strong>Launch through WSL (Windows only)</strong></td><td>Off</td><td>When enabled, all OpenCode invocations (the ACP server and token-usage stats) are wrapped through <strong>WSL</strong> using <code>wsl.exe</code>. The resolved Windows executable is automatically translated to its WSL mount path, so custom/WinGet/Choco-shim install locations resolve correctly. If OpenCode is installed as a native Linux binary inside WSL (no Windows executable found), it is invoked directly on the WSL PATH. Recommended when running OpenCode on Windows for best performance and bash compatibility.</td></tr>
-<tr><td><strong>Browse...</strong></td><td>—</td><td>Opens a file chooser to select the OpenCode executable.</td></tr>
+<tr><td><strong>Process Arguments</strong></td><td><code>acp</code></td><td>Extra command-line arguments passed when launching the server process.</td></tr>
+<tr><td><strong>Launch through WSL (Windows only)</strong></td><td>Off</td><td>When enabled, all Harness invocations (running the daemon and token-usage stats for supported agents) are wrapped through <strong>WSL</strong> using <code>wsl.exe</code>. The resolved Windows executable is automatically translated to its WSL mount path, so custom/WinGet/Choco-shim install locations resolve correctly. If the Harness is installed as a native Linux binary inside WSL (no Windows executable found), it is invoked directly on the WSL PATH. Recommended when running on Windows for best performance and bash compatibility.</td></tr>
+<tr><td><strong>Browse...</strong></td><td>—</td><td>Opens a file chooser to select the executable.</td></tr>
 </tbody>
 </table>
 
@@ -59,7 +59,7 @@ This page describes every preference in the panel, organised into six sections. 
 <tr><td><strong>Enable Stash Diff toolbar button and action</strong></td><td>On</td><td>Enables the <strong>Stash Diff</strong> toolbar button and the <code>Ctrl + Shift + L</code> action for viewing git stash diffs.</td></tr>
 <tr><td><strong>Enable Jump to file dialog</strong></td><td>On</td><td>Enables the <strong>Jump to File</strong> dialog (a shortcut, e.g. <code>Ctrl + Alt + J</code>, is shown next to the label when one is available).</td></tr>
 <tr><td><strong>Enable Mini Assistant</strong></td><td>On</td><td>Decides where <strong>Send to Assistant</strong> / <strong>Ask Assistant</strong> actions open: the floating mini dialog (enabled) or the main sidebar (disabled).</td></tr>
-<tr><td><strong>Enable Task Repository</strong></td><td>On</td><td>Enables the todo.txt task management feature. When disabled, no task repositories are loaded, the Tasks Dashboard is hidden, and AI task tools (e.g. <code>add_task</code>) are unavailable.</td></tr>
+<tr><td><strong>Enable Task Repository</strong></td><td>On</td><td>Enables the todo.txt task management feature. When disabled, no task repositories are loaded, the Tasks Dashboard is hidden, and AI task tools (e.g. <code>add&#95;task</code>) are unavailable.</td></tr>
 </tbody>
 </table>
 

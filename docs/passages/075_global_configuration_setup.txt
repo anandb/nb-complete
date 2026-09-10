@@ -6,7 +6,7 @@
   <div>[[Index->Topic Index]]</div>
 </div>
 
-The first time you start the assistant (and on server restarts), the plugin checks for a global OpenCode configuration file at `~/.config/opencode/opencode.json` (or `opencode.jsonc`). This file holds security settings like file-permission rules and which commands require your approval.
+The first time you start the IDE (and on server restarts), if you are using OpenCode as the harness, the plugin checks for a global OpenCode configuration file at `~/.config/opencode/opencode.json` (or `opencode.jsonc`). This file holds security settings like file-permission rules and which commands require your approval.
 
 If the file is missing, empty, or contains only the `$schema` reference, the chat panel shows a prompt offering to write a starter configuration:
 

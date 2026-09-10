@@ -8,7 +8,7 @@
 
 ![Permission Requests](../images/permission_request.png){style="max-width:100%;"}
 
-When the AI attempts to execute a tool, modify files, or run shell commands, the plugin ensures you remain in control. An Accept/Deny bubble will appear in the chat with full context of the requested action. You must explicitly grant permission before the operation proceeds. You can configure automatic allowances or denials in your OpenCode configuration.
+When the AI attempts to execute a tool, modify files, or run shell commands, the plugin ensures you remain in control. An Accept/Deny bubble will appear in the chat with full context of the requested action. You must explicitly grant permission before the operation proceeds. The permission configuration varies by harness, look at their respective documentation for details.
 
 
 > [[Configuration Template]]

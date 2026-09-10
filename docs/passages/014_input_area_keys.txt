@@ -16,7 +16,7 @@ The chat input area supports these keyboard shortcuts:
 <tr><td><code>Tab</code></td><td>Switch agent / open the options panel</td></tr>
 <tr><td><code>Alt + Up</code> / <code>Alt + Down</code></td><td>Recall previous / next message from history</td></tr>
 <tr><td><code>Ctrl + R</code></td><td>Open the History Search dialog (type to filter, Up/Down to navigate)</td></tr>
-<tr><td><code>Ctrl + Z</code> / <code>Ctrl + Y</code></td><td>Undo / redo</td></tr>
+<tr><td><code>Ctrl + Z</code> / <code>Ctrl + Y</code></td><td>Undo / Redo</td></tr>
 <tr><td><code>Escape</code></td><td>Close popups and refocus the input</td></tr>
 </tbody>
 </table>

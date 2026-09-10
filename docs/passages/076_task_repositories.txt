@@ -11,15 +11,12 @@ BeanBot integrates with the NetBeans Tasks Dashboard to let you manage tasks alo
 To get started, create a repository — see [[Creating a Task Repository]]. Once registered, your tasks appear in the NetBeans Tasks Dashboard — see [[Using the Tasks Dashboard]].
 
 <div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0.2em;">Multiple repositories</div>
-
 You can register multiple repositories (e.g. one per project). When adding a task via the AI, specify the repository by name; if only one exists it is used automatically.
 
 <div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0.2em;">Repository name</div>
-
 The task repository appears as <b>BeanBot</b> in the NetBeans bugtracking UI (the "Report a New Task" page). This is the connector display name — distinct from the repository's display name, which you set when creating it.
 
 <div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0.2em;">Adding tasks with the AI</div>
-
 You can also create tasks conversationally by asking BeanBot to add a task — it uses the built-in <code>add&#95;task</code> MCP tool. See [[Adding Tasks via AI]] for details.
 
 > [[Creating a Task Repository]]

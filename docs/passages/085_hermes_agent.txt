@@ -10,21 +10,19 @@
 
 ### Install
 
-- **macOS / Linux**: `curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash`
-- **Windows**: `iex (irm https://hermes-agent.nousresearch.com/install.ps1)`
+- **macOS / Linux**: <pre><code>curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash</code></pre>
+- **Windows**: <pre><code>irm https://hermes-agent.nousresearch.com/install.ps1 | iex</code></pre>
 
 After installing, enable ACP support:
 
-```
-cd ~/.hermes/hermes-agent
-uv pip install -e '.[acp]'
-```
+<pre><code>cd ~/.hermes/hermes-agent
+uv pip install -e '.[acp]'</code></pre>
 
 Requires Python 3.10+.
 
 ### About
 
-[Hermes](https://hermes-agent.nousresearch.com) is an open-source **AI agent harness** from Nous Research. It is a Python-based coding agent with built-in tool calling, multi-provider LLM support, and a self-extensible plugin system. Hermes speaks the [Agent Client Protocol](https://agentclientprotocol.com) natively, which is what BeanBot uses to drive it.
+<a href="https://hermes-agent.nousresearch.com" target="_blank" rel="noopener">Hermes</a> is an open-source **AI agent harness** from Nous Research. It is a Python-based coding agent with built-in tool calling, multi-provider LLM support, and a self-extensible plugin system. Hermes speaks the <a href="https://agentclientprotocol.com" target="_blank" rel="noopener">Agent Client Protocol</a> natively, which is what BeanBot uses to drive it.
 
 The executable you configure in BeanBot is <code>hermes</code>. When the session starts, Hermes reports its available models and modes as structured fields — the plugin uses these to populate the Model and Mode dropdowns automatically.
 

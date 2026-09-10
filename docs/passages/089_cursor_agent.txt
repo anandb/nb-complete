@@ -11,11 +11,11 @@
 ### Install
 
 - **macOS / Linux**: `curl https://cursor.com/install -fsSL | bash`
-- **Windows**: Download the installer from [cursor.com/cli](https://cursor.com/cli)
+- **Windows**: Download the installer from <a href="https://cursor.com/cli" target="_blank" rel="noopener">cursor.com/cli</a>
 
 ### About
 
-[Cursor](https://cursor.com) is an AI-powered code editor with a built-in coding agent. Its CLI exposes an ACP entry point that BeanBot can drive.
+<a href="https://cursor.com" target="_blank" rel="noopener">Cursor</a> is an AI-powered code editor with a built-in coding agent. Its CLI exposes an ACP entry point that BeanBot can drive.
 
 The executable you configure in BeanBot is <code>cursor-agent</code>. The ACP entry point is the CLI itself, run with `agent acp`. Cursor sends MCP server config and editor context automatically.
 

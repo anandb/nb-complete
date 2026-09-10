@@ -6,21 +6,17 @@
   <div>[[Index->Topic Index]]</div>
 </div>
 
-[OpenCode](https://opencode.ai) is an open-source AI coding agent and the default harness for BeanBot. It supports 15+ LLM providers (Anthropic, OpenAI, Google, Ollama, OpenRouter, Bedrock, …) and speaks the [Agent Client Protocol](https://agentclientprotocol.com) natively.
+<a href="https://opencode.ai" target="_blank" rel="noopener">OpenCode</a> is an open-source AI coding agent and the default harness for BeanBot. It supports 15+ LLM providers (Anthropic, OpenAI, Google, Ollama, OpenRouter, Bedrock, …) and speaks the <a href="https://agentclientprotocol.com" target="_blank" rel="noopener">Agent Client Protocol</a> natively.
 
-### Install
-
-#### macOS / Linux
-
+<div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0.2em;">macOS / Linux</div>
 <pre><code>`curl -fsSL https://opencode.ai/install | bash`</code></pre>
 
 Or via package managers:
 
-- **npm**: `npm install -g opencode-ai`
-- **Homebrew**: `brew install sst/tap/opencode`
+- **npm**: <pre><code>`npm install -g opencode-ai`</code></pre>
+- **Homebrew**: <pre><code>`brew install sst/tap/opencode`</code></pre>
 
-#### Windows
-
+<div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0.2em;">Windows</div>
 On Windows, it is better to run OpenCode inside **WSL (Windows Subsystem for Linux)** for the best performance and compatibility. This allows it to execute regular bash commands.
 
 To launch OpenCode through WSL from the plugin, enable **Launch through WSL** under `Tools > Options > Assistant > Assistant Service`. The plugin detects `wsl.exe` on your PATH and wraps all OpenCode invocations through WSL automatically, translating your Windows executable path to its WSL mount location.
@@ -29,24 +25,19 @@ To launch OpenCode through WSL from the plugin, enable **Launch through WSL** un
 
 Or via package managers:
 
-- **Chocolatey**: `choco install opencode`
-- **Scoop**: `scoop install opencode`
+- **Chocolatey**: <pre><code>`choco install opencode`</code></pre>
+- **Scoop**: <pre><code>`scoop install opencode`</code></pre>
 
-### Configuration
+<div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0.2em;">Configuration</div>
 
 After installing, create the configuration file:
 
-#### macOS / Linux
-
+<div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0.2em;">macOS / Linux</div>
 The config directory is at `$HOME/.config/opencode/`.
-
 <pre><code>`mkdir -p $HOME/.config/opencode`</code></pre>
-
 Create `$HOME/.config/opencode/opencode.json` with the starter configuration:
 
-> [[Configuration Template]]
-
-#### Windows
+<div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0.2em;">Windows</div>
 
 <pre><code>
 `mkdir "%USERPROFILE%\.config\opencode"
@@ -57,8 +48,7 @@ Open Notepad and paste in the starter configuration:
 
 > [[Configuration Template]]
 
-### Verify
-
+<div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0.2em;">Verify</div>
 Run this to confirm the configuration is valid:
 
 <pre><code>`opencode models`</code></pre>

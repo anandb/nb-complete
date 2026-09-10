@@ -10,7 +10,7 @@
 <thead><tr><th>Problem</th><th>Solution</th></tr></thead>
 <tbody>
 <tr><td><strong>Plugin can't find the harness</strong></td><td>Use the [[Choose Your Coding Harness]] screen to pick an installed harness, copy its install command, or set the path manually under <code>Options &gt; Assistant</code>.</td></tr>
-<tr><td><strong>Assistant becomes unresponsive</strong></td><td>Click <strong>Restart ACP Server</strong> in the toolbar.</td></tr>
+<tr><td><strong>Assistant becomes unresponsive</strong></td><td>Click <strong>Restart Harness</strong> in the toolbar.</td></tr>
 <tr><td><strong>Ctrl + L stops working</strong></td><td>Close and reopen the assistant panel from the Window menu. If that doesn't work, restart the IDE.</td></tr>
 <tr><td><strong>Sidebar doesn't open after install/upgrade</strong></td><td>The plugin auto-opens the sidebar on version change. If it doesn't appear, open it from <code>Window &gt; Assistant</code>.</td></tr>
 <tr><td><strong>Image paste doesn't work with Wayland on Linux</strong></td><td>Install the <code>wl-clipboard</code> package (Wayland) or check your clipboard manager.</td></tr>

@@ -10,6 +10,8 @@
 
 The **Mini Assistant** is a compact, floating chat dialog that gives you quick access to the AI without needing the full sidebar panel. It shares the same session as the main assistant, so conversations stay in sync. You can disable it entirely under `Options > Assistant > Actions > Enable Mini Assistant` — when disabled, "Send to Assistant" / "Ask Assistant" actions open the main sidebar instead.
 
+The Mini-Assistant was developed with one very specific usecase in mind, the window stays on top, so you can position it at the top right of the screen, `Ctrl + Alt + L` will toggle focus to the active editor, another `Ctrl + Alt + L` will focus the Mini-Assistant again, so you can generate snippets of code or select specific lines of code and refactor or analyze it without needing the full sidebar. It shows only the last assistant response, to see previous messages use `Page Up` or `Page Down` keys.
+
 > [[Opening the Mini Assistant]]
 > [[Using the Mini Assistant]]
 > [[Keyboard shortcuts inside the Mini Assistant]]

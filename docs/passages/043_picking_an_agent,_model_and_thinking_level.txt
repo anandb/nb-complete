@@ -6,7 +6,7 @@
   <div>[[Index->Topic Index]]</div>
 </div>
 
-Hitting `Tab` when in the input text-area or pressing the small gear icon, will slide open the chat options panel, by default you'll see two agents build and plan, OpenCode also allows custom agents to be defined, pick one of the models supported by the providers you have configured, and a suitable Thinking Level, the actual levels displayed depend on the exact model selected. The gear would have turned into a down arrow button, click the button to close the options panel. You can also use the `/agents`, `/models`, and `/level` slash commands to open these selectors.
+Hitting `Tab` when in the input text-area or pressing the small gear icon, will slide open the chat options panel, by default you'll see pre-configured agents for that harness, most of the harnesses also allow custom agents to be defined, pick one of the models supported by the providers you have configured, and a suitable Thinking Level, the actual levels displayed depend on the exact model selected. The gear would have turned into a down arrow button, click the button to close the options panel. You can also use the `/agents`, `/models`, and `/level` slash commands to open these selectors.
 
 
 > [[Commands]] / [[Slash Command Autocomplete]]

@@ -6,14 +6,10 @@
   <div>[[Index->Topic Index]]</div>
 </div>
 
-**Markdown Project** is a minimal project type for folders of plain text, notes, or documentation — no compiler or build system needed. To create one, choose `Tools > New Project > Other > Markdown Project`, or just run `touch .mdproject` inside any folder to make it loadable as a project. It renders a clean directory tree in the Projects tab, filters OS junk and editor swap files, and can be closed or deleted from the project node's right-click menu. It's a handy workspace for chatting about a folder of text files — and for managing your OpenCode configuration.
+**Markdown Project** is a minimal project type for folders of plain text, notes, or documentation — no compiler or build system needed. To create one, choose `Tools > New Project > Other > Markdown Project`, or just run `touch .mdproject` inside any folder to make it loadable as a project. It renders a clean directory tree in the Projects tab, filters OS junk and editor swap files, and can be closed or deleted from the project node's right-click menu. It's a handy workspace for chatting about a folder of text files — and for managing configuration.
 
 
 > [[Manage OpenCode Config in NetBeans]]
 > [[IDE Enhancements]]
 > [[Experiments]]
-
-
-
-
 
