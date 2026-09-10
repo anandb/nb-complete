@@ -82,7 +82,7 @@ class AgentCapabilitiesTest {
 
     @Test
     void harnessIconNameCoversCatalogHarnesses() {
-        assertEquals("logo.svg", AgentCapabilities.harnessIconName("opencode"));
+        assertEquals("opencode.svg", AgentCapabilities.harnessIconName("opencode"));
         assertEquals("goose.svg", AgentCapabilities.harnessIconName("goose"));
         assertEquals("pi-logo.svg", AgentCapabilities.harnessIconName("pi-acp"));
         assertEquals("cursor.svg", AgentCapabilities.harnessIconName("cursor-agent"));

@@ -142,7 +142,7 @@ public final class AgentCapabilities {
             case "claude-agent-acp" -> "claude.svg";
             case "goose" -> "goose.svg";
             case "pi-acp", "pi-agent" -> "pi-logo.svg";
-            case "opencode" -> "logo.svg";
+            case "opencode" -> "opencode.svg";
             case "hermes" -> "hermes.svg";
             default -> "agent.svg";
         };

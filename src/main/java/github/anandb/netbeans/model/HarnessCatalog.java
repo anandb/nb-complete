@@ -33,7 +33,7 @@ public final class HarnessCatalog {
     public static final Harness OPENCODE = new Harness(
             "opencode",
             "OpenCode",
-            "logo",
+            "opencode",
             List.of("opencode"),
             "acp",
             "winget install SST.opencode",
