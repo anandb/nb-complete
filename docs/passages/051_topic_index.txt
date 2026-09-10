@@ -8,6 +8,7 @@
 
 This is a complete list of topics in this guide, use it to directly jump to that page without navigating the entire trail.
 
+> [[Home]]
 > [[Adding Tasks via AI]]
 > [[Archiving Sessions]]
 > [[Ask Assistant Menu]]
@@ -18,11 +19,13 @@ This is a complete list of topics in this guide, use it to directly jump to that
 > [[Chat Features]]
 > [[Check token usage]]
 > [[Choose Your Coding Harness]]
+> [[Claude Agent]]
 > [[Commands]]
 > [[Configuration Template]]
 > [[Configure OpenCode for Ollama]]
 > [[Copying a message]]
 > [[Creating a Task Repository]]
+> [[Cursor Agent]]
 > [[Customising the Toolbar]]
 > [[Expand/Collapse All]]
 > [[Experiments]]
@@ -32,7 +35,7 @@ This is a complete list of topics in this guide, use it to directly jump to that
 > [[Git Stashes as "Code Drafts" (using Stash Diff)]]
 > [[Global Configuration Setup]]
 > [[Goose Agent]]
-> [[Home]]
+> [[Hermes Agent]]
 > [[IDE Enhancements]]
 > [[Input Area Keys]]
 > [[Inspector Context Menu]]
@@ -42,7 +45,6 @@ This is a complete list of topics in this guide, use it to directly jump to that
 > [[Keyboard Shortcuts Dialog]]
 > [[Known Issues]]
 > [[Local Data Analysis in Java]]
-> [[macOS/Linux]]
 > [[Manage OpenCode Config in NetBeans]]
 > [[Markdown Project Type]]
 > [[MCP Tools]]
@@ -50,8 +52,10 @@ This is a complete list of topics in this guide, use it to directly jump to that
 > [[Mini Assistant]]
 > [[New Session Confirm Bar]]
 > [[Offline/Private Coding (Local LLMs)]]
+> [[OpenCode]]
 > [[Options Panel Reference]]
 > [[Permission Requests]]
+> [[Pick Your Harness]]
 > [[PI Agent]]
 > [[Picking an Agent, Model and Thinking Level]]
 > [[Pinned Messages]]
@@ -74,12 +78,9 @@ This is a complete list of topics in this guide, use it to directly jump to that
 > [[Time to first token]]
 > [[Todo.txt Format]]
 > [[Troubleshooting]]
-> [[Unix Config]]
 > [[Update Notifications]]
 > [[Using the Tasks Dashboard]]
 > [[Welcome Screen]]
-> [[Windows]]
-> [[Windows Config]]
 
 
 

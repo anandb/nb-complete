@@ -6,9 +6,11 @@
   <div>[[Index->Topic Index]]</div>
 </div>
 
+After installing your harness, configure the plugin in NetBeans.
+
 ![Assistant Options](../images/assistant_options.png){style="max-width:100%;"}
 
-The plugin adds a tab to the NetBeans Options, if you open the Options Window, you'll see an additional Assistant tab at the end. In most cases, you can go with the defaults, but if the [[Choose Your Coding Harness]] screen couldn't auto-detect your harness, you can specify the full path to its binary there.
+The plugin adds a tab to the NetBeans Options — open the Options Window and you'll see an additional Assistant tab at the end. In most cases, you can go with the defaults, but if the [[Choose Your Coding Harness]] screen couldn't auto-detect your harness, you can specify the full path to its binary there.
 
 The preamble is an additional user prompt that's sent to the server when creating a new chat session. The default text contains some directives around code quality, planning and task management, you can customise this with your own instructions.
 

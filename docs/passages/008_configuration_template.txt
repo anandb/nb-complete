@@ -67,7 +67,7 @@ This is the starter configuration the plugin writes when you accept the global-c
 
 
 > [[Permission Requests]]
-> [[Unix Config]] / [[Windows Config]]
+> [[OpenCode]]
 > [[Manage OpenCode Config in NetBeans]]
 > [[Offline/Private Coding (Local LLMs)]]
 > [[Global Configuration Setup]]

@@ -19,7 +19,7 @@ Binaries found on `PATH` are never used automatically — you always make the ch
 After installing a harness — and optionally setting the binary path under `Options > Assistant` — click **Start Server** to connect.
 
 
-> [[macOS/Linux]] / [[Windows]]
+> [[OpenCode]] / [[PI Agent]] / [[Goose Agent]] / [[Hermes Agent]]
 > [[Post Install]]
 > [[Restarting the server]]
 > [[Options Panel Reference]]

@@ -404,7 +404,7 @@ When editing it, use the split passage files — they are the source of truth:
 - **Reachability check**: after editing, run
   `python3 docs/check_reachable.py "target/User Guide.twee"` to verify every
   passage is reachable from Home without the Topic Index, and that there are
-  no dangling links.
+  no dangling links. Show the absolute path to the stitched file in a code block.
 - **Workflow to add a page**: create `docs/passages/NNN_<topic>.txt` (next
   number), add a `> [[Page Name]]` link to the Topic Index passage
   (`051_topic_index.txt`), then run `python3 docs/stitch.py` to regenerate

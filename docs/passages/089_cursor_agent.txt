@@ -1,0 +1,26 @@
+:: Cursor Agent {"position":"2000,1200","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Cursor Agent</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+<i style="opacity: 0.7;">Experimental — BeanBot's support for this harness is under active development and may change without notice.</i>
+
+### Install
+
+- **macOS / Linux**: `curl https://cursor.com/install -fsSL | bash`
+- **Windows**: Download the installer from [cursor.com/cli](https://cursor.com/cli)
+
+### About
+
+[Cursor](https://cursor.com) is an AI-powered code editor with a built-in coding agent. Its CLI exposes an ACP entry point that BeanBot can drive.
+
+The executable you configure in BeanBot is <code>cursor-agent</code>. The ACP entry point is the CLI itself, run with `agent acp`. Cursor sends MCP server config and editor context automatically.
+
+> [[Post Install]]
+> [[Starting a Session]]
+> [[MCP Tools]]
+> [[Permission Requests]]
+> [[Picking an Agent, Model and Thinking Level]]

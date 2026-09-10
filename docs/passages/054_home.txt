@@ -7,18 +7,13 @@
   <div>[[Index->Topic Index]]</div>
 </div>
 
-<i style="opacity: 0.7;">Last updated for BeanBot v1.19.1.</i>
+<i style="opacity: 0.7;">Last updated for BeanBot v1.19.7.</i>
 
-This guide will help you setup [[BeanBot]], a NetBeans plugin that provides an AI assistant panel powered by OpenCode, so you can chat with AI models directly inside the IDE. It automatically attaches active project and source file context to your messages, so the AI always understands what you're working on. It also features a built-in permission handler—allowing you to inspect code diffs before applying changes and explicitly approve file deletions or terminal commands.
+> [[BeanBot (screenshot)->BeanBot]]
 
-The plugin makes use of a new protocol called ACP (Agent Client Protocol) designed to let editors and IDEs like NetBeans interact with AI agents, we use OpenCode as an agent server, running it at IDE startup to send and receive messages from AI agents, this has the advantage that we don't have to add individual support for every AI provider like Anthropic, Gemini or OpenAI, OpenCode already supports multiple providers, and that makes it possible to switch between providers and models with ease.
+BeanBot is a NetBeans plugin that provides an AI assistant panel powered by the [Agent Client Protocol](https://agentclientprotocol.com). It lets you chat with AI models directly inside the IDE, automatically attaching active project and source file context to your messages. It also features a built-in permission handler — allowing you to inspect code diffs before applying changes and explicitly approve file deletions or terminal commands.
 
-So the first thing we need to do is install OpenCode on your system and ensure the plugin can find it, pick the operating system you use from this list
-
-> [[macOS/Linux]]
-> [[Windows 10/11->Windows]]
-
-You should also look at the current documentation maintained at <a href="https://opencode.ai/download" target="_blank" rel="noopener">opencode.ai</a>
+> [[Pick Your Harness]]
 
 To understand what the AI already knows about your code, read [[Automatic Context Capture]].
 

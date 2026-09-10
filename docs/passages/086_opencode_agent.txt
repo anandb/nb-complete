@@ -1,0 +1,70 @@
+:: OpenCode {"position":"850,600","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">OpenCode</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+[OpenCode](https://opencode.ai) is an open-source AI coding agent and the default harness for BeanBot. It supports 15+ LLM providers (Anthropic, OpenAI, Google, Ollama, OpenRouter, Bedrock, …) and speaks the [Agent Client Protocol](https://agentclientprotocol.com) natively.
+
+### Install
+
+#### macOS / Linux
+
+<pre><code>`curl -fsSL https://opencode.ai/install | bash`</code></pre>
+
+Or via package managers:
+
+- **npm**: `npm install -g opencode-ai`
+- **Homebrew**: `brew install sst/tap/opencode`
+
+#### Windows
+
+On Windows, it is better to run OpenCode inside **WSL (Windows Subsystem for Linux)** for the best performance and compatibility. This allows it to execute regular bash commands.
+
+To launch OpenCode through WSL from the plugin, enable **Launch through WSL** under `Tools > Options > Assistant > Assistant Service`. The plugin detects `wsl.exe` on your PATH and wraps all OpenCode invocations through WSL automatically, translating your Windows executable path to its WSL mount location.
+
+<pre><code>`curl -fsSL https://opencode.ai/install | bash`</code></pre>
+
+Or via package managers:
+
+- **Chocolatey**: `choco install opencode`
+- **Scoop**: `scoop install opencode`
+
+### Configuration
+
+After installing, create the configuration file:
+
+#### macOS / Linux
+
+The config directory is at `$HOME/.config/opencode/`.
+
+<pre><code>`mkdir -p $HOME/.config/opencode`</code></pre>
+
+Create `$HOME/.config/opencode/opencode.json` with the starter configuration:
+
+> [[Configuration Template]]
+
+#### Windows
+
+<pre><code>
+`mkdir "%USERPROFILE%\.config\opencode"
+cd "%USERPROFILE%\.config\opencode"`
+</code></pre>
+
+Open Notepad and paste in the starter configuration:
+
+> [[Configuration Template]]
+
+### Verify
+
+Run this to confirm the configuration is valid:
+
+<pre><code>`opencode models`</code></pre>
+
+Then proceed to [[Post Install]] to configure the plugin in NetBeans.
+
+> [[Post Install]]
+> [[Starting a Session]]
+> [[Options Panel Reference]]

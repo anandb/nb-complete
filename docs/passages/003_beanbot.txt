@@ -1,13 +1,9 @@
-:: BeanBot
+:: BeanBot {"position":"850,600","size":"100,100"}
 
 
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">BeanBot</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
 
-![BeanBot screenshot](../images/beanbot-1.png){}
-
-
-
-
-
-
-
-
+![BeanBot screenshot](../images/beanbot-1.png){style="max-width:100%;"}

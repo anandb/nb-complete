@@ -17,6 +17,7 @@ What works with Goose in BeanBot:
 - **[[Queuing Messages]]** — while Goose is working, your messages are queued and combined into one prompt at turn end (currently the only agent that needs queuing support).
 - **[[MCP Tools]]** — the plugin hands Goose a token-protected MCP server URL; the AI can read files, navigate the editor, and run git commands from the conversation.
 
+> [[Post Install]]
 > [[Starting a Session]]
 > [[Queuing Messages]]
 > [[MCP Tools]]

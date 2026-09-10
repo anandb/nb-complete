@@ -1,0 +1,20 @@
+:: Pick Your Harness {"position":"850,700","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Pick Your Harness</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+BeanBot works with several coding harnesses. Pick the one you want to use — each page covers installation on all platforms:
+
+> [[OpenCode]]
+> [[PI Agent]]
+> [[Goose Agent]]
+> [[Claude Agent]]
+> [[Cursor Agent]]
+> [[Hermes Agent]]
+
+Not sure? The plugin will detect installed harnesses and let you choose at startup — see [[Choose Your Coding Harness]].
+
+> [[Home]]
