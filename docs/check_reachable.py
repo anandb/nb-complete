@@ -61,7 +61,7 @@ def extract_links(body: str):
 
 
 def main() -> int:
-    path = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).parent / "User Guide.twee"
+    path = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).resolve().parent.parent / "target" / "User Guide.twee"
     text = path.read_text(encoding="utf-8")
 
     passages = parse_passages(text)

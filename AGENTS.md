@@ -391,7 +391,7 @@ public void toggleVisibility() {
 
 ## User Guide (docs/)
 
-The interactive user guide lives at `docs/User Guide.twee` (Twine/Twee format).
+The interactive user guide lives at `target/User Guide.twee` (Twine/Twee format), generated from the split passages.
 When editing it, use the split passage files — they are the source of truth:
 
 - **Passages**: `docs/passages/NNN_<name>.txt` — one file per page, numbered
@@ -402,7 +402,7 @@ When editing it, use the split passage files — they are the source of truth:
 - **Tooling**: `docs/split.py` unpacks `User Guide.twee` into passages+images;
   `docs/stitch.py` reassembles them back into `User Guide.twee`.
 - **Reachability check**: after editing, run
-  `python3 docs/check_reachable.py "docs/User Guide.twee"` to verify every
+  `python3 docs/check_reachable.py "target/User Guide.twee"` to verify every
   passage is reachable from Home without the Topic Index, and that there are
   no dangling links.
 - **Workflow to add a page**: create `docs/passages/NNN_<topic>.txt` (next

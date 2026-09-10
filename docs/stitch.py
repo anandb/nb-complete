@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Reassemble docs/User Guide.twee from the split passages and images.
+"""Reassemble target/User Guide.twee from the split passages and images.
 
 Reads docs/passages/NNN_<name>.txt in filename order, converts markdown
-image links back to base64 data URIs, and writes docs/User Guide.twee.
+image links back to base64 data URIs, and writes target/User Guide.twee.
 
 Markdown image link syntax produced by split.py:
     ![alt](../images/<name>-N.ext){style="max-width:100%;"}
@@ -18,7 +18,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 PASSAGES_DIR = HERE / "passages"
 IMAGES_DIR = HERE / "images"
-DEFAULT_OUTPUT = HERE / "User Guide.twee"
+DEFAULT_OUTPUT = HERE.parent / "target" / "User Guide.twee"
 
 MD_IMG_RE = re.compile(
     r'!\[([^\]]*)\]\(([^)]+)\)(?:{([^}]*?)})?', re.IGNORECASE
@@ -50,7 +50,7 @@ def stitch() -> str:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT,
-                        help="output twee file (default: docs/User Guide.twee)")
+                        help="output twee file (default: target/User Guide.twee)")
     args = parser.parse_args()
     output = args.output.resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
