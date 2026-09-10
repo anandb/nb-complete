@@ -77,6 +77,18 @@ public final class AgentCapabilities {
                     .supportsSessionSetMode(true)
                     .build();
         }
+        // Hermes ACP: hermes-acp (the launchable entry point) and hermes
+        // (matches by prefix so bare "hermes" also resolves). Chunk updates
+        // carry no messageId, so streaming must merge by role instead.
+        if (name.startsWith("hermes")) {
+            return builder()
+                    .displayName("Hermes")
+                    .supportsMessageQueue(true)
+                    .sendsMcpServerConfig(true)
+                    .supportsMessageIds(false)
+                    .supportsMcpServer(true)
+                    .build();
+        }
         return switch (name) {
             case "goose" -> builder()
                     .displayName("Goose")
@@ -131,6 +143,7 @@ public final class AgentCapabilities {
             case "goose" -> "goose.svg";
             case "pi-acp", "pi-agent" -> "pi-logo.svg";
             case "opencode" -> "logo.svg";
+            case "hermes" -> "hermes.svg";
             default -> "agent.svg";
         };
     }

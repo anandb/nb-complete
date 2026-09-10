@@ -93,6 +93,71 @@ class SessionManagerTest {
         verify(processManager).sendRequest(eq("session/new"), any(), eq(60L), eq(TimeUnit.SECONDS));
     }
 
+    /** Listener that captures the options passed to onSessionLoaded. */
+    private volatile List<SessionConfigOption> lastLoadedOptions;
+
+    private SessionListener mockListener() {
+        return new SessionListener() {
+            @Override public void onSessionStarted(String sessionId) {}
+            @Override public void onSessionLoading(boolean isLoading) {}
+            @Override public void onSessionLoaded(String sessionId,
+                    List<SessionConfigOption> configOptions, boolean isStartup) {
+                lastLoadedOptions = configOptions;
+            }
+            @Override public void onSessionListUpdated(java.util.List<github.anandb.netbeans.model.Session> sessions) {}
+            @Override public void onSessionError(String message) {}
+            @Override public void onSessionUpdate(github.anandb.netbeans.model.SessionUpdate update) {}
+        };
+    }
+
+    @Test
+    void testCreateSessionHermesModelsModesBecomeConfigOptions() throws Exception {
+        // Hermes-style session/new response: models/modes as structured fields,
+        // no title, no configOptions. Models and modes must survive the title
+        // fallback and be converted into config options for the dropdowns.
+        JsonNode mockResponse = mapper.readTree(
+                "{\"sessionId\":\"hermes-1\",\"cwd\":\"/test/cwd\","
+                + "\"models\":{\"availableModels\":["
+                + "{\"modelId\":\"opencode-go:omen-alpha\",\"name\":\"OpenCode Go · omen-alpha\",\"description\":\"Provider: OpenCode Go\"},"
+                + "{\"modelId\":\"opencode-go:glm-5.3\",\"name\":\"OpenCode Go · glm-5.3\",\"description\":\"Provider: OpenCode Go\"}"
+                + "],\"currentModelId\":\"opencode-go:omen-alpha\"},"
+                + "\"modes\":{\"availableModes\":["
+                + "{\"id\":\"default\",\"name\":\"Default\",\"description\":\"Ask before edits.\"}"
+                + "],\"currentModeId\":\"default\"}}");
+        when(processManager.sendRequest(eq("session/new"), any(), eq(60L), eq(TimeUnit.SECONDS)))
+                .thenReturn(CompletableFuture.completedFuture(mockResponse));
+
+        CompletableFuture<Session> future = sessionManager.createSession("/test/cwd");
+        Session created = future.get(5, TimeUnit.SECONDS);
+
+        assertEquals("hermes-1", created.id());
+        // Title fallback ran (no title in response) and must not drop models/modes
+        assertEquals("hermes-1", created.title());
+        assertTrue(created.models() != null && created.models().availableModels().size() == 2);
+        assertTrue(created.modes() != null && created.modes().availableModes().size() == 1);
+
+        sessionManager.addSessionListener(mockListener());
+        sessionManager.createNewSession("/test/cwd");
+        // notifySessionLoaded fires from the async chain; wait for it
+        long deadline = System.currentTimeMillis() + 5000;
+        List<SessionConfigOption> opts = null;
+        while (opts == null && System.currentTimeMillis() < deadline) {
+            opts = lastLoadedOptions;
+            Thread.sleep(50);
+        }
+        assertTrue(opts != null && opts.size() == 2, "expected model+mode config options");
+        for (SessionConfigOption o : opts) {
+            if ("model".equals(o.category())) {
+                assertEquals("model", o.id());
+                assertTrue(o.options().size() == 2);
+                assertEquals("opencode-go:omen-alpha", o.currentValue());
+            }
+            if ("mode".equals(o.category())) {
+                assertEquals("default", o.currentValue());
+            }
+        }
+    }
+
     @Test
     void constructorRegistersPreRestartHandler() {
         // Every manual server restart must reset sticky session state; otherwise

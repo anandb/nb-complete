@@ -503,8 +503,7 @@ public class ChatThreadPanel extends JPanel {
         // Generate messageId for non-streaming assistant messages that lack one.
         // Streaming messages get their ID assigned after finalization in assignMissingMessageIds().
         if (type.isAssistant() && messageId == null && !streaming && sid != null) {
-            messageId = MessageIdGenerator.generate(sid, text);
-            LOG.info("Generated messageId={0} text={1}", messageId, text.substring(0, Math.min(80, text.length())));
+            messageId = MessageIdGenerator.generate(sid, text);            
             // Add to seen set so retainPinned() doesn't remove pins for this ID
             seenMessageIdsBySession.computeIfAbsent(sid, k -> ConcurrentHashMap.newKeySet()).add(messageId);
         }
@@ -1392,8 +1391,7 @@ public class ChatThreadPanel extends JPanel {
                     && "assistant".equals(mb.getRole())) {
                 String text = mb.getRawText();
                 if (text != null && !text.isEmpty()) {
-                    String generatedId = MessageIdGenerator.generate(sid, text);
-                    LOG.info("Generated messageId={0} text={1}", generatedId, text.substring(0, Math.min(80, text.length())));
+                    String generatedId = MessageIdGenerator.generate(sid, text);                    
                     mb.setMessageId(generatedId);
                     seen.add(generatedId);
                 }

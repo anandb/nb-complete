@@ -90,10 +90,22 @@ public final class HarnessCatalog {
             "Requires Node.js 18+. Bundles the Claude Agent SDK, so a separate claude CLI install is not needed.",
             "https://github.com/agentclientprotocol/claude-agent-acp");
 
+    public static final Harness HERMES = new Harness(
+            "hermes",
+            "Hermes",
+            "hermes",
+            List.of("hermes"),
+            "",
+            "iex (irm https://hermes-agent.nousresearch.com/install.ps1)",
+            "curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash",
+            "curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash",
+            "Requires Python 3.10+. Enable ACP with: cd ~/.hermes/hermes-agent && uv pip install -e '.[acp]'.",
+            "https://hermes-agent.nousresearch.com/docs/user-guide/features/acp");
+
     /** All supported harnesses, in the order offered during onboarding:
-     *  OpenCode, Pi, Goose, Cursor, Claude. */
+     *  OpenCode, Pi, Goose, Cursor, Claude, Hermes. */
     public static final List<Harness> ALL =
-            List.of(OPENCODE, PI, GOOSE, CURSOR, CLAUDE);
+            List.of(OPENCODE, PI, GOOSE, CURSOR, CLAUDE, HERMES);
 
     /** Looks up a harness by catalog id; {@code null} when unknown. */
     public static Harness byId(String id) {

@@ -16,18 +16,18 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class HarnessCatalogTest {
 
     @Test
-    void allFiveHarnessesPresent() {
-        assertEquals(5, HarnessCatalog.ALL.size());
+    void allSixHarnessesPresent() {
+        assertEquals(6, HarnessCatalog.ALL.size());
         Set<String> ids = new HashSet<>();
         for (HarnessCatalog.Harness h : HarnessCatalog.ALL) {
             assertTrue(ids.add(h.id()), "duplicate id: " + h.id());
         }
-        assertTrue(ids.containsAll(Set.of("opencode", "goose", "pi", "cursor", "claude")));
+        assertTrue(ids.containsAll(Set.of("opencode", "goose", "pi", "cursor", "claude", "hermes")));
     }
 
     @Test
-    void onboardingOrderIsOpencodePiGooseCursorClaude() {
-        assertEquals(List.of("opencode", "pi", "goose", "cursor", "claude"),
+    void onboardingOrderIsOpencodePiGooseCursorClaudeHermes() {
+        assertEquals(List.of("opencode", "pi", "goose", "cursor", "claude", "hermes"),
                 HarnessCatalog.ALL.stream().map(HarnessCatalog.Harness::id).toList());
     }
 
@@ -57,6 +57,7 @@ class HarnessCatalogTest {
         assertEquals(HarnessCatalog.OPENCODE, HarnessCatalog.byId("opencode"));
         assertNull(HarnessCatalog.byId("nope"));
         assertEquals(HarnessCatalog.CLAUDE, HarnessCatalog.byBinaryName("claude-agent-acp"));
+        assertEquals(HarnessCatalog.HERMES, HarnessCatalog.byBinaryName("hermes"));
         assertEquals(HarnessCatalog.GOOSE, HarnessCatalog.byBinaryName("goose"));
         assertEquals(HarnessCatalog.CURSOR, HarnessCatalog.byBinaryName("agent"));
         assertNull(HarnessCatalog.byBinaryName("unknown-bin"));

@@ -6,6 +6,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.model.SessionConfigOption;
+import github.anandb.netbeans.model.ConfigOptionConverter;
+import github.anandb.netbeans.model.ModelsInfo;
+import github.anandb.netbeans.model.ModesInfo;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.contract.ProcessControl;
 import github.anandb.netbeans.contract.ProjectQuery;
@@ -384,9 +387,12 @@ public class SessionManager implements SessionQuery, SessionControl {
                             for (Session s : rawSessions) {
                                 Session resolved = s;
                                 if (s.effectiveDirectory() == null) {
+                                    // Preserve models/modes — session/load has no
+                                    // configOptions for Hermes-style agents and falls
+                                    // back to this cached session for the dropdowns.
                                     resolved = new Session(s.id(), s.title(), directory, directory,
                                                            s.parentID(), s.updatedAt(), s.mcpServers(),
-                                                           s.configOptions(), null, null);
+                                                           s.configOptions(), s.models(), s.modes());
                                 }
                                 sessions.add(resolved);
                                 cacheManager.cacheSession(resolved);
@@ -470,11 +476,13 @@ public class SessionManager implements SessionQuery, SessionControl {
                         Session s = MAPPER.treeToValue(res, Session.class);
                         LOG.info("session/new extracted sessionId: {0}, title: {1}", s.id(), s.title());
                         
-                        // Use session ID as title if server didn't provide one
+                        // Use session ID as title if server didn't provide one.
+                        // Preserve models/modes — Hermes reports them in session/new
+                        // and sends no title, so this branch always ran for it.
                         if (StringUtils.isBlank(s.title())) {
                             s = new Session(s.id(), s.id(), s.cwd(), s.directory(),
                                     s.parentID(), s.updatedAt(), s.mcpServers(),
-                                    s.configOptions(), null, null);
+                                    s.configOptions(), s.models(), s.modes());
                             LOG.info("session/new: using sessionId as title");
                         }
                         
@@ -483,7 +491,7 @@ public class SessionManager implements SessionQuery, SessionControl {
                                     "reconstructing with finalCwd: {0}", finalCwd);
                             s = new Session(s.id(), s.title(), finalCwd, finalCwd,
                                     s.parentID(), s.updatedAt(), s.mcpServers(),
-                                    s.configOptions(), null, null);
+                                    s.configOptions(), s.models(), s.modes());
                             LOG.info("session/new reconstructed session, id is now: {0}", s.id());
                         }
                         
@@ -533,6 +541,23 @@ public class SessionManager implements SessionQuery, SessionControl {
                             return MAPPER.convertValue(res.get("configOptions"), new TypeReference<List<SessionConfigOption>>() {});
                         } catch (Exception e) {
                             LOG.warn("Failed to parse configOptions: {0}", ExceptionUtils.getMessage(e), e);
+                        }
+                    }
+                    // Agents that report session state as structured fields rather than a
+                    // configOptions array (Hermes) — mirror the session/new fallback.
+                    if (res != null && (res.has("models") || res.has("modes"))) {
+                        try {
+                            ModelsInfo models = res.has("models")
+                                    ? MAPPER.convertValue(res.get("models"), ModelsInfo.class) : null;
+                            ModesInfo modes = res.has("modes")
+                                    ? MAPPER.convertValue(res.get("modes"), ModesInfo.class) : null;
+                            List<SessionConfigOption> resolved = ConfigOptionConverter.fromModelsAndModes(models, modes);
+                            if (resolved != null) {
+                                return resolved;
+                            }
+                        } catch (Exception e) {
+                            LOG.warn("Failed to parse models/modes from session/load: {0}",
+                                    ExceptionUtils.getMessage(e), e);
                         }
                     }
                     return null;
@@ -672,14 +697,23 @@ public class SessionManager implements SessionQuery, SessionControl {
                                     stateMachine.getState());
                             return;
                         }
-                        notifySessionLoaded(session.id(), session.configOptions(), true);
+                        // Derive config options from models/modes when the server
+                        // reports them as structured fields (Hermes) instead of a
+                        // configOptions array (Claude). Without this, agents that
+                        // use models/modes get empty model/agent dropdowns.
+                        List<SessionConfigOption> resolvedOptions = session.configOptions();
+                        if (resolvedOptions == null) {
+                            resolvedOptions = ConfigOptionConverter.fromModelsAndModes(
+                                    session.models(), session.modes());
+                        }
+                        notifySessionLoaded(session.id(), resolvedOptions, true);
                         // Do NOT call refreshSessions() here — the server may not have
                         // added the new session to its list yet, causing onSessionListUpdated
                         // to fall back to loading an old session instead of the new one.
                         // Before preamble, let the UI handler (if set) show a config
                         // dialog so the user can pick agent/model/level.
                         if (beforePreambleHandler != null) {
-                            beforePreambleHandler.apply(session.id(), session.configOptions())
+                            beforePreambleHandler.apply(session.id(), resolvedOptions)
                                 .whenComplete((v, ex) -> {
                                     if (!sendPreamble(session.id())) {
                                         notifyPreambleDone();

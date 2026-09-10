@@ -41,6 +41,12 @@ class AgentCapabilitiesTest {
         assertEquals("Cursor", cursor.displayName());
         assertEquals("Claude", AgentCapabilities.forName("claude").displayName());
         assertEquals("OpenCode", AgentCapabilities.forName("opencode").displayName());
+        AgentCapabilities hermes = AgentCapabilities.forName("hermes");
+        assertEquals(hermes, AgentCapabilities.forName("hermes-acp"));
+        assertTrue(hermes.supportsMessageQueue());
+        assertTrue(hermes.sendsMcpServerConfig());
+        assertFalse(hermes.supportsMessageIds());
+        assertEquals("Hermes", hermes.displayName());
         assertEquals("Agent", AgentCapabilities.DEFAULT.displayName());
     }
 
