@@ -8,7 +8,7 @@
 
 <i style="opacity: 0.7;">Experimental — BeanBot's support for this harness is under active development and may change without notice.</i>
 
-[Pi](https://pi.dev) is a minimal, extensible **agent harness** — an open-source coding agent CLI (npm: <code>@earendil-works/pi-coding-agent</code>) built around a unified multi-provider LLM API, an agent runtime with tool calling, and a self-extensible extension system. It deliberately ships no built-in permission system: it runs with the permissions of the user who launched it, so sandbox or containerize it yourself if you need stronger boundaries.
+[Pi](https://pi.dev) is a minimal, extensible **agent harness** — an open-source coding agent CLI (<span>install via</span> <code>npm install -g @earendil-works/pi-coding-agent</code>) built around a unified multi-provider LLM API, an agent runtime with tool calling, and a self-extensible extension system. It deliberately ships no built-in permission system: it runs with the permissions of the user who launched it, so sandbox or containerize it yourself if you need stronger boundaries.
 
 To use Pi with BeanBot, install the harness plus two Pi extensions:
 

@@ -300,7 +300,10 @@ public final class TxtTaskRepository implements TaskRepositoryControl {
         }
         if (!f.exists()) {
             synchronized (s) {
-                s.cache = loaded;
+                // Do not clobber tasks mutated while this load was in flight.
+                if (s.gen == s.genAtLoadStart) {
+                    s.cache = loaded;
+                }
                 s.lastModified = 0;
                 s.size = 0;
             }

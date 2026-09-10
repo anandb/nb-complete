@@ -19,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class TxtTaskRepositoryTest {
 
     @TempDir
-    Path tempDir;
+    private Path tempDir;
 
     @Test
     void addGetUpdateDeleteReflectSynchronously() {
