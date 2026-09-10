@@ -1,6 +1,6 @@
 # Release Notes
 
-## v1.19.7 (Changes since v1.19.6)
+## v1.19.8 (Changes since v1.19.6)
 
 ### Features
 - **Multi-harness onboarding**: Detect all installed ACP harnesses (OpenCode, Pi, Goose, Cursor, Claude, Hermes) on native PATH and WSL, present a chooser bubble with icons, install commands, and prerequisites, then persist the selection (`22507f27`, `61d53850`).
