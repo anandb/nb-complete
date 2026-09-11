@@ -2,7 +2,7 @@ package github.anandb.netbeans.manager;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import github.anandb.netbeans.contract.ToolExecutor;
-import github.anandb.netbeans.model.AgentCapabilities;
+import github.anandb.netbeans.model.HarnessCatalog;
 import github.anandb.netbeans.support.MapperSupplier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -58,7 +58,7 @@ class SessionRpcClientTest {
 
     @Test
     void createSessionIncludesMcpServersWhenCapabilityEnabled() {
-        when(processManager.getCapabilities()).thenReturn(AgentCapabilities.DEFAULT);
+        when(processManager.getCapabilities()).thenReturn(HarnessCatalog.UNKNOWN);
         when(processManager.getToolExecutor()).thenReturn(createMockToolExecutor());
         when(processManager.sendRequest(eq("session/new"), any(), eq(60L), eq(TimeUnit.SECONDS)))
                 .thenReturn(CompletableFuture.completedFuture(mapper.createObjectNode()));
@@ -69,7 +69,7 @@ class SessionRpcClientTest {
 
     @Test
     void loadSessionFromServerCallsCorrectMethod() {
-        when(processManager.getCapabilities()).thenReturn(AgentCapabilities.DEFAULT);
+        when(processManager.getCapabilities()).thenReturn(HarnessCatalog.UNKNOWN);
         when(processManager.getToolExecutor()).thenReturn(createMockToolExecutor());
         when(processManager.sendRequest(eq("session/load"), any(), eq(2L), eq(TimeUnit.MINUTES)))
                 .thenReturn(CompletableFuture.completedFuture(mapper.createObjectNode()));
@@ -84,7 +84,7 @@ class SessionRpcClientTest {
             @Override public void stop() {}
             @Override public CompletableFuture<Void> waitForReady() { return CompletableFuture.completedFuture(null); }
             @Override public java.util.List<Map<String, Object>> getServerConfig() { return java.util.List.of(); }
-            @Override public void checkServerSupport(github.anandb.netbeans.model.AgentCapabilities caps) {}
+            @Override public void checkServerSupport(HarnessCatalog.Harness caps) {}
             @Override public void setMcpAuthRequired(boolean required) {}
             @Override public void disable() {}
             @Override public boolean isDisabled() { return false; }

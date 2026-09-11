@@ -93,12 +93,12 @@ public class SessionManager implements SessionQuery, SessionControl {
     private static final String LOCAL_SESSIONS_KEY = "gemini_local_sessions";
 
     /**
-     * Returns the current agent name (lowercased) from the ACP server handshake,
-     * or {@code null} if the server has not been initialized yet.
+     * Returns the current harness ID from preferences, or {@code null} if none
+     * is configured. Used to build agent-qualified preference keys.
      */
     private static String agentName() {
-        ProcessControl pc = Lookup.getDefault().lookup(ProcessControl.class);
-        return pc != null ? pc.getAgentName() : null;
+        return NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                .get(PreferenceKeys.ACP_HARNESS_ID, null);
     }
 
     /** Builds an agent-qualified preference key. */

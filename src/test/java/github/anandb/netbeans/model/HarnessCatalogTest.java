@@ -9,10 +9,10 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** Tests the harness catalog data: completeness, uniqueness, and lookups. */
+/** Tests the harness catalog data: completeness, uniqueness, lookups, and capabilities. */
 class HarnessCatalogTest {
 
     @Test
@@ -41,29 +41,25 @@ class HarnessCatalogTest {
 
     @Test
     void launchBinariesAreAcpEntryPoints() {
-        // Only the pi-acp entry point is probed — bare pi / pi-agent are not
-        // launchable ACP servers.
         assertEquals(List.of("pi-acp"), HarnessCatalog.PI.binaryNames());
-        // Claude's ACP entry point is the claude-agent-acp adapter.
         assertTrue(HarnessCatalog.CLAUDE.binaryNames().contains("claude-agent-acp"));
     }
 
     @Test
     void lookupsByIdAndBinaryName() {
         assertEquals(HarnessCatalog.OPENCODE, HarnessCatalog.byId("opencode"));
-        assertNull(HarnessCatalog.byId("nope"));
+        assertSame(HarnessCatalog.UNKNOWN, HarnessCatalog.byId("nope"));
         assertEquals(HarnessCatalog.CLAUDE, HarnessCatalog.byBinaryName("claude-agent-acp"));
         assertEquals(HarnessCatalog.HERMES, HarnessCatalog.byBinaryName("hermes"));
         assertEquals(HarnessCatalog.GOOSE, HarnessCatalog.byBinaryName("goose"));
         assertEquals(HarnessCatalog.CURSOR, HarnessCatalog.byBinaryName("agent"));
         assertEquals(HarnessCatalog.GEMINI, HarnessCatalog.byBinaryName("gemini"));
         assertEquals(HarnessCatalog.OMP, HarnessCatalog.byBinaryName("omp"));
-        assertNull(HarnessCatalog.byBinaryName("unknown-bin"));
+        assertSame(HarnessCatalog.UNKNOWN, HarnessCatalog.byBinaryName("unknown-bin"));
     }
 
     @Test
     void caseInsensitiveBinaryMatch() {
-        assertTrue(HarnessCatalog.byBinaryName("GOOSE") instanceof HarnessCatalog.Harness);
         assertEquals(HarnessCatalog.GOOSE, HarnessCatalog.byBinaryName("GOOSE"));
     }
 
@@ -73,5 +69,42 @@ class HarnessCatalogTest {
                 .flatMap(h -> h.binaryNames().stream()).toList();
         Set<String> unique = new HashSet<>(all);
         assertEquals(all.size(), unique.size());
+    }
+
+    @Test
+    void unknownHarnessHasGenericCapabilities() {
+        HarnessCatalog.Harness u = HarnessCatalog.UNKNOWN;
+        assertEquals("Agent", u.displayName());
+        assertTrue(u.sendsMcpServerConfig());
+        assertTrue(u.supportsMcpServer());
+        assertTrue(u.supportsMessageIds());
+    }
+
+    @Test
+    void geminiLacksSessionList() {
+        assertFalse(HarnessCatalog.GEMINI.supportsSessionList());
+        assertTrue(HarnessCatalog.GEMINI.supportsMessageQueue());
+        assertFalse(HarnessCatalog.GEMINI.supportsTokenStats());
+    }
+
+    @Test
+    void ompSupportsAllExceptTokenStats() {
+        assertTrue(HarnessCatalog.OMP.supportsMessageQueue());
+        assertTrue(HarnessCatalog.OMP.sendsMcpServerConfig());
+        assertTrue(HarnessCatalog.OMP.injectsEditorContext());
+        assertFalse(HarnessCatalog.OMP.supportsTokenStats());
+        assertTrue(HarnessCatalog.OMP.supportsMessageIds());
+        assertTrue(HarnessCatalog.OMP.supportsMcpServer());
+        assertTrue(HarnessCatalog.OMP.supportsSessionSetMode());
+        assertTrue(HarnessCatalog.OMP.supportsSessionList());
+    }
+
+    @Test
+    void harnessIconNameResolvesKnownBinaries() {
+        assertEquals("goose.svg", HarnessCatalog.harnessIconName("goose"));
+        assertEquals("gemini.svg", HarnessCatalog.harnessIconName("gemini"));
+        assertEquals("omp.svg", HarnessCatalog.harnessIconName("omp"));
+        assertEquals("agent.svg", HarnessCatalog.harnessIconName(null));
+        assertEquals("agent.svg", HarnessCatalog.harnessIconName("unknown-bin"));
     }
 }

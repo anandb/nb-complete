@@ -8,7 +8,7 @@ import java.util.concurrent.TimeUnit;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
-import github.anandb.netbeans.model.AgentCapabilities;
+import github.anandb.netbeans.model.HarnessCatalog;
 
 
 /**
@@ -76,7 +76,7 @@ final class SessionRpcClient {
         ), 30, TimeUnit.SECONDS);
     }
 
-    private AgentCapabilities caps() {
+    private HarnessCatalog.Harness caps() {
         return processManager.getCapabilities();
     }
 }

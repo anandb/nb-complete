@@ -35,7 +35,7 @@ import org.openide.util.lookup.ServiceProvider;
 import github.anandb.netbeans.contract.PermissionHandler;
 import github.anandb.netbeans.contract.SlashCommandInterceptor;
 import github.anandb.netbeans.model.SessionUpdate;
-import github.anandb.netbeans.model.AgentCapabilities;
+import github.anandb.netbeans.model.HarnessCatalog;
 import github.anandb.netbeans.support.PreferenceKeys;
 
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
@@ -453,17 +453,12 @@ public class ProcessManager implements ProcessControl {
     }
 
     @Override
-    public String getAgentName() {
-        return serverLifecycle.getAgentName();
+    public void setHarnessListener(Consumer<HarnessCatalog.Harness> listener) {
+        serverLifecycle.setHarnessListener(listener);
     }
 
     @Override
-    public void setAgentNameListener(Consumer<AgentCapabilities> listener) {
-        serverLifecycle.setAgentNameListener(listener);
-    }
-
-    @Override
-    public AgentCapabilities getCapabilities() {
+    public HarnessCatalog.Harness getCapabilities() {
         return serverLifecycle.getCapabilities();
     }
 

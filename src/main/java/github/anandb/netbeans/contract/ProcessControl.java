@@ -6,7 +6,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import github.anandb.netbeans.model.SessionUpdate;
-import github.anandb.netbeans.model.AgentCapabilities;
+import github.anandb.netbeans.model.HarnessCatalog;
 
 /**
  * Control interface for the ACP process and message sending.
@@ -56,21 +56,13 @@ public interface ProcessControl {
     /** Shuts down the server process and releases resources. */
     void shutdown();
 
-    /**
-     * Returns the agent name from the ACP server's {@code initialize} response
-     * ({@code agentInfo.name}), lowercased. Returns {@code null} until the
-     * server handshake completes.
-     */
-    String getAgentName();
-
-    /** Registers a listener invoked when the agent capabilities become known
-     *  after the {@code initialize} handshake. Fires once per server start. */
-    void setAgentNameListener(Consumer<AgentCapabilities> listener);
+    /** Registers a listener invoked when the harness is resolved after the
+     *  {@code initialize} handshake. Fires once per server start. */
+    void setHarnessListener(Consumer<HarnessCatalog.Harness> listener);
 
     /**
-     * Returns the capability flags derived from the {@code initialize}
-     * handshake. Returns {@link AgentCapabilities#DEFAULT} until the handshake
-     * completes.
+     * Returns the resolved harness with capability flags. Returns
+     * {@link HarnessCatalog#UNKNOWN} until the handshake completes.
      */
-    AgentCapabilities getCapabilities();
+    HarnessCatalog.Harness getCapabilities();
 }

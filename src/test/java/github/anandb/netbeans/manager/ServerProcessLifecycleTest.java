@@ -1,7 +1,7 @@
 package github.anandb.netbeans.manager;
 
 import github.anandb.netbeans.contract.ToolExecutor;
-import github.anandb.netbeans.model.AgentCapabilities;
+import github.anandb.netbeans.model.HarnessCatalog;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -49,9 +49,8 @@ class ServerProcessLifecycleTest {
         assertFalse(lifecycle.isClosing());
         assertFalse(lifecycle.serverStarted());
         assertNull(lifecycle.serverProcess());
-        assertNull(lifecycle.getAgentName());
         assertNotNull(lifecycle.getCapabilities());
-        assertEquals(AgentCapabilities.DEFAULT, lifecycle.getCapabilities());
+        assertEquals(HarnessCatalog.UNKNOWN, lifecycle.getCapabilities());
     }
 
     @Test
@@ -73,32 +72,21 @@ class ServerProcessLifecycleTest {
     }
 
     @Test
-    void getAgentNameReturnsNullBeforeInit() {
-        assertNull(lifecycle.getAgentName());
-    }
-
-    @Test
-    void setAgentNameListenerDoesNotThrow() {
-        lifecycle.setAgentNameListener(cap -> {});
+    void setHarnessListenerDoesNotThrow() {
+        lifecycle.setHarnessListener(cap -> {});
     }
 
     @Test
     void restartServerAfterStopWorks() {
         lifecycle.stopServer();
         assertTrue(lifecycle.isClosing());
-        // restartServer should reset isClosing and attempt start
-        // (will fail because no real process, but state should be updated)
         lifecycle.restartServer();
-        // After restart, isClosing should be false (reset before startServer)
         assertFalse(lifecycle.isClosing());
     }
 
     @Test
     void ensureStartedIsIdempotent() {
-        // First call sets serverStarted = true and calls startServer
-        // (which will fail in test env, but serverStarted flag is set before the try)
         lifecycle.ensureStarted();
-        // Second call should be a no-op
         lifecycle.ensureStarted();
     }
 
@@ -106,7 +94,6 @@ class ServerProcessLifecycleTest {
     void reconnectRPAndTaskManagement() {
         assertNull(lifecycle.reconnectRP());
         lifecycle.setReconnectTask(null);
-        // No exception
     }
 
     /** Minimal ToolExecutor that does nothing. */
@@ -117,7 +104,7 @@ class ServerProcessLifecycleTest {
         @Override public CompletableFuture<Void> waitForReady() { return CompletableFuture.completedFuture(null); }
         @Override public void disable() {}
         @Override public boolean isDisabled() { return false; }
-        @Override public void checkServerSupport(github.anandb.netbeans.model.AgentCapabilities c) {}
+        @Override public void checkServerSupport(HarnessCatalog.Harness c) {}
         @Override public java.util.List<java.util.Map<String, Object>> getServerConfig() { return java.util.List.of(); }
     }
 }

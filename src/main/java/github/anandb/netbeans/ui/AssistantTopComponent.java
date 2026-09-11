@@ -43,12 +43,11 @@ import com.fasterxml.jackson.databind.JsonNode;
 
 import github.anandb.netbeans.contract.PermissionHandler;
 import github.anandb.netbeans.contract.ProcessControl;
-import github.anandb.netbeans.model.AgentCapabilities;
+import github.anandb.netbeans.model.HarnessCatalog;
 import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.model.SessionItem;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.PluginSettings;
-import github.anandb.netbeans.model.HarnessCatalog;
 import github.anandb.netbeans.support.BinaryResolver;
 import github.anandb.netbeans.support.PreferenceKeys;
 
@@ -240,7 +239,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         ProcessControl pc = Lookup.getDefault().lookup(ProcessControl.class);
 
         // Add token usage button (visible only when the
-        // agent supports the stats subprocess — see applyAgentCapabilities)
+        // harness supports the stats subprocess — see applyHarnessCapabilities)
         tokenUsageBtn = UIUtils.createToolbarButton("currency.svg", iconSize,
                 NbBundle.getMessage(AssistantTopComponent.class, "TT_TokenStats"), e -> {
             Window win = SwingUtilities.getWindowAncestor(AssistantTopComponent.this);
@@ -252,10 +251,10 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         });
         layoutBuilder.getRightStatusPanel().add(tokenUsageBtn, 2);
         if (pc != null) {
-            pc.setAgentNameListener(caps -> SwingUtilities.invokeLater(
-                    () -> applyAgentCapabilities(caps)));
+            pc.setHarnessListener(caps -> SwingUtilities.invokeLater(
+                    () -> applyHarnessCapabilities(caps)));
             // Handshake may have finished before this listener was registered.
-            applyAgentCapabilities(pc.getCapabilities());
+            applyHarnessCapabilities(pc.getCapabilities());
         }
 
         sessionDropdownHandler = new SessionDropdownHandler(sessionDropdown, inputArea);
@@ -500,11 +499,8 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         updateAttentionAnimation();
     }
 
-    /** Applies agent capability flags to queueing and token-stats UI.
-     *  Queueing (envelope icon) is enabled only for goose; token stats
-     *  (currency icon) only when the harness supports the stats subprocess
-     *  AND a harness is actually configured. */
-    private void applyAgentCapabilities(AgentCapabilities caps) {
+    /** Applies harness capability flags to queueing, token-stats, and tooltip. */
+    private void applyHarnessCapabilities(HarnessCatalog.Harness caps) {
         queueManager.setEnabled(caps.supportsMessageQueue());
         updateTokenStatsButton(caps);
         JButton sendBtn = layoutBuilder.getSendBtn();
@@ -516,7 +512,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
     /** Enables the token-stats button only when the harness supports the stats
      *  subprocess and a harness binary is configured. */
-    private void updateTokenStatsButton(AgentCapabilities caps) {
+    private void updateTokenStatsButton(HarnessCatalog.Harness caps) {
         tokenUsageBtn.setVisible(caps.supportsTokenStats());
         tokenUsageBtn.setEnabled(caps.supportsTokenStats() && BinaryResolver.isAvailable());
     }

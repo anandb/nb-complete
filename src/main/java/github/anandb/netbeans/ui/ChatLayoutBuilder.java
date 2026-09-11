@@ -43,7 +43,7 @@ import github.anandb.netbeans.support.PreferenceKeys;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
 
 import github.anandb.netbeans.contract.SessionControl;
-import github.anandb.netbeans.model.AgentCapabilities;
+import github.anandb.netbeans.model.HarnessCatalog;
 import github.anandb.netbeans.model.SessionItem;
 import github.anandb.netbeans.support.BrowserUtils;
 import javax.swing.JComponent;
@@ -697,7 +697,7 @@ final class ChatLayoutBuilder {
      * to the plain text label when the harness has no known icon.
      */
     private void applyHarnessIcon(JButton btn, String text) {
-        Icon icon = ThemeManager.getIcon(AgentCapabilities.harnessIconName(BinaryResolver.resolveBinaryName()), 42);
+        Icon icon = ThemeManager.getIcon(HarnessCatalog.harnessIconName(BinaryResolver.resolveBinaryName()), 42);
         if (icon == null) {
             btn.setPreferredSize(new Dimension(96, 80));
             return;

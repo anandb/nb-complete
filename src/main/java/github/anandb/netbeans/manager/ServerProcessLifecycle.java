@@ -22,7 +22,7 @@ import github.anandb.netbeans.contract.RequestHandler;
 import github.anandb.netbeans.contract.ToolExecutor;
 import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.SessionUpdate;
-import github.anandb.netbeans.model.AgentCapabilities;
+import github.anandb.netbeans.model.HarnessCatalog;
 import github.anandb.netbeans.support.PreferenceKeys;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.BinaryResolver;
@@ -52,12 +52,10 @@ class ServerProcessLifecycle {
     private volatile CompletableFuture<Void> readyFuture = new CompletableFuture<>();
     private volatile boolean isClosing = false;
     private volatile boolean serverStarted = false;
-    /** Agent name from the ACP initialize response, lowercased. */
-    private volatile String agentName;
-    /** Capability flags derived from {@link #agentName} in the initialize handler. */
-    private volatile AgentCapabilities capabilities = AgentCapabilities.DEFAULT;
-    /** Listener fired once the agent name (and capabilities) are known after the initialize handshake. */
-    private volatile Consumer<AgentCapabilities> agentNameListener;
+    /** Resolved harness with capability flags. */
+    private volatile HarnessCatalog.Harness capabilities = HarnessCatalog.UNKNOWN;
+    /** Listener fired once the harness is resolved after the initialize handshake. */
+    private volatile Consumer<HarnessCatalog.Harness> harnessListener;
     private RequestProcessor reconnectRP;
     private RequestProcessor.Task reconnectTask;
 
@@ -81,20 +79,15 @@ class ServerProcessLifecycle {
         this.onRequestPermission = onRequestPermission;
     }
 
-    /** Returns the lowercased agent name from the initialize handshake. */
-    String getAgentName() {
-        return agentName;
-    }
-
-    /** Returns the capability flags derived from the initialize handshake. */
-    AgentCapabilities getCapabilities() {
+    /** Returns the resolved harness with capability flags. */
+    HarnessCatalog.Harness getCapabilities() {
         return capabilities;
     }
 
     /** Registers a listener fired (on the initialize completion thread) when the
-     *  agent capabilities become known. */
-    void setAgentNameListener(Consumer<AgentCapabilities> listener) {
-        this.agentNameListener = listener;
+     *  harness is resolved from stored preferences. */
+    void setHarnessListener(Consumer<HarnessCatalog.Harness> listener) {
+        this.harnessListener = listener;
     }
 
     synchronized void ensureStarted() {
@@ -270,24 +263,22 @@ class ServerProcessLifecycle {
                 .orTimeout(30, TimeUnit.SECONDS)
                 .thenAccept(res -> {
                     if (res != null) {
-                        JsonNode agentInfo = res.get("agentInfo");
-                        if (agentInfo != null && agentInfo.has("name")) {
-                            String raw = agentInfo.get("name").asText().toLowerCase();
-                            int slash = raw.lastIndexOf('/');
-                            if (slash >= 0) {
-                                raw = raw.substring(slash + 1);
+                        // Resolve harness from stored preferences, ignoring the
+                        // agent name from the initialize response.
+                        String harnessId = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                                .get(PreferenceKeys.ACP_HARNESS_ID, null);
+                        if (harnessId != null && !harnessId.isEmpty()) {
+                            capabilities = HarnessCatalog.byId(harnessId);
+                        }
+                        if (capabilities == HarnessCatalog.UNKNOWN) {
+                            String binName = BinaryResolver.resolveBinaryName();
+                            if (binName != null) {
+                                capabilities = HarnessCatalog.byBinaryName(binName);
                             }
-                            // Collapse whitespace, replace with hyphens, strip invalid chars.
-                            agentName = raw.replaceAll("[^a-z0-9\\s_-]", "")
-                                    .replaceAll("\\s+", "-").replaceAll("^-+|-+$", "");
                         }
-                        if (agentName == null || agentName.isEmpty()) {
-                            agentName = BinaryResolver.resolveBinaryName();
-                        }
-                        capabilities = AgentCapabilities.forName(agentName);
                         toolExecutor.checkServerSupport(capabilities);
-                        LOG.info("Agent name: {0}", agentName);
-                        Consumer<AgentCapabilities> listener = agentNameListener;
+                        LOG.info("Harness resolved: {0} ({1})", capabilities.id(), capabilities.displayName());
+                        Consumer<HarnessCatalog.Harness> listener = harnessListener;
                         if (listener != null) {
                             listener.accept(capabilities);
                         }

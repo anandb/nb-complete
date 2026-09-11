@@ -53,7 +53,7 @@ import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.contract.ProcessControl;
-import github.anandb.netbeans.model.AgentCapabilities;
+import github.anandb.netbeans.model.HarnessCatalog;
 import github.anandb.netbeans.support.BinaryResolver;
 import github.anandb.netbeans.support.GlobalOpencodeConfig;
 import github.anandb.netbeans.support.Logger;
@@ -768,7 +768,7 @@ public class ChatThreadPanel extends JPanel {
                 ("Allow once".equalsIgnoreCase(statusText) || "allow_once".equalsIgnoreCase(statusText))
                     ? NbBundle.getMessage(ChatThreadPanel.class, "MSG_PermissionAllowedOnce")
                     : statusText;
-        
+
         SwingUtilities.invokeLater(() -> {
             ColorTheme theme = ThemeManager.getCurrentTheme();
             // Match the collapsed tool/thought header style: neutral sunken
@@ -1419,7 +1419,7 @@ public class ChatThreadPanel extends JPanel {
      */
     private boolean ignoresMessageIdForStreaming() {
         ProcessControl pc = Lookup.getDefault().lookup(ProcessControl.class);
-        AgentCapabilities caps = pc != null ? pc.getCapabilities() : null;
+        HarnessCatalog.Harness caps = pc != null ? pc.getCapabilities() : null;
         return caps != null && !caps.supportsMessageIds();
     }
 }

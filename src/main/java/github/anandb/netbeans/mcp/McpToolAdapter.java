@@ -1,7 +1,7 @@
 package github.anandb.netbeans.mcp;
 
 import github.anandb.netbeans.contract.ToolExecutor;
-import github.anandb.netbeans.model.AgentCapabilities;
+import github.anandb.netbeans.model.HarnessCatalog;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -36,7 +36,7 @@ public class McpToolAdapter implements ToolExecutor {
     public boolean isDisabled() { return delegate.isDisabled(); }
 
     @Override
-    public void checkServerSupport(AgentCapabilities caps) { delegate.checkServerSupport(caps); }
+    public void checkServerSupport(HarnessCatalog.Harness caps) { delegate.checkServerSupport(caps); }
 
     @Override
     public List<Map<String, Object>> getServerConfig() { return delegate.getServerConfig(); }

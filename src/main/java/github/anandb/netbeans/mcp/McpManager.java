@@ -3,7 +3,7 @@ package github.anandb.netbeans.mcp;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.PluginSettings;
-import github.anandb.netbeans.model.AgentCapabilities;
+import github.anandb.netbeans.model.HarnessCatalog;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -201,11 +201,11 @@ public class McpManager {
         return mcpServer.getMcpTools();
     }
 
-    public void checkServerSupport(AgentCapabilities caps) {
+    public void checkServerSupport(HarnessCatalog.Harness caps) {
         if (caps == null || !caps.supportsMcpServer()) {
             return;
         }
-        
+
         if (!mcpDisabled.get() && PluginSettings.isMcpServerEnabled() && mcpServer == null && serverStartFuture == null) {
             LOG.info("Starting MCP server");
             start();

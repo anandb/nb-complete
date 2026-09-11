@@ -6,18 +6,26 @@ import java.util.Locale;
 /**
  * Catalog of the ACP harnesses the plugin can launch. Single source of truth
  * for display names, toolbar icons, binary names (native and WSL), default
- * launch arguments, per-OS install commands, and documentation links.
+ * launch arguments, capability flags, per-OS install commands, and documentation links.
  * Pure data — zero dependencies (model layer).
  */
 public final class HarnessCatalog {
 
-    /** One supported harness and everything needed to detect, launch, and install it. */
+    /** One supported harness and everything needed to detect, launch, and use it. */
     public record Harness(
             String id,
             String displayName,
             String iconBase,
             List<String> binaryNames,
             String launchArgs,
+            boolean supportsMessageQueue,
+            boolean sendsMcpServerConfig,
+            boolean injectsEditorContext,
+            boolean supportsTokenStats,
+            boolean supportsMessageIds,
+            boolean supportsMcpServer,
+            boolean supportsSessionSetMode,
+            boolean supportsSessionList,
             String installWindows,
             String installMac,
             String installLinux,
@@ -31,35 +39,27 @@ public final class HarnessCatalog {
     }
 
     public static final Harness OPENCODE = new Harness(
-            "opencode",
-            "OpenCode",
-            "opencode",
-            List.of("opencode"),
-            "acp",
+            "opencode", "OpenCode", "opencode",
+            List.of("opencode"), "acp",
+            false, true, true, true, true, true, false, true,
             "winget install SST.opencode",
             "brew install opencode",
             "curl -fsSL https://opencode.ai/install | bash",
-            "",
-            "https://opencode.ai/docs/");
+            "", "https://opencode.ai/docs/");
 
     public static final Harness GOOSE = new Harness(
-            "goose",
-            "Goose",
-            "goose",
-            List.of("goose"),
-            "acp",
+            "goose", "Goose", "goose",
+            List.of("goose"), "acp",
+            true, true, false, false, true, true, false, true,
             "irm https://github.com/block/goose/releases/download/stable/download_cli.sh | iex",
             "brew install block-goose-cli",
             "curl -fsSL https://github.com/block/goose/releases/download/stable/download_cli.sh | bash",
-            "",
-            "https://block-goose.mintlify.app/docs/quickstart");
+            "", "https://block-goose.mintlify.app/docs/quickstart");
 
     public static final Harness PI = new Harness(
-            "pi",
-            "Pi",
-            "pi-logo",
-            List.of("pi-acp"),
-            "",
+            "pi", "Pi", "pi-logo",
+            List.of("pi-acp"), "",
+            true, false, false, false, false, true, false, true,
             "powershell -c \"irm https://pi.dev/install.ps1 | iex\"",
             "curl -fsSL https://pi.dev/install.sh | sh",
             "curl -fsSL https://pi.dev/install.sh | sh",
@@ -67,11 +67,9 @@ public final class HarnessCatalog {
             "https://github.com/earendil-works/pi-acp");
 
     public static final Harness CURSOR = new Harness(
-            "cursor",
-            "Cursor",
-            "cursor",
-            List.of("agent", "cursor-agent"),
-            "acp",
+            "cursor", "Cursor", "cursor",
+            List.of("agent", "cursor-agent"), "acp",
+            false, true, true, false, false, true, false, true,
             "Install the Cursor CLI from https://cursor.com/cli (Windows installer)",
             "curl https://cursor.com/install -fsSL | bash",
             "curl https://cursor.com/install -fsSL | bash",
@@ -79,11 +77,9 @@ public final class HarnessCatalog {
             "https://cursor.com/docs/cli/acp");
 
     public static final Harness CLAUDE = new Harness(
-            "claude",
-            "Claude",
-            "claude",
-            List.of("claude-agent-acp"),
-            "",
+            "claude", "Claude", "claude",
+            List.of("claude-agent-acp"), "",
+            false, true, true, false, true, true, true, true,
             "npm install -g @agentclientprotocol/claude-agent-acp",
             "npm install -g @agentclientprotocol/claude-agent-acp",
             "npm install -g @agentclientprotocol/claude-agent-acp",
@@ -91,11 +87,9 @@ public final class HarnessCatalog {
             "https://github.com/agentclientprotocol/claude-agent-acp");
 
     public static final Harness HERMES = new Harness(
-            "hermes",
-            "Hermes",
-            "hermes",
-            List.of("hermes"),
-            "",
+            "hermes", "Hermes", "hermes",
+            List.of("hermes"), "",
+            true, true, false, false, false, true, false, true,
             "iex (irm https://hermes-agent.nousresearch.com/install.ps1)",
             "curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash",
             "curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash",
@@ -103,51 +97,62 @@ public final class HarnessCatalog {
             "https://hermes-agent.nousresearch.com/docs/user-guide/features/acp");
 
     public static final Harness GEMINI = new Harness(
-            "gemini",
-            "Gemini",
-            "gemini",
-            List.of("gemini"),
-            "--acp",
-            "",
-            "",
-            "",
-            "",
-            "");
+            "gemini", "Gemini", "gemini",
+            List.of("gemini"), "--acp",
+            true, true, true, false, true, true, true, false,
+            "", "", "", "", "");
 
     public static final Harness OMP = new Harness(
-            "omp",
-            "Oh My Pi",
-            "omp",
-            List.of("omp"),
-            "acp",
-            "",
-            "",
-            "",
-            "",
-            "");
+            "omp", "Oh My Pi", "omp",
+            List.of("omp"), "acp",
+            true, true, true, false, true, true, true, true,
+            "", "", "", "", "");
+
+    /** Fallback for unknown or unconfigured harnesses. */
+    public static final Harness UNKNOWN = new Harness(
+            "unknown", "Agent", "agent",
+            List.of(), "",
+            false, true, true, true, true, true, false, true,
+            "", "", "", "", "");
 
     /** All supported harnesses, in the order offered during onboarding. */
     public static final List<Harness> ALL =
             List.of(OPENCODE, PI, GOOSE, CURSOR, CLAUDE, HERMES, GEMINI, OMP);
 
-    /** Looks up a harness by catalog id; {@code null} when unknown. */
+    /** Looks up a harness by catalog id; {@link #UNKNOWN} when not found. */
     public static Harness byId(String id) {
         for (Harness h : ALL) {
             if (h.id().equals(id)) {
                 return h;
             }
         }
-        return null;
+        return UNKNOWN;
     }
 
-    /** Finds the harness that owns the given lowercase binary basename; {@code null} when unknown. */
+    /** Finds the harness that owns the given lowercase binary basename; {@link #UNKNOWN} when not found. */
     public static Harness byBinaryName(String binaryName) {
         for (Harness h : ALL) {
             if (h.matchesBinary(binaryName)) {
                 return h;
             }
         }
-        return null;
+        return UNKNOWN;
+    }
+
+    /**
+     * Maps a resolved harness binary name to its toolbar icon file name
+     * (theme-aware base name; the dark variant is selected by the icon loader).
+     * Falls back to the plugin logo for harnesses without a dedicated icon.
+     *
+     * @param binaryName resolved harness binary name, e.g. {@code "cursor-agent"}
+     * @return icon file name, never null
+     */
+    public static String harnessIconName(String binaryName) {
+        if (binaryName == null) {
+            return "agent.svg";
+        }
+        Harness h = byBinaryName(binaryName);
+        return h != null && h != UNKNOWN ? h.iconBase() + ".svg" : "agent.svg";
     }
 
     private HarnessCatalog() {}
