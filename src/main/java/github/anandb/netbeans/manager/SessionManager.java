@@ -24,6 +24,7 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -89,6 +90,7 @@ public class SessionManager implements SessionQuery, SessionControl {
     private static final String TITLE_PREFIX = "session_title_";
     private static final String HIDDEN_PREFIX = "session_hidden_";
     private static final String USAGE_PREFIX = "session_usage_";
+    private static final String LOCAL_SESSIONS_KEY = "gemini_local_sessions";
 
     /**
      * Returns the current agent name (lowercased) from the ACP server handshake,
@@ -190,7 +192,7 @@ public class SessionManager implements SessionQuery, SessionControl {
     }
 
     @Override
-    public Session getSession(String sessionId) {    
+    public Session getSession(String sessionId) {
         return cacheManager.getCachedSession(sessionId);
     }
 
@@ -198,6 +200,28 @@ public class SessionManager implements SessionQuery, SessionControl {
     public void setContextUsage(String sessionId, long used, long size) {
         NbPreferences.forModule(SessionManager.class).put(qualifiedKey(USAGE_PREFIX, sessionId), used + "," + size);
     }
+
+    // --- locally-created sessions persistence (for agents without session/list) -
+
+    /** Persists the set of locally-created session IDs to NbPreferences. */
+    private void saveLocallyCreatedSessionIds() {
+        String agent = agentName();
+        String key = agent != null ? LOCAL_SESSIONS_KEY + "_" + agent : LOCAL_SESSIONS_KEY;
+        String value = String.join(",", cacheManager.getLocallyCreatedIds());
+        NbPreferences.forModule(SessionManager.class).put(key, value);
+    }
+
+    /** Loads locally-created session IDs from NbPreferences into the cache manager. */
+    private void loadLocallyCreatedSessionIds() {
+        String agent = agentName();
+        String key = agent != null ? LOCAL_SESSIONS_KEY + "_" + agent : LOCAL_SESSIONS_KEY;
+        String value = NbPreferences.forModule(SessionManager.class).get(key, null);
+        if (value != null && !value.isEmpty()) {
+            Set<String> ids = new java.util.HashSet<>(java.util.Arrays.asList(value.split(",")));
+            cacheManager.restoreLocallyCreatedIds(ids);
+        }
+    }
+
     // -------------------------------------------------------------------------
 
     private static volatile SessionManager INSTANCE;
@@ -475,7 +499,7 @@ public class SessionManager implements SessionQuery, SessionControl {
                     try {
                         Session s = MAPPER.treeToValue(res, Session.class);
                         LOG.info("session/new extracted sessionId: {0}, title: {1}", s.id(), s.title());
-                        
+
                         // Use session ID as title if server didn't provide one.
                         // Preserve models/modes — Hermes reports them in session/new
                         // and sends no title, so this branch always ran for it.
@@ -485,7 +509,7 @@ public class SessionManager implements SessionQuery, SessionControl {
                                     s.configOptions(), s.models(), s.modes());
                             LOG.info("session/new: using sessionId as title");
                         }
-                        
+
                         if (s.effectiveDirectory() == null) {
                             LOG.fine("session/new: effectiveDirectory is null, " +
                                     "reconstructing with finalCwd: {0}", finalCwd);
@@ -494,7 +518,7 @@ public class SessionManager implements SessionQuery, SessionControl {
                                     s.configOptions(), s.models(), s.modes());
                             LOG.info("session/new reconstructed session, id is now: {0}", s.id());
                         }
-                        
+
                         // Log models and modes if present
                         if (s.models() != null) {
                             LOG.info("session/new: models available={0}, current={1}",
@@ -507,6 +531,8 @@ public class SessionManager implements SessionQuery, SessionControl {
                                     s.modes().currentModeId());
                         }
                         cacheManager.cacheSession(s);
+                        cacheManager.addLocallyCreated(s);
+                        saveLocallyCreatedSessionIds();
                         return s;
                     } catch (Exception e) {
                         throw new RuntimeException(e);
@@ -614,6 +640,16 @@ public class SessionManager implements SessionQuery, SessionControl {
     public void refreshSessions() {
         ProcessManager.getInstance().whenReady()
                 .thenCompose(v -> {
+                    // Agents that don't support session/list (e.g. Gemini) rely on
+                    // locally-created sessions tracked in the cache. Skip the RPC.
+                    ProcessControl pc = Lookup.getDefault().lookup(ProcessControl.class);
+                    if (pc != null && !pc.getCapabilities().supportsSessionList()) {
+                        loadLocallyCreatedSessionIds();
+                        List<Session> local = cacheManager.getLocallyCreatedSessions();
+                        cacheManager.setCachedSessions(local);
+                        notifySessionListUpdated(local);
+                        return CompletableFuture.completedFuture(new ArrayList<Session>());
+                    }
                     ProjectQuery projectQuery = Lookup.getDefault().lookup(ProjectQuery.class);
                     Project[] openProjects = projectQuery == null
                             ? new Project[0] : projectQuery.getAllOpenProjects();
@@ -958,7 +994,7 @@ public class SessionManager implements SessionQuery, SessionControl {
 
         Map<String, Object> params = new HashMap<>();
         params.put("sessionId", sessionId);
-        params.put("prompt", List.of(textBlock));        
+        params.put("prompt", List.of(textBlock));
 
         return ProcessManager.getInstance().sendRequest("session/prompt", params)
                 .whenComplete((res, ex) -> {

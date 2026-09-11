@@ -21,6 +21,7 @@ public final class AgentCapabilities {
     private final boolean supportsMessageIds;
     private final boolean supportsMcpServer;
     private final boolean supportsSessionSetMode;
+    private final boolean supportsSessionList;
     private final String displayName;
 
     private AgentCapabilities(Builder builder) {
@@ -31,6 +32,7 @@ public final class AgentCapabilities {
         this.supportsMessageIds = builder.supportsMessageIds;
         this.supportsMcpServer = builder.supportsMcpServer;
         this.supportsSessionSetMode = builder.supportsSessionSetMode;
+        this.supportsSessionList = builder.supportsSessionList;
         this.displayName = builder.displayName;
     }
 
@@ -45,6 +47,7 @@ public final class AgentCapabilities {
     public boolean supportsMessageIds() { return supportsMessageIds; }
     public boolean supportsMcpServer() { return supportsMcpServer; }
     public boolean supportsSessionSetMode() { return supportsSessionSetMode; }
+    public boolean supportsSessionList() { return supportsSessionList; }
     public String displayName() { return displayName; }
 
     /**
@@ -86,6 +89,15 @@ public final class AgentCapabilities {
                     .supportsMessageQueue(true)
                     .sendsMcpServerConfig(true)
                     .supportsMessageIds(false)
+                    .supportsMcpServer(true)
+                    .build();
+        }
+        // Gemini does not support session/list RPC; track sessions client-side.
+        if (name.startsWith("gemini")) {
+            return builder()
+                    .displayName("Gemini")
+                    .supportsSessionList(false)
+                    .sendsMcpServerConfig(true)
                     .supportsMcpServer(true)
                     .build();
         }
@@ -144,6 +156,7 @@ public final class AgentCapabilities {
             case "pi-acp", "pi-agent" -> "pi-logo.svg";
             case "opencode" -> "opencode.svg";
             case "hermes" -> "hermes.svg";
+            case "gemini" -> "agent.svg";
             default -> "agent.svg";
         };
     }
@@ -159,6 +172,7 @@ public final class AgentCapabilities {
                 && supportsMessageIds == that.supportsMessageIds
                 && supportsMcpServer == that.supportsMcpServer
                 && supportsSessionSetMode == that.supportsSessionSetMode
+                && supportsSessionList == that.supportsSessionList
                 && Objects.equals(displayName, that.displayName);
     }
 
@@ -166,7 +180,7 @@ public final class AgentCapabilities {
     public int hashCode() {
         return Objects.hash(supportsMessageQueue, sendsMcpServerConfig,
                 injectsEditorContext, supportsTokenStats, supportsMessageIds,
-                supportsMcpServer, supportsSessionSetMode, displayName);
+                supportsMcpServer, supportsSessionSetMode, supportsSessionList, displayName);
     }
 
     public static final class Builder {
@@ -177,6 +191,7 @@ public final class AgentCapabilities {
         private boolean supportsMessageIds;
         private boolean supportsMcpServer;
         private boolean supportsSessionSetMode;
+        private boolean supportsSessionList = true;
         private String displayName = "Agent";
 
         private Builder() {}
@@ -213,6 +228,11 @@ public final class AgentCapabilities {
 
         public Builder supportsSessionSetMode(boolean value) {
             this.supportsSessionSetMode = value;
+            return this;
+        }
+
+        public Builder supportsSessionList(boolean value) {
+            this.supportsSessionList = value;
             return this;
         }
 
