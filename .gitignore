@@ -96,3 +96,6 @@ _bmad-output/
 /.windsurf
 opencode.json
 opencode.jsonc
+node_modules/
+package.json
+package-lock.json
