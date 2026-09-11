@@ -1,6 +1,7 @@
 package github.anandb.netbeans.manager;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -83,7 +84,7 @@ final class SessionCacheManager {
 
     /** Returns the set of locally-created session IDs for the given agent. */
     Set<String> getLocallyCreatedIds(String agentName) {
-        Set<String> result = new java.util.HashSet<>();
+        Set<String> result = new HashSet<>();
         String agent = safeAgent(agentName);
         for (Map.Entry<String, String> entry : locallyCreatedSessionToAgentMap.entrySet()) {
             if (agent.equals(entry.getValue())) {

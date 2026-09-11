@@ -35,6 +35,8 @@ import github.anandb.netbeans.model.AvailableMode;
 import github.anandb.netbeans.model.ModeAgentMapping;
 import github.anandb.netbeans.support.Logger;
 import org.openide.util.NbBundle;
+import github.anandb.netbeans.contract.ProcessControl;
+import org.openide.util.Lookup;
 
 import github.anandb.netbeans.ui.platform.PlatformBridge;
 import github.anandb.netbeans.ui.platform.SessionService;
@@ -411,9 +413,7 @@ public class ConfigPanelController {
                         postProcessModel(combo, selected);
                     }
                 }
-                github.anandb.netbeans.contract.ProcessControl pc =
-                        org.openide.util.Lookup.getDefault()
-                                .lookup(github.anandb.netbeans.contract.ProcessControl.class);
+                ProcessControl pc = Lookup.getDefault().lookup(ProcessControl.class);
                 boolean modelSelectable = pc == null || pc.getCapabilities().supportsModelSelection();
                 modelCombo.setEnabled(modelSelectable);
                 if (!modelSelectable && pc != null) {
@@ -780,9 +780,7 @@ public class ConfigPanelController {
         SwingUtilities.invokeLater(() -> {
             modeCombo.setEnabled(enabled);
 
-            github.anandb.netbeans.contract.ProcessControl pc =
-                    org.openide.util.Lookup.getDefault()
-                            .lookup(github.anandb.netbeans.contract.ProcessControl.class);
+            ProcessControl pc = Lookup.getDefault().lookup(ProcessControl.class);
             boolean modelSelectable = pc == null || pc.getCapabilities().supportsModelSelection();
             modelCombo.setEnabled(enabled && modelSelectable);
             if (!modelSelectable && pc != null) {

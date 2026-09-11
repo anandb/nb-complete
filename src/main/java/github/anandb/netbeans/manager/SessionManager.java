@@ -24,8 +24,12 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 
@@ -100,15 +104,15 @@ public class SessionManager implements SessionQuery, SessionControl {
                 .get(PreferenceKeys.ACP_HARNESS_ID, null);
     }
 
-    @com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static record SessionMetadata(
-        @com.fasterxml.jackson.annotation.JsonProperty("title") String title,
-        @com.fasterxml.jackson.annotation.JsonProperty("usage") String usage,
-        @com.fasterxml.jackson.annotation.JsonProperty("hidden") boolean hidden,
-        @com.fasterxml.jackson.annotation.JsonProperty("cwd") String cwd
+        @JsonProperty("title") String title,
+        @JsonProperty("usage") String usage,
+        @JsonProperty("hidden") boolean hidden,
+        @JsonProperty("cwd") String cwd
     ) {}
 
-    private final Map<String, SessionMetadata> metadataCache = new java.util.concurrent.ConcurrentHashMap<>();
+    private final Map<String, SessionMetadata> metadataCache = new ConcurrentHashMap<>();
     private String cachedAgent = null;
 
     private synchronized Map<String, SessionMetadata> getMetadataCache() {
@@ -132,7 +136,7 @@ public class SessionManager implements SessionQuery, SessionControl {
                 LOG.warn("Failed to deserialize session metadata: {0}", ExceptionUtils.getMessage(e), e);
             }
         }
-        return new java.util.concurrent.ConcurrentHashMap<>();
+        return new ConcurrentHashMap<>();
     }
 
     private void saveMetadataMap(Map<String, SessionMetadata> map) {
@@ -147,7 +151,7 @@ public class SessionManager implements SessionQuery, SessionControl {
     }
 
     private synchronized void updateMetadata(String sessionId,
-            java.util.function.Function<SessionMetadata, SessionMetadata> updater) {
+            Function<SessionMetadata, SessionMetadata> updater) {
         Map<String, SessionMetadata> cache = getMetadataCache();
         SessionMetadata current = cache.get(sessionId);
         if (current == null) {

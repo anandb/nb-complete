@@ -10,6 +10,10 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.List;
@@ -104,9 +108,9 @@ class SessionManagerTest {
                     List<SessionConfigOption> configOptions, boolean isStartup) {
                 lastLoadedOptions = configOptions;
             }
-            @Override public void onSessionListUpdated(java.util.List<github.anandb.netbeans.model.Session> sessions) {}
+            @Override public void onSessionListUpdated(List<Session> sessions) {}
             @Override public void onSessionError(String message) {}
-            @Override public void onSessionUpdate(github.anandb.netbeans.model.SessionUpdate update) {}
+            @Override public void onSessionUpdate(SessionUpdate update) {}
         };
     }
 
@@ -211,14 +215,14 @@ class SessionManagerTest {
     @Test
     void testLocallyCreatedSessionsPersistence() throws Exception {
         // Access cacheManager field via reflection
-        java.lang.reflect.Field cacheField = SessionManager.class.getDeclaredField("cacheManager");
+        Field cacheField = SessionManager.class.getDeclaredField("cacheManager");
         cacheField.setAccessible(true);
         SessionCacheManager cacheManager = (SessionCacheManager) cacheField.get(sessionManager);
 
         // Access save and load private methods via reflection
-        java.lang.reflect.Method saveMethod = SessionManager.class.getDeclaredMethod("saveLocallyCreatedSessionIds");
+        Method saveMethod = SessionManager.class.getDeclaredMethod("saveLocallyCreatedSessionIds");
         saveMethod.setAccessible(true);
-        java.lang.reflect.Method loadMethod = SessionManager.class.getDeclaredMethod("loadLocallyCreatedSessionIds");
+        Method loadMethod = SessionManager.class.getDeclaredMethod("loadLocallyCreatedSessionIds");
         loadMethod.setAccessible(true);
 
         // Set up two mock sessions with custom titles
@@ -237,17 +241,17 @@ class SessionManagerTest {
         saveMethod.invoke(sessionManager);
 
         // Clear cacheManager to simulate a restart/fresh state
-        java.lang.reflect.Field cachedSessionsField = SessionCacheManager.class.getDeclaredField("cachedSessions");
+        Field cachedSessionsField = SessionCacheManager.class.getDeclaredField("cachedSessions");
         cachedSessionsField.setAccessible(true);
-        cachedSessionsField.set(cacheManager, new java.util.concurrent.CopyOnWriteArrayList<>());
+        cachedSessionsField.set(cacheManager, new CopyOnWriteArrayList<>());
 
-        java.lang.reflect.Field locallyCreatedMapField = SessionCacheManager.class.getDeclaredField("locallyCreatedSessionToAgentMap");
+        Field locallyCreatedMapField = SessionCacheManager.class.getDeclaredField("locallyCreatedSessionToAgentMap");
         locallyCreatedMapField.setAccessible(true);
-        ((java.util.Map<?, ?>) locallyCreatedMapField.get(cacheManager)).clear();
+        ((Map<?, ?>) locallyCreatedMapField.get(cacheManager)).clear();
 
-        java.lang.reflect.Field sessionCacheMapField = SessionCacheManager.class.getDeclaredField("sessionCacheMap");
+        Field sessionCacheMapField = SessionCacheManager.class.getDeclaredField("sessionCacheMap");
         sessionCacheMapField.setAccessible(true);
-        ((java.util.Map<?, ?>) sessionCacheMapField.get(cacheManager)).clear();
+        ((Map<?, ?>) sessionCacheMapField.get(cacheManager)).clear();
 
         // Verify it is completely empty
         assertTrue(cacheManager.getLocallyCreatedSessions(agent).isEmpty());
@@ -355,7 +359,7 @@ class SessionManagerTest {
     void testQualifiedKey() {
         // Test the internal qualifiedKey method via反射
         try {
-            java.lang.reflect.Method m = SessionManager.class
+            Method m = SessionManager.class
                     .getDeclaredMethod("qualifiedKey", String.class, String.class);
             m.setAccessible(true);
             String result = (String) m.invoke(sessionManager, "prefix", "sid123");
@@ -368,7 +372,7 @@ class SessionManagerTest {
     @Test
     void testDecodeHtmlEntities() {
         try {
-            java.lang.reflect.Method m = SessionManager.class
+            Method m = SessionManager.class
                     .getDeclaredMethod("decodeHtmlEntities", String.class);
             m.setAccessible(true);
             assertEquals("a & b", m.invoke(sessionManager, "a &amp; b"));
