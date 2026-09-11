@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -33,7 +34,7 @@ class SessionCacheManagerTest {
 
     @Test
     void setCachedSessionsReplacesList() {
-        cache.setCachedSessions(List.of(sess("id1", "t1", null), sess("id2", "t2", null)));
+        cache.setCachedSessions(List.of(sess("id1", "t1", null), sess("id2", "t2", null)), "test-agent");
 
         List<Session> sessions = cache.getCachedSessions();
         assertEquals(2, sessions.size());
@@ -43,8 +44,8 @@ class SessionCacheManagerTest {
 
     @Test
     void setCachedSessionsWithEmptyList() {
-        cache.setCachedSessions(List.of(sess("x", "t", null)));
-        cache.setCachedSessions(List.of());
+        cache.setCachedSessions(List.of(sess("x", "t", null)), "test-agent");
+        cache.setCachedSessions(List.of(), "test-agent");
         assertTrue(cache.getCachedSessions().isEmpty());
     }
 
@@ -64,7 +65,6 @@ class SessionCacheManagerTest {
     void cacheSessionWithNullIdDoesNotThrow() {
         // Null id is rejected by the guard, so nothing is cached.
         cache.cacheSession(sess(null, "title", null));
-        // ConcurrentHashMap.get(null) throws NPE, so we verify indirectly:
         // the cache should still be empty (no entry was stored).
         assertTrue(cache.getCachedSessions().isEmpty());
     }
@@ -120,10 +120,50 @@ class SessionCacheManagerTest {
     void setCachedSessionsDefendsAgainstExternalMutation() {
         List<Session> external = new ArrayList<>();
         external.add(sess("x", "X", null));
-        cache.setCachedSessions(external);
+        cache.setCachedSessions(external, "test-agent");
 
         // Mutating the original list after set should not affect the cache
         external.clear();
         assertEquals(1, cache.getCachedSessions().size());
+    }
+
+    @Test
+    void testAgentIsolationForLocallyCreatedSessions() {
+        Session s1 = sess("id-gemini", "Gemini Session", null);
+        Session s2 = sess("id-pi", "Pi Session", null);
+
+        // Add s1 locally for gemini, s2 locally for pi
+        cache.addLocallyCreated(s1, "gemini");
+        cache.addLocallyCreated(s2, "pi");
+
+        // Verify loaded sessions and IDs are isolated per agent
+        List<Session> geminiSessions = cache.getLocallyCreatedSessions("gemini");
+        assertEquals(1, geminiSessions.size());
+        assertEquals("id-gemini", geminiSessions.get(0).id());
+
+        List<Session> piSessions = cache.getLocallyCreatedSessions("pi");
+        assertEquals(1, piSessions.size());
+        assertEquals("id-pi", piSessions.get(0).id());
+
+        Set<String> geminiIds = cache.getLocallyCreatedIds("gemini");
+        assertEquals(1, geminiIds.size());
+        assertTrue(geminiIds.contains("id-gemini"));
+
+        Set<String> piIds = cache.getLocallyCreatedIds("pi");
+        assertEquals(1, piIds.size());
+        assertTrue(piIds.contains("id-pi"));
+
+        // Verify setCachedSessions for "gemini" preserves ONLY s1 and not s2
+        cache.setCachedSessions(List.of(), "gemini");
+        List<Session> cachedForGemini = cache.getCachedSessions();
+        assertEquals(1, cachedForGemini.size());
+        assertEquals("id-gemini", cachedForGemini.get(0).id());
+
+        // Verify setCachedSessions for "pi" preserves ONLY s2 and not s1 (with reload simulation)
+        cache.addLocallyCreated(s2, "pi");
+        cache.setCachedSessions(List.of(), "pi");
+        List<Session> cachedForPi = cache.getCachedSessions();
+        assertEquals(1, cachedForPi.size());
+        assertEquals("id-pi", cachedForPi.get(0).id());
     }
 }

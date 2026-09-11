@@ -18,6 +18,8 @@ These are the harnesses currently supported, pick the one you want to use. Even 
 > [[Claude Agent]]
 > [[Cursor Agent]]
 > [[Hermes Agent]]
+> [[Gemini Agent]]
+> [[Oh My Pi Agent]]
 
 If you are not sure, The plugin will detect installed harnesses and let you choose at startup — see [[Choose Your Coding Harness]].
 

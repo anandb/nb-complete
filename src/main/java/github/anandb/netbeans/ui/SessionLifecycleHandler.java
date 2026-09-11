@@ -84,6 +84,12 @@ public class SessionLifecycleHandler implements SessionListener {
      *  Used to restore the chat panel when archived sessions become visible via the toggle. */
     private boolean showingWelcomeScreen = false;
 
+    /** Session id of the most recent fallback auto-load attempt. A failed
+     *  auto-load re-triggers onSessionListUpdated (via the load-failure
+     *  re-sync), which would re-select the same dead session forever; the
+     *  fallback skip condition breaks that loop. Reset when a load succeeds. */
+    private String lastAutoLoadSessionId;
+
     public SessionLifecycleHandler(
             ChatThreadPanel chatPanel,
             JComboBox<SessionItem> sessionDropdown,
@@ -398,11 +404,11 @@ public class SessionLifecycleHandler implements SessionListener {
                         // session to avoid hijacking the user to a different project.
                         String prevDir = sessionService.get().getCurrentSessionDirectory();
                         SessionItem sameProjectMatch = null;
-                        SessionItem mostRecentAny = sessionDropdown.getItemAt(0);
                         for (int i = 0; i < sessionDropdown.getItemCount(); i++) {
                             SessionItem item = sessionDropdown.getItemAt(i);
                             if (item != null && prevDir != null
                                     && prevDir.equals(item.getSession().effectiveDirectory())
+                                    && !item.getSession().id().equals(lastAutoLoadSessionId)
                                     && (showHidden || !hiddenById.getOrDefault(item.getSession().id(), false))) {
                                 sameProjectMatch = item;
                                 break;
@@ -414,7 +420,8 @@ public class SessionLifecycleHandler implements SessionListener {
                         if (fallback == null) {
                             for (int i = 0; i < sessionDropdown.getItemCount(); i++) {
                                 SessionItem item = sessionDropdown.getItemAt(i);
-                                if (item != null && (showHidden || !hiddenById.getOrDefault(item.getSession().id(), false))) {
+                                if (item != null && !item.getSession().id().equals(lastAutoLoadSessionId)
+                                        && (showHidden || !hiddenById.getOrDefault(item.getSession().id(), false))) {
                                     fallback = item;
                                     break;
                                 }
@@ -424,6 +431,7 @@ public class SessionLifecycleHandler implements SessionListener {
                             LOG.fine("Auto-selecting fallback session: {0} (sameProject={1})",
                                     fallback.getSession().id(), sameProjectMatch != null);
                             statusController.setInputEnabled(false);
+                            lastAutoLoadSessionId = fallback.getSession().id();
                             sessionDropdown.setSelectedItem(fallback);
                             sessionService.get().loadSession(fallback.getSession().id());
                         } else {
@@ -483,6 +491,7 @@ public class SessionLifecycleHandler implements SessionListener {
 
     @Override
     public void onSessionStarted(String sessionId) {
+        lastAutoLoadSessionId = null;
         showingWelcomeScreen = false;
         SwingUtilities.invokeLater(() -> {
             chatPanel.setSessionId(sessionId);
@@ -557,6 +566,7 @@ public class SessionLifecycleHandler implements SessionListener {
 
     @Override
     public void onSessionLoaded(String sessionId, List<SessionConfigOption> configOptions, boolean isStartup) {
+        lastAutoLoadSessionId = null;
         SwingUtilities.invokeLater(() -> {
             chatPanel.setSessionId(sessionId);
             // Prime the pinned-message cache so bubble constructors see stored pins.

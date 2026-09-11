@@ -20,10 +20,14 @@ final class SessionCacheManager {
 
     private List<Session> cachedSessions = new CopyOnWriteArrayList<>();
     private final Map<String, Session> sessionCacheMap = new ConcurrentHashMap<>();
-    /** Session IDs created locally via session/new (not discovered via session/list). */
-    private final Set<String> locallyCreatedIds = ConcurrentHashMap.newKeySet();
+    /** Map of sessionId -> agentName that created the session. */
+    private final Map<String, String> locallyCreatedSessionToAgentMap = new ConcurrentHashMap<>();
 
     SessionCacheManager() {
+    }
+
+    private String safeAgent(String agentName) {
+        return agentName != null ? agentName : "default";
     }
 
     /** Returns the cached session list. */
@@ -31,12 +35,14 @@ final class SessionCacheManager {
         return cachedSessions;
     }
 
-    /** Replaces the cached session list atomically, preserving locally-created sessions. */
-    void setCachedSessions(List<Session> sessions) {
+    /** Replaces the cached session list atomically, preserving locally-created sessions for the current agent. */
+    void setCachedSessions(List<Session> sessions, String currentAgent) {
         List<Session> merged = new ArrayList<>(sessions);
-        // Re-add locally-created sessions that the server list didn't include
+        String agent = safeAgent(currentAgent);
+        // Re-add locally-created sessions for the current agent that the server list didn't include
         for (Session s : cachedSessions) {
-            if (locallyCreatedIds.contains(s.id()) && merged.stream().noneMatch(m -> m.id().equals(s.id()))) {
+            String sessionAgent = locallyCreatedSessionToAgentMap.get(s.id());
+            if (agent.equals(sessionAgent) && merged.stream().noneMatch(m -> m.id().equals(s.id()))) {
                 merged.add(s);
             }
         }
@@ -50,10 +56,10 @@ final class SessionCacheManager {
         }
     }
 
-    /** Marks a session as locally created and adds it to the cached list. */
-    void addLocallyCreated(Session session) {
+    /** Marks a session as locally created for the given agent and adds it to the cached list. */
+    void addLocallyCreated(Session session, String agentName) {
         if (session == null || session.id() == null) return;
-        locallyCreatedIds.add(session.id());
+        locallyCreatedSessionToAgentMap.put(session.id(), safeAgent(agentName));
         cacheSession(session);
         List<Session> updated = new ArrayList<>(cachedSessions);
         if (updated.stream().noneMatch(s -> s.id().equals(session.id()))) {
@@ -62,25 +68,37 @@ final class SessionCacheManager {
         }
     }
 
-    /** Returns cached sessions that were created locally (not from session/list). */
-    List<Session> getLocallyCreatedSessions() {
+    /** Returns cached sessions that were created locally for the given agent. */
+    List<Session> getLocallyCreatedSessions(String agentName) {
         List<Session> result = new ArrayList<>();
+        String agent = safeAgent(agentName);
         for (Session s : cachedSessions) {
-            if (locallyCreatedIds.contains(s.id())) {
+            String sessionAgent = locallyCreatedSessionToAgentMap.get(s.id());
+            if (agent.equals(sessionAgent)) {
                 result.add(s);
             }
         }
         return result;
     }
 
-    /** Returns the set of locally-created session IDs (for persistence). */
-    Set<String> getLocallyCreatedIds() {
-        return Set.copyOf(locallyCreatedIds);
+    /** Returns the set of locally-created session IDs for the given agent. */
+    Set<String> getLocallyCreatedIds(String agentName) {
+        Set<String> result = new java.util.HashSet<>();
+        String agent = safeAgent(agentName);
+        for (Map.Entry<String, String> entry : locallyCreatedSessionToAgentMap.entrySet()) {
+            if (agent.equals(entry.getValue())) {
+                result.add(entry.getKey());
+            }
+        }
+        return result;
     }
 
     /** Restores locally-created session IDs from persisted state. */
-    void restoreLocallyCreatedIds(Set<String> ids) {
-        locallyCreatedIds.addAll(ids);
+    void restoreLocallyCreatedIds(Set<String> ids, String agentName) {
+        String agent = safeAgent(agentName);
+        for (String id : ids) {
+            locallyCreatedSessionToAgentMap.put(id, agent);
+        }
     }
 
     /** Returns the session for the given ID, or null. */
@@ -88,10 +106,7 @@ final class SessionCacheManager {
         return sessionCacheMap.get(sessionId);
     }
 
-    /**
-     * Determines whether {@code sessionId} is a descendant of the current session
-     * by walking the parentID chain in the cache.
-     */
+    /** Checks if the session is a descendant of the current active session. */
     boolean isDescendantOfCurrent(String sessionId, String currentSessionId) {
         if (sessionId == null || currentSessionId == null) return false;
         String walk = sessionId;

@@ -411,6 +411,17 @@ public class ConfigPanelController {
                         postProcessModel(combo, selected);
                     }
                 }
+                github.anandb.netbeans.contract.ProcessControl pc =
+                        org.openide.util.Lookup.getDefault()
+                                .lookup(github.anandb.netbeans.contract.ProcessControl.class);
+                boolean modelSelectable = pc == null || pc.getCapabilities().supportsModelSelection();
+                modelCombo.setEnabled(modelSelectable);
+                if (!modelSelectable && pc != null) {
+                    modelCombo.setToolTipText(pc.getCapabilities().unsupportedModelSelectionMessage());
+                } else {
+                    modelCombo.setToolTipText(null);
+                }
+
                 thinkingCombo.setEnabled(thinkingCombo.getItemCount() > 0);
                 SwingUtilities.invokeLater(() -> tabNameUpdater.accept(buildTabLabel()));
                 if (thinkingCombo.getActionListeners().length == 0) {
@@ -768,7 +779,18 @@ public class ConfigPanelController {
     public void setCombosEnabled(boolean enabled) {
         SwingUtilities.invokeLater(() -> {
             modeCombo.setEnabled(enabled);
-            modelCombo.setEnabled(enabled);
+
+            github.anandb.netbeans.contract.ProcessControl pc =
+                    org.openide.util.Lookup.getDefault()
+                            .lookup(github.anandb.netbeans.contract.ProcessControl.class);
+            boolean modelSelectable = pc == null || pc.getCapabilities().supportsModelSelection();
+            modelCombo.setEnabled(enabled && modelSelectable);
+            if (!modelSelectable && pc != null) {
+                modelCombo.setToolTipText(pc.getCapabilities().unsupportedModelSelectionMessage());
+            } else {
+                modelCombo.setToolTipText(null);
+            }
+
             thinkingCombo.setEnabled(enabled && thinkingCombo.getItemCount() > 0);
         });
     }

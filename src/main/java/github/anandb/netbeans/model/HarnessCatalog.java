@@ -25,7 +25,10 @@ public final class HarnessCatalog {
             boolean supportsMessageIds,
             boolean supportsMcpServer,
             boolean supportsSessionSetMode,
+            boolean supportsSessionSetConfigOption,
+            boolean supportsModelSelection,
             boolean supportsSessionList,
+            String unsupportedModelSelectionMessage,
             String installWindows,
             String installMac,
             String installLinux,
@@ -41,7 +44,8 @@ public final class HarnessCatalog {
     public static final Harness OPENCODE = new Harness(
             "opencode", "OpenCode", "opencode",
             List.of("opencode"), "acp",
-            false, true, true, true, true, true, false, true,
+            false, true, true, true, true, true, false, true, true, true,
+            "",
             "winget install SST.opencode",
             "brew install opencode",
             "curl -fsSL https://opencode.ai/install | bash",
@@ -50,7 +54,8 @@ public final class HarnessCatalog {
     public static final Harness GOOSE = new Harness(
             "goose", "Goose", "goose",
             List.of("goose"), "acp",
-            true, true, false, false, true, true, false, true,
+            true, true, false, false, true, true, false, true, true, true,
+            "",
             "irm https://github.com/block/goose/releases/download/stable/download_cli.sh | iex",
             "brew install block-goose-cli",
             "curl -fsSL https://github.com/block/goose/releases/download/stable/download_cli.sh | bash",
@@ -59,7 +64,8 @@ public final class HarnessCatalog {
     public static final Harness PI = new Harness(
             "pi", "Pi", "pi-logo",
             List.of("pi-acp"), "",
-            true, false, false, false, false, true, false, true,
+            true, false, false, false, false, true, false, true, true, true,
+            "",
             "powershell -c \"irm https://pi.dev/install.ps1 | iex\"",
             "curl -fsSL https://pi.dev/install.sh | sh",
             "curl -fsSL https://pi.dev/install.sh | sh",
@@ -69,7 +75,8 @@ public final class HarnessCatalog {
     public static final Harness CURSOR = new Harness(
             "cursor", "Cursor", "cursor",
             List.of("agent", "cursor-agent"), "acp",
-            false, true, true, false, false, true, false, true,
+            false, true, true, false, false, true, false, true, true, true,
+            "",
             "Install the Cursor CLI from https://cursor.com/cli (Windows installer)",
             "curl https://cursor.com/install -fsSL | bash",
             "curl https://cursor.com/install -fsSL | bash",
@@ -79,7 +86,8 @@ public final class HarnessCatalog {
     public static final Harness CLAUDE = new Harness(
             "claude", "Claude", "claude",
             List.of("claude-agent-acp"), "",
-            false, true, true, false, true, true, true, true,
+            false, true, true, false, true, true, true, true, true, true,
+            "",
             "npm install -g @agentclientprotocol/claude-agent-acp",
             "npm install -g @agentclientprotocol/claude-agent-acp",
             "npm install -g @agentclientprotocol/claude-agent-acp",
@@ -89,7 +97,8 @@ public final class HarnessCatalog {
     public static final Harness HERMES = new Harness(
             "hermes", "Hermes", "hermes",
             List.of("hermes"), "",
-            true, true, false, false, false, true, false, true,
+            true, true, false, false, false, true, false, true, true, true,
+            "",
             "iex (irm https://hermes-agent.nousresearch.com/install.ps1)",
             "curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash",
             "curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash",
@@ -98,21 +107,24 @@ public final class HarnessCatalog {
 
     public static final Harness GEMINI = new Harness(
             "gemini", "Gemini", "gemini",
-            List.of("gemini"), "--acp",
-            true, true, true, false, true, true, true, false,
+            List.of("gemini"), "--acp --model gemini-3.5-flash",
+            true, true, true, false, true, true, true, false, false, false,
+            "Model needs to be specified as a command line parameter and needs an IDE restart",
             "", "", "", "", "");
 
     public static final Harness OMP = new Harness(
             "omp", "Oh My Pi", "omp",
             List.of("omp"), "acp",
-            true, true, true, false, true, true, true, true,
+            true, true, true, false, true, true, true, true, true, true,
+            "",
             "", "", "", "", "");
 
     /** Fallback for unknown or unconfigured harnesses. */
     public static final Harness UNKNOWN = new Harness(
             "unknown", "Agent", "agent",
             List.of(), "",
-            false, true, true, true, true, true, false, true,
+            false, true, true, true, true, true, false, true, true, true,
+            "",
             "", "", "", "", "");
 
     /** All supported harnesses, in the order offered during onboarding. */

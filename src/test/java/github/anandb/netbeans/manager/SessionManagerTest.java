@@ -209,6 +209,62 @@ class SessionManagerTest {
     }
 
     @Test
+    void testLocallyCreatedSessionsPersistence() throws Exception {
+        // Access cacheManager field via reflection
+        java.lang.reflect.Field cacheField = SessionManager.class.getDeclaredField("cacheManager");
+        cacheField.setAccessible(true);
+        SessionCacheManager cacheManager = (SessionCacheManager) cacheField.get(sessionManager);
+
+        // Access save and load private methods via reflection
+        java.lang.reflect.Method saveMethod = SessionManager.class.getDeclaredMethod("saveLocallyCreatedSessionIds");
+        saveMethod.setAccessible(true);
+        java.lang.reflect.Method loadMethod = SessionManager.class.getDeclaredMethod("loadLocallyCreatedSessionIds");
+        loadMethod.setAccessible(true);
+
+        // Set up two mock sessions with custom titles
+        Session s1 = new Session("id-1", "Title 1", "/cwd/1", "/cwd/1", null, "2026-09-12T00:00:01Z", List.of(), List.of(), null, null);
+        Session s2 = new Session("id-2", "Title 2", "/cwd/2", "/cwd/2", null, "2026-09-12T00:00:02Z", List.of(), List.of(), null, null);
+
+        sessionManager.setCustomTitle("id-1", "Title 1");
+        sessionManager.setCustomTitle("id-2", "Title 2");
+
+        // Add to cacheManager (agent is null in this test context)
+        String agent = null;
+        cacheManager.addLocallyCreated(s1, agent);
+        cacheManager.addLocallyCreated(s2, agent);
+
+        // Save
+        saveMethod.invoke(sessionManager);
+
+        // Clear cacheManager to simulate a restart/fresh state
+        java.lang.reflect.Field cachedSessionsField = SessionCacheManager.class.getDeclaredField("cachedSessions");
+        cachedSessionsField.setAccessible(true);
+        cachedSessionsField.set(cacheManager, new java.util.concurrent.CopyOnWriteArrayList<>());
+
+        java.lang.reflect.Field locallyCreatedMapField = SessionCacheManager.class.getDeclaredField("locallyCreatedSessionToAgentMap");
+        locallyCreatedMapField.setAccessible(true);
+        ((java.util.Map<?, ?>) locallyCreatedMapField.get(cacheManager)).clear();
+
+        java.lang.reflect.Field sessionCacheMapField = SessionCacheManager.class.getDeclaredField("sessionCacheMap");
+        sessionCacheMapField.setAccessible(true);
+        ((java.util.Map<?, ?>) sessionCacheMapField.get(cacheManager)).clear();
+
+        // Verify it is completely empty
+        assertTrue(cacheManager.getLocallyCreatedSessions(agent).isEmpty());
+
+        // Load
+        loadMethod.invoke(sessionManager);
+
+        // Verify sessions are restored in the correct original order (s2, s1) and titles are preserved
+        List<Session> restored = cacheManager.getLocallyCreatedSessions(agent);
+        assertEquals(2, restored.size());
+        assertEquals("id-2", restored.get(0).id());
+        assertEquals("Title 2", restored.get(0).title());
+        assertEquals("id-1", restored.get(1).id());
+        assertEquals("Title 1", restored.get(1).title());
+    }
+
+    @Test
     void testGetSessionTitle() {
         // No cached session → returns null
         assertNull(sessionManager.getSessionTitle("s2"));
