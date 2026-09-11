@@ -12,7 +12,7 @@ Every message you send automatically carries supplementary context about your cu
 - the selected text and its line range, when you have a selection
 - the current cursor line
 
-Your open projects are attached as well, so the AI knows the boundaries of your project. This context is reference-only metadata — your typed message is always the primary input.
+Your active project is attached as well, so the AI knows the boundaries of your project. This context is reference-only metadata — your typed message is always the primary input.
 
 If no real file is open (for example an empty editor or a temporary document), no phantom path like <code>/tmp/xxx</code> is sent, so the AI is never confused by made-up file locations. This is what powers the MCP <code>open&#95;pos</code> and <code>get&#95;tabs</code> tools, which let the AI jump you to the exact file and line it is talking about.
 

@@ -92,3 +92,7 @@ _bmad/
 _bmad-output/
 .node-version
 /.agents
+/.cursor
+/.windsurf
+opencode.json
+opencode.jsonc

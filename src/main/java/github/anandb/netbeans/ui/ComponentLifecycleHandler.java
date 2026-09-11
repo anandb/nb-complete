@@ -547,6 +547,14 @@ public class ComponentLifecycleHandler {
      * "Not now" earlier this session).
      */
     private void maybeShowGlobalConfigPrompt(Consumer<Boolean> afterAnswer) {
+        // OpenCode-specific: only offer when the configured harness actually is
+        // opencode. Other harnesses (goose, claude, hermes, ...) have their own
+        // configuration surface — do not offer to create opencode.json or check it.
+        String binaryName = BinaryResolver.resolveBinaryName();
+        if (binaryName == null || !binaryName.startsWith("opencode")) {
+            afterAnswer.accept(false);
+            return;
+        }
         if (configPromptDeferredThisProcess) {
             afterAnswer.accept(false);
             return;

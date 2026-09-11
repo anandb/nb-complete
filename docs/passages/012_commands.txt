@@ -8,7 +8,7 @@
 
 Slash commands let you perform quick actions directly from the chat input. Type `/` in the input area to trigger the autocomplete popup.
 
-Local commands handled entirely by the plugin (never sent to the server):
+Local commands are handled entirely by the plugin (never sent to the server):
 
 *   `/new` — start a new session (shows a project picker when multiple projects are open)
 *   `/title My Title` — rename the current session directly; `/title` without arguments asks the AI to suggest and apply a title

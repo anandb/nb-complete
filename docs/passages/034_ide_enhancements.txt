@@ -8,31 +8,30 @@
 
 The plugin integrates deeply with NetBeans beyond just the chat panel to boost your coding productivity:
 
-*   **Markdown Project Type:**
+<div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0.2em;">Markdown Project Type</div>
     *   Allows you to create a minimal project for managing folders of text notes, design files, or markdown documentation without requiring a compiler or build system (e.g., Maven or Gradle).
     *   To create one, go to `Tools > New Project > Other > Markdown Project`. Alternatively, you can run `touch .mdproject` inside any folder to instantly make that directory loadable as a project in NetBeans.
     *   It is identified by a `.mdproject` marker file, and renders a clean directory tree in the NetBeans Projects tab, automatically filtering out OS junk files and editor swap files.
     *   You can close or delete the project directly from the right-click context menu on the project node.
-*   **Stash Diff:**
+<div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0.2em;">Stash Diff</div>
     *   A side-by-side diff viewer for git stashes. Select any stash in the NetBeans Git Repository Browser and press `Ctrl + Shift + L` (or click the **Diff Stash** button in the Git toolbar) to open it.
     *   **To Base (default):** Displays stash parent commit vs stash content (equivalent to `git stash show -p`).
     *   **To HEAD:** Simulates a 3-way merge applying the stash on your current HEAD, showing conflict markers inline (with a red "Conflict" label in the right panel if conflicts occur).
     *   **To Working Tree:** Simulates applying the stash onto the working tree, showing unchanged/modified tree status on the left.
     *   **File List & Partial Apply:** Click any file to view its syntax-highlighted diff, or right-click a file to "Apply this change" individually from the stash.
-*   **Editor Context Menu Utilities:**
+<div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0.2em;">Editor Context Menu Utilities</div>
     *   **Search Web:** Right-click selected text (or the word under the cursor) in the editor and click **Search Web** to quickly search Google using your NetBeans-configured web browser.
     *   **Sort Lines Ascending / Descending:** Select multiple lines, right-click, and choose this option to alphabetically sort them.
     *   **Minify JSON:** Right-click any JSON content to quickly strip out all formatting whitespace.
     *   **Toggle Annotations:** Right-click in the editor and choose **Toggle Annotations** to toggle the versioning system's blame annotations for the file.
     *   **View File History:** Right-click in the editor and choose **View File History** to open the versioning system's history view for the file.
     *   Each of these context menu items can be enabled or disabled independently under `Tools > Options > Assistant`.
-*   **Jump to File Dialog:**
+<div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0.2em;">Jump to File</div>
     *   A modeless file search dialog triggered via `Ctrl + Alt + J` (or `Cmd + Option + J` on Mac) that lets you search all open projects by filename prefix, path substring, or glob patterns.
     *   Supports quick keyboard navigation with arrow keys and `Enter` to open.
     *   Powered by an **In-Memory File Indexing Cache** that rebuilds in the background when projects are opened or closed. It automatically respects `.gitignore` rules and ignores common directories like `node_modules/`, `target/`, and `build/`.
     *   Includes incremental live indexing via file system listeners, meaning new, deleted, or renamed files are immediately searchable without full rebuilds.
     *   Can be enabled or disabled under `Tools > Options > Assistant`.
-
 
 > [[Markdown Project Type]]
 > [[Git Stashes as "Code Drafts" (using Stash Diff)]]

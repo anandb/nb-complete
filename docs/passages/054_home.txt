@@ -8,7 +8,7 @@
 
 <i style="opacity: 0.7;">Last updated for BeanBot v1.19.8.</i>
 
-BeanBot is a NetBeans plugin that provides an AI assistant panel that lets you chat with AI models directly inside the IDE to generate, refactor and understand code, it automatically attaches active project and source file context to your messages. It also features a built-in permission handler — allowing you to inspect code diffs before applying changes and explicitly approve file deletions or terminal commands. While originally based on OpenCode, multiple coding agents like Claude, Goose, OpenCode and PI are now supported, with more in active development.
+BeanBot is a NetBeans plugin that provides an AI assistant panel that lets you chat with AI models directly inside the IDE to generate, refactor and understand code, it automatically attaches active project and source file context to your messages. It also features a built-in permission handler — allowing you to inspect code diffs before applying changes and explicitly approve file deletions or terminal commands. Originally based on OpenCode, multiple coding agents like Claude, Goose, OpenCode and PI are now supported, with more in active development.
 
 > [[BeanBot (screenshot)->BeanBot]]
 > [[Pick Your Harness]]

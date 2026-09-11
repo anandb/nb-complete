@@ -8,7 +8,7 @@
 
 <i style="opacity: 0.7;">Experimental — BeanBot's support for this harness is under active development and may change without notice.</i>
 
-<a href="https://goose-docs.ai/" target="_blank" rel="noopener">Goose</a> is an open-source, general-purpose **AI agent harness** from the Agentic AI Foundation (Linux Foundation). It ships as a native desktop app, a CLI, and an embeddable API — all built in Rust — and works with 15+ LLM providers (Anthropic, OpenAI, Google, Ollama, OpenRouter, Bedrock, …). Goose speaks the <a href="https://agentclientprotocol.com" target="_blank" rel="noopener">Agent Client Protocol</a> natively, which is what BeanBot uses to drive it, and connects to 70+ extensions via the <a href="https://modelcontextprotocol.io/" target="_blank" rel="noopener">Model Context Protocol</a>.
+<a href="https://goose-docs.ai/" target="_blank" rel="noopener">Goose</a> is an open-source, general-purpose **AI agent harness** from the Agentic AI Foundation (Linux Foundation). It ships as a native desktop app, a CLI, and an embeddable API — all built in Rust — and works with 15+ LLM providers (Anthropic, OpenAI, Google, Ollama, OpenRouter, Bedrock, …). Goose speaks the <a href="https://agentclientprotocol.com" target="_blank" rel="noopener">Agent Client Protocol</a> natively, and connects to 70+ extensions via the <a href="https://modelcontextprotocol.io/" target="_blank" rel="noopener">Model Context Protocol</a>.
 
 Install the CLI, then configure <code>goose</code> as the Harness in Options (Assistant > System) — make sure the binary is on your <code>PATH</code> or specify the full path .
 

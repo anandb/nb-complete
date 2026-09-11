@@ -8,7 +8,7 @@
 
 <i style="opacity: 0.7;">Experimental — BeanBot's support for this harness is under active development and may change without notice.</i>
 
-### Install
+<div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0.2em;">Install</div>
 
 - **macOS / Linux**: <pre><code>curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash</code></pre>
 - **Windows**: <pre><code>irm https://hermes-agent.nousresearch.com/install.ps1 | iex</code></pre>
@@ -20,7 +20,7 @@ uv pip install -e '.[acp]'</code></pre>
 
 Requires Python 3.10+.
 
-### About
+<div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0.2em;">About</div>
 
 <a href="https://hermes-agent.nousresearch.com" target="_blank" rel="noopener">Hermes</a> is an open-source **AI agent harness** from Nous Research. It is a Python-based coding agent with built-in tool calling, multi-provider LLM support, and a self-extensible plugin system. Hermes speaks the <a href="https://agentclientprotocol.com" target="_blank" rel="noopener">Agent Client Protocol</a> natively, which is what BeanBot uses to drive it.
 

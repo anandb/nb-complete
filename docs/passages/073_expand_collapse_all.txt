@@ -6,6 +6,8 @@
   <div>[[Index->Topic Index]]</div>
 </div>
 
+![Expand/Collapse All button](../images/expand_collapse.png){style="max-width:100%;"}
+
 Thoughts, tool outputs and code blocks are rendered as collapsible panes so a long assistant response stays readable. Instead of opening or closing them one by one, use the **Expand/Collapse All** toolbar button to toggle every block in the chat at once.
 
 The button icon and tooltip switch between *Expand All* and *Collapse All* so you always know what the next click will do. It's handy right after streaming finishes — collapse everything to see the final summary, or expand everything to inspect every tool result.

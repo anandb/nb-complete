@@ -8,7 +8,7 @@
 
 ![Check token usage](../images/check_token_usage.png){style="max-width:100%;"}
 
-Click the **Currency/Token Stats** icon on the toolbar to see how many tokens your current session has used. Hover over the status label (which normally says "Ready") to view the context window fill level. This helps you decide when to run `/compact` to summarise the conversation and free up context.
+On supported harnesses, click the **Currency/Token Stats** icon on the toolbar to see how many tokens your current session has used. Hover over the status label (which normally says "Ready") to view the context window fill level. This helps you decide when to run `/compact` to summarise the conversation and free up context.
 
 
 > [[Resetting context limits (/compact)]]

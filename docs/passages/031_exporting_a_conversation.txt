@@ -6,6 +6,8 @@
   <div>[[Index->Topic Index]]</div>
 </div>
 
+![Export Conversation](../images/export_button.png){style="max-width:100%;"}
+
 The share button on the toolbar exports the session to a file. Clicking it opens a small menu where you can choose between **Markdown** and **HTML** — HTML output mimics the sidebar chat view, including the expandable activity panels and chat styling.
 
 

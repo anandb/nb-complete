@@ -8,10 +8,10 @@
 
 You can create tasks conversationally by asking BeanBot to add one. The assistant uses the built-in <code>add&#95;task</code> MCP tool to write directly to your task repository.
 
-<div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0.2em;">Example prompts</div>
-<ul>
-<li><i>"Add a task to fix the login bug"</i></li>
-<li><i>"Create a high-priority task: refactor the database layer"</i></li>
+<div style="font-weight: bold; margin-top: 0.4em; margin-bottom: 0;">Example prompts</div>
+<ul style="margin-top: 0; margin-bottom: 0.2em;">
+<li style="margin-bottom: 0.2em;"><i>"Add a task to fix the login bug"</i></li>
+<li style="margin-bottom: 0.2em;"><i>"Create a high-priority task: refactor the database layer"</i></li>
 <li><i>"Track a task: write unit tests for the parser, estimate 3 points"</i></li>
 </ul>
 
@@ -41,7 +41,7 @@ If you have multiple task repositories, specify which one to add to:
 If only one repository exists, it is used automatically.
 
 <div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0.2em;">How it works</div>
-The AI calls the <code>add&#95;task</code> tool, which creates a new task in the repository's in-memory cache, persists it to the todo.txt file (in a background thread), and returns the task id. The task then appears in the NetBeans Tasks Dashboard immediately.
+The <code>add&#95;task</code> tool creates a new task in the repository's in-memory cache, persists it to the `todo.txt` file (in a background thread), and returns the task id. The task then appears in the NetBeans Tasks Dashboard immediately.
 
 > [[MCP Tools]]
 > [[Task Repositories]]
