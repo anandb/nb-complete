@@ -707,7 +707,7 @@ final class ChatLayoutBuilder {
         btn.setText(text);
         btn.setVerticalTextPosition(SwingConstants.BOTTOM);
         btn.setHorizontalTextPosition(SwingConstants.CENTER);
-        btn.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN, 10f));
+        btn.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN, 12f));
         // Light top inset (~1/3 of the Go-label stack) so the icon isn't
         // shoved down. Grow the button if that stack is taller than 80px.
         int gap = btn.getIconTextGap();
