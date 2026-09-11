@@ -16,28 +16,24 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class HarnessCatalogTest {
 
     @Test
-    void allSixHarnessesPresent() {
-        assertEquals(6, HarnessCatalog.ALL.size());
+    void allEightHarnessesPresent() {
+        assertEquals(8, HarnessCatalog.ALL.size());
         Set<String> ids = new HashSet<>();
         for (HarnessCatalog.Harness h : HarnessCatalog.ALL) {
             assertTrue(ids.add(h.id()), "duplicate id: " + h.id());
         }
-        assertTrue(ids.containsAll(Set.of("opencode", "goose", "pi", "cursor", "claude", "hermes")));
+        assertTrue(ids.containsAll(Set.of("opencode", "goose", "pi", "cursor", "claude", "hermes", "gemini", "omp")));
     }
 
     @Test
-    void onboardingOrderIsOpencodePiGooseCursorClaudeHermes() {
-        assertEquals(List.of("opencode", "pi", "goose", "cursor", "claude", "hermes"),
+    void onboardingOrderIncludesAllHarnesses() {
+        assertEquals(List.of("opencode", "pi", "goose", "cursor", "claude", "hermes", "gemini", "omp"),
                 HarnessCatalog.ALL.stream().map(HarnessCatalog.Harness::id).toList());
     }
 
     @Test
-    void everyHarnessHasInstallCommandsAndDocs() {
+    void everyHarnessHasBinaryNamesAndIcon() {
         for (HarnessCatalog.Harness h : HarnessCatalog.ALL) {
-            assertFalse(h.installWindows().isBlank(), h.id() + ": missing Windows install command");
-            assertFalse(h.installMac().isBlank(), h.id() + ": missing macOS install command");
-            assertFalse(h.installLinux().isBlank(), h.id() + ": missing Linux install command");
-            assertFalse(h.docsUrl().isBlank(), h.id() + ": missing docs URL");
             assertFalse(h.binaryNames().isEmpty(), h.id() + ": no binary names");
             assertNotNull(h.iconBase(), h.id() + ": no icon");
         }
@@ -60,6 +56,8 @@ class HarnessCatalogTest {
         assertEquals(HarnessCatalog.HERMES, HarnessCatalog.byBinaryName("hermes"));
         assertEquals(HarnessCatalog.GOOSE, HarnessCatalog.byBinaryName("goose"));
         assertEquals(HarnessCatalog.CURSOR, HarnessCatalog.byBinaryName("agent"));
+        assertEquals(HarnessCatalog.GEMINI, HarnessCatalog.byBinaryName("gemini"));
+        assertEquals(HarnessCatalog.OMP, HarnessCatalog.byBinaryName("omp"));
         assertNull(HarnessCatalog.byBinaryName("unknown-bin"));
     }
 

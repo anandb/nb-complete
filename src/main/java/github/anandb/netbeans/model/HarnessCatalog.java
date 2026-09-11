@@ -102,10 +102,33 @@ public final class HarnessCatalog {
             "Requires Python 3.10+. Enable ACP with: cd ~/.hermes/hermes-agent && uv pip install -e '.[acp]'.",
             "https://hermes-agent.nousresearch.com/docs/user-guide/features/acp");
 
-    /** All supported harnesses, in the order offered during onboarding:
-     *  OpenCode, Pi, Goose, Cursor, Claude, Hermes. */
+    public static final Harness GEMINI = new Harness(
+            "gemini",
+            "Gemini",
+            "gemini",
+            List.of("gemini"),
+            "--acp",
+            "",
+            "",
+            "",
+            "",
+            "");
+
+    public static final Harness OMP = new Harness(
+            "omp",
+            "Oh My Pi",
+            "omp",
+            List.of("omp"),
+            "acp",
+            "",
+            "",
+            "",
+            "",
+            "");
+
+    /** All supported harnesses, in the order offered during onboarding. */
     public static final List<Harness> ALL =
-            List.of(OPENCODE, PI, GOOSE, CURSOR, CLAUDE, HERMES);
+            List.of(OPENCODE, PI, GOOSE, CURSOR, CLAUDE, HERMES, GEMINI, OMP);
 
     /** Looks up a harness by catalog id; {@code null} when unknown. */
     public static Harness byId(String id) {

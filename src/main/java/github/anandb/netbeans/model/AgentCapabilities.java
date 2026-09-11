@@ -96,9 +96,14 @@ public final class AgentCapabilities {
         if (name.startsWith("gemini")) {
             return builder()
                     .displayName("Gemini")
-                    .supportsSessionList(false)
+                    .supportsMessageQueue(true)
                     .sendsMcpServerConfig(true)
+                    .injectsEditorContext(true)
+                    .supportsTokenStats(false)
+                    .supportsMessageIds(true)
                     .supportsMcpServer(true)
+                    .supportsSessionSetMode(true)
+                    .supportsSessionList(false)
                     .build();
         }
         return switch (name) {
@@ -124,6 +129,16 @@ public final class AgentCapabilities {
                     .supportsMessageIds(true)
                     .supportsMcpServer(true)
                     .supportsSessionSetMode(false)
+                    .build();
+            case "omp" -> builder()
+                    .displayName("Oh My Pi")
+                    .supportsMessageQueue(true)
+                    .sendsMcpServerConfig(true)
+                    .injectsEditorContext(true)
+                    .supportsTokenStats(false)
+                    .supportsMessageIds(true)
+                    .supportsMcpServer(true)
+                    .supportsSessionSetMode(true)
                     .build();
             default -> builder()
                     .displayName("Agent")
@@ -156,7 +171,8 @@ public final class AgentCapabilities {
             case "pi-acp", "pi-agent" -> "pi-logo.svg";
             case "opencode" -> "opencode.svg";
             case "hermes" -> "hermes.svg";
-            case "gemini" -> "agent.svg";
+            case "gemini" -> "gemini.svg";
+            case "omp" -> "omp.svg";
             default -> "agent.svg";
         };
     }
