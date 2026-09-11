@@ -1,5 +1,21 @@
 # Release Notes
 
+## v1.19.9 (Changes since v1.19.8)
+
+### Fixes
+- **Buffered preamble stuck**: Flush the buffered pre-turn messages on `preamble done` — harnesses that emit no SSE turn-end signal would otherwise keep the preamble response buffered until the session was reloaded (`2fa5cbd4`).
+- **OpenCode config prompt shown for other agents**: The global OpenCode config prompt now only appears when the configured harness is actually OpenCode; other agents (Goose, Claude, Hermes, ...) are skipped (`bb9c1174`).
+
+### UI
+- **Message queue menu on left-click**: Left-clicking the queue button now opens the Send Now / Cancel menu, with a left-button guard so macOS right-clicks don't open a second menu (`2fa5cbd4`).
+- **OpenCode icon renamed**: The OpenCode mark now lives in its own `opencode.svg`/`opencode_dark.svg`; the greyscale chat-bubble `logo*.svg` glyphs were purpose-built per slot (32px options panel, 16px menu/tab). Unreferenced `paperclip-dot*` and `feedback*` icons removed (`b55c528a`).
+
+### Documentation
+- User guide pages updated: home, automatic context capture, auto-reconnect, expand/collapse all, task creation via AI, and per-agent pages (Goose, Hermes, Claude) (`598e8605`, `bb9c1174`).
+
+### Housekeeping
+- Version bumped to 1.19.9.
+
 ## v1.19.8 (Changes since v1.19.6)
 
 ### Features
