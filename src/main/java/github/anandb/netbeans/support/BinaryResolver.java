@@ -81,15 +81,57 @@ public final class BinaryResolver {
      * wraps on WSL, since both derive from {@link #findExecutablePathOrNull()}.
      */
     public static String resolveBinaryName() {
-        return binaryNameFromPath(findExecutablePathOrNull());
+        String name = binaryNameFromPath(findExecutablePathOrNull());
+        if (name != null) {
+            return name;
+        }
+        // Fallback 1: stored harness ID from onboarding/options panel.
+        String harnessId = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                .get(PreferenceKeys.ACP_HARNESS_ID, null);
+        if (isNotBlank(harnessId)) {
+            HarnessCatalog.Harness h = HarnessCatalog.byId(harnessId);
+            if (h != null && !h.binaryNames().isEmpty()) {
+                return h.binaryNames().get(0);
+            }
+        }
+        // Fallback 2: extract basename from the stored path directly.
+        // Handles unknown/custom harnesses not in the catalog.
+        String storedPath = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                .get(PreferenceKeys.ACP_EXECUTABLE_PATH, null);
+        return binaryNameFromPath(storedPath);
+    }
+
+    /**
+     * Returns the display name for the configured harness (e.g. "Oh My Pi").
+     * Used for tooltip rendering before the server handshake provides the
+     * agent capabilities. Falls back to {@code null} when nothing is configured.
+     */
+    public static String resolveDisplayName() {
+        String name = resolveBinaryName();
+        if (name == null) {
+            return null;
+        }
+        // Known catalog harness — use its display name.
+        HarnessCatalog.Harness h = HarnessCatalog.byBinaryName(name);
+        if (h != null) {
+            return h.displayName();
+        }
+        // Stored display name from onboarding/options panel.
+        String stored = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                .get(PreferenceKeys.ACP_HARNESS_DISPLAY_NAME, null);
+        if (isNotBlank(stored)) {
+            return stored;
+        }
+        // Unknown harness — capitalize the binary name.
+        return name.substring(0, 1).toUpperCase(Locale.ROOT) + name.substring(1);
     }
 
     /** Maps a resolved executable path to its lowercase binary name, stripping
      *  a {@code .exe} suffix (Windows), or {@code null} when no path is
      *  resolved (no harness configured — the pre-selection default). Windows-
      *  style backslash separators are normalized so basename extraction works
-     *  on any OS. Package-private for tests. */
-    static String binaryNameFromPath(String path) {
+     *  on any OS. */
+    public static String binaryNameFromPath(String path) {
         if (path == null || path.isBlank()) {
             return null;
         }

@@ -44,6 +44,7 @@ import javax.swing.UIManager;
 import javax.swing.SwingUtilities;
 
 import github.anandb.netbeans.contract.SessionControl;
+import github.anandb.netbeans.model.HarnessCatalog;
 import github.anandb.netbeans.support.Logger;
 
 import static org.apache.commons.lang3.StringUtils.isBlank;
@@ -154,6 +155,13 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         pathCombo.addActionListener(evt -> {
             if (pathCombo.isPopupVisible()) {
                 userEditedPath = true;
+                // Auto-fill launch args from catalog when user picks a known harness
+                String path = getExecutablePath();
+                String binName = BinaryResolver.binaryNameFromPath(path);
+                HarnessCatalog.Harness h = binName != null ? HarnessCatalog.byBinaryName(binName) : null;
+                if (h != null) {
+                    argsField.setText(h.launchArgs());
+                }
                 controller.changed();
             }
         });
@@ -627,6 +635,14 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         String pathToSave = getExecutablePath();
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).put(PreferenceKeys.ACP_EXECUTABLE_PATH, pathToSave);
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).put(PreferenceKeys.PROCESS_ARGUMENTS, argsField.getText());
+        // Persist harness ID so the tooltip/icon can identify the agent
+        // even when acpExecutablePath is not resolvable (e.g. WSL paths).
+        String binName = BinaryResolver.binaryNameFromPath(pathToSave);
+        HarnessCatalog.Harness h = binName != null ? HarnessCatalog.byBinaryName(binName) : null;
+        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).put(
+                PreferenceKeys.ACP_HARNESS_ID, h != null ? h.id() : "");
+        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).put(
+                PreferenceKeys.ACP_HARNESS_DISPLAY_NAME, h != null ? h.displayName() : "");
         PluginSettings.setPreamble(preambleText);
         boolean changedCombine = combineCheckbox.isSelected()
                 != NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean(PreferenceKeys.COMBINE_TOOL_THOUGHT, true);

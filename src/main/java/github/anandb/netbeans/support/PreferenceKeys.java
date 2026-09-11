@@ -18,6 +18,8 @@ public final class PreferenceKeys {
     // Preference keys (must match what ACPOptionsPanel uses)
     public static final String ACP_EXECUTABLE_PATH = "acpExecutablePath";
     public static final String PROCESS_ARGUMENTS = "processArguments";
+    public static final String ACP_HARNESS_ID = "acpHarnessId";
+    public static final String ACP_HARNESS_DISPLAY_NAME = "acpHarnessDisplayName";
     /** Max visible message bubbles before older ones are trimmed (0 = unlimited). */
     public static final String MAX_MESSAGES = "maxMessages";
 

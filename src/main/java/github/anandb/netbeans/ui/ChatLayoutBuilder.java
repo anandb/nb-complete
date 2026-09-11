@@ -495,8 +495,8 @@ final class ChatLayoutBuilder {
         String goText = NbBundle.getMessage(AssistantTopComponent.class, "BTN_Go");
         sendBtn = UIUtils.createTextButton(goText, null, true);
         applyHarnessIcon(sendBtn, goText);
-        String agentName = AgentCapabilities.forName(BinaryResolver.resolveBinaryName()).displayName();
-        sendBtn.setToolTipText(goText + " (" + agentName + ")");
+        String agentName = BinaryResolver.resolveDisplayName();
+        sendBtn.setToolTipText(goText + " (" + (agentName != null ? agentName : "Agent") + ")");
         sendBtn.setMnemonic(KeyEvent.VK_G);
         sendBtn.setDisplayedMnemonicIndex(0);
         stopBtn = UIUtils.createTextButton(NbBundle.getMessage(AssistantTopComponent.class, "BTN_Stop"), null);

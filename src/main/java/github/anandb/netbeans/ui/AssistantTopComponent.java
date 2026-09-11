@@ -1114,6 +1114,8 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         java.util.concurrent.CompletableFuture.runAsync(() -> {
             prefs.put("acpExecutablePath", path);
             prefs.put(PreferenceKeys.PROCESS_ARGUMENTS, harness.launchArgs());
+            prefs.put(PreferenceKeys.ACP_HARNESS_ID, harnessId);
+            prefs.put(PreferenceKeys.ACP_HARNESS_DISPLAY_NAME, harness.displayName());
             LOG.info("Harness selected during onboarding: {0} at {1}", harnessId, path);
             SwingUtilities.invokeLater(() -> componentLifecycleHandler.restartServer());
         });
