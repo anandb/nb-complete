@@ -287,9 +287,12 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                     // Show a slide-in confirm bar below the session dropdown,
                     // reusing the permission-panel look and slide animation.
                     CompletableFuture<String> uiFuture = new CompletableFuture<>();
-                    layoutBuilder.getConfigConfirmPanel().showConfigConfirm(
-                        "Select the agent, model and level below, then click <b>Continue</b>.",
-                        uiFuture);
+                    ProcessControl currentPc = Lookup.getDefault().lookup(ProcessControl.class);
+                    boolean isGemini = currentPc != null && "gemini".equals(currentPc.getCapabilities().id());
+                    String promptMsg = isGemini
+                        ? NbBundle.getMessage(AssistantTopComponent.class, "MSG_SelectAgentLevel")
+                        : NbBundle.getMessage(AssistantTopComponent.class, "MSG_SelectAgentModelLevel");
+                    layoutBuilder.getConfigConfirmPanel().showConfigConfirm(promptMsg, uiFuture);
                     // Lock combos — SSE/RPC config_options_update must not
                     // repopulate while the user is choosing model/level.
                     configPanelController.setConfigConfirmActive(true);
@@ -678,8 +681,10 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         configPanelController.getComponent().setVisible(visible);
         toggleOptionsBtn.setIcon(ThemeManager.getIcon(visible ? "arrow-down.svg" : "settings.svg", 25));
 
-        configPanelController.getModelCombo().setVisible(visible);
-        configPanelController.getCopyModelBtn().setVisible(visible);
+        ProcessControl pc = Lookup.getDefault().lookup(ProcessControl.class);
+        boolean showModel = visible && (pc == null || pc.getCapabilities().supportsModelSelection());
+        configPanelController.getModelCombo().setVisible(showModel);
+        configPanelController.getCopyModelBtn().setVisible(showModel);
 
         // Adjust split pane divider so the textarea keeps its size:
         // expanding moves the divider UP (taking space from chat), collapsing moves it DOWN.
