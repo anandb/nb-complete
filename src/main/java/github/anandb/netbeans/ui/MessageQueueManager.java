@@ -70,6 +70,14 @@ public final class MessageQueueManager {
                     showPopupAt(e.getX(), e.getY());
                 }
             }
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                // Left-click also opens the menu (button is hidden while the
+                // queue is empty, so this only ever fires with items queued).
+                if (!e.isPopupTrigger()) {
+                    showPopupAt(e.getX(), e.getY());
+                }
+            }
         });
     }
 

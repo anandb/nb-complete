@@ -512,6 +512,11 @@ public class SessionLifecycleHandler implements SessionListener {
                 pendingPreambleResponse = false;
                 chatPanel.setSessionLoading(false);
             }
+            // Render buffered preamble messages. Harnesses that emit no SSE
+            // turn-end signal (so the endOfTurn flush in onSessionUpdate never
+            // fires) would otherwise keep the preamble response buffered until
+            // the session is reloaded.
+            chatPanel.flushSessionBuffer();
         });
     }
 
