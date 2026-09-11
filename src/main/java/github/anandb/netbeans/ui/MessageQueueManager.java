@@ -74,7 +74,10 @@ public final class MessageQueueManager {
             public void mouseClicked(MouseEvent e) {
                 // Left-click also opens the menu (button is hidden while the
                 // queue is empty, so this only ever fires with items queued).
-                if (!e.isPopupTrigger()) {
+                // Left-only guard: on macOS a right-click release reports
+                // popupTrigger == false in mouseClicked, which would open a
+                // second menu right after mousePressed already opened one.
+                if (SwingUtilities.isLeftMouseButton(e) && !e.isPopupTrigger()) {
                     showPopupAt(e.getX(), e.getY());
                 }
             }
