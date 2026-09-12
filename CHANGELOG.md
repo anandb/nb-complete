@@ -1,9 +1,39 @@
 # Release Notes
 
-## Unreleased
+## v1.20.0 (Changes since v1.19.9)
+
+### Features
+- **Gemini and Oh My Pi harnesses**: Both harnesses added to the catalog with capability flags, icons, install commands, and docs links; Gemini runs client-tracked sessions, Oh My Pi connects over ACP (`54f324c6`, `8c02b8b8`).
+- **Conditional startup prompt**: The Enable Session Preamble checkbox gates the entire startup prompt (critical rules, WSL guidance, and the session preamble) — off sends nothing; the separate caveman checkbox is gone and its terseness instruction lives in the preamble's Communication mode (`0c49a430`).
+- **VCS history and task MCP tools**: New `git_log`, `file_history` (Mercurial), `update_task`, and Mercurial support tools, all confined to open projects (`c77d3c5e`).
+- **Preamble editor dialog**: The pencil button opens a dedicated dialog with Copy as System Prompt — copies the consolidated prompt (critical rules + WSL guidance + preamble) for configuring it in the agent instead of user-role injection, with a persistent tooltip documenting the copy-then-disable workflow (`0c49a430`).
+
+### Fixes
+- **Gemini session persistence**: Client-tracked sessions persist across IDE restarts; blank harness IDs no longer fork the preference namespace and lose sessions (`bb4af3ca`, `f6414a0d`).
+- **Session metadata storage**: Session records are stored per session so a dropped NbPreferences blob cannot wipe them; leftover hidden preference keys no longer re-archive old sessions (`648e2d73`, `97704783`).
+- **Client-tracked session scope**: IDs are kept only for harnesses without `session/list`, and sessions hide when their project closes (`20c4a298`, `cc60ecb7`).
+- **Metadata leakage in user bubbles**: Non-streaming user bubbles (local echo, session reload) strip `<metadata>` blocks at construction — echoed messages no longer display the raw editor-context block (`b06a91b0`).
+- **Cursor prompt overlap**: Input stays busy until the latest prompt finishes; user-prompt-in-flight is set only when `session/prompt` is actually issued (`5c22a6c5`, `1b74189f`).
+- **Gemini turn handling**: Gemini is treated as interleaved, failed VCS MCP commands surface as errors, and the new-session confirmation prompt is localized and sized dynamically (`d2bfc250`, `786977f4`).
+- **MCP tool confinement**: Git/Hg tools run from the open project (not the parent VCS root), subprocess capture is bounded by a live timeout and size cap, and revision/since tokens starting with a dash are rejected (`ae2004b2`, `f39e00f5`, `79b24d01`, `3e5108e2`).
+- **Harness state lifecycle**: Harness capabilities reset when the ACP process stops; harness names resolve for tooltip/icon even when the binary path is unresolvable (`0935fb0e`, `a7c44da3`).
+- **session/load cwd**: Required only for harnesses without `session/list` (`7365c29b`).
+- **Oh My Pi onboarding**: Install commands and ACP docs URL populated (`c9c6aaae`).
+
+### UI
+- **Go button legibility**: Label font size increased from 10 to 12 (`e38d677e`).
+
+### Refactoring
+- **`AgentCapabilities` folded into `HarnessCatalog`**: Capability flags live on the harness catalog record; historical notes below that name `AgentCapabilities` refer to that type (`7163770b`).
+- **Dead RPC stub removed**: `renameSessionOnServer` was a no-op stub (OpenCode implements no rename RPC); renames are local-only (`8405b2e5`).
+- **User-facing literals moved to resource bundles** (`f9d520f6`); inline FQCNs replaced with imports in session code (`a43c5b28`).
+
+### Documentation
+- User guide refreshed for Gemini, VCS MCP tools, and queueing; options reference updated for the preamble checkbox (`1e65cce6`, `0c49a430`).
 
 ### Housekeeping
-- **`AgentCapabilities` folded into `HarnessCatalog`**: Capability flags live on the harness catalog record; historical notes below that name `AgentCapabilities` refer to that type (`7163770b`).
+- VCS backup tests split by engine with Mercurial coverage added (`b129b64c`, `0e0f42f5`); Pi optimizer node tooling gitignored (`d0102c2c`).
+- Version bumped to 1.20.0.
 
 ## v1.19.9 (Changes since v1.19.8)
 
