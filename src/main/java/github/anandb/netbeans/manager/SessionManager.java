@@ -163,7 +163,7 @@ public class SessionManager implements SessionQuery, SessionControl {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public static record SessionMetadata(
+    static record SessionMetadata(
         @JsonProperty("title") String title,
         @JsonProperty("usage") String usage,
         @JsonProperty("hidden") boolean hidden,
