@@ -149,6 +149,69 @@ class SessionManagerTest {
         assertTrue(cacheManager().getLocallyCreatedIds(null).contains("gemini-id"));
     }
 
+    @Test
+    void retainSessionsForDirectoriesDropsClosedProjectAndEmptyOpenList() {
+        Session open = cachedSession("open", "/p1");
+        Session closed = cachedSession("closed", "/p2");
+        Session noCwd = new Session("bare", "bare", null, null, null, null, List.of(), List.of(), null, null);
+        List<Session> retained = SessionManager.retainSessionsForDirectories(
+                List.of(open, closed, noCwd), List.of("/p1"));
+        assertEquals(1, retained.size());
+        assertEquals("open", retained.get(0).id());
+        assertTrue(SessionManager.retainSessionsForDirectories(List.of(open), List.of()).isEmpty());
+    }
+
+    @Test
+    void refreshLocalSessionsHidesClosedProjectButKeepsPersistedId() throws Exception {
+        Method updateMeta = SessionManager.class.getDeclaredMethod("updateMetadata",
+                String.class, java.util.function.Function.class);
+        updateMeta.setAccessible(true);
+        cacheManager().addLocallyCreated(cachedSession("keep", "/open"), null);
+        cacheManager().addLocallyCreated(cachedSession("gone", "/closed"), null);
+        updateMeta.invoke(sessionManager, "keep",
+                (java.util.function.Function<SessionManager.SessionMetadata, SessionManager.SessionMetadata>)
+                m -> new SessionManager.SessionMetadata(m.title(), m.usage(), m.hidden(), "/open"));
+        updateMeta.invoke(sessionManager, "gone",
+                (java.util.function.Function<SessionManager.SessionMetadata, SessionManager.SessionMetadata>)
+                m -> new SessionManager.SessionMetadata(m.title(), m.usage(), m.hidden(), "/closed"));
+        Method save = SessionManager.class.getDeclaredMethod("saveLocallyCreatedSessionIds");
+        save.setAccessible(true);
+        save.invoke(sessionManager);
+        Field listField = SessionCacheManager.class.getDeclaredField("cachedSessions");
+        listField.setAccessible(true);
+        listField.set(cacheManager(), new CopyOnWriteArrayList<>());
+        Field mapField = SessionCacheManager.class.getDeclaredField("locallyCreatedSessionToAgentMap");
+        mapField.setAccessible(true);
+        ((Map<?, ?>) mapField.get(cacheManager())).clear();
+
+        ProcessControl pc = mock(ProcessControl.class);
+        when(pc.getCapabilities()).thenReturn(HarnessCatalog.GEMINI);
+        ProjectQuery pq = mock(ProjectQuery.class);
+        Project project = mock(Project.class);
+        FileObject dir = mock(FileObject.class);
+        when(dir.getPath()).thenReturn("/open");
+        when(project.getProjectDirectory()).thenReturn(dir);
+        when(pq.getAllOpenProjects()).thenReturn(new Project[] {project});
+
+        try (MockedStatic<Lookup> lookupMock = mockStatic(Lookup.class)) {
+            Lookup mockLookup = mock(Lookup.class);
+            lookupMock.when(Lookup::getDefault).thenReturn(mockLookup);
+            when(mockLookup.lookup(ProcessControl.class)).thenReturn(pc);
+            when(mockLookup.lookup(ProjectQuery.class)).thenReturn(pq);
+            sessionManager.refreshSessions();
+            long deadline = System.currentTimeMillis() + 3000;
+            while (cacheManager().getCachedSessions().size() != 1
+                    && System.currentTimeMillis() < deadline) {
+                Thread.sleep(20);
+            }
+        }
+        List<Session> shown = cacheManager().getCachedSessions();
+        assertEquals(1, shown.size());
+        assertEquals("keep", shown.get(0).id());
+        assertTrue(cacheManager().getLocallyCreatedIds(null).contains("gone"),
+                "closed-project id stays persisted for when that project reopens");
+    }
+
     /** Listener that captures the options passed to onSessionLoaded. */
     private volatile List<SessionConfigOption> lastLoadedOptions;
     private volatile String lastLoadedSessionId;

@@ -110,6 +110,43 @@ public class SessionManager implements SessionQuery, SessionControl {
         return pc != null && !pc.getCapabilities().supportsSessionList();
     }
 
+    private static List<String> openProjectDirectories() {
+        ProjectQuery projectQuery = Lookup.getDefault().lookup(ProjectQuery.class);
+        Project[] openProjects = projectQuery == null
+                ? new Project[0] : projectQuery.getAllOpenProjects();
+        List<String> dirs = new ArrayList<>();
+        for (Project p : openProjects) {
+            if (p != null) {
+                String path = p.getProjectDirectory().getPath();
+                if (!dirs.contains(path)) {
+                    dirs.add(path);
+                }
+            }
+        }
+        return dirs;
+    }
+
+    /**
+     * Keeps sessions whose cwd (or directory) is one of the open project roots.
+     * Same visibility rule as session/list: a closed project must not keep
+     * client-tracked Gemini rows in the dropdown. IDs stay in prefs so the
+     * session returns when that project is opened again.
+     */
+    static List<Session> retainSessionsForDirectories(List<Session> sessions, List<String> directories) {
+        if (sessions == null || sessions.isEmpty()
+                || directories == null || directories.isEmpty()) {
+            return new ArrayList<>();
+        }
+        List<Session> retained = new ArrayList<>();
+        for (Session s : sessions) {
+            String cwd = s.cwd() != null ? s.cwd() : s.directory();
+            if (cwd != null && directories.contains(cwd)) {
+                retained.add(s);
+            }
+        }
+        return retained;
+    }
+
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static record SessionMetadata(
         @JsonProperty("title") String title,
@@ -762,22 +799,15 @@ public class SessionManager implements SessionQuery, SessionControl {
                     ProcessControl pc = Lookup.getDefault().lookup(ProcessControl.class);
                     if (pc != null && !pc.getCapabilities().supportsSessionList()) {
                         loadLocallyCreatedSessionIds();
-                        List<Session> local = cacheManager.getLocallyCreatedSessions(agentName());
-                        cacheManager.setCachedSessions(local, agentName(), true);
+                        List<String> openDirs = openProjectDirectories();
+                        List<Session> local = retainSessionsForDirectories(
+                                cacheManager.getLocallyCreatedSessions(agentName()), openDirs);
+                        // Do not preserve: loadLocallyCreatedSessionIds already put
+                        // closed-project rows in the cache; merge would undo the filter.
+                        cacheManager.setCachedSessions(local, agentName(), false);
                         return CompletableFuture.completedFuture(local);
                     }
-                    ProjectQuery projectQuery = Lookup.getDefault().lookup(ProjectQuery.class);
-                    Project[] openProjects = projectQuery == null
-                            ? new Project[0] : projectQuery.getAllOpenProjects();
-                    List<String> openProjectDirs = new ArrayList<>();
-                    for (Project p : openProjects) {
-                        if (p != null) {
-                            String path = p.getProjectDirectory().getPath();
-                            if (!openProjectDirs.contains(path)) {
-                                openProjectDirs.add(path);
-                            }
-                        }
-                    }
+                    List<String> openProjectDirs = openProjectDirectories();
                     LOG.fine("refreshSessions: starting refresh for {0} unique projects", openProjectDirs.size());
                     if (openProjectDirs.isEmpty()) {
                         return CompletableFuture.completedFuture(new ArrayList<Session>());
@@ -790,8 +820,7 @@ public class SessionManager implements SessionQuery, SessionControl {
                         Long.compare(parseTimestamp(s2.updatedAt()), parseTimestamp(s1.updatedAt()))
                     );
 
-                    cacheManager.setCachedSessions(filteredSessions, agentName(),
-                            tracksSessionsLocally());
+                    cacheManager.setCachedSessions(filteredSessions, agentName(), false);
                     notifySessionListUpdated(filteredSessions);
                 })
                 .exceptionally(ex -> {
