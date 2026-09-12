@@ -209,10 +209,6 @@ public class MessageSender {
             return;
         }
 
-        if (onNewMessageCallback != null) {
-            onNewMessageCallback.run();
-        }
-
         // Add to history before slash intercept so local commands (/models, /title etc.)
         // are available via Alt+Up browsing.
         messageHistory.add(text);
@@ -337,6 +333,11 @@ public class MessageSender {
         ProcessControl sendProc = processService.get();
         boolean injectsContext = sendProc != null && sendProc.getCapabilities().injectsEditorContext();
         Map<String, Object> context = (isForwardedSlash || !injectsContext) ? null : EditorContextCapture.capture();
+        // Only after we actually issue session/prompt: local slash / no-session
+        // returns must not set userPromptInFlight or skip preamble/reconnect done.
+        if (onNewMessageCallback != null) {
+            onNewMessageCallback.run();
+        }
         final int gen = sendGeneration.incrementAndGet();
         sendProc.sendMessage(currentSessionId, messageText, context, fileBlocks)
                 .thenAccept(result -> {
@@ -490,12 +491,6 @@ public class MessageSender {
         // No local echo — individual echoes were shown when queued.
         // No attachments — they were cleared when queued.
         // Editor Context — gated by system property to disable auto-injection
-        // Reset turnEnded so SSE chunks for this combined turn correctly
-        // switch the UI to the Stop (processing) state.
-        if (onNewMessageCallback != null) {
-            onNewMessageCallback.run();
-        }
-
         // Advance the permission epoch — consistent with sendMessage(). Guard
         // with turnEnded so the epoch is never bumped mid-turn (latent safety).
         boolean turnEnded = turnEndedCheck != null ? turnEndedCheck.getAsBoolean() : true;
@@ -504,6 +499,10 @@ public class MessageSender {
         }
 
         Map<String, Object> context = null;
+        // Same gate as sendMessage(): in-flight is tied to the RPC, not UI prep.
+        if (onNewMessageCallback != null) {
+            onNewMessageCallback.run();
+        }
         final int gen = sendGeneration.incrementAndGet();
         processService.get().sendMessage(currentSessionId, combinedText, context, List.of())
                 .thenAccept(result -> {

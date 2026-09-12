@@ -197,7 +197,8 @@ NbPreferences.forModule(PreferenceKeys.class)
   while the previous RPC is in flight, then completes the old one with `stopReason=cancelled`.
   That stale completion must NOT set Ready / `turnEnded` — `MessageSender` ignores completions
   whose send generation is no longer current, and `onInternalMessageDone` is skipped while a
-  user prompt is in flight.
+  user prompt is in flight. `onUserPromptSent` runs only when `session/prompt` is actually
+  issued (not on local slash intercept or other send aborts).
   `session/load` configOptions also triggers a flush.
 - `MessageType` enum contains all valid session updates (e.g. `agent_message_chunk`, `agent_thought_chunk`, `plan`, `tool_call`). Check this enum before adding message types.
 
