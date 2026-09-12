@@ -21,7 +21,7 @@ import org.junit.jupiter.api.io.TempDir;
  * backup — the user's changes must never be lost by the backup itself.
  * Skips cleanly when hg is unavailable.
  */
-class VcsUtilsTest {
+class VcsUtilsHgTest {
 
     @TempDir
     Path tempDir;
