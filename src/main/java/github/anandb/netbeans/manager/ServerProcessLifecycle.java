@@ -349,6 +349,7 @@ class ServerProcessLifecycle {
         }
 
         serverProcess = null;
+        capabilities = HarnessCatalog.UNKNOWN;
     }
 
     // Getters for fields ProcessManager still needs

@@ -59,9 +59,15 @@ class ServerProcessLifecycleTest {
     }
 
     @Test
-    void stopServerSetsClosing() {
+    void stopServerResetsCapabilities() throws Exception {
+        java.lang.reflect.Field field = ServerProcessLifecycle.class.getDeclaredField("capabilities");
+        field.setAccessible(true);
+        field.set(lifecycle, HarnessCatalog.GEMINI);
+        assertEquals(HarnessCatalog.GEMINI, lifecycle.getCapabilities());
+
         lifecycle.stopServer();
-        assertTrue(lifecycle.isClosing());
+
+        assertEquals(HarnessCatalog.UNKNOWN, lifecycle.getCapabilities());
     }
 
     @Test
