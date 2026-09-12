@@ -104,6 +104,12 @@ public class SessionManager implements SessionQuery, SessionControl {
                 .get(PreferenceKeys.ACP_HARNESS_ID, null);
     }
 
+    /** True when the harness has no session/list and the plugin tracks IDs locally. */
+    private static boolean tracksSessionsLocally() {
+        ProcessControl pc = Lookup.getDefault().lookup(ProcessControl.class);
+        return pc != null && !pc.getCapabilities().supportsSessionList();
+    }
+
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static record SessionMetadata(
         @JsonProperty("title") String title,
@@ -634,9 +640,11 @@ public class SessionManager implements SessionQuery, SessionControl {
                                     s.modes().currentModeId());
                         }
                         cacheManager.cacheSession(s);
-                        cacheManager.addLocallyCreated(s, agentName());
                         updateMetadata(s.id(), m -> new SessionMetadata(m.title(), m.usage(), m.hidden(), finalCwd));
-                        saveLocallyCreatedSessionIds();
+                        if (tracksSessionsLocally()) {
+                            cacheManager.addLocallyCreated(s, agentName());
+                            saveLocallyCreatedSessionIds();
+                        }
                         return s;
                     } catch (Exception e) {
                         throw new RuntimeException(e);
@@ -755,7 +763,7 @@ public class SessionManager implements SessionQuery, SessionControl {
                     if (pc != null && !pc.getCapabilities().supportsSessionList()) {
                         loadLocallyCreatedSessionIds();
                         List<Session> local = cacheManager.getLocallyCreatedSessions(agentName());
-                        cacheManager.setCachedSessions(local, agentName());
+                        cacheManager.setCachedSessions(local, agentName(), true);
                         return CompletableFuture.completedFuture(local);
                     }
                     ProjectQuery projectQuery = Lookup.getDefault().lookup(ProjectQuery.class);
@@ -782,7 +790,8 @@ public class SessionManager implements SessionQuery, SessionControl {
                         Long.compare(parseTimestamp(s2.updatedAt()), parseTimestamp(s1.updatedAt()))
                     );
 
-                    cacheManager.setCachedSessions(filteredSessions, agentName());
+                    cacheManager.setCachedSessions(filteredSessions, agentName(),
+                            tracksSessionsLocally());
                     notifySessionListUpdated(filteredSessions);
                 })
                 .exceptionally(ex -> {
@@ -997,10 +1006,8 @@ public class SessionManager implements SessionQuery, SessionControl {
                     break;
                 }
             }
-            cacheManager.setCachedSessions(updatedList, agentName());
-            // If the current agent doesn't support session list (e.g. Gemini), save the updated locally-created sessions
-            ProcessControl pc = Lookup.getDefault().lookup(ProcessControl.class);
-            if (pc != null && !pc.getCapabilities().supportsSessionList()) {
+            cacheManager.setCachedSessions(updatedList, agentName(), tracksSessionsLocally());
+            if (tracksSessionsLocally()) {
                 saveLocallyCreatedSessionIds();
             }
         }

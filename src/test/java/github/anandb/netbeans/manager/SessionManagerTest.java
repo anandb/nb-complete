@@ -112,6 +112,43 @@ class SessionManagerTest {
         verify(processManager).sendRequest(eq("session/new"), any(), eq(60L), eq(TimeUnit.SECONDS));
     }
 
+    @Test
+    void createSessionDoesNotMarkLocalWhenSessionListSupported() throws Exception {
+        JsonNode mockResponse = mapper.createObjectNode()
+                .put("sessionId", "listed-id")
+                .put("title", "Listed");
+        when(processManager.sendRequest(eq("session/new"), any(), eq(60L), eq(TimeUnit.SECONDS)))
+                .thenReturn(CompletableFuture.completedFuture(mockResponse));
+        ProcessControl pc = mock(ProcessControl.class);
+        when(pc.getCapabilities()).thenReturn(HarnessCatalog.OPENCODE);
+        try (MockedStatic<Lookup> lookupMock = mockStatic(Lookup.class)) {
+            Lookup mockLookup = mock(Lookup.class);
+            lookupMock.when(Lookup::getDefault).thenReturn(mockLookup);
+            when(mockLookup.lookup(ProcessControl.class)).thenReturn(pc);
+            sessionManager.createSession("/test/cwd").get(5, TimeUnit.SECONDS);
+        }
+        assertTrue(cacheManager().getLocallyCreatedIds("opencode").isEmpty());
+        assertTrue(cacheManager().getLocallyCreatedIds(null).isEmpty());
+    }
+
+    @Test
+    void createSessionMarksLocalWhenSessionListUnsupported() throws Exception {
+        JsonNode mockResponse = mapper.createObjectNode()
+                .put("sessionId", "gemini-id")
+                .put("title", "Gemini");
+        when(processManager.sendRequest(eq("session/new"), any(), eq(60L), eq(TimeUnit.SECONDS)))
+                .thenReturn(CompletableFuture.completedFuture(mockResponse));
+        ProcessControl pc = mock(ProcessControl.class);
+        when(pc.getCapabilities()).thenReturn(HarnessCatalog.GEMINI);
+        try (MockedStatic<Lookup> lookupMock = mockStatic(Lookup.class)) {
+            Lookup mockLookup = mock(Lookup.class);
+            lookupMock.when(Lookup::getDefault).thenReturn(mockLookup);
+            when(mockLookup.lookup(ProcessControl.class)).thenReturn(pc);
+            sessionManager.createSession("/test/cwd").get(5, TimeUnit.SECONDS);
+        }
+        assertTrue(cacheManager().getLocallyCreatedIds(null).contains("gemini-id"));
+    }
+
     /** Listener that captures the options passed to onSessionLoaded. */
     private volatile List<SessionConfigOption> lastLoadedOptions;
     private volatile String lastLoadedSessionId;

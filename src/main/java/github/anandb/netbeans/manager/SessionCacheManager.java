@@ -36,15 +36,21 @@ final class SessionCacheManager {
         return cachedSessions;
     }
 
-    /** Replaces the cached session list atomically, preserving locally-created sessions for the current agent. */
-    void setCachedSessions(List<Session> sessions, String currentAgent) {
+    /**
+     * Replaces the cached session list. When {@code preserveLocallyCreated} is true
+     * (harnesses without {@code session/list}), locally-created sessions for
+     * {@code currentAgent} that the incoming list omitted are kept. List-capable
+     * harnesses must pass false so the server list is source of truth.
+     */
+    void setCachedSessions(List<Session> sessions, String currentAgent, boolean preserveLocallyCreated) {
         List<Session> merged = new ArrayList<>(sessions);
-        String agent = safeAgent(currentAgent);
-        // Re-add locally-created sessions for the current agent that the server list didn't include
-        for (Session s : cachedSessions) {
-            String sessionAgent = locallyCreatedSessionToAgentMap.get(s.id());
-            if (agent.equals(sessionAgent) && merged.stream().noneMatch(m -> m.id().equals(s.id()))) {
-                merged.add(s);
+        if (preserveLocallyCreated) {
+            String agent = safeAgent(currentAgent);
+            for (Session s : cachedSessions) {
+                String sessionAgent = locallyCreatedSessionToAgentMap.get(s.id());
+                if (agent.equals(sessionAgent) && merged.stream().noneMatch(m -> m.id().equals(s.id()))) {
+                    merged.add(s);
+                }
             }
         }
         cachedSessions = new CopyOnWriteArrayList<>(merged);

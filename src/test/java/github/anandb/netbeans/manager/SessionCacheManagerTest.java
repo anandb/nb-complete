@@ -34,7 +34,7 @@ class SessionCacheManagerTest {
 
     @Test
     void setCachedSessionsReplacesList() {
-        cache.setCachedSessions(List.of(sess("id1", "t1", null), sess("id2", "t2", null)), "test-agent");
+        cache.setCachedSessions(List.of(sess("id1", "t1", null), sess("id2", "t2", null)), "test-agent", false);
 
         List<Session> sessions = cache.getCachedSessions();
         assertEquals(2, sessions.size());
@@ -44,8 +44,8 @@ class SessionCacheManagerTest {
 
     @Test
     void setCachedSessionsWithEmptyList() {
-        cache.setCachedSessions(List.of(sess("x", "t", null)), "test-agent");
-        cache.setCachedSessions(List.of(), "test-agent");
+        cache.setCachedSessions(List.of(sess("x", "t", null)), "test-agent", false);
+        cache.setCachedSessions(List.of(), "test-agent", false);
         assertTrue(cache.getCachedSessions().isEmpty());
     }
 
@@ -120,7 +120,7 @@ class SessionCacheManagerTest {
     void setCachedSessionsDefendsAgainstExternalMutation() {
         List<Session> external = new ArrayList<>();
         external.add(sess("x", "X", null));
-        cache.setCachedSessions(external, "test-agent");
+        cache.setCachedSessions(external, "test-agent", false);
 
         // Mutating the original list after set should not affect the cache
         external.clear();
@@ -154,16 +154,25 @@ class SessionCacheManagerTest {
         assertTrue(piIds.contains("id-pi"));
 
         // Verify setCachedSessions for "gemini" preserves ONLY s1 and not s2
-        cache.setCachedSessions(List.of(), "gemini");
+        cache.setCachedSessions(List.of(), "gemini", true);
         List<Session> cachedForGemini = cache.getCachedSessions();
         assertEquals(1, cachedForGemini.size());
         assertEquals("id-gemini", cachedForGemini.get(0).id());
 
         // Verify setCachedSessions for "pi" preserves ONLY s2 and not s1 (with reload simulation)
         cache.addLocallyCreated(s2, "pi");
-        cache.setCachedSessions(List.of(), "pi");
+        cache.setCachedSessions(List.of(), "pi", true);
         List<Session> cachedForPi = cache.getCachedSessions();
         assertEquals(1, cachedForPi.size());
         assertEquals("id-pi", cachedForPi.get(0).id());
+    }
+
+    @Test
+    void setCachedSessionsWithoutPreserveDropsLocallyCreatedMissingFromServerList() {
+        cache.addLocallyCreated(sess("local-1", "Local", null), "opencode");
+        cache.setCachedSessions(List.of(sess("server-1", "Server", null)), "opencode", false);
+        List<Session> cached = cache.getCachedSessions();
+        assertEquals(1, cached.size());
+        assertEquals("server-1", cached.get(0).id());
     }
 }
