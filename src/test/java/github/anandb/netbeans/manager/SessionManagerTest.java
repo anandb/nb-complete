@@ -451,6 +451,31 @@ class SessionManagerTest {
     }
 
     @Test
+    void sessionMetadataPersistsPerSessionNotAsOneBlob() {
+        for (int i = 0; i < 80; i++) {
+            sessionManager.setCustomTitle("sid-" + i, "Title " + i);
+            sessionManager.setHidden("sid-" + i, i % 2 == 0);
+        }
+        assertEquals("Title 42", sessionManager.getCustomTitle("sid-42", "x"));
+        assertTrue(sessionManager.isHidden("sid-40"));
+        assertFalse(sessionManager.isHidden("sid-41"));
+        String blob = NbPreferences.forModule(SessionManager.class)
+                .get("gemini_local_sessions_metadata", null);
+        assertTrue(blob == null || blob.isEmpty(), "must not store all metadata in one prefs value");
+    }
+
+    @Test
+    void sessionMetadataMigratesLegacyBlobThenDropsIt() {
+        String blobKey = "gemini_local_sessions_metadata";
+        NbPreferences.forModule(SessionManager.class).put(blobKey,
+                "{\"blob-1\":{\"title\":\"FromBlob\",\"hidden\":true,\"cwd\":\"/p\"}}");
+        assertEquals("FromBlob", sessionManager.getCustomTitle("blob-1", "fallback"));
+        assertTrue(sessionManager.isHidden("blob-1"));
+        String leftover = NbPreferences.forModule(SessionManager.class).get(blobKey, null);
+        assertTrue(leftover == null || leftover.isEmpty());
+    }
+
+    @Test
     void isHiddenMigratesLegacyThenUnhideIgnoresLeftoverLegacyKey() {
         NbPreferences.forModule(SessionManager.class).putBoolean("session_hidden_h-legacy", true);
         assertTrue(sessionManager.isHidden("h-legacy"));

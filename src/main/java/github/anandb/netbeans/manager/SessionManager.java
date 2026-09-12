@@ -169,27 +169,88 @@ public class SessionManager implements SessionQuery, SessionControl {
     }
 
     private Map<String, SessionMetadata> loadMetadataMap() {
-        String agent = agentName();
-        String key = agent != null ? LOCAL_SESSIONS_KEY + "_" + agent + "_metadata" : LOCAL_SESSIONS_KEY + "_metadata";
-        String json = NbPreferences.forModule(SessionManager.class).get(key, null);
-        if (json != null && !json.isEmpty()) {
-            try {
-                return MAPPER.readValue(json, new TypeReference<Map<String, SessionMetadata>>() {});
-            } catch (Exception e) {
-                LOG.warn("Failed to deserialize session metadata: {0}", ExceptionUtils.getMessage(e), e);
+        Map<String, SessionMetadata> result = new ConcurrentHashMap<>();
+        Preferences node = metadataNode();
+        migrateBlobMetadata(node);
+        try {
+            for (String id : node.keys()) {
+                String json = node.get(id, null);
+                if (json == null || json.isEmpty()) {
+                    continue;
+                }
+                try {
+                    result.put(id, MAPPER.readValue(json, SessionMetadata.class));
+                } catch (Exception e) {
+                    LOG.warn("Failed to deserialize session metadata for {0}: {1}",
+                            id, ExceptionUtils.getMessage(e), e);
+                }
             }
+        } catch (Exception e) {
+            LOG.warn("Failed to list session metadata keys: {0}", ExceptionUtils.getMessage(e), e);
         }
-        return new ConcurrentHashMap<>();
+        return result;
     }
 
-    private void saveMetadataMap(Map<String, SessionMetadata> map) {
+    /** One JSON object per session. NbPreferences values are capped at 8KB. */
+    private Preferences metadataNode() {
         String agent = agentName();
-        String key = agent != null ? LOCAL_SESSIONS_KEY + "_" + agent + "_metadata" : LOCAL_SESSIONS_KEY + "_metadata";
+        String name = agent != null ? "sessmeta_" + agent.replaceAll("[^A-Za-z0-9._-]", "_") : "sessmeta";
+        if (name.length() > Preferences.MAX_NAME_LENGTH) {
+            name = name.substring(0, Preferences.MAX_NAME_LENGTH);
+        }
+        return NbPreferences.forModule(SessionManager.class).node(name);
+    }
+
+    private void migrateBlobMetadata(Preferences node) {
+        String agent = agentName();
+        String blobKey = agent != null
+                ? LOCAL_SESSIONS_KEY + "_" + agent + "_metadata" : LOCAL_SESSIONS_KEY + "_metadata";
+        Preferences prefs = NbPreferences.forModule(SessionManager.class);
+        String json = prefs.get(blobKey, null);
+        if (json == null || json.isEmpty()) {
+            return;
+        }
         try {
-            String json = MAPPER.writeValueAsString(map);
-            NbPreferences.forModule(SessionManager.class).put(key, json);
+            Map<String, SessionMetadata> blob = MAPPER.readValue(json,
+                    new TypeReference<Map<String, SessionMetadata>>() {});
+            for (Map.Entry<String, SessionMetadata> entry : blob.entrySet()) {
+                persistOne(node, entry.getKey(), entry.getValue());
+            }
+            prefs.remove(blobKey);
         } catch (Exception e) {
-            LOG.warn("Failed to serialize session metadata: {0}", ExceptionUtils.getMessage(e), e);
+            LOG.warn("Failed to migrate session metadata blob: {0}", ExceptionUtils.getMessage(e), e);
+        }
+    }
+
+    private void persistOne(String sessionId, SessionMetadata meta) {
+        persistOne(metadataNode(), sessionId, meta);
+    }
+
+    private void persistOne(Preferences node, String sessionId, SessionMetadata meta) {
+        if (sessionId == null || sessionId.isEmpty()) {
+            return;
+        }
+        String key = sessionId.length() > Preferences.MAX_KEY_LENGTH
+                ? sessionId.substring(0, Preferences.MAX_KEY_LENGTH) : sessionId;
+        try {
+            String json = MAPPER.writeValueAsString(meta);
+            if (json.length() > Preferences.MAX_VALUE_LENGTH) {
+                String title = meta.title();
+                int overflow = json.length() - Preferences.MAX_VALUE_LENGTH + 16;
+                if (title != null && title.length() > overflow) {
+                    title = title.substring(0, Math.max(0, title.length() - overflow));
+                    json = MAPPER.writeValueAsString(
+                            new SessionMetadata(title, meta.usage(), meta.hidden(), meta.cwd()));
+                }
+            }
+            if (json.length() > Preferences.MAX_VALUE_LENGTH) {
+                LOG.warn("Session metadata for {0} exceeds preferences value limit; not saved", sessionId);
+                return;
+            }
+            node.put(key, json);
+        } catch (Exception e) {
+            LOG.warn("Failed to persist session metadata for {0}: {1}",
+                    sessionId, ExceptionUtils.getMessage(e), e);
         }
     }
 
@@ -202,7 +263,7 @@ public class SessionManager implements SessionQuery, SessionControl {
         }
         SessionMetadata updated = updater.apply(current);
         cache.put(sessionId, updated);
-        saveMetadataMap(cache);
+        persistOne(sessionId, updated);
     }
 
     /**
@@ -222,7 +283,7 @@ public class SessionManager implements SessionQuery, SessionControl {
             return;
         }
         cache.put(sessionId, new SessionMetadata(title, usage, hidden, null));
-        saveMetadataMap(cache);
+        persistOne(sessionId, cache.get(sessionId));
         removeLegacyKeys(TITLE_PREFIX, sessionId);
         removeLegacyKeys(USAGE_PREFIX, sessionId);
         removeLegacyKeys(HIDDEN_PREFIX, sessionId);
