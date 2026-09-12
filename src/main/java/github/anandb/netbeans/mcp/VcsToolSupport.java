@@ -126,6 +126,9 @@ final class VcsToolSupport {
         result.put("status", "ok");
         result.put("exitCode", captured.exitCode());
         result.put("output", captured.output());
+        if (captured.truncated()) {
+            result.put("truncated", true);
+        }
         return result;
     }
 

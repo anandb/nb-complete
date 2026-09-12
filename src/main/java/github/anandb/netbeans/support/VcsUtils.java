@@ -2,11 +2,13 @@ package github.anandb.netbeans.support;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -284,11 +286,16 @@ public class VcsUtils {
     }
 
     /** Result of a VCS subprocess whose stdout+stderr were captured. */
-    public record CapturedCommand(boolean timedOut, int exitCode, String output) {}
+    public record CapturedCommand(boolean timedOut, int exitCode, String output, boolean truncated) {}
+
+    /** Soft cap on captured stdout+stderr so a runaway {@code git log -p} cannot OOM the IDE. */
+    static final int CAPTURE_MAX_CHARS = 2 * 1024 * 1024;
 
     /**
-     * Runs {@code command} in {@code cwd}, merging stderr into stdout. On timeout
-     * the process is destroyed forcibly. Caller maps the result into a tool payload.
+     * Runs {@code command} in {@code cwd}, merging stderr into stdout. The wait
+     * covers the whole lifetime including stdout drain; a hung producer is
+     * destroyed when {@code timeoutSeconds} elapses. Output is truncated at
+     * {@link #CAPTURE_MAX_CHARS}.
      */
     public static CapturedCommand runCaptured(File cwd, int timeoutSeconds, String... command)
             throws Exception {
@@ -296,23 +303,41 @@ public class VcsUtils {
         pb.directory(cwd);
         pb.redirectErrorStream(true);
         Process proc = pb.start();
-        String output;
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(proc.getInputStream()))) {
-            StringBuilder sb = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) {
-                if (!sb.isEmpty()) {
-                    sb.append('\n');
+        StringBuilder output = new StringBuilder();
+        AtomicBoolean truncated = new AtomicBoolean();
+        Thread reader = new Thread(() -> {
+            try (BufferedReader readerIn = new BufferedReader(new InputStreamReader(proc.getInputStream()))) {
+                char[] buf = new char[8192];
+                int n;
+                while ((n = readerIn.read(buf)) >= 0) {
+                    int room = CAPTURE_MAX_CHARS - output.length();
+                    if (room <= 0) {
+                        truncated.set(true);
+                        proc.destroyForcibly();
+                        return;
+                    }
+                    int take = Math.min(n, room);
+                    output.append(buf, 0, take);
+                    if (take < n) {
+                        truncated.set(true);
+                        proc.destroyForcibly();
+                        return;
+                    }
                 }
-                sb.append(line);
+            } catch (IOException ignored) {
+                // Pipe closed when the process is destroyed.
             }
-            output = sb.toString();
-        }
+        }, "vcs-capture");
+        reader.setDaemon(true);
+        reader.start();
         boolean finished = proc.waitFor(timeoutSeconds, TimeUnit.SECONDS);
-        if (!finished) {
+        if (!finished || truncated.get()) {
             proc.destroyForcibly();
-            return new CapturedCommand(true, -1, output);
         }
-        return new CapturedCommand(false, proc.exitValue(), output);
+        reader.join(TimeUnit.SECONDS.toMillis(2));
+        if (!finished) {
+            return new CapturedCommand(true, -1, output.toString(), truncated.get());
+        }
+        return new CapturedCommand(false, proc.exitValue(), output.toString(), truncated.get());
     }
 }
