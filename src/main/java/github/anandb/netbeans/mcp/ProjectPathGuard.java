@@ -52,6 +52,28 @@ final class ProjectPathGuard {
         return false;
     }
 
+    /**
+     * Returns the canonical root of the first currently open project, or
+     * {@code null} when no project is open. Used as the default working
+     * directory for git-backed MCP tools (never {@code user.dir}, which
+     * points at the IDE launcher directory).
+     */
+    static String firstOpenProjectRoot() {
+        ProjectQuery pq = Lookup.getDefault().lookup(ProjectQuery.class);
+        Project[] openProjects = pq == null ? new Project[0] : pq.getAllOpenProjects();
+        for (Project p : openProjects) {
+            File projectDirFile = org.openide.filesystems.FileUtil.toFile(p.getProjectDirectory());
+            if (projectDirFile == null) {
+                continue;
+            }
+            try {
+                return projectDirFile.getCanonicalPath();
+            } catch (IOException e) {
+                LOG.warn("Failed to canonicalize project root: {0}", e.getMessage());
+            }
+        }
+        return null;
+    }
     /** Standard rejection response for paths outside the open projects. */
     static Map<String, Object> outsideProjectError(String path) {
         return Map.of("status", "error", "message", "Path is outside the open projects: " + path);

@@ -107,9 +107,15 @@ public class GitToolProvider {
                 });
     }
 
+    /**
+     * Locates the git repository root by walking up from the first open
+     * project's root (never {@code user.dir}, which points at the IDE
+     * launcher directory). {@code null} when no project is open or no
+     * {@code .git} directory is found above it.
+     */
     private String findGitRoot() {
-        File cwd = new File(System.getProperty("user.dir"));
-        File current = cwd;
+        String projectRoot = ProjectPathGuard.firstOpenProjectRoot();
+        File current = projectRoot == null ? null : new File(projectRoot);
         while (current != null) {
             File gitDir = new File(current, ".git");
             if (gitDir.exists()) {
