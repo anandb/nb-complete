@@ -79,8 +79,9 @@ public class GitToolProvider {
                         if (isBlank(target)) {
                             return VcsToolSupport.run(repo.dir(), "Git", "git", "diff");
                         }
-                        if (!SAFE_DIFF_TARGET.matcher(target).matches()) {
-                            return Map.of("status", "error", "message", "Invalid diff target: " + target);
+                        Map<String, Object> targetErr = VcsToolSupport.invalidRevision(target, SAFE_DIFF_TARGET);
+                        if (targetErr != null) {
+                            return targetErr;
                         }
                         return VcsToolSupport.run(repo.dir(), "Git", "git", "diff", target);
                     }

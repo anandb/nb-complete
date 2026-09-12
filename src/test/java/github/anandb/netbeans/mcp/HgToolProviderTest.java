@@ -240,10 +240,15 @@ class HgToolProviderTest {
         File repo = initHgRepo(tempDir.resolve("repo").toFile());
         openProjectAt(repo);
 
-        Map<String, Object> result = diffExecutor().execute(new HgDiffInput(null, "--config=x"));
+        var exec = diffExecutor();
+        Map<String, Object> result = exec.execute(new HgDiffInput(null, "--config=x"));
 
         assertEquals("error", result.get("status"));
         assertEquals("Invalid diff target: --config=x", result.get("message"));
+
+        result = exec.execute(new HgDiffInput(null, "--config"));
+        assertEquals("error", result.get("status"));
+        assertEquals("Invalid diff target: --config", result.get("message"));
     }
 
     @Test
@@ -323,10 +328,15 @@ class HgToolProviderTest {
         File repo = initHgRepo(tempDir.resolve("repo").toFile());
         openProjectAt(repo);
 
-        Map<String, Object> result = logExecutor().execute(new HgLogInput(null, null, "--config=x"));
+        var log = logExecutor();
+        Map<String, Object> result = log.execute(new HgLogInput(null, null, "--config=x"));
 
         assertEquals("error", result.get("status"));
         assertEquals("Invalid since filter: --config=x", result.get("message"));
+
+        result = log.execute(new HgLogInput(null, null, "--config"));
+        assertEquals("error", result.get("status"));
+        assertEquals("Invalid since filter: --config", result.get("message"));
     }
 
     @Test

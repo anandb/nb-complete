@@ -86,8 +86,9 @@ public class HgToolProvider {
                         if (isBlank(target)) {
                             return VcsToolSupport.run(repo.dir(), "Hg", "hg", "diff");
                         }
-                        if (!SAFE_HG_TARGET.matcher(target).matches()) {
-                            return Map.of("status", "error", "message", "Invalid diff target: " + target);
+                        Map<String, Object> targetErr = VcsToolSupport.invalidRevision(target, SAFE_HG_TARGET);
+                        if (targetErr != null) {
+                            return targetErr;
                         }
                         return VcsToolSupport.run(repo.dir(), "Hg", "hg", "diff", "-r", target);
                     }

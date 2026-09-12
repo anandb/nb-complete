@@ -80,10 +80,23 @@ final class VcsToolSupport {
     }
 
     static Map<String, Object> invalidSince(String since, Pattern pattern) {
-        if (since != null && !pattern.matcher(since).matches()) {
+        if (since != null && !isSafeToken(since, pattern)) {
             return Map.of("status", "error", "message", "Invalid since filter: " + since);
         }
         return null;
+    }
+
+    static Map<String, Object> invalidRevision(String target, Pattern pattern) {
+        if (!isSafeToken(target, pattern)) {
+            return Map.of("status", "error", "message", "Invalid diff target: " + target);
+        }
+        return null;
+    }
+
+    /** Hyphens may appear inside a token (ISO dates, HEAD~1-style). A leading
+     *  '-' is an option flag and must not reach argv. */
+    private static boolean isSafeToken(String value, Pattern pattern) {
+        return !value.startsWith("-") && pattern.matcher(value).matches();
     }
 
     static ResolvedPath historyPath(String repoDir, String path) {

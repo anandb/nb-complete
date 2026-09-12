@@ -197,9 +197,14 @@ class GitToolProviderTest {
         File repo = initGitRepo(tempDir.resolve("repo").toFile());
         openProjectAt(repo);
 
-        Map<String, Object> result = diffExecutor().execute(new GitDiffInput(null, "--output=/tmp/x"));
+        var exec = diffExecutor();
+        Map<String, Object> result = exec.execute(new GitDiffInput(null, "--output=/tmp/x"));
         assertEquals("error", result.get("status"));
         assertEquals("Invalid diff target: --output=/tmp/x", result.get("message"));
+
+        result = exec.execute(new GitDiffInput(null, "--output"));
+        assertEquals("error", result.get("status"));
+        assertEquals("Invalid diff target: --output", result.get("message"));
     }
 
     private void runGit(File dir, String... cmd) throws Exception {
@@ -264,10 +269,15 @@ class GitToolProviderTest {
         File repo = initGitRepo(tempDir.resolve("repo").toFile());
         openProjectAt(repo);
 
-        Map<String, Object> result = logExecutor().execute(new GitLogInput(null, null, "--exec=rm"));
+        var log = logExecutor();
+        Map<String, Object> result = log.execute(new GitLogInput(null, null, "--exec=rm"));
 
         assertEquals("error", result.get("status"));
         assertEquals("Invalid since filter: --exec=rm", result.get("message"));
+
+        result = log.execute(new GitLogInput(null, null, "--since"));
+        assertEquals("error", result.get("status"));
+        assertEquals("Invalid since filter: --since", result.get("message"));
     }
 
     @Test
