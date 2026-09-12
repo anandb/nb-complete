@@ -946,7 +946,8 @@ public class SessionManager implements SessionQuery, SessionControl {
 
                             if (manualReconnectPending) {
                                 manualReconnectPending = false;
-                                sendAssistantPrompt(sessionId, "Ask the user if you should continue ?", "reconnect prompt");
+                                sendAssistantPrompt(sessionId, NbBundle.getMessage(SessionManager.class,
+                                        "MSG_ReconnectPrompt"), "reconnect prompt");
                             }
                         }
                     })
@@ -1132,7 +1133,8 @@ public class SessionManager implements SessionQuery, SessionControl {
                 .whenComplete((res, ex) -> {
                     if (ex != null) {
                         LOG.warn("Failed to send {0}: {1}", label, ExceptionUtils.getRootCauseMessage(ex));
-                        notifyError("Connection lost while sending " + label + ": " + ExceptionUtils.getRootCauseMessage(ex));
+                        notifyError(NbBundle.getMessage(SessionManager.class, "ERR_SendFailed",
+                                label, ExceptionUtils.getRootCauseMessage(ex)));
                     }
                     new ArrayList<>(listeners).forEach(SessionListener::onInternalMessageDone);
                 });

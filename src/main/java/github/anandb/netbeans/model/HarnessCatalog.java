@@ -2,12 +2,13 @@ package github.anandb.netbeans.model;
 
 import java.util.List;
 import java.util.Locale;
+import org.openide.util.NbBundle;
 
 /**
  * Catalog of the ACP harnesses the plugin can launch. Single source of truth
  * for display names, toolbar icons, binary names (native and WSL), default
  * launch arguments, capability flags, per-OS install commands, and documentation links.
- * Pure data — zero dependencies (model layer).
+ * Data-only record; the only dependency is NbBundle for user-facing message lookup.
  */
 public final class HarnessCatalog {
 
@@ -28,12 +29,24 @@ public final class HarnessCatalog {
             boolean supportsSessionSetConfigOption,
             boolean supportsModelSelection,
             boolean supportsSessionList,
+            /** Bundle key of the message shown when model selection is unavailable; empty when none. */
             String unsupportedModelSelectionMessage,
             String installWindows,
             String installMac,
             String installLinux,
             String prerequisites,
             String docsUrl) {
+
+        /**
+         * Resolves the unsupported-model-selection message from the model
+         * bundle. The record field holds the bundle key (empty when the
+         * harness has no such message), keeping the literal text localized.
+         */
+        @Override
+        public String unsupportedModelSelectionMessage() {
+            return unsupportedModelSelectionMessage == null || unsupportedModelSelectionMessage.isEmpty()
+                    ? "" : NbBundle.getMessage(HarnessCatalog.class, unsupportedModelSelectionMessage);
+        }
 
         /** True when the given lowercase binary basename belongs to this harness. */
         public boolean matchesBinary(String binaryName) {
@@ -109,7 +122,7 @@ public final class HarnessCatalog {
             "gemini", "Gemini", "gemini",
             List.of("gemini"), "--acp --model gemini-3.5-flash",
             true, true, true, false, true, true, true, false, false, false,
-            "Model needs to be specified as a command line parameter and needs an IDE restart",
+            "MSG_UnsupportedModelSelection",
             "", "", "", "", "");
 
     public static final Harness OMP = new Harness(
