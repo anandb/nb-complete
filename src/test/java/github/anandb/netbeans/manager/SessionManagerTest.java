@@ -6,7 +6,10 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -16,13 +19,24 @@ import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.List;
+
+import org.netbeans.api.project.Project;
+import org.openide.filesystems.FileObject;
+import org.openide.util.Lookup;
+
+import github.anandb.netbeans.contract.ProcessControl;
+import github.anandb.netbeans.contract.ProjectQuery;
+import github.anandb.netbeans.manager.strategy.StrategyRegistry;
+import github.anandb.netbeans.model.HarnessCatalog;
 
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -68,6 +82,7 @@ class SessionManagerTest {
         when(toolExecutor.getServerConfig()).thenReturn(List.of());
         // Default stub for 2-param sendRequest (e.g. session/prompt from sendPreamble)
         when(processManager.sendRequest(any(), any())).thenReturn(CompletableFuture.completedFuture(null));
+        when(processManager.stopMessage(any())).thenReturn(CompletableFuture.completedFuture(null));
 
         // Construct directly rather than via getInstance(): SessionManager is
         // registered in META-INF/services (SessionControl), and
@@ -99,19 +114,70 @@ class SessionManagerTest {
 
     /** Listener that captures the options passed to onSessionLoaded. */
     private volatile List<SessionConfigOption> lastLoadedOptions;
+    private volatile String lastLoadedSessionId;
+    private volatile Boolean lastLoadedStartup;
+    private volatile String lastError;
+    private volatile String lastRenamedId;
+    private final AtomicBoolean loadingBecameFalse = new AtomicBoolean();
 
     private SessionListener mockListener() {
         return new SessionListener() {
             @Override public void onSessionStarted(String sessionId) {}
-            @Override public void onSessionLoading(boolean isLoading) {}
+            @Override public void onSessionLoading(boolean isLoading) {
+                if (!isLoading) {
+                    loadingBecameFalse.set(true);
+                }
+            }
             @Override public void onSessionLoaded(String sessionId,
                     List<SessionConfigOption> configOptions, boolean isStartup) {
+                lastLoadedSessionId = sessionId;
                 lastLoadedOptions = configOptions;
+                lastLoadedStartup = isStartup;
             }
             @Override public void onSessionListUpdated(List<Session> sessions) {}
-            @Override public void onSessionError(String message) {}
+            @Override public void onSessionError(String message) {
+                lastError = message;
+            }
             @Override public void onSessionUpdate(SessionUpdate update) {}
+            @Override public void onSessionRenamed(String sessionId) {
+                lastRenamedId = sessionId;
+            }
         };
+    }
+
+    private SessionCacheManager cacheManager() throws Exception {
+        Field cacheField = SessionManager.class.getDeclaredField("cacheManager");
+        cacheField.setAccessible(true);
+        return (SessionCacheManager) cacheField.get(sessionManager);
+    }
+
+    private Session cachedSession(String id, String cwd) {
+        return new Session(id, id, cwd, cwd, null, "2026-09-12T00:00:00Z",
+                List.of(), List.of(), null, null);
+    }
+
+    private void seedCachedSession(String id, String cwd) throws Exception {
+        cacheManager().addLocallyCreated(cachedSession(id, cwd), null);
+    }
+
+    private void stubSessionLoad(JsonNode response) {
+        when(processManager.sendRequest(eq("session/load"), any(), eq(2L), eq(TimeUnit.MINUTES)))
+                .thenReturn(CompletableFuture.completedFuture(response));
+    }
+
+    private void awaitLoaded() throws InterruptedException {
+        long deadline = System.currentTimeMillis() + 5000;
+        while (lastLoadedSessionId == null && System.currentTimeMillis() < deadline) {
+            Thread.sleep(50);
+        }
+    }
+
+    private void driveToStreaming(String sessionId) throws Exception {
+        Field sid = SessionManager.class.getDeclaredField("currentSessionId");
+        sid.setAccessible(true);
+        sid.set(sessionManager, sessionId);
+        assertTrue(sessionManager.getStateMachine().transitionTo(SessionState.LOADING));
+        assertTrue(sessionManager.getStateMachine().transitionTo(SessionState.STREAMING));
     }
 
     @Test
@@ -380,5 +446,468 @@ class SessionManagerTest {
         } catch (Exception e) {
             // skip
         }
+    }
+
+    @Test
+    void loadSessionHappyPathSetsStreamingAndOptions() throws Exception {
+        seedCachedSession("s1", "/p");
+        stubSessionLoad(mapper.readTree(
+                "{\"configOptions\":[{\"id\":\"model\",\"name\":\"Model\",\"category\":\"model\","
+                + "\"type\":\"select\",\"currentValue\":\"m1\",\"options\":[]}]}"));
+        sessionManager.addSessionListener(mockListener());
+
+        assertTrue(sessionManager.loadSession("s1"));
+        awaitLoaded();
+
+        assertEquals("s1", lastLoadedSessionId);
+        assertEquals(Boolean.FALSE, lastLoadedStartup);
+        assertEquals("s1", sessionManager.getCurrentSessionId());
+        assertEquals("/p", sessionManager.getCurrentSessionDirectory());
+        assertEquals(SessionState.STREAMING, sessionManager.getCurrentState());
+        assertTrue(lastLoadedOptions != null && lastLoadedOptions.size() == 1);
+        assertEquals("m1", lastLoadedOptions.get(0).currentValue());
+    }
+
+    @Test
+    void loadSessionStartupFlagPassedToListener() throws Exception {
+        seedCachedSession("s1", "/p");
+        stubSessionLoad(mapper.createObjectNode());
+        sessionManager.addSessionListener(mockListener());
+
+        assertTrue(sessionManager.loadSession("s1", true));
+        awaitLoaded();
+        assertEquals(Boolean.TRUE, lastLoadedStartup);
+    }
+
+    @Test
+    void loadSessionHermesModelsModesBecomeConfigOptions() throws Exception {
+        seedCachedSession("hermes-1", "/test/cwd");
+        stubSessionLoad(mapper.readTree(
+                "{\"sessionId\":\"hermes-1\",\"cwd\":\"/test/cwd\","
+                + "\"models\":{\"availableModels\":["
+                + "{\"modelId\":\"opencode-go:omen-alpha\",\"name\":\"OpenCode Go · omen-alpha\"}"
+                + "],\"currentModelId\":\"opencode-go:omen-alpha\"},"
+                + "\"modes\":{\"availableModes\":["
+                + "{\"id\":\"default\",\"name\":\"Default\"}"
+                + "],\"currentModeId\":\"default\"}}"));
+        sessionManager.addSessionListener(mockListener());
+
+        assertTrue(sessionManager.loadSession("hermes-1"));
+        awaitLoaded();
+        assertTrue(lastLoadedOptions != null && lastLoadedOptions.size() == 2);
+    }
+
+    @Test
+    void loadSessionWithoutCwdFailsFast() {
+        sessionManager.addSessionListener(mockListener());
+        assertFalse(sessionManager.loadSession("s1"));
+        assertEquals(SessionState.IDLE, sessionManager.getCurrentState());
+        assertNull(sessionManager.getCurrentSessionId());
+        assertTrue(lastError != null && lastError.contains("s1"));
+        verify(processManager, never()).sendRequest(eq("session/load"), any(), eq(2L), eq(TimeUnit.MINUTES));
+    }
+
+    @Test
+    void loadSessionFallsBackToSingleOpenProjectCwd() throws Exception {
+        stubSessionLoad(mapper.createObjectNode());
+        sessionManager.addSessionListener(mockListener());
+        ProjectQuery projectQuery = mock(ProjectQuery.class);
+        Project project = mock(Project.class);
+        FileObject projectDir = mock(FileObject.class);
+        when(projectDir.getPath()).thenReturn("/only/project");
+        when(project.getProjectDirectory()).thenReturn(projectDir);
+        when(projectQuery.getAllOpenProjects()).thenReturn(new Project[] { project });
+
+        try (MockedStatic<Lookup> lookupMock = mockStatic(Lookup.class)) {
+            Lookup mockLookup = mock(Lookup.class);
+            lookupMock.when(Lookup::getDefault).thenReturn(mockLookup);
+            when(mockLookup.lookup(ProjectQuery.class)).thenReturn(projectQuery);
+            assertTrue(sessionManager.loadSession("s1"));
+            awaitLoaded();
+        }
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, Object>> params = ArgumentCaptor.forClass(Map.class);
+        verify(processManager).sendRequest(eq("session/load"), params.capture(),
+                eq(2L), eq(TimeUnit.MINUTES));
+        assertEquals("/only/project", params.getValue().get("cwd"));
+        assertEquals("/only/project", sessionManager.getCurrentSessionDirectory());
+    }
+
+    @Test
+    void loadSessionRefusesWhenStopping() throws Exception {
+        driveToStreaming("s1");
+        assertTrue(sessionManager.getStateMachine().transitionTo(SessionState.STOPPING));
+        assertFalse(sessionManager.loadSession("s1"));
+        verify(processManager, never()).sendRequest(eq("session/load"), any(), eq(2L), eq(TimeUnit.MINUTES));
+    }
+
+    @Test
+    void loadSessionStaleCompletionIgnoredAfterClose() throws Exception {
+        seedCachedSession("s1", "/p");
+        CompletableFuture<JsonNode> pending = new CompletableFuture<>();
+        when(processManager.sendRequest(eq("session/load"), any(), eq(2L), eq(TimeUnit.MINUTES)))
+                .thenReturn(pending);
+        sessionManager.addSessionListener(mockListener());
+
+        assertTrue(sessionManager.loadSession("s1"));
+        sessionManager.closeSession();
+        pending.complete(mapper.createObjectNode());
+
+        long deadline = System.currentTimeMillis() + 1000;
+        while (System.currentTimeMillis() < deadline) {
+            Thread.sleep(20);
+        }
+        assertNull(lastLoadedSessionId);
+        assertNull(sessionManager.getCurrentSessionId());
+        assertEquals(SessionState.IDLE, sessionManager.getCurrentState());
+    }
+
+    @Test
+    void loadSessionFailedRpcStillCompletesWithNullOptions() throws Exception {
+        seedCachedSession("s1", "/p");
+        when(processManager.sendRequest(eq("session/load"), any(), eq(2L), eq(TimeUnit.MINUTES)))
+                .thenReturn(CompletableFuture.failedFuture(new RuntimeException("boom")));
+        sessionManager.addSessionListener(mockListener());
+
+        assertTrue(sessionManager.loadSession("s1"));
+        awaitLoaded();
+        assertEquals("s1", lastLoadedSessionId);
+        assertNull(lastLoadedOptions);
+        assertEquals(SessionState.STREAMING, sessionManager.getCurrentState());
+    }
+
+    @Test
+    void loadSessionReconnectPromptIsOneShot() throws Exception {
+        seedCachedSession("s1", "/p");
+        stubSessionLoad(mapper.createObjectNode());
+        sessionManager.scheduleManualReconnectPrompt();
+        sessionManager.addSessionListener(mockListener());
+
+        assertTrue(sessionManager.loadSession("s1"));
+        awaitLoaded();
+        verify(processManager).sendRequest(eq("session/prompt"), any());
+
+        lastLoadedSessionId = null;
+        sessionManager.closeSession();
+        seedCachedSession("s1", "/p");
+        assertTrue(sessionManager.loadSession("s1"));
+        awaitLoaded();
+        verify(processManager, times(1)).sendRequest(eq("session/prompt"), any());
+    }
+
+    @Test
+    void createNewSessionNullCwdReturnsToIdle() {
+        sessionManager.createNewSession(null);
+        assertEquals(SessionState.IDLE, sessionManager.getCurrentState());
+        verify(processManager, never()).sendRequest(eq("session/new"), any(), eq(60L), eq(TimeUnit.SECONDS));
+    }
+
+    @Test
+    void createNewSessionRefusesWhenStopping() throws Exception {
+        driveToStreaming("s1");
+        assertTrue(sessionManager.getStateMachine().transitionTo(SessionState.STOPPING));
+        sessionManager.createNewSession("/p");
+        verify(processManager, never()).sendRequest(eq("session/new"), any(), eq(60L), eq(TimeUnit.SECONDS));
+        assertEquals(SessionState.STOPPING, sessionManager.getCurrentState());
+    }
+
+    @Test
+    void createNewSessionRpcFailureReturnsIdleAndNotifiesError() throws Exception {
+        when(processManager.sendRequest(eq("session/new"), any(), eq(60L), eq(TimeUnit.SECONDS)))
+                .thenReturn(CompletableFuture.failedFuture(new RuntimeException("create failed")));
+        sessionManager.addSessionListener(mockListener());
+
+        sessionManager.createNewSession("/p");
+        long deadline = System.currentTimeMillis() + 5000;
+        while (lastError == null && System.currentTimeMillis() < deadline) {
+            Thread.sleep(50);
+        }
+        assertEquals(SessionState.IDLE, sessionManager.getCurrentState());
+        assertTrue(lastError != null && lastError.contains("create failed"));
+        assertNull(sessionManager.getCurrentSessionId());
+    }
+
+    @Test
+    void createNewSessionDiscardedIfClosedBeforeComplete() throws Exception {
+        CompletableFuture<JsonNode> pending = new CompletableFuture<>();
+        when(processManager.sendRequest(eq("session/new"), any(), eq(60L), eq(TimeUnit.SECONDS)))
+                .thenReturn(pending);
+        sessionManager.createNewSession("/p");
+        assertEquals(SessionState.LOADING, sessionManager.getCurrentState());
+        sessionManager.closeSession();
+        pending.complete(mapper.createObjectNode().put("sessionId", "orphan").put("title", "Orphan"));
+
+        long deadline = System.currentTimeMillis() + 1000;
+        while (System.currentTimeMillis() < deadline) {
+            Thread.sleep(20);
+        }
+        assertNull(sessionManager.getCurrentSessionId());
+        assertEquals(SessionState.IDLE, sessionManager.getCurrentState());
+    }
+
+    @Test
+    void closeSessionFromStreamingClearsIdAndDirectory() throws Exception {
+        driveToStreaming("s1");
+        Field dir = SessionManager.class.getDeclaredField("lastProjectDir");
+        dir.setAccessible(true);
+        dir.set(sessionManager, "/p");
+        sessionManager.addSessionListener(mockListener());
+
+        sessionManager.closeSession();
+        assertEquals(SessionState.IDLE, sessionManager.getCurrentState());
+        assertNull(sessionManager.getCurrentSessionId());
+        assertNull(sessionManager.getCurrentSessionDirectory());
+        assertTrue(loadingBecameFalse.get());
+    }
+
+    @Test
+    void closeSessionFromIdleDoesNotThrow() {
+        sessionManager.closeSession();
+        assertEquals(SessionState.IDLE, sessionManager.getCurrentState());
+        assertNull(sessionManager.getCurrentSessionId());
+    }
+
+    @Test
+    void closeSessionInvalidatesStrategyRegistry() throws Exception {
+        driveToStreaming("s1");
+        try (MockedStatic<StrategyRegistry> registry = mockStatic(StrategyRegistry.class)) {
+            sessionManager.closeSession();
+            registry.verify(() -> StrategyRegistry.invalidateSession("s1"));
+        }
+    }
+
+    @Test
+    void canStopMessageOnlyInStreaming() throws Exception {
+        assertFalse(sessionManager.canStopMessage());
+        assertTrue(sessionManager.getStateMachine().transitionTo(SessionState.LOADING));
+        assertFalse(sessionManager.canStopMessage());
+        assertTrue(sessionManager.getStateMachine().transitionTo(SessionState.STREAMING));
+        assertTrue(sessionManager.canStopMessage());
+        assertTrue(sessionManager.getStateMachine().transitionTo(SessionState.STOPPING));
+        assertFalse(sessionManager.canStopMessage());
+    }
+
+    @Test
+    void stopCurrentMessageFromStreamingCallsStop() throws Exception {
+        driveToStreaming("s1");
+        sessionManager.stopCurrentMessage();
+        assertEquals(SessionState.STOPPING, sessionManager.getCurrentState());
+        verify(processManager).stopMessage("s1");
+    }
+
+    @Test
+    void stopCurrentMessageFromIdleIsNoOp() {
+        sessionManager.stopCurrentMessage();
+        verify(processManager, never()).stopMessage(any());
+        assertEquals(SessionState.IDLE, sessionManager.getCurrentState());
+    }
+
+    @Test
+    void forceCancelFromStreamingGoesIdleAndStops() throws Exception {
+        driveToStreaming("s1");
+        sessionManager.forceCancelCurrentMessage();
+        assertEquals(SessionState.IDLE, sessionManager.getCurrentState());
+        verify(processManager).stopMessage("s1");
+    }
+
+    @Test
+    void forceCancelWhenCannotStopIsNoOp() {
+        sessionManager.forceCancelCurrentMessage();
+        verify(processManager, never()).stopMessage(any());
+    }
+
+    @Test
+    void onTurnEndedFromStoppingGoesStreaming() throws Exception {
+        driveToStreaming("s1");
+        assertTrue(sessionManager.getStateMachine().transitionTo(SessionState.STOPPING));
+        sessionManager.onTurnEnded();
+        assertEquals(SessionState.STREAMING, sessionManager.getCurrentState());
+    }
+
+    @Test
+    void onTurnEndedFromIdleAndStreamingUnchanged() throws Exception {
+        sessionManager.onTurnEnded();
+        assertEquals(SessionState.IDLE, sessionManager.getCurrentState());
+        driveToStreaming("s1");
+        sessionManager.onTurnEnded();
+        assertEquals(SessionState.STREAMING, sessionManager.getCurrentState());
+    }
+
+    @Test
+    @org.junit.jupiter.api.Timeout(value = 10, unit = TimeUnit.SECONDS)
+    void stopSafetyTimeoutRecoversToStreaming() throws Exception {
+        driveToStreaming("s1");
+        sessionManager.stopCurrentMessage();
+        assertEquals(SessionState.STOPPING, sessionManager.getCurrentState());
+        long deadline = System.currentTimeMillis() + 7000;
+        while (sessionManager.getCurrentState() != SessionState.STREAMING
+                && System.currentTimeMillis() < deadline) {
+            Thread.sleep(50);
+        }
+        assertEquals(SessionState.STREAMING, sessionManager.getCurrentState());
+    }
+
+    @Test
+    void setSessionConfigOptionNotifiesWhenCurrentSession() throws Exception {
+        driveToStreaming("s1");
+        ProcessControl pc = mock(ProcessControl.class);
+        when(pc.getCapabilities()).thenReturn(HarnessCatalog.UNKNOWN);
+        when(processManager.sendRequest(eq("session/set_config_option"), any(),
+                eq(30L), eq(TimeUnit.SECONDS)))
+                .thenReturn(CompletableFuture.completedFuture(mapper.readTree(
+                        "{\"configOptions\":[{\"id\":\"effort\",\"name\":\"Effort\","
+                        + "\"category\":\"effort\",\"type\":\"select\",\"currentValue\":\"high\","
+                        + "\"options\":[]}]}")));
+        sessionManager.addSessionListener(mockListener());
+        try (MockedStatic<Lookup> lookupMock = mockStatic(Lookup.class)) {
+            Lookup mockLookup = mock(Lookup.class);
+            lookupMock.when(Lookup::getDefault).thenReturn(mockLookup);
+            when(mockLookup.lookup(ProcessControl.class)).thenReturn(pc);
+            sessionManager.setSessionConfigOption("s1", "effort", "high").get(5, TimeUnit.SECONDS);
+        }
+        awaitLoaded();
+        assertEquals("s1", lastLoadedSessionId);
+        assertEquals(Boolean.FALSE, lastLoadedStartup);
+        assertEquals("high", lastLoadedOptions.get(0).currentValue());
+    }
+
+    @Test
+    void setSessionConfigOptionSkippedWhenUnsupported() throws Exception {
+        ProcessControl pc = mock(ProcessControl.class);
+        when(pc.getCapabilities()).thenReturn(HarnessCatalog.GEMINI);
+        try (MockedStatic<Lookup> lookupMock = mockStatic(Lookup.class)) {
+            Lookup mockLookup = mock(Lookup.class);
+            lookupMock.when(Lookup::getDefault).thenReturn(mockLookup);
+            when(mockLookup.lookup(ProcessControl.class)).thenReturn(pc);
+            sessionManager.setSessionConfigOption("s1", "effort", "high").get(5, TimeUnit.SECONDS);
+        }
+        verify(processManager, never()).sendRequest(eq("session/set_config_option"), any(),
+                eq(30L), eq(TimeUnit.SECONDS));
+    }
+
+    @Test
+    void setSessionConfigOptionRejectedValueDoesNotLoad() throws Exception {
+        driveToStreaming("s1");
+        ProcessControl pc = mock(ProcessControl.class);
+        when(pc.getCapabilities()).thenReturn(HarnessCatalog.UNKNOWN);
+        when(processManager.sendRequest(eq("session/set_config_option"), any(),
+                eq(30L), eq(TimeUnit.SECONDS)))
+                .thenReturn(CompletableFuture.failedFuture(new RuntimeException("rejected")));
+        sessionManager.addSessionListener(mockListener());
+        try (MockedStatic<Lookup> lookupMock = mockStatic(Lookup.class)) {
+            Lookup mockLookup = mock(Lookup.class);
+            lookupMock.when(Lookup::getDefault).thenReturn(mockLookup);
+            when(mockLookup.lookup(ProcessControl.class)).thenReturn(pc);
+            CompletableFuture<Void> future = sessionManager.setSessionConfigOption("s1", "effort", "bad");
+            assertTrue(future.isCompletedExceptionally()
+                    || future.handle((v, ex) -> ex != null).get(5, TimeUnit.SECONDS));
+        }
+        assertNull(lastLoadedSessionId);
+    }
+
+    @Test
+    void setSessionConfigOptionForOtherSessionDoesNotNotify() throws Exception {
+        driveToStreaming("current");
+        ProcessControl pc = mock(ProcessControl.class);
+        when(pc.getCapabilities()).thenReturn(HarnessCatalog.UNKNOWN);
+        when(processManager.sendRequest(eq("session/set_config_option"), any(),
+                eq(30L), eq(TimeUnit.SECONDS)))
+                .thenReturn(CompletableFuture.completedFuture(mapper.readTree(
+                        "{\"configOptions\":[{\"id\":\"effort\",\"currentValue\":\"high\"}]}")));
+        sessionManager.addSessionListener(mockListener());
+        try (MockedStatic<Lookup> lookupMock = mockStatic(Lookup.class)) {
+            Lookup mockLookup = mock(Lookup.class);
+            lookupMock.when(Lookup::getDefault).thenReturn(mockLookup);
+            when(mockLookup.lookup(ProcessControl.class)).thenReturn(pc);
+            sessionManager.setSessionConfigOption("other", "effort", "high").get(5, TimeUnit.SECONDS);
+        }
+        Thread.sleep(100);
+        assertNull(lastLoadedSessionId);
+    }
+
+    @Test
+    void setSessionModeSendsRpc() throws Exception {
+        when(processManager.sendRequest(eq("session/set_mode"), any(), eq(30L), eq(TimeUnit.SECONDS)))
+                .thenReturn(CompletableFuture.completedFuture(mapper.createObjectNode()));
+        sessionManager.setSessionMode("s1", "default").get(5, TimeUnit.SECONDS);
+        verify(processManager).sendRequest(eq("session/set_mode"), any(), eq(30L), eq(TimeUnit.SECONDS));
+    }
+
+    @Test
+    void setSessionModeFailureCompletesExceptionally() throws Exception {
+        when(processManager.sendRequest(eq("session/set_mode"), any(), eq(30L), eq(TimeUnit.SECONDS)))
+                .thenReturn(CompletableFuture.failedFuture(new RuntimeException("mode rejected")));
+        CompletableFuture<Void> future = sessionManager.setSessionMode("s1", "bad");
+        assertTrue(future.handle((v, ex) -> ex != null).get(5, TimeUnit.SECONDS));
+    }
+
+    @Test
+    void renameSessionBlankTitleIsNoOp() throws Exception {
+        seedCachedSession("s1", "/p");
+        sessionManager.addSessionListener(mockListener());
+        sessionManager.renameSession("s1", "  ");
+        assertNull(lastRenamedId);
+        assertEquals("s1", cacheManager().getCachedSession("s1").title());
+    }
+
+    @Test
+    void renameSessionUpdatesCacheAndNotifies() throws Exception {
+        seedCachedSession("s1", "/p");
+        sessionManager.addSessionListener(mockListener());
+        sessionManager.renameSession("s1", "New Title");
+        assertEquals("New Title", sessionManager.getCustomTitle("s1", null));
+        assertEquals("New Title", cacheManager().getCachedSession("s1").title());
+        assertEquals("s1", lastRenamedId);
+    }
+
+    @Test
+    void renameUnknownSessionStillSetsCustomTitle() {
+        sessionManager.addSessionListener(mockListener());
+        sessionManager.renameSession("missing", "Solo");
+        assertEquals("Solo", sessionManager.getCustomTitle("missing", "fallback"));
+        assertEquals("missing", lastRenamedId);
+    }
+
+    @Test
+    void renameSessionPersistsWhenSessionListUnsupported() throws Exception {
+        seedCachedSession("s1", "/p");
+        ProcessControl pc = mock(ProcessControl.class);
+        when(pc.getCapabilities()).thenReturn(HarnessCatalog.GEMINI);
+        try (MockedStatic<Lookup> lookupMock = mockStatic(Lookup.class)) {
+            Lookup mockLookup = mock(Lookup.class);
+            lookupMock.when(Lookup::getDefault).thenReturn(mockLookup);
+            when(mockLookup.lookup(ProcessControl.class)).thenReturn(pc);
+            sessionManager.renameSession("s1", "Persisted");
+        }
+        Field mapField = SessionCacheManager.class.getDeclaredField("locallyCreatedSessionToAgentMap");
+        mapField.setAccessible(true);
+        ((Map<?, ?>) mapField.get(cacheManager())).clear();
+        Field listField = SessionCacheManager.class.getDeclaredField("cachedSessions");
+        listField.setAccessible(true);
+        listField.set(cacheManager(), new CopyOnWriteArrayList<>());
+        Method loadMethod = SessionManager.class.getDeclaredMethod("loadLocallyCreatedSessionIds");
+        loadMethod.setAccessible(true);
+        loadMethod.invoke(sessionManager);
+        List<Session> restored = cacheManager().getLocallyCreatedSessions(null);
+        assertTrue(restored.stream().anyMatch(s -> "s1".equals(s.id()) && "Persisted".equals(s.title())));
+    }
+
+    @Test
+    void getSessionsForDirectoriesNullOrEmpty() throws Exception {
+        assertTrue(sessionManager.getSessionsForDirectories(null).get(5, TimeUnit.SECONDS).isEmpty());
+        assertTrue(sessionManager.getSessionsForDirectories(List.of()).get(5, TimeUnit.SECONDS).isEmpty());
+        verify(processManager, never()).sendRequest(eq("session/list"), any(), eq(60L), eq(TimeUnit.SECONDS));
+    }
+
+    @Test
+    void getSessionsForDirectoriesQueriesEachDir() throws Exception {
+        when(processManager.sendRequest(eq("session/list"), any(), eq(60L), eq(TimeUnit.SECONDS)))
+                .thenReturn(CompletableFuture.completedFuture(
+                        mapper.readTree("{\"sessions\":[{\"sessionId\":\"a\",\"cwd\":\"/x\"}]}")));
+        List<Session> sessions = sessionManager.getSessionsForDirectories(List.of("/a", "/b"))
+                .get(5, TimeUnit.SECONDS);
+        verify(processManager, times(2)).sendRequest(eq("session/list"), any(), eq(60L), eq(TimeUnit.SECONDS));
+        assertEquals(2, sessions.size());
     }
 }

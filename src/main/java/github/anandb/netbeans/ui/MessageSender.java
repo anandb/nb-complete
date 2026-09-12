@@ -10,6 +10,7 @@ import java.util.function.Supplier;
 import javax.swing.SwingUtilities;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import github.anandb.netbeans.contract.SlashCommandInterceptor;
 import github.anandb.netbeans.support.PreferenceKeys;
@@ -73,6 +74,7 @@ public class MessageSender {
     private MessageQueueManager queueManager;
     private Supplier<Boolean> onTurnEndedCallback;
     private BooleanSupplier turnEndedCheck;
+    private final AtomicInteger sendGeneration = new AtomicInteger();
 
     public MessageSender(
             PlaceholderTextArea inputArea,
@@ -335,11 +337,17 @@ public class MessageSender {
         ProcessControl sendProc = processService.get();
         boolean injectsContext = sendProc != null && sendProc.getCapabilities().injectsEditorContext();
         Map<String, Object> context = (isForwardedSlash || !injectsContext) ? null : EditorContextCapture.capture();
+        final int gen = sendGeneration.incrementAndGet();
         sendProc.sendMessage(currentSessionId, messageText, context, fileBlocks)
                 .thenAccept(result -> {
                     // CPD-OFF — structural twin of sendQueuedMessage(); differences are
                     // per-method (logging, messageText vs combinedText, turn-end callback).
                     SwingUtilities.invokeLater(() -> {
+                        if (gen != sendGeneration.get()) {
+                            LOG.info("Ignoring stale session/prompt completion gen={0} current={1}",
+                                    gen, sendGeneration.get());
+                            return;
+                        }
                         LOG.info("RPC thenAccept fired (status during = {0}, hasStopReason = {1})",
                             statusController.getStatusText(),
                             result != null && result.has("stopReason"));
@@ -370,6 +378,11 @@ public class MessageSender {
                 })
                 .exceptionally(ex -> {
                     SwingUtilities.invokeLater(() -> {
+                        if (gen != sendGeneration.get()) {
+                            LOG.info("Ignoring stale session/prompt error gen={0} current={1}",
+                                    gen, sendGeneration.get());
+                            return;
+                        }
                         LOG.info("RPC exceptionally fired: {0}", ExceptionUtils.getMessage(ex));
                         statusController.setStatus("STATUS_Error",
                     ExceptionUtils.getMessage(ex) != null ? ExceptionUtils.getMessage(ex) : ex.getClass().getSimpleName());
@@ -491,11 +504,17 @@ public class MessageSender {
         }
 
         Map<String, Object> context = null;
+        final int gen = sendGeneration.incrementAndGet();
         processService.get().sendMessage(currentSessionId, combinedText, context, List.of())
                 .thenAccept(result -> {
                     // CPD-OFF — structural twin of sendMessage(); differences are
                     // per-method (no logging, combinedText).
                     SwingUtilities.invokeLater(() -> {
+                        if (gen != sendGeneration.get()) {
+                            LOG.info("Ignoring stale queued prompt completion gen={0} current={1}",
+                                    gen, sendGeneration.get());
+                            return;
+                        }
                         statusController.updateButtonState(false);
                         statusController.stopThinking();
                         if (onMessageDoneCallback != null) {
@@ -514,6 +533,11 @@ public class MessageSender {
                 })
                 .exceptionally(ex -> {
                     SwingUtilities.invokeLater(() -> {
+                        if (gen != sendGeneration.get()) {
+                            LOG.info("Ignoring stale queued prompt error gen={0} current={1}",
+                                    gen, sendGeneration.get());
+                            return;
+                        }
                         statusController.setStatus("STATUS_Error",
                             ExceptionUtils.getMessage(ex) != null ? ExceptionUtils.getMessage(ex) : ex.getClass().getSimpleName());
                         statusController.stopThinking();

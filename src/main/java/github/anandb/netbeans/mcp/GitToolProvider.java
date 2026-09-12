@@ -3,28 +3,20 @@ package github.anandb.netbeans.mcp;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
-import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.MapperSupplier;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.InputStreamReader;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
-import static github.anandb.netbeans.mcp.ProjectPathGuard.isInOpenProject;
-import static github.anandb.netbeans.mcp.ProjectPathGuard.outsideProjectError;
+
 import static org.apache.commons.lang3.StringUtils.isBlank;
 
 /**
- * Registers MCP tools for git operations: status and diff.
+ * Registers MCP tools for git operations: status, diff, log, and file history.
  */
 public class GitToolProvider {
 
-    private static final Logger LOG = Logger.from(GitToolProvider.class);
     private static final ObjectMapper MAPPER = MapperSupplier.get();
 
     /** Accepts git revision tokens only (hashes, refs, ranges like a..b,
@@ -45,45 +37,26 @@ public class GitToolProvider {
     }
 
     private void registerGitStatus(McpTools mcpTools) {
-        ObjectNode schema = MAPPER.createObjectNode();
-        schema.put("type", "object");
-        ObjectNode properties = schema.putObject("properties");
-
-        ObjectNode repoDirProp = properties.putObject("repoDir");
-        repoDirProp.put("type", "string");
-        repoDirProp.put("description", "Repository directory (defaults to project root)");
-
         mcpTools.registerTool(
                 "git_status",
                 "Show git status of the repository.",
-                schema,
+                VcsToolSupport.repoDirSchema(MAPPER),
                 new ToolExecutor<GitStatusInput, Map<String, Object>>(GitStatusInput.class) {
                     @Override
                     public Map<String, Object> execute(GitStatusInput args) throws Exception {
-                        String repoDir = isBlank(args.repoDir()) ? findGitRoot() : args.repoDir();
-                        if (repoDir == null) {
-                            return Map.of("status", "error", "message", "No git repository found");
+                        var repo = VcsToolSupport.resolveRepo(args.repoDir(), ".git",
+                                "No git repository found");
+                        if (!repo.ok()) {
+                            return repo.error();
                         }
-                        // Containment: without this, a caller could read status
-                        // (file names) of any git repository on disk.
-                        if (!isInOpenProject(repoDir)) {
-                            return outsideProjectError(repoDir);
-                        }
-                        return runGitCommand(repoDir, "git", "status", "--short");
+                        return VcsToolSupport.run(repo.dir(), "Git", "git", "status", "--short");
                     }
                 });
     }
 
     private void registerGitDiff(McpTools mcpTools) {
-        ObjectNode schema = MAPPER.createObjectNode();
-        schema.put("type", "object");
-        ObjectNode properties = schema.putObject("properties");
-
-        ObjectNode repoDirProp = properties.putObject("repoDir");
-        repoDirProp.put("type", "string");
-        repoDirProp.put("description", "Repository directory (defaults to project root)");
-
-        ObjectNode targetProp = properties.putObject("target");
+        ObjectNode schema = VcsToolSupport.repoDirSchema(MAPPER);
+        ObjectNode targetProp = ((ObjectNode) schema.get("properties")).putObject("target");
         targetProp.put("type", "string");
         targetProp.put("description", "e.g. 'HEAD', a commit hash, or 'staged'");
 
@@ -94,132 +67,77 @@ public class GitToolProvider {
                 new ToolExecutor<GitDiffInput, Map<String, Object>>(GitDiffInput.class) {
                     @Override
                     public Map<String, Object> execute(GitDiffInput args) throws Exception {
-                        String repoDir = isBlank(args.repoDir()) ? findGitRoot() : args.repoDir();
-                        if (repoDir == null) {
-                            return Map.of("status", "error", "message", "No git repository found");
-                        }
-                        if (!isInOpenProject(repoDir)) {
-                            return outsideProjectError(repoDir);
+                        var repo = VcsToolSupport.resolveRepo(args.repoDir(), ".git",
+                                "No git repository found");
+                        if (!repo.ok()) {
+                            return repo.error();
                         }
                         String target = args.target();
                         if ("staged".equalsIgnoreCase(target)) {
-                            return runGitCommand(repoDir, "git", "diff", "--cached");
-                        } else if (isBlank(target)) {
-                            return runGitCommand(repoDir, "git", "diff");
-                        } else if (!SAFE_DIFF_TARGET.matcher(target).matches()) {
-                            return Map.of("status", "error", "message", "Invalid diff target: " + target);
-                        } else {
-                            return runGitCommand(repoDir, "git", "diff", target);
+                            return VcsToolSupport.run(repo.dir(), "Git", "git", "diff", "--cached");
                         }
+                        if (isBlank(target)) {
+                            return VcsToolSupport.run(repo.dir(), "Git", "git", "diff");
+                        }
+                        if (!SAFE_DIFF_TARGET.matcher(target).matches()) {
+                            return Map.of("status", "error", "message", "Invalid diff target: " + target);
+                        }
+                        return VcsToolSupport.run(repo.dir(), "Git", "git", "diff", target);
                     }
                 });
     }
 
     private void registerGitLog(McpTools mcpTools) {
-        ObjectNode schema = MAPPER.createObjectNode();
-        schema.put("type", "object");
-        ObjectNode properties = schema.putObject("properties");
-
-        ObjectNode repoDirProp = properties.putObject("repoDir");
-        repoDirProp.put("type", "string");
-        repoDirProp.put("description", "Repository directory (defaults to project root)");
-
-        ObjectNode maxCountProp = properties.putObject("maxCount");
-        maxCountProp.put("type", "integer");
-        maxCountProp.put("description", "Maximum number of commits (default 20, max 1000)");
-
-        ObjectNode sinceProp = properties.putObject("since");
-        sinceProp.put("type", "string");
-        sinceProp.put("description", "Only commits after this date, e.g. '2026-09-01' or '2 weeks ago'");
-
         mcpTools.registerTool(
                 "git_log",
                 "Show the commit history of the repository (hash, date, author, subject per line).",
-                schema,
+                VcsToolSupport.logSchema(MAPPER,
+                        "Only commits after this date, e.g. '2026-09-01' or '2 weeks ago'"),
                 new ToolExecutor<GitLogInput, Map<String, Object>>(GitLogInput.class) {
                     @Override
                     public Map<String, Object> execute(GitLogInput args) throws Exception {
-                        String repoDir = isBlank(args.repoDir()) ? findGitRoot() : args.repoDir();
-                        if (repoDir == null) {
-                            return Map.of("status", "error", "message", "No git repository found");
+                        var repo = VcsToolSupport.resolveRepo(args.repoDir(), ".git",
+                                "No git repository found");
+                        if (!repo.ok()) {
+                            return repo.error();
                         }
-                        if (!isInOpenProject(repoDir)) {
-                            return outsideProjectError(repoDir);
+                        var maxCount = VcsToolSupport.maxCount(args.maxCount(), 20, 1, 1000);
+                        if (!maxCount.ok()) {
+                            return maxCount.error();
                         }
-                        int maxCount = args.maxCount() == null ? 20 : args.maxCount();
-                        if (maxCount < 1 || maxCount > 1000) {
-                            return Map.of("status", "error", "message",
-                                    "maxCount must be between 1 and 1000");
-                        }
-                        if (args.since() != null && !SINCE_PATTERN.matcher(args.since()).matches()) {
-                            return Map.of("status", "error", "message",
-                                    "Invalid since filter: " + args.since());
+                        Map<String, Object> sinceErr = VcsToolSupport.invalidSince(args.since(), SINCE_PATTERN);
+                        if (sinceErr != null) {
+                            return sinceErr;
                         }
                         List<String> command = new ArrayList<>(List.of("git", "log",
                                 "--no-color", "--date=iso-strict",
                                 "--pretty=format:%h%x09%ad%x09%an%x09%s",
-                                "--max-count=" + maxCount));
+                                "--max-count=" + maxCount.value()));
                         if (args.since() != null) {
                             command.add("--since=" + args.since());
                         }
-                        return runGitCommand(repoDir, command.toArray(new String[0]));
+                        return VcsToolSupport.run(repo.dir(), "Git", command.toArray(new String[0]));
                     }
                 });
     }
 
     private void registerFileHistory(McpTools mcpTools) {
-        ObjectNode schema = MAPPER.createObjectNode();
-        schema.put("type", "object");
-        ObjectNode properties = schema.putObject("properties");
-
-        ObjectNode repoDirProp = properties.putObject("repoDir");
-        repoDirProp.put("type", "string");
-        repoDirProp.put("description", "Repository directory (defaults to project root)");
-
-        ObjectNode pathProp = properties.putObject("path");
-        pathProp.put("type", "string");
-        pathProp.put("description", "Path of the file to inspect, relative to the repository root or absolute");
-
-        ObjectNode maxCountProp = properties.putObject("maxCount");
-        maxCountProp.put("type", "integer");
-        maxCountProp.put("description", "Maximum number of commits (default 10, max 50)");
-
         mcpTools.registerTool(
                 "file_history",
                 "Show the commit history of a single file, including each version's patch.",
-                schema,
+                VcsToolSupport.fileHistorySchema(MAPPER),
                 new ToolExecutor<FileHistoryInput, Map<String, Object>>(FileHistoryInput.class) {
                     @Override
                     public Map<String, Object> execute(FileHistoryInput args) throws Exception {
-                        String repoDir = isBlank(args.repoDir()) ? findGitRoot() : args.repoDir();
-                        if (repoDir == null) {
-                            return Map.of("status", "error", "message", "No git repository found");
+                        var hist = VcsToolSupport.prepareFileHistory(args.repoDir(), ".git",
+                                "No git repository found", args.path(), args.maxCount());
+                        if (!hist.ok()) {
+                            return hist.error();
                         }
-                        if (!isInOpenProject(repoDir)) {
-                            return outsideProjectError(repoDir);
-                        }
-                        String path = args.path();
-                        if (isBlank(path)) {
-                            return Map.of("status", "error", "message", "path is required");
-                        }
-                        File file = new File(path);
-                        String absolute = file.isAbsolute() ? path
-                                : new File(repoDir, path).getAbsolutePath();
-                        if (!isInOpenProject(absolute)) {
-                            return outsideProjectError(absolute);
-                        }
-                        int maxCount = args.maxCount() == null ? 10 : args.maxCount();
-                        if (maxCount < 1 || maxCount > 50) {
-                            return Map.of("status", "error", "message",
-                                    "maxCount must be between 1 and 50");
-                        }
-                        // Pass the repo-relative path to git so --follow works
-                        // even when the caller supplied an absolute path.
-                        String relative = new File(repoDir).toPath()
-                                .relativize(new File(absolute).toPath()).toString();
-                        return runGitCommand(repoDir, "git", "log", "--follow", "-p", "--no-color",
+                        return VcsToolSupport.run(hist.repoDir(), "Git",
+                                "git", "log", "--follow", "-p", "--no-color",
                                 "--date=iso-strict", "--pretty=format:%h|%ad|%an|%s",
-                                "--max-count=" + maxCount, "--", relative);
+                                "--max-count=" + hist.maxCount(), "--", hist.relative());
                     }
                 });
     }
@@ -231,43 +149,6 @@ public class GitToolProvider {
      * {@code .git} directory is found above it.
      */
     private String findGitRoot() {
-        String projectRoot = ProjectPathGuard.firstOpenProjectRoot();
-        File current = projectRoot == null ? null : new File(projectRoot);
-        while (current != null) {
-            File gitDir = new File(current, ".git");
-            if (gitDir.exists()) {
-                return current.getAbsolutePath();
-            }
-            current = current.getParentFile();
-        }
-        return null;
-    }
-
-    private Map<String, Object> runGitCommand(String repoDir, String... command) throws Exception {
-        ProcessBuilder pb = new ProcessBuilder(command);
-        pb.directory(new File(repoDir));
-        pb.redirectErrorStream(true);
-        Process proc = pb.start();
-        String output;
-        try (var reader = new BufferedReader(new InputStreamReader(proc.getInputStream()))) {
-            StringBuilder sb = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) {
-                if (sb.length() > 0) sb.append("\n");
-                sb.append(line);
-            }
-            output = sb.toString();
-        }
-        boolean finished = proc.waitFor(30, TimeUnit.SECONDS);
-        if (!finished) {
-            proc.destroyForcibly();
-            return Map.of("status", "error", "message", "Git command timed out");
-        }
-        int exitCode = proc.exitValue();
-        Map<String, Object> result = new HashMap<>();
-        result.put("status", "ok");
-        result.put("exitCode", exitCode);
-        result.put("output", output);
-        return result;
+        return VcsToolSupport.findRoot(".git");
     }
 }

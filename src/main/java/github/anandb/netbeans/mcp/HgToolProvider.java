@@ -3,21 +3,13 @@ package github.anandb.netbeans.mcp;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
-import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.MapperSupplier;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.InputStreamReader;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
-import static github.anandb.netbeans.mcp.ProjectPathGuard.isInOpenProject;
-import static github.anandb.netbeans.mcp.ProjectPathGuard.outsideProjectError;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 
 /**
@@ -30,7 +22,6 @@ import static org.apache.commons.lang3.StringUtils.isBlank;
  */
 public class HgToolProvider {
 
-    private static final Logger LOG = Logger.from(HgToolProvider.class);
     private static final ObjectMapper MAPPER = MapperSupplier.get();
 
     /** Accepts revision tokens only (hashes, tags, "tip", "."). Rejects option
@@ -55,47 +46,29 @@ public class HgToolProvider {
     }
 
     private void registerHgStatus(McpTools mcpTools) {
-        ObjectNode schema = MAPPER.createObjectNode();
-        schema.put("type", "object");
-        ObjectNode properties = schema.putObject("properties");
-
-        ObjectNode repoDirProp = properties.putObject("repoDir");
-        repoDirProp.put("type", "string");
-        repoDirProp.put("description", "Repository directory (defaults to project root)");
-
         mcpTools.registerTool(
                 "hg_status",
                 "Show the Mercurial status of the repository.",
-                schema,
+                VcsToolSupport.repoDirSchema(MAPPER),
                 new ToolExecutor<HgStatusInput, Map<String, Object>>(HgStatusInput.class) {
                     @Override
                     public Map<String, Object> execute(HgStatusInput args) throws Exception {
-                        String repoDir = isBlank(args.repoDir()) ? findHgRoot() : args.repoDir();
-                        if (repoDir == null) {
-                            return Map.of("status", "error", "message", "No Mercurial repository found");
+                        var repo = VcsToolSupport.resolveRepo(args.repoDir(), ".hg",
+                                "No Mercurial repository found");
+                        if (!repo.ok()) {
+                            return repo.error();
                         }
-                        // Containment: without this, a caller could read status
-                        // (file names) of any Mercurial repository on disk.
-                        if (!isInOpenProject(repoDir)) {
-                            return outsideProjectError(repoDir);
-                        }
-                        return runHgCommand(repoDir, "hg", "status");
+                        return VcsToolSupport.run(repo.dir(), "Hg", "hg", "status");
                     }
                 });
     }
 
     private void registerHgDiff(McpTools mcpTools) {
-        ObjectNode schema = MAPPER.createObjectNode();
-        schema.put("type", "object");
-        ObjectNode properties = schema.putObject("properties");
-
-        ObjectNode repoDirProp = properties.putObject("repoDir");
-        repoDirProp.put("type", "string");
-        repoDirProp.put("description", "Repository directory (defaults to project root)");
-
-        ObjectNode targetProp = properties.putObject("target");
+        ObjectNode schema = VcsToolSupport.repoDirSchema(MAPPER);
+        ObjectNode targetProp = ((ObjectNode) schema.get("properties")).putObject("target");
         targetProp.put("type", "string");
-        targetProp.put("description", "Revision to diff against ('.', 'tip', a hash, or a tag); blank diffs the working directory");
+        targetProp.put("description",
+                "Revision to diff against ('.', 'tip', a hash, or a tag); blank diffs the working directory");
 
         mcpTools.registerTool(
                 "hg_diff",
@@ -104,127 +77,72 @@ public class HgToolProvider {
                 new ToolExecutor<HgDiffInput, Map<String, Object>>(HgDiffInput.class) {
                     @Override
                     public Map<String, Object> execute(HgDiffInput args) throws Exception {
-                        String repoDir = isBlank(args.repoDir()) ? findHgRoot() : args.repoDir();
-                        if (repoDir == null) {
-                            return Map.of("status", "error", "message", "No Mercurial repository found");
-                        }
-                        if (!isInOpenProject(repoDir)) {
-                            return outsideProjectError(repoDir);
+                        var repo = VcsToolSupport.resolveRepo(args.repoDir(), ".hg",
+                                "No Mercurial repository found");
+                        if (!repo.ok()) {
+                            return repo.error();
                         }
                         String target = args.target();
                         if (isBlank(target)) {
-                            return runHgCommand(repoDir, "hg", "diff");
-                        } else if (!SAFE_HG_TARGET.matcher(target).matches()) {
-                            return Map.of("status", "error", "message", "Invalid diff target: " + target);
-                        } else {
-                            return runHgCommand(repoDir, "hg", "diff", "-r", target);
+                            return VcsToolSupport.run(repo.dir(), "Hg", "hg", "diff");
                         }
+                        if (!SAFE_HG_TARGET.matcher(target).matches()) {
+                            return Map.of("status", "error", "message", "Invalid diff target: " + target);
+                        }
+                        return VcsToolSupport.run(repo.dir(), "Hg", "hg", "diff", "-r", target);
                     }
                 });
     }
 
     private void registerHgLog(McpTools mcpTools) {
-        ObjectNode schema = MAPPER.createObjectNode();
-        schema.put("type", "object");
-        ObjectNode properties = schema.putObject("properties");
-
-        ObjectNode repoDirProp = properties.putObject("repoDir");
-        repoDirProp.put("type", "string");
-        repoDirProp.put("description", "Repository directory (defaults to project root)");
-
-        ObjectNode maxCountProp = properties.putObject("maxCount");
-        maxCountProp.put("type", "integer");
-        maxCountProp.put("description", "Maximum number of commits (default 20, max 1000)");
-
-        ObjectNode sinceProp = properties.putObject("since");
-        sinceProp.put("type", "string");
-        sinceProp.put("description", "Only commits after this date (bound as >{since}; Mercurial date syntax, e.g. '2026-09-01' or '2w')");
-
         mcpTools.registerTool(
                 "hg_log",
                 "Show the commit history of the Mercurial repository (hash, date, author, subject per line).",
-                schema,
+                VcsToolSupport.logSchema(MAPPER,
+                        "Only commits after this date (bound as >{since}; Mercurial date syntax, e.g. '2026-09-01' or '2w')"),
                 new ToolExecutor<HgLogInput, Map<String, Object>>(HgLogInput.class) {
                     @Override
                     public Map<String, Object> execute(HgLogInput args) throws Exception {
-                        String repoDir = isBlank(args.repoDir()) ? findHgRoot() : args.repoDir();
-                        if (repoDir == null) {
-                            return Map.of("status", "error", "message", "No Mercurial repository found");
+                        var repo = VcsToolSupport.resolveRepo(args.repoDir(), ".hg",
+                                "No Mercurial repository found");
+                        if (!repo.ok()) {
+                            return repo.error();
                         }
-                        if (!isInOpenProject(repoDir)) {
-                            return outsideProjectError(repoDir);
+                        var maxCount = VcsToolSupport.maxCount(args.maxCount(), 20, 1, 1000);
+                        if (!maxCount.ok()) {
+                            return maxCount.error();
                         }
-                        int maxCount = args.maxCount() == null ? 20 : args.maxCount();
-                        if (maxCount < 1 || maxCount > 1000) {
-                            return Map.of("status", "error", "message",
-                                    "maxCount must be between 1 and 1000");
-                        }
-                        if (args.since() != null && !SINCE_PATTERN.matcher(args.since()).matches()) {
-                            return Map.of("status", "error", "message",
-                                    "Invalid since filter: " + args.since());
+                        Map<String, Object> sinceErr = VcsToolSupport.invalidSince(args.since(), SINCE_PATTERN);
+                        if (sinceErr != null) {
+                            return sinceErr;
                         }
                         List<String> command = new ArrayList<>(List.of("hg", "log",
-                                LOG_TEMPLATE, "-l", String.valueOf(maxCount)));
+                                LOG_TEMPLATE, "-l", String.valueOf(maxCount.value())));
                         if (args.since() != null) {
                             command.add("--date=>" + args.since());
                         }
-                        return runHgCommand(repoDir, command.toArray(new String[0]));
+                        return VcsToolSupport.run(repo.dir(), "Hg", command.toArray(new String[0]));
                     }
                 });
     }
 
     private void registerHgFileHistory(McpTools mcpTools) {
-        ObjectNode schema = MAPPER.createObjectNode();
-        schema.put("type", "object");
-        ObjectNode properties = schema.putObject("properties");
-
-        ObjectNode repoDirProp = properties.putObject("repoDir");
-        repoDirProp.put("type", "string");
-        repoDirProp.put("description", "Repository directory (defaults to project root)");
-
-        ObjectNode pathProp = properties.putObject("path");
-        pathProp.put("type", "string");
-        pathProp.put("description", "Path of the file to inspect, relative to the repository root or absolute");
-
-        ObjectNode maxCountProp = properties.putObject("maxCount");
-        maxCountProp.put("type", "integer");
-        maxCountProp.put("description", "Maximum number of commits (default 10, max 50)");
-
         mcpTools.registerTool(
                 "hg_file_hist",
                 "Show the commit history of a single Mercurial-tracked file, including each version's patch.",
-                schema,
+                VcsToolSupport.fileHistorySchema(MAPPER),
                 new ToolExecutor<HgFileHistoryInput, Map<String, Object>>(HgFileHistoryInput.class) {
                     @Override
                     public Map<String, Object> execute(HgFileHistoryInput args) throws Exception {
-                        String repoDir = isBlank(args.repoDir()) ? findHgRoot() : args.repoDir();
-                        if (repoDir == null) {
-                            return Map.of("status", "error", "message", "No Mercurial repository found");
+                        var hist = VcsToolSupport.prepareFileHistory(args.repoDir(), ".hg",
+                                "No Mercurial repository found", args.path(), args.maxCount());
+                        if (!hist.ok()) {
+                            return hist.error();
                         }
-                        if (!isInOpenProject(repoDir)) {
-                            return outsideProjectError(repoDir);
-                        }
-                        String path = args.path();
-                        if (isBlank(path)) {
-                            return Map.of("status", "error", "message", "path is required");
-                        }
-                        File file = new File(path);
-                        String absolute = file.isAbsolute() ? path
-                                : new File(repoDir, path).getAbsolutePath();
-                        if (!isInOpenProject(absolute)) {
-                            return outsideProjectError(absolute);
-                        }
-                        int maxCount = args.maxCount() == null ? 10 : args.maxCount();
-                        if (maxCount < 1 || maxCount > 50) {
-                            return Map.of("status", "error", "message",
-                                    "maxCount must be between 1 and 50");
-                        }
-                        // Pass the repo-relative path to hg so --follow works
-                        // even when the caller supplied an absolute path.
-                        String relative = new File(repoDir).toPath()
-                                .relativize(new File(absolute).toPath()).toString();
-                        return runHgCommand(repoDir, "hg", "log", "--follow", "-p",
-                                LOG_TEMPLATE, "-l", String.valueOf(maxCount), "--", relative);
+                        return VcsToolSupport.run(hist.repoDir(), "Hg",
+                                "hg", "log", "--follow", "-p",
+                                LOG_TEMPLATE, "-l", String.valueOf(hist.maxCount()),
+                                "--", hist.relative());
                     }
                 });
     }
@@ -236,43 +154,6 @@ public class HgToolProvider {
      * {@code .hg} directory is found above it.
      */
     private String findHgRoot() {
-        String projectRoot = ProjectPathGuard.firstOpenProjectRoot();
-        File current = projectRoot == null ? null : new File(projectRoot);
-        while (current != null) {
-            File hgDir = new File(current, ".hg");
-            if (hgDir.exists()) {
-                return current.getAbsolutePath();
-            }
-            current = current.getParentFile();
-        }
-        return null;
-    }
-
-    private Map<String, Object> runHgCommand(String repoDir, String... command) throws Exception {
-        ProcessBuilder pb = new ProcessBuilder(command);
-        pb.directory(new File(repoDir));
-        pb.redirectErrorStream(true);
-        Process proc = pb.start();
-        String output;
-        try (var reader = new BufferedReader(new InputStreamReader(proc.getInputStream()))) {
-            StringBuilder sb = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) {
-                if (sb.length() > 0) sb.append("\n");
-                sb.append(line);
-            }
-            output = sb.toString();
-        }
-        boolean finished = proc.waitFor(30, TimeUnit.SECONDS);
-        if (!finished) {
-            proc.destroyForcibly();
-            return Map.of("status", "error", "message", "Hg command timed out");
-        }
-        int exitCode = proc.exitValue();
-        Map<String, Object> result = new HashMap<>();
-        result.put("status", "ok");
-        result.put("exitCode", exitCode);
-        result.put("output", output);
-        return result;
+        return VcsToolSupport.findRoot(".hg");
     }
 }

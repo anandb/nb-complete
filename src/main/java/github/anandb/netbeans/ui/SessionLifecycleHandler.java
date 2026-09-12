@@ -75,6 +75,14 @@ public class SessionLifecycleHandler implements SessionListener {
     private volatile boolean turnEnded = false;
     private Supplier<Boolean> onTurnEndedCallback;
 
+    /**
+     * True while a user {@code session/prompt} is in flight. Cursor (interleaved)
+     * accepts a new prompt while the previous one is still running and then
+     * completes the old RPC with {@code stopReason=cancelled}. That completion
+     * must not re-enable the input: SSE for the live prompt is still streaming.
+     */
+    private volatile boolean userPromptInFlight = false;
+
     /** True while waiting for the preamble response on a new session.
      *  Keeps the progress bar visible until the preamble turn ends. */
     private volatile boolean pendingPreambleResponse = false;
@@ -136,6 +144,12 @@ public class SessionLifecycleHandler implements SessionListener {
         turnEnded = false;
     }
 
+    /** Marks a user {@code session/prompt} as in flight (not preamble/reconnect). */
+    public void onUserPromptSent() {
+        userPromptInFlight = true;
+        turnEnded = false;
+    }
+
     public void setOnTurnEndedCallback(Supplier<Boolean> callback) {
         this.onTurnEndedCallback = callback;
     }
@@ -148,6 +162,10 @@ public class SessionLifecycleHandler implements SessionListener {
 
     @Override
     public void onInternalMessageDone() {
+        if (userPromptInFlight) {
+            LOG.info("Skipping internal prompt done; user turn still streaming");
+            return;
+        }
         onMessageDone();
         SwingUtilities.invokeLater(() -> {
             statusController.updateButtonState(false);
@@ -168,6 +186,7 @@ public class SessionLifecycleHandler implements SessionListener {
      *  recovers the state machine if it was stuck at STOPPING. */
     public void onMessageDone() {
         LOG.info("onMessageDone called (turnEnded -> true, triggering onTurnEnded)");
+        userPromptInFlight = false;
         turnEnded = true;
         statusController.disarmRunWatchdog();
         runTurnEndedOffEdt();

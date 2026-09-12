@@ -333,7 +333,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             inputArea, chatPanel, attachmentManager, messageHistory,
             statusController, attachmentUiHandler::updateTooltip, inputArea::requestFocusInWindow
         );
-        messageSender.setOnNewMessageCallback(sessionLifecycleHandler::onNewMessageSent);
+        messageSender.setOnNewMessageCallback(sessionLifecycleHandler::onUserPromptSent);
         messageSender.setOnMessageDoneCallback(sessionLifecycleHandler::onMessageDone);
         messageSender.setOnUserMessageSentCallback(chatPanel::recordUserMessageSent);
         messageSender.setQueueManager(queueManager);

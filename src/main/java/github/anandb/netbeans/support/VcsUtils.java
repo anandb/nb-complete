@@ -263,4 +263,56 @@ public class VcsUtils {
         }
         return out.toString().trim();
     }
+
+    /**
+     * Walks up from {@code startDir} until a directory containing {@code markerDir}
+     * is found ({@code .git}, {@code .hg}). {@code null} when {@code startDir} is
+     * blank or no marker exists on the path.
+     */
+    public static String findRoot(String startDir, String markerDir) {
+        if (startDir == null || startDir.isBlank() || markerDir == null || markerDir.isBlank()) {
+            return null;
+        }
+        File current = new File(startDir);
+        while (current != null) {
+            if (new File(current, markerDir).exists()) {
+                return current.getAbsolutePath();
+            }
+            current = current.getParentFile();
+        }
+        return null;
+    }
+
+    /** Result of a VCS subprocess whose stdout+stderr were captured. */
+    public record CapturedCommand(boolean timedOut, int exitCode, String output) {}
+
+    /**
+     * Runs {@code command} in {@code cwd}, merging stderr into stdout. On timeout
+     * the process is destroyed forcibly. Caller maps the result into a tool payload.
+     */
+    public static CapturedCommand runCaptured(File cwd, int timeoutSeconds, String... command)
+            throws Exception {
+        ProcessBuilder pb = new ProcessBuilder(command);
+        pb.directory(cwd);
+        pb.redirectErrorStream(true);
+        Process proc = pb.start();
+        String output;
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(proc.getInputStream()))) {
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (!sb.isEmpty()) {
+                    sb.append('\n');
+                }
+                sb.append(line);
+            }
+            output = sb.toString();
+        }
+        boolean finished = proc.waitFor(timeoutSeconds, TimeUnit.SECONDS);
+        if (!finished) {
+            proc.destroyForcibly();
+            return new CapturedCommand(true, -1, output);
+        }
+        return new CapturedCommand(false, proc.exitValue(), output);
+    }
 }

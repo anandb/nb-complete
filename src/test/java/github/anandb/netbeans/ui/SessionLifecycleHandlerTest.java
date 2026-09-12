@@ -201,4 +201,25 @@ class SessionLifecycleHandlerTest {
         assertEquals(-1, sessionDropdown.getSelectedIndex());
         verify(chatPanel).setSessionList(any(), any(), any());
     }
+
+    @Test
+    void internalPromptDoneDoesNotEndTurnWhileUserPromptInFlight() {
+        setUpMocks(false);
+        SessionLifecycleHandler handler = newHandler();
+        handler.onUserPromptSent();
+        assertEquals(false, handler.isTurnEnded());
+
+        handler.onInternalMessageDone();
+        assertEquals(false, handler.isTurnEnded(),
+                "Cursor cancels overlapping prompts; preamble done must not Ready the input");
+    }
+
+    @Test
+    void internalPromptDoneEndsTurnWhenNoUserPrompt() {
+        setUpMocks(false);
+        SessionLifecycleHandler handler = newHandler();
+        handler.onInternalMessageSent();
+        handler.onInternalMessageDone();
+        assertEquals(true, handler.isTurnEnded());
+    }
 }

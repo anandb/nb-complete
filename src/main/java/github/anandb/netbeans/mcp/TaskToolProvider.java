@@ -194,22 +194,13 @@ public class TaskToolProvider {
             new ToolExecutor<CloseTaskInput, Map<String, Object>>(CloseTaskInput.class) {
                 @Override
                 public Map<String, Object> execute(CloseTaskInput args) throws Exception {
-                    TaskRepositoryControl control = Lookup.getDefault().lookup(TaskRepositoryControl.class);
-                    if (control == null) {
-                        return Map.of("status", "error", "message", "TaskRepositoryControl not available");
+                    LoadedTask loaded = loadTask(args.repoId(), args.taskId());
+                    if (!loaded.ok()) {
+                        return loaded.error();
                     }
-                    if (args.taskId() == null || args.taskId().isBlank()) {
-                        return Map.of("status", "error", "message", "taskId is required");
-                    }
-                    String repoId = resolveRepository(control, args.repoId());
-                    if (repoId == null) {
-                        return resolveError(control, args.repoId());
-                    }
-                    TaskRecord task = control.get(repoId, args.taskId().trim());
-                    if (task == null) {
-                        return Map.of("status", "error", "message",
-                            "Task '" + args.taskId() + "' not found in '" + control.displayNameOf(repoId) + "'.");
-                    }
+                    TaskRepositoryControl control = loaded.control();
+                    String repoId = loaded.repoId();
+                    TaskRecord task = loaded.task();
                     if (task.isFinished()) {
                         return Map.of("status", "ok", "id", task.id(),
                             "message", "Task '" + task.summary() + "' is already closed.");
@@ -301,22 +292,13 @@ public class TaskToolProvider {
             new ToolExecutor<UpdateTaskInput, Map<String, Object>>(UpdateTaskInput.class) {
                 @Override
                 public Map<String, Object> execute(UpdateTaskInput args) throws Exception {
-                    TaskRepositoryControl control = Lookup.getDefault().lookup(TaskRepositoryControl.class);
-                    if (control == null) {
-                        return Map.of("status", "error", "message", "TaskRepositoryControl not available");
+                    LoadedTask loaded = loadTask(args.repoId(), args.taskId());
+                    if (!loaded.ok()) {
+                        return loaded.error();
                     }
-                    if (args.taskId() == null || args.taskId().isBlank()) {
-                        return Map.of("status", "error", "message", "taskId is required");
-                    }
-                    String repoId = resolveRepository(control, args.repoId());
-                    if (repoId == null) {
-                        return resolveError(control, args.repoId());
-                    }
-                    TaskRecord task = control.get(repoId, args.taskId().trim());
-                    if (task == null) {
-                        return Map.of("status", "error", "message",
-                            "Task '" + args.taskId() + "' not found in '" + control.displayNameOf(repoId) + "'.");
-                    }
+                    TaskRepositoryControl control = loaded.control();
+                    String repoId = loaded.repoId();
+                    TaskRecord task = loaded.task();
                     if (args.summary() != null && args.summary().isBlank()) {
                         return Map.of("status", "error", "message", "summary cannot be blank");
                     }
@@ -453,6 +435,35 @@ public class TaskToolProvider {
 
     /** Maximum number of matching tasks returned by {@code search_task}. */
     private static final int SEARCH_MAX_RESULTS = 10;
+
+    private record LoadedTask(TaskRepositoryControl control, String repoId, TaskRecord task,
+            Map<String, Object> error) {
+        boolean ok() {
+            return error == null;
+        }
+    }
+
+    private static LoadedTask loadTask(String repoIdArg, String taskIdArg) {
+        TaskRepositoryControl control = Lookup.getDefault().lookup(TaskRepositoryControl.class);
+        if (control == null) {
+            return new LoadedTask(null, null, null,
+                    Map.of("status", "error", "message", "TaskRepositoryControl not available"));
+        }
+        if (taskIdArg == null || taskIdArg.isBlank()) {
+            return new LoadedTask(null, null, null,
+                    Map.of("status", "error", "message", "taskId is required"));
+        }
+        String repoId = resolveRepository(control, repoIdArg);
+        if (repoId == null) {
+            return new LoadedTask(control, null, null, resolveError(control, repoIdArg));
+        }
+        TaskRecord task = control.get(repoId, taskIdArg.trim());
+        if (task == null) {
+            return new LoadedTask(control, repoId, null, Map.of("status", "error", "message",
+                    "Task '" + taskIdArg + "' not found in '" + control.displayNameOf(repoId) + "'."));
+        }
+        return new LoadedTask(control, repoId, task, null);
+    }
 
     /**
      * Resolves the repository id to operate on: the given id if valid, the

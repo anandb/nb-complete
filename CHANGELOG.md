@@ -356,7 +356,7 @@
 
 ### UI
 - **Bubble drop shadow**: Added an optional native drop-shadow to user/assistant chat bubbles (enabled via `setDropShadow`), drawn behind the rounded fill as concentric translucent passes to approximate a blur without per-repaint gaussian cost, kept within the bubble's border margin. Disabled in dark mode and on mini-assistant bubbles; later thinned (offset 3→2px, blur passes 4→3) to hug the bubble more tightly in light mode.
-- **Options panel layout**: Reorganized Chat Behavior into three aligned rows (Session Idle Timeout, Max Messages, Edit Session Preamble) with a dialog-based preamble editor; moved the icon preview to a single column and reduced vertical spacing.
+- **Options panel layout**: Reorganized Chat Behavior into three aligned rows (Session Idle Timeout, Max Displayed Messages, Edit Session Preamble) with a dialog-based preamble editor; moved the icon preview to a single column and reduced vertical spacing.
 - **Refactoring menu separator**: Moved the Ask Assistant separator into the `Editors/Refactoring` folder so it appears inside the editor refactoring menu where the action lives.
 
 ### Performance
@@ -815,7 +815,7 @@
   (`*`, `?`, `[...]`, `{a,b}`) via `PathMatcher`, with dynamic dialog width sizing
   and arrow key wrap-around.
 - **Assistant Options spinner truncation**: Configured the `Session Idle Timeout` and
-  `Max Messages` spinners in the Options panel to request `4` columns in their internal
+  `Max Displayed Messages` spinners in the Options panel to request `4` columns in their internal
   text fields rather than using hardcoded bounds, preventing value truncation on certain themes.
 - **Hide editor context menu additions**: When the "Enable context menu additions" checkbox is
   unchecked in the Assistant Settings tab, the right-click menu items (Search Web, Minify,
@@ -1191,9 +1191,9 @@
   seen message IDs during streaming and re-applies pin state after
   `setMessages()` completes. Stale pinned references (messages no longer in
   the session) are cleaned up automatically with an INFO log.
-- **Configurable Max Messages preference**: The maximum number of visible
+- **Configurable Max Displayed Messages preference**: The maximum number of visible
   message bubbles (previously hardcoded to 100) is now a NetBeans preference —
-  Options > Assistant > Chat Behavior > Max Messages, range 10–100, default
+  Options > Assistant > Chat Behavior > Max Displayed Messages, range 10–100, default
   100, step 5. Stored under `PreferenceKeys.MAX_MESSAGES` and read live via
   `PluginSettings.getMaxMessages()` (cached volatile + listener, per AGENTS.md
   hot-path rules). Edits take effect immediately without restarting the IDE.
@@ -1211,7 +1211,7 @@
   Chat Behavior, Appearance, and Session Preamble. Layout switched from
   GridBagLayout to BoxLayout with vertical stacking. Icon preview shows
   in its own "User Icon Preview" bordered panel to the right of the
-  Appearance section. Spinboxes for Session Idle Timeout and Max Messages
+  Appearance section. Spinboxes for Session Idle Timeout and Max Displayed Messages
   have consistent 80px width.
 - **Pin messages in chat**: Assistant messages can now be pinned to prevent
   them from being removed when "hide older messages" is active. Bubbles show
