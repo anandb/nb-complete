@@ -70,6 +70,9 @@ public class McpServer {
         GitToolProvider gitTools = new GitToolProvider();
         gitTools.registerTools(mcpTools);
 
+        HgToolProvider hgTools = new HgToolProvider();
+        hgTools.registerTools(mcpTools);
+
         server = new Server(0);
 
         connector = new ServerConnector(server);

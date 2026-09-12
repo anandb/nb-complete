@@ -31,6 +31,7 @@ public class TaskToolProvider {
     public void registerTools(McpTools mcpTools) {
         registerAddTask(mcpTools);
         registerCloseTask(mcpTools);
+        registerUpdateTask(mcpTools);
         registerSearchTask(mcpTools);
     }
 
@@ -225,6 +226,143 @@ public class TaskToolProvider {
                         "message", "Task '" + task.summary() + "' closed in '" + control.displayNameOf(repoId) + "'.");
                 }
             });
+    }
+
+    private void registerUpdateTask(McpTools mcpTools) {
+        ObjectNode schema = MAPPER.createObjectNode();
+        schema.put("type", "object");
+        ObjectNode properties = schema.putObject("properties");
+
+        ObjectNode repoId = properties.putObject("repoId");
+        repoId.put("type", "string");
+        repoId.put("description", "Id of the repository holding the task. Optional if only one repository exists.");
+
+        ObjectNode taskId = properties.putObject("taskId");
+        taskId.put("type", "string");
+        taskId.put("description", "Id of the task to update (as returned by add_task).");
+
+        ObjectNode summary = properties.putObject("summary");
+        summary.put("type", "string");
+        summary.put("description", "New summary/title. Omitted fields are left unchanged.");
+
+        ObjectNode status = properties.putObject("status");
+        status.put("type", "string");
+        status.put("description", "'open' or 'closed'. Setting 'closed' records completion; 'open' reopens.");
+
+        ObjectNode priority = properties.putObject("priority");
+        priority.put("type", "string");
+        priority.put("description", "Single uppercase letter A-Z.");
+
+        ObjectNode projects = properties.putObject("projects");
+        projects.put("type", "string");
+        projects.put("description", "Comma-separated project names. Empty string clears; omitted keeps current.");
+
+        ObjectNode tags = properties.putObject("tags");
+        tags.put("type", "string");
+        tags.put("description", "Comma-separated tags. Empty string clears; omitted keeps current.");
+
+        ObjectNode dueDate = properties.putObject("dueDate");
+        dueDate.put("type", "string");
+        dueDate.put("description", "ISO-8601 due date. Empty string clears; omitted keeps current.");
+
+        ObjectNode estimate = properties.putObject("estimate");
+        estimate.put("type", "integer");
+        estimate.put("description", "Estimated effort units.");
+
+        ObjectNode consumed = properties.putObject("consumed");
+        consumed.put("type", "integer");
+        consumed.put("description", "Consumed effort units.");
+
+        ArrayNode required = schema.putArray("required");
+        required.add("taskId");
+
+        mcpTools.registerTool(
+            "update_task",
+            """
+            Updates an existing task in a Beanbot Tasks repository.
+
+            Use when the user wants to change, edit, rename, reschedule, or
+            reopen a task, including:
+            - 'rename task t-3 to ...', 'change its priority to A'
+            - 'reschedule the deploy task to Friday', 'clear the due date'
+            - 'reopen task t-7'
+
+            Only the provided fields change; omitted fields keep their values.
+            Empty tags/projects/dueDate clear those values. status='closed'
+            records completion, 'open' clears it. Idempotent fields are
+            validated (status must be open|closed, priority a single A-Z).
+
+            Examples:
+            - 'Rename task t-3' -> taskId='t-3', summary='New title'
+            - 'Priority A for the login task' -> taskId='t-1', priority='A'
+            - 'Reopen the deploy task' -> taskId='t-7', status='open'
+            """,
+            schema,
+            new ToolExecutor<UpdateTaskInput, Map<String, Object>>(UpdateTaskInput.class) {
+                @Override
+                public Map<String, Object> execute(UpdateTaskInput args) throws Exception {
+                    TaskRepositoryControl control = Lookup.getDefault().lookup(TaskRepositoryControl.class);
+                    if (control == null) {
+                        return Map.of("status", "error", "message", "TaskRepositoryControl not available");
+                    }
+                    if (args.taskId() == null || args.taskId().isBlank()) {
+                        return Map.of("status", "error", "message", "taskId is required");
+                    }
+                    String repoId = resolveRepository(control, args.repoId());
+                    if (repoId == null) {
+                        return resolveError(control, args.repoId());
+                    }
+                    TaskRecord task = control.get(repoId, args.taskId().trim());
+                    if (task == null) {
+                        return Map.of("status", "error", "message",
+                            "Task '" + args.taskId() + "' not found in '" + control.displayNameOf(repoId) + "'.");
+                    }
+                    if (args.summary() != null && args.summary().isBlank()) {
+                        return Map.of("status", "error", "message", "summary cannot be blank");
+                    }
+                    if (args.priority() != null && !args.priority().matches("[A-Z]")) {
+                        return Map.of("status", "error", "message",
+                            "Invalid priority '" + args.priority() + "'. Priority must be a single uppercase letter A-Z.");
+                    }
+                    if (args.status() != null && !isValidStatus(args.status())) {
+                        return Map.of("status", "error", "message",
+                            "Invalid status '" + args.status() + "'. Status must be 'open' or 'closed'.");
+                    }
+                    String summary = args.summary() != null ? args.summary().trim() : task.summary();
+                    String status = args.status() != null ? args.status().trim() : task.status();
+                    String priority = args.priority() != null ? args.priority() : task.priority();
+                    List<String> tags = args.tags() != null ? splitCsv(args.tags()) : task.tags();
+                    List<String> projects = args.projects() != null ? splitCsv(args.projects()) : task.projects();
+                    String dueDate = args.dueDate() != null ? args.dueDate().trim() : task.dueDate();
+                    int estimate = args.estimate() != null ? args.estimate() : task.estimate();
+                    int consumed = args.consumed() != null ? args.consumed() : task.consumed();
+                    TaskRecord updated = task.withDetails(status, priority, summary,
+                        tags, projects, dueDate, estimate, consumed);
+                    boolean ok = control.update(repoId, updated);
+                    if (!ok) {
+                        return Map.of("status", "error", "message",
+                            "Failed to update task '" + args.taskId() + "'.");
+                    }
+                    LOG.info("update_task tool called: repo={0} id={1}", repoId, task.id());
+                    return Map.of("status", "ok", "id", task.id(),
+                        "message", "Task '" + task.id() + "' updated in '" + control.displayNameOf(repoId) + "'.");
+                }
+            });
+    }
+
+    /** Splits a comma-separated MCP string into a trimmed list; blank clears. */
+    private static List<String> splitCsv(String s) {
+        if (s == null || s.isBlank()) {
+            return List.of();
+        }
+        List<String> out = new ArrayList<>();
+        for (String part : s.split(",")) {
+            String v = part.trim();
+            if (!v.isEmpty()) {
+                out.add(v);
+            }
+        }
+        return List.copyOf(out);
     }
 
     private void registerSearchTask(McpTools mcpTools) {

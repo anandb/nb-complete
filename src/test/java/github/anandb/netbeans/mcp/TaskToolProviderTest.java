@@ -646,4 +646,211 @@ class TaskToolProviderTest {
         assertEquals("error", result.get("status"));
         assertTrue(result.get("message").toString().contains("Unknown repository 'unknown'"));
     }
+
+    // --- update_task ---
+
+    @SuppressWarnings("unchecked")
+    private ToolExecutor<UpdateTaskInput, Map<String, Object>> updateTaskExecutor() {
+        provider.registerTools(mcpTools);
+        ArgumentCaptor<ToolExecutor> executorCaptor = ArgumentCaptor.forClass(ToolExecutor.class);
+        verify(mcpTools).registerTool(eq("update_task"), any(), any(), executorCaptor.capture());
+        return executorCaptor.getValue();
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void updateTaskChangesOnlyProvidedFields() throws Exception {
+        when(taskRepositoryControl.repositoryIds()).thenReturn(List.of("repo1"));
+        when(taskRepositoryControl.displayNameOf("repo1")).thenReturn("My Tasks");
+        TaskRecord existing = new TaskRecord("t-1", "open", "B", "Old title",
+            List.of("urgent"), List.of("backend"), "2026-09-01", 3, 1, "", "", "");
+        when(taskRepositoryControl.get("repo1", "t-1")).thenReturn(existing);
+        when(taskRepositoryControl.update(eq("repo1"), any(TaskRecord.class))).thenReturn(true);
+
+        ToolExecutor<UpdateTaskInput, Map<String, Object>> executor = updateTaskExecutor();
+        Map<String, Object> result = executor.execute(
+                new UpdateTaskInput("repo1", "t-1", "New title", null, null, null, null, null, null, null));
+
+        assertEquals("ok", result.get("status"));
+        ArgumentCaptor<TaskRecord> captor = ArgumentCaptor.forClass(TaskRecord.class);
+        verify(taskRepositoryControl).update(eq("repo1"), captor.capture());
+        TaskRecord updated = captor.getValue();
+        assertEquals("New title", updated.summary());
+        assertEquals("open", updated.status());
+        assertEquals("B", updated.priority());
+        assertEquals(List.of("urgent"), updated.tags());
+        assertEquals(List.of("backend"), updated.projects());
+        assertEquals("2026-09-01", updated.dueDate());
+        assertEquals(3, updated.estimate());
+        assertEquals(1, updated.consumed());
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void updateTaskClearsTagsWithEmptyString() throws Exception {
+        when(taskRepositoryControl.repositoryIds()).thenReturn(List.of("repo1"));
+        when(taskRepositoryControl.displayNameOf("repo1")).thenReturn("My Tasks");
+        TaskRecord existing = new TaskRecord("t-1", "open", "B", "Fix bug",
+            List.of("urgent"), List.of("backend"), "2026-09-01", 0, 0, "", "", "");
+        when(taskRepositoryControl.get("repo1", "t-1")).thenReturn(existing);
+        when(taskRepositoryControl.update(eq("repo1"), any(TaskRecord.class))).thenReturn(true);
+
+        ToolExecutor<UpdateTaskInput, Map<String, Object>> executor = updateTaskExecutor();
+        Map<String, Object> result = executor.execute(
+                new UpdateTaskInput("repo1", "t-1", null, null, null, null, "", null, null, null));
+
+        assertEquals("ok", result.get("status"));
+        ArgumentCaptor<TaskRecord> captor = ArgumentCaptor.forClass(TaskRecord.class);
+        verify(taskRepositoryControl).update(eq("repo1"), captor.capture());
+        assertTrue(captor.getValue().tags().isEmpty(), "empty tags string must clear tags");
+        assertEquals("2026-09-01", captor.getValue().dueDate());
+        assertEquals(List.of("backend"), captor.getValue().projects());
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void updateTaskRejectsInvalidPriorityAndStatus() throws Exception {
+        when(taskRepositoryControl.repositoryIds()).thenReturn(List.of("repo1"));
+        when(taskRepositoryControl.displayNameOf("repo1")).thenReturn("My Tasks");
+        TaskRecord existing = new TaskRecord("t-1", "open", "B", "Fix bug",
+            List.of(), List.of(), "", 0, 0, "", "", "");
+        when(taskRepositoryControl.get("repo1", "t-1")).thenReturn(existing);
+
+        ToolExecutor<UpdateTaskInput, Map<String, Object>> executor = updateTaskExecutor();
+
+        Map<String, Object> priorityError = executor.execute(
+                new UpdateTaskInput("repo1", "t-1", null, null, "bb", null, null, null, null, null));
+        assertEquals("error", priorityError.get("status"));
+        assertTrue(priorityError.get("message").toString().contains("Invalid priority"));
+
+        Map<String, Object> statusError = executor.execute(
+                new UpdateTaskInput("repo1", "t-1", null, "in-progress", null, null, null, null, null, null));
+        assertEquals("error", statusError.get("status"));
+        assertTrue(statusError.get("message").toString().contains("Invalid status"));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void updateTaskReturnsErrorWhenTaskNotFound() throws Exception {
+        when(taskRepositoryControl.repositoryIds()).thenReturn(List.of("repo1"));
+        when(taskRepositoryControl.displayNameOf("repo1")).thenReturn("My Tasks");
+        when(taskRepositoryControl.get("repo1", "missing")).thenReturn(null);
+
+        ToolExecutor<UpdateTaskInput, Map<String, Object>> executor = updateTaskExecutor();
+        Map<String, Object> result = executor.execute(
+                new UpdateTaskInput("repo1", "missing", "New title", null, null, null, null, null, null, null));
+
+        assertEquals("error", result.get("status"));
+        assertTrue(result.get("message").toString().contains("not found"));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void updateTaskRejectsBlankSummary() throws Exception {
+        when(taskRepositoryControl.repositoryIds()).thenReturn(List.of("repo1"));
+        when(taskRepositoryControl.displayNameOf("repo1")).thenReturn("My Tasks");
+        TaskRecord existing = new TaskRecord("t-1", "open", "B", "Fix bug",
+            List.of(), List.of(), "", 0, 0, "", "", "");
+        when(taskRepositoryControl.get("repo1", "t-1")).thenReturn(existing);
+
+        ToolExecutor<UpdateTaskInput, Map<String, Object>> executor = updateTaskExecutor();
+        Map<String, Object> result = executor.execute(
+                new UpdateTaskInput("repo1", "t-1", "  ", null, null, null, null, null, null, null));
+
+        assertEquals("error", result.get("status"));
+        assertEquals("summary cannot be blank", result.get("message"));
+    }
+
+    @Test
+    void registersUpdateTaskTool() {
+        provider.registerTools(mcpTools);
+
+        ArgumentCaptor<String> descCaptor = ArgumentCaptor.forClass(String.class);
+        verify(mcpTools).registerTool(eq("update_task"), descCaptor.capture(), any(ObjectNode.class), any());
+
+        assertTrue(descCaptor.getValue().contains("Updates an existing task"));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void updateTaskClosesAndReopensByStatus() throws Exception {
+        when(taskRepositoryControl.repositoryIds()).thenReturn(List.of("repo1"));
+        when(taskRepositoryControl.displayNameOf("repo1")).thenReturn("My Tasks");
+        TaskRecord openTask = new TaskRecord("t-1", "open", "B", "Fix bug",
+            List.of(), List.of(), "", 0, 0, "", "", "");
+        when(taskRepositoryControl.get("repo1", "t-1")).thenReturn(openTask);
+        when(taskRepositoryControl.update(eq("repo1"), any(TaskRecord.class))).thenReturn(true);
+
+        ToolExecutor<UpdateTaskInput, Map<String, Object>> executor = updateTaskExecutor();
+
+        executor.execute(new UpdateTaskInput("repo1", "t-1", null, "closed", null, null, null, null, null, null));
+        ArgumentCaptor<TaskRecord> captor = ArgumentCaptor.forClass(TaskRecord.class);
+        verify(taskRepositoryControl).update(eq("repo1"), captor.capture());
+        assertEquals("closed", captor.getValue().status());
+        assertEquals("Fix bug", captor.getValue().summary());
+
+        TaskRecord closedTask = new TaskRecord("t-1", "closed", "B", "Fix bug",
+            List.of(), List.of(), "", 0, 0, "", "", "");
+        when(taskRepositoryControl.get("repo1", "t-1")).thenReturn(closedTask);
+
+        executor.execute(new UpdateTaskInput("repo1", "t-1", null, "open", null, null, null, null, null, null));
+        ArgumentCaptor<TaskRecord> reopenCaptor = ArgumentCaptor.forClass(TaskRecord.class);
+        verify(taskRepositoryControl, org.mockito.Mockito.times(2))
+                .update(eq("repo1"), reopenCaptor.capture());
+        assertEquals("open", reopenCaptor.getValue().status());
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void updateTaskUpdatesNumericAndDateFields() throws Exception {
+        when(taskRepositoryControl.repositoryIds()).thenReturn(List.of("repo1"));
+        when(taskRepositoryControl.displayNameOf("repo1")).thenReturn("My Tasks");
+        TaskRecord existing = new TaskRecord("t-1", "open", "B", "Fix bug",
+            List.of(), List.of(), "2026-09-01", 3, 1, "", "", "");
+        when(taskRepositoryControl.get("repo1", "t-1")).thenReturn(existing);
+        when(taskRepositoryControl.update(eq("repo1"), any(TaskRecord.class))).thenReturn(true);
+
+        ToolExecutor<UpdateTaskInput, Map<String, Object>> executor = updateTaskExecutor();
+        Map<String, Object> result = executor.execute(
+                new UpdateTaskInput("repo1", "t-1", null, null, null, null, null, "2026-10-01", 8, 4));
+
+        assertEquals("ok", result.get("status"));
+        ArgumentCaptor<TaskRecord> captor = ArgumentCaptor.forClass(TaskRecord.class);
+        verify(taskRepositoryControl).update(eq("repo1"), captor.capture());
+        assertEquals("2026-10-01", captor.getValue().dueDate());
+        assertEquals(8, captor.getValue().estimate());
+        assertEquals(4, captor.getValue().consumed());
+        assertEquals("Fix bug", captor.getValue().summary());
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void updateTaskAutoSelectsSingleRepository() throws Exception {
+        when(taskRepositoryControl.repositoryIds()).thenReturn(List.of("only-repo"));
+        when(taskRepositoryControl.displayNameOf("only-repo")).thenReturn("Only Repo");
+        TaskRecord existing = new TaskRecord("t-1", "open", "B", "Fix bug",
+            List.of(), List.of(), "", 0, 0, "", "", "");
+        when(taskRepositoryControl.get("only-repo", "t-1")).thenReturn(existing);
+        when(taskRepositoryControl.update(eq("only-repo"), any(TaskRecord.class))).thenReturn(true);
+
+        ToolExecutor<UpdateTaskInput, Map<String, Object>> executor = updateTaskExecutor();
+        Map<String, Object> result = executor.execute(
+                new UpdateTaskInput(null, "t-1", "New title", null, null, null, null, null, null, null));
+
+        assertEquals("ok", result.get("status"));
+        assertTrue(result.get("message").toString().contains("Only Repo"));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void updateTaskReturnsErrorWhenNoRepositories() throws Exception {
+        when(taskRepositoryControl.repositoryIds()).thenReturn(List.of());
+
+        ToolExecutor<UpdateTaskInput, Map<String, Object>> executor = updateTaskExecutor();
+        Map<String, Object> result = executor.execute(
+                new UpdateTaskInput(null, "t-1", null, null, null, null, null, null, null, null));
+
+        assertEquals("error", result.get("status"));
+        assertTrue(result.get("message").toString().contains("No Beanbot Tasks repository configured"));
+    }
 }

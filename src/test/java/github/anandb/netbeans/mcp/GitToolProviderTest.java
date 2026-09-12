@@ -184,8 +184,227 @@ class GitToolProviderTest {
         openProjectAt(repo);
 
         Map<String, Object> result = diffExecutor().execute(new GitDiffInput(null, "--output=/tmp/x"));
-
         assertEquals("error", result.get("status"));
         assertEquals("Invalid diff target: --output=/tmp/x", result.get("message"));
+    }
+
+    private void runGit(File dir, String... cmd) throws Exception {
+        ProcessBuilder pb = new ProcessBuilder(cmd);
+        pb.directory(dir);
+        pb.redirectErrorStream(true);
+        Process proc = pb.start();
+        assertTrue(proc.waitFor(30, TimeUnit.SECONDS), "git timed out: " + String.join(" ", cmd));
+        assertEquals(0, proc.exitValue(), String.join(" ", cmd) + " failed");
+    }
+
+    /** Runs git with extra environment entries (e.g. fixed commit dates). */
+    private void runGitWithEnv(File dir, Map<String, String> env, String... cmd) throws Exception {
+        ProcessBuilder pb = new ProcessBuilder(cmd);
+        pb.directory(dir);
+        pb.redirectErrorStream(true);
+        pb.environment().putAll(env);
+        Process proc = pb.start();
+        assertTrue(proc.waitFor(30, TimeUnit.SECONDS), "git timed out: " + String.join(" ", cmd));
+        assertEquals(0, proc.exitValue(), String.join(" ", cmd) + " failed");
+    }
+
+    private void commitAll(File repo, String message) throws Exception {
+        runGit(repo, "git", "add", "-A");
+        runGit(repo, "git", "-c", "user.email=test@example.com", "-c", "user.name=test",
+                "commit", "-q", "-m", message);
+    }
+
+    @SuppressWarnings("unchecked")
+    private ToolExecutor<GitLogInput, Map<String, Object>> logExecutor() {
+        provider.registerTools(mcpTools);
+        ArgumentCaptor<ToolExecutor> captor = ArgumentCaptor.forClass(ToolExecutor.class);
+        verify(mcpTools).registerTool(eq("git_log"), any(), any(), captor.capture());
+        return captor.getValue();
+    }
+
+    @SuppressWarnings("unchecked")
+    private ToolExecutor<FileHistoryInput, Map<String, Object>> fileHistoryExecutor() {
+        provider.registerTools(mcpTools);
+        ArgumentCaptor<ToolExecutor> captor = ArgumentCaptor.forClass(ToolExecutor.class);
+        verify(mcpTools).registerTool(eq("file_history"), any(), any(), captor.capture());
+        return captor.getValue();
+    }
+
+    @Test
+    void gitLogReturnsCommitHistory() throws Exception {
+        File repo = initGitRepo(tempDir.resolve("repo").toFile());
+        openProjectAt(repo);
+        java.nio.file.Files.writeString(new File(repo, "readme.txt").toPath(), "hello\n");
+        commitAll(repo, "initial commit");
+
+        Map<String, Object> result = logExecutor().execute(new GitLogInput(null, null, null));
+
+        assertEquals("ok", result.get("status"));
+        String output = (String) result.get("output");
+        assertTrue(output.contains("initial commit"), "log should contain the subject: " + output);
+        assertTrue(output.contains("test"), "log should contain the author: " + output);
+    }
+
+    @Test
+    void gitLogRejectsOptionLikeSince() throws Exception {
+        File repo = initGitRepo(tempDir.resolve("repo").toFile());
+        openProjectAt(repo);
+
+        Map<String, Object> result = logExecutor().execute(new GitLogInput(null, null, "--exec=rm"));
+
+        assertEquals("error", result.get("status"));
+        assertEquals("Invalid since filter: --exec=rm", result.get("message"));
+    }
+
+    @Test
+    void gitLogRejectsOutOfRangeMaxCount() throws Exception {
+        File repo = initGitRepo(tempDir.resolve("repo").toFile());
+        openProjectAt(repo);
+
+        Map<String, Object> result = logExecutor().execute(new GitLogInput(null, 0, null));
+
+        assertEquals("error", result.get("status"));
+        assertEquals("maxCount must be between 1 and 1000", result.get("message"));
+    }
+
+    @Test
+    void fileHistoryShowsPatchForFile() throws Exception {
+        File repo = initGitRepo(tempDir.resolve("repo").toFile());
+        openProjectAt(repo);
+        File src = new File(repo, "src.txt");
+        java.nio.file.Files.writeString(src.toPath(), "one\n");
+        commitAll(repo, "first revision");
+        java.nio.file.Files.writeString(src.toPath(), "one\ntwo\n");
+        commitAll(repo, "second revision");
+
+        Map<String, Object> result = fileHistoryExecutor().execute(new FileHistoryInput(null, "src.txt", null));
+
+        assertEquals("ok", result.get("status"));
+        String output = (String) result.get("output");
+        assertTrue(output.contains("first revision"), "history should list both revisions: " + output);
+        assertTrue(output.contains("second revision"), "history should list both revisions: " + output);
+        assertTrue(output.contains("+two"), "history should include the added line: " + output);
+    }
+
+    @Test
+    void fileHistoryRequiresPath() throws Exception {
+        File repo = initGitRepo(tempDir.resolve("repo").toFile());
+        openProjectAt(repo);
+
+        Map<String, Object> result = fileHistoryExecutor().execute(new FileHistoryInput(null, null, null));
+
+        assertEquals("error", result.get("status"));
+        assertEquals("path is required", result.get("message"));
+    }
+
+    @Test
+    void fileHistoryRejectsPathOutsideOpenProject() throws Exception {
+        File repo = initGitRepo(tempDir.resolve("repo").toFile());
+        openProjectAt(repo);
+        File outside = tempDir.resolve("outside.txt").toFile();
+        assertTrue(outside.createNewFile());
+
+        Map<String, Object> result = fileHistoryExecutor().execute(
+                new FileHistoryInput(null, outside.getAbsolutePath(), null));
+
+        assertEquals("error", result.get("status"));
+        assertEquals("Path is outside the open projects: " + outside.getAbsolutePath(),
+                result.get("message"));
+    }
+
+    @Test
+    void gitLogHonorsSinceFilter() throws Exception {
+        // A commit dated well before the since filter must be excluded.
+        File repo = initGitRepo(tempDir.resolve("repo").toFile());
+        openProjectAt(repo);
+        java.nio.file.Files.writeString(new File(repo, "old.txt").toPath(), "x\n");
+        runGitWithEnv(repo, Map.of(
+                "GIT_AUTHOR_DATE", "2025-01-01T00:00:00",
+                "GIT_COMMITTER_DATE", "2025-01-01T00:00:00"),
+                "git", "add", "-A");
+        runGitWithEnv(repo, Map.of(
+                "GIT_AUTHOR_DATE", "2025-01-01T00:00:00",
+                "GIT_COMMITTER_DATE", "2025-01-01T00:00:00"),
+                "git", "-c", "user.email=test@example.com", "-c", "user.name=test",
+                "commit", "-q", "-m", "old commit");
+
+        Map<String, Object> result = logExecutor().execute(new GitLogInput(null, null, "2 weeks ago"));
+
+        assertEquals("ok", result.get("status"));
+        String output = (String) result.get("output");
+        assertTrue(output.isEmpty(), "old commit must be filtered out by --since: " + output);
+    }
+
+    @Test
+    void gitLogAcceptsExplicitRepoDir() throws Exception {
+        File repo = initGitRepo(tempDir.resolve("repo").toFile());
+        openProjectAt(repo);
+        java.nio.file.Files.writeString(new File(repo, "f.txt").toPath(), "x\n");
+        commitAll(repo, "explicit dir commit");
+
+        Map<String, Object> result = logExecutor().execute(new GitLogInput(repo.getAbsolutePath(), null, null));
+
+        assertEquals("ok", result.get("status"));
+        assertTrue(((String) result.get("output")).contains("explicit dir commit"));
+    }
+
+    @Test
+    void gitLogReportsMissingRepository() throws Exception {
+        noOpenProjects();
+
+        Map<String, Object> result = logExecutor().execute(new GitLogInput(null, null, null));
+
+        assertEquals("error", result.get("status"));
+        assertEquals("No git repository found", result.get("message"));
+    }
+
+    @Test
+    void fileHistoryHandlesAbsolutePath() throws Exception {
+        File repo = initGitRepo(tempDir.resolve("repo").toFile());
+        openProjectAt(repo);
+        File src = new File(repo, "abs.txt");
+        java.nio.file.Files.writeString(src.toPath(), "content\n");
+        commitAll(repo, "abs path commit");
+
+        Map<String, Object> result = fileHistoryExecutor().execute(
+                new FileHistoryInput(null, src.getAbsolutePath(), null));
+
+        assertEquals("ok", result.get("status"));
+        assertTrue(((String) result.get("output")).contains("abs path commit"));
+    }
+    @Test
+    void fileHistoryResolvesNestedSubdirectoryPaths() throws Exception {
+        File repo = initGitRepo(tempDir.resolve("repo").toFile());
+        openProjectAt(repo);
+        File nested = new File(repo, "src/deep");
+        assertTrue(nested.mkdirs());
+        File src = new File(nested, "deep.txt");
+        java.nio.file.Files.writeString(src.toPath(), "deep\n");
+        commitAll(repo, "nested file commit");
+
+        Map<String, Object> result = fileHistoryExecutor().execute(
+                new FileHistoryInput(null, "src/deep/deep.txt", null));
+
+        assertEquals("ok", result.get("status"));
+        String output = (String) result.get("output");
+        assertTrue(output.contains("nested file commit"), "should find the nested file: " + output);
+        assertTrue(output.contains("+deep"), "should include the patch: " + output);
+    }
+
+    @Test
+    void fileHistoryReportsUntrackedFileAsGitError() throws Exception {
+        // The tool surfaces git's own exit code; an untracked file produces
+        // a fatal error rather than a synthetic error result.
+        File repo = initGitRepo(tempDir.resolve("repo").toFile());
+        openProjectAt(repo);
+        assertTrue(new File(repo, "untracked.txt").createNewFile());
+
+        Map<String, Object> result = fileHistoryExecutor().execute(new FileHistoryInput(null, "untracked.txt", null));
+
+        assertEquals("ok", result.get("status"));
+        assertTrue((Integer) result.get("exitCode") != 0,
+                "git must report failure for an untracked path");
+        assertTrue(((String) result.get("output")).contains("fatal"),
+                "git error should surface in the output: " + result.get("output"));
     }
 }
