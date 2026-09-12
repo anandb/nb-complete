@@ -88,7 +88,12 @@ public class MessageBubble extends JPanel implements Scrollable {
         this.type = type;
         this.role = type.roleName();
         this.messageId = messageId;
-        this.text = new StringBuilder(text);
+        // User bubbles may carry <metadata> context blocks. Strip complete
+        // blocks up front so non-streaming user messages — local echo,
+        // session reload — never display them; the streamed chunk tails
+        // are still stripped in finalizeStreaming().
+        this.text = new StringBuilder("user".equals(type.roleName())
+                ? ToolDataExtractor.stripMetadata(text) : text);
         this.toolTitle = toolTitle;
         this.sessionId = sessionId;
 

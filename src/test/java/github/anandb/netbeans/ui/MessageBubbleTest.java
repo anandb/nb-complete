@@ -62,4 +62,26 @@ class MessageBubbleTest {
         assertEquals("\n\n\nhello", bubble.getRawText());
     }
 
+    @Test
+    void testUserBubbleStripsMetadataAtConstruction() {
+        // Non-streaming user bubbles (local echo, session reload) render the
+        // constructor text directly and never go through finalizeStreaming,
+        // so the strip must already happen in the constructor.
+        String withMetadata = "<metadata>\n  <purpose>reference</purpose>\n"
+                + "  <file_path>/tmp/x.java</file_path>\n  <cursor>1250</cursor>\n"
+                + "</metadata>\n\nplease fix the bug";
+        MessageBubble user = new MessageBubble(MessageType.user_message_chunk,
+                withMetadata, null, null, MessageBubble.AvatarPosition.NONE);
+        assertEquals("please fix the bug", user.getRawText().strip());
+    }
+
+    @Test
+    void testAssistantBubbleKeepsRawText() {
+        // Only user bubbles strip <metadata>; assistant text is untouched.
+        String raw = "text with <metadata>x</metadata> inside";
+        MessageBubble assistant = new MessageBubble(MessageType.agent_message_chunk,
+                raw, null, null, MessageBubble.AvatarPosition.NONE);
+        assertEquals(raw, assistant.getRawText());
+    }
+
 }
