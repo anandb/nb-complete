@@ -40,8 +40,15 @@ If you have multiple task repositories, specify which one to add to:
 
 If only one repository exists, it is used automatically.
 
+<div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0;">Updating, closing, and finding tasks</div>
+<ul style="margin-top: 0; margin-bottom: 0.2em;">
+<li style="margin-bottom: 0.2em;"><i>"Rename task t-3 to fix the cache"</i> — <code>update&#95;task</code></li>
+<li style="margin-bottom: 0.2em;"><i>"Mark the login-bug task as done"</i> — <code>close&#95;task</code></li>
+<li><i>"Which open tasks mention login?"</i> — <code>search&#95;task</code> (open tasks only, up to 10 matches)</li>
+</ul>
+
 <div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0.2em;">How it works</div>
-The <code>add&#95;task</code> tool creates a new task in the repository's in-memory cache, persists it to the `todo.txt` file (in a background thread), and returns the task id. The task then appears in the NetBeans Tasks Dashboard immediately.
+The <code>add&#95;task</code> tool creates a new task in the repository's in-memory cache, persists it to the `todo.txt` file (in a background thread), and returns the task id. <code>update&#95;task</code> and <code>close&#95;task</code> change an existing row the same way. The task then appears in the NetBeans Tasks Dashboard immediately.
 
 > [[MCP Tools]]
 > [[Task Repositories]]

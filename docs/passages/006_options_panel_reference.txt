@@ -18,7 +18,7 @@ This page describes every preference in the panel, organised into six sections. 
 <thead><tr><th>Preference</th><th>Default</th><th>Description</th></tr></thead>
 <tbody>
 <tr><td><strong>Path to Agent Server Binary</strong></td><td>Empty</td><td>The full path to the harness executable. If left blank, nothing runs until you pick a harness through the [[Choose Your Coding Harness]] screen. Use <strong>Browse...</strong> to pick a binary. Invalid paths show a validation error (e.g. <em>File not found</em>, <em>File is not executable</em>).</td></tr>
-<tr><td><strong>Process Arguments</strong></td><td><code>acp</code></td><td>Extra command-line arguments passed when launching the server process.</td></tr>
+<tr><td><strong>Process Arguments</strong></td><td><code>acp</code> (harness-specific)</td><td>Extra command-line arguments passed when launching the server process. The chooser fills this from the harness catalog — most agents use <code>acp</code>; [[Gemini Agent]] uses <code>--acp --model gemini-3.5-flash</code>. Change <code>--model</code> here if you want a different Gemini model. When Gemini is selected, a reminder appears under this field.</td></tr>
 <tr><td><strong>Launch through WSL (Windows only)</strong></td><td>Off</td><td>When enabled, all Harness invocations (running the daemon and token-usage stats for supported agents) are wrapped through <strong>WSL</strong> using <code>wsl.exe</code>. The resolved Windows executable is automatically translated to its WSL mount path, so custom/WinGet/Choco-shim install locations resolve correctly. If the Harness is installed as a native Linux binary inside WSL (no Windows executable found), it is invoked directly on the WSL PATH. Recommended when running on Windows for best performance and bash compatibility.</td></tr>
 <tr><td><strong>Browse...</strong></td><td>—</td><td>Opens a file chooser to select the executable.</td></tr>
 </tbody>
@@ -94,6 +94,7 @@ This page describes every preference in the panel, organised into six sections. 
 > [[Mini Assistant]] / [[Send to Assistant]]
 > [[Customising the Toolbar]]
 > [[Starting a Session]]
+> [[Gemini Agent]]
 
 
 

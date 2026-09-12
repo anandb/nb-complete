@@ -8,9 +8,9 @@
 
 ![The harness chooser listing installed and supported harnesses](../images/agent_selection.png){style="max-width:100%;"}
 
-The plugin works with several coding harnesses that speak the Agent Client Protocol: **OpenCode**, **Pi**, **Goose**, **Cursor** and **Claude**. When no harness binary is configured, the chat panel shows a chooser instead of the normal input — it lists all five supported harnesses with their icons and whether each one was found on your system.
+The plugin works with several coding harnesses that speak the Agent Client Protocol: **OpenCode**, **Pi**, **Goose**, **Cursor**, **Claude**, **Hermes**, **Gemini**, and **Oh My Pi**. When no harness binary is configured, the chat panel shows a chooser instead of the normal input — it lists every supported harness with its icon and whether it was found on your system.
 
-*   Found harnesses show the detected binary path and a **Use** button — clicking **Use** remembers that harness (and its launch arguments) and starts the server.
+*   Found harnesses show the detected binary path and a **Use** button — clicking **Use** remembers that harness (and its launch arguments) and starts the server. Gemini's default arguments include <code>--model gemini-3.5-flash</code>; change <code>--model</code> under Process Arguments in Options if you want a different model.
 *   Harnesses that aren't installed show an **Install** button — clicking it reveals an OS-specific install command for that harness. Click the command to copy it to the clipboard, install the harness in a terminal, then use **Start Server** (or the **Use** button after re-detection). Each install panel also has a **Documentation** button and any prerequisites the harness needs (for example, Node.js for the Claude adapter).
 *   The **Manual Configuration** button (gear icon) opens the Assistant settings where you can browse for any binary path yourself — useful if your harness lives outside your `PATH`.
 
@@ -19,7 +19,8 @@ Binaries found on `PATH` are never used automatically — you always make the ch
 After installing a harness — and optionally setting the binary path under `Options > Assistant` — click **Start Server** to connect.
 
 
-> [[OpenCode]] / [[PI Agent]] / [[Goose Agent]] / [[Hermes Agent]]
+> [[OpenCode]] / [[PI Agent]] / [[Goose Agent]] / [[Cursor Agent]] / [[Claude Agent]]
+> [[Hermes Agent]] / [[Gemini Agent]] / [[Oh My Pi Agent]]
 > [[Post Install]]
 > [[Restarting the server]]
 > [[Options Panel Reference]]

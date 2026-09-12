@@ -6,7 +6,7 @@
   <div>[[Index->Topic Index]]</div>
 </div>
 
-You don't have to wait for the assistant to finish before typing your next message. While the agent is working (Go/Stop button shows the running state), anything you send is <b>queued</b> instead of interrupting the current turn.
+On agents that drop an in-flight prompt if you send another (see below), you don't have to wait for the assistant to finish before typing. While the agent is working (Go/Stop button shows the running state), anything you send is <b>queued</b> instead of interrupting the current turn.
 
 When the turn ends, all queued messages are combined into a single prompt and sent automatically. The queue button appears on the toolbar with a small wobble animation while messages are waiting:
 
@@ -15,7 +15,7 @@ When the turn ends, all queued messages are combined into a single prompt and se
 <li><b>Cancel Queue</b> — discard all queued messages.</li>
 </ul>
 
-Queueing is available when your agent supports it (currently [[Goose Agent]]; other agents send messages directly). If you close or switch sessions before the turn ends, pending messages are cancelled with the rest of the panel state.
+Queueing is used when a second <code>session/prompt</code> would drop the in-flight turn. That is currently [[Goose Agent]], [[PI Agent]], [[Hermes Agent]], and [[Oh My Pi Agent]]. Interleaved agents ([[OpenCode]], [[Cursor Agent]], [[Claude Agent]], [[Gemini Agent]]) send immediately instead. If you close or switch sessions before the turn ends, pending messages are cancelled with the rest of the panel state.
 
 
 > [[Chat Features]]

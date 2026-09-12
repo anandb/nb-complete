@@ -10,12 +10,12 @@
 
 <a href="https://goose-docs.ai/" target="_blank" rel="noopener">Goose</a> is an open-source, general-purpose **AI agent harness** from the Agentic AI Foundation (Linux Foundation). It ships as a native desktop app, a CLI, and an embeddable API — all built in Rust — and works with 15+ LLM providers (Anthropic, OpenAI, Google, Ollama, OpenRouter, Bedrock, …). Goose speaks the <a href="https://agentclientprotocol.com" target="_blank" rel="noopener">Agent Client Protocol</a> natively, and connects to 70+ extensions via the <a href="https://modelcontextprotocol.io/" target="_blank" rel="noopener">Model Context Protocol</a>.
 
-Install the CLI, then configure <code>goose</code> as the Harness in Options (Assistant > System) — make sure the binary is on your <code>PATH</code> or specify the full path .
+Install the CLI, then configure <code>goose</code> as the Harness in Options (Assistant > Assistant Service) — make sure the binary is on your <code>PATH</code> or specify the full path.
 
 What works with Goose in BeanBot:
 
-- **[[Queuing Messages]]** — while Goose is working, your messages are queued and combined into one prompt at turn end (currently the only agent that needs queuing support).
-- **[[MCP Tools]]** — the plugin hands Goose a token-protected MCP server URL; the AI can read files, navigate the editor, and run git commands from the conversation.
+- **[[Queuing Messages]]** — while Goose is working, your messages are queued and combined into one prompt at turn end (Goose, Pi, Hermes, and Oh My Pi all need this; interleaved agents send immediately).
+- **[[MCP Tools]]** — the plugin hands Goose a token-protected MCP server URL; the AI can read files, navigate the editor, and run git or Mercurial commands from the conversation.
 
 > [[Post Install]]
 > [[Starting a Session]]

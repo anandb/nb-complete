@@ -8,11 +8,15 @@
 
 Hitting `Tab` when in the input text-area or pressing the small gear icon, will slide open the chat options panel, by default you'll see pre-configured agents for that harness, most of the harnesses also allow custom agents to be defined, pick one of the models supported by the providers you have configured, and a suitable Thinking Level, the actual levels displayed depend on the exact model selected. The gear would have turned into a down arrow button, click the button to close the options panel. You can also use the `/agents`, `/models`, and `/level` slash commands to open these selectors.
 
+[[Gemini Agent]] does not offer an in-session model dropdown — set <code>--model</code> in Process Arguments instead (see [[Options Panel Reference]]). The [[New Session Confirm Bar]] prompt omits "model" for Gemini for the same reason.
+
 
 > [[Commands]] / [[Slash Command Autocomplete]]
 > [[Input Area Keys]]
 > [[New Session Confirm Bar]]
 > [[Offline/Private Coding (Local LLMs)]]
+> [[Gemini Agent]]
+> [[Options Panel Reference]]
 
 ![Options panel with the agent, model and thinking level selectors](../images/picking_an_agent,_model_and_thinking_level-1.png){style="max-width:100%;"}
 

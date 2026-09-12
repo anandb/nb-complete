@@ -22,16 +22,21 @@ The plugin runs a small built-in MCP (Model Context Protocol) server inside the 
 <tr><td><code>apply&#95;patch</code></td><td>Applies a unified diff to a project file, with an optional dry run.</td></tr>
 <tr><td><code>list&#95;directory</code></td><td>Lists files and subdirectories of a project directory, optionally recursively.</td></tr>
 <tr><td><code>search&#95;project</code></td><td>Searches project files for a text pattern or regex, with an optional glob filter and subdirectory restriction.</td></tr>
-<tr><td><code>git&#95;status</code> / <code>git&#95;diff</code></td><td>Runs git status (short form) or git diff (unstaged, staged, or a specific revision) for a repository inside an open project.</td></tr>
+<tr><td><code>git&#95;status</code> / <code>git&#95;diff</code> / <code>git&#95;log</code></td><td>Runs git status (short form), git diff (unstaged, staged, or a specific revision), or git log from an open project's repository — not a parent checkout above the project.</td></tr>
+<tr><td><code>file&#95;history</code></td><td>Commit history of a single file in that git repository, including each version's patch.</td></tr>
+<tr><td><code>hg&#95;status</code> / <code>hg&#95;diff</code> / <code>hg&#95;log</code></td><td>Same operations for Mercurial, from an open project's <code>.hg</code> repository.</td></tr>
+<tr><td><code>hg&#95;file&#95;hist</code></td><td>Commit history of a single file in that Mercurial repository.</td></tr>
+<tr><td><code>update&#95;task</code> / <code>close&#95;task</code> / <code>search&#95;task</code></td><td>Change, complete, or find tasks in a BeanBot Tasks repository. See [[Adding Tasks via AI]].</td></tr>
 </tbody>
 </table>
 
-All filesystem and git tools are confined to your currently open projects — paths outside them (including symlinks that point outside) are rejected. The MCP server binds to <code>127.0.0.1</code> and verifies a per-instance token, so it never accepts connections from outside your machine; agents that cannot carry tokens (the [[PI Agent]]) connect without one. The server port can be fixed in Options (Assistant > System); by default the OS picks a random free port. It only activates when your Harness advertises MCP support. When the AI uses one of these tools, the call and its result appear in the chat as a collapsible tool bubble with the tag icon — same as any other tool output.
+All filesystem, git, and Mercurial tools are confined to your currently open projects — paths outside them (including symlinks that point outside) are rejected. A failed git or hg command is reported as an error, not a successful tool result. The MCP server binds to <code>127.0.0.1</code> and verifies a per-instance token, so it never accepts connections from outside your machine; agents that cannot carry tokens (the [[PI Agent]]) connect without one. The server port can be fixed in Options (Assistant > System); by default the OS picks a random free port. It only activates when your Harness advertises MCP support. When the AI uses one of these tools, the call and its result appear in the chat as a collapsible tool bubble with the tag icon — same as any other tool output.
 
 
 > [[Thinking and Tool Responses]]
 > [[Git Stashes as "Code Drafts" (using Stash Diff)]]
 > [[Renaming the session]]
 > [[Automatic Context Capture]]
+> [[Adding Tasks via AI]]
 
 

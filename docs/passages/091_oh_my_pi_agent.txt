@@ -12,16 +12,18 @@
 
 **Oh My Pi (omp)** is an open-source, terminal-based AI coding agent forked from the Pi agent, designed to be a "batteries-included" version integrating full IDE-like capabilities into a terminal harness.
 
-The executable you configure in BeanBot is <code>omp</code>, run with the default launch argument <code>acp</code>. 
+The executable you configure in BeanBot is <code>omp</code>, run with the default launch argument <code>acp</code>. BeanBot does not ship install commands or a documentation URL for Oh My Pi yet — use [[Choose Your Coding Harness]] **Manual Configuration** (or put <code>omp</code> on your <code>PATH</code>) after you install it yourself.
 
 Oh My Pi Agent in BeanBot supports:
 - **Editor Context**: Seamlessly injects the active editor state into agent prompts.
 - **MCP Servers**: Automatically registers and injects the plug-in's [[MCP Tools]].
-- **Message Queueing**: Queues and batches user prompts at turn end.
+- **[[Queuing Messages]]**: Queues and batches user prompts at turn end.
 - **Session Management**: Supports full session lists and state persistence.
 
 > [[Post Install]]
 > [[Starting a Session]]
+> [[Choose Your Coding Harness]]
 > [[MCP Tools]]
 > [[Permission Requests]]
 > [[Picking an Agent, Model and Thinking Level]]
+> [[Queuing Messages]]

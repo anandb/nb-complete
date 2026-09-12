@@ -12,23 +12,28 @@
 
 <a href="https://geminicli.com" target="_blank" rel="noopener">Gemini CLI</a> is an AI agent command-line tool. It natively supports communication with external tools using the <a href="https://agentclientprotocol.com" target="_blank" rel="noopener">Agent Client Protocol</a>.
 
-The executable you configure in BeanBot is <code>gemini</code>, run with the default launch argument <code>--acp --model gemini-3.5-flash</code>.
+The executable you configure in BeanBot is <code>gemini</code>, run with the default launch argument <code>--acp --model gemini-3.5-flash</code>. When you pick Gemini in the harness chooser or Options, BeanBot reminds you to change <code>--model</code> in Process Arguments if you want a different model.
 
 Gemini Agent in BeanBot supports:
 - **Editor Context**: Seamlessly injects the active editor state into agent prompts.
 - **MCP Servers**: Automatically registers and injects the plug-in's [[MCP Tools]].
-- **Client-Side Session Tracking**: Since Gemini CLI does not natively maintain session lists, BeanBot manages session state locally on the client.
+- **Client-Side Session Tracking**: Gemini CLI does not publish a session list, so BeanBot keeps session IDs on this machine. Sessions whose project is closed are hidden from the dropdown until that project is open again; IDs are kept so the chat can return. [[Archiving Sessions]] is local only.
+- **Interleaved prompts**: a new message is sent immediately (it does not wait in the [[Queuing Messages]] toolbar queue). See [[Cursor Agent]] for the same style.
 
 ### Model Selection
 
 Since Gemini CLI does not support changing the model dynamically via <code>session/set_config_option</code> once the session has started, you can configure your preferred model in one of three ways:
 
-1. **Launch Arguments**: In the plugin options (<code>Tools > Options > Assistant > System</code>), append your desired model to the arguments, e.g., <code>--acp --model gemini-2.5-pro</code>.
+1. **Launch Arguments**: In the plugin options (<code>Tools > Options > Assistant</code>, Process Arguments), set e.g. <code>--acp --model gemini-2.5-pro</code>.
 2. **Settings File**: Define the default model in your global configuration file at <code>~/.gemini/settings.json</code>.
 3. **Environment Variable**: Set the <code>GEMINI_MODEL</code> environment variable before launching NetBeans.
 
 > [[Post Install]]
 > [[Starting a Session]]
+> [[Choose Your Coding Harness]]
+> [[Options Panel Reference]]
 > [[MCP Tools]]
 > [[Permission Requests]]
 > [[Picking an Agent, Model and Thinking Level]]
+> [[Archiving Sessions]]
+> [[Queuing Messages]]

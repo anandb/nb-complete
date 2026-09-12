@@ -19,8 +19,11 @@
 
 The executable you configure in BeanBot is <code>cursor-agent</code>. The ACP entry point is the CLI itself, run with `agent acp`. Cursor sends MCP server config and editor context automatically.
 
+Cursor is **interleaved**: you can send another message while a turn is still running. The new prompt is issued immediately (it is not held in the [[Queuing Messages]] toolbar queue). The previous request finishes as cancelled; the input stays busy until the latest prompt completes.
+
 > [[Post Install]]
 > [[Starting a Session]]
 > [[MCP Tools]]
 > [[Permission Requests]]
 > [[Picking an Agent, Model and Thinking Level]]
+> [[Queuing Messages]]
