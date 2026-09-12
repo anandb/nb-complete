@@ -97,6 +97,9 @@ class HarnessCatalogTest {
         assertTrue(HarnessCatalog.OMP.supportsMcpServer());
         assertTrue(HarnessCatalog.OMP.supportsSessionSetMode());
         assertTrue(HarnessCatalog.OMP.supportsSessionList());
+        assertEquals("irm https://omp.sh/install.ps1 | iex", HarnessCatalog.OMP.installWindows());
+        assertEquals("curl -fsSL https://omp.sh/install | sh", HarnessCatalog.OMP.installLinux());
+        assertEquals("https://omp.sh/docs/acp", HarnessCatalog.OMP.docsUrl());
     }
 
     @Test

@@ -8,11 +8,19 @@
 
 <i style="opacity: 0.7;">Experimental — BeanBot's support for this harness is under active development and may change without notice.</i>
 
+### Install
+
+- **macOS / Linux**: `curl -fsSL https://omp.sh/install | sh`
+- **Windows (PowerShell)**: `irm https://omp.sh/install.ps1 | iex`
+- **Homebrew**: `brew install can1357/tap/omp`
+
+Then run <code>omp</code> in a terminal and use <code>/login</code> to authenticate a model provider. ACP docs: <a href="https://omp.sh/docs/acp" target="_blank" rel="noopener">omp.sh/docs/acp</a>.
+
 ### About
 
-**Oh My Pi (omp)** is an open-source, terminal-based AI coding agent forked from the Pi agent, designed to be a "batteries-included" version integrating full IDE-like capabilities into a terminal harness.
+**Oh My Pi (omp)** is an open-source, terminal-based AI coding agent forked from the Pi agent, designed to be a "batteries-included" version integrating full IDE-like capabilities into a terminal harness. Source: <a href="https://github.com/can1357/oh-my-pi" target="_blank" rel="noopener">can1357/oh-my-pi</a>.
 
-The executable you configure in BeanBot is <code>omp</code>, run with the default launch argument <code>acp</code>. BeanBot does not ship install commands or a documentation URL for Oh My Pi yet — use [[Choose Your Coding Harness]] **Manual Configuration** (or put <code>omp</code> on your <code>PATH</code>) after you install it yourself.
+The executable you configure in BeanBot is <code>omp</code>, run with the default launch argument <code>acp</code>.
 
 Oh My Pi Agent in BeanBot supports:
 - **Editor Context**: Seamlessly injects the active editor state into agent prompts.

@@ -131,7 +131,11 @@ public final class HarnessCatalog {
             List.of("omp"), "acp",
             true, true, true, false, true, true, true, true, true, true,
             "",
-            "", "", "", "", "");
+            "irm https://omp.sh/install.ps1 | iex",
+            "curl -fsSL https://omp.sh/install | sh",
+            "curl -fsSL https://omp.sh/install | sh",
+            "Authenticate a model provider in a terminal (omp, then /login) before ACP. The ACP entry point is omp acp.",
+            "https://omp.sh/docs/acp");
 
     /** Fallback for unknown or unconfigured harnesses. */
     public static final Harness UNKNOWN = new Harness(
