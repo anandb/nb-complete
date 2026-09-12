@@ -1313,27 +1313,25 @@ public class SessionManager implements SessionQuery, SessionControl {
         }
     }
 
-    /** Sends the critical rules followed by the preamble prompt for a new session.
-     *  Splits preamble by "---" separators and sends each chunk separately.
-     *  @return true if a preamble was sent, false if empty/skipped */
+    /** Sends the startup prompt (critical rules + WSL guidance + preamble)
+     *  for a new session, gated by the Enable Session Preamble checkbox.
+     *  Returns false when nothing is sent — callers notify preamble-done.
+     *  Splits the prompt by "---" separators and sends each chunk separately.
+     *  @return true if a prompt was sent, false if skipped/empty */
     private boolean sendPreamble(String sessionId) {
+        // Checkbox off = no startup prompt at all: no critical rules, no
+        // WSL block, no user preamble.
+        if (!PluginSettings.isPreambleEnabled()) {
+            return false;
+        }
         String rules = PluginSettings.getCriticalRules();
         String preamble = PluginSettings.getPreamble();
-        Preferences prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
-        boolean cavemanMode = prefs.getBoolean(PreferenceKeys.CAVEMAN_MODE, false);
 
-        // Combine critical rules, caveman instruction, and preamble
+        // Combine critical rules and preamble (caveman terseness now lives
+        // in the preamble's Communication mode)
         StringBuilder combined = new StringBuilder();
         if (!isBlank(rules)) {
             combined.append(rules);
-        }
-        if (cavemanMode) {
-            if (!combined.isEmpty()) {
-                combined.append("\n\n");
-            }
-            combined.append("Respond in minimal, terse prose. Short sentences. No filler. ")
-                .append("Code, commands, and file paths stay exact. ")
-                .append("When explaining, use the fewest words that convey the meaning.");
         }
         if (!isBlank(preamble)) {
             if (!combined.isEmpty()) {

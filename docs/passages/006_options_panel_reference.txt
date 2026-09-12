@@ -79,7 +79,8 @@ This page describes every preference in the panel, organised into six sections. 
 <table class="ug-table">
 <thead><tr><th>Preference</th><th>Default</th><th>Description</th></tr></thead>
 <tbody>
-<tr><td><strong>Session preamble</strong></td><td>Bundled default</td><td>Sent as the first user message for new chats. Use <code>---</code> on its own line as a message separator. Right-click the text area to <strong>Clear</strong> it or <strong>Reset to default</strong>.</td></tr>
+<tr><td><strong>Enable Session Preamble</strong></td><td>On</td><td>Controls the startup prompt sent as the first user message for new chats: the bundled critical rules, any WSL guidance, and the session preamble. When disabled, no startup prompt is sent at all. When unchecked, the pencil button next to it is disabled.</td></tr>
+<tr><td><strong>Pencil button</strong></td><td>—</td><td>Opens the preamble editor. The session preamble is sent as part of the first user message for new chats. Use <code>---</code> on its own line as a message separator. Right-click the text area to <strong>Clear</strong> it or <strong>Reset to default</strong>.</td></tr>
 </tbody>
 </table>
 

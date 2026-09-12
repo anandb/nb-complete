@@ -26,7 +26,7 @@ When directives conflict, resolve in this order (highest first):
 
 ## Core Behavioral Modes
 
-*   **Communication:** Keep conversational updates concise, direct, and free of fluff. Reserve full, formal technical language for plans, specs, code, and code reviews.
+*   **Communication:** Keep conversational updates concise, direct, and free of fluff. Reserve full, formal technical language for plans, specs, code, and code reviews. Respond in minimal, terse prose: short sentences, no filler; code, commands, and file paths stay exact; use the fewest words that convey the meaning.
 *   **Fast-Track Exemption:** For trivial tasks (e.g., single-file modifications under ~10 lines or simple typos), skip `tasks/todo.md` creation and Plan Mode to avoid unnecessary overhead. Proceed directly to execution and verification.
 *   **Session Management:** After 5 turns, evaluate conversation history to generate a relevant session title and suggest renaming the session.
 

@@ -1,0 +1,145 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 90.259674 90.259674" width="24" height="24" version="1.1">
+<defs
+     id="defs8">
+    <linearGradient
+       id="bodyGradient"
+       x1="29.243145"
+       y1="12.483695"
+       x2="29.243145"
+       y2="72.151527"
+       gradientTransform="scale(0.84635221,1.1815412)"
+       gradientUnits="userSpaceOnUse">
+      <stop
+         offset="0%"
+         style="stop-color:#E8B95E;stop-opacity:1"
+         id="stop1" />
+      <stop
+         offset="50%"
+         style="stop-color:#FFD78F;stop-opacity:1"
+         id="stop2" />
+      <stop
+         offset="100%"
+         style="stop-color:#D0A34A;stop-opacity:1"
+         id="stop3" />
+    </linearGradient>
+    <linearGradient
+       id="metalGradient"
+       x1="13.711828"
+       y1="26.623911"
+       x2="41.689499"
+       y2="26.623911"
+       gradientTransform="scale(1.8050109,0.55401326)"
+       gradientUnits="userSpaceOnUse">
+      <stop
+         offset="0%"
+         style="stop-color:#CCCCCC;stop-opacity:1"
+         id="stop4" />
+      <stop
+         offset="50%"
+         style="stop-color:#FFFFFF;stop-opacity:1"
+         id="stop5" />
+      <stop
+         offset="100%"
+         style="stop-color:#A0A0A0;stop-opacity:1"
+         id="stop6" />
+    </linearGradient>
+    <linearGradient
+       id="eraserGradient"
+       x1="12.796653"
+       y1="3.3846741"
+       x2="12.796653"
+       y2="29.495016"
+       gradientTransform="scale(1.9340995,0.51703649)"
+       gradientUnits="userSpaceOnUse">
+      <stop
+         offset="0%"
+         style="stop-color:#EF9A9A;stop-opacity:1"
+         id="stop7" />
+      <stop
+         offset="100%"
+         style="stop-color:#E57373;stop-opacity:1"
+         id="stop8" />
+    </linearGradient>
+  </defs>
+  <g
+     transform="rotate(45,49.255454,39.951276)"
+     id="g12">
+    <rect
+       x="25"
+       y="15"
+       width="50"
+       height="70"
+       rx="4"
+       fill="url(#bodyGradient)"
+       stroke="#8c6e2d"
+       stroke-width="0.5"
+       id="rect8"
+       style="fill:url(#bodyGradient)" />
+    <rect
+       x="35"
+       y="15"
+       width="10"
+       height="70"
+       fill="#ffebc1"
+       opacity="0.8"
+       id="rect9" />
+    <rect
+       x="55"
+       y="15"
+       width="10"
+       height="70"
+       fill="#ffebc1"
+       opacity="0.8"
+       id="rect10" />
+    <polygon
+       points="25,85 50,110 75,85 "
+       fill="#eadcc1"
+       stroke="#8c6e2d"
+       stroke-width="0.5"
+       id="polygon10" />
+    <polyline
+       points="45,89 48,105 52,105 55,89"
+       fill="none"
+       stroke="#a67d3d"
+       stroke-width="0.3"
+       opacity="0.6"
+       id="polyline10" />
+    <polygon
+       points="46,106 50,110 54,106 "
+       fill="#333333"
+       id="polygon11" />
+    <rect
+       x="25"
+       y="15"
+       width="50"
+       height="15"
+       fill="url(#metalGradient)"
+       stroke="#808080"
+       stroke-width="0.5"
+       id="rect11"
+       style="fill:url(#metalGradient)" />
+    <line
+       x1="25"
+       y1="20"
+       x2="75"
+       y2="20"
+       stroke="#808080"
+       stroke-width="0.5"
+       id="line11" />
+    <line
+       x1="25"
+       y1="25"
+       x2="75"
+       y2="25"
+       stroke="#808080"
+       stroke-width="0.5"
+       id="line12" />
+    <path
+       d="M 25,15 H 75 V 10 Q 75,2 50,2 25,2 25,10 Z"
+       fill="url(#eraserGradient)"
+       stroke="#c62828"
+       stroke-width="0.5"
+       id="path12"
+       style="fill:url(#eraserGradient)" />
+  </g>
+</svg>

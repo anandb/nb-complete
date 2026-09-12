@@ -22,4 +22,15 @@ class PluginSettingsTest {
         PluginSettings.setMiniAssistantEnabled(true);
         assertTrue(prefs.getBoolean(PreferenceKeys.MINI_ASSISTANT_ENABLED, false));
     }
+
+    @Test
+    void testPreambleToggleRoundTrip() {
+        // Assert the persisted values only: the cached accessor is updated
+        // asynchronously by the PreferenceChangeListener and can briefly lag.
+        java.util.prefs.Preferences prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
+        PluginSettings.setPreambleEnabled(false);
+        assertFalse(prefs.getBoolean(PreferenceKeys.PREAMBLE_ENABLED, true));
+        PluginSettings.setPreambleEnabled(true);
+        assertTrue(prefs.getBoolean(PreferenceKeys.PREAMBLE_ENABLED, false));
+    }
 }

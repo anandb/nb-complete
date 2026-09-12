@@ -42,6 +42,8 @@ public final class PluginSettings {
     private static volatile boolean cachedMiniAssistantEnabled = true;
     /** Cached task-repository toggle — volatile for cross-thread visibility. Defaults to true. */
     private static volatile boolean cachedTaskRepositoryEnabled = true;
+    /** Cached preamble toggle — volatile for cross-thread visibility. Defaults to true. */
+    private static volatile boolean cachedPreambleEnabled = true;
     /** Cached MCP server toggle — volatile for cross-thread visibility. Defaults to true. */
     private static volatile boolean cachedMcpServerEnabled = true;
     /** Cached internal MCP server port. 0 = pick a random free port. */
@@ -73,6 +75,7 @@ public final class PluginSettings {
         cachedAutoBackupChanges = prefs.getBoolean(PreferenceKeys.AUTO_BACKUP_CHANGES, true);
         cachedMiniAssistantEnabled = prefs.getBoolean(PreferenceKeys.MINI_ASSISTANT_ENABLED, true);
         cachedTaskRepositoryEnabled = prefs.getBoolean(PreferenceKeys.TASK_REPOSITORY_ENABLED, true);
+        cachedPreambleEnabled = prefs.getBoolean(PreferenceKeys.PREAMBLE_ENABLED, true);
         cachedMcpServerEnabled = prefs.getBoolean(PreferenceKeys.MCP_SERVER_ENABLED, true);
         cachedMcpServerPort = prefs.getInt(PreferenceKeys.MCP_SERVER_PORT, 0);
         cachedMarkdownProjectEnabled = prefs.getBoolean(PreferenceKeys.ACTIONS_MARKDOWN_PROJECT, true);
@@ -188,6 +191,8 @@ public final class PluginSettings {
             cachedMiniAssistantEnabled = evt.getNewValue() == null || Boolean.parseBoolean(evt.getNewValue());
         } else if (PreferenceKeys.TASK_REPOSITORY_ENABLED.equals(evt.getKey())) {
             cachedTaskRepositoryEnabled = evt.getNewValue() == null || Boolean.parseBoolean(evt.getNewValue());
+        } else if (PreferenceKeys.PREAMBLE_ENABLED.equals(evt.getKey())) {
+            cachedPreambleEnabled = evt.getNewValue() == null || Boolean.parseBoolean(evt.getNewValue());
         } else if (PreferenceKeys.MCP_SERVER_ENABLED.equals(evt.getKey())) {
             cachedMcpServerEnabled = evt.getNewValue() == null || Boolean.parseBoolean(evt.getNewValue());
         } else if (PreferenceKeys.MCP_SERVER_PORT.equals(evt.getKey())) {
@@ -323,6 +328,17 @@ public final class PluginSettings {
         cachedTaskRepositoryEnabled = enabled;
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
                 .putBoolean(PreferenceKeys.TASK_REPOSITORY_ENABLED, enabled);
+    }
+
+    /** Whether the user-editable session preamble is sent at turn start. */
+    public static boolean isPreambleEnabled() {
+        return cachedPreambleEnabled;
+    }
+
+    public static void setPreambleEnabled(boolean enabled) {
+        cachedPreambleEnabled = enabled;
+        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                .putBoolean(PreferenceKeys.PREAMBLE_ENABLED, enabled);
     }
 
     /** Whether the embedded MCP server is enabled. */

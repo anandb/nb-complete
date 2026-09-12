@@ -79,7 +79,6 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
     private JCheckBox taskRepositoryCheckbox;
     private JCheckBox markdownProjectCheckbox;
     private JCheckBox mcpServerCheckbox;
-    private JCheckBox cavemanModeCheckbox;
     private JSpinner mcpPortSpinner;
     private JCheckBox useWslCheckbox;
     private JSpinner idleTimeoutSpinner;
@@ -95,6 +94,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
     private JComboBox<String> toolbarIconCombo;
     private JComboBox<String> chatFontCombo;
     private JButton editPreambleButton;
+    private JCheckBox preambleEnabledCheckbox;
     private JSpinner lineHeightCorrectionSpinner;
 
     private boolean userEditedPath;
@@ -134,7 +134,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         taskRepositoryCheckbox = new JCheckBox();
         markdownProjectCheckbox = new JCheckBox();
         mcpServerCheckbox = new JCheckBox();
-        cavemanModeCheckbox = new JCheckBox();
+        preambleEnabledCheckbox = new JCheckBox();
         iconLabel = new JLabel();
         iconPathField = new JTextField(40);
         iconBrowseButton = new JButton();
@@ -323,14 +323,24 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         behaviorPanel.add(autoBackupChangesCheckbox, UIUtils.createGbc(0, ++row, 1.0, 0, GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST,
                 new Insets(0, 12, 5, 0)));
 
-        cavemanModeCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_CavemanMode"));
-        cavemanModeCheckbox.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_CavemanMode"));
-        cavemanModeCheckbox.addActionListener(evt -> controller.changed());
-        behaviorPanel.add(cavemanModeCheckbox, UIUtils.createGbc(0, ++row, 1.0, 0, GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST,
-                new Insets(0, 12, 5, 0)));
-
-        editPreambleButton = new JButton(NbBundle.getMessage(ACPOptionsPanel.class, "BTN_EditPreamble"));
+        editPreambleButton = new JButton();
+        editPreambleButton.setIcon(ThemeManager.getIcon("pencil.svg", 26));
+        // Zero margin keeps the button about as tall as the checkbox rows so
+        // the vertical spacing stays uniform.
+        editPreambleButton.setMargin(new Insets(0, 0, 0, 0));
+        editPreambleButton.putClientProperty("JButton.buttonType", "toolButton");
+        editPreambleButton.setContentAreaFilled(false);
+        editPreambleButton.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_PreambleEditor"));
         editPreambleButton.addActionListener(evt -> openPreambleDialog());
+
+        preambleEnabledCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_PreambleEnabled"));
+        preambleEnabledCheckbox.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_PreambleEnabled"));
+        preambleEnabledCheckbox.addActionListener(evt -> {
+            editPreambleButton.setEnabled(preambleEnabledCheckbox.isSelected());
+            controller.changed();
+        });
+        behaviorPanel.add(preambleEnabledCheckbox, UIUtils.createGbc(0, ++row, 1.0, 0, GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST,
+                new Insets(0, 12, 5, 0)));
         behaviorPanel.add(editPreambleButton, UIUtils.createGbc(3, row, 0.0, 0, GridBagConstraints.NONE,
                 GridBagConstraints.EAST, new Insets(0, 0, 5, 12)));
 
@@ -604,7 +614,9 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         autoBackupChangesCheckbox.setSelected(PluginSettings.isAutoBackupChanges());
         checkForUpdatesCheckbox.setSelected(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean(PreferenceKeys.CHECK_FOR_UPDATES, true));
         Preferences editorPrefs = MimeLookup.getLookup(MimePath.EMPTY).lookup(Preferences.class);
-        lineHeightCorrectionSpinner.setValue((double) editorPrefs.getFloat(SimpleValueNames.LINE_HEIGHT_CORRECTION, 1.0f));
+        preambleEnabledCheckbox.setSelected(PluginSettings.isPreambleEnabled());
+        editPreambleButton.setEnabled(preambleEnabledCheckbox.isSelected());
+        autoBackupChangesCheckbox.setSelected(PluginSettings.isAutoBackupChanges());
         idleTimeoutSpinner.setValue(PluginSettings.getSessionIdleTimeout());
         maxMessagesSpinner.setValue(PluginSettings.getMaxMessages());
         previousIconPath = PluginSettings.getCustomUserIcon();
@@ -632,7 +644,6 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         mcpServerCheckbox.setSelected(PluginSettings.isMcpServerEnabled());
         mcpPortSpinner.setValue(PluginSettings.getMcpServerPort());
         useWslCheckbox.setSelected(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean(PreferenceKeys.USE_WSL, false));
-        cavemanModeCheckbox.setSelected(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean(PreferenceKeys.CAVEMAN_MODE, false));
         updateGeminiModelHint();
     }
 
@@ -668,6 +679,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).put(
                 PreferenceKeys.ACP_HARNESS_DISPLAY_NAME, h != null ? h.displayName() : "");
         PluginSettings.setPreamble(preambleText);
+        PluginSettings.setPreambleEnabled(preambleEnabledCheckbox.isSelected());
         boolean changedCombine = combineCheckbox.isSelected()
                 != NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean(PreferenceKeys.COMBINE_TOOL_THOUGHT, true);
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean(PreferenceKeys.ECHO_USER_INPUT, echoCheckbox.isSelected());
@@ -711,7 +723,6 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         PluginSettings.setMcpServerEnabled(mcpServerCheckbox.isSelected());
         PluginSettings.setMcpServerPort((Integer) mcpPortSpinner.getValue());
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean(PreferenceKeys.USE_WSL, useWslCheckbox.isSelected());
-        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean(PreferenceKeys.CAVEMAN_MODE, cavemanModeCheckbox.isSelected());
 
         String newIconPath = iconPathField.getText();
         String oldPath = previousIconPath != null ? previousIconPath : "";
