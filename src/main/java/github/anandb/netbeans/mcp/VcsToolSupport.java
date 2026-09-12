@@ -51,14 +51,23 @@ final class VcsToolSupport {
     }
 
     static ResolvedRepo resolveRepo(String requestedDir, String markerDir, String notFoundMessage) {
-        String repoDir = isBlank(requestedDir) ? findRoot(markerDir) : requestedDir;
-        if (repoDir == null) {
+        if (isBlank(requestedDir)) {
+            String projectRoot = ProjectPathGuard.firstOpenProjectRoot();
+            if (projectRoot == null || VcsUtils.findRoot(projectRoot, markerDir) == null) {
+                return new ResolvedRepo(null, Map.of("status", "error", "message", notFoundMessage));
+            }
+            // git/hg accept a subdirectory of the VCS root. Default cwd is the
+            // open project, not the walked-up repo root, so a nested NetBeans
+            // project is not rejected as "outside the open projects".
+            return new ResolvedRepo(projectRoot, null);
+        }
+        if (!isInOpenProject(requestedDir)) {
+            return new ResolvedRepo(null, outsideProjectError(requestedDir));
+        }
+        if (VcsUtils.findRoot(requestedDir, markerDir) == null) {
             return new ResolvedRepo(null, Map.of("status", "error", "message", notFoundMessage));
         }
-        if (!isInOpenProject(repoDir)) {
-            return new ResolvedRepo(null, outsideProjectError(repoDir));
-        }
-        return new ResolvedRepo(repoDir, null);
+        return new ResolvedRepo(requestedDir, null);
     }
 
     static ResolvedCount maxCount(Integer requested, int defaultValue, int min, int max) {

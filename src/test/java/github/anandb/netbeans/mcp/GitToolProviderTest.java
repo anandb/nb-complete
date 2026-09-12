@@ -163,15 +163,29 @@ class GitToolProviderTest {
     }
 
     @Test
-    void gitStatusRejectsRepositoryOutsideOpenProject() throws Exception {
-        // Project is a subdirectory of the repo: the walked-up repo root is
-        // outside the open project, so the containment guard must reject it.
+    void gitStatusDefaultsToNestedProjectDirectory() throws Exception {
+        File repo = initGitRepo(tempDir.resolve("repo").toFile());
+        File projectRoot = new File(repo, "sub");
+        assertTrue(projectRoot.mkdirs());
+        openProjectAt(projectRoot);
+        assertTrue(new File(projectRoot, "notes.txt").createNewFile());
+
+        Map<String, Object> result = statusExecutor().execute(new GitStatusInput(null));
+
+        assertEquals("ok", result.get("status"));
+        assertTrue(((String) result.get("output")).contains("??"),
+                "git status from a nested NB project should succeed (cwd is the project, not the parent repo root): "
+                        + result.get("output"));
+    }
+
+    @Test
+    void gitStatusRejectsExplicitRepoDirOutsideOpenProject() throws Exception {
         File repo = initGitRepo(tempDir.resolve("repo").toFile());
         File projectRoot = new File(repo, "sub");
         assertTrue(projectRoot.mkdirs());
         openProjectAt(projectRoot);
 
-        Map<String, Object> result = statusExecutor().execute(new GitStatusInput(null));
+        Map<String, Object> result = statusExecutor().execute(new GitStatusInput(repo.getAbsolutePath()));
 
         assertEquals("error", result.get("status"));
         assertEquals("Path is outside the open projects: " + repo.getAbsolutePath(),

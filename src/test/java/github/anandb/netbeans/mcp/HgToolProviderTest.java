@@ -206,15 +206,29 @@ class HgToolProviderTest {
     }
 
     @Test
-    void hgStatusRejectsRepositoryOutsideOpenProject() throws Exception {
-        // Project is a subdirectory of the repo: the walked-up repo root is
-        // outside the open project, so the containment guard must reject it.
+    void hgStatusDefaultsToNestedProjectDirectory() throws Exception {
+        File repo = initHgRepo(tempDir.resolve("repo").toFile());
+        File projectRoot = new File(repo, "sub");
+        assertTrue(projectRoot.mkdirs());
+        openProjectAt(projectRoot);
+        assertTrue(new File(projectRoot, "notes.txt").createNewFile());
+
+        Map<String, Object> result = statusExecutor().execute(new HgStatusInput(null));
+
+        assertEquals("ok", result.get("status"));
+        assertTrue(((String) result.get("output")).contains("notes.txt"),
+                "hg status from a nested NB project should list files in that directory: "
+                        + result.get("output"));
+    }
+
+    @Test
+    void hgStatusRejectsExplicitRepoDirOutsideOpenProject() throws Exception {
         File repo = initHgRepo(tempDir.resolve("repo").toFile());
         File projectRoot = new File(repo, "sub");
         assertTrue(projectRoot.mkdirs());
         openProjectAt(projectRoot);
 
-        Map<String, Object> result = statusExecutor().execute(new HgStatusInput(null));
+        Map<String, Object> result = statusExecutor().execute(new HgStatusInput(repo.getAbsolutePath()));
 
         assertEquals("error", result.get("status"));
         assertEquals("Path is outside the open projects: " + repo.getAbsolutePath(),
