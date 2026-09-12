@@ -1,5 +1,10 @@
 # Release Notes
 
+## Unreleased
+
+### Housekeeping
+- **`AgentCapabilities` folded into `HarnessCatalog`**: Capability flags live on the harness catalog record; historical notes below that name `AgentCapabilities` refer to that type (`7163770b`).
+
 ## v1.19.9 (Changes since v1.19.8)
 
 ### Fixes

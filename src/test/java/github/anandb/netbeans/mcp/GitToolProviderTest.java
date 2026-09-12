@@ -10,7 +10,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.io.File;
-import java.lang.reflect.Method;
 import java.nio.file.Path;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -155,9 +154,7 @@ class GitToolProviderTest {
         assertTrue(projectRoot.mkdirs());
         openProjectAt(projectRoot);
 
-        Method findGitRoot = GitToolProvider.class.getDeclaredMethod("findGitRoot");
-        findGitRoot.setAccessible(true);
-        String root = (String) findGitRoot.invoke(provider);
+        String root = VcsToolSupport.findRoot(".git");
 
         assertEquals(repo.getCanonicalPath(), root);
     }
@@ -425,7 +422,7 @@ class GitToolProviderTest {
 
         Map<String, Object> result = fileHistoryExecutor().execute(new FileHistoryInput(null, "untracked.txt", null));
 
-        assertEquals("ok", result.get("status"));
+        assertEquals("error", result.get("status"));
         assertTrue((Integer) result.get("exitCode") != 0,
                 "git must report failure for an untracked path");
         assertTrue(((String) result.get("output")).contains("fatal"),

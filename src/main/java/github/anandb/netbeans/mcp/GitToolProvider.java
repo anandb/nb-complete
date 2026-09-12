@@ -142,14 +142,4 @@ public class GitToolProvider {
                     }
                 });
     }
-
-    /**
-     * Locates the git repository root by walking up from the first open
-     * project's root (never {@code user.dir}, which points at the IDE
-     * launcher directory). {@code null} when no project is open or no
-     * {@code .git} directory is found above it.
-     */
-    private String findGitRoot() {
-        return VcsToolSupport.findRoot(".git");
-    }
 }

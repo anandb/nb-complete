@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import java.io.File;
+import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -108,9 +109,16 @@ final class VcsToolSupport {
         if (!isInOpenProject(absolute)) {
             return new ResolvedPath(null, outsideProjectError(absolute));
         }
-        String relative = new File(repoDir).toPath()
-                .relativize(new File(absolute).toPath()).toString();
-        return new ResolvedPath(relative, null);
+        try {
+            String canonicalRepo = new File(repoDir).getCanonicalPath();
+            String canonicalFile = new File(absolute).getCanonicalPath();
+            String relative = Path.of(canonicalRepo)
+                    .relativize(Path.of(canonicalFile)).toString();
+            return new ResolvedPath(relative, null);
+        } catch (Exception e) {
+            return new ResolvedPath(null, Map.of("status", "error", "message",
+                    "Could not resolve path: " + path));
+        }
     }
 
     static FileHistory prepareFileHistory(String requestedDir, String markerDir, String notFoundMessage,
@@ -136,12 +144,17 @@ final class VcsToolSupport {
             return Map.of("status", "error", "message", vcsLabel + " command timed out");
         }
         Map<String, Object> result = new HashMap<>();
-        result.put("status", "ok");
         result.put("exitCode", captured.exitCode());
         result.put("output", captured.output());
         if (captured.truncated()) {
             result.put("truncated", true);
         }
+        if (captured.exitCode() != 0) {
+            result.put("status", "error");
+            result.put("message", vcsLabel + " command failed");
+            return result;
+        }
+        result.put("status", "ok");
         return result;
     }
 

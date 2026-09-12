@@ -308,7 +308,7 @@ public class SessionLifecycleHandler implements SessionListener {
         // touching turnEnded.
         boolean endOfTurn = "responding_finished".equals(type) || "end_turn".equals(type);
         ProcessControl proc = processService != null ? processService.get() : null;
-        boolean queueingAgent = proc != null && proc.getCapabilities().supportsMessageQueue();
+        boolean queueingAgent = proc != null && proc.getCapabilities().requiresMessageQueue();
         boolean preambleReady = "available_commands_update".equals(type) && !queueingAgent;
 
         if (endOfTurn) {

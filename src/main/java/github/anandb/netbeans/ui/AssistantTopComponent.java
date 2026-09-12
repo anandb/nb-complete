@@ -504,7 +504,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
     /** Applies harness capability flags to queueing, token-stats, and tooltip. */
     private void applyHarnessCapabilities(HarnessCatalog.Harness caps) {
-        queueManager.setEnabled(caps.supportsMessageQueue());
+        queueManager.setEnabled(caps.requiresMessageQueue());
         updateTokenStatsButton(caps);
         JButton sendBtn = layoutBuilder.getSendBtn();
         if (sendBtn != null) {
@@ -1109,6 +1109,11 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         if (harness == null) {
             LOG.severe("Unknown harness id in onboarding selection: {0}", harnessId);
             return;
+        }
+        if ("gemini".equals(harnessId)) {
+            DialogDisplayer.getDefault().notify(new NotifyDescriptor.Message(
+                    NbBundle.getMessage(AssistantTopComponent.class, "MSG_GeminiDefaultModel"),
+                    NotifyDescriptor.INFORMATION_MESSAGE));
         }
         java.util.prefs.Preferences prefs =
                 NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);

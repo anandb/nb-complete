@@ -177,9 +177,15 @@ class OnboardingBubble extends JPanel {
         statusLabel.setForeground(theme.mutedForeground());
         textPanel.add(nameLabel);
         textPanel.add(statusLabel);
-        // Left-align the labels inside the row so the list reads as a table.
         nameLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         statusLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        if ("gemini".equals(harness.id())) {
+            JTextAreaNoWrap modelHint = new JTextAreaNoWrap(
+                    NbBundle.getMessage(OnboardingBubble.class, "MSG_GeminiDefaultModel"), 10f);
+            modelHint.setForeground(theme.mutedForeground());
+            modelHint.setAlignmentX(Component.LEFT_ALIGNMENT);
+            textPanel.add(modelHint);
+        }
 
         // "Use" for detected harnesses; "Install" toggles the show-and-copy
         // install panel for the missing ones.

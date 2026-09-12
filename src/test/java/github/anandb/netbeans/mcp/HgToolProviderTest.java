@@ -198,9 +198,7 @@ class HgToolProviderTest {
         assertTrue(projectRoot.mkdirs());
         openProjectAt(projectRoot);
 
-        java.lang.reflect.Method findHgRoot = HgToolProvider.class.getDeclaredMethod("findHgRoot");
-        findHgRoot.setAccessible(true);
-        String root = (String) findHgRoot.invoke(provider);
+        String root = VcsToolSupport.findRoot(".hg");
 
         assertEquals(repo.getCanonicalPath(), root);
     }

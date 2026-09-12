@@ -19,7 +19,8 @@ public final class HarnessCatalog {
             String iconBase,
             List<String> binaryNames,
             String launchArgs,
-            boolean supportsMessageQueue,
+            /** True when a second {@code session/prompt} drops the in-flight turn (goose). */
+            boolean requiresMessageQueue,
             boolean sendsMcpServerConfig,
             boolean injectsEditorContext,
             boolean supportsTokenStats,
@@ -121,7 +122,7 @@ public final class HarnessCatalog {
     public static final Harness GEMINI = new Harness(
             "gemini", "Gemini", "gemini",
             List.of("gemini"), "--acp --model gemini-3.5-flash",
-            true, true, true, false, true, true, true, false, false, false,
+            false, true, true, false, true, true, true, false, false, false,
             "MSG_UnsupportedModelSelection",
             "", "", "", "", "");
 

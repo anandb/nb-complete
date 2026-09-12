@@ -86,6 +86,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
     private JSpinner maxMessagesSpinner;
     private JLabel argsLabel;
     private JTextField argsField;
+    private JLabel argsHintLabel;
     private JLabel iconLabel;
     private JTextField iconPathField;
     private JButton iconBrowseButton;
@@ -162,6 +163,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
                 if (h != null) {
                     argsField.setText(h.launchArgs());
                 }
+                updateGeminiModelHint();
                 controller.changed();
             }
         });
@@ -201,7 +203,15 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         });
         argsField.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_ProcessArguments"));
         servicePanel.add(argsField, UIUtils.createGbc(1, row, 1.0, 0, GridBagConstraints.HORIZONTAL,
-                                         GridBagConstraints.WEST, new Insets(0, 0, 5, 5)));
+                                         GridBagConstraints.WEST, new Insets(0, 0, 2, 5)));
+
+        argsHintLabel = new JLabel();
+        argsHintLabel.setForeground(UIManager.getColor("Label.disabledForeground"));
+        argsHintLabel.setFont(argsHintLabel.getFont().deriveFont(Font.ITALIC, argsHintLabel.getFont().getSize() - 1f));
+        GridBagConstraints hintGbc = UIUtils.createGbc(1, ++row, 1.0, 0, GridBagConstraints.HORIZONTAL,
+                GridBagConstraints.WEST, new Insets(0, 0, 5, 5));
+        hintGbc.gridwidth = 2;
+        servicePanel.add(argsHintLabel, hintGbc);
 
         useWslCheckbox = new JCheckBox();
         useWslCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_UseWsl"));
@@ -623,6 +633,20 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         mcpPortSpinner.setValue(PluginSettings.getMcpServerPort());
         useWslCheckbox.setSelected(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean(PreferenceKeys.USE_WSL, false));
         cavemanModeCheckbox.setSelected(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean(PreferenceKeys.CAVEMAN_MODE, false));
+        updateGeminiModelHint();
+    }
+
+    /** Shows a reminder to change --model when the selected binary is Gemini. */
+    private void updateGeminiModelHint() {
+        String binName = BinaryResolver.binaryNameFromPath(getExecutablePath());
+        HarnessCatalog.Harness h = binName != null ? HarnessCatalog.byBinaryName(binName) : null;
+        if (h != null && "gemini".equals(h.id())) {
+            argsHintLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "MSG_GeminiDefaultModel"));
+            argsHintLabel.setVisible(true);
+        } else {
+            argsHintLabel.setText("");
+            argsHintLabel.setVisible(false);
+        }
     }
 
     /** Returns the currently selected/entered executable path from the combo. */

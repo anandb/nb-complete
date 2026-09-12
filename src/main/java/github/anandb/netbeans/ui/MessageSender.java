@@ -154,12 +154,12 @@ public class MessageSender {
             return;
         }
         boolean turnEnded = turnEndedCheck != null ? turnEndedCheck.getAsBoolean() : true;
-        // supportsMessageQueue decides mid-turn delivery: queueing agents (goose)
+        // requiresMessageQueue decides mid-turn delivery: queueing agents (goose)
         // drop in-flight prompts, so messages wait for turn end and go out as one
         // combined prompt at flush time. Interleaved agents (OpenCode) accept a
         // new session/prompt while a previous one is running — send immediately.
         ProcessControl proc = processService.get();
-        boolean queueingAgent = proc != null && proc.getCapabilities().supportsMessageQueue();
+        boolean queueingAgent = proc != null && proc.getCapabilities().requiresMessageQueue();
         if ((!sessionService.get().canSendMessage() || !turnEnded) && queueingAgent) {
             // Bot is actively processing (streaming / awaiting RPC completion) —
             // queue the message for later delivery when the turn ends.

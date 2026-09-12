@@ -193,7 +193,7 @@ NbPreferences.forModule(PreferenceKeys.class)
   The RPC result's `stopReason` also ends the turn.   `available_commands_update` must NOT be
   treated as turn-end: goose emits it at turn START, which made turnEnded flip mid-stream and
   let the next message bypass the queue guard (goose drops the in-flight prompt and hangs).
-  Cursor is interleaved (`supportsMessageQueue=false`): it accepts a new `session/prompt`
+  Cursor is interleaved (`requiresMessageQueue=false`): it accepts a new `session/prompt`
   while the previous RPC is in flight, then completes the old one with `stopReason=cancelled`.
   That stale completion must NOT set Ready / `turnEnded` — `MessageSender` ignores completions
   whose send generation is no longer current, and `onInternalMessageDone` is skipped while a
