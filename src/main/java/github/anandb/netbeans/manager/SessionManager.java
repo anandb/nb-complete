@@ -205,26 +205,73 @@ public class SessionManager implements SessionQuery, SessionControl {
         saveMetadataMap(cache);
     }
 
+    /**
+     * One-shot copy of pre-metadata preference keys into the JSON map.
+     * Skipped when a row already exists so {@code setHidden(false)} is not
+     * overwritten by leftover {@code session_hidden_*} keys.
+     */
+    private synchronized void migrateLegacyMetadataIfAbsent(String sessionId) {
+        Map<String, SessionMetadata> cache = getMetadataCache();
+        if (cache.containsKey(sessionId)) {
+            return;
+        }
+        String title = readLegacyString(TITLE_PREFIX, sessionId);
+        String usage = readLegacyString(USAGE_PREFIX, sessionId);
+        boolean hidden = readLegacyBoolean(HIDDEN_PREFIX, sessionId);
+        if (title == null && usage == null && !hidden) {
+            return;
+        }
+        cache.put(sessionId, new SessionMetadata(title, usage, hidden, null));
+        saveMetadataMap(cache);
+        removeLegacyKeys(TITLE_PREFIX, sessionId);
+        removeLegacyKeys(USAGE_PREFIX, sessionId);
+        removeLegacyKeys(HIDDEN_PREFIX, sessionId);
+    }
+
+    private String readLegacyString(String prefix, String sessionId) {
+        Preferences prefs = NbPreferences.forModule(SessionManager.class);
+        String agent = agentName();
+        String qualified = agent != null ? prefix + agent + "_" + sessionId : prefix + sessionId;
+        String val = prefs.get(qualified, null);
+        if (val == null && agent != null) {
+            val = prefs.get(prefix + sessionId, null);
+        }
+        return val;
+    }
+
+    private boolean readLegacyBoolean(String prefix, String sessionId) {
+        Preferences prefs = NbPreferences.forModule(SessionManager.class);
+        String agent = agentName();
+        String qualified = agent != null ? prefix + agent + "_" + sessionId : prefix + sessionId;
+        boolean val = prefs.getBoolean(qualified, false);
+        if (!val && agent != null) {
+            val = prefs.getBoolean(prefix + sessionId, false);
+        }
+        return val;
+    }
+
+    private void removeLegacyKeys(String prefix, String sessionId) {
+        Preferences prefs = NbPreferences.forModule(SessionManager.class);
+        String agent = agentName();
+        prefs.remove(prefix + sessionId);
+        if (agent != null) {
+            prefs.remove(prefix + agent + "_" + sessionId);
+        }
+    }
+
     /** @see SessionQuery#getCustomTitle(String, String) */
     @Override
     public String getCustomTitle(String sessionId, String defaultTitle) {
         if (sessionId == null) return defaultTitle;
+        migrateLegacyMetadataIfAbsent(sessionId);
         SessionMetadata meta = getMetadataCache().get(sessionId);
         String val = (meta != null) ? meta.title() : null;
         if (val == null) {
-            // Migration: check qualified key first
-            String agent = agentName();
-            String qualifiedKey = agent != null ? TITLE_PREFIX + agent + "_" + sessionId : TITLE_PREFIX + sessionId;
-            String legacy = NbPreferences.forModule(SessionManager.class).get(qualifiedKey, null);
-            if (legacy == null && agent != null) {
-                // Also check unqualified key
-                legacy = NbPreferences.forModule(SessionManager.class).get(TITLE_PREFIX + sessionId, null);
-            }
+            String legacy = readLegacyString(TITLE_PREFIX, sessionId);
             if (legacy != null) {
-                // Migrate to new consolidated metadata
-                final String legacyVal = legacy;
-                updateMetadata(sessionId, m -> new SessionMetadata(legacyVal, m.usage(), m.hidden(), m.cwd()));
-                val = legacyVal;
+                updateMetadata(sessionId, m -> new SessionMetadata(legacy, m.usage(), m.hidden(), m.cwd()));
+                removeLegacyKeys(TITLE_PREFIX, sessionId);
+                val = legacy;
             }
         }
         return decodeHtmlEntities(val != null ? val : defaultTitle);
@@ -249,7 +296,9 @@ public class SessionManager implements SessionQuery, SessionControl {
     }
 
     static void setCustomTitle(String sessionId, String title) {
-        getInstance().updateMetadata(sessionId, m -> new SessionMetadata(title, m.usage(), m.hidden(), m.cwd()));
+        SessionManager instance = getInstance();
+        instance.updateMetadata(sessionId, m -> new SessionMetadata(title, m.usage(), m.hidden(), m.cwd()));
+        instance.removeLegacyKeys(TITLE_PREFIX, sessionId);
     }
 
     // --- hidden session flag (stored locally) -------------------------------
@@ -257,29 +306,15 @@ public class SessionManager implements SessionQuery, SessionControl {
     @Override
     public boolean isHidden(String sessionId) {
         if (sessionId == null) return false;
+        migrateLegacyMetadataIfAbsent(sessionId);
         SessionMetadata meta = getMetadataCache().get(sessionId);
-        boolean val = (meta != null) && meta.hidden();
-        if (!val) {
-            // Migration: check qualified key first
-            String agent = agentName();
-            String qualifiedKey = agent != null ? HIDDEN_PREFIX + agent + "_" + sessionId : HIDDEN_PREFIX + sessionId;
-            boolean legacy = NbPreferences.forModule(SessionManager.class).getBoolean(qualifiedKey, false);
-            if (!legacy && agent != null) {
-                // Also check unqualified key
-                legacy = NbPreferences.forModule(SessionManager.class).getBoolean(HIDDEN_PREFIX + sessionId, false);
-            }
-            if (legacy) {
-                // Migrate to new consolidated metadata
-                updateMetadata(sessionId, m -> new SessionMetadata(m.title(), m.usage(), true, m.cwd()));
-                val = true;
-            }
-        }
-        return val;
+        return meta != null && meta.hidden();
     }
 
     @Override
     public void setHidden(String sessionId, boolean hidden) {
         updateMetadata(sessionId, m -> new SessionMetadata(m.title(), m.usage(), hidden, m.cwd()));
+        removeLegacyKeys(HIDDEN_PREFIX, sessionId);
     }
     // -------------------------------------------------------------------------
 
@@ -288,22 +323,15 @@ public class SessionManager implements SessionQuery, SessionControl {
     @Override
     public String getContextUsage(String sessionId) {
         if (sessionId == null) return null;
+        migrateLegacyMetadataIfAbsent(sessionId);
         SessionMetadata meta = getMetadataCache().get(sessionId);
         String val = (meta != null) ? meta.usage() : null;
         if (val == null) {
-            // Migration: check qualified key first
-            String agent = agentName();
-            String qualifiedKey = agent != null ? USAGE_PREFIX + agent + "_" + sessionId : USAGE_PREFIX + sessionId;
-            String legacy = NbPreferences.forModule(SessionManager.class).get(qualifiedKey, null);
-            if (legacy == null && agent != null) {
-                // Also check unqualified key
-                legacy = NbPreferences.forModule(SessionManager.class).get(USAGE_PREFIX + sessionId, null);
-            }
+            String legacy = readLegacyString(USAGE_PREFIX, sessionId);
             if (legacy != null) {
-                // Migrate to new consolidated metadata
-                final String legacyVal = legacy;
-                updateMetadata(sessionId, m -> new SessionMetadata(m.title(), legacyVal, m.hidden(), m.cwd()));
-                val = legacyVal;
+                updateMetadata(sessionId, m -> new SessionMetadata(m.title(), legacy, m.hidden(), m.cwd()));
+                removeLegacyKeys(USAGE_PREFIX, sessionId);
+                val = legacy;
             }
         }
         return val;
@@ -317,6 +345,7 @@ public class SessionManager implements SessionQuery, SessionControl {
     @Override
     public void setContextUsage(String sessionId, long used, long size) {
         updateMetadata(sessionId, m -> new SessionMetadata(m.title(), used + "," + size, m.hidden(), m.cwd()));
+        removeLegacyKeys(USAGE_PREFIX, sessionId);
     }
 
     // --- locally-created sessions persistence (for agents without session/list) -

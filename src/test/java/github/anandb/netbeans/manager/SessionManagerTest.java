@@ -25,6 +25,7 @@ import java.util.List;
 import org.netbeans.api.project.Project;
 import org.openide.filesystems.FileObject;
 import org.openide.util.Lookup;
+import org.openide.util.NbPreferences;
 
 import github.anandb.netbeans.contract.ProcessControl;
 import github.anandb.netbeans.contract.ProjectQuery;
@@ -447,6 +448,16 @@ class SessionManagerTest {
         assertTrue(sessionManager.isHidden("h1"));
         sessionManager.setHidden("h1", false);
         assertFalse(sessionManager.isHidden("h1"));
+    }
+
+    @Test
+    void isHiddenMigratesLegacyThenUnhideIgnoresLeftoverLegacyKey() {
+        NbPreferences.forModule(SessionManager.class).putBoolean("session_hidden_h-legacy", true);
+        assertTrue(sessionManager.isHidden("h-legacy"));
+        sessionManager.setHidden("h-legacy", false);
+        NbPreferences.forModule(SessionManager.class).putBoolean("session_hidden_h-legacy", true);
+        assertFalse(sessionManager.isHidden("h-legacy"),
+                "metadata hidden=false must win over leftover session_hidden_* keys");
     }
 
     @Test
