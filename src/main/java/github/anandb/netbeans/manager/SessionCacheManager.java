@@ -28,7 +28,7 @@ final class SessionCacheManager {
     }
 
     private String safeAgent(String agentName) {
-        return agentName != null ? agentName : "default";
+        return agentName != null && !agentName.isBlank() ? agentName : "default";
     }
 
     /** Returns the cached session list. */
@@ -98,14 +98,6 @@ final class SessionCacheManager {
             }
         }
         return result;
-    }
-
-    /** Restores locally-created session IDs from persisted state. */
-    void restoreLocallyCreatedIds(Set<String> ids, String agentName) {
-        String agent = safeAgent(agentName);
-        for (String id : ids) {
-            locallyCreatedSessionToAgentMap.put(id, agent);
-        }
     }
 
     /** Returns the session for the given ID, or null. */

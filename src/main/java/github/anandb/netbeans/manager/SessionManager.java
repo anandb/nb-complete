@@ -97,11 +97,26 @@ public class SessionManager implements SessionQuery, SessionControl {
 
     /**
      * Returns the current harness ID from preferences, or {@code null} if none
-     * is configured. Used to build agent-qualified preference keys.
+     * is configured (including a blank Options value). Used to build
+     * agent-qualified preference keys.
      */
     private static String agentName() {
-        return NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+        String id = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
                 .get(PreferenceKeys.ACP_HARNESS_ID, null);
+        return isBlank(id) ? null : id;
+    }
+
+    private static String localSessionsKey(String agent) {
+        return agent != null ? LOCAL_SESSIONS_KEY + "_" + agent : LOCAL_SESSIONS_KEY;
+    }
+
+    private static String metadataNodeName(String agent) {
+        String name = agent != null
+                ? "sessmeta_" + agent.replaceAll("[^A-Za-z0-9._-]", "_") : "sessmeta";
+        if (name.length() > Preferences.MAX_NAME_LENGTH) {
+            name = name.substring(0, Preferences.MAX_NAME_LENGTH);
+        }
+        return name;
     }
 
     /** True when the harness has no session/list and the plugin tracks IDs locally. */
@@ -172,6 +187,7 @@ public class SessionManager implements SessionQuery, SessionControl {
         Map<String, SessionMetadata> result = new ConcurrentHashMap<>();
         Preferences node = metadataNode();
         migrateBlobMetadata(node);
+        migrateUnqualifiedMetadata(node);
         try {
             for (String id : node.keys()) {
                 String json = node.get(id, null);
@@ -193,32 +209,66 @@ public class SessionManager implements SessionQuery, SessionControl {
 
     /** One JSON object per session. NbPreferences values are capped at 8KB. */
     private Preferences metadataNode() {
-        String agent = agentName();
-        String name = agent != null ? "sessmeta_" + agent.replaceAll("[^A-Za-z0-9._-]", "_") : "sessmeta";
-        if (name.length() > Preferences.MAX_NAME_LENGTH) {
-            name = name.substring(0, Preferences.MAX_NAME_LENGTH);
-        }
-        return NbPreferences.forModule(SessionManager.class).node(name);
+        return NbPreferences.forModule(SessionManager.class).node(metadataNodeName(agentName()));
     }
 
     private void migrateBlobMetadata(Preferences node) {
-        String agent = agentName();
-        String blobKey = agent != null
-                ? LOCAL_SESSIONS_KEY + "_" + agent + "_metadata" : LOCAL_SESSIONS_KEY + "_metadata";
         Preferences prefs = NbPreferences.forModule(SessionManager.class);
-        String json = prefs.get(blobKey, null);
-        if (json == null || json.isEmpty()) {
-            return;
+        String agent = agentName();
+        List<String> blobKeys = new ArrayList<>();
+        if (agent != null) {
+            blobKeys.add(LOCAL_SESSIONS_KEY + "_" + agent + "_metadata");
         }
-        try {
-            Map<String, SessionMetadata> blob = MAPPER.readValue(json,
-                    new TypeReference<Map<String, SessionMetadata>>() {});
-            for (Map.Entry<String, SessionMetadata> entry : blob.entrySet()) {
-                persistOne(node, entry.getKey(), entry.getValue());
+        blobKeys.add(LOCAL_SESSIONS_KEY + "_metadata");
+        blobKeys.add(LOCAL_SESSIONS_KEY + "__metadata");
+        for (String blobKey : blobKeys) {
+            String json = prefs.get(blobKey, null);
+            if (json == null || json.isEmpty()) {
+                continue;
             }
-            prefs.remove(blobKey);
+            try {
+                Map<String, SessionMetadata> blob = MAPPER.readValue(json,
+                        new TypeReference<Map<String, SessionMetadata>>() {});
+                for (Map.Entry<String, SessionMetadata> entry : blob.entrySet()) {
+                    persistOne(node, entry.getKey(), entry.getValue());
+                }
+                prefs.remove(blobKey);
+            } catch (Exception e) {
+                LOG.warn("Failed to migrate session metadata blob: {0}", ExceptionUtils.getMessage(e), e);
+            }
+        }
+    }
+
+    /**
+     * Copies per-session JSON from the pre-harness-id nodes ({@code sessmeta},
+     * and {@code sessmeta_} left by a blank pref) when the current node lacks
+     * that session, so titles/cwd survive after {@code ACP_HARNESS_ID} is set.
+     */
+    private void migrateUnqualifiedMetadata(Preferences target) {
+        Preferences parent = NbPreferences.forModule(SessionManager.class);
+        String current = target.name();
+        for (String sourceName : List.of("sessmeta", "sessmeta_")) {
+            if (sourceName.equals(current)) {
+                continue;
+            }
+            copyMetadataKeysIfAbsent(parent.node(sourceName), target);
+        }
+    }
+
+    private void copyMetadataKeysIfAbsent(Preferences source, Preferences target) {
+        try {
+            for (String id : source.keys()) {
+                if (target.get(id, null) != null) {
+                    continue;
+                }
+                String json = source.get(id, null);
+                if (json != null && !json.isEmpty()) {
+                    target.put(id, json);
+                }
+            }
         } catch (Exception e) {
-            LOG.warn("Failed to migrate session metadata blob: {0}", ExceptionUtils.getMessage(e), e);
+            LOG.warn("Failed to copy session metadata from {0}: {1}",
+                    source.name(), ExceptionUtils.getMessage(e), e);
         }
     }
 
@@ -414,16 +464,25 @@ public class SessionManager implements SessionQuery, SessionControl {
     /** Persists the set of locally-created sessions to NbPreferences. */
     private void saveLocallyCreatedSessionIds() {
         String agent = agentName();
-        String key = agent != null ? LOCAL_SESSIONS_KEY + "_" + agent : LOCAL_SESSIONS_KEY;
         String value = String.join(",", cacheManager.getLocallyCreatedIds(agent));
-        NbPreferences.forModule(SessionManager.class).put(key, value);
+        NbPreferences.forModule(SessionManager.class).put(localSessionsKey(agent), value);
     }
 
     /** Loads locally-created session IDs from NbPreferences into the cache manager. */
     private void loadLocallyCreatedSessionIds() {
         String agent = agentName();
-        String key = agent != null ? LOCAL_SESSIONS_KEY + "_" + agent : LOCAL_SESSIONS_KEY;
-        String value = NbPreferences.forModule(SessionManager.class).get(key, null);
+        Preferences prefs = NbPreferences.forModule(SessionManager.class);
+        String key = localSessionsKey(agent);
+        String value = prefs.get(key, null);
+        if (isBlank(value) && agent != null) {
+            value = prefs.get(LOCAL_SESSIONS_KEY, null);
+            if (isBlank(value)) {
+                value = prefs.get(LOCAL_SESSIONS_KEY + "_", null);
+            }
+            if (!isBlank(value)) {
+                prefs.put(key, value);
+            }
+        }
         if (value != null && !value.isEmpty()) {
             String[] ids = value.split(",");
             Map<String, SessionMetadata> metadata = getMetadataCache();

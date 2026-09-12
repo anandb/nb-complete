@@ -168,6 +168,15 @@ class SessionCacheManagerTest {
     }
 
     @Test
+    void blankAgentNameSharesDefaultBucketWithNull() {
+        Session s = sess("id-blank", "Blank", null);
+        cache.addLocallyCreated(s, "");
+        assertTrue(cache.getLocallyCreatedIds(null).contains("id-blank"));
+        assertTrue(cache.getLocallyCreatedIds("  ").contains("id-blank"));
+        assertTrue(cache.getLocallyCreatedIds("gemini").isEmpty());
+    }
+
+    @Test
     void setCachedSessionsWithoutPreserveDropsLocallyCreatedMissingFromServerList() {
         cache.addLocallyCreated(sess("local-1", "Local", null), "opencode");
         cache.setCachedSessions(List.of(sess("server-1", "Server", null)), "opencode", false);

@@ -54,6 +54,7 @@ import github.anandb.netbeans.model.SessionConfigOption;
 import github.anandb.netbeans.model.SessionState;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.MapperSupplier;
+import github.anandb.netbeans.support.PreferenceKeys;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -96,6 +97,7 @@ class SessionManagerTest {
 
     @AfterEach
     void tearDown() {
+        NbPreferences.forModule(PreferenceKeys.class).remove(PreferenceKeys.ACP_HARNESS_ID);
         if (pmMock != null) {
             pmMock.close();
         }
@@ -473,6 +475,51 @@ class SessionManagerTest {
         assertTrue(sessionManager.isHidden("blob-1"));
         String leftover = NbPreferences.forModule(SessionManager.class).get(blobKey, null);
         assertTrue(leftover == null || leftover.isEmpty());
+    }
+
+    @Test
+    void blankHarnessIdUsesSameLocalSessionKeyAsUnset() throws Exception {
+        NbPreferences.forModule(PreferenceKeys.class).put(PreferenceKeys.ACP_HARNESS_ID, "  ");
+        Session s = new Session("blank-id", "Blank", "/cwd", "/cwd", null, null, List.of(), List.of(), null, null);
+        cacheManager().addLocallyCreated(s, null);
+        Method save = SessionManager.class.getDeclaredMethod("saveLocallyCreatedSessionIds");
+        save.setAccessible(true);
+        save.invoke(sessionManager);
+        String unqualified = NbPreferences.forModule(SessionManager.class).get("gemini_local_sessions", null);
+        assertTrue(unqualified != null && unqualified.contains("blank-id"));
+        assertTrue(isBlankPref("gemini_local_sessions_"));
+        assertTrue(isBlankPref("gemini_local_sessions_gemini"));
+    }
+
+    @Test
+    void loadsUnqualifiedLocalIdsAndMetadataAfterGeminiHarnessIdIsSet() throws Exception {
+        sessionManager.setCustomTitle("legacy-sid", "OldTitle");
+        NbPreferences.forModule(SessionManager.class).put("gemini_local_sessions", "legacy-sid");
+        NbPreferences.forModule(PreferenceKeys.class).put(PreferenceKeys.ACP_HARNESS_ID, "gemini");
+
+        Field listField = SessionCacheManager.class.getDeclaredField("cachedSessions");
+        listField.setAccessible(true);
+        listField.set(cacheManager(), new CopyOnWriteArrayList<>());
+        Field mapField = SessionCacheManager.class.getDeclaredField("locallyCreatedSessionToAgentMap");
+        mapField.setAccessible(true);
+        ((Map<?, ?>) mapField.get(cacheManager())).clear();
+
+        Method load = SessionManager.class.getDeclaredMethod("loadLocallyCreatedSessionIds");
+        load.setAccessible(true);
+        load.invoke(sessionManager);
+
+        List<Session> restored = cacheManager().getLocallyCreatedSessions("gemini");
+        assertEquals(1, restored.size());
+        assertEquals("legacy-sid", restored.get(0).id());
+        assertEquals("OldTitle", restored.get(0).title());
+        String qualified = NbPreferences.forModule(SessionManager.class)
+                .get("gemini_local_sessions_gemini", null);
+        assertTrue(qualified != null && qualified.contains("legacy-sid"));
+    }
+
+    private static boolean isBlankPref(String key) {
+        String v = NbPreferences.forModule(SessionManager.class).get(key, null);
+        return v == null || v.isEmpty();
     }
 
     @Test
