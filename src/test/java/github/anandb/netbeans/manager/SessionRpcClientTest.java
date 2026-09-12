@@ -16,8 +16,6 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
@@ -91,12 +89,6 @@ class SessionRpcClientTest {
         };
     }
 
-    @Test
-    void renameSessionOnServerReturnsCompletedFuture() {
-        CompletableFuture<Void> result = client.renameSessionOnServer("sid", "new title");
-        assertNotNull(result);
-        assertTrue(result.isDone());
-    }
 
     @Test
     void setSessionConfigOptionCallsCorrectMethod() {

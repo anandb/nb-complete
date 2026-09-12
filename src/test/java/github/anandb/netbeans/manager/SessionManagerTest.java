@@ -485,8 +485,8 @@ class SessionManagerTest {
         Method save = SessionManager.class.getDeclaredMethod("saveLocallyCreatedSessionIds");
         save.setAccessible(true);
         save.invoke(sessionManager);
-        String unqualified = NbPreferences.forModule(SessionManager.class).get("gemini_local_sessions", null);
-        assertTrue(unqualified != null && unqualified.contains("blank-id"));
+        assertTrue(localIdNode("sessids").get("blank-id", null) != null);
+        assertTrue(isBlankPref("gemini_local_sessions"));
         assertTrue(isBlankPref("gemini_local_sessions_"));
         assertTrue(isBlankPref("gemini_local_sessions_gemini"));
     }
@@ -512,9 +512,32 @@ class SessionManagerTest {
         assertEquals(1, restored.size());
         assertEquals("legacy-sid", restored.get(0).id());
         assertEquals("OldTitle", restored.get(0).title());
-        String qualified = NbPreferences.forModule(SessionManager.class)
-                .get("gemini_local_sessions_gemini", null);
-        assertTrue(qualified != null && qualified.contains("legacy-sid"));
+        assertTrue(localIdNode("sessids_gemini").get("legacy-sid", null) != null);
+        assertTrue(isBlankPref("gemini_local_sessions"));
+        assertTrue(isBlankPref("gemini_local_sessions_gemini"));
+    }
+
+    @Test
+    void localSessionIdWithCommaRoundTrips() throws Exception {
+        Session s = new Session("id,with,commas", "C", "/cwd", "/cwd", null, null, List.of(), List.of(), null, null);
+        cacheManager().addLocallyCreated(s, null);
+        Method save = SessionManager.class.getDeclaredMethod("saveLocallyCreatedSessionIds");
+        save.setAccessible(true);
+        save.invoke(sessionManager);
+        Field listField = SessionCacheManager.class.getDeclaredField("cachedSessions");
+        listField.setAccessible(true);
+        listField.set(cacheManager(), new CopyOnWriteArrayList<>());
+        Field mapField = SessionCacheManager.class.getDeclaredField("locallyCreatedSessionToAgentMap");
+        mapField.setAccessible(true);
+        ((Map<?, ?>) mapField.get(cacheManager())).clear();
+        Method load = SessionManager.class.getDeclaredMethod("loadLocallyCreatedSessionIds");
+        load.setAccessible(true);
+        load.invoke(sessionManager);
+        assertTrue(cacheManager().getLocallyCreatedIds(null).contains("id,with,commas"));
+    }
+
+    private static java.util.prefs.Preferences localIdNode(String name) {
+        return NbPreferences.forModule(SessionManager.class).node(name);
     }
 
     private static boolean isBlankPref(String key) {

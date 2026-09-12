@@ -19,7 +19,10 @@ import javax.swing.SwingUtilities;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -108,6 +111,23 @@ public class SessionManager implements SessionQuery, SessionControl {
 
     private static String localSessionsKey(String agent) {
         return agent != null ? LOCAL_SESSIONS_KEY + "_" + agent : LOCAL_SESSIONS_KEY;
+    }
+
+    private static String localSessionsNodeName(String agent) {
+        String name = agent != null
+                ? "sessids_" + agent.replaceAll("[^A-Za-z0-9._-]", "_") : "sessids";
+        if (name.length() > Preferences.MAX_NAME_LENGTH) {
+            name = name.substring(0, Preferences.MAX_NAME_LENGTH);
+        }
+        return name;
+    }
+
+    private static String prefKey(String sessionId) {
+        if (sessionId == null || sessionId.isEmpty()) {
+            return null;
+        }
+        return sessionId.length() > Preferences.MAX_KEY_LENGTH
+                ? sessionId.substring(0, Preferences.MAX_KEY_LENGTH) : sessionId;
     }
 
     private static String metadataNodeName(String agent) {
@@ -461,59 +481,138 @@ public class SessionManager implements SessionQuery, SessionControl {
 
     // --- locally-created sessions persistence (for agents without session/list) -
 
-    /** Persists the set of locally-created sessions to NbPreferences. */
+    /** Persists locally-created session IDs as one preference key per ID. */
     private void saveLocallyCreatedSessionIds() {
         String agent = agentName();
-        String value = String.join(",", cacheManager.getLocallyCreatedIds(agent));
-        NbPreferences.forModule(SessionManager.class).put(localSessionsKey(agent), value);
+        Preferences node = NbPreferences.forModule(SessionManager.class)
+                .node(localSessionsNodeName(agent));
+        List<Session> local = cacheManager.getLocallyCreatedSessions(agent);
+        Set<String> keep = new HashSet<>();
+        int index = 0;
+        for (Session s : local) {
+            String key = prefKey(s.id());
+            if (key == null) {
+                continue;
+            }
+            keep.add(key);
+            node.put(key, String.valueOf(index++));
+        }
+        try {
+            for (String existing : node.keys()) {
+                if (!keep.contains(existing)) {
+                    node.remove(existing);
+                }
+            }
+        } catch (Exception e) {
+            LOG.warn("Failed to prune local session id keys: {0}", ExceptionUtils.getMessage(e), e);
+        }
     }
 
     /** Loads locally-created session IDs from NbPreferences into the cache manager. */
     private void loadLocallyCreatedSessionIds() {
         String agent = agentName();
-        Preferences prefs = NbPreferences.forModule(SessionManager.class);
-        String key = localSessionsKey(agent);
-        String value = prefs.get(key, null);
-        if (isBlank(value) && agent != null) {
-            value = prefs.get(LOCAL_SESSIONS_KEY, null);
-            if (isBlank(value)) {
-                value = prefs.get(LOCAL_SESSIONS_KEY + "_", null);
-            }
-            if (!isBlank(value)) {
-                prefs.put(key, value);
-            }
-        }
-        if (value != null && !value.isEmpty()) {
-            String[] ids = value.split(",");
-            Map<String, SessionMetadata> metadata = getMetadataCache();
-            // Data repair: sessions saved before the cwd field existed carry no
-            // project directory. With exactly one project open they can be
-            // attributed safely — backfill and persist the repair once. With
-            // several projects open the ambiguity is left to the load-time
-            // fallback instead of guessing.
-            ProjectQuery projectQuery = Lookup.getDefault().lookup(ProjectQuery.class);
-            Project[] openProjects = projectQuery == null
-                    ? new Project[0] : projectQuery.getAllOpenProjects();
-            String repairCwd = openProjects.length == 1 && openProjects[0] != null
-                    ? openProjects[0].getProjectDirectory().getPath() : null;
-            // Load in reverse order since cacheManager.addLocallyCreated prepends
-            for (int i = ids.length - 1; i >= 0; i--) {
-                String sessionId = ids[i];
-                if (sessionId != null && !sessionId.isEmpty()) {
-                    String title = getCustomTitle(sessionId, sessionId);
-                    SessionMetadata meta = metadata.get(sessionId);
-                    String cwd = meta != null ? meta.cwd() : null;
-                    if (cwd == null && repairCwd != null) {
-                        LOG.info("Repairing missing cwd for session {0}: {1}",
-                                sessionId, repairCwd);
-                        updateMetadata(sessionId, m -> new SessionMetadata(
-                                m.title(), m.usage(), m.hidden(), m.cwd() != null ? m.cwd() : repairCwd));
-                        cwd = repairCwd;
-                    }
-                    Session s = new Session(sessionId, title, cwd, cwd, null, null, null, null, null, null);
-                    cacheManager.addLocallyCreated(s, agent);
+        Preferences node = NbPreferences.forModule(SessionManager.class)
+                .node(localSessionsNodeName(agent));
+        migrateCsvSessionIds(node);
+        List<String> ids = new ArrayList<>();
+        try {
+            String[] keys = node.keys();
+            Arrays.sort(keys, (a, b) -> Integer.compare(sessionIdIndex(node, a), sessionIdIndex(node, b)));
+            for (String key : keys) {
+                if (key != null && !key.isEmpty()) {
+                    ids.add(key);
                 }
             }
+        } catch (Exception e) {
+            LOG.warn("Failed to list local session ids: {0}", ExceptionUtils.getMessage(e), e);
+        }
+        if (ids.isEmpty()) {
+            return;
+        }
+        Map<String, SessionMetadata> metadata = getMetadataCache();
+        // Data repair: sessions saved before the cwd field existed carry no
+        // project directory. With exactly one project open they can be
+        // attributed safely — backfill and persist the repair once. With
+        // several projects open the ambiguity is left to the load-time
+        // fallback instead of guessing.
+        ProjectQuery projectQuery = Lookup.getDefault().lookup(ProjectQuery.class);
+        Project[] openProjects = projectQuery == null
+                ? new Project[0] : projectQuery.getAllOpenProjects();
+        String repairCwd = openProjects.length == 1 && openProjects[0] != null
+                ? openProjects[0].getProjectDirectory().getPath() : null;
+        // Load in reverse order since cacheManager.addLocallyCreated prepends
+        for (int i = ids.size() - 1; i >= 0; i--) {
+            String sessionId = ids.get(i);
+            String title = getCustomTitle(sessionId, sessionId);
+            SessionMetadata meta = metadata.get(sessionId);
+            String cwd = meta != null ? meta.cwd() : null;
+            if (cwd == null && repairCwd != null) {
+                LOG.info("Repairing missing cwd for session {0}: {1}",
+                        sessionId, repairCwd);
+                updateMetadata(sessionId, m -> new SessionMetadata(
+                        m.title(), m.usage(), m.hidden(), m.cwd() != null ? m.cwd() : repairCwd));
+                cwd = repairCwd;
+            }
+            Session s = new Session(sessionId, title, cwd, cwd, null, null, null, null, null, null);
+            cacheManager.addLocallyCreated(s, agent);
+        }
+    }
+
+    private static int sessionIdIndex(Preferences node, String key) {
+        try {
+            return Integer.parseInt(node.get(key, "0"));
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
+    /**
+     * Copies IDs from the legacy comma-joined preference into the per-id node
+     * when that node is empty, then drops the CSV keys.
+     */
+    private void migrateCsvSessionIds(Preferences node) {
+        Preferences prefs = NbPreferences.forModule(SessionManager.class);
+        try {
+            if (node.keys().length > 0) {
+                prefs.remove(localSessionsKey(agentName()));
+                prefs.remove(LOCAL_SESSIONS_KEY);
+                prefs.remove(LOCAL_SESSIONS_KEY + "_");
+                return;
+            }
+        } catch (Exception e) {
+            LOG.warn("Failed to inspect local session id node: {0}", ExceptionUtils.getMessage(e), e);
+            return;
+        }
+        String agent = agentName();
+        List<String> csvKeys = new ArrayList<>();
+        if (agent != null) {
+            csvKeys.add(localSessionsKey(agent));
+        }
+        csvKeys.add(LOCAL_SESSIONS_KEY);
+        csvKeys.add(LOCAL_SESSIONS_KEY + "_");
+        int index = 0;
+        for (String csvKey : csvKeys) {
+            String value = prefs.get(csvKey, null);
+            if (isBlank(value)) {
+                continue;
+            }
+            for (String id : value.split(",")) {
+                String key = prefKey(id);
+                if (key == null) {
+                    continue;
+                }
+                try {
+                    if (node.get(key, null) == null) {
+                        node.put(key, String.valueOf(index++));
+                    }
+                } catch (Exception e) {
+                    LOG.warn("Failed to migrate local session id {0}: {1}",
+                            key, ExceptionUtils.getMessage(e), e);
+                }
+            }
+        }
+        for (String csvKey : csvKeys) {
+            prefs.remove(csvKey);
         }
     }
 
@@ -932,11 +1031,6 @@ public class SessionManager implements SessionQuery, SessionControl {
                 });
     }
 
-    public CompletableFuture<JsonNode> renameSessionOnServer(String sessionId, String newTitle) {
-        return rpcClient.renameSessionOnServer(sessionId, newTitle)
-                .thenApply(v -> MAPPER.createObjectNode());
-    }
-
     // --- High-level session operations ---
 
     @Override
@@ -1189,13 +1283,6 @@ public class SessionManager implements SessionQuery, SessionControl {
             }
         }
         notifySessionRenamed(sessionId);
-        // Sync the rename to the server asynchronously (fire-and-forget)
-        renameSessionOnServer(sessionId, newTitle)
-                .whenComplete((v, ex) -> {
-                    if (ex != null) {
-                        LOG.warn("Failed to rename session on server: {0}", ExceptionUtils.getMessage(ex), ex);
-                    }
-                });
     }
 
     @SuppressWarnings("unused") // parameter required by the Consumer<String> listener
