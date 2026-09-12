@@ -981,19 +981,16 @@ public class SessionManager implements SessionQuery, SessionControl {
         // Prefer the cached cwd; fall back to the last known project dir, then
         // to the single open project. Gemini's session/load REQUIRES a cwd
         // string — omitting it makes the server reject the request with
-        // invalid_type (JSON-RPC "Internal error").
+        // invalid_type (JSON-RPC "Internal error"). Harnesses that implement
+        // session/list accept load without cwd (SessionRpcClient omits a null).
         String workingCwd = sessionCwd != null ? sessionCwd : lastProjectDir;
         if (workingCwd == null) {
-            ProjectQuery projectQuery = Lookup.getDefault().lookup(ProjectQuery.class);
-            Project[] openProjects = projectQuery == null
-                    ? new Project[0] : projectQuery.getAllOpenProjects();
-            if (openProjects.length == 1 && openProjects[0] != null) {
-                workingCwd = openProjects[0].getProjectDirectory().getPath();
+            List<String> openDirs = openProjectDirectories();
+            if (openDirs.size() == 1) {
+                workingCwd = openDirs.get(0);
             }
         }
-        if (workingCwd == null) {
-            // Cannot send session/load without a cwd — fail fast locally
-            // instead of triggering a server-side invalid_type error.
+        if (workingCwd == null && tracksSessionsLocally()) {
             this.currentSessionId = null;
             stateMachine.transitionTo(SessionState.IDLE);
             notifyError(NbBundle.getMessage(SessionManager.class,
@@ -1001,7 +998,9 @@ public class SessionManager implements SessionQuery, SessionControl {
             return false;
         }
 
-        this.lastProjectDir = workingCwd;
+        if (workingCwd != null) {
+            this.lastProjectDir = workingCwd;
+        }
         notifySessionProgress(30);
         try {
             loadSessionFromServer(sessionId, workingCwd)

@@ -609,13 +609,41 @@ class SessionManagerTest {
     }
 
     @Test
-    void loadSessionWithoutCwdFailsFast() {
+    void loadSessionWithoutCwdFailsFastForGemini() {
+        ProcessControl pc = mock(ProcessControl.class);
+        when(pc.getCapabilities()).thenReturn(HarnessCatalog.GEMINI);
         sessionManager.addSessionListener(mockListener());
-        assertFalse(sessionManager.loadSession("s1"));
+        try (MockedStatic<Lookup> lookupMock = mockStatic(Lookup.class)) {
+            Lookup mockLookup = mock(Lookup.class);
+            lookupMock.when(Lookup::getDefault).thenReturn(mockLookup);
+            when(mockLookup.lookup(ProcessControl.class)).thenReturn(pc);
+            assertFalse(sessionManager.loadSession("s1"));
+        }
         assertEquals(SessionState.IDLE, sessionManager.getCurrentState());
         assertNull(sessionManager.getCurrentSessionId());
         assertTrue(lastError != null && lastError.contains("s1"));
         verify(processManager, never()).sendRequest(eq("session/load"), any(), eq(2L), eq(TimeUnit.MINUTES));
+    }
+
+    @Test
+    void loadSessionWithoutCwdProceedsWhenSessionListSupported() throws Exception {
+        stubSessionLoad(mapper.createObjectNode());
+        sessionManager.addSessionListener(mockListener());
+        ProcessControl pc = mock(ProcessControl.class);
+        when(pc.getCapabilities()).thenReturn(HarnessCatalog.OPENCODE);
+        try (MockedStatic<Lookup> lookupMock = mockStatic(Lookup.class)) {
+            Lookup mockLookup = mock(Lookup.class);
+            lookupMock.when(Lookup::getDefault).thenReturn(mockLookup);
+            when(mockLookup.lookup(ProcessControl.class)).thenReturn(pc);
+            assertTrue(sessionManager.loadSession("s1"));
+            awaitLoaded();
+        }
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, Object>> params = ArgumentCaptor.forClass(Map.class);
+        verify(processManager).sendRequest(eq("session/load"), params.capture(),
+                eq(2L), eq(TimeUnit.MINUTES));
+        assertFalse(params.getValue().containsKey("cwd"));
+        assertEquals("s1", lastLoadedSessionId);
     }
 
     @Test
