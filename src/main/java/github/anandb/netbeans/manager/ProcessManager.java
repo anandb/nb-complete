@@ -167,28 +167,20 @@ public class ProcessManager implements ProcessControl {
 
     private void onPreferenceChanged(PreferenceChangeEvent evt) {
         String key = evt.getKey();
-        if (PreferenceKeys.ACP_EXECUTABLE_PATH.equals(key)) {
-            LOG.fine("Binary path preference changed — showing restart notification");
-            // Two separate instances: one goes into the balloon/popup, the other
-            // into the notifications tab — a JComponent can only have one parent.
-            NotificationDisplayer.getDefault().notify(
+        if (!PreferenceKeys.ACP_EXECUTABLE_PATH.equals(key)
+                && !PreferenceKeys.PROCESS_ARGUMENTS.equals(key)
+                && !PreferenceKeys.MCP_SERVER_ENABLED.equals(key)) {
+            return;
+        }
+        LOG.fine("Preference changed: {0} — showing IDE restart notification", key);
+        // Two separate instances: one goes into the balloon/popup, the other
+        // into the notifications tab — a JComponent can only have one parent.
+        NotificationDisplayer.getDefault().notify(
                 NbBundle.getMessage(ProcessManager.class, "MSG_RestartRequired"),
                 NotificationDisplayer.Priority.HIGH.getIcon(),
                 createIdeRestartDetails(),
                 createIdeRestartDetails(),
                 NotificationDisplayer.Priority.HIGH);
-            return;
-        }
-        if (!PreferenceKeys.PROCESS_ARGUMENTS.equals(key)
-                && !PreferenceKeys.MCP_SERVER_ENABLED.equals(key)) {
-            return;
-        }
-        LOG.fine("Preference changed: {0} — scheduling debounced restart", key);
-        if (serverLifecycle.serverStarted() && serverLifecycle.serverProcess() != null
-                && serverLifecycle.serverProcess().isAlive()) {
-            // Restart the debounce timer — each new write resets the 300ms window.
-            prefRestartTimer.restart();
-        }
     }
 
     /** Clickable "Restart IDE now" link for the binary-path change notification.

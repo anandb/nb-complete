@@ -1144,4 +1144,39 @@ class SessionManagerTest {
         verify(processManager, times(2)).sendRequest(eq("session/list"), any(), eq(60L), eq(TimeUnit.SECONDS));
         assertEquals(2, sessions.size());
     }
+
+    @Test
+    void getSessionsFallbackTitleToSessionIdWhenServerOmitsTitle() throws Exception {
+        // Pi's session/list may return sessions without a title field.
+        // The dropdown should show the GUID, not null.
+        String sid = "abc-123-def-456";
+        JsonNode response = mapper.readTree(
+                "{\"sessions\":[{\"sessionId\":\"" + sid + "\",\"cwd\":\"/proj\"}]}");
+        when(processManager.sendRequest(eq("session/list"), any(), eq(60L), eq(TimeUnit.SECONDS)))
+                .thenReturn(CompletableFuture.completedFuture(response));
+
+        List<Session> sessions = sessionManager.getSessions("/proj")
+                .get(5, TimeUnit.SECONDS);
+
+        assertEquals(1, sessions.size());
+        Session s = sessions.get(0);
+        assertEquals(sid, s.id());
+        assertEquals(sid, s.title(), "title must fall back to session ID when server omits it");
+    }
+
+    @Test
+    void getSessionsPreservesServerTitleWhenPresent() throws Exception {
+        String sid = "abc-123";
+        JsonNode response = mapper.readTree(
+                "{\"sessions\":[{\"sessionId\":\"" + sid + "\",\"title\":\"My Chat\",\"cwd\":\"/proj\"}]}");
+        when(processManager.sendRequest(eq("session/list"), any(), eq(60L), eq(TimeUnit.SECONDS)))
+                .thenReturn(CompletableFuture.completedFuture(response));
+
+        List<Session> sessions = sessionManager.getSessions("/proj")
+                .get(5, TimeUnit.SECONDS);
+
+        assertEquals(1, sessions.size());
+        assertEquals("My Chat", sessions.get(0).title(),
+                "server-provided title must be preserved");
+    }
 }

@@ -812,6 +812,15 @@ public class SessionManager implements SessionQuery, SessionControl {
                                                            s.parentID(), s.updatedAt(), s.mcpServers(),
                                                            s.configOptions(), s.models(), s.modes());
                                 }
+                                // Use session ID as title when the server omits it,
+                                // so the dropdown shows the GUID instead of null.
+                                if (isBlank(resolved.title())) {
+                                    resolved = new Session(resolved.id(), resolved.id(),
+                                            resolved.cwd(), resolved.directory(),
+                                            resolved.parentID(), resolved.updatedAt(),
+                                            resolved.mcpServers(), resolved.configOptions(),
+                                            resolved.models(), resolved.modes());
+                                }
                                 sessions.add(resolved);
                                 cacheManager.cacheSession(resolved);
                             }

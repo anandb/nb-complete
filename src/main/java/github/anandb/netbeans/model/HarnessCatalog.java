@@ -147,7 +147,7 @@ public final class HarnessCatalog {
 
     /** All supported harnesses, in the order offered during onboarding. */
     public static final List<Harness> ALL =
-            List.of(OPENCODE, PI, GOOSE, CURSOR, CLAUDE, HERMES, GEMINI, OMP);
+            List.of(OMP, OPENCODE, PI, GOOSE, CURSOR, CLAUDE, HERMES, GEMINI);
 
     /** Looks up a harness by catalog id; {@link #UNKNOWN} when not found. */
     public static Harness byId(String id) {

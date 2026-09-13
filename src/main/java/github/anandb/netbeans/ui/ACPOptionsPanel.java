@@ -614,9 +614,9 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         autoBackupChangesCheckbox.setSelected(PluginSettings.isAutoBackupChanges());
         checkForUpdatesCheckbox.setSelected(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean(PreferenceKeys.CHECK_FOR_UPDATES, true));
         Preferences editorPrefs = MimeLookup.getLookup(MimePath.EMPTY).lookup(Preferences.class);
+        lineHeightCorrectionSpinner.setValue(editorPrefs.getFloat(SimpleValueNames.LINE_HEIGHT_CORRECTION, 1.0f));
         preambleEnabledCheckbox.setSelected(PluginSettings.isPreambleEnabled());
         editPreambleButton.setEnabled(preambleEnabledCheckbox.isSelected());
-        autoBackupChangesCheckbox.setSelected(PluginSettings.isAutoBackupChanges());
         idleTimeoutSpinner.setValue(PluginSettings.getSessionIdleTimeout());
         maxMessagesSpinner.setValue(PluginSettings.getMaxMessages());
         previousIconPath = PluginSettings.getCustomUserIcon();
