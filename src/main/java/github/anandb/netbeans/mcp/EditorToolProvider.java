@@ -5,10 +5,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import github.anandb.netbeans.contract.EditorContextQuery;
 import github.anandb.netbeans.contract.ProjectQuery;
 import github.anandb.netbeans.contract.SessionControl;
 import github.anandb.netbeans.support.Logger;
-import github.anandb.netbeans.ui.EditorContextCapture;
 import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
 import github.anandb.netbeans.support.MapperSupplier;
@@ -60,9 +60,13 @@ public class EditorToolProvider {
                 new ToolExecutor<EmptyToolInput, Map<String, Object>>(EmptyToolInput.class) {
                     @Override
                     public Map<String, Object> execute(EmptyToolInput args) throws Exception {
+                        EditorContextQuery query = Lookup.getDefault().lookup(EditorContextQuery.class);
+                        if (query == null) {
+                            return Map.of("status", "error", "message", "Editor context service not available");
+                        }
                         Map<String, Object>[] result = new Map[1];
                         SwingUtilities.invokeAndWait(() -> {
-                            result[0] = EditorContextCapture.capture();
+                            result[0] = query.capture();
                         });
                         return result[0];
                     }
