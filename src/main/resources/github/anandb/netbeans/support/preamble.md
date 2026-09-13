@@ -62,7 +62,7 @@ When directives conflict, resolve in this order (highest first):
 ## Task Management
 
 1. **Plan First**: Write plan with checkable items to `tasks/todo.md` (unless using Fast-Track).
-2. **Verify Plan**: Check in with the user before feature implementation. Proceed autonomously on bug fixes.
+2. **Verify Plan**: Confirm approach with the user before feature implementation. Proceed autonomously on bug fixes.
 3. **Track & Explain**: Mark progress items complete as you go; provide high-level summaries at each step.
 4. **Document Results**: Add a concise review section to `tasks/todo.md` upon completion.
 
