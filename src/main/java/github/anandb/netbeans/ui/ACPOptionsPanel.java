@@ -751,6 +751,20 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
             pathErrorLabel.setForeground(UIManager.getColor("Label.errorForeground"));
             return false;
         }
+        // WSL-internal paths (e.g. /usr/local/bin/goose) never exist on the
+        // Windows filesystem. Accept them under the same condition the runtime
+        // resolver uses (BinaryResolver.findExecutablePathOrNull) so the
+        // options panel does not block valid WSL launches.
+        boolean isWindows = System.getProperty("os.name", "").toLowerCase().contains("win");
+        if (path.startsWith("/") && isWindows) {
+            if (!BinaryResolver.isWslAvailable()) {
+                pathErrorLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "ERR_WslNotAvailable"));
+                pathErrorLabel.setForeground(UIManager.getColor("Label.errorForeground"));
+                return false;
+            }
+            pathErrorLabel.setText("");
+            return true;
+        }
         File f = new File(path.trim());
         if (!f.exists()) {
             pathErrorLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "ERR_PathNotFound"));
@@ -767,7 +781,6 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
             pathErrorLabel.setForeground(UIManager.getColor("Label.errorForeground"));
             return false;
         }
-        boolean isWindows = System.getProperty("os.name", "").toLowerCase().contains("win");
         if (isWindows) {
             String lower = path.toLowerCase();
             if (!lower.endsWith(".exe") && !lower.endsWith(".cmd") && !lower.endsWith(".bat")) {
