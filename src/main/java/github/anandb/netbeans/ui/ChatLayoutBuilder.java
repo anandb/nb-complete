@@ -347,19 +347,30 @@ final class ChatLayoutBuilder {
         helpBtn.addActionListener(e -> {
             NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
                     .put(PreferenceKeys.HELP_FLASH_PENDING, "false");
-            BrowserUtils.openOrCopyUrl(quickstartUrl, "STATUS_QuickstartCopied",
-                (url, key) -> topComponent.setStatus(key, url));
-        });
+            JPopupMenu helpPopup = new JPopupMenu();
 
-        JButton keyboardShortcutsBtn = UIUtils.createToolbarButton("keyboard.svg",
-            NbBundle.getMessage(AssistantTopComponent.class, "HINT_KeyboardShortcuts"), null);
-        keyboardShortcutsBtn.setContentAreaFilled(false);
-        keyboardShortcutsBtn.setBorderPainted(false);
-        if (keyboardShortcutsBtn.getIcon() == null) {
-            keyboardShortcutsBtn.setText("\u2328");
-            keyboardShortcutsBtn.setFont(keyboardShortcutsBtn.getFont().deriveFont(16f));
-        }
-        keyboardShortcutsBtn.addActionListener(e -> KeyboardShortcutsDialog.show(topComponent));
+            JMenuItem openGuideItem = new JMenuItem(NbBundle.getMessage(
+                    AssistantTopComponent.class, "LBL_HelpOpenGuide"));
+            openGuideItem.addActionListener(ev -> BrowserUtils.openOrCopyUrl(quickstartUrl,
+                "STATUS_QuickstartCopied", (url, key) -> topComponent.setStatus(key, url)));
+            helpPopup.add(openGuideItem);
+
+            JMenuItem shortcutsItem = new JMenuItem(NbBundle.getMessage(
+                    AssistantTopComponent.class, "LBL_HelpKeyboardShortcuts"));
+            shortcutsItem.addActionListener(ev -> KeyboardShortcutsDialog.show(topComponent));
+            helpPopup.add(shortcutsItem);
+
+            JMenuItem chooseAgentItem = new JMenuItem(NbBundle.getMessage(
+                    AssistantTopComponent.class, "LBL_HelpChooseAgent"));
+            chooseAgentItem.addActionListener(ev ->
+                java.util.concurrent.CompletableFuture.runAsync(() -> {
+                    java.util.List<BinaryResolver.FoundBinary> found = BinaryResolver.findAllKnownOnPath();
+                    topComponent.showHarnessChooser(found);
+                }));
+            helpPopup.add(chooseAgentItem);
+
+            helpPopup.show(helpBtn, 0, helpBtn.getHeight());
+        });
 
         JButton launchMiniAssistantBtn = UIUtils.createToolbarButton("mini-assistant.svg",
             "Launch Mini Assistant", null);
@@ -374,7 +385,6 @@ final class ChatLayoutBuilder {
         JPanel rightButtons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 2, 0));
         rightButtons.setOpaque(false);
         rightButtons.add(launchMiniAssistantBtn);
-        rightButtons.add(keyboardShortcutsBtn);
         rightButtons.add(helpBtn);
         cwdRow.add(rightButtons, BorderLayout.EAST);
 

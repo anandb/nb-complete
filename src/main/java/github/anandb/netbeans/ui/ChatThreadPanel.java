@@ -871,11 +871,19 @@ public class ChatThreadPanel extends JPanel {
     /** Shows the harness onboarding bubble (detection + choice + install) as a sidebar bubble. */
     public void addOnboardingBubble(java.util.List<BinaryResolver.FoundBinary> found,
             OnboardingBubble.SelectionCallback selectionCallback, RestartCallback restartCallback) {
+        addOnboardingBubble(found, selectionCallback, restartCallback, null);
+    }
+
+    /** Shows the harness onboarding bubble with an optional Close button
+     *  ({@code dismissCallback == null} hides it). */
+    public void addOnboardingBubble(java.util.List<BinaryResolver.FoundBinary> found,
+            OnboardingBubble.SelectionCallback selectionCallback, RestartCallback restartCallback,
+            Runnable dismissCallback) {
         SwingUtilities.invokeLater(() -> {
             // Clear the thread so this is the only bubble shown.
             messagesContainer.removeAll();
             startSessionHintShown = false;
-            OnboardingBubble bubble = new OnboardingBubble(found, selectionCallback, restartCallback);
+            OnboardingBubble bubble = new OnboardingBubble(found, selectionCallback, restartCallback, dismissCallback);
             messagesContainer.add(bubble);
             messagesContainer.add(Box.createVerticalStrut(4));
             messagesContainer.revalidate();

@@ -59,6 +59,10 @@ class OnboardingBubble extends JPanel {
 
     private final SelectionCallback selectionCallback;
     private final RestartCallback restartCallback;
+    /** Optional: dismisses the harness-chooser back to the chat. Non-null only
+     *  when a harness is already configured (help-menu launch) — the
+     *  first-install view must be non-dismissable. */
+    private final Runnable dismissCallback;
     private final java.util.List<BinaryResolver.FoundBinary> foundBinaries;
     private final Map<String, JPanel> installPanels = new HashMap<>();
     private final JPanel rowsPanel;
@@ -71,8 +75,22 @@ class OnboardingBubble extends JPanel {
      */
     OnboardingBubble(java.util.List<BinaryResolver.FoundBinary> found,
             SelectionCallback selectionCallback, RestartCallback restartCallback) {
+        this(found, selectionCallback, restartCallback, null);
+    }
+
+    /**
+     * @param found harness binaries detected on this system (may be empty)
+     * @param selectionCallback invoked when the user picks a found harness
+     * @param restartCallback invoked by the Restart button
+     * @param dismissCallback invoked by the Close button; {@code null} hides
+     *        the Close button (first-install view must be non-dismissable)
+     */
+    OnboardingBubble(java.util.List<BinaryResolver.FoundBinary> found,
+            SelectionCallback selectionCallback, RestartCallback restartCallback,
+            Runnable dismissCallback) {
         this.selectionCallback = selectionCallback;
         this.restartCallback = restartCallback;
+        this.dismissCallback = dismissCallback;
         this.foundBinaries = found;
 
         setLayout(new BorderLayout());
@@ -137,6 +155,13 @@ class OnboardingBubble extends JPanel {
         });
         buttonsPanel.add(manualSetupBtn);
         buttonsPanel.add(restartBtn);
+        if (dismissCallback != null) {
+            JButton closeBtn = new JButton(NbBundle.getMessage(
+                    OnboardingBubble.class, "OnboardingBubble.Button.Close"));
+            closeBtn.setFocusPainted(false);
+            closeBtn.addActionListener(e -> dismissCallback.run());
+            buttonsPanel.add(closeBtn);
+        }
 
         JPanel outer = new JPanel(new BorderLayout(0, 8));
         outer.setOpaque(false);

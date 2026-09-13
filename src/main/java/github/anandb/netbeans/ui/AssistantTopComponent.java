@@ -1011,6 +1011,19 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         componentLifecycleHandler.promptRestartServer(null);
     }
 
+    /** Dismisses the manual harness-chooser (Close button) and restores the
+     *  normal chat view: reloads the current session, or shows the book/
+     *  session list when none is active. */
+    void dismissHarnessChooser() {
+        showHarnessChooser(null);
+        String currentId = sessionService.get().getCurrentSessionId();
+        if (currentId != null) {
+            sessionService.get().loadSession(currentId);
+        } else {
+            sessionService.get().refreshSessions();
+        }
+    }
+
     void promptRestartServer(Runnable onRestarted) {
         componentLifecycleHandler.promptRestartServer(onRestarted);
     }
@@ -1062,12 +1075,19 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                 // Disable input area
                 statusController.setInputEnabled(false);
 
-                // Show the harness chooser / install wizard in chat panel
+                // Show the harness chooser / install wizard in chat panel.
+                // A Close button is offered only when a harness is already
+                // configured (help-menu launch) — the first-install view must
+                // be non-dismissable.
                 chatPanel.stopStreaming();
                 chatPanel.clearMessages();
+                Runnable dismiss = BinaryResolver.isAvailable()
+                        ? () -> dismissHarnessChooser()
+                        : null;
                 chatPanel.addOnboardingBubble(foundBinaries,
                     this::onHarnessSelected,
-                    onRestarted -> promptRestartServer(onRestarted)
+                    onRestarted -> promptRestartServer(onRestarted),
+                    dismiss
                 );
                 statusController.setStatus(foundBinaries.isEmpty()
                         ? "STATUS_BinaryNotFound" : "STATUS_ChooseAgent");
