@@ -22,6 +22,7 @@ The plugin runs a small built-in MCP (Model Context Protocol) server inside the 
 <tr><td><code>apply&#95;patch</code></td><td>Applies a unified diff to a project file, with an optional dry run.</td></tr>
 <tr><td><code>list&#95;directory</code></td><td>Lists files and subdirectories of a project directory, optionally recursively.</td></tr>
 <tr><td><code>search&#95;project</code></td><td>Searches project files for a text pattern or regex, with an optional glob filter and subdirectory restriction.</td></tr>
+<tr><td><code>run&#95;command</code></td><td>Executes a shell command in the current session's working directory (or a specified directory). Returns stdout, stderr, and exit code. The working directory must be inside an open project for security.</td></tr>
 <tr><td><code>git&#95;status</code> / <code>git&#95;diff</code> / <code>git&#95;log</code></td><td>Runs git status (short form), git diff (unstaged, staged, or a specific revision), or git log from an open project's repository — not a parent checkout above the project.</td></tr>
 <tr><td><code>file&#95;history</code></td><td>Commit history of a single file in that git repository, including each version's patch.</td></tr>
 <tr><td><code>hg&#95;status</code> / <code>hg&#95;diff</code> / <code>hg&#95;log</code></td><td>Same operations for Mercurial, from an open project's <code>.hg</code> repository.</td></tr>

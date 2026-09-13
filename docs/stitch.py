@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-"""Reassemble target/User Guide.twee from the split passages and images.
+"""Reassemble target/User Guide.twee from the split passages and images,
+then compile to HTML with tweego.
 
 Reads docs/passages/NNN_<name>.txt in filename order, converts markdown
 image links back to base64 data URIs, and writes target/User Guide.twee.
+Then compiles to HTML using tweego with Harlowe format.
 
 Markdown image link syntax produced by split.py:
     ![alt](../images/<name>-N.ext){style="max-width:100%;"}
@@ -13,12 +15,17 @@ taken from the ![...] text). Use `--output PATH` to write elsewhere.
 import argparse
 import base64
 import re
+import shutil
+import subprocess
+import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 PASSAGES_DIR = HERE / "passages"
 IMAGES_DIR = HERE / "images"
 DEFAULT_OUTPUT = HERE.parent / "target" / "User Guide.twee"
+IFID = "3F375208-DB5B-4371-8FB8-9949032993D8"
+HARLOWE_VERSION = "3.3.9"
 
 MD_IMG_RE = re.compile(
     r'!\[([^\]]*)\]\(([^)]+)\)(?:{([^}]*?)})?', re.IGNORECASE
@@ -47,15 +54,42 @@ def stitch() -> str:
     return "\n\n\n\n".join(parts) + "\n"
 
 
+def compile_html(twee_path: Path) -> Path:
+    """Compile .twee to HTML using tweego with Harlowe format."""
+    html_path = twee_path.with_suffix(".html")
+    tweego_path = shutil.which("tweego", path="/home/anand/apps/tweego:" + (shutil.which("tweego") or ""))
+    if not tweego_path:
+        print("Warning: tweego not found, skipping HTML compilation")
+        return None
+    cmd = [
+        tweego_path,
+        "-f", "harlowe-3",
+        "-o", str(html_path),
+        str(twee_path)
+    ]
+    print(f"Compiling {twee_path.name} → {html_path.name}...")
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        print(f"Error: tweego failed with exit code {result.returncode}")
+        print(f"stderr: {result.stderr}")
+        sys.exit(1)
+    print(f"Compiled {html_path} ({html_path.stat().st_size} bytes)")
+    return html_path
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT,
                         help="output twee file (default: target/User Guide.twee)")
+    parser.add_argument("--no-html", action="store_true",
+                        help="skip HTML compilation")
     args = parser.parse_args()
     output = args.output.resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(stitch(), encoding="utf-8")
     print(f"Wrote {output} ({output.stat().st_size} bytes)")
+    if not args.no_html:
+        compile_html(output)
 
 
 if __name__ == "__main__":
