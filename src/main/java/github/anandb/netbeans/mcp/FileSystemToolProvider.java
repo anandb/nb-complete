@@ -10,6 +10,7 @@ import com.github.difflib.patch.Patch;
 import com.github.difflib.patch.PatchFailedException;
 
 import github.anandb.netbeans.contract.ProjectQuery;
+import github.anandb.netbeans.contract.SessionQuery;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.MapperSupplier;
 import org.openide.util.Lookup;
@@ -615,7 +616,17 @@ public class FileSystemToolProvider {
                         }
                         String workDir = args.workingDirectory();
                         if (isBlank(workDir)) {
-                            workDir = System.getProperty("user.dir");
+                            // Default to current session's working directory
+                            SessionQuery sq = Lookup.getDefault().lookup(SessionQuery.class);
+                            workDir = sq != null ? sq.getCurrentSessionDirectory() : null;
+                        }
+                        if (isBlank(workDir)) {
+                            return Map.of("status", "error", "message",
+                                    "No working directory specified and no active session");
+                        }
+                        // Validate working directory is under project root for security
+                        if (!ProjectPathGuard.isInOpenProject(workDir)) {
+                            return ProjectPathGuard.outsideProjectError(workDir);
                         }
                         File dir = new File(workDir);
                         if (!dir.exists() || !dir.isDirectory()) {
