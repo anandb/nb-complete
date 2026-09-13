@@ -69,6 +69,13 @@ final class SessionRpcClient {
         ), 30, TimeUnit.SECONDS);
     }
 
+    CompletableFuture<JsonNode> setSessionModel(String sessionId, String modelId) {
+        return processManager.sendRequest("session/set_model", Map.of(
+                "sessionId", sessionId,
+                "modelId", modelId
+        ), 30, TimeUnit.SECONDS);
+    }
+
     private HarnessCatalog.Harness caps() {
         return processManager.getCapabilities();
     }

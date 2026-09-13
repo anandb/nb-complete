@@ -33,6 +33,9 @@ public interface SessionControl extends SessionQuery {
     /** Switches the active agent mode for a session (ACP session/set_mode). */
     CompletableFuture<Void> setSessionMode(String sessionId, String modeId);
 
+    /** Switches the model for a session (ACP session/set_model; Hermes-style agents). */
+    CompletableFuture<Void> setSessionModel(String sessionId, String modelId);
+
     /** Renames a session. */
     void renameSession(String sessionId, String newTitle);
 

@@ -253,8 +253,15 @@ public class ConfigPanelController {
         String configId = (combo == modelCombo) ? "model" : (combo == modeCombo) ? "mode" : thinkingConfigId();
         String currentId = sessionService.get().getCurrentSessionId();
 
+        // Hermes-style agents expose model switching as a dedicated
+        // session/set_model RPC; sending "model" via set_config_option is
+        // silently stored but never switches the model there.
+        boolean useSetModel = combo == modelCombo && agentSupportsSessionSetModel();
+
         if (currentId != null) {
-            if (combo == modeCombo && agentSupportsSessionSetMode()) {
+            if (useSetModel) {
+                sessionService.get().setSessionModel(currentId, selected.value());
+            } else if (combo == modeCombo && agentSupportsSessionSetMode()) {
                 sessionService.get().setSessionMode(currentId, selected.value());
             } else {
                 sessionService.get().setSessionConfigOption(currentId, configId, selected.value());
@@ -291,6 +298,11 @@ public class ConfigPanelController {
     /** True when the connected agent delivers modes via the session/new field and supports ACP session/set_mode. */
     private boolean agentSupportsSessionSetMode() {
         return PlatformBridge.processServiceSafe().get().getCapabilities().supportsSessionSetMode();
+    }
+
+    /** True when model switching must use the dedicated ACP session/set_model RPC (Hermes-style agents). */
+    private boolean agentSupportsSessionSetModel() {
+        return PlatformBridge.processServiceSafe().get().getCapabilities().supportsSessionSetModel();
     }
 
     public void updateConfigControls(List<SessionConfigOption> options) {
