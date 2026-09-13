@@ -222,4 +222,5 @@ class SessionLifecycleHandlerTest {
         handler.onInternalMessageDone();
         assertEquals(true, handler.isTurnEnded());
     }
+
 }
