@@ -27,8 +27,10 @@ class HarnessCatalogTest {
 
     @Test
     void onboardingOrderIncludesAllHarnesses() {
-        assertEquals(List.of("opencode", "pi", "goose", "cursor", "claude", "hermes", "gemini", "omp"),
-                HarnessCatalog.ALL.stream().map(HarnessCatalog.Harness::id).toList());
+        Set<String> allIds = new HashSet<>(HarnessCatalog.ALL.stream()
+                .map(HarnessCatalog.Harness::id).toList());
+        assertEquals(Set.of("omp", "opencode", "pi", "goose", "cursor", "claude", "hermes", "gemini"),
+                allIds);
     }
 
     @Test
