@@ -786,7 +786,8 @@ public class SessionManager implements SessionQuery, SessionControl {
 
     public CompletableFuture<List<Session>> getSessions(String directory) {
         LOG.log(Level.FINE, "getSessions: called with directory={0}", directory);
-        return ProcessManager.getInstance().getToolExecutor().waitForReady()
+        return ProcessManager.getInstance().whenReady()
+                .thenCompose(v -> ProcessManager.getInstance().getToolExecutor().waitForReady())
                 .orTimeout(60, TimeUnit.SECONDS)
                 .thenCompose(v -> {
                     return rpcClient.getSessions(directory);
@@ -891,7 +892,11 @@ public class SessionManager implements SessionQuery, SessionControl {
     }
 
     private CompletableFuture<Session> sendCreateSessionRequest(String finalCwd, long start) {
-        return ProcessManager.getInstance().getToolExecutor().waitForReady()
+        // Gate on the ACP server's readiness first: MCP's waitForReady() returns
+        // immediately when the embedded MCP server is disabled, which let
+        // session/new race ahead of process startup ("Server not started").
+        return ProcessManager.getInstance().whenReady()
+                .thenCompose(v -> ProcessManager.getInstance().getToolExecutor().waitForReady())
                 .orTimeout(60, TimeUnit.SECONDS)
                 .thenCompose(v -> {
                     return rpcClient.createSession(finalCwd);
@@ -959,7 +964,8 @@ public class SessionManager implements SessionQuery, SessionControl {
     }
 
     private CompletableFuture<List<SessionConfigOption>> sendLoadSessionRequest(String sessionId, String cwd, long start) {
-        return ProcessManager.getInstance().getToolExecutor().waitForReady()
+        return ProcessManager.getInstance().whenReady()
+                .thenCompose(v -> ProcessManager.getInstance().getToolExecutor().waitForReady())
                 .orTimeout(2, TimeUnit.MINUTES)
                 .thenCompose(v -> {
                     return rpcClient.loadSessionFromServer(sessionId, cwd);
