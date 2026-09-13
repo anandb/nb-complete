@@ -1,5 +1,27 @@
 # Release Notes
 
+## v1.20.2 (Changes since v1.20.1)
+
+### Fixes
+- **Session name persistence**: Fixed session name not persisting across restarts (`458d331f`).
+- **Line height persistence**: Fixed line height preference not being saved (`458d331f`).
+- **Restart notifications**: Fixed restart notification handling for preference changes (`458d331f`).
+- **run_command working directory validation**: Added ProjectPathGuard validation to prevent arbitrary command execution outside project root (`9ec9ab9a`).
+- **Harness catalog test**: Updated test to use Set equality instead of List ordering for harness completeness verification (`963f071e`).
+
+### Improvements
+- **EditorContextQuery contract extraction**: Extracted `EditorContextQuery` interface to `contract/` package, resolving `mcp/` → `ui/` architectural violation. Added `EditorContextCaptureAdapter` in `ui/` to implement the contract (`14ee24f`).
+
+### Tests
+- **P0 unit tests**: Added critical path tests for BeanBot test design:
+  - JSON-RPC large payload parsing (Jackson streaming parser)
+  - Session state machine transitions (21 tests covering all valid/invalid transitions)
+  - JSON-RPC id echo with string UUID handling (`cf0462b`)
+  - CI-safe assumptions for resource constraints
+
+### Housekeeping
+- Version bumped to 1.20.2.
+
 ## v1.20.1 (Changes since v1.20.0)
 
 ### Fixes
