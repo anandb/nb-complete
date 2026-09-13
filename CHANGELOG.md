@@ -1,5 +1,13 @@
 # Release Notes
 
+## v1.20.1 (Changes since v1.20.0)
+
+### Fixes
+- **Git backup failed without global git identity**: `VcsUtils.execGit` now pins a synthetic `beanbot` identity with `-c user.name/-c user.email` for every git command — the auto-backup stash previously failed with `Author identity unknown` and silently returned `null` wherever the IDE-launched Maven or CI had no global `~/.gitconfig` identity. Mercurial path untouched.
+
+### Housekeeping
+- Version bumped to 1.20.1.
+
 ## v1.20.0 (Changes since v1.19.9)
 
 ### Features

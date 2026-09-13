@@ -239,7 +239,20 @@ public class VcsUtils {
     }
 
     private static String execGit(File cwd, String env, String stdin, String... cmd) throws Exception {
-        ProcessBuilder pb = new ProcessBuilder(cmd);
+        String[] argv = cmd;
+        if (cmd.length > 0 && "git".equals(cmd[0])) {
+            // commit-tree needs a committer identity; never depend on the
+            // ambient global/system git config (CI or IDE-launched Maven may
+            // have none). Inert for read-only commands.
+            argv = new String[cmd.length + 4];
+            argv[0] = "git";
+            argv[1] = "-c";
+            argv[2] = "user.name=beanbot";
+            argv[3] = "-c";
+            argv[4] = "user.email=beanbot@example.com";
+            System.arraycopy(cmd, 1, argv, 5, cmd.length - 1);
+        }
+        ProcessBuilder pb = new ProcessBuilder(argv);
         pb.directory(cwd);
         if (isNotBlank(env)) {
             String[] parts = env.split("=", 2);
