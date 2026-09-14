@@ -14,6 +14,7 @@ taken from the ![...] text). Use `--output PATH` to write elsewhere.
 
 import argparse
 import base64
+import os
 import re
 import shutil
 import subprocess
@@ -54,12 +55,28 @@ def stitch() -> str:
     return "\n\n\n\n".join(parts) + "\n"
 
 
+def find_tweego() -> str | None:
+    """Locate the tweego binary: TWEEGO env var, then PATH, then ~/apps/tweego."""
+    candidates = []
+    env = os.environ.get("TWEEGO")
+    if env:
+        candidates.append(env)
+    on_path = shutil.which("tweego")
+    if on_path:
+        candidates.append(on_path)
+    candidates.append(str(Path.home() / "apps" / "tweego" / "tweego"))
+    for candidate in candidates:
+        if candidate and os.path.isfile(candidate) and os.access(candidate, os.X_OK):
+            return candidate
+    return None
+
+
 def compile_html(twee_path: Path) -> Path:
     """Compile .twee to HTML using tweego with Harlowe format."""
     html_path = twee_path.with_suffix(".html")
-    tweego_path = shutil.which("tweego", path="/home/anand/apps/tweego:" + (shutil.which("tweego") or ""))
+    tweego_path = find_tweego()
     if not tweego_path:
-        print("Warning: tweego not found, skipping HTML compilation")
+        print("Warning: tweego not found (set TWEEGO or add tweego to PATH), skipping HTML compilation")
         return None
     cmd = [
         tweego_path,
