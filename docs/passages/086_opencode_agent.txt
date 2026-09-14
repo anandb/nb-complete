@@ -17,7 +17,7 @@ Or via package managers:
 - **Homebrew**: <pre><code>`brew install sst/tap/opencode`</code></pre>
 
 <div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0.2em;">Windows</div>
-On Windows, it is better to run OpenCode inside **WSL (Windows Subsystem for Linux)** for the best performance and compatibility. This allows it to execute regular bash commands.
+On Windows, you can run OpenCode inside **WSL (Windows Subsystem for Linux)**, or use a package manager.
 
 To launch OpenCode through WSL from the plugin, enable **Launch through WSL** under `Tools > Options > Assistant > Assistant Service`. The plugin detects `wsl.exe` on your PATH and wraps all OpenCode invocations through WSL automatically, translating your Windows executable path to its WSL mount location.
 
