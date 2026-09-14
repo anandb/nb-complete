@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -1058,6 +1059,89 @@ class SessionManagerTest {
         }
         Thread.sleep(100);
         assertNull(lastLoadedSessionId);
+    }
+
+    @Test
+    void setSessionConfigOptionRoutesModelToSetModel() throws Exception {
+        // A harness may support session/set_model without set_config_option;
+        // the routing check must run before the set_config_option guard so the
+        // model switch is not silently dropped.
+        HarnessCatalog.Harness setModelOnly = new HarnessCatalog.Harness(
+                "setmodel-only", "SetModel Only", "agent",
+                List.of("agent"), "",
+                false, true, true, false, true, true, false, false, true, true, true,
+                "", "", "", "", "", "");
+        ProcessControl pc = mock(ProcessControl.class);
+        when(pc.getCapabilities()).thenReturn(setModelOnly);
+
+        when(processManager.sendRequest(eq("session/set_model"), any(), eq(30L), eq(TimeUnit.SECONDS)))
+                .thenReturn(CompletableFuture.completedFuture(mapper.createObjectNode()));
+        try (MockedStatic<Lookup> lookupMock = mockStatic(Lookup.class)) {
+            Lookup mockLookup = mock(Lookup.class);
+            lookupMock.when(Lookup::getDefault).thenReturn(mockLookup);
+            when(mockLookup.lookup(ProcessControl.class)).thenReturn(pc);
+            sessionManager.setSessionConfigOption("s1", "model", "m2").get(5, TimeUnit.SECONDS);
+        }
+        verify(processManager).sendRequest(eq("session/set_model"), any(), eq(30L), eq(TimeUnit.SECONDS));
+        verify(processManager, never()).sendRequest(eq("session/set_config_option"), any(),
+                eq(30L), eq(TimeUnit.SECONDS));
+    }
+
+    @Test
+    void setSessionConfigOptionKeepsConfigRpcForNonModelIds() throws Exception {
+        // Hermes supports set_model AND set_config_option; only the "model"
+        // configId is routed to the dedicated RPC, other configs go through
+        // set_config_option as before.
+        ProcessControl pc = mock(ProcessControl.class);
+        when(pc.getCapabilities()).thenReturn(HarnessCatalog.HERMES);
+
+        when(processManager.sendRequest(eq("session/set_config_option"), any(), eq(30L), eq(TimeUnit.SECONDS)))
+                .thenReturn(CompletableFuture.completedFuture(mapper.createObjectNode()));
+        try (MockedStatic<Lookup> lookupMock = mockStatic(Lookup.class)) {
+            Lookup mockLookup = mock(Lookup.class);
+            lookupMock.when(Lookup::getDefault).thenReturn(mockLookup);
+            when(mockLookup.lookup(ProcessControl.class)).thenReturn(pc);
+            sessionManager.setSessionConfigOption("s1", "effort", "high").get(5, TimeUnit.SECONDS);
+        }
+        verify(processManager).sendRequest(eq("session/set_config_option"), any(), eq(30L), eq(TimeUnit.SECONDS));
+        verify(processManager, never()).sendRequest(eq("session/set_model"), any(),
+                eq(30L), eq(TimeUnit.SECONDS));
+    }
+
+    @Test
+    void setSessionConfigOptionSendsModelViaConfigWhenSetModelUnsupported() throws Exception {
+        // UNKNOWN has setModel=false, setConfigOption=true: the "model" config
+        // must still flow through set_config_option as before the routing.
+        ProcessControl pc = mock(ProcessControl.class);
+        when(pc.getCapabilities()).thenReturn(HarnessCatalog.UNKNOWN);
+
+        when(processManager.sendRequest(eq("session/set_config_option"), any(), eq(30L), eq(TimeUnit.SECONDS)))
+                .thenReturn(CompletableFuture.completedFuture(mapper.createObjectNode()));
+        try (MockedStatic<Lookup> lookupMock = mockStatic(Lookup.class)) {
+            Lookup mockLookup = mock(Lookup.class);
+            lookupMock.when(Lookup::getDefault).thenReturn(mockLookup);
+            when(mockLookup.lookup(ProcessControl.class)).thenReturn(pc);
+            sessionManager.setSessionConfigOption("s1", "model", "m2").get(5, TimeUnit.SECONDS);
+        }
+        verify(processManager).sendRequest(eq("session/set_config_option"), any(), eq(30L), eq(TimeUnit.SECONDS));
+        verify(processManager, never()).sendRequest(eq("session/set_model"), any(),
+                eq(30L), eq(TimeUnit.SECONDS));
+    }
+
+    @Test
+    void getSessionsGatesOnServerReadinessBeforeMcp() throws Exception {
+        when(processManager.sendRequest(any(), any(), anyLong(), any(TimeUnit.class)))
+                .thenReturn(CompletableFuture.completedFuture(
+                        mapper.createObjectNode().set("sessions", mapper.createArrayNode())));
+
+        assertTrue(sessionManager.getSessions("/test/cwd").get(5, TimeUnit.SECONDS).isEmpty());
+
+        // The ACP process gate (whenReady) must complete before the MCP tool
+        // executor gate (waitForReady) — waitForReady returns immediately when
+        // the embedded MCP server is disabled, so it cannot be the only gate.
+        org.mockito.InOrder readiness = org.mockito.Mockito.inOrder(processManager, toolExecutor);
+        readiness.verify(processManager).whenReady();
+        readiness.verify(toolExecutor).waitForReady();
     }
 
     @Test

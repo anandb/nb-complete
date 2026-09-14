@@ -280,6 +280,22 @@ public class ConfigPanelController {
         }
     }
 
+    /** Restores the previous model selection after a rejected switch. Guards
+     *  against SSE-triggered repopulation via {@code isUpdatingConfigControls}
+     *  and no-ops when there is no previous selection to restore. */
+    private void restorePreviousComboSelection(JComboBox<ConfigItem> combo, Object previous, String prevModelId) {
+        if (previous == null || prevModelId == null) return;
+        SwingUtilities.invokeLater(() -> {
+            isUpdatingConfigControls = true;
+            try {
+                modelResolver.setLastSelectedModelId(prevModelId);
+                combo.setSelectedItem(previous);
+            } finally {
+                isUpdatingConfigControls = false;
+            }
+        });
+    }
+
     JComboBox<ConfigItem> getModelCombo() { return modelCombo; }
     public JButton getCopyModelBtn() { return copyModelBtn; }
 
@@ -663,21 +679,21 @@ public class ConfigPanelController {
                                 LOG.warn("Failed to set mode {0}: {1}", selected.value(), ExceptionUtils.getMessage(ex));
                                 return null;
                             });
+                    } else if (combo == modelCombo && agentSupportsSessionSetModel()) {
+                        // Mirrors triggerComboSelection: Hermes-style agents must
+                        // receive the switch via session/set_model; set_config_option
+                        // silently stores it without switching.
+                        sessionService.get().setSessionModel(currentId, selected.value())
+                            .exceptionally(ex -> {
+                                LOG.warn("Failed to set model {0}: {1}", selected.value(), ExceptionUtils.getMessage(ex));
+                                restorePreviousComboSelection(combo, prePopupSelection[0], prevModelId);
+                                return null;
+                            });
                     } else {
                         sessionService.get().setSessionConfigOption(currentId, configId, selected.value())
                             .exceptionally(ex -> {
                                 LOG.warn("Failed to set config {0}: {1}", configId, ExceptionUtils.getMessage(ex));
-                                if (combo == modelCombo && prePopupSelection[0] != null && prevModelId != null) {
-                                    SwingUtilities.invokeLater(() -> {
-                                        isUpdatingConfigControls = true;
-                                        try {
-                                            modelResolver.setLastSelectedModelId(prevModelId);
-                                            combo.setSelectedItem(prePopupSelection[0]);
-                                        } finally {
-                                            isUpdatingConfigControls = false;
-                                        }
-                                    });
-                                }
+                                restorePreviousComboSelection(combo, prePopupSelection[0], prevModelId);
                                 return null;
                             });
                     }

@@ -1005,18 +1005,21 @@ public class SessionManager implements SessionQuery, SessionControl {
     @Override
     public CompletableFuture<Void> setSessionConfigOption(String sessionId, String configId, String value) {
         ProcessControl pc = Lookup.getDefault().lookup(ProcessControl.class);
-        if (pc != null && !pc.getCapabilities().supportsSessionSetConfigOption()) {
-            LOG.fine("Harness does not support session/set_config_option, skipping config {0}", configId);
-            return CompletableFuture.completedFuture(null);
-        }
         // Hermes-style agents expose model switching as a dedicated RPC; a
         // "model" config option is silently stored there (acp_adapter
         // set_config_option) without switching the model. Route it to
         // session/set_model here so every UI call site (combo selection,
-        // pre-selected values, send-current selections) is covered.
+        // pre-selected values, send-current selections) is covered. This check
+        // runs BEFORE the set_config_option guard: a harness may support
+        // session/set_model without session/set_config_option, and the guard
+        // would otherwise swallow the "model" switch silently.
         if (pc != null && pc.getCapabilities().supportsSessionSetModel() && "model".equals(configId)) {
             LOG.fine("Routing model config to session/set_model for harness {0}", pc.getCapabilities().id());
             return setSessionModel(sessionId, value);
+        }
+        if (pc != null && !pc.getCapabilities().supportsSessionSetConfigOption()) {
+            LOG.fine("Harness does not support session/set_config_option, skipping config {0}", configId);
+            return CompletableFuture.completedFuture(null);
         }
         return rpcClient.setSessionConfigOption(sessionId, configId, value)
                 .thenApply(res -> {
