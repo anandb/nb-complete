@@ -324,12 +324,8 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
                 new Insets(0, 12, 5, 0)));
 
         editPreambleButton = new JButton();
-        editPreambleButton.setIcon(ThemeManager.getIcon("pencil.svg", 26));
-        // Zero margin keeps the button about as tall as the checkbox rows so
-        // the vertical spacing stays uniform.
-        editPreambleButton.setMargin(new Insets(0, 0, 0, 0));
-        editPreambleButton.putClientProperty("JButton.buttonType", "toolButton");
-        editPreambleButton.setContentAreaFilled(false);
+        editPreambleButton.setIcon(ThemeManager.getIcon("pencil.svg", 16));
+        editPreambleButton.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_EditPreamble"));
         editPreambleButton.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_PreambleEditor"));
         editPreambleButton.addActionListener(evt -> openPreambleDialog());
 
