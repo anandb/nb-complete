@@ -1,5 +1,28 @@
 # Release Notes
 
+## v1.20.3 (Changes since v1.20.2)
+
+### Features
+- **Help button popup menu**: The help toolbar button now opens a popup menu with Open User Guide, Show Keyboard Shortcuts, and Run Harness Selection Again; the standalone keyboard-shortcuts toolbar button was folded into it (`4b2dd08f`).
+- **Edit Preamble button**: The preamble tool button is now a labeled text button with a new SVG Repo pencil icon (`6f9515e5`).
+- **MCP endpoint at the bare origin**: The embedded MCP server serves `/` identically to `/mcp`, so clients configured with the bare origin (or a truncated URL) connect instead of failing; a misrouted path is logged once per server start (`6d7e2dd4`).
+
+### Fixes
+- **Hermes model switching**: Model picks now go through ACP `session/set_model` via a new `supportsSessionSetModel` harness flag — Hermes stored `set_config_option(model)` without swapping the session agent, keeping the old model and surfacing stale-credential 401s (`49a229fa`).
+- **set_model-only harnesses**: The set_config_option guard ran before the model routing check and silently swallowed the switch; routing is now checked first, and a rejected switch reverts the combo (`e0060c0b`).
+- **Session RPC readiness**: `getSessions`, `createSession`, and `loadSessionFromServer` gate on the ACP process (`whenReady`) before the MCP tool executor (`waitForReady`) — `waitForReady` returns immediately when the embedded MCP server is disabled, so `session/new` could race ahead of process startup with "Server not started" (`deb48ab9`).
+- **WSL-internal exec paths**: The options panel accepts harness executables that resolve to WSL-internal paths when WSL launch is active (`97ad633d`).
+
+### Improvements
+- **User guide tooling**: `stitch.py` locates tweego via the `TWEEGO` env var, `PATH`, then `~/apps/tweego` instead of a hardcoded path (`9c5e53c6`).
+
+### Documentation
+- User guide no longer recommends running OpenCode under WSL; the Windows page and Options Panel Reference describe WSL launch factually (`5b5b7318`).
+- Preamble plan-verification wording clarified (`de8fad78`).
+
+### Housekeeping
+- Version bumped to 1.20.3.
+
 ## v1.20.2 (Changes since v1.20.1)
 
 ### Fixes
