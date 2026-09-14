@@ -93,8 +93,15 @@ public class McpServer {
         ServletContextHandler context = new ServletContextHandler(ServletContextHandler.NO_SESSIONS);
         context.setContextPath("/");
 
-        context.addServlet(new ServletHolder(
-                new MessageServlet(asyncExecutor, mcpTools, token, () -> authRequired)), "/mcp");
+        // Serve the MCP endpoint at both /mcp and / to tolerate misconfigured
+        // clients — many are configured with the bare origin (no path) or a
+        // truncated URL. The same holder is mapped twice (verified: Jetty routes
+        // "/mcp", "/", and every unmatched path to this servlet); MessageServlet
+        // logs the wrong path once per start.
+        ServletHolder mcpServlet = new ServletHolder(
+                new MessageServlet(asyncExecutor, mcpTools, token, () -> authRequired));
+        context.addServlet(mcpServlet, "/mcp");
+        context.addServlet(mcpServlet, "/");
 
         server.setHandler(context);
         try {

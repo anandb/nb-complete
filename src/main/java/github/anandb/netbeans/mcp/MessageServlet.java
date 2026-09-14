@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 import java.util.logging.Level;
 
@@ -31,6 +32,9 @@ class MessageServlet extends HttpServlet {
     private static final String MCP_PROTOCOL_VERSION = "2025-03-26";
     private static final String SERVER_NAME = "nb-mcp";
     private static final String SERVER_VERSION = "1.0.0";
+    /** The advertised MCP endpoint. Other paths are also served (see
+     *  {@link McpServer}) to tolerate clients configured with a bare origin. */
+    private static final String CANONICAL_PATH = "/mcp";
 
     private static final ObjectMapper MAPPER = MapperSupplier.get();
     private final transient RequestProcessor asyncExecutor;
@@ -38,6 +42,9 @@ class MessageServlet extends HttpServlet {
     private final transient String token;
     /** Read per-request so a mid-flight auth toggle takes effect immediately. */
     private final transient BooleanSupplier authRequired;
+    /** Set on the first request served at a non-canonical path, so a
+     *  misconfigured client is reported once per server start, not per request. */
+    private final transient AtomicBoolean misroutedPathLogged = new AtomicBoolean();
 
     MessageServlet(RequestProcessor asyncExecutor, McpTools mcpTools,
                    String token, BooleanSupplier authRequired) {
@@ -68,6 +75,16 @@ class MessageServlet extends HttpServlet {
 
         long start = System.nanoTime();
         LOG.fine("MCP request received: {0} {1}", request.getMethod(), request.getRequestURI());
+
+        // A client pointed at the bare origin (or any other path) is still
+        // served, but it is misconfigured. Report that once per server start so
+        // the wrong URL is diagnosable without repeating on every request.
+        String path = request.getRequestURI();
+        if (!CANONICAL_PATH.equals(path) && misroutedPathLogged.compareAndSet(false, true)) {
+            LOG.info("MCP request served at {0}; the client is likely configured with the wrong URL — "
+                    + "the advertised endpoint is {1}", path, CANONICAL_PATH);
+        }
+
         AsyncContext asyncContext = request.startAsync();
         asyncContext.setTimeout(PluginSettings.getSessionIdleTimeout() * 1000L);
 
