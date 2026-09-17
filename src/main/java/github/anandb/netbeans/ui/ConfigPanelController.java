@@ -32,6 +32,7 @@ import github.anandb.netbeans.model.ModelRecords.ConfigItem;
 import github.anandb.netbeans.model.SessionConfigOption;
 import github.anandb.netbeans.model.SessionConfigSelectOption;
 import github.anandb.netbeans.model.AvailableMode;
+import github.anandb.netbeans.model.HarnessCatalog;
 import github.anandb.netbeans.model.ModeAgentMapping;
 import github.anandb.netbeans.support.Logger;
 import org.openide.util.NbBundle;
@@ -59,6 +60,9 @@ public class ConfigPanelController {
 
     private final JPanel configPanel;
     private final JComboBox<ConfigItem> modeCombo;
+    /** Label for {@link #modeCombo}. Reads "Mode" for harnesses that deliver
+     *  modes via the session/new `modes` field, "Agent" otherwise. */
+    private final JLabel modeLabel;
     private final JComboBox<ConfigItem> modelCombo;
     private final JComboBox<ConfigItem> thinkingCombo;
     private volatile Runnable onModelSelectedCallback;
@@ -110,9 +114,9 @@ public class ConfigPanelController {
         gbc.gridx = 0;
         gbc.gridy = 0;
         gbc.weightx = 0;
-        JLabel agentLabel = new JLabel(NbBundle.getMessage(ConfigPanelController.class, "LBL_Agent"));
-        agentLabel.setToolTipText(NbBundle.getMessage(ConfigPanelController.class, "HINT_Agent"));
-        configPanel.add(agentLabel, gbc);
+        modeLabel = new JLabel();
+        syncModeLabel();
+        configPanel.add(modeLabel, gbc);
 
         gbc.gridx = 1;
         gbc.weightx = 1.0;
@@ -301,6 +305,9 @@ public class ConfigPanelController {
 
     JComboBox<ConfigItem> getModeCombo() { return modeCombo; }
 
+    /** Test seam: the mode combo's label (see {@link #syncModeLabel()}). */
+    JLabel getModeLabel() { return modeLabel; }
+
     JComboBox<ConfigItem> getThinkingCombo() { return thinkingCombo; }
 
     /** Prevents SSE/RPC-triggered combo repopulation while user picks model/level. */
@@ -311,9 +318,24 @@ public class ConfigPanelController {
         return thinkingConfigId != null ? thinkingConfigId : "effort";
     }
 
-    /** True when the connected agent delivers modes via the session/new field and supports ACP session/set_mode. */
+    /** True when the connected agent delivers modes via the session/new field and supports ACP session/set_mode.
+     *  Null-safe: with no platform bridge registered, `processServiceSafe()` hands back a dummy whose
+     *  `getCapabilities()` is null (see PlatformBridge.createDummy). */
     private boolean agentSupportsSessionSetMode() {
-        return PlatformBridge.processServiceSafe().get().getCapabilities().supportsSessionSetMode();
+        HarnessCatalog.Harness caps = PlatformBridge.processServiceSafe().get().getCapabilities();
+        return caps != null && caps.supportsSessionSetMode();
+    }
+
+    /** Labels the mode combo after the field its values were read from: "Mode"
+     *  when the harness advertises modes via the session/new `modes` field (the
+     *  session/set_mode harnesses), "Agent" when they come from configOptions.
+     *  Label and tooltip move together so the wording can't contradict the source. */
+    private void syncModeLabel() {
+        boolean modesField = agentSupportsSessionSetMode();
+        String labelKey = modesField ? "LBL_Mode" : "LBL_Agent";
+        String hintKey = modesField ? "HINT_Mode" : "HINT_Agent";
+        modeLabel.setText(NbBundle.getMessage(ConfigPanelController.class, labelKey));
+        modeLabel.setToolTipText(NbBundle.getMessage(ConfigPanelController.class, hintKey));
     }
 
     /** True when model switching must use the dedicated ACP session/set_model RPC (Hermes-style agents). */
@@ -404,6 +426,9 @@ public class ConfigPanelController {
         SwingUtilities.invokeLater(() -> {
             isUpdatingConfigControls = true;
             try {
+                // Label follows the source the mode values came from (modes
+                // field vs configOptions), so it can't drift from the combos.
+                syncModeLabel();
                 // First pass: parse model variants before any combo population,
                 // so thinking-level filtering can rely on modelVariants being ready.
                 for (SessionConfigOption opt : options) {
