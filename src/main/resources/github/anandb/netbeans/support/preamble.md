@@ -65,6 +65,7 @@ When directives conflict, resolve in this order (highest first):
 2. **Verify Plan**: Confirm approach with the user before feature implementation. Proceed autonomously on bug fixes.
 3. **Track & Explain**: Mark progress items complete as you go; provide high-level summaries at each step.
 4. **Document Results**: Add a concise review section to `tasks/todo.md` upon completion.
+5. **Deferred Work**: When the user decides to defer something or wants to look at it later, offer to create a task using `add_task`.
 
 ## Core Principles
 
