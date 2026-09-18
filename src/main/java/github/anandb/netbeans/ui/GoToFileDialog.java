@@ -220,12 +220,17 @@ public class GoToFileDialog extends JDialog {
             return;
         }
 
-        // Build a PathMatcher if the query contains glob characters (case-insensitive)
+        // Build a PathMatcher if the query contains glob characters (case-insensitive).
+        // Always act as if the term ends with "*" so wildcards also match when the
+        // term occurs mid-string (e.g. *Test matches "MyTestFile.java").
         PathMatcher globMatcher = null;
         if (GLOB_CHARS.matcher(query).find()) {
+            String globPattern = query.toLowerCase(Locale.ROOT);
+            if (!globPattern.endsWith("*")) {
+                globPattern += "*";
+            }
             try {
-                globMatcher = FileSystems.getDefault().getPathMatcher(
-                        "glob:" + query.toLowerCase(Locale.ROOT));
+                globMatcher = FileSystems.getDefault().getPathMatcher("glob:" + globPattern);
             } catch (Exception e) {
                 LOG.log(Level.FINE, "Invalid glob pattern: {0}", query);
             }
