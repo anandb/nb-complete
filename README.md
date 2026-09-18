@@ -182,7 +182,6 @@ The plugin reads the following system properties and environment variables:
 | `beanbot.color.*` | System (varies) | Override any UI color (`ColorTheme`) |
 | `nb.dark.theme` | UIManager | Detect dark theme for icon resolution (`IconResourceManager`) |
 | `ACP_WIRE_LOG` | Env | Path for ACP wire protocol log file (`WireLogger`) |
-| `OPENCODE_MODEL` | Env | Default model override in config (`ConfigPanelController`) |
 | `PATH` | Env | Search path for opencode binary (`BinaryResolver`) |
 
 The color properties are declared in [`colors.json`](src/main/resources/github/anandb/netbeans/ui/colors.json) and cover: background, foreground, selection, accent, sunken background, bubble (user/assistant), code, table, header, thinking, tool, permission, and error colors — each with light and dark variants.
