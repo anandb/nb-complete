@@ -3,6 +3,8 @@ package github.anandb.netbeans.ui;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Container;
+import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
@@ -56,6 +58,9 @@ final class PermissionRequestPanel extends JPanel {
     private static final int SLIDE_STEPS = 8;
     private static final int SLIDE_INTERVAL_MS = 20;
 
+    /** Max prompt lines shown before truncating with a "Show more" toggle. */
+    private static final int MAX_PROMPT_LINES = 5;
+
     private final FitEditorPane promptLabel;
     private final JPanel buttonPanel;
     private final JPanel contentBlocks;
@@ -66,6 +71,13 @@ final class PermissionRequestPanel extends JPanel {
     private CompletableFuture<List<FileChange>> fileChangesFuture;
     private Runnable allowAction;
     private boolean requestActive = false;
+
+    /** Full, untruncated prompt text for the active request. */
+    private String promptFullText = "";
+    /** True when the truncated prompt has been expanded via the toggle. */
+    private boolean promptExpanded;
+    /** "Show more"/"Show less" toggle, present only when the prompt was clamped. */
+    private JButton promptToggle;
 
     /** Active slide animation timer. Stored so {@link #slideOpen()} and
      *  {@link #slideClose()} can stop any running animation before starting a
@@ -89,8 +101,7 @@ final class PermissionRequestPanel extends JPanel {
         setVisible(false);
 
         ColorTheme theme = ThemeManager.getCurrentTheme();
-        content = new JPanel();
-        content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
+        content = new JPanel(new BorderLayout(0, 6));
         content.setOpaque(true);
         content.setBackground(theme.permissionBg());
         content.setBorder(BorderFactory.createCompoundBorder(
@@ -125,7 +136,7 @@ final class PermissionRequestPanel extends JPanel {
         promptWrapper.setOpaque(false);
         promptWrapper.add(promptLabel);
         messageRow.add(promptWrapper, BorderLayout.CENTER);
-        content.add(messageRow);
+        content.add(messageRow, BorderLayout.NORTH);
 
         // Row 1b: code/diff content blocks (shown when toolCall has diff data)
         contentBlocks = new ScrollableBlocksPanel();
@@ -137,13 +148,12 @@ final class PermissionRequestPanel extends JPanel {
         contentScroll.getViewport().setOpaque(false);
         contentScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         contentScroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
-        content.add(contentScroll);
+        content.add(contentScroll, BorderLayout.CENTER);
 
-        // Row 2: buttons right-aligned
-        content.add(Box.createVerticalStrut(8));
+        // Row 2: buttons right-aligned, pinned to the bottom so they never scroll away
         buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         buttonPanel.setOpaque(false);
-        content.add(buttonPanel);
+        content.add(buttonPanel, BorderLayout.SOUTH);
 
         add(content, BorderLayout.CENTER);
 
@@ -154,8 +164,122 @@ final class PermissionRequestPanel extends JPanel {
         // triggerReject() is kept for programmatic use only.
     }
 
+    /**
+     * Caps the panel at half the sidebar height. The prompt stays at the top and
+     * the Allow/Deny buttons stay pinned at the bottom (BorderLayout NORTH/SOUTH);
+     * only the content body in the center scrolls, so the decision controls are
+     * always visible even for very large diffs.
+     */
+    @Override
+    public Dimension getPreferredSize() {
+        Dimension d = super.getPreferredSize();
+        int cap = maxPermissionHeight();
+        if (cap > 0 && d.height > cap) {
+            d.height = cap;
+        }
+        return d;
+    }
+
+    /** Half the height of the enclosing sidebar, or 0 when it is not yet laid out. */
+    private int maxPermissionHeight() {
+        for (Container c = getParent(); c != null; c = c.getParent()) {
+            if (c instanceof AssistantTopComponent && c.getHeight() > 0) {
+                return c.getHeight() / 2;
+            }
+        }
+        Container parent = getParent();
+        return parent != null && parent.getHeight() > 0 ? parent.getHeight() / 2 : 0;
+    }
+
     void setOnResult(BiConsumer<String, Boolean> onResult) {
         this.onResult = onResult;
+    }
+
+    /**
+     * Sets the prompt text, truncating it to {@link #MAX_PROMPT_LINES} lines with a
+     * "Show more" toggle when the message is longer. Keeps a verbose agent prompt
+     * from crowding out the body and the decision buttons.
+     */
+    private void setPrompt(String text) {
+        promptFullText = text == null ? "" : text;
+        promptExpanded = false;
+        removePromptToggle();
+        if (countPromptLines(promptFullText) > MAX_PROMPT_LINES) {
+            setPromptHtml(clampedPromptText());
+            addPromptToggle();
+        } else {
+            setPromptHtml(promptFullText);
+        }
+    }
+
+    private static int countPromptLines(String text) {
+        int lines = 1;
+        for (int i = 0; i < text.length(); i++) {
+            if (text.charAt(i) == '\n') {
+                lines++;
+            }
+        }
+        return lines;
+    }
+
+    /** First {@link #MAX_PROMPT_LINES} source lines with a trailing ellipsis. */
+    private String clampedPromptText() {
+        StringBuilder sb = new StringBuilder();
+        int line = 0;
+        for (int i = 0; i < promptFullText.length() && line < MAX_PROMPT_LINES; i++) {
+            char c = promptFullText.charAt(i);
+            sb.append(c);
+            if (c == '\n') {
+                line++;
+            }
+        }
+        return sb.toString().stripTrailing() + " \u2026";
+    }
+
+    private void setPromptHtml(String plainText) {
+        promptLabel.setText("<html>" + plainText.replace("\n", "<br>") + "</html>");
+    }
+
+    private void addPromptToggle() {
+        promptToggle = new JButton(NbBundle.getMessage(PermissionRequestPanel.class, "BTN_ShowMorePrompt"));
+        promptToggle.setBorder(BorderFactory.createEmptyBorder(2, 0, 4, 0));
+        promptToggle.setContentAreaFilled(false);
+        promptToggle.setBorderPainted(false);
+        promptToggle.setFocusPainted(false);
+        promptToggle.setOpaque(false);
+        promptToggle.setForeground(ThemeManager.getCurrentTheme().permissionAccent());
+        promptToggle.setFont(promptLabel.getFont().deriveFont(Font.PLAIN));
+        promptToggle.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        promptToggle.setAlignmentX(Component.LEFT_ALIGNMENT);
+        promptToggle.addActionListener(e -> togglePromptExpanded());
+        JPanel wrapper = (JPanel) promptLabel.getParent();
+        wrapper.add(promptToggle, 1);
+    }
+
+    private void removePromptToggle() {
+        if (promptToggle != null) {
+            Container parent = promptToggle.getParent();
+            if (parent != null) {
+                parent.remove(promptToggle);
+            }
+            promptToggle = null;
+        }
+    }
+
+    private void togglePromptExpanded() {
+        promptExpanded = !promptExpanded;
+        if (promptExpanded) {
+            setPromptHtml(promptFullText);
+            promptToggle.setText(NbBundle.getMessage(PermissionRequestPanel.class, "BTN_ShowLessPrompt"));
+        } else {
+            setPromptHtml(clampedPromptText());
+            promptToggle.setText(NbBundle.getMessage(PermissionRequestPanel.class, "BTN_ShowMorePrompt"));
+        }
+        Container wrapper = promptLabel.getParent();
+        if (wrapper != null) {
+            wrapper.revalidate();
+            wrapper.repaint();
+        }
     }
 
     List<FileChange> getCurrentFileChanges() {
@@ -187,7 +311,7 @@ final class PermissionRequestPanel extends JPanel {
         if (context != null && !context.isEmpty() && prompt.contains(splitToken)) {
             // Split the prompt to inject the context label
             String[] parts = prompt.split(Pattern.quote(splitToken));
-            promptLabel.setText("<html>" + parts[0].replace("\n", "<br>") + "</html>");
+            setPrompt(parts[0]);
 
             JPanel contextRow = new JPanel(new BorderLayout(4, 0));
             contextRow.setOpaque(false);
@@ -215,17 +339,12 @@ final class PermissionRequestPanel extends JPanel {
                 promptWrapper.add(suffixLabel);
             }
         } else {
-            promptLabel.setText("<html>" + prompt.replace("\n", "<br>") + "</html>");
+            setPrompt(prompt);
         }
 
         contentBlocks.removeAll();
         currentFileChanges = null;
         fileChangesFuture = null;
-
-        // Cap scroll height at 80% of the container height to avoid vertical scrolling if possible
-        int parentHeight = getParent() != null && getParent().getHeight() > 0 ? getParent().getHeight() : 600;
-        int maxH = (int) (parentHeight * 0.8);
-        contentScroll.setMaximumSize(new Dimension(Integer.MAX_VALUE, Math.max(maxH, 150)));
 
         // Build buttons without Show Diff initially — file changes load async
         buttonPanel.removeAll();
@@ -760,7 +879,7 @@ final class PermissionRequestPanel extends JPanel {
         this.pendingResponse = onContinue;
         this.requestActive = true;
 
-        promptLabel.setText("<html>" + prompt.replace("\n", "<br>") + "</html>");
+        setPrompt(prompt);
 
         buttonPanel.removeAll();
         JButton continueBtn = new JButton(NbBundle.getMessage(PermissionRequestPanel.class, "BTN_Continue"));
