@@ -73,7 +73,7 @@ src/main/java/github/anandb/netbeans/ui/Bundle.properties
 .vscode/
 .graymatter/
 /tasks/
-research/
+/research/
 __pycache__/
 
 # Process attachment files

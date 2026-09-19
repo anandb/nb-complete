@@ -1086,7 +1086,6 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                         : null;
                 chatPanel.addOnboardingBubble(foundBinaries,
                     this::onHarnessSelected,
-                    onRestarted -> promptRestartServer(onRestarted),
                     dismiss
                 );
                 statusController.setStatus(foundBinaries.isEmpty()

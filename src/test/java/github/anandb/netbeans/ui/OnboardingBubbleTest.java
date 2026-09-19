@@ -21,7 +21,7 @@ class OnboardingBubbleTest {
     void constructsEmptyChooser() {
         assertDoesNotThrow(() -> {
             OnboardingBubble bubble = new OnboardingBubble(java.util.List.of(),
-                    (id, path) -> { }, disable -> { });
+                    (id, path) -> { });
             assertNotNull(bubble);
         });
     }
@@ -31,7 +31,7 @@ class OnboardingBubbleTest {
         assertDoesNotThrow(() -> {
             OnboardingBubble bubble = new OnboardingBubble(
                     java.util.List.of(new BinaryResolver.FoundBinary("goose", "Goose", "/usr/bin/goose")),
-                    (id, path) -> { }, disable -> { });
+                    (id, path) -> { });
             assertNotNull(bubble);
         });
     }
@@ -56,12 +56,12 @@ class OnboardingBubbleTest {
                 OnboardingBubble.class, "OnboardingBubble.Button.Close");
 
         OnboardingBubble dismissable = new OnboardingBubble(java.util.List.of(),
-                (id, path) -> { }, disable -> { }, () -> { });
+                (id, path) -> { }, () -> { });
         assertTrue(containsButton(dismissable, closeLabel),
                 "Close button must be offered when a dismiss callback is supplied");
 
         OnboardingBubble nonDismissable = new OnboardingBubble(java.util.List.of(),
-                (id, path) -> { }, disable -> { });
+                (id, path) -> { });
         org.junit.jupiter.api.Assertions.assertFalse(containsButton(nonDismissable, closeLabel),
                 "First-install view must be non-dismissable (no Close button)");
     }

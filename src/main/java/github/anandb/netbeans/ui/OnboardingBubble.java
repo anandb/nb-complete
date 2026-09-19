@@ -58,7 +58,6 @@ class OnboardingBubble extends JPanel {
 
 
     private final SelectionCallback selectionCallback;
-    private final RestartCallback restartCallback;
     /** Optional: dismisses the harness-chooser back to the chat. Non-null only
      *  when a harness is already configured (help-menu launch) — the
      *  first-install view must be non-dismissable. */
@@ -74,22 +73,20 @@ class OnboardingBubble extends JPanel {
      * @param restartCallback invoked by the Restart button
      */
     OnboardingBubble(java.util.List<BinaryResolver.FoundBinary> found,
-            SelectionCallback selectionCallback, RestartCallback restartCallback) {
-        this(found, selectionCallback, restartCallback, null);
+            SelectionCallback selectionCallback) {
+        this(found, selectionCallback, null);
     }
 
     /**
      * @param found harness binaries detected on this system (may be empty)
      * @param selectionCallback invoked when the user picks a found harness
-     * @param restartCallback invoked by the Restart button
      * @param dismissCallback invoked by the Close button; {@code null} hides
      *        the Close button (first-install view must be non-dismissable)
      */
     OnboardingBubble(java.util.List<BinaryResolver.FoundBinary> found,
-            SelectionCallback selectionCallback, RestartCallback restartCallback,
+            SelectionCallback selectionCallback,
             Runnable dismissCallback) {
         this.selectionCallback = selectionCallback;
-        this.restartCallback = restartCallback;
         this.dismissCallback = dismissCallback;
         this.foundBinaries = found;
 
@@ -147,14 +144,7 @@ class OnboardingBubble extends JPanel {
         manualSetupBtn.setIconTextGap(6);
         manualSetupBtn.addActionListener(e -> OptionsDisplayer.getDefault()
                 .open("github-anandb-netbeans-ui-ACPOptionsPanelController"));
-        JButton restartBtn = new JButton(
-                NbBundle.getMessage(OnboardingBubble.class, "OnboardingBubble.Button.Restart"));
-        restartBtn.setFocusPainted(false);
-        restartBtn.addActionListener(e -> {
-            if (restartCallback != null) restartCallback.onRestart(this::disableButtons);
-        });
         buttonsPanel.add(manualSetupBtn);
-        buttonsPanel.add(restartBtn);
         if (dismissCallback != null) {
             JButton closeBtn = new JButton(NbBundle.getMessage(
                     OnboardingBubble.class, "OnboardingBubble.Button.Close"));
