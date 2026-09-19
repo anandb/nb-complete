@@ -208,7 +208,8 @@ public final class BinaryResolver {
 
     /**
      * Searches the system PATH for the given executable name, falling back to
-     * the Windows WinGet shim directory if not found there.
+     * the user-local bin directory ({@code ~/.local/bin}) and the Windows
+     * WinGet shim directory if not found there.
      */
     public static String findOnPath(String exeName) {
         String pathEnv = System.getenv("PATH");
@@ -218,6 +219,15 @@ public final class BinaryResolver {
                 if (f.exists() && f.canExecute()) {
                     return f.getAbsolutePath();
                 }
+            }
+        }
+        // User-local bin directory (Linux/macOS convention: hermes, etc.)
+        String userHome = System.getProperty("user.home");
+        if (isNotBlank(userHome)) {
+            File localBin = new File(userHome, ".local" + File.separator + "bin" + File.separator + exeName);
+            if (localBin.exists() && localBin.canExecute()) {
+                LOG.fine("Found in ~/.local/bin: {0}", localBin.getAbsolutePath());
+                return localBin.getAbsolutePath();
             }
         }
         return findInWellKnownWindowsLocations(exeName);
