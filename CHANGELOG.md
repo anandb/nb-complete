@@ -1,5 +1,29 @@
 # Release Notes
 
+## v1.20.4 (Changes since v1.20.3)
+
+### Features
+- **OpenClaw harness**: OpenClaw added as a ninth ACP harness (binary `openclaw`, launch arg `acp`) with monochrome theme-aware icons, install commands, docs link, and model-selection placeholder; MCP server config and agent list are disabled for it (`765045c9`).
+- **Mode combo label**: The combo's label follows the field its values came from — "Mode" with a session-permission tooltip for `session/set_mode` harnesses (Claude, Gemini, Oh My Pi), "Agent" for configOptions harnesses (OpenCode, Goose, Cursor, Pi, Hermes); a null-guarded capability probe prevents a swallowed EDT NPE from leaving the label stale (`dc5b1d84`).
+- **Preamble add_task**: The preamble now offers `add_task` when work is deferred (`aab7eadc`).
+
+### Fixes
+- **Inverted model gating**: A null `ProcessControl` (no server) now disables model/agent selection instead of enabling it (`765045c9`).
+- **Permission panel size**: The permission panel is capped at half the sidebar height with the prompt truncated to five lines behind a Show more/Show less toggle; Allow/Deny buttons are pinned to the bottom so they stay visible over large diffs (`9854fb47`).
+- **Go To File glob matching**: Glob queries without a trailing wildcard also match when the term occurs mid-string (`*Test` matches `MyTestFile.java`); `*` is not appended when the query already ends in `*` or `?` (`02c034e0`).
+- **EDT stalls**: Binary availability checks moved off the EDT before install-time UI updates; the onboarding chooser's Restart button was removed with its restart callback (`2c7735c3`, `9039e1d7`, `cc5f2640`).
+
+### Documentation
+- **OpenClaw and install commands**: New OpenClaw agent page; every agent's install commands verified against upstream docs and corrected — Goose (repo .ps1, moved to aaif-goose/goose, fixed docs URL), Pi (`@geohar/pi-acp`, MCP over ACP), Cursor (PowerShell installer), Gemini (npm), OpenCode (anomalyco tap) (`b08b0d01`, `6e78b59f`).
+- User guide updated for the help popup menu and Choose Agent entry point (`6e78b59f`).
+- README dropped the unsupported `OPENCODE_MODEL` env var (`6bfe83a7`).
+
+### Build
+- User guide is generated during the build when the tooling is available (`cf0c154a`).
+
+### Housekeeping
+- Version bumped to 1.20.4.
+
 ## v1.20.3 (Changes since v1.20.2)
 
 ### Features

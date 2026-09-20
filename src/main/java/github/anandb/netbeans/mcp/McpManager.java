@@ -180,8 +180,7 @@ public class McpManager {
             if (mcpServer == null || !mcpServer.isRunning()) {
                 return mcpServerList;
             }
-            // Auth-capable agents (opencode, goose, ...) get the token-protected
-            // URL; the PI harness cannot carry tokens, so it gets the plain one.
+            // Auth-capable agents (opencode, goose, ...) get the token-protected url
             String url = mcpAuthRequired ? mcpServer.getAuthenticatedUrl() : mcpServer.getUrl();
             mcpServerList.add(Map.of(
                     "headers", List.of(),

@@ -221,12 +221,14 @@ public class GoToFileDialog extends JDialog {
         }
 
         // Build a PathMatcher if the query contains glob characters (case-insensitive).
-        // Always act as if the term ends with "*" so wildcards also match when the
+        // Act as if the term ends with a wildcard so matches also hit when the
         // term occurs mid-string (e.g. *Test matches "MyTestFile.java").
+        // Only append * when the tail isn't already wildcard-closed by ? or *.
         PathMatcher globMatcher = null;
         if (GLOB_CHARS.matcher(query).find()) {
             String globPattern = query.toLowerCase(Locale.ROOT);
-            if (!globPattern.endsWith("*")) {
+            char last = globPattern.charAt(globPattern.length() - 1);
+            if (last != '*' && last != '?') {
                 globPattern += "*";
             }
             try {
