@@ -1056,6 +1056,9 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         // EDT task (e.g. updateNewSessionBtnState) sees the new value instead
         // of a stale "binary available" state.
         binaryNotFound = notFound;
+        // Pre-compute availability OFF the EDT to avoid preference reads and
+        // file existence checks blocking the UI thread during install.
+        boolean available = BinaryResolver.isAvailable();
         SwingUtilities.invokeLater(() -> {
             if (notFound) {
                 // Disable all session toolbar buttons — only restart stays enabled
@@ -1081,7 +1084,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                 // be non-dismissable.
                 chatPanel.stopStreaming();
                 chatPanel.clearMessages();
-                Runnable dismiss = BinaryResolver.isAvailable()
+                Runnable dismiss = available
                         ? () -> dismissHarnessChooser()
                         : null;
                 chatPanel.addOnboardingBubble(foundBinaries,

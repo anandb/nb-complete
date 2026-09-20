@@ -119,6 +119,9 @@ public class ComponentLifecycleHandler {
         // During plugin installation the @OnStart handler opens this component while
         // the module installer wizard is still active; deferring prevents the installation
         // dialog from being blocked by server/session initialization.
+        // Pre-compute availability OFF the EDT to avoid preference reads and
+        // file existence checks blocking the UI thread during install.
+        boolean available = BinaryResolver.isAvailable();
         SwingUtilities.invokeLater(() -> {
             Set<String> currentDirs = new HashSet<>();
             for (var p : projectContext.getAllOpenProjects()) {
@@ -133,7 +136,7 @@ public class ComponentLifecycleHandler {
             // binary. When none is explicitly configured, detect every catalog
             // harness on a background thread and show the harness chooser —
             // always, even when exactly one was found.
-            if (!BinaryResolver.isAvailable()) {
+            if (!available) {
                 RequestProcessor.getDefault().post(() -> {
                     List<BinaryResolver.FoundBinary> found = BinaryResolver.findAllKnownOnPath();
                     topComponent.showHarnessChooser(found);
