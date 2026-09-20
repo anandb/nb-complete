@@ -69,7 +69,7 @@ This page describes every preference in the panel, organised into six sections. 
 <thead><tr><th>Preference</th><th>Default</th><th>Description</th></tr></thead>
 <tbody>
 <tr><td><strong>Custom User Icon (PNG)</strong></td><td>(empty)</td><td>Path to a PNG used as your avatar in chat. Click <strong>Browse...</strong> to pick one, or right-click the preview to clear it. Changing it reloads the session.</td></tr>
-<tr><td><strong>Toolbar Icon Size (requires restart)</strong></td><td>24</td><td>Icon size for the assistant toolbar: 16, 24, 28, 32, 36, 40, or 48. Requires an IDE restart to apply.</td></tr>
+<tr><td><strong>Toolbar Icon Size (requires restart)</strong></td><td>24</td><td>Icon size for the assistant toolbar: 16, 24, 28, 32, or 48. Requires an IDE restart to apply.</td></tr>
 <tr><td><strong>Chat Font Size</strong></td><td>Inherited</td><td>Font size for chat text: Inherited (uses the theme), or 10, 11, 12, 13, 14, 16.</td></tr>
 </tbody>
 </table>

@@ -19,7 +19,7 @@ Navigate and control the assistant efficiently using keyboard shortcuts:
 <tr><td><code>Ctrl + Shift + L</code></td><td>Open the Stash Diff viewer</td></tr>
 <tr><td><code>/</code></td><td>Open the slash command autocomplete popup</td></tr>
 <tr><td><code>Tab</code></td><td>Accept the highlighted autocomplete command and insert it into the input area</td></tr>
-<tr><td><code>Escape</code></td><td>Close the options panel</td></tr>
+<tr><td><code>Escape</code></td><td>Close options panel and refocus input</td></tr>
 </tbody>
 </table>
 

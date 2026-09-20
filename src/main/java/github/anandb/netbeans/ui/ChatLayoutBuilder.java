@@ -604,7 +604,7 @@ final class ChatLayoutBuilder {
             {toggleBlocksBtn, PreferenceKeys.TOOLBAR_EXPAND_COLLAPSE, "Expand/Collapse All"},
             {filterBtn, PreferenceKeys.TOOLBAR_FILTER, "Filter"},
             {exportBtn, PreferenceKeys.TOOLBAR_EXPORT, "Export"},
-            {restartServerBtn, PreferenceKeys.TOOLBAR_RESTART, "Restart Server"},
+            {restartServerBtn, PreferenceKeys.TOOLBAR_RESTART, "Restart Harness"},
         };
 
         for (Object[] entry : buttons) {

@@ -210,7 +210,7 @@ final class KeyboardShortcutsDialog extends JDialog {
         String unassignedFg = isDark ? "#666" : "#999";
 
         Color bg = Color.decode(bgHex);
-        Color alt = Color.decode(altHex);        
+        Color alt = Color.decode(altHex);
         Color border = Color.decode(borderHex);
         Color fg = isDark ? Color.decode("#e0e0e0") : Color.decode("#333");
 
@@ -307,7 +307,7 @@ final class KeyboardShortcutsDialog extends JDialog {
         String fgHex = theme.isDark() ? "#e0e0e0" : "#333";
 
         Color border = Color.decode(borderHex);
-        Color altBg = Color.decode(altHex);        
+        Color altBg = Color.decode(altHex);
         Color unassignedFg = theme.isDark() ? Color.decode("#999999") : Color.decode("#666666");
 
         JPanel wrapper = new JPanel(new BorderLayout());
@@ -425,7 +425,7 @@ final class KeyboardShortcutsDialog extends JDialog {
                 {ShortcutUtils.resolveShortcut("github.anandb.netbeans.ui.ReloadSessionAction"), "Reload Session"},
                 {ShortcutUtils.resolveShortcut("github.anandb.netbeans.ui.RenameSessionAction"), "Rename Session"},
                 {ShortcutUtils.resolveShortcut("github.anandb.netbeans.ui.ArchiveSessionAction"), "Archive Session"},
-                {ShortcutUtils.resolveShortcut("github.anandb.netbeans.ui.RestartServerAction"), "Restart Server"},
+                {ShortcutUtils.resolveShortcut("github.anandb.netbeans.ui.RestartServerAction"), "Restart Harness"},
                 {ShortcutUtils.resolveShortcut("github.anandb.netbeans.ui.SendMessageAction"), "Send Message"},
                 {ShortcutUtils.resolveShortcut("github.anandb.netbeans.ui.StopMessageAction"), "Stop Message"},
                 {ShortcutUtils.resolveShortcut("github.anandb.netbeans.ui.ToggleOptionsAction"), "Toggle Options"},

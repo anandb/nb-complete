@@ -287,7 +287,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         idleTimeoutLabel.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_SessionIdleTimeout"));
         behaviorPanel.add(idleTimeoutLabel, UIUtils.createGbc(2, row, 0.0, 0, GridBagConstraints.NONE,
                 GridBagConstraints.WEST, new Insets(0, 15, 5, 5)));
-        SpinnerNumberModel spinnerModel = new SpinnerNumberModel(300, 0, 3600, 5);
+        SpinnerNumberModel spinnerModel = new SpinnerNumberModel(600, 0, 3600, 5);
         idleTimeoutSpinner = new JSpinner(spinnerModel);
         ((JSpinner.DefaultEditor) idleTimeoutSpinner.getEditor()).getTextField().setColumns(4);
         ((JSpinner.DefaultEditor) idleTimeoutSpinner.getEditor()).getTextField()
