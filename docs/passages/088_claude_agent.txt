@@ -12,7 +12,7 @@
 
 All platforms (requires Node.js 18+):
 
-<pre><code>`npm install -g @agentclientprotocol/claude-agent-acp`</code></pre>
+<pre><code>npm install -g @agentclientprotocol/claude-agent-acp</code></pre>
 
 The package bundles the Claude Agent SDK, so a separate `claude` CLI install is not needed.
 

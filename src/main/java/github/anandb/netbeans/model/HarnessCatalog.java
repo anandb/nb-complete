@@ -77,7 +77,7 @@ public final class HarnessCatalog {
             "",
             "",
             "winget install SST.opencode",
-            "brew install opencode",
+            "brew install anomalyco/tap/opencode",
             "curl -fsSL https://opencode.ai/install | bash",
             "", "https://opencode.ai/docs/");
 
@@ -87,22 +87,23 @@ public final class HarnessCatalog {
             true, true, false, false, true, true, false, true, false, true, true, true,
             "",
             "",
-            "powershell -c \"irm https://github.com/block/goose/releases/download/stable/download_cli.sh | iex\"",
+            "powershell -c \"iwr https://raw.githubusercontent.com/aaif-goose/goose/main/download_cli.ps1 -OutFile download_cli.ps1; .\\download_cli.ps1\"",
             "brew install block-goose-cli",
-            "curl -fsSL https://github.com/block/goose/releases/download/stable/download_cli.sh | bash",
-            "", "https://block-goose.mintlify.app/docs/quickstart");
+            "curl -fsSL https://github.com/aaif-goose/goose/releases/download/stable/download_cli.sh | bash",
+            "", "https://goose-docs.ai/docs/getting-started/installation");
 
     public static final Harness PI = new Harness(
             "pi", "Pi", "pi-logo",
             List.of("pi-acp"), "",
-            true, false, false, false, false, true, false, true, false, true, true, true,
+            true, true, false, false, false, true, false, true, false, true, true, true,
             "",
             "",
             "powershell -c \"irm https://pi.dev/install.ps1 | iex\"",
             "curl -fsSL https://pi.dev/install.sh | sh",
             "curl -fsSL https://pi.dev/install.sh | sh",
-            "Requires Node.js 22+. The ACP entry points (pi-acp / pi-agent) are installed together with pi.",
-            "https://github.com/earendil-works/pi-acp");
+            "Requires Node.js 22+ and pi 0.80.4+ on your PATH. Install the ACP adapter separately: "
+                    + "npm install -g @geohar/pi-acp. For MCP Tools, add pi-mcp-adapter to your Pi packages.",
+            "https://github.com/georgeharker/pi-acp");
 
     public static final Harness CURSOR = new Harness(
             "cursor", "Cursor", "cursor",
@@ -110,7 +111,7 @@ public final class HarnessCatalog {
             false, true, true, false, false, true, false, true, false, true, true, true,
             "",
             "",
-            "Install the Cursor CLI from https://cursor.com/cli (Windows installer)",
+            "powershell -c \"irm 'https://cursor.com/install?win32=true' | iex\"",
             "curl https://cursor.com/install -fsSL | bash",
             "curl https://cursor.com/install -fsSL | bash",
             "The ACP entry point is the cursor-agent CLI itself (run with \"agent acp\").",
@@ -146,7 +147,7 @@ public final class HarnessCatalog {
             false, true, true, false, true, true, true, false, false, false, false, true,
             "MSG_UnsupportedModelSelection",
             "MSG_GeminiUnsupportedModelSelectionPlaceholder",
-            "npm install -g @google/gemini-cli", "brew install gemini-cli", "npm install -g @google/gemini-cli",
+            "npm install -g @google/gemini-cli", "npm install -g @google/gemini-cli", "npm install -g @google/gemini-cli",
             "Requires Node.js 20+",
             "https://geminicli.com/docs/get-started/installation/");
 

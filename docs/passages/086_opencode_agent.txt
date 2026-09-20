@@ -9,24 +9,24 @@
 <a href="https://opencode.ai" target="_blank" rel="noopener">OpenCode</a> is an open-source AI coding agent and the default harness for BeanBot. It supports 15+ LLM providers (Anthropic, OpenAI, Google, Ollama, OpenRouter, Bedrock, …) and speaks the <a href="https://agentclientprotocol.com" target="_blank" rel="noopener">Agent Client Protocol</a> natively.
 
 <div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0.2em;">macOS / Linux</div>
-<pre><code>`curl -fsSL https://opencode.ai/install | bash`</code></pre>
+<pre><code>curl -fsSL https://opencode.ai/install | bash</code></pre>
 
 Or via package managers:
 
-- **npm**: <pre><code>`npm install -g opencode-ai`</code></pre>
-- **Homebrew**: <pre><code>`brew install sst/tap/opencode`</code></pre>
+- **npm**: <pre><code>npm install -g opencode-ai</code></pre>
+- **Homebrew**: <pre><code>brew install anomalyco/tap/opencode</code></pre>
 
 <div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0.2em;">Windows</div>
 On Windows, you can run OpenCode inside **WSL (Windows Subsystem for Linux)**, or use a package manager.
 
 To launch OpenCode through WSL from the plugin, enable **Launch through WSL** under `Tools > Options > Assistant > Assistant Service`. The plugin detects `wsl.exe` on your PATH and wraps all OpenCode invocations through WSL automatically, translating your Windows executable path to its WSL mount location.
 
-<pre><code>`curl -fsSL https://opencode.ai/install | bash`</code></pre>
+<pre><code>curl -fsSL https://opencode.ai/install | bash</code></pre>
 
 Or via package managers:
 
-- **Chocolatey**: <pre><code>`choco install opencode`</code></pre>
-- **Scoop**: <pre><code>`scoop install opencode`</code></pre>
+- **Chocolatey**: <pre><code>choco install opencode</code></pre>
+- **Scoop**: <pre><code>scoop install opencode</code></pre>
 
 <div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0.2em;">Configuration</div>
 
@@ -34,14 +34,14 @@ After installing, create the configuration file:
 
 <div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0.2em;">macOS / Linux</div>
 The config directory is at `$HOME/.config/opencode/`.
-<pre><code>`mkdir -p $HOME/.config/opencode`</code></pre>
+<pre><code>mkdir -p $HOME/.config/opencode</code></pre>
 Create `$HOME/.config/opencode/opencode.json` with the starter configuration:
 
 <div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0.2em;">Windows</div>
 
 <pre><code>
-`mkdir "%USERPROFILE%\.config\opencode"
-cd "%USERPROFILE%\.config\opencode"`
+mkdir "%USERPROFILE%\.config\opencode"
+cd "%USERPROFILE%\.config\opencode"
 </code></pre>
 
 Open Notepad and paste in the starter configuration:
@@ -51,7 +51,7 @@ Open Notepad and paste in the starter configuration:
 <div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0.2em;">Verify</div>
 Run this to confirm the configuration is valid:
 
-<pre><code>`opencode models`</code></pre>
+<pre><code>opencode models</code></pre>
 
 Then proceed to [[Post Install]] to configure the plugin in NetBeans.
 

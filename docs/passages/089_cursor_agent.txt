@@ -11,7 +11,9 @@
 ### Install
 
 - **macOS / Linux**: `curl https://cursor.com/install -fsSL | bash`
-- **Windows**: Download the installer from <a href="https://cursor.com/cli" target="_blank" rel="noopener">cursor.com/cli</a>
+- **Windows (PowerShell)**: `irm 'https://cursor.com/install?win32=true' | iex`
+
+Register once with the CLI (`agent login`, or set `CURSOR_API_KEY`) before connecting.
 
 ### About
 

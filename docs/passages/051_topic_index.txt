@@ -54,6 +54,7 @@ This is a complete list of topics in this guide, use it to directly jump to that
 > [[New Session Confirm Bar]]
 > [[Offline/Private Coding (Local LLMs)]]
 > [[Oh My Pi Agent]]
+> [[OpenClaw Agent]]
 > [[OpenCode]]
 > [[Options Panel Reference]]
 > [[Permission Requests]]

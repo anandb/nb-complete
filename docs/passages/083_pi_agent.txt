@@ -10,15 +10,27 @@
 
 <a href="https://pi.dev" target="_blank" rel="noopener">Pi</a> is a minimal, extensible **agent harness** — an open-source coding agent CLI built around a unified multi-provider LLM API, an agent runtime with tool calling, and a self-extensible extension system. It deliberately ships no built-in permission system: it runs with the permissions of the user who launched it, so sandbox or containerize it yourself if you need stronger boundaries.
 
-To use Pi with BeanBot, install the harness plus two Pi extensions:
+To use Pi with BeanBot, install the harness, then the ACP adapter:
 
-1. **pi-acp** — an ACP adapter that exposes Pi over the <a href="https://agentclientprotocol.com" target="_blank" rel="noopener">Agent Client Protocol</a>, which is what BeanBot speaks.
-2. **pi-mcp-adapter** — bridges MCP servers into Pi, letting it call the plugin's [[MCP Tools]].
+### Install
 
-The executable you configure in BeanBot is <code>pi-acp</code> (the adapter, not <code>pi</code> itself). When the session starts, Pi posts a startup banner with its version, context files and extensions, which the plugin renders as a compact info card. Pi needs two extra setup steps for the plugin's [[MCP Tools]]:
+Install the harness first (Node.js 22+):
 
-- **Fixed MCP port** — enable <i>Use fixed MCP port</i> in Options (Assistant > System) and pick a port. Pi cannot pick up the random port the server would otherwise use per session.
-- **MCP server registration** — add the plugin's MCP server entry to <code>~/.pi/agent/mcp.json</code>; unlike other agents, Pi does not receive the server automatically during session creation.
+<pre><code>npm install -g @earendil-works/pi-coding-agent</code></pre>
+
+BeanBot drives Pi through the <code>@geohar/pi-acp</code> adapter — a fork of <code>svkozak/pi-acp</code> that adds the subagent bridge, MCP handling, and multi-root workspaces. It needs <code>pi</code> 0.80.4+ on your <code>PATH</code>:
+
+<pre><code>npm install -g @geohar/pi-acp</code></pre>
+
+Loading it into Pi as an extension as well is optional — it surfaces the pi-subagents fleet as tasks in the chat:
+
+<pre><code>pi install npm:@geohar/pi-acp</code></pre>
+
+The executable you configure in BeanBot is <code>pi-acp</code> (the adapter, not <code>pi</code> itself). When the session starts, Pi posts a startup banner with its version, context files and extensions, which the plugin renders as a compact info card.
+
+The plugin's [[MCP Tools]] reach Pi over ACP: BeanBot passes its MCP server in the session create/load request, and <code>@geohar/pi-acp</code> forwards it to Pi. One setup step remains:
+
+- **MCP adapter** — install <a href="https://github.com/nicobailon/pi-mcp-adapter" target="_blank" rel="noopener">pi-mcp-adapter</a> in your Pi packages. The adapter translates the ACP session's servers into a session-scoped config that it hands to Pi via <code>--mcp-config</code>; without it the servers are not loaded and Pi prints a startup notice. No manual <code>mcp.json</code> entry and no fixed port are needed — the server URL is delivered per session.
 
 > [[Post Install]]
 > [[Starting a Session]]

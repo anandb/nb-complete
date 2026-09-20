@@ -1,0 +1,46 @@
+:: OpenClaw Agent {"position":"2300,1200","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">OpenClaw Agent</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+<i style="opacity: 0.7;">Experimental — BeanBot's support for this harness is under active development and may change without notice.</i>
+
+### Install
+
+- **macOS / Linux**: `curl -fsSL https://openclaw.ai/install.sh | bash`
+- **Windows (PowerShell)**: `iwr -useb https://openclaw.ai/install.ps1 | iex`
+
+Requires **Node 24.16+ or 26.1+** — Node 26 is recommended, and the installer provisions Node when it is missing. ACP docs: <a href="https://docs.openclaw.ai/cli/acp" target="_blank" rel="noopener">docs.openclaw.ai/cli/acp</a>.
+
+### About
+
+<a href="https://docs.openclaw.ai" target="_blank" rel="noopener">OpenClaw</a> is a personal AI assistant gateway. Running <code>openclaw acp</code> makes it act as an **ACP server**: the bridge speaks ACP over stdio, forwards each prompt to an OpenClaw **Gateway** over WebSocket, and maps each ACP session onto a Gateway session key. A running Gateway (local or remote) is required — the bridge routes work into it rather than hosting the agent itself.
+
+The executable you configure in BeanBot is <code>openclaw</code>, run with the default launch argument <code>acp</code>.
+
+OpenClaw Agent in BeanBot supports:
+- **Editor Context**: Seamlessly injects the active editor state into agent prompts.
+- **[[Permission Requests]]**: Gateway exec-approval prompts during a turn are relayed into BeanBot's permission UI.
+- **Thinking Responses**: Model thinking streams into the chat as thought bubbles.
+- **[[Queuing Messages]]**: Queues and batches user prompts at turn end.
+- **Client-Side Session Tracking**: OpenClaw's ACP bridge accepts session-list requests but returns an empty list, so BeanBot keeps session IDs on this machine instead. Sessions whose project is closed are hidden from the dropdown until that project is open again; IDs are kept so the chat can return. [[Archiving Sessions]] is local only.
+
+### Limitations
+
+OpenClaw runs as a **bridge** rather than a full ACP-native runtime, so a few ACP surfaces are unavailable:
+
+- **MCP Servers**: The bridge rejects per-session MCP servers, so BeanBot cannot hand OpenClaw the plugin's [[MCP Tools]] automatically — it sends no server list. OpenClaw still supports MCP: run the plugin's internal server on a fixed port (**Internal MCP Server** and **Internal MCP Server Port** under <code>Options &gt; Assistant &gt; System</code>) and register that URL as a Gateway MCP server with <code>openclaw mcp add</code> (or <code>mcp.servers</code> in the OpenClaw config, or the Control UI's <code>/settings/mcp</code> page). The Gateway must run on the same machine, because the plugin's server binds to <code>127.0.0.1</code>.
+- **Model Selection**: Not exposed as an ACP config option, so the in-session model dropdown is unavailable. Change the model from within the chat with <code>/acp set model provider/model</code> — for example <code>/acp set model opencode-go/glm-5.3-flash</code>.
+- **Agent / Mode Dropdown**: OpenClaw routes by Gateway session key rather than advertising an agent list, so BeanBot does not offer the agent selector. To target a specific agent, add <code>--session agent:&lt;id&gt;:main</code> under Process Arguments in <code>Options &gt; Assistant</code>.
+
+> [[Post Install]]
+> [[Starting a Session]]
+> [[Choose Your Coding Harness]]
+> [[MCP Tools]]
+> [[Permission Requests]]
+> [[Picking an Agent, Model and Thinking Level]]
+> [[Queuing Messages]]
+> [[Archiving Sessions]]

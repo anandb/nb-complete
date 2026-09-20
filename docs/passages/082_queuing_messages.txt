@@ -15,7 +15,7 @@ When the turn ends, all queued messages are combined into a single prompt and se
 <li><b>Cancel Queue</b> — discard all queued messages.</li>
 </ul>
 
-Queueing is used when a second <code>session/prompt</code> would drop the in-flight turn. That is currently [[Goose Agent]], [[PI Agent]], [[Hermes Agent]], and [[Oh My Pi Agent]]. Interleaved agents ([[OpenCode]], [[Cursor Agent]], [[Claude Agent]], [[Gemini Agent]]) send immediately instead. If you close or switch sessions before the turn ends, pending messages are cancelled with the rest of the panel state.
+Queueing is used when a second <code>session/prompt</code> would drop the in-flight turn. That is currently [[Goose Agent]], [[PI Agent]], [[Hermes Agent]], [[Oh My Pi Agent]], and [[OpenClaw Agent]]. Interleaved agents ([[OpenCode]], [[Cursor Agent]], [[Claude Agent]], [[Gemini Agent]]) send immediately instead. If you close or switch sessions before the turn ends, pending messages are cancelled with the rest of the panel state.
 
 
 > [[Chat Features]]
