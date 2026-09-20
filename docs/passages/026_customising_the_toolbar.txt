@@ -6,7 +6,7 @@
   <div>[[Index->Topic Index]]</div>
 </div>
 
-Right-click anywhere on the assistant toolbar to open the **Edit ToolBar** popup, which lists every toolbar button with a checkbox. Uncheck buttons you don't use (e.g. export, restart, mini assistant) and they disappear; check them again to restore. Your choices are saved and persist across IDE restarts. The toolbar provides quick access to actions like starting a session, viewing this guide, opening keyboard shortcuts, checking token usage, restarting the server, and exporting conversations. The icon size is set separately under `Options > Assistant > Appearance > Toolbar Icon Size`.
+Right-click anywhere on the assistant toolbar to open the **Edit ToolBar** popup, which lists every toolbar button with a checkbox. Uncheck buttons you don't use (e.g. export, restart, mini assistant) and they disappear; check them again to restore. Your choices are saved and persist across IDE restarts. The toolbar provides quick access to actions like starting a session, checking token usage, restarting the server, and exporting conversations. The **?** (help) button opens a popup menu with three items: **Open Guide** (opens this guide in your browser), **Keyboard Shortcuts** (shows the shortcuts dialog), and **Choose Agent** (lets you switch between installed coding harnesses). The icon size is set separately under `Options > Assistant > Appearance > Toolbar Icon Size`.
 
 
 > [[Options Panel Reference]]

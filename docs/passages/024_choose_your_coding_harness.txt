@@ -16,6 +16,8 @@ The plugin works with several coding harnesses that speak the Agent Client Proto
 
 Binaries found on `PATH` are never used automatically — you always make the choice through this screen. If a configured binary later disappears (for example after an uninstall), the chooser appears again.
 
+To re-run harness selection at any time — for example after installing a new harness or switching providers — click the **?** (help) button in the toolbar and choose **Choose Agent** from the popup menu. This reopens the same chooser with fresh detection results.
+
 After installing a harness — and optionally setting the binary path under `Options > Assistant` — click **Start Server** to connect.
 
 
