@@ -16,20 +16,20 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class HarnessCatalogTest {
 
     @Test
-    void allEightHarnessesPresent() {
-        assertEquals(8, HarnessCatalog.ALL.size());
+    void allNineHarnessesPresent() {
+        assertEquals(9, HarnessCatalog.ALL.size());
         Set<String> ids = new HashSet<>();
         for (HarnessCatalog.Harness h : HarnessCatalog.ALL) {
             assertTrue(ids.add(h.id()), "duplicate id: " + h.id());
         }
-        assertTrue(ids.containsAll(Set.of("opencode", "goose", "pi", "cursor", "claude", "hermes", "gemini", "omp")));
+        assertTrue(ids.containsAll(Set.of("opencode", "goose", "pi", "cursor", "claude", "hermes", "gemini", "omp", "openclaw")));
     }
 
     @Test
     void onboardingOrderIncludesAllHarnesses() {
         Set<String> allIds = new HashSet<>(HarnessCatalog.ALL.stream()
                 .map(HarnessCatalog.Harness::id).toList());
-        assertEquals(Set.of("omp", "opencode", "pi", "goose", "cursor", "claude", "hermes", "gemini"),
+        assertEquals(Set.of("omp", "opencode", "openclaw", "pi", "goose", "cursor", "claude", "hermes", "gemini"),
                 allIds);
     }
 
@@ -90,6 +90,22 @@ class HarnessCatalogTest {
     }
 
     @Test
+    void openclawLacksAgentList() {
+        assertFalse(HarnessCatalog.OPENCLAW.supportsAgentList());
+    }
+
+    @Test
+    void allHarnessesExceptOpenclawSupportAgentList() {
+        for (HarnessCatalog.Harness h : HarnessCatalog.ALL) {
+            if ("openclaw".equals(h.id())) {
+                continue;
+            }
+            assertTrue(h.supportsAgentList(), h.id() + " should support agent list");
+        }
+        assertTrue(HarnessCatalog.UNKNOWN.supportsAgentList());
+    }
+
+    @Test
     void ompSupportsAllExceptTokenStats() {
         assertTrue(HarnessCatalog.OMP.requiresMessageQueue());
         assertTrue(HarnessCatalog.OMP.sendsMcpServerConfig());
@@ -99,7 +115,7 @@ class HarnessCatalogTest {
         assertTrue(HarnessCatalog.OMP.supportsMcpServer());
         assertTrue(HarnessCatalog.OMP.supportsSessionSetMode());
         assertTrue(HarnessCatalog.OMP.supportsSessionList());
-        assertEquals("irm https://omp.sh/install.ps1 | iex", HarnessCatalog.OMP.installWindows());
+        assertEquals("powershell -c \"irm https://omp.sh/install.ps1 | iex\"", HarnessCatalog.OMP.installWindows());
         assertEquals("curl -fsSL https://omp.sh/install | sh", HarnessCatalog.OMP.installLinux());
         assertEquals("https://omp.sh/docs/acp", HarnessCatalog.OMP.docsUrl());
     }

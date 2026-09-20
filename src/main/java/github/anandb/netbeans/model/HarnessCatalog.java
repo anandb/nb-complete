@@ -32,8 +32,13 @@ public final class HarnessCatalog {
             boolean supportsSessionSetModel,
             boolean supportsModelSelection,
             boolean supportsSessionList,
+            /** True when the agent/mode dropdown is offered; false disables it (OpenClaw). */
+            boolean supportsAgentList,
             /** Bundle key of the message shown when model selection is unavailable; empty when none. */
             String unsupportedModelSelectionMessage,
+            /** Bundle key of the placeholder item text shown in the disabled model
+             *  dropdown when model selection is unavailable; empty when none. */
+            String unsupportedModelSelectionPlaceholder,
             String installWindows,
             String installMac,
             String installLinux,
@@ -51,6 +56,14 @@ public final class HarnessCatalog {
                     ? "" : NbBundle.getMessage(HarnessCatalog.class, unsupportedModelSelectionMessage);
         }
 
+        /** Resolves the placeholder item text for the disabled model dropdown
+         *  (empty when the harness has none). */
+        @Override
+        public String unsupportedModelSelectionPlaceholder() {
+            return unsupportedModelSelectionPlaceholder == null || unsupportedModelSelectionPlaceholder.isEmpty()
+                    ? "" : NbBundle.getMessage(HarnessCatalog.class, unsupportedModelSelectionPlaceholder);
+        }
+
         /** True when the given lowercase binary basename belongs to this harness. */
         public boolean matchesBinary(String binaryName) {
             return binaryName != null && binaryNames.contains(binaryName.toLowerCase(Locale.ROOT));
@@ -60,7 +73,8 @@ public final class HarnessCatalog {
     public static final Harness OPENCODE = new Harness(
             "opencode", "OpenCode", "opencode",
             List.of("opencode"), "acp",
-            false, true, true, true, true, true, false, true, false, true, true,
+            false, true, true, true, true, true, false, true, false, true, true, true,
+            "",
             "",
             "winget install SST.opencode",
             "brew install opencode",
@@ -70,9 +84,10 @@ public final class HarnessCatalog {
     public static final Harness GOOSE = new Harness(
             "goose", "Goose", "goose",
             List.of("goose"), "acp",
-            true, true, false, false, true, true, false, true, false, true, true,
+            true, true, false, false, true, true, false, true, false, true, true, true,
             "",
-            "irm https://github.com/block/goose/releases/download/stable/download_cli.sh | iex",
+            "",
+            "powershell -c \"irm https://github.com/block/goose/releases/download/stable/download_cli.sh | iex\"",
             "brew install block-goose-cli",
             "curl -fsSL https://github.com/block/goose/releases/download/stable/download_cli.sh | bash",
             "", "https://block-goose.mintlify.app/docs/quickstart");
@@ -80,7 +95,8 @@ public final class HarnessCatalog {
     public static final Harness PI = new Harness(
             "pi", "Pi", "pi-logo",
             List.of("pi-acp"), "",
-            true, false, false, false, false, true, false, true, false, true, true,
+            true, false, false, false, false, true, false, true, false, true, true, true,
+            "",
             "",
             "powershell -c \"irm https://pi.dev/install.ps1 | iex\"",
             "curl -fsSL https://pi.dev/install.sh | sh",
@@ -91,7 +107,8 @@ public final class HarnessCatalog {
     public static final Harness CURSOR = new Harness(
             "cursor", "Cursor", "cursor",
             List.of("agent", "cursor-agent"), "acp",
-            false, true, true, false, false, true, false, true, false, true, true,
+            false, true, true, false, false, true, false, true, false, true, true, true,
+            "",
             "",
             "Install the Cursor CLI from https://cursor.com/cli (Windows installer)",
             "curl https://cursor.com/install -fsSL | bash",
@@ -102,7 +119,8 @@ public final class HarnessCatalog {
     public static final Harness CLAUDE = new Harness(
             "claude", "Claude", "claude",
             List.of("claude-agent-acp"), "",
-            false, true, true, false, true, true, true, true, false, true, true,
+            false, true, true, false, true, true, true, true, false, true, true, true,
+            "",
             "",
             "npm install -g @agentclientprotocol/claude-agent-acp",
             "npm install -g @agentclientprotocol/claude-agent-acp",
@@ -113,9 +131,10 @@ public final class HarnessCatalog {
     public static final Harness HERMES = new Harness(
             "hermes", "Hermes", "hermes",
             List.of("hermes"), "acp",
-            true, true, false, false, false, true, false, true, true, true, true,
+            true, true, false, false, false, true, false, true, true, true, true, true,
             "",
-            "iex (irm https://hermes-agent.nousresearch.com/install.ps1)",
+            "",
+            "powershell -c \"iex (irm https://hermes-agent.nousresearch.com/install.ps1)\"",
             "curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash",
             "curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash",
             "Requires Python 3.10+. Enable ACP with: cd ~/.hermes/hermes-agent && uv pip install -e '.[acp]'.",
@@ -124,32 +143,49 @@ public final class HarnessCatalog {
     public static final Harness GEMINI = new Harness(
             "gemini", "Gemini", "gemini",
             List.of("gemini"), "--acp --model gemini-3.5-flash",
-            false, true, true, false, true, true, true, false, false, false, false,
+            false, true, true, false, true, true, true, false, false, false, false, true,
             "MSG_UnsupportedModelSelection",
-            "", "", "", "", "");
+            "MSG_GeminiUnsupportedModelSelectionPlaceholder",
+            "npm install -g @google/gemini-cli", "brew install gemini-cli", "npm install -g @google/gemini-cli",
+            "Requires Node.js 20+",
+            "https://geminicli.com/docs/get-started/installation/");
 
     public static final Harness OMP = new Harness(
             "omp", "Oh My Pi", "omp",
             List.of("omp"), "acp",
-            true, true, true, false, true, true, true, true, false, true, true,
+            true, true, true, false, true, true, true, true, false, true, true, true,
             "",
-            "irm https://omp.sh/install.ps1 | iex",
+            "",
+            "powershell -c \"irm https://omp.sh/install.ps1 | iex\"",
             "curl -fsSL https://omp.sh/install | sh",
             "curl -fsSL https://omp.sh/install | sh",
             "Authenticate a model provider in a terminal (omp, then /login) before ACP. The ACP entry point is omp acp.",
             "https://omp.sh/docs/acp");
 
+    public static final Harness OPENCLAW = new Harness(
+            "openclaw", "OpenClaw", "openclaw",
+            List.of("openclaw"), "acp",
+            true, false, true, false, false, true, false, true, false, false, false, false,
+            "MSG_OpenClawUnsupportedModelSelection",
+            "MSG_OpenClawUnsupportedModelSelectionPlaceholder",
+            "powershell -c \"iwr -useb https://openclaw.ai/install.ps1 | iex\"",
+            "curl -fsSL https://openclaw.ai/install.sh | bash",
+            "curl -fsSL https://openclaw.ai/install.sh | bash",
+            "Requires Node 24.16+ or 26.1+ - Node 26 is recommended; the installer provisions Node 26 on macOS and Node 24 LTS on Linux",
+            "https://docs.openclaw.ai/install");
+
     /** Fallback for unknown or unconfigured harnesses. */
     public static final Harness UNKNOWN = new Harness(
             "unknown", "Agent", "agent",
             List.of(), "",
-            true, true, true, false, true, true, false, true, false, true, true,
+            true, true, true, false, true, true, false, true, false, true, true, true,
+            "",
             "",
             "", "", "", "", "");
 
     /** All supported harnesses, in the order offered during onboarding. */
     public static final List<Harness> ALL =
-            List.of(OMP, OPENCODE, PI, GOOSE, CURSOR, CLAUDE, HERMES, GEMINI);
+            List.of(OMP, OPENCODE, OPENCLAW, PI, GOOSE, CURSOR, CLAUDE, HERMES, GEMINI);
 
     /** Looks up a harness by catalog id; {@link #UNKNOWN} when not found. */
     public static Harness byId(String id) {

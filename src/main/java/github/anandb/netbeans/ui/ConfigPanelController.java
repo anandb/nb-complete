@@ -467,13 +467,28 @@ public class ConfigPanelController {
                     }
                 }
                 ProcessControl pc = Lookup.getDefault().lookup(ProcessControl.class);
-                boolean modelSelectable = pc == null || pc.getCapabilities().supportsModelSelection();
-                modelCombo.setEnabled(modelSelectable);
+                boolean modelSelectable = pc != null && pc.getCapabilities().supportsModelSelection();
+                boolean setModelSupported = pc != null && pc.getCapabilities().supportsSessionSetModel();
+                modelCombo.setEnabled(modelSelectable && setModelSupported);
                 if (!modelSelectable && pc != null) {
                     modelCombo.setToolTipText(pc.getCapabilities().unsupportedModelSelectionMessage());
                 } else {
                     modelCombo.setToolTipText(null);
                 }
+
+                if (!modelSelectable && modelCombo.getItemCount() == 0 && pc != null) {
+                    // Model selection is unavailable and no model options were
+                    // reported: show the harness-specific placeholder (OpenClaw's
+                    // "/acp" hint) so the disabled dropdown has readable width.
+                    String placeholder = pc.getCapabilities().unsupportedModelSelectionPlaceholder();
+                    if (!placeholder.isEmpty()) {
+                        modelCombo.addItem(new ConfigItem(placeholder, ""));
+                        modelCombo.setSelectedIndex(0);
+                    }
+                }
+
+                boolean agentSelectable = pc != null && pc.getCapabilities().supportsAgentList();
+                modeCombo.setEnabled(agentSelectable);
 
                 thinkingCombo.setEnabled(thinkingCombo.getItemCount() > 0);
                 SwingUtilities.invokeLater(() -> tabNameUpdater.accept(buildTabLabel()));
@@ -776,7 +791,9 @@ public class ConfigPanelController {
         String agent = null;
 
         if (modelCombo.getSelectedItem() instanceof ConfigItem m) {
-            model = m.name();
+            // Skip the placeholder item (empty value) used when model selection is
+            // unavailable; it must not surface as the tab's model name.
+            model = (m.value() == null || m.value().isEmpty()) ? null : m.name();
             // Remove provider prefix if present (e.g., "Google: gemini-pro" -> "gemini-pro")
             if (model != null) {
                 int colonIdx = model.indexOf(':');
@@ -834,13 +851,16 @@ public class ConfigPanelController {
             modeCombo.setEnabled(enabled);
 
             ProcessControl pc = Lookup.getDefault().lookup(ProcessControl.class);
-            boolean modelSelectable = pc == null || pc.getCapabilities().supportsModelSelection();
+            boolean modelSelectable = pc != null && pc.getCapabilities().supportsModelSelection();
             modelCombo.setEnabled(enabled && modelSelectable);
             if (!modelSelectable && pc != null) {
                 modelCombo.setToolTipText(pc.getCapabilities().unsupportedModelSelectionMessage());
             } else {
                 modelCombo.setToolTipText(null);
             }
+
+            boolean agentSelectable = pc != null && pc.getCapabilities().supportsAgentList();
+            modeCombo.setEnabled(enabled && agentSelectable);
 
             thinkingCombo.setEnabled(enabled && thinkingCombo.getItemCount() > 0);
         });

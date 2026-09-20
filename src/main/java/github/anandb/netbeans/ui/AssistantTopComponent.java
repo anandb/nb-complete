@@ -682,9 +682,15 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         toggleOptionsBtn.setIcon(ThemeManager.getIcon(visible ? "arrow-down.svg" : "settings.svg", 25));
 
         ProcessControl pc = Lookup.getDefault().lookup(ProcessControl.class);
-        boolean showModel = visible && (pc == null || pc.getCapabilities().supportsModelSelection());
-        configPanelController.getModelCombo().setVisible(showModel);
-        configPanelController.getCopyModelBtn().setVisible(showModel);
+        boolean modelSelectable = pc != null
+                && pc.getCapabilities().supportsModelSelection() && pc.getCapabilities().supportsSessionSetModel();
+        // Show the model dropdown even when selection is unsupported (e.g. OpenClaw),
+        // disabled via setCombosEnabled so its unsupported-selection tooltip is still readable.
+        configPanelController.getModelCombo().setVisible(visible);
+        configPanelController.getCopyModelBtn().setVisible(visible && modelSelectable);
+        if (visible) {
+            configPanelController.setCombosEnabled(!processing);
+        }
 
         // Adjust split pane divider so the textarea keeps its size:
         // expanding moves the divider UP (taking space from chat), collapsing moves it DOWN.

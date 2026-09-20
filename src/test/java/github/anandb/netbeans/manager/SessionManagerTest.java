@@ -1069,8 +1069,8 @@ class SessionManagerTest {
         HarnessCatalog.Harness setModelOnly = new HarnessCatalog.Harness(
                 "setmodel-only", "SetModel Only", "agent",
                 List.of("agent"), "",
-                false, true, true, false, true, true, false, false, true, true, true,
-                "", "", "", "", "", "");
+                false, true, true, false, true, true, false, false, true, true, true, true,
+                "", "", "", "", "", "", "");
         ProcessControl pc = mock(ProcessControl.class);
         when(pc.getCapabilities()).thenReturn(setModelOnly);
 
