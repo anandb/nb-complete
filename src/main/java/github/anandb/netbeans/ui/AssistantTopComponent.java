@@ -195,7 +195,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         statusController.setProcessingListener(
                 processing -> {
                     this.processing = processing;
-                    configPanelController.setCombosEnabled(!processing);
+                    configPanelController.setProcessing(processing);
                     MiniAssistantDialog.getInstance().onProcessingChanged(processing);
                 });
         attachmentUiHandler = new AttachmentUiHandler(attachmentManager, statusController, inputArea, AssistantTopComponent.this);
@@ -682,14 +682,13 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         toggleOptionsBtn.setIcon(ThemeManager.getIcon(visible ? "arrow-down.svg" : "settings.svg", 25));
 
         ProcessControl pc = Lookup.getDefault().lookup(ProcessControl.class);
-        boolean modelSelectable = pc != null
-                && pc.getCapabilities().supportsModelSelection() && pc.getCapabilities().supportsSessionSetModel();
-        // Show the model dropdown even when selection is unsupported (e.g. OpenClaw),
-        // disabled via setCombosEnabled so its unsupported-selection tooltip is still readable.
+        boolean modelSelectable = pc != null && pc.getCapabilities().supportsModelSelection();
+        // Show the model dropdown even when selection is unsupported (e.g. OpenClaw);
+        // the disabled state is managed by applyEnabledState so the tooltip is still readable.
         configPanelController.getModelCombo().setVisible(visible);
         configPanelController.getCopyModelBtn().setVisible(visible && modelSelectable);
         if (visible) {
-            configPanelController.setCombosEnabled(!processing);
+            configPanelController.applyEnabledState();
         }
 
         // Adjust split pane divider so the textarea keeps its size:

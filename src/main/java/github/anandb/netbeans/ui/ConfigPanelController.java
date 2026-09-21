@@ -70,6 +70,13 @@ public class ConfigPanelController {
     private volatile Runnable onThinkingSelectedCallback;
     private boolean isUpdatingConfigControls = false;
     private volatile boolean configConfirmActive = false;
+    /** True while a user message is being processed; gates all combo enabling. */
+    private volatile boolean processing = false;
+    /** Per-combo desired enabled state (capabilities/config). Actual enabled is
+     *  {@code field && !processing}. */
+    private volatile boolean modelEnabled = false;
+    private volatile boolean agentEnabled = false;
+    private volatile boolean thinkingEnabled = false;
     private JPopupMenu activeCustomPopup;
 
     private final JButton copyModelBtn;
@@ -468,8 +475,7 @@ public class ConfigPanelController {
                 }
                 ProcessControl pc = Lookup.getDefault().lookup(ProcessControl.class);
                 boolean modelSelectable = pc != null && pc.getCapabilities().supportsModelSelection();
-                boolean setModelSupported = pc != null && pc.getCapabilities().supportsSessionSetModel();
-                modelCombo.setEnabled(modelSelectable && setModelSupported);
+                this.modelEnabled = modelSelectable;
                 if (!modelSelectable && pc != null) {
                     modelCombo.setToolTipText(pc.getCapabilities().unsupportedModelSelectionMessage());
                 } else {
@@ -488,9 +494,10 @@ public class ConfigPanelController {
                 }
 
                 boolean agentSelectable = pc != null && pc.getCapabilities().supportsAgentList();
-                modeCombo.setEnabled(agentSelectable);
+                this.agentEnabled = agentSelectable;
 
-                thinkingCombo.setEnabled(thinkingCombo.getItemCount() > 0);
+                this.thinkingEnabled = thinkingCombo.getItemCount() > 0;
+                applyEnabledState();
                 SwingUtilities.invokeLater(() -> tabNameUpdater.accept(buildTabLabel()));
                 if (thinkingCombo.getActionListeners().length == 0) {
                     setupConfigCombo(thinkingCombo, thinkingConfigId());
@@ -645,7 +652,8 @@ public class ConfigPanelController {
         } else if (thinkingCombo.getItemCount() > 0) {
             thinkingCombo.setSelectedIndex(0);
         }
-        thinkingCombo.setEnabled(thinkingCombo.getItemCount() > 0);
+        this.thinkingEnabled = thinkingCombo.getItemCount() > 0;
+        applyEnabledState();
     }
 
     private boolean autoHideOnClose = false;
@@ -845,24 +853,17 @@ public class ConfigPanelController {
         this.onThinkingSelectedCallback = r;
     }
 
-    /** Enable or disable all config combo boxes (agent, model, thinking). */
-    public void setCombosEnabled(boolean enabled) {
-        SwingUtilities.invokeLater(() -> {
-            modeCombo.setEnabled(enabled);
-
-            ProcessControl pc = Lookup.getDefault().lookup(ProcessControl.class);
-            boolean modelSelectable = pc != null && pc.getCapabilities().supportsModelSelection();
-            modelCombo.setEnabled(enabled && modelSelectable);
-            if (!modelSelectable && pc != null) {
-                modelCombo.setToolTipText(pc.getCapabilities().unsupportedModelSelectionMessage());
-            } else {
-                modelCombo.setToolTipText(null);
-            }
-
-            boolean agentSelectable = pc != null && pc.getCapabilities().supportsAgentList();
-            modeCombo.setEnabled(enabled && agentSelectable);
-
-            thinkingCombo.setEnabled(enabled && thinkingCombo.getItemCount() > 0);
-        });
+    /** Track whether a user message is being processed. */
+    public void setProcessing(boolean processing) {
+        this.processing = processing;
+        SwingUtilities.invokeLater(this::applyEnabledState);
     }
+
+    /** Apply the stored per-combo enabled flags gated by the processing state. */
+    public void applyEnabledState() {
+        modelCombo.setEnabled(modelEnabled && !processing);
+        modeCombo.setEnabled(agentEnabled && !processing);
+        thinkingCombo.setEnabled(thinkingEnabled && !processing);
+    }
+
 }

@@ -297,6 +297,28 @@ NbPreferences.forModule(PreferenceKeys.class)
 - `FitEditorPane` renders complete HTML/CSS via Swing's native rendering engine. Heavy and
   complex; reserved for main chat bubbles needing full list, link, and nested styling support.
 
+### Config Combo Enabled State
+The agent/model/thinking dropdowns in `ConfigPanelController` use two independent
+dimensions of control. Every `setEnabled` call flows through `applyEnabledState()`,
+which computes `field && !processing`:
+
+| Field | Set by | Meaning |
+|-------|--------|---------|
+| `modelEnabled` | `updateConfigControls` | Harness supports model selection |
+| `agentEnabled` | `updateConfigControls` | Harness supports agent list |
+| `thinkingEnabled` | `updateConfigControls` / `repopulateThinkingForModel` | Thinking options available |
+| `processing` | `setProcessing` from listener | Message in flight |
+
+- **Never call `combo.setEnabled()` directly** — always update the corresponding
+  field and call `applyEnabledState()`.
+- `updateConfigControls` sets the `*Enabled` fields based on harness capabilities.
+  When processing is active, `applyEnabledState` keeps combos disabled regardless
+  of the field value. When processing ends, the stored fields are reapplied — a
+  combo that was never supposed to be enabled stays disabled.
+- `setProcessing(boolean)` updates the `processing` flag and re-applies on the EDT.
+- `setOptionsPanelVisible` calls `applyEnabledState()` when the panel becomes
+  visible (does NOT overwrite fields).
+
 ### Ctrl+L Toggle / Shortcut Registration (DO NOT BREAK)
 The Ctrl+L shortcut and Window > Assistant menu item depend on a specific combination of
 annotations and layer.xml entries. This is the ONLY working configuration:
