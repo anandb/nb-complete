@@ -283,6 +283,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                     configPanelController.updateConfigControls(configOptions);
                     // Open the options panel so the user can see/change selections
                     setOptionsPanelVisible(true);
+                    statusController.setStatus("STATUS_LoadingModels");
 
                     // Show a slide-in confirm bar below the session dropdown,
                     // reusing the permission-panel look and slide animation.
@@ -302,6 +303,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                         // future (normally the Continue button on the EDT).
                         SwingUtilities.invokeLater(() -> {
                             configPanelController.setConfigConfirmActive(false);
+                            statusController.setStatus("STATUS_Ready");
                             setOptionsPanelVisible(false);
                             newSessionBtn.setEnabled(true);
                             if (ex != null) {

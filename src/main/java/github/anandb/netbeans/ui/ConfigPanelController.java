@@ -12,6 +12,8 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.awt.event.MouseEvent;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -558,17 +560,24 @@ public class ConfigPanelController {
             // Else fall through to the config-option path used by other agents.
         }
         if ("model".equals(category)) {
+            // The dropdown lists models lower-cased and alphabetically sorted, so the
+            // order is stable and case-insensitive regardless of the server's ordering.
+            // Only the display name changes — the value stays the server's model id.
+            List<ConfigItem> rows = new ArrayList<>(modelResolver.getModelVariants().size());
             for (Map.Entry<String, List<ConfigItem>> entry : modelResolver.getModelVariants().entrySet()) {
                 List<ConfigItem> variants = entry.getValue();
-                ConfigItem baseItem = variants.get(0);
-                ConfigItem item = new ConfigItem(baseItem.baseName(), entry.getKey());
-                combo.addItem(item);
+                ConfigItem item = new ConfigItem(variants.get(0).baseName().toLowerCase(Locale.ROOT), entry.getKey());
+                rows.add(item);
                 for (ConfigItem v : variants) {
                     if (v.value().equalsIgnoreCase(valueToSelect)) {
                         selected = item;
                         break;
                     }
                 }
+            }
+            rows.sort(Comparator.comparing(ConfigItem::name));
+            for (ConfigItem row : rows) {
+                combo.addItem(row);
             }
         } else {
             boolean hasModelVariants = !modelResolver.getModelVariants().isEmpty();
