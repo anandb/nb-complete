@@ -436,15 +436,21 @@ public class ConfigPanelController {
                 // Label follows the source the mode values came from (modes
                 // field vs configOptions), so it can't drift from the combos.
                 syncModeLabel();
-                // First pass: parse model variants before any combo population,
-                // so thinking-level filtering can rely on modelVariants being ready.
+                // First pass: collect the model and thinking options, then parse the
+                // model variants with the effort values the server declares — a model
+                // id's trailing segment only counts as a thinking variant when the
+                // server accepts it as an effort level.
+                SessionConfigOption modelOption = null;
                 for (SessionConfigOption opt : options) {
                     if ("model".equals(opt.category())) {
-                        modelResolver.parseModelVariants(opt);
+                        modelOption = opt;
                     } else if (isThinkingCategory(opt.category())) {
                         thinkingConfigOption = opt;
                         thinkingConfigId = opt.id();
                     }
+                }
+                if (modelOption != null) {
+                    modelResolver.parseModelVariants(modelOption, thinkingOptionValues());
                 }
 
                 // Second pass: populate all combos with variants already resolved.
@@ -517,6 +523,20 @@ public class ConfigPanelController {
 
     private static boolean isThinkingCategory(String category) {
         return category != null && (category.contains("thinking") || category.contains("thought"));
+    }
+
+    /** Lowercase values the server accepts for the thinking/effort option, or an empty set when it declares none. */
+    private Set<String> thinkingOptionValues() {
+        if (thinkingConfigOption == null || thinkingConfigOption.options() == null) {
+            return Set.of();
+        }
+        Set<String> values = new HashSet<>();
+        for (SessionConfigSelectOption o : thinkingConfigOption.options()) {
+            if (o.value() != null && !o.value().isBlank()) {
+                values.add(o.value().toLowerCase(Locale.ROOT));
+            }
+        }
+        return values;
     }
 
     private ConfigItem populateComboBox(JComboBox<ConfigItem> combo, String category, List<SessionConfigSelectOption> options, String valueToSelect) {

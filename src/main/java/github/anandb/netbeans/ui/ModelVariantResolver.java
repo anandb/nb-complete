@@ -1,11 +1,10 @@
 package github.anandb.netbeans.ui;
 
-import static org.apache.commons.lang3.StringUtils.split;
-
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 
 import github.anandb.netbeans.model.ModelRecords.ConfigItem;
 import github.anandb.netbeans.model.SessionConfigOption;
@@ -31,26 +30,42 @@ final class ModelVariantResolver {
     ModelVariantResolver() {
     }
 
-    /** Parses model variants from a model config option. */
-    void parseModelVariants(SessionConfigOption opt) {
+    /**
+     * Parses model variants from a model config option. A trailing path segment is
+     * only treated as a thinking-level variant when {@code variantTokens} (the effort
+     * values the server declares) contains it. Model ids that merely carry a
+     * namespaced name — {@code lm-studio/qwen/qwen3.5-9b} — must keep their full id,
+     * otherwise distinct models collapse into a bogus provider-only entry such as
+     * {@code lm-studio/qwen}, hiding the real models and sending an invalid value.
+     *
+     * <p>When the server declares no effort values, nothing is collapsed: the variant
+     * ids are then the only handle for choosing an effort level, so each stays an
+     * individually selectable model and keeps its full display name.
+     */
+    void parseModelVariants(SessionConfigOption opt, Set<String> variantTokens) {
         this.currentConfigModelId = opt.currentValue();
         modelVariants.clear();
         for (SessionConfigSelectOption o : opt.options()) {
             String value = o.value();
             String name = o.name();
-            String[] segments = split(value, '/');
-            String baseId;
-            String variantName;
-            if (segments.length >= 3) {
-                baseId = String.join("/", Arrays.copyOfRange(segments, 0, segments.length - 1));
-                variantName = segments[segments.length - 1];
-            } else {
-                baseId = value;
-                variantName = "default";
+            String baseId = value;
+            String variantName = "default";
+            int lastSlash = value.lastIndexOf('/');
+            // ≥3 path segments (provider/model/variant) with a server-declared effort tail.
+            if (lastSlash > 0 && lastSlash < value.length() - 1 && value.indexOf('/') != lastSlash) {
+                String tail = value.substring(lastSlash + 1);
+                if (variantTokens.contains(tail.toLowerCase(Locale.ROOT))) {
+                    baseId = value.substring(0, lastSlash);
+                    variantName = tail;
+                }
             }
             String displayName = name;
+            // Strip a trailing "(…)" only for a recognised variant: the parenthetical
+            // holds the effort level ("M (High)") and the collapsed base item shows the
+            // stripped name. Uncollapsed entries keep the server's full name — there the
+            // parenthetical distinguishes models ("GLM-5.3-Flash (2x usage)").
             int parenIdx = displayName.lastIndexOf("(");
-            if (parenIdx > 0 && displayName.endsWith(")")) {
+            if (!"default".equals(variantName) && parenIdx > 0 && displayName.endsWith(")")) {
                 displayName = displayName.substring(0, parenIdx).trim();
             }
             modelVariants.computeIfAbsent(baseId, k -> new ArrayList<>())
