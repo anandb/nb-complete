@@ -34,7 +34,7 @@ After installing, create the configuration file:
 
 <div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0.2em;">macOS / Linux</div>
 The config directory is at `$HOME/.config/opencode/`.
-<pre><code>mkdir -p $HOME/.config/opencode</code></pre>
+<pre><code>mkdir -p &#36;HOME/.config/opencode</code></pre>
 Create `$HOME/.config/opencode/opencode.json` with the starter configuration:
 
 <div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0.2em;">Windows</div>

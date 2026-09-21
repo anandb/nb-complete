@@ -12,7 +12,7 @@
 
 To use Pi with BeanBot, install the harness, then the ACP adapter:
 
-### Install
+#### Install
 
 Install the harness first (Node.js 22+):
 

@@ -8,14 +8,14 @@
 
 <i style="opacity: 0.7;">Experimental — BeanBot's support for this harness is under active development and may change without notice.</i>
 
-### Install
+#### Install
 
 - **macOS / Linux**: `curl https://cursor.com/install -fsSL | bash`
 - **Windows (PowerShell)**: `irm 'https://cursor.com/install?win32=true' | iex`
 
 Register once with the CLI (`agent login`, or set `CURSOR_API_KEY`) before connecting.
 
-### About
+#### About
 
 <a href="https://cursor.com" target="_blank" rel="noopener">Cursor</a> is an AI-powered code editor with a built-in coding agent. Its CLI exposes an ACP entry point that BeanBot can drive.
 

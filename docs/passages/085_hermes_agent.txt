@@ -16,7 +16,7 @@
 After installing, enable ACP support:
 
 <pre><code>cd ~/.hermes/hermes-agent
-uv pip install -e '.[acp]'</code></pre>
+uv pip install -e '.&#91;acp&#93;'</code></pre>
 
 Requires Python 3.10+.
 
