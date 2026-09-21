@@ -79,7 +79,7 @@ class HarnessCatalogTest {
         assertEquals("Agent", u.displayName());
         assertTrue(u.sendsMcpServerConfig());
         assertTrue(u.supportsMcpServer());
-        assertTrue(u.supportsMessageIds());
+        assertFalse(u.supportsMessageIds());
     }
 
     @Test

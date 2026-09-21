@@ -450,7 +450,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         appearancePanel.add(toolbarIconLabel, UIUtils.createGbc(0, row, 1.5, 0, GridBagConstraints.HORIZONTAL,
                 GridBagConstraints.WEST, new Insets(0, 12, 5, 5)));
 
-        toolbarIconCombo = new JComboBox<>(new String[]{"16", "24", "28", "32", "36", "40", "48"});
+        toolbarIconCombo = new JComboBox<>(new String[]{"16", "24", "28", "32", "48"});
         toolbarIconCombo.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_ToolbarIconSize"));
         toolbarIconCombo.setPrototypeDisplayValue("100");
         toolbarIconCombo.addActionListener(evt -> controller.changed());

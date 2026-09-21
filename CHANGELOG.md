@@ -1,5 +1,23 @@
 # Release Notes
 
+## v1.20.5 (Changes since v1.20.4)
+
+### Fixes
+- **Model dropdown enabled again**: The model combo was gated on both `supportsModelSelection` and `supportsSessionSetModel`, disabling it for harnesses such as Oh My Pi that switch models through config options rather than `session/set_model`; selection is now gated on `supportsModelSelection` alone, leaving `supportsSessionSetModel` as a routing concern in `SessionManager` (`e22fa2b4`).
+- **Unknown harness message IDs**: The `UNKNOWN` fallback assumed server-assigned message IDs; it now reports none, so chat bubbles for unrecognised harnesses get deterministic client-generated IDs instead of assuming a server ID (`e37f71e7`).
+- **Icon size options**: The toolbar icon-size combo and its tooltip offered 36 and 40, which `PluginSettings` rejects and silently reverts to 24; both now list only the supported 16, 24, 28, 32, and 48.
+- **Config combo enable state**: Combo enabling is centralised in per-combo desired-state flags (`modelEnabled`/`agentEnabled`/`thinkingEnabled`) plus a `processing` flag applied via `applyEnabledState()`, replacing the capability-probing `setCombosEnabled()` (`e22fa2b4`).
+
+### Improvements
+- **Restart Harness label**: The toolbar button, keyboard-shortcuts dialog, and bundled menu label read "Restart Harness" instead of "Restart Server" (`a63a3fda`).
+- **Session idle timeout default**: The Options spinner default is 600 seconds to match the backend, up from 300 (`a63a3fda`).
+
+### Documentation
+- **User guide corrections**: Topic Index completed and sorted alphabetically; Harlowe markup escaping fixed across the agent pages (Troubleshooting, Gemini, Hermes, OpenCode); agent-page section headings normalised; Escape-key description updated to mention input refocus; the missing `get_current_file_context` tool added; stale "Restart Server" reference corrected (`84aef8ea`, `5bde91cf`, `a63a3fda`).
+
+### Housekeeping
+- Version bumped to 1.20.5.
+
 ## v1.20.4 (Changes since v1.20.3)
 
 ### Features

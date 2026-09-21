@@ -12,7 +12,7 @@ If the server process dies or its connection breaks mid-conversation, the plugin
 2. a notification appears: **Harness Disconnected — Attempting to reconnect...**
 3. the server is restarted automatically with a short backoff (about 3, 6, then 9 seconds)
 
-The plugin gives up after **3 failed restarts within 5 minutes** and shows a "server crashed" status message. In that case check your installation, then click **Restart Server** to try again. Your sessions are not lost during a reconnect — they are stored on the server and simply reloaded.
+The plugin gives up after **3 failed restarts within 5 minutes** and shows a "server crashed" status message. In that case check your installation, then click **Restart Harness** to try again. Your sessions are not lost during a reconnect — they are stored on the server and simply reloaded.
 
 
 > [[Restarting the server]]
