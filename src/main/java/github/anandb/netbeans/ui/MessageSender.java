@@ -165,21 +165,10 @@ public class MessageSender {
             // queue the message for later delivery when the turn ends.
             String text = inputArea.getText();
             if (!text.isEmpty() && queueManager != null) {
-                String clientMessageId = UUID.randomUUID().toString();
                 queueManager.enqueue(text);
-                // Show queued indicator (amber accent + hourglass) only for agents
-                // that support message queuing (goose). Other agents still queue
-                // the text for later sending but skip the visual treatment.
-                if (queueingAgent) {
-                    chatPanel.addQueuedMessageId(clientMessageId);
-                }
-                chatPanel.addMessage(new ProcessedMessage.Builder()
-                    .messageType(MessageType.user_message_chunk)
-                    .text(text)
-                    .rawText(text)
-                    .messageId(clientMessageId)
-                    .queued(queueingAgent)
-                    .build());
+                // Bubble is NOT drawn here — it is drawn later in
+                // sendQueuedMessage() when the combined text is actually posted.
+                // This keeps the chat panel free of half-visible queued echoes.
                 inputArea.setText("");
                 messageHistory.add(text);
                 // Attachments are intentionally dropped, not queued: when several
@@ -488,7 +477,6 @@ public class MessageSender {
         statusController.updateButtonState(true);
         statusController.armRunWatchdog();
 
-        // No local echo — individual echoes were shown when queued.
         // No attachments — they were cleared when queued.
         // Editor Context — gated by system property to disable auto-injection
         // Advance the permission epoch — consistent with sendMessage(). Guard
@@ -503,6 +491,15 @@ public class MessageSender {
         if (onNewMessageCallback != null) {
             onNewMessageCallback.run();
         }
+        // Draw a single bubble for the combined queued text — replaces the
+        // per-message bubbles that were previously shown while queuing.
+        String clientMessageId = UUID.randomUUID().toString();
+        chatPanel.addMessage(new ProcessedMessage.Builder()
+                .messageType(MessageType.user_message_chunk)
+                .text(combinedText)
+                .rawText(combinedText)
+                .messageId(clientMessageId)
+                .build());
         final int gen = sendGeneration.incrementAndGet();
         processService.get().sendMessage(currentSessionId, combinedText, context, List.of())
                 .thenAccept(result -> {

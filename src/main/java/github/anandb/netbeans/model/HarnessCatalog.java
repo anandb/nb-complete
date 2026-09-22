@@ -175,7 +175,19 @@ public final class HarnessCatalog {
             "Requires Node 24.16+ or 26.1+ - Node 26 is recommended; the installer provisions Node 26 on macOS and Node 24 LTS on Linux",
             "https://docs.openclaw.ai/install");
 
-    /** Fallback for unknown or unconfigured harnesses. */
+    public static final Harness DEVIN = new Harness(
+            "devin", "Devin", "devin",
+            List.of("devin"), "acp",
+            false, true, true, false, false, true, false, true, false, true, true, true,
+            "",
+            "",
+            "powershell -c \"irm https://static.devin.ai/cli/setup.ps1 | iex\"",
+            "brew install --cask devin-cli",
+            "curl -fsSL https://cli.devin.ai/install.sh | bash",
+            "",
+            "https://docs.devin.ai/cli");
+
+    /** Fallback for unknown harnesses. */
     public static final Harness UNKNOWN = new Harness(
             "unknown", "Agent", "agent",
             List.of(), "",
@@ -186,7 +198,7 @@ public final class HarnessCatalog {
 
     /** All supported harnesses, in the order offered during onboarding. */
     public static final List<Harness> ALL =
-            List.of(OMP, OPENCODE, OPENCLAW, PI, GOOSE, CURSOR, CLAUDE, HERMES, GEMINI);
+            List.of(OMP, OPENCODE, OPENCLAW, PI, GOOSE, CURSOR, CLAUDE, HERMES, GEMINI, DEVIN);
 
     /** Looks up a harness by catalog id; {@link #UNKNOWN} when not found. */
     public static Harness byId(String id) {

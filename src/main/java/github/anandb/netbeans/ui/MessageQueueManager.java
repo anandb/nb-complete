@@ -1,5 +1,6 @@
 package github.anandb.netbeans.ui;
 
+import java.awt.AlphaComposite;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Graphics;
@@ -36,6 +37,7 @@ public final class MessageQueueManager {
     private static final int WOBBLE_INTERVAL_MS = 5000;
     private static final int WOBBLE_DURATION_MS = 300;
     private static final double WOBBLE_ANGLE = Math.toRadians(12);
+    private static final int FLASH_DURATION_MS = 300;
 
     private final Queue<String> queuedMessages = new ConcurrentLinkedQueue<>();
     private final JButton queueBtn;
@@ -44,6 +46,8 @@ public final class MessageQueueManager {
     private Timer wobbleTimer;
     private Timer wobbleAnimTimer;
     private boolean wobbling;
+    private Timer flashTimer;
+    private boolean flashing;
     private Runnable sendNowCallback;
     /** When false (e.g. non-goose agents), queueing is disabled and the button stays hidden. */
     private volatile boolean enabled = true;
@@ -187,12 +191,18 @@ public final class MessageQueueManager {
     /** Updates button visibility and tooltip. Must run on the EDT. */
     private void updateBadge() {
         int count = queuedMessages.size();
+        boolean wasVisible = queueBtn.isVisible();
         queueBtn.setVisible(enabled && count > 0);
         if (count > 0) {
             queueBtn.setIcon(baseIcon);
             queueBtn.setToolTipText(
                     NbBundle.getMessage(MessageQueueManager.class, "HINT_MessageQueue", count));
+            // One-shot flash on first enqueue (0→1 transition).
+            if (!wasVisible) {
+                triggerFlash();
+            }
         } else {
+            stopFlash();
             queueBtn.setIcon(baseIcon);
             queueBtn.setToolTipText(
                     NbBundle.getMessage(MessageQueueManager.class, "HINT_MessageQueue", 0));
@@ -270,6 +280,7 @@ public final class MessageQueueManager {
         assert SwingUtilities.isEventDispatchThread();
         wobbling = false;
         stopWobbleAnim();
+        stopFlash();
         if (wobbleTimer != null) {
             wobbleTimer.stop();
             wobbleTimer = null;
@@ -281,6 +292,71 @@ public final class MessageQueueManager {
         if (wobbleAnimTimer != null) {
             wobbleAnimTimer.stop();
             wobbleAnimTimer = null;
+        }
+    }
+
+    // ---- one-shot flash ----
+
+    /** Fires a brief amber tint on the queue icon. Safe to call from any thread. */
+    private void triggerFlash() {
+        runOnEdt(() -> {
+            stopFlash();
+            flashing = true;
+            long start = System.currentTimeMillis();
+            flashTimer = new Timer(30, null) {
+                @Override
+                protected void fireActionPerformed(ActionEvent ae) {
+                    long elapsed = System.currentTimeMillis() - start;
+                    if (elapsed > FLASH_DURATION_MS) {
+                        stopFlash();
+                        return;
+                    }
+                    float alpha = 1f - (float) elapsed / FLASH_DURATION_MS;
+                    Icon cur = queueBtn.getIcon();
+                    Icon raw = (cur instanceof WobbleIcon wi) ? wi.base
+                            : (cur instanceof FlashIcon fi) ? fi.base : cur;
+                    queueBtn.setIcon(new FlashIcon(raw, alpha));
+                    queueBtn.repaint();
+                }
+            };
+            flashTimer.setInitialDelay(0);
+            flashTimer.start();
+        });
+    }
+
+    private void stopFlash() {
+        assert SwingUtilities.isEventDispatchThread();
+        flashing = false;
+        if (flashTimer != null) {
+            flashTimer.stop();
+            flashTimer = null;
+        }
+    }
+
+    /** Icon wrapper that overlays an amber tint with fading alpha. */
+    private static final class FlashIcon implements Icon {
+        private final Icon base;
+        private final float alpha;
+
+        FlashIcon(Icon base, float alpha) {
+            this.base = base;
+            this.alpha = alpha;
+        }
+
+        @Override public int getIconWidth()  { return base.getIconWidth(); }
+        @Override public int getIconHeight() { return base.getIconHeight(); }
+
+        @Override
+        public void paintIcon(Component c, Graphics g, int x, int y) {
+            base.paintIcon(c, g, x, y);
+            Graphics2D g2 = (Graphics2D) g.create();
+            try {
+                g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alpha));
+                g2.setColor(ACCENT_COLOR);
+                g2.fillRect(x, y, getIconWidth(), getIconHeight());
+            } finally {
+                g2.dispose();
+            }
         }
     }
 
