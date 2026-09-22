@@ -1,5 +1,6 @@
 package github.anandb.netbeans.ui;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
@@ -14,6 +15,7 @@ import java.awt.event.KeyListener;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -83,6 +85,9 @@ public class ConfigPanelController {
 
     private final JButton copyModelBtn;
 
+    /** Per-option descriptions keyed by "{category}:{value}" for dynamic tooltips. */
+    private final Map<String, String> configDescriptions = new HashMap<>();
+
     private final ModelVariantResolver modelResolver = new ModelVariantResolver();
     private SessionConfigOption thinkingConfigOption;
     private volatile String thinkingConfigId;
@@ -117,7 +122,6 @@ public class ConfigPanelController {
             }
         };
         thinkingCombo.setPrototypeDisplayValue(new ConfigItem("High (Slow)", "High (Slow)"));
-        modeCombo.setToolTipText(NbBundle.getMessage(ConfigPanelController.class, "HINT_Agent"));
         thinkingCombo.setToolTipText(NbBundle.getMessage(ConfigPanelController.class, "HINT_Thinking"));
 
         gbc.gridx = 0;
@@ -477,6 +481,8 @@ public class ConfigPanelController {
                         combo.setSelectedIndex(0);
                     }
 
+                    updateComboTooltip(combo, opt.category(), comboFallbackHint(opt.category()));
+
                     if ("model".equals(opt.category())) {
                         postProcessModel(combo, selected);
                     }
@@ -486,8 +492,6 @@ public class ConfigPanelController {
                 this.modelEnabled = modelSelectable;
                 if (!modelSelectable && pc != null) {
                     modelCombo.setToolTipText(pc.getCapabilities().unsupportedModelSelectionMessage());
-                } else {
-                    modelCombo.setToolTipText(null);
                 }
 
                 if (!modelSelectable && modelCombo.getItemCount() == 0 && pc != null) {
@@ -551,6 +555,9 @@ public class ConfigPanelController {
                 for (AvailableMode m : modes) {
                     ConfigItem item = new ConfigItem(m.name(), m.id());
                     combo.addItem(item);
+                    if (StringUtils.isNotBlank(m.description())) {
+                        configDescriptions.put("mode:" + m.id(), m.description());
+                    }
                     if (m.id() != null && valueToSelect != null && m.id().equalsIgnoreCase(valueToSelect)) {
                         selected = item;
                     }
@@ -560,6 +567,13 @@ public class ConfigPanelController {
             // Else fall through to the config-option path used by other agents.
         }
         if ("model".equals(category)) {
+            // Store descriptions from the original server options (before resolver
+            // collapses variants) so the model combo can show them as tooltips.
+            for (SessionConfigSelectOption o : options) {
+                if (o.description() != null && !o.description().isEmpty()) {
+                    configDescriptions.put("model:" + o.value(), o.description());
+                }
+            }
             // The dropdown lists models lower-cased and alphabetically sorted, so the
             // order is stable and case-insensitive regardless of the server's ordering.
             // Only the display name changes — the value stays the server's model id.
@@ -588,6 +602,9 @@ public class ConfigPanelController {
                 if (isThinking && hasModelVariants && isDefaultOrEmptyOption(o)) continue;
                 ConfigItem item = new ConfigItem(o.name(), o.value());
                 combo.addItem(item);
+                if (o.description() != null && !o.description().isEmpty()) {
+                    configDescriptions.put(category + ":" + o.value(), o.description());
+                }
                 if (o.value() != null && valueToSelect != null && o.value().equalsIgnoreCase(valueToSelect)) {
                     selected = item;
                 }
@@ -599,6 +616,30 @@ public class ConfigPanelController {
     private void postProcessModel(JComboBox<ConfigItem> combo, ConfigItem selected) {
         combo.setEditable(false);
         tabNameUpdater.accept(buildTabLabel());
+    }
+
+    /** Returns the static fallback hint for the given combo category. */
+    private String comboFallbackHint(String category) {
+        if ("mode".equals(category)) return modeFallbackHint();
+        if (isThinkingCategory(category)) return NbBundle.getMessage(ConfigPanelController.class, "HINT_Thinking");
+        return null;
+    }
+
+    /** Returns the appropriate static fallback hint for the mode/agent combo. */
+    private String modeFallbackHint() {
+        String key = agentSupportsSessionSetMode() ? "HINT_Mode" : "HINT_Agent";
+        return NbBundle.getMessage(ConfigPanelController.class, key);
+    }
+
+    /** Sets the combo tooltip to the description of the currently selected option, falling back to {@code fallback}. */
+    private void updateComboTooltip(JComboBox<ConfigItem> combo, String category, String fallback) {
+        ConfigItem item = (ConfigItem) combo.getSelectedItem();
+        if (item == null || item.value() == null) {
+            combo.setToolTipText(fallback);
+            return;
+        }
+        String desc = configDescriptions.get(category + ":" + item.value());
+        combo.setToolTipText(desc != null && !desc.isEmpty() ? desc : fallback);
     }
 
     /** Repopulate thinking combo with only the variants supported by the selected model. */
@@ -683,6 +724,7 @@ public class ConfigPanelController {
         }
         this.thinkingEnabled = thinkingCombo.getItemCount() > 0;
         applyEnabledState();
+        updateComboTooltip(thinkingCombo, "thinking", comboFallbackHint("thinking"));
     }
 
     private boolean autoHideOnClose = false;
@@ -732,6 +774,13 @@ public class ConfigPanelController {
                 if (combo == modelCombo) {
                     modelResolver.setLastSelectedModelId(item.value());
                 }
+            }
+            if (combo == modeCombo) {
+                updateComboTooltip(combo, "mode", comboFallbackHint("mode"));
+            } else if (combo == modelCombo) {
+                updateComboTooltip(combo, "model", null);
+            } else if (combo == thinkingCombo) {
+                updateComboTooltip(combo, "thinking", comboFallbackHint("thinking"));
             }
             tabNameUpdater.accept(buildTabLabel());
         });
