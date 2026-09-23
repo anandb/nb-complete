@@ -202,6 +202,18 @@ NbPreferences.forModule(PreferenceKeys.class)
   `session/load` configOptions also triggers a flush.
 - `MessageType` enum contains all valid session updates (e.g. `agent_message_chunk`, `agent_thought_chunk`, `plan`, `tool_call`). Check this enum before adding message types.
 
+### ACP fs Tools Are Not Project-Confined
+- `fs/readTextFile` (`fs/read_text_file`) and `fs/writeTextFile` (`fs/write_text_file`)
+  are handled by `manager/AcpRequestRouter` and operate on any absolute path, inside or
+  outside the open projects. The harness (agent) owns the permission decision and gates
+  access via `session/request_permission`.
+- Do NOT reintroduce a project-containment check in `AcpRequestRouter` (the old
+  `isPathInProject` guard was removed). The `ProjectPathGuard` confinement in
+  `mcp/ProjectPathGuard` still applies to the MCP tools (`read_file`, `write_to_file`,
+  git/hg, etc.) and must stay there.
+- `fs/write*` remains disabled unless `FsWriteSettings.isEnabled()` (system property
+  `beanbot.fs.write.enabled`); that gate is independent of path confinement.
+
 ### Connection & Lifecycle
 - `AcpProtocolClient.setConnectionErrorHandler()` is a noop. Disconnection handles
   IOExceptions silently; pending futures receive a generic client closed exception.
