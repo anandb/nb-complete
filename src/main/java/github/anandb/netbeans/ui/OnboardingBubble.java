@@ -111,8 +111,24 @@ class OnboardingBubble extends JPanel {
                 ? "OnboardingBubble.Body.None" : "OnboardingBubble.Body.Mixed";
         String text = NbBundle.getMessage(OnboardingBubble.class, bodyKey);
         JTextAreaNoWrap body = new JTextAreaNoWrap(text);
-        body.setBorder(BorderFactory.createEmptyBorder(10, 0, 20, 0));
-        content.add(body, BorderLayout.CENTER);
+        body.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
+
+        // Auth prerequisite: the harness must be logged in through its own
+        // CLI/TUI before the plugin can use it — the plugin never runs the
+        // login flow itself.
+        JTextAreaNoWrap note = new JTextAreaNoWrap(NbBundle.getMessage(
+                OnboardingBubble.class, "OnboardingBubble.Note"));
+        note.setForeground(theme.mutedForeground());
+        note.setBorder(BorderFactory.createEmptyBorder(10, 0, 20, 0));
+
+        JPanel bodyPanel = new JPanel();
+        bodyPanel.setOpaque(false);
+        bodyPanel.setLayout(new BoxLayout(bodyPanel, BoxLayout.Y_AXIS));
+        body.setAlignmentX(Component.LEFT_ALIGNMENT);
+        note.setAlignmentX(Component.LEFT_ALIGNMENT);
+        bodyPanel.add(body);
+        bodyPanel.add(note);
+        content.add(bodyPanel, BorderLayout.CENTER);
 
         // One row per catalog harness — GridBagLayout keeps every cell full-width
         // (a Y-axis BoxLayout mis-sizes a row to its preferred width once its
@@ -194,13 +210,6 @@ class OnboardingBubble extends JPanel {
         textPanel.add(statusLabel);
         nameLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         statusLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        if ("gemini".equals(harness.id())) {
-            JTextAreaNoWrap modelHint = new JTextAreaNoWrap(
-                    NbBundle.getMessage(OnboardingBubble.class, "MSG_GeminiDefaultModel"), 10f);
-            modelHint.setForeground(theme.mutedForeground());
-            modelHint.setAlignmentX(Component.LEFT_ALIGNMENT);
-            textPanel.add(modelHint);
-        }
 
         // "Use" for detected harnesses; "Install" toggles the show-and-copy
         // install panel for the missing ones.
@@ -301,6 +310,17 @@ class OnboardingBubble extends JPanel {
             prereq.setBorder(BorderFactory.createEmptyBorder(4, 0, 4, 0));
             prereq.setAlignmentX(Component.LEFT_ALIGNMENT);
             panel.add(prereq);
+        }
+
+        // Gemini-specific note, shown only once the user picks this harness to
+        // install (the "Use" path shows the same message in a dialog).
+        if ("gemini".equals(harness.id())) {
+            JTextAreaNoWrap modelHint = new JTextAreaNoWrap(
+                    NbBundle.getMessage(OnboardingBubble.class, "MSG_GeminiDefaultModel"), 10f);
+            modelHint.setForeground(theme.mutedForeground());
+            modelHint.setBorder(BorderFactory.createEmptyBorder(4, 0, 4, 0));
+            modelHint.setAlignmentX(Component.LEFT_ALIGNMENT);
+            panel.add(modelHint);
         }
 
         JButton docsBtn = new JButton(NbBundle.getMessage(
