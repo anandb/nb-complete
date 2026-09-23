@@ -154,7 +154,7 @@ public final class HarnessCatalog {
     public static final Harness OMP = new Harness(
             "omp", "Oh My Pi", "omp",
             List.of("omp"), "acp",
-            true, true, true, false, true, true, true, true, false, true, true, true,
+            false, true, true, false, true, true, true, true, false, true, true, true,
             "",
             "",
             "powershell -c \"irm https://omp.sh/install.ps1 | iex\"",
