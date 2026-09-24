@@ -230,7 +230,32 @@ public final class BinaryResolver {
                 return localBin.getAbsolutePath();
             }
         }
+        // macOS app bundle locations (e.g., Devin CLI inside the app)
+        String macPath = findInMacAppBundleLocations(exeName);
+        if (macPath != null) {
+            return macPath;
+        }
         return findInWellKnownWindowsLocations(exeName);
+    }
+
+    /**
+     * Checks well-known macOS app bundle locations for the executable.
+     * Currently checks for Devin CLI inside the Devin.app bundle.
+     */
+    private static String findInMacAppBundleLocations(String exeName) {
+        boolean isMac = System.getProperty("os.name", "").toLowerCase().contains("mac");
+        if (!isMac) {
+            return null;
+        }
+        // Devin CLI is inside the Devin.app bundle
+        if ("devin".equals(exeName)) {
+            File devinBin = new File("/Applications/Devin.app/Contents/Resources/app/extensions/windsurf/devin/bin/devin");
+            if (devinBin.exists() && devinBin.canExecute()) {
+                LOG.info("Found devin in Devin.app bundle: {0}", devinBin.getAbsolutePath());
+                return devinBin.getAbsolutePath();
+            }
+        }
+        return null;
     }
 
     /**

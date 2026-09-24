@@ -235,7 +235,7 @@ class OnboardingBubble extends JPanel {
               installBtn.setFocusPainted(false);
               installBtn.setIcon(ThemeManager.getIcon("download.svg", 14));
               installBtn.setIconTextGap(6);
-              installBtn.setForeground(new Color(0xE03E3E)); // red icon
+              installBtn.setFont(installBtn.getFont().deriveFont(Font.BOLD));
               installPanel = createInstallPanel(harness, theme);
               final JPanel togglePanel = installPanel;
               installPanels.put(harness.id(), togglePanel);
