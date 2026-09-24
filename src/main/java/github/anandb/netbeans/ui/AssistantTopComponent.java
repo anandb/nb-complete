@@ -197,6 +197,11 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                     this.processing = processing;
                     configPanelController.setProcessing(processing);
                     MiniAssistantDialog.getInstance().onProcessingChanged(processing);
+                    // updateNewSessionBtnState() gates on !processing but is
+                    // otherwise only refreshed on session/project changes — a
+                    // refresh firing mid-turn disables the button and nothing
+                    // re-enables it at turn end without this call.
+                    updateNewSessionBtnState();
                 });
         attachmentUiHandler = new AttachmentUiHandler(attachmentManager, statusController, inputArea, AssistantTopComponent.this);
 

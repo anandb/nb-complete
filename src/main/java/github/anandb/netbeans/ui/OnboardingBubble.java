@@ -98,57 +98,72 @@ class OnboardingBubble extends JPanel {
         ColorTheme theme = ThemeManager.getCurrentTheme();
         JPanel content = UIUtils.createBubbleContentPanel();
 
-        // Header
+        // Header: punchy title + single-line subtitle
+        JPanel headerPanel = new JPanel();
+        headerPanel.setOpaque(false);
+        headerPanel.setLayout(new BoxLayout(headerPanel, BoxLayout.Y_AXIS));
+        headerPanel.setBorder(BorderFactory.createEmptyBorder(6, 0, 0, 0));
         JLabel titleLabel = new JLabel(
                 NbBundle.getMessage(OnboardingBubble.class, "OnboardingBubble.Title"));
         titleLabel.setFont(ThemeManager.getFont().deriveFont(Font.BOLD,
                 ThemeManager.getFont().getSize() + 4f));
         titleLabel.setForeground(theme.foreground());
-        content.add(titleLabel, BorderLayout.NORTH);
+        titleLabel.setBorder(BorderFactory.createEmptyBorder(2, 0, 2, 0));
+        titleLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        JTextAreaNoWrap subtitle = new JTextAreaNoWrap(NbBundle.getMessage(
+                OnboardingBubble.class, "OnboardingBubble.Subtitle"));
+        subtitle.setForeground(theme.mutedForeground());
+        subtitle.setBorder(BorderFactory.createEmptyBorder(2, 0, 10, 0));
+        subtitle.setAlignmentX(Component.LEFT_ALIGNMENT);
+        headerPanel.add(titleLabel);
+        headerPanel.add(subtitle);
+        content.add(headerPanel, BorderLayout.NORTH);
 
-        // Body text — depends on whether any harness was detected
-        String bodyKey = foundBinaries.isEmpty()
-                ? "OnboardingBubble.Body.None" : "OnboardingBubble.Body.Mixed";
-        String text = NbBundle.getMessage(OnboardingBubble.class, bodyKey);
-        JTextAreaNoWrap body = new JTextAreaNoWrap(text);
-        body.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
+        // Partition catalog harnesses into installed vs. uninstalled
+        java.util.List<HarnessCatalog.Harness> installed = new java.util.ArrayList<>();
+        java.util.List<HarnessCatalog.Harness> uninstalled = new java.util.ArrayList<>();
+        for (HarnessCatalog.Harness h : HarnessCatalog.ALL) {
+            if (findFoundBinary(h.id()) != null) {
+                installed.add(h);
+            } else {
+                uninstalled.add(h);
+            }
+        }
+        String activePath = BinaryResolver.findExecutablePathOrNull();
+        String activeHarnessId = activePath != null ? activeHarnessIdFor(activePath) : null;
 
-        // Auth prerequisite: the harness must be logged in through its own
-        // CLI/TUI before the plugin can use it — the plugin never runs the
-        // login flow itself.
-        JTextAreaNoWrap note = new JTextAreaNoWrap(NbBundle.getMessage(
-                OnboardingBubble.class, "OnboardingBubble.Note"));
-        note.setForeground(theme.mutedForeground());
-        note.setBorder(BorderFactory.createEmptyBorder(10, 0, 20, 0));
-
-        JPanel bodyPanel = new JPanel();
-        bodyPanel.setOpaque(false);
-        bodyPanel.setLayout(new BoxLayout(bodyPanel, BoxLayout.Y_AXIS));
-        body.setAlignmentX(Component.LEFT_ALIGNMENT);
-        note.setAlignmentX(Component.LEFT_ALIGNMENT);
-        bodyPanel.add(body);
-        bodyPanel.add(note);
-        content.add(bodyPanel, BorderLayout.CENTER);
-
-        // One row per catalog harness — GridBagLayout keeps every cell full-width
-        // (a Y-axis BoxLayout mis-sizes a row to its preferred width once its
-        // install panel becomes visible and wide).
+        // Grouped sections: active card, installed rows, uninstalled rows, note
         rowsPanel = new JPanel(new GridBagLayout());
         rowsPanel.setOpaque(false);
-        var last = HarnessCatalog.ALL.get(HarnessCatalog.ALL.size() - 1);
-        for (HarnessCatalog.Harness harness : HarnessCatalog.ALL) {
-            GridBagConstraints gbc = new GridBagConstraints();
-            gbc.gridx = 0;
-            gbc.gridy = GridBagConstraints.RELATIVE;
-            gbc.weightx = 1.0;
-            gbc.fill = GridBagConstraints.HORIZONTAL;
-            gbc.anchor = GridBagConstraints.NORTHWEST;
-            if (harness != last) {
-                gbc.insets = new Insets(0, 0, 18, 0);
-            }
-            rowsPanel.add(createHarnessRow(harness, theme), gbc);
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = GridBagConstraints.RELATIVE;
+        gbc.weightx = 1.0;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.anchor = GridBagConstraints.NORTHWEST;
+        gbc.insets = new Insets(0, 0, 12, 0);
+        if (activePath != null) {
+            rowsPanel.add(createActiveCard(activeHarnessId, activePath, theme), gbc);
         }
-        content.add(rowsPanel, BorderLayout.SOUTH);
+        java.util.List<HarnessCatalog.Harness> switchable = new java.util.ArrayList<>();
+        for (HarnessCatalog.Harness h : installed) {
+            if (!h.id().equals(activeHarnessId)) {
+                switchable.add(h);
+            }
+        }
+        rowsPanel.add(createSectionLabel(NbBundle.getMessage(
+                OnboardingBubble.class, "OnboardingBubble.Section.Installed", switchable.size()), theme), gbc);
+        for (HarnessCatalog.Harness harness : switchable) {
+            rowsPanel.add(createInstalledRow(harness, false, theme), gbc);
+        }
+        rowsPanel.add(createSectionLabel(NbBundle.getMessage(
+                OnboardingBubble.class, "OnboardingBubble.Section.Uninstalled", uninstalled.size()), theme), gbc);
+        for (HarnessCatalog.Harness harness : uninstalled) {
+            rowsPanel.add(createUninstalledRow(harness, theme), gbc);
+        }
+        gbc.insets = new Insets(0, 0, 0, 0);
+        rowsPanel.add(createPostActivationNote(theme), gbc);
+        content.add(rowsPanel, BorderLayout.CENTER);
 
         // Buttons: manual configuration (gear icon) + restart
         buttonsPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
@@ -176,94 +191,213 @@ class OnboardingBubble extends JPanel {
         add(outer, BorderLayout.CENTER);
     }
 
-    /** Builds one harness row: icon, name + status, and a Use button when found. */
-    private JPanel createHarnessRow(HarnessCatalog.Harness harness, ColorTheme theme) {
-        BinaryResolver.FoundBinary foundBinary = findFoundBinary(harness.id());
+    /** Resolves the catalog id of the configured executable path via its binary basename. */
+    private static String activeHarnessIdFor(String configuredPath) {
+        String base = configuredPath == null ? "" : new java.io.File(configuredPath).getName().toLowerCase(Locale.ROOT);
+        if (base.endsWith(".exe")) {
+            base = base.substring(0, base.length() - 4);
+        }
+        HarnessCatalog.Harness h = HarnessCatalog.byBinaryName(base);
+        return h == HarnessCatalog.UNKNOWN ? null : h.id();
+    }
 
+    /** Section header label, e.g. "INSTALLED HARNESSES (6 Available)". */
+    private static JLabel createSectionLabel(String text, ColorTheme theme) {
+        JLabel label = new JLabel(text);
+        label.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
+        label.setForeground(theme.mutedForeground());
+        label.setBorder(BorderFactory.createEmptyBorder(4, 0, 2, 0));
+        return label;
+    }
+
+    /** Prominent card for the currently configured harness with a disabled Active badge. */
+    private JPanel createActiveCard(String harnessId, String path, ColorTheme theme) {
+        HarnessCatalog.Harness harness = harnessId != null ? HarnessCatalog.byId(harnessId) : HarnessCatalog.UNKNOWN;
+        JPanel card = new JPanel(new BorderLayout(8, 4));
+        card.setOpaque(true);
+        card.setBackground(theme.isDark() ? new Color(0x2A2B33) : new Color(0xEDEDE8));
+        card.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(theme.bubbleBorder()),
+                BorderFactory.createEmptyBorder(10, 12, 10, 12)));
+        card.add(createSectionLabel(NbBundle.getMessage(
+                OnboardingBubble.class, "OnboardingBubble.Section.Active"), theme), BorderLayout.NORTH);
         JPanel row = new JPanel(new BorderLayout(8, 0));
         row.setOpaque(false);
-        row.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        // Icon (theme-aware; falls back to the generic agent icon)
-        Icon icon = ThemeManager.getIcon(harness.iconBase() + ".svg", 32);
-        if (icon == null) {
-            icon = ThemeManager.getIcon("agent.svg", 32);
-        }
-        JLabel iconLabel = new JLabel(icon);
-        iconLabel.setVerticalAlignment(JLabel.TOP);
-
-        // Name + status
+        row.add(harnessIconLabel(harness), BorderLayout.WEST);
         JPanel textPanel = new JPanel();
         textPanel.setLayout(new BoxLayout(textPanel, BoxLayout.Y_AXIS));
         textPanel.setOpaque(false);
         JLabel nameLabel = new JLabel(harness.displayName());
         nameLabel.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
         nameLabel.setForeground(theme.foreground());
-        String statusKey = foundBinary != null ? "OnboardingBubble.Status.Found" : "OnboardingBubble.Status.Missing";
-        String statusArg = foundBinary != null ? foundBinary.path()
-                : NbBundle.getMessage(OnboardingBubble.class, "OnboardingBubble.Status.MissingValue");
-        JLabel statusLabel = new JLabel(NbBundle.getMessage(
-                OnboardingBubble.class, statusKey, statusArg));
-        statusLabel.setFont(IconResourceManager.getMonospaceFont().deriveFont(11f));
-        statusLabel.setForeground(theme.mutedForeground());
+        JLabel pathLabel = new JLabel(path);
+        pathLabel.setFont(IconResourceManager.getMonospaceFont().deriveFont(11f));
+        pathLabel.setForeground(theme.mutedForeground());
         textPanel.add(nameLabel);
-        textPanel.add(statusLabel);
-        nameLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        statusLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-// "Use" for detected harnesses; "Install" toggles the show-and-copy
-         // install panel for the missing ones.
-         JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
-         btnPanel.setOpaque(false);
-         JPanel installPanel = null;
-         if (foundBinary != null) {
-             JButton useBtn = new JButton(NbBundle.getMessage(
-                     OnboardingBubble.class, "OnboardingBubble.Button.Use"));
-             useBtn.setFocusPainted(false);
-             useBtn.setIcon(ThemeManager.getIcon("check.svg", 14));
-             useBtn.setIconTextGap(6);
-             String path = foundBinary.path();
-             String id = harness.id();
-             useBtn.addActionListener(e -> {
-                 disableButtons();
-                 if (selectionCallback != null) selectionCallback.onUse(id, path);
-             });
-             btnPanel.add(useBtn);
-} else {
-              JButton installBtn = new JButton(NbBundle.getMessage(
-                      OnboardingBubble.class, "OnboardingBubble.Button.Install"));
-              installBtn.setFocusPainted(false);
-              installBtn.setIcon(ThemeManager.getIcon("download.svg", 14));
-              installBtn.setIconTextGap(6);
-              installBtn.setFont(installBtn.getFont().deriveFont(Font.BOLD));
-              installPanel = createInstallPanel(harness, theme);
-              final JPanel togglePanel = installPanel;
-              installPanels.put(harness.id(), togglePanel);
-              togglePanel.setVisible(false);
-              installBtn.addActionListener(e -> {
-                  boolean showing = togglePanel.isVisible();
-                  hideAllInstallPanels();
-                  togglePanel.setVisible(!showing);
-                  revalidate();
-                  repaint();
-              });
-              btnPanel.add(installBtn);
-          }
-
-        row.add(iconLabel, BorderLayout.WEST);
+        textPanel.add(pathLabel);
         row.add(textPanel, BorderLayout.CENTER);
-        row.add(btnPanel, BorderLayout.EAST);
+        JButton activeBtn = new JButton("\u2713 "
+                + NbBundle.getMessage(OnboardingBubble.class, "OnboardingBubble.Badge.Active"));
+        activeBtn.setEnabled(false);
+        activeBtn.setFocusPainted(false);
+        row.add(activeBtn, BorderLayout.EAST);
+        card.add(row, BorderLayout.CENTER);
+        JLabel auth = new JLabel("\u24D8 " + NbBundle.getMessage(
+                OnboardingBubble.class, "OnboardingBubble.AuthWarning"));
+        auth.setFont(ThemeManager.getFont().deriveFont(11f));
+        auth.setForeground(theme.mutedForeground());
+        auth.setBorder(BorderFactory.createEmptyBorder(6, 0, 0, 0));
+        card.add(auth, BorderLayout.SOUTH);
+        return card;
+    }
 
-        // Row + its (hidden) install panel stack vertically in a cell.
-        // BorderLayout: the row always spans the full cell width and the panel
-        // fills what remains; invisible panels are skipped by BorderLayout.
+    /** Installed row: disclosure triangle hides the path; Use button, or Active badge when current. */
+    private JPanel createInstalledRow(HarnessCatalog.Harness harness, boolean isActive, ColorTheme theme) {
+        BinaryResolver.FoundBinary foundBinary = findFoundBinary(harness.id());
+        String path = foundBinary != null ? foundBinary.path() : "";
         JPanel cell = new JPanel(new BorderLayout(0, 2));
         cell.setOpaque(false);
-        cell.add(row, BorderLayout.NORTH);
-        if (installPanel != null) {
-            cell.add(installPanel, BorderLayout.CENTER);
+        JPanel row = new JPanel(new BorderLayout(8, 0));
+        row.setOpaque(false);
+        JLabel pathLabel = new JLabel(path);
+        pathLabel.setFont(IconResourceManager.getMonospaceFont().deriveFont(11f));
+        pathLabel.setForeground(theme.mutedForeground());
+        pathLabel.setVisible(false);
+        JButton disclosure = new JButton(">");
+        disclosure.setFocusPainted(false);
+        disclosure.setMargin(new Insets(0, 2, 0, 2));
+        disclosure.setToolTipText(NbBundle.getMessage(OnboardingBubble.class, "OnboardingBubble.Hint.Expand"));
+        disclosure.addActionListener(e -> {
+            boolean showing = !pathLabel.isVisible();
+            pathLabel.setVisible(showing);
+            disclosure.setText(showing ? "v" : ">");
+            disclosure.setToolTipText(NbBundle.getMessage(OnboardingBubble.class,
+                    showing ? "OnboardingBubble.Hint.Collapse" : "OnboardingBubble.Hint.Expand"));
+            revalidate();
+            repaint();
+        });
+        JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        left.setOpaque(false);
+        left.add(disclosure);
+        left.add(harnessIconLabel(harness));
+        row.add(left, BorderLayout.WEST);
+        JPanel textPanel = new JPanel();
+        textPanel.setLayout(new BoxLayout(textPanel, BoxLayout.Y_AXIS));
+        textPanel.setOpaque(false);
+        JLabel nameLabel = new JLabel(harness.displayName());
+        nameLabel.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
+        nameLabel.setForeground(theme.foreground());
+        textPanel.add(nameLabel);
+        textPanel.add(pathLabel);
+        row.add(textPanel, BorderLayout.CENTER);
+        JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
+        btnPanel.setOpaque(false);
+        if (isActive) {
+            JButton activeBtn = new JButton("\u2713 "
+                    + NbBundle.getMessage(OnboardingBubble.class, "OnboardingBubble.Badge.Active"));
+            activeBtn.setEnabled(false);
+            activeBtn.setFocusPainted(false);
+            btnPanel.add(activeBtn);
+        } else {
+            JButton useBtn = new JButton(NbBundle.getMessage(OnboardingBubble.class, "OnboardingBubble.Button.Use"));
+            useBtn.setFocusPainted(false);
+            useBtn.setIcon(ThemeManager.getIcon("check.svg", 14));
+            useBtn.setIconTextGap(6);
+            String id = harness.id();
+            useBtn.addActionListener(e -> {
+                disableButtons();
+                if (selectionCallback != null) {
+                    selectionCallback.onUse(id, path);
+                }
+            });
+            btnPanel.add(useBtn);
         }
+        row.add(btnPanel, BorderLayout.EAST);
+        cell.add(row, BorderLayout.NORTH);
         return cell;
+    }
+
+    /** Uninstalled row: Get Plugin button toggles the copy-command install panel with progress state. */
+    private JPanel createUninstalledRow(HarnessCatalog.Harness harness, ColorTheme theme) {
+        JPanel cell = new JPanel(new BorderLayout(0, 2));
+        cell.setOpaque(false);
+        JPanel row = new JPanel(new BorderLayout(8, 0));
+        row.setOpaque(false);
+        row.add(harnessIconLabel(harness), BorderLayout.WEST);
+        JLabel nameLabel = new JLabel(harness.displayName());
+        nameLabel.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
+        nameLabel.setForeground(theme.foreground());
+        row.add(nameLabel, BorderLayout.CENTER);
+        JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
+        btnPanel.setOpaque(false);
+        JLabel progress = new JLabel("\u273B "
+                + NbBundle.getMessage(OnboardingBubble.class, "OnboardingBubble.Button.Installing"));
+        progress.setForeground(theme.mutedForeground());
+        progress.setVisible(false);
+        JButton installBtn = new JButton(NbBundle.getMessage(
+                OnboardingBubble.class, "OnboardingBubble.Button.GetPlugin"));
+        installBtn.setFocusPainted(false);
+        installBtn.setIcon(ThemeManager.getIcon("download.svg", 14));
+        installBtn.setIconTextGap(6);
+        styleSecondaryButton(installBtn, theme);
+        btnPanel.add(progress);
+        btnPanel.add(installBtn);
+        row.add(btnPanel, BorderLayout.EAST);
+        cell.add(row, BorderLayout.NORTH);
+        JPanel installPanel = createInstallPanel(harness, theme);
+        installPanel.setVisible(false);
+        installPanels.put(harness.id(), installPanel);
+        cell.add(installPanel, BorderLayout.CENTER);
+        installBtn.addActionListener(e -> {
+            boolean showing = installPanel.isVisible();
+            hideAllInstallPanels();
+            installPanel.setVisible(!showing);
+            progress.setVisible(!showing);
+            revalidate();
+            repaint();
+        });
+        return cell;
+    }
+
+    /** Collapsible post-activation note: auth in CLI/TUI + IDE restart. */
+    private JPanel createPostActivationNote(ColorTheme theme) {
+        JPanel note = new JPanel(new BorderLayout(4, 4));
+        note.setOpaque(true);
+        note.setBackground(theme.isDark() ? new Color(0x2A2B33) : new Color(0xF5F3EC));
+        note.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(theme.bubbleBorder()),
+                BorderFactory.createEmptyBorder(8, 10, 8, 10)));
+        JButton header = new JButton("\u26A0 "
+                + NbBundle.getMessage(OnboardingBubble.class, "OnboardingBubble.Note") + "  "
+                + NbBundle.getMessage(OnboardingBubble.class, "OnboardingBubble.Note.Title"));
+        header.setFocusPainted(false);
+        header.setHorizontalAlignment(JButton.LEFT);
+        header.setContentAreaFilled(false);
+        header.setBorderPainted(false);
+        JTextAreaNoWrap body = new JTextAreaNoWrap(NbBundle.getMessage(
+                OnboardingBubble.class, "OnboardingBubble.Note.Body"));
+        body.setForeground(theme.mutedForeground());
+        body.setBorder(BorderFactory.createEmptyBorder(0, 4, 0, 0));
+        body.setVisible(true);
+        header.addActionListener(e -> {
+            body.setVisible(!body.isVisible());
+            revalidate();
+            repaint();
+        });
+        note.add(header, BorderLayout.NORTH);
+        note.add(body, BorderLayout.CENTER);
+        return note;
+    }
+
+    /** Theme-aware harness icon label with generic fallback. */
+    private static JLabel harnessIconLabel(HarnessCatalog.Harness harness) {
+        Icon icon = ThemeManager.getIcon(harness.iconBase() + ".svg", 32);
+        if (icon == null) {
+            icon = ThemeManager.getIcon("agent.svg", 32);
+        }
+        JLabel label = new JLabel(icon);
+        label.setVerticalAlignment(JLabel.TOP);
+        return label;
     }
 
     /** Show-and-copy install panel: per-OS command, copy-on-click, prerequisites note,
@@ -453,6 +587,36 @@ class OnboardingBubble extends JPanel {
                 setButtonsEnabledRecursive(child, enabled);
             }
         }
+    }
+
+    /** Styles a button as secondary action: subtle border + hover tint, matching
+     *  the Use button's icon+text treatment but without filled brand color. */
+    private static void styleSecondaryButton(JButton btn, ColorTheme theme) {
+        Color border = theme.isDark() ? new Color(0x5A5A5A) : new Color(0xCCCCCC);
+        Color fg = theme.foreground();
+        Color hoverBg = theme.isDark() ? new Color(0x2A2A2A) : new Color(0xF5F5F5);
+        Color hoverBorder = theme.isDark() ? new Color(0x7A7A7A) : new Color(0x999999);
+        btn.setForeground(fg);
+        btn.setOpaque(true);
+        btn.setBackground(theme.isDark() ? new Color(0x1E1E1E) : Color.WHITE);
+        btn.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(border, 1),
+                BorderFactory.createEmptyBorder(6, 14, 6, 14)));
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btn.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override public void mouseEntered(java.awt.event.MouseEvent e) {
+                btn.setBackground(hoverBg);
+                btn.setBorder(BorderFactory.createCompoundBorder(
+                        BorderFactory.createLineBorder(hoverBorder, 1),
+                        BorderFactory.createEmptyBorder(6, 14, 6, 14)));
+            }
+            @Override public void mouseExited(java.awt.event.MouseEvent e) {
+                btn.setBackground(theme.isDark() ? new Color(0x1E1E1E) : Color.WHITE);
+                btn.setBorder(BorderFactory.createCompoundBorder(
+                        BorderFactory.createLineBorder(border, 1),
+                        BorderFactory.createEmptyBorder(6, 14, 6, 14)));
+            }
+        });
     }
 
     /** Non-wrapping small JTextArea used for body text. */

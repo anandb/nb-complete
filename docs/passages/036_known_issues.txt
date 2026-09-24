@@ -6,10 +6,10 @@
   <div>[[Index->Topic Index]]</div>
 </div>
 
-- Opencode at times doesn't respond when using nested agents.
-- Switching sessions or reloading the conversation while awaiting a response can cancel the current request.
-- Permission requests from subagents (delegated agents) aren't always relayed by the Harness back to the UI. If a subagent makes a tool call that requires permission, the request may hang and eventually time out because you never receive the Accept/Deny prompt. To mitigate this, directly instruct your primary agent to perform file modifications or commands rather than asking it to delegate those tasks to a subagent.
-
+- Opencode sometimes doesn't respond when using nested agents.
+- Switching sessions or reloading the conversation while awaiting a response can cancel the current request. This is also a conscious design decision, the plugin supports only one active session at a time.
+- Permission requests from subagents (delegated agents) aren't always relayed by the Harness back to the UI. If a subagent makes a tool call that requires permission, the request may hang and eventually time out because you never receive the Accept/Deny prompt. To mitigate this, directly instruct your primary agent to perform file modifications or commands rather than asking it to delegate those tasks to a subagent. The mini-assistant also shows permission prompts, you can see if that's visible if the main sidebar doesn't show it.
+- A few harnesses like Pi directly write to the files, the pi-permission extension can gate some of the actions.
 
 > [[Permission Requests]]
 > [[Message History]]
