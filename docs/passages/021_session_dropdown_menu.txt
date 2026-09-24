@@ -14,12 +14,6 @@ Right-click a session in the session dropdown to get a quick action menu:
 
 This mirrors the toolbar buttons for rename, archive, and reload.
 
-
 > [[Renaming the session]]
 > [[Archiving Sessions]]
 > [[Message History]]
-
-
-
-
-
