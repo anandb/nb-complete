@@ -16,20 +16,20 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class HarnessCatalogTest {
 
     @Test
-    void allNineHarnessesPresent() {
-        assertEquals(9, HarnessCatalog.ALL.size());
+    void allTenHarnessesPresent() {
+        assertEquals(10, HarnessCatalog.ALL.size());
         Set<String> ids = new HashSet<>();
         for (HarnessCatalog.Harness h : HarnessCatalog.ALL) {
             assertTrue(ids.add(h.id()), "duplicate id: " + h.id());
         }
-        assertTrue(ids.containsAll(Set.of("opencode", "goose", "pi", "cursor", "claude", "hermes", "gemini", "omp", "openclaw")));
+        assertTrue(ids.containsAll(Set.of("opencode", "goose", "pi", "cursor", "claude", "hermes", "gemini", "omp", "openclaw", "devin")));
     }
 
     @Test
     void onboardingOrderIncludesAllHarnesses() {
         Set<String> allIds = new HashSet<>(HarnessCatalog.ALL.stream()
                 .map(HarnessCatalog.Harness::id).toList());
-        assertEquals(Set.of("omp", "opencode", "openclaw", "pi", "goose", "cursor", "claude", "hermes", "gemini"),
+        assertEquals(Set.of("omp", "opencode", "openclaw", "pi", "goose", "cursor", "claude", "hermes", "gemini", "devin"),
                 allIds);
     }
 
@@ -107,7 +107,7 @@ class HarnessCatalogTest {
 
     @Test
     void ompSupportsAllExceptTokenStats() {
-        assertTrue(HarnessCatalog.OMP.requiresMessageQueue());
+        assertFalse(HarnessCatalog.OMP.requiresMessageQueue());
         assertTrue(HarnessCatalog.OMP.sendsMcpServerConfig());
         assertTrue(HarnessCatalog.OMP.injectsEditorContext());
         assertFalse(HarnessCatalog.OMP.supportsTokenStats());

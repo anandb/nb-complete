@@ -310,7 +310,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                             configPanelController.setConfigConfirmActive(false);
                             statusController.setStatus("STATUS_Ready");
                             setOptionsPanelVisible(false);
-                            newSessionBtn.setEnabled(true);
+                            updateNewSessionBtnState();
                             if (ex != null) {
                                 configFuture.completeExceptionally(ex);
                                 return;

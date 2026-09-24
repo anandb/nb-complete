@@ -1,5 +1,32 @@
 # Release Notes
 
+## v1.21.0 (Changes since v1.20.5)
+
+### Features
+- **Devin harness**: Devin added as a tenth ACP harness (binary `devin`, launch arg `acp`) with theme-aware icons, per-OS install commands, docs link, and binary auto-discovery including the Devin.app bundle location on macOS (`51dd6fce`, `c216668c`).
+- **Coding Harness Configuration**: The harness chooser is redesigned around status groups — an Active Harness card with a disabled Active badge and CLI-auth reminder on top, Installed Harnesses with disclosure-triangle paths and Use buttons, Available for Installation with Get buttons and an Installing indicator, and a collapsible post-activation note (`7a6fdf59`).
+- **Config option tooltips**: Agent, model, and thinking dropdowns show the server-provided option descriptions as tooltips, falling back to the static hints when none are available (`6134ba65`).
+- **Deferred queue bubbles**: No bubble is drawn while a message is queued; a single bubble for the combined text is drawn when it is actually sent, with a one-shot amber flash on the queue icon (`51dd6fce`, `81b2305f`).
+
+### Fixes
+- **Model variant parsing**: A trailing `/`-segment of a model id only counts as a thinking variant when the server declares it as an effort value, so namespaced ids like Pi's `lm-studio/qwen/qwen3.5-9b` no longer collapse into bogus provider-only entries; unrecognised trailing `(...)` segments are kept in the display name (`ebd433cc`).
+- **OMP message queue**: Oh My Pi keeps the in-flight turn on a second `session/prompt`, so it no longer uses the queue guard (`8302c148`).
+- **New-session button state**: The button state refreshes on every processing transition and the config-confirm completion computes it from current conditions, so it can no longer stick disabled after a turn ends or enabled with no projects open (`7a6fdf59`).
+- **Model dropdown ordering**: Model display names are lower-cased and sorted alphabetically for a stable case-insensitive order; values still carry the server's model ids (`4e8266a5`, `51dd6fce`).
+- **Stale catalog tests**: `HarnessCatalogTest` updated for ten harnesses including Devin and OMP's queue flag.
+
+### Improvements
+- **Model loading status**: "Loading models..." shows while models resolve and resets to Ready when the confirm bar is dismissed (`4e8266a5`).
+- **Onboarding bubble polish**: Start Server button removed with its restart callback; chooser scrolls to the top so the title is visible; Use/Install buttons carry icons (`099a04b2`, `54f66aa3`, `c216668c`).
+- **ACP fs tools project confinement lifted**: `fs/read` and `fs/write` work on any absolute path; the harness owns the permission decision via `session/request_permission`. MCP tool confinement (`ProjectPathGuard`) is unchanged (`391d1471`).
+- **New icons**: Blue logo and redrawn export icons (`6134ba65`).
+
+### Documentation
+- User guide updated for deferred queue bubbles, the Coding Harness Configuration screen, and Known Issues/Home refreshes (`81b2305f`, `7a6fdf59`).
+
+### Housekeeping
+- Version bumped to 1.21.0.
+
 ## v1.20.5 (Changes since v1.20.4)
 
 ### Fixes
