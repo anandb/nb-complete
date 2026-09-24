@@ -887,7 +887,7 @@ public class ChatThreadPanel extends JPanel {
             messagesContainer.add(bubble);
             messagesContainer.add(Box.createVerticalStrut(4));
             messagesContainer.revalidate();
-            scrollController.scrollToBottom(true);
+            scrollController.scrollToTop();
         });
     }
 

@@ -209,7 +209,16 @@ public class ScrollController implements KeyEventDispatcher {
     }
 
     public void scrollToTop() {
-        scrollPane.getVerticalScrollBar().setValue(0);
+        SwingUtilities.invokeLater(() -> {
+            // Force layout so getMaximum() reflects newly added components.
+            scrollPane.validate();
+            JScrollBar vertical = scrollPane.getVerticalScrollBar();
+            vertical.setValue(0);
+            SwingUtilities.invokeLater(() -> {
+                scrollPane.validate();
+                vertical.setValue(0);
+            });
+        });
     }
 
     public void scrollToBottom() {

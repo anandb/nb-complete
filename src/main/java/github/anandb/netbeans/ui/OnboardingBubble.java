@@ -211,39 +211,44 @@ class OnboardingBubble extends JPanel {
         nameLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         statusLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        // "Use" for detected harnesses; "Install" toggles the show-and-copy
-        // install panel for the missing ones.
-        JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
-        btnPanel.setOpaque(false);
-        JPanel installPanel = null;
-        if (foundBinary != null) {
-            JButton useBtn = new JButton(NbBundle.getMessage(
-                    OnboardingBubble.class, "OnboardingBubble.Button.Use"));
-            useBtn.setFocusPainted(false);
-            String path = foundBinary.path();
-            String id = harness.id();
-            useBtn.addActionListener(e -> {
-                disableButtons();
-                if (selectionCallback != null) selectionCallback.onUse(id, path);
-            });
-            btnPanel.add(useBtn);
-        } else {
-            JButton installBtn = new JButton(NbBundle.getMessage(
-                    OnboardingBubble.class, "OnboardingBubble.Button.Install"));
-            installBtn.setFocusPainted(false);
-            installPanel = createInstallPanel(harness, theme);
-            final JPanel togglePanel = installPanel;
-            installPanels.put(harness.id(), togglePanel);
-            togglePanel.setVisible(false);
-            installBtn.addActionListener(e -> {
-                boolean showing = togglePanel.isVisible();
-                hideAllInstallPanels();
-                togglePanel.setVisible(!showing);
-                revalidate();
-                repaint();
-            });
-            btnPanel.add(installBtn);
-        }
+// "Use" for detected harnesses; "Install" toggles the show-and-copy
+         // install panel for the missing ones.
+         JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
+         btnPanel.setOpaque(false);
+         JPanel installPanel = null;
+         if (foundBinary != null) {
+             JButton useBtn = new JButton(NbBundle.getMessage(
+                     OnboardingBubble.class, "OnboardingBubble.Button.Use"));
+             useBtn.setFocusPainted(false);
+             useBtn.setIcon(ThemeManager.getIcon("check.svg", 14));
+             useBtn.setIconTextGap(6);
+             String path = foundBinary.path();
+             String id = harness.id();
+             useBtn.addActionListener(e -> {
+                 disableButtons();
+                 if (selectionCallback != null) selectionCallback.onUse(id, path);
+             });
+             btnPanel.add(useBtn);
+} else {
+              JButton installBtn = new JButton(NbBundle.getMessage(
+                      OnboardingBubble.class, "OnboardingBubble.Button.Install"));
+              installBtn.setFocusPainted(false);
+              installBtn.setIcon(ThemeManager.getIcon("download.svg", 14));
+              installBtn.setIconTextGap(6);
+              installBtn.setForeground(new Color(0xE03E3E)); // red icon
+              installPanel = createInstallPanel(harness, theme);
+              final JPanel togglePanel = installPanel;
+              installPanels.put(harness.id(), togglePanel);
+              togglePanel.setVisible(false);
+              installBtn.addActionListener(e -> {
+                  boolean showing = togglePanel.isVisible();
+                  hideAllInstallPanels();
+                  togglePanel.setVisible(!showing);
+                  revalidate();
+                  repaint();
+              });
+              btnPanel.add(installBtn);
+          }
 
         row.add(iconLabel, BorderLayout.WEST);
         row.add(textPanel, BorderLayout.CENTER);
