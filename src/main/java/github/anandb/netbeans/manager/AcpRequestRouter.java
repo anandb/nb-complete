@@ -217,8 +217,8 @@ class AcpRequestRouter {
                     throw new IOException("Could not create FileObject for " + filePath);
                 }
                 if (wasNew) {
-                    // New files: write final content first, then open cleanly.
-                    // This avoids the "modified externally" reload prompt.
+                    // New files: content is already on disk; no editor
+                    // involvement, so no tab opens and nothing steals focus.
                     try (OutputStream os = fo.getOutputStream()) {
                         os.write(content.getBytes(StandardCharsets.UTF_8));
                     }
@@ -227,29 +227,34 @@ class AcpRequestRouter {
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
-        }).thenAccept(ctx -> SwingUtilities.invokeLater(() -> {
-            try {
-                DataObject dobj = DataObject.find(ctx.fo);
-                EditorCookie ec = dobj != null ? dobj.getLookup().lookup(EditorCookie.class) : null;
-                if (ec == null) {
-                    throw new IOException("File is not editable: " + filePath);
-                }
-                ec.open();
-                if (!ctx.wasNew) {
+        }).thenAccept(ctx -> {
+            if (ctx.wasNew) {
+                result.complete(MAPPER.createObjectNode());
+                return;
+            }
+            SwingUtilities.invokeLater(() -> {
+                try {
+                    DataObject dobj = DataObject.find(ctx.fo);
+                    EditorCookie ec = dobj != null ? dobj.getLookup().lookup(EditorCookie.class) : null;
+                    if (ec == null) {
+                        throw new IOException("File is not editable: " + filePath);
+                    }
+                    // openDocument() loads the buffer without opening a visible
+                    // editor tab (unlike open(), which also requests focus).
                     Document doc = ec.openDocument();
                     doc.remove(0, doc.getLength());
                     doc.insertString(0, content, null);
                     FileUtil.runAtomicAction((FileSystem.AtomicAction) () -> ec.saveDocument());
+                    LOG.fine("Wrote fs/writeTextFile via editor: {0}", filePath);
+                    result.complete(MAPPER.createObjectNode());
+                } catch (Exception e) {
+                    LOG.severe("fs/writeTextFile failed: {0}", ExceptionUtils.getMessage(e));
+                    LOG.log(Level.FINE, "fs/writeTextFile details", e);
+                    result.completeExceptionally(new RequestRejectedException(
+                            NbBundle.getMessage(ProcessManager.class, "ERR_WriteFileFailed", filePath)));
                 }
-                LOG.fine("Wrote fs/writeTextFile via editor: {0}", filePath);
-                result.complete(MAPPER.createObjectNode());
-            } catch (Exception e) {
-                LOG.severe("fs/writeTextFile failed: {0}", ExceptionUtils.getMessage(e));
-                LOG.log(Level.FINE, "fs/writeTextFile details", e);
-                result.completeExceptionally(new RequestRejectedException(
-                        NbBundle.getMessage(ProcessManager.class, "ERR_WriteFileFailed", filePath)));
-            }
-        })).exceptionally(ex -> {
+            });
+        }).exceptionally(ex -> {
             LOG.severe("fs/writeTextFile failed: {0}", ExceptionUtils.getMessage(ex));
             LOG.log(Level.FINE, "fs/writeTextFile details", ex);
             result.completeExceptionally(new RequestRejectedException(
