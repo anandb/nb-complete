@@ -11,7 +11,6 @@ If the assistant becomes unresponsive or you experience connection issues, you c
 
 > [[Choose Your Coding Harness]]
 > [[Customising the Toolbar]]
-> [[Troubleshooting]]
 > [[Auto-Reconnect]]
 
 

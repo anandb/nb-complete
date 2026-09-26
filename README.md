@@ -1,6 +1,6 @@
 # BeanBot
 
-[![Version](https://img.shields.io/badge/version-1.21.0-blue.svg)](pom.xml)
+[![Version](https://img.shields.io/badge/version-1.21.1-blue.svg)](pom.xml)
 [![Build Status](https://img.shields.io/badge/build-success-brightgreen.svg)](https://github.com/anandb/nb-complete)
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.anandb/beanbot)](https://central.sonatype.com/artifact/io.github.anandb/beanbot/versions)
 [![NetBeans](https://img.shields.io/badge/NetBeans-RELEASE220-blue.svg)](https://netbeans.apache.org/download/index.html)
@@ -62,9 +62,11 @@ The project follows a hexagonal (ports & adapters) architecture integrated into 
 - **`model/`**: ACP-compliant data records (sessions, messages, updates, config options). Zero dependencies on upper layers.
 - **`contract/`**: Service interfaces that define ports for session control, process management, and UI callbacks. `manager/` implements; `ui/` consumes.
 - **`manager/`**: Core orchestration — protocol client (JSON-RPC over stdin/stdout), session state machine, process lifecycle, and SSE strategy dispatch.
-- **`mcp/`**: MCP server integration — hosts a local server that registers IDE tools (`get_tabs`, `open_pos`, `rename_session`) so that the AI client can inspect open tabs and control editor navigation.
+- **`mcp/`**: MCP server integration — hosts a local server that registers the IDE tool set (editor context and navigation, filesystem, git/hg, tasks, projects, stash diff) so that the AI client can inspect open tabs and control editor navigation.
+- **`project/`**: NetBeans lifecycle hooks (`@OnStart`/`@OnStop`), the open-project manager, and the markdown project type.
+- **`tasks/`**: todo.txt task repository integration — bugtracking providers, issue cache, task editors.
 - **`support/`**: Pure utilities — logging, JSON mapping, text scanning, constants, browser helpers. Zero dependencies on upper layers.
-- **`ui/`**: All Swing components — chat window, message bubbles, streaming animation, theming, options panel, stash diff viewer. Depends only on `contract/` interfaces.
+- **`ui/`**: All Swing components — chat window, message bubbles, streaming animation, theming, options panel, stash diff viewer. Depends on `contract/` interfaces, plus `model/` data records, `support/` utilities, and — through the `ui/platform/` bridge only — the `project/` layer. Never imports `manager/` or `mcp/`.
 
 ### Layer Dependencies
 
@@ -89,10 +91,10 @@ Dependencies flow downward only — no upward imports between layers:
 ### Connection Flow
 
 ```
-┌──────────┐    SSE / JSON-RPC    ┌──────────────────┐
+┌──────────┐    SSE / JSON-RPC    ┌───────────────────┐
 │  Sidebar │ ◄──────────────────► │ AcpProtocolClient │
-│  (server)│     stdin/stdout     │  (transport)      │
-└──────────┘                      └────────┬─────────┘
+│ (client) │     stdin/stdout     │    (transport)    │
+└──────────┘                      └────────┬──────────┘
                                            │
                                       ┌────▼──────┐
                                       │ ProcessMgr│
@@ -112,6 +114,11 @@ Dependencies flow downward only — no upward imports between layers:
                         └──────────┘  └──────────┘  └──────────┘
 ```
 
+`project/`, `mcp/`, and `tasks/` sit outside this five-layer model: `project/` is NetBeans
+lifecycle wiring, `mcp/` is the tool-serving adapter surface, and `tasks/` is a self-contained
+bugtracking feature. `model/`, `contract/`, and `support/` import none of them; `manager/`
+reaches `mcp/` only from `ProcessManager` (via `McpManager`/`McpToolAdapter`).
+
 ---
 
 ## Source Organization
@@ -120,13 +127,14 @@ All source lives under `src/main/java/github/anandb/netbeans/`:
 
 | Package | Files | Role |
 | --- | --- | --- |
-| `contract/` | 19 | Service interfaces (UI callbacks, session & process control, permission & request handlers, pinned message control) |
-| `manager/` | 20 | Core orchestration, protocol clients, session management, process lifecycle (includes `strategy/`, file cache, VCS ignore) |
-| `mcp/` | 13 | MCP server integration (editor tools, tool definitions, message servlet) |
-| `model/` | 15 | ACP-compliant data models (session, messages, updates, config options, color tokens) |
-| `project/` | 12 | NetBeans lifecycle hooks, project manager, markdown project support |
-| `support/` | 17 | Utilities (logging, JSON mapping, text scanning, constants, browser helpers, pinned message store, shortcut utils) |
-| `ui/` | 108 | Swing components, platform integration, markdown project UI (chat, bubbles, theming, options, stash diff, file search, send-to-assistant actions) |
+| `contract/` | 23 | Service interfaces (UI callbacks, session & process control, permission & request handlers, pinned message control) |
+| `manager/` | 22 | Core orchestration, protocol clients, session management, process lifecycle (includes `strategy/`, file cache, VCS ignore) |
+| `mcp/` | 41 | MCP server integration (editor, filesystem, VCS, task and project tool providers, tool input records, message servlet) |
+| `model/` | 25 | ACP-compliant data models (session, messages, updates, config options, color tokens) |
+| `project/` | 12 | NetBeans lifecycle hooks, project manager (includes `mdproject/`, the markdown project type) |
+| `support/` | 27 | Utilities (logging, JSON mapping, text scanning, constants, browser helpers, pinned message store, shortcut utils) |
+| `tasks/` | 17 | todo.txt task repository integration (bugtracking providers, issue cache, task editors) |
+| `ui/` | 120 | Swing components, platform integration, markdown project UI (chat, bubbles, theming, options, stash diff, file search, send-to-assistant actions) |
 
 ---
 
@@ -137,10 +145,10 @@ For a guided walkthrough mapped to the plugin's execution flow, read files in th
 ### Phase 1: Entry & Lifecycle
 1. [`project/ACPStartup.java`](src/main/java/github/anandb/netbeans/project/ACPStartup.java) — NetBeans `@OnStart` hook
 2. [`project/ACPShutdown.java`](src/main/java/github/anandb/netbeans/project/ACPShutdown.java) — `@OnStop` cleanup
-3. [`src/main/resources/github/anandb/netbeans/ui/layer.xml`](src/main/resources/github/anandb/netbeans/ui/layer.xml) — NetBeans registration (window, shortcut, options, Git toolbar)
+3. [`src/main/resources/github/anandb/netbeans/ui/layer.xml`](src/main/resources/github/anandb/netbeans/ui/layer.xml) — NetBeans registration (window menu/shortcuts, editor popup, Git toolbar); the Options panel is registered by annotation in `ui/ACPOptionsPanelController.java`
 
 ### Phase 2: Server Process
-4. [`manager/ProcessManager.java`](src/main/java/github/anandb/netbeans/manager/ProcessManager.java) — Spawns/owns the `opencode acp` subprocess; central request dispatch
+4. [`manager/ProcessManager.java`](src/main/java/github/anandb/netbeans/manager/ProcessManager.java) — Owns the ACP server subprocess and acts as the central request-dispatch hub; spawn itself is in `manager/ServerProcessLifecycle.startServer()`, launching the harness binary the user selected (10 supported)
 5. [`support/BinaryResolver.java`](src/main/java/github/anandb/netbeans/support/BinaryResolver.java) — Locates the binary on PATH
 6. [`manager/AcpProtocolClient.java`](src/main/java/github/anandb/netbeans/manager/AcpProtocolClient.java) — JSON-RPC over stdin/stdout, SSE read loop, pending request tracking
 
@@ -152,21 +160,21 @@ For a guided walkthrough mapped to the plugin's execution flow, read files in th
 11. [`model/Message.java`](src/main/java/github/anandb/netbeans/model/Message.java) — Message model (prompts, tool calls, results)
 
 ### Phase 4: Strategy Dispatch (SSE handler chain)
-13. [`contract/UIHandler.java`](src/main/java/github/anandb/netbeans/contract/UIHandler.java) — Callback interface for rendering
-14. [`manager/strategy/StrategyRegistry.java`](src/main/java/github/anandb/netbeans/manager/strategy/StrategyRegistry.java) — Sole dispatch class: type switch routes `SessionUpdate` → extraction logic, eliminating the strategy interface hierarchy
+12. [`contract/UIHandler.java`](src/main/java/github/anandb/netbeans/contract/UIHandler.java) — Callback interface for rendering
+13. [`manager/strategy/StrategyRegistry.java`](src/main/java/github/anandb/netbeans/manager/strategy/StrategyRegistry.java) — Sole dispatch class: type switch routes `SessionUpdate` → extraction logic, eliminating the strategy interface hierarchy
 
 ### Phase 5: UI Rendering
-15. [`ui/AssistantTopComponent.java`](src/main/java/github/anandb/netbeans/ui/AssistantTopComponent.java) — Main chat window (NetBeans TopComponent)
-16. [`ui/ComponentLifecycleHandler.java`](src/main/java/github/anandb/netbeans/ui/ComponentLifecycleHandler.java) — Wires lifecycle events → managers
-17. [`ui/SessionLifecycleHandler.java`](src/main/java/github/anandb/netbeans/ui/SessionLifecycleHandler.java) — Glue: receives SSE updates, calls `StrategyRegistry.handle()`, invokes UI
-18. [`ui/ChatThreadPanel.java`](src/main/java/github/anandb/netbeans/ui/ChatThreadPanel.java) — Thread of message bubbles with streaming animation
-19. [`ui/MessageBubble.java`](src/main/java/github/anandb/netbeans/ui/MessageBubble.java) — Individual message turn (thought, tool, code segments)
-20. [`ui/MessageSender.java`](src/main/java/github/anandb/netbeans/ui/MessageSender.java) — Send/cancel logic
+14. [`ui/AssistantTopComponent.java`](src/main/java/github/anandb/netbeans/ui/AssistantTopComponent.java) — Main chat window (NetBeans TopComponent)
+15. [`ui/ComponentLifecycleHandler.java`](src/main/java/github/anandb/netbeans/ui/ComponentLifecycleHandler.java) — Wires lifecycle events → managers
+16. [`ui/SessionLifecycleHandler.java`](src/main/java/github/anandb/netbeans/ui/SessionLifecycleHandler.java) — Glue: receives SSE updates, calls `StrategyRegistry.handle()`, invokes UI
+17. [`ui/ChatThreadPanel.java`](src/main/java/github/anandb/netbeans/ui/ChatThreadPanel.java) — Thread of message bubbles with streaming animation
+18. [`ui/MessageBubble.java`](src/main/java/github/anandb/netbeans/ui/MessageBubble.java) — Individual message turn (thought, tool, code segments)
+19. [`ui/MessageSender.java`](src/main/java/github/anandb/netbeans/ui/MessageSender.java) — Send/cancel logic
 
 ### Phase 6: Supporting
-21. [`model/ProcessedMessage.java`](src/main/java/github/anandb/netbeans/model/ProcessedMessage.java) — The rendered output model consumed by UI
-22. [`mcp/McpManager.java`](src/main/java/github/anandb/netbeans/mcp/McpManager.java) — MCP server integration layer
-23. [`contract/RequestHandler.java`](src/main/java/github/anandb/netbeans/contract/RequestHandler.java) — Interface for incoming RPC requests from the server
+20. [`model/ProcessedMessage.java`](src/main/java/github/anandb/netbeans/model/ProcessedMessage.java) — The rendered output model consumed by UI
+21. [`mcp/McpManager.java`](src/main/java/github/anandb/netbeans/mcp/McpManager.java) — MCP server integration layer
+22. [`contract/RequestHandler.java`](src/main/java/github/anandb/netbeans/contract/RequestHandler.java) — Interface for incoming RPC requests from the server
 
 ---
 
@@ -176,18 +184,18 @@ The plugin reads the following system properties and environment variables:
 
 | Property | System | Description |
 |---|---|---|
-| `user.dir` | System | Working directory for session/project (`SessionManager`) |
+| `user.dir` | System | **Not used.** `SessionManager` deliberately fails fast instead of falling back to the IDE launcher directory (`createSession` requires an explicit project `cwd`) |
 | `user.home` | System | Default folder for Markdown Project creation (`MdProjectPanelVisual`) |
 | `java.io.tmpdir` | System | Temp directory for pasted images (`ImagePasteTransferHandler`) |
-| `os.name` | System | Detect Windows for binary resolution (`BinaryResolver`) |
+| `os.name` | System | Detect Windows for binary resolution and platform-specific launching (`BinaryResolver`, `ProcessTerminator`, `ACPOptionsPanel`) |
 | `beanbot.roundedPanels` | System (`true`) | Toggle rounded panel corners (`RoundedPanel`) |
 | `beanbot.fs.write.enabled` | System (`true`) | ACP-only: gates the `fs/writeTextFile` / `fs/write_text_file` ACP tools (`FsWriteSettings`). MCP write tools (`write_to_file`, `replace_lines`, `insert_in_file`) are always confined to open projects and unaffected by this property. Set `-Dbeanbot.fs.write.enabled=false` to stop advertising the ACP write capability and reject every ACP write |
-| `beanbot.color.*` | System (varies) | Override any UI color (`ColorTheme`) |
+| `beanbot.color.*` | System (varies) | Override any UI color. Read by `model/ColorRegistry` (resolution order: system property → `UIManager` key → built-in light/dark fallback), not by `ColorTheme`, which only loads `colors.json` |
 | `nb.dark.theme` | UIManager | Detect dark theme for icon resolution (`IconResourceManager`) |
 | `ACP_WIRE_LOG` | Env | Path for ACP wire protocol log file (`WireLogger`) |
-| `PATH` | Env | Search path for opencode binary (`BinaryResolver`) |
+| `PATH` | Env | Search path for the harness binary; all 10 supported harness names are probed (`BinaryResolver`) |
 
-The color properties are declared in [`colors.json`](src/main/resources/github/anandb/netbeans/ui/colors.json) and cover: background, foreground, selection, accent, sunken background, bubble (user/assistant), code, table, header, thinking, tool, permission, and error colors — each with light and dark variants.
+The color properties are declared in [`colors.json`](src/main/resources/github/anandb/netbeans/ui/colors.json) and cover: background, foreground, selection, accent, sunken background, bubble (user/assistant), code, table, header, thinking, tool, permission, and error colors. Most entries define both light and dark variants; the ones resolved straight from a `UIManager` key or a single fallback (`foreground`, `sunkenBackground`, `codeBackground`, `codeForeground`, `codeSelection`) do not.
 
 ---
 
@@ -219,8 +227,24 @@ x (B) 2026-08-02 2026-08-01 Fix the bug @urgent @bug +myproject due:2026-09-01 i
 
 - Tags and projects are stored **only** as `@`/`+` tokens — there is no redundant `tags:`/`projects:` mirror, so a load→save round-trip never duplicates them.
 - `estimate`/`consumed` are integers representing **arbitrary, user-defined units** (BeanBot does not assign them meaning); they are for personal tracking only.
-- Unknown tokens are tolerated on read and ignored, so files edited by other todo.txt tools remain compatible.
-- Lines without a parseable task (e.g. blank lines) are skipped.
+- Unknown tokens are tolerated on read: a token that is neither `@`/`+` nor a recognised `key:value` is absorbed back into the free-text summary, so files edited by other todo.txt tools remain readable.
+- Lines with no parseable content (blank lines) are skipped. A line without an `id:` token is still parsed — a fresh id is generated for it.
+
+### Troubleshooting
+
+| Problem | Solution |
+| --- | --- |
+| Plugin can't find the harness | Use the harness chooser to pick an installed harness, copy its install command, or set the path manually under `Options > Assistant`. Binaries found on `PATH` are never auto-selected — you always make the choice. |
+| Assistant becomes unresponsive | Click **Restart Harness** in the toolbar. |
+| Ctrl + L stops working | Close and reopen the assistant panel from the Window menu. If that doesn't work, restart the IDE. |
+| Sidebar doesn't open after install/upgrade | The plugin auto-opens the sidebar on version change. If it doesn't appear, open it from `Window > Assistant`. |
+| Image paste doesn't work with Wayland on Linux | Install the `wl-clipboard` package (Wayland) or check your clipboard manager. |
+| Image paste broken after OpenCode upgrade | Upgrade to OpenCode >= 1.17.17 to resolve the breakage introduced in v1.17.13. |
+| Model not appearing after an OpenCode upgrade | Re-select your model via `/models`. An upgrade that changes the `thought_level` split resets model selection. |
+| Session config payloads restructured after upgrade | Upgrade to BeanBot >= 1.21.1 and OpenCode >= 1.17.17. Re-select your model and review any custom preamble or session settings. |
+| Messages disappear from view | This is display-only — the session still has all messages. Click **Show All Messages** to keep them visible, and use **Reload** to re-fetch from the server. |
+| LLM modified files unexpectedly | Keep your project under version control so you can revert changes you don't want. You can also set OpenCode to 'ask' before editing, and review changes with the **Allow Once/Always Allow/Reject** permission prompts. |
+| Panel goes blank during docking or resizing | Close and reopen the docked panel from `Window > Assistant`. NetBeans may not repaint correctly after a drag-dock or undock operation. |
 
 ### Known Issues/Limitations
 

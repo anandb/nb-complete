@@ -2,7 +2,7 @@
 
 ## Project Overview
 - **Project**: Coding Assistant (NetBeans IDE plugin, Java 17, Maven)
-- **Current Stable Version**: 1.21.0
+- **Current Stable Version**: 1.21.1
 - **Key Tech**: NetBeans API (RELEASE220), Flexmark, Jackson, RSyntaxTextArea, JUnit 5.
 
 ## Build Commands
@@ -83,39 +83,79 @@
 
 ### Layer Model (dependencies flow downward only)
 ```
-        ┌─────────┐
-        │   ui/   │  ← presentation (highest)
-        └────┬────┘
-             │
-        ┌────▼────┐
-        │manager/ │  ← business logic
-        └────┬────┘
-             │
-    ┌────────┼────────┐
-    ▼        ▼        ▼
-┌────────┐ ┌────────┐ ┌────────┐
-│ model/ │ │contract│ │support/│  ← data, interfaces, utils (lowest)
-└────────┘ └────────┘ └────────┘
+  ┌─────────┐        ┌──────────┐   ┌───────────┐
+  │   ui/   │        │ manager/ │   │   mcp/    │   ← adapters (highest)
+  └────┬────┘        └────┬─────┘   └─────┬─────┘
+       │                  │               │
+       │             ┌────┴───────────────┘
+       │             │
+  ┌────▼─────────────▼──────────────────────────┐
+  │  contract/   (ports; imports only model/)   │
+  ├─────────────────────────────────────────────┤
+  │  support/    (utilities; imports model/)    │
+  ├─────────────────────────────────────────────┤
+  │  model/      (records; leaf — no imports)   │
+  └─────────────────────────────────────────────┘
+
+  Satellites, importing downward only:
+
+  ┌──────────┐  →  model/ · contract/ · support/
+  │ project/ │
+  └──────────┘
+
+  ┌──────────┐  →  model/ · contract/ · support/   (+ deferred ui/platform debt)
+  │  tasks/  │
+  └──────────┘
 ```
+
+`manager/` and `mcp/` are peers: `manager/` orchestrates the session and process, `mcp/`
+serves the IDE tool set. Both are adapters over `contract/` ports and `model/` records.
+
+**Actual import edges** (verified; anything not listed is currently zero):
+
+| From | To |
+|---|---|
+| `ui/` | `support/` (115), `model/` (55), `contract/` (43), `project/` (1 — `ui/platform/DefaultPlatformBridge` only) |
+| `manager/` | `support/` (49), `contract/` (31), `model/` (25), `mcp/` (2 — `ProcessManager` only) |
+| `mcp/` | `support/` (24), `contract/` (12), `model/` (4) |
+| `tasks/` | `model/` (9), `contract/` (8), `support/` (6), `ui/` (3 — deferred debt) |
+| `project/` | `support/` (8), `contract/` (2) |
+| `support/` | `model/` (5) |
+| `contract/` | `model/` (17) |
+| `model/` | *(nothing — leaf)* |
+
+Zero-import guarantees currently hold (do NOT break them): `manager/` → `ui/`,
+`project/` → `ui/`, `ui/` → `manager/`, `ui/` → `mcp/`, and any
+`model/`/`contract/`/`support/` → `manager|mcp|tasks|project|ui`.
 
 ### Forbidden Patterns (do NOT introduce these)
 - **manager/ → ui/**: Never import from `ui/` in `manager/`. Use `contract/`
   interfaces or `support/` classes instead.
 - **project/ → ui/**: Use `WindowManager.findTopComponent("...")` by string ID,
   never direct class references.
-- **ui/ bypassing contract/**: `ui/` should call `contract/` interfaces, not
-  concrete `manager/` classes directly. This keeps UI testable and swappable.
+- **ui/ → manager/ or ui/ → mcp/**: `ui/` must call `contract/` interfaces, not
+  concrete `manager/`/`mcp/` classes directly. This keeps UI testable and swappable.
+  (Both edges are currently zero — keep them that way.)
 - **Lower layer → Higher layer**: `model/`, `contract/`, `support/` must never
-  import from `manager/` or `ui/`.
+  import from `manager|mcp|tasks|project|ui/`.
+- **Non-`ui/` consumer of `ui/platform/`**: the platform seams live in `ui/`;
+  only `ui/` may use them, except the two deferred `tasks/` files listed under debt.
 
 ### Adding New Code
 - **New manager/ class**: Depends only on `contract/`, `model/`, `support/`.
   Inject `contract/` interfaces, not concrete managers.
+- **New mcp/ tool provider**: Class goes in `mcp/`, registered from
+  `mcp/McpServer.start()`. Depend on `contract/` ports (`ProjectQuery`,
+  `SessionQuery`, `TaskRepositoryControl`, `StashDiffControl`, `EditorContextQuery`)
+  and `support/` helpers only — never `manager/` or `ui/`. Filesystem/git/hg tools
+  MUST route every path through `mcp/ProjectPathGuard`.
 - **New ui/ class**: Depends on `contract/` interfaces. If you need session
   state, use `contract/SessionQuery`, not `manager/SessionManager` directly.
-- **New support/ class**: Zero dependencies. Pure utilities, constants, loggers.
-- **New contract/ interface**: Only imports from `model/`. Defines ports that
-  `manager/` implements and `ui/` consumes.
+- **New support/ class**: Ideal is zero dependencies (pure utilities, constants,
+  loggers). The accepted exception is typing against `model/` records — see debt.
+- **New contract/ interface**: Only imports from `model/` (currently verified —
+  `contract/` imports nothing from any other package). Defines ports that
+  `manager/`/`mcp/` implement and `ui/` consumes.
 
 ### Fixing Existing Violations
 If you find an upward dependency, extract a neutral class in a lower layer:
@@ -133,29 +173,50 @@ NbPreferences.forModule(PreferenceKeys.class)
 | Concern | Location | Examples |
 |---------|----------|----------|
 | Swing components, layout | `ui/` | Panels, buttons, dialogs |
+| Platform seams (bridges) | `ui/platform/` | `PlatformBridge`, `SessionService`, `ProcessService`, `ProjectContext`, `PrefStore` |
 | Session state machine | `manager/` | `SessionManager` |
 | Network protocol | `manager/` | `AcpProtocolClient` |
-| Domain interfaces | `contract/` | `SessionQuery`, `ProcessControl` |
+| IDE tool providers | `mcp/` | `EditorToolProvider`, `FileSystemToolProvider`, `McpServer` |
+| Path confinement | `mcp/` | `ProjectPathGuard` |
+| Task repository feature | `tasks/` | `TaskRepositoryController`, `TasksConnector` |
+| NetBeans lifecycle / projects | `project/` | `ACPStartup`, `ACPShutdown`, `ACPProjectManager` |
+| Domain interfaces | `contract/` | `SessionQuery`, `ProcessControl`, `FileCacheQuery` |
 | Data classes | `model/` | `Session`, `ProcessedMessage` |
 | Utilities, constants | `support/` | `Logger`, `PreferenceKeys` |
 
 ### Architectural Debt (Known Violations)
-- **model/MessageTransformer → support/Logger (ACCEPTED)**: `model/MessageTransformer`
-  uses `github.anandb.netbeans.support.Logger` instead of `java.util.logging.Logger`
-  to keep consistent logging format with the rest of the codebase. Acceptable because
-  `support/Logger` is a thin wrapper with zero dependencies. Do NOT add further
-  `model/` → `support/` or `model/` → other layer imports.
-- **support/ToolDataExtractor → model/ (ACCEPTED)**: `support/ToolDataExtractor` is a
-  pure static utility (string/pattern parsing, classification) that is typed against
-  `model/` records (`MessageClassification`, `MessageType`, `SessionUpdate`) and is
-  consumed by both `manager/` and `ui/`. It is not a data class, so it does not belong
-  in `model/`; the peer-level `support/` → `model/` dependency is accepted. Do NOT add
+
+Active debt — three entries, all verified against the current tree:
+
+- **support/ → model/ (ACCEPTED)**: `support/` types itself against `model/` records in
+  three files: `ToolDataExtractor` (`MessageClassification`, `MessageType`,
+  `SessionUpdate`), `BinaryResolver` (`HarnessCatalog`), and `TaskTxtCodec`
+  (`TaskRecord`). All three are pure static utilities (string/pattern parsing,
+  binary discovery, todo.txt codec) — they are not data classes, so they do not belong
+  in `model/`. The peer-level `support/` → `model/` dependency is accepted. Do NOT add
   further `support/` → `model/` imports.
+- **manager/ → mcp/ (ACCEPTED)**: `manager/ProcessManager` imports
+  `mcp/McpManager` and `mcp/McpToolAdapter` to construct the `ToolExecutor` port
+  implementation (`new McpToolAdapter(new McpManager())`). `manager/` and `mcp/` are
+  peers, so this is a horizontal, not upward, dependency. It is confined to
+  `ProcessManager` — no other `manager/` file imports `mcp/`. Do NOT widen it; new
+  `manager/` classes must reach tool execution through `contract/ToolExecutor`.
+- **tasks/ → ui/ (ACCEPTED — deferred)**: `tasks/TaskRepositoryController` and
+  `tasks/TaskIssueController` read open projects via
+  `Lookup.getDefault().lookup(PlatformBridge.class).projectContext()`, so they import
+  `ui/platform/PlatformBridge` and `ui/platform/ProjectContext` — a dependency from a
+  feature package into the presentation layer. The seams live in `ui/platform/`; moving
+  them down to `contract/` would touch 14 `ui/` files plus the `DefaultPlatformBridge`
+  adapter, so it is deferred. No separate MIGRATION.md exists. Do NOT add further
+  non-`ui/` consumers of the `ui/platform` seams.
+
+Resolved — kept as regression guards:
+
 - **ui/ → manager/ singletons (RESOLVED)**: All `ui/` → `manager/SessionManager` and
-  `ProcessManager` imports have been eliminated. UI now accesses services via
-  `Lookup.getDefault().lookup(SessionControl.class)` and
-  `Lookup.getDefault().lookup(ProcessControl.class)`. Do NOT reintroduce
-  `SessionManager.getInstance()` or `ProcessManager.getInstance()` calls in `ui/`.
+  `ProcessManager` imports have been eliminated, including every
+  `SessionManager.getInstance()` / `ProcessManager.getInstance()` call. UI now accesses
+  services via `Lookup.getDefault().lookup(SessionControl.class)` and
+  `Lookup.getDefault().lookup(ProcessControl.class)`. Do NOT reintroduce either pattern.
 - **project/ACPStartup → manager/ (RESOLVED)**: `ACPStartup` was importing
   `manager/UpdateCheckerService` directly. Fixed via `contract/UpdateCheckerControl`
   interface with `Lookup.getDefault().lookup()`. Do NOT reintroduce direct
@@ -167,17 +228,10 @@ NbPreferences.forModule(PreferenceKeys.class)
   `manager/FileCacheManager` directly instead of using `contract/FileCacheQuery` via Lookup.
   Fixed by accessing `Lookup.getDefault().lookup(FileCacheQuery.class)`. Do NOT reintroduce
   `FileCacheManager.getDefault()` calls in `ui/`.
-- **tasks/TaskRepositoryController → ui/ (ACCEPTED — deferred)**: `tasks/TaskRepositoryController`
-  reads open projects via `Lookup.getDefault().lookup(PlatformBridge.class).projectContext()`,
-  so it imports `github.anandb.netbeans.ui.platform.PlatformBridge` and
-  `github.anandb.netbeans.ui.platform.ProjectContext` — an upward dependency from a feature
-  controller into the presentation `ui/` layer. The platform seams live in `ui/platform/`; moving
-  the seam interfaces down to `contract/` would touch ~18 `ui/` consumers plus the
-  `DefaultPlatformBridge` adapter, so it is deferred (see `PlatformBridge` MIGRATION.md). The
-  violation is isolated: no `model/`/`contract/`/`support/`/`manager/`/`ui/` imports `tasks/`, and no
-  `manager/`/`model/`/`contract/`/`support/` → `ui/` imports exist. Do NOT add further
-  non-`ui/` consumers of the `ui/platform` seams; obtain open-project data through `ui/platform/`
-  only from `ui/` until the seams are relocated.
+- **model/ → support/ (NOT PRESENT)**: an earlier `model/MessageTransformer →
+  support/Logger` exemption is obsolete. `model/MessageTransformer` has no imports at
+  all and `model/` does not reference `support/Logger` anywhere. `model/` is a clean
+  leaf package — treat any `model/` → other-package import as a new violation.
 - **New extraction pattern**: When extracting utilities from `ui/` god components, place
   pure logic in `support/` (e.g. `ToolContextExtractor`, `ShortcutUtils`). Keep Swing-coupled code in `ui/`.
 
@@ -442,9 +496,11 @@ public void toggleVisibility() {
    (`pi`, `pi-acp`, `pi-agent`) — they cannot carry tokens. `ServerProcessLifecycle`
    sets the flag BEFORE `toolExecutor.start()`; do NOT move it after, and do NOT
    hand authenticated URLs to PI harness sessions (`McpManager.getServerConfig()`).
-   Filesystem/git tools are confined to open projects via `ProjectPathGuard` —
-   never add MCP tools that touch paths without it. `run_command` is intentionally
-   UNGATED (deferred hardening).
+   Filesystem/git/hg tools are confined to open projects via `ProjectPathGuard` —
+   never add MCP tools that touch paths without it. `run_command` is gated on its
+   *working directory* only (`ProjectPathGuard.isInOpenProject(workDir)`, defaulting
+   to the current session directory); the command string itself is executed by
+   `bash -c` and is not otherwise constrained — treat that as deferred hardening.
 
 ## User Guide (docs/)
 

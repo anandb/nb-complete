@@ -12,7 +12,7 @@ The plugin works with several coding harnesses that speak the Agent Client Proto
 
 *   The **Active Harness** card at the top shows the currently configured harness with its binary path and a disabled **Active** badge, plus a reminder that manual CLI authentication and an IDE restart may be required. The active harness is not repeated in the lists below.
 *   **Installed Harnesses** lists every detected harness with a **Use** button — clicking **Use** remembers that harness (and its launch arguments) and starts the server. Each row has a disclosure triangle (`>`) that reveals the detected binary path, keeping the list uncluttered. Gemini's default arguments include <code>--model gemini-3.5-flash</code>; change <code>--model</code> under Process Arguments in Options if you want a different model.
-*   **Available for Installation** groups the harnesses not found on your system, each with a **Get** button — clicking it reveals the OS-specific install command for that harness along with an **Installing...** indicator. Click the command to copy it to the clipboard, install the harness in a terminal, then use **Start Server** (or the **Use** button after re-detection). Each install panel also has a **Documentation** button and any prerequisites the harness needs (for example, Node.js for the Claude adapter).
+*   **Available for Installation** groups the harnesses not found on your system, each with a **Get** button — clicking it reveals the OS-specific install command for that harness. Click the command to copy it to the clipboard, install the harness in a terminal, then use **Start Server** (or the **Use** button after re-detection). Each install panel also has a **Documentation** button and any prerequisites the harness needs (for example, Node.js for the Claude adapter).
 *   A collapsible **Note** at the bottom reminds you that after selecting a new harness you must complete authentication in its CLI/TUI and restart your IDE.
 *   The **Manual Configuration** button (gear icon) opens the Assistant settings where you can browse for any binary path yourself — useful if your harness lives outside your `PATH`.
 
@@ -28,5 +28,4 @@ After installing a harness — and optionally setting the binary path under `Opt
 > [[Post Install]]
 > [[Restarting the server]]
 > [[Options Panel Reference]]
-> [[Troubleshooting]]
 > [[Global Configuration Setup]]

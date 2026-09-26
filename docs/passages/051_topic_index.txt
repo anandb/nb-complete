@@ -84,7 +84,6 @@ This is a complete list of topics in this guide, use it to directly jump to that
 > [[Thinking and Tool Responses]]
 > [[Time to first token]]
 > [[Todo.txt Format]]
-> [[Troubleshooting]]
 > [[Update Notifications]]
 > [[Using the Mini Assistant]]
 > [[Using the Tasks Dashboard]]

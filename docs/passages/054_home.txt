@@ -6,7 +6,7 @@
   <div>[[Index->Topic Index]]</div>
 </div>
 
-<i style="opacity: 0.7;">Last updated for BeanBot v1.21.0</i>
+<i style="opacity: 0.7;">Last updated for BeanBot v1.21.1</i>
 
 BeanBot is a NetBeans plugin that provides an AI assistant panel that lets you chat with AI models directly inside the IDE to generate, refactor and understand code, it automatically attaches active project and source file context to your messages. It also features a built-in permission handler — allowing you to inspect code diffs before applying changes and explicitly approve file deletions or terminal commands. Originally based on OpenCode, it now also supports Pi, Goose, Cursor, Claude, Hermes, Gemini, Oh My Pi, Devin and OpenClaw.
 

@@ -1,5 +1,43 @@
 # Release Notes
 
+## v1.21.1 (Changes since v1.21.0)
+
+### Features
+- **open_pos focus modes**: The `open_pos` MCP tool gained a `focus` argument. `focus=false` (the default) opens the editor in the background and moves the caret without activating it; `focus=true` activates and focuses, and is reserved for explicit user requests ("show me where…", "take me to line X"). The tool description and the new `DESC_Focus` hint spell out the trigger phrases (`c14f9194`, `1bb4c875`).
+- **Harness binary discovery widened**: Binary lookup now probes `.exe`, `.cmd` and `.bat` forms of each extension-less catalog name, and searches well-known install directories beyond PATH — `~/.local/bin`, the WinGet shim directory, the Chocolatey bin directory, harness-specific subdirectories such as `%LOCALAPPDATA%\omp` and `%LOCALAPPDATA%\pi-node\current`, and the macOS Devin app bundle. `HarnessCatalog` carries a new `windowsInstallSubDirs` field and `matchesBinary` accepts Windows-ornamented names (`62f950bd`).
+
+### Fixes
+- **Stale session id on archive**: When every remaining session was archived, `onSessionListUpdated` left `currentSessionId` pointing at a hidden session, so `dismissHarnessChooser`, the reconnect ready-handler and `doRestart` could reload an archived session while the dropdown — which filters it out — stayed empty. Both empty-dropdown branches now close the session, mirroring each other (`e6b9f827`).
+- **`closeSession` always drops the id**: `currentSessionId` and the `lastProjectDir` fallback are cleared unconditionally, so `getCurrentSessionDirectory()` no longer reports a closed session's directory (auto-backup, context capture) (`ab48b3d1`).
+- **goose turn-start hang**: `available_commands_update` is no longer treated as an end-of-turn signal. goose emits it at the START of a turn; flagging turn-ended mid-stream let the next user message bypass the queue guard and hit goose while the first prompt was still in flight, which dropped that prompt and wedged the session. It remains a valid early-clear for the preamble wait on interleaved agents only (`191ccbd6`).
+- **Unknown `sessionUpdate` types survive**: The shared mapper reads unknown enum values as null instead of throwing, so a `sessionUpdate` kind the plugin does not know yet is delivered with a null type and dropped by the existing registry guard rather than killing the notification (`191ccbd6`).
+- **Windows path validation**: `.bat` is accepted again by the executable-path validator, matching the forms binary discovery probes. Without it a Chocolatey `.bat` install was auto-selected and then rejected as `ERR_MissingExeExtension` by the plugin's own choice.
+
+### Improvements
+- **Agent file access never steals focus**: `fs/write*` writes through `EditorCookie.openDocument()` (loads the buffer, opens no view) and new files are written to disk with no editor involvement, so neither path opens a tab or moves the caret (`c14f9194`).
+- **fs/write tools enabled by default**: The `fs/writeTextFile` / `fs/write_text_file` ACP tools are now advertised and performed unless `-Dbeanbot.fs.write.enabled=false` is set. The harness's per-write `session/request_permission` prompt is the only path-level gate. MCP write tools are unaffected and still confined to open projects via `ProjectPathGuard` (`c14f9194`).
+- **New-session button wobble**: The attention wobble only plays when the New Session button is enabled, so a disabled button no longer animates (`86a27a1a`).
+- **Onboarding install row simplified**: The "Installing" spinner is gone — the row now just toggles the copy-command install panel, since only static instructions are shown (`618b9990`).
+- **Onboarding wording**: Subtitle reads "Select an installed harness for your IDE environment." and the mixed-body copy reworded to "Choose an already installed harness, or install one of the others below." (`7e962676`).
+
+### Refactoring
+- **session/update decoding extracted**: The inline JSON parsing in `ServerProcessLifecycle.startServer()` moved verbatim into `manager/SessionUpdateDecoder`, making both wire shapes (update-wrapper and bare textual turn-end) reachable from headless tests. `SessionUpdate` gained shared `JSONRPC_VERSION`/`METHOD` constants and a `syntheticTurnEnd()` helper that removes 19-arg positional construction (`191ccbd6`).
+- **Turn-end decision extracted**: The end-of-turn / preamble-ready decision moved out of `SessionLifecycleHandler.onSessionUpdate` into the pure `model/TurnEndDecision` record, so it is testable without any UI dispatch (`191ccbd6`).
+- **HarnessCatalog constructor**: Every harness entry now passes a `windowsInstallSubDirs` list; the block indentation was normalised (`62f950bd`).
+
+### Documentation
+- **Known issues moved into the README**: The Known Issues page is removed from the interactive guide and the limitations are documented in the README instead (`3e6a41e3`).
+- **README and AGENTS.md corrected against the tree**: The source-organization table, package counts, code-reading-path numbering, system-property table and colour-coverage claim were verified against the code and fixed; stale claims were removed, including the obsolete `model/MessageTransformer → support/Logger` debt entry, the non-existent `MIGRATION.md` reference, and the "run_command is UNGATED" note (`3e6a41e3`).
+- **User guide layout**: The options screenshot moved above the shortcut text, stray blank lines dropped from the session-menu passage, and the referenced images refreshed (`ba801c64`).
+
+### Tests
+- **Golden transcript replay**: `AcpProtocolClientGoldenTest` feeds recorded `goose-turn.jsonl`, `opencode-turn.jsonl` and `malformed-recovery.jsonl` fixtures through the real `AcpProtocolClient` parser and the real decoder, pinning the behaviors that historically regressed — textual turn-end signals surviving Jackson, UUID string request ids echoed verbatim, and a malformed neighbour not killing the stream. The malformed test documents the remaining known gap (raw non-JSON bytes escaping `nextToken()`).
+- **Test harness simplification**: `AcpProtocolClientTest` replaced hand-rolled `PipedOutputStream` plumbing with a reusable `MockAcpServer`.
+- **New coverage**: `SessionUpdateDecoderTest` (both wire shapes plus the never-throws contract), `TurnEndDecisionTest`, `HarnessCatalogTest` and `BinaryResolverTest` (`191ccbd6`, `62f950bd`).
+
+### Housekeeping
+- Version bumped to 1.21.1.
+
 ## v1.21.0 (Changes since v1.20.5)
 
 ### Features
