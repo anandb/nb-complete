@@ -50,6 +50,22 @@ public final class PluginSettings {
     private static volatile int cachedMcpServerPort = 0;
     /** Cached markdown project type toggle — volatile for cross-thread visibility. Defaults to true. */
     private static volatile boolean cachedMarkdownProjectEnabled = true;
+    /** Cached show hidden sessions toggle — volatile for cross-thread visibility. Defaults to false. */
+    private static volatile boolean cachedShowHiddenSessions = false;
+    /** Cached keep older messages toggle — volatile for cross-thread visibility. Defaults to false. */
+    private static volatile boolean cachedKeepOlderMessages = false;
+    /** Cached show tool messages toggle — volatile for cross-thread visibility. Defaults to true. */
+    private static volatile boolean cachedShowToolMessages = true;
+    /** Cached show thought messages toggle — volatile for cross-thread visibility. Defaults to true. */
+    private static volatile boolean cachedShowThoughtMessages = true;
+    /** Cached echo user input toggle — volatile for cross-thread visibility. Defaults to true. */
+    private static volatile boolean cachedEchoUserInput = true;
+    /** Cached combine tool+thought toggle — volatile for cross-thread visibility. Defaults to true. */
+    private static volatile boolean cachedCombineToolThought = true;
+    /** Cached check for updates toggle — volatile for cross-thread visibility. Defaults to true. */
+    private static volatile boolean cachedCheckForUpdates = true;
+    /** Cached use WSL toggle — volatile for cross-thread visibility. Defaults to false. */
+    private static volatile boolean cachedUseWsl = false;
 
     private static final PreferenceChangeListener listener = PluginSettings::onPreferenceChanged;
 
@@ -79,6 +95,14 @@ public final class PluginSettings {
         cachedMcpServerEnabled = prefs.getBoolean(PreferenceKeys.MCP_SERVER_ENABLED, true);
         cachedMcpServerPort = prefs.getInt(PreferenceKeys.MCP_SERVER_PORT, 0);
         cachedMarkdownProjectEnabled = prefs.getBoolean(PreferenceKeys.ACTIONS_MARKDOWN_PROJECT, true);
+        cachedShowHiddenSessions = prefs.getBoolean(PreferenceKeys.SHOW_HIDDEN_SESSIONS, false);
+        cachedKeepOlderMessages = prefs.getBoolean(PreferenceKeys.KEEP_OLDER_MESSAGES, false);
+        cachedShowToolMessages = prefs.getBoolean(PreferenceKeys.SHOW_TOOL_MESSAGES, true);
+        cachedShowThoughtMessages = prefs.getBoolean(PreferenceKeys.SHOW_THOUGHT_MESSAGES, true);
+        cachedEchoUserInput = prefs.getBoolean(PreferenceKeys.ECHO_USER_INPUT, true);
+        cachedCombineToolThought = prefs.getBoolean(PreferenceKeys.COMBINE_TOOL_THOUGHT, true);
+        cachedCheckForUpdates = prefs.getBoolean(PreferenceKeys.CHECK_FOR_UPDATES, true);
+        cachedUseWsl = prefs.getBoolean(PreferenceKeys.USE_WSL, false);
         prefs.addPreferenceChangeListener(listener);
     }
 
@@ -203,6 +227,22 @@ public final class PluginSettings {
             }
         } else if (PreferenceKeys.ACTIONS_MARKDOWN_PROJECT.equals(evt.getKey())) {
             cachedMarkdownProjectEnabled = evt.getNewValue() == null || Boolean.parseBoolean(evt.getNewValue());
+        } else if (PreferenceKeys.SHOW_HIDDEN_SESSIONS.equals(evt.getKey())) {
+            cachedShowHiddenSessions = Boolean.parseBoolean(evt.getNewValue());
+        } else if (PreferenceKeys.KEEP_OLDER_MESSAGES.equals(evt.getKey())) {
+            cachedKeepOlderMessages = Boolean.parseBoolean(evt.getNewValue());
+        } else if (PreferenceKeys.SHOW_TOOL_MESSAGES.equals(evt.getKey())) {
+            cachedShowToolMessages = evt.getNewValue() == null || Boolean.parseBoolean(evt.getNewValue());
+        } else if (PreferenceKeys.SHOW_THOUGHT_MESSAGES.equals(evt.getKey())) {
+            cachedShowThoughtMessages = evt.getNewValue() == null || Boolean.parseBoolean(evt.getNewValue());
+        } else if (PreferenceKeys.ECHO_USER_INPUT.equals(evt.getKey())) {
+            cachedEchoUserInput = evt.getNewValue() == null || Boolean.parseBoolean(evt.getNewValue());
+        } else if (PreferenceKeys.COMBINE_TOOL_THOUGHT.equals(evt.getKey())) {
+            cachedCombineToolThought = evt.getNewValue() == null || Boolean.parseBoolean(evt.getNewValue());
+        } else if (PreferenceKeys.CHECK_FOR_UPDATES.equals(evt.getKey())) {
+            cachedCheckForUpdates = evt.getNewValue() == null || Boolean.parseBoolean(evt.getNewValue());
+        } else if (PreferenceKeys.USE_WSL.equals(evt.getKey())) {
+            cachedUseWsl = Boolean.parseBoolean(evt.getNewValue());
         }
     }
 
@@ -377,5 +417,93 @@ public final class PluginSettings {
         cachedMarkdownProjectEnabled = enabled;
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
                 .putBoolean(PreferenceKeys.ACTIONS_MARKDOWN_PROJECT, enabled);
+    }
+
+    /** Whether to show hidden sessions in the session list. */
+    public static boolean isShowHiddenSessions() {
+        return cachedShowHiddenSessions;
+    }
+
+    public static void setShowHiddenSessions(boolean show) {
+        cachedShowHiddenSessions = show;
+        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                .putBoolean(PreferenceKeys.SHOW_HIDDEN_SESSIONS, show);
+    }
+
+    /** Whether to keep older messages instead of trimming. */
+    public static boolean isKeepOlderMessages() {
+        return cachedKeepOlderMessages;
+    }
+
+    public static void setKeepOlderMessages(boolean keep) {
+        cachedKeepOlderMessages = keep;
+        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                .putBoolean(PreferenceKeys.KEEP_OLDER_MESSAGES, keep);
+    }
+
+    /** Whether to show tool call messages in chat. */
+    public static boolean isShowToolMessages() {
+        return cachedShowToolMessages;
+    }
+
+    public static void setShowToolMessages(boolean show) {
+        cachedShowToolMessages = show;
+        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                .putBoolean(PreferenceKeys.SHOW_TOOL_MESSAGES, show);
+    }
+
+    /** Whether to show thought messages in chat. */
+    public static boolean isShowThoughtMessages() {
+        return cachedShowThoughtMessages;
+    }
+
+    public static void setShowThoughtMessages(boolean show) {
+        cachedShowThoughtMessages = show;
+        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                .putBoolean(PreferenceKeys.SHOW_THOUGHT_MESSAGES, show);
+    }
+
+    /** Whether to echo user input locally before server confirms. */
+    public static boolean isEchoUserInput() {
+        return cachedEchoUserInput;
+    }
+
+    public static void setEchoUserInput(boolean enabled) {
+        cachedEchoUserInput = enabled;
+        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                .putBoolean(PreferenceKeys.ECHO_USER_INPUT, enabled);
+    }
+
+    /** Whether to combine adjacent tool + thought bubbles into one activity panel. */
+    public static boolean isCombineToolThoughtEnabled() {
+        return cachedCombineToolThought;
+    }
+
+    public static void setCombineToolThoughtEnabled(boolean enabled) {
+        cachedCombineToolThought = enabled;
+        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                .putBoolean(PreferenceKeys.COMBINE_TOOL_THOUGHT, enabled);
+    }
+
+    /** Whether to check for updates on startup. */
+    public static boolean isCheckForUpdates() {
+        return cachedCheckForUpdates;
+    }
+
+    public static void setCheckForUpdates(boolean enabled) {
+        cachedCheckForUpdates = enabled;
+        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                .putBoolean(PreferenceKeys.CHECK_FOR_UPDATES, enabled);
+    }
+
+    /** Whether to use WSL when available (Windows only). */
+    public static boolean isUseWsl() {
+        return cachedUseWsl;
+    }
+
+    public static void setUseWsl(boolean enabled) {
+        cachedUseWsl = enabled;
+        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                .putBoolean(PreferenceKeys.USE_WSL, enabled);
     }
 }

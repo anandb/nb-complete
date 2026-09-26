@@ -8,11 +8,11 @@ import java.util.ListIterator;
 import java.util.regex.Pattern;
 import javax.swing.Box;
 import javax.swing.JPanel;
+
+import github.anandb.netbeans.support.PluginSettings;
 import org.openide.util.NbBundle;
-import org.openide.util.NbPreferences;
 
 import github.anandb.netbeans.model.MessageType;
-import github.anandb.netbeans.support.PreferenceKeys;
 
 /**
  * Combines individual tool/thought bubbles into a single "Execution Steps"
@@ -28,14 +28,7 @@ public final class ToolThoughtCombiner {
     private static final Pattern TOOL_PREFIX = Pattern.compile("(?i)TOOL:?\\s*");
 
     static {
-        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
-            .addPreferenceChangeListener(e -> {
-                if (PreferenceKeys.COMBINE_TOOL_THOUGHT.equals(e.getKey())) {
-                    combineEnabled = Boolean.parseBoolean(e.getNewValue());
-                }
-            });
-        combineEnabled = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
-            .getBoolean(PreferenceKeys.COMBINE_TOOL_THOUGHT, true);
+        combineEnabled = PluginSettings.isCombineToolThoughtEnabled();
     }
 
     private ToolThoughtCombiner() {

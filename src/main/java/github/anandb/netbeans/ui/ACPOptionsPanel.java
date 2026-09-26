@@ -605,10 +605,10 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         argsField.setText(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).get(PreferenceKeys.PROCESS_ARGUMENTS, "acp"));
 
         preambleText = PluginSettings.getPreamble();
-        echoCheckbox.setSelected(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean(PreferenceKeys.ECHO_USER_INPUT, true));
-        combineCheckbox.setSelected(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean(PreferenceKeys.COMBINE_TOOL_THOUGHT, true));
+        echoCheckbox.setSelected(PluginSettings.isEchoUserInput());
+        combineCheckbox.setSelected(PluginSettings.isCombineToolThoughtEnabled());
         autoBackupChangesCheckbox.setSelected(PluginSettings.isAutoBackupChanges());
-        checkForUpdatesCheckbox.setSelected(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean(PreferenceKeys.CHECK_FOR_UPDATES, true));
+        checkForUpdatesCheckbox.setSelected(PluginSettings.isCheckForUpdates());
         Preferences editorPrefs = MimeLookup.getLookup(MimePath.EMPTY).lookup(Preferences.class);
         lineHeightCorrectionSpinner.setValue(editorPrefs.getFloat(SimpleValueNames.LINE_HEIGHT_CORRECTION, 1.0f));
         preambleEnabledCheckbox.setSelected(PluginSettings.isPreambleEnabled());
@@ -625,21 +625,19 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         int currentChatFont = PluginSettings.getChatFontSize();
         chatFontCombo.setSelectedItem(currentChatFont < 0 ? "Inherited" : String.valueOf(currentChatFont));
 
-        sortLinesCheckbox.setSelected(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean(PreferenceKeys.ACTIONS_SORT_LINES, true));
-        compactJsonCheckbox.setSelected(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean(PreferenceKeys.ACTIONS_COMPACT_JSON, true));
-        searchWebCheckbox.setSelected(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean(PreferenceKeys.ACTIONS_SEARCH_WEB, true));
-        showAnnotationsCheckbox.setSelected(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
-                .getBoolean(PreferenceKeys.ACTIONS_SHOW_ANNOTATIONS, true));
-        viewFileHistoryCheckbox.setSelected(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
-                .getBoolean(PreferenceKeys.ACTIONS_VIEW_FILE_HISTORY, true));
-        stashDiffCheckbox.setSelected(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean(PreferenceKeys.ACTIONS_STASH_DIFF, true));
-        quickJumpCheckbox.setSelected(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean(PreferenceKeys.ACTIONS_QUICK_JUMP, true));
+        sortLinesCheckbox.setSelected(PluginSettings.isSortLinesEnabled());
+        compactJsonCheckbox.setSelected(PluginSettings.isCompactJsonEnabled());
+        searchWebCheckbox.setSelected(PluginSettings.isSearchWebEnabled());
+        showAnnotationsCheckbox.setSelected(PluginSettings.isShowAnnotationsEnabled());
+        viewFileHistoryCheckbox.setSelected(PluginSettings.isViewFileHistoryEnabled());
+        stashDiffCheckbox.setSelected(PluginSettings.isStashDiffEnabled());
+        quickJumpCheckbox.setSelected(PluginSettings.isQuickJumpEnabled());
         miniAssistantCheckbox.setSelected(PluginSettings.isMiniAssistantEnabled());
         taskRepositoryCheckbox.setSelected(PluginSettings.isTaskRepositoryEnabled());
         markdownProjectCheckbox.setSelected(PluginSettings.isMarkdownProjectEnabled());
         mcpServerCheckbox.setSelected(PluginSettings.isMcpServerEnabled());
         mcpPortSpinner.setValue(PluginSettings.getMcpServerPort());
-        useWslCheckbox.setSelected(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean(PreferenceKeys.USE_WSL, false));
+        useWslCheckbox.setSelected(PluginSettings.isUseWsl());
         updateGeminiModelHint();
     }
 
@@ -677,11 +675,11 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         PluginSettings.setPreamble(preambleText);
         PluginSettings.setPreambleEnabled(preambleEnabledCheckbox.isSelected());
         boolean changedCombine = combineCheckbox.isSelected()
-                != NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean(PreferenceKeys.COMBINE_TOOL_THOUGHT, true);
-        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean(PreferenceKeys.ECHO_USER_INPUT, echoCheckbox.isSelected());
-        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean(PreferenceKeys.COMBINE_TOOL_THOUGHT, combineCheckbox.isSelected());
+                != PluginSettings.isCombineToolThoughtEnabled();
+        PluginSettings.setEchoUserInput(echoCheckbox.isSelected());
+        PluginSettings.setCombineToolThoughtEnabled(combineCheckbox.isSelected());
         PluginSettings.setAutoBackupChanges(autoBackupChangesCheckbox.isSelected());
-        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean(PreferenceKeys.CHECK_FOR_UPDATES, checkForUpdatesCheckbox.isSelected());
+        PluginSettings.setCheckForUpdates(checkForUpdatesCheckbox.isSelected());
         Preferences editorPrefs = MimeLookup.getLookup(MimePath.EMPTY).lookup(Preferences.class);
         editorPrefs.putFloat(SimpleValueNames.LINE_HEIGHT_CORRECTION, ((Number) lineHeightCorrectionSpinner.getValue()).floatValue());
         PluginSettings.setSessionIdleTimeout((Integer) idleTimeoutSpinner.getValue());
@@ -718,7 +716,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         PluginSettings.setMarkdownProjectEnabled(markdownProjectCheckbox.isSelected());
         PluginSettings.setMcpServerEnabled(mcpServerCheckbox.isSelected());
         PluginSettings.setMcpServerPort((Integer) mcpPortSpinner.getValue());
-        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean(PreferenceKeys.USE_WSL, useWslCheckbox.isSelected());
+        PluginSettings.setUseWsl(useWslCheckbox.isSelected());
 
         String newIconPath = iconPathField.getText();
         String oldPath = previousIconPath != null ? previousIconPath : "";

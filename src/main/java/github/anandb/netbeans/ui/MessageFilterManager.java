@@ -76,8 +76,8 @@ final class MessageFilterManager {
         if (type == null) return;
         // "activity" toggles both tool and thought together
         if ("activity".equals(type)) {
-            NbPreferences.forModule(ACPOptionsPanel.class).putBoolean(PREF_PREFIX + "tool", hidden);
-            NbPreferences.forModule(ACPOptionsPanel.class).putBoolean(PREF_PREFIX + "thought", hidden);
+            NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean(PREF_PREFIX + "tool", hidden);
+            NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean(PREF_PREFIX + "thought", hidden);
             return;
         }
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean(PREF_PREFIX + type, hidden);

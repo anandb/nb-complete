@@ -74,6 +74,18 @@ public final class PreferenceKeys {
     /** Whether the Markdown project type factory is enabled (enabled by default). */
     public static final String ACTIONS_MARKDOWN_PROJECT = "actions.markdownProject";
 
+    /** Whether to show hidden sessions in the session list. */
+    public static final String SHOW_HIDDEN_SESSIONS = "showHiddenSessions";
+
+    /** Whether to keep older messages instead of trimming. */
+    public static final String KEEP_OLDER_MESSAGES = "keepOlderMessages";
+
+    /** Whether to show tool call messages in chat. */
+    public static final String SHOW_TOOL_MESSAGES = "showToolMessages";
+
+    /** Whether to show thought messages in chat. */
+    public static final String SHOW_THOUGHT_MESSAGES = "showThoughtMessages";
+
     /** Whether the Mini Assistant dialog is the target for send/ask actions (enabled by default). */
     public static final String MINI_ASSISTANT_ENABLED = "miniAssistant.enabled";
 

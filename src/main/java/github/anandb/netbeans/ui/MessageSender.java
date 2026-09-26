@@ -50,8 +50,7 @@ public class MessageSender {
         }
     };
     static {
-        localEchoEnabled = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
-                .getBoolean(PreferenceKeys.ECHO_USER_INPUT, true);
+        localEchoEnabled = PluginSettings.isEchoUserInput();
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).addPreferenceChangeListener(PREF_LISTENER);
     }
 

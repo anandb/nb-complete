@@ -202,7 +202,7 @@ final class ChatLayoutBuilder {
         final JButton[] shbRef = new JButton[1];
         JButton shb = UIUtils.createToolbarButton("show.svg", NbBundle.getMessage(AssistantTopComponent.class, "HINT_ShowArchivedSessions"), e -> {
             boolean showing = !isShowingHidden();
-            NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean("showHiddenSessions", showing);
+            PluginSettings.setShowHiddenSessions(showing);
             shbRef[0].setIcon(ThemeManager.getIcon(showing ? "hide.svg" : "show.svg", PluginSettings.getToolbarIconSize()));
             shbRef[0].setToolTipText(showing
                 ? NbBundle.getMessage(AssistantTopComponent.class, "HINT_HideArchivedSessions")
@@ -267,14 +267,14 @@ final class ChatLayoutBuilder {
         toggleBlocksBtn = tb;
         toggleBlocksBtn.putClientProperty("state", "expand");
 
-        final boolean savedKeepState = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean("keepOlderMessages", false);
+        final boolean savedKeepState = PluginSettings.isKeepOlderMessages();
         chatPanel.setKeepOlderMessages(savedKeepState);
         JButton forgetBtn = UIUtils.createToolbarButton(savedKeepState ? "forget.svg" : "remember.svg",
                 NbBundle.getMessage(AssistantTopComponent.class, savedKeepState ? "HINT_TruncateMessages" : "HINT_KeepMessages"), null);
         forgetBtn.addActionListener(e -> {
             boolean keep = !chatPanel.isKeepOlderMessages();
             chatPanel.setKeepOlderMessages(keep);
-            NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean("keepOlderMessages", keep);
+            PluginSettings.setKeepOlderMessages(keep);
             forgetBtn.setIcon(ThemeManager.getIcon(keep ? "forget.svg" : "remember.svg", PluginSettings.getToolbarIconSize()));
             forgetBtn.setToolTipText(keep
                 ? NbBundle.getMessage(AssistantTopComponent.class, "HINT_TruncateMessages")
@@ -778,7 +778,7 @@ final class ChatLayoutBuilder {
     }
 
     static boolean isShowingHidden() {
-        return NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean("showHiddenSessions", false);
+        return PluginSettings.isShowHiddenSessions();
     }
 
 }
