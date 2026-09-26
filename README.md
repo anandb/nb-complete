@@ -220,6 +220,13 @@ x (B) 2026-08-02 2026-08-01 Fix the bug @urgent @bug +myproject due:2026-09-01 i
 - Unknown tokens are tolerated on read and ignored, so files edited by other todo.txt tools remain compatible.
 - Lines without a parseable task (e.g. blank lines) are skipped.
 
+### Known Issues/Limitations
+
+- Opencode sometimes doesn't respond when using nested agents.
+- The plugin supports only one active session at a time, switching sessions or reloading the conversation while awaiting a response will cancel the current request.
+- Permission requests from subagents (delegated agents) aren't always relayed by some harnesses back to the UI. If a subagent makes a tool call that requires permission, the request may hang and eventually time out because you never receive the Accept/Deny prompt. To mitigate this, instruct your primary agent to perform file modifications or commands directly rather than asking it to delegate those tasks to a subagent. The mini-assistant also shows permission prompts — check whether it is visible if the main sidebar doesn't show one.
+- A few harnesses like Pi write directly to files; the pi-permission extension can gate some of those actions.
+
 ---
 
 ## Contributing

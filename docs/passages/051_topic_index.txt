@@ -47,7 +47,6 @@ This is a complete list of topics in this guide, use it to directly jump to that
 > [[Keyboard Shortcuts]]
 > [[Keyboard Shortcuts Dialog]]
 > [[Keyboard shortcuts inside the Mini Assistant]]
-> [[Known Issues]]
 > [[Local Data Analysis in Java]]
 > [[Manage OpenCode Config in NetBeans]]
 > [[Markdown Project Type]]
@@ -90,10 +89,3 @@ This is a complete list of topics in this guide, use it to directly jump to that
 > [[Using the Mini Assistant]]
 > [[Using the Tasks Dashboard]]
 > [[Welcome Screen]]
-
-
-
-
-
-
-

@@ -13,7 +13,6 @@ When the AI attempts to execute a tool, modify files, or run shell commands, the
 
 > [[Configuration Template]]
 > [[Mini Assistant]]
-> [[Known Issues]]
 
 
 
