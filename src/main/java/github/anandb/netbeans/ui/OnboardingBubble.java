@@ -317,7 +317,7 @@ class OnboardingBubble extends JPanel {
         return cell;
     }
 
-    /** Uninstalled row: Get Plugin button toggles the copy-command install panel with progress state. */
+    /** Uninstalled row: Get Plugin button toggles the copy-command install panel. */
     private JPanel createUninstalledRow(HarnessCatalog.Harness harness, ColorTheme theme) {
         JPanel cell = new JPanel(new BorderLayout(0, 2));
         cell.setOpaque(false);
@@ -330,17 +330,12 @@ class OnboardingBubble extends JPanel {
         row.add(nameLabel, BorderLayout.CENTER);
         JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
         btnPanel.setOpaque(false);
-        JLabel progress = new JLabel("\u273B "
-                + NbBundle.getMessage(OnboardingBubble.class, "OnboardingBubble.Button.Installing"));
-        progress.setForeground(theme.mutedForeground());
-        progress.setVisible(false);
         JButton installBtn = new JButton(NbBundle.getMessage(
                 OnboardingBubble.class, "OnboardingBubble.Button.GetPlugin"));
         installBtn.setFocusPainted(false);
         installBtn.setIcon(ThemeManager.getIcon("download.svg", 14));
         installBtn.setIconTextGap(6);
         styleSecondaryButton(installBtn, theme);
-        btnPanel.add(progress);
         btnPanel.add(installBtn);
         row.add(btnPanel, BorderLayout.EAST);
         cell.add(row, BorderLayout.NORTH);
@@ -352,7 +347,6 @@ class OnboardingBubble extends JPanel {
             boolean showing = installPanel.isVisible();
             hideAllInstallPanels();
             installPanel.setVisible(!showing);
-            progress.setVisible(!showing);
             revalidate();
             repaint();
         });
