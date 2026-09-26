@@ -479,6 +479,15 @@ public class SessionLifecycleHandler implements SessionListener {
                         }
                     }
                 } else {
+                    // The current session is not visible in the dropdown (it was
+                    // archived while show-archived is off). Nullify it exactly like
+                    // the all-archived branch above: otherwise the stale id survives
+                    // and every later reload path (dismissHarnessChooser, the
+                    // reconnect ready-handler, doRestart) re-opens the archived
+                    // session while the dropdown — which filters it out — stays empty.
+                    if (currentId != null && hiddenById.getOrDefault(currentId, false)) {
+                        sessionService.get().closeSession();
+                    }
                     showingWelcomeScreen = true;
                     // Filter hidden sessions for WelcomeScreen too
                     List<Session> visibleSessions = showHidden ? sessions

@@ -228,6 +228,11 @@ class SessionLifecycleHandlerTest {
         assertEquals(0, sessionDropdown.getItemCount());
         assertEquals(-1, sessionDropdown.getSelectedIndex());
         verify(chatPanel).setSessionList(any(), any(), any());
+        // The archived current session must be dropped, not left as a stale id:
+        // every later reload path (dismissHarnessChooser, reconnect ready-handler,
+        // doRestart) would otherwise re-open the archived session while the
+        // dropdown — which filters it out — stays empty.
+        verify(sessionControl).closeSession();
     }
 
     @Test
