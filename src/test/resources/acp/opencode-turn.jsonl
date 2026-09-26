@@ -1,0 +1,3 @@
+{"jsonrpc":"2.0","method":"session/update","params":{"sessionId":"oc-sess-1","update":{"sessionUpdate":"agent_message_chunk","messageId":"o-msg-1","content":{"type":"text","text":"Let me read the file."}}}}
+{"jsonrpc":"2.0","method":"session/update","params":{"sessionId":"oc-sess-1","update":{"sessionUpdate":"tool_call","messageId":"o-msg-2","toolCallId":"tc-1","title":"Read README.md","status":"completed","rawInput":{"filePath":"README.md"}}}}
+{"jsonrpc":"2.0","method":"session/update","params":{"sessionId":"oc-sess-1","sessionUpdate":"end_turn"}}

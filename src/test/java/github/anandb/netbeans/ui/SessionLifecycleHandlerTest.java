@@ -25,8 +25,10 @@ import org.mockito.MockedStatic;
 import org.openide.util.NbPreferences;
 
 import github.anandb.netbeans.contract.SessionControl;
+import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.model.SessionItem;
+import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.PreferenceKeys;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
@@ -247,6 +249,47 @@ class SessionLifecycleHandlerTest {
         handler.onInternalMessageSent();
         handler.onInternalMessageDone();
         assertEquals(true, handler.isTurnEnded());
+    }
+
+    /** Builds the wire-faithful {@code SessionUpdate} shape the decoder emits for a type. */
+    private SessionUpdate updateOf(MessageType type, String sessionId) {
+        return SessionUpdate.syntheticTurnEnd(sessionId, type);
+    }
+
+    @Test
+    void availableCommandsUpdateDoesNotEndTurnWhileUserPromptInFlight() throws Exception {
+        // The documented goose wedge: available_commands_update arrives at turn START;
+        // flipping turnEnded here lets the next prompt bypass the queue guard, hits goose
+        // with a second session/prompt while one is in flight, and wedges the session.
+        setUpMocks(false);
+        SessionLifecycleHandler handler = newHandler();
+        handler.onUserPromptSent();
+
+        handler.onSessionUpdate(updateOf(MessageType.available_commands_update, "goose-sess-1"));
+        flushEdt();
+
+        assertEquals(false, handler.isTurnEnded(),
+            "available_commands_update is turn-START, never turn-end");
+    }
+
+    @Test
+    void syntheticRespondingFinishedEndsTurnAndFiresCallback() throws Exception {
+        setUpMocks(false);
+        SessionLifecycleHandler handler = newHandler();
+        java.util.concurrent.atomic.AtomicInteger callbacks = new java.util.concurrent.atomic.AtomicInteger();
+        handler.setOnTurnEndedCallback(() -> {
+            callbacks.incrementAndGet();
+            return true;
+        });
+        handler.onUserPromptSent();
+        assertEquals(false, handler.isTurnEnded());
+
+        // Synthetic textual turn-end, exactly as SessionUpdateDecoder produces it.
+        handler.onSessionUpdate(updateOf(MessageType.responding_finished, "goose-sess-1"));
+        flushEdt();
+
+        assertEquals(true, handler.isTurnEnded(), "responding_finished is the authoritative SSE turn-end");
+        assertEquals(1, callbacks.get(), "turn-end callback must fire once");
     }
 
 }

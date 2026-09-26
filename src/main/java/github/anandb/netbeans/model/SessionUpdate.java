@@ -21,6 +21,16 @@ public record SessionUpdate(
         UpdateData update
     ) {}
 
+    public static final String JSONRPC_VERSION = "2.0";
+    public static final String METHOD = "session/update";
+
+    /** Centralizes textual turn-end synthesis; avoids 19-arg positional construction at call sites. */
+    public static SessionUpdate syntheticTurnEnd(String sessionId, MessageType type) {
+        UpdateData data = new UpdateData(type, null, null, null, null, null, null, null, null, null, null, null,
+            null, null, null, null, null, null, null);
+        return new SessionUpdate(JSONRPC_VERSION, METHOD, new Params(sessionId, data));
+    }
+
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record UpdateData(
         @JsonProperty("sessionUpdate") MessageType type,

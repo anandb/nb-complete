@@ -15,6 +15,7 @@ public final class MapperSupplier {
                 .defaultPropertyInclusion(JsonInclude.Value.construct(JsonInclude.Include.NON_NULL, JsonInclude.Include.ALWAYS))
                 .disable(DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES)
                 .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+                .enable(DeserializationFeature.READ_UNKNOWN_ENUM_VALUES_AS_NULL)
                 .disable(SerializationFeature.FAIL_ON_EMPTY_BEANS)
                 .enable(StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION)
                 .build();

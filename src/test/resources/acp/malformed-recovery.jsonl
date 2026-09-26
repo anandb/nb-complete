@@ -1,0 +1,3 @@
+{"jsonrpc":"2.0","method":"session/update","params":{"sessionId":"rec-sess-1","update":{"sessionUpdate":"agent_message_chunk","messageId":"r-msg-1","content":{"type":"text","text":"before the garbage"}}}}
+{"not":"a valid rpc message","sessionUpdate":42,"params":"also wrong"}
+{"jsonrpc":"2.0","method":"session/update","params":{"sessionId":"rec-sess-1","update":{"sessionUpdate":"agent_message_chunk","messageId":"r-msg-2","content":{"type":"text","text":"after the garbage"}}}}

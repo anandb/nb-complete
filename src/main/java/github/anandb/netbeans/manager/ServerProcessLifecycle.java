@@ -9,25 +9,19 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
-import java.util.logging.Level;
 
 import org.apache.commons.exec.CommandLine;
 import org.openide.util.NbPreferences;
 import org.openide.util.RequestProcessor;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import github.anandb.netbeans.contract.RequestHandler;
 import github.anandb.netbeans.contract.ToolExecutor;
-import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.model.HarnessCatalog;
 import github.anandb.netbeans.support.PreferenceKeys;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.BinaryResolver;
 import github.anandb.netbeans.support.FsWriteSettings;
-import github.anandb.netbeans.support.MapperSupplier;
 import github.anandb.netbeans.support.ProcessTerminator;
 
 /**
@@ -39,7 +33,6 @@ class ServerProcessLifecycle {
 
     private final AtomicReference<AcpProtocolClient> rpcClient;
     private final ToolExecutor toolExecutor;
-    private static final ObjectMapper MAPPER = MapperSupplier.get();
     private final Runnable onReady;
     private final Consumer<SessionUpdate> onNotify;
     private final Runnable onDisconnection;
@@ -178,39 +171,9 @@ class ServerProcessLifecycle {
 
             // Listen for session updates
             client.onNotification("session/update", params -> {
-                // Extract raw type before parse (needed in catch block too)
-                String rawType = null;
-                try {
-                    LOG.fine("Received session/update notification: {0}", params);
-                    // Detect responding_finished/end_turn before Jackson drops them
-                    JsonNode updateNode = params != null ? params.get("sessionUpdate") : null;
-                    if (updateNode != null) {
-                        rawType = updateNode.isTextual() ? updateNode.asText()
-                            : (updateNode.has("type") ? updateNode.get("type").asText() : null);
-                    }
-
-                    // Construct synthetic SessionUpdate for textual turn-end signals
-                    // before Jackson treeToValue drops them (they lack the "update" wrapper object)
-                    if ("responding_finished".equals(rawType) || "end_turn".equals(rawType)) {
-                        LOG.fine("SSE turn-end signal received via textual sessionUpdate: {0}", rawType);
-                        MessageType mt = MessageType.valueOf(rawType);
-                        String ssId = params != null && params.has("sessionId")
-                            ? params.get("sessionId").asText() : null;
-                        SessionUpdate.UpdateData syntheticUpdate = new SessionUpdate.UpdateData(
-                            mt, null, null, null, null, null, null, null, null, null,
-                            null, null, null, null, null, null, null, null, null);
-                        SessionUpdate.Params p = new SessionUpdate.Params(ssId, syntheticUpdate);
-                        onNotify.accept(new SessionUpdate("2.0", "session/update", p));
-                        return;
-                    }
-
-                    SessionUpdate.Params sessionParams = MAPPER.treeToValue(params, SessionUpdate.Params.class);
-                    SessionUpdate update = new SessionUpdate("2.0", "session/update", sessionParams);
-
+                SessionUpdate update = SessionUpdateDecoder.decode(params);
+                if (update != null) {
                     onNotify.accept(update);
-                } catch (Exception e) {
-                    LOG.log(rawType != null ? Level.INFO : Level.FINE,
-                        "Failed to parse session/update notification: {0}", ExceptionUtils.getMessage(e), e);
                 }
             });
 

@@ -26,6 +26,7 @@ import github.anandb.netbeans.model.ModeAgentMapping;
 import github.anandb.netbeans.model.SessionConfigOption;
 import github.anandb.netbeans.model.SessionItem;
 import github.anandb.netbeans.model.SessionUpdate;
+import github.anandb.netbeans.model.TurnEndDecision;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
 import github.anandb.netbeans.ui.platform.ProcessService;
@@ -213,7 +214,8 @@ public class SessionLifecycleHandler implements SessionListener {
 
     @Override
     public void onSessionUpdate(SessionUpdate update) {
-        String type = update.update() != null && update.update().type() != null ? update.update().type().name() : null;
+        MessageType messageType = update.update() != null ? update.update().type() : null;
+        String type = messageType != null ? messageType.name() : null;
         String msgId = update.update() != null ? update.update().messageId() : null;
         LOG.fine("UI received session update: type={0}, msgId={1}", type, msgId);
 
@@ -306,11 +308,11 @@ public class SessionLifecycleHandler implements SessionListener {
         // agents it does prove the session is live, so it may clear the
         // pending-preamble wait early (progress bar + buffered messages) without
         // touching turnEnded.
-        boolean endOfTurn = "responding_finished".equals(type) || "end_turn".equals(type);
         ProcessControl proc = processService != null ? processService.get() : null;
         boolean queueingAgent = proc != null && proc.getCapabilities().requiresMessageQueue();
-        boolean preambleReady = "available_commands_update".equals(type) && !queueingAgent;
-
+        TurnEndDecision decision = TurnEndDecision.of(messageType, queueingAgent);
+        boolean endOfTurn = decision.endOfTurn();
+        boolean preambleReady = decision.preambleReady();
         if (endOfTurn) {
             LOG.fine("SSE turn-end signal received: type={0} (this confirms SSE path WORKS)", type);
             turnEnded = true;
@@ -454,6 +456,10 @@ public class SessionLifecycleHandler implements SessionListener {
                             sessionDropdown.setSelectedItem(fallback);
                             sessionService.get().loadSession(fallback.getSession().id());
                         } else {
+                            // No replacement session available. The current session is
+                            // gone (archived), which counts as a close: nullify the
+                            // session id so nothing tries to reload it later.
+                            sessionService.get().closeSession();
                             // All remaining sessions are archived — show WelcomeScreen
                             showingWelcomeScreen = true;
                             chatPanel.setSessionList(sessions,

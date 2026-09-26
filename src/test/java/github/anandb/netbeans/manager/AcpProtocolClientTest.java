@@ -6,9 +6,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.TextNode;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.util.UUID;
@@ -18,13 +16,9 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
-import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -35,20 +29,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.when;
 
-@ExtendWith(MockitoExtension.class)
 class AcpProtocolClientTest {
 
-    @Mock
-    private Process process;
-
-    private PipedOutputStream processInput;
-    private PipedInputStream processOutput;
-
-    private PipedOutputStream clientInputEmulator; // What the client reads from
-    private PipedInputStream clientOutputEmulator; // What the client writes to
-
+    private MockAcpServer server;
     private AcpProtocolClient client;
     private final ObjectMapper mapper = MapperSupplier.get();
 
@@ -72,42 +56,29 @@ class AcpProtocolClientTest {
 
     @BeforeEach
     void setUp() throws IOException {
-        processInput = new PipedOutputStream();
-        clientOutputEmulator = new PipedInputStream(processInput);
-
-        clientInputEmulator = new PipedOutputStream();
-        processOutput = new PipedInputStream(clientInputEmulator);
-
-        when(process.getOutputStream()).thenReturn(processInput);
-        when(process.getInputStream()).thenReturn(processOutput);
-
-        client = new AcpProtocolClient(process);
-        client.start();
+        server = new MockAcpServer();
+        client = server.client();
     }
 
     @AfterEach
     public void tearDown() throws IOException {
-        // Close write ends first so PipedInputStream detects EOF and unblocks reader loops
-        clientInputEmulator.close();
-        client.close();
+        // Close write end first so PipedInputStream detects EOF and unblocks reader loops
+        server.close();
     }
 
     @Test
     void testSendRequestAndReceiveResponse() throws Exception {
         CompletableFuture<JsonNode> future = client.sendRequest("testMethod", "testParams");
 
-        // Read the sent request from the emulator
-        BufferedReader reader = new BufferedReader(new InputStreamReader(clientOutputEmulator, StandardCharsets.UTF_8));
-        String sentJson = reader.readLine();
-        assertNotNull(sentJson);
-        JsonNode sentNode = mapper.readTree(sentJson);
+        // Read the sent request from the mock server
+        JsonNode sentNode = server.readFromClient();
+        assertNotNull(sentNode);
         assertEquals("testMethod", sentNode.get("method").asText());
         long id = sentNode.get("id").asLong();
 
         // Simulate a response
-        String responseJson = "{\"jsonrpc\":\"2.0\",\"id\":" + id + ",\"result\":{\"status\":\"ok\"}}\n";
-        clientInputEmulator.write(responseJson.getBytes(StandardCharsets.UTF_8));
-        clientInputEmulator.flush();
+        String responseJson = "{\"jsonrpc\":\"2.0\",\"id\":" + id + ",\"result\":{\"status\":\"ok\"}}";
+        server.sendToClient(responseJson);
 
         JsonNode result = future.get(5, TimeUnit.SECONDS);
         assertEquals("ok", result.get("status").asText());
@@ -118,9 +89,8 @@ class AcpProtocolClientTest {
         AtomicReference<JsonNode> receivedParams = new AtomicReference<>();
         client.onNotification("testNotify", receivedParams::set);
 
-        String notificationJson = "{\"jsonrpc\":\"2.0\",\"method\":\"testNotify\",\"params\":{\"key\":\"value\"}}\n";
-        clientInputEmulator.write(notificationJson.getBytes(StandardCharsets.UTF_8));
-        clientInputEmulator.flush();
+        String notificationJson = "{\"jsonrpc\":\"2.0\",\"method\":\"testNotify\",\"params\":{\"key\":\"value\"}}";
+        server.sendToClient(notificationJson);
 
         // Give some time for the reader thread
         Thread.sleep(200);
@@ -133,13 +103,11 @@ class AcpProtocolClientTest {
     void testErrorResponse() throws Exception {
         CompletableFuture<JsonNode> future = client.sendRequest("failMethod", null);
 
-        BufferedReader reader = new BufferedReader(new InputStreamReader(clientOutputEmulator, StandardCharsets.UTF_8));
-        String sentJson = reader.readLine();
-        long id = mapper.readTree(sentJson).get("id").asLong();
+        JsonNode sentNode = server.readFromClient();
+        long id = sentNode.get("id").asLong();
 
-        String errorJson = "{\"jsonrpc\":\"2.0\",\"id\":" + id + ",\"error\":{\"code\":-32603,\"message\":\"Internal error\"}}\n";
-        clientInputEmulator.write(errorJson.getBytes(StandardCharsets.UTF_8));
-        clientInputEmulator.flush();
+        String errorJson = "{\"jsonrpc\":\"2.0\",\"id\":" + id + ",\"error\":{\"code\":-32603,\"message\":\"Internal error\"}}";
+        server.sendToClient(errorJson);
 
         Exception ex = assertThrows(Exception.class, () -> future.get(5, TimeUnit.SECONDS));
         assertTrue(ExceptionUtils.getMessage(ex).contains("Internal error"));
@@ -203,8 +171,7 @@ class AcpProtocolClientTest {
         assertTrue(idNode instanceof TextNode, "String UUID should be TextNode, not NumericNode");
         assertEquals(stringId, idNode.asText());
 
-        clientInputEmulator.write(requestJson.getBytes(StandardCharsets.UTF_8));
-        clientInputEmulator.flush();
+        server.sendToClient(requestJson);
 
         // Give time for reader thread
         Thread.sleep(200);
@@ -214,11 +181,7 @@ class AcpProtocolClientTest {
         assertEquals("value", receivedParams.get().get("key").asText());
 
         // Read the response and verify the id is echoed verbatim
-        BufferedReader reader = new BufferedReader(new InputStreamReader(clientOutputEmulator, StandardCharsets.UTF_8));
-        String responseJson = reader.readLine();
-        assertNotNull(responseJson);
-
-        JsonNode responseNode = mapper.readTree(responseJson);
+        JsonNode responseNode = server.readFromClient();
         JsonNode responseId = responseNode.get("id");
 
         // The id should be echoed as-is (string, not coerced to long)

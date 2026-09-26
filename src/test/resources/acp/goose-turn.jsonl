@@ -1,0 +1,5 @@
+{"jsonrpc":"2.0","method":"session/update","params":{"sessionId":"goose-sess-1","update":{"sessionUpdate":"available_commands_update","availableCommands":[{"name":"session_ready","description":"Agent ready"}]}}}
+{"jsonrpc":"2.0","method":"session/update","params":{"sessionId":"goose-sess-1","update":{"sessionUpdate":"agent_message_chunk","messageId":"g-msg-1","content":{"type":"text","text":"Working on it"}}}}
+{"jsonrpc":"2.0","method":"session/update","params":{"sessionId":"goose-sess-1","update":{"sessionUpdate":"agent_message_chunk","messageId":"g-msg-1","content":{"type":"text","text":" done."}}}}
+{"jsonrpc":"2.0","method":"session/update","params":{"sessionId":"goose-sess-1","sessionUpdate":"responding_finished"}}
+{"jsonrpc":"2.0","id":"517ef9d2-8f6a-4d21-9c3e-2b1a4f7e9d00","method":"session/request_permission","params":{"toolCallId":"tc-9"}}
