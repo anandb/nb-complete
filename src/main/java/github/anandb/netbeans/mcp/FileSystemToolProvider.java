@@ -1,7 +1,5 @@
 package github.anandb.netbeans.mcp;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import com.github.difflib.UnifiedDiffUtils;
@@ -12,7 +10,6 @@ import com.github.difflib.patch.PatchFailedException;
 import github.anandb.netbeans.contract.ProjectQuery;
 import github.anandb.netbeans.contract.SessionQuery;
 import github.anandb.netbeans.support.Logger;
-import github.anandb.netbeans.support.MapperSupplier;
 import org.openide.util.Lookup;
 
 import static github.anandb.netbeans.mcp.ProjectPathGuard.isInOpenProject;
@@ -47,7 +44,6 @@ import static org.apache.commons.lang3.StringUtils.isBlank;
 public class FileSystemToolProvider {
 
     private static final Logger LOG = Logger.from(FileSystemToolProvider.class);
-    private static final ObjectMapper MAPPER = MapperSupplier.get();
 
     /**
      * Validates a {@code filePath} argument for tools that operate on an
@@ -85,24 +81,12 @@ public class FileSystemToolProvider {
     }
 
     private void registerReadFile(McpTools mcpTools) {
-        ObjectNode schema = MAPPER.createObjectNode();
-        schema.put("type", "object");
-        ObjectNode properties = schema.putObject("properties");
-
-        ObjectNode filePathProp = properties.putObject("filePath");
-        filePathProp.put("type", "string");
-        filePathProp.put("description", "Absolute path to file");
-
-        ObjectNode startLineProp = properties.putObject("startLine");
-        startLineProp.put("type", "integer");
-        startLineProp.put("description", "Start line (1-indexed, inclusive)");
-
-        ObjectNode endLineProp = properties.putObject("endLine");
-        endLineProp.put("type", "integer");
-        endLineProp.put("description", "End line (1-indexed, inclusive)");
-
-        ArrayNode required = schema.putArray("required");
-        required.add("filePath");
+        ObjectNode schema = ToolSchema.object()
+                .str("filePath", "Absolute path to file")
+                .integer("startLine", "Start line (1-indexed, inclusive)")
+                .integer("endLine", "End line (1-indexed, inclusive)")
+                .require("filePath")
+                .build();
 
         mcpTools.registerTool(
                 "read_file",
@@ -137,21 +121,11 @@ public class FileSystemToolProvider {
     }
 
     private void registerWriteToFile(McpTools mcpTools) {
-        ObjectNode schema = MAPPER.createObjectNode();
-        schema.put("type", "object");
-        ObjectNode properties = schema.putObject("properties");
-
-        ObjectNode filePathProp = properties.putObject("filePath");
-        filePathProp.put("type", "string");
-        filePathProp.put("description", "Absolute path to file");
-
-        ObjectNode contentProp = properties.putObject("content");
-        contentProp.put("type", "string");
-        contentProp.put("description", "Content to write");
-
-        ArrayNode required = schema.putArray("required");
-        required.add("filePath");
-        required.add("content");
+        ObjectNode schema = ToolSchema.object()
+                .str("filePath", "Absolute path to file")
+                .str("content", "Content to write")
+                .require("filePath", "content")
+                .build();
 
         mcpTools.registerTool(
                 "write_to_file",
@@ -197,31 +171,13 @@ public class FileSystemToolProvider {
     }
 
     private void registerReplaceLines(McpTools mcpTools) {
-        ObjectNode schema = MAPPER.createObjectNode();
-        schema.put("type", "object");
-        ObjectNode properties = schema.putObject("properties");
-
-        ObjectNode filePathProp = properties.putObject("filePath");
-        filePathProp.put("type", "string");
-        filePathProp.put("description", "Absolute path to file");
-
-        ObjectNode startLineProp = properties.putObject("startLine");
-        startLineProp.put("type", "integer");
-        startLineProp.put("description", "Start line to replace (1-indexed, inclusive)");
-
-        ObjectNode endLineProp = properties.putObject("endLine");
-        endLineProp.put("type", "integer");
-        endLineProp.put("description", "End line to replace (1-indexed, inclusive)");
-
-        ObjectNode contentProp = properties.putObject("content");
-        contentProp.put("type", "string");
-        contentProp.put("description", "Replacement content for lines startLine-endLine");
-
-        ArrayNode required = schema.putArray("required");
-        required.add("filePath");
-        required.add("startLine");
-        required.add("endLine");
-        required.add("content");
+        ObjectNode schema = ToolSchema.object()
+                .str("filePath", "Absolute path to file")
+                .integer("startLine", "Start line to replace (1-indexed, inclusive)")
+                .integer("endLine", "End line to replace (1-indexed, inclusive)")
+                .str("content", "Replacement content for lines startLine-endLine")
+                .require("filePath", "startLine", "endLine", "content")
+                .build();
 
         mcpTools.registerTool(
                 "replace_lines",
@@ -255,26 +211,12 @@ public class FileSystemToolProvider {
     }
 
     private void registerInsertInFile(McpTools mcpTools) {
-        ObjectNode schema = MAPPER.createObjectNode();
-        schema.put("type", "object");
-        ObjectNode properties = schema.putObject("properties");
-
-        ObjectNode filePathProp = properties.putObject("filePath");
-        filePathProp.put("type", "string");
-        filePathProp.put("description", "Absolute path to file");
-
-        ObjectNode lineProp = properties.putObject("line");
-        lineProp.put("type", "integer");
-        lineProp.put("description", "Line number to insert before");
-
-        ObjectNode contentProp = properties.putObject("content");
-        contentProp.put("type", "string");
-        contentProp.put("description", "Content to insert");
-
-        ArrayNode required = schema.putArray("required");
-        required.add("filePath");
-        required.add("line");
-        required.add("content");
+        ObjectNode schema = ToolSchema.object()
+                .str("filePath", "Absolute path to file")
+                .integer("line", "Line number to insert before")
+                .str("content", "Content to insert")
+                .require("filePath", "line", "content")
+                .build();
 
         mcpTools.registerTool(
                 "insert_in_file",
@@ -303,26 +245,12 @@ public class FileSystemToolProvider {
     }
 
     private void registerDeleteLines(McpTools mcpTools) {
-        ObjectNode schema = MAPPER.createObjectNode();
-        schema.put("type", "object");
-        ObjectNode properties = schema.putObject("properties");
-
-        ObjectNode filePathProp = properties.putObject("filePath");
-        filePathProp.put("type", "string");
-        filePathProp.put("description", "Absolute path to file");
-
-        ObjectNode startLineProp = properties.putObject("startLine");
-        startLineProp.put("type", "integer");
-        startLineProp.put("description", "Start line to delete (1-indexed, inclusive)");
-
-        ObjectNode endLineProp = properties.putObject("endLine");
-        endLineProp.put("type", "integer");
-        endLineProp.put("description", "End line to delete (1-indexed, inclusive)");
-
-        ArrayNode required = schema.putArray("required");
-        required.add("filePath");
-        required.add("startLine");
-        required.add("endLine");
+        ObjectNode schema = ToolSchema.object()
+                .str("filePath", "Absolute path to file")
+                .integer("startLine", "Start line to delete (1-indexed, inclusive)")
+                .integer("endLine", "End line to delete (1-indexed, inclusive)")
+                .require("filePath", "startLine", "endLine")
+                .build();
 
         mcpTools.registerTool(
                 "delete_lines",
@@ -375,24 +303,12 @@ public class FileSystemToolProvider {
 
 
     private void registerSearchProject(McpTools mcpTools) {
-        ObjectNode schema = MAPPER.createObjectNode();
-        schema.put("type", "object");
-        ObjectNode properties = schema.putObject("properties");
-
-        ObjectNode queryProp = properties.putObject("query");
-        queryProp.put("type", "string");
-        queryProp.put("description", "Search pattern (regex supported)");
-
-        ObjectNode filePatternProp = properties.putObject("filePattern");
-        filePatternProp.put("type", "string");
-        filePatternProp.put("description", "Glob filter, e.g. '*.java'");
-
-        ObjectNode directoryProp = properties.putObject("directory");
-        directoryProp.put("type", "string");
-        directoryProp.put("description", "Subdirectory to restrict search");
-
-        ArrayNode required = schema.putArray("required");
-        required.add("query");
+        ObjectNode schema = ToolSchema.object()
+                .str("query", "Search pattern (regex supported)")
+                .str("filePattern", "Glob filter, e.g. '*.java'")
+                .str("directory", "Subdirectory to restrict search")
+                .require("query")
+                .build();
 
         mcpTools.registerTool(
                 "search_project",
@@ -503,21 +419,11 @@ public class FileSystemToolProvider {
         return Pattern.compile(sb.toString());
     }
     private void registerListDirectory(McpTools mcpTools) {
-        ObjectNode schema = MAPPER.createObjectNode();
-        schema.put("type", "object");
-        ObjectNode properties = schema.putObject("properties");
-
-        ObjectNode dirPathProp = properties.putObject("dirPath");
-        dirPathProp.put("type", "string");
-        dirPathProp.put("description", "Absolute path to directory");
-
-        ObjectNode recursiveProp = properties.putObject("recursive");
-        recursiveProp.put("type", "boolean");
-        recursiveProp.put("description", "Whether to list recursively");
-        recursiveProp.put("default", false);
-
-        ArrayNode required = schema.putArray("required");
-        required.add("dirPath");
+        ObjectNode schema = ToolSchema.object()
+                .str("dirPath", "Absolute path to directory")
+                .bool("recursive", "Whether to list recursively", false)
+                .require("dirPath")
+                .build();
 
         mcpTools.registerTool(
                 "list_directory",
@@ -584,25 +490,12 @@ public class FileSystemToolProvider {
     }
 
     private void registerRunCommand(McpTools mcpTools) {
-        ObjectNode schema = MAPPER.createObjectNode();
-        schema.put("type", "object");
-        ObjectNode properties = schema.putObject("properties");
-
-        ObjectNode commandProp = properties.putObject("command");
-        commandProp.put("type", "string");
-        commandProp.put("description", "Shell command to execute");
-
-        ObjectNode workDirProp = properties.putObject("workingDirectory");
-        workDirProp.put("type", "string");
-        workDirProp.put("description", "Working directory for the command");
-
-        ObjectNode timeoutProp = properties.putObject("timeoutSeconds");
-        timeoutProp.put("type", "integer");
-        timeoutProp.put("description", "Timeout in seconds");
-        timeoutProp.put("default", 120);
-
-        ArrayNode required = schema.putArray("required");
-        required.add("command");
+        ObjectNode schema = ToolSchema.object()
+                .str("command", "Shell command to execute")
+                .str("workingDirectory", "Working directory for the command")
+                .integer("timeoutSeconds", "Timeout in seconds", 120)
+                .require("command")
+                .build();
 
         mcpTools.registerTool(
                 "run_command",
@@ -670,26 +563,13 @@ public class FileSystemToolProvider {
     }
 
     private void registerApplyPatch(McpTools mcpTools) {
-        ObjectNode schema = MAPPER.createObjectNode();
-        schema.put("type", "object");
-        ObjectNode properties = schema.putObject("properties");
-
-        ObjectNode filePathProp = properties.putObject("filePath");
-        filePathProp.put("type", "string");
-        filePathProp.put("description", "Absolute path to the file to patch");
-
-        ObjectNode patchProp = properties.putObject("patch");
-        patchProp.put("type", "string");
-        patchProp.put("description", "Unified diff content to apply");
-
-        ObjectNode dryRunProp = properties.putObject("dryRun");
-        dryRunProp.put("type", "boolean");
-        dryRunProp.put("description", "If true, apply to a temp copy and return the temp file; the original is untouched");
-        dryRunProp.put("default", false);
-
-        ArrayNode required = schema.putArray("required");
-        required.add("filePath");
-        required.add("patch");
+        ObjectNode schema = ToolSchema.object()
+                .str("filePath", "Absolute path to the file to patch")
+                .str("patch", "Unified diff content to apply")
+                .bool("dryRun", "If true, apply to a temp copy and return the temp file; "
+                        + "the original is untouched", false)
+                .require("filePath", "patch")
+                .build();
 
         mcpTools.registerTool(
                 "apply_patch",

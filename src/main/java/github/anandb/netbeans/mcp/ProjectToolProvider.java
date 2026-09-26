@@ -1,10 +1,8 @@
 package github.anandb.netbeans.mcp;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import github.anandb.netbeans.contract.ProjectQuery;
-import github.anandb.netbeans.support.MapperSupplier;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -22,15 +20,12 @@ import org.openide.util.Lookup;
  */
 public class ProjectToolProvider {
 
-    private static final ObjectMapper MAPPER = MapperSupplier.get();
-
     public void registerTools(McpTools mcpTools) {
         registerListProjects(mcpTools);
     }
 
     private void registerListProjects(McpTools mcpTools) {
-        ObjectNode schema = MAPPER.createObjectNode();
-        schema.put("type", "object");
+        ObjectNode schema = ToolSchema.object().build();
 
         mcpTools.registerTool(
                 "list_projects",

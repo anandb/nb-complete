@@ -1,8 +1,6 @@
 package github.anandb.netbeans.mcp;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import github.anandb.netbeans.contract.EditorContextQuery;
@@ -11,7 +9,6 @@ import github.anandb.netbeans.contract.SessionControl;
 import github.anandb.netbeans.support.Logger;
 import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
-import github.anandb.netbeans.support.MapperSupplier;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -36,7 +33,6 @@ import static org.apache.commons.lang3.StringUtils.isNotBlank;
 public class EditorToolProvider {
 
     private static final Logger LOG = Logger.from(EditorToolProvider.class);
-    private static final ObjectMapper MAPPER = MapperSupplier.get();
 
     public void registerTools(McpTools mcpTools) {
         registerGetCurrentFileContext(mcpTools);
@@ -46,8 +42,7 @@ public class EditorToolProvider {
     }
 
     private void registerGetCurrentFileContext(McpTools mcpTools) {
-        ObjectNode schema = MAPPER.createObjectNode();
-        schema.put("type", "object");
+        ObjectNode schema = ToolSchema.object().build();
 
         mcpTools.registerTool(
                 "get_current_file_context",
@@ -74,8 +69,7 @@ public class EditorToolProvider {
     }
 
     private void registerGetOpenedFiles(McpTools mcpTools) {
-        ObjectNode schema = MAPPER.createObjectNode();
-        schema.put("type", "object");
+        ObjectNode schema = ToolSchema.object().build();
 
         mcpTools.registerTool(
                 "get_tabs",
@@ -117,25 +111,12 @@ public class EditorToolProvider {
     }
 
     private void registerOpenFileAtLine(McpTools mcpTools) {
-        ObjectNode schema = MAPPER.createObjectNode();
-        schema.put("type", "object");
-        ObjectNode properties = schema.putObject("properties");
-
-        ObjectNode filePathProp = properties.putObject("filePath");
-        filePathProp.put("type", "string");
-        filePathProp.put("description", NbBundle.getMessage(EditorToolProvider.class, "DESC_FilePath"));
-
-        ObjectNode lineProp = properties.putObject("line");
-        lineProp.put("type", "number");
-        lineProp.put("description", NbBundle.getMessage(EditorToolProvider.class, "DESC_LineNumber"));
-
-        ObjectNode focusProp = properties.putObject("focus");
-        focusProp.put("type", "boolean");
-        focusProp.put("description", NbBundle.getMessage(EditorToolProvider.class, "DESC_Focus"));
-
-        ArrayNode required = schema.putArray("required");
-        required.add("filePath");
-        required.add("line");
+        ObjectNode schema = ToolSchema.object()
+                .str("filePath", NbBundle.getMessage(EditorToolProvider.class, "DESC_FilePath"))
+                .number("line", NbBundle.getMessage(EditorToolProvider.class, "DESC_LineNumber"))
+                .bool("focus", NbBundle.getMessage(EditorToolProvider.class, "DESC_Focus"))
+                .require("filePath", "line")
+                .build();
 
         mcpTools.registerTool(
                 "open_pos",
@@ -233,20 +214,11 @@ public class EditorToolProvider {
     }
 
     private void registerRenameSession(McpTools mcpTools) {
-        ObjectNode schema = MAPPER.createObjectNode();
-        schema.put("type", "object");
-        ObjectNode properties = schema.putObject("properties");
-
-        ObjectNode sessionIdProp = properties.putObject("sessionId");
-        sessionIdProp.put("type", "string");
-        sessionIdProp.put("description", "The ID of the session to rename. Omit to rename the current session.");
-
-        ObjectNode titleProp = properties.putObject("title");
-        titleProp.put("type", "string");
-        titleProp.put("description", "The new custom title for the session");
-
-        ArrayNode required = schema.putArray("required");
-        required.add("title");
+        ObjectNode schema = ToolSchema.object()
+                .str("sessionId", "The ID of the session to rename. Omit to rename the current session.")
+                .str("title", "The new custom title for the session")
+                .require("title")
+                .build();
 
         mcpTools.registerTool(
                 "rename_session",

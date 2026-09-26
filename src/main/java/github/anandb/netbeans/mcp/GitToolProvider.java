@@ -1,9 +1,6 @@
 package github.anandb.netbeans.mcp;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-
-import github.anandb.netbeans.support.MapperSupplier;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -16,8 +13,6 @@ import static org.apache.commons.lang3.StringUtils.isBlank;
  * Registers MCP tools for git operations: status, diff, log, and file history.
  */
 public class GitToolProvider {
-
-    private static final ObjectMapper MAPPER = MapperSupplier.get();
 
     /** Accepts git revision tokens only (hashes, refs, ranges like a..b,
      *  HEAD~1, ref:path). Rejects option injection — a leading '-' would let
@@ -40,7 +35,7 @@ public class GitToolProvider {
         mcpTools.registerTool(
                 "git_status",
                 "Show git status of the repository.",
-                VcsToolSupport.repoDirSchema(MAPPER),
+                VcsToolSupport.repoDirSchema().build(),
                 new ToolExecutor<GitStatusInput, Map<String, Object>>(GitStatusInput.class) {
                     @Override
                     public Map<String, Object> execute(GitStatusInput args) throws Exception {
@@ -55,10 +50,9 @@ public class GitToolProvider {
     }
 
     private void registerGitDiff(McpTools mcpTools) {
-        ObjectNode schema = VcsToolSupport.repoDirSchema(MAPPER);
-        ObjectNode targetProp = ((ObjectNode) schema.get("properties")).putObject("target");
-        targetProp.put("type", "string");
-        targetProp.put("description", "e.g. 'HEAD', a commit hash, or 'staged'");
+        ObjectNode schema = VcsToolSupport.repoDirSchema()
+                .str("target", "e.g. 'HEAD', a commit hash, or 'staged'")
+                .build();
 
         mcpTools.registerTool(
                 "git_diff",
@@ -92,8 +86,8 @@ public class GitToolProvider {
         mcpTools.registerTool(
                 "git_log",
                 "Show the commit history of the repository (hash, date, author, subject per line).",
-                VcsToolSupport.logSchema(MAPPER,
-                        "Only commits after this date, e.g. '2026-09-01' or '2 weeks ago'"),
+                VcsToolSupport.logSchema(
+                        "Only commits after this date, e.g. '2026-09-01' or '2 weeks ago'").build(),
                 new ToolExecutor<GitLogInput, Map<String, Object>>(GitLogInput.class) {
                     @Override
                     public Map<String, Object> execute(GitLogInput args) throws Exception {
@@ -126,7 +120,7 @@ public class GitToolProvider {
         mcpTools.registerTool(
                 "file_history",
                 "Show the commit history of a single file, including each version's patch.",
-                VcsToolSupport.fileHistorySchema(MAPPER),
+                VcsToolSupport.fileHistorySchema().build(),
                 new ToolExecutor<FileHistoryInput, Map<String, Object>>(FileHistoryInput.class) {
                     @Override
                     public Map<String, Object> execute(FileHistoryInput args) throws Exception {

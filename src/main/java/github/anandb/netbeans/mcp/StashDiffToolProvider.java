@@ -1,13 +1,10 @@
 package github.anandb.netbeans.mcp;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import github.anandb.netbeans.contract.ProjectQuery;
 import github.anandb.netbeans.contract.StashDiffControl;
 import github.anandb.netbeans.support.Logger;
-import github.anandb.netbeans.support.MapperSupplier;
 import github.anandb.netbeans.support.PluginSettings;
 
 import java.io.File;
@@ -20,7 +17,6 @@ import org.openide.util.Lookup;
 public class StashDiffToolProvider {
 
     private static final Logger LOG = Logger.from(StashDiffToolProvider.class);
-    private static final ObjectMapper MAPPER = MapperSupplier.get();
 
     public void registerTools(McpTools mcpTools) {
         if (!PluginSettings.isStashDiffEnabled()) {
@@ -28,20 +24,12 @@ public class StashDiffToolProvider {
             return;
         }
 
-        ObjectNode schema = MAPPER.createObjectNode();
-        schema.put("type", "object");
-        ObjectNode properties = schema.putObject("properties");
-
-        ObjectNode stashIndexProp = properties.putObject("stashIndex");
-        stashIndexProp.put("type", "number");
-        stashIndexProp.put("description", "The stash index to diff (e.g., 0 for stash@{0})");
-
-        ObjectNode repoDirProp = properties.putObject("repoDir");
-        repoDirProp.put("type", "string");
-        repoDirProp.put("description", "Optional repository path. If not provided, uses the first Git repo found in open projects.");
-
-        ArrayNode required = schema.putArray("required");
-        required.add("stashIndex");
+        ObjectNode schema = ToolSchema.object()
+                .number("stashIndex", "The stash index to diff (e.g., 0 for stash@{0})")
+                .str("repoDir", "Optional repository path. If not provided, "
+                        + "uses the first Git repo found in open projects.")
+                .require("stashIndex")
+                .build();
 
         mcpTools.registerTool(
                 "diff_stash",

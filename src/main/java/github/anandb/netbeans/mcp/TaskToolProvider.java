@@ -1,7 +1,5 @@
 package github.anandb.netbeans.mcp;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import java.io.File;
@@ -17,7 +15,6 @@ import github.anandb.netbeans.contract.TaskRepositoryControl;
 import github.anandb.netbeans.model.TaskRecord;
 import github.anandb.netbeans.model.TaskStatus;
 import github.anandb.netbeans.support.Logger;
-import github.anandb.netbeans.support.MapperSupplier;
 
 /**
  * Registers the {@code add_task} MCP tool so the chat plugin (or any ACP
@@ -26,7 +23,6 @@ import github.anandb.netbeans.support.MapperSupplier;
 public class TaskToolProvider {
 
     private static final Logger LOG = Logger.from(TaskToolProvider.class);
-    private static final ObjectMapper MAPPER = MapperSupplier.get();
 
     public void registerTools(McpTools mcpTools) {
         registerAddTask(mcpTools);
@@ -36,48 +32,19 @@ public class TaskToolProvider {
     }
 
     private void registerAddTask(McpTools mcpTools) {
-        ObjectNode schema = MAPPER.createObjectNode();
-        schema.put("type", "object");
-        ObjectNode properties = schema.putObject("properties");
-
-        ObjectNode repoId = properties.putObject("repoId");
-        repoId.put("type", "string");
-        repoId.put("description", "Id of the repository to add the task to. Optional if only one repository exists.");
-
-        ObjectNode summary = properties.putObject("summary");
-        summary.put("type", "string");
-        summary.put("description", "Short task summary/title.");
-
-        ObjectNode status = properties.putObject("status");
-        status.put("type", "string");
-        status.put("description", "Free-text status, e.g. 'open', 'closed'. 'closed' marks completion.");
-
-        ObjectNode priority = properties.putObject("priority");
-        priority.put("type", "string");
-        priority.put("description", "Single uppercase letter A-Z (priority ranking).");
-
-        ObjectNode projects = properties.putObject("projects");
-        projects.put("type", "string");
-        projects.put("description", "Comma-separated project names (stored as +project in todo.txt).");
-
-        ObjectNode tags = properties.putObject("tags");
-        tags.put("type", "string");
-        tags.put("description", "Comma-separated tags (stored as @tag in todo.txt).");
-
-        ObjectNode dueDate = properties.putObject("dueDate");
-        dueDate.put("type", "string");
-        dueDate.put("description", "ISO-8601 due date, optional.");
-
-        ObjectNode estimate = properties.putObject("estimate");
-        estimate.put("type", "integer");
-        estimate.put("description", "Estimated effort in arbitrary user-inferred units.");
-
-        ObjectNode consumed = properties.putObject("consumed");
-        consumed.put("type", "integer");
-        consumed.put("description", "Consumed effort in arbitrary user-inferred units.");
-
-        ArrayNode required = schema.putArray("required");
-        required.add("summary");
+        ObjectNode schema = ToolSchema.object()
+                .str("repoId", "Id of the repository to add the task to. "
+                        + "Optional if only one repository exists.")
+                .str("summary", "Short task summary/title.")
+                .str("status", "Free-text status, e.g. 'open', 'closed'. 'closed' marks completion.")
+                .str("priority", "Single uppercase letter A-Z (priority ranking).")
+                .str("projects", "Comma-separated project names (stored as +project in todo.txt).")
+                .str("tags", "Comma-separated tags (stored as @tag in todo.txt).")
+                .str("dueDate", "ISO-8601 due date, optional.")
+                .integer("estimate", "Estimated effort in arbitrary user-inferred units.")
+                .integer("consumed", "Consumed effort in arbitrary user-inferred units.")
+                .require("summary")
+                .build();
 
         mcpTools.registerTool(
             "add_task",
@@ -159,20 +126,12 @@ public class TaskToolProvider {
     }
 
     private void registerCloseTask(McpTools mcpTools) {
-        ObjectNode schema = MAPPER.createObjectNode();
-        schema.put("type", "object");
-        ObjectNode properties = schema.putObject("properties");
-
-        ObjectNode repoId = properties.putObject("repoId");
-        repoId.put("type", "string");
-        repoId.put("description", "Id of the repository holding the task. Optional if only one repository exists.");
-
-        ObjectNode taskId = properties.putObject("taskId");
-        taskId.put("type", "string");
-        taskId.put("description", "Id of the task to close (as returned by add_task).");
-
-        ArrayNode required = schema.putArray("required");
-        required.add("taskId");
+        ObjectNode schema = ToolSchema.object()
+                .str("repoId", "Id of the repository holding the task. "
+                        + "Optional if only one repository exists.")
+                .str("taskId", "Id of the task to close (as returned by add_task).")
+                .require("taskId")
+                .build();
 
         mcpTools.registerTool(
             "close_task",
@@ -220,52 +179,20 @@ public class TaskToolProvider {
     }
 
     private void registerUpdateTask(McpTools mcpTools) {
-        ObjectNode schema = MAPPER.createObjectNode();
-        schema.put("type", "object");
-        ObjectNode properties = schema.putObject("properties");
-
-        ObjectNode repoId = properties.putObject("repoId");
-        repoId.put("type", "string");
-        repoId.put("description", "Id of the repository holding the task. Optional if only one repository exists.");
-
-        ObjectNode taskId = properties.putObject("taskId");
-        taskId.put("type", "string");
-        taskId.put("description", "Id of the task to update (as returned by add_task).");
-
-        ObjectNode summary = properties.putObject("summary");
-        summary.put("type", "string");
-        summary.put("description", "New summary/title. Omitted fields are left unchanged.");
-
-        ObjectNode status = properties.putObject("status");
-        status.put("type", "string");
-        status.put("description", "'open' or 'closed'. Setting 'closed' records completion; 'open' reopens.");
-
-        ObjectNode priority = properties.putObject("priority");
-        priority.put("type", "string");
-        priority.put("description", "Single uppercase letter A-Z.");
-
-        ObjectNode projects = properties.putObject("projects");
-        projects.put("type", "string");
-        projects.put("description", "Comma-separated project names. Empty string clears; omitted keeps current.");
-
-        ObjectNode tags = properties.putObject("tags");
-        tags.put("type", "string");
-        tags.put("description", "Comma-separated tags. Empty string clears; omitted keeps current.");
-
-        ObjectNode dueDate = properties.putObject("dueDate");
-        dueDate.put("type", "string");
-        dueDate.put("description", "ISO-8601 due date. Empty string clears; omitted keeps current.");
-
-        ObjectNode estimate = properties.putObject("estimate");
-        estimate.put("type", "integer");
-        estimate.put("description", "Estimated effort units.");
-
-        ObjectNode consumed = properties.putObject("consumed");
-        consumed.put("type", "integer");
-        consumed.put("description", "Consumed effort units.");
-
-        ArrayNode required = schema.putArray("required");
-        required.add("taskId");
+        ObjectNode schema = ToolSchema.object()
+                .str("repoId", "Id of the repository holding the task. "
+                        + "Optional if only one repository exists.")
+                .str("taskId", "Id of the task to update (as returned by add_task).")
+                .str("summary", "New summary/title. Omitted fields are left unchanged.")
+                .str("status", "'open' or 'closed'. Setting 'closed' records completion; 'open' reopens.")
+                .str("priority", "Single uppercase letter A-Z.")
+                .str("projects", "Comma-separated project names. Empty string clears; omitted keeps current.")
+                .str("tags", "Comma-separated tags. Empty string clears; omitted keeps current.")
+                .str("dueDate", "ISO-8601 due date. Empty string clears; omitted keeps current.")
+                .integer("estimate", "Estimated effort units.")
+                .integer("consumed", "Consumed effort units.")
+                .require("taskId")
+                .build();
 
         mcpTools.registerTool(
             "update_task",
@@ -348,20 +275,12 @@ public class TaskToolProvider {
     }
 
     private void registerSearchTask(McpTools mcpTools) {
-        ObjectNode schema = MAPPER.createObjectNode();
-        schema.put("type", "object");
-        ObjectNode properties = schema.putObject("properties");
-
-        ObjectNode repoId = properties.putObject("repoId");
-        repoId.put("type", "string");
-        repoId.put("description", "Id of the repository to search. Optional; searches all repositories when omitted.");
-
-        ObjectNode query = properties.putObject("query");
-        query.put("type", "string");
-        query.put("description", "Case-insensitive substring to match against open task summaries.");
-
-        ArrayNode required = schema.putArray("required");
-        required.add("query");
+        ObjectNode schema = ToolSchema.object()
+                .str("repoId", "Id of the repository to search. "
+                        + "Optional; searches all repositories when omitted.")
+                .str("query", "Case-insensitive substring to match against open task summaries.")
+                .require("query")
+                .build();
 
         mcpTools.registerTool(
             "search_task",

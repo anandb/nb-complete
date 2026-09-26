@@ -1,9 +1,6 @@
 package github.anandb.netbeans.mcp;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-
-import github.anandb.netbeans.support.MapperSupplier;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,8 +18,6 @@ import static org.apache.commons.lang3.StringUtils.isBlank;
  * option flags cannot be smuggled into the argv.
  */
 public class HgToolProvider {
-
-    private static final ObjectMapper MAPPER = MapperSupplier.get();
 
     /** Accepts revision tokens only (hashes, tags, "tip", "."). Rejects option
      *  injection — a leading '-' would let a caller smuggle hg flags such as
@@ -49,7 +44,7 @@ public class HgToolProvider {
         mcpTools.registerTool(
                 "hg_status",
                 "Show the Mercurial status of the repository.",
-                VcsToolSupport.repoDirSchema(MAPPER),
+                VcsToolSupport.repoDirSchema().build(),
                 new ToolExecutor<HgStatusInput, Map<String, Object>>(HgStatusInput.class) {
                     @Override
                     public Map<String, Object> execute(HgStatusInput args) throws Exception {
@@ -64,11 +59,10 @@ public class HgToolProvider {
     }
 
     private void registerHgDiff(McpTools mcpTools) {
-        ObjectNode schema = VcsToolSupport.repoDirSchema(MAPPER);
-        ObjectNode targetProp = ((ObjectNode) schema.get("properties")).putObject("target");
-        targetProp.put("type", "string");
-        targetProp.put("description",
-                "Revision to diff against ('.', 'tip', a hash, or a tag); blank diffs the working directory");
+        ObjectNode schema = VcsToolSupport.repoDirSchema()
+                .str("target", "Revision to diff against ('.', 'tip', a hash, or a tag); "
+                        + "blank diffs the working directory")
+                .build();
 
         mcpTools.registerTool(
                 "hg_diff",
@@ -99,8 +93,9 @@ public class HgToolProvider {
         mcpTools.registerTool(
                 "hg_log",
                 "Show the commit history of the Mercurial repository (hash, date, author, subject per line).",
-                VcsToolSupport.logSchema(MAPPER,
-                        "Only commits after this date (bound as >{since}; Mercurial date syntax, e.g. '2026-09-01' or '2w')"),
+                VcsToolSupport.logSchema(
+                        "Only commits after this date (bound as >{since}; "
+                                + "Mercurial date syntax, e.g. '2026-09-01' or '2w')").build(),
                 new ToolExecutor<HgLogInput, Map<String, Object>>(HgLogInput.class) {
                     @Override
                     public Map<String, Object> execute(HgLogInput args) throws Exception {
@@ -131,7 +126,7 @@ public class HgToolProvider {
         mcpTools.registerTool(
                 "hg_file_hist",
                 "Show the commit history of a single Mercurial-tracked file, including each version's patch.",
-                VcsToolSupport.fileHistorySchema(MAPPER),
+                VcsToolSupport.fileHistorySchema().build(),
                 new ToolExecutor<HgFileHistoryInput, Map<String, Object>>(HgFileHistoryInput.class) {
                     @Override
                     public Map<String, Object> execute(HgFileHistoryInput args) throws Exception {

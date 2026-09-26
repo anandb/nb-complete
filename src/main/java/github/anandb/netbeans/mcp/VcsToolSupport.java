@@ -1,8 +1,5 @@
 package github.anandb.netbeans.mcp;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-
 import java.io.File;
 import java.nio.file.Path;
 import java.util.HashMap;
@@ -158,41 +155,20 @@ final class VcsToolSupport {
         return result;
     }
 
-    static ObjectNode repoDirSchema(ObjectMapper mapper) {
-        ObjectNode schema = mapper.createObjectNode();
-        schema.put("type", "object");
-        addRepoDir(schema.putObject("properties"));
-        return schema;
+    static ToolSchema repoDirSchema() {
+        return ToolSchema.object()
+                .str("repoDir", "Repository directory (defaults to project root)");
     }
 
-    static ObjectNode logSchema(ObjectMapper mapper, String sinceDescription) {
-        ObjectNode schema = repoDirSchema(mapper);
-        ObjectNode properties = (ObjectNode) schema.get("properties");
-        ObjectNode maxCount = properties.putObject("maxCount");
-        maxCount.put("type", "integer");
-        maxCount.put("description", "Maximum number of commits (default 20, max 1000)");
-        ObjectNode since = properties.putObject("since");
-        since.put("type", "string");
-        since.put("description", sinceDescription);
-        return schema;
+    static ToolSchema logSchema(String sinceDescription) {
+        return repoDirSchema()
+                .integer("maxCount", "Maximum number of commits (default 20, max 1000)")
+                .str("since", sinceDescription);
     }
 
-    static ObjectNode fileHistorySchema(ObjectMapper mapper) {
-        ObjectNode schema = repoDirSchema(mapper);
-        ObjectNode properties = (ObjectNode) schema.get("properties");
-        ObjectNode path = properties.putObject("path");
-        path.put("type", "string");
-        path.put("description",
-                "Path of the file to inspect, relative to the repository root or absolute");
-        ObjectNode maxCount = properties.putObject("maxCount");
-        maxCount.put("type", "integer");
-        maxCount.put("description", "Maximum number of commits (default 10, max 50)");
-        return schema;
-    }
-
-    private static void addRepoDir(ObjectNode properties) {
-        ObjectNode repoDir = properties.putObject("repoDir");
-        repoDir.put("type", "string");
-        repoDir.put("description", "Repository directory (defaults to project root)");
+    static ToolSchema fileHistorySchema() {
+        return repoDirSchema()
+                .str("path", "Path of the file to inspect, relative to the repository root or absolute")
+                .integer("maxCount", "Maximum number of commits (default 10, max 50)");
     }
 }
