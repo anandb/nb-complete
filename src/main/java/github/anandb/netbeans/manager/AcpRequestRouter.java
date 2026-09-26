@@ -173,8 +173,9 @@ class AcpRequestRouter {
     }
 
     CompletableFuture<JsonNode> handleWriteTextFile(JsonNode params) {
-        // fs/write tools are disabled by default; reject early so no work runs
-        // even if a server ignores the (un)advertised capability.
+        // fs/write tools are ENABLED by default; -Dbeanbot.fs.write.enabled=false
+        // turns them off. Reject early so no work runs even if a server ignores
+        // the (un)advertised capability.
         if (!FsWriteSettings.isEnabled()) {
             LOG.log(Level.FINE, "Rejected fs/writeTextFile — writing is disabled (system property {0})",
                     PreferenceKeys.FS_WRITE_ENABLED_PROP);

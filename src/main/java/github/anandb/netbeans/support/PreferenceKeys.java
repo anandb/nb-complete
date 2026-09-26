@@ -106,10 +106,12 @@ public final class PreferenceKeys {
     public static final String ASSISTANT_DOCK_WIDTH = "assistant.dockWidth";
 
     /**
-     * System property ({@code -D}) that enables the {@code fs/writeTextFile} /
-     * {@code fs/write_text_file} tools. Disabled by default, so the plugin
-     * neither advertises the write capability nor performs writes. When a write
-     * call is made while disabled the request is rejected with an error.
+     * System property ({@code -D}) that toggles the {@code fs/writeTextFile} /
+     * {@code fs/write_text_file} tools. <b>Enabled by default</b> (the property
+     * is only read to switch it off): set {@code -Dbeanbot.fs.write.enabled=false}
+     * and the plugin neither advertises the write capability nor performs
+     * writes. When a write call is made while disabled the request is rejected
+     * with an error.
      */
     public static final String FS_WRITE_ENABLED_PROP = "beanbot.fs.write.enabled";
 }

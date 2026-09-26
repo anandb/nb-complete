@@ -129,6 +129,10 @@ public class EditorToolProvider {
         lineProp.put("type", "number");
         lineProp.put("description", NbBundle.getMessage(EditorToolProvider.class, "DESC_LineNumber"));
 
+        ObjectNode focusProp = properties.putObject("focus");
+        focusProp.put("type", "boolean");
+        focusProp.put("description", NbBundle.getMessage(EditorToolProvider.class, "DESC_Focus"));
+
         ArrayNode required = schema.putArray("required");
         required.add("filePath");
         required.add("line");
@@ -136,8 +140,17 @@ public class EditorToolProvider {
         mcpTools.registerTool(
                 "open_pos",
                 """
-                Opens a file at the specified line number in the editor. The cursor jumps to that line and the file
-                is focused. Only works for files within the current project (files outside the project are rejected).
+                Opens a file at the specified line number in the editor. Only works for files within the current
+                project (files outside the project are rejected).
+
+                Two modes, picked with the "focus" argument:
+
+                - focus=false (default) - background navigation. The editor opens at that line, but focus is not
+                  taken, so the user keeps working where they are. Use this for every navigation YOU initiate while
+                  reading, searching, or writing files. It opens a tab; never use it to get the user's attention.
+                - focus=true - takes the user there: the editor is activated and focused. Use ONLY when the user
+                  explicitly asked to be taken to a location ('show me where X happens', 'take me to line 42',
+                  'open X at line 10', 'jump to the error').
 
                 Use when the user wants to:
                 - Navigate to a specific location in the code
@@ -145,7 +158,7 @@ public class EditorToolProvider {
                 - Jump to an error, warning, or referenced location
                 - Explore code structure visually
 
-                Trigger phrases:
+                Trigger phrases for focus=true:
                 - 'Show me where this happens'
                 - 'Open the file at line X'
                 - 'Where is this defined?'
@@ -191,9 +204,18 @@ public class EditorToolProvider {
                                 if (lc != null) {
                                     Line.Set lineSet = lc.getLineSet();
                                     Line line = lineSet.getOriginal(Math.max(0, args.line() - 1));
+                                    // focus=true means the user asked to be taken
+                                    // there ("show me..."); the default is background
+                                    // navigation. OPEN + NONE (= SHOW_SHOW) opens the
+                                    // editor and moves the caret without focusing it;
+                                    // FOCUS (= SHOW_GOTO) activates the editor, which
+                                    // would interrupt the user mid-edit.
+                                    Line.ShowVisibilityType visibility = args.focus()
+                                            ? Line.ShowVisibilityType.FOCUS
+                                            : Line.ShowVisibilityType.NONE;
                                     SwingUtilities.invokeLater(() -> {
                                         try {
-                                            line.show(Line.ShowOpenType.OPEN, Line.ShowVisibilityType.FOCUS);
+                                            line.show(Line.ShowOpenType.OPEN, visibility);
                                         } catch (Exception e) {
                                             LOG.warn("Failed to show line in editor: {0}", ExceptionUtils.getMessage(e));
                                         }

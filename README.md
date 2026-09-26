@@ -32,6 +32,7 @@ should work on other versions/operating systems, but your experience may vary.
 | **OS** | openSUSE Tumbleweed-Slowroll |
 | **NetBeans** | RELEASE220 |
 | **Java** | JDK 17+ |
+| **Oh My Pi** | 18.1.21 |
 | **Opencode** | 1.18.15 |
 | **Opencode plugins** | `@franzmoca/opencode-lombok`, `true-mem` |
 | **LLMs** | Big Pickle; GPT 5.4-mini, GPT 5.4-nano; GLM 5.1, GLM 5.2; DeepSeek V4 Pro, DeepSeek V4 Flash; Kimi K2.5, Kimi K2.6; Mimo V2.5; Qwen3.5, Qwen3.6; Gemma4 |
@@ -180,6 +181,7 @@ The plugin reads the following system properties and environment variables:
 | `java.io.tmpdir` | System | Temp directory for pasted images (`ImagePasteTransferHandler`) |
 | `os.name` | System | Detect Windows for binary resolution (`BinaryResolver`) |
 | `beanbot.roundedPanels` | System (`true`) | Toggle rounded panel corners (`RoundedPanel`) |
+| `beanbot.fs.write.enabled` | System (`true`) | ACP-only: gates the `fs/writeTextFile` / `fs/write_text_file` ACP tools (`FsWriteSettings`). MCP write tools (`write_to_file`, `replace_lines`, `insert_in_file`) are always confined to open projects and unaffected by this property. Set `-Dbeanbot.fs.write.enabled=false` to stop advertising the ACP write capability and reject every ACP write |
 | `beanbot.color.*` | System (varies) | Override any UI color (`ColorTheme`) |
 | `nb.dark.theme` | UIManager | Detect dark theme for icon resolution (`IconResourceManager`) |
 | `ACP_WIRE_LOG` | Env | Path for ACP wire protocol log file (`WireLogger`) |

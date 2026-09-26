@@ -211,8 +211,25 @@ NbPreferences.forModule(PreferenceKeys.class)
   `isPathInProject` guard was removed). The `ProjectPathGuard` confinement in
   `mcp/ProjectPathGuard` still applies to the MCP tools (`read_file`, `write_to_file`,
   git/hg, etc.) and must stay there.
-- `fs/write*` remains disabled unless `FsWriteSettings.isEnabled()` (system property
-  `beanbot.fs.write.enabled`); that gate is independent of path confinement.
+- `fs/write*` is **enabled by default**: `FsWriteSettings.isEnabled()` reads the
+  `beanbot.fs.write.enabled` system property, and only an explicit
+  `-Dbeanbot.fs.write.enabled=false` disables it (both capability advertisement and
+  the per-request guard). That gate is independent of path confinement, so with the
+  default the harness's per-write `session/request_permission` prompt is the only
+  path-level control. Do NOT change the default back to disabled without updating
+  `FsWriteSettings`, `PreferenceKeys.FS_WRITE_ENABLED_PROP` and
+  `manager/Bundle.properties` together.
+- Agent-driven file access MUST NOT take focus unless the user asked to be taken
+  there. `fs/write*` writes through `EditorCookie.openDocument()` (loads the
+  buffer, opens no view), and `open_pos` defaults to `Line.show(OPEN, NONE)` —
+  the old `SHOW_SHOW`: opens the editor if needed, moves the caret, does not
+  focus. The single exception is an explicit user navigation request ("show me
+  where…", "take me to line X"): the model then passes `focus=true`, which maps
+  to `Line.show(OPEN, FOCUS)` (`SHOW_GOTO`). Anything else that activates the
+  editor — `EditorCookie.open()`, a bare `ShowVisibilityType.FOCUS`,
+  `requestActive()` — yanks the user out of whatever they are typing and MUST NOT
+  appear on an agent-triggered path: opening in the background is fine, stealing
+  focus is not.
 
 ### Connection & Lifecycle
 - `AcpProtocolClient.setConnectionErrorHandler()` is a noop. Disconnection handles
