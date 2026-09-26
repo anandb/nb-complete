@@ -20,6 +20,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 import javax.swing.JButton;
@@ -35,11 +36,13 @@ import javax.swing.event.PopupMenuListener;
 import github.anandb.netbeans.model.ModelRecords.ConfigItem;
 import github.anandb.netbeans.model.SessionConfigOption;
 import github.anandb.netbeans.model.SessionConfigSelectOption;
+import github.anandb.netbeans.model.AvailableModel;
 import github.anandb.netbeans.model.AvailableMode;
 import github.anandb.netbeans.model.HarnessCatalog;
 import github.anandb.netbeans.model.ModeAgentMapping;
 import github.anandb.netbeans.support.Logger;
 import org.openide.util.NbBundle;
+import github.anandb.netbeans.contract.ModelListControl;
 import github.anandb.netbeans.contract.ProcessControl;
 import org.openide.util.Lookup;
 
@@ -61,6 +64,9 @@ public class ConfigPanelController {
     private static final Logger LOG = Logger.from(ConfigPanelController.class);
 
     private final SessionService sessionService = PlatformBridge.sessionServiceSafe();
+
+    /** Per-harness model list cache; null when the service is not registered. */
+    private final ModelListControl modelListControl = Lookup.getDefault().lookup(ModelListControl.class);
 
     private final JPanel configPanel;
     private final JComboBox<ConfigItem> modeCombo;
@@ -457,6 +463,7 @@ public class ConfigPanelController {
                 }
                 if (modelOption != null) {
                     modelResolver.parseModelVariants(modelOption, thinkingOptionValues());
+                    cacheModelList(modelOption);
                 }
 
                 // Second pass: populate all combos with variants already resolved.
@@ -518,6 +525,60 @@ public class ConfigPanelController {
                 isUpdatingConfigControls = false;
             }
         });
+    }
+
+    /** Mirrors a model option received from the server into the per-harness model list cache. */
+    private void cacheModelList(SessionConfigOption modelOption) {
+        if (modelListControl == null || modelOption.options() == null || modelOption.options().isEmpty()) {
+            return;
+        }
+        String harnessId = currentHarnessId();
+        if (harnessId == null) {
+            return;
+        }
+        List<AvailableModel> models = new ArrayList<>(modelOption.options().size());
+        for (SessionConfigSelectOption o : modelOption.options()) {
+            models.add(new AvailableModel(o.value(), o.name(), o.description()));
+        }
+        modelListControl.updateModels(harnessId, models);
+    }
+
+    /**
+     * Seeds the model dropdown from the persisted per-harness list so it is
+     * usable before a session reports its models. No-op when the harness has no
+     * cached models or the dropdown is already populated from a live session.
+     */
+    public void seedModelsFromCache(String harnessId) {
+        if (modelListControl == null || harnessId == null || harnessId.isBlank()) {
+            return;
+        }
+        // Preference reads touch the backing store — keep them off the EDT.
+        CompletableFuture.supplyAsync(() -> modelListControl.getModels(harnessId))
+                .thenAccept(cached -> SwingUtilities.invokeLater(() -> applyCachedModels(cached)));
+    }
+
+    private void applyCachedModels(List<AvailableModel> cached) {
+        if (cached == null || cached.isEmpty() || modelCombo.getItemCount() > 0) {
+            return;
+        }
+        List<SessionConfigSelectOption> options = new ArrayList<>(cached.size());
+        for (AvailableModel m : cached) {
+            options.add(new SessionConfigSelectOption(m.modelId(), m.name(), m.description()));
+        }
+        SessionConfigOption modelOption = new SessionConfigOption(
+                "model", "Model", "Select the AI model", "model", "select",
+                options.get(0).value(), options);
+        updateConfigControls(List.of(modelOption));
+    }
+
+    /** Current harness id, or {@code null} while it is unresolved or unknown. */
+    private static String currentHarnessId() {
+        ProcessControl pc = Lookup.getDefault().lookup(ProcessControl.class);
+        if (pc == null) {
+            return null;
+        }
+        HarnessCatalog.Harness caps = pc.getCapabilities();
+        return caps == null || caps == HarnessCatalog.UNKNOWN ? null : caps.id();
     }
 
     private JComboBox<ConfigItem> resolveComboTarget(String category) {

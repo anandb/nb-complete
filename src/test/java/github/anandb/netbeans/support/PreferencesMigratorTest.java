@@ -162,13 +162,14 @@ class PreferencesMigratorTest {
     }
 
     @Test
-    void migrateIfNeededIsNoOpWhenCurrentDataExists() throws IOException {
+    void migrateIfNeededCarriesModelListKeys() throws IOException {
         Path root = temp.resolve("root");
         Path current = root.resolve("31");
         Path old = root.resolve("30");
-        touch(PreferencesMigrator.preferencesFile(old.toFile()));
-        File currentPrefs = PreferencesMigrator.preferencesFile(current.toFile());
-        touch(currentPrefs); // current user dir already has plugin data
+        File oldPrefs = PreferencesMigrator.preferencesFile(old.toFile());
+        Files.createDirectories(oldPrefs.getParentFile().toPath());
+        Files.writeString(oldPrefs.toPath(),
+                "modelList.opencode=[{\"modelId\":\"a\",\"name\":\"A\",\"description\":\"d\"}]\n");
 
         String oldUser = System.getProperty("netbeans.user");
         String oldRoot = System.getProperty("netbeans.default_userdir_root");
@@ -176,7 +177,9 @@ class PreferencesMigratorTest {
         setProp("netbeans.default_userdir_root", root.toString());
         try {
             PreferencesMigrator.migrateIfNeeded();
-            assertEquals("key=value\n", Files.readString(currentPrefs.toPath()));
+            String migrated = Files.readString(
+                    PreferencesMigrator.preferencesFile(current.toFile()).toPath());
+            assertTrue(migrated.contains("modelList.opencode="), migrated);
         } finally {
             setProp("netbeans.user", oldUser);
             setProp("netbeans.default_userdir_root", oldRoot);

@@ -15,8 +15,14 @@ import java.nio.file.StandardCopyOption;
  * migration time. Because this plugin is typically imported into the new IDE
  * <em>after</em> the upgrade, its data file
  * ({@code config/Preferences/io/github/anandb/beanbot.properties}, which also
- * holds the cached session titles, hidden flags, usage, pinned messages and
- * input history) is left behind in the previous user directory.</p>
+ * holds the cached session titles, hidden flags, usage, pinned messages, input
+ * history and the per-harness model lists) is left behind in the previous user
+ * directory.</p>
+ *
+ * <p>All plugin preferences share this one file because
+ * {@code NbPreferences.forModule(...)} is scoped to the module, not to the
+ * anchor class — so a new pref key (e.g. {@code modelList.<harnessId>}) rides
+ * along with the file copy without any change here.</p>
  *
  * <p>On startup {@link #migrateIfNeeded()} copies that file from the most
  * recently used previous NetBeans user directory (a sibling of the current one)

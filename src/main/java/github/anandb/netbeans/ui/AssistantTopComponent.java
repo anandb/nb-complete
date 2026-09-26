@@ -513,6 +513,9 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     private void applyHarnessCapabilities(HarnessCatalog.Harness caps) {
         queueManager.setEnabled(caps.requiresMessageQueue());
         updateTokenStatsButton(caps);
+        if (caps != HarnessCatalog.UNKNOWN && caps.supportsModelSelection()) {
+            configPanelController.seedModelsFromCache(caps.id());
+        }
         JButton sendBtn = layoutBuilder.getSendBtn();
         if (sendBtn != null) {
             String goText = NbBundle.getMessage(AssistantTopComponent.class, "BTN_Go");
