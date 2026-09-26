@@ -182,6 +182,7 @@ class ToolDataExtractorTest {
                         Long.MIN_VALUE,
                         Long.MIN_VALUE,
                         null,
+                        null,
                         null)));
     }
 }

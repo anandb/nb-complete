@@ -1,6 +1,7 @@
 package github.anandb.netbeans.ui;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -26,6 +27,10 @@ import github.anandb.netbeans.ui.platform.PlatformBridge;
 import github.anandb.netbeans.ui.platform.ProcessService;
 import github.anandb.netbeans.ui.platform.SessionService;
 import github.anandb.netbeans.contract.ProcessControl;
+import github.anandb.netbeans.contract.SessionQuery;
+import github.anandb.netbeans.contract.UsageStatsStore;
+import github.anandb.netbeans.model.UsageRecords.Attribution;
+import github.anandb.netbeans.model.UsageRecords.PromptUsageRow;
 import java.util.prefs.PreferenceChangeListener;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.VcsUtils;
@@ -329,6 +334,7 @@ public class MessageSender {
         final int gen = sendGeneration.incrementAndGet();
         sendProc.sendMessage(currentSessionId, messageText, context, fileBlocks)
                 .thenAccept(result -> {
+                    capturePromptUsage(currentSessionId, result);
                     // CPD-OFF — structural twin of sendQueuedMessage(); differences are
                     // per-method (logging, messageText vs combinedText, turn-end callback).
                     SwingUtilities.invokeLater(() -> {
@@ -502,6 +508,7 @@ public class MessageSender {
         final int gen = sendGeneration.incrementAndGet();
         processService.get().sendMessage(currentSessionId, combinedText, context, List.of())
                 .thenAccept(result -> {
+                    capturePromptUsage(currentSessionId, result);
                     // CPD-OFF — structural twin of sendMessage(); differences are
                     // per-method (no logging, combinedText).
                     SwingUtilities.invokeLater(() -> {
@@ -557,5 +564,35 @@ public class MessageSender {
                     return null;
                 });
         // CPD-ON
+    }
+
+    /**
+     * Records the {@code usage} object of a {@code session/prompt} result as one
+     * stats row (CAP-2). A result with no {@code usage} object writes no row.
+     * Called on the RPC completion thread, never the EDT.
+     */
+    private void capturePromptUsage(String sessionId, JsonNode result) {
+        if (result == null || sessionId == null) {
+            return;
+        }
+        JsonNode usage = result.get("usage");
+        if (usage == null || !usage.isObject()) {
+            return;
+        }
+        UsageStatsStore store = Lookup.getDefault().lookup(UsageStatsStore.class);
+        if (store == null) {
+            return;
+        }
+        SessionQuery sessions = Lookup.getDefault().lookup(SessionQuery.class);
+        Attribution attribution = new Attribution(sessionId,
+                sessions != null ? sessions.getHarnessId() : null,
+                sessions != null ? sessions.getSessionModelId(sessionId) : null,
+                sessions != null ? sessions.getSessionDirectory(sessionId) : null);
+        store.recordPromptUsage(new PromptUsageRow(attribution, System.currentTimeMillis(),
+                usage.path("inputTokens").asLong(0),
+                usage.path("outputTokens").asLong(0),
+                usage.path("totalTokens").asLong(0),
+                usage.hasNonNull("thoughtTokens") ? usage.get("thoughtTokens").asLong() : null,
+                usage.hasNonNull("cachedReadTokens") ? usage.get("cachedReadTokens").asLong() : null));
     }
 }

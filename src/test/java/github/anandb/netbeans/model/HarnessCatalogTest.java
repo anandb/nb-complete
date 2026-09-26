@@ -111,7 +111,6 @@ class HarnessCatalogTest {
     void geminiLacksSessionList() {
         assertFalse(HarnessCatalog.GEMINI.supportsSessionList());
         assertFalse(HarnessCatalog.GEMINI.requiresMessageQueue());
-        assertFalse(HarnessCatalog.GEMINI.supportsTokenStats());
     }
 
     @Test
@@ -135,7 +134,6 @@ class HarnessCatalogTest {
         assertFalse(HarnessCatalog.OMP.requiresMessageQueue());
         assertTrue(HarnessCatalog.OMP.sendsMcpServerConfig());
         assertTrue(HarnessCatalog.OMP.injectsEditorContext());
-        assertFalse(HarnessCatalog.OMP.supportsTokenStats());
         assertTrue(HarnessCatalog.OMP.supportsMessageIds());
         assertTrue(HarnessCatalog.OMP.supportsMcpServer());
         assertTrue(HarnessCatalog.OMP.supportsSessionSetMode());

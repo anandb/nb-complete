@@ -295,6 +295,13 @@
             <version>3.2.4</version>
         </dependency>
 
+        <!-- H2 embedded database for native usage/cost capture -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <version>2.3.232</version>
+        </dependency>
+
         <!-- JUnit 5 -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>

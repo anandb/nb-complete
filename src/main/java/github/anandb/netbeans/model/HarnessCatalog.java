@@ -23,7 +23,6 @@ public final class HarnessCatalog {
             boolean requiresMessageQueue,
             boolean sendsMcpServerConfig,
             boolean injectsEditorContext,
-            boolean supportsTokenStats,
             boolean supportsMessageIds,
             boolean supportsMcpServer,
             boolean supportsSessionSetMode,
@@ -76,7 +75,7 @@ public final class HarnessCatalog {
     public static final Harness OPENCODE = new Harness(
         "opencode", "OpenCode", "opencode",
         List.of("opencode"), "acp",
-        false, true, true, true, true, true, false, true, false, true, true, true,
+        false, true, true, true, true, false, true, false, true, true, true,
         "",
         "",
         "winget install SST.opencode",
@@ -89,7 +88,7 @@ public final class HarnessCatalog {
     public static final Harness GOOSE = new Harness(
         "goose", "Goose", "goose",
         List.of("goose"), "acp",
-        true, true, false, false, true, true, false, true, false, true, true, true,
+        true, true, false, true, true, false, true, false, true, true, true,
         "",
         "",
         "powershell -c \"iwr https://raw.githubusercontent.com/aaif-goose/goose/main/download_cli.ps1 -OutFile download_cli.ps1; .\\download_cli.ps1\"",
@@ -102,7 +101,7 @@ public final class HarnessCatalog {
     public static final Harness PI = new Harness(
             "pi", "Pi", "pi-logo",
             List.of("pi-acp"), "",
-            true, true, false, false, false, true, false, true, false, true, true, true,
+            true, true, false, false, true, false, true, false, true, true, true,
             "",
             "",
             "powershell -c \"irm https://pi.dev/install.ps1 | iex\"",
@@ -117,7 +116,7 @@ public final class HarnessCatalog {
     public static final Harness CURSOR = new Harness(
         "cursor", "Cursor", "cursor",
         List.of("agent", "cursor-agent"), "acp",
-        false, true, true, false, false, true, false, true, false, true, true, true,
+        false, true, true, false, true, false, true, false, true, true, true,
         "",
         "",
         "powershell -c \"irm 'https://cursor.com/install?win32=true' | iex\"",
@@ -131,7 +130,7 @@ public final class HarnessCatalog {
     public static final Harness CLAUDE = new Harness(
         "claude", "Claude", "claude",
         List.of("claude-agent-acp"), "",
-        false, true, true, false, true, true, true, true, false, true, true, true,
+        false, true, true, true, true, true, true, false, true, true, true,
         "",
         "",
         "npm install -g @agentclientprotocol/claude-agent-acp",
@@ -145,7 +144,7 @@ public final class HarnessCatalog {
     public static final Harness HERMES = new Harness(
             "hermes", "Hermes", "hermes",
             List.of("hermes"), "acp",
-            true, true, false, false, false, true, false, true, true, true, true, true,
+            true, true, false, false, true, false, true, true, true, true, true,
             "",
             "",
             "powershell -c \"iex (irm https://hermes-agent.nousresearch.com/install.ps1)\"",
@@ -159,7 +158,7 @@ public final class HarnessCatalog {
     public static final Harness GEMINI = new Harness(
         "gemini", "Gemini", "gemini",
         List.of("gemini"), "--acp --model gemini-3.5-flash",
-        false, true, true, false, true, true, true, false, false, false, false, true,
+        false, true, true, true, true, true, false, false, false, false, true,
         "MSG_UnsupportedModelSelection",
         "MSG_GeminiUnsupportedModelSelectionPlaceholder",
         "npm install -g @google/gemini-cli", "npm install -g @google/gemini-cli", "npm install -g @google/gemini-cli",
@@ -171,7 +170,7 @@ public final class HarnessCatalog {
     public static final Harness OMP = new Harness(
         "omp", "Oh My Pi", "omp",
         List.of("omp"), "acp",
-        false, true, true, false, true, true, true, true, false, true, true, true,
+        false, true, true, true, true, true, true, false, true, true, true,
         "",
         "",
         "powershell -c \"irm https://omp.sh/install.ps1 | iex\"",
@@ -185,7 +184,7 @@ public final class HarnessCatalog {
     public static final Harness OPENCLAW = new Harness(
         "openclaw", "OpenClaw", "openclaw",
         List.of("openclaw"), "acp",
-        true, false, true, false, false, true, false, true, false, false, false, false,
+        true, false, true, false, true, false, true, false, false, false, false,
         "MSG_OpenClawUnsupportedModelSelection",
         "MSG_OpenClawUnsupportedModelSelectionPlaceholder",
         "powershell -c \"iwr -useb https://openclaw.ai/install.ps1 | iex\"",
@@ -199,7 +198,7 @@ public final class HarnessCatalog {
     public static final Harness DEVIN = new Harness(
         "devin", "Devin", "devin",
         List.of("devin"), "acp",
-        false, true, true, false, false, true, false, true, false, true, true, true,
+        false, true, true, false, true, false, true, false, true, true, true,
         "",
         "",
         "powershell -c \"irm https://static.devin.ai/cli/setup.ps1 | iex\"",
@@ -214,7 +213,7 @@ public final class HarnessCatalog {
     public static final Harness UNKNOWN = new Harness(
         "unknown", "Agent", "agent",
         List.of(), "",
-        true, true, true, false, false, true, false, true, false, true, true, true,
+        true, true, true, false, true, false, true, false, true, true, true,
         "",
         "",
         "", "", "", "", "",

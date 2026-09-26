@@ -512,7 +512,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     /** Applies harness capability flags to queueing, token-stats, and tooltip. */
     private void applyHarnessCapabilities(HarnessCatalog.Harness caps) {
         queueManager.setEnabled(caps.requiresMessageQueue());
-        updateTokenStatsButton(caps);
+        updateTokenStatsButton();
         if (caps != HarnessCatalog.UNKNOWN && caps.supportsModelSelection()) {
             configPanelController.seedModelsFromCache(caps.id());
         }
@@ -523,11 +523,11 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         }
     }
 
-    /** Enables the token-stats button only when the harness supports the stats
-     *  subprocess and a harness binary is configured. */
-    private void updateTokenStatsButton(HarnessCatalog.Harness caps) {
-        tokenUsageBtn.setVisible(caps.supportsTokenStats());
-        tokenUsageBtn.setEnabled(caps.supportsTokenStats() && BinaryResolver.isAvailable());
+    /** The token-stats button is unconditional: every harness is assumed to
+     *  report usage, and a harness that reports nothing shows zeroes. */
+    private void updateTokenStatsButton() {
+        tokenUsageBtn.setVisible(true);
+        tokenUsageBtn.setEnabled(true);
     }
     private void updateAttentionAnimation() {
         Project[] projects = projectContext.getAllOpenProjects();
@@ -1125,11 +1125,8 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                 refreshBtn.setEnabled(hasSession);
                 exportBtn.setEnabled(hasSession);
                 helpBtn.setEnabled(true);
-                // Re-gate token stats: capabilities + whether a harness is now configured.
-                ProcessControl pc = Lookup.getDefault().lookup(ProcessControl.class);
-                if (pc != null) {
-                    updateTokenStatsButton(pc.getCapabilities());
-                }
+                // Restore the unconditional token-stats button.
+                updateTokenStatsButton();
 
                 // updateButtonState derives the Go button from sessionActive;
                 // setInputEnabled no longer touches buttons.

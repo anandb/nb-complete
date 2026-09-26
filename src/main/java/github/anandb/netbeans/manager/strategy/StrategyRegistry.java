@@ -15,16 +15,23 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
+import github.anandb.netbeans.contract.SessionQuery;
 import github.anandb.netbeans.contract.UIHandler;
 import github.anandb.netbeans.contract.UpdateDispatcher;
+import github.anandb.netbeans.contract.UsageStatsStore;
 import github.anandb.netbeans.support.ToolDataExtractor;
 import github.anandb.netbeans.model.Message;
 import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.ModelRecords.MessageClassification;
 import github.anandb.netbeans.model.ModelRecords.PlanEntry;
 import github.anandb.netbeans.model.ProcessedMessage;
+import github.anandb.netbeans.model.SessionState;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.model.ToolCallData;
+import github.anandb.netbeans.model.UsageRecords.Attribution;
+import github.anandb.netbeans.model.UsageRecords.MessageEvent;
+import github.anandb.netbeans.model.UsageRecords.MessageKind;
+import github.anandb.netbeans.model.UsageRecords.UsageUpdateRow;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.MapperSupplier;
 
@@ -49,6 +56,13 @@ public class StrategyRegistry implements UpdateDispatcher {
             .expireAfterAccess(60, TimeUnit.MINUTES)
             .maximumSize(1024)
             .recordStats()
+            .build();
+
+    /** Guards CAP-6 message counting against re-counting the same streamed message id. */
+    private static final Cache<String, Boolean> COUNTED_MESSAGES =
+        Caffeine.newBuilder()
+            .expireAfterAccess(30, TimeUnit.MINUTES)
+            .maximumSize(20_000)
             .build();
 
     public StrategyRegistry() {
@@ -96,6 +110,7 @@ public class StrategyRegistry implements UpdateDispatcher {
             case "usage_update" -> {
                 if (update.update() != null) {
                     handler.updateUsage(update.update().used(), update.update().size());
+                    captureUsageUpdate(update);
                 }
             }
 
@@ -109,6 +124,7 @@ public class StrategyRegistry implements UpdateDispatcher {
 
             case "agent_thought_chunk" -> {
                 String text = extractText(update.content());
+                captureMessage(update, MessageKind.THOUGHT);
                 String tTitle = SubAgentTitleResolver.resolve(null,
                         update.params() != null ? update.params().sessionId() : null,
                         "Sub-Agent", "Thinking");
@@ -129,11 +145,13 @@ public class StrategyRegistry implements UpdateDispatcher {
                     LOG.fine("Ignoring user_message_chunk: empty text, update={0}", update);
                     return;
                 }
+                captureMessage(update, MessageKind.USER);
                 handler.displayMessage(buildStreamingMessage(update, text));
             }
 
             case "agent_message_chunk" -> {
                 String text = extractText(update.content());
+                captureMessage(update, MessageKind.ASSISTANT);
                 ProcessedMessage msg = buildStreamingMessage(update, text);
                 if (msg.messageType() != null) {
                     handler.displayMessage(msg);
@@ -155,7 +173,12 @@ public class StrategyRegistry implements UpdateDispatcher {
                 final String command = update.command();
                 final String kind = update.kind();
                 Map<String, ToolCallData> sessionMap = TOOL_CALL_CACHE.get(sessionId, k -> new ConcurrentHashMap<>());
-                ToolCallData data = sessionMap.computeIfAbsent(messageId, k -> new ToolCallData(k, command));
+                ToolCallData fresh = new ToolCallData(messageId, command);
+                ToolCallData existing = sessionMap.putIfAbsent(messageId, fresh);
+                if (existing == null) {
+                    captureMessage(update, MessageKind.TOOL);
+                }
+                ToolCallData data = existing != null ? existing : fresh;
                 // Wrap isDone() check + process + shouldDisplay under the same
                 // lock to prevent TOCTOU: a concurrent update could set status
                 // to "completed" between the isDone() guard and the process call,
@@ -478,5 +501,92 @@ public class StrategyRegistry implements UpdateDispatcher {
             case "failed" -> "\u26A0";
             default -> "\u25CB";
         };
+    }
+
+    /**
+     * Captures a {@code usage_update} notification as one stats row. The cost
+     * object may be absent; such a row is still recorded with 0 USD, because a
+     * free or cost-less update is never skipped.
+     */
+    private static void captureUsageUpdate(SessionUpdate update) {
+        if (!captureAllowed()) {
+            return;
+        }
+        UsageStatsStore store = Lookup.getDefault().lookup(UsageStatsStore.class);
+        if (store == null) {
+            return;
+        }
+        String sessionId = update.params() != null ? update.params().sessionId() : null;
+        if (isBlank(sessionId)) {
+            return;
+        }
+        SessionUpdate.UpdateData data = update.update();
+        JsonNode cost = data.cost();
+        double amount = cost != null && cost.hasNonNull("amount") ? cost.get("amount").asDouble(0) : 0;
+        String currency = cost != null && cost.hasNonNull("currency")
+                ? cost.get("currency").asText("USD") : "USD";
+        store.recordUsageUpdate(new UsageUpdateRow(attribution(sessionId), System.currentTimeMillis(),
+                data.used() != null ? data.used() : 0, data.size(), amount, currency));
+    }
+
+    /**
+     * Counts one user, assistant, tool or thought update for the overview
+     * message total. A repeated {@code messageId} is counted once, so a chatty
+     * streaming harness does not inflate the count.
+     */
+    private static void captureMessage(SessionUpdate update, MessageKind kind) {
+        if (!captureAllowed()) {
+            return;
+        }
+        UsageStatsStore store = Lookup.getDefault().lookup(UsageStatsStore.class);
+        if (store == null) {
+            return;
+        }
+        String sessionId = update.params() != null ? update.params().sessionId() : null;
+        if (isBlank(sessionId) || !firstCount(sessionId, kind, update.messageId())) {
+            return;
+        }
+        store.recordMessage(new MessageEvent(attribution(sessionId), System.currentTimeMillis(), kind));
+    }
+
+    /** True the first time a (session, kind, messageId) triple is seen. */
+    private static boolean firstCount(String sessionId, MessageKind kind, String messageId) {
+        if (isBlank(messageId)) {
+            return true;
+        }
+        String key = sessionId + '|' + kind + '|' + messageId;
+        return COUNTED_MESSAGES.asMap().putIfAbsent(key, Boolean.TRUE) == null;
+    }
+
+    /**
+     * False only while the plugin is loading a session and the harness is
+     * replaying history. Replayed updates are not new events: counting them
+     * makes the overview message total climb on every reload, and recording
+     * their {@code usage_update} rows re-sums cost and tokens already captured.
+     * Replay chunks carry no {@code messageId}, so the per-id dedup cannot
+     * filter them — the load window is the only reliable signal.
+     */
+    static boolean shouldCapture(SessionState state) {
+        return state != SessionState.LOADING;
+    }
+
+    private static boolean captureAllowed() {
+        SessionQuery sessions = Lookup.getDefault().lookup(SessionQuery.class);
+        return shouldCapture(sessions != null ? sessions.getCurrentState() : null);
+    }
+
+    /**
+     * Resolves the session's harness, model and project at capture time. Harness
+     * and model come from the in-memory current values for the session the
+     * message belongs to, so a message from a previously open session is never
+     * stamped with the wrong harness or model.
+     */
+    private static Attribution attribution(String sessionId) {
+        SessionQuery sessions = Lookup.getDefault().lookup(SessionQuery.class);
+        if (sessions == null) {
+            return new Attribution(sessionId, null, null, null);
+        }
+        return new Attribution(sessionId, sessions.getHarnessId(),
+                sessions.getSessionModelId(sessionId), sessions.getSessionDirectory(sessionId));
     }
 }

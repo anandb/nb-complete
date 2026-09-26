@@ -1,9 +1,9 @@
 package github.anandb.netbeans.ui;
 
+import github.anandb.netbeans.model.UsageRecords.UsageSummary;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -15,88 +15,26 @@ class TokenUsageDialogTest {
         TestUiUtils.setupTestUIManager();
     }
 
-    @Test
-    void testParseStatsRow_standardProgressRow() {
-        String input = "read                      ██████████████████████████████████████ 420 (31.4%)";
-        String[] parsed = TokenUsageDialog.parseStatsRow(input);
-        assertEquals(3, parsed.length);
-        assertEquals("read", parsed[0]);
-        assertEquals("██████████████████████████████████████", parsed[1]);
-        assertEquals("420 (31.4%)", parsed[2]);
+    private static UsageSummary sample() {
+        return new UsageSummary(1293, 42972, 90, 137.33, 1.53, 2_800_000, 77_900,
+                167_600_000L, 9_700_000L, 3_412_600_000L);
     }
 
     @Test
-    void testParseStatsRow_noSpacesBeforeBlock() {
-        String input = "nb_get_opened_fi..█                                                       1 (0.1%)";
-        String[] parsed = TokenUsageDialog.parseStatsRow(input);
-        assertEquals(3, parsed.length);
-        assertEquals("nb_get_opened_fi..", parsed[0]);
-        assertEquals("█", parsed[1]);
-        assertEquals("1 (0.1%)", parsed[2]);
-    }
+    void renderSummaryHtmlRendersBothBlocksWithFormattedFigures() {
+        String html = TokenUsageDialog.renderSummaryHtml(sample(), ThemeManager.getCurrentTheme());
 
-    @Test
-    void testParseStatsRow_allowedCharactersInName() {
-        String input = "my-tool.v2_helper█                                                       2 (0.2%)";
-        String[] parsed = TokenUsageDialog.parseStatsRow(input);
-        assertEquals(3, parsed.length);
-        assertEquals("my-tool.v2_helper", parsed[0]);
-        assertEquals("█", parsed[1]);
-        assertEquals("2 (0.2%)", parsed[2]);
-    }
-
-    @Test
-    void testParseStatsRow_simpleKeyValue() {
-        String input = "Total Cost                $0.15";
-        String[] parsed = TokenUsageDialog.parseStatsRow(input);
-        assertEquals(2, parsed.length);
-        assertEquals("Total Cost", parsed[0]);
-        assertEquals("$0.15", parsed[1]);
-    }
-
-    @Test
-    void testParseStatsRow_subHeader() {
-        String input = "gemini-1.5-flash";
-        String[] parsed = TokenUsageDialog.parseStatsRow(input);
-        assertEquals(2, parsed.length);
-        assertEquals("gemini-1.5-flash", parsed[0]);
-        assertEquals("", parsed[1]);
-    }
-
-    @Test
-    void testParsePercentage() {
-        assertEquals(31, TokenUsageDialog.parsePercentage("420 (31.4%)"));
-        assertEquals(0, TokenUsageDialog.parsePercentage("1 (0.0%)"));
-        assertEquals(100, TokenUsageDialog.parsePercentage("980 (99.6%)"));
-        assertEquals(0, TokenUsageDialog.parsePercentage("$0.15"));
-        assertEquals(0, TokenUsageDialog.parsePercentage(null));
-    }
-
-    @Test
-    void testConvertStatsToHtml() {
-        // Mock a box-drawing output to convert
-        String rawText = 
-            "┌──────────────────────────────────────────────────────────────────────────────┐\n" +
-            "│ TOOL USAGE                                                                   │\n" +
-            "├──────────────────────────────────────────────────────────────────────────────┤\n" +
-            "│ read                      ██████████████████████████████████████ 420 (31.4%) │\n" +
-            "│ nb_get_opened_fi..█                                                       1 (0.1%) │\n" +
-            "│ Total Cost                $0.15                                              │\n" +
-            "└──────────────────────────────────────────────────────────────────────────────┘";
-
-        ColorTheme theme = ThemeManager.getCurrentTheme();
-        String html = TokenUsageDialog.convertStatsToHtml(rawText, theme);
-        
         assertNotNull(html);
-        assertTrue(html.contains("colspan='3'"));
-        assertTrue(html.contains("read"));
-        // Progress bars are rendered as percentage-width divs, not the CLI's █ chars
-        assertTrue(html.contains("width:31%;"));
-        assertTrue(html.contains("height:10px;"));
-        assertTrue(html.contains("420 (31.4%)"));
-        assertTrue(html.contains("nb_get_opened_fi.."));
-        assertTrue(html.contains("1 (0.1%)"));
-        assertTrue(html.contains("Total Cost"));
-        assertTrue(html.contains("$0.15"));
+        assertTrue(html.contains("OVERVIEW"));
+        assertTrue(html.contains("1,293"));
+        assertTrue(html.contains("42,972"));
+        assertTrue(html.contains("COST &amp; TOKENS"));
+        assertTrue(html.contains("$137.33"));
+        assertTrue(html.contains("$1.53"));
+        assertTrue(html.contains("2.8M"));
+        assertTrue(html.contains("77.9K"));
+        assertTrue(html.contains("167.6M"));
+        assertTrue(html.contains("9.7M"));
+        assertTrue(html.contains("3412.6M"));
     }
 }

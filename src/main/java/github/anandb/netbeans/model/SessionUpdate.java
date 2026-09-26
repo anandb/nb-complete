@@ -27,7 +27,7 @@ public record SessionUpdate(
     /** Centralizes textual turn-end synthesis; avoids 19-arg positional construction at call sites. */
     public static SessionUpdate syntheticTurnEnd(String sessionId, MessageType type) {
         UpdateData data = new UpdateData(type, null, null, null, null, null, null, null, null, null, null, null,
-            null, null, null, null, null, null, null);
+            null, null, null, null, null, null, null, null);
         return new SessionUpdate(JSONRPC_VERSION, METHOD, new Params(sessionId, data));
     }
 
@@ -51,7 +51,9 @@ public record SessionUpdate(
         Long used,
         Long size,
         JsonNode entries,
-        JsonNode locations
+        JsonNode locations,
+        // Reported cost object (amount, currency) on usage_update; may be absent.
+        JsonNode cost
     ) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)

@@ -24,7 +24,7 @@ class SessionUpdateTest {
         Message msg = new Message("m1", "thought", null, null, "thinking");
         SessionUpdate.UpdateData data = new SessionUpdate.UpdateData(
             MessageType.message, null, null, "m1", null, msg, null, null, true, null, null, null, null, null, 
-                null, null, null, null, null
+                null, null, null, null, null, null
         );
         SessionUpdate.Params params = new SessionUpdate.Params("s1", data);
         SessionUpdate update = new SessionUpdate("2.0", "session/update", params);

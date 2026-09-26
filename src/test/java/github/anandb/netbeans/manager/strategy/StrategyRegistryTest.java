@@ -3,6 +3,7 @@ package github.anandb.netbeans.manager.strategy;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import github.anandb.netbeans.model.MessageType;
+import github.anandb.netbeans.model.SessionState;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.MapperSupplier;
 import org.junit.jupiter.api.Test;
@@ -18,7 +19,7 @@ class StrategyRegistryTest {
         JsonNode rawOutput = MAPPER.createObjectNode().put("output", outputText);
         SessionUpdate.UpdateData ud = new SessionUpdate.UpdateData(
                 MessageType.tool_call, null, null, "m1", null, null, null, null, null,
-                "completed", null, null, rawOutput, null, null, null, null, null, null
+                "completed", null, null, rawOutput, null, null, null, null, null, null, null
         );
         SessionUpdate.Params params = new SessionUpdate.Params("s1", ud);
         return new SessionUpdate("2.0", "session/update", params);
@@ -92,7 +93,7 @@ class StrategyRegistryTest {
         JsonNode rawOutput = MAPPER.createObjectNode().put("output", "[{\"content\":\"x\",\"status\":\"y\",\"priority\":\"z\"}]");
         SessionUpdate.UpdateData ud = new SessionUpdate.UpdateData(
                 MessageType.tool_call, null, null, "m1", null, null, null, null, null,
-                "running", null, null, rawOutput, null, null, null, null, null, null
+                "running", null, null, rawOutput, null, null, null, null, null, null, null
         );
         SessionUpdate.Params params = new SessionUpdate.Params("s1", ud);
         SessionUpdate update = new SessionUpdate("2.0", "session/update", params);
@@ -105,5 +106,15 @@ class StrategyRegistryTest {
                 "[{\"name\":\"foo\",\"value\":\"bar\"}]"
         );
         assertFalse(StrategyRegistry.isPlanToolCall(update));
+    }
+
+    @Test
+    void historyReplayIsNotCaptured() {
+        // Replay during session/load must not re-count messages or re-record usage.
+        assertFalse(StrategyRegistry.shouldCapture(SessionState.LOADING));
+        assertTrue(StrategyRegistry.shouldCapture(SessionState.IDLE));
+        assertTrue(StrategyRegistry.shouldCapture(SessionState.STREAMING));
+        // No session at all is not a replay.
+        assertTrue(StrategyRegistry.shouldCapture(null));
     }
 }

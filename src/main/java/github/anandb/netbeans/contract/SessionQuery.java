@@ -43,4 +43,13 @@ public interface SessionQuery {
     /** Returns the cached session for the given ID, or null. */
     Session getSession(String sessionId);
 
+    /** Returns the harness id configured for the current agent, or null. */
+    String getHarnessId();
+
+    /** Returns the model id currently in force for the given session, or null. */
+    String getSessionModelId(String sessionId);
+
+    /** Returns the working directory captured for the given session, or null. */
+    String getSessionDirectory(String sessionId);
+
 }

@@ -98,6 +98,26 @@ public class SessionManager implements SessionQuery, SessionControl {
     private static final String USAGE_PREFIX = "session_usage_";
     private static final String LOCAL_SESSIONS_KEY = "gemini_local_sessions";
 
+    /** Returns the session id of the current agent, or null. */
+    @Override
+    public String getHarnessId() {
+        return agentName();
+    }
+
+    /** Returns the model id currently in force for the session, or null. */
+    @Override
+    public String getSessionModelId(String sessionId) {
+        Session session = getSession(sessionId);
+        return session != null && session.models() != null ? session.models().currentModelId() : null;
+    }
+
+    /** Returns the working directory captured for the session, or null. */
+    @Override
+    public String getSessionDirectory(String sessionId) {
+        Session session = getSession(sessionId);
+        return session != null ? session.effectiveDirectory() : null;
+    }
+
     /**
      * Returns the current harness ID from preferences, or {@code null} if none
      * is configured (including a blank Options value). Used to build

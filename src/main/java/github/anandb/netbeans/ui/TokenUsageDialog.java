@@ -2,25 +2,26 @@ package github.anandb.netbeans.ui;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
 
-import static org.apache.commons.lang3.StringUtils.isNotBlank;
-
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.Frame;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
 import java.awt.Insets;
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
+import java.awt.Window;
+import java.awt.event.ActionEvent;
+import java.awt.event.ItemEvent;
+import java.awt.event.KeyEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
 
+import javax.swing.AbstractAction;
 import javax.swing.DefaultListCellRenderer;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
@@ -35,42 +36,31 @@ import javax.swing.JTextPane;
 import javax.swing.KeyStroke;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingUtilities;
+import javax.swing.Timer;
 import javax.swing.border.EmptyBorder;
-
-import javax.swing.AbstractAction;
-import java.awt.event.ActionEvent;
-import java.awt.event.ItemEvent;
-import java.awt.event.KeyEvent;
 
 import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
 import org.openide.util.RequestProcessor;
-
-import github.anandb.netbeans.contract.SessionQuery;
-import github.anandb.netbeans.support.BinaryResolver;
-import github.anandb.netbeans.support.Logger;
-import github.anandb.netbeans.support.ProcessTerminator;
-import github.anandb.netbeans.ui.platform.PlatformBridge;
-import static github.anandb.netbeans.ui.UIUtils.MONO_STACK;
-import java.awt.GridBagConstraints;
-
-import java.awt.Frame;
-import java.awt.GridBagLayout;
-import java.awt.Window;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
-import java.util.logging.Level;
-import java.util.regex.Pattern;
-import javax.swing.Timer;
 import org.netbeans.api.project.Project;
 
+import github.anandb.netbeans.contract.SessionQuery;
+import github.anandb.netbeans.contract.UsageStatsStore;
+import github.anandb.netbeans.model.UsageRecords.UsageSummary;
+import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.UsageStatsFormat;
+import github.anandb.netbeans.ui.platform.PlatformBridge;
+import static github.anandb.netbeans.ui.UIUtils.MONO_STACK;
+
+/**
+ * Token and cost panel. Renders the OVERVIEW and COST &amp; TOKENS blocks from
+ * the local {@link UsageStatsStore} — no harness subprocess is spawned, and the
+ * entry point (the currency button next to the attachment icon) is unchanged.
+ */
 public class TokenUsageDialog extends JDialog {
 
     private static final Logger LOG = Logger.from(TokenUsageDialog.class);
     private static final long serialVersionUID = 1L;
-
-    private static final Pattern ANSI_ESCAPE =
-        Pattern.compile("\u001b\\[[0-9;]*[a-zA-Z~]|\u001b\\][^\u0007]*\u0007");
 
     private final JSpinner daysSpinner;
     private final JComboBox<String> projectCombo;
@@ -78,16 +68,10 @@ public class TokenUsageDialog extends JDialog {
     private final JButton refreshBtn;
     private final JScrollPane scrollPane;
     private final AtomicBoolean running = new AtomicBoolean(false);
-    private volatile Process currentProcess;
     private Timer autoRefreshTimer;
     private boolean firstRefresh = true;
-    /** Timeout for the opencode stats subprocess (avoids hanging the background thread). */
-    private static final long STATS_TIMEOUT_SECONDS = 60;
-    /** Background reader pool for subprocess stdout (see runStatsCommand). */
-    private static final RequestProcessor READER_RP = new RequestProcessor("token-stats-reader", 1);
-    /** Background worker for the stats command itself. Kept separate from READER_RP
-     *  (which is single-threaded) so a stats run posting a reader task to READER_RP
-     *  and waiting on it cannot deadlock against its own worker. */
+
+    /** Background worker for the local query and HTML rendering. */
     private static final RequestProcessor STATS_RP = new RequestProcessor("token-stats", 1);
 
     public TokenUsageDialog(Frame owner) {
@@ -107,7 +91,7 @@ public class TokenUsageDialog extends JDialog {
         titleLabel.setBorder(new EmptyBorder(0, 0, 8, 0));
         content.add(titleLabel, BorderLayout.NORTH);
 
-        // --- Form (single row: Days | Model | Project | Refresh) ---
+        // --- Form (single row: Days | Project | Refresh) ---
         JPanel formPanel = new JPanel(new GridBagLayout());
         formPanel.setOpaque(false);
         Insets ins = new Insets(0, 2, 0, 2);
@@ -227,7 +211,8 @@ public class TokenUsageDialog extends JDialog {
             return;
         }
         int days = (int) daysSpinner.getValue();
-        String project = (String) projectCombo.getSelectedItem();
+        boolean currentProject = NbBundle.getMessage(TokenUsageDialog.class, "LBL_CurrentProject")
+                .equals(projectCombo.getSelectedItem());
         refreshBtn.setEnabled(false);
         ColorTheme currentTheme = ThemeManager.getCurrentTheme();
         statsPane.setText(buildPlaceholderHtml(currentTheme, NbBundle.getMessage(TokenUsageDialog.class, "LBL_FetchingStats")));
@@ -235,14 +220,17 @@ public class TokenUsageDialog extends JDialog {
         STATS_RP.post(() -> {
             try {
                 String projectDir = null;
-                if (NbBundle.getMessage(TokenUsageDialog.class, "LBL_CurrentProject").equals(project)) {
+                if (currentProject) {
                     SessionQuery sq = Lookup.getDefault().lookup(SessionQuery.class);
                     if (sq != null) {
                         projectDir = sq.getCurrentSessionDirectory();
                     }
                 }
-                String result = ANSI_ESCAPE.matcher(runStatsCommand(days, projectDir)).replaceAll("");
-                String styledHtml = convertStatsToHtml(result, currentTheme);
+                UsageStatsStore store = Lookup.getDefault().lookup(UsageStatsStore.class);
+                UsageSummary summary = store != null
+                        ? store.query(days, projectDir, System.currentTimeMillis())
+                        : UsageSummary.empty();
+                String styledHtml = renderSummaryHtml(summary, currentTheme);
                 SwingUtilities.invokeLater(() -> {
                     statsPane.setText(styledHtml);
                     if (firstRefresh) {
@@ -253,7 +241,7 @@ public class TokenUsageDialog extends JDialog {
                     SwingUtilities.invokeLater(() -> scrollPane.getVerticalScrollBar().setValue(0));
                 });
             } catch (Exception ex) {
-                LOG.log(Level.WARNING, "Failed to fetch token usage stats", ex);
+                LOG.log(Level.WARNING, "Failed to read local token usage stats", ex);
                 SwingUtilities.invokeLater(() -> {
                     statsPane.setText(buildPlaceholderHtml(currentTheme,
                             NbBundle.getMessage(TokenUsageDialog.class, "ERR_StatsError",
@@ -261,109 +249,10 @@ public class TokenUsageDialog extends JDialog {
                     SwingUtilities.invokeLater(() -> scrollPane.getVerticalScrollBar().setValue(0));
                 });
             } finally {
-                currentProcess = null;
                 SwingUtilities.invokeLater(() -> refreshBtn.setEnabled(true));
                 running.set(false);
             }
         });
-    }
-
-    private String runStatsCommand(int days, String projectDir) throws Exception {
-        // Build the opencode stats tokens once; both launch paths use them.
-        List<String> opencodeArgs = new ArrayList<>();
-        opencodeArgs.add("stats");
-        opencodeArgs.add("--days");
-        opencodeArgs.add(String.valueOf(days));
-        opencodeArgs.add("--models");
-        if (projectDir != null) {
-            // opencode stats --project expects the project ID (a git-hash), not
-            // a directory path. Pass an empty string which means "current
-            // project"; the actual filtering is driven by the working directory
-            // set on the ProcessBuilder below (pb.directory(projectDir)).
-            opencodeArgs.add("--project");
-            opencodeArgs.add("");
-        }
-
-        List<String> cmd;
-        if (BinaryResolver.isWslAvailable()) {
-            cmd = List.of(BinaryResolver.buildWslArgs(
-                    opencodeArgs.toArray(new String[0])));
-        } else {
-            cmd = new ArrayList<>();
-            cmd.add(BinaryResolver.resolveExecutablePath());
-            cmd.addAll(opencodeArgs);
-        }
-
-        LOG.info("Running opencode stats command: {0}", String.join(" ", cmd));
-
-        ProcessBuilder pb = new ProcessBuilder(cmd);
-        if (!System.getProperty("os.name", "").toLowerCase().contains("win")) {
-            pb.environment().put("LANG", "C");
-            pb.environment().put("LC_ALL", "C");
-            pb.environment().put("NO_COLOR", "1");
-        }
-        pb.redirectErrorStream(true);
-        if (isNotBlank(projectDir)) {
-            File dir = new File(projectDir);
-            if (dir.isDirectory()) {
-                pb.directory(dir);
-            } else {
-                // A non-directory project path would silently run stats against
-                // the JVM's CWD. Surface it as an error instead.
-                throw new IllegalArgumentException(
-                        "Project directory does not exist: " + projectDir);
-            }
-        }
-        Process proc = pb.start();
-        currentProcess = proc;
-
-        // Read stdout on a background reader task, then use waitFor(timeout) on this
-        // (already background) thread as the timeout mechanism. Reading inline before
-        // waitFor would block forever on a hung process that never closes its stdout,
-        // making the timeout unreachable. On timeout we destroyForcibly, which closes
-        // the pipe and unblocks the reader.
-        StringBuffer sb = new StringBuffer();
-        RequestProcessor.Task readerTask = READER_RP.post(() -> {
-            try (BufferedReader r = new BufferedReader(
-                    new InputStreamReader(proc.getInputStream(), StandardCharsets.UTF_8))) {
-                String line;
-                while ((line = r.readLine()) != null) {
-                    sb.append(line).append('\n');
-                }
-            } catch (IOException e) {
-                // Expected when the process is destroyed before all output is read.
-            }
-        });
-        try {
-            boolean timedOut = !proc.waitFor(STATS_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-            if (timedOut) {
-                ProcessTerminator.terminate(proc);
-            }
-            // destroyForcibly above closes stdout, unblocking readLine; wait before reading sb.
-            readerTask.waitFinished(5000);
-            if (timedOut) {
-                throw new RuntimeException("opencode stats timed out after "
-                        + STATS_TIMEOUT_SECONDS + "s");
-            }
-            int exitCode = proc.exitValue();
-            if (exitCode != 0) {
-                String output = sb.toString().trim();
-                throw new RuntimeException("opencode stats exited with code "
-                    + exitCode + (output.isEmpty() ? "" : ": " + output));
-            }
-            return sb.toString().trim();
-        } finally {
-            if (proc.isAlive()) {
-                ProcessTerminator.terminate(proc);
-            }
-            readerTask.waitFinished(5000);
-        }
-    }
-
-    /** Gracefully terminates the running stats subprocess. */
-    private void cancelProcess() {
-        ProcessTerminator.terminate(currentProcess);
-        currentProcess = null;
     }
 
     /** Sizes the dialog to 90% parent height with reasonable width for table content. */
@@ -374,95 +263,26 @@ public class TokenUsageDialog extends JDialog {
         revalidate();
     }
 
-    // ---- Box-drawing to HTML table conversion ----
-
-    /** Extracts text content from between │ delimiters in a box-drawing row. */
-    private static String extractBoxContent(String line) {
-        int first = line.indexOf('│');
-        int last = line.lastIndexOf('│');
-        if (first >= 0 && last > first) {
-            return line.substring(first + 1, last).trim();
-        }
-        return null;
-    }
-
-    private static boolean containsNonAscii(String s) {
-        for (int i = 0; i < s.length(); i++) {
-            if (s.charAt(i) > 127) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /** Parses a stats row content into [label, value] or [label, progress, percentage]. */
-    static String[] parseStatsRow(String content) {
-        if (containsNonAscii(content)) {
-            int idx = -1;
-            for (int i = 0; i < content.length(); i++) {
-                if (content.charAt(i) > 127) {
-                    idx = i;
-                    break;
-                }
-            }
-            if (idx >= 0) {
-                String labelPart = content.substring(0, idx).trim();
-                String rest = content.substring(idx).trim();
-                String[] restParts = rest.split("\\s+", 2);
-                if (restParts.length == 2) {
-                    return new String[]{labelPart, restParts[0], restParts[1]};
-                } else {
-                    return new String[]{labelPart, rest, ""};
-                }
-            }
-        }
-
-        // Split on 2+ spaces (box-drawing uses fixed-width padding)
-        String[] parts = content.split("\\s{2,}");
-        if (parts.length >= 2) {
-            String label = parts[0].trim();
-            // Simple key-value: label is first, value is last
-            return new String[]{label, parts[parts.length - 1].trim()};
-        }
-        // Single value (model name sub-header, etc.)
-        return new String[]{content, ""};
-    }
-
-    /** Extracts an integer percentage (0-100) from a stats value like "420 (31.4%)". */
-    static int parsePercentage(String value) {
-        if (value == null) {
-            return 0;
-        }
-        int open = value.lastIndexOf('(');
-        int close = value.lastIndexOf('%');
-        if (open >= 0 && close > open) {
-            try {
-                return (int) Math.round(Double.parseDouble(value.substring(open + 1, close).trim()));
-            } catch (NumberFormatException ex) {
-                LOG.log(Level.FINE, "Unparseable stats percentage: {0}", value);
-            }
-        }
-        return 0;
-    }
+    // ---- Summary to HTML ----
 
     /** Escapes HTML special characters. */
     private static String escapeHtml(String s) {
         return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
     }
 
-    /** Converts box-drawing stats output into themed HTML tables. */
-    static String convertStatsToHtml(String rawText, ColorTheme theme) {
-        String[] lines = rawText.split("\n", -1);
-        StringBuilder sb = new StringBuilder(2048);
+    /**
+     * Renders the OVERVIEW and COST &amp; TOKENS blocks as themed HTML tables
+     * from the aggregated summary.
+     */
+    static String renderSummaryHtml(UsageSummary summary, ColorTheme theme) {
         String bg = theme.toHtmlHex(theme.bubbleAssistant());
         String fg = theme.toHtmlHex(theme.assistantForeground());
         String borderColor = theme.toHtmlHex(theme.tableBorder());
         String headerBg = theme.toHtmlHex(theme.tableHeaderBackground());
         String tableBg = theme.toHtmlHex(theme.tableBackground());
         String altBg = theme.toHtmlHex(theme.tableRowAlternate());
-        String linkColor = ThemeManager.isDark() ? "#589DF6" : "#268BD2";
-        String barColor = ThemeManager.isDark() ? "#589DF6" : "#268BD2";
 
+        StringBuilder sb = new StringBuilder(2048);
         sb.append("<html><head><style>")
           .append("html,body{margin:0;padding:8px;background:").append(bg)
           .append(";color:").append(fg).append(";font-family:")
@@ -473,88 +293,54 @@ public class TokenUsageDialog extends JDialog {
           .append(borderColor).append(";text-align:left;font-weight:bold;}")
           .append("td{padding:8px;border:1px solid ").append(borderColor)
           .append(";vertical-align:top;}")
-          .append("a{color:").append(linkColor).append(";text-decoration:none;}")
           .append("</style></head><body>");
 
-        int i = 0;
-        while (i < lines.length) {
-            String line = lines[i];
-            if (!line.contains("\u250C")) {
-                i++;
-                continue;
-            } // ┌
-            i++;
-
-            // Section title
-            String title = "";
-            if (i < lines.length) {
-                String t = extractBoxContent(lines[i]);
-                if (t != null) title = t;
-                i++;
-            }
-            // Skip separator (├───┤)
-            if (i < lines.length && lines[i].contains("\u251C")) { i++; } // ├
-
-            // Collect data rows until section end
-            List<String[]> rows = new ArrayList<>();
-            while (i < lines.length) {
-                String dl = lines[i];
-                if (dl.contains("\u2514")) break; // └
-                String content = extractBoxContent(dl);
-                if (content != null && !content.isEmpty()) {
-                    rows.add(parseStatsRow(content));
-                }
-                i++;
-            }
-            // Skip past └─ line — outer loop skips blanks and finds next ┌─
-            i++;
-
-            // Render table
-            sb.append("<table><tr><th colspan='3'>").append(escapeHtml(title)).append("</th></tr>");
-            boolean alt = false;
-            for (String[] row : rows) {
-                if (row.length == 2 && row[1].isEmpty()) {
-                    // Sub-header row (model name)
-                    sb.append("<tr><td colspan='3' style='font-weight:bold;background:")
-                      .append(headerBg).append("'>").append(escapeHtml(row[0])).append("</td></tr>");
-                    alt = false;
-                } else if (row.length == 3) {
-                    // Progress bar row — render a real HTML bar sized by the
-                    // percentage instead of the CLI's █ characters (which the
-                    // CLI scales down to 1 block for low-percentage entries).
-                    int pct = Math.max(parsePercentage(row[2]), 1);
-                    String rowStyle = "";
-                    if (alt) rowStyle += "style='background-color: " + altBg + "'";
-                    sb.append("<tr ").append(rowStyle).append(">")
-                      .append("<td style='white-space:nowrap;'>").append(escapeHtml(row[0])).append("</td>")
-                      .append("<td style='width:100%;'>")
-                      .append("<table style='margin:0;border:0;width:100%;'><tr>")
-                      .append("<td style='border:0;padding:1px;width:").append(pct).append("%;'>")
-                      .append("<div style='height:10px;background:").append(barColor).append(";'></div>")
-                      .append("</td><td style='border:0;padding:1px;'></td>")
-                      .append("</tr></table>")
-                      .append("</td>")
-                      .append("<td style='text-align:right;white-space:nowrap;'>").append(escapeHtml(row[2])).append("</td>")
-                      .append("</tr>");
-                    alt = !alt;
-                } else {
-                    // Simple key-value row (length 2)
-                    boolean isTotal = "Total Cost".equals(row[0]);
-                    String rowStyle = isTotal ? "font-weight:bold;" : "";
-                    if (alt) rowStyle += "background-color: " + altBg + ";";
-                    String trAttr = rowStyle.isEmpty() ? "" : " style='" + rowStyle + "'";
-                    sb.append("<tr").append(trAttr).append(">")
-                      .append("<td colspan='2' style='white-space:nowrap;'>").append(escapeHtml(row[0])).append("</td>")
-                      .append("<td style='text-align:right;'>").append(escapeHtml(row[1])).append("</td>")
-                      .append("</tr>");
-                    alt = !alt;
-                }
-            }
-            sb.append("</table>");
-        }
+        appendTable(sb, "LBL_Overview", headerBg, altBg, new String[][]{
+            {"LBL_Sessions", UsageStatsFormat.thousands(summary.sessions())},
+            {"LBL_Messages", UsageStatsFormat.thousands(summary.messages())},
+            {"LBL_StatsDays", UsageStatsFormat.thousands(summary.days())},
+        });
+        appendTable(sb, "LBL_CostTokens", headerBg, altBg, new String[][]{
+            {"LBL_TotalCost", UsageStatsFormat.cost(summary.totalCost())},
+            {"LBL_AvgCostDay", UsageStatsFormat.cost(summary.avgCostPerDay())},
+            {"LBL_AvgTokensSession", UsageStatsFormat.abbreviated(summary.avgTokensPerSession())},
+            {"LBL_MedianTokensSession", UsageStatsFormat.abbreviated(summary.medianTokensPerSession())},
+            {"LBL_Input", UsageStatsFormat.abbreviated(summary.inputTokens())},
+            {"LBL_Output", UsageStatsFormat.abbreviated(summary.outputTokens())},
+            {"LBL_CacheRead", UsageStatsFormat.abbreviated(summary.cachedReadTokens())},
+        });
 
         sb.append("</body></html>");
         return sb.toString();
+    }
+
+    private static void appendTable(StringBuilder sb, String titleKey, String headerBg,
+                                    String altBg, String[][] rows) {
+        sb.append("<table><tr><th colspan='2'>")
+          .append(escapeHtml(NbBundle.getMessage(TokenUsageDialog.class, titleKey)))
+          .append("</th></tr>");
+        boolean alt = false;
+        for (String[] row : rows) {
+            boolean isTotal = "LBL_TotalCost".equals(row[0]);
+            String style;
+            if (isTotal && alt) {
+                style = "font-weight:bold;background-color: " + altBg + ";";
+            } else if (isTotal) {
+                style = "font-weight:bold;";
+            } else if (alt) {
+                style = "background-color: " + altBg + ";";
+            } else {
+                style = "";
+            }
+            String trAttr = style.isEmpty() ? "" : " style='" + style + "'";
+            sb.append("<tr").append(trAttr).append(">")
+              .append("<td style='white-space:nowrap;'>")
+              .append(escapeHtml(NbBundle.getMessage(TokenUsageDialog.class, row[0]))).append("</td>")
+              .append("<td style='text-align:right;'>").append(escapeHtml(row[1])).append("</td>")
+              .append("</tr>");
+            alt = !alt;
+        }
+        sb.append("</table>");
     }
 
     /** Builds a simple placeholder HTML message for the stats pane. */
@@ -578,7 +364,6 @@ public class TokenUsageDialog extends JDialog {
             dlg.addWindowListener(new WindowAdapter() {
                 @Override public void windowClosed(WindowEvent e) {
                     if (dlg.autoRefreshTimer != null) dlg.autoRefreshTimer.stop();
-                    dlg.cancelProcess();
                 }
             });
             dlg.autoRefreshTimer.start();
