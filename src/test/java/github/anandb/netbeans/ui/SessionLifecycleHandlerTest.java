@@ -45,6 +45,8 @@ class SessionLifecycleHandlerTest {
     private MockedStatic<PlatformBridge> platformBridgeMock;
     private MockedStatic<ThemeManager> themeManagerMock;
     private MockedStatic<PluginSettings> pluginSettingsMock;
+    /** Original raw value of {@link #SHOW_HIDDEN_KEY}; null when unset. Restored in tearDown. */
+    private String originalShowHidden;
 
     private SessionControl sessionControl;
     private ProjectContext projectContext;
@@ -75,6 +77,9 @@ class SessionLifecycleHandlerTest {
         renameSessionBtn = new JButton();
         toggleOptionsBtn = new JButton();
 
+        // Capture the developer's real value first: NbPreferences writes hit the
+        // module's userdir, so the override must be undone in tearDown.
+        originalShowHidden = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).get(SHOW_HIDDEN_KEY, null);
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
                 .putBoolean(SHOW_HIDDEN_KEY, showHidden);
         when(projectContext.getAllOpenProjects()).thenReturn(new org.netbeans.api.project.Project[0]);
@@ -93,6 +98,27 @@ class SessionLifecycleHandlerTest {
         if (platformBridgeMock != null) platformBridgeMock.close();
         if (themeManagerMock != null) themeManagerMock.close();
         if (pluginSettingsMock != null) pluginSettingsMock.close();
+        restoreShowHiddenPref();
+    }
+
+    /**
+     * Puts the show-archived preference back the way this machine had it.
+     * {@code NbPreferences} writes hit the module's real userdir, so without
+     * this the test run permanently flips the developer's own setting.
+     */
+    private void restoreShowHiddenPref() {
+        if (originalShowHidden == null) {
+            return;
+        }
+        java.util.prefs.Preferences prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
+        if ("true".equals(originalShowHidden)) {
+            prefs.putBoolean(SHOW_HIDDEN_KEY, true);
+        } else if ("false".equals(originalShowHidden)) {
+            prefs.putBoolean(SHOW_HIDDEN_KEY, false);
+        } else {
+            prefs.remove(SHOW_HIDDEN_KEY);
+        }
+        originalShowHidden = null;
     }
 
     private SessionLifecycleHandler newHandler() {

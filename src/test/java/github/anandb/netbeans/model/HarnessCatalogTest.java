@@ -9,6 +9,7 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -63,6 +64,30 @@ class HarnessCatalogTest {
     @Test
     void caseInsensitiveBinaryMatch() {
         assertEquals(HarnessCatalog.GOOSE, HarnessCatalog.byBinaryName("GOOSE"));
+    }
+
+    @Test
+    void binaryLookupIgnoresWindowsExecutableExtension() {
+        assertEquals(HarnessCatalog.OMP, HarnessCatalog.byBinaryName("omp.exe"));
+        assertEquals(HarnessCatalog.PI, HarnessCatalog.byBinaryName("pi-acp.exe"));
+        assertEquals(HarnessCatalog.HERMES, HarnessCatalog.byBinaryName("hermes.exe"));
+        assertEquals(HarnessCatalog.GOOSE, HarnessCatalog.byBinaryName("GOOSE.EXE"));
+        assertEquals(HarnessCatalog.CURSOR, HarnessCatalog.byBinaryName("cursor-agent.cmd"));
+        assertEquals(HarnessCatalog.CURSOR, HarnessCatalog.byBinaryName("agent.exe"));
+        // Unknown names stay unknown with or without an extension.
+        assertSame(HarnessCatalog.UNKNOWN, HarnessCatalog.byBinaryName("unknown-bin.exe"));
+        assertSame(HarnessCatalog.UNKNOWN, HarnessCatalog.byBinaryName(""));
+        assertSame(HarnessCatalog.UNKNOWN, HarnessCatalog.byBinaryName(null));
+    }
+
+    @Test
+    void stripBinaryExtensionNormalizesBareAndOrnamentedNames() {
+        assertEquals("goose", HarnessCatalog.stripBinaryExtension("GOOSE.EXE"));
+        assertEquals("goose", HarnessCatalog.stripBinaryExtension("GOOSE.CMD"));
+        assertEquals("pi-acp", HarnessCatalog.stripBinaryExtension("pi-acp"));
+        assertEquals("claude-agent-acp", HarnessCatalog.stripBinaryExtension("claude-agent-acp.exe"));
+        assertNull(HarnessCatalog.stripBinaryExtension("  "));
+        assertNull(HarnessCatalog.stripBinaryExtension(null));
     }
 
     @Test

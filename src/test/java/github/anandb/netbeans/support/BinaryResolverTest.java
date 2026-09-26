@@ -7,6 +7,7 @@ import github.anandb.netbeans.model.HarnessCatalog;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -131,5 +132,50 @@ class BinaryResolverTest {
         assertEquals("cursor-agent",
                 BinaryResolver.binaryNameFromPath("C:\\Users\\me\\AppData\\Local\\cursor-agent.cmd"));
         assertFalse(BinaryResolver.PI_HARNESS.contains("cursor-agent"));
+    }
+
+    @Test
+    void tokenizeArgsSplitsSafely() {
+        assertEquals(0, BinaryResolver.tokenizeArgs(null).length);
+        assertEquals(0, BinaryResolver.tokenizeArgs("  ").length);
+        assertEquals(java.util.List.of("acp"), java.util.List.of(BinaryResolver.tokenizeArgs("acp")));
+        assertEquals(java.util.List.of("--model", "gpt-4"), java.util.List.of(BinaryResolver.tokenizeArgs("--model gpt-4")));
+        assertEquals(2, BinaryResolver.tokenizeArgs("\"a b\" c").length);
+    }
+
+    @Test
+    void toWslPathMapsDrives() {
+        assertEquals("/mnt/c/Users/foo/opencode.exe", BinaryResolver.toWslPath("C:\\Users\\foo\\opencode.exe"));
+        assertEquals("/mnt/d/tool.exe", BinaryResolver.toWslPath("D:/tool.exe"));
+        assertEquals("/usr/local/bin/goose", BinaryResolver.toWslPath("/usr/local/bin/goose"));
+        assertNull(BinaryResolver.toWslPath(null));
+    }
+
+    @Test
+    void buildWslArgsNeverInterpolates() {
+        String[] cmd = BinaryResolver.buildWslArgs("acp", "; rm -rf /");
+        assertEquals("wsl.exe", cmd[0]);
+        assertEquals("exec \"$0\" \"$@\"", cmd[4]);
+        assertEquals("; rm -rf /", cmd[cmd.length - 1]);
+    }
+
+    @Test
+    void isInPathHandlesBlank() {
+        assertFalse(BinaryResolver.isInPath("definitely-not-a-real-binary-xyz123"));
+    }
+
+    /**
+     * Regression: Windows native names carry a {@code .exe}/{@code .cmd}
+     * suffix while catalog names are extension-less. Every name produced here
+     * must still resolve to a catalog harness, otherwise harness-specific
+     * install directories (windowsInstallSubdirs) are silently skipped on the
+     * ACPOptionsPanel detection path.
+     */
+    @Test
+    void windowsNativeNamesResolveToCatalogHarnesses() {
+        for (String name : BinaryResolver.nativeHarnessNames(true)) {
+            assertNotSame(HarnessCatalog.UNKNOWN, HarnessCatalog.byBinaryName(name),
+                    "Windows binary name does not resolve to a catalog harness: " + name);
+        }
     }
 }

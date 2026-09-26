@@ -207,35 +207,107 @@ public final class BinaryResolver {
     }
 
     /**
-     * Searches the system PATH for the given executable name, falling back to
-     * the user-local bin directory ({@code ~/.local/bin}) and the Windows
-     * WinGet shim directory if not found there.
+     * Searches for the given executable name: every PATH directory first, then
+     * well-known install directories common to all harnesses
+     * ({@code ~/.local/bin}, the WinGet shim directory and the Chocolatey bin
+     * directory), then harness-specific install directories (e.g. Oh My Pi's
+     * %LOCALAPPDATA%\omp), and finally the macOS Devin app bundle.
+     *
+     * <p>Catalog names are extension-less ({@code goose}); the installed file
+     * may be {@code goose.exe} / {@code goose.cmd} / {@code goose.bat}, so
+     * every probed directory is also searched for those forms.
      */
     public static String findOnPath(String exeName) {
+        List<File> dirs = new ArrayList<>();
         String pathEnv = System.getenv("PATH");
         if (pathEnv != null) {
             for (String dir : PATH_SPLIT.split(pathEnv)) {
-                File f = new File(dir, exeName);
-                if (f.exists() && f.canExecute()) {
-                    return f.getAbsolutePath();
-                }
+                dirs.add(new File(dir));
             }
         }
-        // User-local bin directory (Linux/macOS convention: hermes, etc.)
-        String userHome = System.getProperty("user.home");
-        if (isNotBlank(userHome)) {
-            File localBin = new File(userHome, ".local" + File.separator + "bin" + File.separator + exeName);
-            if (localBin.exists() && localBin.canExecute()) {
-                LOG.fine("Found in ~/.local/bin: {0}", localBin.getAbsolutePath());
-                return localBin.getAbsolutePath();
+        dirs.addAll(commonInstallDirs());
+        dirs.addAll(harnessInstallDirs(exeName));
+        for (File dir : dirs) {
+            String hit = probeDir(dir, exeName);
+            if (hit != null) {
+                return hit;
             }
         }
         // macOS app bundle locations (e.g., Devin CLI inside the app)
-        String macPath = findInMacAppBundleLocations(exeName);
-        if (macPath != null) {
-            return macPath;
+        return findInMacAppBundleLocations(exeName);
+    }
+
+    /**
+     * Well-known install directories common to all harnesses, in probe order:
+     * {@code ~/.local/bin}, %LOCALAPPDATA%\Microsoft\WinGet\Links and
+     * %ProgramData%\chocolatey\bin. Windows-only entries resolve from the
+     * environment variables and are skipped when unset.
+     */
+    private static List<File> commonInstallDirs() {
+        List<File> dirs = new ArrayList<>();
+        String userHome = System.getProperty("user.home");
+        if (isNotBlank(userHome)) {
+            dirs.add(new File(userHome, ".local" + File.separator + "bin"));
         }
-        return findInWellKnownWindowsLocations(exeName);
+        String localAppData = System.getenv("LOCALAPPDATA");
+        if (isNotBlank(localAppData)) {
+            dirs.add(new File(localAppData, "Microsoft" + File.separator + "WinGet" + File.separator + "Links"));
+        }
+        String programData = System.getenv("ProgramData");
+        if (isNotBlank(programData)) {
+            dirs.add(new File(programData, "chocolatey" + File.separator + "bin"));
+        }
+        return dirs;
+    }
+
+    /**
+     * Harness-specific install directories, in probe order, from the catalog's
+     * {@code windowsInstallSubdirs}. Each entry starts with {@code %LOCALAPPDATA%}
+     * or {@code %USERHOME%}, which is expanded from the environment
+     * variable/user property before use.
+     */
+    private static List<File> harnessInstallDirs(String exeName) {
+        HarnessCatalog.Harness h = HarnessCatalog.byBinaryName(exeName.toLowerCase(Locale.ROOT));
+        List<String> subdirs = h.windowsInstallSubDirs();
+        if (subdirs.isEmpty()) {
+            return List.of();
+        }
+        String localAppData = System.getenv("LOCALAPPDATA");
+        String userHome = System.getProperty("user.home");
+        List<File> dirs = new ArrayList<>();
+        for (String subdir : subdirs) {
+            String resolved;
+            if (subdir.startsWith("%LOCALAPPDATA%")) {
+                if (isBlank(localAppData)) {
+                    continue;
+                }
+                resolved = localAppData + subdir.substring("%LOCALAPPDATA%".length());
+            } else if (subdir.startsWith("%USERHOME%")) {
+                if (isBlank(userHome)) {
+                    continue;
+                }
+                resolved = userHome + subdir.substring("%USERHOME%".length());
+            } else {
+                resolved = subdir;
+            }
+            dirs.add(new File(resolved));
+        }
+        return dirs;
+    }
+
+    /**
+     * Returns the absolute path of {@code exeName} inside {@code dir}, also
+     * accepting the Windows {@code .exe} / {@code .cmd} extensions of an
+     * extension-less catalog name. Returns {@code null} when nothing matches.
+     */
+    private static String probeDir(File dir, String exeName) {
+        for (String name : executableNameVariants(exeName)) {
+            File candidate = new File(dir, name);
+            if (candidate.exists() && candidate.canExecute()) {
+                return candidate.getAbsolutePath();
+            }
+        }
+        return null;
     }
 
     /**
@@ -259,34 +331,16 @@ public final class BinaryResolver {
     }
 
     /**
-     * Checks well-known Windows install directories for the executable:
-     * the WinGet shim directory (%LOCALAPPDATA%\Microsoft\WinGet\Links) and
-     * the Chocolatey bin directory (%ProgramData%\chocolatey\bin), both of
-     * which are often not on PATH.
+     * The bare catalog name plus every executable form we may find it under:
+     * {@code .exe}, {@code .cmd} and {@code .bat} (WinGet, Chocolatey and
+     * {@code ~/.local/bin} install with the extension while catalog names
+     * carry none). Tried in every probed location, on every OS.
      */
-    private static String findInWellKnownWindowsLocations(String exeName) {
-        boolean isWindows = System.getProperty("os.name", "").toLowerCase().contains("win");
-        if (!isWindows) {
-            return null;
+    private static List<String> executableNameVariants(String exeName) {
+        if (exeName.endsWith(".exe") || exeName.endsWith(".cmd") || exeName.endsWith(".bat")) {
+            return List.of(exeName);
         }
-        String localAppData = System.getenv("LOCALAPPDATA");
-        if (isNotBlank(localAppData)) {
-            File winGet = new File(localAppData, "Microsoft" + File.separator + "WinGet" + File.separator
-                    + "Links" + File.separator + exeName);
-            if (winGet.exists() && winGet.canExecute()) {
-                LOG.info("Found opencode in WinGet Links: {0}", winGet.getAbsolutePath());
-                return winGet.getAbsolutePath();
-            }
-        }
-        String programData = System.getenv("ProgramData");
-        if (isNotBlank(programData)) {
-            File choco = new File(programData, "chocolatey" + File.separator + "bin" + File.separator + exeName);
-            if (choco.exists() && choco.canExecute()) {
-                LOG.info("Found opencode in Chocolatey bin: {0}", choco.getAbsolutePath());
-                return choco.getAbsolutePath();
-            }
-        }
-        return null;
+        return List.of(exeName, exeName + ".exe", exeName + ".cmd", exeName + ".bat");
     }
 
     /**

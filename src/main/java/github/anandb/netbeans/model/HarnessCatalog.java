@@ -43,7 +43,8 @@ public final class HarnessCatalog {
             String installMac,
             String installLinux,
             String prerequisites,
-            String docsUrl) {
+            String docsUrl,
+            List<String> windowsInstallSubDirs) {
 
         /**
          * Resolves the unsupported-model-selection message from the model
@@ -64,33 +65,39 @@ public final class HarnessCatalog {
                     ? "" : NbBundle.getMessage(HarnessCatalog.class, unsupportedModelSelectionPlaceholder);
         }
 
-        /** True when the given lowercase binary basename belongs to this harness. */
+        /** True when the given binary basename belongs to this harness, with or
+         *  without a Windows executable extension ({@code omp}, {@code omp.exe}). */
         public boolean matchesBinary(String binaryName) {
-            return binaryName != null && binaryNames.contains(binaryName.toLowerCase(Locale.ROOT));
+            String base = stripBinaryExtension(binaryName);
+            return base != null && binaryNames.contains(base);
         }
     }
 
     public static final Harness OPENCODE = new Harness(
-            "opencode", "OpenCode", "opencode",
-            List.of("opencode"), "acp",
-            false, true, true, true, true, true, false, true, false, true, true, true,
-            "",
-            "",
-            "winget install SST.opencode",
-            "brew install anomalyco/tap/opencode",
-            "curl -fsSL https://opencode.ai/install | bash",
-            "", "https://opencode.ai/docs/");
+        "opencode", "OpenCode", "opencode",
+        List.of("opencode"), "acp",
+        false, true, true, true, true, true, false, true, false, true, true, true,
+        "",
+        "",
+        "winget install SST.opencode",
+        "brew install anomalyco/tap/opencode",
+        "curl -fsSL https://opencode.ai/install | bash",
+        "", "https://opencode.ai/docs/",
+        List.of()
+    );
 
     public static final Harness GOOSE = new Harness(
-            "goose", "Goose", "goose",
-            List.of("goose"), "acp",
-            true, true, false, false, true, true, false, true, false, true, true, true,
-            "",
-            "",
-            "powershell -c \"iwr https://raw.githubusercontent.com/aaif-goose/goose/main/download_cli.ps1 -OutFile download_cli.ps1; .\\download_cli.ps1\"",
-            "brew install block-goose-cli",
-            "curl -fsSL https://github.com/aaif-goose/goose/releases/download/stable/download_cli.sh | bash",
-            "", "https://goose-docs.ai/docs/getting-started/installation");
+        "goose", "Goose", "goose",
+        List.of("goose"), "acp",
+        true, true, false, false, true, true, false, true, false, true, true, true,
+        "",
+        "",
+        "powershell -c \"iwr https://raw.githubusercontent.com/aaif-goose/goose/main/download_cli.ps1 -OutFile download_cli.ps1; .\\download_cli.ps1\"",
+        "brew install block-goose-cli",
+        "curl -fsSL https://github.com/aaif-goose/goose/releases/download/stable/download_cli.sh | bash",
+        "", "https://goose-docs.ai/docs/getting-started/installation",
+        List.of()
+    );
 
     public static final Harness PI = new Harness(
             "pi", "Pi", "pi-logo",
@@ -103,31 +110,37 @@ public final class HarnessCatalog {
             "curl -fsSL https://pi.dev/install.sh | sh",
             "Requires Node.js 22+ and pi 0.80.4+ on your PATH. Install the ACP adapter separately: "
                     + "npm install -g @geohar/pi-acp. For MCP Tools, add pi-mcp-adapter to your Pi packages.",
-            "https://github.com/georgeharker/pi-acp");
+            "https://github.com/georgeharker/pi-acp",
+            List.of("%LOCALAPPDATA%\\pi-node\\current")
+    );
 
     public static final Harness CURSOR = new Harness(
-            "cursor", "Cursor", "cursor",
-            List.of("agent", "cursor-agent"), "acp",
-            false, true, true, false, false, true, false, true, false, true, true, true,
-            "",
-            "",
-            "powershell -c \"irm 'https://cursor.com/install?win32=true' | iex\"",
-            "curl https://cursor.com/install -fsSL | bash",
-            "curl https://cursor.com/install -fsSL | bash",
-            "The ACP entry point is the cursor-agent CLI itself (run with \"agent acp\").",
-            "https://cursor.com/docs/cli/acp");
+        "cursor", "Cursor", "cursor",
+        List.of("agent", "cursor-agent"), "acp",
+        false, true, true, false, false, true, false, true, false, true, true, true,
+        "",
+        "",
+        "powershell -c \"irm 'https://cursor.com/install?win32=true' | iex\"",
+        "curl https://cursor.com/install -fsSL | bash",
+        "curl https://cursor.com/install -fsSL | bash",
+        "The ACP entry point is the cursor-agent CLI itself (run with \"agent acp\").",
+        "https://cursor.com/docs/cli/acp",
+        List.of()
+    );
 
     public static final Harness CLAUDE = new Harness(
-            "claude", "Claude", "claude",
-            List.of("claude-agent-acp"), "",
-            false, true, true, false, true, true, true, true, false, true, true, true,
-            "",
-            "",
-            "npm install -g @agentclientprotocol/claude-agent-acp",
-            "npm install -g @agentclientprotocol/claude-agent-acp",
-            "npm install -g @agentclientprotocol/claude-agent-acp",
-            "Requires Node.js 18+. Bundles the Claude Agent SDK, so a separate claude CLI install is not needed.",
-            "https://github.com/agentclientprotocol/claude-agent-acp");
+        "claude", "Claude", "claude",
+        List.of("claude-agent-acp"), "",
+        false, true, true, false, true, true, true, true, false, true, true, true,
+        "",
+        "",
+        "npm install -g @agentclientprotocol/claude-agent-acp",
+        "npm install -g @agentclientprotocol/claude-agent-acp",
+        "npm install -g @agentclientprotocol/claude-agent-acp",
+        "Requires Node.js 18+. Bundles the Claude Agent SDK, so a separate claude CLI install is not needed.",
+        "https://github.com/agentclientprotocol/claude-agent-acp",
+        List.of()
+    );
 
     public static final Harness HERMES = new Harness(
             "hermes", "Hermes", "hermes",
@@ -139,62 +152,74 @@ public final class HarnessCatalog {
             "curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash",
             "curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash",
             "Requires Python 3.10+. Enable ACP with: cd ~/.hermes/hermes-agent && uv pip install -e '.[acp]'.",
-            "https://hermes-agent.nousresearch.com/docs/user-guide/features/acp");
+            "https://hermes-agent.nousresearch.com/docs/user-guide/features/acp",
+            List.of("%LOCALAPPDATA%\\hermes\\bin")
+    );
 
     public static final Harness GEMINI = new Harness(
-            "gemini", "Gemini", "gemini",
-            List.of("gemini"), "--acp --model gemini-3.5-flash",
-            false, true, true, false, true, true, true, false, false, false, false, true,
-            "MSG_UnsupportedModelSelection",
-            "MSG_GeminiUnsupportedModelSelectionPlaceholder",
-            "npm install -g @google/gemini-cli", "npm install -g @google/gemini-cli", "npm install -g @google/gemini-cli",
-            "Requires Node.js 20+",
-            "https://geminicli.com/docs/get-started/installation/");
+        "gemini", "Gemini", "gemini",
+        List.of("gemini"), "--acp --model gemini-3.5-flash",
+        false, true, true, false, true, true, true, false, false, false, false, true,
+        "MSG_UnsupportedModelSelection",
+        "MSG_GeminiUnsupportedModelSelectionPlaceholder",
+        "npm install -g @google/gemini-cli", "npm install -g @google/gemini-cli", "npm install -g @google/gemini-cli",
+        "Requires Node.js 20+",
+        "https://geminicli.com/docs/get-started/installation/",
+        List.of()
+    );
 
     public static final Harness OMP = new Harness(
-            "omp", "Oh My Pi", "omp",
-            List.of("omp"), "acp",
-            false, true, true, false, true, true, true, true, false, true, true, true,
-            "",
-            "",
-            "powershell -c \"irm https://omp.sh/install.ps1 | iex\"",
-            "curl -fsSL https://omp.sh/install | sh",
-            "curl -fsSL https://omp.sh/install | sh",
-            "Authenticate a model provider in a terminal (omp, then /login) before ACP. The ACP entry point is omp acp.",
-            "https://omp.sh/docs/acp");
+        "omp", "Oh My Pi", "omp",
+        List.of("omp"), "acp",
+        false, true, true, false, true, true, true, true, false, true, true, true,
+        "",
+        "",
+        "powershell -c \"irm https://omp.sh/install.ps1 | iex\"",
+        "curl -fsSL https://omp.sh/install | sh",
+        "curl -fsSL https://omp.sh/install | sh",
+        "Authenticate a model provider in a terminal (omp, then /login) before ACP. The ACP entry point is omp acp.",
+        "https://omp.sh/docs/acp",
+        List.of("%LOCALAPPDATA%\\omp")
+    );
 
     public static final Harness OPENCLAW = new Harness(
-            "openclaw", "OpenClaw", "openclaw",
-            List.of("openclaw"), "acp",
-            true, false, true, false, false, true, false, true, false, false, false, false,
-            "MSG_OpenClawUnsupportedModelSelection",
-            "MSG_OpenClawUnsupportedModelSelectionPlaceholder",
-            "powershell -c \"iwr -useb https://openclaw.ai/install.ps1 | iex\"",
-            "curl -fsSL https://openclaw.ai/install.sh | bash",
-            "curl -fsSL https://openclaw.ai/install.sh | bash",
-            "Requires Node 24.16+ or 26.1+ - Node 26 is recommended; the installer provisions Node 26 on macOS and Node 24 LTS on Linux",
-            "https://docs.openclaw.ai/install");
+        "openclaw", "OpenClaw", "openclaw",
+        List.of("openclaw"), "acp",
+        true, false, true, false, false, true, false, true, false, false, false, false,
+        "MSG_OpenClawUnsupportedModelSelection",
+        "MSG_OpenClawUnsupportedModelSelectionPlaceholder",
+        "powershell -c \"iwr -useb https://openclaw.ai/install.ps1 | iex\"",
+        "curl -fsSL https://openclaw.ai/install.sh | bash",
+        "curl -fsSL https://openclaw.ai/install.sh | bash",
+        "Requires Node 24.16+ or 26.1+ - Node 26 is recommended; the installer provisions Node 26 on macOS and Node 24 LTS on Linux",
+        "https://docs.openclaw.ai/install",
+        List.of()
+    );
 
     public static final Harness DEVIN = new Harness(
-            "devin", "Devin", "devin",
-            List.of("devin"), "acp",
-            false, true, true, false, false, true, false, true, false, true, true, true,
-            "",
-            "",
-            "powershell -c \"irm https://static.devin.ai/cli/setup.ps1 | iex\"",
-            "brew install --cask devin-cli",
-            "curl -fsSL https://cli.devin.ai/install.sh | bash",
-            "",
-            "https://docs.devin.ai/cli");
+        "devin", "Devin", "devin",
+        List.of("devin"), "acp",
+        false, true, true, false, false, true, false, true, false, true, true, true,
+        "",
+        "",
+        "powershell -c \"irm https://static.devin.ai/cli/setup.ps1 | iex\"",
+        "brew install --cask devin-cli",
+        "curl -fsSL https://cli.devin.ai/install.sh | bash",
+        "",
+        "https://docs.devin.ai/cli",
+        List.of()
+    );
 
     /** Fallback for unknown harnesses. */
     public static final Harness UNKNOWN = new Harness(
-            "unknown", "Agent", "agent",
-            List.of(), "",
-            true, true, true, false, false, true, false, true, false, true, true, true,
-            "",
-            "",
-            "", "", "", "", "");
+        "unknown", "Agent", "agent",
+        List.of(), "",
+        true, true, true, false, false, true, false, true, false, true, true, true,
+        "",
+        "",
+        "", "", "", "", "",
+        List.of()
+    );
 
     /** All supported harnesses, in the order offered during onboarding. */
     public static final List<Harness> ALL =
@@ -210,7 +235,8 @@ public final class HarnessCatalog {
         return UNKNOWN;
     }
 
-    /** Finds the harness that owns the given lowercase binary basename; {@link #UNKNOWN} when not found. */
+    /** Finds the harness that owns the given binary basename; {@link #UNKNOWN} when not found.
+     *  Accepts bare names and Windows-ornamented ones ({@code omp.exe}). */
     public static Harness byBinaryName(String binaryName) {
         for (Harness h : ALL) {
             if (h.matchesBinary(binaryName)) {
@@ -218,6 +244,25 @@ public final class HarnessCatalog {
             }
         }
         return UNKNOWN;
+    }
+
+    /**
+     * Normalizes a binary basename for catalog lookup: trims a trailing Windows
+     * executable extension ({@code .exe} / {@code .cmd}) and lowercases, so
+     * {@code "OMP.EXE"} and {@code "omp"} both yield {@code "omp"}.
+     * Returns {@code null} for null or blank input. Mirrors
+     * {@code BinaryResolver.binaryNameFromPath} — the two extension sets must
+     * stay identical.
+     */
+    public static String stripBinaryExtension(String binaryName) {
+        if (binaryName == null || binaryName.isBlank()) {
+            return null;
+        }
+        String name = binaryName.toLowerCase(Locale.ROOT);
+        if (name.endsWith(".exe") || name.endsWith(".cmd")) {
+            name = name.substring(0, name.lastIndexOf('.'));
+        }
+        return name;
     }
 
     /**

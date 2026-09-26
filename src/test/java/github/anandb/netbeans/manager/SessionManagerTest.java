@@ -1070,7 +1070,8 @@ class SessionManagerTest {
                 "setmodel-only", "SetModel Only", "agent",
                 List.of("agent"), "",
                 false, true, true, false, true, true, false, false, true, true, true, true,
-                "", "", "", "", "", "", "");
+                "", "", "", "", "", "", "",
+                List.of());
         ProcessControl pc = mock(ProcessControl.class);
         when(pc.getCapabilities()).thenReturn(setModelOnly);
 
