@@ -568,6 +568,9 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         if (!(newSessionBtn instanceof AttentionButton ab)) {
             return;
         }
+        if (!ab.isEnabled()) {
+            return;
+        }
 
         if (attentionShakeTimer != null && attentionShakeTimer.isRunning()) {
             return;
