@@ -46,7 +46,10 @@ import org.netbeans.api.project.Project;
 
 import github.anandb.netbeans.contract.SessionQuery;
 import github.anandb.netbeans.contract.UsageStatsStore;
+import github.anandb.netbeans.model.UsageRecords.GroupTotals;
 import github.anandb.netbeans.model.UsageRecords.UsageSummary;
+
+import java.util.List;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.UsageStatsFormat;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
@@ -230,7 +233,15 @@ public class TokenUsageDialog extends JDialog {
                 UsageSummary summary = store != null
                         ? store.query(days, projectDir, System.currentTimeMillis())
                         : UsageSummary.empty();
-                String styledHtml = renderSummaryHtml(summary, currentTheme);
+                List<GroupTotals> byModel = store != null
+                        ? store.queryGrouped(days, projectDir, System.currentTimeMillis(),
+                                UsageStatsStore.GroupBy.MODEL)
+                        : List.of();
+                List<GroupTotals> byAgent = store != null
+                        ? store.queryGrouped(days, projectDir, System.currentTimeMillis(),
+                                UsageStatsStore.GroupBy.HARNESS)
+                        : List.of();
+                String styledHtml = renderSummaryHtml(summary, byModel, byAgent, currentTheme);
                 SwingUtilities.invokeLater(() -> {
                     statsPane.setText(styledHtml);
                     if (firstRefresh) {
@@ -272,9 +283,11 @@ public class TokenUsageDialog extends JDialog {
 
     /**
      * Renders the OVERVIEW and COST &amp; TOKENS blocks as themed HTML tables
-     * from the aggregated summary.
+     * from the aggregated summary, then the breakdown tables grouped by model
+     * and by agent. Group tables are omitted when the group list is empty.
      */
-    static String renderSummaryHtml(UsageSummary summary, ColorTheme theme) {
+    static String renderSummaryHtml(UsageSummary summary, List<GroupTotals> byModel,
+                                    List<GroupTotals> byAgent, ColorTheme theme) {
         String bg = theme.toHtmlHex(theme.bubbleAssistant());
         String fg = theme.toHtmlHex(theme.assistantForeground());
         String borderColor = theme.toHtmlHex(theme.tableBorder());
@@ -310,8 +323,61 @@ public class TokenUsageDialog extends JDialog {
             {"LBL_CacheRead", UsageStatsFormat.abbreviated(summary.cachedReadTokens())},
         });
 
+        String[] groupHeaders = {"LBL_Sessions", "LBL_Messages", "LBL_ToolCalls",
+            "LBL_Input", "LBL_Output", "LBL_CacheRead", "LBL_TotalCost"};
+        if (!byModel.isEmpty()) {
+            appendGroupTable(sb, "LBL_ByModel", groupHeaders, byModel, headerBg, altBg);
+        }
+        if (!byAgent.isEmpty()) {
+            appendGroupTable(sb, "LBL_ByAgent", groupHeaders, byAgent, headerBg, altBg);
+        }
+
         sb.append("</body></html>");
         return sb.toString();
+    }
+
+    /**
+     * Renders one breakdown table: the group key in the header column, then
+     * Sessions, Messages, Tool Calls, Input, Output, Cache Read and Total
+     * Cost columns per group. Costs carry four decimals to keep the small
+     * per-group amounts readable.
+     */
+    private static void appendGroupTable(StringBuilder sb, String titleKey, String[] headerKeys,
+                                         List<GroupTotals> rows, String headerBg, String altBg) {
+        sb.append("<table><tr><th>")
+          .append(escapeHtml(NbBundle.getMessage(TokenUsageDialog.class, titleKey)))
+          .append("</th>");
+        for (String key : headerKeys) {
+            sb.append("<th style='text-align:right;'>")
+              .append(escapeHtml(NbBundle.getMessage(TokenUsageDialog.class, key)))
+              .append("</th>");
+        }
+        sb.append("</tr>");
+        boolean alt = false;
+        for (GroupTotals row : rows) {
+            String label = row.groupKey() == null || row.groupKey().isBlank()
+                    ? NbBundle.getMessage(TokenUsageDialog.class, "LBL_NotAttributed")
+                    : row.groupKey();
+            sb.append("<tr").append(alt ? " style='background-color: " + altBg + ";'" : "").append(">")
+              .append("<td style='white-space:nowrap;'>").append(escapeHtml(label)).append("</td>")
+              .append("<td style='text-align:right;'>").append(escapeHtml(
+                      UsageStatsFormat.thousands(row.sessions()))).append("</td>")
+              .append("<td style='text-align:right;'>").append(escapeHtml(
+                      UsageStatsFormat.thousands(row.messages()))).append("</td>")
+              .append("<td style='text-align:right;'>").append(escapeHtml(
+                      UsageStatsFormat.thousands(row.toolCalls()))).append("</td>")
+              .append("<td style='text-align:right;'>").append(escapeHtml(
+                      UsageStatsFormat.abbreviated(row.inputTokens()))).append("</td>")
+              .append("<td style='text-align:right;'>").append(escapeHtml(
+                      UsageStatsFormat.abbreviated(row.outputTokens()))).append("</td>")
+              .append("<td style='text-align:right;'>").append(escapeHtml(
+                      UsageStatsFormat.abbreviated(row.cachedReadTokens()))).append("</td>")
+              .append("<td style='text-align:right;'>").append(escapeHtml(
+                      UsageStatsFormat.cost(row.cost()))).append("</td>")
+              .append("</tr>");
+            alt = !alt;
+        }
+        sb.append("</table>");
     }
 
     private static void appendTable(StringBuilder sb, String titleKey, String headerBg,

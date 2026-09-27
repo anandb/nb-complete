@@ -14,10 +14,11 @@ class UsageStatsFormatTest {
     }
 
     @Test
-    void costUsesASymbolAndTwoDecimals() {
-        assertEquals("$0.00", UsageStatsFormat.cost(0));
-        assertEquals("$1.50", UsageStatsFormat.cost(1.5));
-        assertEquals("$137.33", UsageStatsFormat.cost(137.33));
+    void costUsesASymbolAndFourDecimals() {
+        assertEquals("$0.0000", UsageStatsFormat.cost(0));
+        assertEquals("$1.5000", UsageStatsFormat.cost(1.5));
+        assertEquals("$137.3300", UsageStatsFormat.cost(137.33));
+        assertEquals("$0.0739", UsageStatsFormat.cost(0.0738938));
     }
 
     @Test

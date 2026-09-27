@@ -17,9 +17,9 @@ public final class UsageStatsFormat {
         return String.format(Locale.ROOT, "%,d", value);
     }
 
-    /** Formats a USD amount with a symbol and exactly two decimals, e.g. {@code $1.53}. */
+    /** Formats a USD amount with a symbol and exactly four decimals, e.g. {@code $0.0739}. */
     public static String cost(double amount) {
-        return "$" + String.format(Locale.ROOT, "%.2f", amount);
+        return "$" + String.format(Locale.ROOT, "%.4f", amount);
     }
 
     /**
