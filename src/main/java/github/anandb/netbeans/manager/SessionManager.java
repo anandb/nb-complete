@@ -108,14 +108,47 @@ public class SessionManager implements SessionQuery, SessionControl {
     /** Returns the model id currently in force for the session, or null. */
     @Override
     public String getSessionModelId(String sessionId) {
+        // Prefer the explicitly recorded model: it is updated on every model
+        // switch, whereas models()/configOptions() carry the snapshot taken at
+        // session/new or session/load and go stale after set_model.
+        String modelId = modelBySession.get(sessionId);
         Session session = getSession(sessionId);
-        String modelId = session != null && session.models() != null ? session.models().currentModelId() : null;
-        // Fallback to AcpSessionInfo if session doesn't have model ID yet
-        if (modelId == null) {
+        if (isBlank(modelId) && session != null && session.models() != null) {
+            modelId = session.models().currentModelId();
+        }
+        // Harnesses that expose the model as a "model" config option (goose-style,
+        // e.g. omp) never populate models() nor call session/set_model.
+        if (isBlank(modelId) && session != null) {
+            modelId = modelIdFromOptions(session.configOptions());
+        }
+        if (isBlank(modelId)) {
             modelId = AcpSessionInfo.getInstance().getModelId();
             if ("unknown".equals(modelId)) modelId = null;
         }
         return modelId;
+    }
+
+    /**
+     * Returns the {@code currentValue} of the model option, or null. The model
+     * option is identified by id/category {@code "model"} or the name {@code "Model"}
+     * — harnesses vary in which of the three they set.
+     */
+    static String modelIdFromOptions(List<SessionConfigOption> options) {
+        if (options == null) {
+            return null;
+        }
+        for (SessionConfigOption option : options) {
+            if (option == null) {
+                continue;
+            }
+            boolean isModel = "model".equals(option.id()) || "model".equals(option.category())
+                    || "Model".equalsIgnoreCase(option.name());
+            String value = option.currentValue();
+            if (isModel && !isBlank(value)) {
+                return value;
+            }
+        }
+        return null;
     }
 
     /** Returns the working directory captured for the session, or null. */
@@ -218,6 +251,13 @@ public class SessionManager implements SessionQuery, SessionControl {
     ) {}
 
     private final Map<String, SessionMetadata> metadataCache = new ConcurrentHashMap<>();
+    /**
+     * Model id per session, learned from the {@code model} config option. Harnesses
+     * that report the model as a config option (goose-style, e.g. omp) send neither
+     * a {@code models} object nor {@code session/set_model}, so the session record
+     * alone cannot answer {@link #getSessionModelId}.
+     */
+    private final Map<String, String> modelBySession = new ConcurrentHashMap<>();
     private String cachedAgent = null;
 
     private synchronized Map<String, SessionMetadata> getMetadataCache() {
@@ -1092,6 +1132,10 @@ public class SessionManager implements SessionQuery, SessionControl {
                 .whenComplete((res, ex) -> {
                     if (ex != null) {
                         LOG.warn("Failed to set model {0}: {1}", modelId, ExceptionUtils.getMessage(ex));
+                    } else if (!isBlank(modelId)) {
+                        // Record only on success, so a rejected switch does not
+                        // misattribute usage; the session snapshot stays stale.
+                        modelBySession.put(sessionId, modelId);
                     }
                 });
     }
@@ -1477,18 +1521,18 @@ public class SessionManager implements SessionQuery, SessionControl {
     @Override
     public void closeSession() {
         String sessionId = this.currentSessionId;
-        
+
         // The id is nulled UNCONDITIONALLY: a close must always drop it.
         // Drop the stale project-dir fallback so that
         // getCurrentSessionDirectory() no longer reports the closed
         // session's directory (e.g. to auto-backup or context capture).
-        this.currentSessionId = null;        
+        this.currentSessionId = null;
         this.lastProjectDir = null;
-        
+
         if (stateMachine.transitionTo(SessionState.IDLE)) {
             new ArrayList<>(listeners).forEach(l -> l.onSessionLoading(false));
         }
-        
+
         if (sessionId != null) {
             StrategyRegistry.invalidateSession(sessionId);
         }
@@ -1570,6 +1614,13 @@ public class SessionManager implements SessionQuery, SessionControl {
     }
 
     private void notifySessionLoaded(String sessionId, List<SessionConfigOption> options, boolean isStartup) {
+        // Remember the effective model for attribution. session/new, session/load
+        // and set_config_option all funnel through here, and a harness may report
+        // the model only as a config option (see getSessionModelId).
+        String modelId = modelIdFromOptions(options);
+        if (modelId != null) {
+            modelBySession.put(sessionId, modelId);
+        }
         new ArrayList<>(listeners).forEach(l -> l.onSessionLoaded(sessionId, options, isStartup));
     }
 

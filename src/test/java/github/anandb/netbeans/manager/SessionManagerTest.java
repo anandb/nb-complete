@@ -50,10 +50,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import github.anandb.netbeans.contract.ToolExecutor;
 import github.anandb.netbeans.contract.SessionListener;
+import github.anandb.netbeans.model.ModelsInfo;
 import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.model.SessionConfigOption;
 import github.anandb.netbeans.model.SessionState;
 import github.anandb.netbeans.model.SessionUpdate;
+import github.anandb.netbeans.support.AcpSessionInfo;
 import github.anandb.netbeans.support.MapperSupplier;
 import github.anandb.netbeans.support.PreferenceKeys;
 
@@ -99,6 +101,9 @@ class SessionManagerTest {
     @AfterEach
     void tearDown() {
         NbPreferences.forModule(PreferenceKeys.class).remove(PreferenceKeys.ACP_HARNESS_ID);
+        // setSessionModel publishes the model on the shared singleton; clear it so
+        // the last-resort attribution fallback cannot leak into other tests.
+        AcpSessionInfo.getInstance().setModelName(null);
         if (pmMock != null) {
             pmMock.close();
         }
@@ -330,6 +335,59 @@ class SessionManagerTest {
                 assertEquals("default", o.currentValue());
             }
         }
+    }
+
+    @Test
+    void modelIdFromOptionsMatchesByIdCategoryOrName() {
+        assertEquals("m", SessionManager.modelIdFromOptions(List.of(
+                new SessionConfigOption("model", "Model", "", "model", "select", "m", List.of()))));
+        assertEquals("by-name", SessionManager.modelIdFromOptions(List.of(
+                new SessionConfigOption("x", "Model", "", null, "select", "by-name", List.of()))));
+        assertNull(SessionManager.modelIdFromOptions(null));
+        assertNull(SessionManager.modelIdFromOptions(List.of()));
+        assertNull(SessionManager.modelIdFromOptions(List.of(
+                new SessionConfigOption("mode", "Mode", "", "mode", "select", "default", List.of()))));
+        assertNull(SessionManager.modelIdFromOptions(List.of(
+                new SessionConfigOption("model", "Model", "", "model", "select", "  ", List.of()))));
+    }
+
+    @Test
+    void gooseStyleModelConfigOptionFeedsSessionModelId() throws Exception {
+        // omp/pi-acp report the model only as a "model" config option and send
+        // neither a models object nor session/set_model. Attribution must still
+        // see the model, or every usage row lands with a null model.
+        JsonNode mockResponse = mapper.readTree(
+                "{\"sessionId\":\"goose-1\",\"cwd\":\"/test/cwd\",\"modes\":{"
+                + "\"availableModes\":[{\"id\":\"default\",\"name\":\"Default\"}],\"currentModeId\":\"default\"},"
+                + "\"configOptions\":[{\"id\":\"model\",\"category\":\"model\",\"name\":\"Model\","
+                + "\"type\":\"select\",\"currentValue\":\"opencode-go/mimo-v2.5\",\"options\":[]}]}");
+        when(processManager.sendRequest(eq("session/new"), any(), eq(60L), eq(TimeUnit.SECONDS)))
+                .thenReturn(CompletableFuture.completedFuture(mockResponse));
+
+        sessionManager.addSessionListener(mockListener());
+        sessionManager.createNewSession("/test/cwd");
+        long deadline = System.currentTimeMillis() + 5000;
+        while (lastLoadedSessionId == null && System.currentTimeMillis() < deadline) {
+            Thread.sleep(50);
+        }
+
+        assertEquals("goose-1", lastLoadedSessionId);
+        assertEquals("opencode-go/mimo-v2.5", sessionManager.getSessionModelId("goose-1"));
+    }
+
+    @Test
+    void setModelOverridesStaleSessionSnapshot() throws Exception {
+        // session/new records the initial model; a later switch leaves models()
+        // stale. The recorded switch must win, or usage is misattributed.
+        when(processManager.sendRequest(eq("session/set_model"), any(), eq(30L), eq(TimeUnit.SECONDS)))
+                .thenReturn(CompletableFuture.completedFuture(null));
+        cacheManager().cacheSession(new Session("s1", "s1", "/test/cwd", "/test/cwd", null,
+                "2026-09-12T00:00:00Z", List.of(), List.of(),
+                new ModelsInfo(List.of(), "old-model"), null));
+
+        sessionManager.setSessionModel("s1", "new-model").get(5, TimeUnit.SECONDS);
+
+        assertEquals("new-model", sessionManager.getSessionModelId("s1"));
     }
 
     @Test
