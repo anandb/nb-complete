@@ -24,7 +24,6 @@ import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.BinaryResolver;
 import github.anandb.netbeans.support.FsWriteSettings;
 import github.anandb.netbeans.support.ProcessTerminator;
-import github.anandb.netbeans.support.AcpSessionInfo;
 
 /**
  * Extracted server lifecycle methods from ProcessManager.
@@ -239,7 +238,13 @@ class ServerProcessLifecycle {
                         if (agentInfo != null) {
                             String name = agentInfo.has("name") ? agentInfo.get("name").asText() : null;
                             String version = agentInfo.has("version") ? agentInfo.get("version").asText() : null;
-                            AcpSessionInfo.getInstance().setHarnessInfo(name, version);
+                            if (name != null && !name.isBlank()) {
+                                // Only a named agent may replace the name seeded from
+                                // preferences above: that seed is what names the wire
+                                // log and stamps harness attribution, and an unnamed
+                                // agentInfo must not wipe it back to "unknown".
+                                AcpSessionInfo.getInstance().setHarnessInfo(name, version);
+                            }
                         }
                         // Resolve harness from stored preferences, ignoring the
                         // agent name from the initialize response.

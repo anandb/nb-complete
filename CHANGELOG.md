@@ -1,5 +1,42 @@
 # Release Notes
 
+## v1.22.0 (Changes since v1.21.1)
+
+### Features
+- **Native usage and cost capture**: The token-stats figures now come from the ACP traffic the plugin already receives, recorded into an embedded H2 database under the NetBeans user directory, instead of spawning `opencode stats`. Two payloads feed it — the `usage_update` notification (context gauge plus reported cost) and the `session/prompt` result's `usage` object (per-turn tokens) — plus a third path counting user/assistant/tool/thought updates for the overview message total. Writes are queued onto a single daemon thread so capture never blocks the caller, and the currency button is now unconditional since every harness is assumed to report usage (`8ae23aa3`).
+- **Breakdown by model and agent**: The panel gains BY MODEL and BY AGENT tables after the totals — per group: Sessions, Messages, Tool Calls, Input, Output, Cache Read and Total Cost. Tool-call counts come from the registry's own deduplicated tool-call stream; groups with unknown attribution render as "(not attributed)" and the tables are omitted when the window has none (`3ccbf886`, `95de5a12`).
+- **Per-group tables and fitted dialog**: Each group renders as one narrow two-column table rather than a column in a single wide one, so the dialog width no longer grows with the number of groups; it now sizes itself to the measured content width, clamped to the screen, so the by-model and by-agent columns are no longer clipped (`d9fdb800`).
+- **Four-decimal costs**: `$0.0739` instead of `$0.07`. Per-group charges are small enough that cent rounding hid them, which fed the earlier "cost reads as zero" confusion; totals, averages and group rows all use the same formatter (`95de5a12`).
+- **Model list persisted per harness**: The last known model list is cached per harness (`modelList.<harnessId>` in the module preferences file) and seeds the dropdown before a session has reported models, so it survives a restart and rides along with the existing preference migration across NetBeans versions (`72fa62a7`).
+
+### Fixes
+- **Model attribution from config options**: omp/pi-acp report the model only as a `model` config option and send neither a models object nor `session/set_model`, so every captured row had a null model. A per-session map is now populated from the loaded config options and from a successful switch, and is checked before the session snapshot (`1954cda9`).
+- **One model, one group**: Harnesses report the same model as `provider:model` or `provider/model`, which split it into two groups — the live database held both forms. Model ids are canonicalised at the single point every captured row passes through, and a schema upgrade rewrites rows already stored (`5197e387`).
+- **Cost stored as a per-session delta**: Harnesses repeat the session's cumulative cost across notifications, so summing raw values double-counted spend and showed a stale total. Each row stores the delta against that session's already-recorded spend, which telescopes to the true cumulative figure and survives restarts (`395645d0`).
+- **Cent-stable cost sums**: `cost_amount` was a DOUBLE whose summed floating-point error drifted into the last cent digits. The column is now `NUMERIC(20,6)`, with a versioned upgrade that preserves existing rows (`2507db68`).
+- **Connection leak on schema failure**: `open()` obtained the JDBC connection outside try-with-resources, so a failed schema step abandoned it while every retry opened another — and a leaked file-backed connection keeps the `.mv.db` lock, so the store could stop reopening at all (`e8ba9a06`).
+- **Combine tool+thought toggle**: The setting was snapshotted into a static field that lost its change listener, so toggling it did nothing until a JVM restart (`ac263da4`).
+- **Model list mirrored off the EDT**: The preference mirror ran inside an EDT lambda, where a first-miss backing-store read could stall the UI, on the shared common pool; it now runs on a dedicated daemon executor so it cannot starve unrelated parallel work (`b4f12a80`, `620dbee0`).
+- **Wire-log naming**: The log is named after the harness taken from the configured binary before the server is contacted, so the first connection in a JVM no longer writes to a `-unknown` file (`c0287a4c`).
+- **Adversarial-review hardening**: Only a non-blank agent name may replace the harness name seeded from preferences, so an unnamed `agentInfo` can no longer degrade the wire-log name and harness attribution; the process-global model fallback is gone, since answering for one session from another's last model could stamp a usage row with the wrong model; `getSessionModelId(null)` returns null instead of throwing.
+
+### Refactoring
+- **MCP tool schemas**: 61 hand-written Jackson property blocks and their required arrays across the eight providers collapse into a fluent `ToolSchema` builder (net −165 lines), with byte-identical output pinned by parity tests that rebuild two former hand-written schemas (`043bfd00`).
+- **Toggle preferences cached**: Hidden-session, keep-older-messages, tool/thought filter, echo and combine-tool/thought toggles read `PluginSettings` cached fields refreshed by its preference listener, so hot paths no longer touch `NbPreferences`. Also fixes the tool/thought filters being written to the options-panel preference node rather than the module anchor (`85a4a283`).
+- **Local history and session metadata moved to the database**: Input history, per-session metadata (title, hidden flag, directory, context usage) and the client-tracked session-id lists now live in the same H2 store, keyed once rather than twice. A one-shot, idempotent migration copies the legacy preference data on first start and deletes only what it confirmed written — anything unreadable is kept, counted, and reported in a non-modal notification rather than failing startup (`79e54792`).
+
+### Tests
+- **Capture hand-over pinned**: `StrategyRegistryCaptureTest` injects a recording store through the Lookup seam and pins the capture invariants the H2 tests could not — a costless `usage_update` still records a row with the USD fallback, attribution rides through verbatim, `session/load` replays record nothing, and a message id streaming repeatedly counts once (`3c2dac74`).
+- **Test JVM isolated from the working tree**: The test JVM's NetBeans user directory is pinned under `target/`, so the stats database and preference files a test resolves are never written into the repository, with a guard test asserting the location (`12cecc25`).
+- **Migration and store coverage**: the preference migration is covered for the round-trip, unreadable entries, an unopenable database, the unconfigured-harness bucket, legacy per-session keys, separator-bearing session ids and the history cap (`79e54792`, `5197e387`).
+
+### Documentation
+- **Devin agent page**: New page covering `devin acp`, the per-platform install, the login caveat that a `WINDSURF_API_KEY` in the environment overrides the stored `devin auth login`, and which surfaces the plugin wires up — linked from Pick Your Harness, the harness list in Choose Your Coding Harness, and the Topic Index. Also fixes Harlowe verbiage on that page and adds Devin to the queuing page's interleaved list (`e3d25039`, `467633b5`).
+- **`getHarnessId` documented in contract terms** — the Javadoc said "session id" while the method returns the harness id (`8ad297fb`).
+
+### Housekeeping
+- Version bumped to 1.22.0.
+
 ## v1.21.1 (Changes since v1.21.0)
 
 ### Features

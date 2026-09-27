@@ -60,7 +60,6 @@ import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.model.SessionConfigOption;
 import github.anandb.netbeans.model.SessionState;
 import github.anandb.netbeans.model.SessionUpdate;
-import github.anandb.netbeans.support.AcpSessionInfo;
 import github.anandb.netbeans.support.MapperSupplier;
 import github.anandb.netbeans.support.PreferenceKeys;
 
@@ -109,9 +108,6 @@ class SessionManagerTest {
     @AfterEach
     void tearDown() {
         NbPreferences.forModule(PreferenceKeys.class).remove(PreferenceKeys.ACP_HARNESS_ID);
-        // setSessionModel publishes the model on the shared singleton; clear it so
-        // the last-resort attribution fallback cannot leak into other tests.
-        AcpSessionInfo.getInstance().setModelName(null);
         if (pmMock != null) {
             pmMock.close();
         }
@@ -416,6 +412,24 @@ class SessionManagerTest {
                 new SessionConfigOption("mode", "Mode", "", "mode", "select", "default", List.of()))));
         assertNull(SessionManager.modelIdFromOptions(List.of(
                 new SessionConfigOption("model", "Model", "", "model", "select", "  ", List.of()))));
+    }
+
+    @Test
+    void modelIdFromOptionsCanonicalisesTheSeparator() {
+        // The store writes the canonical form, so the getter must answer in the
+        // same form or a caller comparing the two sees a mismatch.
+        assertEquals("opencode-go/deepseek-v4.1-flash", SessionManager.modelIdFromOptions(List.of(
+                new SessionConfigOption("model", "Model", "", "model", "select",
+                        "opencode-go:deepseek-v4.1-flash", List.of()))));
+    }
+
+    @Test
+    void aSessionWithNoModelInfoHasNoModel() {
+        // Deliberately null rather than a process-global guess: a model belongs to
+        // a session, and answering from another session's last choice would stamp
+        // this session's usage row with the wrong model.
+        assertNull(sessionManager.getSessionModelId("never-seen"));
+        assertNull(sessionManager.getSessionModelId(null));
     }
 
     @Test

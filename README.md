@@ -1,6 +1,6 @@
 # BeanBot
 
-[![Version](https://img.shields.io/badge/version-1.21.1-blue.svg)](pom.xml)
+[![Version](https://img.shields.io/badge/version-1.22.0-blue.svg)](pom.xml)
 [![Build Status](https://img.shields.io/badge/build-success-brightgreen.svg)](https://github.com/anandb/nb-complete)
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.anandb/beanbot)](https://central.sonatype.com/artifact/io.github.anandb/beanbot/versions)
 [![NetBeans](https://img.shields.io/badge/NetBeans-RELEASE220-blue.svg)](https://netbeans.apache.org/download/index.html)
@@ -21,6 +21,8 @@ BeanBot is a NetBeans IDE plugin designed to provide integrated AI capabilities 
 See the [User Guide](https://anandb.github.io/beanbot_user_guide.html) for setup, feature details, and usage instructions.
 
 Supported coding harnesses: **Oh My Pi, OpenCode, OpenClaw, Pi, Goose, Cursor, Claude, Hermes, Gemini, Devin** — pick one during onboarding or later from the help menu.
+
+**Token and cost statistics** are captured from the ACP traffic itself, not from an external process: the usage updates and per-turn token figures a harness already sends are recorded into an embedded H2 database under the NetBeans user directory (`beanbot/usage-stats.mv.db`), so they survive restarts and are readable without a harness running. The currency button in the toolbar opens the panel, which breaks the figures down by model and by agent; they are approximate for harnesses that report incomplete usage.
 
 ### Test Configuration
 
@@ -127,12 +129,12 @@ All source lives under `src/main/java/github/anandb/netbeans/`:
 
 | Package | Files | Role |
 | --- | --- | --- |
-| `contract/` | 23 | Service interfaces (UI callbacks, session & process control, permission & request handlers, pinned message control) |
-| `manager/` | 22 | Core orchestration, protocol clients, session management, process lifecycle (includes `strategy/`, file cache, VCS ignore) |
-| `mcp/` | 41 | MCP server integration (editor, filesystem, VCS, task and project tool providers, tool input records, message servlet) |
-| `model/` | 25 | ACP-compliant data models (session, messages, updates, config options, color tokens) |
+| `contract/` | 26 | Service interfaces (UI callbacks, session & process control, permission & request handlers, pinned message control) |
+| `manager/` | 25 | Core orchestration, protocol clients, session management, process lifecycle (includes `strategy/`, file cache, VCS ignore, the usage-stats and session store) |
+| `mcp/` | 42 | MCP server integration (editor, filesystem, VCS, task and project tool providers, tool input records, message servlet) |
+| `model/` | 28 | ACP-compliant data models (session, messages, updates, config options, color tokens, usage records) |
 | `project/` | 12 | NetBeans lifecycle hooks, project manager (includes `mdproject/`, the markdown project type) |
-| `support/` | 27 | Utilities (logging, JSON mapping, text scanning, constants, browser helpers, pinned message store, shortcut utils) |
+| `support/` | 29 | Utilities (logging, JSON mapping, text scanning, constants, browser helpers, pinned message store, shortcut utils) |
 | `tasks/` | 17 | todo.txt task repository integration (bugtracking providers, issue cache, task editors) |
 | `ui/` | 120 | Swing components, platform integration, markdown project UI (chat, bubbles, theming, options, stash diff, file search, send-to-assistant actions) |
 
@@ -192,7 +194,7 @@ The plugin reads the following system properties and environment variables:
 | `beanbot.fs.write.enabled` | System (`true`) | ACP-only: gates the `fs/writeTextFile` / `fs/write_text_file` ACP tools (`FsWriteSettings`). MCP write tools (`write_to_file`, `replace_lines`, `insert_in_file`) are always confined to open projects and unaffected by this property. Set `-Dbeanbot.fs.write.enabled=false` to stop advertising the ACP write capability and reject every ACP write |
 | `beanbot.color.*` | System (varies) | Override any UI color. Read by `model/ColorRegistry` (resolution order: system property → `UIManager` key → built-in light/dark fallback), not by `ColorTheme`, which only loads `colors.json` |
 | `nb.dark.theme` | UIManager | Detect dark theme for icon resolution (`IconResourceManager`) |
-| `ACP_WIRE_LOG` | Env | Path for ACP wire protocol log file (`WireLogger`) |
+| `ACP_WIRE_LOG` | Env | Path template for the ACP wire-protocol log (`WireLogger`). The file written is `<template-without-extension>_<YYYYMMDD>-<harness>.log` in the template's directory, so successive days and harnesses do not share one file |
 | `PATH` | Env | Search path for the harness binary; all 10 supported harness names are probed (`BinaryResolver`) |
 
 The color properties are declared in [`colors.json`](src/main/resources/github/anandb/netbeans/ui/colors.json) and cover: background, foreground, selection, accent, sunken background, bubble (user/assistant), code, table, header, thinking, tool, permission, and error colors. Most entries define both light and dark variants; the ones resolved straight from a `UIManager` key or a single fallback (`foreground`, `sunkenBackground`, `codeBackground`, `codeForeground`, `codeSelection`) do not.

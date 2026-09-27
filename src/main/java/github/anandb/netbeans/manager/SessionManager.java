@@ -54,8 +54,8 @@ import github.anandb.netbeans.model.SessionState;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.MapperSupplier;
+import github.anandb.netbeans.support.ModelIdNormalizer;
 import github.anandb.netbeans.support.PreferenceKeys;
-import github.anandb.netbeans.support.AcpSessionInfo;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 
 import static org.apache.commons.lang3.StringUtils.isBlank;
@@ -100,6 +100,9 @@ public class SessionManager implements SessionQuery, SessionControl {
     /** Returns the model id currently in force for the session, or null. */
     @Override
     public String getSessionModelId(String sessionId) {
+        if (sessionId == null) {
+            return null;
+        }
         // Prefer the explicitly recorded model: it is updated on every model
         // switch, whereas models()/configOptions() carry the snapshot taken at
         // session/new or session/load and go stale after set_model.
@@ -113,17 +116,22 @@ public class SessionManager implements SessionQuery, SessionControl {
         if (isBlank(modelId) && session != null) {
             modelId = modelIdFromOptions(session.configOptions());
         }
-        if (isBlank(modelId)) {
-            modelId = AcpSessionInfo.getInstance().getModelId();
-            if ("unknown".equals(modelId)) modelId = null;
-        }
-        return modelId;
+        // Deliberately no process-global fallback: a model belongs to a session,
+        // and answering for one session from another's last choice would stamp a
+        // captured usage row with the wrong model. Null here is rendered as
+        // "(not attributed)", which is the honest answer.
+        return isBlank(modelId) ? null : modelId;
     }
 
     /**
      * Returns the {@code currentValue} of the model option, or null. The model
      * option is identified by id/category {@code "model"} or the name {@code "Model"}
      * — harnesses vary in which of the three they set.
+     *
+     * <p>The value is canonicalised, because harnesses report the same model with
+     * either separator ({@code provider:model} or {@code provider/model}) and the
+     * stored rows use the canonical form — a caller comparing the two would
+     * otherwise see a mismatch.</p>
      */
     static String modelIdFromOptions(List<SessionConfigOption> options) {
         if (options == null) {
@@ -137,7 +145,7 @@ public class SessionManager implements SessionQuery, SessionControl {
                     || "Model".equalsIgnoreCase(option.name());
             String value = option.currentValue();
             if (isModel && !isBlank(value)) {
-                return value;
+                return ModelIdNormalizer.normalize(value);
             }
         }
         return null;
@@ -844,7 +852,8 @@ public class SessionManager implements SessionQuery, SessionControl {
                     } else if (!isBlank(modelId)) {
                         // Record only on success, so a rejected switch does not
                         // misattribute usage; the session snapshot stays stale.
-                        modelBySession.put(sessionId, modelId);
+                        // Stored canonically, matching what the store writes.
+                        modelBySession.put(sessionId, ModelIdNormalizer.normalize(modelId));
                     }
                 });
     }

@@ -11,7 +11,6 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -20,17 +19,9 @@ class WireLoggerTest {
     @TempDir
     Path tmp;
 
-    @AfterEach
-    void resetAcpSessionInfo() {
-        AcpSessionInfo.getInstance().setHarnessInfo(null, null);
-        AcpSessionInfo.getInstance().setModelName(null);
-    }
-
     @Test
-    void namesTheLogAfterTheHarness() throws IOException {
-        AcpSessionInfo.getInstance().setHarnessInfo("@geohar/pi-acp", "0.3.1");
-
-        try (WireLogger logger = new WireLogger(tmp.resolve("wire.log").toString())) {
+    void namesTheLogAfterTheHarnessItIsGiven() throws IOException {
+        try (WireLogger logger = new WireLogger(tmp.resolve("wire.log").toString(), "pi-acp")) {
             logger.log("{\"id\":0,\"method\":\"initialize\"}");
             logger.log("{\"id\":1,\"method\":\"session/list\"}");
         }
@@ -43,8 +34,8 @@ class WireLoggerTest {
     }
 
     @Test
-    void fallsBackToUnknownWhenNoHarnessIsConfigured() throws IOException {
-        try (WireLogger logger = new WireLogger(tmp.resolve("wire.log").toString())) {
+    void fallsBackToUnknownWhenNoHarnessIsGiven() throws IOException {
+        try (WireLogger logger = new WireLogger(tmp.resolve("wire.log").toString(), null)) {
             logger.log("{\"id\":0,\"method\":\"initialize\"}");
         }
 
@@ -52,6 +43,15 @@ class WireLoggerTest {
         assertTrue(Files.exists(expected));
         assertEquals(List.of("{\"id\":0,\"method\":\"initialize\"}"),
                 Files.readAllLines(expected, StandardCharsets.UTF_8));
+    }
+
+    @Test
+    void aBlankHarnessIsTreatedAsUnknown() throws IOException {
+        try (WireLogger logger = new WireLogger(tmp.resolve("wire.log").toString(), "   ")) {
+            logger.log("{\"id\":0}");
+        }
+
+        assertTrue(Files.exists(tmp.resolve("wire_" + today() + "-unknown.log")));
     }
 
     private static String today() {

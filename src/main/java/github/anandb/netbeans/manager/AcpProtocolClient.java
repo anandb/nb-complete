@@ -106,7 +106,7 @@ public class AcpProtocolClient implements Closeable {
     public AcpProtocolClient(Process process) throws IOException {
         this.writer = new BufferedWriter(new OutputStreamWriter(process.getOutputStream(), StandardCharsets.UTF_8));
         this.inputStream = process.getInputStream();
-        this.wireLogger = new WireLogger();
+        this.wireLogger = new WireLogger(AcpSessionInfo.getInstance().getHarnessId());
     }
 
     public void start() {

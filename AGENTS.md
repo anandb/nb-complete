@@ -2,7 +2,7 @@
 
 ## Project Overview
 - **Project**: Coding Assistant (NetBeans IDE plugin, Java 17, Maven)
-- **Current Stable Version**: 1.21.1
+- **Current Stable Version**: 1.22.0
 - **Key Tech**: NetBeans API (RELEASE220), Flexmark, Jackson, RSyntaxTextArea, JUnit 5.
 
 ## Build Commands
@@ -373,7 +373,36 @@ Resolved — kept as regression guards:
 ### Auto-Scroll Contract
 `ScrollController.isAtBottom()` uses a 50px tolerance (not 400px). All content-modifying calls in `ChatThreadPanel` (`addSingleBubble`, `processMessageSections`, `stopStreaming`, stream timer) capture `wasAtBottom` BEFORE touching content. Auto-scroll only fires when `wasAtBottom` is true. The stream timer path (`Timer TimingConstants.STREAM_FLUSH_MS` ms) already captured `wasAtBottom` before `flushUpdate()` — this is the correct pattern; new callers must follow it.
 
+### Usage Stats Store
+`manager/H2UsageStatsStore` implements `contract/UsageStatsStore` and `contract/SessionStore` over one H2
+database under the NetBeans user directory. Every database operation runs on that class's single-thread
+executor, so an EDT caller enqueues and returns — never add a query that runs inline on the calling thread.
+`SCHEMA_VERSION` is the upgrade cursor: bump it and extend `applySchemaMigration` when stored semantics
+change, and never alter a released version's branch in place. Model ids are canonicalised
+(`support/ModelIdNormalizer`) inside `bindAttribution`, the one method every captured row from every table
+passes through; a version upgrade rewrites rows stored under the non-canonical separator. Do NOT re-add a
+process-global model fallback: a model belongs to a session, and `getSessionModelId` returning null renders
+as "(not attributed)" — that is the correct answer, not a bug. Attribution is captured as messages arrive,
+never resolved from current UI state at query time.
+
+### Preference Migration To The Store
+Input history and per-session metadata moved out of `NbPreferences` into the same H2 store. `runPrefsMigration()`
+copies the legacy layout once (guarded by a `usage_meta` marker) and deletes only what it confirmed written.
+Containment is per entry: an unreadable entry is counted in the `MigrationReport`, its preference node is kept
+for inspection, and startup proceeds — a migration error is never a failure. Order matters and must stay:
+rows first, then the marker, then the deletions, so a database that cannot be written never costs the user
+their data. `prefs_migrated` is set even when entries were skipped, so a corrupt value notifies once rather
+than on every launch.
+
+### Test NetBeans User Directory
+The build pins `-Dnetbeans.user=target/test-userdir` for the test JVM, because `Places.getUserDirectory()` is
+null outside a real IDE and `new File(null, "beanbot")` silently yields a *relative* path — which once put a
+stats database in the repository root. Keep that pin, and never let a test reach the production store: inject
+a double through `SessionManager.setStoreForTest` or the `SessionStore` seam rather than resolving the real
+one from Lookup.
+
 ### Renderer Selection
+
 - `MarkdownStyledRenderer` bypasses the Swing HTML engine entirely by inserting text ranges
   with `SimpleAttributeSet` into a `JTextPane`. Fast and lightweight; use for streaming
   collapsible activity/thought panes.

@@ -1,8 +1,19 @@
-package github.anandb.netbeans.support;
+package github.anandb.netbeans.manager;
+
+import github.anandb.netbeans.support.Logger;
 
 /**
- * Singleton storing ACP session metadata (harness info + model name).
- * Populated from initialize response and set_model calls.
+ * The harness this process is talking to, as reported by the ACP server.
+ *
+ * <p>Two writers, in order: {@code ServerProcessLifecycle} seeds it from the
+ * configured binary before the server is contacted, so the debug wire log can be
+ * named from the first write; the {@code initialize} response then replaces that
+ * with the agent's own reported name and version.</p>
+ *
+ * <p>Session state, so it lives in {@code manager/} rather than {@code support/}.
+ * It deliberately holds no model information: a model belongs to a session, and a
+ * process-global model would let one session's choice be stamped onto another
+ * session's captured usage.</p>
  */
 public final class AcpSessionInfo {
     private static final AcpSessionInfo INSTANCE = new AcpSessionInfo();
@@ -10,7 +21,6 @@ public final class AcpSessionInfo {
 
     private volatile String harnessName;
     private volatile String harnessVersion;
-    private volatile String modelName;
 
     private AcpSessionInfo() {}
 
@@ -23,15 +33,8 @@ public final class AcpSessionInfo {
         LOG.fine("Harness info set: {0} v{1}", new Object[]{name, version});
     }
 
-    /** Store model name from set_model call. */
-    public void setModelName(String modelName) {
-        this.modelName = modelName;
-        LOG.fine("Model name set: {0}", modelName);
-    }
-
-    public String getHarnessName() { return harnessName; }
+    /** The reported harness version, or null before the initialize response. */
     public String getHarnessVersion() { return harnessVersion; }
-    public String getModelName() { return modelName; }
 
     /** Short harness identifier for filenames (e.g. "pi-acp"). */
     public String getHarnessId() {
@@ -40,11 +43,5 @@ public final class AcpSessionInfo {
         int slash = harnessName.lastIndexOf('/');
         String raw = slash >= 0 ? harnessName.substring(slash + 1) : harnessName;
         return raw.replaceAll("[^a-zA-Z0-9._-]", "_");
-    }
-
-    /** Short model identifier for filenames (e.g. "claude-sonnet-4-20250514"). */
-    public String getModelId() {
-        if (modelName == null) return "unknown";
-        return modelName.replaceAll("[^a-zA-Z0-9._-]", "_");
     }
 }

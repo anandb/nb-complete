@@ -15,6 +15,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import static org.apache.commons.lang3.StringUtils.defaultIfBlank;
 
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
@@ -25,29 +26,37 @@ public final class WireLogger implements Closeable {
     private final boolean wireLoggingEnabled;
     private final BufferedWriter wireLogWriter;
 
-    public WireLogger() {
-        this(System.getenv("ACP_WIRE_LOG"));
+    /**
+     * Production constructor.
+     *
+     * @param harnessId the harness the log belongs to, already reduced to a safe
+     *                  filename token by its producer; null or blank logs as
+     *                  {@code unknown}
+     */
+    public WireLogger(String harnessId) {
+        this(System.getenv("ACP_WIRE_LOG"), harnessId);
     }
 
     /**
      * Test constructor: names the log from {@code template} instead of the
-     * {@code ACP_WIRE_LOG} environment variable.  The harness name is read
-     * from {@link AcpSessionInfo}; callers must seed it before construction.
+     * {@code ACP_WIRE_LOG} environment variable.
      */
-    WireLogger(String template) {
+    WireLogger(String template, String harnessId) {
         String wireLogFileName = null;
-        BufferedWriter writer = null;
+        BufferedWriter writer = null;        
         try {
-            if (isNotBlank(template)) {
+            if (isNotBlank(template)) {                
                 Path templatePath = Paths.get(template);
                 String baseName = templatePath.getFileName().toString();
                 int dotIdx = baseName.lastIndexOf('.');
                 if (dotIdx > 0) {
                     baseName = baseName.substring(0, dotIdx);
                 }
+                
+                String harness = defaultIfBlank(harnessId, "unknown");
                 wireLogFileName = baseName + "_"
                         + LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"))
-                        + "-" + AcpSessionInfo.getInstance().getHarnessId() + ".log";
+                        + "-" + harness + ".log";                
                 Path parentDir = templatePath.getParent();
                 if (parentDir != null) {
                     Files.createDirectories(parentDir);
