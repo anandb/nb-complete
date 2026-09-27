@@ -453,12 +453,15 @@ public class H2UsageStatsStore implements UsageStatsStore {
         }
     }
 
+    /** Reads the recorded schema version, or 0 for a legacy database. */
     private static int readSchemaVersion(Connection conn) {
-        try (Statement st = conn.createStatement();
-                ResultSet rs = st.executeQuery(
-                        "SELECT meta_value FROM usage_meta WHERE meta_key = '" + SCHEMA_VERSION_KEY + "'")) {
-            if (rs.next()) {
-                return Integer.parseInt(rs.getString(1));
+        try (PreparedStatement ps = conn.prepareStatement(
+                "SELECT meta_value FROM usage_meta WHERE meta_key = ?")) {
+            ps.setString(1, SCHEMA_VERSION_KEY);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return Integer.parseInt(rs.getString(1));
+                }
             }
         } catch (SQLException | NumberFormatException e) {
             LOG.log(Level.FINE, "No usable schema version recorded; treating as legacy", e);
