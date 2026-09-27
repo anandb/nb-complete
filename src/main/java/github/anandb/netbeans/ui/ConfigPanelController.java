@@ -45,6 +45,7 @@ import org.openide.util.NbBundle;
 import github.anandb.netbeans.contract.ModelListControl;
 import github.anandb.netbeans.contract.ProcessControl;
 import org.openide.util.Lookup;
+import org.openide.util.RequestProcessor;
 
 import github.anandb.netbeans.ui.platform.PlatformBridge;
 import github.anandb.netbeans.ui.platform.SessionService;
@@ -463,7 +464,11 @@ public class ConfigPanelController {
                 }
                 if (modelOption != null) {
                     modelResolver.parseModelVariants(modelOption, thinkingOptionValues());
-                    cacheModelList(modelOption);
+                    final SessionConfigOption mirrorSource = modelOption;
+                    // updateModels mirrors into NbPreferences (possible
+                    // backing-store read on a first cache miss plus JSON
+                    // serialize + prefs.put) — keep that off the EDT.
+                    RequestProcessor.getDefault().post(() -> cacheModelList(mirrorSource));
                 }
 
                 // Second pass: populate all combos with variants already resolved.
