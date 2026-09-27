@@ -13,6 +13,7 @@ import github.anandb.netbeans.model.UsageRecords.UsageUpdateRow;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.MapperSupplier;
+import github.anandb.netbeans.support.ModelIdNormalizer;
 import github.anandb.netbeans.support.PreferenceKeys;
 import java.io.File;
 import java.sql.Connection;
@@ -145,8 +146,10 @@ public class H2UsageStatsStore implements UsageStatsStore, SessionStore {
      * Version 3 preserves the version-2 rows and widens {@code cost_amount}
      * from DOUBLE to NUMERIC(20,6); per-row deltas summed below cent error
      * no longer drift with sum-time floating-point accumulation.
+     * Version 4 rewrites stored model ids to the canonical separator, so rows
+     * captured before that change do not appear as a second group.
      */
-    private static final int SCHEMA_VERSION = 3;
+    private static final int SCHEMA_VERSION = 4;
 
     private static final long DAY_MILLIS = 86_400_000L;
 
@@ -197,7 +200,8 @@ public class H2UsageStatsStore implements UsageStatsStore, SessionStore {
 
     /** Absolute H2 URL for the per-user database file. */
     private static String defaultJdbcUrl() {
-        File dir = new File(Places.getUserDirectory(), "beanbot");
+        File userDir = Places.getUserDirectory();
+        File dir = new File(userDir, "beanbot");
         if (!dir.isDirectory() && !dir.mkdirs()) {
             LOG.log(Level.WARNING, "Could not create usage-stats directory: {0}", dir.getAbsolutePath());
         }
@@ -241,7 +245,8 @@ public class H2UsageStatsStore implements UsageStatsStore, SessionStore {
             try (Statement st = conn.createStatement()) {
                 st.execute(CREATE_META);
             }
-            applySchemaMigration(conn);
+            int dbVersion = readSchemaVersion(conn);
+            applySchemaMigration(conn, dbVersion);
             try (Statement st = conn.createStatement()) {
                 st.execute(CREATE_USAGE_UPDATE);
                 st.execute(CREATE_PROMPT_USAGE);
@@ -252,6 +257,12 @@ public class H2UsageStatsStore implements UsageStatsStore, SessionStore {
                 st.execute("CREATE INDEX IF NOT EXISTS idx_prompt_usage_ts ON prompt_usage (captured_at)");
                 st.execute("CREATE INDEX IF NOT EXISTS idx_message_event_ts ON message_event (captured_at)");
                 st.execute("CREATE INDEX IF NOT EXISTS idx_session_meta_harness ON session_meta (harness_id)");
+            }
+            if (dbVersion >= 2 && dbVersion < SCHEMA_VERSION) {
+                // After the tables exist, so a database that predates one of them
+                // cannot make this fail. A version below 2 had them dropped above,
+                // so there is nothing to rewrite.
+                normalizeStoredModelIds(conn);
             }
             return conn;
         } catch (SQLException e) {
@@ -264,6 +275,53 @@ public class H2UsageStatsStore implements UsageStatsStore, SessionStore {
             }
             throw e;
         }
+    }
+
+    /** Tables carrying a model id, in the order they were introduced. */
+    private static final String[] CAPTURE_TABLES = {"usage_update", "prompt_usage", "message_event"};
+
+    /**
+     * Rewrites stored model ids to the canonical separator, once, for a database
+     * created before version 4. Harnesses report the same model as
+     * {@code provider:model} or {@code provider/model}, and rows captured under
+     * both forms would otherwise show as two groups forever.
+     *
+     * <p>Rows are rewritten through {@link ModelIdNormalizer} rather than by a SQL
+     * {@code REPLACE}, so the rule applied on capture and the rule applied here
+     * cannot drift apart.</p>
+     */
+    private void normalizeStoredModelIds(Connection conn) throws SQLException {
+        List<String> stale = new ArrayList<>();
+        for (String table : CAPTURE_TABLES) {
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "SELECT DISTINCT model_id FROM " + table + " WHERE model_id LIKE '%:%'");
+                 ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    String value = rs.getString(1);
+                    if (value != null && !stale.contains(value)) {
+                        stale.add(value);
+                    }
+                }
+            }
+        }
+        if (stale.isEmpty()) {
+            return;
+        }
+        for (String value : stale) {
+            String canonical = ModelIdNormalizer.normalize(value);
+            if (canonical == null || canonical.equals(value)) {
+                continue;
+            }
+            for (String table : CAPTURE_TABLES) {
+                try (PreparedStatement ps = conn.prepareStatement(
+                        "UPDATE " + table + " SET model_id = ? WHERE model_id = ?")) {
+                    ps.setString(1, canonical);
+                    ps.setString(2, value);
+                    ps.executeUpdate();
+                }
+            }
+        }
+        LOG.log(Level.INFO, "Canonicalised {0} stored model id(s)", stale.size());
     }
 
     /**
@@ -1261,11 +1319,17 @@ public class H2UsageStatsStore implements UsageStatsStore, SessionStore {
         }
     }
 
+    /**
+     * Binds the four attribution columns. The model id is canonicalised here
+     * rather than by each caller: every captured row from every table passes
+     * through this method, so this is the only place a model id can enter the
+     * database, and harnesses report the same model with different separators.
+     */
     private static void bindAttribution(PreparedStatement ps, int start, Attribution attribution) throws SQLException {
         String sessionId = attribution != null ? attribution.sessionId() : null;
         ps.setString(start, sessionId);
         ps.setString(start + 1, attribution != null ? attribution.harnessId() : null);
-        ps.setString(start + 2, attribution != null ? attribution.modelId() : null);
+        ps.setString(start + 2, ModelIdNormalizer.normalize(attribution != null ? attribution.modelId() : null));
         ps.setString(start + 3, attribution != null ? attribution.project() : null);
     }
 
@@ -1301,9 +1365,11 @@ public class H2UsageStatsStore implements UsageStatsStore, SessionStore {
      * keeps the data and widens the column to NUMERIC(20,6) so cent-level
      * display no longer drifts with accumulating floating-point error.
      * Runs once per database on open.
+     *
+     * @param dbVersion the version read before any of this ran, so the caller can
+     *                  also decide what to do after the tables exist
      */
-    private void applySchemaMigration(Connection conn) throws SQLException {
-        int dbVersion = readSchemaVersion(conn);
+    private void applySchemaMigration(Connection conn, int dbVersion) throws SQLException {
         if (dbVersion >= SCHEMA_VERSION) {
             return;
         }

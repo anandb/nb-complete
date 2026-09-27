@@ -29,6 +29,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.openide.modules.Places;
 import org.openide.util.NbPreferences;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -89,6 +90,55 @@ class H2UsageStatsStoreTest {
         }
     }
 
+    @Test
+    void bothSeparatorFormsOfOneModelGroupTogether() throws SQLException {
+        // Hermes reports "provider:model", the config options report
+        // "provider/model"; the same model must not become two groups.
+        store.recordPromptUsage(new PromptUsageRow(
+                att("s1", "hermes", "opencode-go:deepseek-v4.1-flash", "/p"), NOW, 10, 1, 11, null, null));
+        store.recordPromptUsage(new PromptUsageRow(
+                att("s2", "omp", "opencode-go/deepseek-v4.1-flash", "/p"), NOW, 20, 2, 22, null, null));
+
+        List<GroupTotals> groups = store.queryGrouped(1, null, NOW, UsageStatsStore.GroupBy.MODEL);
+
+        assertEquals(1, groups.size(), "one model, not two");
+        assertEquals("opencode-go/deepseek-v4.1-flash", groups.get(0).groupKey());
+        assertEquals(30, groups.get(0).inputTokens());
+        assertEquals("opencode-go/deepseek-v4.1-flash",
+                scalar("SELECT model_id FROM prompt_usage WHERE session_id = 's1'"),
+                "the colon form is canonicalised before it reaches the column");
+    }
+
+    @Test
+    void legacyRowsWithTheColonSeparatorAreNormalisedOnOpen() throws SQLException {
+        store.recordPromptUsage(new PromptUsageRow(att("s1", "hermes", "m", "/p"), NOW, 1, 1, 2, null, null));
+        store.query(1, null, NOW); // FIFO: the write above has landed and the schema exists
+
+        // Store the row the way a pre-normalisation build would have, and mark the
+        // database as that old version so opening it again runs the upgrade.
+        execute("UPDATE prompt_usage SET model_id = 'opencode-go:deepseek-v4.1-flash'");
+        execute("MERGE INTO usage_meta (meta_key, meta_value) VALUES ('schema_version', '3')");
+
+        H2UsageStatsStore reopened = new H2UsageStatsStore(url);
+        try {
+            List<GroupTotals> groups = reopened.queryGrouped(1, null, NOW, UsageStatsStore.GroupBy.MODEL);
+            assertEquals("opencode-go/deepseek-v4.1-flash", groups.get(0).groupKey(),
+                    "an existing row is rewritten, so old data joins the same group");
+        } finally {
+            reopened.shutdown();
+        }
+    }
+
+    @Test
+    void aModelIdThatIsAbsentStaysAbsent() throws SQLException {
+        store.recordPromptUsage(new PromptUsageRow(att("s1", "omp", "   ", "/p"), NOW, 1, 1, 2, null, null));
+        store.query(1, null, NOW);
+
+        assertNull(scalar("SELECT model_id FROM prompt_usage"),
+                "a blank model must not become an empty group key");
+    }
+
+    @Test
     @Test
     void usageUpdateKeepsGaugeAndReportsUsd() throws SQLException {
         costRow(0, NOW);
@@ -301,7 +351,8 @@ class H2UsageStatsStoreTest {
         upgraded.recordUsageUpdate(new UsageUpdateRow(att("s1", "pi", "m1", "/proj/a"), NOW, 20, null, 0.6, "USD"));
         assertEquals(0.6, upgraded.query(1, null, NOW).totalCost(), 1e-9);
 
-        assertEquals("3", upgradedScalarVersion(fileUrl));
+        assertEquals("4", upgradedScalarVersion(fileUrl),
+                "version 4 is the model-id canonicalisation upgrade");
         upgraded.shutdown();
     }
 
