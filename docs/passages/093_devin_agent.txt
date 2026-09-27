@@ -20,14 +20,15 @@ On Windows run that in **PowerShell** — `irm` and `iex` are PowerShell command
 
 The executable you configure in BeanBot is <code>devin</code>, run with the default launch argument <code>acp</code>.
 
-**Authentication** is worth setting up before you connect: the ACP server reads credentials from the <code>WINDSURF_API_KEY</code> environment variable when it is set, and otherwise uses the credentials stored by <code>devin auth login</code>. Run <code>devin auth login</code> once in a terminal, and be aware that a Windsurf key in your environment takes precedence over that stored login.
+**Authentication** is worth setting up before you connect: the ACP server reads credentials from the `WINDSURF_API_KEY` environment variable when it is set, and otherwise uses the credentials stored by <code>devin auth login</code>. Run <code>devin auth login</code> once in a terminal, and be aware that a Windsurf key in your environment takes precedence over that stored login.
 
 Devin Agent in BeanBot supports:
 - **Editor Context**: Seamlessly injects the active editor state into agent prompts.
 - **[[MCP Tools]]**: Devin accepts a per-session MCP server, so BeanBot hands it the plugin's internal server automatically — no manual MCP registration is needed.
-- **Model Selection**: Exposed as an ACP config option, so the in-session model dropdown works. To pin a different default for every new session instead, pass <code>--model</code> under Process Arguments in <code>Options &gt; Assistant</code>, or set <code>DEVIN_MODEL</code>.
+- **Model Selection**: Exposed as an ACP config option, so the in-session model dropdown works. To pin a different default for every new session instead, pass <code>--model</code> under Process Arguments in <code>Options &gt; Assistant</code>, or set `DEVIN_MODEL`.
 - **Agent / Mode List**: The agent selector is offered.
 - **Session List**: Sessions come from Devin itself, so the dropdown reflects its own list and needs no local tracking.
+- **Interleaved prompts**: a new message is sent immediately (it does not wait in the [[Queuing Messages]] toolbar queue). See [[Cursor Agent]] for the same style.
 - **Slash Commands**: Devin advertises its full slash-command set over the protocol, so its commands appear in the command palette with their descriptions and argument hints. Its account commands show up as <code>/login</code>, <code>/logout</code> and <code>/status</code>.
 
 #### Limitations
@@ -40,3 +41,4 @@ Devin Agent in BeanBot supports:
 > [[Choose Your Coding Harness]]
 > [[MCP Tools]]
 > [[Picking an Agent, Model and Thinking Level]]
+> [[Queuing Messages]]
