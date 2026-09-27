@@ -258,10 +258,11 @@ public final class TxtTaskRepository implements TaskRepositoryControl {
         }
         if (SwingUtilities.isEventDispatchThread()) {
             // Never perform file I/O on the EDT; read asynchronously instead.
-            io.post(() -> loadSync(s));
+            long expectedGen = snapshotGen(s);
+            io.post(() -> loadSync(s, expectedGen));
             return true;
         }
-        return loadSync(s);
+        return loadSync(s, snapshotGen(s));
     }
 
     @Override
@@ -288,20 +289,27 @@ public final class TxtTaskRepository implements TaskRepositoryControl {
     }
 
     private void loadAsync(RepoState s) {
-        io.post(() -> loadSync(s));
+        // Snapshot the generation when the load is requested, not when it runs: the
+        // posted task may execute after synchronous mutations have already happened.
+        long expectedGen = snapshotGen(s);
+        io.post(() -> loadSync(s, expectedGen));
+    }
+
+    /** Current mutation generation of a repository; use as the load guard baseline. */
+    private static long snapshotGen(RepoState s) {
+        synchronized (s) {
+            return s.gen;
+        }
     }
 
     /** Loads the repository todo.txt from disk into the cache and updates the snapshot. */
-    private boolean loadSync(RepoState s) {
+    private boolean loadSync(RepoState s, long expectedGen) {
         File f = new File(s.tasksPath);
         List<TaskRecord> loaded = new ArrayList<>();
-        synchronized (s) {
-            s.genAtLoadStart = s.gen;
-        }
         if (!f.exists()) {
             synchronized (s) {
-                // Do not clobber tasks mutated while this load was in flight.
-                if (s.gen == s.genAtLoadStart) {
+                // Do not clobber tasks mutated since this load was requested.
+                if (s.gen == expectedGen) {
                     s.cache = loaded;
                 }
                 s.lastModified = 0;
@@ -318,8 +326,8 @@ public final class TxtTaskRepository implements TaskRepositoryControl {
             String content = Files.readString(f.toPath(), StandardCharsets.UTF_8);
             loaded = new ArrayList<>(TaskTxtCodec.parse(content));
             synchronized (s) {
-                // Do not clobber tasks mutated while this load was in flight.
-                if (s.gen == s.genAtLoadStart) {
+                // Do not clobber tasks mutated since this load was requested.
+                if (s.gen == expectedGen) {
                     s.cache = loaded;
                     s.lastModified = lm;
                     s.size = sz;
@@ -362,7 +370,7 @@ public final class TxtTaskRepository implements TaskRepositoryControl {
         if (conflict && !confirmOverwrite(f)) {
             // User declined — drop the optimistic change and resync from disk.
             LOG.warn("File {0} changed externally; discard local change", f.getPath());
-            loadSync(s);
+            loadSync(s, snapshotGen(s));
             DialogDisplayer.getDefault().notifyLater(new NotifyDescriptor.Message(
                 "The local change to " + f.getName() + " was discarded because the file was modified outside the IDE.",
                 NotifyDescriptor.WARNING_MESSAGE));
@@ -450,7 +458,6 @@ public final class TxtTaskRepository implements TaskRepositoryControl {
         long lastModified;
         long size;
         long gen;
-        long genAtLoadStart;
         final AtomicBoolean persistScheduled = new AtomicBoolean();
 
         RepoState(String repoId, String tasksPath, String displayName) {

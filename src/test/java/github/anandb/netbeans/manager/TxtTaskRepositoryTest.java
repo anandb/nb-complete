@@ -1,12 +1,16 @@
 package github.anandb.netbeans.manager;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.openide.util.RequestProcessor;
 
 import github.anandb.netbeans.contract.TaskInput;
 import github.anandb.netbeans.contract.TaskRepositoryControl;
@@ -79,5 +83,40 @@ class TxtTaskRepositoryTest {
         repo.unregisterRepository("r1");
         assertEquals(List.of("r2"), repo.repositoryIds());
         assertTrue(repo.list("r1").isEmpty());
+    }
+
+    @Test
+    void backgroundLoadDoesNotClobberMutationsMadeAfterRegister() throws Exception {
+        TxtTaskRepository repo = new TxtTaskRepository();
+
+        // Park the single-threaded I/O processor so the load posted by
+        // registerRepository is queued until after the synchronous mutations below.
+        Field ioField = TxtTaskRepository.class.getDeclaredField("io");
+        ioField.setAccessible(true);
+        RequestProcessor io = (RequestProcessor) ioField.get(repo);
+        CountDownLatch started = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        io.post(() -> {
+            started.countDown();
+            try {
+                release.await(30, TimeUnit.SECONDS);
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+            }
+        });
+        assertTrue(started.await(5, TimeUnit.SECONDS), "I/O processor did not start");
+
+        repo.registerRepository("r1", tempDir.resolve("tasks.txt").toString(), "Test");
+        TaskInput input = new TaskInput("open", "B", "Keep me", "", "", "", 0, 0);
+        TaskRecord added = repo.add("r1", input);
+        assertNotNull(added);
+
+        release.countDown();
+        RequestProcessor.Task sentinel = io.post(() -> { });
+        sentinel.waitFinished(5000);
+
+        assertEquals(List.of(added), repo.list("r1"));
+        assertTrue(repo.update("r1", added.withDetails("closed", "C", "Kept",
+            List.of(), List.of(), "", 0, 0)));
     }
 }

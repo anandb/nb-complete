@@ -1,5 +1,16 @@
 # Release Notes
 
+## v1.22.1 (Changes since v1.22.0)
+
+### Fixes
+- **Task repository race on register**: `loadSync` captured its mutation-generation guard baseline on the I/O thread, so a background load posted by `registerRepository` that ran *after* a task was added saw the already-incremented generation and clobbered the in-memory cache with the (empty) disk contents. The baseline is now snapshotted when the load is requested, and passed into `loadSync`, so tasks added synchronously after registration survive the queued load (`TxtTaskRepository`).
+
+### Tests
+- **Load ordering pinned**: a deterministic regression test parks the single-threaded I/O processor before `registerRepository`, mutates synchronously, then drains and asserts the task is still present — the previous test only caught the race when the load happened to run late.
+
+### Housekeeping
+- Version bumped to 1.22.1.
+
 ## v1.22.0 (Changes since v1.21.1)
 
 ### Features
