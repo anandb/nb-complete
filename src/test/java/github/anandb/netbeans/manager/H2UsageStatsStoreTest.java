@@ -6,6 +6,9 @@ import github.anandb.netbeans.model.UsageRecords.MessageKind;
 import github.anandb.netbeans.model.UsageRecords.PromptUsageRow;
 import github.anandb.netbeans.model.UsageRecords.UsageSummary;
 import github.anandb.netbeans.model.UsageRecords.UsageUpdateRow;
+import github.anandb.netbeans.model.UsageRecords.GroupTotals;
+import github.anandb.netbeans.contract.UsageStatsStore;
+import java.util.List;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
@@ -292,4 +295,66 @@ class H2UsageStatsStoreTest {
             return rs.getString(1);
         }
     }
+
+    @Test
+    void groupedByModelAggregatesAllThreeTables() {
+        store.recordPromptUsage(new PromptUsageRow(att("s1", "opencode", "m1", "/proj/a"), NOW,
+                100, 10, 110, null, null));
+        store.recordPromptUsage(new PromptUsageRow(att("s1", "opencode", "m1", "/proj/a"), NOW,
+                60, 2, 62, null, 80L));
+        store.recordUsageUpdate(new UsageUpdateRow(att("s1", "opencode", "m1", "/proj/a"), NOW,
+                70281, 1000000L, 0.25, "USD"));
+        store.recordMessage(new MessageEvent(att("s1", "opencode", "m1", "/proj/a"), NOW, MessageKind.TOOL));
+        store.recordMessage(new MessageEvent(att("s1", "opencode", "m1", "/proj/a"), NOW, MessageKind.TOOL));
+        store.recordMessage(new MessageEvent(att("s1", "opencode", "m1", "/proj/a"), NOW, MessageKind.ASSISTANT));
+
+        List<GroupTotals> rows = store.queryGrouped(1, null, NOW, UsageStatsStore.GroupBy.MODEL);
+        assertEquals(1, rows.size());
+        GroupTotals m1 = rows.get(0);
+        assertEquals("m1", m1.groupKey());
+        assertEquals(1, m1.sessions());
+        assertEquals(1, m1.messages(), "tool events must not inflate the message column");
+        assertEquals(2, m1.toolCalls());
+        assertEquals(160, m1.inputTokens());
+        assertEquals(12, m1.outputTokens());
+        assertEquals(80, m1.cachedReadTokens());
+        assertEquals(0.25, m1.cost(), 1e-9);
+    }
+
+    @Test
+    void groupedByHarnessSplitsModelsOfSameAgent() {
+        store.recordPromptUsage(new PromptUsageRow(att("s1", "omp", "mA", "/proj/a"), NOW, 10, 1, 11, null, null));
+        store.recordPromptUsage(new PromptUsageRow(att("s1", "omp", "mB", "/proj/a"), NOW, 100, 5, 105, null, null));
+        store.recordPromptUsage(new PromptUsageRow(att("s2", "goose", "mC", "/proj/b"), NOW, 500, 50, 550, null, null));
+        store.recordMessage(new MessageEvent(att("s1", "omp", "mA", "/proj/a"), NOW, MessageKind.USER));
+        store.recordMessage(new MessageEvent(att("s2", "goose", "mC", "/proj/b"), NOW, MessageKind.TOOL));
+
+        List<GroupTotals> rows = store.queryGrouped(1, null, NOW, UsageStatsStore.GroupBy.HARNESS);
+        assertEquals(2, rows.size());
+        GroupTotals omp = rows.stream().filter(r -> "omp".equals(r.groupKey())).findFirst().orElseThrow();
+        GroupTotals goose = rows.stream().filter(r -> "goose".equals(r.groupKey())).findFirst().orElseThrow();
+        assertEquals(1, omp.sessions(), "one model-less harness row shares one session id");
+        assertEquals(110, omp.inputTokens());
+        assertEquals(1, omp.messages());
+        assertEquals(0, omp.toolCalls());
+        assertEquals(500, goose.inputTokens());
+        assertEquals(1, goose.toolCalls());
+    }
+
+    @Test
+    void groupedUnknownAttributionSurfacesAsNullKey() {
+        store.recordMessage(new MessageEvent(new Attribution("sx", null, null, null), NOW, MessageKind.USER));
+        store.recordPromptUsage(new PromptUsageRow(new Attribution("sx", null, "mx", null), NOW,
+                42, 2, 44, null, null));
+
+        List<GroupTotals> byModel = store.queryGrouped(1, null, NOW, UsageStatsStore.GroupBy.MODEL);
+        assertEquals(2, byModel.size(), "one group for the mx prompt row, one for the unattributed message");
+        GroupTotals unknown = byModel.stream().filter(r -> r.groupKey() == null).findFirst().orElseThrow();
+        assertEquals(1, unknown.messages());
+        assertEquals(0, unknown.inputTokens());
+        GroupTotals mx = byModel.stream().filter(r -> "mx".equals(r.groupKey())).findFirst().orElseThrow();
+        assertEquals(42, mx.inputTokens());
+        assertEquals(0, mx.messages());
+    }
 }
+

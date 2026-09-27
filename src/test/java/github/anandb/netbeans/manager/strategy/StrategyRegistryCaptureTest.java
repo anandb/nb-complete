@@ -1,11 +1,13 @@
 package github.anandb.netbeans.manager.strategy;
 
 import com.fasterxml.jackson.databind.json.JsonMapper;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.JsonNode;
 import github.anandb.netbeans.contract.SessionQuery;
 import github.anandb.netbeans.contract.UsageStatsStore;
 import github.anandb.netbeans.contract.UIHandler;
+import github.anandb.netbeans.contract.UsageStatsStore.GroupBy;
+import github.anandb.netbeans.model.UsageRecords.GroupTotals;
 import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.model.SessionConfigOption;
@@ -65,6 +67,11 @@ class StrategyRegistryCaptureTest {
         @Override
         public UsageSummary query(int days, String projectDir, long now) {
             throw new UnsupportedOperationException("query is not part of this test");
+        }
+
+        @Override
+        public List<GroupTotals> queryGrouped(int days, String projectDir, long now, GroupBy groupBy) {
+            throw new UnsupportedOperationException("grouped queries are not part of this test");
         }
     }
 

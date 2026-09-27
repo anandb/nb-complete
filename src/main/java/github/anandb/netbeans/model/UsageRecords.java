@@ -68,4 +68,14 @@ public final class UsageRecords {
             return new UsageSummary(0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
         }
     }
+
+    /**
+     * One grouped row of the breakdown tables (grouped by model or by agent),
+     * rendered after the summary totals. One per group key; the key is null
+     * for rows whose attribution was unknown at capture time.
+     */
+    public record GroupTotals(String groupKey, long sessions, long messages, long toolCalls,
+                              long inputTokens, long outputTokens, long cachedReadTokens,
+                              double cost) {
+    }
 }

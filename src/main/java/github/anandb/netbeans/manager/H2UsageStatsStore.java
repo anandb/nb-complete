@@ -2,6 +2,7 @@ package github.anandb.netbeans.manager;
 
 import github.anandb.netbeans.contract.UsageStatsStore;
 import github.anandb.netbeans.model.UsageRecords.Attribution;
+import github.anandb.netbeans.model.UsageRecords.GroupTotals;
 import github.anandb.netbeans.model.UsageRecords.MessageEvent;
 import github.anandb.netbeans.model.UsageRecords.PromptUsageRow;
 import github.anandb.netbeans.model.UsageRecords.UsageSummary;
@@ -242,6 +243,98 @@ public class H2UsageStatsStore implements UsageStatsStore {
         return call(() -> runQuery(window, projectDir, now), UsageSummary.empty());
     }
 
+    @Override
+    public List<GroupTotals> queryGrouped(int days, String projectDir, long now, GroupBy groupBy) {
+        int window = Math.max(days, 1);
+        GroupBy key = groupBy != null ? groupBy : GroupBy.MODEL;
+        String column = key == GroupBy.HARNESS ? "harness_id" : "model_id";
+        return call(() -> runGrouped(window, projectDir, now, column), List.of());
+    }
+
+
+    /**
+     * Grouped aggregation across the three tables, keyed to the distinct set
+     * of group values seen in the window. Each table contributes only the
+     * figures it owns (prompt_usage: token columns; usage_update: cost
+     * deltas; message_event: messages, tool calls and the session count).
+     * The group key source is a single UNION of the three attribution
+     * columns, so a group key appears once even when several tables carry it.
+     */
+    private List<GroupTotals> runGrouped(int days, String projectDir, long now, String column)
+            throws SQLException {
+        long cutoff = now - days * DAY_MILLIS;
+        String scope = "captured_at >= ?" + (projectDir != null ? " AND project = ?" : "");
+        String groupExpr = "COALESCE(" + column + ", '(unknown)')";
+
+        // One COALESCE-populated group set, then three LEFT JOINed aggregates.
+        // A single source of group keys avoids the double session counting a
+        // UNION of per-branch COUNT(DISTINCT session_id) produces (the same
+        // session appears in two branches when both recorded rows).
+        String groupSet =
+                "SELECT DISTINCT COALESCE(ids, '(unknown)') AS grp FROM ("
+                + "SELECT " + column + " AS ids FROM prompt_usage WHERE " + scope
+                + " UNION SELECT " + column + " FROM usage_update WHERE " + scope
+                + " UNION SELECT " + column + " FROM message_event WHERE " + scope + ")";
+        String tokensByGroup =
+                "SELECT COALESCE(" + column + ", '(unknown)') AS grp,"
+                + " COALESCE(SUM(input_tokens), 0) AS input_tokens,"
+                + " COALESCE(SUM(output_tokens), 0) AS output_tokens,"
+                + " COALESCE(SUM(cached_read_tokens), 0) AS cached_read_tokens"
+                + " FROM prompt_usage WHERE " + scope + " GROUP BY " + groupExpr + "";
+        String costByGroup =
+                "SELECT COALESCE(" + column + ", '(unknown)') AS grp,"
+                + " COALESCE(SUM(cost_amount), 0.0) AS cost"
+                + " FROM usage_update WHERE " + scope + " GROUP BY " + groupExpr + "";
+        String activityByGroup =
+                "SELECT COALESCE(" + column + ", '(unknown)') AS grp,"
+                + " COUNT(DISTINCT CASE WHEN kind IN ('USER', 'ASSISTANT', 'THOUGHT') THEN session_id END) AS sessions,"
+                + " SUM(CASE WHEN kind <> 'TOOL' THEN 1 ELSE 0 END) AS messages,"
+                + " SUM(CASE WHEN kind = 'TOOL' THEN 1 ELSE 0 END) AS tool_calls"
+                + " FROM message_event WHERE " + scope + " GROUP BY " + groupExpr + "";
+
+        String sql = "SELECT g.grp,"
+                + " COALESCE(a.sessions, 0) AS sessions,"
+                + " COALESCE(a.messages, 0) AS messages,"
+                + " COALESCE(a.tool_calls, 0) AS tool_calls,"
+                + " COALESCE(t.input_tokens, 0) AS input_tokens,"
+                + " COALESCE(t.output_tokens, 0) AS output_tokens,"
+                + " COALESCE(t.cached_read_tokens, 0) AS cached_read_tokens,"
+                + " COALESCE(c.cost, 0.0) AS cost"
+                + " FROM (" + groupSet + ") g"
+                + " LEFT JOIN (" + tokensByGroup + ") t ON t.grp = g.grp"
+                + " LEFT JOIN (" + costByGroup + ") c ON c.grp = g.grp"
+                + " LEFT JOIN (" + activityByGroup + ") a ON a.grp = g.grp"
+                + " ORDER BY g.grp";
+
+        List<GroupTotals> rows = new ArrayList<>();
+        try (PreparedStatement ps = connection().prepareStatement(sql)) {
+            bindScopeParams(ps, 1, cutoff, projectDir, 6);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    String key = "(unknown)".equals(rs.getString(1)) ? null : rs.getString(1);
+                    rows.add(new GroupTotals(key,
+                            rs.getLong("sessions"), rs.getLong("messages"), rs.getLong("tool_calls"),
+                            rs.getLong("input_tokens"), rs.getLong("output_tokens"),
+                            rs.getLong("cached_read_tokens"), rs.getDouble("cost")));
+                }
+            }
+        }
+        return rows;
+    }
+
+
+    /** Binds a scope predicate's parameters starting at {@code start}; returns the next free index. */
+    private static int bindScopeParams(PreparedStatement ps, int start, long cutoff,
+                                       String projectFilter, int repetitions) throws SQLException {
+        int index = start;
+        for (int i = 0; i < repetitions; i++) {
+            ps.setLong(index++, cutoff);
+            if (projectFilter != null) {
+                ps.setString(index++, projectFilter);
+            }
+        }
+        return index;
+    }
     // ---- Query implementation (executor thread only) ----
 
     private UsageSummary runQuery(int days, String projectDir, long now) throws SQLException {
