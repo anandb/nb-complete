@@ -154,12 +154,31 @@ class H2UsageStatsStoreTest {
     @Test
     void totalCostSumsAmountsAndAveragesOverActiveDays() {
         costRow(100.0, NOW);
-        costRow(37.33, NOW - DAY);
+        costRow(137.33, NOW - DAY);
 
         UsageSummary summary = store.query(30, null, NOW);
         assertEquals(137.33, summary.totalCost(), 0.001);
         assertEquals(2, summary.days());
         assertEquals(68.665, summary.avgCostPerDay(), 0.001);
+    }
+
+    /**
+     * Harnesses (pi-acp) repeat the session's cumulative cost across
+     * usage_update notifications. Deltas against the previous row keep the
+     * summed cost equal to the final running total.
+     */
+    @Test
+    void repeatedCumulativeCostStoresDeltasNotGross() {
+        costRow(0.0, NOW);            // reported running total: 0
+        costRow(0.0538927, NOW);      // first non-zero running total
+        costRow(0.0538927, NOW);      // duplicate notification, no new spend
+        costRow(0.05805822, NOW - DAY);
+        costRow(0.0738938, NOW - DAY);
+
+        UsageSummary summary = store.query(30, null, NOW);
+        assertEquals(0.0738938, summary.totalCost(), 1e-9);
+        // Five gauge rows in scope, one session.
+        assertEquals(1, summary.sessions());
     }
 
     @Test
@@ -193,6 +212,7 @@ class H2UsageStatsStoreTest {
         String fileUrl = "jdbc:h2:" + tempDir.resolve("usage").toAbsolutePath().toString().replace('\\', '/');
 
         H2UsageStatsStore first = new H2UsageStatsStore(fileUrl);
+
         first.recordMessage(new MessageEvent(att("s1", "opencode", "m1", "/proj/a"), NOW, MessageKind.ASSISTANT));
         assertEquals(1, first.query(1, null, NOW).messages());
         first.shutdown();

@@ -127,13 +127,38 @@ public class H2UsageStatsStore implements UsageStatsStore {
                 ps.setLong(5, row.capturedAt());
                 ps.setLong(6, row.used());
                 setNullableLong(ps, 7, row.size());
-                ps.setDouble(8, row.costAmount());
+                // Harnesses repeat the session's cumulative cost per notification
+                // (pi-acp re-sends the running total several times per turn).
+                // Storing the delta against the last recorded row keeps
+                // SUM(cost_amount) equal to the true session spend.
+                ps.setDouble(8, costDelta(row));
                 ps.setString(9, row.costCurrency() != null ? row.costCurrency() : "USD");
                 ps.executeUpdate();
             } catch (SQLException e) {
                 LOG.log(Level.WARNING, "Failed to record usage_update row", e);
             }
         });
+    }
+
+    /**
+     * Difference between this row's cumulative cost and the spend already
+     * recorded for the same session. The stored rows carry per-row deltas,
+     * whose sum equals the session's cumulative spend even across restarts.
+     * The first row of a session stores the full amount; a session with no
+     * attribution stores the full amount too.
+     */
+    private double costDelta(UsageUpdateRow row) throws SQLException {
+        Attribution attribution = row.attribution();
+        if (attribution == null || attribution.sessionId() == null) {
+            return row.costAmount();
+        }
+        try (PreparedStatement ps = connection().prepareStatement(
+                "SELECT COALESCE(SUM(cost_amount), 0) FROM usage_update WHERE session_id = ?")) {
+            ps.setString(1, attribution.sessionId());
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? row.costAmount() - rs.getDouble(1) : row.costAmount();
+            }
+        }
     }
 
     @Override
