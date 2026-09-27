@@ -43,7 +43,7 @@ public class H2UsageStatsStore implements UsageStatsStore {
             + "id BIGINT AUTO_INCREMENT PRIMARY KEY,"
             + "session_id VARCHAR(512), harness_id VARCHAR(128), model_id VARCHAR(512), project VARCHAR(2048),"
             + "captured_at BIGINT NOT NULL, used_tokens BIGINT NOT NULL, size_tokens BIGINT,"
-            + "cost_amount DOUBLE NOT NULL, cost_currency VARCHAR(16))";
+            + "cost_amount NUMERIC(20,6) NOT NULL, cost_currency VARCHAR(16))";
 
     private static final String CREATE_PROMPT_USAGE = "CREATE TABLE IF NOT EXISTS prompt_usage ("
             + "id BIGINT AUTO_INCREMENT PRIMARY KEY,"
@@ -76,9 +76,12 @@ public class H2UsageStatsStore implements UsageStatsStore {
      * Bumped when capture semantics change in a way that makes earlier rows
      * unsound. Version 1 (no version row) counted replayed history on every
      * {@code session/load}, duplicating message totals and usage rows; those
-     * rows cannot be repaired, so they are dropped once on upgrade.
+     * rows cannot be repaired, so they are dropped once on upgrade to 2.
+     * Version 3 preserves the version-2 rows and widens {@code cost_amount}
+     * from DOUBLE to NUMERIC(20,6); per-row deltas summed below cent error
+     * no longer drift with sum-time floating-point accumulation.
      */
-    private static final int SCHEMA_VERSION = 2;
+    private static final int SCHEMA_VERSION = 3;
 
     private static final long DAY_MILLIS = 86_400_000L;
 
@@ -411,17 +414,30 @@ public class H2UsageStatsStore implements UsageStatsStore {
 
 
     /**
-     * Drops rows written by an older capture version whose semantics produced
-     * duplicates, then records the current version. Runs once per database.
+     * Upgrades older capture schemas. Version 1 rows contained replayed
+     * duplicates and per-row gross costs whose semantics produced inflated
+     * totals; those rows are unrecoverable, so they are dropped once.
+     * Version 2 rows are valid but store cost_amount as DOUBLE; version 3
+     * keeps the data and widens the column to NUMERIC(20,6) so cent-level
+     * display no longer drifts with accumulating floating-point error.
+     * Runs once per database on open.
      */
     private void applySchemaMigration(Connection conn) throws SQLException {
-        if (readSchemaVersion(conn) >= SCHEMA_VERSION) {
+        int dbVersion = readSchemaVersion(conn);
+        if (dbVersion >= SCHEMA_VERSION) {
             return;
         }
-        try (Statement st = conn.createStatement()) {
-            st.execute("DROP TABLE IF EXISTS usage_update");
-            st.execute("DROP TABLE IF EXISTS prompt_usage");
-            st.execute("DROP TABLE IF EXISTS message_event");
+        if (dbVersion < 2) {
+            try (Statement st = conn.createStatement()) {
+                st.execute("DROP TABLE IF EXISTS usage_update");
+                st.execute("DROP TABLE IF EXISTS prompt_usage");
+                st.execute("DROP TABLE IF EXISTS message_event");
+            }
+        }
+        if (dbVersion == 2) {
+            try (Statement st = conn.createStatement()) {
+                st.execute("ALTER TABLE usage_update ALTER COLUMN cost_amount NUMERIC(20,6)");
+            }
         }
         try (PreparedStatement ps = conn.prepareStatement(
                 "MERGE INTO usage_meta (meta_key, meta_value) VALUES (?, ?)")) {
@@ -429,7 +445,12 @@ public class H2UsageStatsStore implements UsageStatsStore {
             ps.setString(2, String.valueOf(SCHEMA_VERSION));
             ps.executeUpdate();
         }
-        LOG.log(Level.INFO, "Reset usage-stats store to schema version {0}", SCHEMA_VERSION);
+        if (dbVersion < 2) {
+            LOG.log(Level.INFO, "Reset usage-stats store to schema version {0}", SCHEMA_VERSION);
+        } else {
+            LOG.log(Level.INFO, "Upgraded usage-stats store from schema version {0} to {1}",
+                    new Object[]{dbVersion, SCHEMA_VERSION});
+        }
     }
 
     private static int readSchemaVersion(Connection conn) {

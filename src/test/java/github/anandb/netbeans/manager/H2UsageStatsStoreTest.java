@@ -176,7 +176,7 @@ class H2UsageStatsStoreTest {
         costRow(0.0738938, NOW - DAY);
 
         UsageSummary summary = store.query(30, null, NOW);
-        assertEquals(0.0738938, summary.totalCost(), 1e-9);
+        assertEquals(0.0738938, summary.totalCost(), 1e-5);
         // Five gauge rows in scope, one session.
         assertEquals(1, summary.sessions());
     }
@@ -250,5 +250,46 @@ class H2UsageStatsStoreTest {
         assertEquals(1, versioned.query(1, null, NOW).messages(),
                 "versioned rows must survive a normal reopen");
         versioned.shutdown();
+    }
+
+    /**
+     * Version-2 databases (DOUBLE cost column, valid delta rows) must keep
+     * their rows when the store widens cost_amount to NUMERIC(20,6), and
+     * must accept further delta inserts after the in-place migration.
+     */
+    @Test
+    void versionTwoCostRowsSurviveTheNumericMigration(@TempDir Path tempDir) throws SQLException {
+        String fileUrl = "jdbc:h2:" + tempDir.resolve("usage-v2").toAbsolutePath().toString().replace('\\', '/');
+        try (Connection c = DriverManager.getConnection(fileUrl);
+                Statement st = c.createStatement()) {
+            st.execute("CREATE TABLE usage_meta (meta_key VARCHAR(64) PRIMARY KEY,"
+                    + " meta_value VARCHAR(64))");
+            st.execute("INSERT INTO usage_meta VALUES ('schema_version','2')");
+            st.execute("CREATE TABLE usage_update (id BIGINT AUTO_INCREMENT PRIMARY KEY,"
+                    + " session_id VARCHAR(512), harness_id VARCHAR(128), model_id VARCHAR(512),"
+                    + " project VARCHAR(2048), captured_at BIGINT NOT NULL, used_tokens BIGINT NOT NULL,"
+                    + " size_tokens BIGINT, cost_amount DOUBLE NOT NULL, cost_currency VARCHAR(16))");
+            st.execute("INSERT INTO usage_update (session_id, captured_at, used_tokens, cost_amount)"
+                    + " VALUES ('s1', " + NOW + ", 10, 0.5)");
+        }
+
+        H2UsageStatsStore upgraded = new H2UsageStatsStore(fileUrl);
+        UsageSummary summary = upgraded.query(1, null, NOW);
+        assertEquals(0.5, summary.totalCost(), 1e-9, "v2 gross row must survive as the first delta");
+        // A new cumulative gross of 0.6 over the preserved 0.5 stores a 0.1 delta.
+        upgraded.recordUsageUpdate(new UsageUpdateRow(att("s1", "pi", "m1", "/proj/a"), NOW, 20, null, 0.6, "USD"));
+        assertEquals(0.6, upgraded.query(1, null, NOW).totalCost(), 1e-9);
+
+        assertEquals("3", upgradedScalarVersion(fileUrl));
+        upgraded.shutdown();
+    }
+
+    private static String upgradedScalarVersion(String url) throws SQLException {
+        try (Connection c = DriverManager.getConnection(url);
+                Statement st = c.createStatement();
+                ResultSet rs = st.executeQuery("SELECT meta_value FROM usage_meta WHERE meta_key = 'schema_version'")) {
+            assertTrue(rs.next());
+            return rs.getString(1);
+        }
     }
 }
