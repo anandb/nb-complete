@@ -129,8 +129,8 @@ public class H2UsageStatsStore implements UsageStatsStore {
                 setNullableLong(ps, 7, row.size());
                 // Harnesses repeat the session's cumulative cost per notification
                 // (pi-acp re-sends the running total several times per turn).
-                // Storing the delta against the last recorded row keeps
-                // SUM(cost_amount) equal to the true session spend.
+                // Storing the delta against the spend already recorded for the
+                // session keeps SUM(cost_amount) equal to the true spend.
                 ps.setDouble(8, costDelta(row));
                 ps.setString(9, row.costCurrency() != null ? row.costCurrency() : "USD");
                 ps.executeUpdate();
@@ -138,6 +138,40 @@ public class H2UsageStatsStore implements UsageStatsStore {
                 LOG.log(Level.WARNING, "Failed to record usage_update row", e);
             }
         });
+    }
+
+    /** Opens the H2 database, migrating or dropping legacy tables. */
+    private Connection open() throws SQLException {
+        try {
+            Class.forName("org.h2.Driver");
+        } catch (ClassNotFoundException e) {
+            LOG.log(Level.WARNING, "H2 driver not on the classpath", e);
+        }
+        Connection conn = DriverManager.getConnection(jdbcUrl);
+        try {
+            try (Statement st = conn.createStatement()) {
+                st.execute(CREATE_META);
+            }
+            applySchemaMigration(conn);
+            try (Statement st = conn.createStatement()) {
+                st.execute(CREATE_USAGE_UPDATE);
+                st.execute(CREATE_PROMPT_USAGE);
+                st.execute(CREATE_MESSAGE_EVENT);
+                st.execute("CREATE INDEX IF NOT EXISTS idx_usage_update_ts ON usage_update (captured_at)");
+                st.execute("CREATE INDEX IF NOT EXISTS idx_prompt_usage_ts ON prompt_usage (captured_at)");
+                st.execute("CREATE INDEX IF NOT EXISTS idx_message_event_ts ON message_event (captured_at)");
+            }
+            return conn;
+        } catch (SQLException e) {
+            // Close on failure: a leaked connection keeps the .mv.db file lock
+            // held and every connection() retry leaks another one.
+            try {
+                conn.close();
+            } catch (SQLException closed) {
+                LOG.log(Level.FINE, "Failed to close abandoned H2 connection", closed);
+            }
+            throw e;
+        }
     }
 
     /**
@@ -375,27 +409,6 @@ public class H2UsageStatsStore implements UsageStatsStore {
         }
     }
 
-    private Connection open() throws SQLException {
-        try {
-            Class.forName("org.h2.Driver");
-        } catch (ClassNotFoundException e) {
-            LOG.log(Level.WARNING, "H2 driver not on the classpath", e);
-        }
-        Connection conn = DriverManager.getConnection(jdbcUrl);
-        try (Statement st = conn.createStatement()) {
-            st.execute(CREATE_META);
-        }
-        applySchemaMigration(conn);
-        try (Statement st = conn.createStatement()) {
-            st.execute(CREATE_USAGE_UPDATE);
-            st.execute(CREATE_PROMPT_USAGE);
-            st.execute(CREATE_MESSAGE_EVENT);
-            st.execute("CREATE INDEX IF NOT EXISTS idx_usage_update_ts ON usage_update (captured_at)");
-            st.execute("CREATE INDEX IF NOT EXISTS idx_prompt_usage_ts ON prompt_usage (captured_at)");
-            st.execute("CREATE INDEX IF NOT EXISTS idx_message_event_ts ON message_event (captured_at)");
-        }
-        return conn;
-    }
 
     /**
      * Drops rows written by an older capture version whose semantics produced
