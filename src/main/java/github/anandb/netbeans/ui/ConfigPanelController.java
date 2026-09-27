@@ -64,6 +64,10 @@ public class ConfigPanelController {
 
     private static final Logger LOG = Logger.from(ConfigPanelController.class);
 
+    /** Backing worker for off-EDT preference I/O in seeding/mirroring. */
+    private static final RequestProcessor PREFS_RP =
+            new RequestProcessor(ConfigPanelController.class.getName(), 1, true, false);
+
     private final SessionService sessionService = PlatformBridge.sessionServiceSafe();
 
     /** Per-harness model list cache; null when the service is not registered. */
@@ -554,11 +558,9 @@ public class ConfigPanelController {
      * cached models or the dropdown is already populated from a live session.
      */
     public void seedModelsFromCache(String harnessId) {
-        if (modelListControl == null || harnessId == null || harnessId.isBlank()) {
-            return;
-        }
-        // Preference reads touch the backing store — keep them off the EDT.
-        CompletableFuture.supplyAsync(() -> modelListControl.getModels(harnessId))
+        // Preference reads touch the backing store — keep them off the EDT
+        // and off the shared ForkJoinPool. PREFS_RP supplies the executor.
+        CompletableFuture.supplyAsync(() -> modelListControl.getModels(harnessId), PREFS_RP)
                 .thenAccept(cached -> SwingUtilities.invokeLater(() -> applyCachedModels(cached)));
     }
 
