@@ -24,7 +24,7 @@ After installing a harness — and optionally setting the binary path under `Opt
 
 
 > [[OpenCode]] / [[PI Agent]] / [[Goose Agent]] / [[Cursor Agent]] / [[Claude Agent]]
-> [[Hermes Agent]] / [[Gemini Agent]] / [[Oh My Pi Agent]] / [[OpenClaw Agent]]
+> [[Hermes Agent]] / [[Gemini Agent]] / [[Oh My Pi Agent]] / [[OpenClaw Agent]] / [[Devin Agent]]
 > [[Post Install]]
 > [[Restarting the server]]
 > [[Options Panel Reference]]

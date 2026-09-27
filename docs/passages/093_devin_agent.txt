@@ -1,0 +1,42 @@
+:: Devin Agent {"position":"2400,1200","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Devin Agent</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+#### Install
+
+- **macOS / Linux / WSL**: `curl -fsSL https://cli.devin.ai/install.sh | bash`
+- **macOS (Homebrew)**: `brew install --cask devin-cli`
+- **Windows (PowerShell)**: `irm https://static.devin.ai/cli/setup.ps1 | iex`
+
+On Windows run that in **PowerShell** — `irm` and `iex` are PowerShell commands and fail in Git Bash or CMD. Afterwards <code>devin</code> works from PowerShell, Windows Terminal, or Git Bash. CLI docs: <a href="https://docs.devin.ai/cli" target="_blank" rel="noopener">docs.devin.ai/cli</a>.
+
+#### About
+
+<a href="https://docs.devin.ai/cli" target="_blank" rel="noopener">Devin CLI</a> is a local command-line coding agent, separate from cloud Devin. Running <code>devin acp</code> makes it act as an **ACP server** over stdio: it speaks JSON-RPC on stdin/stdout and is meant to be spawned by an ACP-aware editor, so it is not a command to run yourself.
+
+The executable you configure in BeanBot is <code>devin</code>, run with the default launch argument <code>acp</code>.
+
+**Authentication** is worth setting up before you connect: the ACP server reads credentials from the <code>WINDSURF_API_KEY</code> environment variable when it is set, and otherwise uses the credentials stored by <code>devin auth login</code>. Run <code>devin auth login</code> once in a terminal, and be aware that a Windsurf key in your environment takes precedence over that stored login.
+
+Devin Agent in BeanBot supports:
+- **Editor Context**: Seamlessly injects the active editor state into agent prompts.
+- **[[MCP Tools]]**: Devin accepts a per-session MCP server, so BeanBot hands it the plugin's internal server automatically — no manual MCP registration is needed.
+- **Model Selection**: Exposed as an ACP config option, so the in-session model dropdown works. To pin a different default for every new session instead, pass <code>--model</code> under Process Arguments in <code>Options &gt; Assistant</code>, or set <code>DEVIN_MODEL</code>.
+- **Agent / Mode List**: The agent selector is offered.
+- **Session List**: Sessions come from Devin itself, so the dropdown reflects its own list and needs no local tracking.
+- **Slash Commands**: Devin advertises its full slash-command set over the protocol, so its commands appear in the command palette with their descriptions and argument hints. Its account commands show up as <code>/login</code>, <code>/logout</code> and <code>/status</code>.
+
+#### Limitations
+
+- **Mode Switching**: Devin does not accept a mode change mid-session, so switching modes in an open session is not offered. Set the starting mode with the CLI's <code>--permission-mode</code> flag under Process Arguments instead.
+- **Cloud sessions**: <code>devin --cloud</code> drives a Devin Cloud session rather than the local agent. BeanBot connects to the ACP server, which is the local agent, so cloud features such as Playbooks, Secrets and Knowledge are not part of this integration.
+
+> [[Post Install]]
+> [[Starting a Session]]
+> [[Choose Your Coding Harness]]
+> [[MCP Tools]]
+> [[Picking an Agent, Model and Thinking Level]]

@@ -6,11 +6,9 @@
   <div>[[Index->Topic Index]]</div>
 </div>
 
-BeanBot doesn't directly talk to AI services, it communicates via coding agents or harnesses, these applications directly interface with LLM providers like Anthropic or OpenAI, and provide authentication, persistence and context management. Most of them support a protocol called ACP or Agent Client Protocol that simplifies and standardises LLM access for IDEs and Editors.
+BeanBot doesn't talk directly to AI services, it communicates via coding agents or harnesses, these applications interface with LLM providers like Anthropic or OpenAI, and provide authentication, persistence and context management. Most of them support a protocol called ACP or Agent Client Protocol that simplifies and standardises LLM access for IDEs and Editors, BeanBot takes advantage of this capability, we can connect to any provider or model as long as we find a suitable harness that speaks ACP.
 
-BeanBot takes advantage of this capability, we can connect to any provider or model as long as we find a suitable harness that speaks ACP. In this guide you might also see a harness referred to as an ACP Server, an Agent Server, or simply server, in the context of this plugin it's just a conduit for communicating with a remote LLM.
-
-These are the harnesses currently supported, pick the one you want to use. Even unlisted ones might work, but you have to experiment and find out.
+In this guide you might also see a harness referred to as an ACP Server, an Agent Server, or simply server, in the context of this plugin it's just a conduit for communicating with a remote LLM. These are the harnesses currently supported, pick the one you want to use. Even unlisted ones might work, but you have to experiment and find out.
 
 > [[OpenCode]]
 > [[PI Agent]]
@@ -21,7 +19,9 @@ These are the harnesses currently supported, pick the one you want to use. Even 
 > [[Gemini Agent]]
 > [[Oh My Pi Agent]]
 > [[OpenClaw Agent]]
+> [[Devin Agent]]
 
-If you are not sure, The plugin will detect installed harnesses and let you choose at startup — see [[Choose Your Coding Harness]].
+If you are not sure, The plugin will detect installed harnesses and let you choose at startup.
+See [[Choose Your Coding Harness]].
 
 > [[Home]]

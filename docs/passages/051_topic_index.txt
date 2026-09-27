@@ -28,6 +28,7 @@ This is a complete list of topics in this guide, use it to directly jump to that
 > [[Creating a Task Repository]]
 > [[Cursor Agent]]
 > [[Customising the Toolbar]]
+> [[Devin Agent]]
 > [[Differences from the main panel]]
 > [[Expand/Collapse All]]
 > [[Experiments]]
