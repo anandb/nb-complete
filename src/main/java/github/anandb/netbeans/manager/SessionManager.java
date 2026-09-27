@@ -7,8 +7,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.model.SessionConfigOption;
 import github.anandb.netbeans.model.ConfigOptionConverter;
+import github.anandb.netbeans.contract.SessionStore;
 import github.anandb.netbeans.model.ModelsInfo;
 import github.anandb.netbeans.model.ModesInfo;
+import github.anandb.netbeans.model.SessionMetadata;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.contract.ProcessControl;
 import github.anandb.netbeans.contract.ProjectQuery;
@@ -19,16 +21,11 @@ import javax.swing.SwingUtilities;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Set;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
@@ -47,7 +44,6 @@ import org.openide.util.RequestProcessor;
 import org.openide.util.Lookup;
 import org.openide.util.lookup.ServiceProvider;
 
-import java.util.prefs.Preferences;
 import java.util.logging.Level;
 
 import github.anandb.netbeans.contract.SessionControl;
@@ -94,10 +90,6 @@ import static org.apache.commons.text.StringEscapeUtils.unescapeHtml4;
 @ServiceProvider(service = SessionControl.class)
 public class SessionManager implements SessionQuery, SessionControl {
 
-    private static final String TITLE_PREFIX = "session_title_";
-    private static final String HIDDEN_PREFIX = "session_hidden_";
-    private static final String USAGE_PREFIX = "session_usage_";
-    private static final String LOCAL_SESSIONS_KEY = "gemini_local_sessions";
 
     /** Returns the harness id configured for the current agent, or null. */
     @Override
@@ -169,35 +161,6 @@ public class SessionManager implements SessionQuery, SessionControl {
         return isBlank(id) ? null : id;
     }
 
-    private static String localSessionsKey(String agent) {
-        return agent != null ? LOCAL_SESSIONS_KEY + "_" + agent : LOCAL_SESSIONS_KEY;
-    }
-
-    private static String localSessionsNodeName(String agent) {
-        String name = agent != null
-                ? "sessids_" + agent.replaceAll("[^A-Za-z0-9._-]", "_") : "sessids";
-        if (name.length() > Preferences.MAX_NAME_LENGTH) {
-            name = name.substring(0, Preferences.MAX_NAME_LENGTH);
-        }
-        return name;
-    }
-
-    private static String prefKey(String sessionId) {
-        if (sessionId == null || sessionId.isEmpty()) {
-            return null;
-        }
-        return sessionId.length() > Preferences.MAX_KEY_LENGTH
-                ? sessionId.substring(0, Preferences.MAX_KEY_LENGTH) : sessionId;
-    }
-
-    private static String metadataNodeName(String agent) {
-        String name = agent != null
-                ? "sessmeta_" + agent.replaceAll("[^A-Za-z0-9._-]", "_") : "sessmeta";
-        if (name.length() > Preferences.MAX_NAME_LENGTH) {
-            name = name.substring(0, Preferences.MAX_NAME_LENGTH);
-        }
-        return name;
-    }
 
     /** True when the harness has no session/list and the plugin tracks IDs locally. */
     private static boolean tracksSessionsLocally() {
@@ -242,15 +205,10 @@ public class SessionManager implements SessionQuery, SessionControl {
         return retained;
     }
 
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    static record SessionMetadata(
-        @JsonProperty("title") String title,
-        @JsonProperty("usage") String usage,
-        @JsonProperty("hidden") boolean hidden,
-        @JsonProperty("cwd") String cwd
-    ) {}
 
-    private final Map<String, SessionMetadata> metadataCache = new ConcurrentHashMap<>();
+    /** Metadata for a session that has none yet. */
+    private static final SessionMetadata EMPTY_METADATA = new SessionMetadata(null, null, false, null);
+
     /**
      * Model id per session, learned from the {@code model} config option. Harnesses
      * that report the model as a config option (goose-style, e.g. omp) send neither
@@ -258,220 +216,79 @@ public class SessionManager implements SessionQuery, SessionControl {
      * alone cannot answer {@link #getSessionModelId}.
      */
     private final Map<String, String> modelBySession = new ConcurrentHashMap<>();
-    private String cachedAgent = null;
 
-    private synchronized Map<String, SessionMetadata> getMetadataCache() {
-        String agent = agentName();
-        if (cachedAgent == null || !cachedAgent.equals(agent)) {
-            metadataCache.clear();
-            metadataCache.putAll(loadMetadataMap());
-            cachedAgent = agent;
-        }
-        return metadataCache;
-    }
+    /**
+     * The local store. Resolved from the service registry on first use and then
+     * kept, so the per-session metadata reads that the UI makes in a loop do not
+     * each pay for a lookup. Never cached when absent, so a store registered
+     * later is still picked up.
+     */
+    private volatile SessionStore sessionStore;
 
-    private Map<String, SessionMetadata> loadMetadataMap() {
-        Map<String, SessionMetadata> result = new ConcurrentHashMap<>();
-        Preferences node = metadataNode();
-        migrateBlobMetadata(node);
-        migrateUnqualifiedMetadata(node);
-        try {
-            for (String id : node.keys()) {
-                String json = node.get(id, null);
-                if (json == null || json.isEmpty()) {
-                    continue;
-                }
-                try {
-                    result.put(id, MAPPER.readValue(json, SessionMetadata.class));
-                } catch (Exception e) {
-                    LOG.warn("Failed to deserialize session metadata for {0}: {1}",
-                            id, ExceptionUtils.getMessage(e), e);
-                }
-            }
-        } catch (Exception e) {
-            LOG.warn("Failed to list session metadata keys: {0}", ExceptionUtils.getMessage(e), e);
+    /** The local store holding the per-session metadata, or null when none is registered. */
+    private SessionStore store() {
+        SessionStore local = sessionStore;
+        if (local != null) {
+            return local;
         }
-        return result;
-    }
-
-    /** One JSON object per session. NbPreferences values are capped at 8KB. */
-    private Preferences metadataNode() {
-        return NbPreferences.forModule(SessionManager.class).node(metadataNodeName(agentName()));
-    }
-
-    private void migrateBlobMetadata(Preferences node) {
-        Preferences prefs = NbPreferences.forModule(SessionManager.class);
-        String agent = agentName();
-        List<String> blobKeys = new ArrayList<>();
-        if (agent != null) {
-            blobKeys.add(LOCAL_SESSIONS_KEY + "_" + agent + "_metadata");
+        local = Lookup.getDefault().lookup(SessionStore.class);
+        if (local != null) {
+            sessionStore = local;
         }
-        blobKeys.add(LOCAL_SESSIONS_KEY + "_metadata");
-        blobKeys.add(LOCAL_SESSIONS_KEY + "__metadata");
-        for (String blobKey : blobKeys) {
-            String json = prefs.get(blobKey, null);
-            if (json == null || json.isEmpty()) {
-                continue;
-            }
-            try {
-                Map<String, SessionMetadata> blob = MAPPER.readValue(json,
-                        new TypeReference<Map<String, SessionMetadata>>() {});
-                for (Map.Entry<String, SessionMetadata> entry : blob.entrySet()) {
-                    persistOne(node, entry.getKey(), entry.getValue());
-                }
-                prefs.remove(blobKey);
-            } catch (Exception e) {
-                LOG.warn("Failed to migrate session metadata blob: {0}", ExceptionUtils.getMessage(e), e);
-            }
-        }
+        return local;
     }
 
     /**
-     * Copies per-session JSON from the pre-harness-id nodes ({@code sessmeta},
-     * and {@code sessmeta_} left by a blank pref) when the current node lacks
-     * that session, so titles/cwd survive after {@code ACP_HARNESS_ID} is set.
+     * Overrides the store, bypassing the service registry. Tests use this so a
+     * unit test never opens the real database under the user directory.
      */
-    private void migrateUnqualifiedMetadata(Preferences target) {
-        Preferences parent = NbPreferences.forModule(SessionManager.class);
-        String current = target.name();
-        for (String sourceName : List.of("sessmeta", "sessmeta_")) {
-            if (sourceName.equals(current)) {
-                continue;
-            }
-            copyMetadataKeysIfAbsent(parent.node(sourceName), target);
-        }
+    void setStoreForTest(SessionStore store) {
+        this.sessionStore = store;
     }
 
-    private void copyMetadataKeysIfAbsent(Preferences source, Preferences target) {
-        try {
-            for (String id : source.keys()) {
-                if (target.get(id, null) != null) {
-                    continue;
-                }
-                String json = source.get(id, null);
-                if (json != null && !json.isEmpty()) {
-                    target.put(id, json);
-                }
-            }
-        } catch (Exception e) {
-            LOG.warn("Failed to copy session metadata from {0}: {1}",
-                    source.name(), ExceptionUtils.getMessage(e), e);
+    /** Metadata for one session, or {@link #EMPTY_METADATA} when it has none. */
+    private SessionMetadata metadataOf(String sessionId) {
+        if (sessionId == null) {
+            return EMPTY_METADATA;
         }
+        SessionStore sessionStore = store();
+        if (sessionStore == null) {
+            return EMPTY_METADATA;
+        }
+        String harness = agentName();
+        SessionMetadata meta = sessionStore.sessionMetadata(harness).get(sessionId);
+        if (meta == null && harness != null) {
+            // Metadata written before a harness was configured carries no harness
+            // id. The preference-backed reader fell back to the unqualified node,
+            // so keep those titles, hidden flags and usage visible.
+            meta = sessionStore.sessionMetadata(null).get(sessionId);
+        }
+        return meta != null ? meta : EMPTY_METADATA;
     }
 
-    private void persistOne(String sessionId, SessionMetadata meta) {
-        persistOne(metadataNode(), sessionId, meta);
-    }
-
-    private void persistOne(Preferences node, String sessionId, SessionMetadata meta) {
-        if (sessionId == null || sessionId.isEmpty()) {
-            return;
-        }
-        String key = sessionId.length() > Preferences.MAX_KEY_LENGTH
-                ? sessionId.substring(0, Preferences.MAX_KEY_LENGTH) : sessionId;
-        try {
-            String json = MAPPER.writeValueAsString(meta);
-            if (json.length() > Preferences.MAX_VALUE_LENGTH) {
-                String title = meta.title();
-                int overflow = json.length() - Preferences.MAX_VALUE_LENGTH + 16;
-                if (title != null && title.length() > overflow) {
-                    title = title.substring(0, Math.max(0, title.length() - overflow));
-                    json = MAPPER.writeValueAsString(
-                            new SessionMetadata(title, meta.usage(), meta.hidden(), meta.cwd()));
-                }
-            }
-            if (json.length() > Preferences.MAX_VALUE_LENGTH) {
-                LOG.warn("Session metadata for {0} exceeds preferences value limit; not saved", sessionId);
-                return;
-            }
-            node.put(key, json);
-        } catch (Exception e) {
-            LOG.warn("Failed to persist session metadata for {0}: {1}",
-                    sessionId, ExceptionUtils.getMessage(e), e);
-        }
-    }
-
+    /**
+     * Applies {@code updater} to a session's metadata and saves the result. The
+     * read-modify-write is not atomic against other writers, which is acceptable:
+     * every caller runs on the EDT or an RPC thread and changes a single field,
+     * exactly as the preference-backed version this replaced did.
+     */
     private synchronized void updateMetadata(String sessionId,
             Function<SessionMetadata, SessionMetadata> updater) {
-        Map<String, SessionMetadata> cache = getMetadataCache();
-        SessionMetadata current = cache.get(sessionId);
-        if (current == null) {
-            current = new SessionMetadata(null, null, false, null);
-        }
-        SessionMetadata updated = updater.apply(current);
-        cache.put(sessionId, updated);
-        persistOne(sessionId, updated);
-    }
-
-    /**
-     * One-shot copy of pre-metadata preference keys into the JSON map.
-     * Skipped when a row already exists so {@code setHidden(false)} is not
-     * overwritten by leftover {@code session_hidden_*} keys.
-     */
-    private synchronized void migrateLegacyMetadataIfAbsent(String sessionId) {
-        Map<String, SessionMetadata> cache = getMetadataCache();
-        if (cache.containsKey(sessionId)) {
+        if (sessionId == null || sessionId.isEmpty() || updater == null) {
             return;
         }
-        String title = readLegacyString(TITLE_PREFIX, sessionId);
-        String usage = readLegacyString(USAGE_PREFIX, sessionId);
-        boolean hidden = readLegacyBoolean(HIDDEN_PREFIX, sessionId);
-        if (title == null && usage == null && !hidden) {
+        SessionStore sessionStore = store();
+        if (sessionStore == null) {
             return;
         }
-        cache.put(sessionId, new SessionMetadata(title, usage, hidden, null));
-        persistOne(sessionId, cache.get(sessionId));
-        removeLegacyKeys(TITLE_PREFIX, sessionId);
-        removeLegacyKeys(USAGE_PREFIX, sessionId);
-        removeLegacyKeys(HIDDEN_PREFIX, sessionId);
-    }
-
-    private String readLegacyString(String prefix, String sessionId) {
-        Preferences prefs = NbPreferences.forModule(SessionManager.class);
-        String agent = agentName();
-        String qualified = agent != null ? prefix + agent + "_" + sessionId : prefix + sessionId;
-        String val = prefs.get(qualified, null);
-        if (val == null && agent != null) {
-            val = prefs.get(prefix + sessionId, null);
-        }
-        return val;
-    }
-
-    private boolean readLegacyBoolean(String prefix, String sessionId) {
-        Preferences prefs = NbPreferences.forModule(SessionManager.class);
-        String agent = agentName();
-        String qualified = agent != null ? prefix + agent + "_" + sessionId : prefix + sessionId;
-        boolean val = prefs.getBoolean(qualified, false);
-        if (!val && agent != null) {
-            val = prefs.getBoolean(prefix + sessionId, false);
-        }
-        return val;
-    }
-
-    private void removeLegacyKeys(String prefix, String sessionId) {
-        Preferences prefs = NbPreferences.forModule(SessionManager.class);
-        String agent = agentName();
-        prefs.remove(prefix + sessionId);
-        if (agent != null) {
-            prefs.remove(prefix + agent + "_" + sessionId);
-        }
+        sessionStore.saveSessionMetadata(agentName(), sessionId, updater.apply(metadataOf(sessionId)));
     }
 
     /** @see SessionQuery#getCustomTitle(String, String) */
     @Override
     public String getCustomTitle(String sessionId, String defaultTitle) {
         if (sessionId == null) return defaultTitle;
-        migrateLegacyMetadataIfAbsent(sessionId);
-        SessionMetadata meta = getMetadataCache().get(sessionId);
-        String val = (meta != null) ? meta.title() : null;
-        if (val == null) {
-            String legacy = readLegacyString(TITLE_PREFIX, sessionId);
-            if (legacy != null) {
-                updateMetadata(sessionId, m -> new SessionMetadata(legacy, m.usage(), m.hidden(), m.cwd()));
-                removeLegacyKeys(TITLE_PREFIX, sessionId);
-                val = legacy;
-            }
-        }
+        String val = metadataOf(sessionId).title();
         return decodeHtmlEntities(val != null ? val : defaultTitle);
     }
 
@@ -493,26 +310,22 @@ public class SessionManager implements SessionQuery, SessionControl {
         return unescapeHtml4(input);
     }
 
-    static void setCustomTitle(String sessionId, String title) {
-        SessionManager instance = getInstance();
-        instance.updateMetadata(sessionId, m -> new SessionMetadata(title, m.usage(), m.hidden(), m.cwd()));
-        instance.removeLegacyKeys(TITLE_PREFIX, sessionId);
+    /** Stores a session's custom title. An instance method so the write lands on
+     *  the same instance whose caches the caller just updated. */
+    void setCustomTitle(String sessionId, String title) {
+        updateMetadata(sessionId, m -> new SessionMetadata(title, m.usage(), m.hidden(), m.cwd()));
     }
 
     // --- hidden session flag (stored locally) -------------------------------
 
     @Override
     public boolean isHidden(String sessionId) {
-        if (sessionId == null) return false;
-        migrateLegacyMetadataIfAbsent(sessionId);
-        SessionMetadata meta = getMetadataCache().get(sessionId);
-        return meta != null && meta.hidden();
+        return metadataOf(sessionId).hidden();
     }
 
     @Override
     public void setHidden(String sessionId, boolean hidden) {
         updateMetadata(sessionId, m -> new SessionMetadata(m.title(), m.usage(), hidden, m.cwd()));
-        removeLegacyKeys(HIDDEN_PREFIX, sessionId);
     }
     // -------------------------------------------------------------------------
 
@@ -520,19 +333,7 @@ public class SessionManager implements SessionQuery, SessionControl {
 
     @Override
     public String getContextUsage(String sessionId) {
-        if (sessionId == null) return null;
-        migrateLegacyMetadataIfAbsent(sessionId);
-        SessionMetadata meta = getMetadataCache().get(sessionId);
-        String val = (meta != null) ? meta.usage() : null;
-        if (val == null) {
-            String legacy = readLegacyString(USAGE_PREFIX, sessionId);
-            if (legacy != null) {
-                updateMetadata(sessionId, m -> new SessionMetadata(m.title(), legacy, m.hidden(), m.cwd()));
-                removeLegacyKeys(USAGE_PREFIX, sessionId);
-                val = legacy;
-            }
-        }
-        return val;
+        return metadataOf(sessionId).usage();
     }
 
     @Override
@@ -543,65 +344,33 @@ public class SessionManager implements SessionQuery, SessionControl {
     @Override
     public void setContextUsage(String sessionId, long used, long size) {
         updateMetadata(sessionId, m -> new SessionMetadata(m.title(), used + "," + size, m.hidden(), m.cwd()));
-        removeLegacyKeys(USAGE_PREFIX, sessionId);
     }
 
-    // --- locally-created sessions persistence (for agents without session/list) -
+    // --- locally-created sessions (for agents without session/list) ------------
+    //
+    // The ids are no longer stored separately: a session's metadata row is what
+    // makes it locally known, and the store orders those rows newest first, which
+    // is the ordering the dropped sessids_<harness> nodes used to encode.
 
-    /** Persists locally-created session IDs as one preference key per ID. */
-    private void saveLocallyCreatedSessionIds() {
-        String agent = agentName();
-        Preferences node = NbPreferences.forModule(SessionManager.class)
-                .node(localSessionsNodeName(agent));
-        List<Session> local = cacheManager.getLocallyCreatedSessions(agent);
-        Set<String> keep = new HashSet<>();
-        int index = 0;
-        for (Session s : local) {
-            String key = prefKey(s.id());
-            if (key == null) {
-                continue;
-            }
-            keep.add(key);
-            node.put(key, String.valueOf(index++));
-        }
-        try {
-            for (String existing : node.keys()) {
-                if (!keep.contains(existing)) {
-                    node.remove(existing);
-                }
-            }
-        } catch (Exception e) {
-            LOG.warn("Failed to prune local session id keys: {0}", ExceptionUtils.getMessage(e), e);
-        }
-    }
-
-    /** Loads locally-created session IDs from NbPreferences into the cache manager. */
+    /**
+     * Restores the locally-created sessions into the cache manager, newest first.
+     * Only meaningful for a harness without {@code session/list}: every session it
+     * has is one created locally.
+     */
     private void loadLocallyCreatedSessionIds() {
         String agent = agentName();
-        Preferences node = NbPreferences.forModule(SessionManager.class)
-                .node(localSessionsNodeName(agent));
-        migrateCsvSessionIds(node);
-        List<String> ids = new ArrayList<>();
-        try {
-            String[] keys = node.keys();
-            Arrays.sort(keys, (a, b) -> Integer.compare(sessionIdIndex(node, a), sessionIdIndex(node, b)));
-            for (String key : keys) {
-                if (key != null && !key.isEmpty()) {
-                    ids.add(key);
-                }
-            }
-        } catch (Exception e) {
-            LOG.warn("Failed to list local session ids: {0}", ExceptionUtils.getMessage(e), e);
+        SessionStore sessionStore = store();
+        if (sessionStore == null) {
+            return;
         }
+        List<String> ids = new ArrayList<>(sessionStore.sessionMetadata(agent).keySet());
         if (ids.isEmpty()) {
             return;
         }
-        Map<String, SessionMetadata> metadata = getMetadataCache();
-        // Data repair: sessions saved before the cwd field existed carry no
-        // project directory. With exactly one project open they can be
-        // attributed safely — backfill and persist the repair once. With
-        // several projects open the ambiguity is left to the load-time
-        // fallback instead of guessing.
+        // Data repair: sessions saved before the cwd field existed carry no project
+        // directory. With exactly one project open they can be attributed safely —
+        // backfill and persist the repair once. With several projects open the
+        // ambiguity is left to the load-time fallback instead of guessing.
         ProjectQuery projectQuery = Lookup.getDefault().lookup(ProjectQuery.class);
         Project[] openProjects = projectQuery == null
                 ? new Project[0] : projectQuery.getAllOpenProjects();
@@ -611,8 +380,7 @@ public class SessionManager implements SessionQuery, SessionControl {
         for (int i = ids.size() - 1; i >= 0; i--) {
             String sessionId = ids.get(i);
             String title = getCustomTitle(sessionId, sessionId);
-            SessionMetadata meta = metadata.get(sessionId);
-            String cwd = meta != null ? meta.cwd() : null;
+            String cwd = metadataOf(sessionId).cwd();
             if (cwd == null && repairCwd != null) {
                 LOG.info("Repairing missing cwd for session {0}: {1}",
                         sessionId, repairCwd);
@@ -622,64 +390,6 @@ public class SessionManager implements SessionQuery, SessionControl {
             }
             Session s = new Session(sessionId, title, cwd, cwd, null, null, null, null, null, null);
             cacheManager.addLocallyCreated(s, agent);
-        }
-    }
-
-    private static int sessionIdIndex(Preferences node, String key) {
-        try {
-            return Integer.parseInt(node.get(key, "0"));
-        } catch (NumberFormatException e) {
-            return 0;
-        }
-    }
-
-    /**
-     * Copies IDs from the legacy comma-joined preference into the per-id node
-     * when that node is empty, then drops the CSV keys.
-     */
-    private void migrateCsvSessionIds(Preferences node) {
-        Preferences prefs = NbPreferences.forModule(SessionManager.class);
-        try {
-            if (node.keys().length > 0) {
-                prefs.remove(localSessionsKey(agentName()));
-                prefs.remove(LOCAL_SESSIONS_KEY);
-                prefs.remove(LOCAL_SESSIONS_KEY + "_");
-                return;
-            }
-        } catch (Exception e) {
-            LOG.warn("Failed to inspect local session id node: {0}", ExceptionUtils.getMessage(e), e);
-            return;
-        }
-        String agent = agentName();
-        List<String> csvKeys = new ArrayList<>();
-        if (agent != null) {
-            csvKeys.add(localSessionsKey(agent));
-        }
-        csvKeys.add(LOCAL_SESSIONS_KEY);
-        csvKeys.add(LOCAL_SESSIONS_KEY + "_");
-        int index = 0;
-        for (String csvKey : csvKeys) {
-            String value = prefs.get(csvKey, null);
-            if (isBlank(value)) {
-                continue;
-            }
-            for (String id : value.split(",")) {
-                String key = prefKey(id);
-                if (key == null) {
-                    continue;
-                }
-                try {
-                    if (node.get(key, null) == null) {
-                        node.put(key, String.valueOf(index++));
-                    }
-                } catch (Exception e) {
-                    LOG.warn("Failed to migrate local session id {0}: {1}",
-                            key, ExceptionUtils.getMessage(e), e);
-                }
-            }
-        }
-        for (String csvKey : csvKeys) {
-            prefs.remove(csvKey);
         }
     }
 
@@ -1009,7 +719,6 @@ public class SessionManager implements SessionQuery, SessionControl {
                         updateMetadata(s.id(), m -> new SessionMetadata(m.title(), m.usage(), m.hidden(), finalCwd));
                         if (tracksSessionsLocally()) {
                             cacheManager.addLocallyCreated(s, agentName());
-                            saveLocallyCreatedSessionIds();
                         }
                         return s;
                     } catch (Exception e) {
@@ -1387,9 +1096,6 @@ public class SessionManager implements SessionQuery, SessionControl {
                 }
             }
             cacheManager.setCachedSessions(updatedList, agentName(), tracksSessionsLocally());
-            if (tracksSessionsLocally()) {
-                saveLocallyCreatedSessionIds();
-            }
         }
         notifySessionRenamed(sessionId);
     }

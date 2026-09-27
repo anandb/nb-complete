@@ -1,16 +1,22 @@
 package github.anandb.netbeans.project;
 
 import org.openide.modules.OnStart;
+import org.openide.awt.NotificationDisplayer;
+import org.openide.util.NbBundle;
 import org.openide.util.NbPreferences;
 import org.openide.util.RequestProcessor;
 import org.openide.windows.Mode;
 import org.openide.windows.WindowManager;
 
+import github.anandb.netbeans.contract.SessionStore;
 import github.anandb.netbeans.contract.UpdateCheckerControl;
+import github.anandb.netbeans.model.MigrationReport;
 import github.anandb.netbeans.support.AgentUtils;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.PreferenceKeys;
 import github.anandb.netbeans.support.PreferencesMigrator;
+import java.util.logging.Level;
+import javax.swing.SwingUtilities;
 import org.openide.util.Lookup;
 import org.openide.windows.TopComponent;
 
@@ -30,6 +36,11 @@ public class ACPStartup implements Runnable {
             // IDE migration skips plugin files because the plugin is imported later).
             PreferencesMigrator.migrateIfNeeded();
 
+            // Runs on this background thread, never the EDT: it reads preferences,
+            // writes the database, and leaves the store's data in memory so every
+            // later read from the EDT is a memory read.
+            migratePreferencesIntoStore();
+
             LOG.info("ACP Plugin Startup: Initializing Project Manager...");
             ACPProjectManager.getInstance().start();
             checkVersionAndOpen();
@@ -40,6 +51,48 @@ public class ACPStartup implements Runnable {
                 LOG.warn("UpdateCheckerControl not found — update checks disabled");
             }
         });
+    }
+
+    /**
+     * Moves the legacy preference data into the local store and loads it. Runs on
+     * a background thread; the store's later reads are memory-only.
+     *
+     * <p>A migration that could not recover every entry tells the user what was
+     * skipped. Nothing here is allowed to fail startup: a missing store or a
+     * database that will not open leaves the plugin running with empty datasets.</p>
+     */
+    private static void migratePreferencesIntoStore() {
+        SessionStore store = Lookup.getDefault().lookup(SessionStore.class);
+        if (store == null) {
+            LOG.warn("SessionStore not found — input history and session metadata will not persist");
+            return;
+        }
+        MigrationReport report;
+        try {
+            report = store.migrateLegacyPrefs();
+        } catch (RuntimeException ex) {
+            LOG.log(Level.WARNING, "Preference migration failed; continuing with an empty store", ex);
+            return;
+        }
+        if (report != null && report.hasSkips()) {
+            notifySkippedPreferences(report);
+        }
+    }
+
+    /**
+     * One non-modal notification naming what the migration could not recover.
+     *
+     * <p>Deliberately not a dialog: this is an automatic, non-actionable startup
+     * event, and a modal would block the IDE over something the user cannot act
+     * on. The skipped entries stay in the preferences for inspection.</p>
+     */
+    private static void notifySkippedPreferences(MigrationReport report) {
+        String message = NbBundle.getMessage(ACPStartup.class, "MSG_PrefsMigrationSkipped",
+                report.skipped(), report.total());
+        String title = NbBundle.getMessage(ACPStartup.class, "LBL_PrefsMigrationTitle");
+        SwingUtilities.invokeLater(() -> NotificationDisplayer.getDefault().notify(
+                title, NotificationDisplayer.Priority.LOW.getIcon(), message, null,
+                NotificationDisplayer.Priority.LOW));
     }
 
     private void checkVersionAndOpen() {

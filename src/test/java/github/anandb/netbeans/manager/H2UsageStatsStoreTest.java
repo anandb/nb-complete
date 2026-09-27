@@ -1,5 +1,7 @@
 package github.anandb.netbeans.manager;
 
+import github.anandb.netbeans.model.MigrationReport;
+import github.anandb.netbeans.model.SessionMetadata;
 import github.anandb.netbeans.model.UsageRecords.Attribution;
 import github.anandb.netbeans.model.UsageRecords.MessageEvent;
 import github.anandb.netbeans.model.UsageRecords.MessageKind;
@@ -8,7 +10,11 @@ import github.anandb.netbeans.model.UsageRecords.UsageSummary;
 import github.anandb.netbeans.model.UsageRecords.UsageUpdateRow;
 import github.anandb.netbeans.model.UsageRecords.GroupTotals;
 import github.anandb.netbeans.contract.UsageStatsStore;
+import github.anandb.netbeans.support.PreferenceKeys;
+import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
@@ -17,12 +23,17 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.UUID;
+import java.util.prefs.BackingStoreException;
+import java.util.prefs.Preferences;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.openide.util.NbPreferences;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -68,6 +79,13 @@ class H2UsageStatsStoreTest {
                 Statement st = c.createStatement();
                 ResultSet rs = st.executeQuery(sql)) {
             return rs.next() ? rs.getObject(1) : null;
+        }
+    }
+
+    private void execute(String sql) throws SQLException {
+        try (Connection c = DriverManager.getConnection(url);
+                Statement st = c.createStatement()) {
+            st.execute(sql);
         }
     }
 
@@ -355,6 +373,285 @@ class H2UsageStatsStoreTest {
         GroupTotals mx = byModel.stream().filter(r -> "mx".equals(r.groupKey())).findFirst().orElseThrow();
         assertEquals(42, mx.inputTokens());
         assertEquals(0, mx.messages());
+    }
+
+    // ---- SessionStore: migration and the two migrated datasets ----
+
+    @Test
+    void migrationMovesHistoryAndMetadataThenDeletesTheSources() throws Exception {
+        clearMigratedPrefs();
+        Preferences root = prefs();
+        root.put(PreferenceKeys.INPUT_HISTORY_COUNT, "2");
+        root.put(PreferenceKeys.INPUT_HISTORY_PREFIX + "0", "first");
+        root.put(PreferenceKeys.INPUT_HISTORY_PREFIX + "1", "second");
+        root.put("caveman.enabled", "true");
+        root.put("gemini_local_sessions_omp", "s1,s2");
+        root.node("sessmeta_omp").put("s1",
+                "{\"title\":\"T1\",\"hidden\":true,\"cwd\":\"/p\",\"usage\":\"100,200\"}");
+        root.node("sessmeta_omp").put("s2", "{\"hidden\":false}");
+        // 0 is the newest in the old id lists, so s2 must come back first.
+        root.node("sessids_omp").put("s1", "1");
+        root.node("sessids_omp").put("s2", "0");
+        root.flush();
+
+        MigrationReport report = store.migrateLegacyPrefs();
+
+        assertEquals(0, report.skipped(), "nothing in this fixture is unreadable");
+        assertEquals(List.of("first", "second"), store.inputHistory());
+        Map<String, SessionMetadata> sessions = store.sessionMetadata("omp");
+        assertEquals(List.of("s2", "s1"), new ArrayList<>(sessions.keySet()),
+                "newest first, as the dropped id list ordered it");
+        assertEquals("T1", sessions.get("s1").title());
+        assertTrue(sessions.get("s1").hidden());
+        assertEquals("/p", sessions.get("s1").cwd());
+        assertEquals("100,200", sessions.get("s1").usage());
+
+        assertNull(root.get(PreferenceKeys.INPUT_HISTORY_PREFIX + "0", null), "migrated keys are deleted");
+        assertNull(root.get("caveman.enabled", null), "an obsolete key goes with them");
+        assertNull(root.get("gemini_local_sessions_omp", null), "the legacy CSV list is superseded");
+        assertFalse(hasChildNode("sessmeta_omp"), "the metadata node is gone");
+        assertFalse(hasChildNode("sessids_omp"), "the id node is gone");
+
+        MigrationReport second = store.migrateLegacyPrefs();
+        assertEquals(0, second.total(), "a completed migration does not run again");
+        assertEquals(2, store.sessionMetadata("omp").size());
+    }
+
+    @Test
+    void migrationSkipsUnreadableEntriesAndKeepsTheirKeys() throws Exception {
+        clearMigratedPrefs();
+        Preferences node = prefs().node("sessmeta_omp");
+        node.put("good", "{\"title\":\"G\"}");
+        node.put("bad", "{not json");
+        node.put("worse", "{");
+        prefs().flush();
+
+        MigrationReport report = store.migrateLegacyPrefs();
+
+        assertEquals(1, report.migrated());
+        assertEquals(2, report.skipped());
+        assertTrue(report.hasSkips());
+        assertEquals(2, report.reasons().size(), "one reason per skipped entry");
+        assertEquals("G", store.sessionMetadata("omp").get("good").title());
+        assertTrue(hasChildNode("sessmeta_omp"), "a node with skipped entries is kept for inspection");
+        assertEquals("{not json", node.get("bad", null));
+    }
+
+    @Test
+    void migrationSurvivesADatabaseItCannotOpenAndKeepsThePreferences() throws Exception {
+        clearMigratedPrefs();
+        Preferences root = prefs();
+        root.put(PreferenceKeys.INPUT_HISTORY_PREFIX + "0", "kept");
+        root.node("sessmeta_omp").put("s1", "{\"title\":\"T\"}");
+        root.flush();
+
+        // A regular file where a directory would have to be: opening must fail.
+        File blocker = File.createTempFile("beanbot-not-a-dir", ".tmp");
+        blocker.deleteOnExit();
+        H2UsageStatsStore broken = new H2UsageStatsStore("jdbc:h2:" + blocker.getAbsolutePath() + "/db");
+        try {
+            MigrationReport report = broken.migrateLegacyPrefs();
+
+            assertNotNull(report, "the migration always reports, even when it can do nothing");
+            assertTrue(broken.inputHistory().isEmpty());
+            assertTrue(broken.sessionMetadata("omp").isEmpty());
+            assertEquals("kept", root.get(PreferenceKeys.INPUT_HISTORY_PREFIX + "0", null),
+                    "data must survive a database that cannot be written");
+            assertTrue(hasChildNode("sessmeta_omp"));
+        } finally {
+            broken.shutdown();
+        }
+    }
+
+    @Test
+    void unqualifiedMetadataLandsInTheUnconfiguredBucket() throws Exception {
+        clearMigratedPrefs();
+        prefs().node("sessmeta").put("x", "{\"title\":\"Unqualified\",\"hidden\":true}");
+        prefs().flush();
+
+        store.migrateLegacyPrefs();
+
+        assertEquals("Unqualified", store.sessionMetadata(null).get("x").title(),
+                "metadata written before a harness existed has no harness bucket of its own");
+        assertTrue(store.sessionMetadata("omp").isEmpty());
+    }
+
+    @Test
+    void legacyPerSessionKeysAreFoldedIntoTheRow() throws Exception {
+        clearMigratedPrefs();
+        Preferences root = prefs();
+        root.put("session_title_x", "Legacy");
+        root.put("session_hidden_x", "true");
+        root.put("session_usage_x", "5,10");
+        root.flush();
+
+        store.migrateLegacyPrefs();
+
+        SessionMetadata meta = store.sessionMetadata(null).get("x");
+        assertNotNull(meta, "a session known only from per-session keys is still migrated");
+        assertEquals("Legacy", meta.title());
+        assertTrue(meta.hidden());
+        assertEquals("5,10", meta.usage());
+        assertNull(root.get("session_title_x", null), "the folded keys are deleted");
+    }
+
+    @Test
+    void sessionIdsContainingSeparatorsRoundTrip() throws Exception {
+        store.saveSessionMetadata("omp", "id,with,commas", new SessionMetadata("C", null, false, "/p"));
+        store.load();
+
+        assertEquals("C", store.sessionMetadata("omp").get("id,with,commas").title(),
+                "a session id is an opaque key, not a delimited field");
+    }
+
+    @Test
+    void historyIsCappedAndDropsTheOldest() {
+        for (int i = 0; i < 1030; i++) {
+            store.appendInputHistory("entry-" + i);
+        }
+        List<String> history = store.inputHistory();
+
+        assertEquals(1024, history.size());
+        assertEquals("entry-6", history.get(0), "the oldest entries are dropped first");
+        assertEquals("entry-1029", history.get(history.size() - 1), "the newest is last");
+    }
+
+    @Test
+    void anInterruptedMigrationDoesNotDuplicateHistoryOnRetry() throws Exception {
+        clearMigratedPrefs();
+        Preferences root = prefs();
+        root.put(PreferenceKeys.INPUT_HISTORY_PREFIX + "0", "first");
+        root.put(PreferenceKeys.INPUT_HISTORY_PREFIX + "1", "second");
+        root.node("sessmeta_omp").put("s1", "{\"title\":\"T\"}");
+        root.flush();
+
+        store.migrateLegacyPrefs();
+        assertEquals(List.of("first", "second"), store.inputHistory());
+
+        // A run interrupted after its inserts but before its marker leaves exactly
+        // this state: rows present, marker absent, preferences still in place.
+        execute("DELETE FROM usage_meta WHERE meta_key = 'prefs_migrated'");
+        store.migrateLegacyPrefs();
+
+        assertEquals(List.of("first", "second"), store.inputHistory(),
+                "a retry must not duplicate what the interrupted run already wrote");
+        assertEquals(2, scalarLong("SELECT COUNT(*) FROM input_history"));
+        assertEquals("T", store.sessionMetadata("omp").get("s1").title(),
+                "the metadata upsert absorbs the retry");
+    }
+
+    @Test
+    void aRowThatFailsToWriteKeepsItsPreferenceData() throws Exception {
+        clearMigratedPrefs();
+        // A directory longer than the cwd column: the row cannot be stored, so its
+        // preference entry is the only surviving copy and must not be deleted.
+        String tooLong = "/" + "x".repeat(2100);
+        String json = "{\"title\":\"T\",\"cwd\":\"" + tooLong + "\"}";
+        Preferences node = prefs().node("sessmeta_omp");
+        node.put("s1", json);
+        prefs().node("sessids_omp").put("s1", "0");
+        prefs().flush();
+
+        MigrationReport report = store.migrateLegacyPrefs();
+
+        assertEquals(1, report.skipped(), "the oversized row cannot be stored");
+        assertNull(store.sessionMetadata("omp").get("s1"), "and it is absent from the database");
+        assertTrue(hasChildNode("sessmeta_omp"), "its only copy must survive the run");
+        assertEquals(json, node.get("s1", null));
+        assertTrue(hasChildNode("sessids_omp"),
+                "the ordering that node still needs must survive with it");
+    }
+
+    @Test
+    void writeBeforeTheCacheLoadsKeepsTheStoredFields() {
+        // Seed a row through a store whose cache has loaded, so the database holds it.
+        store.saveSessionMetadata("omp", "s1", new SessionMetadata("Saved", "10,20", true, "/p"));
+        store.load();
+        assertEquals("Saved", store.sessionMetadata("omp").get("s1").title());
+
+        // A second store on the same database starts with an empty cache — the state
+        // a write racing startup sees. Its caller derives the record from nothing,
+        // so its blank fields mean "unknown" and must not wipe the stored row.
+        H2UsageStatsStore racing = new H2UsageStatsStore(url);
+        try {
+            racing.saveSessionMetadata("omp", "s1", new SessionMetadata(null, null, false, null));
+            racing.load();
+
+            SessionMetadata stored = racing.sessionMetadata("omp").get("s1");
+            assertEquals("Saved", stored.title(), "an unknown field must not overwrite a saved one");
+            assertEquals("10,20", stored.usage());
+            assertTrue(stored.hidden(), "the stored flag stands until the cache has loaded");
+            assertEquals("/p", stored.cwd());
+        } finally {
+            racing.shutdown();
+        }
+    }
+
+    @Test
+    void writeAfterTheCacheLoadsReplacesTheFieldsAsGiven() {
+        store.saveSessionMetadata("omp", "s1", new SessionMetadata("Saved", "10,20", true, "/p"));
+        store.load();
+
+        // Now the caller can see the row, so a blank means "clear this".
+        store.saveSessionMetadata("omp", "s1", new SessionMetadata("Renamed", null, false, null));
+        store.load();
+
+        SessionMetadata stored = store.sessionMetadata("omp").get("s1");
+        assertEquals("Renamed", stored.title());
+        assertNull(stored.usage(), "clearing a field is honoured once the cache has loaded");
+        assertFalse(stored.hidden());
+        assertNull(stored.cwd());
+    }
+
+    @Test
+    void metadataRoundTripsThroughTheDatabase() {
+        store.saveSessionMetadata("omp", "s1", new SessionMetadata("One", "10,20", true, "/p"));
+        store.saveSessionMetadata("omp", "s2", new SessionMetadata(null, null, false, null));
+
+        store.load();
+
+        Map<String, SessionMetadata> sessions = store.sessionMetadata("omp");
+        assertEquals(2, sessions.size());
+        assertEquals("One", sessions.get("s1").title());
+        assertEquals("10,20", sessions.get("s1").usage());
+        assertTrue(sessions.get("s1").hidden());
+        assertEquals("/p", sessions.get("s1").cwd());
+        assertNull(sessions.get("s2").title(), "an absent title stays absent");
+    }
+
+    private static Preferences prefs() {
+        return NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
+    }
+
+    private static boolean hasChildNode(String name) throws BackingStoreException {
+        for (String child : prefs().childrenNames()) {
+            if (name.equals(child)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Removes only the keys and nodes the migration consumes, leaving other prefs alone. */
+    private static void clearMigratedPrefs() throws BackingStoreException {
+        Preferences root = prefs();
+        for (String key : root.keys()) {
+            if (key.startsWith(PreferenceKeys.INPUT_HISTORY_PREFIX)
+                    || key.equals(PreferenceKeys.INPUT_HISTORY_COUNT)
+                    || key.startsWith("session_title_")
+                    || key.startsWith("session_hidden_")
+                    || key.startsWith("session_usage_")
+                    || key.startsWith("gemini_local_sessions")
+                    || "caveman.enabled".equals(key)) {
+                root.remove(key);
+            }
+        }
+        for (String child : root.childrenNames()) {
+            if (child.startsWith("sessmeta") || child.startsWith("sessids")) {
+                root.node(child).removeNode();
+            }
+        }
+        root.flush();
     }
 }
 

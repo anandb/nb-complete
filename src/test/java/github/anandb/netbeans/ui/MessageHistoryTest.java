@@ -1,11 +1,43 @@
 package github.anandb.netbeans.ui;
 
+import java.util.List;
+
+import github.anandb.netbeans.contract.SessionStore;
 import org.junit.jupiter.api.Test;
+
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class MessageHistoryTest {
+
+    @Test
+    void readsTheStoreOnEveryUseRatherThanLatchingTheFirstSnapshot() {
+        // The store loads on its own thread, so the first read may legitimately
+        // find it empty. Latching that would leave the user with no history until
+        // the next restart, so every read must ask again.
+        SessionStore store = mock(SessionStore.class);
+        when(store.inputHistory()).thenReturn(List.of(), List.of("typed later"));
+
+        MessageHistory mh = new MessageHistory(store);
+        assertTrue(mh.isEmpty(), "nothing loaded yet");
+
+        assertFalse(mh.isEmpty(), "the load completing later must become visible");
+        assertEquals("typed later", mh.navigateUp("draft"));
+    }
+
+    @Test
+    void addWritesThroughToTheStore() {
+        SessionStore store = mock(SessionStore.class);
+        when(store.inputHistory()).thenReturn(List.of());
+
+        new MessageHistory(store).add("sent");
+
+        verify(store).appendInputHistory("sent");
+    }
 
     @Test
     void addStoresMessage() {

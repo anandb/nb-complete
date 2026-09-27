@@ -16,6 +16,8 @@ import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CompletableFuture;
@@ -48,6 +50,9 @@ import org.mockito.quality.Strictness;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import github.anandb.netbeans.contract.SessionStore;
+import github.anandb.netbeans.model.MigrationReport;
+import github.anandb.netbeans.model.SessionMetadata;
 import github.anandb.netbeans.contract.ToolExecutor;
 import github.anandb.netbeans.contract.SessionListener;
 import github.anandb.netbeans.model.ModelsInfo;
@@ -96,6 +101,9 @@ class SessionManagerTest {
         // an EARLIER test's ProcessManager mock, so sendRequest verifies
         // against the wrong mock.
         sessionManager = new SessionManager();
+        // Never let a unit test reach the production store: its database lives on
+        // disk under the user directory, and these tests must stay in memory.
+        sessionManager.setStoreForTest(new InMemorySessionStore());
     }
 
     @AfterEach
@@ -175,24 +183,6 @@ class SessionManagerTest {
         Method updateMeta = SessionManager.class.getDeclaredMethod("updateMetadata",
                 String.class, java.util.function.Function.class);
         updateMeta.setAccessible(true);
-        cacheManager().addLocallyCreated(cachedSession("keep", "/open"), null);
-        cacheManager().addLocallyCreated(cachedSession("gone", "/closed"), null);
-        updateMeta.invoke(sessionManager, "keep",
-                (java.util.function.Function<SessionManager.SessionMetadata, SessionManager.SessionMetadata>)
-                m -> new SessionManager.SessionMetadata(m.title(), m.usage(), m.hidden(), "/open"));
-        updateMeta.invoke(sessionManager, "gone",
-                (java.util.function.Function<SessionManager.SessionMetadata, SessionManager.SessionMetadata>)
-                m -> new SessionManager.SessionMetadata(m.title(), m.usage(), m.hidden(), "/closed"));
-        Method save = SessionManager.class.getDeclaredMethod("saveLocallyCreatedSessionIds");
-        save.setAccessible(true);
-        save.invoke(sessionManager);
-        Field listField = SessionCacheManager.class.getDeclaredField("cachedSessions");
-        listField.setAccessible(true);
-        listField.set(cacheManager(), new CopyOnWriteArrayList<>());
-        Field mapField = SessionCacheManager.class.getDeclaredField("locallyCreatedSessionToAgentMap");
-        mapField.setAccessible(true);
-        ((Map<?, ?>) mapField.get(cacheManager())).clear();
-
         ProcessControl pc = mock(ProcessControl.class);
         when(pc.getCapabilities()).thenReturn(HarnessCatalog.GEMINI);
         ProjectQuery pq = mock(ProjectQuery.class);
@@ -207,6 +197,25 @@ class SessionManagerTest {
             lookupMock.when(Lookup::getDefault).thenReturn(mockLookup);
             when(mockLookup.lookup(ProcessControl.class)).thenReturn(pc);
             when(mockLookup.lookup(ProjectQuery.class)).thenReturn(pq);
+
+            cacheManager().addLocallyCreated(cachedSession("keep", "/open"), null);
+            cacheManager().addLocallyCreated(cachedSession("gone", "/closed"), null);
+            updateMeta.invoke(sessionManager, "keep",
+                    (java.util.function.Function<SessionMetadata, SessionMetadata>)
+                    m -> new SessionMetadata(m.title(), m.usage(), m.hidden(), "/open"));
+            updateMeta.invoke(sessionManager, "gone",
+                    (java.util.function.Function<SessionMetadata, SessionMetadata>)
+                    m -> new SessionMetadata(m.title(), m.usage(), m.hidden(), "/closed"));
+
+            // Drop the live caches: the store is the only remaining record of these
+            // sessions, so a refresh has to rebuild them from it.
+            Field listField = SessionCacheManager.class.getDeclaredField("cachedSessions");
+            listField.setAccessible(true);
+            listField.set(cacheManager(), new CopyOnWriteArrayList<>());
+            Field mapField = SessionCacheManager.class.getDeclaredField("locallyCreatedSessionToAgentMap");
+            mapField.setAccessible(true);
+            ((Map<?, ?>) mapField.get(cacheManager())).clear();
+
             sessionManager.refreshSessions();
             long deadline = System.currentTimeMillis() + 3000;
             while (cacheManager().getCachedSessions().size() != 1
@@ -218,7 +227,65 @@ class SessionManagerTest {
         assertEquals(1, shown.size());
         assertEquals("keep", shown.get(0).id());
         assertTrue(cacheManager().getLocallyCreatedIds(null).contains("gone"),
-                "closed-project id stays persisted for when that project reopens");
+                "closed-project id stays in the store for when that project reopens");
+    }
+
+    /**
+     * In-memory {@link SessionStore} for the tests. The production store opens an
+     * H2 database under the user directory, which a unit test must not touch, so
+     * this keeps the contract's observable behaviour — newest-first metadata and an
+     * append-only history — without the database.
+     */
+    static final class InMemorySessionStore implements SessionStore {
+
+        private final List<String> history = new ArrayList<>();
+        private final Map<String, Map<String, SessionMetadata>> metadata = new LinkedHashMap<>();
+
+        @Override
+        public void load() {
+            // Nothing to load: the data is already here.
+        }
+
+        @Override
+        public MigrationReport migrateLegacyPrefs() {
+            return MigrationReport.none();
+        }
+
+        @Override
+        public List<String> inputHistory() {
+            return List.copyOf(history);
+        }
+
+        @Override
+        public void appendInputHistory(String text) {
+            if (text == null || text.isEmpty()) {
+                return;
+            }
+            history.add(text);
+        }
+
+        @Override
+        public Map<String, SessionMetadata> sessionMetadata(String harnessId) {
+            Map<String, SessionMetadata> bucket = metadata.get(SessionStore.bucketName(harnessId));
+            return bucket != null ? bucket : Map.of();
+        }
+
+        @Override
+        public void saveSessionMetadata(String harnessId, String sessionId, SessionMetadata meta) {
+            if (sessionId == null || meta == null) {
+                return;
+            }
+            Map<String, SessionMetadata> bucket =
+                    metadata.computeIfAbsent(SessionStore.bucketName(harnessId), k -> new LinkedHashMap<>());
+            LinkedHashMap<String, SessionMetadata> next = new LinkedHashMap<>();
+            next.put(sessionId, meta);
+            bucket.forEach((id, value) -> {
+                if (!sessionId.equals(id)) {
+                    next.put(id, value);
+                }
+            });
+            metadata.put(SessionStore.bucketName(harnessId), next);
+        }
     }
 
     /** Listener that captures the options passed to onSessionLoaded. */
@@ -441,62 +508,6 @@ class SessionManagerTest {
     }
 
     @Test
-    void testLocallyCreatedSessionsPersistence() throws Exception {
-        // Access cacheManager field via reflection
-        Field cacheField = SessionManager.class.getDeclaredField("cacheManager");
-        cacheField.setAccessible(true);
-        SessionCacheManager cacheManager = (SessionCacheManager) cacheField.get(sessionManager);
-
-        // Access save and load private methods via reflection
-        Method saveMethod = SessionManager.class.getDeclaredMethod("saveLocallyCreatedSessionIds");
-        saveMethod.setAccessible(true);
-        Method loadMethod = SessionManager.class.getDeclaredMethod("loadLocallyCreatedSessionIds");
-        loadMethod.setAccessible(true);
-
-        // Set up two mock sessions with custom titles
-        Session s1 = new Session("id-1", "Title 1", "/cwd/1", "/cwd/1", null, "2026-09-12T00:00:01Z", List.of(), List.of(), null, null);
-        Session s2 = new Session("id-2", "Title 2", "/cwd/2", "/cwd/2", null, "2026-09-12T00:00:02Z", List.of(), List.of(), null, null);
-
-        sessionManager.setCustomTitle("id-1", "Title 1");
-        sessionManager.setCustomTitle("id-2", "Title 2");
-
-        // Add to cacheManager (agent is null in this test context)
-        String agent = null;
-        cacheManager.addLocallyCreated(s1, agent);
-        cacheManager.addLocallyCreated(s2, agent);
-
-        // Save
-        saveMethod.invoke(sessionManager);
-
-        // Clear cacheManager to simulate a restart/fresh state
-        Field cachedSessionsField = SessionCacheManager.class.getDeclaredField("cachedSessions");
-        cachedSessionsField.setAccessible(true);
-        cachedSessionsField.set(cacheManager, new CopyOnWriteArrayList<>());
-
-        Field locallyCreatedMapField = SessionCacheManager.class.getDeclaredField("locallyCreatedSessionToAgentMap");
-        locallyCreatedMapField.setAccessible(true);
-        ((Map<?, ?>) locallyCreatedMapField.get(cacheManager)).clear();
-
-        Field sessionCacheMapField = SessionCacheManager.class.getDeclaredField("sessionCacheMap");
-        sessionCacheMapField.setAccessible(true);
-        ((Map<?, ?>) sessionCacheMapField.get(cacheManager)).clear();
-
-        // Verify it is completely empty
-        assertTrue(cacheManager.getLocallyCreatedSessions(agent).isEmpty());
-
-        // Load
-        loadMethod.invoke(sessionManager);
-
-        // Verify sessions are restored in the correct original order (s2, s1) and titles are preserved
-        List<Session> restored = cacheManager.getLocallyCreatedSessions(agent);
-        assertEquals(2, restored.size());
-        assertEquals("id-2", restored.get(0).id());
-        assertEquals("Title 2", restored.get(0).title());
-        assertEquals("id-1", restored.get(1).id());
-        assertEquals("Title 1", restored.get(1).title());
-    }
-
-    @Test
     void testGetSessionTitle() {
         // No cached session → returns null
         assertNull(sessionManager.getSessionTitle("s2"));
@@ -509,109 +520,6 @@ class SessionManagerTest {
         assertTrue(sessionManager.isHidden("h1"));
         sessionManager.setHidden("h1", false);
         assertFalse(sessionManager.isHidden("h1"));
-    }
-
-    @Test
-    void sessionMetadataPersistsPerSessionNotAsOneBlob() {
-        for (int i = 0; i < 80; i++) {
-            sessionManager.setCustomTitle("sid-" + i, "Title " + i);
-            sessionManager.setHidden("sid-" + i, i % 2 == 0);
-        }
-        assertEquals("Title 42", sessionManager.getCustomTitle("sid-42", "x"));
-        assertTrue(sessionManager.isHidden("sid-40"));
-        assertFalse(sessionManager.isHidden("sid-41"));
-        String blob = NbPreferences.forModule(SessionManager.class)
-                .get("gemini_local_sessions_metadata", null);
-        assertTrue(blob == null || blob.isEmpty(), "must not store all metadata in one prefs value");
-    }
-
-    @Test
-    void sessionMetadataMigratesLegacyBlobThenDropsIt() {
-        String blobKey = "gemini_local_sessions_metadata";
-        NbPreferences.forModule(SessionManager.class).put(blobKey,
-                "{\"blob-1\":{\"title\":\"FromBlob\",\"hidden\":true,\"cwd\":\"/p\"}}");
-        assertEquals("FromBlob", sessionManager.getCustomTitle("blob-1", "fallback"));
-        assertTrue(sessionManager.isHidden("blob-1"));
-        String leftover = NbPreferences.forModule(SessionManager.class).get(blobKey, null);
-        assertTrue(leftover == null || leftover.isEmpty());
-    }
-
-    @Test
-    void blankHarnessIdUsesSameLocalSessionKeyAsUnset() throws Exception {
-        NbPreferences.forModule(PreferenceKeys.class).put(PreferenceKeys.ACP_HARNESS_ID, "  ");
-        Session s = new Session("blank-id", "Blank", "/cwd", "/cwd", null, null, List.of(), List.of(), null, null);
-        cacheManager().addLocallyCreated(s, null);
-        Method save = SessionManager.class.getDeclaredMethod("saveLocallyCreatedSessionIds");
-        save.setAccessible(true);
-        save.invoke(sessionManager);
-        assertTrue(localIdNode("sessids").get("blank-id", null) != null);
-        assertTrue(isBlankPref("gemini_local_sessions"));
-        assertTrue(isBlankPref("gemini_local_sessions_"));
-        assertTrue(isBlankPref("gemini_local_sessions_gemini"));
-    }
-
-    @Test
-    void loadsUnqualifiedLocalIdsAndMetadataAfterGeminiHarnessIdIsSet() throws Exception {
-        sessionManager.setCustomTitle("legacy-sid", "OldTitle");
-        NbPreferences.forModule(SessionManager.class).put("gemini_local_sessions", "legacy-sid");
-        NbPreferences.forModule(PreferenceKeys.class).put(PreferenceKeys.ACP_HARNESS_ID, "gemini");
-
-        Field listField = SessionCacheManager.class.getDeclaredField("cachedSessions");
-        listField.setAccessible(true);
-        listField.set(cacheManager(), new CopyOnWriteArrayList<>());
-        Field mapField = SessionCacheManager.class.getDeclaredField("locallyCreatedSessionToAgentMap");
-        mapField.setAccessible(true);
-        ((Map<?, ?>) mapField.get(cacheManager())).clear();
-
-        Method load = SessionManager.class.getDeclaredMethod("loadLocallyCreatedSessionIds");
-        load.setAccessible(true);
-        load.invoke(sessionManager);
-
-        List<Session> restored = cacheManager().getLocallyCreatedSessions("gemini");
-        assertEquals(1, restored.size());
-        assertEquals("legacy-sid", restored.get(0).id());
-        assertEquals("OldTitle", restored.get(0).title());
-        assertTrue(localIdNode("sessids_gemini").get("legacy-sid", null) != null);
-        assertTrue(isBlankPref("gemini_local_sessions"));
-        assertTrue(isBlankPref("gemini_local_sessions_gemini"));
-    }
-
-    @Test
-    void localSessionIdWithCommaRoundTrips() throws Exception {
-        Session s = new Session("id,with,commas", "C", "/cwd", "/cwd", null, null, List.of(), List.of(), null, null);
-        cacheManager().addLocallyCreated(s, null);
-        Method save = SessionManager.class.getDeclaredMethod("saveLocallyCreatedSessionIds");
-        save.setAccessible(true);
-        save.invoke(sessionManager);
-        Field listField = SessionCacheManager.class.getDeclaredField("cachedSessions");
-        listField.setAccessible(true);
-        listField.set(cacheManager(), new CopyOnWriteArrayList<>());
-        Field mapField = SessionCacheManager.class.getDeclaredField("locallyCreatedSessionToAgentMap");
-        mapField.setAccessible(true);
-        ((Map<?, ?>) mapField.get(cacheManager())).clear();
-        Method load = SessionManager.class.getDeclaredMethod("loadLocallyCreatedSessionIds");
-        load.setAccessible(true);
-        load.invoke(sessionManager);
-        assertTrue(cacheManager().getLocallyCreatedIds(null).contains("id,with,commas"));
-    }
-
-    private static java.util.prefs.Preferences localIdNode(String name) {
-        return NbPreferences.forModule(SessionManager.class).node(name);
-    }
-
-    private static boolean isBlankPref(String key) {
-        String v = NbPreferences.forModule(SessionManager.class).get(key, null);
-        return v == null || v.isEmpty();
-    }
-
-    @Test
-    void isHiddenMigratesLegacyThenUnhideIgnoresLeftoverLegacyKey() {
-        NbPreferences.forModule(SessionManager.class).putBoolean("session_hidden_h-legacy", true);
-        assertTrue(sessionManager.isHidden("h-legacy"));
-        sessionManager.setHidden("h-legacy", false);
-        NbPreferences.forModule(SessionManager.class).putBoolean("session_hidden_h-legacy", true);
-        assertFalse(sessionManager.isHidden("h-legacy"),
-                "metadata hidden=false must win over leftover session_hidden_* keys");
     }
 
     @Test
@@ -684,20 +592,6 @@ class SessionManagerTest {
     @Test
     void testDisposeDoesNotThrow() {
         sessionManager.dispose();
-    }
-
-    @Test
-    void testQualifiedKey() {
-        // Test the internal qualifiedKey method via反射
-        try {
-            Method m = SessionManager.class
-                    .getDeclaredMethod("qualifiedKey", String.class, String.class);
-            m.setAccessible(true);
-            String result = (String) m.invoke(sessionManager, "prefix", "sid123");
-            assertTrue(result.contains("sid123"));
-        } catch (Exception e) {
-            // Method may not exist or be renamed — skip
-        }
     }
 
     @Test
@@ -1257,6 +1151,7 @@ class SessionManagerTest {
             when(mockLookup.lookup(ProcessControl.class)).thenReturn(pc);
             sessionManager.renameSession("s1", "Persisted");
         }
+        // Drop the live caches: the renamed title has to come back from the store.
         Field mapField = SessionCacheManager.class.getDeclaredField("locallyCreatedSessionToAgentMap");
         mapField.setAccessible(true);
         ((Map<?, ?>) mapField.get(cacheManager())).clear();
