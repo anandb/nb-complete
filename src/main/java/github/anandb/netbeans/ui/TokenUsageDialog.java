@@ -9,9 +9,12 @@ import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.Frame;
+import java.awt.GraphicsConfiguration;
+import java.awt.GraphicsEnvironment;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.awt.Toolkit;
 import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.awt.event.ItemEvent;
@@ -38,6 +41,7 @@ import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import javax.swing.border.EmptyBorder;
+import javax.swing.text.View;
 
 import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
@@ -72,7 +76,14 @@ public class TokenUsageDialog extends JDialog {
     private final JScrollPane scrollPane;
     private final AtomicBoolean running = new AtomicBoolean(false);
     private Timer autoRefreshTimer;
-    private boolean firstRefresh = true;
+    /** Smallest width the dialog takes, matching its constructed preferred width. */
+    static final int MIN_WIDTH = 540;
+    /** Vertical scrollbar plus borders, added to the measured content width. */
+    static final int WIDTH_CHROME = 24;
+    /** Fraction of the screen width a fitted dialog may occupy. */
+    private static final double SCREEN_FRACTION = 0.95;
+    /** Screen width assumed when no graphics configuration is reachable. */
+    private static final int DEFAULT_SCREEN_WIDTH = 1920;
 
     /** Background worker for the local query and HTML rendering. */
     private static final RequestProcessor STATS_RP = new RequestProcessor("token-stats", 1);
@@ -244,10 +255,7 @@ public class TokenUsageDialog extends JDialog {
                 String styledHtml = renderSummaryHtml(summary, byModel, byAgent, currentTheme);
                 SwingUtilities.invokeLater(() -> {
                     statsPane.setText(styledHtml);
-                    if (firstRefresh) {
-                        firstRefresh = false;
-                        autoSizeInitial();
-                    }
+                    autoSizeToContent();
                     // Scroll to top after layout settles
                     SwingUtilities.invokeLater(() -> scrollPane.getVerticalScrollBar().setValue(0));
                 });
@@ -266,12 +274,69 @@ public class TokenUsageDialog extends JDialog {
         });
     }
 
-    /** Sizes the dialog to 90% parent height with reasonable width for table content. */
-    private void autoSizeInitial() {
+    /**
+     * Sizes the dialog so the rendered tables are not clipped on the right: the
+     * width follows the content's natural layout width rather than the fixed 700
+     * that cut the by-model and by-agent tables. Height keeps the 90%-of-parent
+     * rule, with vertical scrolling beyond it. Runs on the EDT after the HTML is
+     * set — never from a sizing method — so it cannot re-queue invalidation
+     * during a layout pass.
+     */
+    private void autoSizeToContent() {
         Window parent = SwingUtilities.getWindowAncestor(this);
-        int h = parent != null ? (int)(parent.getHeight() * 0.9) : 520;
-        setSize(new Dimension(700, h));
+        int h = parent != null ? (int) (parent.getHeight() * 0.9) : 520;
+        int w = fittedWidth(naturalWidth(statsPane), getWidth(), screenWidth());
+        setSize(new Dimension(w, h));
         revalidate();
+    }
+
+    /**
+     * Natural, unwrapped layout width of {@code pane}'s current document, or 0
+     * when it cannot be measured. Mirrors {@link FitEditorPane}'s own trick of
+     * laying the root view out at a probe size before reading a span, probing
+     * the width instead of the height.
+     */
+    static int naturalWidth(JTextPane pane) {
+        if (pane == null) {
+            return 0;
+        }
+        View root = pane.getUI().getRootView(pane);
+        if (root == null) {
+            return 0;
+        }
+        root.setSize(Integer.MAX_VALUE, 0);
+        Insets insets = pane.getInsets();
+        return (int) Math.ceil(root.getPreferredSpan(View.X_AXIS)) + insets.left + insets.right;
+    }
+
+    /**
+     * Width for a dialog whose content needs {@code natural} pixels: content plus
+     * chrome, never narrower than {@link #MIN_WIDTH} or the width already in use
+     * (so a manual enlargement survives a refresh), and never wider than the
+     * screen allows. A screen-clamped dialog still shows every column because the
+     * tables are layout-driven rather than clipped.
+     */
+    static int fittedWidth(int natural, int currentWidth, int screenWidth) {
+        int cap = Math.max(MIN_WIDTH, (int) (screenWidth * SCREEN_FRACTION));
+        int needed = natural > 0 ? natural + WIDTH_CHROME : MIN_WIDTH;
+        int target = Math.max(needed, Math.min(currentWidth, cap));
+        return Math.max(MIN_WIDTH, Math.min(target, cap));
+    }
+
+    /** Usable screen width, falling back when no graphics configuration is reachable. */
+    private int screenWidth() {
+        GraphicsConfiguration gc = getGraphicsConfiguration();
+        if (gc != null && gc.getBounds() != null) {
+            return gc.getBounds().width;
+        }
+        if (!GraphicsEnvironment.isHeadless()) {
+            try {
+                return Toolkit.getDefaultToolkit().getScreenSize().width;
+            } catch (RuntimeException ex) {
+                LOG.fine("Falling back to the default screen width: {0}", ex.getMessage());
+            }
+        }
+        return DEFAULT_SCREEN_WIDTH;
     }
 
     // ---- Summary to HTML ----
@@ -308,12 +373,12 @@ public class TokenUsageDialog extends JDialog {
           .append(";vertical-align:top;}")
           .append("</style></head><body>");
 
-        appendTable(sb, "LBL_Overview", headerBg, altBg, new String[][]{
+        appendLocalizedTable(sb, "LBL_Overview", headerBg, altBg, new String[][]{
             {"LBL_Sessions", UsageStatsFormat.thousands(summary.sessions())},
             {"LBL_Messages", UsageStatsFormat.thousands(summary.messages())},
             {"LBL_StatsDays", UsageStatsFormat.thousands(summary.days())},
         });
-        appendTable(sb, "LBL_CostTokens", headerBg, altBg, new String[][]{
+        appendLocalizedTable(sb, "LBL_CostTokens", headerBg, altBg, new String[][]{
             {"LBL_TotalCost", UsageStatsFormat.cost(summary.totalCost())},
             {"LBL_AvgCostDay", UsageStatsFormat.cost(summary.avgCostPerDay())},
             {"LBL_AvgTokensSession", UsageStatsFormat.abbreviated(summary.avgTokensPerSession())},
@@ -323,13 +388,11 @@ public class TokenUsageDialog extends JDialog {
             {"LBL_CacheRead", UsageStatsFormat.abbreviated(summary.cachedReadTokens())},
         });
 
-        String[] groupHeaders = {"LBL_Sessions", "LBL_Messages", "LBL_ToolCalls",
-            "LBL_Input", "LBL_Output", "LBL_CacheRead", "LBL_TotalCost"};
         if (!byModel.isEmpty()) {
-            appendGroupTable(sb, "LBL_ByModel", groupHeaders, byModel, headerBg, altBg);
+            appendGroupTables(sb, "LBL_ByModel", byModel, headerBg, altBg);
         }
         if (!byAgent.isEmpty()) {
-            appendGroupTable(sb, "LBL_ByAgent", groupHeaders, byAgent, headerBg, altBg);
+            appendGroupTables(sb, "LBL_ByAgent", byAgent, headerBg, altBg);
         }
 
         sb.append("</body></html>");
@@ -337,53 +400,46 @@ public class TokenUsageDialog extends JDialog {
     }
 
     /**
-     * Renders one breakdown table: the group key in the header column, then
-     * Sessions, Messages, Tool Calls, Input, Output, Cache Read and Total
-     * Cost columns per group. Costs carry four decimals to keep the small
-     * per-group amounts readable.
+     * Renders one narrow table per group instead of a single wide table with a
+     * column per metric: the metrics become rows, so the dialog's width no longer
+     * grows with the number of groups or the size of the metric set. Each table is
+     * titled with its breakdown and group key. Costs carry four decimals to keep
+     * the small per-group amounts readable.
      */
-    private static void appendGroupTable(StringBuilder sb, String titleKey, String[] headerKeys,
-                                         List<GroupTotals> rows, String headerBg, String altBg) {
-        sb.append("<table><tr><th>")
-          .append(escapeHtml(NbBundle.getMessage(TokenUsageDialog.class, titleKey)))
-          .append("</th>");
-        for (String key : headerKeys) {
-            sb.append("<th style='text-align:right;'>")
-              .append(escapeHtml(NbBundle.getMessage(TokenUsageDialog.class, key)))
-              .append("</th>");
-        }
-        sb.append("</tr>");
-        boolean alt = false;
+    private static void appendGroupTables(StringBuilder sb, String titleKey, List<GroupTotals> rows,
+                                          String headerBg, String altBg) {
+        String kind = NbBundle.getMessage(TokenUsageDialog.class, titleKey);
         for (GroupTotals row : rows) {
             String label = row.groupKey() == null || row.groupKey().isBlank()
                     ? NbBundle.getMessage(TokenUsageDialog.class, "LBL_NotAttributed")
                     : row.groupKey();
-            sb.append("<tr").append(alt ? " style='background-color: " + altBg + ";'" : "").append(">")
-              .append("<td style='white-space:nowrap;'>").append(escapeHtml(label)).append("</td>")
-              .append("<td style='text-align:right;'>").append(escapeHtml(
-                      UsageStatsFormat.thousands(row.sessions()))).append("</td>")
-              .append("<td style='text-align:right;'>").append(escapeHtml(
-                      UsageStatsFormat.thousands(row.messages()))).append("</td>")
-              .append("<td style='text-align:right;'>").append(escapeHtml(
-                      UsageStatsFormat.thousands(row.toolCalls()))).append("</td>")
-              .append("<td style='text-align:right;'>").append(escapeHtml(
-                      UsageStatsFormat.abbreviated(row.inputTokens()))).append("</td>")
-              .append("<td style='text-align:right;'>").append(escapeHtml(
-                      UsageStatsFormat.abbreviated(row.outputTokens()))).append("</td>")
-              .append("<td style='text-align:right;'>").append(escapeHtml(
-                      UsageStatsFormat.abbreviated(row.cachedReadTokens()))).append("</td>")
-              .append("<td style='text-align:right;'>").append(escapeHtml(
-                      UsageStatsFormat.cost(row.cost()))).append("</td>")
-              .append("</tr>");
-            alt = !alt;
+            appendTable(sb, kind + " · " + label, headerBg, altBg, new String[][]{
+                {"LBL_Sessions", UsageStatsFormat.thousands(row.sessions())},
+                {"LBL_Messages", UsageStatsFormat.thousands(row.messages())},
+                {"LBL_ToolCalls", UsageStatsFormat.thousands(row.toolCalls())},
+                {"LBL_Input", UsageStatsFormat.abbreviated(row.inputTokens())},
+                {"LBL_Output", UsageStatsFormat.abbreviated(row.outputTokens())},
+                {"LBL_CacheRead", UsageStatsFormat.abbreviated(row.cachedReadTokens())},
+                {"LBL_TotalCost", UsageStatsFormat.cost(row.cost())},
+            });
         }
-        sb.append("</table>");
     }
 
-    private static void appendTable(StringBuilder sb, String titleKey, String headerBg,
+    /** Renders a two-column metric table titled by a bundle key. */
+    private static void appendLocalizedTable(StringBuilder sb, String titleKey, String headerBg,
+                                             String altBg, String[][] rows) {
+        appendTable(sb, NbBundle.getMessage(TokenUsageDialog.class, titleKey), headerBg, altBg, rows);
+    }
+
+    /**
+     * Renders a two-column metric table whose title is used verbatim, already
+     * resolved — the group tables pass a localized breakdown name and their group
+     * key, which has no bundle entry of its own. Row labels remain bundle keys.
+     */
+    private static void appendTable(StringBuilder sb, String title, String headerBg,
                                     String altBg, String[][] rows) {
         sb.append("<table><tr><th colspan='2'>")
-          .append(escapeHtml(NbBundle.getMessage(TokenUsageDialog.class, titleKey)))
+          .append(escapeHtml(title))
           .append("</th></tr>");
         boolean alt = false;
         for (String[] row : rows) {

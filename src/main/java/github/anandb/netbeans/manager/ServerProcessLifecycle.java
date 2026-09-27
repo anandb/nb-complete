@@ -1,5 +1,6 @@
 package github.anandb.netbeans.manager;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -23,6 +24,7 @@ import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.BinaryResolver;
 import github.anandb.netbeans.support.FsWriteSettings;
 import github.anandb.netbeans.support.ProcessTerminator;
+import github.anandb.netbeans.support.AcpSessionInfo;
 
 /**
  * Extracted server lifecycle methods from ProcessManager.
@@ -226,6 +228,13 @@ class ServerProcessLifecycle {
                 .orTimeout(30, TimeUnit.SECONDS)
                 .thenAccept(res -> {
                     if (res != null) {
+                        // Store harness info from initialize response
+                        JsonNode agentInfo = res.get("agentInfo");
+                        if (agentInfo != null) {
+                            String name = agentInfo.has("name") ? agentInfo.get("name").asText() : null;
+                            String version = agentInfo.has("version") ? agentInfo.get("version").asText() : null;
+                            AcpSessionInfo.getInstance().setHarnessInfo(name, version);
+                        }
                         // Resolve harness from stored preferences, ignoring the
                         // agent name from the initialize response.
                         String harnessId = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)

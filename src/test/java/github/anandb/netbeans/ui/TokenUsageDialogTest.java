@@ -3,9 +3,11 @@ package github.anandb.netbeans.ui;
 import github.anandb.netbeans.model.UsageRecords.GroupTotals;
 import github.anandb.netbeans.model.UsageRecords.UsageSummary;
 import java.util.List;
+import javax.swing.JTextPane;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -61,5 +63,39 @@ class TokenUsageDialogTest {
         assertTrue(html.contains("$3.2087"));
         assertTrue(html.contains("(not attributed)"));
         assertTrue(html.contains("Tool Calls"));
+    }
+
+    @Test
+    void perGroupTablesFitWithinTheLegacyFixedWidth() {
+        List<GroupTotals> byModel = List.of(new GroupTotals(
+                "claude-sonnet-4-5-20250929", 120, 3400, 512, 88_000_000, 4_100_000, 1_200_000_000, 41.8821));
+        List<GroupTotals> byAgent = List.of(new GroupTotals(
+                "hermes-agent", 120, 3400, 512, 88_000_000, 4_100_000, 1_200_000_000, 41.8821));
+        String html = TokenUsageDialog.renderSummaryHtml(sample(), byModel, byAgent,
+                ThemeManager.getCurrentTheme());
+
+        JTextPane pane = new JTextPane();
+        pane.setContentType("text/html");
+        pane.setText(html);
+        int natural = TokenUsageDialog.naturalWidth(pane);
+
+        assertTrue(natural > 0, "the rendered content must be measurable");
+        assertTrue(natural <= 700,
+                "one narrow table per group must fit the legacy width, measured " + natural);
+        int fitted = TokenUsageDialog.fittedWidth(natural, TokenUsageDialog.MIN_WIDTH, 10000);
+        assertTrue(fitted >= natural + TokenUsageDialog.WIDTH_CHROME,
+                "the fitted width must not clip the measured content, got " + fitted);
+        assertTrue(fitted >= TokenUsageDialog.MIN_WIDTH, "never below the minimum width");
+    }
+
+    @Test
+    void fittedWidthFloorsGrowsKeepsManualWidthAndClampsToScreen() {
+        assertEquals(TokenUsageDialog.MIN_WIDTH, TokenUsageDialog.fittedWidth(0, 0, 1200));
+        assertEquals(TokenUsageDialog.MIN_WIDTH, TokenUsageDialog.fittedWidth(0, 100, 1200));
+        assertEquals(900, TokenUsageDialog.fittedWidth(400, 900, 10000));
+        assertEquals(1200 + TokenUsageDialog.WIDTH_CHROME,
+                TokenUsageDialog.fittedWidth(1200, TokenUsageDialog.MIN_WIDTH, 10000));
+        assertTrue(TokenUsageDialog.fittedWidth(5000, TokenUsageDialog.MIN_WIDTH, 1000) <= 950,
+                "a dialog wider than the screen must be clamped to it");
     }
 }

@@ -9,6 +9,7 @@ import java.util.concurrent.TimeUnit;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import github.anandb.netbeans.model.HarnessCatalog;
+import github.anandb.netbeans.support.AcpSessionInfo;
 
 
 /**
@@ -70,6 +71,7 @@ final class SessionRpcClient {
     }
 
     CompletableFuture<JsonNode> setSessionModel(String sessionId, String modelId) {
+        AcpSessionInfo.getInstance().setModelName(modelId);
         return processManager.sendRequest("session/set_model", Map.of(
                 "sessionId", sessionId,
                 "modelId", modelId

@@ -13,6 +13,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
@@ -27,13 +29,25 @@ public final class WireLogger implements Closeable {
         String wireLogFileName = null;
         BufferedWriter writer = null;
         try {
-            wireLogFileName = System.getenv("ACP_WIRE_LOG");
-            if (isNotBlank(wireLogFileName)) {
-                Path logPath = Paths.get(wireLogFileName);
-                Path parentDir = logPath.getParent();
+            String template = System.getenv("ACP_WIRE_LOG");
+            if (isNotBlank(template)) {
+                // Strip extension, append _YYYYMMDD-HARNESS.log
+                // e.g. wire.log -> wire_20260927-pi-acp.log
+                Path templatePath = Paths.get(template);
+                String baseName = templatePath.getFileName().toString();
+                int dotIdx = baseName.lastIndexOf('.');
+                if (dotIdx > 0) baseName = baseName.substring(0, dotIdx);
+                
+                String date = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+                String harnessId = AcpSessionInfo.getInstance().getHarnessId();
+                wireLogFileName = baseName + "_" + date + "-" + harnessId + ".log";
+                
+                Path parentDir = templatePath.getParent();
                 if (parentDir != null) {
                     Files.createDirectories(parentDir);
+                    wireLogFileName = parentDir.resolve(wireLogFileName).toString();
                 }
+                
                 writer = new BufferedWriter(new OutputStreamWriter(
                     new FileOutputStream(wireLogFileName, true), StandardCharsets.UTF_8));
             }

@@ -59,6 +59,7 @@ import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.MapperSupplier;
 import github.anandb.netbeans.support.PreferenceKeys;
+import github.anandb.netbeans.support.AcpSessionInfo;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 
 import static org.apache.commons.lang3.StringUtils.isBlank;
@@ -108,7 +109,13 @@ public class SessionManager implements SessionQuery, SessionControl {
     @Override
     public String getSessionModelId(String sessionId) {
         Session session = getSession(sessionId);
-        return session != null && session.models() != null ? session.models().currentModelId() : null;
+        String modelId = session != null && session.models() != null ? session.models().currentModelId() : null;
+        // Fallback to AcpSessionInfo if session doesn't have model ID yet
+        if (modelId == null) {
+            modelId = AcpSessionInfo.getInstance().getModelId();
+            if ("unknown".equals(modelId)) modelId = null;
+        }
+        return modelId;
     }
 
     /** Returns the working directory captured for the session, or null. */
