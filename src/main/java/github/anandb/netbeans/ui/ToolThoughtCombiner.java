@@ -24,13 +24,7 @@ import github.anandb.netbeans.model.MessageType;
 // CombinedActivitySpec; the combination merge logic stays imperative.
 public final class ToolThoughtCombiner {
 
-    private static volatile boolean combineEnabled = true;
     private static final Pattern TOOL_PREFIX = Pattern.compile("(?i)TOOL:?\\s*");
-
-    static {
-        combineEnabled = PluginSettings.isCombineToolThoughtEnabled();
-    }
-
     private ToolThoughtCombiner() {
     }
 
@@ -76,14 +70,12 @@ public final class ToolThoughtCombiner {
     public static void combine(JPanel messagesContainer, boolean allBlocksExpanded,
                                ScrollController scrollController) {
         // Respect user preference: if unchecked, skip combining
-        if (!combineEnabled) {
+        if (!PluginSettings.isCombineToolThoughtEnabled()) {
             return;
         }
 
-        // Fast path: scan the tail of the container to detect whether there is
-        // actually a run of individual tool/thought bubbles to combine. If the
-        // last components are already a combined bubble, a non-tool/thought
-        // bubble, or empty, skip the full scan.
+        // Fast path: nothing pending after the last turn boundary — skip the
+        // full scan.
         if (!hasPendingIndividualToolThought(messagesContainer)) {
             return;
         }
