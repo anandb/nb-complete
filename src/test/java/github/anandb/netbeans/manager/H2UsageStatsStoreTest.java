@@ -139,6 +139,19 @@ class H2UsageStatsStoreTest {
     }
 
     @Test
+    void theTestUserDirectoryLivesUnderTarget() {
+        // Outside a real IDE getUserDirectory() is null, and
+        // `new File(null, "beanbot")` silently yields a *relative* path — which is
+        // how a database ended up in the repository root. The build pins the test
+        // JVM's user directory under target/, so nothing a test resolves can write
+        // into the working tree.
+        File userDir = Places.getUserDirectory();
+        assertNotNull(userDir, "the test JVM must be given a NetBeans user directory");
+        Path target = new File("target").toPath().toAbsolutePath().normalize();
+        assertTrue(userDir.toPath().toAbsolutePath().normalize().startsWith(target),
+                "the test user directory must live under target/, was " + userDir);
+    }
+
     @Test
     void usageUpdateKeepsGaugeAndReportsUsd() throws SQLException {
         costRow(0, NOW);

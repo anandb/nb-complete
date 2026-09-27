@@ -201,6 +201,14 @@ public class H2UsageStatsStore implements UsageStatsStore, SessionStore {
     /** Absolute H2 URL for the per-user database file. */
     private static String defaultJdbcUrl() {
         File userDir = Places.getUserDirectory();
+        if (userDir == null) {
+            // No configured user directory. Without this guard
+            // `new File(null, "beanbot")` yields a *relative* path and the database
+            // is created in the process working directory, which is how one ended
+            // up in the repository root. Fall back to a temporary location, as the
+            // platform itself does for caches.
+            userDir = new File(System.getProperty("java.io.tmpdir"), "nbcache");
+        }
         File dir = new File(userDir, "beanbot");
         if (!dir.isDirectory() && !dir.mkdirs()) {
             LOG.log(Level.WARNING, "Could not create usage-stats directory: {0}", dir.getAbsolutePath());
