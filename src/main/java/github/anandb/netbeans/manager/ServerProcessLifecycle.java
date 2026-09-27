@@ -146,6 +146,12 @@ class ServerProcessLifecycle {
 
             this.serverProcess = pb.start();
 
+            // Seed the harness name from preferences so the wire log is named
+            // correctly from the first write, before the initialize response
+            // carries the full agentInfo.
+            AcpSessionInfo.getInstance().setHarnessInfo(
+                    BinaryResolver.resolveBinaryName(), null);
+
             AcpProtocolClient client = new AcpProtocolClient(serverProcess);
             this.rpcClient.set(client);
             client.start();

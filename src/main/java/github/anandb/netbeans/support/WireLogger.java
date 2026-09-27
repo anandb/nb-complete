@@ -26,30 +26,35 @@ public final class WireLogger implements Closeable {
     private final BufferedWriter wireLogWriter;
 
     public WireLogger() {
+        this(System.getenv("ACP_WIRE_LOG"));
+    }
+
+    /**
+     * Test constructor: names the log from {@code template} instead of the
+     * {@code ACP_WIRE_LOG} environment variable.  The harness name is read
+     * from {@link AcpSessionInfo}; callers must seed it before construction.
+     */
+    WireLogger(String template) {
         String wireLogFileName = null;
         BufferedWriter writer = null;
         try {
-            String template = System.getenv("ACP_WIRE_LOG");
             if (isNotBlank(template)) {
-                // Strip extension, append _YYYYMMDD-HARNESS.log
-                // e.g. wire.log -> wire_20260927-pi-acp.log
                 Path templatePath = Paths.get(template);
                 String baseName = templatePath.getFileName().toString();
                 int dotIdx = baseName.lastIndexOf('.');
-                if (dotIdx > 0) baseName = baseName.substring(0, dotIdx);
-                
-                String date = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
-                String harnessId = AcpSessionInfo.getInstance().getHarnessId();
-                wireLogFileName = baseName + "_" + date + "-" + harnessId + ".log";
-                
+                if (dotIdx > 0) {
+                    baseName = baseName.substring(0, dotIdx);
+                }
+                wireLogFileName = baseName + "_"
+                        + LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"))
+                        + "-" + AcpSessionInfo.getInstance().getHarnessId() + ".log";
                 Path parentDir = templatePath.getParent();
                 if (parentDir != null) {
                     Files.createDirectories(parentDir);
                     wireLogFileName = parentDir.resolve(wireLogFileName).toString();
                 }
-                
                 writer = new BufferedWriter(new OutputStreamWriter(
-                    new FileOutputStream(wireLogFileName, true), StandardCharsets.UTF_8));
+                        new FileOutputStream(wireLogFileName, true), StandardCharsets.UTF_8));
             }
         } catch (FileNotFoundException ex) {
             LOG.warn("Couldn't open Wire Log for writing: " + wireLogFileName, ex);
