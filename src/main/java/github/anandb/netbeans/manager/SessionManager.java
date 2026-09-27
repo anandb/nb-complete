@@ -98,7 +98,7 @@ public class SessionManager implements SessionQuery, SessionControl {
     private static final String USAGE_PREFIX = "session_usage_";
     private static final String LOCAL_SESSIONS_KEY = "gemini_local_sessions";
 
-    /** Returns the session id of the current agent, or null. */
+    /** Returns the harness id configured for the current agent, or null. */
     @Override
     public String getHarnessId() {
         return agentName();
