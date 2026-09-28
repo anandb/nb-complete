@@ -1,5 +1,13 @@
 # Release Notes
 
+## v1.22.2 (Changes since v1.22.1)
+
+### Tests
+- **Show-archived dropdown test fixed**: `setUpMocks` now sets the cached show-hidden toggle synchronously via `PluginSettings.setShowHiddenSessions()` before installing the thread-local static mock, so the real `isShowHiddenSessions()` path called on the EDT always reads the intended value — no longer depending on an async `PreferenceChangeListener` that intermittently hadn't fired yet.
+
+### Housekeeping
+- Version bumped to 1.22.2.
+
 ## v1.22.1 (Changes since v1.22.0)
 
 ### Fixes
