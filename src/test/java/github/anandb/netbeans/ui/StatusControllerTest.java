@@ -99,6 +99,38 @@ class StatusControllerTest {
     }
 
     @Test
+    void overLongBaseIsNotShortenedFromFrameToFrame() {
+        // The base is stored by the controller, not recovered from the label, so a
+        // long message must not lose a character per tick to the ellipsis. The stem
+        // is capped once to (MAX - 3) — room for the dots — and keeps that length.
+        String base = "a".repeat(MAX);
+        String stem = "a".repeat(MAX - 6) + "...";
+        for (int dots = 0; dots <= 3; dots++) {
+            String frame = StatusController.thinkingFrame(base, dots);
+            assertEquals(MAX, frame.length(), "frame " + dots + " must keep the full width");
+            assertEquals(stem, frame.substring(0, stem.length()),
+                    "frame " + dots + " must keep the same visible message");
+        }
+    }
+
+    @Test
+    void startThinkingOnAnOverLongStatusDoesNotErodeIt() throws Exception {
+        JLabel label = label();
+        StatusController c = controller(label);
+        String[] shown = new String[1];
+        SwingUtilities.invokeAndWait(() -> {
+            c.setStatusText("a".repeat(MAX));
+            c.startThinking();
+            shown[0] = label.getText();
+            c.stopThinking();
+            c.stopAllTimers();
+        });
+        String stem = "a".repeat(MAX - 6) + "...";
+        assertEquals(MAX, shown[0].length());
+        assertEquals(stem, shown[0].substring(0, stem.length()));
+    }
+
+    @Test
     void startThinkingPadsTheSendingStatusImmediately() throws Exception {
         JLabel label = label();
         StatusController c = controller(label);

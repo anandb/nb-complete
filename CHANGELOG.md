@@ -1,5 +1,19 @@
 # Release Notes
 
+## v1.22.3 (Changes since v1.22.2)
+
+### Fixes
+- **Model dropdown no longer loses models**: `config_options_update` (SSE) can arrive carrying fewer models than `session/load` reported, and `updateConfigControls` cleared the combo and repopulated it from the smaller list — so a model disappeared from the dropdown until a manual session reload re-fetched it. The incoming list is now merged with what the dropdown already holds, the merged list is re-sorted alphabetically, the current selection survives an update that omits it, and the per-harness model cache refuses to shrink for the same reason.
+- **Status label capped at 50 characters**: an unbounded message (error text, a long file name) resized the bottom row, because the label sits left of the model dropdown and absorbs spare width. Every write now goes through a cap helper that ends over-long text with an ellipsis.
+- **Thinking animation is constant-width**: frames are right-padded with spaces to the width their dot cycle reaches, so `Sending` is always 10 characters and the model dropdown no longer shifts on every 500ms tick. Frames compose from the stored base text rather than from the rendered label — recovering the base by stripping trailing dots also stripped the truncation ellipsis, shortening a long message one character per tick.
+
+### Tests
+- **StatusControllerTest**: pins the 50-character cap, the constant frame width (by string length and by measured `JLabel` width), the immediate width normalisation when `startThinking` runs, and that an over-long status is not eroded tick by tick.
+- **ConfigPanelControllerTest**: pins the model merge — models the incoming options omitted come back, alphabetical order is preserved, the incoming selection wins when present, and no duplicates are introduced.
+
+### Housekeeping
+- Version bumped to 1.22.3.
+
 ## v1.22.2 (Changes since v1.22.1)
 
 ### Tests

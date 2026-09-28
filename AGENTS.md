@@ -2,7 +2,7 @@
 
 ## Project Overview
 - **Project**: Coding Assistant (NetBeans IDE plugin, Java 17, Maven)
-- **Current Stable Version**: 1.22.2
+- **Current Stable Version**: 1.22.3
 - **Key Tech**: NetBeans API (RELEASE220), Flexmark, Jackson, RSyntaxTextArea, JUnit 5.
 
 ## Build Commands
@@ -340,12 +340,18 @@ Resolved — kept as regression guards:
 - Clamping: `McpServer` connector idle timeout is clamped to a minimum of 30s.
 - Status label cap: `StatusController` caps `statusLabel` text at `MAX_STATUS_LENGTH` (50) chars,
   ending over-long messages with an ellipsis. The label sits left of the model dropdown and absorbs
-  spare width, so every `setText` path (including the thinking animation) goes through the cap helper.
-- Thinking animation is constant-width: `StatusController.thinkingFrame()` right-pads each frame with
-  spaces to `base.length() + 3`, and `startThinking()` pads the current text immediately, so the dot
-  cycle never changes the label width (e.g. `Sending` is always 10 chars). The trailing dots *and*
-  padding are stripped (`ANIMATION_SUFFIX`) to recover the base. Do NOT set `statusLabel` text
-  directly or drop the padding without checking the dropdown row layout.
+  spare width, so every write goes through the private `show()` helper.
+- Thinking animation is constant-width: `thinkingFrame()` right-pads each frame with spaces to
+  `base.length() + 3`, and `startThinking()` pads immediately, so the dot cycle never changes the
+  label width (e.g. `Sending` is always 10 chars). Frames compose from the stored `statusBase`, not
+  from the label's current text — recovering a base by stripping trailing dots/spaces would also eat
+  the truncation ellipsis and shorten the message on every tick. Do NOT add another
+  `statusLabel.setText` call site, or the base and the label drift apart.
+- Model dropdown never shrinks while a session is open: `ConfigPanelController.updateConfigControls`
+  merges models the incoming options omitted back into the combo (`mergeModelItems`) and re-sorts,
+  because `config_options_update` (SSE) can carry a subset of what `session/load` reported;
+  `cacheModelList` likewise skips writing a smaller list. Do NOT restore the wholesale replace without
+  reproducing the "model missing until manual reload" report.
 - MCP tools/call: Response is sent immediately after tool execution (no artificial delay). The old 5,000ms minimum latency was removed in v1.7.2 because it caused client abort errors on macOS.
 
 ### Task Repository Toggle

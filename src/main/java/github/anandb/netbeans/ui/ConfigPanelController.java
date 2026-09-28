@@ -501,36 +501,8 @@ public class ConfigPanelController {
                             opt.currentValue(), forceStartupDefaults);
                     ConfigItem selected = populateComboBox(combo, opt.category(), opt.options(), valueToSelect);
 
-                    // Merge back models that were in the combo before this update
-                    // but were not in the incoming config options — prevents
-                    // config_options_update (SSE) from shrinking the list.
                     if (isModel && existingModels != null) {
-                        java.util.Set<String> currentValues = new java.util.HashSet<>();
-                        for (int i = 0; i < combo.getItemCount(); i++) {
-                            currentValues.add(combo.getItemAt(i).value());
-                        }
-                        for (ConfigItem old : existingModels) {
-                            if (!currentValues.contains(old.value())) {
-                                combo.addItem(old);
-                            }
-                        }
-                        // Preserve the previous selection if the incoming options
-                        // did not include the model the user had chosen.
-                        if (selected == null && !existingModels.isEmpty()) {
-                            ConfigItem prevSelection = null;
-                            for (ConfigItem c : existingModels) {
-                                if (c.value() != null && c.value().equals(valueToSelect)) {
-                                    prevSelection = c;
-                                    break;
-                                }
-                            }
-                            if (prevSelection == null) {
-                                // valueToSelect not in existing either — keep whatever
-                                // populateComboBox picked (first item).
-                            } else {
-                                selected = prevSelection;
-                            }
-                        }
+                        selected = mergeModelItems(combo, existingModels, selected, valueToSelect);
                     }
 
                     if (combo.getActionListeners().length == 0) {
@@ -735,6 +707,49 @@ public class ConfigPanelController {
             }
         }
         return selected;
+    }
+
+    /**
+     * Merges the models a fresh config update omitted back into the combo, then
+     * re-sorts. The dropdown must never shrink while a session is open:
+     * {@code config_options_update} (SSE) can carry a subset of what
+     * {@code session/load} reported, and replacing the list wholesale made models
+     * vanish until a manual reload.
+     *
+     * <p>{@code populateComboBox} has already added and sorted the incoming rows, so
+     * the merge appends the missing ones and re-sorts the union. Returns the item to
+     * select: the incoming pick when the fresh options contained it, otherwise the
+     * merged entry matching {@code valueToSelect}, otherwise {@code null} so the
+     * caller falls back to the first row.
+     */
+    static ConfigItem mergeModelItems(JComboBox<ConfigItem> combo, List<ConfigItem> previous,
+            ConfigItem incomingPick, String valueToSelect) {
+        List<ConfigItem> all = new ArrayList<>(combo.getItemCount() + previous.size());
+        for (int i = 0; i < combo.getItemCount(); i++) {
+            all.add(combo.getItemAt(i));
+        }
+        for (ConfigItem old : previous) {
+            boolean known = old.value() != null && all.stream()
+                    .anyMatch(c -> old.value().equals(c.value()));
+            if (!known) {
+                all.add(old);
+            }
+        }
+        all.sort(Comparator.comparing(ConfigItem::name));
+        ConfigItem pick = incomingPick;
+        if (pick == null && valueToSelect != null) {
+            for (ConfigItem c : all) {
+                if (valueToSelect.equals(c.value())) {
+                    pick = c;
+                    break;
+                }
+            }
+        }
+        combo.removeAllItems();
+        for (ConfigItem c : all) {
+            combo.addItem(c);
+        }
+        return pick;
     }
 
     private void postProcessModel(JComboBox<ConfigItem> combo, ConfigItem selected) {

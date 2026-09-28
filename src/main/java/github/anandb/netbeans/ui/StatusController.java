@@ -5,7 +5,6 @@ import java.awt.CardLayout;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
-import java.util.regex.Pattern;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.SwingUtilities;
@@ -23,9 +22,6 @@ public class StatusController {
 
     private static final Logger LOG = Logger.from(StatusController.class);
     private static final String[] DOT_STRINGS = {"", ".", "..", "..."};
-    /** Trailing dots and the padding spaces the animation adds — both are stripped
-     *  to recover the base text before the next frame is composed. */
-    private static final Pattern ANIMATION_SUFFIX = Pattern.compile("[ .]+$");
 
     /** Hard cap on the status label width in characters. The label sits left of
      *  the model dropdown and absorbs all spare width, so an unbounded message
@@ -46,6 +42,12 @@ public class StatusController {
     private volatile boolean animatedStatus = false;
     private int thinkingDots = 0;
     private volatile boolean sessionActive = true;
+    /** The unpadded, capped text the label shows when it is not animating. The
+     *  animation composes frames from this rather than from the label's current
+     *  text: recovering a base by stripping trailing dots and padding back off the
+     *  rendered string would also strip a genuine ellipsis, shortening the message
+     *  a little on every tick. */
+    private volatile String statusBase = "";
 
     /** How long (ms) a run may be silent before the status flags a stall.
      *  A heads-up only: the connection is NOT closed, Stop stays enabled, and
@@ -73,7 +75,7 @@ public class StatusController {
         this.thinkingTimer = new Timer(500, e -> animateThinkingTick());
         this.statusResetTimer = new Timer(1500, e -> {
             if (statusLabel != null) {
-                statusLabel.setText(cap(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Ready")));
+                show(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Ready"));
             }
         });
         this.statusResetTimer.setRepeats(false);
@@ -101,21 +103,32 @@ public class StatusController {
     // -- Status text --
 
     public void setStatus(String key, Object... args) {
-        statusLabel.setText(cap(NbBundle.getMessage(AssistantTopComponent.class, key, args)));
+        show(NbBundle.getMessage(AssistantTopComponent.class, key, args));
     }
 
     public void setStatusText(String text) {
-        statusLabel.setText(cap(text));
+        show(text);
+    }
+
+    /** Sets the label text and remembers it as the base the animation composes
+     *  from. Every write to {@code statusLabel} goes through here. */
+    private void show(String text) {
+        statusBase = cap(text);
+        statusLabel.setText(statusBase);
     }
 
     /** Truncates an over-long status message to {@link #MAX_STATUS_LENGTH}
      *  characters, ending it with an ellipsis. Shorter text is returned as-is;
      *  null is passed through so {@code JLabel.setText} keeps its blank semantics. */
     private static String cap(String text) {
-        if (text == null || text.length() <= MAX_STATUS_LENGTH) {
+        return cap(text, MAX_STATUS_LENGTH);
+    }
+
+    private static String cap(String text, int max) {
+        if (text == null || text.length() <= max) {
             return text;
         }
-        return text.substring(0, MAX_STATUS_LENGTH - ELLIPSIS.length()) + ELLIPSIS;
+        return text.substring(0, max - ELLIPSIS.length()) + ELLIPSIS;
     }
 
     /** Composes one thinking-animation frame: {@code base} followed by
@@ -123,14 +136,18 @@ public class StatusController {
      *  may reach ({@code base.length() + 3}). Every frame of the cycle therefore has
      *  the same length — the label absorbs spare width left of the model dropdown,
      *  so an unpadded cycle ("Sending", "Sending.", "Sending..", "Sending...") would
-     *  resize that row on every 500ms tick. */
+     *  resize that row on every 500ms tick. The dot budget is reserved before the
+     *  cap, so an over-long base is truncated once and then stays put. */
     static String thinkingFrame(String base, int dotCount) {
         if (base == null) {
             return null;
         }
-        String frame = cap(base + DOT_STRINGS[Math.floorMod(dotCount, DOT_STRINGS.length)]);
-        int width = Math.min(base.length() + DOT_STRINGS[DOT_STRINGS.length - 1].length(),
-                MAX_STATUS_LENGTH);
+        int dotBudget = DOT_STRINGS[DOT_STRINGS.length - 1].length();
+        String stem = base.length() <= MAX_STATUS_LENGTH - dotBudget
+                ? base
+                : cap(base, MAX_STATUS_LENGTH - dotBudget);
+        String frame = stem + DOT_STRINGS[Math.floorMod(dotCount, DOT_STRINGS.length)];
+        int width = stem.length() + dotBudget;
         if (frame.length() >= width) {
             return frame;
         }
@@ -158,12 +175,14 @@ public class StatusController {
      *  the first tick — and every later one — leaves the label width unchanged. */
     private void normalizeStatusWidth() {
         Runnable pad = () -> {
-            if (statusLabel == null) {
+            if (!animatedStatus) {
+                // A reset (resetToReady/stopThinking) landed between the off-EDT
+                // startThinking() and this hop; padding now would re-pad "Ready".
                 return;
             }
-            String txt = statusLabel.getText();
-            if (txt != null) {
-                statusLabel.setText(thinkingFrame(ANIMATION_SUFFIX.matcher(txt).replaceFirst(""), 0));
+            String base = statusBase;
+            if (base != null) {
+                statusLabel.setText(thinkingFrame(base, 0));
             }
         };
         if (SwingUtilities.isEventDispatchThread()) {
@@ -339,9 +358,8 @@ public class StatusController {
 
     private void animateThinkingTick() {
         if (animatedStatus && statusLabel != null) {
-            String txt = statusLabel.getText();
-            if (txt != null) {
-                String base = ANIMATION_SUFFIX.matcher(txt).replaceFirst("");
+            String base = statusBase;
+            if (base != null) {
                 thinkingDots = (thinkingDots + 1) % DOT_STRINGS.length;
                 statusLabel.setText(thinkingFrame(base, thinkingDots));
             }
