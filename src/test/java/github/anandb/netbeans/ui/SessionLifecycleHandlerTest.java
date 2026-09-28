@@ -49,6 +49,8 @@ class SessionLifecycleHandlerTest {
     private MockedStatic<PluginSettings> pluginSettingsMock;
     /** Original raw value of {@link #SHOW_HIDDEN_KEY}; null when unset. Restored in tearDown. */
     private String originalShowHidden;
+    /** True once {@link #setUpMocks} has overridden the toggle, so tearDown restores it. */
+    private boolean showHiddenPrefTouched;
 
     private SessionControl sessionControl;
     private ProjectContext projectContext;
@@ -63,6 +65,18 @@ class SessionLifecycleHandlerTest {
     private JButton toggleOptionsBtn;
 
     private void setUpMocks(boolean showHidden) {
+        // Capture the developer's real value first, then set the toggle through the
+        // REAL code path — before any static mock exists. The mock is thread-local,
+        // so the EDT runnable in onSessionListUpdated always calls the real
+        // PluginSettings.isShowHiddenSessions(), whose cached value is refreshed only
+        // asynchronously by its preference listener. Writing the raw NbPreferences key
+        // alone therefore raced the EDT read and intermittently filtered every
+        // archived session out of the dropdown; setShowHiddenSessions() updates the
+        // cache synchronously.
+        originalShowHidden = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).get(SHOW_HIDDEN_KEY, null);
+        showHiddenPrefTouched = true;
+        PluginSettings.setShowHiddenSessions(showHidden);
+
         platformBridgeMock = mockStatic(PlatformBridge.class);
         themeManagerMock = mockStatic(ThemeManager.class);
         pluginSettingsMock = mockStatic(PluginSettings.class);
@@ -79,11 +93,6 @@ class SessionLifecycleHandlerTest {
         renameSessionBtn = new JButton();
         toggleOptionsBtn = new JButton();
 
-        // Capture the developer's real value first: NbPreferences writes hit the
-        // module's userdir, so the override must be undone in tearDown.
-        originalShowHidden = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).get(SHOW_HIDDEN_KEY, null);
-        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
-                .putBoolean(SHOW_HIDDEN_KEY, showHidden);
         when(projectContext.getAllOpenProjects()).thenReturn(new org.netbeans.api.project.Project[0]);
 
         platformBridgeMock.when(PlatformBridge::sessionServiceSafe)
@@ -106,21 +115,20 @@ class SessionLifecycleHandlerTest {
     /**
      * Puts the show-archived preference back the way this machine had it.
      * {@code NbPreferences} writes hit the module's real userdir, so without
-     * this the test run permanently flips the developer's own setting.
+     * this the test run permanently flips the developer's own setting. Runs after
+     * the static mocks are closed, so it goes through the real {@link PluginSettings}
+     * and resets the cached value {@code isShowHiddenSessions()} serves.
      */
     private void restoreShowHiddenPref() {
-        if (originalShowHidden == null) {
+        if (!showHiddenPrefTouched) {
             return;
         }
-        java.util.prefs.Preferences prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
-        if ("true".equals(originalShowHidden)) {
-            prefs.putBoolean(SHOW_HIDDEN_KEY, true);
-        } else if ("false".equals(originalShowHidden)) {
-            prefs.putBoolean(SHOW_HIDDEN_KEY, false);
-        } else {
-            prefs.remove(SHOW_HIDDEN_KEY);
+        PluginSettings.setShowHiddenSessions("true".equals(originalShowHidden));
+        if (originalShowHidden == null) {
+            NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).remove(SHOW_HIDDEN_KEY);
         }
         originalShowHidden = null;
+        showHiddenPrefTouched = false;
     }
 
     private SessionLifecycleHandler newHandler() {
