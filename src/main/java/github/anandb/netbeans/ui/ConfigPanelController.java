@@ -480,12 +480,58 @@ public class ConfigPanelController {
                     JComboBox<ConfigItem> combo = resolveComboTarget(opt.category());
                     if (combo == null) continue;
 
-                    combo.removeAllItems();
+                    boolean isModel = "model".equals(opt.category());
+                    // The model combo may already hold a superset of models from
+                    // session/load. config_options_update (SSE) can arrive with a
+                    // smaller subset; rather than replacing and shrinking the
+                    // dropdown, merge the incoming models into what is already there.
+                    List<ConfigItem> existingModels = null;
+                    if (isModel && combo.getItemCount() > 0) {
+                        existingModels = new ArrayList<>(combo.getItemCount());
+                        for (int i = 0; i < combo.getItemCount(); i++) {
+                            existingModels.add(combo.getItemAt(i));
+                        }
+                        combo.removeAllItems();
+                    } else {
+                        combo.removeAllItems();
+                    }
 
                     String valueToSelect = modelResolver.resolveStartupValue(
                             opt, isThinkingCategory(opt.category()),
                             opt.currentValue(), forceStartupDefaults);
                     ConfigItem selected = populateComboBox(combo, opt.category(), opt.options(), valueToSelect);
+
+                    // Merge back models that were in the combo before this update
+                    // but were not in the incoming config options — prevents
+                    // config_options_update (SSE) from shrinking the list.
+                    if (isModel && existingModels != null) {
+                        java.util.Set<String> currentValues = new java.util.HashSet<>();
+                        for (int i = 0; i < combo.getItemCount(); i++) {
+                            currentValues.add(combo.getItemAt(i).value());
+                        }
+                        for (ConfigItem old : existingModels) {
+                            if (!currentValues.contains(old.value())) {
+                                combo.addItem(old);
+                            }
+                        }
+                        // Preserve the previous selection if the incoming options
+                        // did not include the model the user had chosen.
+                        if (selected == null && !existingModels.isEmpty()) {
+                            ConfigItem prevSelection = null;
+                            for (ConfigItem c : existingModels) {
+                                if (c.value() != null && c.value().equals(valueToSelect)) {
+                                    prevSelection = c;
+                                    break;
+                                }
+                            }
+                            if (prevSelection == null) {
+                                // valueToSelect not in existing either — keep whatever
+                                // populateComboBox picked (first item).
+                            } else {
+                                selected = prevSelection;
+                            }
+                        }
+                    }
 
                     if (combo.getActionListeners().length == 0) {
                         setupConfigCombo(combo, opt.id());
@@ -536,7 +582,10 @@ public class ConfigPanelController {
         });
     }
 
-    /** Mirrors a model option received from the server into the per-harness model list cache. */
+    /** Mirrors a model option received from the server into the per-harness model list cache.
+     *  Never shrinks the cache — if the incoming list is a subset of what was already
+     *  stored (e.g. config_options_update carries fewer models than session/load),
+     *  the existing superset is kept. */
     private void cacheModelList(SessionConfigOption modelOption) {
         if (modelListControl == null || modelOption.options() == null || modelOption.options().isEmpty()) {
             return;
@@ -545,11 +594,18 @@ public class ConfigPanelController {
         if (harnessId == null) {
             return;
         }
-        List<AvailableModel> models = new ArrayList<>(modelOption.options().size());
+        List<AvailableModel> incoming = new ArrayList<>(modelOption.options().size());
         for (SessionConfigSelectOption o : modelOption.options()) {
-            models.add(new AvailableModel(o.value(), o.name(), o.description()));
+            incoming.add(new AvailableModel(o.value(), o.name(), o.description()));
         }
-        modelListControl.updateModels(harnessId, models);
+        // Never shrink: if the cache already holds a superset, keep it.
+        List<AvailableModel> existing = modelListControl.getModels(harnessId);
+        if (existing != null && existing.size() > incoming.size()) {
+            LOG.fine("Skipping cache update for {0}: existing list ({1}) is larger than incoming ({2})",
+                    new Object[]{harnessId, existing.size(), incoming.size()});
+            return;
+        }
+        modelListControl.updateModels(harnessId, incoming);
     }
 
     /**
