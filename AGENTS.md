@@ -338,6 +338,14 @@ Resolved — kept as regression guards:
   component tree. Removing and re-adding them caused duplicate listeners (click fired toggle twice).
   Do NOT add matching `removeMouseListener` calls here.
 - Clamping: `McpServer` connector idle timeout is clamped to a minimum of 30s.
+- Status label cap: `StatusController` caps `statusLabel` text at `MAX_STATUS_LENGTH` (50) chars,
+  ending over-long messages with an ellipsis. The label sits left of the model dropdown and absorbs
+  spare width, so every `setText` path (including the thinking animation) goes through the cap helper.
+- Thinking animation is constant-width: `StatusController.thinkingFrame()` right-pads each frame with
+  spaces to `base.length() + 3`, and `startThinking()` pads the current text immediately, so the dot
+  cycle never changes the label width (e.g. `Sending` is always 10 chars). The trailing dots *and*
+  padding are stripped (`ANIMATION_SUFFIX`) to recover the base. Do NOT set `statusLabel` text
+  directly or drop the padding without checking the dropdown row layout.
 - MCP tools/call: Response is sent immediately after tool execution (no artificial delay). The old 5,000ms minimum latency was removed in v1.7.2 because it caused client abort errors on macOS.
 
 ### Task Repository Toggle

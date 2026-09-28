@@ -23,7 +23,15 @@ public class StatusController {
 
     private static final Logger LOG = Logger.from(StatusController.class);
     private static final String[] DOT_STRINGS = {"", ".", "..", "..."};
-    private static final Pattern TRAILING_DOTS = Pattern.compile("\\.+$");
+    /** Trailing dots and the padding spaces the animation adds — both are stripped
+     *  to recover the base text before the next frame is composed. */
+    private static final Pattern ANIMATION_SUFFIX = Pattern.compile("[ .]+$");
+
+    /** Hard cap on the status label width in characters. The label sits left of
+     *  the model dropdown and absorbs all spare width, so an unbounded message
+     *  (error text, long file name) would resize the row on every update. */
+    private static final int MAX_STATUS_LENGTH = 50;
+    private static final String ELLIPSIS = "...";
 
     private final JLabel statusLabel;
     private final Timer thinkingTimer;
@@ -65,7 +73,7 @@ public class StatusController {
         this.thinkingTimer = new Timer(500, e -> animateThinkingTick());
         this.statusResetTimer = new Timer(1500, e -> {
             if (statusLabel != null) {
-                statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Ready"));
+                statusLabel.setText(cap(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Ready")));
             }
         });
         this.statusResetTimer.setRepeats(false);
@@ -93,11 +101,40 @@ public class StatusController {
     // -- Status text --
 
     public void setStatus(String key, Object... args) {
-        statusLabel.setText(NbBundle.getMessage(AssistantTopComponent.class, key, args));
+        statusLabel.setText(cap(NbBundle.getMessage(AssistantTopComponent.class, key, args)));
     }
 
     public void setStatusText(String text) {
-        statusLabel.setText(text);
+        statusLabel.setText(cap(text));
+    }
+
+    /** Truncates an over-long status message to {@link #MAX_STATUS_LENGTH}
+     *  characters, ending it with an ellipsis. Shorter text is returned as-is;
+     *  null is passed through so {@code JLabel.setText} keeps its blank semantics. */
+    private static String cap(String text) {
+        if (text == null || text.length() <= MAX_STATUS_LENGTH) {
+            return text;
+        }
+        return text.substring(0, MAX_STATUS_LENGTH - ELLIPSIS.length()) + ELLIPSIS;
+    }
+
+    /** Composes one thinking-animation frame: {@code base} followed by
+     *  {@code dotCount} dots, then right-padded with spaces to the width the phase
+     *  may reach ({@code base.length() + 3}). Every frame of the cycle therefore has
+     *  the same length — the label absorbs spare width left of the model dropdown,
+     *  so an unpadded cycle ("Sending", "Sending.", "Sending..", "Sending...") would
+     *  resize that row on every 500ms tick. */
+    static String thinkingFrame(String base, int dotCount) {
+        if (base == null) {
+            return null;
+        }
+        String frame = cap(base + DOT_STRINGS[Math.floorMod(dotCount, DOT_STRINGS.length)]);
+        int width = Math.min(base.length() + DOT_STRINGS[DOT_STRINGS.length - 1].length(),
+                MAX_STATUS_LENGTH);
+        if (frame.length() >= width) {
+            return frame;
+        }
+        return frame + " ".repeat(width - frame.length());
     }
 
     public String getStatusText() {
@@ -113,7 +150,27 @@ public class StatusController {
 
     public void startThinking() {
         animatedStatus = true;
+        normalizeStatusWidth();
         thinkingTimer.start();
+    }
+
+    /** Pads the current status text to the width its animation cycle will reach, so
+     *  the first tick — and every later one — leaves the label width unchanged. */
+    private void normalizeStatusWidth() {
+        Runnable pad = () -> {
+            if (statusLabel == null) {
+                return;
+            }
+            String txt = statusLabel.getText();
+            if (txt != null) {
+                statusLabel.setText(thinkingFrame(ANIMATION_SUFFIX.matcher(txt).replaceFirst(""), 0));
+            }
+        };
+        if (SwingUtilities.isEventDispatchThread()) {
+            pad.run();
+        } else {
+            SwingUtilities.invokeLater(pad);
+        }
     }
 
     public void stopThinking() {
@@ -284,9 +341,9 @@ public class StatusController {
         if (animatedStatus && statusLabel != null) {
             String txt = statusLabel.getText();
             if (txt != null) {
-                String base = TRAILING_DOTS.matcher(txt).replaceFirst("");
-                thinkingDots = (thinkingDots + 1) % 4;
-                statusLabel.setText(base + DOT_STRINGS[thinkingDots]);
+                String base = ANIMATION_SUFFIX.matcher(txt).replaceFirst("");
+                thinkingDots = (thinkingDots + 1) % DOT_STRINGS.length;
+                statusLabel.setText(thinkingFrame(base, thinkingDots));
             }
         }
     }
