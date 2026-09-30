@@ -549,7 +549,10 @@ public void toggleVisibility() {
    was inside the assistant panel. The interceptor was removed. Do NOT re-add Ctrl+L
    handling in any `KeyEventDispatcher`.
 
-6. MCP tools that we add must have names <= 14 characters in length.
+6. MCP tool names should be short and descriptive — they are re-sent in the tool
+   list on every model turn and cost tokens each time. No hard length cap; the
+   earlier 14-character limit was arbitrary and was already exceeded by
+   `get_current_file_context` (24).
 
 7. MCP token auth: `MessageServlet` verifies a per-instance token whenever
    `authRequired` is set. `BinaryResolver.isPiHarness()` exempts the PI family

@@ -14,17 +14,17 @@ The codebase implements a mature **Hexagonal (Ports & Adapters)** design style c
 graph TD
     UI[ui/ Swing Presentation] -->|Consumes| Contract[contract/ Service Interfaces]
     UI -->|Uses| Support[support/ Utilities]
-    
+
     Manager[manager/ Core Orchestration] -->|Implements| Contract
     Manager -->|Uses| Model[model/ ACP Data Records]
     Manager -->|Uses| Support
-    
+
     Contract -->|Imports| Model
-    
+
     classDef high fill:#d4edda,stroke:#28a745,stroke-width:2px;
     classDef mid fill:#fff3cd,stroke:#ffc107,stroke-width:2px;
     classDef low fill:#f8d7da,stroke:#dc3545,stroke-width:2px;
-    
+
     class UI high;
     class Manager mid;
     class Contract,Model,Support low;
@@ -113,7 +113,9 @@ The plugin embeds a **Model Context Protocol (MCP) server** so the AI subprocess
 - **`mcp/McpServer`**: A Jetty-based HTTP server bound to `localhost` on a random port, secured by a bearer token. Started/stopped by `mcp/McpManager` (async startup with capability detection and a disable toggle).
 - **Tool registry (`mcp/McpTools`, `McpToolDefinition`, `McpToolAdapter`)**: Tools are registered/unregistered in a thread-safe registry. `McpToolAdapter` adapts `McpManager` to the `contract/ToolExecutor` port, keeping `manager/` from depending on `mcp/`.
 - **Tool providers**: `EditorToolProvider` (`get_opened_files`, `open_file_at_line`, `rename_session`), `ProjectToolProvider`, and `StashDiffToolProvider` register the IDE tool set.
-- **Transport (`mcp/MessageServlet`)**: Handles protocol messages. MCP tool names are capped at 14 characters.
+- **Transport (`mcp/MessageServlet`)**: Handles protocol messages. MCP tool names
+  are kept short and descriptive — they are re-sent on every model turn — but
+  have no hard length cap.
 
 ---
 

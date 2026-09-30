@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.node.TextNode;
 import java.io.IOException;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
+import java.lang.reflect.Field;
 import java.util.UUID;
 
 import org.junit.jupiter.api.AfterEach;
@@ -187,5 +188,49 @@ class AcpProtocolClientTest {
         // The id should be echoed as-is (string, not coerced to long)
         assertTrue(responseId.isTextual(), "Echoed id should be textual, not numeric");
         assertEquals(stringId, responseId.asText());
+    }
+
+    // --- Permission pending: idle-clock handling -------------------------------------
+    //
+    // The watchdog is deliberately suppressed while a permission is pending, so lastDataTime
+    // still points at when the request ARRIVED. If answering did not restart that clock, the
+    // accumulated deliberation time would be applied retroactively to the still-in-flight
+    // session/prompt the moment suppression lifted, failing the turn the user just approved.
+
+    /** Reads the private idle-clock field; there is no accessor and one is not worth adding. */
+    private long lastDataTime() throws Exception {
+        Field field = AcpProtocolClient.class.getDeclaredField("lastDataTime");
+        field.setAccessible(true);
+        return field.getLong(client);
+    }
+
+    private int pendingPermissions() throws Exception {
+        Field field = AcpProtocolClient.class.getDeclaredField("pendingPermissions");
+        field.setAccessible(true);
+        return ((java.util.concurrent.atomic.AtomicInteger) field.get(client)).get();
+    }
+
+    @Test
+    @Tag("P0")
+    @Tag("Protocol")
+    void answeringPermissionRestartsIdleClock() throws Exception {
+        client.setPermissionRequestPending(true);
+        long afterOpen = lastDataTime();
+        Thread.sleep(50);
+        client.setPermissionRequestPending(false);
+        assertTrue(lastDataTime() > afterOpen,
+                "Answering a permission must restart the idle clock, otherwise the user's "
+                        + "deliberation time is charged against the in-flight request");
+    }
+
+    @Test
+    void pendingPermissionCounterIsBalanced() throws Exception {
+        assertEquals(0, pendingPermissions(), "no permission pending at rest");
+        client.setPermissionRequestPending(true);
+        assertEquals(1, pendingPermissions());
+        client.setPermissionRequestPending(false);
+        assertEquals(0, pendingPermissions(),
+                "counter must return to zero, or the watchdog stays suppressed for the "
+                        + "rest of the connection and dead-server detection is lost");
     }
 }

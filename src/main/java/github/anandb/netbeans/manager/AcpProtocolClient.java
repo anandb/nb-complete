@@ -355,6 +355,15 @@ public class AcpProtocolClient implements Closeable {
             touch(); // reset idle timer when permission dialog opens
         } else {
             pendingPermissions.decrementAndGet();
+            // Restart the idle clock on ANSWER, not just on open. The watchdog is
+            // suppressed for the whole deliberation, so lastDataTime still points at
+            // when the request ARRIVED. Without this, the instant suppression lifts the
+            // accumulated idle time is applied retroactively to the still-in-flight
+            // session/prompt and the watchdog fails it with a TimeoutException — killing
+            // the turn the user just approved, within one watchdog tick. Reading a
+            // permission dialog carefully is not evidence of a dead server, so the
+            // deliberation window must not count against the connection.
+            touch();
         }
     }
 

@@ -80,7 +80,14 @@ class AcpRequestRouter {
                 mappedId = "reject";
             }
             if (mappedId == null) {
-                mappedId = "once";
+                // Fail CLOSED. A null decision means "we do not know" — a dismissed panel,
+                // an error path, or a handler that completed empty. Every other unknown in
+                // this method rejects (no handler above), and an allow here would let the
+                // agent act on a tool call the user never approved. There is no undo for
+                // that, so an unresolvable decision is a rejection, not a grant.
+                LOG.log(Level.WARNING, "session/request_permission returned no option id "
+                        + "for session {0}, tool call {1} — rejecting", sessionId, extractedId);
+                mappedId = "reject";
             }
 
             // Match ACP outcome structure
@@ -98,11 +105,14 @@ class AcpRequestRouter {
             }
 
             // Compatibility fields
-            if ("reject".equals(optionId)) {
-                res.put("allow", false);
-            } else {
-                res.put("allow", true);
-            }
+            // Legacy boolean for older harnesses. Derive it from the NORMALISED id, not the
+            // raw one: keying this off the raw optionId let a null decision write allow=true
+            // while outcome.optionId above said "reject", so a harness reading this field was
+            // granted access the standard field had just denied. The two must never disagree.
+            // Residual: an arbitrary harness-supplied option id whose semantics we cannot
+            // read is still treated as non-reject. That is deliberate — it is what the
+            // outcome field already says, and the outcome field is the ACP standard one.
+            res.put("allow", !"reject".equals(mappedId));
 
             return res;
         });

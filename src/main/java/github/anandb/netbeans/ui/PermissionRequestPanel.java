@@ -949,7 +949,8 @@ final class PermissionRequestPanel extends JPanel {
      * closed). Re-runs the slide-open animation over the still-active request.
      * No-op when no request is active. This is the recovery path that lets the
      * user get back a missed permission dialog instead of leaving the server
-     * hanging until an idle timeout.
+     * blocked indefinitely — the connection watchdog is suspended while a
+     * permission is pending, so nothing else will ever release it.
      */
     void resurface() {
         if (!requestActive) return;

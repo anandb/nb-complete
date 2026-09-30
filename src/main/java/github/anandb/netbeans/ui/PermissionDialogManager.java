@@ -68,7 +68,10 @@ final class PermissionDialogManager {
      *  If the panel was dismissed without being answered (missed dialog), re-surface it
      *  and bring the assistant to the front so the user can actually decide. This is the
      *  only way to get back a permission request whose dialog was missed — otherwise the
-     *  server stays blocked on the tool-call decision until an idle timeout. */
+     *  server stays blocked on the tool-call decision indefinitely. NO idle timeout
+     *  rescues it: AcpProtocolClient.checkIdleTimeout deliberately suppresses the whole
+     *  watchdog while a permission is pending, precisely so a user deliberating is not
+     *  mistaken for a dead server. There is no expiry. The user is the timeout. */
     void buzzPermissionPanel() {
         // Resurface whenever a request is still active, regardless of isVisible():
         // the panel can be stuck in a visible-but-zero-height state (killed slide
