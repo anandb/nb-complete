@@ -235,15 +235,18 @@ class ServerProcessLifecycle {
                     if (res != null) {
                         // Store harness info from initialize response
                         JsonNode agentInfo = res.get("agentInfo");
+                        // Reported agent version, kept for the version-dependent
+                        // capability delta applied after the harness is resolved.
+                        String agentVersion = null;
                         if (agentInfo != null) {
                             String name = agentInfo.has("name") ? agentInfo.get("name").asText() : null;
-                            String version = agentInfo.has("version") ? agentInfo.get("version").asText() : null;
+                            agentVersion = agentInfo.has("version") ? agentInfo.get("version").asText() : null;
                             if (name != null && !name.isBlank()) {
                                 // Only a named agent may replace the name seeded from
                                 // preferences above: that seed is what names the wire
                                 // log and stamps harness attribution, and an unnamed
                                 // agentInfo must not wipe it back to "unknown".
-                                AcpSessionInfo.getInstance().setHarnessInfo(name, version);
+                                AcpSessionInfo.getInstance().setHarnessInfo(name, agentVersion);
                             }
                         }
                         // Resolve harness from stored preferences, ignoring the
@@ -259,6 +262,10 @@ class ServerProcessLifecycle {
                                 capabilities = HarnessCatalog.byBinaryName(binName);
                             }
                         }
+                        // Version-dependent deltas win over the static catalog entry:
+                        // OpenCode v2 dropped mid-turn steering, so its messages
+                        // must be queued until turn end (used live by MessageSender).
+                        capabilities = HarnessCatalog.forAgentVersion(capabilities, agentVersion);
                         toolExecutor.checkServerSupport(capabilities);
                         LOG.info("Harness resolved: {0} ({1})", capabilities.id(), capabilities.displayName());
                         Consumer<HarnessCatalog.Harness> listener = harnessListener;

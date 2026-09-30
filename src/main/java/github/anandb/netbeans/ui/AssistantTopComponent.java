@@ -237,8 +237,9 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
         // Message queue button — left of the attachment button, visible only when
         // messages are queued.
-        // Queueing is used only by the goose agent; for OpenCode/pi the button is
-        // disabled and hidden once the agent name is known (see applyQueueForAgent).
+        // Queueing is enabled only for agents that cannot steer a running turn
+        // (goose, OpenCode v2); for the rest the button stays hidden once the
+        // harness capabilities are known (see applyHarnessCapabilities).
         queueManager = new MessageQueueManager();
         layoutBuilder.getRightStatusPanel().add(queueManager.getButton(), 0);
         ProcessControl pc = Lookup.getDefault().lookup(ProcessControl.class);

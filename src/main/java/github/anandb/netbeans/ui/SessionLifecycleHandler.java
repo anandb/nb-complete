@@ -300,14 +300,13 @@ public class SessionLifecycleHandler implements SessionListener {
         // End of turn signals: responding_finished/end_turn (also authoritative
         // via the RPC result's stopReason — see MessageSender).
         // NOTE: available_commands_update is deliberately NOT an end-of-turn
-        // signal: queueing agents (goose) emit it at the START of a turn, and
-        // treating it as turn-end set turnEnded=true mid-stream — the next user
-        // message then bypassed the queue guard and hit goose while the first
-        // prompt was still in flight, which drops the in-flight prompt (goose
-        // returns no result for it) and wedges the session. For interleaved
-        // agents it does prove the session is live, so it may clear the
-        // pending-preamble wait early (progress bar + buffered messages) without
-        // touching turnEnded.
+        // signal: queueing agents (goose, OpenCode v2) emit it at the START of a
+        // turn, and treating it as turn-end set turnEnded=true mid-stream — the next
+        // user message then bypassed the queue guard and hit the agent while the
+        // first prompt was still in flight, which drops the in-flight prompt and
+        // wedges the session. For steering agents it does prove the session is live,
+        // so it may clear the pending-preamble wait early (progress bar + buffered
+        // messages) without touching turnEnded.
         ProcessControl proc = processService != null ? processService.get() : null;
         boolean queueingAgent = proc != null && proc.getCapabilities().requiresMessageQueue();
         TurnEndDecision decision = TurnEndDecision.of(messageType, queueingAgent);

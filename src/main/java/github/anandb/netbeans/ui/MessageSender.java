@@ -158,10 +158,13 @@ public class MessageSender {
             return;
         }
         boolean turnEnded = turnEndedCheck != null ? turnEndedCheck.getAsBoolean() : true;
-        // requiresMessageQueue decides mid-turn delivery: queueing agents (goose)
-        // drop in-flight prompts, so messages wait for turn end and go out as one
-        // combined prompt at flush time. Interleaved agents (OpenCode) accept a
-        // new session/prompt while a previous one is running — send immediately.
+        // requiresMessageQueue decides mid-turn delivery: queueing agents (goose,
+        // OpenCode v2) cannot steer a running turn, so messages wait for turn end
+        // and go out as one combined prompt at flush time. Steering agents
+        // (OpenCode v1) accept a new session/prompt while a previous one is
+        // running — send immediately.
+        // Read live from the resolved capabilities: the harness variant is chosen
+        // from the initialize response version (see HarnessCatalog.forAgentVersion).
         ProcessControl proc = processService.get();
         boolean queueingAgent = proc != null && proc.getCapabilities().requiresMessageQueue();
         if ((!sessionService.get().canSendMessage() || !turnEnded) && queueingAgent) {
@@ -315,8 +318,8 @@ public class MessageSender {
         }
 
         // Advance the permission epoch only when starting a new turn. Mid-turn
-        // interleaved sends (OpenCode) must NOT advance: a permission request
-        // captured on the reader thread between two interleaved sends would be
+        // steering sends (OpenCode v1) must NOT advance: a permission request
+        // captured on the reader thread between two steering sends would be
         // rejected as stale because the second send bumped the epoch.
         if (turnEnded && onBeforeServerSendCallback != null) {
             onBeforeServerSendCallback.run();

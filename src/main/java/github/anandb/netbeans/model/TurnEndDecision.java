@@ -9,18 +9,20 @@ package github.anandb.netbeans.model;
  *   <li>{@code endOfTurn} — {@code responding_finished}/{@code end_turn} end the turn for
  *       every agent.</li>
  *   <li>{@code preambleReady} — {@code available_commands_update} may clear the pending
- *       preamble wait early for interleaved agents only. It is deliberately NOT an
- *       end-of-turn signal: queueing agents (goose) emit it at the START of a turn, and
- *       treating it as turn-end sets turnEnded mid-stream — the next user message then
- *       bypasses the queue guard and hits goose while the first prompt is still in
- *       flight, which drops the in-flight prompt and wedges the session.</li>
+ *       preamble wait early for steering agents only. It is deliberately NOT an
+ *       end-of-turn signal: queueing agents (goose, OpenCode v2) emit it at the START
+ *       of a turn, and treating it as turn-end sets turnEnded mid-stream — the next
+ *       user message then bypasses the queue guard and hits the agent while the first
+ *       prompt is still in flight, which drops the in-flight prompt and wedges the
+ *       session.</li>
  * </ul>
  */
 public record TurnEndDecision(boolean endOfTurn, boolean preambleReady) {
 
     /**
      * @param type          the raw {@code sessionUpdate} type name, or {@code null}
-     * @param queueingAgent whether the harness drops in-flight prompts (goose-style)
+     * @param queueingAgent whether the harness cannot steer a running turn, so a
+     *                      second prompt must wait (goose, OpenCode v2)
      */
     public static TurnEndDecision of(String type, boolean queueingAgent) {
         MessageType mt;

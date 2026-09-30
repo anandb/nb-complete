@@ -114,6 +114,51 @@ class HarnessCatalogTest {
     }
 
     @Test
+    void opencodeV2QueuesMessages() {
+        assertSame(HarnessCatalog.OPENCODE_V2,
+                HarnessCatalog.forAgentVersion(HarnessCatalog.OPENCODE, "2.0.20"));
+        assertTrue(HarnessCatalog.OPENCODE_V2.requiresMessageQueue());
+    }
+
+    @Test
+    void opencodeV1SteersMessages() {
+        assertFalse(HarnessCatalog.OPENCODE.requiresMessageQueue());
+        assertSame(HarnessCatalog.OPENCODE,
+                HarnessCatalog.forAgentVersion(HarnessCatalog.OPENCODE, "1.9.3"));
+    }
+
+    @Test
+    void unknownVersionKeepsCatalogCapabilities() {
+        assertSame(HarnessCatalog.OPENCODE, HarnessCatalog.forAgentVersion(HarnessCatalog.OPENCODE, null));
+        assertSame(HarnessCatalog.OPENCODE, HarnessCatalog.forAgentVersion(HarnessCatalog.OPENCODE, "  "));
+        assertSame(HarnessCatalog.OPENCODE, HarnessCatalog.forAgentVersion(HarnessCatalog.OPENCODE, "v2.0"));
+        assertSame(HarnessCatalog.UNKNOWN, HarnessCatalog.forAgentVersion(HarnessCatalog.UNKNOWN, "2.0.0"));
+        assertNull(HarnessCatalog.forAgentVersion(null, "2.0.0"));
+    }
+
+    @Test
+    void versionOverrideLeavesSteeringHarnessesUntouched() {
+        assertSame(HarnessCatalog.GOOSE, HarnessCatalog.forAgentVersion(HarnessCatalog.GOOSE, "2.0.0"));
+        assertSame(HarnessCatalog.CLAUDE, HarnessCatalog.forAgentVersion(HarnessCatalog.CLAUDE, "9.9.9"));
+        assertSame(HarnessCatalog.CURSOR, HarnessCatalog.forAgentVersion(HarnessCatalog.CURSOR, "2.0.0"));
+    }
+
+    @Test
+    void opencodeV2VariantDiffersOnlyInMessageQueue() {
+        HarnessCatalog.Harness v1 = HarnessCatalog.OPENCODE;
+        HarnessCatalog.Harness v2 = HarnessCatalog.OPENCODE_V2;
+        assertEquals(v1.withRequiresMessageQueue(true), v2);
+        // Identical identity and launch metadata: id-keyed caches and stored
+        // preferences must not see a distinct harness just because it is v2.
+        assertEquals(v1.id(), v2.id());
+        assertEquals(v1.displayName(), v2.displayName());
+        assertEquals(v1.binaryNames(), v2.binaryNames());
+        // Not offered during onboarding: ALL keeps only the v1 base entry.
+        assertFalse(HarnessCatalog.ALL.contains(v2));
+        assertSame(v1, HarnessCatalog.byId("opencode"));
+    }
+
+    @Test
     void openclawLacksAgentList() {
         assertFalse(HarnessCatalog.OPENCLAW.supportsAgentList());
     }

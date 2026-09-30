@@ -19,7 +19,8 @@ public final class HarnessCatalog {
             String iconBase,
             List<String> binaryNames,
             String launchArgs,
-            /** True when a second {@code session/prompt} drops the in-flight turn (goose). */
+            /** True when a second {@code session/prompt} does not steer the in-flight
+             *  turn, so messages must be queued until turn end (goose; OpenCode v2). */
             boolean requiresMessageQueue,
             boolean sendsMcpServerConfig,
             boolean injectsEditorContext,
@@ -64,6 +65,22 @@ public final class HarnessCatalog {
                     ? "" : NbBundle.getMessage(HarnessCatalog.class, unsupportedModelSelectionPlaceholder);
         }
 
+        /**
+         * Returns a copy of this harness with only the message-queue capability
+         * replaced. Used to derive a runtime variant (e.g. OpenCode v2) from its
+         * catalog base without duplicating the remaining launch metadata, so the
+         * two variants can never drift apart on any other flag.
+         */
+        public Harness withRequiresMessageQueue(boolean queueMessages) {
+            return new Harness(id, displayName, iconBase, binaryNames, launchArgs, queueMessages,
+                    sendsMcpServerConfig, injectsEditorContext, supportsMessageIds, supportsMcpServer,
+                    supportsSessionSetMode, supportsSessionSetConfigOption, supportsSessionSetModel,
+                    supportsModelSelection, supportsSessionList, supportsAgentList,
+                    unsupportedModelSelectionMessage, unsupportedModelSelectionPlaceholder,
+                    installWindows, installMac, installLinux, prerequisites, docsUrl,
+                    windowsInstallSubDirs);
+        }
+
         /** True when the given binary basename belongs to this harness, with or
          *  without a Windows executable extension ({@code omp}, {@code omp.exe}). */
         public boolean matchesBinary(String binaryName) {
@@ -84,6 +101,18 @@ public final class HarnessCatalog {
         "", "https://opencode.ai/docs/",
         List.of()
     );
+
+    /**
+     * OpenCode v2 capability variant: identical identity and launch metadata as
+     * {@link #OPENCODE}, but without mid-turn steering — a second
+     * {@code session/prompt} is not folded into the running turn, so the client
+     * must queue messages until turn end. Selected at handshake by
+     * {@link #forAgentVersion(Harness, String)} from the reported
+     * {@code agentInfo.version}; deliberately NOT part of {@link #ALL} so
+     * onboarding, install metadata and id/binary lookups keep resolving the v1
+     * base entry.
+     */
+    public static final Harness OPENCODE_V2 = OPENCODE.withRequiresMessageQueue(true);
 
     public static final Harness GOOSE = new Harness(
         "goose", "Goose", "goose",
@@ -232,6 +261,57 @@ public final class HarnessCatalog {
             }
         }
         return UNKNOWN;
+    }
+
+    /** First OpenCode major version without mid-turn steering; v2 and later
+     *  require the client to queue messages until turn end. */
+    private static final int OPENCODE_STEERING_REMOVED_MAJOR = 2;
+
+    /**
+     * Applies agent-version-dependent capability deltas to a harness resolved
+     * from stored preferences or the launch binary.
+     *
+     * <p>The catalog holds one entry per harness, but a harness's capabilities
+     * can change across major releases: OpenCode v2 dropped mid-turn steering,
+     * so its messages must be queued ({@link #OPENCODE_V2}) instead of delivered
+     * immediately. This is the single extension point for such deltas; call it
+     * with the {@code agentInfo.version} from the {@code initialize} response
+     * before publishing the resolved harness.</p>
+     *
+     * @param harness      the catalog harness resolved for this process
+     * @param agentVersion the reported agent version, or {@code null} when absent
+     * @return the runtime variant to use, or {@code harness} unchanged when the
+     *         version is unknown or carries no delta
+     */
+    public static Harness forAgentVersion(Harness harness, String agentVersion) {
+        if (harness == null || !OPENCODE.id().equals(harness.id())) {
+            return harness;
+        }
+        return majorVersion(agentVersion) >= OPENCODE_STEERING_REMOVED_MAJOR ? OPENCODE_V2 : harness;
+    }
+
+    /**
+     * Parses the leading major component of a version string
+     * ({@code "2.0.20"} → {@code 2}). Returns a negative value when the version
+     * is null, blank, or does not start with digits, so callers can treat it as
+     * "unknown" rather than "v1".
+     */
+    private static int majorVersion(String version) {
+        if (version == null || version.isBlank()) {
+            return -1;
+        }
+        int end = 0;
+        while (end < version.length() && Character.isDigit(version.charAt(end))) {
+            end++;
+        }
+        if (end == 0) {
+            return -1;
+        }
+        try {
+            return Integer.parseInt(version.substring(0, end));
+        } catch (NumberFormatException overflow) {
+            return -1;
+        }
     }
 
     /** Finds the harness that owns the given binary basename; {@link #UNKNOWN} when not found.

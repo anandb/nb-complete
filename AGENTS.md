@@ -256,6 +256,23 @@ Resolved — kept as regression guards:
   `session/load` configOptions also triggers a flush.
 - `MessageType` enum contains all valid session updates (e.g. `agent_message_chunk`, `agent_thought_chunk`, `plan`, `tool_call`). Check this enum before adding message types.
 
+### Harness Version Capabilities (OpenCode v1 vs v2)
+- The catalog holds ONE entry per harness, but capabilities can change across major
+  releases. `HarnessCatalog.forAgentVersion(harness, agentInfo.version)` is the single
+  seam for version-dependent deltas; `ServerProcessLifecycle.initializeProtocol()` applies
+  it after the harness is resolved and before `checkServerSupport` / the harness listener.
+  `MessageSender` reads `getCapabilities()` live at send time, so the resolved variant
+  governs the whole process lifetime.
+- OpenCode v2 dropped mid-turn steering, so a second `session/prompt` is no longer folded
+  into the running turn: `forAgentVersion` returns `HarnessCatalog.OPENCODE_V2`
+  (`requiresMessageQueue=true`) and the queue guard in `MessageSender` holds messages
+  until turn end. OpenCode v1 keeps steering (`requiresMessageQueue=false`).
+- `OPENCODE_V2` shares `OPENCODE`'s id, display name and binary names (derive it with
+  `Harness.withRequiresMessageQueue`) so id-keyed model caches and stored preferences do
+  not see a distinct harness. It must NOT be added to `HarnessCatalog.ALL` — onboarding,
+  install metadata and `byId`/`byBinaryName` must keep resolving the v1 base entry.
+- Unknown, absent or non-numeric version keeps the catalog default (v1); never guess v2.
+
 ### ACP fs Tools Are Not Project-Confined
 - `fs/readTextFile` (`fs/read_text_file`) and `fs/writeTextFile` (`fs/write_text_file`)
   are handled by `manager/AcpRequestRouter` and operate on any absolute path, inside or

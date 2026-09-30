@@ -49,7 +49,8 @@ public final class MessageQueueManager {
     private Timer flashTimer;
     private boolean flashing;
     private Runnable sendNowCallback;
-    /** When false (e.g. non-goose agents), queueing is disabled and the button stays hidden. */
+    /** When false (agents that steer mid-turn), queueing is disabled and the
+     *  button stays hidden. See {@code AssistantTopComponent.applyHarnessCapabilities}. */
     private volatile boolean enabled = true;
 
     MessageQueueManager() {
