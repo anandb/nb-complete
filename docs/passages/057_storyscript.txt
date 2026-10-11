@@ -35,45 +35,145 @@ window.toggleTheme = function() {
   })();
 })();
 
-// Rename the sidebar Undo/Redo icons to Back/Forward.
-// The click handler dispatches on the `alt` attribute, so keep it unchanged
-// and only relabel the visible text and tooltip. Harlowe recreates the
-// sidebar on every passage change, so watch for newly inserted icons.
-(function renameSidebarIcons() {
+// Map the sidebar Undo/Redo icons to the browser's Back/Forward buttons.
+// Harlowe exposes no JS API for its turn history and rebuilds the sidebar on
+// every passage, so the icon clicks are intercepted in the capture phase
+// (before Harlowe's own handler) and routed to browser history instead: one
+// entry is pushed per passage, and a popstate from the browser's own
+// Back/Forward is replayed into the story by clicking the icons Harlowe made.
+(function browserBackForward() {
+  var NAV_ICON = 'tw-sidebar tw-icon';
+  var live = false;       // false when the browser will not keep our entries
+  var turn = 0;           // the turn the story is showing
+  var renders = 0;        // passages rendered so far, to detect a replayed move
+  var replaying = false;  // true while a popstate is being replayed
+  var replayTarget = 0;   // the turn the browser has landed on
+  var guard = 0;          // caps a replay that cannot make progress
+  var skipRender = false; // true when the story's first passage still has to render
+
+  function call(fn) {
+    try { return fn(); } catch (e) { return undefined; }
+  }
+
+  function iconFor(dir) {
+    return document.querySelector(NAV_ICON + (dir < 0 ? '.undo' : '.redo'));
+  }
+
+  // Send an icon click to the browser instead of to Harlowe's turn history.
+  function intercept(event) {
+    if (!live || !event.isTrusted || event.button !== 0) { return; }
+    var target = event.target;
+    var icon = target && target.closest ? target.closest(NAV_ICON) : null;
+    if (!icon) { return; }
+    var back = icon.classList.contains('undo');
+    if (!back && !icon.classList.contains('redo')) { return; }
+    event.preventDefault();
+    event.stopPropagation();
+    call(function() { if (back) { history.back(); } else { history.forward(); } });
+  }
+
+  // Wait for a replayed icon click to render its passage. A move with nothing
+  // left to undo or redo renders nothing and reports failure, so a stale entry
+  // cannot spin the replay forever.
+  function whenRendered(seen, done, failed) {
+    var waited = 0;
+    (function poll() {
+      if (renders !== seen) { done(); return; }
+      if ((waited += 25) >= 400) { failed(); return; }
+      setTimeout(poll, 25);
+    })();
+  }
+
+  function finishReplay() {
+    turn = replayTarget;
+    guard = 0;
+    replaying = false;
+  }
+
+  // Walk the story to the turn the browser has landed on.
+  function step() {
+    if (turn === replayTarget || guard++ > 64) { finishReplay(); return; }
+    var dir = turn > replayTarget ? -1 : 1;
+    var icon = iconFor(dir);
+    var seen = renders;
+    if (!icon) { finishReplay(); return; }
+    icon.click();
+    whenRendered(seen, function() { turn += dir; step(); }, finishReplay);
+  }
+
+  function replay(index) {
+    replayTarget = index;
+    if (replaying) { return; } // the running replay picks the new target up
+    replaying = true;
+    guard = 0;
+    step();
+  }
+
+  function onPop(event) {
+    if (!live) { return; }
+    var state = event.state;
+    var index = state && typeof state.beanbotTurn === 'number' ? state.beanbotTurn : null;
+    // A null state is the page that opened the guide: let the browser go there.
+    if (index === null || index === turn) { return; }
+    replay(index);
+  }
+
+  // A rendered passage is either a new turn (push an entry) or the result of a
+  // replayed move, which is already in the browser's history.
+  function onRender() {
+    renders++;
+    if (skipRender) { skipRender = false; return; }
+    if (replaying || !live) { return; }
+    turn++;
+    call(function() { history.pushState({ beanbotTurn: turn }, '', location.href); });
+  }
+
   function relabel(icon) {
-    var alt = icon.getAttribute('alt');
-    if (alt === 'Undo') {
+    if (!live) { return; }
+    if (icon.classList.contains('undo')) {
       icon.setAttribute('title', 'Back');
-      icon.setAttribute('data-label', 'Back');
-    } else if (alt === 'Redo') {
+    } else if (icon.classList.contains('redo')) {
       icon.setAttribute('title', 'Forward');
-      icon.setAttribute('data-label', 'Forward');
     }
   }
-  function scan() {
-    var icons = document.querySelectorAll('tw-sidebar tw-icon[alt]');
-    for (var i = 0; i < icons.length; i++) { relabel(icons[i]); }
-  }
-  function start() {
-    scan();
-    var target = document.querySelector('tw-story') || document.documentElement;
-    var observer = new MutationObserver(function(mutations) {
+
+  function watch(story) {
+    new MutationObserver(function(mutations) {
+      var rendered = false;
       for (var i = 0; i < mutations.length; i++) {
         var added = mutations[i].addedNodes;
         for (var j = 0; j < added.length; j++) {
-          if (added[j].nodeType === 1 && added[j].matches && added[j].matches('tw-icon[alt]')) {
-            relabel(added[j]);
-          }
+          var node = added[j];
+          if (node.nodeType !== 1) { continue; }
+          if (node.matches && node.matches('tw-passage')) { rendered = true; }
+          if (node.matches && node.matches('tw-icon')) { relabel(node); }
+          var icons = node.querySelectorAll ? node.querySelectorAll('tw-icon') : [];
+          for (var k = 0; k < icons.length; k++) { relabel(icons[k]); }
         }
       }
-    });
-    observer.observe(target, { childList: true, subtree: true });
+      if (rendered) { onRender(); }
+    }).observe(story, { childList: true, subtree: true });
   }
+
+  // The entry the guide opens on is the baseline for the first passage, so the
+  // browser's Back still leaves the guide from there.
+  live = call(function() {
+    history.replaceState({ beanbotTurn: 0 }, '', location.href);
+    return true;
+  }) === true;
+
+  document.addEventListener('click', intercept, true);
+  window.addEventListener('popstate', onPop);
+
   // tw-story may not exist yet at boot; retry until it does.
   var tries = 0;
   (function retry() {
-    if (document.querySelector('tw-story')) {
-      start();
+    var story = document.querySelector('tw-story');
+    if (story) {
+      skipRender = !document.querySelector('tw-passage');
+      var icons = document.querySelectorAll(NAV_ICON);
+      for (var i = 0; i < icons.length; i++) { relabel(icons[i]); }
+      watch(story);
     } else if (tries++ < 50) {
       setTimeout(retry, 50);
     }
