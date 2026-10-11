@@ -186,7 +186,7 @@ public final class HarnessCatalog {
 
     public static final Harness GEMINI = new Harness(
         "gemini", "Gemini", "gemini",
-        List.of("gemini"), "--acp --model gemini-3.5-flash",
+        List.of("gemini"), "--acp --model gemini-3.8-flash",
         false, true, true, true, true, true, false, false, false, false, true,
         "MSG_UnsupportedModelSelection",
         "MSG_GeminiUnsupportedModelSelectionPlaceholder",

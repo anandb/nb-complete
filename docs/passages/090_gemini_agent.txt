@@ -11,7 +11,7 @@
 
 <a href="https://geminicli.com" target="_blank" rel="noopener">Gemini CLI</a> is an AI agent command-line tool. It natively supports communication with external tools using the <a href="https://agentclientprotocol.com" target="_blank" rel="noopener">Agent Client Protocol</a>.
 
-The executable you configure in BeanBot is <code>gemini</code>, run with the default launch argument <code>--acp --model gemini-3.5-flash</code>. When you pick Gemini in the harness chooser or Options, BeanBot reminds you to change <code>--model</code> in Process Arguments if you want a different model.
+The executable you configure in BeanBot is <code>gemini</code>, run with the default launch argument <code>--acp --model gemini-3.8-flash</code>. When you pick Gemini in the harness chooser or Options, BeanBot reminds you to change <code>--model</code> in Process Arguments if you want a different model.
 
 Gemini Agent in BeanBot supports:
 - **Editor Context**: Seamlessly injects the active editor state into agent prompts.
@@ -36,4 +36,3 @@ Since Gemini CLI does not support changing the model dynamically via <code>sessi
 > [[Picking an Agent, Model and Thinking Level]]
 > [[Archiving Sessions]]
 > [[Queuing Messages]]
- 
