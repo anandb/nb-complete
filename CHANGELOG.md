@@ -1,5 +1,22 @@
 # Release Notes
 
+## v1.22.4 (Changes since v1.22.3)
+
+### Features
+- **Messages queue for OpenCode v2**: OpenCode v2 dropped mid-turn steering, so a second `session/prompt` is no longer folded into the running turn. The `session/load` handshake reads the reported `agentInfo.version` and selects an OpenCode variant that queues messages until turn end; OpenCode v1 keeps mid-turn steering.
+- **Gemini harness defaults to 3.8 Flash**: the catalog launch arguments and the Options hint now use `--model gemini-3.8-flash`; the user guide pages were updated to match.
+
+### Fixes
+- **Permission requests fail closed**: an unresolvable `session/request_permission` decision (dismissed panel, error path, empty completion) now maps to a rejection instead of a one-time allow, and the legacy `allow` boolean is derived from the same normalised id as the standard `outcome` field so the two can never disagree.
+- **Idle watchdog restarts when a permission is answered**: the connection idle clock is touched when the dialog is answered, not just when it opens, so the user's deliberation time is never charged retroactively against the still-in-flight request.
+- **MCP tool name limit removed**: the arbitrary 14-character cap (already exceeded by `get_current_file_context`) is gone; tool names are still kept short because the list is re-sent on every model turn.
+
+### Documentation
+- **User guide sidebar Back/Forward**: the guide's Undo/Redo sidebar icons are relabelled and wired to the browser's Back/Forward — one history entry per passage, with `popstate` replayed into the story.
+
+### Housekeeping
+- Version bumped to 1.22.4.
+
 ## v1.22.3 (Changes since v1.22.2)
 
 ### Fixes
