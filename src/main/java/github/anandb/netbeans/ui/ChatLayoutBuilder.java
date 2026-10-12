@@ -37,6 +37,7 @@ import org.openide.util.NbBundle;
 import org.openide.util.NbPreferences;
 
 import github.anandb.netbeans.support.AgentUtils;
+import github.anandb.netbeans.support.AppLinks;
 import github.anandb.netbeans.support.BinaryResolver;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.PreferenceKeys;
@@ -338,7 +339,7 @@ final class ChatLayoutBuilder {
         cwdRow.setOpaque(false);
         cwdRow.add(cwdLabel, BorderLayout.CENTER);
 
-        String quickstartUrl = "https://anandb.github.io/beanbot_user_guide.html";
+        String userGuideUrl = AppLinks.userGuideUrl();
 
         helpBtn = UIUtils.createToolbarButton("help.svg",
             NbBundle.getMessage(AssistantTopComponent.class, "HINT_QuickstartGuide"), null);
@@ -351,7 +352,7 @@ final class ChatLayoutBuilder {
 
             JMenuItem openGuideItem = new JMenuItem(NbBundle.getMessage(
                     AssistantTopComponent.class, "LBL_HelpOpenGuide"));
-            openGuideItem.addActionListener(ev -> BrowserUtils.openOrCopyUrl(quickstartUrl,
+            openGuideItem.addActionListener(ev -> BrowserUtils.openOrCopyUrl(userGuideUrl,
                 "STATUS_QuickstartCopied", (url, key) -> topComponent.setStatus(key, url)));
             helpPopup.add(openGuideItem);
 

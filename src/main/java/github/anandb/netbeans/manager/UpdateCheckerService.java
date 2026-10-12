@@ -1,7 +1,6 @@
 package github.anandb.netbeans.manager;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
-import java.io.IOException;
 import java.net.ProxySelector;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -30,6 +29,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import github.anandb.netbeans.contract.UpdateCheckerControl;
 import github.anandb.netbeans.support.AgentUtils;
+import github.anandb.netbeans.support.AppLinks;
 import github.anandb.netbeans.support.BrowserUtils;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.MapperSupplier;
@@ -176,8 +176,9 @@ public class UpdateCheckerService implements UpdateCheckerControl {
         }
     }
 
-    private void checkForUpdates() throws Exception {
-        LOG.info("Checking for updates from {0}", PreferenceKeys.UPDATE_URL);
+    private void checkForUpdates() {
+        String updateUrl = AppLinks.updateUrl();
+        LOG.fine("Checking for updates from {0}", updateUrl);
 
         try {
             String ua = String.format(
@@ -190,7 +191,7 @@ public class UpdateCheckerService implements UpdateCheckerControl {
             );
 
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(PreferenceKeys.UPDATE_URL))
+                    .uri(URI.create(updateUrl))
                     .header("User-Agent", ua)
                     .timeout(Duration.ofSeconds(15))
                     .GET()
@@ -203,15 +204,25 @@ public class UpdateCheckerService implements UpdateCheckerControl {
 
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() != 200) {
-                throw new IOException("HTTP update check failed with status code: " + response.statusCode());
+                // A missing manifest is not an error — a fork or a self-hosted
+                // deployment may not publish one at all. Stay silent.
+                LOG.fine("No update manifest at {0} (HTTP {1})", updateUrl, response.statusCode());
+                return;
             }
 
             String body = response.body();
             ObjectMapper mapper = MapperSupplier.get();
-            UpdateInfo info = mapper.readValue(body, UpdateInfo.class);
+            UpdateInfo info;
+            try {
+                info = mapper.readValue(body, UpdateInfo.class);
+            } catch (Exception e) {
+                LOG.fine("Update manifest at {0} is not valid JSON", updateUrl);
+                return;
+            }
 
             if (info == null || info.latestVersion == null) {
-                throw new IOException("Invalid or empty update JSON response");
+                LOG.fine("Update manifest at {0} carries no latest_version", updateUrl);
+                return;
             }
 
             String currentVersionStr = AgentUtils.getVersion();
@@ -232,8 +243,9 @@ public class UpdateCheckerService implements UpdateCheckerControl {
 
             LOG.info("Update check completed successfully.");
         } catch (Exception e) {
-            LOG.log(Level.WARNING, "Update check failed: {0}", ExceptionUtils.getMessage(e));
-            throw e;
+            // Best effort: an offline machine, an unreachable host or a malformed
+            // manifest must not surface anywhere.
+            LOG.fine("Update check skipped: {0}", ExceptionUtils.getMessage(e));
         }
     }
 

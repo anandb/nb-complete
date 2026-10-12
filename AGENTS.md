@@ -120,13 +120,13 @@ serves the IDE tool set. Both are adapters over `contract/` ports and `model/` r
 
 | From | To |
 |---|---|
-| `ui/` | `support/` (115), `model/` (55), `contract/` (43), `project/` (1 — `ui/platform/DefaultPlatformBridge` only) |
-| `manager/` | `support/` (49), `contract/` (31), `model/` (25), `mcp/` (2 — `ProcessManager` only) |
-| `mcp/` | `support/` (24), `contract/` (12), `model/` (4) |
+| `ui/` | `support/` (112), `model/` (60), `contract/` (48), `project/` (1 — `ui/platform/DefaultPlatformBridge` only) |
+| `manager/` | `support/` (59), `model/` (40), `contract/` (37), `mcp/` (2 — `ProcessManager` only) |
+| `mcp/` | `support/` (18), `contract/` (12), `model/` (4) |
 | `tasks/` | `model/` (9), `contract/` (8), `support/` (6), `ui/` (3 — deferred debt) |
-| `project/` | `support/` (8), `contract/` (2) |
+| `project/` | `support/` (8), `contract/` (3), `model/` (1) |
 | `support/` | `model/` (5) |
-| `contract/` | `model/` (17) |
+| `contract/` | `model/` (25) |
 | `model/` | *(nothing — leaf)* |
 
 Zero-import guarantees currently hold (do NOT break them): `manager/` → `ui/`,
@@ -248,7 +248,7 @@ Resolved — kept as regression guards:
   → UI. Returning early anywhere drops the message.
 - Streaming is finalized via `ChatThreadPanel.stopStreaming()` → `finalizeStreaming()`.
 - End-of-turn signals: `responding_finished` or `end_turn` set
-  `turnEnded=true` and start a flush timer (`TimingConstants.STREAM_FLUSH_MS`, currently 300ms).
+  `turnEnded=true` and start a flush timer (`TimingConstants.STREAM_FLUSH_MS`, currently 80ms).
   The RPC result's `stopReason` also ends the turn.   `available_commands_update` must NOT be
   treated as turn-end: goose emits it at turn START, which made turnEnded flip mid-stream and
   let the next message bypass the queue guard (goose drops the in-flight prompt and hangs).
@@ -407,7 +407,7 @@ Resolved — kept as regression guards:
 `EditorContextCapture.capture()` returns `null` when no real file is open (no `FileObject` associated with the editor document). This prevents phantom paths like `/tmp/xxx` from being sent to the AI as context. The return value is passed as `Map<String, Object> context` in `MessageSender`, where `null` means "no editor context available" — the caller skips attaching context entirely.
 
 ### Auto-Scroll Contract
-`ScrollController.isAtBottom()` uses a 50px tolerance (not 400px). All content-modifying calls in `ChatThreadPanel` (`addSingleBubble`, `processMessageSections`, `stopStreaming`, stream timer) capture `wasAtBottom` BEFORE touching content. Auto-scroll only fires when `wasAtBottom` is true. The stream timer path (`Timer TimingConstants.STREAM_FLUSH_MS` ms) already captured `wasAtBottom` before `flushUpdate()` — this is the correct pattern; new callers must follow it.
+`ScrollController.isAtBottom()` uses a 150px sticky-zone tolerance (a 50px margin is too tight: adding a bubble shifts the viewport past it before `wasAtBottom` is captured). All content-modifying calls in `ChatThreadPanel` (`addSingleBubble`, `processMessageSections`, `stopStreaming`, stream timer) capture `wasAtBottom` BEFORE touching content. Auto-scroll only fires when `wasAtBottom` is true. The stream timer path (`Timer TimingConstants.STREAM_FLUSH_MS` ms) already captured `wasAtBottom` before `flushUpdate()` — this is the correct pattern; new callers must follow it.
 
 ### Usage Stats Store
 `manager/H2UsageStatsStore` implements `contract/UsageStatsStore` and `contract/SessionStore` over one H2
