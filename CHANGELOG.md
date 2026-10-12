@@ -1,5 +1,13 @@
 # Release Notes
 
+## v1.22.5 (Changes since v1.22.4)
+
+### Fixes
+- **Maven Central deployment no longer rejected**: the release workflow now publishes with the pinned Maven 3.9.x wrapper (`./mvnw`). System Maven 3.10 wrote `maven-metadata-local.xml` and `_remote.repositories` into `central-publishing-maven-plugin`'s staging repo, which the plugin bundled and Central Portal rejected with "Bundle has content that does NOT have a .pom file". Maven 3.9 writes `maven-metadata-central-staging.xml` instead, which the plugin deletes before bundling.
+
+### Housekeeping
+- Version bumped to 1.22.5.
+
 ## v1.22.4 (Changes since v1.22.3)
 
 ### Features

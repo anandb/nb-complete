@@ -46,9 +46,14 @@ jobs:
         run: |
           if [ "${{ github.event.inputs.dryRun }}" == "true" ]; then
             echo "Running in dry-run mode. Skipping deployment."
-            mvn -B verify -P release
+            ./mvnw -B verify -P release
+            # NB: use ./mvnw (pinned Maven 3.9.x), not `mvn` — Maven 3.10 writes
+            # maven-metadata-local.xml into the plugin's file:// staging repo,
+            # which it bundles and Central rejects ("content does NOT have a .pom
+            # file"). 3.9.x writes maven-metadata-central-staging.xml, which the
+            # plugin deletes before bundling.
           else
-            mvn -B deploy -P release
+            ./mvnw -B deploy -P release
           fi
         env:
           MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}

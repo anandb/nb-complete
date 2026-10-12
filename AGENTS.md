@@ -2,11 +2,16 @@
 
 ## Project Overview
 - **Project**: Coding Assistant (NetBeans IDE plugin, Java 17, Maven)
-- **Current Stable Version**: 1.22.4
+- **Current Stable Version**: 1.22.5
 - **Key Tech**: NetBeans API (RELEASE220), Flexmark, Jackson, RSyntaxTextArea, JUnit 5.
 
 ## Build Commands
 - Build: `mvn package` (runs checks & tests) | Clean: `mvn clean` | Quick: `mvn package -DskipTests`
+- **CI publishes with `./mvnw`** (pinned Maven 3.9.x), never system `mvn`: Maven 3.10 writes
+  `maven-metadata-local.xml` into `central-publishing-maven-plugin`'s file:// staging repo,
+  which gets bundled and Central rejects the deployment ("Bundle has content that does NOT
+  have a .pom file"). 3.9.x writes `maven-metadata-central-staging.xml`, which the plugin
+  deletes before bundling.
 
 ## Architecture & UI
 - **ACP & JSON-RPC**: Compliant with ACP v1. Communication via `AcpProtocolClient`
