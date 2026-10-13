@@ -203,6 +203,22 @@ class ToolCallDiffParserTest {
     }
 
     @Test
+    void extractFilePath_fromAcpLocation() {
+        ObjectNode tc = obj().set("locations", arr().add(obj()
+                .put("path", "/workspace/src/Main.java")
+                .put("line", 12)));
+        assertEquals("/workspace/src/Main.java", ToolCallDiffParser.extractFilePath(tc));
+    }
+
+    @Test
+    void extractFilePath_ambiguousAcpLocationsDoNotMisattributeFile() {
+        ObjectNode tc = obj().set("locations", arr()
+                .add(obj().put("path", "/workspace/src/First.java"))
+                .add(obj().put("path", "/workspace/src/Second.java")));
+        assertNull(ToolCallDiffParser.extractFilePath(tc));
+    }
+
+    @Test
     void extractFilePath_argsTakesPriority() {
         ObjectNode args = obj().put("filePath", "/from/args.java");
         ObjectNode ri = obj().put("filePath", "/from/raw.java");
@@ -349,6 +365,20 @@ class ToolCallDiffParserTest {
         List<FileChange> result = ToolCallDiffParser.parse(tc);
         assertEquals(1, result.size());
         assertEquals("/src/Edit.java", result.get(0).filePath());
+    }
+
+    @Test
+    void parse_rawInputDiff_withAcpLocation() {
+        String diff = "@@ -1,1 +1,1 @@\n-old\n+new\n";
+        ObjectNode ri = obj().put("diff", diff);
+        ObjectNode location = obj().put("path", "/workspace/src/Edit.java").put("line", 12);
+        ObjectNode tc = obj();
+        tc.set("rawInput", ri);
+        tc.set("locations", arr().add(location));
+
+        List<FileChange> result = ToolCallDiffParser.parse(tc);
+        assertEquals(1, result.size());
+        assertEquals("/workspace/src/Edit.java", result.get(0).filePath());
     }
 
     @Test

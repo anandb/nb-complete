@@ -20,6 +20,7 @@ import static org.apache.commons.lang3.StringUtils.isNotBlank;
  *   <li>{@code arguments.oldString/newString} with {@code arguments.filePath}</li>
  *   <li>{@code content[]} blocks with {@code oldText/newText} (JSON {@code null} oldText = new file)
  *       or unified diff; path may be on the block as {@code path}</li>
+ *   <li>ACP {@code locations[]} entries with a {@code path}</li>
  * </ul>
  */
 public final class ToolCallDiffParser {
@@ -60,7 +61,23 @@ public final class ToolCallDiffParser {
             if (fp != null) return fp;
         }
 
-        // 3. content[] diff/write blocks — Cursor ACP puts the path on each block
+        // 3. ACP tool calls can associate file paths through locations[].
+        if (toolCall.has("locations") && toolCall.get("locations").isArray()) {
+            String locationPath = null;
+            boolean ambiguous = false;
+            for (JsonNode location : toolCall.get("locations")) {
+                String fp = textField(location, "path");
+                if (fp == null) continue;
+                if (locationPath != null && !locationPath.equals(fp)) {
+                    ambiguous = true;
+                    break;
+                }
+                locationPath = fp;
+            }
+            if (!ambiguous && locationPath != null) return locationPath;
+        }
+
+        // 4. content[] diff/write blocks — Cursor ACP puts the path on each block
         if (toolCall.has("content") && toolCall.get("content").isArray()) {
             for (JsonNode block : toolCall.get("content")) {
                 String fp = textField(block, "path");
@@ -70,7 +87,7 @@ public final class ToolCallDiffParser {
             }
         }
 
-        // 4. title — only use as file path if it contains a path separator
+        // 5. title — only use as file path if it contains a path separator
         //    (avoids false positives like "version 1.2.3" or "Chapter.3")
         //    Additionally, ensure it does not contain spaces, as AI action titles often
         //    contain spaces and slashes (e.g., "Fix bug / Update feature").
