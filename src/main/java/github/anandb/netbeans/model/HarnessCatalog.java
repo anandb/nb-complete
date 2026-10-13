@@ -156,6 +156,20 @@ public final class HarnessCatalog {
         List.of()
     );
 
+    public static final Harness COPILOT = new Harness(
+        "copilot", "Copilot", "copilot",
+        List.of("copilot"), "--acp",
+        false, true, true, false, true, false, true, false, true, true, true,
+        "",
+        "",
+        "npm install -g @github/copilot",
+        "npm install -g @github/copilot",
+        "npm install -g @github/copilot",
+        "Requires Node.js 22+. Authenticate with \"copilot login\" before using ACP.",
+        "https://github.com/github/copilot-cli",
+        List.of()
+    );
+
     public static final Harness CLAUDE = new Harness(
         "claude", "Claude", "claude",
         List.of("claude-agent-acp"), "",
@@ -251,7 +265,7 @@ public final class HarnessCatalog {
 
     /** All supported harnesses, in the order offered during onboarding. */
     public static final List<Harness> ALL =
-            List.of(OMP, OPENCODE, OPENCLAW, PI, GOOSE, CURSOR, CLAUDE, HERMES, GEMINI, DEVIN);
+            List.of(OMP, OPENCODE, OPENCLAW, PI, GOOSE, CURSOR, COPILOT, CLAUDE, HERMES, GEMINI, DEVIN);
 
     /** Looks up a harness by catalog id; {@link #UNKNOWN} when not found. */
     public static Harness byId(String id) {

@@ -17,20 +17,22 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class HarnessCatalogTest {
 
     @Test
-    void allTenHarnessesPresent() {
-        assertEquals(10, HarnessCatalog.ALL.size());
+    void allHarnessesPresent() {
+        assertEquals(11, HarnessCatalog.ALL.size());
         Set<String> ids = new HashSet<>();
         for (HarnessCatalog.Harness h : HarnessCatalog.ALL) {
             assertTrue(ids.add(h.id()), "duplicate id: " + h.id());
         }
-        assertTrue(ids.containsAll(Set.of("opencode", "goose", "pi", "cursor", "claude", "hermes", "gemini", "omp", "openclaw", "devin")));
+        assertTrue(ids.containsAll(Set.of("opencode", "goose", "pi", "cursor", "claude", "hermes",
+                "gemini", "omp", "openclaw", "devin", "copilot")));
     }
 
     @Test
     void onboardingOrderIncludesAllHarnesses() {
         Set<String> allIds = new HashSet<>(HarnessCatalog.ALL.stream()
                 .map(HarnessCatalog.Harness::id).toList());
-        assertEquals(Set.of("omp", "opencode", "openclaw", "pi", "goose", "cursor", "claude", "hermes", "gemini", "devin"),
+        assertEquals(Set.of("omp", "opencode", "openclaw", "pi", "goose", "cursor", "copilot",
+                "claude", "hermes", "gemini", "devin"),
                 allIds);
     }
 
@@ -186,6 +188,28 @@ class HarnessCatalogTest {
         assertEquals("powershell -c \"irm https://omp.sh/install.ps1 | iex\"", HarnessCatalog.OMP.installWindows());
         assertEquals("curl -fsSL https://omp.sh/install | sh", HarnessCatalog.OMP.installLinux());
         assertEquals("https://omp.sh/docs/acp", HarnessCatalog.OMP.docsUrl());
+    }
+
+    @Test
+    void copilotCapabilitiesMatchHandshake() {
+        // Metadata from the live Copilot ACP handshake: agentInfo "Copilot",
+        // sessionCapabilities {close,list}, mcpCapabilities http+sse,
+        // session/new returns models + configOptions{mode,model,allow_all}.
+        assertEquals(List.of("copilot"), HarnessCatalog.COPILOT.binaryNames());
+        assertEquals("--acp", HarnessCatalog.COPILOT.launchArgs());
+        assertEquals(HarnessCatalog.COPILOT, HarnessCatalog.byBinaryName("copilot"));
+        assertEquals(HarnessCatalog.COPILOT, HarnessCatalog.byBinaryName("copilot.exe"));
+        assertTrue(HarnessCatalog.COPILOT.requiresMessageQueue());
+        assertTrue(HarnessCatalog.COPILOT.sendsMcpServerConfig());
+        assertTrue(HarnessCatalog.COPILOT.injectsEditorContext());
+        assertFalse(HarnessCatalog.COPILOT.supportsMessageIds());
+        assertTrue(HarnessCatalog.COPILOT.supportsMcpServer());
+        assertFalse(HarnessCatalog.COPILOT.supportsSessionSetMode());
+        assertTrue(HarnessCatalog.COPILOT.supportsSessionSetConfigOption());
+        assertFalse(HarnessCatalog.COPILOT.supportsSessionSetModel());
+        assertTrue(HarnessCatalog.COPILOT.supportsModelSelection());
+        assertTrue(HarnessCatalog.COPILOT.supportsSessionList());
+        assertTrue(HarnessCatalog.COPILOT.supportsAgentList());
     }
 
     @Test
