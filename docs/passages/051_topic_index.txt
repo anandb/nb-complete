@@ -24,6 +24,7 @@ This is a complete list of topics in this guide, use it to directly jump to that
 > [[Commands]]
 > [[Configuration Template]]
 > [[Configure OpenCode for Ollama]]
+> [[Copilot Agent]]
 > [[Copying a message]]
 > [[Creating a Task Repository]]
 > [[Cursor Agent]]

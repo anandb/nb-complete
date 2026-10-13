@@ -8,7 +8,7 @@
 
 ![The harness chooser listing installed and supported harnesses](../images/agent_selection.png){style="max-width:100%;"}
 
-The plugin works with several coding harnesses that speak the Agent Client Protocol: **Oh My Pi**, **OpenCode**, **OpenClaw**, **Pi**, **Goose**, **Cursor**, **Claude**, **Hermes**, **Gemini**, and **Devin**. When no harness binary is configured, the chat panel shows the **Coding Harness Configuration** screen instead of the normal input — it groups every supported harness by status so you can see at a glance what is ready to use.
+The plugin works with several coding harnesses that speak the Agent Client Protocol: **Oh My Pi**, **OpenCode**, **OpenClaw**, **Pi**, **Goose**, **Cursor**, **Copilot**, **Claude**, **Hermes**, **Gemini**, and **Devin**. When no harness binary is configured, the chat panel shows the **Coding Harness Configuration** screen instead of the normal input — it groups every supported harness by status so you can see at a glance what is ready to use.
 
 *   The **Active Harness** card at the top shows the currently configured harness with its binary path and a disabled **Active** badge, plus a reminder that manual CLI authentication and an IDE restart may be required. The active harness is not repeated in the lists below.
 *   **Installed Harnesses** lists every detected harness with a **Use** button — clicking **Use** remembers that harness (and its launch arguments) and starts the server. Each row has a disclosure triangle (`>`) that reveals the detected binary path, keeping the list uncluttered. Gemini's default arguments include <code>--model gemini-3.8-flash</code>; change <code>--model</code> under Process Arguments in Options if you want a different model.
@@ -23,8 +23,8 @@ To re-run harness selection at any time — for example after installing a new h
 After installing a harness — and optionally setting the binary path under `Options > Assistant` — click **Start Server** to connect.
 
 
-> [[OpenCode]] / [[PI Agent]] / [[Goose Agent]] / [[Cursor Agent]] / [[Claude Agent]]
-> [[Hermes Agent]] / [[Gemini Agent]] / [[Oh My Pi Agent]] / [[OpenClaw Agent]] / [[Devin Agent]]
+> [[OpenCode]] / [[PI Agent]] / [[Goose Agent]] / [[Cursor Agent]] / [[Copilot Agent]]
+> [[Claude Agent]] / [[Hermes Agent]] / [[Gemini Agent]] / [[Oh My Pi Agent]] / [[OpenClaw Agent]] / [[Devin Agent]]
 > [[Post Install]]
 > [[Restarting the server]]
 > [[Options Panel Reference]]

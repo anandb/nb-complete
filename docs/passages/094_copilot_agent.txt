@@ -1,0 +1,45 @@
+:: Copilot Agent {"position":"2800,1200","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Copilot Agent</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+#### Install
+
+- **All platforms (npm)**: `npm install -g @github/copilot`
+- **Windows (WinGet)**: `winget install GitHub.Copilot`
+- **macOS / Linux (Homebrew)**: `brew install --cask copilot-cli`
+- **macOS / Linux (script)**: `curl -fsSL https://gh.io/copilot-install | bash`
+
+The npm install needs **Node.js 22 or later**. CLI docs: <a href="https://github.com/github/copilot-cli" target="_blank" rel="noopener">github.com/github/copilot-cli</a>.
+
+#### About
+
+<a href="https://docs.github.com/en/copilot/concepts/copilot-surfaces/copilot-cli" target="_blank" rel="noopener">GitHub Copilot CLI</a> is a terminal-native coding agent. Run <code>copilot --acp</code> and it acts as an **ACP server** over stdio: it speaks JSON-RPC on stdin/stdout and is meant to be spawned by an ACP-aware editor, so it is not a command to run yourself.
+
+The executable you configure in BeanBot is <code>copilot</code>, run with the launch argument <code>--acp</code>.
+
+**Authenticate first**: run <code>copilot login</code> once in a terminal (or use <code>/login</code> inside the CLI) with an active Copilot subscription. BeanBot cannot complete this for you. A fine-grained personal access token with the "Copilot Requests" permission also works via the `COPILOT_GITHUB_TOKEN`, `GH_TOKEN` or `GITHUB_TOKEN` environment variables.
+
+Copilot Agent in BeanBot supports:
+- **Editor Context**: the active editor state is attached to your prompts.
+- **[[MCP Tools]]**: Copilot accepts a per-session HTTP/SSE MCP server, so BeanBot hands it the plugin's internal server automatically — no manual MCP registration is needed.
+- **Model Selection**: exposed as an ACP config option, so the in-session model dropdown works.
+- **Agent / Mode List**: Copilot advertises three modes — **Agent**, **Plan** and **Autopilot** — and the selector is offered.
+- **Session List**: sessions come from Copilot itself, so the dropdown reflects its own list and needs no local tracking. A session is closed before it is reloaded, so a resume never replays against a session still holding work.
+- **[[Queuing Messages]]**: a new message is held and combined into the next prompt rather than interrupting the running turn.
+- **Slash Commands**: Copilot advertises its slash-command set over the protocol, so its commands appear in the command palette.
+
+#### Limitations
+
+- **Permissions**: Copilot exposes its own <code>allow_all</code> permission config option. BeanBot drives mode and model through its own [[Permission Requests]] dialog and does not surface that toggle — leave <code>allow_all</code> off if you want to review changes first.
+- **Mode switching** goes through the generic config-option method rather than <code>session/set_mode</code>, so it works only where Copilot accepts a config change mid-session.
+
+> [[Post Install]]
+> [[Starting a Session]]
+> [[Choose Your Coding Harness]]
+> [[MCP Tools]]
+> [[Picking an Agent, Model and Thinking Level]]
+> [[Queuing Messages]]

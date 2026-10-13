@@ -15,6 +15,7 @@ In this guide you might also see a harness referred to as an ACP Server, an Agen
 > [[Goose Agent]]
 > [[Claude Agent]]
 > [[Cursor Agent]]
+> [[Copilot Agent]]
 > [[Hermes Agent]]
 > [[Gemini Agent]]
 > [[Oh My Pi Agent]]
