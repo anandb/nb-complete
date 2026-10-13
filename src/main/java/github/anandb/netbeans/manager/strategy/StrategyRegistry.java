@@ -101,7 +101,7 @@ public class StrategyRegistry implements UpdateDispatcher {
         LOG.fine("Processing update type: {0}", type);
 
         switch (type) {
-            case "config_options_update" -> {
+            case "config_option_update" -> {
                 if (update.update() != null) {
                     handler.updateConfig(update.update().configOptions());
                 }
@@ -116,6 +116,11 @@ public class StrategyRegistry implements UpdateDispatcher {
 
             case "session_info_update" ->
                 handler.refreshSessions();
+
+            case "current_mode_update" -> {
+                // Mode changes are reflected through config_option_update
+                // (category="mode"); nothing to render from this payload.
+            }
 
             case "available_commands_update" -> {
                 // Already handled by ProcessManager notification handler;

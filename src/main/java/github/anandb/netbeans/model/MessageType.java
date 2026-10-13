@@ -1,5 +1,7 @@
 package github.anandb.netbeans.model;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
+
 public enum MessageType {
     agent_message_chunk,
     agent_thought_chunk,
@@ -9,8 +11,13 @@ public enum MessageType {
     tool_call_update,
     usage_update,
     user_message_chunk,
-    config_options_update,
-    session_info_updated,
+    // Wire name is the ACP-standard singular form; the plural/older spellings are
+    // accepted as aliases so older harnesses keep decoding.
+    @JsonAlias("config_options_update")
+    config_option_update,
+    @JsonAlias("session_info_updated")
+    session_info_update,
+    current_mode_update,
     message,
     error_response,
     info,

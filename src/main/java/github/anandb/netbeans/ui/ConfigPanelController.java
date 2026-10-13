@@ -482,7 +482,7 @@ public class ConfigPanelController {
 
                     boolean isModel = "model".equals(opt.category());
                     // The model combo may already hold a superset of models from
-                    // session/load. config_options_update (SSE) can arrive with a
+                    // session/load. config_option_update (SSE) can arrive with a
                     // smaller subset; rather than replacing and shrinking the
                     // dropdown, merge the incoming models into what is already there.
                     List<ConfigItem> existingModels = null;
@@ -556,7 +556,7 @@ public class ConfigPanelController {
 
     /** Mirrors a model option received from the server into the per-harness model list cache.
      *  Never shrinks the cache — if the incoming list is a subset of what was already
-     *  stored (e.g. config_options_update carries fewer models than session/load),
+     *  stored (e.g. config_option_update carries fewer models than session/load),
      *  the existing superset is kept. */
     private void cacheModelList(SessionConfigOption modelOption) {
         if (modelListControl == null || modelOption.options() == null || modelOption.options().isEmpty()) {
@@ -712,7 +712,7 @@ public class ConfigPanelController {
     /**
      * Merges the models a fresh config update omitted back into the combo, then
      * re-sorts. The dropdown must never shrink while a session is open:
-     * {@code config_options_update} (SSE) can carry a subset of what
+     * {@code config_option_update} (SSE) can carry a subset of what
      * {@code session/load} reported, and replacing the list wholesale made models
      * vanish until a manual reload.
      *

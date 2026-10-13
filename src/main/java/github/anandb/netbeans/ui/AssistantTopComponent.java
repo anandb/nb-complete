@@ -300,7 +300,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                         ? NbBundle.getMessage(AssistantTopComponent.class, "MSG_SelectAgentLevel")
                         : NbBundle.getMessage(AssistantTopComponent.class, "MSG_SelectAgentModelLevel");
                     layoutBuilder.getConfigConfirmPanel().showConfigConfirm(promptMsg, uiFuture);
-                    // Lock combos — SSE/RPC config_options_update must not
+                    // Lock combos — SSE/RPC config_option_update must not
                     // repopulate while the user is choosing model/level.
                     configPanelController.setConfigConfirmActive(true);
 

@@ -94,4 +94,37 @@ class SessionUpdateDecoderTest {
         assertEquals("s9", update.params().sessionId());
         assertNull(update.update().type(), "unknown type maps to null, caller decides");
     }
+
+    @Test
+    void acpDiscriminantsDecodeToNonNullTypes() throws IOException {
+        // The enum must carry the exact ACP wire names (singular): a mismatch makes
+        // Jackson null the type (READ_UNKNOWN_ENUM_VALUES_AS_NULL), and
+        // StrategyRegistry then drops the update as "NULL type".
+        SessionUpdate cfg = SessionUpdateDecoder.decode(json(
+            "{\"sessionId\":\"oc-cfg\",\"update\":{\"sessionUpdate\":\"config_option_update\","
+                + "\"configOptions\":[{\"id\":\"mode\",\"name\":\"Mode\",\"category\":\"mode\","
+                + "\"type\":\"select\",\"currentValue\":\"plan\",\"options\":[]}]}}"));
+        assertEquals(MessageType.config_option_update, cfg.update().type());
+        assertEquals(1, cfg.update().configOptions().size());
+        assertEquals("mode", cfg.update().configOptions().get(0).id());
+
+        assertEquals(MessageType.session_info_update, SessionUpdateDecoder.decode(json(
+            "{\"sessionId\":\"s\",\"update\":{\"sessionUpdate\":\"session_info_update\"}}"))
+            .update().type());
+
+        assertEquals(MessageType.current_mode_update, SessionUpdateDecoder.decode(json(
+            "{\"sessionId\":\"s\",\"update\":{\"sessionUpdate\":\"current_mode_update\"}}"))
+            .update().type());
+    }
+
+    @Test
+    void legacySpellingsDecodeToCanonicalType() throws IOException {
+        // Older spellings are kept as @JsonAlias so both wire forms map to one enum.
+        assertEquals(MessageType.config_option_update, SessionUpdateDecoder.decode(json(
+            "{\"sessionId\":\"s\",\"update\":{\"sessionUpdate\":\"config_options_update\"}}"))
+            .update().type());
+        assertEquals(MessageType.session_info_update, SessionUpdateDecoder.decode(json(
+            "{\"sessionId\":\"s\",\"update\":{\"sessionUpdate\":\"session_info_updated\"}}"))
+            .update().type());
+    }
 }

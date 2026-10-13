@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 
 /**
  * Regression tests for {@link ConfigPanelController#mergeModelItems}. A
- * {@code config_options_update} carries fewer models than {@code session/load}
+ * {@code config_option_update} carries fewer models than {@code session/load}
  * reported; the dropdown must keep the omitted ones without losing its
  * alphabetical order or the user's selection.
  */
