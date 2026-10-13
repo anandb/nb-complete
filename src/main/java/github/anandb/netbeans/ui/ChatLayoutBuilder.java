@@ -44,6 +44,8 @@ import github.anandb.netbeans.support.PreferenceKeys;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
 
 import github.anandb.netbeans.contract.SessionControl;
+import github.anandb.netbeans.contract.UpdateCheckerControl;
+import github.anandb.netbeans.contract.UpdateCheckerControl.UpdateCheckResult;
 import github.anandb.netbeans.model.HarnessCatalog;
 import github.anandb.netbeans.model.SessionItem;
 import github.anandb.netbeans.support.BrowserUtils;
@@ -355,6 +357,31 @@ final class ChatLayoutBuilder {
             openGuideItem.addActionListener(ev -> BrowserUtils.openOrCopyUrl(userGuideUrl,
                 "STATUS_QuickstartCopied", (url, key) -> topComponent.setStatus(key, url)));
             helpPopup.add(openGuideItem);
+
+            JMenuItem checkUpdatesItem = new JMenuItem(NbBundle.getMessage(
+                    AssistantTopComponent.class, "LBL_HelpCheckUpdates"));
+            checkUpdatesItem.addActionListener(ev -> {
+                UpdateCheckerControl updateChecker = Lookup.getDefault().lookup(UpdateCheckerControl.class);
+                if (updateChecker == null) {
+                    topComponent.setStatus("STATUS_UpdateCheckerUnavailable");
+                } else {
+                    topComponent.setStatus("STATUS_CheckingForUpdates");
+                    updateChecker.checkNow().whenComplete((result, error) ->
+                        SwingUtilities.invokeLater(() -> {
+                            if (error != null || result == null
+                                    || result == UpdateCheckResult.CHECK_FAILED) {
+                                topComponent.setStatus("STATUS_UpdateCheckFailed");
+                            } else if (result == UpdateCheckResult.UPDATE_AVAILABLE) {
+                                topComponent.setStatus("STATUS_UpdateAvailable");
+                            } else if (result == UpdateCheckResult.UPDATE_SKIPPED) {
+                                topComponent.setStatus("STATUS_UpdateVersionSkipped");
+                            } else {
+                                topComponent.setStatus("STATUS_NoUpdatesAvailable");
+                            }
+                        }));
+                }
+            });
+            helpPopup.add(checkUpdatesItem);
 
             JMenuItem shortcutsItem = new JMenuItem(NbBundle.getMessage(
                     AssistantTopComponent.class, "LBL_HelpKeyboardShortcuts"));

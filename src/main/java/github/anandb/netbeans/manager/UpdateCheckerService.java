@@ -10,9 +10,11 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.logging.Level;
 import java.util.prefs.Preferences;
+import java.util.function.Supplier;
 
 import org.openide.DialogDisplayer;
 import org.openide.NotifyDescriptor;
@@ -28,6 +30,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import github.anandb.netbeans.contract.UpdateCheckerControl;
+import github.anandb.netbeans.contract.UpdateCheckerControl.UpdateCheckResult;
 import github.anandb.netbeans.support.AgentUtils;
 import github.anandb.netbeans.support.AppLinks;
 import github.anandb.netbeans.support.BrowserUtils;
@@ -53,8 +56,15 @@ public class UpdateCheckerService implements UpdateCheckerControl {
 
     private volatile boolean running;
     private volatile RequestProcessor.Task rpTask;
+    private final Supplier<UpdateCheckResult> updateCheck;
+    private CompletableFuture<UpdateCheckResult> manualCheckInFlight;
 
     public UpdateCheckerService() {
+        this(null);
+    }
+
+    UpdateCheckerService(Supplier<UpdateCheckResult> updateCheck) {
+        this.updateCheck = updateCheck == null ? this::checkForUpdates : updateCheck;
     }
 
     /**
@@ -118,6 +128,24 @@ public class UpdateCheckerService implements UpdateCheckerControl {
         }
     }
 
+    /** Runs a manual check independently of the background schedule and setting. */
+    @Override
+    public synchronized CompletableFuture<UpdateCheckResult> checkNow() {
+        if (manualCheckInFlight != null && !manualCheckInFlight.isDone()) {
+            return manualCheckInFlight;
+        }
+        CompletableFuture<UpdateCheckResult> future = new CompletableFuture<>();
+        manualCheckInFlight = future;
+        RP.post(() -> {
+            try {
+                future.complete(updateCheck.get());
+            } catch (RuntimeException e) {
+                future.completeExceptionally(e);
+            }
+        });
+        return future;
+    }
+
     // -----------------------------------------------------------------------
     // Internal
     // -----------------------------------------------------------------------
@@ -150,7 +178,7 @@ public class UpdateCheckerService implements UpdateCheckerControl {
                 if (checkEnabled) {
                     try {
                         LOG.info("Checking for updates...");
-                        checkForUpdates();
+                        updateCheck.get();
                     } catch (Exception e) {
                         LOG.log(Level.WARNING, "Error checking for updates: {0}", ExceptionUtils.getMessage(e), e);
                     }
@@ -176,7 +204,7 @@ public class UpdateCheckerService implements UpdateCheckerControl {
         }
     }
 
-    private void checkForUpdates() {
+    private UpdateCheckResult checkForUpdates() {
         String updateUrl = AppLinks.updateUrl();
         LOG.fine("Checking for updates from {0}", updateUrl);
 
@@ -207,7 +235,7 @@ public class UpdateCheckerService implements UpdateCheckerControl {
                 // A missing manifest is not an error — a fork or a self-hosted
                 // deployment may not publish one at all. Stay silent.
                 LOG.fine("No update manifest at {0} (HTTP {1})", updateUrl, response.statusCode());
-                return;
+                return UpdateCheckResult.CHECK_FAILED;
             }
 
             String body = response.body();
@@ -217,12 +245,12 @@ public class UpdateCheckerService implements UpdateCheckerControl {
                 info = mapper.readValue(body, UpdateInfo.class);
             } catch (Exception e) {
                 LOG.fine("Update manifest at {0} is not valid JSON", updateUrl);
-                return;
+                return UpdateCheckResult.CHECK_FAILED;
             }
 
             if (info == null || info.latestVersion == null) {
                 LOG.fine("Update manifest at {0} carries no latest_version", updateUrl);
-                return;
+                return UpdateCheckResult.CHECK_FAILED;
             }
 
             String currentVersionStr = AgentUtils.getVersion();
@@ -231,21 +259,23 @@ public class UpdateCheckerService implements UpdateCheckerControl {
                 String skipped = prefs().get(PreferenceKeys.SKIPPED_UPDATE_VERSION, "");
                 if (info.latestVersion.equals(skipped)) {
                     LOG.info("Update v{0} skipped by user preference, not prompting.", info.latestVersion);
+                    return UpdateCheckResult.UPDATE_SKIPPED;
                 } else {
                     LOG.info("New update found: {0} (current: {1}). Download URL: {2}",
                             new Object[]{info.latestVersion, currentVersionStr, info.downloadUrl});
 
                     showNotification(info.latestVersion, info.downloadUrl, info.changeLog);
+                    return UpdateCheckResult.UPDATE_AVAILABLE;
                 }
             } else {
                 LOG.info("Already on the latest version: {0}", currentVersionStr);
+                return UpdateCheckResult.NO_UPDATE;
             }
-
-            LOG.info("Update check completed successfully.");
         } catch (Exception e) {
             // Best effort: an offline machine, an unreachable host or a malformed
             // manifest must not surface anywhere.
             LOG.fine("Update check skipped: {0}", ExceptionUtils.getMessage(e));
+            return UpdateCheckResult.CHECK_FAILED;
         }
     }
 
