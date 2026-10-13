@@ -6,9 +6,12 @@ import java.util.HashMap;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
+
 import com.fasterxml.jackson.databind.JsonNode;
 
 import github.anandb.netbeans.model.HarnessCatalog;
+import github.anandb.netbeans.support.Logger;
 
 
 /**
@@ -16,6 +19,8 @@ import github.anandb.netbeans.model.HarnessCatalog;
  * Extracted from SessionManager to isolate transport-layer logic.
  */
 final class SessionRpcClient {
+
+    private static final Logger LOG = Logger.from(SessionRpcClient.class);
 
     private final ProcessManager processManager;
 
@@ -52,6 +57,29 @@ final class SessionRpcClient {
             params.put("mcpServers", List.of());
         }
         return processManager.sendRequest("session/load", params, 2, TimeUnit.MINUTES);
+    }
+
+    /**
+     * Cancels, then closes a session ahead of {@code session/load}, as ACP requires
+     * for an agent that advertises {@code sessionCapabilities.close}. A no-op when
+     * the agent does not advertise it — calling {@code session/close} unadvertised
+     * is forbidden — and it never fails the load that follows.
+     */
+    CompletableFuture<Void> closeBeforeLoad(String sessionId) {
+        if (!processManager.isSessionCloseSupported()) {
+            LOG.fine("closeBeforeLoad: agent does not advertise session/close; skipping {0}", sessionId);
+            return CompletableFuture.completedFuture(null);
+        }
+        // Cancel first so close cannot race a turn still in flight; the
+        // notification is written ahead of the close request on the same pipe.
+        processManager.sendNotification("session/cancel", Map.of("sessionId", sessionId));
+        return processManager.sendRequest("session/close", Map.of("sessionId", sessionId), 30, TimeUnit.SECONDS)
+                .thenAccept(res -> LOG.fine("closeBeforeLoad: session/close completed for {0}", sessionId))
+                .exceptionally(ex -> {
+                    LOG.fine("closeBeforeLoad: session/close failed for {0}: {1}",
+                            sessionId, ExceptionUtils.getRootCauseMessage(ex));
+                    return null;
+                });
     }
 
     CompletableFuture<JsonNode> setSessionConfigOption(String sessionId, String configId, String value) {

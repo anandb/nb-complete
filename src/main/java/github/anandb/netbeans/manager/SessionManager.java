@@ -751,6 +751,9 @@ public class SessionManager implements SessionQuery, SessionControl {
         return ProcessManager.getInstance().whenReady()
                 .thenCompose(v -> ProcessManager.getInstance().getToolExecutor().waitForReady())
                 .orTimeout(2, TimeUnit.MINUTES)
+                // An agent advertising sessionCapabilities.close must have the
+                // session cancelled and closed before it is loaded again.
+                .thenCompose(v -> rpcClient.closeBeforeLoad(sessionId))
                 .thenCompose(v -> {
                     return rpcClient.loadSessionFromServer(sessionId, cwd);
                 })

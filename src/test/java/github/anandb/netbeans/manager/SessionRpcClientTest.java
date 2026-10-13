@@ -7,6 +7,7 @@ import github.anandb.netbeans.support.MapperSupplier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
@@ -15,9 +16,14 @@ import org.mockito.quality.Strictness;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -97,5 +103,45 @@ class SessionRpcClientTest {
 
         client.setSessionConfigOption("sid", "cfg1", "val1");
         verify(processManager).sendRequest(eq("session/set_config_option"), any(), eq(30L), eq(TimeUnit.SECONDS));
+    }
+
+    @Test
+    void closeBeforeLoadSkipsWhenAgentDoesNotAdvertiseClose() {
+        CompletableFuture<Void> future = client.closeBeforeLoad("sid");
+
+        assertNull(future.join(), "the no-op close must complete");
+        verify(processManager, never()).sendNotification(any(), any());
+        verify(processManager, never())
+                .sendRequest(eq("session/close"), any(), eq(30L), eq(TimeUnit.SECONDS));
+    }
+
+    @Test
+    void closeBeforeLoadCancelsThenClosesWhenAdvertised() {
+        when(processManager.isSessionCloseSupported()).thenReturn(true);
+        when(processManager.sendRequest(eq("session/close"), any(), eq(30L), eq(TimeUnit.SECONDS)))
+                .thenReturn(CompletableFuture.completedFuture(mapper.createObjectNode()));
+
+        client.closeBeforeLoad("sid").join();
+
+        InOrder order = inOrder(processManager);
+        order.verify(processManager).sendNotification(eq("session/cancel"), any());
+        order.verify(processManager).sendRequest(eq("session/close"), any(), eq(30L), eq(TimeUnit.SECONDS));
+    }
+
+    @Test
+    void closeBeforeLoadNeverSkipsTheLoadThatFollows() {
+        when(processManager.isSessionCloseSupported()).thenReturn(true);
+        when(processManager.sendRequest(eq("session/close"), any(), eq(30L), eq(TimeUnit.SECONDS)))
+                .thenReturn(CompletableFuture.failedFuture(new RuntimeException("no such session")));
+        AtomicBoolean loadRan = new AtomicBoolean(false);
+
+        client.closeBeforeLoad("sid")
+                .thenCompose(v -> {
+                    loadRan.set(true);
+                    return CompletableFuture.completedFuture(null);
+                })
+                .join();
+
+        assertTrue(loadRan.get(), "a failed session/close must not skip the load that follows");
     }
 }

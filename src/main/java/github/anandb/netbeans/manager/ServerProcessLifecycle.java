@@ -48,6 +48,13 @@ class ServerProcessLifecycle {
     private volatile boolean serverStarted = false;
     /** Resolved harness with capability flags. */
     private volatile HarnessCatalog.Harness capabilities = HarnessCatalog.UNKNOWN;
+    /**
+     * Whether this agent advertised {@code sessionCapabilities.close} in the
+     * {@code initialize} response. Per connection, not part of the static
+     * catalog: ACP forbids calling {@code session/close} on an agent that did
+     * not advertise it, so every close is gated on this.
+     */
+    private volatile boolean sessionCloseSupported;
     /** Listener fired once the harness is resolved after the initialize handshake. */
     private volatile Consumer<HarnessCatalog.Harness> harnessListener;
     private RequestProcessor reconnectRP;
@@ -76,6 +83,11 @@ class ServerProcessLifecycle {
     /** Returns the resolved harness with capability flags. */
     HarnessCatalog.Harness getCapabilities() {
         return capabilities;
+    }
+
+    /** Whether the agent advertised {@code sessionCapabilities.close}. */
+    boolean isSessionCloseSupported() {
+        return sessionCloseSupported;
     }
 
     /** Registers a listener fired (on the initialize completion thread) when the
@@ -150,6 +162,9 @@ class ServerProcessLifecycle {
             // carries the full agentInfo.
             AcpSessionInfo.getInstance().setHarnessInfo(
                     BinaryResolver.resolveBinaryName(), null);
+            // A restart may land on a different harness, which must not inherit
+            // the previous one's advertised capabilities.
+            sessionCloseSupported = false;
 
             AcpProtocolClient client = new AcpProtocolClient(serverProcess);
             this.rpcClient.set(client);
@@ -249,6 +264,13 @@ class ServerProcessLifecycle {
                                 AcpSessionInfo.getInstance().setHarnessInfo(name, agentVersion);
                             }
                         }
+                        // session/close is advertised per agent by the handshake,
+                        // not by the static catalog, so it is captured here.
+                        // ACP forbids calling session/close on an agent that did
+                        // not advertise it.
+                        JsonNode sessionCaps = res.get("agentCapabilities") == null
+                                ? null : res.get("agentCapabilities").get("sessionCapabilities");
+                        sessionCloseSupported = sessionCaps != null && sessionCaps.has("close");
                         // Resolve harness from stored preferences, ignoring the
                         // agent name from the initialize response.
                         String harnessId = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)

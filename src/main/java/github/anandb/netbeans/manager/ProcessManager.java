@@ -454,6 +454,11 @@ public class ProcessManager implements ProcessControl {
         return serverLifecycle.getCapabilities();
     }
 
+    /** Whether the agent advertised {@code sessionCapabilities.close}. */
+    public boolean isSessionCloseSupported() {
+        return serverLifecycle.isSessionCloseSupported();
+    }
+
     public void setReadyHandler(Runnable handler) {
         this.readyHandler = handler;
     }

@@ -278,6 +278,19 @@ Resolved — kept as regression guards:
   install metadata and `byId`/`byBinaryName` must keep resolving the v1 base entry.
 - Unknown, absent or non-numeric version keeps the catalog default (v1); never guess v2.
 
+### session/close Before session/load (Do Not Break)
+
+ACP forbids calling `session/close` on an agent that did not advertise
+`agentCapabilities.sessionCapabilities.close` in the `initialize` response. That flag is per connection, not in the static catalog: `ServerProcessLifecycle`
+captures it from the handshake, exposes it via `ProcessManager.isSessionCloseSupported()`,
+and resets it to `false` when the server process starts, so a restart against a
+different harness never inherits it.
+`SessionRpcClient.closeBeforeLoad()` gates on it — sends the `session/cancel`
+notification, then `session/close`, and swallows any failure, because a close
+that fails must never skip the load that follows. `SessionManager` chains it
+immediately before `session/load`. Copilot advertises `close` and needs this;
+without it the load replays against a session still holding in-flight work.
+
 ### ACP fs Tools Are Not Project-Confined
 - `fs/readTextFile` (`fs/read_text_file`) and `fs/writeTextFile` (`fs/write_text_file`)
   are handled by `manager/AcpRequestRouter` and operate on any absolute path, inside or
