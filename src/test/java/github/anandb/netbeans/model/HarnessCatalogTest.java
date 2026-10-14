@@ -199,7 +199,7 @@ class HarnessCatalogTest {
         assertEquals("--acp", HarnessCatalog.COPILOT.launchArgs());
         assertEquals(HarnessCatalog.COPILOT, HarnessCatalog.byBinaryName("copilot"));
         assertEquals(HarnessCatalog.COPILOT, HarnessCatalog.byBinaryName("copilot.exe"));
-        assertTrue(HarnessCatalog.COPILOT.requiresMessageQueue());
+        assertFalse(HarnessCatalog.COPILOT.requiresMessageQueue());
         assertTrue(HarnessCatalog.COPILOT.sendsMcpServerConfig());
         assertTrue(HarnessCatalog.COPILOT.injectsEditorContext());
         assertFalse(HarnessCatalog.COPILOT.supportsMessageIds());
