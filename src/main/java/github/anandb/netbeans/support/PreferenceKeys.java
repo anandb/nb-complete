@@ -54,8 +54,7 @@ public final class PreferenceKeys {
     public static final String TOOLBAR_RESTART = "toolbar.restart";
 
     // Update checker preference keys
-    public static final String DEFAULT_UPDATE_URL =
-            "https://cdn.jsdelivr.net/gh/anandb/nb-complete@main/config/beanbot.json";
+    public static final String DEFAULT_UPDATE_URL = "https://anandb.github.io/beanbot.json";
     public static final String NEXT_UPDATE_CHECK_TIME = "update.nextCheckTime";
     public static final String SKIPPED_UPDATE_VERSION = "update.skippedVersion";
     public static final String CHECK_FOR_UPDATES = "update.checkForUpdates";
