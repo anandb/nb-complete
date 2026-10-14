@@ -7,16 +7,24 @@ import javax.swing.JComboBox;
 
 import org.junit.jupiter.api.Test;
 
+import github.anandb.netbeans.model.AvailableModel;
 import github.anandb.netbeans.model.ModelRecords.ConfigItem;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Regression tests for {@link ConfigPanelController#mergeModelItems}. A
  * {@code config_option_update} carries fewer models than {@code session/load}
  * reported; the dropdown must keep the omitted ones without losing its
  * alphabetical order or the user's selection.
+ * <p>
+ * Also guards the model-cache write decision in {@code cacheModelList}: a cached
+ * list that already covers every incoming id must be kept (never shrink), but an
+ * incoming list that introduces an unseen id must update even when it is no
+ * larger — otherwise a same-size model swap would be silently dropped.
  */
 class ConfigPanelControllerTest {
 
@@ -93,5 +101,37 @@ class ConfigPanelControllerTest {
         ConfigItem pick = ConfigPanelController.mergeModelItems(combo, List.of(ALPHA), null, "missing");
         assertEquals(null, pick);
         assertEquals(List.of("alpha", "beta"), names(combo));
+    }
+
+    // -- cacheModelList write decision --
+
+    private static AvailableModel model(String id) {
+        return new AvailableModel(id, id, "");
+    }
+
+    @Test
+    void cacheCoversIncomingWhenEveryIdIsPresent() {
+        assertTrue(ConfigPanelController.coversAllIds(
+                List.of(model("a"), model("b"), model("c")),
+                List.of(model("a"), model("b"))));
+    }
+
+    @Test
+    void sameSizeSwapWithUnseenIdIsNotCovered() {
+        assertFalse(ConfigPanelController.coversAllIds(
+                List.of(model("a"), model("b")),
+                List.of(model("a"), model("c"))));
+    }
+
+    @Test
+    void smallerIncomingWithUnseenIdIsNotCovered() {
+        assertFalse(ConfigPanelController.coversAllIds(
+                List.of(model("a"), model("b"), model("c"), model("d")),
+                List.of(model("a"), model("e"))));
+    }
+
+    @Test
+    void emptyCacheCoversNothing() {
+        assertFalse(ConfigPanelController.coversAllIds(List.of(), List.of(model("a"))));
     }
 }

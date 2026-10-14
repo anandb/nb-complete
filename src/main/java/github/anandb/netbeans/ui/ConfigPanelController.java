@@ -555,9 +555,11 @@ public class ConfigPanelController {
     }
 
     /** Mirrors a model option received from the server into the per-harness model list cache.
-     *  Never shrinks the cache — if the incoming list is a subset of what was already
-     *  stored (e.g. config_option_update carries fewer models than session/load),
-     *  the existing superset is kept. */
+     *  Never shrinks the cache — when the cache already covers every incoming id (e.g.
+     *  config_option_update carries a subset of what session/load reported), the existing
+     *  list is kept. Containment is checked by id, not list size: a same-size (or smaller)
+     *  list that swaps in an id the cache never held must still update, so those models
+     *  are not lost. */
     private void cacheModelList(SessionConfigOption modelOption) {
         if (modelListControl == null || modelOption.options() == null || modelOption.options().isEmpty()) {
             return;
@@ -570,14 +572,28 @@ public class ConfigPanelController {
         for (SessionConfigSelectOption o : modelOption.options()) {
             incoming.add(new AvailableModel(o.value(), o.name(), o.description()));
         }
-        // Never shrink: if the cache already holds a superset, keep it.
+        // Never shrink: keep the cache when it already covers every incoming id.
         List<AvailableModel> existing = modelListControl.getModels(harnessId);
-        if (existing != null && existing.size() > incoming.size()) {
-            LOG.fine("Skipping cache update for {0}: existing list ({1}) is larger than incoming ({2})",
-                    new Object[]{harnessId, existing.size(), incoming.size()});
+        if (existing != null && coversAllIds(existing, incoming)) {
+            LOG.fine("Skipping cache update for {0}: existing list already covers all {1} incoming models",
+                    new Object[]{harnessId, incoming.size()});
             return;
         }
         modelListControl.updateModels(harnessId, incoming);
+    }
+
+    /** True when {@code existing} already holds every model id present in {@code incoming}. */
+    static boolean coversAllIds(List<AvailableModel> existing, List<AvailableModel> incoming) {
+        Set<String> ids = new HashSet<>(existing.size() * 2);
+        for (AvailableModel model : existing) {
+            ids.add(model.modelId());
+        }
+        for (AvailableModel model : incoming) {
+            if (!ids.contains(model.modelId())) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
