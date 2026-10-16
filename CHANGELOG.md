@@ -1,5 +1,34 @@
 # Release Notes
 
+## v1.23.0 (Changes since v1.22.5)
+
+### Features
+- **GitHub Copilot harness**: the catalog gains a Copilot entry launched with `--acp`, detected as `copilot`/`copilot.exe`, with its own toolbar icon (light/dark). Copilot streams mid-turn (no message queueing), accepts a per-session HTTP/SSE MCP server, and exposes model and mode (`Agent`/`Plan`/`Autopilot`) as ACP config options.
+- **Manual update check**: a **Check for Updates** item in the toolbar's `?` (help) menu runs an update check on demand — independently of the background schedule and the *Check for Updates* preference — reports the outcome on the status line, and still surfaces the download dialog.
+- **Configurable update and user-guide URLs**: both outbound links resolve through `support/AppLinks` from the system properties `beanbot.update.url` and `beanbot.user.guide.url`, so a fork or self-hosted deployment can serve its own update manifest and user guide.
+
+### Fixes
+- **Config-option updates no longer dropped**: omp/OpenCode send the ACP-standard singular `sessionUpdate` names (`config_option_update`, `session_info_update`), but `MessageType` used the plural/older spellings — and with unknown enum values decoded as null, every config-option SSE update was discarded as "NULL type". The enum now uses the wire names, adds `current_mode_update`, and keeps the old spellings as `@JsonAlias` so both decode to one constant.
+- **Sessions are cancelled and closed before reload**: an agent that advertises `sessionCapabilities.close` (Copilot) now has its session cancelled and closed ahead of `session/load`, so a resume never replays against a session still holding in-flight work. The capability is captured per connection from the handshake (and reset on process start); the close is best-effort, so a failed close never skips the load that follows.
+- **Copilot file paths in the diff dialog**: `ToolCallDiffParser` now reads ACP `locations[]`, so tool calls that only report a file path there resolve correctly; multiple disagreeing paths fall through instead of guessing.
+- **Model cache keeps same-size swaps**: the per-harness model list cache compared list sizes, so a same-size (or smaller) incoming list that introduced an unseen model id was discarded. Containment is now checked by id set, not list size.
+- **Default update URL** points at the GitHub Pages feed (`https://anandb.github.io/beanbot.json`).
+
+### UI
+- The toolbar help button is relabelled **Help Options** and its tooltip clarified.
+
+### Tests
+- **HarnessCatalogTest**: Copilot capabilities pinned against the live handshake, including that Copilot does **not** require message queueing.
+- **StatusControllerTest**: the constant-width thinking animation is asserted via width + prefix invariants instead of exact space-padded string literals, and the font-metric-dependent `JLabel` pixel-width comparison is replaced with a portable character-width invariant.
+- **ConfigPanelControllerTest**: added coverage for the id-set containment decision — a cached superset is kept, while a same-size swap introducing an unseen id updates.
+
+### Documentation
+- **Copilot harness page**: install (npm/WinGet/Homebrew), `--acp` launch, `copilot login` auth, and capabilities/limitations; linked from Pick Your Harness, Choose Your Coding Harness, Topic Index and Queuing Messages; the README harness list and supported-harness counts now include Copilot (11 total).
+- **Help menu and update pages**: documented the fourth help-menu entry (manual **Check for Updates**) and the on-demand check, realigned the harness-chooser label, and bumped the home banner to v1.23.0.
+
+### Housekeeping
+- Version bumped to 1.23.0.
+
 ## v1.22.5 (Changes since v1.22.4)
 
 ### Fixes

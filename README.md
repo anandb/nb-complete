@@ -1,6 +1,6 @@
 # BeanBot
 
-[![Version](https://img.shields.io/badge/version-1.22.5-blue.svg)](pom.xml)
+[![Version](https://img.shields.io/badge/version-1.23.0-blue.svg)](pom.xml)
 [![Build Status](https://img.shields.io/badge/build-success-brightgreen.svg)](https://github.com/anandb/nb-complete)
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.anandb/beanbot)](https://central.sonatype.com/artifact/io.github.anandb/beanbot/versions)
 [![NetBeans](https://img.shields.io/badge/NetBeans-RELEASE220-blue.svg)](https://netbeans.apache.org/download/index.html)
@@ -193,6 +193,8 @@ The plugin reads the following system properties and environment variables:
 | `beanbot.roundedPanels` | System (`true`) | Toggle rounded panel corners (`RoundedPanel`) |
 | `beanbot.fs.write.enabled` | System (`true`) | ACP-only: gates the `fs/writeTextFile` / `fs/write_text_file` ACP tools (`FsWriteSettings`). MCP write tools (`write_to_file`, `replace_lines`, `insert_in_file`) are always confined to open projects and unaffected by this property. Set `-Dbeanbot.fs.write.enabled=false` to stop advertising the ACP write capability and reject every ACP write |
 | `beanbot.color.*` | System (varies) | Override any UI color. Read by `model/ColorRegistry` (resolution order: system property → `UIManager` key → built-in light/dark fallback), not by `ColorTheme`, which only loads `colors.json` |
+| `beanbot.update.url` | System | Override the update-manifest URL fetched by the update checker (`support/AppLinks`); defaults to `https://anandb.github.io/beanbot.json` — lets a fork or self-hosted deployment serve its own manifest |
+| `beanbot.user.guide.url` | System | Override the user-guide URL opened from the help menu (`support/AppLinks`); defaults to `https://anandb.github.io/beanbot_user_guide.html` |
 | `nb.dark.theme` | UIManager | Detect dark theme for icon resolution (`IconResourceManager`) |
 | `ACP_WIRE_LOG` | Env | Path template for the ACP wire-protocol log (`WireLogger`). The file written is `<template-without-extension>_<YYYYMMDD>-<harness>.log` in the template's directory, so successive days and harnesses do not share one file |
 | `PATH` | Env | Search path for the harness binary; all 11 supported harness names are probed (`BinaryResolver`) |
