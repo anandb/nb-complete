@@ -29,7 +29,7 @@ This page describes every preference in the panel, organised into six sections. 
 <table class="ug-table">
 <thead><tr><th>Preference</th><th>Default</th><th>Description</th></tr></thead>
 <tbody>
-<tr><td><strong>Check for Updates</strong></td><td>On</td><td>Enables the background <strong>Update Checker Service</strong>, which queries for new releases at randomised intervals between 16 and 24 hours. When an update is found you can download it immediately, get reminded later, or skip that version.</td></tr>
+<tr><td><strong>Check for Updates</strong></td><td>On</td><td>Enables the background <strong>Update Checker Service</strong>, which queries for new releases at randomised intervals between 16 and 24 hours. When an update is found you can download it immediately, get reminded later, or skip that version. A check can also be run on demand from the toolbar's help menu (<strong>Check for Updates</strong>).</td></tr>
 </tbody>
 </table>
 

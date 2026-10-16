@@ -14,6 +14,8 @@ The plugin checks for new releases in the background at randomised 16–24 hour 
 
 Disable the check under `Options > Assistant > Updates > Check for Updates`.
 
+You can also check on demand: click the **?** (help) button in the toolbar and choose **Check for Updates**. The outcome is shown on the status line (for example *You are up to date* or *An update is available*).
+
 
 > [[Options Panel Reference]]
 > [[Post Install]]
