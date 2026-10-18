@@ -1,5 +1,16 @@
 # Release Notes
 
+## v1.24.0 (Changes since v1.23.0)
+
+### Features
+- **Codex harness**: the catalog gains a Codex entry backed by `@agentclientprotocol/codex-acp` (binary `codex-acp`, no launch args, its own toolbar icon light/dark). Codex queues mid-turn messages (steering is adapter-extension-only), accepts the plugin's per-session HTTP MCP server, drives mode/model/reasoning-effort through ACP config options with `session/set_mode` for modes, and supports session list/close; the adapter bundles the Codex CLI, so no separate codex install is needed.
+
+### Documentation
+- **Codex harness page**: install (`npm install -g @agentclientprotocol/codex-acp@2.2.2`), bundled Codex CLI note, auth (ChatGPT/`OPENAI_API_KEY`) and capabilities; linked from Pick Your Harness, Choose Your Coding Harness, Topic Index and Queuing Messages; the README harness list and supported-harness counts now include Codex (12 total).
+
+### Tests
+- **HarnessCatalogTest**: Codex capabilities pinned against the codex-acp source, including that Codex requires message queueing.
+
 ## v1.23.0 (Changes since v1.22.5)
 
 ### Features

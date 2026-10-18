@@ -1,0 +1,33 @@
+:: Codex Agent {"position":"2200,1200","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Codex Agent</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+<div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0.2em;">Install</div>
+
+All platforms:
+
+<pre><code>npm install -g @agentclientprotocol/codex-acp@2.2.2</code></pre>
+
+The package bundles the Codex CLI, so a separate `codex` install is not needed. The first session asks you to authenticate with a ChatGPT account or an <code>OPENAI_API_KEY</code>.
+
+<div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0.2em;">About</div>
+
+<a href="https://github.com/agentclientprotocol/codex-acp" target="_blank" rel="noopener">codex-acp</a> is an ACP adapter that exposes OpenAI Codex over the <a href="https://agentclientprotocol.com" target="_blank" rel="noopener">Agent Client Protocol</a>, which is what BeanBot speaks.
+
+The executable you configure in BeanBot is <code>codex-acp</code>.
+
+Codex Agent in BeanBot supports:
+- **Editor Context**: the active editor state is attached to your prompts.
+- **[[MCP Tools]]**: codex-acp accepts a per-session HTTP MCP server, so BeanBot hands it the plugin's internal server automatically — no manual MCP registration is needed.
+- **Model Selection**: exposed as an ACP config option, so the in-session model dropdown works (reasoning effort rides along in the model id).
+- **Mode Switching**: the approval/sandbox presets (read-only, workspace-write, agent, full access) map to the in-session mode dropdown.
+- **[[Queuing Messages]]**: your message waits until the running turn ends before it is sent — Codex only accepts mid-turn steering through an extension BeanBot does not speak.
+
+> [[Post Install]]
+> [[Starting a Session]]
+> [[Permission Requests]]
+> [[Picking an Agent, Model and Thinking Level]]

@@ -114,6 +114,29 @@ public final class HarnessCatalog {
      */
     public static final Harness OPENCODE_V2 = OPENCODE.withRequiresMessageQueue(true);
 
+    /**
+     * Codex via the {@code codex-acp} ACP adapter. The adapter speaks ACP v1 to
+     * this client (v2 folds {@code session/load} into {@code session/resume});
+     * its mid-turn steering is only available through the {@code _session/steering}
+     * extension this client does not implement, so messages queue until turn end.
+     * The bundled {@code @openai/codex} dependency means a separate Codex CLI
+     * install is not needed.
+     */
+    public static final Harness CODEX = new Harness(
+        "codex", "Codex", "codex",
+        List.of("codex-acp"), "",
+        true, true, true, true, true, true, true, false, true, true, true,
+        "",
+        "",
+        "npm install -g @agentclientprotocol/codex-acp@2.2.2",
+        "npm install -g @agentclientprotocol/codex-acp@2.2.2",
+        "npm install -g @agentclientprotocol/codex-acp@2.2.2",
+        "Requires Node.js and a ChatGPT account or OPENAI_API_KEY. Bundles the Codex CLI, "
+                + "so a separate codex install is not needed.",
+        "https://github.com/agentclientprotocol/codex-acp",
+        List.of()
+    );
+
     public static final Harness GOOSE = new Harness(
         "goose", "Goose", "goose",
         List.of("goose"), "acp",
@@ -265,7 +288,7 @@ public final class HarnessCatalog {
 
     /** All supported harnesses, in the order offered during onboarding. */
     public static final List<Harness> ALL =
-            List.of(OMP, OPENCODE, OPENCLAW, PI, GOOSE, CURSOR, COPILOT, CLAUDE, HERMES, GEMINI, DEVIN);
+            List.of(OMP, OPENCODE, CODEX, OPENCLAW, PI, GOOSE, CURSOR, COPILOT, CLAUDE, HERMES, GEMINI, DEVIN);
 
     /** Looks up a harness by catalog id; {@link #UNKNOWN} when not found. */
     public static Harness byId(String id) {

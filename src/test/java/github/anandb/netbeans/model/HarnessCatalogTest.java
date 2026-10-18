@@ -18,12 +18,12 @@ class HarnessCatalogTest {
 
     @Test
     void allHarnessesPresent() {
-        assertEquals(11, HarnessCatalog.ALL.size());
+        assertEquals(12, HarnessCatalog.ALL.size());
         Set<String> ids = new HashSet<>();
         for (HarnessCatalog.Harness h : HarnessCatalog.ALL) {
             assertTrue(ids.add(h.id()), "duplicate id: " + h.id());
         }
-        assertTrue(ids.containsAll(Set.of("opencode", "goose", "pi", "cursor", "claude", "hermes",
+        assertTrue(ids.containsAll(Set.of("opencode", "codex", "goose", "pi", "cursor", "claude", "hermes",
                 "gemini", "omp", "openclaw", "devin", "copilot")));
     }
 
@@ -31,7 +31,7 @@ class HarnessCatalogTest {
     void onboardingOrderIncludesAllHarnesses() {
         Set<String> allIds = new HashSet<>(HarnessCatalog.ALL.stream()
                 .map(HarnessCatalog.Harness::id).toList());
-        assertEquals(Set.of("omp", "opencode", "openclaw", "pi", "goose", "cursor", "copilot",
+        assertEquals(Set.of("omp", "opencode", "codex", "openclaw", "pi", "goose", "cursor", "copilot",
                 "claude", "hermes", "gemini", "devin"),
                 allIds);
     }
@@ -48,6 +48,7 @@ class HarnessCatalogTest {
     void launchBinariesAreAcpEntryPoints() {
         assertEquals(List.of("pi-acp"), HarnessCatalog.PI.binaryNames());
         assertTrue(HarnessCatalog.CLAUDE.binaryNames().contains("claude-agent-acp"));
+        assertEquals(List.of("codex-acp"), HarnessCatalog.CODEX.binaryNames());
     }
 
     @Test
@@ -55,6 +56,7 @@ class HarnessCatalogTest {
         assertEquals(HarnessCatalog.OPENCODE, HarnessCatalog.byId("opencode"));
         assertSame(HarnessCatalog.UNKNOWN, HarnessCatalog.byId("nope"));
         assertEquals(HarnessCatalog.CLAUDE, HarnessCatalog.byBinaryName("claude-agent-acp"));
+        assertEquals(HarnessCatalog.CODEX, HarnessCatalog.byBinaryName("codex-acp"));
         assertEquals(HarnessCatalog.HERMES, HarnessCatalog.byBinaryName("hermes"));
         assertEquals(HarnessCatalog.GOOSE, HarnessCatalog.byBinaryName("goose"));
         assertEquals(HarnessCatalog.CURSOR, HarnessCatalog.byBinaryName("agent"));
@@ -213,11 +215,39 @@ class HarnessCatalogTest {
     }
 
     @Test
+    void codexCapabilitiesMatchAdapterSource() {
+        // Metadata from the codex-acp v2.2.2 source: v1 router registers session/set_mode,
+        // session/set_config_option (mode/model/reasoning_effort) and session/list; the
+        // initialize response advertises mcpCapabilities http and sessionCapabilities
+        // {resume,list,close}; new/load return models and modes. Steering is only the
+        // _session/steering extension, so a second session/prompt must be queued.
+        assertEquals(List.of("codex-acp"), HarnessCatalog.CODEX.binaryNames());
+        assertEquals("", HarnessCatalog.CODEX.launchArgs());
+        assertEquals(HarnessCatalog.CODEX, HarnessCatalog.byBinaryName("codex-acp"));
+        assertEquals(HarnessCatalog.CODEX, HarnessCatalog.byBinaryName("codex-acp.exe"));
+        assertTrue(HarnessCatalog.CODEX.requiresMessageQueue());
+        assertTrue(HarnessCatalog.CODEX.sendsMcpServerConfig());
+        assertTrue(HarnessCatalog.CODEX.injectsEditorContext());
+        assertTrue(HarnessCatalog.CODEX.supportsMessageIds());
+        assertTrue(HarnessCatalog.CODEX.supportsMcpServer());
+        assertTrue(HarnessCatalog.CODEX.supportsSessionSetMode());
+        assertTrue(HarnessCatalog.CODEX.supportsSessionSetConfigOption());
+        assertFalse(HarnessCatalog.CODEX.supportsSessionSetModel());
+        assertTrue(HarnessCatalog.CODEX.supportsModelSelection());
+        assertTrue(HarnessCatalog.CODEX.supportsSessionList());
+        assertTrue(HarnessCatalog.CODEX.supportsAgentList());
+        assertEquals("npm install -g @agentclientprotocol/codex-acp@2.2.2",
+                HarnessCatalog.CODEX.installLinux());
+        assertEquals("https://github.com/agentclientprotocol/codex-acp", HarnessCatalog.CODEX.docsUrl());
+    }
+
+    @Test
     void harnessIconNameResolvesKnownBinaries() {
         assertEquals("goose.svg", HarnessCatalog.harnessIconName("goose"));
         assertEquals("gemini.svg", HarnessCatalog.harnessIconName("gemini"));
         assertEquals("omp.svg", HarnessCatalog.harnessIconName("omp"));
         assertEquals("agent.svg", HarnessCatalog.harnessIconName(null));
         assertEquals("agent.svg", HarnessCatalog.harnessIconName("unknown-bin"));
+        assertEquals("codex.svg", HarnessCatalog.harnessIconName("codex-acp"));
     }
 }

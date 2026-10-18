@@ -11,6 +11,7 @@ BeanBot doesn't talk directly to AI services, it communicates via coding agents 
 In this guide you might also see a harness referred to as an ACP Server, an Agent Server, or simply server, in the context of this plugin it's just a conduit for communicating with a remote LLM. These are the harnesses currently supported, pick the one you want to use. Even unlisted ones might work, but you have to experiment and find out.
 
 > [[OpenCode]]
+> [[Codex Agent]]
 > [[PI Agent]]
 > [[Goose Agent]]
 > [[Claude Agent]]

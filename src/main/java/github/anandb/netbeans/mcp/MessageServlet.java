@@ -144,6 +144,8 @@ class MessageServlet extends HttpServlet {
                     LOG.fine("MCP response sent: {0} in {1}ms", method, durationMs);
                 } else {
                     handleNotification(method, params);
+                    HttpServletResponse httpResp = (HttpServletResponse) asyncContext.getResponse();
+                    httpResp.setStatus(HttpServletResponse.SC_ACCEPTED);
                 }
 
             } catch (Exception e) {

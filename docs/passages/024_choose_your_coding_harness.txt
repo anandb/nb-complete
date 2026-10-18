@@ -23,7 +23,7 @@ To re-run harness selection at any time — for example after installing a new h
 After installing a harness — and optionally setting the binary path under `Options > Assistant` — click **Start Server** to connect.
 
 
-> [[OpenCode]] / [[PI Agent]] / [[Goose Agent]] / [[Cursor Agent]] / [[Copilot Agent]]
+> [[OpenCode]] / [[Codex Agent]] / [[PI Agent]] / [[Goose Agent]] / [[Cursor Agent]] / [[Copilot Agent]]
 > [[Claude Agent]] / [[Hermes Agent]] / [[Gemini Agent]] / [[Oh My Pi Agent]] / [[OpenClaw Agent]] / [[Devin Agent]]
 > [[Post Install]]
 > [[Restarting the server]]
