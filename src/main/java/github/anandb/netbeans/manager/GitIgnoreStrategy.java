@@ -18,7 +18,7 @@ import org.openide.util.RequestProcessor;
  * Git ignore strategy using {@code git ls-files} for bulk listing
  * and {@code git check-ignore} for single-file queries.
  *
- * <p>Detects availability by checking for a {@code .git} directory.</p>
+ * <p>Detects availability by checking for the {@code .git/refs} directory.</p>
  */
 public class GitIgnoreStrategy implements VcsIgnoreStrategy {
 
@@ -33,13 +33,13 @@ public class GitIgnoreStrategy implements VcsIgnoreStrategy {
     }
 
     /**
-     * Walks up from {@code dir} looking for a {@code .git} directory.
+     * Walks up from {@code dir} looking for a {@code .git/refs} directory.
      * Returns the git repository root, or {@code null} if none found.
      */
     static File findGitRoot(File dir) {
         File current = dir;
         while (current != null) {
-            if (new File(current, ".git").isDirectory()) {
+            if (new File(current, ".git/refs").isDirectory()) {
                 return current;
             }
             current = current.getParentFile();

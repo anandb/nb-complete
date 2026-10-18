@@ -8,8 +8,18 @@
 ### Documentation
 - **Codex harness page**: install (`npm install -g @agentclientprotocol/codex-acp@2.2.2`), bundled Codex CLI note, auth (ChatGPT/`OPENAI_API_KEY`) and capabilities; linked from Pick Your Harness, Choose Your Coding Harness, Topic Index and Queuing Messages; the README harness list and supported-harness counts now include Codex (12 total).
 
+### Fixes
+- **MCP notifications ack 202 ACCEPTED**: `MessageServlet` sets `SC_ACCEPTED` on the async response for JSON-RPC notifications instead of leaving the default status, so MCP clients no longer misinterpret notification delivery.
+
+### Improvements
+- **Git repository detection hardened**: `GitIgnoreStrategy.findGitRoot` and `VcsUtils` require `.git/refs` (not just `.git`), so empty `.git` dirs — e.g. bare `/tmp` test workspaces — no longer false-positive as repos. Test temp dirs are nested under `workspace/src/main` instead of the filesystem root.
+
 ### Tests
 - **HarnessCatalogTest**: Codex capabilities pinned against the codex-acp source, including that Codex requires message queueing.
+- **GitIgnoreStrategyTest / VcsUtilsHgTest**: updated for the `.git/refs` rule and isolated temp dirs; surefire now uses an explicit byte-buddy javaagent and `target/test-tmp` as `java.io.tmpdir`.
+
+### Housekeeping
+- Version bumped to 1.24.0.
 
 ## v1.23.0 (Changes since v1.22.5)
 

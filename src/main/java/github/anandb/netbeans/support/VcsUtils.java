@@ -44,7 +44,7 @@ public class VcsUtils {
         }
         File current = new File(startDir);
         while (current != null && current.isDirectory()) {
-            if (new File(current, ".git").exists()) {
+            if (new File(current, ".git/refs").isDirectory()) {
                 return new VcsInfo(current, VcsType.GIT);
             }
             if (new File(current, ".hg").exists()) {

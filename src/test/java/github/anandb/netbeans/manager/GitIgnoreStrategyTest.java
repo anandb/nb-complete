@@ -19,23 +19,22 @@ class GitIgnoreStrategyTest {
     private final GitIgnoreStrategy strategy = new GitIgnoreStrategy();
 
     @Test
-    void findGitRootReturnsNullForDirWithoutGit() throws IOException {
-        File dir = Files.createTempDirectory("no-git").toFile();
-        try {
-            assertNull(GitIgnoreStrategy.findGitRoot(dir));
-        } finally {
-            dir.delete();
-        }
+    void findGitRootReturnsNullForDirWithoutGit(@TempDir Path temp) throws IOException {
+        File dir = temp.resolve("workspace/src/main").toFile();
+        assertTrue(dir.mkdirs());
+
+        assertNull(GitIgnoreStrategy.findGitRoot(dir));
     }
 
     @Test
     void findGitRootReturnsDirWithGitSubdir() throws IOException {
         File dir = Files.createTempDirectory("has-git").toFile();
         File gitDir = new File(dir, ".git");
-        gitDir.mkdirs();
+        assertTrue(new File(gitDir, "refs").mkdirs());
         try {
             assertEquals(dir, GitIgnoreStrategy.findGitRoot(dir));
         } finally {
+            new File(gitDir, "refs").delete();
             gitDir.delete();
             dir.delete();
         }
@@ -43,11 +42,11 @@ class GitIgnoreStrategyTest {
 
     @Test
     void findGitRootWalksUp(@TempDir Path temp) throws IOException {
-        // Create: temp/parent/.git  and  temp/parent/child
+        // Create: temp/parent/.git/refs and temp/parent/child
         File parent = temp.resolve("parent").toFile();
         parent.mkdirs();
         File gitDir = new File(parent, ".git");
-        gitDir.mkdirs();
+        assertTrue(new File(gitDir, "refs").mkdirs());
         File child = temp.resolve("parent/child").toFile();
         child.mkdirs();
 
@@ -55,6 +54,7 @@ class GitIgnoreStrategyTest {
         assertNotNull(result);
         assertEquals(parent, result);
 
+        new File(gitDir, "refs").delete();
         gitDir.delete();
         child.delete();
         parent.delete();
@@ -63,48 +63,42 @@ class GitIgnoreStrategyTest {
     @Test
     void isAvailableReturnsTrueWhenGitDirExists() throws IOException {
         File dir = Files.createTempDirectory("git-avail").toFile();
-        new File(dir, ".git").mkdirs();
+        assertTrue(new File(dir, ".git/refs").mkdirs());
         try {
             assertTrue(strategy.isAvailable(dir));
         } finally {
+            new File(dir, ".git/refs").delete();
             new File(dir, ".git").delete();
             dir.delete();
         }
     }
 
     @Test
-    void isAvailableReturnsFalseWhenNoGitDir() throws IOException {
-        File dir = Files.createTempDirectory("no-git-avail").toFile();
-        try {
-            assertFalse(strategy.isAvailable(dir));
-        } finally {
-            dir.delete();
-        }
+    void isAvailableReturnsFalseWhenNoGitDir(@TempDir Path temp) throws IOException {
+        File dir = temp.resolve("workspace/src/main").toFile();
+        assertTrue(dir.mkdirs());
+
+        assertFalse(strategy.isAvailable(dir));
     }
 
     @Test
-    void listNonIgnoredFilesReturnsEmptyForNonGitDir() throws IOException {
-        File dir = Files.createTempDirectory("no-git-list").toFile();
-        try {
-            // Not a git repo — ls-files fails, returns empty
-            assertTrue(strategy.listNonIgnoredFiles(dir).isEmpty());
-        } finally {
-            dir.delete();
-        }
+    void listNonIgnoredFilesReturnsEmptyForNonGitDir(@TempDir Path temp) throws IOException {
+        File dir = temp.resolve("workspace/src/main").toFile();
+        assertTrue(dir.mkdirs());
+
+        // Not a git repo — ls-files fails, returns empty
+        assertTrue(strategy.listNonIgnoredFiles(dir).isEmpty());
     }
 
     @Test
-    void isIgnoredReturnsFalseForNonGitDir() throws IOException {
-        File dir = Files.createTempDirectory("no-git-check").toFile();
+    void isIgnoredReturnsFalseForNonGitDir(@TempDir Path temp) throws IOException {
+        File dir = temp.resolve("workspace/src/main").toFile();
+        assertTrue(dir.mkdirs());
         File file = new File(dir, "test.txt");
         file.createNewFile();
-        try {
-            // git check-ignore fails (not a repo) → returns false
-            assertFalse(strategy.isIgnored(dir, file));
-        } finally {
-            file.delete();
-            dir.delete();
-        }
+
+        // git check-ignore fails (not a repo) → returns false
+        assertFalse(strategy.isIgnored(dir, file));
     }
 
     @Test

@@ -91,7 +91,7 @@ class VcsUtilsHgTest {
 
     @Test
     void findVcsInfoReturnsNullWhenNoRepository() {
-        File plain = tempDir.resolve("plain").toFile();
+        File plain = tempDir.resolve("workspace/src/main").toFile();
         assertTrue(plain.mkdirs());
 
         assertNull(VcsUtils.findVcsInfo(plain.getAbsolutePath()));
