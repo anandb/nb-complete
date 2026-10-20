@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 import github.anandb.netbeans.contract.VcsIgnoreStrategy;
 import github.anandb.netbeans.support.Logger;
@@ -189,7 +190,14 @@ public class BbIgnoreStrategy implements VcsIgnoreStrategy {
         if (line.isEmpty()) {
             return null;
         }
-        return new Rule(compile(line, anchored), negated, dirOnly);
+        try {
+            return new Rule(compile(line, anchored), negated, dirOnly);
+        } catch (PatternSyntaxException e) {
+            // A malformed class (e.g. "[]" or "[z-a]") must not abort the scan;
+            // gitignore implementations treat such a line as non-matching.
+            LOG.log(java.util.logging.Level.FINE, "Skipping invalid .bbignore pattern: {0}", rawLine);
+            return null;
+        }
     }
 
     /** Converts a gitignore glob to a regex matched against a slash-separated path. */
@@ -258,13 +266,11 @@ public class BbIgnoreStrategy implements VcsIgnoreStrategy {
     private static String relativize(File root, File file) {
         String rootPath = root.getAbsolutePath();
         String filePath = file.getAbsolutePath();
-        if (!filePath.startsWith(rootPath)) {
+        String prefix = rootPath.endsWith(File.separator) ? rootPath : rootPath + File.separator;
+        if (!filePath.startsWith(prefix)) {
             return null;
         }
-        String rel = filePath.substring(rootPath.length());
-        if (rel.startsWith(File.separator)) {
-            rel = rel.substring(1);
-        }
+        String rel = filePath.substring(prefix.length());
         return rel.replace(File.separatorChar, '/');
     }
 }

@@ -2,7 +2,7 @@
 
 ## Project Overview
 - **Project**: Coding Assistant (NetBeans IDE plugin, Java 17, Maven)
-- **Current Stable Version**: 1.24.0
+- **Current Stable Version**: 1.25.0
 - **Key Tech**: NetBeans API (RELEASE220), Flexmark, Jackson, RSyntaxTextArea, JUnit 5.
 
 ## Build Commands
@@ -319,6 +319,22 @@ without it the load replays against a session still holding in-flight work.
   `requestActive()` — yanks the user out of whatever they are typing and MUST NOT
   appear on an agent-triggered path: opening in the background is fine, stealing
   focus is not.
+
+### fs/read_text_file Line Windows
+- `AcpRequestRouter.selectLines(content, startLine, limit)` slices content from both the editor document and
+  disk. `line` is 1-based (absent → 1, clamped to ≥1); `limit` absent means to EOF, and a non-positive limit
+  returns an empty string. The slice keeps the trailing newline of the last selected line; a start line past
+  EOF returns empty. The whole file is read before slicing — do not "optimize" that without preserving CRLF
+  and trailing-newline semantics.
+
+### .bbignore Display Policy
+- `manager/BbIgnoreStrategy` implements `VcsIgnoreStrategy` over a project-root `.bbignore` (gitignore syntax).
+  When the file exists it replaces `.gitignore`/`.hgignore` entirely; `FileCacheManager.detectStrategy` checks
+  it first.
+- An empty `.bbignore` listing is authoritative: `scanProject` must NOT fall back to `walkFileSystem` for
+  `BbIgnoreStrategy`, otherwise an exclude-everything policy resurrects every file.
+- Invalid patterns (bad character class) are skipped per line and must never abort the scan. Containment uses a
+  separator boundary, so a sibling root sharing a string prefix is outside the project.
 
 ### Connection & Lifecycle
 - `AcpProtocolClient.setConnectionErrorHandler()` is a noop. Disconnection handles

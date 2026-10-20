@@ -195,8 +195,10 @@ public class FileCacheManager implements FileCacheQuery {
 
             // Bulk scan
             Set<String> nonIgnored = strategy.listNonIgnoredFiles(rootDir);
-            if (nonIgnored.isEmpty()) {
-                // NoOp or git returned empty — fall back to full filesystem walk
+            if (nonIgnored.isEmpty() && !(strategy instanceof BbIgnoreStrategy)) {
+                // NoOp or git returned empty — fall back to full filesystem walk.
+                // An empty .bbignore result is authoritative: the policy excluded
+                // everything, so walking would resurrect the ignored files.
                 walkFileSystem(root, projectName, rootDir);
             } else {
                 // Add all non-ignored files from git

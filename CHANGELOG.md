@@ -1,17 +1,26 @@
 # Release Notes
 
-## v1.25.0 (unreleased)
+## v1.25.0 (Changes since v1.24.0)
 
 ### Features
 - **`.bbignore` for Jump to File**: the file index now looks for a project-root `.bbignore` first. It uses `.gitignore` syntax but expresses display policy; when present it replaces `.gitignore`/`.hgignore` for that project instead of layering on top of them.
 - **`fs/read_text_file` line windows**: the ACP `line` (1-based) and `limit` params now select a line range from both the open editor document and disk, instead of always returning the whole file.
 
-### Changes
-- **OpenClaw support removed**: the catalog entry, toolbar icons, bundle messages, and guide page are gone. `supportsMcpServer` was also dropped — it was true for every harness.
+### Fixes
+- **Malformed `.bbignore` patterns no longer abort indexing**: an invalid character class (e.g. `[]`, `[z-a]`) is skipped as a non-matching rule instead of throwing, so one bad line cannot stop the file index from rebuilding.
+- **A fully excluding `.bbignore` is authoritative**: an empty listing no longer falls back to the unfiltered filesystem walk, which resurrected every file the policy had excluded.
+- **`.bbignore` containment is separator-aware**: a sibling directory whose path merely shares the project-root prefix (`project` vs `project-other`) is no longer treated as inside the project.
 
 ### Tests
 - **Catalog contracts**: the three new launch contracts and capability flags are pinned; the confirm-bar prompt is pinned against `supportsModelSelection`; catalog icons are load-tested; `session/new` is checked to omit `mcpServers` when the capability is off.
 - **Read windows**: `AcpRequestRouterTest` covers line/limit boundaries and an end-to-end disk read.
+- **Bbignore rules**: `BbIgnoreStrategyTest` covers globs, negation, anchoring, directory-only rules, `**`, shared-prefix siblings, invalid patterns, and the exclude-everything case.
+
+### Documentation
+- **Jump to File pages**: the `.bbignore` precedence over VCS ignore files is documented in the guide.
+
+### Housekeeping
+- Version bumped to 1.25.0.
 
 ## v1.24.0 (Changes since v1.23.0)
 

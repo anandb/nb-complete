@@ -82,6 +82,39 @@ class BbIgnoreStrategyTest {
     }
 
     @Test
+    void siblingWithSharedPathPrefixIsOutsideRoot(@TempDir Path temp) throws IOException {
+        File root = temp.resolve("project").toFile();
+        assertTrue(root.mkdirs());
+        Files.writeString(temp.resolve("project").resolve(BbIgnoreStrategy.FILE_NAME), "*.txt");
+        File sibling = temp.resolve("project-other/x.txt").toFile();
+        assertTrue(sibling.getParentFile().mkdirs());
+        Files.writeString(sibling.toPath(), "x");
+
+        assertFalse(strategy.isIgnored(root, sibling));
+    }
+
+    @Test
+    void invalidPatternIsSkippedAndScanContinues(@TempDir Path temp) throws IOException {
+        File root = temp.toFile();
+        Files.writeString(temp.resolve(BbIgnoreStrategy.FILE_NAME), "[]\n[z-a]\n*.log\n");
+        write(temp, "a.log");
+        write(temp, "keep.txt");
+
+        assertEquals(Set.of(BbIgnoreStrategy.FILE_NAME, "keep.txt"),
+                strategy.listNonIgnoredFiles(root));
+    }
+
+    @Test
+    void excludeEverythingYieldsEmptyListing(@TempDir Path temp) throws IOException {
+        File root = temp.toFile();
+        Files.writeString(temp.resolve(BbIgnoreStrategy.FILE_NAME), "*\n");
+        write(temp, "a.txt");
+        write(temp, "src/Main.java");
+
+        assertTrue(strategy.listNonIgnoredFiles(root).isEmpty());
+    }
+
+    @Test
     void bbignoreWinsOverGitAndHg(@TempDir Path temp) throws IOException {
         File root = temp.toFile();
         Files.createDirectories(temp.resolve(".git/refs"));
