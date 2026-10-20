@@ -297,8 +297,13 @@ public class FileCacheManager implements FileCacheQuery {
 
     // --- Strategy detection ---
 
-    private VcsIgnoreStrategy detectStrategy(File rootDir) {
+    VcsIgnoreStrategy detectStrategy(File rootDir) {
         return strategyCache.computeIfAbsent(rootDir, dir -> {
+            // A .bbignore is display policy: when present it replaces the VCS
+            // ignore file entirely rather than layering on top of it.
+            if (new BbIgnoreStrategy().isAvailable(dir)) {
+                return new BbIgnoreStrategy();
+            }
             if (new GitIgnoreStrategy().isAvailable(dir)) {
                 return new GitIgnoreStrategy();
             }

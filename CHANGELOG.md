@@ -1,5 +1,18 @@
 # Release Notes
 
+## v1.25.0 (unreleased)
+
+### Features
+- **`.bbignore` for Jump to File**: the file index now looks for a project-root `.bbignore` first. It uses `.gitignore` syntax but expresses display policy; when present it replaces `.gitignore`/`.hgignore` for that project instead of layering on top of them.
+- **`fs/read_text_file` line windows**: the ACP `line` (1-based) and `limit` params now select a line range from both the open editor document and disk, instead of always returning the whole file.
+
+### Changes
+- **OpenClaw support removed**: the catalog entry, toolbar icons, bundle messages, and guide page are gone. `supportsMcpServer` was also dropped — it was true for every harness.
+
+### Tests
+- **Catalog contracts**: the three new launch contracts and capability flags are pinned; the confirm-bar prompt is pinned against `supportsModelSelection`; catalog icons are load-tested; `session/new` is checked to omit `mcpServers` when the capability is off.
+- **Read windows**: `AcpRequestRouterTest` covers line/limit boundaries and an end-to-end disk read.
+
 ## v1.24.0 (Changes since v1.23.0)
 
 ### Features
