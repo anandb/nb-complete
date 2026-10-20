@@ -14,6 +14,9 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.KeyEvent;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.Icon;
@@ -154,6 +157,34 @@ final class ChatLayoutBuilder {
                             }
                         });
                         add(archive);
+
+                        // Archive every session currently listed in the dropdown. Ids are
+                        // captured up front because refreshSessions() rebuilds the items.
+                        List<String> visibleIds = new ArrayList<>();
+                        for (int i = 0; i < sessionDropdown.getItemCount(); i++) {
+                            Object entry = sessionDropdown.getItemAt(i);
+                            if (entry instanceof SessionItem it && it.getSession() != null) {
+                                visibleIds.add(it.getSession().id());
+                            }
+                        }
+                        JMenuItem archiveAll = new JMenuItem(
+                                NbBundle.getMessage(ChatLayoutBuilder.class, "LBL_ArchiveAll"));
+                        archiveAll.setEnabled(!visibleIds.isEmpty());
+                        archiveAll.addActionListener(ev -> {
+                            var archSc = Lookup.getDefault().lookup(SessionControl.class);
+                            if (archSc == null) {
+                                topComponent.setStatus("STATUS_ServiceUnavailable");
+                                return;
+                            }
+                            for (String id : visibleIds) {
+                                archSc.setHidden(id, true);
+                            }
+                            archSc.refreshSessions();
+                            if (!isShowingHidden()) {
+                                MiniAssistantDialog.closeIfVisible();
+                            }
+                        });
+                        add(archiveAll);
                     }
 
                     addSeparator();

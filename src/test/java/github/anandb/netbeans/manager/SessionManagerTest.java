@@ -401,6 +401,33 @@ class SessionManagerTest {
     }
 
     @Test
+    void testCreateSessionPiRustFlatModelsArray() throws Exception {
+        // pi-rust reports models as a flat array ({id,name,provider}) next to
+        // configOptions. The array must not abort Session deserialization, and
+        // the provider/id combination must match the configOptions values.
+        JsonNode mockResponse = mapper.readTree(
+                "{\"sessionId\":\"pi-1\",\"cwd\":\"/test/cwd\","
+                + "\"models\":[{\"id\":\"anthropic.claude-3-5-haiku-20241022-v1:0\","
+                + "\"name\":\"Claude Haiku 3.5\",\"provider\":\"amazon-bedrock\"}],"
+                + "\"configOptions\":[{\"id\":\"model\",\"name\":\"Model\",\"category\":\"model\","
+                + "\"type\":\"select\","
+                + "\"currentValue\":\"amazon-bedrock/anthropic.claude-3-5-haiku-20241022-v1:0\","
+                + "\"options\":[]}]}");
+        when(processManager.sendRequest(eq("session/new"), any(), eq(60L), eq(TimeUnit.SECONDS)))
+                .thenReturn(CompletableFuture.completedFuture(mockResponse));
+
+        Session created = sessionManager.createSession("/test/cwd").get(5, TimeUnit.SECONDS);
+
+        assertEquals("pi-1", created.id());
+        assertEquals(1, created.models().availableModels().size());
+        assertEquals("amazon-bedrock/anthropic.claude-3-5-haiku-20241022-v1:0",
+                created.models().availableModels().get(0).modelId());
+        assertEquals("Claude Haiku 3.5", created.models().availableModels().get(0).name());
+        assertNull(created.models().currentModelId());
+        assertEquals(1, created.configOptions().size());
+    }
+
+    @Test
     void modelIdFromOptionsMatchesByIdCategoryOrName() {
         assertEquals("m", SessionManager.modelIdFromOptions(List.of(
                 new SessionConfigOption("model", "Model", "", "model", "select", "m", List.of()))));
