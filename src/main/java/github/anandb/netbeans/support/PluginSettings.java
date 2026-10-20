@@ -6,6 +6,8 @@ import java.util.prefs.Preferences;
 
 import org.openide.util.NbPreferences;
 
+import github.anandb.netbeans.model.HarnessCatalog;
+
 public final class PluginSettings {
 
     private static final Logger LOG = Logger.from(PluginSettings.class);
@@ -118,7 +120,9 @@ public final class PluginSettings {
      *  When running through WSL, WSL-specific guidance is appended so the agent can use the
      *  Linux environment. The rule set differs by install mode: when the agent is a Windows
      *  binary hosted through WSL ({@code wsl_rules.md}) native Windows tooling is preferred;
-     *  when it is a native WSL binary ({@code wsl_native_rules.md}) Linux is preferred. */
+     *  when it is a native WSL binary ({@code wsl_native_rules.md}) Linux is preferred.
+     *  Harness-specific tool/permission mechanics live in {@code critical_rules/<harnessId>.md}
+     *  and are appended when the selected harness has such an overlay. */
     public static String getCriticalRules() {
         String rules = DEFAULT_CRITICAL_RULES;
         if (BinaryResolver.isWslAvailable() && !rules.contains("WSL Environment")) {
@@ -128,7 +132,26 @@ public final class PluginSettings {
                 rules = rules + "\n\n" + wslBlock;
             }
         }
+        String overlay = harnessRulesOverlay();
+        if (!overlay.isEmpty()) {
+            rules = rules + "\n\n" + overlay;
+        }
         return rules;
+    }
+
+    /**
+     * Overlay resource for the selected harness, or "" when the harness is
+     * unknown or has no {@code critical_rules/<id>.md} resource. The id is the
+     * catalog id stored in {@link PreferenceKeys#ACP_HARNESS_ID} (e.g. "claude").
+     */
+    private static String harnessRulesOverlay() {
+        String harnessId = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                .get(PreferenceKeys.ACP_HARNESS_ID, null);
+        if (harnessId == null || harnessId.isBlank()
+                || HarnessCatalog.UNKNOWN.id().equals(harnessId)) {
+            return "";
+        }
+        return nullToEmpty(AgentUtils.readResource("critical_rules/" + harnessId + ".md"));
     }
 
     private static String nullToEmpty(String s) {
