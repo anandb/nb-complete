@@ -125,7 +125,7 @@ serves the IDE tool set. Both are adapters over `contract/` ports and `model/` r
 | `mcp/` | `support/` (18), `contract/` (12), `model/` (4) |
 | `tasks/` | `model/` (9), `contract/` (8), `support/` (6), `ui/` (3 — deferred debt) |
 | `project/` | `support/` (8), `contract/` (3), `model/` (1) |
-| `support/` | `model/` (5) |
+| `support/` | `model/` (6 — incl. `HarnessCatalog` exception) |
 | `contract/` | `model/` (25) |
 | `model/` | *(nothing — leaf)* |
 
@@ -198,8 +198,12 @@ Active debt — three entries, all verified against the current tree:
   `SessionUpdate`), `BinaryResolver` (`HarnessCatalog`), and `TaskTxtCodec`
   (`TaskRecord`). All three are pure static utilities (string/pattern parsing,
   binary discovery, todo.txt codec) — they are not data classes, so they do not belong
-  in `model/`. The peer-level `support/` → `model/` dependency is accepted. Do NOT add
-  further `support/` → `model/` imports.
+  in `model/`. The peer-level `support/` → `model/` dependency is accepted.
+  **Exception — `HarnessCatalog`**: any `support/` file may import
+  `model/HarnessCatalog` (currently `BinaryResolver` and `PluginSettings`, which
+  validates the stored harness id against `HarnessCatalog.UNKNOWN`). It is a catalog
+  lookup, not record data, so it does not leak model shape into `support/`. Do NOT add
+  further `support/` → `model/` imports of any other type.
 - **manager/ → mcp/ (ACCEPTED)**: `manager/ProcessManager` imports
   `mcp/McpManager` and `mcp/McpToolAdapter` to construct the `ToolExecutor` port
   implementation (`new McpToolAdapter(new McpManager())`). `manager/` and `mcp/` are
@@ -237,6 +241,10 @@ Resolved — kept as regression guards:
   support/Logger` exemption is obsolete. `model/MessageTransformer` has no imports at
   all and `model/` does not reference `support/Logger` anywhere. `model/` is a clean
   leaf package — treat any `model/` → other-package import as a new violation.
+  **Exception — test tree**: `src/test/.../model/ToolCallDataTest` may import
+  `support/MapperSupplier` to obtain its `ObjectMapper`. The leaf rule governs
+  `src/main` only; tests in the `model` package may reuse `support/` helpers. Do NOT
+  add `support/` (or any project) imports to main-tree `model/` classes.
 - **New extraction pattern**: When extracting utilities from `ui/` god components, place
   pure logic in `support/` (e.g. `ToolContextExtractor`, `ShortcutUtils`). Keep Swing-coupled code in `ui/`.
 
