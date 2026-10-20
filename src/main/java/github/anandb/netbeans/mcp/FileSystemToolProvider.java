@@ -11,6 +11,7 @@ import github.anandb.netbeans.contract.ProjectQuery;
 import github.anandb.netbeans.contract.SessionQuery;
 import github.anandb.netbeans.support.Logger;
 import org.openide.util.Lookup;
+import org.openide.util.RequestProcessor;
 
 import static github.anandb.netbeans.mcp.ProjectPathGuard.isInOpenProject;
 import static github.anandb.netbeans.mcp.ProjectPathGuard.outsideProjectError;
@@ -531,23 +532,38 @@ public class FileSystemToolProvider {
                         pb.redirectErrorStream(true);
                         Process proc = pb.start();
                         StringBuilder output = new StringBuilder();
-                        try (var reader = new BufferedReader(new InputStreamReader(proc.getInputStream()))) {
-                            String line;
-                            while ((line = reader.readLine()) != null) {
-                                if (output.length() > 0) output.append("\n");
-                                output.append(line);
+                        // Drain stdout on a background thread, then enforce the
+                        // timeout on this thread. Reading the pipe to EOF first
+                        // would block until the process exits, so a silent
+                        // long-running command would never hit the deadline.
+                        RequestProcessor.Task readerTask = RequestProcessor.getDefault().post(() -> {
+                            try (var reader = new BufferedReader(new InputStreamReader(proc.getInputStream()))) {
+                                String line;
+                                while ((line = reader.readLine()) != null) {
+                                    synchronized (output) {
+                                        if (output.length() > 0) output.append("\n");
+                                        output.append(line);
+                                    }
+                                }
+                            } catch (IOException e) {
+                                LOG.fine("Error draining command output: {0}", e.getMessage());
                             }
-                        }
+                        });
                         boolean finished = proc.waitFor(timeout, TimeUnit.SECONDS);
                         if (!finished) {
+                            // destroyForcibly closes the pipe, unblocking the reader
                             proc.destroyForcibly();
+                            readerTask.waitFinished(5000);
                             return Map.of("status", "error", "message", "Command timed out after " + timeout + "s");
                         }
+                        readerTask.waitFinished(5000);
                         int exitCode = proc.exitValue();
                         Map<String, Object> result = new HashMap<>();
                         result.put("status", "ok");
                         result.put("exitCode", exitCode);
-                        result.put("output", output.toString());
+                        synchronized (output) {
+                            result.put("output", output.toString());
+                        }
                         return result;
                     }
                 });
