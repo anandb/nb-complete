@@ -137,6 +137,11 @@ class AcpRequestRouter {
 
         CompletableFuture<JsonNode> resultFuture = new CompletableFuture<>();
 
+        // ACP optionally scopes a read to a 1-based start line and a line count.
+        // Absent values mean the whole file; a non-positive limit reads nothing.
+        int startLine = Math.max(1, params.path("line").asInt(1));
+        Integer lineLimit = params.hasNonNull("limit") ? Math.max(0, params.path("limit").asInt(0)) : null;
+
         FileObject fo = FileUtil.toFileObject(file);
         if (fo != null) {
             SwingUtilities.invokeLater(() -> {
@@ -146,7 +151,7 @@ class AcpRequestRouter {
                     if (ec != null) {
                         Document doc = ec.getDocument();
                         if (doc != null) {
-                            String content = doc.getText(0, doc.getLength());
+                            String content = selectLines(doc.getText(0, doc.getLength()), startLine, lineLimit);
                             resultFuture.complete(MAPPER.createObjectNode().put("content", content));
                             return;
                         }
@@ -155,20 +160,22 @@ class AcpRequestRouter {
                     LOG.warn("Could not read from editor for {0}, falling back to disk", filePath, e);
                 }
 
-                readFromDisk(file, resultFuture);
+                readFromDisk(file, startLine, lineLimit, resultFuture);
             });
         } else {
-            readFromDisk(file, resultFuture);
+            readFromDisk(file, startLine, lineLimit, resultFuture);
         }
 
         return resultFuture;
     }
 
-    private void readFromDisk(File file, CompletableFuture<JsonNode> resultFuture) {
+    private void readFromDisk(File file, int startLine, Integer lineLimit,
+            CompletableFuture<JsonNode> resultFuture) {
         CompletableFuture.supplyAsync(() -> {
             try {
                 byte[] bytes = Files.readAllBytes(file.toPath());
                 String content = new String(bytes, StandardCharsets.UTF_8);
+                content = selectLines(content, startLine, lineLimit);
                 return MAPPER.createObjectNode().put("content", content);
             } catch (Exception e) {
                 LOG.severe("fs/readTextFile failed: {0}", ExceptionUtils.getMessage(e));
@@ -180,6 +187,39 @@ class AcpRequestRouter {
               resultFuture.completeExceptionally(ex);
               return null;
           });
+    }
+
+    /**
+     * Selects the ACP {@code line}/{@code limit} window from {@code content}.
+     * {@code startLine} is 1-based; {@code limit} is a line count where
+     * {@code null} means "to end of file" and a non-positive value yields an
+     * empty string. A start line past the end of the file also yields an empty
+     * string. The returned slice keeps the newline that terminates the last
+     * selected line, matching the source text.
+     */
+    static String selectLines(String content, int startLine, Integer limit) {
+        if (limit != null && limit <= 0) {
+            return "";
+        }
+        int start = 0;
+        for (int current = 1; current < startLine; current++) {
+            int newline = content.indexOf('\n', start);
+            if (newline < 0) {
+                return "";
+            }
+            start = newline + 1;
+        }
+        int maxLines = limit == null ? Integer.MAX_VALUE : limit;
+        int end = start;
+        for (int read = 0; read < maxLines; read++) {
+            int newline = content.indexOf('\n', end);
+            if (newline < 0) {
+                end = content.length();
+                break;
+            }
+            end = newline + 1;
+        }
+        return content.substring(start, end);
     }
 
     CompletableFuture<JsonNode> handleWriteTextFile(JsonNode params) {
