@@ -19,6 +19,7 @@ import static github.anandb.netbeans.mcp.ProjectPathGuard.outsideProjectError;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileVisitResult;
@@ -529,44 +530,70 @@ public class FileSystemToolProvider {
                         int timeout = args.timeoutSeconds() != null ? args.timeoutSeconds() : 120;
                         ProcessBuilder pb = new ProcessBuilder("bash", "-c", args.command());
                         pb.directory(dir);
-                        pb.redirectErrorStream(true);
+                        // stdout and stderr are drained independently so they can
+                        // be reported separately. BOTH pipes must be drained
+                        // concurrently: a child that fills one pipe's buffer
+                        // blocks until that stream is read, so a sequential
+                        // drain can deadlock. Background threads also let
+                        // waitFor(timeout) actually enforce the deadline.
                         Process proc = pb.start();
-                        StringBuilder output = new StringBuilder();
-                        // Drain stdout on a background thread, then enforce the
-                        // timeout on this thread. Reading the pipe to EOF first
-                        // would block until the process exits, so a silent
-                        // long-running command would never hit the deadline.
-                        RequestProcessor.Task readerTask = RequestProcessor.getDefault().post(() -> {
-                            try (var reader = new BufferedReader(new InputStreamReader(proc.getInputStream()))) {
-                                String line;
-                                while ((line = reader.readLine()) != null) {
-                                    synchronized (output) {
-                                        if (output.length() > 0) output.append("\n");
-                                        output.append(line);
-                                    }
-                                }
-                            } catch (IOException e) {
-                                LOG.fine("Error draining command output: {0}", e.getMessage());
-                            }
-                        });
+                        StringBuilder stdout = new StringBuilder();
+                        StringBuilder stderr = new StringBuilder();
+                        RequestProcessor.Task outTask = RequestProcessor.getDefault()
+                                .post(() -> drain(proc.getInputStream(), stdout));
+                        RequestProcessor.Task errTask = RequestProcessor.getDefault()
+                                .post(() -> drain(proc.getErrorStream(), stderr));
                         boolean finished = proc.waitFor(timeout, TimeUnit.SECONDS);
                         if (!finished) {
-                            // destroyForcibly closes the pipe, unblocking the reader
+                            // destroyForcibly closes both pipes, unblocking the readers
                             proc.destroyForcibly();
-                            readerTask.waitFinished(5000);
+                            outTask.waitFinished(5000);
+                            errTask.waitFinished(5000);
                             return Map.of("status", "error", "message", "Command timed out after " + timeout + "s");
                         }
-                        readerTask.waitFinished(5000);
+                        outTask.waitFinished(5000);
+                        errTask.waitFinished(5000);
                         int exitCode = proc.exitValue();
+                        String out = snapshot(stdout);
+                        String err = snapshot(stderr);
                         Map<String, Object> result = new HashMap<>();
                         result.put("status", "ok");
                         result.put("exitCode", exitCode);
-                        synchronized (output) {
-                            result.put("output", output.toString());
-                        }
+                        result.put("stdout", out);
+                        result.put("stderr", err);
+                        // Merged view kept for callers that only read "output".
+                        result.put("output", merge(out, err));
                         return result;
                     }
                 });
+    }
+
+    /** Drains a process stream into {@code sink} on a background thread. */
+    private static void drain(InputStream stream, StringBuilder sink) {
+        try (var reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                synchronized (sink) {
+                    if (sink.length() > 0) sink.append("\n");
+                    sink.append(line);
+                }
+            }
+        } catch (IOException e) {
+            LOG.fine("Error draining command output: {0}", e.getMessage());
+        }
+    }
+
+    private static String snapshot(StringBuilder sink) {
+        synchronized (sink) {
+            return sink.toString();
+        }
+    }
+
+    /** Merged stdout+stderr view kept for backward compatibility. */
+    private static String merge(String stdout, String stderr) {
+        if (stdout.isEmpty()) return stderr;
+        if (stderr.isEmpty()) return stdout;
+        return stdout + "\n" + stderr;
     }
 
     /** Removes trailing spaces and tabs from a line. */

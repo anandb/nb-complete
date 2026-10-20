@@ -595,6 +595,60 @@ class FileSystemToolProviderTest {
         assertEquals("Command timed out after 1s", result.get("message"));
     }
 
+    @Test
+    void runCommandReturnsStdoutAndStderrSeparately() throws Exception {
+        openProjectAt(tempDir.toFile());
+
+        Map<String, Object> result = runCommand()
+                .execute(new RunCommandInput("echo out; echo err >&2", tempDir.toString(), 30));
+
+        assertEquals("ok", result.get("status"));
+        assertEquals("out", result.get("stdout"));
+        assertEquals("err", result.get("stderr"));
+        assertEquals("out\nerr", result.get("output"), "output keeps the merged view");
+    }
+
+    @Test
+    void runCommandCapturesStderrOnly() throws Exception {
+        openProjectAt(tempDir.toFile());
+
+        Map<String, Object> result = runCommand()
+                .execute(new RunCommandInput("echo oops >&2", tempDir.toString(), 30));
+
+        assertEquals("ok", result.get("status"));
+        assertEquals("", result.get("stdout"));
+        assertEquals("oops", result.get("stderr"));
+        assertEquals("oops", result.get("output"));
+    }
+
+    @Test
+    void runCommandReportsNonZeroExitCodeWithStderr() throws Exception {
+        openProjectAt(tempDir.toFile());
+
+        Map<String, Object> result = runCommand()
+                .execute(new RunCommandInput("echo bad >&2; exit 3", tempDir.toString(), 30));
+
+        assertEquals("ok", result.get("status"));
+        assertEquals(3, result.get("exitCode"));
+        assertEquals("bad", result.get("stderr"));
+    }
+
+    @Test
+    void runCommandDrainsBothPipesConcurrently() throws Exception {
+        // >64KB on each stream: a sequential drain would deadlock once the
+        // child fills the pipe buffer of the stream not currently being read.
+        openProjectAt(tempDir.toFile());
+        String command = "head -c 100000 /dev/zero | tr '\\0' 'o'; "
+                + "head -c 100000 /dev/zero | tr '\\0' 'e' >&2";
+
+        Map<String, Object> result = runCommand()
+                .execute(new RunCommandInput(command, tempDir.toString(), 60));
+
+        assertEquals("ok", result.get("status"));
+        assertEquals(100000, ((String) result.get("stdout")).length());
+        assertEquals(100000, ((String) result.get("stderr")).length());
+    }
+
     // ---- apply_patch --------------------------------------------------------
 
     @SuppressWarnings("unchecked")
