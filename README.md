@@ -24,23 +24,6 @@ Supported coding harnesses: **Oh My Pi, OpenCode, Codex, OpenClaw, Pi, Goose, Cu
 
 **Token and cost statistics** are captured from the ACP traffic itself, not from an external process: the usage updates and per-turn token figures a harness already sends are recorded into an embedded H2 database under the NetBeans user directory (`beanbot/usage-stats.mv.db`), so they survive restarts and are readable without a harness running. The currency button in the toolbar opens the panel, which breaks the figures down by model and by agent; they are approximate for harnesses that report incomplete usage.
 
-### Test Configuration
-
-Due to time constraints, testing is primarily done on this configuration. The plugin
-should work on other versions/operating systems, but your experience may vary.
-
-| Component | Details |
-| --- | --- |
-| **OS** | openSUSE Tumbleweed-Slowroll |
-| **NetBeans** | RELEASE220 |
-| **Java** | JDK 17+ |
-| **Oh My Pi** | 18.1.21 |
-| **Opencode** | 2.0.20 |
-| **Opencode plugins** | `@franzmoca/opencode-lombok`, `true-mem` |
-| **LLMs** | Big Pickle; GPT 5.4-mini, GPT 5.4-nano; GLM 5.1, GLM 5.2; DeepSeek V4 Pro, DeepSeek V4 Flash; Kimi K2.5, Kimi K2.6; Mimo V2.5; Qwen3.5, Qwen3.6; Gemma4 |
-
-Note: Qwen models require `--think=false` if using Ollama, and a `"reasoningEffort": "none"`
-configuration in `opencode.json`
 
 ### Installation from Source
 1. Clone the repository:

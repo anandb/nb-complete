@@ -10,9 +10,12 @@ Right-click a session in the session dropdown to get a quick action menu:
 
 *   **Rename** — give the session a custom name
 *   **Archive / Unarchive** — hide or show the session
+*   **Archive All** — hide every session in the dropdown
+*   **Archive Others** — hide every session except the selected one
 *   **Reload** — re-fetch the session from the server
 
-This mirrors the toolbar buttons for rename, archive, and reload.
+This mirrors the toolbar buttons for rename, archive, and reload. Archive All and
+Archive Others are available from the context menu when there are sessions to archive.
 
 > [[Renaming the session]]
 > [[Archiving Sessions]]
