@@ -179,7 +179,7 @@ The plugin reads the following system properties and environment variables:
 | `beanbot.update.url` | System | Override the update-manifest URL fetched by the update checker (`support/AppLinks`); defaults to `https://anandb.github.io/beanbot.json` — lets a fork or self-hosted deployment serve its own manifest |
 | `beanbot.user.guide.url` | System | Override the user-guide URL opened from the help menu (`support/AppLinks`); defaults to `https://anandb.github.io/beanbot_user_guide.html` |
 | `nb.dark.theme` | UIManager | Detect dark theme for icon resolution (`IconResourceManager`) |
-| `ACP_WIRE_LOG` | Env | Path template for the ACP wire-protocol log (`WireLogger`). The file written is `<template-without-extension>_<YYYYMMDD>-<harness>.log` in the template's directory, so successive days and harnesses do not share one file |
+| `ACP_WIRE_LOG` | Env | Path template for the ACP wire-protocol log (`WireLogger`). The file written is `<template-without-extension>_<YYYYMMDD>-<harness>.log` in the template's directory, so successive days and harnesses do not share one file. Every entry is one line: `<local time, no time zone> <json message>` |
 | `PATH` | Env | Search path for the harness binary; all 12 supported harness names are probed (`BinaryResolver`) |
 
 The color properties are declared in [`colors.json`](src/main/resources/github/anandb/netbeans/ui/colors.json) and cover: background, foreground, selection, accent, sunken background, bubble (user/assistant), code, table, header, thinking, tool, permission, and error colors. Most entries define both light and dark variants; the ones resolved straight from a `UIManager` key or a single fallback (`foreground`, `sunkenBackground`, `codeBackground`, `codeForeground`, `codeSelection`) do not.
