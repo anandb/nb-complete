@@ -1,5 +1,36 @@
 # Release Notes
 
+## v1.26.0 (Changes since v1.25.0)
+
+### Features
+- **Per-harness critical rules overlays**: `critical_rules.md` now holds only universal policy, while harness-specific tool and permission mechanics live in `critical_rules/<harnessId>.md` and are appended from the selected harness id. An unknown or missing harness falls back to the base rules, and a guard test pins every catalog id to an overlay resource.
+- **Archive Others**: the session picker gains an action that hides every session except the one being viewed, leaving the mini assistant and the active session alone. Both archive actions now share one store write — `SessionControl.setHiddenBulk`, `SessionStore.saveSessionMetadataBulk`, one lock acquisition and one JDBC batch transaction — instead of one synchronized call and write per session on the EDT.
+- **Wire log timestamps**: every wire log entry is prefixed with `<yyyy-MM-dd HH:mm:ss.SSS>` in local time, so the ordering and latency of ACP traffic can be read straight from the log.
+
+### Fixes
+- **`run_command` streams**: stdout and stderr are reported separately, with a merged `output` field kept for backward compatibility. Both readers are joined after `destroyForcibly`, so neither can fill and deadlock the wait, and each stream is capped at 1 MB — the prefix of an oversized line is kept, truncation is flagged, and draining continues so the pipe never blocks.
+- **Flat `availableModels`**: model lists deserialize from both the flat array form and the `{availableModels, currentModelId}` form. The flat shape previously aborted `Session` deserialization and made `session/new` fail; flat entries now get their provider prefixed onto the id to match the values the harness accepts.
+- **Unexpected model shapes**: `availableModels` is read only when it is an array; anything else is logged and treated as absent instead of failing the whole session.
+- **Harness overlay path validation**: the overlay resource path is derived from `HarnessCatalog.byId(...).id()`, so a stored value such as `../preamble` can no longer resolve to another bundled resource and append its text to the agent's rules. Overlays are cached per catalog id.
+- **Thinking levels after a model switch**: levels are refreshed for models that declare them, and the combo is cleared when a model declares none, so a stale effort level is no longer re-sent and rejected with `-32602 'effort not found'`.
+- **Session titles**: a title chosen by the LLM appears without a restart — the session list is re-read when the `/title` turn completes.
+- **Redundant session list refreshes**: the duplicate startup refreshes are gone.
+- **`UIUtils` initialization order**: the static block now sits below the fields it uses, fixing an `ExceptionInInitializerError` that broke the stash-diff toolbar button.
+- **Sliding-task gaps**: the file cache builds into a staging map and publishes it, so GoTo File is no longer empty during a rescan; deleted or newly ignored entries are dropped and entries added mid-scan survive.
+
+### Tests
+- **MCP coverage**: filesystem tools, servlet authentication, server config, stash-diff and editor tool providers.
+- **Async assertions**: wall-clock `Thread.sleep` waits replaced with Awaitility in the affected suites.
+
+### Documentation
+- **Architecture**: diagram regenerated from current sources and `DESIGN.md` updated to v1.26.
+- **Hexagonal audit**: the accepted dependency exceptions are documented in `AGENTS.md`.
+- **User guide**: updated for recent features; the session filter tooltip now reads "Show all sessions".
+
+### Housekeeping
+- Version bumped to 1.26.0-SNAPSHOT.
+- Every `RequestProcessor` is named, and burst-prone handlers are coalesced onto the new `support/SlidingTask` (file-cache rebuilds, task-query reloads, pinned-message and model-list preference flushes, update-check loop).
+
 ## v1.25.0 (Changes since v1.24.0)
 
 ### Features
