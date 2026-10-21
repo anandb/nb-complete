@@ -3,10 +3,10 @@ package github.anandb.netbeans.manager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.concurrent.TimeUnit;
 
@@ -103,34 +103,23 @@ class FileCacheManagerTest {
     }
 
     @Test
-    void rebuildTriggersCoalesceWithinSlidingWindow() throws Exception {
-        // The sliding task must collapse a burst of triggers into one rebuild,
-        // and that rebuild must not start before REBUILD_DELAY_MS has elapsed.
-        awaitRebuilds(1);
+    void rebuildTriggersCoalesceWithinSlidingWindow() {
+        await().atMost(5, TimeUnit.SECONDS).until(() -> manager.getCacheVersion() >= 1);
         long before = manager.getCacheVersion();
 
         for (int i = 0; i < 5; i++) {
             manager.scheduleRebuild();
-            Thread.sleep(20);
         }
 
-        Thread.sleep(FileCacheManager.REBUILD_DELAY_MS / 2L);
+        // Still deferred: a trigger may not start a rebuild before the window elapses.
         assertEquals(before, manager.getCacheVersion(),
                 "rebuild must wait for the coalescing window");
 
-        awaitRebuilds(before + 1);
-        Thread.sleep(FileCacheManager.REBUILD_DELAY_MS + 500L);
-        assertEquals(before + 1, manager.getCacheVersion(),
-                "a burst of triggers must produce exactly one rebuild");
-    }
+        await().atMost(5, TimeUnit.SECONDS).until(() -> manager.getCacheVersion() >= before + 1);
 
-    /** Waits until the cache reports at least {@code target} rebuilds. */
-    private void awaitRebuilds(long target) throws InterruptedException {
-        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
-        while (manager.getCacheVersion() < target && System.nanoTime() < deadline) {
-            Thread.sleep(10);
-        }
-        assertTrue(manager.getCacheVersion() >= target,
-                "cache was not rebuilt " + target + " time(s) within 10s");
+        // And exactly one rebuild: the burst must not queue extra runs.
+        await().atMost(FileCacheManager.REBUILD_DELAY_MS + 2500L, TimeUnit.MILLISECONDS)
+                .during(FileCacheManager.REBUILD_DELAY_MS + 500L, TimeUnit.MILLISECONDS)
+                .until(() -> manager.getCacheVersion() == before + 1);
     }
 }

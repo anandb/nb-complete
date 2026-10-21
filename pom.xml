@@ -323,6 +323,14 @@
             <version>5.17.0</version>
             <scope>test</scope>
         </dependency>
+
+        <!-- Awaitility: poll for async conditions instead of sleeping -->
+        <dependency>
+            <groupId>org.awaitility</groupId>
+            <artifactId>awaitility</artifactId>
+            <version>4.2.2</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <dependencyManagement>

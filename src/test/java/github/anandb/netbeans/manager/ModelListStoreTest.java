@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -102,13 +103,18 @@ class ModelListStoreTest {
     }
 
     @Test
-    void burstOfUpdatesFlushesPrefsOnce() throws Exception {
-        // Let a flush scheduled by an earlier test fire before we install our sink.
-        Thread.sleep(ModelListStore.FLUSH_DELAY_MS + 200L);
+    void burstOfUpdatesFlushesPrefsOnce() {
         AtomicInteger flushes = new AtomicInteger();
         Runnable original = ModelListStore.flushSink;
         ModelListStore.flushSink = flushes::incrementAndGet;
         try {
+            // A flush left scheduled by an earlier test may land on the new sink:
+            // wait out that window, then count from a clean slate.
+            await().pollDelay(ModelListStore.FLUSH_DELAY_MS + 100L, TimeUnit.MILLISECONDS)
+                    .atMost(ModelListStore.FLUSH_DELAY_MS + 3000L, TimeUnit.MILLISECONDS)
+                    .until(() -> true);
+            flushes.set(0);
+
             store.updateModels(HARNESS, models("a"));
             store.updateModels(HARNESS, models("a", "b"));
             store.updateModels(HARNESS, models("a", "b", "c"));
@@ -116,15 +122,13 @@ class ModelListStoreTest {
             // Still inside the coalescing window: the disk write must not start.
             assertEquals(0, flushes.get());
 
-            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
-            while (flushes.get() == 0 && System.nanoTime() < deadline) {
-                Thread.sleep(10);
-            }
+            await().atMost(5, TimeUnit.SECONDS).until(() -> flushes.get() >= 1);
             assertEquals(1, flushes.get(), "the burst must flush once");
 
             // Nothing may follow: the burst must not queue extra flushes.
-            Thread.sleep(ModelListStore.FLUSH_DELAY_MS * 3L);
-            assertEquals(1, flushes.get(), "the burst must not queue extra flushes");
+            await().atMost(ModelListStore.FLUSH_DELAY_MS + 2500L, TimeUnit.MILLISECONDS)
+                    .during(ModelListStore.FLUSH_DELAY_MS * 2L, TimeUnit.MILLISECONDS)
+                    .until(() -> flushes.get() == 1);
         } finally {
             ModelListStore.flushSink = original;
         }

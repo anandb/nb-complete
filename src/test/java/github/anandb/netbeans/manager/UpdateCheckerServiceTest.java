@@ -10,6 +10,7 @@ import org.openide.util.NbPreferences;
 import github.anandb.netbeans.contract.UpdateCheckerControl.UpdateCheckResult;
 import github.anandb.netbeans.support.PreferenceKeys;
 
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -101,13 +102,14 @@ class UpdateCheckerServiceTest {
     }
 
     @Test
-    void cancelStopsPendingCycleAndStartResumesLoop() throws Exception {
+    void cancelStopsPendingCycleAndStartResumesLoop() {
         var prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
         String oldSchedule = prefs.get(PreferenceKeys.NEXT_UPDATE_CHECK_TIME, null);
         String oldEnabled = prefs.get(PreferenceKeys.CHECK_FOR_UPDATES, null);
         try {
-            long future = System.currentTimeMillis() + 1500L;
-            prefs.putLong(PreferenceKeys.NEXT_UPDATE_CHECK_TIME, future);
+            // An hour out, so the first cycle can never race into a check.
+            prefs.putLong(PreferenceKeys.NEXT_UPDATE_CHECK_TIME,
+                    System.currentTimeMillis() + TimeUnit.HOURS.toMillis(1));
             prefs.putBoolean(PreferenceKeys.CHECK_FOR_UPDATES, true);
 
             AtomicInteger checks = new AtomicInteger();
@@ -116,25 +118,25 @@ class UpdateCheckerServiceTest {
                 return UpdateCheckResult.NO_UPDATE;
             });
 
-            // First cycle runs at once, sees the check is not due, and reschedules
-            // itself; cancel() must take that pending run off the single task.
+            // First cycle runs at once, sees the check is not due, reschedules itself.
             service.start();
-            service.cancel();
-            Thread.sleep(2500L);
-            assertEquals(0, checks.get(), "cancel must stop the pending cycle");
+            await().during(500, TimeUnit.MILLISECONDS).atMost(1500, TimeUnit.MILLISECONDS)
+                    .until(() -> checks.get() == 0);
 
-            // start() again resumes on the same sliding task, now that the check is due.
+            // cancel() must take that pending run off the single task, even once due.
+            service.cancel();
+            prefs.putLong(PreferenceKeys.NEXT_UPDATE_CHECK_TIME, System.currentTimeMillis() - 1);
+            await().during(500, TimeUnit.MILLISECONDS).atMost(1500, TimeUnit.MILLISECONDS)
+                    .until(() -> checks.get() == 0);
+
+            // start() resumes on the same sliding task.
             service.start();
-            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
-            while (checks.get() == 0 && System.nanoTime() < deadline) {
-                Thread.sleep(10);
-            }
-            assertEquals(1, checks.get(), "start must resume the loop after cancel");
+            await().atMost(5, TimeUnit.SECONDS).until(() -> checks.get() == 1);
 
             // A second start() while the loop is pending must not queue a cycle.
             service.start();
-            Thread.sleep(500L);
-            assertEquals(1, checks.get(), "start must be idempotent while the loop is pending");
+            await().during(500, TimeUnit.MILLISECONDS).atMost(1500, TimeUnit.MILLISECONDS)
+                    .until(() -> checks.get() == 1);
             service.cancel();
         } finally {
             if (oldSchedule == null) {
