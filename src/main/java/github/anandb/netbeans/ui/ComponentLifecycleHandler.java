@@ -54,6 +54,9 @@ public class ComponentLifecycleHandler {
 
     private static final Logger LOG = Logger.from(ComponentLifecycleHandler.class);
 
+    /** Startup/prompt work that must not block the EDT. */
+    private static final RequestProcessor LIFECYCLE_RP = new RequestProcessor("ACP-Lifecycle", 1);
+
     private final ChatThreadPanel chatPanel;
     private final StatusController statusController;
     private final SessionLifecycleHandler sessionLifecycleHandler;
@@ -137,7 +140,7 @@ public class ComponentLifecycleHandler {
             // harness on a background thread and show the harness chooser —
             // always, even when exactly one was found.
             if (!available) {
-                RequestProcessor.getDefault().post(() -> {
+                LIFECYCLE_RP.post(() -> {
                     List<BinaryResolver.FoundBinary> found = BinaryResolver.findAllKnownOnPath();
                     topComponent.showHarnessChooser(found);
                 });
@@ -514,7 +517,7 @@ public class ComponentLifecycleHandler {
         // start, so the user does not need to restart a second time.
         maybeShowGlobalConfigPrompt(promptShown -> {
             Runnable start = () -> {
-                RequestProcessor.getDefault().post(() -> processService.get().ensureStarted());
+                LIFECYCLE_RP.post(() -> processService.get().ensureStarted());
                 // Register the not-found handler only once the start is actually
                 // proceeding (after any config prompt is answered), matching the
                 // restart path below.
@@ -562,7 +565,7 @@ public class ComponentLifecycleHandler {
             afterAnswer.accept(false);
             return;
         }
-        RequestProcessor.getDefault().post(() -> {
+        LIFECYCLE_RP.post(() -> {
             GlobalOpencodeConfig.CheckResult result = GlobalOpencodeConfig.evaluate();
             if (result.state == GlobalOpencodeConfig.State.REAL_CONTENT) {
                 SwingUtilities.invokeLater(() -> afterAnswer.accept(false));
@@ -570,7 +573,7 @@ public class ComponentLifecycleHandler {
             }
             SwingUtilities.invokeLater(() -> chatPanel.addGlobalConfigBubble(
                     result,
-                    () -> RequestProcessor.getDefault().post(() -> {
+                    () -> LIFECYCLE_RP.post(() -> {
                         GlobalOpencodeConfig.writeDefaultConfig();
                         SwingUtilities.invokeLater(() -> afterAnswer.accept(true));
                     }),

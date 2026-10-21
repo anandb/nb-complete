@@ -17,6 +17,7 @@ import javax.swing.SwingUtilities;
 
 import github.anandb.netbeans.support.Logger;
 import org.openide.util.NbBundle;
+import org.openide.util.RequestProcessor;
 
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -30,6 +31,9 @@ import java.awt.event.MouseEvent;
 final class IconPreviewManager {
 
     private static final Logger LOG = Logger.from(IconPreviewManager.class);
+
+    /** Icon decode/scale runs off the EDT. */
+    private static final RequestProcessor ICON_RP = new RequestProcessor("ACP-IconPreview", 1);
 
     private final JLabel previewLabel;
     private final JTextField pathField;
@@ -99,7 +103,7 @@ final class IconPreviewManager {
         // UIUtils.preloadUserIcon — ImageIcon routes through the shared ImageFetcher
         // pool which can freeze the EDT if any fetch is stuck.
         final String requestedPath = path;
-        org.openide.util.RequestProcessor.getDefault().post(() -> {
+        ICON_RP.post(() -> {
             try {
                 BufferedImage img = ImageIO.read(file);
                 if (img == null) {

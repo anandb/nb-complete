@@ -37,6 +37,9 @@ import org.openide.DialogDisplayer;
 final class ConversationExporter {
 
     private static final Logger LOG = Logger.from(ConversationExporter.class);
+
+    /** Export writes run off the EDT on their own processor. */
+    private static final RequestProcessor EXPORT_RP = new RequestProcessor("ACP-Export", 1);
     private static final Pattern INVALID_TITLE_PATTERN =
             Pattern.compile("[^a-zA-Z0-9._-]");
 
@@ -194,7 +197,7 @@ final class ConversationExporter {
                     return;
                 }
             }
-            RequestProcessor.getDefault().post(() -> {
+            EXPORT_RP.post(() -> {
                 try (OutputStreamWriter writer = new OutputStreamWriter(
                         new FileOutputStream(file), StandardCharsets.UTF_8)) {
                     writer.write(markdown);

@@ -433,6 +433,10 @@ public class SessionManager implements SessionQuery, SessionControl {
 
     private static final Logger LOG = Logger.from(SessionManager.class);
 
+    /** Stop-recovery timer; a named processor keeps it off the shared default pool. */
+    private static final RequestProcessor STOP_RECOVERY_RP =
+            new RequestProcessor("ACP-StopRecovery", 1);
+
     private static final ObjectMapper MAPPER = MapperSupplier.get();
     private final List<SessionListener> listeners = new CopyOnWriteArrayList<>();
     private final SessionStateMachine stateMachine = new SessionStateMachine();
@@ -1325,7 +1329,7 @@ public class SessionManager implements SessionQuery, SessionControl {
     }
 
     private void scheduleStopRecovery() {
-        RequestProcessor.getDefault().post(() -> {
+        STOP_RECOVERY_RP.post(() -> {
             if (stateMachine.transitionToIf(SessionState.STOPPING, SessionState.STREAMING)) {
                 LOG.info("Safety timeout fired: transitioning STOPPING -> STREAMING");
             }

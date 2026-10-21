@@ -472,7 +472,7 @@ public class ConfigPanelController {
                     // updateModels mirrors into NbPreferences (possible
                     // backing-store read on a first cache miss plus JSON
                     // serialize + prefs.put) — keep that off the EDT.
-                    RequestProcessor.getDefault().post(() -> cacheModelList(mirrorSource));
+                    PREFS_RP.post(() -> cacheModelList(mirrorSource));
                 }
 
                 // Second pass: populate all combos with variants already resolved.

@@ -24,13 +24,16 @@ import org.openide.windows.TopComponent;
 public class ACPStartup implements Runnable {
     private static final Logger LOG = Logger.from(ACPStartup.class);
 
+    /** Startup work runs off the EDT, serialized on its own processor. */
+    private static final RequestProcessor STARTUP_RP = new RequestProcessor("ACP-Startup", 1);
+
     @Override
     public void run() {
         // @OnStart Runnables execute on the EDT during install/startup. Defer all
         // heavy work (preference migration file I/O, OpenProjects access) to a
         // background thread so plugin installation and IDE startup never block on
         // the EDT (which manifests as a hang/deadlock while installing the plugin).
-        RequestProcessor.getDefault().post(() -> {
+        STARTUP_RP.post(() -> {
             // Run before any plugin component reads/writes NbPreferences so data
             // left behind in a previous NetBeans user dir is copied over (the built-in
             // IDE migration skips plugin files because the plugin is imported later).

@@ -39,6 +39,7 @@ import github.anandb.netbeans.support.PreferenceKeys;
 
 import org.openide.util.ImageUtilities;
 import org.openide.util.NbPreferences;
+import org.openide.util.RequestProcessor;
 
 // DSL-LEAF: factories are the swingtree replacement seam — createToolbarButton /
 // createTextButton / createPanel / styleToolbarButton become UI.button(...) /
@@ -109,6 +110,9 @@ public class UIUtils {
     }
 
     private static final Logger LOG = Logger.from(UIUtils.class);
+
+    /** Icon preloading runs off the EDT. */
+    private static final RequestProcessor ICON_RP = new RequestProcessor("ACP-UIIcons", 1);
 
     private UIUtils() {}
 
@@ -324,7 +328,7 @@ public class UIUtils {
     static void preloadUserIcon(String path, int size) {
         if (path == null || path.isEmpty()) return;
         if (!userIconPreloading.compareAndSet(false, true)) return;
-        org.openide.util.RequestProcessor.getDefault().post(() -> {
+        ICON_RP.post(() -> {
             try {
                 File file = new File(path);
                 if (!file.exists()) return;

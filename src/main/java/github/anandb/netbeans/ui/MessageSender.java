@@ -48,6 +48,9 @@ public class MessageSender {
 
     private static final Logger LOG = Logger.from(MessageSender.class);
 
+    /** Auto-backup runs off the EDT, serialized on its own processor. */
+    private static final RequestProcessor BACKUP_RP = new RequestProcessor("ACP-AutoBackup", 1);
+
     private static volatile boolean localEchoEnabled = true;
     private static final PreferenceChangeListener PREF_LISTENER = evt -> {
         if (PreferenceKeys.ECHO_USER_INPUT.equals(evt.getKey())) {
@@ -293,7 +296,7 @@ public class MessageSender {
         }
         if (PluginSettings.isAutoBackupChanges()) {
             final String sessionDir = sessionService.get().getCurrentSessionDirectory();
-            RequestProcessor.getDefault().post(() -> {
+            BACKUP_RP.post(() -> {
                 try {
                     VcsUtils.VcsInfo vcsInfo = VcsUtils.findVcsInfo(sessionDir);
                     if (vcsInfo != null && VcsUtils.hasUncommittedChanges(vcsInfo)) {

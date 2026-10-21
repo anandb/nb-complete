@@ -49,8 +49,8 @@ public class FileSystemToolProvider {
 
     /**
      * Dedicated processor for draining command pipes. One task per stream, so it
-     * must not share {@code RequestProcessor.getDefault()}, which the NetBeans
-     * javadoc reserves for sporadic work.
+     * must not share the shared default processor, which the NetBeans javadoc
+     * reserves for sporadic work.
      */
     private static final RequestProcessor CMD_IO_RP =
             new RequestProcessor("run-command-io", 4, true);
