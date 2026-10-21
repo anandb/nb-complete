@@ -114,8 +114,10 @@ public class StrategyRegistry implements UpdateDispatcher {
                 }
             }
 
-            case "session_info_update" ->
-                handler.refreshSessions();
+            case "session_info_update" -> {
+                // Session data is merged into SessionManager's cache before strategy
+                // dispatch. Do not refresh the list for retry metadata updates.
+            }
 
             case "current_mode_update" -> {
                 // Mode changes are reflected through config_option_update

@@ -58,6 +58,7 @@ import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.MapperSupplier;
 import github.anandb.netbeans.support.ModelIdNormalizer;
 import github.anandb.netbeans.support.PreferenceKeys;
+import github.anandb.netbeans.support.SlidingTask;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 
 import static org.apache.commons.lang3.StringUtils.isBlank;
@@ -436,6 +437,9 @@ public class SessionManager implements SessionQuery, SessionControl {
     /** Stop-recovery timer; a named processor keeps it off the shared default pool. */
     private static final RequestProcessor STOP_RECOVERY_RP =
             new RequestProcessor("ACP-StopRecovery", 1);
+    private static final RequestProcessor SESSION_REFRESH_RP =
+            new RequestProcessor("ACP-SessionRefresh", 1);
+    private static final int PROJECT_REFRESH_DELAY_MS = 250;
 
     private static final ObjectMapper MAPPER = MapperSupplier.get();
     private final List<SessionListener> listeners = new CopyOnWriteArrayList<>();
@@ -445,6 +449,8 @@ public class SessionManager implements SessionQuery, SessionControl {
     private final SessionCacheManager cacheManager = new SessionCacheManager();
     private final Consumer<SessionUpdate> sseListener = this::handleSseUpdate;
     private final SessionRpcClient rpcClient;
+    private final SlidingTask projectRefreshTask = new SlidingTask(
+            SESSION_REFRESH_RP, PROJECT_REFRESH_DELAY_MS, this::refreshSessions);
     private volatile BiFunction<String, List<SessionConfigOption>, CompletableFuture<Void>> beforePreambleHandler;
     /** True if a manual reconnect was initiated by the user. */
     private volatile boolean manualReconnectPending;
@@ -1144,7 +1150,7 @@ public class SessionManager implements SessionQuery, SessionControl {
 
     @SuppressWarnings("unused") // parameter required by the Consumer<String> listener
     private void handleProjectOpened(String openedDir) {
-        refreshSessions();
+        projectRefreshTask.schedule();
     }
 
     private void handleProjectClosed(String closedDir) {
@@ -1155,7 +1161,7 @@ public class SessionManager implements SessionQuery, SessionControl {
         }
         // Refresh the session list — it only shows sessions for open projects,
         // so sessions for the closed project will disappear from the dropdown.
-        refreshSessions();
+        projectRefreshTask.schedule();
         // Reset lastProjectDir when no more open projects remain, preventing
         // stale path matches from a prior session that was never set via a project.
         ProjectQuery projectQuery = Lookup.getDefault().lookup(ProjectQuery.class);
