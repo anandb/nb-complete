@@ -49,6 +49,12 @@ public class FileCacheManager implements FileCacheQuery {
     private static final Logger LOG = Logger.from(FileCacheManager.class);
     private static final RequestProcessor RP = new RequestProcessor("GoToFile-CacheBuilder", 1);
 
+    /** Coalescing window for rebuild triggers: a burst inside it rebuilds once. */
+    static final int REBUILD_DELAY_MS = 1000;
+
+    /** Sliding task: triggers reschedule this one task rather than posting new ones. */
+    private final RequestProcessor.Task REBUILD_TASK = RP.create(this::rebuild);
+
     /** Files keyed by absolute path for O(1) dedup across overlapping projects. */
     private final ConcurrentHashMap<String, FileCacheQuery.CachedFile> files = new ConcurrentHashMap<>();
     private volatile boolean ready;
@@ -89,11 +95,21 @@ public class FileCacheManager implements FileCacheQuery {
         // Listen for project open/close to rebuild affected roots
         OpenProjects.getDefault().addPropertyChangeListener(evt -> {
             if (OpenProjects.PROPERTY_OPEN_PROJECTS.equals(evt.getPropertyName())) {
-                RP.post(this::rebuild);
+                scheduleRebuild();
             }
         });
+
         // Initial build
-        RP.post(this::rebuild);
+        REBUILD_TASK.schedule(0);
+    }
+
+    /**
+     * Reschedules the single rebuild task. Callers never post their own task, so a
+     * burst of triggers (e.g. several projects opening at once) collapses into one
+     * rebuild {@link #REBUILD_DELAY_MS} ms after the last trigger.
+     */
+    void scheduleRebuild() {
+        REBUILD_TASK.schedule(REBUILD_DELAY_MS);
     }
 
     // --- FileCacheQuery ---

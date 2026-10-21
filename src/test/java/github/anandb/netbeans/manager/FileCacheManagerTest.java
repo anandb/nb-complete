@@ -3,8 +3,12 @@ package github.anandb.netbeans.manager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.concurrent.TimeUnit;
 
 class FileCacheManagerTest {
 
@@ -96,5 +100,37 @@ class FileCacheManagerTest {
         FileCacheManager m2 = FileCacheManager.getDefault();
         assertNotNull(m1);
         assertNotNull(m2);
+    }
+
+    @Test
+    void rebuildTriggersCoalesceWithinSlidingWindow() throws Exception {
+        // The sliding task must collapse a burst of triggers into one rebuild,
+        // and that rebuild must not start before REBUILD_DELAY_MS has elapsed.
+        awaitRebuilds(1);
+        long before = manager.getCacheVersion();
+
+        for (int i = 0; i < 5; i++) {
+            manager.scheduleRebuild();
+            Thread.sleep(20);
+        }
+
+        Thread.sleep(FileCacheManager.REBUILD_DELAY_MS / 2L);
+        assertEquals(before, manager.getCacheVersion(),
+                "rebuild must wait for the coalescing window");
+
+        awaitRebuilds(before + 1);
+        Thread.sleep(FileCacheManager.REBUILD_DELAY_MS + 500L);
+        assertEquals(before + 1, manager.getCacheVersion(),
+                "a burst of triggers must produce exactly one rebuild");
+    }
+
+    /** Waits until the cache reports at least {@code target} rebuilds. */
+    private void awaitRebuilds(long target) throws InterruptedException {
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+        while (manager.getCacheVersion() < target && System.nanoTime() < deadline) {
+            Thread.sleep(10);
+        }
+        assertTrue(manager.getCacheVersion() >= target,
+                "cache was not rebuilt " + target + " time(s) within 10s");
     }
 }
