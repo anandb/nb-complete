@@ -51,12 +51,45 @@ public final class TaskQueryProvider implements QueryProvider<TaskQuery, TaskIss
     private final Map<QueryKey, Set<String>> tagFilters = new ConcurrentHashMap<>();
     private final Set<QueryKey> registeredQueries = new HashSet<>();
 
+    /** Coalescing window for refresh triggers: a burst reloads the repo once. */
+    static final int REFRESH_DELAY_MS = 250;
+
+    /** One sliding reload task per (repo, kind); triggers reschedule, never re-post. */
+    private final Map<QueryKey, RefreshSlot> refreshes = new ConcurrentHashMap<>();
+
     private TaskRepositoryControl store() {
         return Lookup.getDefault().lookup(TaskRepositoryControl.class);
     }
 
     /** Stable identity of a fixed query: its repo id and status kind. */
     private record QueryKey(String repoId, TaskQuery.Kind kind) {
+    }
+
+    /**
+     * Sliding reload for one fixed query. The framework calls {@link #refresh}
+     * once per store/metadata change, and each call used to queue its own full
+     * disk reload; rescheduling this task instead collapses a burst into one.
+     */
+    private final class RefreshSlot implements Runnable {
+        private final QueryKey key;
+        private final RequestProcessor.Task task = RP.create(this);
+
+        RefreshSlot(QueryKey key) {
+            this.key = key;
+        }
+
+        void schedule() {
+            task.schedule(REFRESH_DELAY_MS);
+        }
+
+        @Override
+        public void run() {
+            TaskRepositoryControl s = store();
+            if (s != null) {
+                s.reload(key.repoId());
+            }
+            push(key);
+        }
     }
 
     private QueryKey keyOf(TaskQuery q) {
@@ -155,13 +188,9 @@ public final class TaskQueryProvider implements QueryProvider<TaskQuery, TaskIss
         // tasks file are picked up, then publish the results. The RELOADED event fired by
         // reload() also re-pushes via the (repo, kind)-scoped store listener;
         // both paths read the same filter map, so they cannot diverge.
-        RP.post(() -> {
-            TaskRepositoryControl s = store();
-            if (s != null) {
-                s.reload(key.repoId());
-            }
-            push(key);
-        });
+        // Rescheduling one task per key coalesces repeated framework calls into
+        // a single reload instead of one scan per event.
+        refreshes.computeIfAbsent(key, RefreshSlot::new).schedule();
     }
 
     /**
