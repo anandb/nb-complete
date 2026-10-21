@@ -29,7 +29,7 @@
 - **User guide**: updated for recent features; the session filter tooltip now reads "Show all sessions".
 
 ### Housekeeping
-- Version bumped to 1.26.0-SNAPSHOT.
+- Version bumped to 1.26.0.
 - Every `RequestProcessor` is named, and burst-prone handlers are coalesced onto the new `support/SlidingTask` (file-cache rebuilds, task-query reloads, pinned-message and model-list preference flushes, update-check loop).
 
 ## v1.25.0 (Changes since v1.24.0)
