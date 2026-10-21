@@ -1,5 +1,7 @@
 package github.anandb.netbeans.support;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.prefs.PreferenceChangeEvent;
 import java.util.prefs.PreferenceChangeListener;
 import java.util.prefs.Preferences;
@@ -71,6 +73,9 @@ public final class PluginSettings {
 
     private static final PreferenceChangeListener listener = PluginSettings::onPreferenceChanged;
 
+    /** Overlay text per catalog harness id; each resource is read from the classpath once. */
+    private static final Map<String, String> HARNESS_OVERLAYS = new ConcurrentHashMap<>();
+
     static {
         DEFAULT_PREAMBLE = nullToEmpty(AgentUtils.readResource("preamble.md"));
         DEFAULT_CRITICAL_RULES = nullToEmpty(AgentUtils.readResource("critical_rules.md"));
@@ -140,18 +145,20 @@ public final class PluginSettings {
     }
 
     /**
-     * Overlay resource for the selected harness, or "" when the harness is
-     * unknown or has no {@code critical_rules/<id>.md} resource. The id is the
-     * catalog id stored in {@link PreferenceKeys#ACP_HARNESS_ID} (e.g. "claude").
+     * Overlay of the selected harness, or "" when the harness is unknown or has
+     * no {@code critical_rules/<id>.md} resource. The preference is read live so
+     * a harness switch applies immediately; only the classpath read is cached,
+     * since that is the expensive part.
      */
     private static String harnessRulesOverlay() {
-        String harnessId = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
-                .get(PreferenceKeys.ACP_HARNESS_ID, null);
-        if (harnessId == null || harnessId.isBlank()
-                || HarnessCatalog.UNKNOWN.id().equals(harnessId)) {
+        HarnessCatalog.Harness harness = HarnessCatalog.byId(
+                NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                        .get(PreferenceKeys.ACP_HARNESS_ID, null));
+        if (harness == HarnessCatalog.UNKNOWN) {
             return "";
         }
-        return nullToEmpty(AgentUtils.readResource("critical_rules/" + harnessId + ".md"));
+        return HARNESS_OVERLAYS.computeIfAbsent(harness.id(),
+                id -> nullToEmpty(AgentUtils.readResource("critical_rules/" + id + ".md")));
     }
 
     private static String nullToEmpty(String s) {

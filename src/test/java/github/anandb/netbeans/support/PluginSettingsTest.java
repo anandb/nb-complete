@@ -1,5 +1,7 @@
 package github.anandb.netbeans.support;
 
+import java.util.prefs.Preferences;
+
 import org.junit.jupiter.api.Test;
 import org.openide.util.NbPreferences;
 
@@ -18,7 +20,7 @@ class PluginSettingsTest {
 
     @Test
     void testMiniAssistantToggleRoundTrip() {
-        java.util.prefs.Preferences prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
+        Preferences prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
         PluginSettings.setMiniAssistantEnabled(false);
         assertFalse(prefs.getBoolean(PreferenceKeys.MINI_ASSISTANT_ENABLED, true));
         PluginSettings.setMiniAssistantEnabled(true);
@@ -29,7 +31,7 @@ class PluginSettingsTest {
     void testPreambleToggleRoundTrip() {
         // Assert the persisted values only: the cached accessor is updated
         // asynchronously by the PreferenceChangeListener and can briefly lag.
-        java.util.prefs.Preferences prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
+        Preferences prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
         PluginSettings.setPreambleEnabled(false);
         assertFalse(prefs.getBoolean(PreferenceKeys.PREAMBLE_ENABLED, true));
         PluginSettings.setPreambleEnabled(true);
@@ -38,7 +40,7 @@ class PluginSettingsTest {
 
     @Test
     void testHarnessOverlayAppendedForKnownHarness() {
-        java.util.prefs.Preferences prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
+        Preferences prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
         String previous = prefs.get(PreferenceKeys.ACP_HARNESS_ID, null);
         try {
             // A harness with an overlay gets the universal rules plus its mechanics.
@@ -55,6 +57,29 @@ class PluginSettingsTest {
                     "harnesses without an overlay must not see another harness's mechanics");
             prefs.put(PreferenceKeys.ACP_HARNESS_ID, "unknown");
             assertFalse(PluginSettings.getCriticalRules().contains("sub-agent"));
+        } finally {
+            if (previous == null) {
+                prefs.remove(PreferenceKeys.ACP_HARNESS_ID);
+            } else {
+                prefs.put(PreferenceKeys.ACP_HARNESS_ID, previous);
+            }
+        }
+    }
+
+    @Test
+    void harnessIdCannotSteerTheOverlayResourcePath() {
+        Preferences prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
+        String previous = prefs.get(PreferenceKeys.ACP_HARNESS_ID, null);
+        try {
+            // A value that escapes critical_rules/ must be rejected outright, not
+            // resolved against some other bundled resource ("../preamble" reaches
+            // support/preamble.md when the id is used as a raw path segment).
+            prefs.put(PreferenceKeys.ACP_HARNESS_ID, "../preamble");
+            String escaped = PluginSettings.getCriticalRules();
+
+            prefs.put(PreferenceKeys.ACP_HARNESS_ID, "unknown");
+            assertEquals(PluginSettings.getCriticalRules(), escaped,
+                    "a non-catalog harness id must yield exactly the base rules");
         } finally {
             if (previous == null) {
                 prefs.remove(PreferenceKeys.ACP_HARNESS_ID);
