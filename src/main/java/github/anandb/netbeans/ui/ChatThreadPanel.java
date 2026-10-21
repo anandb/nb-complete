@@ -1201,6 +1201,11 @@ public class ChatThreadPanel extends JPanel {
 
     /** Drop stored pins whose message IDs were not seen in this session load/render. */
     private void retainActivePins(String sid) {
+        if (sid == null) {
+            // setMessages() renders before a session exists; ConcurrentHashMap
+            // rejects a null key, and there are no pins to retain anyway.
+            return;
+        }
         Set<String> seen = seenMessageIdsBySession.remove(sid);
         if (seen != null && !seen.isEmpty()) {
             PinnedMessageControl pinStore = Lookup.getDefault().lookup(PinnedMessageControl.class);

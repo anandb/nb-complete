@@ -106,14 +106,21 @@ class TxtTaskRepositoryTest {
         });
         assertTrue(started.await(5, TimeUnit.SECONDS), "I/O processor did not start");
 
-        repo.registerRepository("r1", tempDir.resolve("tasks.txt").toString(), "Test");
-        TaskInput input = new TaskInput("open", "B", "Keep me", "", "", "", 0, 0);
-        TaskRecord added = repo.add("r1", input);
-        assertNotNull(added);
-
-        release.countDown();
-        RequestProcessor.Task sentinel = io.post(() -> { });
-        sentinel.waitFinished(5000);
+        TaskRecord added;
+        try {
+            repo.registerRepository("r1", tempDir.resolve("tasks.txt").toString(), "Test");
+            TaskInput input = new TaskInput("open", "B", "Keep me", "", "", "", 0, 0);
+            added = repo.add("r1", input);
+            assertNotNull(added);
+        } finally {
+            // Always release the parked task and drain the queue: a failed
+            // assertion must not leave an I/O thread running past the test,
+            // which makes TempDir cleanup fail and surfaces as a JUnit
+            // "failed to close extension context" error.
+            release.countDown();
+            RequestProcessor.Task sentinel = io.post(() -> { });
+            sentinel.waitFinished(5000);
+        }
 
         assertEquals(List.of(added), repo.list("r1"));
         assertTrue(repo.update("r1", added.withDetails("closed", "C", "Kept",
