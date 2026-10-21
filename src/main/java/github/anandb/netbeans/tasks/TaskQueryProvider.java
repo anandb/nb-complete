@@ -16,6 +16,7 @@ import org.openide.util.RequestProcessor;
 import github.anandb.netbeans.contract.TaskRepositoryControl;
 import github.anandb.netbeans.model.TaskRecord;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.SlidingTask;
 import github.anandb.netbeans.tasks.TasksModel.TaskQuery;
 import org.openide.util.Lookup;
 
@@ -75,22 +76,22 @@ public final class TaskQueryProvider implements QueryProvider<TaskQuery, TaskIss
      */
     private final class RefreshSlot implements Runnable {
         private final QueryKey key;
-        private final RequestProcessor.Task reloadTask;
-        private final RequestProcessor.Task pushTask;
+        private final SlidingTask reloadTask;
+        private final SlidingTask pushTask;
 
         RefreshSlot(QueryKey key) {
             this.key = key;
-            this.reloadTask = RP.create(this);
-            this.pushTask = RP.create(() -> push(key));
+            this.reloadTask = new SlidingTask(RP, REFRESH_DELAY_MS, this);
+            this.pushTask = new SlidingTask(RP, PUSH_DELAY_MS, () -> push(key));
         }
 
         void schedule() {
-            reloadTask.schedule(REFRESH_DELAY_MS);
+            reloadTask.schedule();
         }
 
         /** Coalesced republish for store events, which need no disk reload. */
         void schedulePush() {
-            pushTask.schedule(PUSH_DELAY_MS);
+            pushTask.schedule();
         }
 
         void cancel() {

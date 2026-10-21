@@ -344,6 +344,26 @@ without it the load replays against a session still holding in-flight work.
 - Invalid patterns (bad character class) are skipped per line and must never abort the scan. Containment uses a
   separator boundary, so a sibling root sharing a string prefix is outside the project.
 
+### Project Events Are Coalesced
+
+`OpenProjects` fires one property-change event per project on startup and on project-group
+switches, so any listener that fans out or rescans must debounce. All three sites go through
+`support/SlidingTask` (a named `RequestProcessor.Task` whose `schedule()` restarts the window):
+
+- `manager/FileCacheManager` — `REBUILD_TASK` (`REBUILD_DELAY_MS` = 1000).
+- `project/ACPProjectManager` — `syncTask` (`SYNC_DELAY_MS` = 250). `start()` still calls
+  `syncActiveProject()` directly so startup readers see the project list immediately.
+- `ui/platform/DefaultPlatformBridge.ProjectContextImpl` — `notifyTask` (`CHANGE_DELAY_MS` = 250);
+  the fan-out still marshals to the EDT via one `invokeLater` per burst.
+
+Do NOT reintroduce a bare `RP.post(...)` or `SwingUtilities.invokeLater(...)` per event in these
+listeners — that queues one full run per event and is what issue #5 reported.
+
+The same helper carries the other pre-existing sliding tasks: `ModelListStore` and
+`PinnedMessageStore` prefs flushes, `FileCacheManager` rebuilds, and `TaskQueryProvider`'s
+per-query reload/push slots. `UpdateCheckerService` is deliberately NOT one — it schedules a
+variable-delay cycle and queries `isFinished()`, which `SlidingTask` does not model.
+
 ### Connection & Lifecycle
 - `AcpProtocolClient.setConnectionErrorHandler()` is a noop. Disconnection handles
   IOExceptions silently; pending futures receive a generic client closed exception.

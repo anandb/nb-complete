@@ -32,6 +32,7 @@ import org.openide.util.lookup.ServiceProvider;
 
 import github.anandb.netbeans.contract.FileCacheQuery;
 import github.anandb.netbeans.contract.VcsIgnoreStrategy;
+import github.anandb.netbeans.support.SlidingTask;
 
 import org.netbeans.api.project.SourceGroup;
 import org.openide.util.Lookup;
@@ -54,7 +55,7 @@ public class FileCacheManager implements FileCacheQuery {
     static final int REBUILD_DELAY_MS = 1000;
 
     /** Sliding task: triggers reschedule this one task rather than posting new ones. */
-    private final RequestProcessor.Task REBUILD_TASK = RP.create(this::rebuild);
+    private final SlidingTask rebuildTask = new SlidingTask(RP, REBUILD_DELAY_MS, this::rebuild);
 
     /** Files keyed by absolute path for O(1) dedup across overlapping projects. */
     private final ConcurrentHashMap<String, FileCacheQuery.CachedFile> files = new ConcurrentHashMap<>();
@@ -104,7 +105,7 @@ public class FileCacheManager implements FileCacheQuery {
         OpenProjects.getDefault().addPropertyChangeListener(openProjectsListener);
 
         // Initial build
-        REBUILD_TASK.schedule(0);
+        rebuildTask.scheduleNow();
     }
 
     /**
@@ -113,13 +114,13 @@ public class FileCacheManager implements FileCacheQuery {
      * rebuild {@link #REBUILD_DELAY_MS} ms after the last trigger.
      */
     void scheduleRebuild() {
-        REBUILD_TASK.schedule(REBUILD_DELAY_MS);
+        rebuildTask.schedule();
     }
 
     @Override
     public void dispose() {
         OpenProjects.getDefault().removePropertyChangeListener(openProjectsListener);
-        REBUILD_TASK.cancel();
+        rebuildTask.cancel();
         disposeRootListeners();
         files.clear();
     }

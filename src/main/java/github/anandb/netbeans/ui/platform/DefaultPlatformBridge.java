@@ -14,6 +14,7 @@ import org.netbeans.api.project.ui.OpenProjects;
 import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
 import org.openide.util.NbPreferences;
+import org.openide.util.RequestProcessor;
 import org.openide.util.lookup.ServiceProvider;
 
 import github.anandb.netbeans.contract.ProcessControl;
@@ -22,6 +23,7 @@ import github.anandb.netbeans.contract.SessionControl;
 import github.anandb.netbeans.project.ACPProjectManager;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.PreferenceKeys;
+import github.anandb.netbeans.support.SlidingTask;
 
 /**
  * Default {@link PlatformBridge} — wraps the existing NetBeans APIs (Lookup,
@@ -110,22 +112,33 @@ public final class DefaultPlatformBridge implements PlatformBridge, ProjectQuery
     }
 
     private static final class ProjectContextImpl implements ProjectContext {
+        /** Coalescing window: a burst of project events notifies listeners once. */
+        static final int CHANGE_DELAY_MS = 250;
+
+        private static final RequestProcessor RP = new RequestProcessor("ACP-ProjectContext", 1);
+
         private final List<Runnable> changeListeners = new CopyOnWriteArrayList<>();
-        private volatile boolean listening;
+        private final SlidingTask notifyTask = new SlidingTask(RP, CHANGE_DELAY_MS, this::fireChange);
 
         ProjectContextImpl() {
             // Register a PropertyChangeListener on OpenProjects to detect
             // project open/close events. We still read from the ACPProjectManager
             // cache — this is only for notification, not data access.
+            // The listener fires once per project on startup and on group
+            // switches, so a sliding task collapses the burst into one notify.
             OpenProjects.getDefault().addPropertyChangeListener((PropertyChangeEvent evt) -> {
-                if (!OpenProjects.PROPERTY_OPEN_PROJECTS.equals(evt.getPropertyName())) {
-                    return;
+                if (OpenProjects.PROPERTY_OPEN_PROJECTS.equals(evt.getPropertyName())) {
+                    notifyTask.schedule();
                 }
-                SwingUtilities.invokeLater(() -> {
-                    for (Runnable r : changeListeners) {
-                        r.run();
-                    }
-                });
+            });
+        }
+
+        /** Runs the fan-out on the EDT — one event per burst, not one per project. */
+        private void fireChange() {
+            SwingUtilities.invokeLater(() -> {
+                for (Runnable r : changeListeners) {
+                    r.run();
+                }
             });
         }
 

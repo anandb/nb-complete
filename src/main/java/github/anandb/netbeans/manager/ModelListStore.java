@@ -9,6 +9,7 @@ import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.MapperSupplier;
 import github.anandb.netbeans.support.MessageIdGenerator;
 import github.anandb.netbeans.support.PreferenceKeys;
+import github.anandb.netbeans.support.SlidingTask;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -48,8 +49,8 @@ public final class ModelListStore implements ModelListControl {
     static volatile Runnable flushSink = ModelListStore::flushPrefs;
 
     /** Sliding task: the writes already happened, this only pushes them to disk. */
-    private static final RequestProcessor.Task FLUSH_TASK =
-            FLUSH_RP.create(() -> flushSink.run());
+    private static final SlidingTask FLUSH_TASK =
+            new SlidingTask(FLUSH_RP, FLUSH_DELAY_MS, () -> flushSink.run());
     private static final Logger LOG = Logger.from(ModelListStore.class);
 
     /** Hot-path cache: harnessId → model list (mirrors prefs). */
@@ -95,7 +96,7 @@ public final class ModelListStore implements ModelListControl {
                     harnessId, ExceptionUtils.getMessage(ex));
             return;
         }
-        FLUSH_TASK.schedule(FLUSH_DELAY_MS);
+        FLUSH_TASK.schedule();
     }
 
     /** Flushes the module prefs node; rescheduled, never posted, so bursts coalesce. */

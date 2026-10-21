@@ -18,6 +18,7 @@ import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.MapperSupplier;
 import github.anandb.netbeans.support.MessageIdGenerator;
 import github.anandb.netbeans.support.PreferenceKeys;
+import github.anandb.netbeans.support.SlidingTask;
 import org.openide.util.NbPreferences;
 import org.openide.util.RequestProcessor;
 import org.openide.util.lookup.ServiceProvider;
@@ -49,8 +50,8 @@ public final class PinnedMessageStore implements PinnedMessageControl {
     static volatile Runnable flushSink = PinnedMessageStore::flushPrefs;
 
     /** Sliding task: the writes already happened, this only pushes them to disk. */
-    private static final RequestProcessor.Task FLUSH_TASK =
-            FLUSH_RP.create(() -> flushSink.run());
+    private static final SlidingTask FLUSH_TASK =
+            new SlidingTask(FLUSH_RP, FLUSH_DELAY_MS, () -> flushSink.run());
 
     /** Logger. */
     private static final Logger LOG = Logger.from(PinnedMessageStore.class);
@@ -146,7 +147,7 @@ public final class PinnedMessageStore implements PinnedMessageControl {
                 return;
             }
         }
-        FLUSH_TASK.schedule(FLUSH_DELAY_MS);
+        FLUSH_TASK.schedule();
     }
 
     /** Flushes the module prefs node; rescheduled, never posted, so bursts coalesce. */

@@ -9,14 +9,24 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.SlidingTask;
 import org.netbeans.api.project.Project;
 import org.netbeans.api.project.ui.OpenProjects;
 import org.openide.util.Lookup;
+import org.openide.util.RequestProcessor;
 import org.openide.util.lookup.ServiceProvider;
 
 @ServiceProvider(service = ACPProjectManager.class)
 public class ACPProjectManager implements PropertyChangeListener {
     private static final Logger LOG = Logger.from(ACPProjectManager.class);
+
+    /** Coalescing window: a burst of project events syncs the cache once. */
+    static final int SYNC_DELAY_MS = 250;
+
+    private static final RequestProcessor RP = new RequestProcessor("ACP-ProjectSync", 1);
+
+    /** Sliding task: every event reschedules it, so a burst recomputes once. */
+    private final SlidingTask syncTask = new SlidingTask(RP, SYNC_DELAY_MS, this::syncActiveProject);
 
     private final AtomicReference<Project[]> currentProjects = new AtomicReference<>(new Project[0]);
     private volatile Consumer<String> projectCloseListener;
@@ -51,6 +61,8 @@ public class ACPProjectManager implements PropertyChangeListener {
     public void start() {
         OpenProjects.getDefault().addPropertyChangeListener(this);
         LOG.fine("ACPProjectManager started, tracking projects.");
+        // Immediate first sync: startup readers must see the current list without
+        // waiting for the coalescing window.
         syncActiveProject();
     }
 
@@ -59,7 +71,9 @@ public class ACPProjectManager implements PropertyChangeListener {
         String prop = evt.getPropertyName();
         if (OpenProjects.PROPERTY_MAIN_PROJECT.equals(prop) ||
             OpenProjects.PROPERTY_OPEN_PROJECTS.equals(prop)) {
-            syncActiveProject();
+            // OpenProjects fires once per project during startup / group switches;
+            // the last trigger recomputes the diff, so earlier ones are redundant.
+            syncTask.schedule();
         }
     }
 
