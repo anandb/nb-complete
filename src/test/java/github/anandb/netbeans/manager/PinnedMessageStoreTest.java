@@ -7,7 +7,10 @@ import org.junit.jupiter.api.Test;
 import org.openide.util.NbPreferences;
 
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -162,5 +165,34 @@ class PinnedMessageStoreTest {
                 .get("pinnedMessages." + SESSION, null);
         // Key should be removed when set is empty
         assertTrue(json == null || json.isEmpty());
+    }
+
+    @Test
+    void burstOfPinTogglesFlushesPrefsOnce() throws Exception {
+        // Let a flush scheduled by an earlier test fire before we install our sink.
+        Thread.sleep(PinnedMessageStore.FLUSH_DELAY_MS + 200L);
+        AtomicInteger flushes = new AtomicInteger();
+        Runnable original = PinnedMessageStore.flushSink;
+        PinnedMessageStore.flushSink = flushes::incrementAndGet;
+        try {
+            store.setPinned(SESSION, "msg1", true);
+            store.setPinned(SESSION, "msg2", true);
+            store.setPinned(SESSION, "msg3", true);
+
+            // Still inside the coalescing window: the disk write must not start.
+            assertEquals(0, flushes.get());
+
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+            while (flushes.get() == 0 && System.nanoTime() < deadline) {
+                Thread.sleep(10);
+            }
+            assertEquals(1, flushes.get(), "the burst must flush once");
+
+            // Nothing may follow: the burst must not queue extra flushes.
+            Thread.sleep(PinnedMessageStore.FLUSH_DELAY_MS * 3L);
+            assertEquals(1, flushes.get(), "the burst must not queue extra flushes");
+        } finally {
+            PinnedMessageStore.flushSink = original;
+        }
     }
 }

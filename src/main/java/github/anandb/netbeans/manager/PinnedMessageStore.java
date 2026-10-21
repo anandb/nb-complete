@@ -38,8 +38,19 @@ public final class PinnedMessageStore implements PinnedMessageControl {
             new TypeReference<>() {};
 
     private static final String PREF_PREFIX = "pinnedMessages.";
+
+    /** Coalescing window for prefs flushes: a burst of pin toggles flushes once. */
+    static final int FLUSH_DELAY_MS = 1000;
+
     private static final RequestProcessor FLUSH_RP =
             new RequestProcessor(PinnedMessageStore.class);
+
+    /** Test seam: what the flush task runs; production flushes the module prefs node. */
+    static Runnable flushSink = PinnedMessageStore::flushPrefs;
+
+    /** Sliding task: the writes already happened, this only pushes them to disk. */
+    private static final RequestProcessor.Task FLUSH_TASK =
+            FLUSH_RP.create(() -> flushSink.run());
 
     /** Logger. */
     private static final Logger LOG = Logger.from(PinnedMessageStore.class);
@@ -135,14 +146,16 @@ public final class PinnedMessageStore implements PinnedMessageControl {
                 return;
             }
         }
-        FLUSH_RP.post(() -> {
-            try {
-                prefs.flush();
-            } catch (BackingStoreException ex) {
-                LOG.warn("Failed to flush pinned messages for session {0}: {1}",
-                        sessionId, ExceptionUtils.getMessage(ex));
-            }
-        });
+        FLUSH_TASK.schedule(FLUSH_DELAY_MS);
+    }
+
+    /** Flushes the module prefs node; rescheduled, never posted, so bursts coalesce. */
+    private static void flushPrefs() {
+        try {
+            NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).flush();
+        } catch (BackingStoreException ex) {
+            LOG.warn("Failed to flush pinned messages: {0}", ExceptionUtils.getMessage(ex));
+        }
     }
 
     /** Loads one session's pinned message IDs from its pref key. */
