@@ -170,16 +170,12 @@ class PinnedMessageStoreTest {
 
     @Test
     void burstOfPinTogglesFlushesPrefsOnce() {
+        // Drain any flush left pending by an earlier test, then count from zero.
+        store.flush();
         AtomicInteger flushes = new AtomicInteger();
         Runnable original = PinnedMessageStore.flushSink;
         PinnedMessageStore.flushSink = flushes::incrementAndGet;
         try {
-            // A flush left scheduled by an earlier test may land on the new sink:
-            // wait out that window, then count from a clean slate.
-            await().pollDelay(PinnedMessageStore.FLUSH_DELAY_MS + 100L, TimeUnit.MILLISECONDS)
-                    .atMost(PinnedMessageStore.FLUSH_DELAY_MS + 3000L, TimeUnit.MILLISECONDS)
-                    .until(() -> true);
-            flushes.set(0);
 
             store.setPinned(SESSION, "msg1", true);
             store.setPinned(SESSION, "msg2", true);
@@ -195,6 +191,23 @@ class PinnedMessageStoreTest {
             await().atMost(PinnedMessageStore.FLUSH_DELAY_MS + 2500L, TimeUnit.MILLISECONDS)
                     .during(PinnedMessageStore.FLUSH_DELAY_MS * 2L, TimeUnit.MILLISECONDS)
                     .until(() -> flushes.get() == 1);
+        } finally {
+            PinnedMessageStore.flushSink = original;
+        }
+    }
+
+    @Test
+    void flushWritesImmediatelyInsteadOfWaitingForTheWindow() {
+        store.flush();
+        AtomicInteger flushes = new AtomicInteger();
+        Runnable original = PinnedMessageStore.flushSink;
+        PinnedMessageStore.flushSink = flushes::incrementAndGet;
+        try {
+            store.setPinned(SESSION, "msg1", true);
+            assertEquals(0, flushes.get(), "the save only schedules the flush");
+
+            store.flush();
+            assertEquals(1, flushes.get(), "the shutdown path must write now");
         } finally {
             PinnedMessageStore.flushSink = original;
         }

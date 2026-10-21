@@ -199,7 +199,7 @@ public class UpdateCheckerService implements UpdateCheckerControl {
         }
     }
 
-    private void scheduleNext(long delayMillis) {
+    private synchronized void scheduleNext(long delayMillis) {
         if (running) {
             checkCycleTask.schedule((int) Math.min(delayMillis, (long) Integer.MAX_VALUE));
         }

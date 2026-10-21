@@ -1,5 +1,6 @@
 package github.anandb.netbeans.manager;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -7,12 +8,29 @@ import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+
+import org.openide.filesystems.FileObject;
+import org.openide.filesystems.FileSystem;
+import org.openide.filesystems.FileUtil;
+
+import github.anandb.netbeans.contract.FileCacheQuery;
 
 class FileCacheManagerTest {
 
     private FileCacheManager manager;
+
+    @AfterEach
+    void tearDown() {
+        // The manager registers an OpenProjects listener for its lifetime; without
+        // this every test in the JVM keeps scheduling rebuilds on a dead instance.
+        manager.dispose();
+    }
 
     @BeforeEach
     void setUp() {
@@ -121,5 +139,30 @@ class FileCacheManagerTest {
         await().atMost(FileCacheManager.REBUILD_DELAY_MS + 2500L, TimeUnit.MILLISECONDS)
                 .during(FileCacheManager.REBUILD_DELAY_MS + 500L, TimeUnit.MILLISECONDS)
                 .until(() -> manager.getCacheVersion() == before + 1);
+    }
+
+    @Test
+    void publishingTheScanKeepsEntriesAddedWhileItRan() throws Exception {
+        FileSystem fs = FileUtil.createMemoryFileSystem();
+        FileObject live = fs.getRoot().createData("Live.java");
+        FileObject deleted = fs.getRoot().createData("Gone.java");
+
+        manager.publish(Map.of(
+                live.getPath(), new FileCacheQuery.CachedFile(live, "p", "Live.java"),
+                deleted.getPath(), new FileCacheQuery.CachedFile(deleted, "p", "Gone.java")),
+                Set.of());
+        assertEquals(2, manager.getAllFiles().size());
+
+        deleted.delete();
+        // Known before the scan and missing from it: dropped (deleted or ignored).
+        // Added during the scan and still valid: kept.
+        manager.publish(Map.of(), Set.of(deleted.getPath()));
+
+        Set<String> remaining = manager.getAllFiles().stream()
+                .map(FileCacheQuery.CachedFile::relativePath)
+                .collect(Collectors.toSet());
+        assertEquals(Set.of("Live.java"), remaining);
+        assertTrue(manager.getAllFiles().stream()
+                .anyMatch(f -> f.fileObject().equals(live)));
     }
 }

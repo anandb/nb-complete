@@ -1,6 +1,7 @@
 package github.anandb.netbeans.manager;
 
 import java.io.File;
+import java.beans.PropertyChangeListener;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -66,6 +67,13 @@ public class FileCacheManager implements FileCacheQuery {
     private final Map<File, FileChangeListener> rootListeners =
             Collections.synchronizedMap(new WeakHashMap<>());
 
+    /** Project open/close triggers a coalesced rebuild; removed by {@link #dispose()}. */
+    private final PropertyChangeListener openProjectsListener = evt -> {
+        if (OpenProjects.PROPERTY_OPEN_PROJECTS.equals(evt.getPropertyName())) {
+            scheduleRebuild();
+        }
+    };
+
     // Strategy instances (one per root, cached)
     private final Map<File, VcsIgnoreStrategy> strategyCache =
             Collections.synchronizedMap(new HashMap<>());
@@ -93,11 +101,7 @@ public class FileCacheManager implements FileCacheQuery {
             INSTANCE = this;
         }
         // Listen for project open/close to rebuild affected roots
-        OpenProjects.getDefault().addPropertyChangeListener(evt -> {
-            if (OpenProjects.PROPERTY_OPEN_PROJECTS.equals(evt.getPropertyName())) {
-                scheduleRebuild();
-            }
-        });
+        OpenProjects.getDefault().addPropertyChangeListener(openProjectsListener);
 
         // Initial build
         REBUILD_TASK.schedule(0);
@@ -110,6 +114,28 @@ public class FileCacheManager implements FileCacheQuery {
      */
     void scheduleRebuild() {
         REBUILD_TASK.schedule(REBUILD_DELAY_MS);
+    }
+
+    @Override
+    public void dispose() {
+        OpenProjects.getDefault().removePropertyChangeListener(openProjectsListener);
+        REBUILD_TASK.cancel();
+        disposeRootListeners();
+        files.clear();
+    }
+
+    /** Detaches every recursive filesystem listener installed for a source root. */
+    private void disposeRootListeners() {
+        synchronized (rootListeners) {
+            for (Map.Entry<File, FileChangeListener> e : rootListeners.entrySet()) {
+                try {
+                    FileUtil.removeRecursiveListener(e.getValue(), e.getKey());
+                } catch (Exception ex) {
+                    // already removed
+                }
+            }
+            rootListeners.clear();
+        }
     }
 
     // --- FileCacheQuery ---
@@ -151,28 +177,20 @@ public class FileCacheManager implements FileCacheQuery {
 
     private void rebuild() {
         long start = System.currentTimeMillis();
-        synchronized (readyLock) {
-            ready = false;
-        }
-        files.clear();
 
         // Dispose old listeners
-        synchronized (rootListeners) {
-            for (Map.Entry<File, FileChangeListener> e : rootListeners.entrySet()) {
-                try {
-                    FileUtil.removeRecursiveListener(e.getValue(), e.getKey());
-                } catch (Exception ex) {
-                    // already removed
-                }
-            }
-            rootListeners.clear();
-        }
+        disposeRootListeners();
         strategyCache.clear();
 
+        // Scan into a staging map and publish it at the end: clearing the live map
+        // would empty GoTo File for the whole scan.
+        Map<String, FileCacheQuery.CachedFile> scanned = new ConcurrentHashMap<>();
+        Set<String> knownBeforeScan = Set.copyOf(files.keySet());
         Project[] openProjects = OpenProjects.getDefault().getOpenProjects();
         for (Project project : openProjects) {
-            scanProject(project);
+            scanProject(project, scanned);
         }
+        publish(scanned, knownBeforeScan);
 
         List<Runnable> listenersCopy;
         synchronized (readyLock) {
@@ -195,7 +213,31 @@ public class FileCacheManager implements FileCacheQuery {
         }
     }
 
-    private void scanProject(Project project) {
+    /**
+     * Replaces the live contents with the scanned snapshot without ever exposing an
+     * empty map. An entry the previous scan knew and this one does not is dropped
+     * (deleted, or newly ignored); an entry that appeared only while the scan ran
+     * is kept as long as its file still exists, so a file created mid-scan is not
+     * lost.
+     *
+     * @param scanned        what the scan found
+     * @param knownBeforeScan cache keys as they were when the scan started
+     */
+    void publish(Map<String, FileCacheQuery.CachedFile> scanned, Set<String> knownBeforeScan) {
+        files.putAll(scanned);
+        files.keySet().removeIf(path -> {
+            if (scanned.containsKey(path)) {
+                return false;
+            }
+            if (knownBeforeScan.contains(path)) {
+                return true;
+            }
+            FileCacheQuery.CachedFile added = files.get(path);
+            return added == null || !added.fileObject().isValid();
+        });
+    }
+
+    private void scanProject(Project project, Map<String, FileCacheQuery.CachedFile> target) {
         ProjectInformation info = project.getLookup().lookup(ProjectInformation.class);
         String projectName = info != null ? info.getDisplayName() : project.getProjectDirectory().getName();
         SourceGroup[] groups =
@@ -215,7 +257,7 @@ public class FileCacheManager implements FileCacheQuery {
                 // NoOp or git returned empty — fall back to full filesystem walk.
                 // An empty .bbignore result is authoritative: the policy excluded
                 // everything, so walking would resurrect the ignored files.
-                walkFileSystem(root, projectName, rootDir);
+                walkFileSystem(root, projectName, rootDir, target);
             } else {
                 // Add all non-ignored files from git
                 for (String relPath : nonIgnored) {
@@ -223,7 +265,7 @@ public class FileCacheManager implements FileCacheQuery {
                     if (child != null && !child.isFolder()) {
                         File f = FileUtil.toFile(child);
                         if (f != null) {
-                            files.put(f.getAbsolutePath(),
+                            target.put(f.getAbsolutePath(),
                                     new FileCacheQuery.CachedFile(child, projectName, relPath));
                         }
                     }
@@ -236,7 +278,8 @@ public class FileCacheManager implements FileCacheQuery {
     }
 
     /** Recursively walk the source root for projects without VCS. */
-    private void walkFileSystem(FileObject folder, String projectName, File rootDir) {
+    private void walkFileSystem(FileObject folder, String projectName, File rootDir,
+            Map<String, FileCacheQuery.CachedFile> target) {
         for (FileObject child : folder.getChildren()) {
             if (child.isFolder()) {
                 // Skip hidden/VCS directories
@@ -245,13 +288,13 @@ public class FileCacheManager implements FileCacheQuery {
                         || "target".equals(name) || "build".equals(name)) {
                     continue;
                 }
-                walkFileSystem(child, projectName, rootDir);
+                walkFileSystem(child, projectName, rootDir, target);
             } else {
                 File f = FileUtil.toFile(child);
                 if (f == null) continue;
                 String relPath = relativize(rootDir, f);
                 if (relPath != null) {
-                    files.put(f.getAbsolutePath(),
+                    target.put(f.getAbsolutePath(),
                             new FileCacheQuery.CachedFile(child, projectName, relPath));
                 }
             }

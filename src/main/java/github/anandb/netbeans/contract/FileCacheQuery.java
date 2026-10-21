@@ -28,6 +28,12 @@ public interface FileCacheQuery {
     /** Returns the current version of the cache (increments on mutation). */
     default long getCacheVersion() { return 0L; }
 
+    /**
+     * Releases listeners held for the cache's lifetime. Called on module shutdown,
+     * and by tests so a manager instance does not outlive its test.
+     */
+    default void dispose() { }
+
     /** A single entry in the file cache. */
     record CachedFile(FileObject fileObject, String projectName, String relativePath) {}
 }

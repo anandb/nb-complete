@@ -46,7 +46,7 @@ public final class PinnedMessageStore implements PinnedMessageControl {
             new RequestProcessor(PinnedMessageStore.class);
 
     /** Test seam: what the flush task runs; production flushes the module prefs node. */
-    static Runnable flushSink = PinnedMessageStore::flushPrefs;
+    static volatile Runnable flushSink = PinnedMessageStore::flushPrefs;
 
     /** Sliding task: the writes already happened, this only pushes them to disk. */
     private static final RequestProcessor.Task FLUSH_TASK =
@@ -156,6 +156,12 @@ public final class PinnedMessageStore implements PinnedMessageControl {
         } catch (BackingStoreException ex) {
             LOG.warn("Failed to flush pinned messages: {0}", ExceptionUtils.getMessage(ex));
         }
+    }
+
+    @Override
+    public void flush() {
+        FLUSH_TASK.cancel();
+        flushSink.run();
     }
 
     /** Loads one session's pinned message IDs from its pref key. */

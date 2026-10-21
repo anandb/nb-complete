@@ -23,4 +23,10 @@ public interface ModelListControl {
      * harness ids and null/empty lists are ignored.
      */
     void updateModels(String harnessId, List<AvailableModel> models);
+
+    /**
+     * Writes any pending model list to disk immediately. Called on module
+     * shutdown, since the coalesced flush may still be waiting out its window.
+     */
+    default void flush() { }
 }

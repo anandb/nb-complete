@@ -54,6 +54,9 @@ public final class TaskQueryProvider implements QueryProvider<TaskQuery, TaskIss
     /** Coalescing window for refresh triggers: a burst reloads the repo once. */
     static final int REFRESH_DELAY_MS = 250;
 
+    /** Coalescing window for store-event republishes (no disk work involved). */
+    static final int PUSH_DELAY_MS = 100;
+
     /** One sliding reload task per (repo, kind); triggers reschedule, never re-post. */
     private final Map<QueryKey, RefreshSlot> refreshes = new ConcurrentHashMap<>();
 
@@ -72,14 +75,27 @@ public final class TaskQueryProvider implements QueryProvider<TaskQuery, TaskIss
      */
     private final class RefreshSlot implements Runnable {
         private final QueryKey key;
-        private final RequestProcessor.Task task = RP.create(this);
+        private final RequestProcessor.Task reloadTask;
+        private final RequestProcessor.Task pushTask;
 
         RefreshSlot(QueryKey key) {
             this.key = key;
+            this.reloadTask = RP.create(this);
+            this.pushTask = RP.create(() -> push(key));
         }
 
         void schedule() {
-            task.schedule(REFRESH_DELAY_MS);
+            reloadTask.schedule(REFRESH_DELAY_MS);
+        }
+
+        /** Coalesced republish for store events, which need no disk reload. */
+        void schedulePush() {
+            pushTask.schedule(PUSH_DELAY_MS);
+        }
+
+        void cancel() {
+            reloadTask.cancel();
+            pushTask.cancel();
         }
 
         @Override
@@ -89,6 +105,17 @@ public final class TaskQueryProvider implements QueryProvider<TaskQuery, TaskIss
                 s.reload(key.repoId());
             }
             push(key);
+        }
+    }
+
+    /**
+     * Coalesces the republishes a burst of store events would otherwise trigger.
+     * A query with no registered container has nothing to publish, so a slot is
+     * never created for it (which also stops cleanup() from racing a new slot).
+     */
+    private void schedulePush(QueryKey key) {
+        if (containers.containsKey(key)) {
+            refreshes.computeIfAbsent(key, RefreshSlot::new).schedulePush();
         }
     }
 
@@ -150,10 +177,11 @@ public final class TaskQueryProvider implements QueryProvider<TaskQuery, TaskIss
                     LOG.fine("setIssueContainer: store change {0} for repo {1}", type, r);
                     if (r.equals(key.repoId())) {
                         // Re-run every query kind of this repo (All/Open/Closed)
-                        // so each Dashboard node reflects the store change.
+                        // so each Dashboard node reflects the store change. Coalesced:
+                        // a multi-task reload emits one event per task.
                         for (QueryKey k : Set.copyOf(containers.keySet())) {
                             if (k.repoId().equals(key.repoId())) {
-                                push(k);
+                                schedulePush(k);
                             }
                         }
                     }
@@ -189,7 +217,14 @@ public final class TaskQueryProvider implements QueryProvider<TaskQuery, TaskIss
         // reload() also re-pushes via the (repo, kind)-scoped store listener;
         // both paths read the same filter map, so they cannot diverge.
         // Rescheduling one task per key coalesces repeated framework calls into
-        // a single reload instead of one scan per event.
+        // a single reload instead of one scan per event. A query with no container
+        // has nothing to publish, so it is skipped rather than resurrecting a slot
+        // that cleanup() just removed.
+        if (!containers.containsKey(key)) {
+            LOG.fine("refresh: no container for repo {0} kind {1} — nothing to publish",
+                    key.repoId(), key.kind());
+            return;
+        }
         refreshes.computeIfAbsent(key, RefreshSlot::new).schedule();
     }
 
@@ -243,6 +278,13 @@ public final class TaskQueryProvider implements QueryProvider<TaskQuery, TaskIss
         if (repoId == null) {
             return;
         }
+        refreshes.entrySet().removeIf(e -> {
+            if (!e.getKey().repoId().equals(repoId)) {
+                return false;
+            }
+            e.getValue().cancel();
+            return true;
+        });
         registeredQueries.removeIf(k -> {
             if (k.repoId().equals(repoId)) {
                 containers.remove(k);

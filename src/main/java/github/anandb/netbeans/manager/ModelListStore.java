@@ -45,7 +45,7 @@ public final class ModelListStore implements ModelListControl {
     private static final RequestProcessor FLUSH_RP = new RequestProcessor(ModelListStore.class);
 
     /** Test seam: what the flush task runs; production flushes the module prefs node. */
-    static Runnable flushSink = ModelListStore::flushPrefs;
+    static volatile Runnable flushSink = ModelListStore::flushPrefs;
 
     /** Sliding task: the writes already happened, this only pushes them to disk. */
     private static final RequestProcessor.Task FLUSH_TASK =
@@ -105,6 +105,12 @@ public final class ModelListStore implements ModelListControl {
         } catch (BackingStoreException ex) {
             LOG.warn("Failed to flush model list: {0}", ExceptionUtils.getMessage(ex));
         }
+    }
+
+    @Override
+    public void flush() {
+        FLUSH_TASK.cancel();
+        flushSink.run();
     }
 
     private static List<AvailableModel> loadFromPrefs(String harnessId) {

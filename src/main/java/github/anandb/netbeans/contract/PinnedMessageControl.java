@@ -29,4 +29,10 @@ public interface PinnedMessageControl {
 
     /** Evicts the in-memory cache for the given session. */
     void unloadSession(String sessionId);
+
+    /**
+     * Writes any pending pins to disk immediately. Called on module shutdown,
+     * since the coalesced flush may still be waiting out its window.
+     */
+    default void flush() { }
 }

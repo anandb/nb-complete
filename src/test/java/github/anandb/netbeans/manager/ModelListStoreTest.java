@@ -104,16 +104,12 @@ class ModelListStoreTest {
 
     @Test
     void burstOfUpdatesFlushesPrefsOnce() {
+        // Drain any flush left pending by an earlier test, then count from zero.
+        store.flush();
         AtomicInteger flushes = new AtomicInteger();
         Runnable original = ModelListStore.flushSink;
         ModelListStore.flushSink = flushes::incrementAndGet;
         try {
-            // A flush left scheduled by an earlier test may land on the new sink:
-            // wait out that window, then count from a clean slate.
-            await().pollDelay(ModelListStore.FLUSH_DELAY_MS + 100L, TimeUnit.MILLISECONDS)
-                    .atMost(ModelListStore.FLUSH_DELAY_MS + 3000L, TimeUnit.MILLISECONDS)
-                    .until(() -> true);
-            flushes.set(0);
 
             store.updateModels(HARNESS, models("a"));
             store.updateModels(HARNESS, models("a", "b"));
@@ -129,6 +125,23 @@ class ModelListStoreTest {
             await().atMost(ModelListStore.FLUSH_DELAY_MS + 2500L, TimeUnit.MILLISECONDS)
                     .during(ModelListStore.FLUSH_DELAY_MS * 2L, TimeUnit.MILLISECONDS)
                     .until(() -> flushes.get() == 1);
+        } finally {
+            ModelListStore.flushSink = original;
+        }
+    }
+
+    @Test
+    void flushWritesImmediatelyInsteadOfWaitingForTheWindow() {
+        store.flush();
+        AtomicInteger flushes = new AtomicInteger();
+        Runnable original = ModelListStore.flushSink;
+        ModelListStore.flushSink = flushes::incrementAndGet;
+        try {
+            store.updateModels(HARNESS, models("a"));
+            assertEquals(0, flushes.get(), "the save only schedules the flush");
+
+            store.flush();
+            assertEquals(1, flushes.get(), "the shutdown path must write now");
         } finally {
             ModelListStore.flushSink = original;
         }
