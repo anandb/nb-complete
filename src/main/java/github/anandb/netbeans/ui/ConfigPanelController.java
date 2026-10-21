@@ -445,8 +445,14 @@ public class ConfigPanelController {
     public void updateConfigControls(List<SessionConfigOption> options, boolean forceStartupDefaults) {
         // Skip repopulation while the config-confirm panel is active — the user
         // is choosing model/level and SSE updates would overwrite their picks.
-        if (configConfirmActive) return;
-        if (options == null) return;
+        if (configConfirmActive) {
+            // One exception: the thinking levels are model-dependent, so a model
+            // switch (or SSE update) during the confirm must still refresh that
+            // combo — otherwise it keeps a level the new model doesn't declare,
+            // and sendCurrentSelections would re-send it ("effort not found: X").
+            SwingUtilities.invokeLater(() -> refreshThinkingComboForOptions(options));
+            return;
+        }
         SwingUtilities.invokeLater(() -> {
             isUpdatingConfigControls = true;
             try {
@@ -458,10 +464,12 @@ public class ConfigPanelController {
                 // id's trailing segment only counts as a thinking variant when the
                 // server accepts it as an effort level.
                 SessionConfigOption modelOption = null;
+                boolean thinkingDeclared = false;
                 for (SessionConfigOption opt : options) {
                     if ("model".equals(opt.category())) {
                         modelOption = opt;
                     } else if (isThinkingCategory(opt.category())) {
+                        thinkingDeclared = true;
                         thinkingConfigOption = opt;
                         thinkingConfigId = opt.id();
                     }
@@ -521,6 +529,14 @@ public class ConfigPanelController {
                         postProcessModel(combo, selected);
                     }
                 }
+                // A model switch can remove the thinking option entirely (models
+                // without effort levels). The loop above only rebuilds options the
+                // server still declares, so clear the previous model's levels here —
+                // otherwise the combo keeps a selection with no values to back it,
+                // and sendCurrentSelections would re-send it ("effort not found: X").
+                if (!thinkingDeclared) {
+                    refreshThinkingComboForOptions(options);
+                }
                 ProcessControl pc = Lookup.getDefault().lookup(ProcessControl.class);
                 boolean modelSelectable = pc != null && pc.getCapabilities().supportsModelSelection();
                 this.modelEnabled = modelSelectable;
@@ -552,6 +568,50 @@ public class ConfigPanelController {
                 isUpdatingConfigControls = false;
             }
         });
+    }
+
+    /**
+     * Rebuilds ONLY the thinking combo from freshly reported options, leaving the
+     * model/mode combos untouched. Used while the config-confirm panel is active:
+     * the user's in-progress model/mode picks must not be overwritten by server
+     * updates, but the thinking levels are model-dependent — switching to a model
+     * that declares no effort option must clear the stale level instead of
+     * re-sending it ("effort not found: X"). Runs on the EDT; the
+     * {@code isUpdatingConfigControls} guard keeps the rebuild from pushing the
+     * refreshed selection back to the server.
+     */
+    private void refreshThinkingComboForOptions(List<SessionConfigOption> options) {
+        SessionConfigOption thinkingOpt = null;
+        for (SessionConfigOption opt : options) {
+            if (isThinkingCategory(opt.category())) {
+                thinkingOpt = opt;
+                break;
+            }
+        }
+        thinkingConfigOption = thinkingOpt;
+        if (thinkingOpt != null) {
+            thinkingConfigId = thinkingOpt.id();
+        }
+        isUpdatingConfigControls = true;
+        try {
+            ConfigItem prev = (ConfigItem) thinkingCombo.getSelectedItem();
+            String prevValue = prev != null ? prev.value() : null;
+            thinkingCombo.removeAllItems();
+            ConfigItem selected = null;
+            if (thinkingOpt != null && thinkingOpt.options() != null) {
+                selected = populateComboBox(thinkingCombo, thinkingOpt.category(), thinkingOpt.options(), prevValue);
+            }
+            if (selected != null) {
+                thinkingCombo.setSelectedItem(selected);
+            } else if (thinkingCombo.getItemCount() > 0) {
+                thinkingCombo.setSelectedIndex(0);
+            }
+            this.thinkingEnabled = thinkingCombo.getItemCount() > 0;
+            applyEnabledState();
+            updateComboTooltip(thinkingCombo, "thinking", comboFallbackHint("thinking"));
+        } finally {
+            isUpdatingConfigControls = false;
+        }
     }
 
     /** Mirrors a model option received from the server into the per-harness model list cache.
