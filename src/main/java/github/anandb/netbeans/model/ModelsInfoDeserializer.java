@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Logger;
 
 /**
  * Reads the two observed {@code models} shapes in a {@code session/new} /
@@ -25,6 +26,8 @@ import java.util.List;
  */
 public final class ModelsInfoDeserializer extends StdDeserializer<ModelsInfo> {
 
+    private static final Logger LOG = Logger.getLogger(ModelsInfoDeserializer.class.getName());
+
     private static final TypeReference<List<AvailableModel>> MODEL_LIST = new TypeReference<>() {};
 
     public ModelsInfoDeserializer() {
@@ -40,12 +43,18 @@ public final class ModelsInfoDeserializer extends StdDeserializer<ModelsInfo> {
         if (node.isArray()) {
             return new ModelsInfo(flatModels(node), null);
         }
-        List<AvailableModel> available = node.has("availableModels")
-                ? ctxt.readTreeAsValue(node.get("availableModels"),
-                        ctxt.getTypeFactory().constructType(MODEL_LIST))
-                : null;
+        JsonNode available = node.get("availableModels");
+        List<AvailableModel> models = null;
+        if (available != null && available.isArray()) {
+            models = ctxt.readTreeAsValue(available,
+                    ctxt.getTypeFactory().constructType(MODEL_LIST));
+        } else if (available != null && !available.isNull()) {
+            // Never let an unexpected shape abort the whole Session: the harness's
+            // configOptions still carry the current model.
+            LOG.fine(() -> "Ignoring availableModels of type " + available.getNodeType());
+        }
         String current = node.hasNonNull("currentModelId") ? node.get("currentModelId").asText() : null;
-        return new ModelsInfo(available, current);
+        return new ModelsInfo(models, current);
     }
 
     private static List<AvailableModel> flatModels(JsonNode array) {
@@ -56,12 +65,14 @@ public final class ModelsInfoDeserializer extends StdDeserializer<ModelsInfo> {
                 id = text(entry, "id");
             }
             if (id == null) {
+                LOG.fine(() -> "Skipping model entry without id: " + entry);
                 continue;
             }
             String provider = text(entry, "provider");
             // pi-rust reports the provider separately, while every value it
             // accepts (see configOptions in the same response) is provider/id.
-            String value = provider != null && !provider.isBlank() && !id.startsWith(provider + "/")
+            // An id that already contains a separator is qualified by the harness.
+            String value = provider != null && !provider.isBlank() && !id.contains("/")
                     ? provider + "/" + id
                     : id;
             String name = text(entry, "name");
