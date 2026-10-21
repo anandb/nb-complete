@@ -75,21 +75,6 @@ public class UIUtils {
     /** Guards against concurrent background preloads of the same icon. */
     private static final AtomicBoolean userIconPreloading = new AtomicBoolean(false);
 
-    static {
-        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).addPreferenceChangeListener(evt -> {
-            if (PluginSettings.KEY_CUSTOM_USER_ICON.equals(evt.getKey())) {
-                cachedUserIcon = null;
-                userIconPreloading.set(false);
-            }
-        });
-        // Preload any saved custom user icon on a background thread so it's
-        // cached before the first user bubble renders (avoids EDT freeze).
-        String savedPath = PluginSettings.getCustomUserIcon();
-        if (savedPath != null && !savedPath.isEmpty()) {
-            preloadUserIcon(savedPath, 44);
-        }
-    }
-
     /** CSS font-family stack that respects the system-property override, then
      *  the NetBeans LAF font, then the generic fallback. */
     public static String fontStackWithActual() {
@@ -113,6 +98,21 @@ public class UIUtils {
 
     /** Icon preloading runs off the EDT. */
     private static final RequestProcessor ICON_RP = new RequestProcessor("ACP-UIIcons", 1);
+
+    static {
+        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).addPreferenceChangeListener(evt -> {
+            if (PluginSettings.KEY_CUSTOM_USER_ICON.equals(evt.getKey())) {
+                cachedUserIcon = null;
+                userIconPreloading.set(false);
+            }
+        });
+        // Preload any saved custom user icon on a background thread so it's
+        // cached before the first user bubble renders (avoids EDT freeze).
+        String savedPath = PluginSettings.getCustomUserIcon();
+        if (savedPath != null && !savedPath.isEmpty()) {
+            preloadUserIcon(savedPath, 44);
+        }
+    }
 
     private UIUtils() {}
 
