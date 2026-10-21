@@ -8,6 +8,8 @@ import org.junit.jupiter.api.Test;
 import org.openide.util.NbPreferences;
 
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -97,5 +99,34 @@ class ModelListStoreTest {
         assertEquals(list, new ModelListStore().getModels(longId));
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
                 .remove("modelList." + github.anandb.netbeans.support.MessageIdGenerator.generate("models", longId));
+    }
+
+    @Test
+    void burstOfUpdatesFlushesPrefsOnce() throws Exception {
+        // Let a flush scheduled by an earlier test fire before we install our sink.
+        Thread.sleep(ModelListStore.FLUSH_DELAY_MS + 200L);
+        AtomicInteger flushes = new AtomicInteger();
+        Runnable original = ModelListStore.flushSink;
+        ModelListStore.flushSink = flushes::incrementAndGet;
+        try {
+            store.updateModels(HARNESS, models("a"));
+            store.updateModels(HARNESS, models("a", "b"));
+            store.updateModels(HARNESS, models("a", "b", "c"));
+
+            // Still inside the coalescing window: the disk write must not start.
+            assertEquals(0, flushes.get());
+
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+            while (flushes.get() == 0 && System.nanoTime() < deadline) {
+                Thread.sleep(10);
+            }
+            assertEquals(1, flushes.get(), "the burst must flush once");
+
+            // Nothing may follow: the burst must not queue extra flushes.
+            Thread.sleep(ModelListStore.FLUSH_DELAY_MS * 3L);
+            assertEquals(1, flushes.get(), "the burst must not queue extra flushes");
+        } finally {
+            ModelListStore.flushSink = original;
+        }
     }
 }

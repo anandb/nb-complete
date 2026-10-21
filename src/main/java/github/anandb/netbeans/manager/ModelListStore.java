@@ -38,7 +38,18 @@ public final class ModelListStore implements ModelListControl {
     private static final ObjectMapper MAPPER = MapperSupplier.get();
     private static final TypeReference<List<AvailableModel>> LIST_TYPE = new TypeReference<>() {};
     private static final String PREF_PREFIX = "modelList.";
+
+    /** Coalescing window for prefs flushes: a burst of updates flushes once. */
+    static final int FLUSH_DELAY_MS = 1000;
+
     private static final RequestProcessor FLUSH_RP = new RequestProcessor(ModelListStore.class);
+
+    /** Test seam: what the flush task runs; production flushes the module prefs node. */
+    static Runnable flushSink = ModelListStore::flushPrefs;
+
+    /** Sliding task: the writes already happened, this only pushes them to disk. */
+    private static final RequestProcessor.Task FLUSH_TASK =
+            FLUSH_RP.create(() -> flushSink.run());
     private static final Logger LOG = Logger.from(ModelListStore.class);
 
     /** Hot-path cache: harnessId → model list (mirrors prefs). */
@@ -84,14 +95,16 @@ public final class ModelListStore implements ModelListControl {
                     harnessId, ExceptionUtils.getMessage(ex));
             return;
         }
-        FLUSH_RP.post(() -> {
-            try {
-                prefs.flush();
-            } catch (BackingStoreException ex) {
-                LOG.warn("Failed to flush model list for harness {0}: {1}",
-                        harnessId, ExceptionUtils.getMessage(ex));
-            }
-        });
+        FLUSH_TASK.schedule(FLUSH_DELAY_MS);
+    }
+
+    /** Flushes the module prefs node; rescheduled, never posted, so bursts coalesce. */
+    private static void flushPrefs() {
+        try {
+            NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).flush();
+        } catch (BackingStoreException ex) {
+            LOG.warn("Failed to flush model list: {0}", ExceptionUtils.getMessage(ex));
+        }
     }
 
     private static List<AvailableModel> loadFromPrefs(String harnessId) {
