@@ -14,6 +14,7 @@ import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class UpdateCheckerServiceTest {
@@ -35,6 +36,55 @@ class UpdateCheckerServiceTest {
         assertFalse(UpdateCheckerService.isNewerVersion("1.7.3", "invalid"));
         assertFalse(UpdateCheckerService.isNewerVersion(null, "1.7.2"));
         assertFalse(UpdateCheckerService.isNewerVersion("1.7.3", null));
+    }
+
+    @Test
+    void parseLatestVersionPrefersRelease() {
+        String metadata = """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <metadata>
+                  <groupId>io.github.anandb</groupId>
+                  <artifactId>beanbot</artifactId>
+                  <versioning>
+                    <latest>1.26.1</latest>
+                    <release>1.26.0</release>
+                    <versions>
+                      <version>1.25.0</version>
+                      <version>1.26.0</version>
+                    </versions>
+                  </versioning>
+                </metadata>
+                """;
+
+        assertEquals("1.26.0", UpdateCheckerService.parseLatestVersion(metadata));
+    }
+
+    @Test
+    void parseLatestVersionFallsBackToLatest() {
+        String metadata = """
+                <metadata><versioning><latest>2.0.0</latest></versioning></metadata>
+                """;
+
+        assertEquals("2.0.0", UpdateCheckerService.parseLatestVersion(metadata));
+    }
+
+    @Test
+    void parseLatestVersionRejectsBlankAndMalformedInput() {
+        assertNull(UpdateCheckerService.parseLatestVersion(null));
+        assertNull(UpdateCheckerService.parseLatestVersion("   "));
+        assertNull(UpdateCheckerService.parseLatestVersion("<metadata><versioning>"));
+        assertNull(UpdateCheckerService.parseLatestVersion(
+                "<metadata><versioning><versions><version>1.0.0</version></versions></versioning></metadata>"));
+    }
+
+    @Test
+    void parseLatestVersionRefusesDoctype() {
+        String hostile = """
+                <!DOCTYPE metadata [<!ENTITY xxe SYSTEM "file:///etc/passwd">]>
+                <metadata><versioning><release>&xxe;</release></versioning></metadata>
+                """;
+
+        assertNull(UpdateCheckerService.parseLatestVersion(hostile));
     }
 
     @Test

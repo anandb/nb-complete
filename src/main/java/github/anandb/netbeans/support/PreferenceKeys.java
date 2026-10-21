@@ -54,15 +54,17 @@ public final class PreferenceKeys {
     public static final String TOOLBAR_RESTART = "toolbar.restart";
 
     // Update checker preference keys
-    public static final String DEFAULT_UPDATE_URL = "https://anandb.github.io/beanbot.json";
+    public static final String DEFAULT_UPDATE_URL =
+            "https://repo1.maven.org/maven2/io/github/anandb/beanbot/maven-metadata.xml";
     public static final String NEXT_UPDATE_CHECK_TIME = "update.nextCheckTime";
     public static final String SKIPPED_UPDATE_VERSION = "update.skippedVersion";
     public static final String CHECK_FOR_UPDATES = "update.checkForUpdates";
 
     /**
-     * System property ({@code -D}) overriding the update manifest URL. Defaults to
-     * {@link #DEFAULT_UPDATE_URL}, so a fork or a self-hosted deployment can point at its
-     * own {@code beanbot.json}.
+     * System property ({@code -D}) overriding the update metadata URL. Defaults to
+     * {@link #DEFAULT_UPDATE_URL} (the artifact's Maven Central
+     * {@code maven-metadata.xml}), so a fork or a self-hosted deployment can point
+     * at its own {@code maven-metadata.xml}.
      */
     public static final String UPDATE_URL_PROP = "beanbot.update.url";
 

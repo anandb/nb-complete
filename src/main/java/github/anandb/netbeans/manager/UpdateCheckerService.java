@@ -1,6 +1,7 @@
 package github.anandb.netbeans.manager;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import java.io.StringReader;
 import java.net.ProxySelector;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -16,6 +17,10 @@ import java.util.logging.Level;
 import java.util.prefs.Preferences;
 import java.util.function.Supplier;
 
+import javax.xml.stream.XMLInputFactory;
+import javax.xml.stream.XMLStreamConstants;
+import javax.xml.stream.XMLStreamReader;
+
 import org.openide.DialogDisplayer;
 import org.openide.NotifyDescriptor;
 import org.openide.modules.SpecificationVersion;
@@ -25,17 +30,12 @@ import org.openide.util.RequestProcessor;
 import org.openide.util.lookup.ServiceProvider;
 import org.openide.windows.WindowManager;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import github.anandb.netbeans.contract.UpdateCheckerControl;
 import github.anandb.netbeans.contract.UpdateCheckerControl.UpdateCheckResult;
 import github.anandb.netbeans.support.AgentUtils;
 import github.anandb.netbeans.support.AppLinks;
 import github.anandb.netbeans.support.BrowserUtils;
 import github.anandb.netbeans.support.Logger;
-import github.anandb.netbeans.support.MapperSupplier;
 import github.anandb.netbeans.support.PreferenceKeys;
 
 @ServiceProvider(service = UpdateCheckerControl.class)
@@ -240,32 +240,26 @@ public class UpdateCheckerService implements UpdateCheckerControl {
             }
 
             String body = response.body();
-            ObjectMapper mapper = MapperSupplier.get();
-            UpdateInfo info;
-            try {
-                info = mapper.readValue(body, UpdateInfo.class);
-            } catch (Exception e) {
-                LOG.fine("Update manifest at {0} is not valid JSON", updateUrl);
-                return UpdateCheckResult.CHECK_FAILED;
-            }
-
-            if (info == null || info.latestVersion == null) {
-                LOG.fine("Update manifest at {0} carries no latest_version", updateUrl);
+            String latestVersion = parseLatestVersion(body);
+            if (latestVersion == null) {
+                LOG.fine("Update metadata at {0} carries no release or latest version", updateUrl);
                 return UpdateCheckResult.CHECK_FAILED;
             }
 
             String currentVersionStr = AgentUtils.getVersion();
 
-            if (isNewerVersion(info.latestVersion, currentVersionStr)) {
+            if (isNewerVersion(latestVersion, currentVersionStr)) {
                 String skipped = prefs().get(PreferenceKeys.SKIPPED_UPDATE_VERSION, "");
-                if (info.latestVersion.equals(skipped)) {
-                    LOG.info("Update v{0} skipped by user preference, not prompting.", info.latestVersion);
+                if (latestVersion.equals(skipped)) {
+                    LOG.info("Update v{0} skipped by user preference, not prompting.", latestVersion);
                     return UpdateCheckResult.UPDATE_SKIPPED;
                 } else {
-                    LOG.info("New update found: {0} (current: {1}). Download URL: {2}",
-                            new Object[]{info.latestVersion, currentVersionStr, info.downloadUrl});
+                    LOG.info("New update found: {0} (current: {1}).",
+                            new Object[]{latestVersion, currentVersionStr});
 
-                    showNotification(info.latestVersion, info.downloadUrl, info.changeLog);
+                    showNotification(latestVersion,
+                            AppLinks.nbmDownloadUrl(latestVersion),
+                            AppLinks.changelogUrl());
                     return UpdateCheckResult.UPDATE_AVAILABLE;
                 }
             } else {
@@ -277,6 +271,64 @@ public class UpdateCheckerService implements UpdateCheckerControl {
             // manifest must not surface anywhere.
             LOG.fine("Update check skipped: {0}", ExceptionUtils.getMessage(e));
             return UpdateCheckResult.CHECK_FAILED;
+        }
+    }
+
+    /**
+     * Extracts the newest published version from a Maven {@code maven-metadata.xml}.
+     * A non-empty {@code <release>} wins; {@code <latest>} is the fallback. DTDs and
+     * external entities are disabled, so a malformed or hostile document can neither
+     * expand entities nor make the parser fetch anything.
+     *
+     * @param xml metadata document
+     * @return the version, or {@code null} when the document is blank, malformed, or
+     *         carries neither element
+     */
+    static String parseLatestVersion(String xml) {
+        if (xml == null || xml.isBlank()) {
+            return null;
+        }
+        try {
+            XMLInputFactory factory = XMLInputFactory.newFactory();
+            factory.setProperty(XMLInputFactory.SUPPORT_DTD, false);
+            factory.setProperty(XMLInputFactory.IS_SUPPORTING_EXTERNAL_ENTITIES, false);
+            XMLStreamReader reader = factory.createXMLStreamReader(new StringReader(xml));
+            try {
+                String release = null;
+                String latest = null;
+                String element = null;
+                StringBuilder text = new StringBuilder();
+                while (reader.hasNext()) {
+                    switch (reader.next()) {
+                        case XMLStreamConstants.START_ELEMENT -> {
+                            element = reader.getLocalName();
+                            text.setLength(0);
+                        }
+                        case XMLStreamConstants.CHARACTERS, XMLStreamConstants.CDATA ->
+                                text.append(reader.getText());
+                        case XMLStreamConstants.END_ELEMENT -> {
+                            String value = text.toString().trim();
+                            if ("release".equals(element)) {
+                                release = value;
+                            } else if ("latest".equals(element)) {
+                                latest = value;
+                            }
+                            element = null;
+                        }
+                        default -> {
+                            // comments, processing instructions, whitespace — ignored
+                        }
+                    }
+                }
+                if (release != null && !release.isEmpty()) {
+                    return release;
+                }
+                return latest == null || latest.isEmpty() ? null : latest;
+            } finally {
+                reader.close();
+            }
+        } catch (Exception e) {
+            return null;
         }
     }
 
@@ -293,7 +345,7 @@ public class UpdateCheckerService implements UpdateCheckerControl {
         }
     }
 
-    private void showNotification(String latestVersion, String downloadUrl, String changeLog) {
+    private void showNotification(String latestVersion, String downloadUrl, String notesUrl) {
         // Only show the message box once the IDE is fully loaded — showing it
         // during startup would cancel/close the dialog. The scheduling of the
         // check cycle can happen anytime; it's the dialog that must wait.
@@ -308,10 +360,8 @@ public class UpdateCheckerService implements UpdateCheckerControl {
 
             List<String> options = new ArrayList<>(List.of(
                     "Download Now", "Remind me Later", "Skip this Version"));
-            if (changeLog != null && !changeLog.isEmpty()) {
-                // Add the release-notes link when the server provides one.
-                options.add(0, "View Release Notes");
-            }
+            // The notes URL is derived from the version, so it is always available.
+            options.add(0, "View Release Notes");
             NotifyDescriptor nd = new NotifyDescriptor(
                     body,
                     title,
@@ -326,7 +376,7 @@ public class UpdateCheckerService implements UpdateCheckerControl {
             } else if ("Skip this Version".equals(result)) {
                 prefs().put(PreferenceKeys.SKIPPED_UPDATE_VERSION, latestVersion);
             } else if ("View Release Notes".equals(result)) {
-                BrowserUtils.openOrCopyUrl(changeLog, null, null);
+                BrowserUtils.openOrCopyUrl(notesUrl, null, null);
             }
             // "Remind me Later" — just dismiss, next cycle prompts again
         });
@@ -336,17 +386,5 @@ public class UpdateCheckerService implements UpdateCheckerControl {
         long min = 16L * 60 * 60 * 1000;
         long max = 24L * 60 * 60 * 1000;
         return ThreadLocalRandom.current().nextLong(min, max + 1);
-    }
-
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    private static class UpdateInfo {
-        @JsonProperty("latest_version")
-        public String latestVersion;
-        @JsonProperty("release_date")
-        public String releaseDate;
-        @JsonProperty("download_url")
-        public String downloadUrl;
-        @JsonProperty("change_log")
-        public String changeLog;
     }
 }
