@@ -55,7 +55,13 @@ public class UpdateCheckerService implements UpdateCheckerControl {
     private static volatile UpdateCheckerService instance;
 
     private volatile boolean running;
-    private volatile RequestProcessor.Task rpTask;
+
+    /**
+     * Single sliding task for the check loop. It is rescheduled, never re-created,
+     * so {@link #cancel()} always cancels the one pending run and a repeated
+     * {@code scheduleNext} coalesces instead of queueing extra cycles.
+     */
+    private final RequestProcessor.Task checkCycleTask = RP.create(this::runCheckCycle);
     private final Supplier<UpdateCheckResult> updateCheck;
     private CompletableFuture<UpdateCheckResult> manualCheckInFlight;
 
@@ -110,22 +116,18 @@ public class UpdateCheckerService implements UpdateCheckerControl {
      */
     @Override
     public synchronized void start() {
-        if (rpTask != null && !rpTask.isFinished()) {
+        if (running && !checkCycleTask.isFinished()) {
             return;
         }
         running = true;
-        rpTask = RP.create(this::runCheckCycle);
-        rpTask.schedule(0);
+        checkCycleTask.schedule(0);
         LOG.info("UpdateCheckerService daemon task submitted.");
     }
 
     /** Cancels the running update-check loop, if any. */
     public synchronized void cancel() {
         running = false;
-        if (rpTask != null) {
-            rpTask.cancel();
-            rpTask = null;
-        }
+        checkCycleTask.cancel();
     }
 
     /** Runs a manual check independently of the background schedule and setting. */
@@ -199,8 +201,7 @@ public class UpdateCheckerService implements UpdateCheckerControl {
 
     private void scheduleNext(long delayMillis) {
         if (running) {
-            rpTask = RP.create(this::runCheckCycle);
-            rpTask.schedule((int) Math.min(delayMillis, (long) Integer.MAX_VALUE));
+            checkCycleTask.schedule((int) Math.min(delayMillis, (long) Integer.MAX_VALUE));
         }
     }
 

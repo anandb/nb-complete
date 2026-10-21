@@ -99,4 +99,54 @@ class UpdateCheckerServiceTest {
             }
         }
     }
+
+    @Test
+    void cancelStopsPendingCycleAndStartResumesLoop() throws Exception {
+        var prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
+        String oldSchedule = prefs.get(PreferenceKeys.NEXT_UPDATE_CHECK_TIME, null);
+        String oldEnabled = prefs.get(PreferenceKeys.CHECK_FOR_UPDATES, null);
+        try {
+            long future = System.currentTimeMillis() + 1500L;
+            prefs.putLong(PreferenceKeys.NEXT_UPDATE_CHECK_TIME, future);
+            prefs.putBoolean(PreferenceKeys.CHECK_FOR_UPDATES, true);
+
+            AtomicInteger checks = new AtomicInteger();
+            UpdateCheckerService service = new UpdateCheckerService(() -> {
+                checks.incrementAndGet();
+                return UpdateCheckResult.NO_UPDATE;
+            });
+
+            // First cycle runs at once, sees the check is not due, and reschedules
+            // itself; cancel() must take that pending run off the single task.
+            service.start();
+            service.cancel();
+            Thread.sleep(2500L);
+            assertEquals(0, checks.get(), "cancel must stop the pending cycle");
+
+            // start() again resumes on the same sliding task, now that the check is due.
+            service.start();
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+            while (checks.get() == 0 && System.nanoTime() < deadline) {
+                Thread.sleep(10);
+            }
+            assertEquals(1, checks.get(), "start must resume the loop after cancel");
+
+            // A second start() while the loop is pending must not queue a cycle.
+            service.start();
+            Thread.sleep(500L);
+            assertEquals(1, checks.get(), "start must be idempotent while the loop is pending");
+            service.cancel();
+        } finally {
+            if (oldSchedule == null) {
+                prefs.remove(PreferenceKeys.NEXT_UPDATE_CHECK_TIME);
+            } else {
+                prefs.put(PreferenceKeys.NEXT_UPDATE_CHECK_TIME, oldSchedule);
+            }
+            if (oldEnabled == null) {
+                prefs.remove(PreferenceKeys.CHECK_FOR_UPDATES);
+            } else {
+                prefs.put(PreferenceKeys.CHECK_FOR_UPDATES, oldEnabled);
+            }
+        }
+    }
 }
