@@ -2,6 +2,7 @@ package github.anandb.netbeans.contract;
 
 import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.model.SessionConfigOption;
+import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BiFunction;
@@ -75,6 +76,20 @@ public interface SessionControl extends SessionQuery {
 
     /** Toggles the hidden attribute for a session in local storage. */
     void setHidden(String sessionId, boolean hidden);
+
+    /**
+     * Hides or unhides several sessions in one go. The default delegates to
+     * {@link #setHidden}; implementations should override it so a bulk change
+     * costs one lock acquisition and one store write instead of N.
+     */
+    default void setHiddenBulk(Collection<String> sessionIds, boolean hidden) {
+        if (sessionIds == null) {
+            return;
+        }
+        for (String sessionId : sessionIds) {
+            setHidden(sessionId, hidden);
+        }
+    }
 
     /** Persists context usage (used, size) for a session so it survives reload. */
     void setContextUsage(String sessionId, long used, long size);

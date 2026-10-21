@@ -167,24 +167,21 @@ final class ChatLayoutBuilder {
                                 visibleIds.add(it.getSession().id());
                             }
                         }
+                        List<String> otherIds = new ArrayList<>(visibleIds);
+                        otherIds.remove(sessionId);
+
                         JMenuItem archiveAll = new JMenuItem(
                                 NbBundle.getMessage(ChatLayoutBuilder.class, "LBL_ArchiveAll"));
                         archiveAll.setEnabled(!visibleIds.isEmpty());
-                        archiveAll.addActionListener(ev -> {
-                            var archSc = Lookup.getDefault().lookup(SessionControl.class);
-                            if (archSc == null) {
-                                topComponent.setStatus("STATUS_ServiceUnavailable");
-                                return;
-                            }
-                            for (String id : visibleIds) {
-                                archSc.setHidden(id, true);
-                            }
-                            archSc.refreshSessions();
-                            if (!isShowingHidden()) {
-                                MiniAssistantDialog.closeIfVisible();
-                            }
-                        });
+                        archiveAll.addActionListener(ev -> archiveSessions(visibleIds, false));
                         add(archiveAll);
+
+                        // Keeps the session the user is looking at; archives every other one.
+                        JMenuItem archiveOthers = new JMenuItem(
+                                NbBundle.getMessage(ChatLayoutBuilder.class, "LBL_ArchiveOthers"));
+                        archiveOthers.setEnabled(!otherIds.isEmpty());
+                        archiveOthers.addActionListener(ev -> archiveSessions(otherIds, true));
+                        add(archiveOthers);
                     }
 
                     addSeparator();
@@ -838,6 +835,24 @@ final class ChatLayoutBuilder {
 
     static boolean isShowingHidden() {
         return PluginSettings.isShowHiddenSessions();
+    }
+
+    /**
+     * Hides the given sessions, refresh the picker once, and close the mini
+     * assistant only when nothing is left visible. {@code keepMiniAssistantOpen}
+     * is true when a session (the active one) stays visible.
+     */
+    private void archiveSessions(List<String> sessionIds, boolean keepMiniAssistantOpen) {
+        var archSc = Lookup.getDefault().lookup(SessionControl.class);
+        if (archSc == null) {
+            topComponent.setStatus("STATUS_ServiceUnavailable");
+            return;
+        }
+        archSc.setHiddenBulk(sessionIds, true);
+        archSc.refreshSessions();
+        if (!keepMiniAssistantOpen && !isShowingHidden()) {
+            MiniAssistantDialog.closeIfVisible();
+        }
     }
 
 }

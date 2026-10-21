@@ -25,6 +25,7 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -111,6 +112,10 @@ public class H2UsageStatsStore implements UsageStatsStore, SessionStore {
             + " title CLOB, hidden BOOLEAN NOT NULL DEFAULT FALSE, cwd VARCHAR(2048),"
             + " used_tokens BIGINT, size_tokens BIGINT, ordinal BIGINT NOT NULL,"
             + " PRIMARY KEY (harness_id, session_id))";
+
+    private static final String MERGE_SESSION_META =
+            "MERGE INTO session_meta (harness_id, session_id, title, hidden, cwd,"
+            + " used_tokens, size_tokens, ordinal) VALUES (?,?,?,?,?,?,?,?)";
 
     private static final String SCHEMA_VERSION_KEY = "schema_version";
 
@@ -478,6 +483,28 @@ public class H2UsageStatsStore implements UsageStatsStore, SessionStore {
     }
 
     /**
+     * Bulk form of {@link #saveSessionMetadata}: one snapshot rebuild in memory and
+     * one transaction on the database thread, instead of a round trip per session.
+     */
+    @Override
+    public void saveSessionMetadataBulk(String harnessId, Map<String, SessionMetadata> updates) {
+        if (updates == null || updates.isEmpty()) {
+            return;
+        }
+        String bucket = SessionStore.bucketName(harnessId);
+        Map<String, SessionMetadata> snapshot = new LinkedHashMap<>(updates);
+        putAllInMemory(bucket, snapshot);
+        boolean fillFromStored = !metadataLoaded;
+        dbExecutor.execute(() -> {
+            try {
+                upsertSessionMetaBatch(bucket, snapshot, fillFromStored);
+            } catch (SQLException e) {
+                LOG.log(Level.WARNING, "Failed to save session metadata batch", e);
+            }
+        });
+    }
+
+    /**
      * Fills a record's unknown fields from the stored row. Used only for a write
      * that raced startup, where the caller could not have known the saved values;
      * the stored hidden flag wins for the same reason.
@@ -546,6 +573,35 @@ public class H2UsageStatsStore implements UsageStatsStore, SessionStore {
         });
     }
 
+    /**
+     * Bulk form of {@link #putInMemory}: one snapshot rebuild for the whole batch.
+     * Existing sessions keep their position; new ones become the newest, in batch
+     * order.
+     */
+    private void putAllInMemory(String bucket, Map<String, SessionMetadata> updates) {
+        this.metadata.compute(bucket, (key, current) -> {
+            LinkedHashMap<String, SessionMetadata> existing = new LinkedHashMap<>();
+            if (current != null) {
+                for (Map.Entry<String, SessionMetadata> entry : current.entrySet()) {
+                    SessionMetadata replacement = updates.get(entry.getKey());
+                    existing.put(entry.getKey(), replacement != null ? replacement : entry.getValue());
+                }
+            }
+            LinkedHashMap<String, SessionMetadata> added = new LinkedHashMap<>();
+            for (Map.Entry<String, SessionMetadata> entry : updates.entrySet()) {
+                if (current == null || !current.containsKey(entry.getKey())) {
+                    added.put(entry.getKey(), entry.getValue());
+                }
+            }
+            if (added.isEmpty()) {
+                return Collections.unmodifiableMap(existing);
+            }
+            LinkedHashMap<String, SessionMetadata> withNew = new LinkedHashMap<>(added);
+            withNew.putAll(existing);
+            return Collections.unmodifiableMap(withNew);
+        });
+    }
+
     // ---- SessionStore database ----
 
     private void loadHistory() throws SQLException {
@@ -595,20 +651,76 @@ public class H2UsageStatsStore implements UsageStatsStore, SessionStore {
         if (ordinal == null) {
             ordinal = nextOrdinal(bucket);
         }
-        Long[] usage = parseUsage(meta.usage());
-        try (PreparedStatement ps = connection().prepareStatement(
-                "MERGE INTO session_meta (harness_id, session_id, title, hidden, cwd,"
-                + " used_tokens, size_tokens, ordinal) VALUES (?,?,?,?,?,?,?,?)")) {
-            ps.setString(1, bucket);
-            ps.setString(2, sessionId);
-            ps.setString(3, meta.title());
-            ps.setBoolean(4, meta.hidden());
-            ps.setString(5, meta.cwd());
-            setNullableLong(ps, 6, usage[0]);
-            setNullableLong(ps, 7, usage[1]);
-            ps.setLong(8, ordinal);
+        try (PreparedStatement ps = connection().prepareStatement(MERGE_SESSION_META)) {
+            bindSessionMeta(ps, bucket, sessionId, meta, ordinal);
             ps.executeUpdate();
         }
+    }
+
+    /**
+     * Writes a batch of metadata rows in one transaction, resolving each session's
+     * ordinal from a single read of the bucket. New sessions take the ordinals
+     * after the current maximum, in batch order.
+     */
+    private void upsertSessionMetaBatch(String bucket, Map<String, SessionMetadata> updates,
+            boolean fillFromStored) throws SQLException {
+        Connection conn = connection();
+        boolean autoCommit = conn.getAutoCommit();
+        conn.setAutoCommit(false);
+        try (PreparedStatement ps = conn.prepareStatement(MERGE_SESSION_META)) {
+            Map<String, Long> ordinals = storedOrdinals(bucket);
+            long highest = 0L;
+            for (long value : ordinals.values()) {
+                highest = Math.max(highest, value);
+            }
+            for (Map.Entry<String, SessionMetadata> entry : updates.entrySet()) {
+                SessionMetadata meta = fillFromStored
+                        ? fillBlanksFromStored(bucket, entry.getKey(), entry.getValue())
+                        : entry.getValue();
+                Long ordinal = ordinals.get(entry.getKey());
+                if (ordinal == null) {
+                    ordinal = ++highest;
+                }
+                bindSessionMeta(ps, bucket, entry.getKey(), meta, ordinal);
+                ps.addBatch();
+            }
+            ps.executeBatch();
+            conn.commit();
+        } catch (SQLException ex) {
+            conn.rollback();
+            throw ex;
+        } finally {
+            conn.setAutoCommit(autoCommit);
+        }
+    }
+
+    /** Binds one {@link #MERGE_SESSION_META} row. */
+    private static void bindSessionMeta(PreparedStatement ps, String bucket, String sessionId,
+            SessionMetadata meta, long ordinal) throws SQLException {
+        Long[] usage = parseUsage(meta.usage());
+        ps.setString(1, bucket);
+        ps.setString(2, sessionId);
+        ps.setString(3, meta.title());
+        ps.setBoolean(4, meta.hidden());
+        ps.setString(5, meta.cwd());
+        setNullableLong(ps, 6, usage[0]);
+        setNullableLong(ps, 7, usage[1]);
+        ps.setLong(8, ordinal);
+    }
+
+    /** Every stored ordinal in a bucket, keyed by session id. */
+    private Map<String, Long> storedOrdinals(String bucket) throws SQLException {
+        Map<String, Long> ordinals = new HashMap<>();
+        try (PreparedStatement ps = connection().prepareStatement(
+                "SELECT session_id, ordinal FROM session_meta WHERE harness_id = ?")) {
+            ps.setString(1, bucket);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    ordinals.put(rs.getString(1), rs.getLong(2));
+                }
+            }
+        }
+        return ordinals;
     }
 
     /** The stored ordinal for a session, or null when it has no row yet. */

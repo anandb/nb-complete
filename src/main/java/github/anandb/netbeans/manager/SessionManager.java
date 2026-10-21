@@ -21,7 +21,9 @@ import javax.swing.SwingUtilities;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -334,6 +336,30 @@ public class SessionManager implements SessionQuery, SessionControl {
     @Override
     public void setHidden(String sessionId, boolean hidden) {
         updateMetadata(sessionId, m -> new SessionMetadata(m.title(), m.usage(), hidden, m.cwd()));
+    }
+
+    /**
+     * Bulk form of {@link #setHidden}: one lock acquisition and one store call for
+     * the whole set, so archiving N sessions costs one write instead of N.
+     */
+    @Override
+    public synchronized void setHiddenBulk(Collection<String> sessionIds, boolean hidden) {
+        if (sessionIds == null || sessionIds.isEmpty()) {
+            return;
+        }
+        SessionStore sessionStore = store();
+        if (sessionStore == null) {
+            return;
+        }
+        Map<String, SessionMetadata> updates = new LinkedHashMap<>();
+        for (String sessionId : sessionIds) {
+            if (sessionId == null || sessionId.isEmpty()) {
+                continue;
+            }
+            SessionMetadata m = metadataOf(sessionId);
+            updates.put(sessionId, new SessionMetadata(m.title(), m.usage(), hidden, m.cwd()));
+        }
+        sessionStore.saveSessionMetadataBulk(agentName(), updates);
     }
     // -------------------------------------------------------------------------
 

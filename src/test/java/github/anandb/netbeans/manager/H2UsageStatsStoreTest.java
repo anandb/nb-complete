@@ -13,6 +13,7 @@ import github.anandb.netbeans.contract.UsageStatsStore;
 import github.anandb.netbeans.support.PreferenceKeys;
 import java.io.File;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.nio.file.Files;
@@ -566,6 +567,49 @@ class H2UsageStatsStoreTest {
 
         assertEquals("C", store.sessionMetadata("omp").get("id,with,commas").title(),
                 "a session id is an opaque key, not a delimited field");
+    }
+
+    @Test
+    void bulkMetadataWriteStoresEveryRowInOneTransaction() throws SQLException {
+        store.saveSessionMetadata("opencode", "existing", new SessionMetadata("E", null, false, "/p"));
+        barrier();
+        // Load first: before the cache is loaded, a save fills blanks from the stored
+        // row and the stored hidden flag wins (startup-race rule).
+        store.load();
+        long existingOrdinal = scalarLong(
+                "SELECT ordinal FROM session_meta WHERE session_id = 'existing'");
+
+        Map<String, SessionMetadata> batch = new LinkedHashMap<>();
+        batch.put("a", new SessionMetadata("A", null, true, "/p"));
+        batch.put("b", new SessionMetadata("B", null, true, "/p"));
+        batch.put("existing", new SessionMetadata("E2", null, true, "/p"));
+        store.saveSessionMetadataBulk("opencode", batch);
+        barrier();
+
+        assertEquals(3, scalarLong("SELECT COUNT(*) FROM session_meta"),
+                "every session in the batch must reach the database");
+        assertEquals(1, scalarLong(
+                        "SELECT COUNT(*) FROM session_meta WHERE session_id = 'existing' AND title = 'E2'"),
+                "an existing session must be replaced, not duplicated");
+        assertEquals(existingOrdinal, scalarLong(
+                        "SELECT ordinal FROM session_meta WHERE session_id = 'existing'"),
+                "an existing session keeps its ordinal");
+        assertTrue(scalarLong("SELECT ordinal FROM session_meta WHERE session_id = 'a'") > existingOrdinal,
+                "a new session sorts after the existing ones");
+        assertTrue(scalarLong("SELECT ordinal FROM session_meta WHERE session_id = 'b'")
+                        > scalarLong("SELECT ordinal FROM session_meta WHERE session_id = 'a'"),
+                "new sessions keep their batch order");
+        assertEquals(3, scalarLong("SELECT COUNT(*) FROM session_meta WHERE hidden = TRUE"),
+                "the hidden flag is written for the whole batch");
+
+        assertEquals(List.of("a", "b", "existing"),
+                new ArrayList<>(store.sessionMetadata("opencode").keySet()),
+                "in memory: new sessions first in batch order, existing stay in place");
+    }
+
+    /** Orders the database executor behind every write issued so far. */
+    private void barrier() {
+        store.query(1, null, NOW);
     }
 
     @Test

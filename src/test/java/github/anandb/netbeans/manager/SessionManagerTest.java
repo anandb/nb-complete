@@ -564,6 +564,31 @@ class SessionManagerTest {
     }
 
     @Test
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    void testSetHiddenBulkHidesEverySessionWithOneStoreWrite() {
+        SessionMetadata m1 = new SessionMetadata("S1", "5,10", false, "/p1");
+        SessionMetadata m2 = new SessionMetadata("S2", null, false, "/p2");
+        SessionStore store = mock(SessionStore.class);
+        when(store.sessionMetadata(any())).thenReturn(Map.of("b1", m1, "b2", m2));
+        sessionManager.setStoreForTest(store);
+
+        sessionManager.setHiddenBulk(List.of("b1", "b2"), true);
+
+        ArgumentCaptor<Map<String, SessionMetadata>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(store, times(1)).saveSessionMetadataBulk(any(), captor.capture());
+        verify(store, never()).saveSessionMetadata(any(), any(), any());
+
+        Map<String, SessionMetadata> written = captor.getValue();
+        assertEquals(2, written.size());
+        assertTrue(written.get("b1").hidden());
+        assertTrue(written.get("b2").hidden());
+        // Everything except the hidden flag must be carried over untouched.
+        assertEquals("S1", written.get("b1").title());
+        assertEquals("5,10", written.get("b1").usage());
+        assertEquals("/p1", written.get("b1").cwd());
+    }
+
+    @Test
     void testContextUsage() {
         assertNull(sessionManager.getContextUsage("s1"));
         sessionManager.setContextUsage("s1", 500, 1000);

@@ -77,4 +77,16 @@ public interface SessionStore {
      * A null session id or a null harness bucket is ignored.
      */
     void saveSessionMetadata(String harnessId, String sessionId, SessionMetadata metadata);
+
+    /**
+     * Inserts or replaces several sessions' metadata. The default writes them one
+     * by one; a database-backed store should override this to write the whole
+     * batch in a single transaction.
+     */
+    default void saveSessionMetadataBulk(String harnessId, Map<String, SessionMetadata> updates) {
+        if (updates == null) {
+            return;
+        }
+        updates.forEach((sessionId, metadata) -> saveSessionMetadata(harnessId, sessionId, metadata));
+    }
 }
