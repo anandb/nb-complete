@@ -48,6 +48,20 @@ public class FileSystemToolProvider {
     private static final Logger LOG = Logger.from(FileSystemToolProvider.class);
 
     /**
+     * Dedicated processor for draining command pipes. One task per stream, so it
+     * must not share {@code RequestProcessor.getDefault()}, which the NetBeans
+     * javadoc reserves for sporadic work.
+     */
+    private static final RequestProcessor CMD_IO_RP =
+            new RequestProcessor("run-command-io", 4, true);
+
+    /** Per-stream capture cap; a chatty command must not be able to exhaust the heap. */
+    private static final int MAX_CAPTURE_CHARS = 1 << 20;
+
+    /** How long a drain may take to finish once the child is gone. */
+    private static final int DRAIN_WAIT_MS = 2000;
+
+    /**
      * Validates a {@code filePath} argument for tools that operate on an
      * existing file: blank check, open-project containment, existence and
      * file-ness. Returns the error map to send back, or {@code null} when
@@ -537,55 +551,112 @@ public class FileSystemToolProvider {
                         // drain can deadlock. Background threads also let
                         // waitFor(timeout) actually enforce the deadline.
                         Process proc = pb.start();
-                        StringBuilder stdout = new StringBuilder();
-                        StringBuilder stderr = new StringBuilder();
-                        RequestProcessor.Task outTask = RequestProcessor.getDefault()
-                                .post(() -> drain(proc.getInputStream(), stdout));
-                        RequestProcessor.Task errTask = RequestProcessor.getDefault()
-                                .post(() -> drain(proc.getErrorStream(), stderr));
+                        Capture out = new Capture();
+                        Capture err = new Capture();
+                        RequestProcessor.Task outTask =
+                                CMD_IO_RP.post(() -> drain(proc.getInputStream(), out));
+                        RequestProcessor.Task errTask =
+                                CMD_IO_RP.post(() -> drain(proc.getErrorStream(), err));
                         boolean finished = proc.waitFor(timeout, TimeUnit.SECONDS);
                         if (!finished) {
-                            // destroyForcibly closes both pipes, unblocking the readers
+                            // Kill the child and anything it spawned: a grandchild
+                            // holding a pipe keeps its reader blocked after the direct
+                            // child is gone, which would leak the drain threads.
+                            proc.descendants().forEach(ProcessHandle::destroyForcibly);
                             proc.destroyForcibly();
-                            outTask.waitFinished(5000);
-                            errTask.waitFinished(5000);
-                            return Map.of("status", "error", "message", "Command timed out after " + timeout + "s");
+                            awaitDrain(outTask, errTask);
+                            Map<String, Object> timedOut = new HashMap<>();
+                            timedOut.put("status", "error");
+                            timedOut.put("message", "Command timed out after " + timeout + "s");
+                            putStreams(timedOut, out, err);
+                            return timedOut;
                         }
-                        outTask.waitFinished(5000);
-                        errTask.waitFinished(5000);
+                        awaitDrain(outTask, errTask);
                         int exitCode = proc.exitValue();
-                        String out = snapshot(stdout);
-                        String err = snapshot(stderr);
                         Map<String, Object> result = new HashMap<>();
                         result.put("status", "ok");
                         result.put("exitCode", exitCode);
-                        result.put("stdout", out);
-                        result.put("stderr", err);
-                        // Merged view kept for callers that only read "output".
-                        result.put("output", merge(out, err));
+                        putStreams(result, out, err);
                         return result;
                     }
                 });
     }
 
     /** Drains a process stream into {@code sink} on a background thread. */
-    private static void drain(InputStream stream, StringBuilder sink) {
+    private static void drain(InputStream stream, Capture sink) {
         try (var reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
             String line;
             while ((line = reader.readLine()) != null) {
-                synchronized (sink) {
-                    if (sink.length() > 0) sink.append("\n");
-                    sink.append(line);
-                }
+                sink.appendLine(line);
             }
         } catch (IOException e) {
             LOG.fine("Error draining command output: {0}", e.getMessage());
         }
     }
 
-    private static String snapshot(StringBuilder sink) {
-        synchronized (sink) {
-            return sink.toString();
+    /** Waits for both readers; a pipe held open elsewhere must not hang the call. */
+    private static void awaitDrain(RequestProcessor.Task... tasks) {
+        for (RequestProcessor.Task task : tasks) {
+            try {
+                if (!task.waitFinished(DRAIN_WAIT_MS)) {
+                    LOG.fine("Command output drain still running after {0}ms", DRAIN_WAIT_MS);
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+        }
+    }
+
+    /** Adds stdout/stderr/output, plus a truncation note when a cap was hit. */
+    private static void putStreams(Map<String, Object> result, Capture out, Capture err) {
+        String stdout = out.text();
+        String stderr = err.text();
+        result.put("stdout", stdout);
+        result.put("stderr", stderr);
+        // Merged view kept for callers that only read "output"; stdout comes first,
+        // so the original interleaving is not preserved here.
+        result.put("output", merge(stdout, stderr));
+        if (out.truncated() || err.truncated()) {
+            result.put("truncated", Boolean.TRUE);
+            result.put("note", "Output truncated at " + MAX_CAPTURE_CHARS + " characters per stream");
+        }
+    }
+
+    /** One drained stream: bounded text plus whether the cap was reached. */
+    private static final class Capture {
+        private final StringBuilder text = new StringBuilder();
+        private boolean truncated;
+
+        synchronized void appendLine(String line) {
+            if (truncated) {
+                return;
+            }
+            int separator = text.length() == 0 ? 0 : 1;
+            int room = MAX_CAPTURE_CHARS - text.length() - separator;
+            if (room <= 0) {
+                truncated = true;
+                return;
+            }
+            if (separator == 1) {
+                text.append('\n');
+            }
+            if (line.length() <= room) {
+                text.append(line);
+            } else {
+                // Keep the prefix rather than dropping the whole line, so a single
+                // huge line still yields usable output.
+                text.append(line, 0, room);
+                truncated = true;
+            }
+        }
+
+        synchronized String text() {
+            return text.toString();
+        }
+
+        synchronized boolean truncated() {
+            return truncated;
         }
     }
 

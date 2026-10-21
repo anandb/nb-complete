@@ -3,6 +3,7 @@ package github.anandb.netbeans.mcp;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -593,6 +594,39 @@ class FileSystemToolProviderTest {
 
         assertEquals("error", result.get("status"));
         assertEquals("Command timed out after 1s", result.get("message"));
+    }
+
+    @Test
+    void runCommandTimeoutKeepsPartialOutput() throws Exception {
+        // A hanging command still has diagnostics worth reporting.
+        openProjectAt(tempDir.toFile());
+
+        Map<String, Object> result = runCommand()
+                .execute(new RunCommandInput("echo started; echo warning >&2; sleep 30",
+                        tempDir.toString(), 1));
+
+        assertEquals("error", result.get("status"));
+        assertEquals("started", result.get("stdout"),
+                "stdout produced before the timeout must be reported");
+        assertEquals("warning", result.get("stderr"),
+                "stderr produced before the timeout must be reported");
+    }
+
+    @Test
+    void runCommandCapsCapturedOutput() throws Exception {
+        // ~2 MB of output; the capture cap must hold without blocking the drain.
+        openProjectAt(tempDir.toFile());
+
+        Map<String, Object> result = runCommand()
+                .execute(new RunCommandInput("seq 1 300000", tempDir.toString(), 60));
+
+        assertEquals("ok", result.get("status"));
+        String stdout = (String) result.get("stdout");
+        assertTrue(stdout.length() <= 1_048_576, "stdout must stop at the capture cap");
+        assertFalse(stdout.isEmpty(), "the prefix of the output is kept");
+        assertEquals(Boolean.TRUE, result.get("truncated"));
+        assertNotNull(result.get("note"));
+        assertEquals(0, result.get("exitCode"));
     }
 
     @Test
