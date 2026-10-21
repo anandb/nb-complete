@@ -224,6 +224,29 @@ class SessionLifecycleHandlerTest {
     }
 
     @Test
+    void renameKeepsTheRenamedSessionSelectedAndShowsTheNewTitle() throws Exception {
+        setUpMocks(false);
+        stubCurrent("s1");
+        List<Session> list = sessions(session("s1", false), session("s2", false));
+        when(sessionControl.getCustomTitle(anyString(), anyString()))
+                .thenAnswer(inv -> inv.getArgument(1));
+        when(sessionControl.getCustomTitle("s1", "Session s1")).thenReturn("Renamed s1");
+
+        SessionLifecycleHandler handler = newHandler();
+        handler.onSessionListUpdated(list);
+        flushEdt();
+
+        handler.onSessionRenamed("s1");
+        flushEdt();
+
+        assertEquals(2, sessionDropdown.getItemCount(), "Rename must replace the item, not add one");
+        assertEquals("Renamed s1", ((SessionItem) sessionDropdown.getSelectedItem()).getTitle(),
+                "Closed dropdown must render the new title");
+        assertEquals("s1", ((SessionItem) sessionDropdown.getSelectedItem()).getSession().id(),
+                "Rename must keep the renamed session selected");
+    }
+
+    @Test
     void hideArchivedAllHiddenShowsWelcomeScreen() throws Exception {
         setUpMocks(false);
         stubCurrent("arch-1");

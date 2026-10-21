@@ -398,6 +398,17 @@ variable-delay cycle and queries `isFinished()`, which `SlidingTask` does not mo
   `deferStartupSessionLoad()` remains (after `SESSION_LOAD_STARTUP_GRACE_MS`).
 - Do NOT re-add `refreshSessions()` to `initChat()` or the immediate path in
   `componentOpened()` — it causes duplicate RPC calls.
+- Session titles can change without any event this panel can apply: a harness may
+  rename a session itself (OpenCode sends no title in `session_info_update`), and
+  the only source of titles is `session/list`. `DefaultSlashCommandInterceptor`
+  therefore calls `refreshSessions()` when the `/title`-without-arguments turn
+  completes — that turn is what produces an LLM-chosen name. Do NOT remove it:
+  without it the dropdown keeps the old title until the IDE restarts, and do NOT
+  move it to a timer or to `session_info_update` (that is the refresh storm this
+  optimization removed).
+- `onSessionRenamed` must capture `wasSelected` BEFORE replacing the dropdown
+  item: the replacement removes the object that was selected, which clears the
+  combo selection, and the closed dropdown then renders blank or the old title.
 
 ### UI Sizing & Document Re-use
 - Bubbles use a cheap `JTextArea` during streaming (timer flush every `TimingConstants.STREAM_FLUSH_MS` ms).

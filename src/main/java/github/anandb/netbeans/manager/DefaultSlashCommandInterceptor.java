@@ -52,7 +52,7 @@ public class DefaultSlashCommandInterceptor implements SlashCommandInterceptor {
         commands.put("/session", new CommandInfo(this::handleSession, "Select session"));
         commands.put("/sessions", new CommandInfo(this::handleSession, "Select session"));
         commands.put("/title", new CommandInfo(this::handleTitle, "Generate session title"));
-        
+
         // /compact is passed verbatim to the server (no local interception)
         commands.put("/compact", new CommandInfo(this::handlePassthrough, "Summarise Conversation"));
     }
@@ -96,7 +96,7 @@ public class DefaultSlashCommandInterceptor implements SlashCommandInterceptor {
         if (cb != null) {
             cb.popupModelCombo();
         }
-        
+
         return CompletableFuture.completedFuture(true);
     }
 
@@ -184,6 +184,13 @@ public class DefaultSlashCommandInterceptor implements SlashCommandInterceptor {
             try {
                 pc.sendMessage(sessionId, prompt, Map.of("annotations", Map.of("audience", List.of("assistant"))))
                         .whenComplete((result, error) -> {
+                            // The model names the session with its own rename tool, which
+                            // never reaches this plugin as a session/update — a rename is
+                            // only observable through session/list. The name is final when
+                            // the turn that produced it ends, so re-read the list once
+                            // here; otherwise the dropdown keeps the old title until the
+                            // IDE restarts.
+                            sc.refreshSessions();
                             if (cb != null) {
                                 SwingUtilities.invokeLater(cb::onAsyncSendCompleted);
                             }

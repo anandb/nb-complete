@@ -576,13 +576,17 @@ public class SessionLifecycleHandler implements SessionListener {
             for (int i = 0; i < sessionDropdown.getItemCount(); i++) {
                 SessionItem item = sessionDropdown.getItemAt(i);
                 if (item != null && sessionId.equals(item.getSession().id())) {
+                    // Capture the selection BEFORE replacing the item: the removed
+                    // object is the selected one, so the replacement clears it and
+                    // the closed combo would render blank (or keep the old title)
+                    // until something rebuilds the list.
+                    boolean wasSelected = sessionDropdown.getSelectedIndex() == i;
                     String newTitle = sc.getCustomTitle(sessionId, item.getSession().title());
                     SessionItem updated = new SessionItem(item.getSession(), newTitle);
                     sessionDropdown.insertItemAt(updated, i);
                     sessionDropdown.removeItemAt(i + 1);
-                    // Keep the selection if it was this item
-                    if (sessionDropdown.getSelectedIndex() == i) {
-                        sessionDropdown.setSelectedItem(updated);
+                    if (wasSelected) {
+                        sessionDropdown.setSelectedIndex(i);
                     }
                     break;
                 }

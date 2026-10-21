@@ -1,5 +1,6 @@
 package github.anandb.netbeans.manager;
 
+import github.anandb.netbeans.contract.ProcessControl;
 import github.anandb.netbeans.contract.SessionControl;
 import github.anandb.netbeans.contract.SlashCommandCallback;
 import github.anandb.netbeans.contract.SlashCommandHandler;
@@ -195,6 +196,24 @@ class DefaultSlashCommandInterceptorTest {
         SlashCommandCallback newCallback = mock(SlashCommandCallback.class);
         interceptor.setCallback(newCallback);
         assertEquals(newCallback, interceptor.getCallback());
+    }
+
+    @Test
+    void titleWithoutArgsRefreshesTheListOnceTheModelHasRenamed() throws Exception {
+        SessionControl sessionControl = mock(SessionControl.class);
+        when(sessionControl.getCurrentSessionId()).thenReturn("test-session-id");
+        ProcessControl processControl = mock(ProcessControl.class);
+        when(processControl.sendMessage(anyString(), anyString(), any()))
+                .thenReturn(CompletableFuture.completedFuture(null));
+
+        Lookup context = mock(Lookup.class);
+        when(context.lookup(SessionControl.class)).thenReturn(sessionControl);
+        when(context.lookup(ProcessControl.class)).thenReturn(processControl);
+
+        assertTrue(interceptor.intercept("/title", context).get());
+
+        // The model renames through its own tool; only session/list can see it.
+        verify(sessionControl).refreshSessions();
     }
 
     @Test
