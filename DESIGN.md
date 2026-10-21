@@ -1,6 +1,6 @@
 # Architectural Design Review: NetBeans Coding Assistant Plugin
 
-This document provides a detailed architectural review of the **Coding Assistant** NetBeans IDE plugin (v1.16.x, artifactId `beanbot`). The plugin bridges the NetBeans Platform with an AI subprocess using the **Agent Client Protocol (ACP) v1** via JSON-RPC over stdin/stdout and Server-Sent Events (SSE) streaming. It also exposes an embedded **MCP (Model Context Protocol) server** so the AI can call back into the IDE.
+This document provides a detailed architectural review of the **Coding Assistant** NetBeans IDE plugin (v1.26.x, artifactId `beanbot`). The plugin bridges the NetBeans Platform with an AI subprocess using the **Agent Client Protocol (ACP) v1** via JSON-RPC over stdin/stdout and Server-Sent Events (SSE) streaming. It also exposes an embedded **MCP (Model Context Protocol) server** so the AI can call back into the IDE.
 
 ---
 
@@ -134,7 +134,7 @@ The plugin embeds a **Model Context Protocol (MCP) server** so the AI subprocess
 - **Slash commands**: `contract/SlashCommandProvider` + `manager/DefaultSlashCommandInterceptor` route `/models`, `/model`, `/agents`, `/level`, `/sessions`, `/new`, `/title`, `/archive`, `/compact`. (Injected via `Lookup` for the `contract/` → `manager/` seam.)
 - **File & session caches**: `manager/FileCacheManager` (implements `contract/FileCacheQuery`), eagerly initialized by `FileCacheInitializer`, with VCS ignore strategies (`GitIgnoreStrategy`, `HgIgnoreStrategy`, `NoVcsIgnoreStrategy`); `manager/SessionCacheManager` caches session data.
 - **State & messaging**: `manager/PinnedMessageStore` (in-memory + `NbPreferences`-persisted, `contract/PinnedMessageControl`); `agent_title`/`sub_agent` display via `manager/strategy/SubAgentTitleResolver`; **`support/Logger`** is a session-aware, timestamped logging wrapper; **`support/PreferenceKeys`** centralizes preference constants (resolving the old `ui/` → `manager/` preference-key coupling).
-- **Update checking**: `manager/UpdateCheckerService` (`contract/UpdateCheckerControl`) checks Maven Central in the background (60s delay, 24h interval), dispatched off the EDT via a background request pool.
+- **Update checking**: `manager/UpdateCheckerService` (`contract/UpdateCheckerControl`) checks Maven Central in the background (60s first delay, then a random 16–24h interval), dispatched off the EDT via a background request pool.
 - **Image paste**: `ui/ImagePasteTransferHandler` (Wayland clipboard support) delegates its I/O thread pool to `support/ImagePasteIoProcessor` (a `RequestProcessor`), keeping I/O off the EDT.
 - **Export & history**: `ConversationExporter` (Markdown) and `HtmlConversationExporter` (standalone HTML with embedded CSS); `MessageHistory` + `HistorySearchDialog` (NbPreferences-persisted input history, `Ctrl+Up`); `ArchiveSessionAction`.
 
@@ -150,7 +150,39 @@ The plugin embeds a **Model Context Protocol (MCP) server** so the AI subprocess
 
 ---
 
-## 10. Architectural Recommendations & Opportunities
+## 10. Newer Subsystems (v1.17 → v1.26)
+
+### Task Repository (todo.txt task list in the IDE)
+- **`tasks/TasksStartup`** (`@OnStart`) restores todo.txt repositories; **`tasks/TasksConnector`** registers them with the NetBeans bugtracking framework. Both entry points are gated on the `taskRepository.enabled` preference (checked twice because the framework's own `loadRepositories()` startup races with `@OnStart`).
+- **`manager/TxtTaskRepository`** implements the `contract/TaskRepositoryControl` port over todo.txt files, encoded/decoded by **`support/TaskTxtCodec`** (`model/TaskRecord`, `TaskStatus`). **`model/HarnessCatalog`**-driven `TaskToolProvider` exposes `add_task`/`update_task`/`close_task`/`search_task` MCP tools.
+- Scheduling providers (`TaskQueryProvider`, `TaskIssueProvider`, `TaskScheduleProvider`) feed the IDE Task List; `getSchedule()`/`getDueDate()` return `null` for finished tasks so completed items never raise notifications.
+- Repository metadata persists via **`support/TasksMetadata`**; every provider reload/push uses **`support/SlidingTask`** coalescing.
+
+### Usage stats & session persistence (H2)
+- **`manager/H2UsageStatsStore`** implements both `contract/SessionStore` and `contract/UsageStatsStore` over a single H2 database under the NetBeans user directory; every DB operation runs on its own single-threaded executor (EDT callers enqueue and return).
+- `SCHEMA_VERSION` is the migration cursor; the one-shot legacy preferences migration (`runPrefsMigration`) orders rows → completion marker → deletions so a failed write never loses data, and per-entry errors are counted in **`model/MigrationReport`** instead of failing startup.
+- Rows pass through **`support/ModelIdNormalizer`** in `bindAttribution`; a model belongs to a session and is captured as messages arrive, never resolved from UI state at query time.
+
+### Harness capabilities & turn-end semantics
+- **`model/HarnessCatalog`** is the single seam for per-harness capabilities; `HarnessCatalog.forAgentVersion(...)` derives **OpenCode v2** (`requiresMessageQueue=true`, no mid-turn steering) from the reported agent version while keeping the shared v1 id so caches and stored prefs still resolve. **`ui/MessageQueueManager`** then queues prompts until turn end on v2 harnesses; **`ui/MessageSender`** ignores stale completions whose send generation is no longer current (Cursor-style interleaving).
+- `session/close` before `session/load` is sent only when the agent advertised `agentCapabilities.sessionCapabilities.close` in the handshake (`ProcessManager.isSessionCloseSupported()`), captured per connection — never from the static catalog.
+- `SessionManager` resolves LLM-chosen session titles by refreshing `session/list` after a title-less `/title` turn completes; harness-triggered renames can only be observed through that refresh.
+
+### MCP tool families & path confinement
+- Tool providers besides the editor/stash-diff pair: **`FileSystemToolProvider`** (read/write/patch, `run_command` gated on its working directory only), **`GitToolProvider`** / **`HgToolProvider`** (status, diff, log, file history), **`ProjectToolProvider`**, **`TaskToolProvider`**; **`mcp/VcsToolSupport`** shares repo resolution and argument clamping.
+- Every path touching a filesystem/git/hg tool passes **`mcp/ProjectPathGuard`** (canonical-path containment over `contract/ProjectQuery`, separator-boundary aware); `fs/readTextFile`/`fs/writeTextFile` remain ACP-routed with the harness-owned permission flow.
+- **`support/FsWriteSettings`** gates ACP `fs/write*` capability advertisement via the `beanbot.fs.write.enabled` system property (default *enabled*; only an explicit fact `, *disabled*)`; `MessageServlet` verifies a per-instance token except for PI-family harnesses that cannot carry tokens.
+
+### Caching, images & support utilities
+- Session titles without events this panel can apply (OpenCode sends none) refresh anonymously through `DefaultSlashCommandInterceptor` after the turn completes — never on timers or `session_info_update`.
+- **`manager/BbIgnoreStrategy`**: when a project-root `.bbignore` exists it replaces `.gitignore`/`.hgignore` entirely; an empty listing is authoritative (no filesystem-walk fallback) and invalid patterns are skipped per line.
+- **`support/SlidingTask`** coalesces all burst-prone OpenProjects listeners (file-cache rebuilds, project sync, platform-bridge fan-out) into one restartable task instead of a queued run per event.
+- **`support/MessageIdGenerator`** produces deterministic SHA-256 assistant message ids over the stripped stream body so pinned messages survive session reloads; **`manager/SessionUpdateDecoder`** parses `session/update` params defensively (echoes string/UUID ids verbatim, synthesizes turn-end updates, drops malformed params).
+- Update checking now uses a random 16–24 h interval; both reconnect backoff (3 s/6 s/9 s, reset after 5 idle minutes) and editor/renderer caches are unchanged otherwise.
+
+---
+
+## 11. Architectural Recommendations & Opportunities
 
 While the architecture is highly decoupled and performant, the following areas present opportunities for refinement:
 
