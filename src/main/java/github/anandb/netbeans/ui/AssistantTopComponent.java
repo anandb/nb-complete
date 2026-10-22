@@ -136,6 +136,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     private final transient PermissionRequestPanel permissionPanel;
     private final transient JSplitPane mainSplitPane;
     private final transient ChatLayoutBuilder layoutBuilder;
+    private final transient PlanPanel planPanel;
 
     private volatile boolean sessionActive = false;
     private volatile boolean processing = false;
@@ -157,6 +158,13 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
         configPanelController = new ConfigPanelController(this::updateTabName);
         layoutBuilder = new ChatLayoutBuilder(this, chatPanel, configPanelController);
+        // Plan slideout: docks at the bottom of the thread window (SOUTH of the
+        // wrap below), borrowing height from the message thread, never from the
+        // textbox underneath the split divider.
+        planPanel = new PlanPanel();
+        JPanel threadWindow = new JPanel(new BorderLayout());
+        threadWindow.add(chatPanel, BorderLayout.CENTER);
+        threadWindow.add(planPanel, BorderLayout.SOUTH);
 
         header = layoutBuilder.buildHeader();
         JPanel bottomPanel = layoutBuilder.buildBottomPanel();
@@ -183,7 +191,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
         add(header, BorderLayout.NORTH);
 
-        mainSplitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, chatPanel, bottomPanel);
+        mainSplitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, threadWindow, bottomPanel);
         mainSplitPane.setResizeWeight(1.0);
         mainSplitPane.setOneTouchExpandable(false);
         mainSplitPane.setContinuousLayout(true);
@@ -266,7 +274,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         sessionDropdownHandler = new SessionDropdownHandler(sessionDropdown, inputArea);
         sessionLifecycleHandler = new SessionLifecycleHandler(
             chatPanel, sessionDropdown, hideBtn, newSessionBtn, renameSessionBtn,
-            toggleOptionsBtn, configPanelController, inputArea, statusController,
+            toggleOptionsBtn, configPanelController, inputArea, statusController, planPanel,
             this::showProjectPickerPopup, this::updateTabName, this::updateCwdLabel,
             sessionActiveCallback,
             this::setOptionsPanelVisible,

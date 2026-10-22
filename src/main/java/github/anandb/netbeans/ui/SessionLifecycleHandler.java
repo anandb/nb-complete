@@ -12,6 +12,7 @@ import javax.swing.JComponent;
 import javax.swing.SwingUtilities;
 import github.anandb.netbeans.contract.SessionListener;
 import github.anandb.netbeans.contract.UIHandler;
+import github.anandb.netbeans.model.ModelRecords.PlanEntry;
 import github.anandb.netbeans.contract.PinnedMessageControl;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.contract.SessionControl;
@@ -59,6 +60,8 @@ public class SessionLifecycleHandler implements SessionListener {
     private final ConfigPanelController configPanelController;
     private final PlaceholderTextArea inputArea;
     private final StatusController statusController;
+    /** Live plan slideout docked above the message thread. */
+    private final PlanPanel planPanel;
 
     // Callbacks to AssistantTopComponent for operations kept there
     private final Consumer<JComponent> projectPickerShower;
@@ -109,6 +112,7 @@ public class SessionLifecycleHandler implements SessionListener {
             ConfigPanelController configPanelController,
             PlaceholderTextArea inputArea,
             StatusController statusController,
+            PlanPanel planPanel,
             Consumer<JComponent> projectPickerShower,
             Consumer<String> tabNameUpdater,
             Consumer<String> cwdLabelUpdater,
@@ -124,6 +128,7 @@ public class SessionLifecycleHandler implements SessionListener {
         this.configPanelController = configPanelController;
         this.inputArea = inputArea;
         this.statusController = statusController;
+        this.planPanel = planPanel;
         this.projectPickerShower = projectPickerShower;
         this.tabNameUpdater = tabNameUpdater;
         this.cwdLabelUpdater = cwdLabelUpdater;
@@ -277,6 +282,20 @@ public class SessionLifecycleHandler implements SessionListener {
                 SwingUtilities.invokeLater(() ->
                     statusController.setTooltip("HINT_ContextUsage", used, size)
                 );
+            }
+
+            @Override
+            public void updatePlan(List<PlanEntry> entries) {
+                String planSessionId = update.params() != null ? update.params().sessionId() : null;
+                SwingUtilities.invokeLater(() -> {
+                    // Same race guard as displayMessage: never show a late plan
+                    // for a session the user has already switched away from.
+                    String currentId = sessionService.get().getCurrentSessionId();
+                    if (planSessionId != null && !planSessionId.equals(currentId)) {
+                        return;
+                    }
+                    planPanel.setEntries(entries);
+                });
             }
         });
 
@@ -527,6 +546,7 @@ public class SessionLifecycleHandler implements SessionListener {
         lastAutoLoadSessionId = null;
         showingWelcomeScreen = false;
         SwingUtilities.invokeLater(() -> {
+            planPanel.clear();
             chatPanel.setSessionId(sessionId);
             // Prime the pinned-message cache before any bubbles are created.
             PinnedMessageControl pinStore = Lookup.getDefault()
@@ -706,7 +726,15 @@ public class SessionLifecycleHandler implements SessionListener {
 
     @Override
     public void onSessionLoading(boolean isLoading) {
-        SwingUtilities.invokeLater(() -> statusController.setInputEnabled(!isLoading));
+        SwingUtilities.invokeLater(() -> {
+            // A freshly loaded session has no plan until the harness replays one;
+            // clear the previous session's slideout here without a clear that would
+            // race the replayed plan updates.
+            if (isLoading) {
+                planPanel.clear();
+            }
+            statusController.setInputEnabled(!isLoading);
+        });
     }
 
     @Override

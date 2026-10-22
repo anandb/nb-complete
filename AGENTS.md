@@ -364,6 +364,20 @@ The same helper carries the other pre-existing sliding tasks: `ModelListStore` a
 per-query reload/push slots. `UpdateCheckerService` is deliberately NOT one — it schedules a
 variable-delay cycle and queries `isFinished()`, which `SlidingTask` does not model.
 
+### Plan Slideout (do not reintroduce the chat bubble)
+Plan updates (`case "plan"` in `StrategyRegistry`) do NOT render as a markdown
+chat bubble. They call `UIHandler.updatePlan(entries)` (priority-sorted
+`PlanEntry` list); `SessionLifecycleHandler` forwards the entries — with the
+same session-race guard as `displayMessage` — to `ui/PlanPanel`, which docks at
+the SOUTH of the thread window (inside `AssistantTopComponent`'s `threadWindow`
+wrap, squeezing `ChatThreadPanel`'s viewport, never the input textbox). The
+panel is collapsed-by-default, shows the first unfinished entry + done/total in
+the header, toggles on header click, clears on session start and on
+`onSessionLoading(true)` (the harness replay can re-populate it while LOADING —
+`updatePlan` is deliberately NOT gated by `shouldCapture`). Do NOT reintroduce
+a plan `displayMessage` call, and do NOT move the panel between the split
+divider and the input area (it must borrow space from the thread only).
+
 ### Connection & Lifecycle
 - `AcpProtocolClient.setConnectionErrorHandler()` is a noop. Disconnection handles
   IOExceptions silently; pending futures receive a generic client closed exception.

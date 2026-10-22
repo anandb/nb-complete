@@ -268,17 +268,9 @@ public class StrategyRegistry implements UpdateDispatcher {
                 }
                 entries = new ArrayList<>(entries);
                 entries.sort(Comparator.comparingInt(e -> priorityWeight(e.priority())));
-                StringBuilder sb = new StringBuilder();
-                sb.append("## Plan\n\n");
-                for (PlanEntry entry : entries) {
-                    sb.append("- ").append(statusIcon(entry.status())).append(" ").append(entry.content()).append("\n");
-                }
-                ProcessedMessage target = new ProcessedMessage.Builder()
-                        .messageType(MessageType.agent_message_chunk)
-                        .text(sb.toString())
-                        .streaming(false)
-                        .build();
-                handler.displayMessage(target);
+                // The plan renders in the slideout above the message thread
+                // (ui/PlanPanel), not as a chat bubble.
+                handler.updatePlan(entries);
             }
 
             default -> {
@@ -494,19 +486,6 @@ public class StrategyRegistry implements UpdateDispatcher {
             case "medium" -> 2;
             case "low" -> 3;
             default -> 3;
-        };
-    }
-
-    /** Maps a plan status string to a display icon. */
-    private static String statusIcon(String status) {
-        if (status == null) return "\u25CB";
-        return switch (status.toLowerCase()) {
-            case "completed" -> "\u2705";
-            case "in_progress", "in-progress", "inprogress" -> "\u25C9";
-            case "pending" -> "\u23F3";
-            case "cancelled", "canceled" -> "\u274C";
-            case "failed" -> "\u26A0";
-            default -> "\u25CB";
         };
     }
 
