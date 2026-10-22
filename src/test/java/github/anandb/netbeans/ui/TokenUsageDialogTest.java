@@ -91,7 +91,7 @@ class TokenUsageDialogTest {
     }
 
     @Test
-    void renderSummaryHtmlRendersToolHistogramScaledToMax() {
+    void renderSummaryHtmlRendersToolHistogramAsShareBars() {
         List<ToolTotals> byTool = List.of(
                 new ToolTotals("read_file", 120),
                 new ToolTotals("search_project", 30),
@@ -103,10 +103,23 @@ class TokenUsageDialogTest {
         assertNotNull(html);
         assertTrue(html.contains("MCP Tool Calls"), "the tool table must be titled");
         assertTrue(html.contains("read_file"));
-        assertTrue(html.contains("120"), "the call count must be rendered");
-        String bar = "\u2588".repeat(TokenUsageDialog.HISTOGRAM_BLOCKS);
-        assertTrue(html.contains("120  " + bar), "the most-called tool gets a full-length bar");
-        assertFalse(html.contains(bar + bar), "no bar may exceed the cap");
+        assertTrue(html.contains("120 (79%)"), "counts render with the share of all calls");
+        assertTrue(html.contains("30 (20%)"), "the share follows each count");
+        // The bar is a percentage-width div: a block character would print as
+        // tofu in Swing's HTML kit, which has no U+2588 coverage.
+        assertTrue(html.contains("width:79%;"), "the most-called tool gets the widest bar");
+        assertTrue(html.contains("width:1%;"), "a rare tool keeps the 1% floor");
+        assertTrue(html.contains("height:10px;"), "bars are themed 10px divs");
+        assertFalse(html.contains("\u2588"), "no block characters may reach the HTML");
+    }
+
+    @Test
+    void toolPercentRoundsAndFloorsAtOne() {
+        assertEquals(79, TokenUsageDialog.toolPercent(120, 151));
+        assertEquals(20, TokenUsageDialog.toolPercent(30, 151));
+        assertEquals(1, TokenUsageDialog.toolPercent(1, 151), "a 0.7% share rounds to the 1% floor");
+        assertEquals(100, TokenUsageDialog.toolPercent(5, 5));
+        assertEquals(1, TokenUsageDialog.toolPercent(0, 0), "an empty window still renders a bar");
     }
 
     @Test

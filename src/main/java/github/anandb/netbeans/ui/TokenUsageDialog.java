@@ -365,6 +365,7 @@ public class TokenUsageDialog extends JDialog {
         String headerBg = theme.toHtmlHex(theme.tableHeaderBackground());
         String tableBg = theme.toHtmlHex(theme.tableBackground());
         String altBg = theme.toHtmlHex(theme.tableRowAlternate());
+        String barColor = ThemeManager.isDark() ? "#589DF6" : "#268BD2";
 
         StringBuilder sb = new StringBuilder(2048);
         sb.append("<html><head><style>")
@@ -401,34 +402,61 @@ public class TokenUsageDialog extends JDialog {
             appendGroupTables(sb, "LBL_ByAgent", byAgent, headerBg, altBg);
         }
         if (!byTool.isEmpty()) {
-            appendToolHistogram(sb, byTool, headerBg, altBg);
+            appendToolHistogram(sb, byTool, barColor, altBg);
         }
 
         sb.append("</body></html>");
         return sb.toString();
     }
 
-    /** Histogram bar length cap: the longest bar never exceeds this many blocks. */
-    static final int HISTOGRAM_BLOCKS = 24;
-
     /**
      * Renders the per-tool MCP call list as one table: tool name in the label
-     * column, call count plus a block-character bar scaled to the window's most
-     * called tool in the value column. Most-called first; a single-call tool
-     * still gets one block so its row reads as present rather than empty.
+     * column, a themed bar sized by the tool's share of the window's calls in
+     * the middle, and the count with that share on the right. Most-called
+     * first; a 1% floor keeps a rare tool's bar from rendering as empty.
+     *
+     * <p>The bar is a percentage-width {@code div}, not a run of {@code █}
+     * characters: the monospace stack has no block-glyph coverage in Swing's
+     * HTML kit, so character bars print as tofu boxes. This is the rendering
+     * the dialog used before the stats moved from CLI output to ACP capture.</p>
      */
-    private static void appendToolHistogram(StringBuilder sb, List<ToolTotals> byTool,
-                                            String headerBg, String altBg) {
-        long max = byTool.stream().mapToLong(ToolTotals::calls).max().orElse(1);
-        String[][] rows = new String[byTool.size()][];
-        for (int i = 0; i < byTool.size(); i++) {
-            ToolTotals t = byTool.get(i);
-            int blocks = (int) Math.max(1, Math.round(HISTOGRAM_BLOCKS * (double) t.calls() / max));
-            rows[i] = new String[]{t.toolName(),
-                    UsageStatsFormat.thousands(t.calls()) + "  " + "\u2588".repeat(blocks)};
+    private static void appendToolHistogram(StringBuilder sb, List<ToolTotals> byTool, String barColor,
+                                            String altBg) {
+        long total = byTool.stream().mapToLong(ToolTotals::calls).sum();
+        sb.append("<table><tr><th colspan='3'>")
+          .append(escapeHtml(NbBundle.getMessage(TokenUsageDialog.class, "LBL_McpToolCalls")))
+          .append("</th></tr>");
+        boolean alt = false;
+        for (ToolTotals tool : byTool) {
+            int pct = toolPercent(tool.calls(), total);
+            String style = alt ? " style='background-color: " + altBg + ";'" : "";
+            sb.append("<tr").append(style).append(">")
+              .append("<td style='white-space:nowrap;'>").append(escapeHtml(tool.toolName())).append("</td>")
+              .append("<td style='width:100%;'>")
+              .append("<table style='margin:0;border:0;width:100%;'><tr>")
+              .append("<td style='border:0;padding:1px;width:").append(pct).append("%;'>")
+              .append("<div style='height:10px;background:").append(barColor).append(";'></div>")
+              .append("</td><td style='border:0;padding:1px;'></td>")
+              .append("</tr></table>")
+              .append("</td>")
+              .append("<td style='text-align:right;white-space:nowrap;'>")
+              .append(escapeHtml(UsageStatsFormat.thousands(tool.calls()) + " (" + pct + "%)"))
+              .append("</td></tr>");
+            alt = !alt;
         }
-        appendRawTable(sb, NbBundle.getMessage(TokenUsageDialog.class, "LBL_McpToolCalls"),
-                headerBg, altBg, rows);
+        sb.append("</table>");
+    }
+
+    /**
+     * Share of the window's calls this tool accounts for, rounded to whole
+     * percent and floored at 1 so a lone or rarely-called tool still renders a
+     * visible bar instead of an empty cell.
+     */
+    static int toolPercent(long calls, long total) {
+        if (calls <= 0 || total <= 0) {
+            return 1;
+        }
+        return Math.max(1, (int) Math.round(100.0 * calls / total));
     }
 
     /**
@@ -461,29 +489,6 @@ public class TokenUsageDialog extends JDialog {
     private static void appendLocalizedTable(StringBuilder sb, String titleKey, String headerBg,
                                              String altBg, String[][] rows) {
         appendTable(sb, NbBundle.getMessage(TokenUsageDialog.class, titleKey), headerBg, altBg, rows);
-    }
-
-    /**
-     * Renders a two-column table whose title and row labels are used verbatim,
-     * already resolved — the tool histogram passes literal tool names, which
-     * have no bundle entry of their own.
-     */
-    private static void appendRawTable(StringBuilder sb, String title, String headerBg,
-                                       String altBg, String[][] rows) {
-        sb.append("<table><tr><th colspan='2'>")
-          .append(escapeHtml(title))
-          .append("</th></tr>");
-        boolean alt = false;
-        for (String[] row : rows) {
-            String style = alt ? " style='background-color: " + altBg + ";'" : "";
-            sb.append("<tr").append(style).append(">")
-              .append("<td style='white-space:nowrap;'>")
-              .append(escapeHtml(row[0])).append("</td>")
-              .append("<td style='text-align:right;'>").append(escapeHtml(row[1])).append("</td>")
-              .append("</tr>");
-            alt = !alt;
-        }
-        sb.append("</table>");
     }
 
     /**
