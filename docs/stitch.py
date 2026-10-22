@@ -33,6 +33,16 @@ MD_IMG_RE = re.compile(
 )
 EXT_MIME = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "gif": "image/gif"}
 
+POM_PATH = HERE.parent / "pom.xml"
+# The project's own version, not a dependency's: the <version> right after the
+# beanbot <artifactId>.
+POM_VERSION_RE = re.compile(
+    r"<artifactId>beanbot</artifactId>\s*<version>([^<]+)</version>", re.DOTALL
+)
+# "Last updated for BeanBot v1.26.0" in the Home passage; the trailing tail
+# catches suffixes like -SNAPSHOT or rc1 so the stamp never leaves a stale one.
+VERSION_STAMP_RE = re.compile(r"(Last updated for BeanBot v)[0-9][\w.\-]*")
+
 
 def img_to_base64(match: re.Match) -> str:
     alt, path, attrs = match.group(1), match.group(2), (match.group(3) or "").strip()
@@ -47,10 +57,23 @@ def img_to_base64(match: re.Match) -> str:
     return f'<img src="data:{mime};base64,{b64}" alt="{alt}"{extras}>'
 
 
+def pom_version() -> str | None:
+    """Read the beanbot project version from pom.xml, or None when unavailable."""
+    try:
+        match = POM_VERSION_RE.search(POM_PATH.read_text(encoding="utf-8"))
+        return match.group(1).strip() if match else None
+    except OSError as exc:
+        print(f"Warning: could not read {POM_PATH} for the version stamp: {exc}")
+        return None
+
+
 def stitch() -> str:
+    version = pom_version()
     parts = []
     for passage_file in sorted(PASSAGES_DIR.glob("*.txt")):
         text = passage_file.read_text(encoding="utf-8")
+        if version:
+            text = VERSION_STAMP_RE.sub(r"\g<1>" + version, text)
         parts.append(MD_IMG_RE.sub(img_to_base64, text))
     return "\n\n\n\n".join(parts) + "\n"
 

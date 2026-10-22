@@ -44,6 +44,7 @@ import github.anandb.netbeans.support.AppLinks;
 import github.anandb.netbeans.support.BinaryResolver;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.PreferenceKeys;
+import github.anandb.netbeans.support.UserGuideOpener;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
 
 import github.anandb.netbeans.contract.SessionControl;
@@ -382,8 +383,9 @@ final class ChatLayoutBuilder {
 
             JMenuItem openGuideItem = new JMenuItem(NbBundle.getMessage(
                     AssistantTopComponent.class, "LBL_HelpOpenGuide"));
-            openGuideItem.addActionListener(ev -> BrowserUtils.openOrCopyUrl(userGuideUrl,
-                "STATUS_QuickstartCopied", (url, key) -> topComponent.setStatus(key, url)));
+            openGuideItem.addActionListener(ev -> UserGuideOpener.open(() ->
+                BrowserUtils.openOrCopyUrl(userGuideUrl,
+                    "STATUS_QuickstartCopied", (url, key) -> topComponent.setStatus(key, url))));
             helpPopup.add(openGuideItem);
 
             JMenuItem checkUpdatesItem = new JMenuItem(NbBundle.getMessage(

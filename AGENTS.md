@@ -650,6 +650,13 @@ When editing it, use the split passage files — they are the source of truth:
   reference them as `![alt](../images/<name>-N.png){style="max-width:100%;"}`.
 - **Tooling**: `docs/split.py` unpacks `User Guide.twee` into passages+images;
   `docs/stitch.py` reassembles them back into `User Guide.twee`.
+- **Bundled copy**: the Maven build also copies the compiled HTML to
+  `target/generated-guide/UserGuide.html`, which the `<resources>` block packages into
+  the module jar at `github/anandb/netbeans/docs/UserGuide.html`. The Open User Guide
+  action (`support/UserGuideOpener`) extracts it to `java.io.tmpdir/beanbot` on a
+  background thread and opens it in the system browser; if the resource is missing
+  (stitch skipped) or the copy fails, it falls back to the remote
+  `AppLinks.userGuideUrl()` on the EDT. Do NOT open the temp file on the EDT.
 - **Reachability check**: after editing, run
   `python3 docs/check_reachable.py "target/User Guide.twee"` to verify every
   passage is reachable from Home without the Topic Index, and that there are

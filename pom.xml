@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>io.github.anandb</groupId>
     <artifactId>beanbot</artifactId>
-    <version>1.26.1</version>
+    <version>1.27.0-SNAPSHOT</version>
     <packaging>nbm</packaging>
 
     <name>Coding Assistant</name>
@@ -347,6 +347,22 @@
     </dependencyManagement>
 
     <build>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+            </resource>
+            <!-- Self-contained Twine guide (base64 images, inlined story engine),
+                 generated at generate-resources by docs/stitch.py and copied to
+                 target/generated-guide by the generate-user-guide antrun execution.
+                 Opened locally by the Open User Guide action; the remote URL is the fallback. -->
+            <resource>
+                <directory>${project.build.directory}/generated-guide</directory>
+                <targetPath>github/anandb/netbeans/docs</targetPath>
+                <includes>
+                    <include>UserGuide.html</include>
+                </includes>
+            </resource>
+        </resources>
         <pluginManagement>
             <plugins>
                 <plugin>
@@ -556,6 +572,12 @@
                                 <exec executable="python3" failonerror="false">
                                     <arg value="${project.basedir}/docs/stitch.py"/>
                                 </exec>
+                                <!-- Copy the compiled HTML where the build resources pick it up.
+                                     stitch.py is failonerror=false, so a missing source must not fail the build. -->
+                                <mkdir dir="${project.build.directory}/generated-guide"/>
+                                <copy file="${project.build.directory}/User Guide.html"
+                                      tofile="${project.build.directory}/generated-guide/UserGuide.html"
+                                      overwrite="true" failonerror="false"/>
                             </target>
                         </configuration>
                     </execution>
