@@ -478,7 +478,10 @@ public class SessionLifecycleHandler implements SessionListener {
                             // gone (archived), which counts as a close: nullify the
                             // session id so nothing tries to reload it later.
                             sessionService.get().closeSession();
-                            // All remaining sessions are archived — show WelcomeScreen
+                            // closeSession() only fires onSessionLoading(false), so
+                            // clear the plan slideout here: it belongs to the closed
+                            // session and must not survive into the WelcomeScreen.
+                            planPanel.clear();
                             showingWelcomeScreen = true;
                             chatPanel.setSessionList(sessions,
                                 id -> sessionService.get().loadSession(id), () -> {
@@ -505,6 +508,8 @@ public class SessionLifecycleHandler implements SessionListener {
                     // session while the dropdown — which filters it out — stays empty.
                     if (currentId != null && hiddenById.getOrDefault(currentId, false)) {
                         sessionService.get().closeSession();
+                        // The plan slideout belongs to the just-closed session.
+                        planPanel.clear();
                     }
                     showingWelcomeScreen = true;
                     // Filter hidden sessions for WelcomeScreen too

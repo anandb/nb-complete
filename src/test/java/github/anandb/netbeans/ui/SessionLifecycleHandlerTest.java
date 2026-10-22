@@ -1,8 +1,10 @@
 package github.anandb.netbeans.ui;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -26,6 +28,7 @@ import org.openide.util.NbPreferences;
 
 import github.anandb.netbeans.contract.SessionControl;
 import github.anandb.netbeans.model.MessageType;
+import github.anandb.netbeans.model.ModelRecords.PlanEntry;
 import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.model.SessionItem;
 import github.anandb.netbeans.model.SessionUpdate;
@@ -63,8 +66,12 @@ class SessionLifecycleHandlerTest {
     private JButton newSessionBtn;
     private JButton renameSessionBtn;
     private JButton toggleOptionsBtn;
+    private PlanPanel planPanel;
 
     private void setUpMocks(boolean showHidden) {
+        // PlanPanel.setEntries reads the current theme; install the headless-safe
+        // UIManager so ThemeManager resolves one.
+        TestUiUtils.setupTestUIManager();
         // Capture the developer's real value first, then set the toggle through the
         // REAL code path — before any static mock exists. The mock is thread-local,
         // so the EDT runnable in onSessionListUpdated always calls the real
@@ -101,6 +108,9 @@ class SessionLifecycleHandlerTest {
                 .thenReturn(projectContext);
         themeManagerMock.when(() -> ThemeManager.getIcon(anyString(), anyInt()))
                 .thenReturn(null);
+        // PlanPanel.setEntries needs a real theme under the static mock.
+        themeManagerMock.when(ThemeManager::getCurrentTheme).thenCallRealMethod();
+        themeManagerMock.when(ThemeManager::getFont).thenCallRealMethod();
         pluginSettingsMock.when(PluginSettings::getToolbarIconSize).thenReturn(16);
     }
 
@@ -138,10 +148,11 @@ class SessionLifecycleHandlerTest {
         Consumer<Boolean> sessionStateHandler = b -> { };
         Consumer<Boolean> optionsPanelToggler = b -> { };
         Runnable pendingUiCleanup = () -> { };
+        planPanel = new PlanPanel();
         return new SessionLifecycleHandler(
                 chatPanel, sessionDropdown, hideBtn, newSessionBtn, renameSessionBtn,
                 toggleOptionsBtn, configPanelController, inputArea, statusController,
-                new PlanPanel(),
+                planPanel,
                 projectPickerShower, tabNameUpdater, cwdLabelUpdater,
                 sessionStateHandler, optionsPanelToggler, pendingUiCleanup);
     }
@@ -265,6 +276,26 @@ class SessionLifecycleHandlerTest {
         // doRestart) would otherwise re-open the archived session while the
         // dropdown — which filters it out — stays empty.
         verify(sessionControl).closeSession();
+    }
+
+    @Test
+    void archivedCurrentSessionClearsPlanSlideout() throws Exception {
+        setUpMocks(false);
+        stubCurrent("arch-1");
+        List<Session> list = sessions(session("arch-1", true));
+
+        SessionLifecycleHandler handler = newHandler();
+        // A plan from the archived session is showing when the archive happens.
+        planPanel.setEntries(List.of(
+                new PlanEntry("high", "pending", "Verify extension functionality")));
+        assertTrue(planPanel.isVisible());
+
+        handler.onSessionListUpdated(list);
+        flushEdt();
+
+        verify(sessionControl).closeSession();
+        assertFalse(planPanel.isVisible(),
+                "Plan slideout belongs to the archived session and must close with it");
     }
 
     @Test
