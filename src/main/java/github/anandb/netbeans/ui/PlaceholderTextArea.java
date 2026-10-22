@@ -10,6 +10,8 @@ import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.event.ActionEvent;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.ActionMap;
@@ -51,6 +53,7 @@ public class PlaceholderTextArea extends JTextArea implements Scrollable {
         this.placeholder = placeholder;
         initUndoManager();
         initDocumentListener();
+        initPlaceholderRepaintListener();
         getAccessibleContext().setAccessibleName("Chat input");
         getAccessibleContext().setAccessibleDescription("Type your message here");
     }
@@ -60,15 +63,39 @@ public class PlaceholderTextArea extends JTextArea implements Scrollable {
         this.placeholder = placeholder;
         initUndoManager();
         initDocumentListener();
+        initPlaceholderRepaintListener();
         getAccessibleContext().setAccessibleName("Chat input");
         getAccessibleContext().setAccessibleDescription("Type your message here");
     }
 
     private void initDocumentListener() {
         getDocument().addDocumentListener(new DocumentListener() {
-            @Override public void insertUpdate(DocumentEvent e) { revalidate(); }
-            @Override public void removeUpdate(DocumentEvent e) { revalidate(); }
-            @Override public void changedUpdate(DocumentEvent e) { revalidate(); }
+            @Override public void insertUpdate(DocumentEvent e) {
+                revalidate();
+                repaint();
+            }
+            @Override public void removeUpdate(DocumentEvent e) {
+                revalidate();
+                repaint();
+            }
+            @Override public void changedUpdate(DocumentEvent e) {
+                revalidate();
+                repaint();
+            }
+        });
+    }
+
+    /**
+     * The placeholder is hand-painted in paintComponent, but text edits and
+     * focus changes only damage small regions (edited line, caret rect). A
+     * full repaint is required on both transitions, otherwise previously
+     * painted placeholder lines survive as stale pixels (e.g. the hint line
+     * still visible over typed text, or the first glyph wiped by a blink).
+     */
+    private void initPlaceholderRepaintListener() {
+        addFocusListener(new FocusAdapter() {
+            @Override public void focusGained(FocusEvent e) { repaint(); }
+            @Override public void focusLost(FocusEvent e) { repaint(); }
         });
     }
 
@@ -243,14 +270,14 @@ public class PlaceholderTextArea extends JTextArea implements Scrollable {
             Font overlayFont = getFont().deriveFont(Math.max(9f, getFont().getSize() - 2f));
             g2.setFont(overlayFont);
             FontMetrics fm = g2.getFontMetrics();
-            
+
             int availableWidth = getWidth() - getInsets().left - getInsets().right - 8;
             String[] lines;
             if (fm.stringWidth(overlayText) > availableWidth) {
                 int midPoint = overlayText.length() / 2;
                 int splitRight = overlayText.indexOf(" | ", midPoint);
                 int splitLeft = overlayText.lastIndexOf(" | ", midPoint);
-                
+
                 int splitIndex = -1;
                 if (splitRight != -1 && splitLeft != -1) {
                     splitIndex = (splitRight - midPoint) < (midPoint - splitLeft) ? splitRight : splitLeft;
@@ -281,20 +308,19 @@ public class PlaceholderTextArea extends JTextArea implements Scrollable {
             }
             g2.dispose();
         } else if (placeholder != null && !placeholder.isEmpty() && getText().isEmpty() && !hasFocus()) {
-            Color oldColor = g.getColor();
-            Font oldFont = g.getFont();
-            g.setColor(ThemeManager.getCurrentTheme().placeholderForeground());
-            g.setFont(oldFont.deriveFont(Font.PLAIN));
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+            g2.setColor(ThemeManager.getCurrentTheme().placeholderForeground());
+            g2.setFont(g2.getFont().deriveFont(Font.PLAIN));
             int x = getInsets().left;
-            int y = getInsets().top + g.getFontMetrics().getAscent();
-            int lineHeight = g.getFontMetrics().getHeight();
+            int y = getInsets().top + g2.getFontMetrics().getAscent();
+            int lineHeight = g2.getFontMetrics().getHeight();
             String[] lines = LINE_SPLIT.split(placeholder, -1);
             for (String line : lines) {
-                g.drawString(line, x, y);
+                g2.drawString(line, x, y);
                 y += lineHeight;
             }
-            g.setColor(oldColor);
-            g.setFont(oldFont);
+            g2.dispose();
         }
     }
 
@@ -302,7 +328,7 @@ public class PlaceholderTextArea extends JTextArea implements Scrollable {
     public Dimension getPreferredSize() {
         Dimension d = super.getPreferredSize();
         int minHeight = d.height;
-        
+
         // Always ensure at least 2 lines of text height
         int twoLinesHeight = getInsets().top + getInsets().bottom + (getRowHeight() * 2);
         if (minHeight < twoLinesHeight) {
@@ -325,7 +351,7 @@ public class PlaceholderTextArea extends JTextArea implements Scrollable {
                 if (placeholderHeight > minHeight) minHeight = placeholderHeight;
             }
         }
-        
+
         d.height = minHeight;
         return d;
     }

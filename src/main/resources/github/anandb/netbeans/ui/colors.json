@@ -237,7 +237,7 @@
     "name": "placeholderForeground",
     "property": "beanbot.color.placeholderForeground",
     "dark": "#969696",
-    "light": "#969696"
+    "light": "#707070"
   },
   {
     "name": "collapsedHeaderForeground",
