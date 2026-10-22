@@ -1,5 +1,16 @@
 # Release Notes
 
+## v1.26.1 (Changes since v1.26.0)
+
+### Fixes
+- **Chat panel NPE when no session is active**: rendering a message list before a session id exists no longer throws on the EDT — `setMessages` captures the current session id for the chunked-render callback and `retainActivePins` returns early for a null session instead of handing it to a `ConcurrentHashMap` as a key.
+
+### Tests
+- **TxtTaskRepository**: the parked I/O latch is released in a `finally` block, so a failed assertion can no longer leave the repository thread running into TempDir cleanup and mask itself as a JUnit "failed to close extension context" error.
+
+### Housekeeping
+- Version bumped to 1.26.1.
+
 ## v1.26.0 (Changes since v1.25.0)
 
 ### Features
