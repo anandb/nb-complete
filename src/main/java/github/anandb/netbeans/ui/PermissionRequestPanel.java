@@ -19,6 +19,7 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
@@ -454,7 +455,19 @@ final class PermissionRequestPanel extends JPanel {
                 if (po.kind().contains("allow")) {
                     btn = createButton(po.name(), theme.permissionGrantFg(),
                             theme.permissionGrantBg(), theme.permissionGrantBorder());
-                    btn.setMnemonic('A');
+                    // Alt+A for "Allow Always", Alt+O for "Allow Once": two
+                    // buttons sharing 'A' made Alt+A ambiguous. Harnesses send
+                    // variants ("Allow Once", "Always Allow"), so decide on the
+                    // option name; a single allow option without either keyword
+                    // keeps 'A'.
+                    String lname = po.name().toLowerCase(Locale.ROOT);
+                    if (lname.contains("always")) {
+                        btn.setMnemonic('A');
+                    } else if (lname.contains("once")) {
+                        btn.setMnemonic('O');
+                    } else {
+                        btn.setMnemonic('A');
+                    }
                     if ("Always Allow".equalsIgnoreCase(po.name())) {
                         btn.setToolTipText(NbBundle.getMessage(PermissionRequestPanel.class, "HINT_AlwaysAllow"));
                     }
