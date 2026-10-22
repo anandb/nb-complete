@@ -49,7 +49,7 @@ class ShowHistoryRefreshTest {
     }
 
     @Test
-    void insertAddsGapAndIconWithTextAfterCheckbox() {
+    void insertAddsGapAndIconOnlyButtonAfterCheckbox() {
         FakeHistoryPanel panel = new FakeHistoryPanel();
         int before = countButtons(panel.toolbar);
         ShowHistoryRefresh.injectToolbar(panel, panel.toolbar);
