@@ -51,14 +51,18 @@ import java.util.logging.Level;
 import github.anandb.netbeans.contract.SessionControl;
 import github.anandb.netbeans.contract.SessionListener;
 import github.anandb.netbeans.contract.SessionQuery;
+import github.anandb.netbeans.contract.UsageStatsStore;
 import github.anandb.netbeans.manager.strategy.StrategyRegistry;
 import github.anandb.netbeans.model.SessionState;
 import github.anandb.netbeans.model.SessionUpdate;
+import github.anandb.netbeans.model.UsageRecords.Attribution;
+import github.anandb.netbeans.model.UsageRecords.ToolCallRow;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.MapperSupplier;
 import github.anandb.netbeans.support.ModelIdNormalizer;
 import github.anandb.netbeans.support.PreferenceKeys;
 import github.anandb.netbeans.support.SlidingTask;
+import github.anandb.netbeans.support.ToolCallStats;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 
 import static org.apache.commons.lang3.StringUtils.isBlank;
@@ -1344,11 +1348,42 @@ public class SessionManager implements SessionQuery, SessionControl {
 
     @Override
     public void onTurnEnded() {
+        dumpToolCallCounts();
         if (stateMachine.transitionToIf(SessionState.STOPPING, SessionState.STREAMING)) {
             LOG.info("onTurnEnded: transitioning STOPPING -> STREAMING");
         } else {
             LOG.fine("onTurnEnded: current state={0} (no transition needed)", stateMachine.getState());
         }
+    }
+
+    /**
+     * Dumps the turn's MCP {@code tools/call} counts to the stats store: one
+     * row per tool invoked during the turn, attributed to the session the turn
+     * belonged to. A second turn-end signal drains an empty map and writes
+     * nothing. Called from the turn-end funnel, never the EDT; the store's own
+     * single-thread executor keeps persistence off this thread.
+     */
+    private void dumpToolCallCounts() {
+        Map<String, Long> counts = ToolCallStats.drain();
+        if (counts.isEmpty()) {
+            return;
+        }
+        String sessionId = getCurrentSessionId();
+        if (sessionId == null || sessionId.isBlank()) {
+            LOG.fine("Discarding tool-call counts: no current session");
+            return;
+        }
+        UsageStatsStore store = Lookup.getDefault().lookup(UsageStatsStore.class);
+        if (store == null) {
+            return;
+        }
+        Attribution attribution = new Attribution(sessionId, getHarnessId(),
+                getSessionModelId(sessionId), getSessionDirectory(sessionId));
+        long now = System.currentTimeMillis();
+        counts.entrySet().stream()
+                .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+                .forEach(e -> store.recordToolCalls(
+                        new ToolCallRow(attribution, now, e.getKey(), e.getValue())));
     }
 
     private void notifyPreambleDone() {

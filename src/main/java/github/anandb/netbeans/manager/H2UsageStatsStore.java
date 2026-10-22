@@ -8,6 +8,8 @@ import github.anandb.netbeans.model.UsageRecords.Attribution;
 import github.anandb.netbeans.model.UsageRecords.GroupTotals;
 import github.anandb.netbeans.model.UsageRecords.MessageEvent;
 import github.anandb.netbeans.model.UsageRecords.PromptUsageRow;
+import github.anandb.netbeans.model.UsageRecords.ToolCallRow;
+import github.anandb.netbeans.model.UsageRecords.ToolTotals;
 import github.anandb.netbeans.model.UsageRecords.UsageSummary;
 import github.anandb.netbeans.model.UsageRecords.UsageUpdateRow;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -83,6 +85,11 @@ public class H2UsageStatsStore implements UsageStatsStore, SessionStore {
             + "session_id VARCHAR(512), harness_id VARCHAR(128), model_id VARCHAR(512), project VARCHAR(2048),"
             + "captured_at BIGINT NOT NULL, kind VARCHAR(16) NOT NULL)";
 
+    private static final String CREATE_TOOL_CALL_USAGE = "CREATE TABLE IF NOT EXISTS tool_call_usage ("
+            + "id BIGINT AUTO_INCREMENT PRIMARY KEY,"
+            + "session_id VARCHAR(512), harness_id VARCHAR(128), model_id VARCHAR(512), project VARCHAR(2048),"
+            + "captured_at BIGINT NOT NULL, tool_name VARCHAR(128) NOT NULL, call_count BIGINT NOT NULL)";
+
     private static final String INSERT_USAGE_UPDATE = "INSERT INTO usage_update "
             + "(session_id, harness_id, model_id, project, captured_at, used_tokens, size_tokens,"
             + " cost_amount, cost_currency) VALUES (?,?,?,?,?,?,?,?,?)";
@@ -93,6 +100,9 @@ public class H2UsageStatsStore implements UsageStatsStore, SessionStore {
 
     private static final String INSERT_MESSAGE_EVENT = "INSERT INTO message_event "
             + "(session_id, harness_id, model_id, project, captured_at, kind) VALUES (?,?,?,?,?,?)";
+
+    private static final String INSERT_TOOL_CALL_USAGE = "INSERT INTO tool_call_usage "
+            + "(session_id, harness_id, model_id, project, captured_at, tool_name, call_count) VALUES (?,?,?,?,?,?,?)";
 
     private static final String CREATE_META = "CREATE TABLE IF NOT EXISTS usage_meta ("
             + "meta_key VARCHAR(64) PRIMARY KEY, meta_value VARCHAR(64))";
@@ -153,8 +163,10 @@ public class H2UsageStatsStore implements UsageStatsStore, SessionStore {
      * no longer drift with sum-time floating-point accumulation.
      * Version 4 rewrites stored model ids to the canonical separator, so rows
      * captured before that change do not appear as a second group.
+     * Version 5 adds the {@code tool_call_usage} table (per-tool MCP call
+     * counts dumped at end of turn); purely additive, no earlier row changes.
      */
-    private static final int SCHEMA_VERSION = 4;
+    private static final int SCHEMA_VERSION = 5;
 
     private static final long DAY_MILLIS = 86_400_000L;
 
@@ -264,11 +276,13 @@ public class H2UsageStatsStore implements UsageStatsStore, SessionStore {
                 st.execute(CREATE_USAGE_UPDATE);
                 st.execute(CREATE_PROMPT_USAGE);
                 st.execute(CREATE_MESSAGE_EVENT);
+                st.execute(CREATE_TOOL_CALL_USAGE);
                 st.execute(CREATE_INPUT_HISTORY);
                 st.execute(CREATE_SESSION_META);
                 st.execute("CREATE INDEX IF NOT EXISTS idx_usage_update_ts ON usage_update (captured_at)");
                 st.execute("CREATE INDEX IF NOT EXISTS idx_prompt_usage_ts ON prompt_usage (captured_at)");
                 st.execute("CREATE INDEX IF NOT EXISTS idx_message_event_ts ON message_event (captured_at)");
+                st.execute("CREATE INDEX IF NOT EXISTS idx_tool_call_usage_ts ON tool_call_usage (captured_at)");
                 st.execute("CREATE INDEX IF NOT EXISTS idx_session_meta_harness ON session_meta (harness_id)");
             }
             if (dbVersion >= 2 && dbVersion < SCHEMA_VERSION) {
@@ -291,7 +305,7 @@ public class H2UsageStatsStore implements UsageStatsStore, SessionStore {
     }
 
     /** Tables carrying a model id, in the order they were introduced. */
-    private static final String[] CAPTURE_TABLES = {"usage_update", "prompt_usage", "message_event"};
+    private static final String[] CAPTURE_TABLES = {"usage_update", "prompt_usage", "message_event", "tool_call_usage"};
 
     /**
      * Rewrites stored model ids to the canonical separator, once, for a database
@@ -392,6 +406,24 @@ public class H2UsageStatsStore implements UsageStatsStore, SessionStore {
                 ps.executeUpdate();
             } catch (SQLException e) {
                 LOG.log(Level.WARNING, "Failed to record message event", e);
+            }
+        });
+    }
+
+    @Override
+    public void recordToolCalls(ToolCallRow row) {
+        if (row == null || row.callCount() <= 0) {
+            return;
+        }
+        dbExecutor.execute(() -> {
+            try (PreparedStatement ps = connection().prepareStatement(INSERT_TOOL_CALL_USAGE)) {
+                bindAttribution(ps, 1, row.attribution());
+                ps.setLong(5, row.capturedAt());
+                ps.setString(6, row.toolName());
+                ps.setLong(7, row.callCount());
+                ps.executeUpdate();
+            } catch (SQLException e) {
+                LOG.log(Level.WARNING, "Failed to record tool-call usage row", e);
             }
         });
     }
@@ -1214,6 +1246,37 @@ public class H2UsageStatsStore implements UsageStatsStore, SessionStore {
         GroupBy key = groupBy != null ? groupBy : GroupBy.MODEL;
         String column = key == GroupBy.HARNESS ? "harness_id" : "model_id";
         return call(() -> runGrouped(window, projectDir, now, column), List.of());
+    }
+
+    @Override
+    public List<ToolTotals> queryToolTotals(int days, String projectDir, long now) {
+        int window = Math.max(days, 1);
+        return call(() -> runToolTotals(window, projectDir, now), List.of());
+    }
+
+    /**
+     * Per-tool call totals over the window, most-called first: one row per
+     * tool_name, the sum of every turn's dumped call_count. Turn-boundary dumps
+     * make each row additive, so a SUM over the window is the true total.
+     */
+    private List<ToolTotals> runToolTotals(int days, String projectDir, long now) throws SQLException {
+        long cutoff = now - days * DAY_MILLIS;
+        String sql = "SELECT tool_name, COALESCE(SUM(call_count), 0) AS calls FROM tool_call_usage"
+                + " WHERE captured_at >= ?" + (projectDir != null ? " AND project = ?" : "")
+                + " GROUP BY tool_name ORDER BY calls DESC, tool_name ASC";
+        try (PreparedStatement ps = connection().prepareStatement(sql)) {
+            ps.setLong(1, cutoff);
+            if (projectDir != null) {
+                ps.setString(2, projectDir);
+            }
+            try (ResultSet rs = ps.executeQuery()) {
+                List<ToolTotals> rows = new ArrayList<>();
+                while (rs.next()) {
+                    rows.add(new ToolTotals(rs.getString(1), rs.getLong(2)));
+                }
+                return rows;
+            }
+        }
     }
 
 

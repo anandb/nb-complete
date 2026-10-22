@@ -16,6 +16,8 @@ import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.model.UsageRecords.MessageEvent;
 import github.anandb.netbeans.model.UsageRecords.MessageKind;
 import github.anandb.netbeans.model.UsageRecords.PromptUsageRow;
+import github.anandb.netbeans.model.UsageRecords.ToolCallRow;
+import github.anandb.netbeans.model.UsageRecords.ToolTotals;
 import github.anandb.netbeans.model.UsageRecords.UsageSummary;
 import github.anandb.netbeans.model.UsageRecords.UsageUpdateRow;
 import github.anandb.netbeans.support.MapperSupplier;
@@ -65,6 +67,11 @@ class StrategyRegistryCaptureTest {
         }
 
         @Override
+        public void recordToolCalls(ToolCallRow row) {
+            throw new UnsupportedOperationException("tool-call capture is not part of this test");
+        }
+
+        @Override
         public UsageSummary query(int days, String projectDir, long now) {
             throw new UnsupportedOperationException("query is not part of this test");
         }
@@ -72,6 +79,11 @@ class StrategyRegistryCaptureTest {
         @Override
         public List<GroupTotals> queryGrouped(int days, String projectDir, long now, GroupBy groupBy) {
             throw new UnsupportedOperationException("grouped queries are not part of this test");
+        }
+
+        @Override
+        public List<ToolTotals> queryToolTotals(int days, String projectDir, long now) {
+            throw new UnsupportedOperationException("tool totals are not part of this test");
         }
     }
 

@@ -54,6 +54,17 @@ public final class UsageRecords {
     }
 
     /**
+     * MCP tool-call counts drained from the per-turn counter at end of turn: one
+     * row per tool name actually invoked during the turn, with that turn's count.
+     */
+    public record ToolCallRow(Attribution attribution, long capturedAt, String toolName, long callCount) {
+    }
+
+    /** Per-tool call total over the queried window, rendered as a histogram. */
+    public record ToolTotals(String toolName, long calls) {
+    }
+
+    /**
      * Aggregated figures for the OVERVIEW and COST &amp; TOKENS blocks.
      * Token columns are summed per field; {@code totalTokens} is never
      * substituted into them.

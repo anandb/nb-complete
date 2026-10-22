@@ -6,6 +6,8 @@ import github.anandb.netbeans.model.UsageRecords.Attribution;
 import github.anandb.netbeans.model.UsageRecords.MessageEvent;
 import github.anandb.netbeans.model.UsageRecords.MessageKind;
 import github.anandb.netbeans.model.UsageRecords.PromptUsageRow;
+import github.anandb.netbeans.model.UsageRecords.ToolCallRow;
+import github.anandb.netbeans.model.UsageRecords.ToolTotals;
 import github.anandb.netbeans.model.UsageRecords.UsageSummary;
 import github.anandb.netbeans.model.UsageRecords.UsageUpdateRow;
 import github.anandb.netbeans.model.UsageRecords.GroupTotals;
@@ -89,6 +91,28 @@ class H2UsageStatsStoreTest {
                 Statement st = c.createStatement()) {
             st.execute(sql);
         }
+    }
+
+    @Test
+    void toolCallRowsSumPerToolAcrossTurnsAndScopeByProject() {
+        Attribution a = att("s1", "omp", "m1", "/proj/a");
+        store.recordToolCalls(new ToolCallRow(a, NOW, "read_file", 4));
+        store.recordToolCalls(new ToolCallRow(a, NOW, "read_file", 2));
+        store.recordToolCalls(new ToolCallRow(att("s2", "omp", "m1", "/proj/b"), NOW, "run_command", 1));
+        store.recordToolCalls(new ToolCallRow(a, NOW - 2 * DAY, "stale_tool", 99)); // outside the 1-day window
+        store.recordToolCalls(null); // never throws
+
+        List<ToolTotals> all = store.queryToolTotals(1, null, NOW);
+        List<ToolTotals> projA = store.queryToolTotals(1, "/proj/a", NOW);
+
+        assertEquals(2, all.size(), "read_file and run_command, the stale row excluded");
+        assertEquals("read_file", all.get(0).toolName(), "most-called first");
+        assertEquals(6, all.get(0).calls(), "counts sum across turns");
+        assertEquals("run_command", all.get(1).toolName());
+        assertEquals(1, all.get(1).calls());
+        assertEquals(1, projA.size(), "the project scope filters other projects out");
+        assertEquals("read_file", projA.get(0).toolName());
+        assertEquals(6, projA.get(0).calls());
     }
 
     @Test
@@ -365,8 +389,8 @@ class H2UsageStatsStoreTest {
         upgraded.recordUsageUpdate(new UsageUpdateRow(att("s1", "pi", "m1", "/proj/a"), NOW, 20, null, 0.6, "USD"));
         assertEquals(0.6, upgraded.query(1, null, NOW).totalCost(), 1e-9);
 
-        assertEquals("4", upgradedScalarVersion(fileUrl),
-                "version 4 is the model-id canonicalisation upgrade");
+        assertEquals("5", upgradedScalarVersion(fileUrl),
+                "version 5 is the additive tool_call_usage upgrade");
         upgraded.shutdown();
     }
 

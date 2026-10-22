@@ -1,6 +1,7 @@
 package github.anandb.netbeans.ui;
 
 import github.anandb.netbeans.model.UsageRecords.GroupTotals;
+import github.anandb.netbeans.model.UsageRecords.ToolTotals;
 import github.anandb.netbeans.model.UsageRecords.UsageSummary;
 import java.util.List;
 import javax.swing.JTextPane;
@@ -8,6 +9,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -26,7 +28,7 @@ class TokenUsageDialogTest {
 
     @Test
     void renderSummaryHtmlRendersBothBlocksWithFormattedFigures() {
-        String html = TokenUsageDialog.renderSummaryHtml(sample(), List.of(), List.of(),
+        String html = TokenUsageDialog.renderSummaryHtml(sample(), List.of(), List.of(), List.of(),
                 ThemeManager.getCurrentTheme());
 
         assertNotNull(html);
@@ -51,7 +53,7 @@ class TokenUsageDialogTest {
         List<GroupTotals> byAgent = List.of(
                 new GroupTotals("omp", 13, 307, 47, 8_000_500, 900_060, 1_500_010, 3.20866));
 
-        String html = TokenUsageDialog.renderSummaryHtml(sample(), byModel, byAgent,
+        String html = TokenUsageDialog.renderSummaryHtml(sample(), byModel, byAgent, List.of(),
                 ThemeManager.getCurrentTheme());
 
         assertNotNull(html);
@@ -71,7 +73,7 @@ class TokenUsageDialogTest {
                 "claude-sonnet-4-5-20250929", 120, 3400, 512, 88_000_000, 4_100_000, 1_200_000_000, 41.8821));
         List<GroupTotals> byAgent = List.of(new GroupTotals(
                 "hermes-agent", 120, 3400, 512, 88_000_000, 4_100_000, 1_200_000_000, 41.8821));
-        String html = TokenUsageDialog.renderSummaryHtml(sample(), byModel, byAgent,
+        String html = TokenUsageDialog.renderSummaryHtml(sample(), byModel, byAgent, List.of(),
                 ThemeManager.getCurrentTheme());
 
         JTextPane pane = new JTextPane();
@@ -86,6 +88,33 @@ class TokenUsageDialogTest {
         assertTrue(fitted >= natural + TokenUsageDialog.WIDTH_CHROME,
                 "the fitted width must not clip the measured content, got " + fitted);
         assertTrue(fitted >= TokenUsageDialog.MIN_WIDTH, "never below the minimum width");
+    }
+
+    @Test
+    void renderSummaryHtmlRendersToolHistogramScaledToMax() {
+        List<ToolTotals> byTool = List.of(
+                new ToolTotals("read_file", 120),
+                new ToolTotals("search_project", 30),
+                new ToolTotals("list_projects", 1));
+
+        String html = TokenUsageDialog.renderSummaryHtml(sample(), List.of(), List.of(), byTool,
+                ThemeManager.getCurrentTheme());
+
+        assertNotNull(html);
+        assertTrue(html.contains("MCP Tool Calls"), "the tool table must be titled");
+        assertTrue(html.contains("read_file"));
+        assertTrue(html.contains("120"), "the call count must be rendered");
+        String bar = "\u2588".repeat(TokenUsageDialog.HISTOGRAM_BLOCKS);
+        assertTrue(html.contains("120  " + bar), "the most-called tool gets a full-length bar");
+        assertFalse(html.contains(bar + bar), "no bar may exceed the cap");
+    }
+
+    @Test
+    void renderSummaryHtmlOmitsToolTableWhenNoToolCalls() {
+        String html = TokenUsageDialog.renderSummaryHtml(sample(), List.of(), List.of(), List.of(),
+                ThemeManager.getCurrentTheme());
+
+        assertFalse(html.contains("MCP Tool Calls"));
     }
 
     @Test

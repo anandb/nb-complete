@@ -51,6 +51,7 @@ import org.netbeans.api.project.Project;
 import github.anandb.netbeans.contract.SessionQuery;
 import github.anandb.netbeans.contract.UsageStatsStore;
 import github.anandb.netbeans.model.UsageRecords.GroupTotals;
+import github.anandb.netbeans.model.UsageRecords.ToolTotals;
 import github.anandb.netbeans.model.UsageRecords.UsageSummary;
 
 import java.util.List;
@@ -252,7 +253,10 @@ public class TokenUsageDialog extends JDialog {
                         ? store.queryGrouped(days, projectDir, System.currentTimeMillis(),
                                 UsageStatsStore.GroupBy.HARNESS)
                         : List.of();
-                String styledHtml = renderSummaryHtml(summary, byModel, byAgent, currentTheme);
+                List<ToolTotals> byTool = store != null
+                        ? store.queryToolTotals(days, projectDir, System.currentTimeMillis())
+                        : List.of();
+                String styledHtml = renderSummaryHtml(summary, byModel, byAgent, byTool, currentTheme);
                 SwingUtilities.invokeLater(() -> {
                     statsPane.setText(styledHtml);
                     autoSizeToContent();
@@ -349,10 +353,12 @@ public class TokenUsageDialog extends JDialog {
     /**
      * Renders the OVERVIEW and COST &amp; TOKENS blocks as themed HTML tables
      * from the aggregated summary, then the breakdown tables grouped by model
-     * and by agent. Group tables are omitted when the group list is empty.
+     * and by agent, then the MCP tool list with a block-character histogram.
+     * Group and tool tables are omitted when their list is empty.
      */
     static String renderSummaryHtml(UsageSummary summary, List<GroupTotals> byModel,
-                                    List<GroupTotals> byAgent, ColorTheme theme) {
+                                    List<GroupTotals> byAgent, List<ToolTotals> byTool,
+                                    ColorTheme theme) {
         String bg = theme.toHtmlHex(theme.bubbleAssistant());
         String fg = theme.toHtmlHex(theme.assistantForeground());
         String borderColor = theme.toHtmlHex(theme.tableBorder());
@@ -394,9 +400,35 @@ public class TokenUsageDialog extends JDialog {
         if (!byAgent.isEmpty()) {
             appendGroupTables(sb, "LBL_ByAgent", byAgent, headerBg, altBg);
         }
+        if (!byTool.isEmpty()) {
+            appendToolHistogram(sb, byTool, headerBg, altBg);
+        }
 
         sb.append("</body></html>");
         return sb.toString();
+    }
+
+    /** Histogram bar length cap: the longest bar never exceeds this many blocks. */
+    static final int HISTOGRAM_BLOCKS = 24;
+
+    /**
+     * Renders the per-tool MCP call list as one table: tool name in the label
+     * column, call count plus a block-character bar scaled to the window's most
+     * called tool in the value column. Most-called first; a single-call tool
+     * still gets one block so its row reads as present rather than empty.
+     */
+    private static void appendToolHistogram(StringBuilder sb, List<ToolTotals> byTool,
+                                            String headerBg, String altBg) {
+        long max = byTool.stream().mapToLong(ToolTotals::calls).max().orElse(1);
+        String[][] rows = new String[byTool.size()][];
+        for (int i = 0; i < byTool.size(); i++) {
+            ToolTotals t = byTool.get(i);
+            int blocks = (int) Math.max(1, Math.round(HISTOGRAM_BLOCKS * (double) t.calls() / max));
+            rows[i] = new String[]{t.toolName(),
+                    UsageStatsFormat.thousands(t.calls()) + "  " + "\u2588".repeat(blocks)};
+        }
+        appendRawTable(sb, NbBundle.getMessage(TokenUsageDialog.class, "LBL_McpToolCalls"),
+                headerBg, altBg, rows);
     }
 
     /**
@@ -429,6 +461,29 @@ public class TokenUsageDialog extends JDialog {
     private static void appendLocalizedTable(StringBuilder sb, String titleKey, String headerBg,
                                              String altBg, String[][] rows) {
         appendTable(sb, NbBundle.getMessage(TokenUsageDialog.class, titleKey), headerBg, altBg, rows);
+    }
+
+    /**
+     * Renders a two-column table whose title and row labels are used verbatim,
+     * already resolved — the tool histogram passes literal tool names, which
+     * have no bundle entry of their own.
+     */
+    private static void appendRawTable(StringBuilder sb, String title, String headerBg,
+                                       String altBg, String[][] rows) {
+        sb.append("<table><tr><th colspan='2'>")
+          .append(escapeHtml(title))
+          .append("</th></tr>");
+        boolean alt = false;
+        for (String[] row : rows) {
+            String style = alt ? " style='background-color: " + altBg + ";'" : "";
+            sb.append("<tr").append(style).append(">")
+              .append("<td style='white-space:nowrap;'>")
+              .append(escapeHtml(row[0])).append("</td>")
+              .append("<td style='text-align:right;'>").append(escapeHtml(row[1])).append("</td>")
+              .append("</tr>");
+            alt = !alt;
+        }
+        sb.append("</table>");
     }
 
     /**

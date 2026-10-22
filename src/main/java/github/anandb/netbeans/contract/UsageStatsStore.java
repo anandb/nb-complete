@@ -2,6 +2,8 @@ package github.anandb.netbeans.contract;
 
 import github.anandb.netbeans.model.UsageRecords.MessageEvent;
 import github.anandb.netbeans.model.UsageRecords.PromptUsageRow;
+import github.anandb.netbeans.model.UsageRecords.ToolCallRow;
+import github.anandb.netbeans.model.UsageRecords.ToolTotals;
 import github.anandb.netbeans.model.UsageRecords.UsageSummary;
 import github.anandb.netbeans.model.UsageRecords.UsageUpdateRow;
 import github.anandb.netbeans.model.UsageRecords.GroupTotals;
@@ -25,6 +27,13 @@ public interface UsageStatsStore {
 
     /** Records one counted message update. Never blocks on I/O. */
     void recordMessage(MessageEvent event);
+
+    /**
+     * Records the per-tool MCP call counts of one finished turn: one row per
+     * tool invoked during that turn, with the turn's call count. Never blocks
+     * on I/O.
+     */
+    void recordToolCalls(ToolCallRow row);
 
     /**
      * Aggregates the captured rows in scope.
@@ -55,6 +64,19 @@ public interface UsageStatsStore {
      *         May block briefly on the database; background-thread use.
      */
     List<GroupTotals> queryGrouped(int days, String projectDir, long now, GroupBy groupBy);
+
+    /**
+     * Per-tool MCP call totals over the window, most-called first, rendered as
+     * the tool list and histogram in the token-stats panel.
+     *
+     * @param days       day window ending at {@code now}; must be at least 1
+     * @param projectDir restrict to rows captured for this project directory,
+     *                   or {@code null} for all projects
+     * @param now        window end in epoch milliseconds
+     * @return one row per tool invoked in the window, never null. May block
+     *         briefly on the database; background-thread use.
+     */
+    List<ToolTotals> queryToolTotals(int days, String projectDir, long now);
 
     /** Which attribution column a {@code queryGrouped} call groups on. */
     enum GroupBy {

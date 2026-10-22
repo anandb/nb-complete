@@ -10,6 +10,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.MapperSupplier;
+import github.anandb.netbeans.support.ToolCallStats;
 import org.openide.util.NbBundle;
 
 public class McpTools {
@@ -41,6 +42,7 @@ public class McpTools {
     }
 
     public JsonNode callTool(String name, JsonNode arguments) throws Exception {
+        ToolCallStats.record(name);
         ToolExecutor<?, ?> executor = executors.get(name);
         if (executor == null) {
             throw new IllegalArgumentException(NbBundle.getMessage(McpTools.class, "ERR_ToolNotFound", name));
