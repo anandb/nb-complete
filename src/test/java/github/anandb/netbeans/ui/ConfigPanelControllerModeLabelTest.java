@@ -53,8 +53,13 @@ class ConfigPanelControllerModeLabelTest {
     private MockedStatic<ThemeManager> themeManagerMock;
     private MockedStatic<PluginSettings> pluginSettingsMock;
 
-    /** Applies a mode config option for {@code harness} and returns the rendered label pair. */
+    /** Applies options for {@code harness} and returns the rendered label pair. */
     private Rendered renderFor(HarnessCatalog.Harness harness) throws Exception {
+        return renderOptionsFor(harness, MODE_OPTION);
+    }
+
+    /** Applies options for {@code harness} and returns the rendered label pair. */
+    private Rendered renderOptionsFor(HarnessCatalog.Harness harness, List<SessionConfigOption> options) throws Exception {
         AtomicReference<Rendered> rendered = new AtomicReference<>();
 
         SwingUtilities.invokeAndWait(() -> {
@@ -72,7 +77,7 @@ class ConfigPanelControllerModeLabelTest {
             pluginSettingsMock.when(PluginSettings::getToolbarIconSize).thenReturn(16);
 
             controller.set(new ConfigPanelController(tabName -> { }));
-            controller.get().updateConfigControls(MODE_OPTION);
+            controller.get().updateConfigControls(options);
         });
 
         // Runs after the update task above has been drained from the EDT queue.
@@ -123,21 +128,47 @@ class ConfigPanelControllerModeLabelTest {
     }
 
     @Test
-    void labelsAgentWhenModesComeFromConfigOptions() throws Exception {
+    void usesTheServerDeclaredOptionNameWhenModesComeFromConfigOptions() throws Exception {
+        // configOptions carry the harness's own terminology in the option's
+        // name field; the label mirrors it verbatim (plus the : style of the
+        // static labels when missing).
         for (HarnessCatalog.Harness harness : List.of(HarnessCatalog.OPENCODE, HarnessCatalog.CURSOR,
                 HarnessCatalog.HERMES)) {
             Rendered rendered = renderFor(harness);
-            assertEquals(message("LBL_Agent"), rendered.text(), "label for harness " + harness.id());
-            assertEquals(message("HINT_Agent"), rendered.tooltip(), "tooltip for harness " + harness.id());
+            assertEquals("Mode:", rendered.text(), "server-declared name for harness " + harness.id());
+            assertEquals("Session permission mode", rendered.tooltip(),
+                    "server-declared description for harness " + harness.id());
         }
     }
 
     @Test
+    void anOptionNameUnrelatedToModesIsMirroredVerbatim() throws Exception {
+        List<SessionConfigOption> odd = List.of(new SessionConfigOption("agent", "Working Style",
+                "How the assistant works", "mode", "select", "build",
+                List.of(new SessionConfigSelectOption("build", "Build", ""))));
+        Rendered rendered = renderOptionsFor(HarnessCatalog.OPENCODE, odd);
+        assertEquals("Working Style:", rendered.text());
+        assertEquals("How the assistant works", rendered.tooltip());
+    }
+
+    @Test
+    void blankOptionNameFallsBackToAgent() throws Exception {
+        List<SessionConfigOption> blank = List.of(new SessionConfigOption("agent", "",
+                null, "mode", "select", "build",
+                List.of(new SessionConfigSelectOption("build", "Build", ""))));
+        Rendered rendered = renderOptionsFor(HarnessCatalog.OPENCODE, blank);
+        assertEquals(message("LBL_Agent"), rendered.text());
+        assertEquals(message("HINT_Agent"), rendered.tooltip());
+    }
+
+    @Test
     void labelAndTooltipMoveTogether() throws Exception {
+        // Modes-field harnesses show "Mode:" + the static field tooltip;
+        // configOptions harnesses show the server's own name + description.
+        // Equality of the two would mean the wording drifted from one source.
         Rendered modesField = renderFor(HarnessCatalog.CLAUDE);
         Rendered configOptions = renderFor(HarnessCatalog.OPENCODE);
 
-        assertNotEquals(modesField.text(), configOptions.text());
         assertNotEquals(modesField.tooltip(), configOptions.tooltip(),
                 "the tooltip must describe the field the label names");
     }

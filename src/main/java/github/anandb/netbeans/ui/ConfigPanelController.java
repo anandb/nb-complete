@@ -102,7 +102,10 @@ public class ConfigPanelController {
     private final ModelVariantResolver modelResolver = new ModelVariantResolver();
     private SessionConfigOption thinkingConfigOption;
     private volatile String thinkingConfigId;
-
+    /** The ACP configOptions entry backing the mode/agent combo; its server
+     *  declared name is the label terminology for the combo (falls back to
+     *  "Agent" when absent). */
+    private SessionConfigOption modeConfigOption;
     private final Consumer<String> tabNameUpdater;
 
     public ConfigPanelController(Consumer<String> tabNameUpdater) {
@@ -356,10 +359,21 @@ public class ConfigPanelController {
      *  Label and tooltip move together so the wording can't contradict the source. */
     private void syncModeLabel() {
         boolean modesField = agentSupportsSessionSetMode();
-        String labelKey = modesField ? "LBL_Mode" : "LBL_Agent";
         String hintKey = modesField ? "HINT_Mode" : "HINT_Agent";
-        modeLabel.setText(NbBundle.getMessage(ConfigPanelController.class, labelKey));
-        modeLabel.setToolTipText(NbBundle.getMessage(ConfigPanelController.class, hintKey));
+        String label = null;
+        if (!modesField && modeConfigOption != null) {
+            String n = modeConfigOption.name();
+            // Server terminology wins verbatim unless blank; keep the colon
+            // styling of the static labels ("Model:") when it lacks one.
+            if (n != null && !n.isBlank()) {
+                label = n.endsWith(":") ? n : n + ":";
+            }
+        }
+        modeLabel.setText(label != null ? label
+                : NbBundle.getMessage(ConfigPanelController.class, modesField ? "LBL_Mode" : "LBL_Agent"));
+        String description = modeConfigOption != null && !modesField ? modeConfigOption.description() : null;
+        modeLabel.setToolTipText(description != null && !description.isBlank() ? description
+                : NbBundle.getMessage(ConfigPanelController.class, hintKey));
     }
 
     /** True when model switching must use the dedicated ACP session/set_model RPC (Hermes-style agents). */
@@ -456,24 +470,33 @@ public class ConfigPanelController {
         SwingUtilities.invokeLater(() -> {
             isUpdatingConfigControls = true;
             try {
-                // Label follows the source the mode values came from (modes
-                // field vs configOptions), so it can't drift from the combos.
-                syncModeLabel();
-                // First pass: collect the model and thinking options, then parse the
-                // model variants with the effort values the server declares — a model
-                // id's trailing segment only counts as a thinking variant when the
-                // server accepts it as an effort level.
+                // Fresh update decides terminology: null out any previous session's
+                // captured option so a new session without a mode entry falls back
+                // to the generic label instead of stale wording.
+                modeConfigOption = null;
+                // First pass: collect the model, mode and thinking options, then parse
+                // the model variants with the effort values the server declares — a
+                // model id's trailing segment only counts as a thinking variant when
+                // the server accepts it as an effort level.
                 SessionConfigOption modelOption = null;
+                SessionConfigOption modeOpt = null;
                 boolean thinkingDeclared = false;
                 for (SessionConfigOption opt : options) {
                     if ("model".equals(opt.category())) {
                         modelOption = opt;
+                    } else if ("mode".equals(opt.category())) {
+                        modeOpt = opt;
                     } else if (isThinkingCategory(opt.category())) {
                         thinkingDeclared = true;
                         thinkingConfigOption = opt;
                         thinkingConfigId = opt.id();
                     }
                 }
+                // Label follows the source the mode values came from (modes field
+                // vs configOptions), so it can't drift from the combos. Called
+                // after capture so the server-declared name is available.
+                modeConfigOption = modeOpt;
+                syncModeLabel();
                 if (modelOption != null) {
                     modelResolver.parseModelVariants(modelOption, thinkingOptionValues());
                     final SessionConfigOption mirrorSource = modelOption;
