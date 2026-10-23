@@ -1,5 +1,36 @@
 # Release Notes
 
+## v1.27.0 (Changes since v1.26.1)
+
+### Features
+- **Plans dock in a slideout instead of a chat bubble**: plan updates render in `ui/PlanPanel`, docked at the SOUTH of the thread window and collapsed by default. The header shows the first unfinished entry plus done/total and toggles on header click; completed rows render muted, the first unfinished row is bold in the accent color, and the header carries a thin progress bar. Status glyphs and the chevron are themed SVGs (`plan-*.svg` plus `_dark` variants) with a Unicode fallback for the chevron, because the old code points rendered as tofu boxes depending on the active font. The expanded list shows at most 8 rows before scrolling. The panel squeezes the `ChatThreadPanel` viewport and never the input textbox, and it clears on session start, on `onSessionLoading(true)`, and when the current session is archived. `contract/UIHandler.updatePlan(List<PlanEntry>)` carries the full priority-sorted list; `updatePlan` is deliberately not gated by `shouldCapture`, so a harness replay can repopulate it while LOADING.
+- **MCP tool-call statistics**: `support/ToolCallStats` counts calls per turn per tool, drilled by `McpTools.callTool`; `drain()` atomically swaps the counter so the double turn-end funnel (SSE plus RPC completion) records exactly once. `SessionManager.onTurnEnded` drains it into the H2 store as one `tool_call_usage` row per tool per turn, attributed at capture time (schema version bumped to 5, additive), behind the new `UsageStatsStore.recordToolCalls`/`queryToolTotals` port. `TokenUsageDialog` renders an MCP Tool Calls table: the count plus a proportional bar sized by that tool's share of the window's calls.
+- **Bundled user guide**: the stitched Twine HTML (self-contained, base64 images) is packaged into the module jar at `github/anandb/netbeans/docs/UserGuide.html` from a generated resource directory. `support/UserGuideOpener` extracts it to `java.io.tmpdir/beanbot` on a background thread and opens it in the system browser, falling back to the remote `AppLinks` URL on the EDT when the resource or the copy is unavailable. `stitch.py` stamps the Home passage's "Last updated for BeanBot v…" line from the pom version at stitch time.
+- **Always-visible context usage meter**: a compact painted meter now sits left of the model dropdown and stays visible with the options panel collapsed, replacing the status label tooltip. Fill is green below 70%, amber below 90% and red beyond (new `success` theme color); an unknown size shows an empty track and an "unavailable" tooltip. Session restore shows stored usage and clears it when none is stored, so switching sessions never shows stale numbers. The tooltip moved onto the meter and groups token counts in thousands.
+- **Mode combo label mirrors the harness**: when the combo is backed by ACP `configOptions`, its label and tooltip use the option's own declared name and description instead of the hardcoded "Agent" wording, falling back to Agent when the name is blank or the harness reports modes via the `session/new` field. Verified against wire logs (`goose`, `omp` and `copilot` all declare "Mode").
+- **Refresh button in the git Show History window**: an icon-only refresh button is injected next to the Show All Files checkbox at runtime (`@OnStart` plus a TopComponent registry listener, the same pattern as the context-menu hooks). Clicking it re-runs the current history search through the panel's `executeSearch()` (by reflection, with a Search-button fallback), so new commits appear without reopening the window. The button is named rather than indexed so the idempotency guard and tests locate it structurally, and it carries a dedicated green refresh icon with a dark-theme variant.
+- **Alt+O for Allow Once**: every allow-kind permission button shared the `A` mnemonic, which was ambiguous when the harness sent both Allow Once and Allow Always. Always keeps Alt+A, Once gets Alt+O, and a single allow option without either keyword keeps Alt+A.
+
+### Fixes
+- **Diff preview for goose `edit` requests**: goose asks for permission with `rawInput.before`/`after`/`path`, a shape `ToolCallDiffParser` did not recognise, so the panel rendered no file rows and no Show Diff button. The `before`/`after` pair is now parsed (from `rawInput` or `args`) and `rawInput.path` is used when `filePath` is absent; the panel then expands the replaced region against the file on disk into a full-file diff. Path extraction also accepts Copilot's `rawInput.fileName`, the only path field in its `edit` requests outside `locations[]`.
+- **Input placeholder repaints cleanly**: text anti-aliasing is enabled on the placeholder paint path, and the area repaints fully on document changes and focus transitions, so stale placeholder pixels no longer linger over typed text or blink away under the caret. The light-theme placeholder color is darkened (`#969696` → `#707070`). The placeholder is now a single line carrying the Alt+↑/Alt+↓ history-navigation hint.
+- **MCP tool-call bars render as percentage divs**: the U+2588 block run is replaced by the proportional bar the dialog used before the stats moved from CLI output to ACP capture — a three-column row of tool name, a themed 10px div sized by the tool's share of calls, and count plus percent. Swing's HTML kit has no block-glyph coverage in the monospace stack, so the character bars printed as tofu boxes. Percentages round to whole percent with a 1% floor.
+- **Plan slideout cleared when the session is archived**: `closeSession()` only fires `onSessionLoading(false)`, which deliberately does not clear the panel, so archiving the last visible session left the slideout showing over the WelcomeScreen. Both `closeSession()` sites in `onSessionListUpdated` now clear it.
+
+### Documentation
+- **README**: the pointer to the remote user guide is dropped — the guide is bundled and opens locally.
+- **Queuing Messages**: Oh My Pi moves to the interleaved (send-immediately) agent list, since OMP supports steering (`requiresMessageQueue=false`).
+- **`AGENTS.md`**: records the plan-slideout invariant so a plan bubble is not reintroduced and the panel is not moved into the input area.
+
+### Tests
+- **`PlanPanelTest` / `SessionLifecycleHandlerTest`**: cover the slideout rendering, the header summary and the session-race-guarded forwarding path.
+- **`ToolCallStatsTest`**: clears inherited state, since `mcp`-package tests exercise the shared static counter in the same JVM.
+- **`ContextUsageMeterTest`, `ShowHistoryRefreshTest`, `TokenUsageDialogTest`, `ConfigPanelControllerModeLabelTest`, `StatusControllerTest`, `H2UsageStatsStoreTest`, `StrategyRegistryCaptureTest`**: added or updated for the new meter, the injected refresh button, the tool-call table, the config-option label, the status row and the schema-5 tool-call rows.
+
+### Housekeeping
+- New themed SVG assets for plan status and the refresh action (light/dark pairs).
+- Version bumped to 1.27.0-SNAPSHOT.
+
 ## v1.26.1 (Changes since v1.26.0)
 
 ### Fixes
