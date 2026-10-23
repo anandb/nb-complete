@@ -13,6 +13,7 @@ import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.Set;
 import java.util.WeakHashMap;
+import github.anandb.netbeans.support.PluginSettings;
 import javax.swing.Box;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
@@ -29,7 +30,8 @@ import javax.swing.SwingUtilities;
  * <p>The IDE module cannot be modified, so this follows the
  * {@link TestResultsContextMenu}/{@link InspectorContextMenu} runtime-hook
  * pattern: a {@code TopComponent.Registry} listener watches for the window
- * and patches its already-built component tree.</p>
+ * and patches its already-built component tree. Gated at startup on the
+ * plugin's "Enable View File History" option.</p>
  */
 @OnStart
 public class ShowHistoryRefresh implements Runnable, PropertyChangeListener {
@@ -56,6 +58,10 @@ public class ShowHistoryRefresh implements Runnable, PropertyChangeListener {
     public void run() {
         if (registered) {
             return;
+        }
+        // Gated on the plugin's "Enable View File History" option; takes effect at startup.
+        if (!PluginSettings.isViewFileHistoryEnabled()) {
+            return; // no registry listener, no toolbar patching while disabled
         }
         registered = true;
         TopComponent.getRegistry().addPropertyChangeListener(this);
