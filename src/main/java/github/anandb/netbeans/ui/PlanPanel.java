@@ -1,14 +1,18 @@
 package github.anandb.netbeans.ui;
 
+import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.Rectangle;
 import java.awt.RenderingHints;
+import java.awt.font.TextAttribute;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 
@@ -19,6 +23,7 @@ import javax.swing.Icon;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.SwingUtilities;
 
 import github.anandb.netbeans.model.ModelRecords.PlanEntry;
 import github.anandb.netbeans.support.Logger;
@@ -51,14 +56,14 @@ public class PlanPanel extends JPanel {
     private static final int ICON_SIZE = 12;
     /** Vertical + horizontal padding inside the panel. */
     private static final int PAD = 6;
-    /** Plan text grows slightly beyond the thread font, to stand apart from chat. */
-    private static final float FONT_DELTA = 1.5f;
+    /** Trailing padding that keeps the vertical scrollbar off the row text. */
+    private static final int SCROLL_INSET_PX = 8;
     /** Vertical gap between rows in the expanded list. */
-    static final int ROW_GAP = 5;
+    static final int ROW_GAP = 6;
 
     private final JLabel chevron = new JLabel();
     private final JLabel badgeIcon = new JLabel();
-    private final JLabel headerLabel = new JLabel();
+    private final EllipsisLabel headerLabel = new EllipsisLabel();
     private final MiniProgressBar progressBar = new MiniProgressBar();
     private final JPanel rowsPanel = new JPanel();
     private final JScrollPane rowsScroll;
@@ -73,7 +78,9 @@ public class PlanPanel extends JPanel {
 
         JPanel header = new JPanel();
         header.setOpaque(false);
-        header.setLayout(new BoxLayout(header, BoxLayout.X_AXIS));
+        // BorderLayout lets the label take exactly the remaining width: its text
+        // can then ellipsize without ever pushing the (n/n) bar out of the header.
+        header.setLayout(new BorderLayout(4, 0));
         header.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         header.addMouseListener(new MouseAdapter() {
             @Override
@@ -85,18 +92,26 @@ public class PlanPanel extends JPanel {
         headerLabel.setOpaque(false);
         badgeIcon.setOpaque(false);
         progressBar.setVisible(false);
-        header.add(chevron);
-        header.add(Box.createHorizontalStrut(4));
-        header.add(badgeIcon);
-        header.add(Box.createHorizontalStrut(4));
-        header.add(headerLabel);
-        header.add(Box.createHorizontalGlue());
-        header.add(Box.createHorizontalStrut(8));
-        header.add(progressBar);
+        JPanel prependSlot = new JPanel();
+        prependSlot.setOpaque(false);
+        prependSlot.setLayout(new BoxLayout(prependSlot, BoxLayout.X_AXIS));
+        prependSlot.add(chevron);
+        prependSlot.add(Box.createHorizontalStrut(4));
+        prependSlot.add(badgeIcon);
+        header.add(prependSlot, BorderLayout.WEST);
+        header.add(headerLabel, BorderLayout.CENTER);
+        JPanel barSlot = new JPanel();
+        barSlot.setOpaque(false);
+        barSlot.setLayout(new BoxLayout(barSlot, BoxLayout.X_AXIS));
+        barSlot.add(Box.createHorizontalStrut(8));
+        barSlot.add(progressBar);
+        header.add(barSlot, BorderLayout.EAST);
         add(header);
 
         rowsPanel.setOpaque(false);
         rowsPanel.setLayout(new BoxLayout(rowsPanel, BoxLayout.Y_AXIS));
+        // trailing inset: the vertical scrollbar rides on empty space, not on glyph ink
+        rowsPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, SCROLL_INSET_PX));
         rowsScroll = new JScrollPane(rowsPanel);
         rowsScroll.setBorder(BorderFactory.createEmptyBorder());
         rowsScroll.setOpaque(false);
@@ -123,7 +138,7 @@ public class PlanPanel extends JPanel {
                 BorderFactory.createEmptyBorder(PAD, PAD + 4, PAD, PAD)));
 
         Font baseFont = ThemeManager.getFont();
-        Font font = baseFont.deriveFont(baseFont.getSize2D() + FONT_DELTA);
+        Font font = baseFont;
         chevron.setFont(font);
         headerLabel.setFont(font);
 
@@ -149,7 +164,7 @@ public class PlanPanel extends JPanel {
         if (expanded) {
             setChevron("plan-chevron-down.svg", "\u2304"); // ⌄ down chevron fallback
             badgeIcon.setIcon(null);
-            headerLabel.setText(NbBundle.getMessage(PlanPanel.class, "LBL_Plan") + count);
+            headerLabel.setFullText(NbBundle.getMessage(PlanPanel.class, "LBL_Plan") + count);
             rowsScroll.setVisible(true);
             // Cap the expanded list height in rows; the scrollpane absorbs the rest.
             // Inter-row struts count too: 8 rows + the 7 gaps between them.
@@ -168,10 +183,11 @@ public class PlanPanel extends JPanel {
             if (activeIndex >= 0) {
                 PlanEntry active = this.entries.get(activeIndex);
                 badgeIcon.setIcon(statusIcon(active));
-                headerLabel.setText(active.content() + count);
+                headerLabel.setFullText(active.content() + count);
             } else {
                 badgeIcon.setIcon(null);
-                headerLabel.setText(NbBundle.getMessage(PlanPanel.class, "LBL_PlanCompleted") + count);
+                headerLabel.setFullText(
+                        NbBundle.getMessage(PlanPanel.class, "LBL_PlanCompleted") + count);
             }
             rowsScroll.setVisible(false);
         }
@@ -201,16 +217,20 @@ public class PlanPanel extends JPanel {
      * the eye lands on what the harness is working on right now.
      */
     private JPanel buildRow(PlanEntry entry, boolean active, Font font, ColorTheme theme) {
-        JLabel label = new JLabel();
+        EllipsisLabel label = new EllipsisLabel();
         label.setIcon(statusIcon(entry));
-        label.setText(entry.content());
-        label.setFont(active
-                ? font.deriveFont(Font.BOLD) : font);
-        if (isCompleted(entry)) {
-            label.setForeground(theme.mutedForeground());
-        } else if (active) {
+        label.setFullText(entry.content());
+        label.setHorizontalAlignment(JLabel.LEFT);
+        if (active) {
+            label.setFont(font.deriveFont(Font.BOLD));
             label.setForeground(theme.accent());
+        } else if (isCompleted(entry)) {
+            // strike-through + muted colour: instantly reads as "done" without HTML
+            label.setFont(font.deriveFont(Collections.<TextAttribute, Boolean>singletonMap(
+                    TextAttribute.STRIKETHROUGH, TextAttribute.STRIKETHROUGH_ON)));
+            label.setForeground(theme.mutedForeground());
         } else {
+            label.setFont(font);
             label.setForeground(theme.foreground());
         }
         JPanel row = new JPanel();
@@ -251,6 +271,41 @@ public class PlanPanel extends JPanel {
     private static boolean isCompleted(PlanEntry entry) {
         String status = entry.status() == null ? "" : entry.status().toLowerCase(Locale.ROOT);
         return "completed".equals(status) || "done".equals(status);
+    }
+
+    /**
+     * Single-line label that clips its text with a trailing ellipsis instead
+     * of a hard mid-glyph edge; the full text is always available as the
+     * tooltip. Uses {@link SwingUtilities#layoutCompoundLabel} so placement
+     * and clipping match exactly how the label paints. No wrapping, no
+     * {@code revalidate()} from a sizing path (only a setText equality guard).
+     */
+    private static final class EllipsisLabel extends JLabel {
+        private static final long serialVersionUID = 1L;
+
+        private EllipsisLabel() {
+            setOpaque(false);
+        }
+
+        void setFullText(String text) {
+            setToolTipText(text);
+            super.setText(text);
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Rectangle view = new Rectangle(0, 0, Math.max(0, getWidth()), getHeight());
+            String displayed = SwingUtilities.layoutCompoundLabel(this,
+                    getFontMetrics(getFont()), getText(), getIcon(),
+                    getVerticalAlignment(), getHorizontalAlignment(),
+                    getVerticalTextPosition(), getHorizontalTextPosition(),
+                    view, new Rectangle(), new Rectangle(), 0);
+            // equality guard: setText changes preferred size → relayout, converges
+            if (!displayed.equals(getText())) {
+                super.setText(displayed);
+            }
+            super.paintComponent(g);
+        }
     }
 
     /** Thin rounded bar showing done/total progress, drawn in the theme's colors. */
