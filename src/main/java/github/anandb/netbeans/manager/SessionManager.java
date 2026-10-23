@@ -1011,11 +1011,13 @@ public class SessionManager implements SessionQuery, SessionControl {
                             beforePreambleHandler.apply(session.id(), resolvedOptions)
                                 .whenComplete((v, ex) -> {
                                     if (!sendPreamble(session.id())) {
+                                        notifyPreambleSkipped();
                                         notifyPreambleDone();
                                     }
                                 });
                         } else {
                             if (!sendPreamble(session.id())) {
+                                notifyPreambleSkipped();
                                 notifyPreambleDone();
                             }
                         }
@@ -1388,6 +1390,10 @@ public class SessionManager implements SessionQuery, SessionControl {
 
     private void notifyPreambleDone() {
         new ArrayList<>(listeners).forEach(SessionListener::onPreambleDone);
+    }
+
+    private void notifyPreambleSkipped() {
+        new ArrayList<>(listeners).forEach(SessionListener::onPreambleSkipped);
     }
 
     private void notifySessionListUpdated(List<Session> sessions) {

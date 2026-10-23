@@ -595,6 +595,14 @@ public class SessionLifecycleHandler implements SessionListener {
     }
 
     @Override
+    public void onPreambleSkipped() {
+        SwingUtilities.invokeLater(() -> {
+            chatPanel.addMessage(ProcessedMessage.createInfo(
+                    NbBundle.getMessage(SessionLifecycleHandler.class, "INFO_SessionReady")));
+        });
+    }
+
+    @Override
     public void onSessionRenamed(String sessionId) {
         SwingUtilities.invokeLater(() -> {
             SessionControl sc = sessionService.get();
