@@ -15,6 +15,11 @@ on:
 permissions:
   contents: read
 
+env:
+  # docs/stitch.py compiles target/User Guide.twee with tweego. The runner image
+  # ships python3 but not tweego, so pin and install it below.
+  TWEEGO_VERSION: '2.1.1'
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -33,6 +38,20 @@ jobs:
           server-password: MAVEN_CENTRAL_PASSWORD
           gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
           gpg-passphrase: GPG_PASSPHRASE
+
+      - name: Install user guide toolchain (python3 + tweego)
+        run: |
+          set -euo pipefail
+          python3 --version
+          dest="$HOME/apps/tweego"
+          mkdir -p "$dest"
+          curl -fsSL -o /tmp/tweego.zip \
+            "https://github.com/tmedwards/tweego/releases/download/v${TWEEGO_VERSION}/tweego-${TWEEGO_VERSION}-linux-x64.zip"
+          unzip -q -o /tmp/tweego.zip -d "$dest"
+          chmod +x "$dest/tweego"          # the release archive stores no exec bit
+          echo "$dest" >> "$GITHUB_PATH"   # stitch.py resolves tweego from PATH
+          test -x "$dest/tweego"
+          "$dest/tweego" --version || true # prints version + usage, then exits 1
 
       - name: Decode NBM keystore
         env:
@@ -62,3 +81,14 @@ jobs:
           NBM_KEYSTORE: /tmp/nb-complete-keystore.jks
           NBM_ALIAS: ${{ secrets.NBM_ALIAS }}
           NBM_KEYPASS: ${{ secrets.NBM_KEYPASS }}
+
+      # The antrun exec in pom.xml runs stitch.py with failonerror="false", so a
+      # missing tweego only warns and the jar ships without the bundled guide.
+      # Fail the release instead of publishing a build with no user guide.
+      - name: Verify user guide was compiled
+        run: |
+          set -euo pipefail
+          guide="target/generated-guide/UserGuide.html"
+          test -s "$guide"
+          grep -q '<!DOCTYPE html>' "$guide"
+          ls -l "$guide"

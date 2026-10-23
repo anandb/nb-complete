@@ -12,6 +12,12 @@
   which gets bundled and Central rejects the deployment ("Bundle has content that does NOT
   have a .pom file"). 3.9.x writes `maven-metadata-central-staging.xml`, which the plugin
   deletes before bundling.
+- **User guide toolchain**: `docs/stitch.py` (antrun `generate-user-guide` at
+  `generate-resources`) needs `python3` + `tweego` (Harlowe 3) to produce
+  `target/generated-guide/UserGuide.html`, which is packaged into the module jar. The antrun
+  `<exec>` is `failonerror="false"`, so a missing tweego only warns and the jar ships without
+  the guide. CI installs a pinned tweego release in `.github/workflows/release.yml` and fails
+  the release when the generated HTML is absent — keep both steps if you edit that workflow.
 
 ## Architecture & UI
 - **ACP & JSON-RPC**: Compliant with ACP v1. Communication via `AcpProtocolClient`
