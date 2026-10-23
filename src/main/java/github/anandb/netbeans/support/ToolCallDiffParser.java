@@ -16,6 +16,7 @@ import static org.apache.commons.lang3.StringUtils.isNotBlank;
  * Handles formats:
  * <ul>
  *   <li>{@code args.oldString/newString} with {@code args.filePath}</li>
+ *   <li>{@code rawInput.before/after} with {@code rawInput.path} (goose {@code edit} tool)</li>
  *   <li>{@code rawInput.diff} with {@code rawInput.filePath}</li>
  *   <li>{@code arguments.oldString/newString} with {@code arguments.filePath}</li>
  *   <li>{@code content[]} blocks with {@code oldText/newText} (JSON {@code null} oldText = new file)
@@ -58,6 +59,11 @@ public final class ToolCallDiffParser {
             String fp = textField(ri, "filePath");
             if (fp != null) return fp;
             fp = textField(ri, "filepath");
+            if (fp != null) return fp;
+            fp = textField(ri, "path");
+            if (fp != null) return fp;
+            // Copilot's edit tool names the target in rawInput.fileName.
+            fp = textField(ri, "fileName");
             if (fp != null) return fp;
         }
 
@@ -117,6 +123,20 @@ public final class ToolCallDiffParser {
             result.add(createChange(fp, oldS, newS));
             // If we found an oldString/newString pair, that's the primary
             // content. Continue to check content[] only for additional blocks.
+        }
+
+        // 1b. before/after pair (goose edit tool sends rawInput.before/after/path).
+        //     The pair is the replaced region, so the panel expands it against the file on disk.
+        if (result.isEmpty()) {
+            JsonNode pair = toolCall.has("rawInput") && toolCall.get("rawInput").isObject()
+                    ? toolCall.get("rawInput") : args;
+            if (pair != null && pair.has("before") && pair.has("after")) {
+                String before = pair.get("before").asText("");
+                String after = pair.get("after").asText("");
+                if (!before.equals(after)) {
+                    result.add(createChange(extractFilePath(toolCall), before, after));
+                }
+            }
         }
 
         // 2. rawInput.diff

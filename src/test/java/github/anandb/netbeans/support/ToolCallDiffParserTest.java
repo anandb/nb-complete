@@ -342,6 +342,89 @@ class ToolCallDiffParserTest {
     }
 
     // ========================================================
+    // parse — rawInput.before/after (goose edit tool)
+    // ========================================================
+
+    @Test
+    void parse_rawInputBeforeAfter() {
+        ObjectNode ri = obj()
+                .put("path", "/home/proj/CHANGELOG.md")
+                .put("before", "old line")
+                .put("after", "new line");
+        ObjectNode tc = obj().put("kind", "other").put("title", "edit \u00b7 /home/proj/CHANGELOG.md");
+        tc.set("rawInput", ri);
+
+        List<FileChange> result = ToolCallDiffParser.parse(tc);
+        assertEquals(1, result.size());
+        assertEquals("/home/proj/CHANGELOG.md", result.get(0).filePath());
+        assertEquals("old line", result.get(0).oldContent());
+        assertEquals("new line", result.get(0).newContent());
+        assertEquals('M', result.get(0).status());
+    }
+
+    @Test
+    void parse_rawInputBeforeAfter_emptyBeforeIsAnAddition() {
+        ObjectNode ri = obj()
+                .put("path", "/src/New.java")
+                .put("before", "")
+                .put("after", "class New {}");
+        ObjectNode tc = obj().set("rawInput", ri);
+
+        List<FileChange> result = ToolCallDiffParser.parse(tc);
+        assertEquals(1, result.size());
+        assertEquals('A', result.get(0).status());
+    }
+
+    @Test
+    void parse_rawInputBeforeAfter_identicalIsDropped() {
+        ObjectNode ri = obj()
+                .put("path", "/src/Same.java")
+                .put("before", "same")
+                .put("after", "same");
+        ObjectNode tc = obj().set("rawInput", ri);
+        assertTrue(ToolCallDiffParser.parse(tc).isEmpty());
+    }
+
+    @Test
+    void parse_argsBeforeAfter() {
+        ObjectNode args = obj().put("path", "/src/Args.java").put("before", "a").put("after", "b");
+        ObjectNode tc = obj().set("args", args);
+
+        List<FileChange> result = ToolCallDiffParser.parse(tc);
+        assertEquals(1, result.size());
+        assertEquals("/src/Args.java", result.get(0).filePath());
+    }
+
+    @Test
+    void extractFilePath_fromRawInputPath() {
+        ObjectNode ri = obj().put("path", "/src/Bare.java");
+        ObjectNode tc = obj().set("rawInput", ri);
+        assertEquals("/src/Bare.java", ToolCallDiffParser.extractFilePath(tc));
+    }
+
+    /** Copilot's edit tool sends rawInput.fileName plus a git-style diff, no content[]. */
+    @Test
+    void parse_copilotFileNameAndGitDiff() {
+        String diff = "diff --git a/src/Edit.java b/src/Edit.java\n"
+                + "index 111..222 100644\n"
+                + "--- a/src/Edit.java\n"
+                + "+++ b/src/Edit.java\n"
+                + "@@ -1,2 +1,2 @@\n"
+                + " keep\n"
+                + "-old\n"
+                + "+new\n";
+        ObjectNode ri = obj().put("fileName", "/workspace/src/Edit.java").put("diff", diff);
+        ObjectNode tc = obj().put("kind", "edit").set("rawInput", ri);
+
+        List<FileChange> result = ToolCallDiffParser.parse(tc);
+        assertEquals(1, result.size());
+        assertEquals("/workspace/src/Edit.java", result.get(0).filePath());
+        assertEquals("keep\nold", result.get(0).oldContent());
+        assertEquals("keep\nnew", result.get(0).newContent());
+        assertEquals('M', result.get(0).status());
+    }
+
+    // ========================================================
     // parse — rawInput.diff
     // ========================================================
 
