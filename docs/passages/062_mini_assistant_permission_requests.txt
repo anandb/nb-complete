@@ -8,6 +8,8 @@
 
 If the AI requests permission to edit a file or run a command, the permission prompt appears directly inside the mini dialog. You can Allow or Deny the request, and for file edits, a **Show Diff** button lets you inspect the changes before approving.
 
+The buttons keep the same keyboard mnemonics as the main panel — <code>Alt + A</code> Always Allow, <code>Alt + O</code> Allow Once, <code>Alt + R</code> Reject/Deny, <code>Alt + W</code> Always Reject and <code>Alt + D</code> Show Diff — so you can answer a prompt without leaving the keyboard.
+
 
 > [[Mini Assistant]]
 > [[Opening the Mini Assistant]]
