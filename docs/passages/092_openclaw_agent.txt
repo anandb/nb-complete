@@ -32,9 +32,9 @@ OpenClaw Agent in BeanBot supports:
 
 OpenClaw runs as a **bridge** rather than a full ACP-native runtime, so a few ACP surfaces are unavailable:
 
-- **MCP Servers**: The bridge rejects per-session MCP servers, so BeanBot cannot hand OpenClaw the plugin's [[MCP Tools]] automatically — it sends no server list. OpenClaw still supports MCP: run the plugin's internal server on a fixed port (**Internal MCP Server** and **Internal MCP Server Port** under <code>Options &gt; Assistant &gt; System</code>) and register that URL as a Gateway MCP server with <code>openclaw mcp add</code> (or <code>mcp.servers</code> in the OpenClaw config, or the Control UI's <code>/settings/mcp</code> page). The Gateway must run on the same machine, because the plugin's server binds to <code>127.0.0.1</code>.
+- **MCP Servers**: The bridge rejects per-session MCP servers, so BeanBot cannot hand OpenClaw the plugin's [[MCP Tools]] automatically — it sends no server list. OpenClaw still supports MCP: run the plugin's internal server on a fixed port (**Internal MCP Server** and **Internal MCP Server Port** under <code>Options &gt; BeanBot &gt; System</code>) and register that URL as a Gateway MCP server with <code>openclaw mcp add</code> (or <code>mcp.servers</code> in the OpenClaw config, or the Control UI's <code>/settings/mcp</code> page). The Gateway must run on the same machine, because the plugin's server binds to <code>127.0.0.1</code>.
 - **Model Selection**: Not exposed as an ACP config option, so the in-session model dropdown is unavailable. Change the model from within the chat with <code>/acp set model provider/model</code> — for example <code>/acp set model opencode-go/glm-5.3-flash</code>.
-- **Agent / Mode Dropdown**: OpenClaw routes by Gateway session key rather than advertising an agent list, so BeanBot does not offer the agent selector. To target a specific agent, add <code>--session agent:&lt;id&gt;:main</code> under Process Arguments in <code>Options &gt; Assistant</code>.
+- **Agent / Mode Dropdown**: OpenClaw routes by Gateway session key rather than advertising an agent list, so BeanBot does not offer the agent selector. To target a specific agent, add <code>--session agent:&lt;id&gt;:main</code> under Process Arguments in <code>Options &gt; BeanBot</code>.
 
 > [[Post Install]]
 > [[Starting a Session]]

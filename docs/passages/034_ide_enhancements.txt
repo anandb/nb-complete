@@ -25,13 +25,13 @@ The plugin integrates deeply with NetBeans beyond just the chat panel to boost y
     *   **Minify JSON:** Right-click any JSON content to quickly strip out all formatting whitespace.
     *   **Toggle Annotations:** Right-click in the editor and choose **Toggle Annotations** to toggle the versioning system's blame annotations for the file.
     *   **View File History:** Right-click in the editor and choose **View File History** to open the versioning system's history view for the file.
-    *   Each of these context menu items can be enabled or disabled independently under `Tools > Options > Assistant`.
+    *   Each of these context menu items can be enabled or disabled independently under `Tools > Options > BeanBot`.
 <div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0.2em;">Jump to File</div>
     *   A modeless file search dialog triggered via `Ctrl + Alt + J` (or `Cmd + Option + J` on Mac) that lets you search all open projects by filename prefix, path substring, or glob patterns.
     *   Supports quick keyboard navigation with arrow keys and `Enter` to open.
     *   Powered by an **In-Memory File Indexing Cache** that rebuilds in the background when projects are opened or closed. It first honors a project-root `.bbignore` (same syntax as `.gitignore`, tuned for display); when present it replaces `.gitignore`/`.hgignore` entirely, otherwise the VCS ignore file applies. Common directories like `node_modules/`, `target/`, and `build/` are skipped when no VCS ignore strategy is available.
     *   Includes incremental live indexing via file system listeners, meaning new, deleted, or renamed files are immediately searchable without full rebuilds.
-    *   Can be enabled or disabled under `Tools > Options > Assistant`.
+    *   Can be enabled or disabled under `Tools > Options > BeanBot`.
 
 > [[Markdown Project Type]]
 > [[Git Stashes as "Code Drafts" (using Stash Diff)]]

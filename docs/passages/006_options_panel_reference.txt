@@ -6,9 +6,9 @@
   <div>[[Index->Topic Index]]</div>
 </div>
 
-Customise the plugin behavior by navigating to `Tools > Options > Assistant`. Here, you can configure the path to the Harness, add process arguments, set a global system Preamble for all sessions, and toggle **Local Echo** for instant message rendering. You can also adjust UI preferences like toolbar icon size, chat font size, enable or disable specific features (like Stash Diff or Jump to file), and set a custom user avatar.
+Customise the plugin behavior by navigating to `Tools > Options > BeanBot`. Here, you can configure the path to the Harness, add process arguments, set a global system Preamble for all sessions, and toggle **Local Echo** for instant message rendering. You can also adjust UI preferences like toolbar icon size, chat font size, enable or disable specific features (like Stash Diff or Jump to file), and set a custom user avatar.
 
-Additionally, the plugin includes a background **Update Checker Service** that automatically queries for new releases (with randomised intervals between 16 and 24 hours). You can toggle the update checks under `Tools > Options > Assistant > Check for updates`. When an update is found, you will be prompted with a dialog to download the update immediately, get reminded later, or skip the version entirely.
+Additionally, the plugin includes a background **Update Checker Service** that automatically queries for new releases (with randomised intervals between 16 and 24 hours). You can toggle the update checks under `Tools > Options > BeanBot > Check for updates`. When an update is found, you will be prompted with a dialog to download the update immediately, get reminded later, or skip the version entirely.
 
 This page describes every preference in the panel, organised into six sections. All changes take effect when you click **Apply** or **OK**.
 

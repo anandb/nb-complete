@@ -19,7 +19,7 @@ Or via package managers:
 <div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0.2em;">Windows</div>
 On Windows, you can run OpenCode inside **WSL (Windows Subsystem for Linux)**, or use a package manager.
 
-To launch OpenCode through WSL from the plugin, enable **Launch through WSL** under `Tools > Options > Assistant > Assistant Service`. The plugin detects `wsl.exe` on your PATH and wraps all OpenCode invocations through WSL automatically, translating your Windows executable path to its WSL mount location.
+To launch OpenCode through WSL from the plugin, enable **Launch through WSL** under `Tools > Options > BeanBot > Assistant Service`. The plugin detects `wsl.exe` on your PATH and wraps all OpenCode invocations through WSL automatically, translating your Windows executable path to its WSL mount location.
 
 <pre><code>curl -fsSL https://opencode.ai/install | bash</code></pre>
 

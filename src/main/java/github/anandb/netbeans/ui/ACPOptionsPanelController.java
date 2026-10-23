@@ -7,7 +7,7 @@ import org.netbeans.spi.options.OptionsPanelController;
         categoryName = "#OptionsCategory_Name_Assistant",
         iconBase = "github/anandb/netbeans/ui/icons/logo.svg",
         keywords = "#OptionsCategory_Keywords_Assistant",
-        keywordsCategory = "Assistant",
+        keywordsCategory = "BeanBot",
         position = 1100
 )
 public final class ACPOptionsPanelController extends AbstractOptionsPanelController {

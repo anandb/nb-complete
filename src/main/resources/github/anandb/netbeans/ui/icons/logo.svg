@@ -1,19 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 16 16">
   <defs>
-    <!-- NetBeans IDE Blue Gradient -->
-    <linearGradient id="nbBubble" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#0284c7"/>
-      <stop offset="100%" stop-color="#0369a1"/>
+    <!-- BeanBot teal accent (light theme): #2f8a8a family -->
+    <linearGradient id="bbBubble" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#359a9a"/>
+      <stop offset="100%" stop-color="#2a7d7d"/>
     </linearGradient>
   </defs>
 
-  <!-- Speech Bubble Body with NetBeans Blue -->
-  <path d="M3 1.5 H13 A2.5 2.5 0 0 1 15.5 4 V10 A2.5 2.5 0 0 1 13 12.5 H6.8 L3.6 15.2 L3.9 12.5 H3 A2.5 2.5 0 0 1 0.5 10 V4 A2.5 2.5 0 0 1 3 1.5 Z" fill="url(#nbBubble)"/>
+  <!-- Speech Bubble Body -->
+  <path d="M3 1.5 H13 A2.5 2.5 0 0 1 15.5 4 V10 A2.5 2.5 0 0 1 13 12.5 H6.8 L3.6 15.2 L3.9 12.5 H3 A2.5 2.5 0 0 1 0.5 10 V4 A2.5 2.5 0 0 1 3 1.5 Z" fill="url(#bbBubble)"/>
 
-  <!-- Multi-Harness Status Nodes (3 distinct backends along the top edge) -->
-  <circle cx="5" cy="2.2" r="0.9" fill="#38bdf8"/>
-  <circle cx="8" cy="2.2" r="0.9" fill="#c084fc"/>
-  <circle cx="11" cy="2.2" r="0.9" fill="#f43f5e"/>
+  <!-- Multi-Harness Status Nodes (monochrome tints of the accent) -->
+  <circle cx="5" cy="2.2" r="0.9" fill="#ffffff"/>
+  <circle cx="8" cy="2.2" r="0.9" fill="#cfe8e8"/>
+  <circle cx="11" cy="2.2" r="0.9" fill="#9fd2d2"/>
 
   <!-- Crisp Code / Prompt Symbols -->
   <path d="M5.6 5.5 L3.9 7.5 L5.6 9.5 M10.4 5.5 L12.1 7.5 L10.4 9.5 M8.7 4.8 L7.3 10.2" fill="none" stroke="#FFFFFF" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>

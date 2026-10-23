@@ -23,7 +23,7 @@ Gemini Agent in BeanBot supports:
 
 Since Gemini CLI does not support changing the model dynamically via <code>session/set&#95;config&#95;option</code> once the session has started, you can configure your preferred model in one of three ways:
 
-1. **Launch Arguments**: In the plugin options (<code>Tools > Options > Assistant</code>, Process Arguments), set e.g. <code>--acp --model gemini-2.5-pro</code>.
+1. **Launch Arguments**: In the plugin options (<code>Tools > Options > BeanBot</code>, Process Arguments), set e.g. <code>--acp --model gemini-2.5-pro</code>.
 2. **Settings File**: Define the default model in your global configuration file at <code>~/.gemini/settings.json</code>.
 3. **Environment Variable**: Set the <code>GEMINI&#95;MODEL</code> environment variable before launching NetBeans.
 

@@ -20,7 +20,7 @@ Binaries found on `PATH` are never used automatically — you always make the ch
 
 To re-run harness selection at any time — for example after installing a new harness or switching providers — click the **?** (help) button in the toolbar and choose **Run Harness Selection Again** from the popup menu. This reopens the same chooser with fresh detection results.
 
-After installing a harness — and optionally setting the binary path under `Options > Assistant` — click **Start Server** to connect.
+After installing a harness — and optionally setting the binary path under `Options > BeanBot` — click **Start Server** to connect.
 
 
 > [[OpenCode]] / [[Codex Agent]] / [[PI Agent]] / [[Goose Agent]] / [[Cursor Agent]] / [[Copilot Agent]]
