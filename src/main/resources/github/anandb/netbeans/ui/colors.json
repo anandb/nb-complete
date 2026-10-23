@@ -311,5 +311,11 @@
     "property": "beanbot.color.scrollButtonColor",
     "dark": "#2962FF",
     "light": "#2962FF"
+  },
+  {
+    "name": "success",
+    "property": "beanbot.color.success",
+    "dark": "#3FB950",
+    "light": "#1A7F37"
   }
 ]

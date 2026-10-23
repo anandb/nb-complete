@@ -90,6 +90,8 @@ final class ChatLayoutBuilder {
     private JButton launchMiniAssistantBtn;
     private PreferenceChangeListener miniAssistantPrefListener;
     private JPanel rightStatusPanel;
+
+    private ContextUsageMeter contextUsageMeter;
     private PermissionRequestPanel permissionPanel;
     private PermissionRequestPanel configConfirmPanel;
     private final Timer newSessionDebounceTimer;
@@ -460,7 +462,6 @@ final class ChatLayoutBuilder {
         configConfirmPanel = new PermissionRequestPanel();
 
         header.add(headerContent, BorderLayout.CENTER);
-
         JPanel headerWrapper = new JPanel();
         headerWrapper.setLayout(new BoxLayout(headerWrapper, BoxLayout.Y_AXIS));
         headerWrapper.add(header);
@@ -473,7 +474,7 @@ final class ChatLayoutBuilder {
     JPanel buildBottomPanel() {
         JPanel bottomPanel = new JPanel(new BorderLayout());
 
-        // GridBagLayout, not BorderLayout: the status text width varies constantly
+                // GridBagLayout, not BorderLayout: the status text width varies constantly
         // ("Sending" -> "Sending..."), and a BorderLayout.WEST label would resize
         // on every animation tick, shifting the model dropdown (CENTER/EAST).
         // weightx=1 on the label makes it absorb all width changes; the dropdown
@@ -510,6 +511,11 @@ final class ChatLayoutBuilder {
 
         JPanel centerStatusPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         centerStatusPanel.setOpaque(false);
+        // Context usage meter: persistent state, always visible — including when
+        // the options panel is collapsed (which hides only the model combo and
+        // its copy button). Left of the model dropdown.
+        contextUsageMeter = new ContextUsageMeter();
+        centerStatusPanel.add(contextUsageMeter);
         centerStatusPanel.add(modelWrap);
         centerStatusPanel.add(configPanelController.getCopyModelBtn());
         statusGbc.gridx = 1;
@@ -790,6 +796,8 @@ final class ChatLayoutBuilder {
     JButton getStopBtn() { return stopBtn; }
 
     JPanel getRightStatusPanel() { return rightStatusPanel; }
+
+    ContextUsageMeter getContextUsageMeter() { return contextUsageMeter; }
 
     JButton getRestartServerBtn() { return restartServerBtn; }
 

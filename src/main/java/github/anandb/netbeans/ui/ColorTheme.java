@@ -104,6 +104,7 @@ public final class ColorTheme {
     public Color  permissionDenyBg()                             { return registry.get(ColorKey.permission_deny_bg); }
     public Color  permissionDenyBorder()                         { return registry.get(ColorKey.permission_deny_border); }
     public Color  activityAccent()                               { return registry.get(ColorKey.activity_accent); }
+    public Color  success()                                      { return registry.get(ColorKey.success); }
     public Color  scrollButtonColor()                            { return registry.get(ColorKey.scroll_button_color); }
     public Color  headerForeground()                             { return registry.get(ColorKey.header_foreground); }
     public Color  toolForeground()                               { return registry.get(ColorKey.tool_foreground); }

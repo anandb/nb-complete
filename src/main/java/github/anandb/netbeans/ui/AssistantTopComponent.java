@@ -199,7 +199,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         // Divider position is not persisted across restarts.
         add(mainSplitPane, BorderLayout.CENTER);
 
-        statusController = new StatusController(statusLabel, sendBtn, stopBtn, inputArea, toggleOptionsBtn);
+        statusController = new StatusController(statusLabel, sendBtn, stopBtn, inputArea, toggleOptionsBtn, layoutBuilder.getContextUsageMeter());
         statusController.setProcessingListener(
                 processing -> {
                     this.processing = processing;

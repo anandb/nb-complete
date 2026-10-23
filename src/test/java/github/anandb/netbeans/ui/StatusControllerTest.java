@@ -23,9 +23,19 @@ class StatusControllerTest {
         return new JLabel();
     }
 
+    private static final ContextUsageMeter[] meterHolder = new ContextUsageMeter[1];
+
+    private static ContextUsageMeter meter() {
+        if (meterHolder[0] == null) {
+            meterHolder[0] = new ContextUsageMeter();
+        }
+        return meterHolder[0];
+    }
+
     private static StatusController controller(JLabel label) {
         return new StatusController(label, new JButton(), new JButton(),
-                new PlaceholderTextArea(""), new JButton());
+                new PlaceholderTextArea(""), new JButton(),
+                meter());
     }
 
     @Test
@@ -142,5 +152,30 @@ class StatusControllerTest {
         assertEquals("Sending".length() + 3, shown[0].length(),
                 "the first frame must already be the padded width");
         assertTrue(shown[0].startsWith("Sending"), "the first frame must keep the message text");
+    }
+
+    @Test
+    void contextUsageForwardsToMeter() {
+        StatusController c = controller(label());
+        c.setContextUsage(100, 200);
+        assertEquals(0.5, meter().getFraction(), 1e-9);
+    }
+
+    @Test
+    void clearContextUsageForwardsToMeter() {
+        StatusController c = controller(label());
+        c.setContextUsage(100, 200);
+        c.clearContextUsage();
+        assertEquals(-1.0, meter().getFraction(), 1e-9);
+    }
+
+    @Test
+    void statusLabelTooltipIsNotUsedForContextUsage() {
+        // The tooltip moved to the meter; setContextUsage must not touch the
+        // status label tooltip.
+        JLabel label = label();
+        StatusController c = controller(label);
+        c.setContextUsage(100, 200);
+        assertEquals(null, label.getToolTipText());
     }
 }

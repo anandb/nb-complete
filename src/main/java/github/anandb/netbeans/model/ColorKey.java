@@ -58,6 +58,7 @@ public enum ColorKey {
     permission_deny_bg("permissionDenyBg"),
     permission_deny_border("permissionDenyBorder"),
     activity_accent("activityAccent"),
+    success("success"),
     scroll_button_color("scrollButtonColor");
 
     /** The name as it appears in colors.json. */

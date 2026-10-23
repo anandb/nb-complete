@@ -36,6 +36,10 @@ public class StatusController {
     private final JButton stopBtn;
     private final PlaceholderTextArea inputArea;
     private final JButton toggleOptionsBtn;
+    /** Persistent context-window fill meter; separate component from the
+     *  ephemeral status label so status updates and the thinking animation
+     *  never overwrite usage state. */
+    private final ContextUsageMeter usageMeter;
 
     private volatile Consumer<Boolean> processingListener;
 
@@ -65,12 +69,14 @@ public class StatusController {
             JButton sendBtn,
             JButton stopBtn,
             PlaceholderTextArea inputArea,
-            JButton toggleOptionsBtn) {
+            JButton toggleOptionsBtn,
+            ContextUsageMeter usageMeter) {
         this.statusLabel = statusLabel;
         this.sendBtn = sendBtn;
         this.stopBtn = stopBtn;
         this.inputArea = inputArea;
         this.toggleOptionsBtn = toggleOptionsBtn;
+        this.usageMeter = usageMeter;
 
         this.thinkingTimer = new Timer(500, e -> animateThinkingTick());
         this.statusResetTimer = new Timer(1500, e -> {
@@ -98,6 +104,25 @@ public class StatusController {
 
     public Timer getStatusResetTimer() {
         return statusResetTimer;
+    }
+
+    // -- Context usage meter --
+
+    /** Forwards context-window usage to the status-row meter. Tooltip and fill
+     *  live on the meter, not on the status label: the label is ephemeral and
+     *  gets overwritten by every status update, while usage is persistent state. */
+    public void setContextUsage(long used, long size) {
+        if (usageMeter != null) {
+            usageMeter.setUsage(used, size);
+        }
+    }
+
+    /** Resets the meter to its empty/unknown state (session restored without
+     *  stored usage, or no active session). */
+    public void clearContextUsage() {
+        if (usageMeter != null) {
+            usageMeter.clear();
+        }
     }
 
     // -- Status text --

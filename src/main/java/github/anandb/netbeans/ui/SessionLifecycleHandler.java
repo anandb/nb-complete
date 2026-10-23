@@ -280,7 +280,7 @@ public class SessionLifecycleHandler implements SessionListener {
                     sessionService.get().setContextUsage(sessionId, used, size);
                 }
                 SwingUtilities.invokeLater(() ->
-                    statusController.setTooltip("HINT_ContextUsage", used, size)
+                    statusController.setContextUsage(used, size)
                 );
             }
 
@@ -648,19 +648,27 @@ public class SessionLifecycleHandler implements SessionListener {
             statusController.setStatus("STATUS_Ready");
             statusController.disarmRunWatchdog();
             statusController.stopThinking();
-            // Restore persisted context usage tooltip
+            // Restore persisted context usage into the meter; an unknown or
+            // malformed stored value clears it so a session switch never
+            // shows stale data.
             String usage = sessionService.get().getContextUsage(sessionId);
+            long storedUsed = -1;
+            long storedSize = -1;
             if (usage != null) {
                 String[] parts = usage.split(",");
                 if (parts.length == 2) {
                     try {
-                        long used = Long.parseLong(parts[0]);
-                        long size = Long.parseLong(parts[1]);
-                        statusController.setTooltip("HINT_ContextUsage", used, size);
+                        storedUsed = Long.parseLong(parts[0]);
+                        storedSize = Long.parseLong(parts[1]);
                     } catch (NumberFormatException e) {
                         // ignore malformed data
                     }
                 }
+            }
+            if (storedUsed >= 0 && storedSize > 0) {
+                statusController.setContextUsage(storedUsed, storedSize);
+            } else {
+                statusController.clearContextUsage();
             }
             cwdLabelUpdater.accept(null);
             // Set sessionActive BEFORE updateButtonState: updateButtonState now
