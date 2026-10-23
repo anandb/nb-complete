@@ -30,12 +30,12 @@
        y2="1">
       <stop
          offset="0%"
-         stop-color="#818CF8"
+         stop-color="#5fb8b8"
          stop-opacity="0.3"
          id="stop1" />
       <stop
          offset="100%"
-         stop-color="#6366F1"
+         stop-color="#5fb8b8"
          stop-opacity="0.3"
          id="stop2" />
     </linearGradient>
@@ -47,12 +47,12 @@
        y2="1">
       <stop
          offset="0%"
-         stop-color="#818CF8"
+         stop-color="#5fb8b8"
          stop-opacity="0.65"
          id="stop3" />
       <stop
          offset="100%"
-         stop-color="#6366F1"
+         stop-color="#5fb8b8"
          stop-opacity="0.65"
          id="stop4" />
     </linearGradient>
@@ -64,11 +64,11 @@
        y2="1">
       <stop
          offset="0%"
-         stop-color="#818CF8"
+         stop-color="#5fb8b8"
          id="stop5" />
       <stop
          offset="100%"
-         stop-color="#6366F1"
+         stop-color="#5fb8b8"
          id="stop6" />
     </linearGradient>
     <linearGradient
