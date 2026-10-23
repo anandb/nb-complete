@@ -19,7 +19,6 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
@@ -455,19 +454,7 @@ final class PermissionRequestPanel extends JPanel {
                 if (po.kind().contains("allow")) {
                     btn = createButton(po.name(), theme.permissionGrantFg(),
                             theme.permissionGrantBg(), theme.permissionGrantBorder());
-                    // Alt+A for "Allow Always", Alt+O for "Allow Once": two
-                    // buttons sharing 'A' made Alt+A ambiguous. Harnesses send
-                    // variants ("Allow Once", "Always Allow"), so decide on the
-                    // option name; a single allow option without either keyword
-                    // keeps 'A'.
-                    String lname = po.name().toLowerCase(Locale.ROOT);
-                    if (lname.contains("always")) {
-                        btn.setMnemonic('A');
-                    } else if (lname.contains("once")) {
-                        btn.setMnemonic('O');
-                    } else {
-                        btn.setMnemonic('A');
-                    }
+                    applyMnemonic(btn, po);
                     if ("Always Allow".equalsIgnoreCase(po.name())) {
                         btn.setToolTipText(NbBundle.getMessage(PermissionRequestPanel.class, "HINT_AlwaysAllow"));
                     }
@@ -479,7 +466,7 @@ final class PermissionRequestPanel extends JPanel {
                 } else if (po.kind().contains("reject") || po.kind().contains("deny")) {
                     btn = createButton(po.name(), theme.permissionDenyFg(),
                             theme.permissionDenyBg(), theme.permissionDenyBorder());
-                    btn.setMnemonic('R');
+                    applyMnemonic(btn, po);
                 } else {
                     btn = createButton(po.name(), null, null, null);
                 }
@@ -519,6 +506,14 @@ final class PermissionRequestPanel extends JPanel {
 
             buttonPanel.add(denyBtn);
             buttonPanel.add(allowBtn);
+        }
+    }
+
+    /** Applies the option's mnemonic; options with an unknown kind get none. */
+    private static void applyMnemonic(JButton btn, PermissionOption po) {
+        char mnemonic = po.mnemonic();
+        if (mnemonic != 0) {
+            btn.setMnemonic(mnemonic);
         }
     }
 

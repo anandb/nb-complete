@@ -1086,6 +1086,10 @@ public class MiniAssistantDialog extends JDialog {
 
                     JButton btn = new JButton(po.name());
                     btn.setFocusPainted(false);
+                    char mnemonic = po.mnemonic();
+                    if (mnemonic != 0) {
+                        btn.setMnemonic(mnemonic);
+                    }
                     if (po.kind().contains("allow")) {
                         btn.setForeground(theme.permissionGrantFg());
                         btn.setBackground(theme.permissionGrantBg());
@@ -1118,6 +1122,7 @@ public class MiniAssistantDialog extends JDialog {
             } else {
                 JButton denyBtn = new JButton(NbBundle.getMessage(ChatThreadPanel.class, "BTN_Deny"));
                 denyBtn.setFocusPainted(false);
+                denyBtn.setMnemonic('R');
                 denyBtn.setForeground(theme.permissionDenyFg());
                 denyBtn.setBackground(theme.permissionDenyBg());
                 denyBtn.setBorder(BorderFactory.createCompoundBorder(
@@ -1135,6 +1140,7 @@ public class MiniAssistantDialog extends JDialog {
 
                 JButton allowBtn = new JButton(NbBundle.getMessage(ChatThreadPanel.class, "BTN_Allow"));
                 allowBtn.setFocusPainted(false);
+                allowBtn.setMnemonic('A');
                 allowBtn.setForeground(theme.permissionGrantFg());
                 allowBtn.setBackground(theme.permissionGrantBg());
                 allowBtn.setBorder(BorderFactory.createCompoundBorder(
@@ -1202,6 +1208,7 @@ public class MiniAssistantDialog extends JDialog {
                 ColorTheme theme = ThemeManager.getCurrentTheme();
                 JButton showDiffBtn = new JButton(NbBundle.getMessage(PermissionBubble.class, "BTN_ShowDiff"));
                 showDiffBtn.setFocusPainted(false);
+                showDiffBtn.setMnemonic('D');
                 showDiffBtn.setBorder(BorderFactory.createCompoundBorder(
                         BorderFactory.createLineBorder(theme.bubbleBorder(), 1),
                         BorderFactory.createEmptyBorder(4, 12, 4, 12)));
