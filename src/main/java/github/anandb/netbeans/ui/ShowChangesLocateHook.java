@@ -107,8 +107,12 @@ public final class ShowChangesLocateHook implements Runnable, AWTEventListener {
     public void eventDispatched(AWTEvent event) {
         // Right-button press or release (popup trigger varies by platform/LAF).
         // Coalesce: the timer is simply restarted, so an entire click produces one probe.
+        // Scope the click to the Show Changes window first: every right-click in the
+        // IDE reaches this listener, and an unscoped one would start a poll that walks
+        // every open window hierarchy for up to PROBE_MAX_TICKS before giving up.
         if (event instanceof MouseEvent mouseEvent && (mouseEvent.isPopupTrigger()
-                || SwingUtilities.isRightMouseButton(mouseEvent))) {
+                || SwingUtilities.isRightMouseButton(mouseEvent))
+                && insideGitShowChanges(mouseEvent.getComponent())) {
             probeTicks = 0;
             probe.restart();
         }

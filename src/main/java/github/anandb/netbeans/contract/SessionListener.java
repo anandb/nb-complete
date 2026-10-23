@@ -41,8 +41,11 @@ public interface SessionListener {
     /** Fired when a new session was created but no startup prompt was sent
      * (preamble disabled or empty). Only called for new sessions — never on
      * reload. UI should show a session-started indicator so the empty thread
-     * still confirms the session is live. */
-    default void onPreambleSkipped() {}
+     * still confirms the session is live.
+     * @param sessionId the session whose preamble was skipped; consumers that
+     *                  render into the thread must re-check it on the EDT, since
+     *                  the user can switch sessions before the callback runs. */
+    default void onPreambleSkipped(String sessionId) {}
 
     /** Fired when a session has been renamed locally. UI should update the
      *  dropdown display without reloading the entire conversation. */

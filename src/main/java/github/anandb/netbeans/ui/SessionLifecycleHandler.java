@@ -595,8 +595,15 @@ public class SessionLifecycleHandler implements SessionListener {
     }
 
     @Override
-    public void onPreambleSkipped() {
+    public void onPreambleSkipped(String sessionId) {
         SwingUtilities.invokeLater(() -> {
+            // Same race guard as displayMessage: the skip usually fires on a
+            // non-EDT callback, so the user may have switched sessions before
+            // this runnable executes. Never show the marker in the wrong thread.
+            String currentId = sessionService.get().getCurrentSessionId();
+            if (sessionId != null && !sessionId.equals(currentId)) {
+                return;
+            }
             chatPanel.addMessage(ProcessedMessage.createInfo(
                     NbBundle.getMessage(SessionLifecycleHandler.class, "INFO_SessionReady")));
         });

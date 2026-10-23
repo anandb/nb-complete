@@ -10,6 +10,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -29,6 +30,7 @@ import org.openide.util.NbPreferences;
 import github.anandb.netbeans.contract.SessionControl;
 import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.ModelRecords.PlanEntry;
+import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.model.SessionItem;
 import github.anandb.netbeans.model.SessionUpdate;
@@ -111,6 +113,9 @@ class SessionLifecycleHandlerTest {
         // PlanPanel.setEntries needs a real theme under the static mock.
         themeManagerMock.when(ThemeManager::getCurrentTheme).thenCallRealMethod();
         themeManagerMock.when(ThemeManager::getFont).thenCallRealMethod();
+        // getCurrentTheme's one-time log line dereferences the monospace font too;
+        // without this stub the static mock returns null and the log path NPEs.
+        themeManagerMock.when(ThemeManager::getMonospaceFont).thenCallRealMethod();
         pluginSettingsMock.when(PluginSettings::getToolbarIconSize).thenReturn(16);
     }
 
@@ -358,6 +363,30 @@ class SessionLifecycleHandlerTest {
 
         assertEquals(true, handler.isTurnEnded(), "responding_finished is the authoritative SSE turn-end");
         assertEquals(1, callbacks.get(), "turn-end callback must fire once");
+    }
+
+    @Test
+    void preambleSkippedShowsMarkerForCurrentSession() throws Exception {
+        setUpMocks(false);
+        stubCurrent("sess-1");
+        SessionLifecycleHandler handler = newHandler();
+
+        handler.onPreambleSkipped("sess-1");
+        flushEdt();
+
+        verify(chatPanel).addMessage(any(ProcessedMessage.class));
+    }
+
+    @Test
+    void preambleSkippedDroppedWhenUserSwitchedSessions() throws Exception {
+        setUpMocks(false);
+        stubCurrent("sess-2");
+        SessionLifecycleHandler handler = newHandler();
+
+        handler.onPreambleSkipped("sess-1");
+        flushEdt();
+
+        verify(chatPanel, never()).addMessage(any(ProcessedMessage.class));
     }
 
 }

@@ -1,5 +1,6 @@
 package github.anandb.netbeans.ui;
 
+import java.awt.BorderLayout;
 import java.awt.Container;
 import java.util.List;
 
@@ -32,11 +33,13 @@ class PlanPanelTest {
     }
 
     private static JLabel headerLabel(PlanPanel panel) {
-        // Structure: the panel's first child is the clickable header row;
-        // its children are the chevron, a strut, the badge icon, a strut, and
-        // the header label.
+        // The header row is the panel's first child and uses BorderLayout:
+        // WEST = chevron + badge, CENTER = the title label, EAST = progress bar.
+        // Ask the layout for CENTER instead of indexing children, so the header can
+        // gain slots without silently breaking (or misreading) the assertion.
         Container header = (Container) panel.getComponent(0);
-        JLabel label = (JLabel) header.getComponent(4);
+        JLabel label = (JLabel) ((BorderLayout) header.getLayout())
+                .getLayoutComponent(BorderLayout.CENTER);
         assertNotNull(label);
         return label;
     }
