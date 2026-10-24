@@ -43,6 +43,7 @@ public final class PluginSettings {
     private static volatile boolean cachedViewFileHistoryEnabled = true;
     private static volatile boolean cachedStashDiffEnabled = true;
     private static volatile boolean cachedQuickJumpEnabled = true;
+    private static volatile boolean cachedCopyAllItemsEnabled = true;
     private static volatile boolean cachedAutoBackupChanges = true;
     /** Cached mini-assistant toggle — volatile for cross-thread visibility. Defaults to true. */
     private static volatile boolean cachedMiniAssistantEnabled = true;
@@ -97,6 +98,7 @@ public final class PluginSettings {
         cachedViewFileHistoryEnabled = prefs.getBoolean(PreferenceKeys.ACTIONS_VIEW_FILE_HISTORY, true);
         cachedStashDiffEnabled = prefs.getBoolean(PreferenceKeys.ACTIONS_STASH_DIFF, true);
         cachedQuickJumpEnabled = prefs.getBoolean(PreferenceKeys.ACTIONS_QUICK_JUMP, true);
+        cachedCopyAllItemsEnabled = prefs.getBoolean(PreferenceKeys.ACTIONS_COPY_ALL_ITEMS, true);
         cachedAutoBackupChanges = prefs.getBoolean(PreferenceKeys.AUTO_BACKUP_CHANGES, true);
         cachedMiniAssistantEnabled = prefs.getBoolean(PreferenceKeys.MINI_ASSISTANT_ENABLED, true);
         cachedTaskRepositoryEnabled = prefs.getBoolean(PreferenceKeys.TASK_REPOSITORY_ENABLED, true);
@@ -253,6 +255,9 @@ public final class PluginSettings {
             cachedStashDiffEnabled = Boolean.parseBoolean(evt.getNewValue());
         } else if (PreferenceKeys.ACTIONS_QUICK_JUMP.equals(evt.getKey())) {
             cachedQuickJumpEnabled = Boolean.parseBoolean(evt.getNewValue());
+        } else if (PreferenceKeys.ACTIONS_COPY_ALL_ITEMS.equals(evt.getKey())) {
+            cachedCopyAllItemsEnabled = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                    .getBoolean(PreferenceKeys.ACTIONS_COPY_ALL_ITEMS, true);
         } else if (PreferenceKeys.AUTO_BACKUP_CHANGES.equals(evt.getKey())) {
             cachedAutoBackupChanges = Boolean.parseBoolean(evt.getNewValue());
         } else if (PreferenceKeys.MINI_ASSISTANT_ENABLED.equals(evt.getKey())) {
@@ -390,6 +395,17 @@ public final class PluginSettings {
 
     public static void setQuickJumpEnabled(boolean enabled) {
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean(PreferenceKeys.ACTIONS_QUICK_JUMP, enabled);
+    }
+
+    /** Whether the NetBeans Action Items window has its Copy All toolbar button. */
+    public static boolean isCopyAllItemsEnabled() {
+        return cachedCopyAllItemsEnabled;
+    }
+
+    public static void setCopyAllItemsEnabled(boolean enabled) {
+        cachedCopyAllItemsEnabled = enabled;
+        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                .putBoolean(PreferenceKeys.ACTIONS_COPY_ALL_ITEMS, enabled);
     }
 
     /** Whether the Mini Assistant dialog is the target for send/ask-to-assistant actions. */

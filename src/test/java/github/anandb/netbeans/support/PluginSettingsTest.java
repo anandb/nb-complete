@@ -19,6 +19,29 @@ class PluginSettingsTest {
     }
 
     @Test
+    void testCopyAllItemsPreferenceDefaultsEnabledAndCanBeDisabled() {
+        Preferences prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
+        String previous = prefs.get(PreferenceKeys.ACTIONS_COPY_ALL_ITEMS, null);
+        try {
+            if (previous == null) {
+                assertTrue(prefs.getBoolean(PreferenceKeys.ACTIONS_COPY_ALL_ITEMS, true));
+            }
+            PluginSettings.setCopyAllItemsEnabled(false);
+            assertFalse(PluginSettings.isCopyAllItemsEnabled());
+            assertFalse(prefs.getBoolean(PreferenceKeys.ACTIONS_COPY_ALL_ITEMS, true));
+            PluginSettings.setCopyAllItemsEnabled(true);
+            assertTrue(PluginSettings.isCopyAllItemsEnabled());
+        } finally {
+            if (previous == null) {
+                prefs.remove(PreferenceKeys.ACTIONS_COPY_ALL_ITEMS);
+                PluginSettings.setCopyAllItemsEnabled(true);
+            } else {
+                PluginSettings.setCopyAllItemsEnabled(Boolean.parseBoolean(previous));
+            }
+        }
+    }
+
+    @Test
     void testMiniAssistantToggleRoundTrip() {
         Preferences prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
         PluginSettings.setMiniAssistantEnabled(false);

@@ -75,6 +75,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
     private JCheckBox viewFileHistoryCheckbox;
     private JCheckBox stashDiffCheckbox;
     private JCheckBox quickJumpCheckbox;
+    private JCheckBox copyAllItemsCheckbox;
     private JCheckBox autoBackupChangesCheckbox;
     private JCheckBox miniAssistantCheckbox;
     private JCheckBox taskRepositoryCheckbox;
@@ -130,6 +131,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         viewFileHistoryCheckbox = new JCheckBox();
         stashDiffCheckbox = new JCheckBox();
         quickJumpCheckbox = new JCheckBox();
+        copyAllItemsCheckbox = new JCheckBox();
         autoBackupChangesCheckbox = new JCheckBox();
         miniAssistantCheckbox = new JCheckBox();
         taskRepositoryCheckbox = new JCheckBox();
@@ -398,6 +400,12 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         actionsPanel.add(quickJumpCheckbox, UIUtils.createGbc(1, 2, 1.0, 0, GridBagConstraints.HORIZONTAL,
                 GridBagConstraints.WEST, new Insets(0, 25, 5, 0)));
 
+        copyAllItemsCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_CopyAllItems"));
+        copyAllItemsCheckbox.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_CopyAllItems"));
+        copyAllItemsCheckbox.addActionListener(evt -> controller.changed());
+        actionsPanel.add(copyAllItemsCheckbox, UIUtils.createGbc(0, 5, 1.0, 0, GridBagConstraints.HORIZONTAL,
+                GridBagConstraints.WEST, new Insets(0, 12, 5, 0)));
+
         miniAssistantCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_EnableMiniAssistant"));
         miniAssistantCheckbox.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_EnableMiniAssistant"));
         miniAssistantCheckbox.addActionListener(evt -> controller.changed());
@@ -633,6 +641,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         viewFileHistoryCheckbox.setSelected(PluginSettings.isViewFileHistoryEnabled());
         stashDiffCheckbox.setSelected(PluginSettings.isStashDiffEnabled());
         quickJumpCheckbox.setSelected(PluginSettings.isQuickJumpEnabled());
+        copyAllItemsCheckbox.setSelected(PluginSettings.isCopyAllItemsEnabled());
         miniAssistantCheckbox.setSelected(PluginSettings.isMiniAssistantEnabled());
         taskRepositoryCheckbox.setSelected(PluginSettings.isTaskRepositoryEnabled());
         markdownProjectCheckbox.setSelected(PluginSettings.isMarkdownProjectEnabled());
@@ -718,6 +727,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         PluginSettings.setViewFileHistoryEnabled(viewFileHistoryCheckbox.isSelected());
         PluginSettings.setStashDiffEnabled(stashDiffCheckbox.isSelected());
         PluginSettings.setQuickJumpEnabled(quickJumpCheckbox.isSelected());
+        PluginSettings.setCopyAllItemsEnabled(copyAllItemsCheckbox.isSelected());
         PluginSettings.setMiniAssistantEnabled(miniAssistantCheckbox.isSelected());
         PluginSettings.setTaskRepositoryEnabled(taskRepositoryCheckbox.isSelected());
         PluginSettings.setMarkdownProjectEnabled(markdownProjectCheckbox.isSelected());
