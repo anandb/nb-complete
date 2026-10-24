@@ -50,6 +50,7 @@ import github.anandb.netbeans.support.Logger;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import github.anandb.netbeans.support.PreferenceKeys;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
+import org.openide.awt.NotificationDisplayer;
 import github.anandb.netbeans.ui.platform.SessionService;
 
 // DSL-LEAF: keep imperative, wrap via UI.of(...) — NetBeans Options panel
@@ -672,7 +673,13 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
                 PreferenceKeys.ACP_HARNESS_ID, h != null ? h.id() : "");
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).put(
                 PreferenceKeys.ACP_HARNESS_DISPLAY_NAME, h != null ? h.displayName() : "");
-        PluginSettings.setPreamble(preambleText);
+        if (PluginSettings.isPreambleTooLong(preambleText)) {
+            // One preference value is capped at 8192 chars. Keep the previously
+            // stored preamble and explain, instead of letting put() throw out of store().
+            warnPreambleTooLong(preambleText.length());
+        } else {
+            PluginSettings.setPreamble(preambleText);
+        }
         PluginSettings.setPreambleEnabled(preambleEnabledCheckbox.isSelected());
         boolean changedCombine = combineCheckbox.isSelected()
                 != PluginSettings.isCombineToolThoughtEnabled();
@@ -732,6 +739,20 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
                 }
             });
         }
+    }
+
+    /**
+     * Tells the user why the edited preamble was not stored. Non-modal on purpose:
+     * the rest of the Options save still applies, and the previous preamble is kept.
+     */
+    private void warnPreambleTooLong(int length) {
+        String title = NbBundle.getMessage(ACPOptionsPanel.class, "LBL_PreambleTooLong");
+        String message = NbBundle.getMessage(ACPOptionsPanel.class, "MSG_PreambleTooLong",
+                length, PluginSettings.MAX_PREAMBLE_LENGTH);
+        LOG.log(java.util.logging.Level.WARNING, "Session preamble not saved: {0} characters", length);
+        SwingUtilities.invokeLater(() -> NotificationDisplayer.getDefault().notify(
+                title, NotificationDisplayer.Priority.LOW.getIcon(), message, null,
+                NotificationDisplayer.Priority.LOW));
     }
 
     public boolean valid() {

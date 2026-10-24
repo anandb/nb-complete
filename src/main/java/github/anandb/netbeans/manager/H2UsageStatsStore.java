@@ -1,7 +1,10 @@
 package github.anandb.netbeans.manager;
 
+import github.anandb.netbeans.contract.ModelListControl;
+import github.anandb.netbeans.contract.PinnedMessageControl;
 import github.anandb.netbeans.contract.SessionStore;
 import github.anandb.netbeans.contract.UsageStatsStore;
+import github.anandb.netbeans.model.AvailableModel;
 import github.anandb.netbeans.model.MigrationReport;
 import github.anandb.netbeans.model.SessionMetadata;
 import github.anandb.netbeans.model.UsageRecords.Attribution;
@@ -12,12 +15,14 @@ import github.anandb.netbeans.model.UsageRecords.ToolCallRow;
 import github.anandb.netbeans.model.UsageRecords.ToolTotals;
 import github.anandb.netbeans.model.UsageRecords.UsageSummary;
 import github.anandb.netbeans.model.UsageRecords.UsageUpdateRow;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.MapperSupplier;
 import github.anandb.netbeans.support.ModelIdNormalizer;
 import github.anandb.netbeans.support.PreferenceKeys;
 import java.io.File;
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -32,6 +37,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.Callable;
@@ -49,11 +55,12 @@ import org.openide.util.lookup.ServiceProvider;
 import org.openide.util.lookup.ServiceProviders;
 
 /**
- * Embedded H2 implementation of {@link UsageStatsStore} and {@link SessionStore}.
- * One database lives under the NetBeans user directory, so captured rows survive
- * IDE restarts and are readable with no harness process spawned. It is also the
- * durable home of the input history and the per-session metadata that used to
- * live in {@code NbPreferences}.
+ * Embedded H2 implementation of {@link UsageStatsStore}, {@link SessionStore},
+ * {@link PinnedMessageControl} and {@link ModelListControl}. One database lives
+ * under the NetBeans user directory, so captured rows survive IDE restarts and
+ * are readable with no harness process spawned. It is also the durable home of
+ * the input history, the per-session metadata, the per-session pins and the
+ * per-harness model lists that used to live in {@code NbPreferences}.
  *
  * <p>Every database operation runs on a single-threaded daemon executor, so a
  * write from the event dispatch thread enqueues and returns without I/O. Because
@@ -61,12 +68,19 @@ import org.openide.util.lookup.ServiceProviders;
  */
 @ServiceProviders({
     @ServiceProvider(service = UsageStatsStore.class),
-    @ServiceProvider(service = SessionStore.class)
+    @ServiceProvider(service = SessionStore.class),
+    @ServiceProvider(service = PinnedMessageControl.class),
+    @ServiceProvider(service = ModelListControl.class)
 })
-public class H2UsageStatsStore implements UsageStatsStore, SessionStore {
+public class H2UsageStatsStore
+        implements UsageStatsStore, SessionStore, PinnedMessageControl, ModelListControl {
 
     private static final Logger LOG = Logger.from(H2UsageStatsStore.class);
     private static final ObjectMapper MAPPER = MapperSupplier.get();
+
+    /** Legacy preference values the two new migrations decode. */
+    private static final TypeReference<List<String>> LIST_OF_STRINGS = new TypeReference<>() { };
+    private static final TypeReference<List<AvailableModel>> MODEL_LIST = new TypeReference<>() { };
 
     private static final String CREATE_USAGE_UPDATE = "CREATE TABLE IF NOT EXISTS usage_update ("
             + "id BIGINT AUTO_INCREMENT PRIMARY KEY,"
@@ -127,10 +141,41 @@ public class H2UsageStatsStore implements UsageStatsStore, SessionStore {
             "MERGE INTO session_meta (harness_id, session_id, title, hidden, cwd,"
             + " used_tokens, size_tokens, ordinal) VALUES (?,?,?,?,?,?,?,?)";
 
+    /**
+     * Pinned message ids per session, replacing {@code pinnedMessages.<sessionId>}.
+     * A session id is globally unique, so no harness column is needed.
+     */
+    private static final String CREATE_PINNED_MESSAGE = "CREATE TABLE IF NOT EXISTS pinned_message ("
+            + "session_id VARCHAR(512) NOT NULL, message_id VARCHAR(128) NOT NULL,"
+            + " pinned_at BIGINT NOT NULL, PRIMARY KEY (session_id, message_id))";
+
+    /**
+     * Last known model list per harness, replacing {@code modelList.<harnessId>}.
+     * {@code position} preserves the order the harness reported; {@code description}
+     * is a CLOB because a model list can exceed the 8 KB preference value ceiling.
+     */
+    private static final String CREATE_HARNESS_MODEL = "CREATE TABLE IF NOT EXISTS harness_model ("
+            + "harness_id VARCHAR(128) NOT NULL, position INT NOT NULL,"
+            + " model_id VARCHAR(512) NOT NULL, name VARCHAR(512), description CLOB,"
+            + " PRIMARY KEY (harness_id, position))";
+
+    private static final String MERGE_PINNED_MESSAGE =
+            "MERGE INTO pinned_message (session_id, message_id, pinned_at) VALUES (?,?,?)";
+
+    private static final String INSERT_HARNESS_MODEL =
+            "INSERT INTO harness_model (harness_id, position, model_id, name, description)"
+            + " VALUES (?,?,?,?,?)";
+
     private static final String SCHEMA_VERSION_KEY = "schema_version";
 
     /** Set once the legacy {@code NbPreferences} data has been copied in. */
     private static final String PREFS_MIGRATED_KEY = "prefs_migrated";
+
+    /** Set once {@code pinnedMessages.*} keys have been copied into {@code pinned_message}. */
+    private static final String PINNED_MIGRATED_KEY = "pinned_migrated";
+
+    /** Set once {@code modelList.*} keys have been copied into {@code harness_model}. */
+    private static final String MODELS_MIGRATED_KEY = "models_migrated";
 
     /** Input-history cap, matching the value {@code MessageHistory} enforced. */
     private static final int HISTORY_CAP = 1024;
@@ -150,6 +195,10 @@ public class H2UsageStatsStore implements UsageStatsStore, SessionStore {
     private static final String LEGACY_USAGE_PREFIX = "session_usage_";
     /** Root keys holding the comma-joined locally-created id list. */
     private static final String LEGACY_LOCAL_SESSIONS_KEY = "gemini_local_sessions";
+    /** Root keys holding a session's pinned message ids as a JSON array. */
+    private static final String LEGACY_PINNED_PREFIX = "pinnedMessages.";
+    /** Root keys holding a harness's model list as a JSON array. */
+    private static final String LEGACY_MODEL_PREFIX = "modelList.";
     /** Root keys superseded by the store; no code reads them. */
     private static final List<String> OBSOLETE_KEYS = List.of("caveman.enabled");
 
@@ -165,8 +214,10 @@ public class H2UsageStatsStore implements UsageStatsStore, SessionStore {
      * captured before that change do not appear as a second group.
      * Version 5 adds the {@code tool_call_usage} table (per-tool MCP call
      * counts dumped at end of turn); purely additive, no earlier row changes.
+     * Version 6 adds {@code pinned_message} and {@code harness_model}, the two
+     * datasets that outgrew preference values; purely additive.
      */
-    private static final int SCHEMA_VERSION = 5;
+    private static final int SCHEMA_VERSION = 6;
 
     private static final long DAY_MILLIS = 86_400_000L;
 
@@ -195,6 +246,29 @@ public class H2UsageStatsStore implements UsageStatsStore, SessionStore {
      * "unknown" rather than "clear" — see {@link #saveSessionMetadata}.
      */
     private volatile boolean metadataLoaded;
+
+    /**
+     * Pinned message ids per session, as immutable snapshots. Reads come from the
+     * EDT and that is the whole reason the database is not consulted: the cache is
+     * populated by {@link #load()} on the database thread.
+     */
+    private final Map<String, Set<String>> pins = new ConcurrentHashMap<>();
+
+    /**
+     * Sessions whose pins were written after the last cache load. A write that
+     * races startup must not be replaced by the older database snapshot, so
+     * {@link #loadPins()} leaves these sessions alone.
+     */
+    private final Set<String> pinsDirty = ConcurrentHashMap.newKeySet();
+
+    /** Last known model list per harness; immutable snapshots, same convention. */
+    private final Map<String, List<AvailableModel>> models = new ConcurrentHashMap<>();
+
+    /** Harnesses whose model list was written after the last cache load. */
+    private final Set<String> modelsDirty = ConcurrentHashMap.newKeySet();
+
+    /** Serialises the read-modify-write of one session's pin set on the caller thread. */
+    private final Object pinsLock = new Object();
 
     /** Service-provider constructor: stores the database under the user directory. */
     public H2UsageStatsStore() {
@@ -279,6 +353,8 @@ public class H2UsageStatsStore implements UsageStatsStore, SessionStore {
                 st.execute(CREATE_TOOL_CALL_USAGE);
                 st.execute(CREATE_INPUT_HISTORY);
                 st.execute(CREATE_SESSION_META);
+                st.execute(CREATE_PINNED_MESSAGE);
+                st.execute(CREATE_HARNESS_MODEL);
                 st.execute("CREATE INDEX IF NOT EXISTS idx_usage_update_ts ON usage_update (captured_at)");
                 st.execute("CREATE INDEX IF NOT EXISTS idx_prompt_usage_ts ON prompt_usage (captured_at)");
                 st.execute("CREATE INDEX IF NOT EXISTS idx_message_event_ts ON message_event (captured_at)");
@@ -440,6 +516,8 @@ public class H2UsageStatsStore implements UsageStatsStore, SessionStore {
         call(() -> {
             loadHistory();
             loadMetadata();
+            loadPins();
+            loadModels();
             return null;
         }, null);
     }
@@ -848,6 +926,254 @@ public class H2UsageStatsStore implements UsageStatsStore, SessionStore {
         }
     }
 
+    // ---- PinnedMessageControl and ModelListControl ----
+    //
+    // Both datasets are per-session/per-harness and grow with every session or
+    // harness, which is what pushed them out of the preferences file. Reads are
+    // memory-only (the caches are primed by load()); writes enqueue on dbExecutor.
+
+    private void loadPins() throws SQLException {
+        Map<String, LinkedHashSet<String>> loaded = new HashMap<>();
+        try (PreparedStatement ps = connection().prepareStatement(
+                "SELECT session_id, message_id FROM pinned_message");
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                loaded.computeIfAbsent(rs.getString(1), k -> new LinkedHashSet<>())
+                        .add(rs.getString(2));
+            }
+        }
+        loaded.forEach((sessionId, ids) -> {
+            if (!pinsDirty.contains(sessionId)) {
+                pins.put(sessionId, Collections.unmodifiableSet(ids));
+            }
+        });
+    }
+
+    private void loadModels() throws SQLException {
+        Map<String, List<AvailableModel>> loaded = new LinkedHashMap<>();
+        try (PreparedStatement ps = connection().prepareStatement(
+                "SELECT harness_id, model_id, name, description FROM harness_model"
+                + " ORDER BY harness_id, position");
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                loaded.computeIfAbsent(rs.getString(1), k -> new ArrayList<>())
+                        .add(new AvailableModel(rs.getString(2), rs.getString(3), rs.getString(4)));
+            }
+        }
+        loaded.forEach((harnessId, list) -> {
+            if (!modelsDirty.contains(harnessId)) {
+                models.put(harnessId, List.copyOf(list));
+            }
+        });
+    }
+
+    @Override
+    public boolean isPinned(String sessionId, String messageId) {
+        if (sessionId == null || messageId == null) {
+            return false;
+        }
+        Set<String> pinned = pins.get(sessionId);
+        return pinned != null && pinned.contains(messageId);
+    }
+
+    @Override
+    public void setPinned(String sessionId, String messageId, boolean pinned) {
+        if (sessionId == null || messageId == null) {
+            return;
+        }
+        synchronized (pinsLock) {
+            Set<String> current = pins.getOrDefault(sessionId, Set.of());
+            if (current.contains(messageId) == pinned) {
+                return;
+            }
+            LinkedHashSet<String> updated = new LinkedHashSet<>(current);
+            if (pinned) {
+                updated.add(messageId);
+            } else {
+                updated.remove(messageId);
+            }
+            pins.put(sessionId, Collections.unmodifiableSet(updated));
+            pinsDirty.add(sessionId);
+        }
+        long now = System.currentTimeMillis();
+        dbExecutor.execute(() -> {
+            try {
+                // Row-level delta, never a snapshot replace: a write that races the
+                // startup load must not resurrect rows the load has not seen yet.
+                if (pinned) {
+                    try (PreparedStatement ps = connection().prepareStatement(MERGE_PINNED_MESSAGE)) {
+                        ps.setString(1, sessionId);
+                        ps.setString(2, messageId);
+                        ps.setLong(3, now);
+                        ps.executeUpdate();
+                    }
+                } else {
+                    try (PreparedStatement ps = connection().prepareStatement(
+                            "DELETE FROM pinned_message WHERE session_id = ? AND message_id = ?")) {
+                        ps.setString(1, sessionId);
+                        ps.setString(2, messageId);
+                        ps.executeUpdate();
+                    }
+                }
+            } catch (SQLException e) {
+                LOG.log(Level.WARNING, "Failed to persist the pin state of a message", e);
+            }
+        });
+    }
+
+    @Override
+    public void loadSession(String sessionId) {
+        // load() primed every session's pins from the database at startup, so
+        // there is nothing per-session left to read. Kept for the interface.
+    }
+
+    @Override
+    public void retainPinned(String sessionId, Set<String> activeMessageIds) {
+        if (sessionId == null || activeMessageIds == null) {
+            return;
+        }
+        Set<String> kept;
+        synchronized (pinsLock) {
+            Set<String> current = pins.get(sessionId);
+            if (current == null || activeMessageIds.containsAll(current)) {
+                return;
+            }
+            LinkedHashSet<String> remaining = new LinkedHashSet<>(current);
+            remaining.retainAll(activeMessageIds);
+            kept = Collections.unmodifiableSet(remaining);
+            pins.put(sessionId, kept);
+            pinsDirty.add(sessionId);
+        }
+        LOG.info("Pinned-message cleanup for session {0}: kept {1}",
+                sessionId, kept.size());
+        Set<String> snapshot = kept;
+        dbExecutor.execute(() -> {
+            try {
+                replacePins(sessionId, snapshot);
+            } catch (SQLException e) {
+                LOG.log(Level.WARNING, "Failed to prune stale pinned messages", e);
+            }
+        });
+    }
+
+    @Override
+    public void unloadSession(String sessionId) {
+        // Intentionally no eviction: the cache is small (ids only) and dropping it
+        // would make the next read a blocking database call from the EDT.
+    }
+
+    @Override
+    public List<AvailableModel> getModels(String harnessId) {
+        if (harnessId == null || harnessId.isBlank()) {
+            return List.of();
+        }
+        List<AvailableModel> cached = models.get(harnessId);
+        return cached != null ? cached : List.of();
+    }
+
+    @Override
+    public void updateModels(String harnessId, List<AvailableModel> list) {
+        if (harnessId == null || harnessId.isBlank() || list == null || list.isEmpty()) {
+            return;
+        }
+        List<AvailableModel> snapshot = List.copyOf(list.stream().filter(Objects::nonNull).toList());
+        if (snapshot.isEmpty() || snapshot.equals(models.get(harnessId))) {
+            return;
+        }
+        models.put(harnessId, snapshot);
+        modelsDirty.add(harnessId);
+        dbExecutor.execute(() -> {
+            try {
+                replaceModels(harnessId, snapshot);
+            } catch (SQLException e) {
+                LOG.log(Level.WARNING, "Failed to persist the model list for harness " + harnessId, e);
+            }
+        });
+    }
+
+    @Override
+    public void flush() {
+        // Writes are already queued on the executor; a barrier makes shutdown wait
+        // for them instead of dropping the tail of the queue with the daemon thread.
+        awaitQueuedWrites();
+    }
+
+    private void awaitQueuedWrites() {
+        try {
+            Future<?> barrier = dbExecutor.submit(() -> null);
+            barrier.get(2, java.util.concurrent.TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } catch (ExecutionException | java.util.concurrent.TimeoutException e) {
+            LOG.log(Level.WARNING, "Timed out waiting for queued store writes", e);
+        } catch (java.util.concurrent.RejectedExecutionException e) {
+            // shutdown() already ran: nothing can be queued behind us.
+            LOG.log(Level.FINE, "Store already shut down; skipping the flush barrier", e);
+        }
+    }
+
+    /** Rewrites one session's pin rows in a transaction; used by the stale-pin cleanup. */
+    private void replacePins(String sessionId, Set<String> pinned) throws SQLException {
+        Connection conn = connection();
+        boolean autoCommit = conn.getAutoCommit();
+        conn.setAutoCommit(false);
+        try {
+            try (PreparedStatement delete = conn.prepareStatement(
+                    "DELETE FROM pinned_message WHERE session_id = ?")) {
+                delete.setString(1, sessionId);
+                delete.executeUpdate();
+            }
+            long now = System.currentTimeMillis();
+            try (PreparedStatement insert = conn.prepareStatement(MERGE_PINNED_MESSAGE)) {
+                for (String messageId : pinned) {
+                    insert.setString(1, sessionId);
+                    insert.setString(2, messageId);
+                    insert.setLong(3, now);
+                    insert.addBatch();
+                }
+                insert.executeBatch();
+            }
+            conn.commit();
+        } catch (SQLException e) {
+            conn.rollback();
+            throw e;
+        } finally {
+            conn.setAutoCommit(autoCommit);
+        }
+    }
+
+    /** Rewrites one harness's model rows in a transaction, preserving list order. */
+    private void replaceModels(String harnessId, List<AvailableModel> list) throws SQLException {
+        Connection conn = connection();
+        boolean autoCommit = conn.getAutoCommit();
+        conn.setAutoCommit(false);
+        try {
+            try (PreparedStatement delete = conn.prepareStatement(
+                    "DELETE FROM harness_model WHERE harness_id = ?")) {
+                delete.setString(1, harnessId);
+                delete.executeUpdate();
+            }
+            try (PreparedStatement insert = conn.prepareStatement(INSERT_HARNESS_MODEL)) {
+                int position = 0;
+                for (AvailableModel model : list) {
+                    insert.setString(1, harnessId);
+                    insert.setInt(2, position++);
+                    insert.setString(3, model.modelId());
+                    insert.setString(4, model.name());
+                    insert.setString(5, model.description());
+                    insert.addBatch();
+                }
+                insert.executeBatch();
+            }
+            conn.commit();
+        } catch (SQLException e) {
+            conn.rollback();
+            throw e;
+        } finally {
+            conn.setAutoCommit(autoCommit);
+        }
+    }
+
     // ---- One-shot preference migration ----
 
     /**
@@ -863,48 +1189,53 @@ public class H2UsageStatsStore implements UsageStatsStore, SessionStore {
      * database that cannot be written never costs the user their data.</p>
      */
     private MigrationReport runPrefsMigration() {
-        if (isPrefsMigrated()) {
-            return MigrationReport.none();
-        }
         List<String> reasons = new ArrayList<>();
         int[] migrated = {0};
         int[] skipped = {0};
-        Set<String> bucketsToKeep = new LinkedHashSet<>();
         Preferences root = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
 
-        migrateHistory(root, migrated, skipped, reasons);
-        List<String> metaNodes = childNodeNames(root, LEGACY_META_NODE, reasons);
-        List<String> idNodes = childNodeNames(root, LEGACY_IDS_NODE, reasons);
-        Map<String, Map<String, SessionMetadata>> byHarness =
-                readLegacyMetadata(root, metaNodes, skipped, reasons, bucketsToKeep);
-        Map<String, Map<String, Long>> legacyIds = readLegacyIds(root, idNodes, reasons);
-        foldLegacyRootKeys(root, byHarness, skipped, reasons);
-        bucketsToKeep.addAll(
-                writeMigratedMetadata(byHarness, legacyIds, migrated, skipped, reasons));
+        if (!isMigrated(PREFS_MIGRATED_KEY)) {
+            Set<String> bucketsToKeep = new LinkedHashSet<>();
+            migrateHistory(root, migrated, skipped, reasons);
+            List<String> metaNodes = childNodeNames(root, LEGACY_META_NODE, reasons);
+            List<String> idNodes = childNodeNames(root, LEGACY_IDS_NODE, reasons);
+            Map<String, Map<String, SessionMetadata>> byHarness =
+                    readLegacyMetadata(root, metaNodes, skipped, reasons, bucketsToKeep);
+            Map<String, Map<String, Long>> legacyIds = readLegacyIds(root, idNodes, reasons);
+            foldLegacyRootKeys(root, byHarness, skipped, reasons);
+            bucketsToKeep.addAll(
+                    writeMigratedMetadata(byHarness, legacyIds, migrated, skipped, reasons));
 
-        boolean recorded = markPrefsMigrated();
-        if (recorded) {
-            deleteLegacyPreferences(root, metaNodes, idNodes, bucketsToKeep, reasons);
-        } else {
-            LOG.log(Level.WARNING,
-                    "Preference migration could not record its marker; leaving preferences untouched");
+            boolean recorded = markMigrated(PREFS_MIGRATED_KEY);
+            if (recorded) {
+                deleteLegacyPreferences(root, metaNodes, idNodes, bucketsToKeep, reasons);
+            } else {
+                LOG.log(Level.WARNING,
+                        "Preference migration could not record its marker; leaving preferences untouched");
+            }
         }
+
+        // Pins and model lists moved in a later release and carry their own markers:
+        // an installation that ran the first migration already has PREFS_MIGRATED_KEY
+        // set, so the guard above would otherwise strand them in preferences forever.
+        migratePinnedMessages(root, migrated, skipped, reasons);
+        migrateModelLists(root, migrated, skipped, reasons);
 
         MigrationReport report = new MigrationReport(migrated[0], skipped[0], reasons);
         if (report.hasSkips()) {
             LOG.log(Level.WARNING, "Preference migration moved {0} entries and skipped {1}",
                     new Object[]{report.migrated(), report.skipped()});
-        } else {
+        } else if (report.migrated() > 0) {
             LOG.log(Level.INFO, "Preference migration moved {0} entries into the database",
                     report.migrated());
         }
         return report;
     }
 
-    private boolean isPrefsMigrated() {
+    private boolean isMigrated(String marker) {
         try (PreparedStatement ps = connection().prepareStatement(
                 "SELECT meta_value FROM usage_meta WHERE meta_key = ?")) {
-            ps.setString(1, PREFS_MIGRATED_KEY);
+            ps.setString(1, marker);
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() && "true".equalsIgnoreCase(rs.getString(1));
             }
@@ -915,16 +1246,128 @@ public class H2UsageStatsStore implements UsageStatsStore, SessionStore {
     }
 
     /** @return true when the database accepted the marker, so the sources may be deleted. */
-    private boolean markPrefsMigrated() {
+    private boolean markMigrated(String marker) {
         try (PreparedStatement ps = connection().prepareStatement(
                 "MERGE INTO usage_meta (meta_key, meta_value) VALUES (?, ?)")) {
-            ps.setString(1, PREFS_MIGRATED_KEY);
+            ps.setString(1, marker);
             ps.setString(2, "true");
             ps.executeUpdate();
             return true;
         } catch (SQLException e) {
             LOG.log(Level.WARNING, "Could not record the preference migration marker", e);
             return false;
+        }
+    }
+
+    /**
+     * Copies {@code pinnedMessages.<sessionId>} JSON arrays into {@code pinned_message}.
+     * Rows first, then the marker, then the keys — and only for sessions whose rows
+     * were written, so an unwritable database never costs the user their pins.
+     */
+    private void migratePinnedMessages(Preferences root, int[] migrated, int[] skipped,
+                                       List<String> reasons) {
+        if (isMigrated(PINNED_MIGRATED_KEY)) {
+            return;
+        }
+        Map<String, List<String>> parsed = new LinkedHashMap<>();
+        for (String key : rootKeys(root, reasons)) {
+            if (!key.startsWith(LEGACY_PINNED_PREFIX)) {
+                continue;
+            }
+            String sessionId = key.substring(LEGACY_PINNED_PREFIX.length());
+            try {
+                List<String> ids = MAPPER.readValue(root.get(key, "[]"), LIST_OF_STRINGS);
+                parsed.put(sessionId, ids == null ? List.of() : ids);
+            } catch (IOException | RuntimeException e) {
+                skipped[0]++;
+                addReason(reasons, "pinned messages: " + sessionId + ": " + e.getMessage());
+            }
+        }
+        List<String> written = new ArrayList<>();
+        for (Map.Entry<String, List<String>> entry : parsed.entrySet()) {
+            try {
+                Set<String> ids = new LinkedHashSet<>(entry.getValue());
+                ids.remove(null);
+                replacePins(entry.getKey(), ids);
+                written.add(entry.getKey());
+                migrated[0]++;
+            } catch (SQLException e) {
+                skipped[0]++;
+                addReason(reasons, "pinned messages: " + entry.getKey() + ": could not be stored");
+            }
+        }
+        if (!markMigrated(PINNED_MIGRATED_KEY)) {
+            LOG.log(Level.WARNING, "Could not record the pinned-message migration marker");
+            return;
+        }
+        for (String sessionId : written) {
+            root.remove(LEGACY_PINNED_PREFIX + sessionId);
+        }
+        flushPreferences(root, reasons);
+    }
+
+    /**
+     * Copies {@code modelList.<harnessId>} JSON arrays into {@code harness_model}.
+     * Same order and containment as the pinned migration.
+     */
+    private void migrateModelLists(Preferences root, int[] migrated, int[] skipped,
+                                   List<String> reasons) {
+        if (isMigrated(MODELS_MIGRATED_KEY)) {
+            return;
+        }
+        Map<String, List<AvailableModel>> parsed = new LinkedHashMap<>();
+        for (String key : rootKeys(root, reasons)) {
+            if (!key.startsWith(LEGACY_MODEL_PREFIX)) {
+                continue;
+            }
+            String harnessId = key.substring(LEGACY_MODEL_PREFIX.length());
+            try {
+                List<AvailableModel> models = MAPPER.readValue(root.get(key, "[]"), MODEL_LIST);
+                if (models == null) {
+                    models = List.of();
+                }
+                models.removeIf(Objects::isNull);
+                parsed.put(harnessId, models);
+            } catch (IOException | RuntimeException e) {
+                skipped[0]++;
+                addReason(reasons, "model list: " + harnessId + ": " + e.getMessage());
+            }
+        }
+        List<String> written = new ArrayList<>();
+        for (Map.Entry<String, List<AvailableModel>> entry : parsed.entrySet()) {
+            try {
+                replaceModels(entry.getKey(), entry.getValue());
+                written.add(entry.getKey());
+                migrated[0]++;
+            } catch (SQLException e) {
+                skipped[0]++;
+                addReason(reasons, "model list: " + entry.getKey() + ": could not be stored");
+            }
+        }
+        if (!markMigrated(MODELS_MIGRATED_KEY)) {
+            LOG.log(Level.WARNING, "Could not record the model-list migration marker");
+            return;
+        }
+        for (String harnessId : written) {
+            root.remove(LEGACY_MODEL_PREFIX + harnessId);
+        }
+        flushPreferences(root, reasons);
+    }
+
+    private static List<String> rootKeys(Preferences root, List<String> reasons) {
+        try {
+            return List.of(root.keys());
+        } catch (BackingStoreException e) {
+            addReason(reasons, "preference keys: could not be listed: " + e.getMessage());
+            return List.of();
+        }
+    }
+
+    private static void flushPreferences(Preferences root, List<String> reasons) {
+        try {
+            root.flush();
+        } catch (BackingStoreException e) {
+            addReason(reasons, "preference keys: could not be flushed: " + e.getMessage());
         }
     }
 

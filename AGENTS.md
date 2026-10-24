@@ -523,11 +523,14 @@ divider and the input area (it must borrow space from the thread only).
 `ScrollController.isAtBottom()` uses a 150px sticky-zone tolerance (a 50px margin is too tight: adding a bubble shifts the viewport past it before `wasAtBottom` is captured). All content-modifying calls in `ChatThreadPanel` (`addSingleBubble`, `processMessageSections`, `stopStreaming`, stream timer) capture `wasAtBottom` BEFORE touching content. Auto-scroll only fires when `wasAtBottom` is true. The stream timer path (`Timer TimingConstants.STREAM_FLUSH_MS` ms) already captured `wasAtBottom` before `flushUpdate()` — this is the correct pattern; new callers must follow it.
 
 ### Usage Stats Store
-`manager/H2UsageStatsStore` implements `contract/UsageStatsStore` and `contract/SessionStore` over one H2
-database under the NetBeans user directory. Every database operation runs on that class's single-thread
-executor, so an EDT caller enqueues and returns — never add a query that runs inline on the calling thread.
-`SCHEMA_VERSION` is the upgrade cursor: bump it and extend `applySchemaMigration` when stored semantics
-change, and never alter a released version's branch in place. Model ids are canonicalised
+`manager/H2UsageStatsStore` implements `contract/UsageStatsStore`, `contract/SessionStore`,
+`contract/PinnedMessageControl` and `contract/ModelListControl` over one H2 database under the NetBeans
+user directory. Every database operation runs on that class's single-thread executor, so an EDT caller
+enqueues and returns — never add a query that runs inline on the calling thread. The pin and model-list
+caches are primed by `load()` and are memory-only for readers; writes update the cache and enqueue a
+row-level delta (`pinsDirty`/`modelsDirty` keep a write that races startup from being overwritten by the
+older snapshot). `SCHEMA_VERSION` is the upgrade cursor: bump it and extend `applySchemaMigration` when
+stored semantics change, and never alter a released version's branch in place. Model ids are canonicalised
 (`support/ModelIdNormalizer`) inside `bindAttribution`, the one method every captured row from every table
 passes through; a version upgrade rewrites rows stored under the non-canonical separator. Do NOT re-add a
 process-global model fallback: a model belongs to a session, and `getSessionModelId` returning null renders
@@ -535,12 +538,15 @@ as "(not attributed)" — that is the correct answer, not a bug. Attribution is 
 never resolved from current UI state at query time.
 
 ### Preference Migration To The Store
-Input history and per-session metadata moved out of `NbPreferences` into the same H2 store. `runPrefsMigration()`
-copies the legacy layout once (guarded by a `usage_meta` marker) and deletes only what it confirmed written.
-Containment is per entry: an unreadable entry is counted in the `MigrationReport`, its preference node is kept
+Input history, per-session metadata, pinned message ids and per-harness model lists moved out of
+`NbPreferences` into the same H2 store. `runPrefsMigration()` copies each dataset once, guarded by its own
+`usage_meta` marker (`prefs_migrated`, `pinned_migrated`, `models_migrated`) and deletes only what it
+confirmed written. The markers are separate on purpose: an installation that ran the earlier migration
+already has `prefs_migrated`, so a shared guard would strand the newer datasets in preferences for ever.
+Containment is per entry: an unreadable entry is counted in the `MigrationReport`, its preference key is kept
 for inspection, and startup proceeds — a migration error is never a failure. Order matters and must stay:
 rows first, then the marker, then the deletions, so a database that cannot be written never costs the user
-their data. `prefs_migrated` is set even when entries were skipped, so a corrupt value notifies once rather
+their data. A marker is set even when entries were skipped, so a corrupt value notifies once rather
 than on every launch.
 
 ### Test NetBeans User Directory

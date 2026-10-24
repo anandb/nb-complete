@@ -1,5 +1,6 @@
 package github.anandb.netbeans.manager;
 
+import github.anandb.netbeans.model.AvailableModel;
 import github.anandb.netbeans.model.MigrationReport;
 import github.anandb.netbeans.model.SessionMetadata;
 import github.anandb.netbeans.model.UsageRecords.Attribution;
@@ -18,6 +19,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
@@ -389,8 +391,8 @@ class H2UsageStatsStoreTest {
         upgraded.recordUsageUpdate(new UsageUpdateRow(att("s1", "pi", "m1", "/proj/a"), NOW, 20, null, 0.6, "USD"));
         assertEquals(0.6, upgraded.query(1, null, NOW).totalCost(), 1e-9);
 
-        assertEquals("5", upgradedScalarVersion(fileUrl),
-                "version 5 is the additive tool_call_usage upgrade");
+        assertEquals("6", upgradedScalarVersion(fileUrl),
+                "version 6 adds the pinned-message and model-list tables");
         upgraded.shutdown();
     }
 
@@ -751,6 +753,105 @@ class H2UsageStatsStoreTest {
         assertNull(sessions.get("s2").title(), "an absent title stays absent");
     }
 
+    // ---- Pinned messages and model lists (the ex-preference datasets) ----
+
+    @Test
+    void pinnedMessagesPersistAndSurviveReopen(@TempDir Path tempDir) {
+        String fileUrl = "jdbc:h2:" + tempDir.resolve("pins").toAbsolutePath().toString().replace('\\', '/');
+        H2UsageStatsStore first = new H2UsageStatsStore(fileUrl);
+        first.setPinned("s1", "m1", true);
+        first.setPinned("s1", "m2", true);
+        first.setPinned("s1", "m2", false);
+        assertTrue(first.isPinned("s1", "m1"));
+        assertFalse(first.isPinned("s1", "m2"), "unpinning takes effect in memory immediately");
+        first.flush();
+        first.shutdown();
+
+        H2UsageStatsStore second = new H2UsageStatsStore(fileUrl);
+        second.load();
+        assertTrue(second.isPinned("s1", "m1"), "pins survive a restart");
+        assertFalse(second.isPinned("s1", "m2"), "an unpinned id stays gone");
+        second.shutdown();
+    }
+
+    @Test
+    void retainPinnedDropsIdsMissingFromTheLoadedSession() throws SQLException {
+        store.setPinned("s1", "m1", true);
+        store.setPinned("s1", "m2", true);
+        store.flush();
+
+        store.retainPinned("s1", Set.of("m2"));
+        store.flush();
+
+        assertFalse(store.isPinned("s1", "m1"));
+        assertTrue(store.isPinned("s1", "m2"));
+        assertEquals(1L, scalarLong("SELECT COUNT(*) FROM pinned_message WHERE session_id = 's1'"),
+                "the stale id is gone from the table, not only from memory");
+    }
+
+    @Test
+    void modelListsKeepOrderAndReplacement() throws SQLException {
+        List<AvailableModel> first = List.of(
+                new AvailableModel("a", "A", "first"),
+                new AvailableModel("b", "B", null));
+        store.updateModels("omp", first);
+        assertEquals(first, store.getModels("omp"));
+
+        List<AvailableModel> second = List.of(new AvailableModel("c", "C", "only"));
+        store.updateModels("omp", second);
+        store.flush();
+
+        assertEquals(second, store.getModels("omp"), "a newer list replaces the old one");
+        assertEquals(1L, scalarLong("SELECT COUNT(*) FROM harness_model WHERE harness_id = 'omp'"));
+        assertTrue(store.getModels(null).isEmpty(), "a blank harness id yields no list");
+    }
+
+    @Test
+    void pinsAndModelListsMigrateAfterTheFirstMigrationAlreadyRan() throws Exception {
+        clearMigratedPrefs();
+        // The earlier release recorded prefs_migrated; the newer datasets carry
+        // their own markers, so a shared guard would leave them in preferences.
+        store.load();
+        execute("MERGE INTO usage_meta (meta_key, meta_value) VALUES ('prefs_migrated', 'true')");
+        Preferences root = prefs();
+        root.put("pinnedMessages.s1", "[\"m1\",\"m2\"]");
+        root.put("modelList.omp", "[{\"modelId\":\"a\",\"name\":\"A\",\"description\":\"d\"}]");
+        root.flush();
+
+        MigrationReport report = store.migrateLegacyPrefs();
+
+        assertEquals(2, report.migrated(), "one pins session and one harness");
+        assertEquals(0, report.skipped());
+        assertTrue(store.isPinned("s1", "m1"));
+        assertTrue(store.isPinned("s1", "m2"));
+        assertEquals(List.of(new AvailableModel("a", "A", "d")), store.getModels("omp"));
+        assertNull(root.get("pinnedMessages.s1", null), "a migrated pin key is deleted");
+        assertNull(root.get("modelList.omp", null), "a migrated model key is deleted");
+
+        MigrationReport second = store.migrateLegacyPrefs();
+        assertEquals(0, second.total(), "a completed migration does not run again");
+        assertTrue(store.isPinned("s1", "m1"));
+    }
+
+    @Test
+    void migrationKeepsUnreadablePinAndModelKeys() throws Exception {
+        clearMigratedPrefs();
+        Preferences root = prefs();
+        root.put("pinnedMessages.bad", "{not json");
+        root.put("modelList.bad", "[{not json");
+        root.put("pinnedMessages.good", "[\"m1\"]");
+        root.flush();
+
+        MigrationReport report = store.migrateLegacyPrefs();
+
+        assertEquals(1, report.migrated());
+        assertEquals(2, report.skipped(), "one unreadable key per dataset");
+        assertNotNull(root.get("pinnedMessages.bad", null), "a bad key is kept for inspection");
+        assertNotNull(root.get("modelList.bad", null), "a bad key is kept for inspection");
+        assertNull(root.get("pinnedMessages.good", null), "the readable key is deleted");
+        assertTrue(store.isPinned("good", "m1"));
+    }
+
     private static Preferences prefs() {
         return NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
     }
@@ -774,6 +875,8 @@ class H2UsageStatsStoreTest {
                     || key.startsWith("session_hidden_")
                     || key.startsWith("session_usage_")
                     || key.startsWith("gemini_local_sessions")
+                    || key.startsWith("pinnedMessages.")
+                    || key.startsWith("modelList.")
                     || "caveman.enabled".equals(key)) {
                 root.remove(key);
             }

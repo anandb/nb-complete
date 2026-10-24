@@ -21,6 +21,8 @@ public final class PluginSettings {
     private static final int DEFAULT_MAX_MESSAGES = 100;
     private static final int DEFAULT_TOOLBAR_ICON_SIZE = 24;
     private static final String DEFAULT_PREAMBLE;
+    /** One {@code Preferences} value is capped at 8192 chars, and the preamble is a single value. */
+    public static final int MAX_PREAMBLE_LENGTH = Preferences.MAX_VALUE_LENGTH;
     private static final String DEFAULT_CRITICAL_RULES;
     private static final String DEFAULT_WSL_RULES;
     private static final String DEFAULT_WSL_NATIVE_RULES;
@@ -169,8 +171,20 @@ public final class PluginSettings {
         return NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).get(KEY_PREAMBLE, DEFAULT_PREAMBLE);
     }
 
+    /** @return whether {@code preamble} can be stored as one preference value. */
+    public static boolean isPreambleTooLong(String preamble) {
+        return preamble != null && preamble.length() > MAX_PREAMBLE_LENGTH;
+    }
+
     public static void setPreamble(String preamble) {
-        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).put(KEY_PREAMBLE, preamble == null ? "" : preamble);
+        String text = preamble == null ? "" : preamble;
+        if (text.length() > MAX_PREAMBLE_LENGTH) {
+            // The whole preamble is one preference value; storing it silently
+            // throws IllegalArgumentException from Preferences.put.
+            throw new IllegalArgumentException("Session preamble is " + text.length()
+                    + " characters; the maximum is " + MAX_PREAMBLE_LENGTH);
+        }
+        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).put(KEY_PREAMBLE, text);
     }
 
     public static String getCustomUserIcon() {
