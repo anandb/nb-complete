@@ -14,6 +14,7 @@ taken from the ![...] text). Use `--output PATH` to write elsewhere.
 
 import argparse
 import base64
+import gzip
 import os
 import re
 import shutil
@@ -94,7 +95,7 @@ def find_tweego() -> str | None:
     return None
 
 
-def compile_html(twee_path: Path) -> Path:
+def compile_html(twee_path: Path) -> Path | None:
     """Compile .twee to HTML using tweego with Harlowe format."""
     html_path = twee_path.with_suffix(".html")
     tweego_path = find_tweego()
@@ -113,8 +114,16 @@ def compile_html(twee_path: Path) -> Path:
         print(f"Error: tweego failed with exit code {result.returncode}")
         print(f"stderr: {result.stderr}")
         sys.exit(1)
-    print(f"Compiled {html_path} ({html_path.stat().st_size} bytes)")
-    return html_path
+    # Ship the guide as gzip only: the plain .html sitting in target/ gets
+    # flagged by the IDE's HTML validator, and the compressed copy is what the
+    # resources block packages. Delete the plain file after compressing.
+    gz_path = html_path.with_suffix(".html.gz")
+    with html_path.open("rb") as f_in, gzip.open(gz_path, "wb") as f_out:
+        shutil.copyfileobj(f_in, f_out)
+    plain_size = html_path.stat().st_size
+    html_path.unlink()
+    print(f"Gzipped {gz_path.name} ({plain_size} → {gz_path.stat().st_size} bytes)")
+    return gz_path
 
 
 def main() -> None:

@@ -12,15 +12,16 @@ import javax.swing.SwingUtilities;
 /**
  * Opens the Twine user guide bundled in the module jar (generated at build time by
  * {@code docs/stitch.py}) in the system browser. The HTML is self-contained (base64
- * images, inlined story engine), so a plain local file renders fully offline. When the
- * resource is missing (stitch skipped at build time) or the temp copy fails, the
- * caller-supplied remote-URL fallback runs instead — always on the EDT, because the
- * existing fallback path updates a status label.
+ * images, inlined story engine) and packaged GZIPPED ({@code UserGuide.html.gz}) so the
+ * IDE's HTML validator never scans the megabyte-sized artifact; opening inflates it to a
+ * temp file first. When the resource is missing (stitch skipped at build time) or the
+ * temp extract fails, the caller-supplied remote-URL fallback runs instead — always on
+ * the EDT, because the existing fallback path updates a status label.
  */
 public final class UserGuideOpener {
     private static final Logger LOG = Logger.from(UserGuideOpener.class);
 
-    private static final String GUIDE_RESOURCE = "/github/anandb/netbeans/docs/UserGuide.html";
+    private static final String GUIDE_RESOURCE = "/github/anandb/netbeans/docs/UserGuide.html.gz";
 
     private UserGuideOpener() {}
 
@@ -44,7 +45,10 @@ public final class UserGuideOpener {
                 Path dir = Path.of(System.getProperty("java.io.tmpdir"), "beanbot");
                 Files.createDirectories(dir);
                 Path file = dir.resolve("UserGuide.html");
-                Files.copy(in, file, StandardCopyOption.REPLACE_EXISTING);
+                // the bundled copy is gzip; inflate through it so the temp file is plain HTML
+                try (java.util.zip.GZIPInputStream gzip = new java.util.zip.GZIPInputStream(in)) {
+                    Files.copy(gzip, file, StandardCopyOption.REPLACE_EXISTING);
+                }
                 if (Desktop.isDesktopSupported()
                         && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
                     Desktop.getDesktop().browse(file.toUri());

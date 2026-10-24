@@ -352,14 +352,15 @@
                 <directory>src/main/resources</directory>
             </resource>
             <!-- Self-contained Twine guide (base64 images, inlined story engine),
-                 generated at generate-resources by docs/stitch.py and copied to
+                 generated GZIPPED at generate-resources by docs/stitch.py and copied to
                  target/generated-guide by the generate-user-guide antrun execution.
-                 Opened locally by the Open User Guide action; the remote URL is the fallback. -->
+                 Opened locally by the Open User Guide action (inflates to a temp file);
+                 the remote URL is the fallback. -->
             <resource>
                 <directory>${project.build.directory}/generated-guide</directory>
                 <targetPath>github/anandb/netbeans/docs</targetPath>
                 <includes>
-                    <include>UserGuide.html</include>
+                    <include>UserGuide.html.gz</include>
                 </includes>
             </resource>
         </resources>
@@ -572,11 +573,13 @@
                                 <exec executable="python3" failonerror="false">
                                     <arg value="${project.basedir}/docs/stitch.py"/>
                                 </exec>
-                                <!-- Copy the compiled HTML where the build resources pick it up.
-                                     stitch.py is failonerror=false, so a missing source must not fail the build. -->
+                                <!-- Copy the compiled (gzipped) HTML where the build resources pick it up.
+                                     stitch.py writes User Guide.html.gz only; the plain HTML never
+                                     lingers in target/. stitch.py is failonerror=false, so a missing
+                                     source must not fail the build. -->
                                 <mkdir dir="${project.build.directory}/generated-guide"/>
-                                <copy file="${project.build.directory}/User Guide.html"
-                                      tofile="${project.build.directory}/generated-guide/UserGuide.html"
+                                <copy file="${project.build.directory}/User Guide.html.gz"
+                                      tofile="${project.build.directory}/generated-guide/UserGuide.html.gz"
                                       overwrite="true" failonerror="false"/>
                             </target>
                         </configuration>
@@ -707,20 +710,22 @@
                                              publish a jar with no bundled guide, and `deploy` runs after
                                              verify, so the check lives here: it fails the build before
                                              anything is published, and no version is burned. -->
-                                        <fail message="Bundled user guide missing: ${project.build.directory}/generated-guide/UserGuide.html (install tweego and re-run the build).">
+                                        <fail message="Bundled user guide missing: ${project.build.directory}/generated-guide/UserGuide.html.gz (install tweego and re-run the build).">
                                             <condition>
                                                 <not>
-                                                    <available file="${project.build.directory}/generated-guide/UserGuide.html"/>
+                                                    <available file="${project.build.directory}/generated-guide/UserGuide.html.gz"/>
                                                 </not>
                                             </condition>
                                         </fail>
+                                        <gunzip src="${project.build.directory}/generated-guide/UserGuide.html.gz"
+                                                dest="${project.build.directory}/generated-guide/UserGuide.verify.html"/>
                                         <loadfile property="beanbot.guide.head"
-                                                  srcFile="${project.build.directory}/generated-guide/UserGuide.html">
+                                                  srcFile="${project.build.directory}/generated-guide/UserGuide.verify.html">
                                             <filterchain>
                                                 <headfilter lines="1"/>
                                             </filterchain>
                                         </loadfile>
-                                        <fail message="Bundled user guide is not stitched HTML: ${project.build.directory}/generated-guide/UserGuide.html">
+                                        <fail message="Bundled user guide is not stitched HTML: ${project.build.directory}/generated-guide/UserGuide.html.gz">
                                             <condition>
                                                 <not>
                                                     <contains string="${beanbot.guide.head}"

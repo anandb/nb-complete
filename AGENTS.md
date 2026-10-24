@@ -14,12 +14,14 @@
   deletes before bundling. The wrapper keeps local builds on the same Maven as CI.
 - **User guide toolchain**: `docs/stitch.py` (antrun `generate-user-guide` at
   `generate-resources`) needs `python3` + `tweego` (Harlowe 3) to produce
-  `target/generated-guide/UserGuide.html`, which is packaged into the module jar. The antrun
+  `target/generated-guide/UserGuide.html.gz` (the stitch output is gzipped; no plain
+  HTML is left in `target/` — the IDE's HTML validator flags it), which is packaged into
+  the module jar. The antrun
   `<exec>` is `failonerror="false"`, so a missing tweego only warns and the jar ships without
   the guide. CI installs a pinned tweego release in `.github/workflows/release.yml`, and the
   `release` profile in `pom.xml` binds an antrun `verify-user-guide` check to the `verify`
   phase: it fails the build (before `deploy` publishes anything) when
-  `target/generated-guide/UserGuide.html` is missing or is not stitched HTML. Keep the
+  `target/generated-guide/UserGuide.html.gz` is missing or is not stitched HTML. Keep the
   install step if you edit the workflow — the check needs tweego to have produced the file.
 
 ## BMAD Working Artifacts (`_bmad-output/`)
@@ -701,9 +703,10 @@ When editing it, use the split passage files — they are the source of truth:
   reference them as `![alt](../images/<name>-N.png){style="max-width:100%;"}`.
 - **Tooling**: `docs/split.py` unpacks `User Guide.twee` into passages+images;
   `docs/stitch.py` reassembles them back into `User Guide.twee`.
-- **Bundled copy**: the Maven build also copies the compiled HTML to
-  `target/generated-guide/UserGuide.html`, which the `<resources>` block packages into
-  the module jar at `github/anandb/netbeans/docs/UserGuide.html`. The Open User Guide
+- **Bundled copy**: the Maven build also copies the gzipped compiled HTML to
+  `target/generated-guide/UserGuide.html.gz`, which the `<resources>` block packages into
+  the module jar at `github/anandb/netbeans/docs/UserGuide.html.gz` (no plain HTML
+  artifact exists — the IDE's HTML validator flags it in `target/`). The Open User Guide
   action (`support/UserGuideOpener`) extracts it to `java.io.tmpdir/beanbot` on a
   background thread and opens it in the system browser; if the resource is missing
   (stitch skipped) or the copy fails, it falls back to the remote
