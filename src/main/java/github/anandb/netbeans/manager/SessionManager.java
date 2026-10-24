@@ -19,6 +19,7 @@ import org.netbeans.api.project.Project;
 
 import javax.swing.SwingUtilities;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -717,10 +718,15 @@ public class SessionManager implements SessionQuery, SessionControl {
     }
 
     private CompletableFuture<Session> sendCreateSessionRequest(String finalCwd, long start) {
-        // Gate on the ACP server's readiness first: MCP's waitForReady() returns
-        // immediately when the embedded MCP server is disabled, which let
-        // session/new race ahead of process startup ("Server not started").
-        return ProcessManager.getInstance().whenReady()
+        // Bind the server to this session's working directory on a background
+        // thread first: a rebind restarts the process (terminating its tree),
+        // which must not block the caller, and the readiness gate below then
+        // waits for the restarted server to finish initializing.
+        return CompletableFuture.runAsync(() -> ProcessManager.getInstance().ensureStartedIn(new File(finalCwd)))
+                // Gate on the ACP server's readiness: MCP's waitForReady() returns
+                // immediately when the embedded MCP server is disabled, which let
+                // session/new race ahead of process startup ("Server not started").
+                .thenCompose(v -> ProcessManager.getInstance().whenReady())
                 .thenCompose(v -> ProcessManager.getInstance().getToolExecutor().waitForReady())
                 .orTimeout(60, TimeUnit.SECONDS)
                 .thenCompose(v -> {
@@ -773,6 +779,18 @@ public class SessionManager implements SessionQuery, SessionControl {
                         throw new RuntimeException(e);
                     }
                 });
+    }
+
+    /**
+     * Binds the ACP server to {@code workingCwd} on a background thread before
+     * the session's load RPC is issued: one server process serves one working
+     * directory, and a rebind restarts it (terminating its process tree), which
+     * must not block the caller. A {@code null} directory only starts an
+     * unbound server.
+     */
+    private static CompletableFuture<Void> bindServerTo(String workingCwd) {
+        return CompletableFuture.runAsync(() ->
+                ProcessManager.getInstance().ensureStartedIn(workingCwd != null ? new File(workingCwd) : null));
     }
 
     @Override
@@ -1089,7 +1107,9 @@ public class SessionManager implements SessionQuery, SessionControl {
         }
         notifySessionProgress(30);
         try {
-            loadSessionFromServer(sessionId, workingCwd)
+            final String cwd = workingCwd;
+            bindServerTo(cwd)
+                    .thenCompose(v -> loadSessionFromServer(sessionId, cwd))
                     .thenAccept(configOptions -> {
                         if (sessionId.equals(this.currentSessionId)) {
                             notifySessionProgress(60);

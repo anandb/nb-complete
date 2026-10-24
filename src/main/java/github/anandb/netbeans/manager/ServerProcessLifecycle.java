@@ -10,6 +10,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
+import java.io.File;
 
 import org.apache.commons.exec.CommandLine;
 import org.openide.util.NbPreferences;
@@ -43,6 +44,8 @@ class ServerProcessLifecycle {
     private final RequestHandler onRequestPermission;
 
     private volatile Process serverProcess;
+    /** Working directory the server process is bound to ({@code null} = inherited IDE directory). */
+    private volatile File spawnWorkDir;
     private volatile CompletableFuture<Void> readyFuture = new CompletableFuture<>();
     private volatile boolean isClosing = false;
     private volatile boolean serverStarted = false;
@@ -103,6 +106,30 @@ class ServerProcessLifecycle {
         }
     }
 
+    /**
+     * Ensures the server serves sessions from {@code workDir}: starts it bound
+     * to the directory, restarts it when it is bound to a different one (one
+     * ACP process serves one working directory for its whole life), and does
+     * nothing when already bound to it. A {@code null} or missing directory
+     * only starts an unbound server.
+     */
+    synchronized void ensureStartedIn(File workDir) {
+        File target = workDir != null && workDir.isDirectory()
+                ? workDir.getAbsoluteFile() : null;
+        if (serverProcess != null && serverProcess.isAlive()) {
+            if (target != null && !target.equals(spawnWorkDir)) {
+                LOG.warn("ACP server bound to {0}; restarting to serve {1}", spawnWorkDir, target);
+                spawnWorkDir = target;
+                restartServer();
+            }
+            return;
+        }
+        if (target != null) {
+            spawnWorkDir = target;
+        }
+        ensureStarted();
+    }
+
     synchronized void startServer() {
         if (isClosing || (serverProcess != null && serverProcess.isAlive())) {
             return;
@@ -154,6 +181,19 @@ class ServerProcessLifecycle {
 
             Map<String, String> env = pb.environment();
             System.getenv().forEach(env::putIfAbsent);
+
+            // The process is bound to one working directory for its whole life:
+            // harnesses that resolve paths relative to their cwd (e.g. a
+            // container workspace derived from it) need it fixed before the
+            // process starts. The directory is the project the user picked for
+            // a session (set by ensureStartedIn); there is no pre-session
+            // guess. Before the first session the server inherits the IDE dir.
+            if (spawnWorkDir != null) {
+                pb.directory(spawnWorkDir);
+                LOG.info("ACP server working directory: {0}", spawnWorkDir);
+            } else {
+                LOG.fine("ACP server inherits IDE working directory (no session bound yet)");
+            }
 
             this.serverProcess = pb.start();
 

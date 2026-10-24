@@ -255,6 +255,16 @@ public class ProcessManager implements ProcessControl {
         serverLifecycle.ensureStarted();
     }
 
+    /**
+     * Ensures the server serves sessions from {@code workDir}: starts it bound
+     * to the directory, restarts it when bound to a different one, and does
+     * nothing when already bound to it. A {@code null} or missing directory
+     * only starts an unbound server.
+     */
+    public synchronized void ensureStartedIn(File workDir) {
+        serverLifecycle.ensureStartedIn(workDir);
+    }
+
     @Override
     public void shutdown() {
         if (serverLifecycle.isClosing()) {
