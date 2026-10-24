@@ -32,21 +32,23 @@ import javax.swing.Timer;
 
 /**
  * Adds a "Locate in System" item to the right-click (context) menu of the IDE's
- * git "Show Changes" window ({@code GitVersioningTopComponent}), covering both
- * the table view and the package tree view. Activating the item opens the selected
- * file(s)' parent directory (or the directory itself when the selection is a folder)
- * in the OS file manager.
+ * git and Mercurial "Show Changes" windows ({@code GitVersioningTopComponent},
+ * {@code HgVersioningTopComponent}), covering both the table view and the
+ * git package tree view. Activating the item opens the selected file(s)' parent
+ * directory (or the directory itself when the selection is a folder) in the OS
+ * file manager.
  *
- * <p>The git UI's popup is constructed dynamically by
- * {@code org.netbeans.modules.git.ui.status.VersioningPanelController#getPopupFor}
- * with no layer/SPI extension point, and the IDE module cannot be modified. This
+ * <p>The versioning UIs' popups are constructed dynamically with no
+ * layer/SPI extension point, and the IDE modules cannot be modified. This
  * therefore follows the {@link ShowHistoryRefresh}/{@code InspectorContextMenu}
  * runtime-hook pattern, but instead of patching a component tree it listens for
  * popup clicks and injects the menu item into the popup right after the IDE builds
  * and shows it. Selection is recovered with public API where possible
- * ({@link ExplorerManager.Provider} ancestors in tree mode, {@code node.getLookup()}
- * lookups) and reflection only for module-internal classes (the status table model).
- * Gated at startup on the plugin's "Enable View File History" option.</p>
+ * ({@link ExplorerManager.Provider} ancestors in tree mode, activated nodes in
+ * Mercurial, {@code node.getLookup()} lookups) and reflection only for
+ * module-internal/package-private types (the git status table model and
+ * Mercurial's {@code SyncFileNode.getFile()}). Gated at startup on the plugin's
+ * "Enable View File History" option.</p>
  */
 @OnStart
 public final class ShowChangesLocateHook implements Runnable, AWTEventListener {
@@ -54,12 +56,15 @@ public final class ShowChangesLocateHook implements Runnable, AWTEventListener {
     private static final Logger LOG = Logger.from(ShowChangesLocateHook.class);
 
     /**
-     * Fully-qualified name of the Show Changes window; used to scope the hook.
+     * Fully-qualified names of the Show Changes windows; used to scope the hook.
      * Matched by name instead of a compile-time dependency because the plugin's
-     * pom does not depend on the git UI module (same approach as ShowHistoryRefresh).
+     * pom does not depend on the git/Mercurial UI modules (same approach as
+     * ShowHistoryRefresh).
      */
-    private static final String GIT_VERSIONING_TC_CLASS // NOI18N
-            = "org.netbeans.modules.git.ui.status.GitVersioningTopComponent"; // NOI18N
+    private static final String[] SHOW_CHANGES_TC_CLASSES = { // NOI18N
+        "org.netbeans.modules.git.ui.status.GitVersioningTopComponent", // NOI18N
+        "org.netbeans.modules.mercurial.ui.status.HgVersioningTopComponent", // NOI18N
+    };
     /** Class of the module-internal table model used by the Show Changes table view. */
     private static final String STATUS_MODEL_CLASS // NOI18N
             = "org.netbeans.modules.versioning.util.status.VCSStatusTableModel"; // NOI18N
@@ -112,7 +117,7 @@ public final class ShowChangesLocateHook implements Runnable, AWTEventListener {
         // every open window hierarchy for up to PROBE_MAX_TICKS before giving up.
         if (event instanceof MouseEvent mouseEvent && (mouseEvent.isPopupTrigger()
                 || SwingUtilities.isRightMouseButton(mouseEvent))
-                && insideGitShowChanges(mouseEvent.getComponent())) {
+                && matchesShowChangesWindow(mouseEvent.getComponent())) {
             probeTicks = 0;
             probe.restart();
         }
@@ -129,11 +134,11 @@ public final class ShowChangesLocateHook implements Runnable, AWTEventListener {
         }
         JPopupMenu popup = findShownPopup();
         if (popup == null) {
-            LOG.fine("probe: no git Show Changes popup on screen yet"); // NOI18N
+            LOG.fine("probe: no Show Changes popup on screen yet"); // NOI18N
             return;
         }
         probe.stop();
-        LOG.fine("probe: injecting Locate in System into git Show Changes popup"); // NOI18N
+        LOG.fine("probe: injecting Locate in System into Show Changes popup"); // NOI18N
         List<File> files = resolveSelection((JTable) popup.getInvoker());
         if (files.isEmpty()) {
             LOG.fine("probe: selection could not be resolved; no item added"); // NOI18N
@@ -151,7 +156,7 @@ public final class ShowChangesLocateHook implements Runnable, AWTEventListener {
     }
 
     /**
-     * Finds the on-screen popup of the git Show Changes window at probe time.
+     * Finds the on-screen popup of the git/Mercurial Show Changes window at probe time.
      * Primary source is the {@link MenuSelectionManager} selection path — which
      * only lists the popup after one of its items has been armed, so if the
      * path is empty (no hover/selection yet) or the popup is not there, every
@@ -191,7 +196,7 @@ public final class ShowChangesLocateHook implements Runnable, AWTEventListener {
         return null;
     }
 
-    /** A popup qualifies when its invoker is a row-table of the git Show Changes window. */
+    /** A popup qualifies when its invoker is a row-table of a git/Mercurial Show Changes window. */
     private static boolean accepts(JPopupMenu popup) {
         if (popup.getClientProperty(CLIENT_PROP_INJECTED) != null) {
             return false;
@@ -199,14 +204,19 @@ public final class ShowChangesLocateHook implements Runnable, AWTEventListener {
         if (!(popup.getInvoker() instanceof JTable table)) {
             return false; // table and tree views both present rows in JTable-like widgets
         }
-        return insideGitShowChanges(table);
+        return matchesShowChangesWindow(table);
     }
 
-    /** @return whether any ancestor of the given component is the git Show Changes window. */
-    private static boolean insideGitShowChanges(Component component) {
+    /** @return whether any ancestor of the given component is a git/Mercurial Show Changes window. */
+    private static boolean matchesShowChangesWindow(Component component) {
         for (Component c = component; c != null; c = c.getParent()) {
-            if (c instanceof TopComponent && classNameMatches(c, GIT_VERSIONING_TC_CLASS)) {
-                return true;
+            if (!(c instanceof TopComponent)) {
+                continue;
+            }
+            for (String windowClass : SHOW_CHANGES_TC_CLASSES) {
+                if (classNameMatches(c, windowClass)) {
+                    return true;
+                }
             }
         }
         return false;
@@ -217,22 +227,70 @@ public final class ShowChangesLocateHook implements Runnable, AWTEventListener {
      * the selection as {@link Node}s and each node's {@code Lookup} exposes the {@link File}.
      * Table mode: the ETable's model is the module-internal {@code VCSStatusTableModel}
      * whose {@code getNode(int)}/{@link #fileOf} pair yields the selected files.
+     * Mercurial populates neither: its table selection is published as the window's
+     * activated nodes, which is the last fallback.
      */
     private static List<File> resolveSelection(JTable table) {
         for (Component c = table; c != null; c = c.getParent()) {
             if (c instanceof ExplorerManager.Provider provider) {
-                Node[] nodes = provider.getExplorerManager().getSelectedNodes();
-                List<File> files = new ArrayList<>(nodes.length);
-                for (Node node : nodes) {
-                    File file = node.getLookup().lookup(File.class);
-                    if (file != null) {
-                        files.add(file);
-                    }
+                List<File> files = filesOf(provider.getExplorerManager().getSelectedNodes());
+                if (!files.isEmpty()) {
+                    return files;
                 }
-                return files;
+                // Mercurial's VersioningPanel exposes a manager it never populates;
+                // fall through to the model / activated-node sources.
+                break;
             }
         }
-        return filesFromTableModel(table, table.getModel());
+        List<File> files = filesFromTableModel(table, table.getModel());
+        return files.isEmpty() ? filesOf(activatedNodes(table)) : files;
+    }
+
+    /** Maps nodes to files via their Lookup, then a public {@code getFile()} accessor. */
+    static List<File> filesOf(Node[] nodes) {
+        if (nodes == null) {
+            return Collections.emptyList();
+        }
+        List<File> files = new ArrayList<>(nodes.length);
+        for (Node node : nodes) {
+            File file = fileOf(node);
+            if (file != null) {
+                files.add(file);
+            }
+        }
+        return files;
+    }
+
+    /**
+     * Mercurial's {@code SyncFileNode} exposes its file only through a public
+     * {@code getFile()} method; the class and method are public, so no
+     * {@code setAccessible} is needed across the module boundary.
+     */
+    static File fileOf(Node node) {
+        File file = node.getLookup().lookup(File.class);
+        if (file != null) {
+            return file;
+        }
+        try {
+            Object value = node.getClass().getMethod("getFile").invoke(node); // NOI18N
+            return value instanceof File f ? f : null;
+        } catch (NoSuchMethodException ex) {
+            return null;
+        } catch (ReflectiveOperationException | LinkageError | RuntimeException ex) {
+            LOG.fine("Could not read the file of a Show Changes row: {0}", ex); // NOI18N
+            return null;
+        }
+    }
+
+    /** @return the activated nodes of the enclosing window (empty when there is none). */
+    private static Node[] activatedNodes(Component component) {
+        for (Component c = component; c != null; c = c.getParent()) {
+            if (c instanceof TopComponent tc) {
+                Node[] nodes = tc.getActivatedNodes();
+                return nodes != null ? nodes : new Node[0];
+            }
+        }
+        return new Node[0];
     }
 
     private static List<File> filesFromTableModel(JTable table, Object model) {

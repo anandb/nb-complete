@@ -21,25 +21,38 @@ import javax.swing.JToolBar;
 import javax.swing.SwingUtilities;
 
 /**
- * Adds a refresh button to the IDE's git "Show History" window
- * ({@code git.SearchHistoryTopComponent}), right next to the "Show All Files"
- * checkbox in its toolbar. Clicking it re-runs the history search — a fresh
- * {@code git log} against the same criteria — so commits made since the
- * window was opened appear without closing and reopening it.
+ * Adds a refresh button to the IDE's git and Mercurial "Show History" windows,
+ * right next to the file-info checkbox in their toolbars. Clicking it re-runs
+ * the history search — a fresh {@code git log}/{@code hg log} against the same
+ * criteria — so commits made since the window was opened appear without
+ * closing and reopening it.
  *
- * <p>The IDE module cannot be modified, so this follows the
+ * <p>The IDE modules cannot be modified, so this follows the
  * {@link TestResultsContextMenu}/{@link InspectorContextMenu} runtime-hook
  * pattern: a {@code TopComponent.Registry} listener watches for the window
  * and patches its already-built component tree. Gated at startup on the
  * plugin's "Enable View File History" option.</p>
+ *
+ * <p>The Mercurial history window is a legacy {@code TopComponent} without a
+ * {@code @TopComponent.Description}, so its window is matched by class name
+ * in addition to the git window's preferred ID. Both search panels are forks
+ * with the same shape: package-private {@code executeSearch()} and a toolbar
+ * checkbox followed by the rest of the controls.</p>
  */
 @OnStart
 public class ShowHistoryRefresh implements Runnable, PropertyChangeListener {
 
-    /** preferredID of the git "Show History" window, from its @TopComponent.Description. */
-    private static final String HISTORY_TC_ID = "Git.SearchHistoryTopComponent"; // NOI18N
-    private static final String SEARCH_PANEL_CLASS_NAME =
-            "org.netbeans.modules.git.ui.history.SearchHistoryPanel"; // NOI18N
+    /** preferredIDs of git history windows, from their @TopComponent.Description. */
+    private static final Set<String> HISTORY_TC_IDS =
+            Set.of("Git.SearchHistoryTopComponent"); // NOI18N
+    /** Window classes matched by name; Mercurial's legacy TC has no Description annotation. */
+    private static final Set<String> HISTORY_TC_CLASS_NAMES = Set.of(
+            "org.netbeans.modules.git.ui.history.SearchHistoryTopComponent", // NOI18N
+            "org.netbeans.modules.mercurial.ui.log.SearchHistoryTopComponent"); // NOI18N
+    /** The git and Mercurial search panels (Mercurial's is a fork of git's). */
+    private static final Set<String> SEARCH_PANEL_CLASS_NAMES = Set.of(
+            "org.netbeans.modules.git.ui.history.SearchHistoryPanel", // NOI18N
+            "org.netbeans.modules.mercurial.ui.log.SearchHistoryPanel"); // NOI18N
     private static final String LINK_BUTTON_CLASS_NAME =
             "org.netbeans.modules.versioning.history.LinkButton"; // NOI18N
 
@@ -82,10 +95,23 @@ public class ShowHistoryRefresh implements Runnable, PropertyChangeListener {
         // WindowManager.findTopComponent) means nothing is force-created.
         for (TopComponent tc : TopComponent.getRegistry().getOpened()) {
             TopComponent.Description desc = tc.getClass().getAnnotation(TopComponent.Description.class);
-            if (desc != null && HISTORY_TC_ID.equals(desc.preferredID())) {
+            if (matchesHistoryWindow(tc.getClass().getName(),
+                    desc != null ? desc.preferredID() : null)) {
                 patch(tc);
             }
         }
+    }
+
+    /**
+     * @param windowClassName concrete {@code TopComponent} class name
+     * @param preferredId     the window's {@code @TopComponent.Description} id, or {@code null}
+     * @return whether the window is the git or Mercurial Show History window
+     */
+    static boolean matchesHistoryWindow(String windowClassName, String preferredId) {
+        if (preferredId != null && HISTORY_TC_IDS.contains(preferredId)) {
+            return true;
+        }
+        return HISTORY_TC_CLASS_NAMES.contains(windowClassName);
     }
 
     static void patch(TopComponent tc) {
@@ -97,10 +123,10 @@ public class ShowHistoryRefresh implements Runnable, PropertyChangeListener {
     }
 
     /**
-     * Inserts the refresh button into the panel's toolbar, right after the
-     * Show All Files checkbox. Idempotent: already-patched toolbars are
-     * skipped (weakly tracked, so a closed and reopened window is patched
-     * again into its fresh toolbar).
+     * Inserts the refresh button into the panel's toolbar, right after its
+     * checkbox ("Show All Files" in git, file-info in Mercurial). Idempotent:
+     * already-patched toolbars are skipped (weakly tracked, so a closed and
+     * reopened window is patched again into its fresh toolbar).
      */
     static void injectToolbar(Component searchPanel, JToolBar toolbar) {
         if (toolbar == null || !INJECTED.add(toolbar)) {
@@ -132,18 +158,22 @@ public class ShowHistoryRefresh implements Runnable, PropertyChangeListener {
         return null;
     }
 
-    /** Depth-first search for the git module's SearchHistoryPanel component. */
+    /** Depth-first search for the git or Mercurial SearchHistoryPanel component. */
     static Component findSearchHistoryPanel(Container container) {
-        return findByName(container, SEARCH_PANEL_CLASS_NAME);
+        return findByName(container, SEARCH_PANEL_CLASS_NAMES);
     }
 
     static Component findByName(Container container, String className) {
-        if (componentIs(container, className)) {
+        return findByName(container, Set.of(className));
+    }
+
+    static Component findByName(Container container, Set<String> classNames) {
+        if (componentIs(container, classNames)) {
             return container;
         }
         for (Component child : container.getComponents()) {
             if (child instanceof Container) {
-                Component found = findByName((Container) child, className);
+                Component found = findByName((Container) child, classNames);
                 if (found != null) {
                     return found;
                 }
@@ -167,28 +197,32 @@ public class ShowHistoryRefresh implements Runnable, PropertyChangeListener {
         return null;
     }
 
-    private static boolean componentIs(Component c, String className) {
+    private static boolean componentIs(Component c, Set<String> classNames) {
         for (Class<?> k = c.getClass(); k != null; k = k.getSuperclass()) {
-            if (className.equals(k.getName())) {
+            if (classNames.contains(k.getName())) {
                 return true;
             }
         }
         return false;
     }
 
+    private static boolean componentIs(Component c, String className) {
+        return componentIs(c, Set.of(className));
+    }
+
     /**
      * Re-runs the current history search. The panel's package-private
      * {@code executeSearch()} is the same code path the IDE's own Search
-     * button uses (fresh git log, same criteria); reflection reaches it
-     * without a plugin dependency on the git module. If reflection is
-     * blocked (JPMS), fall back to clicking the Search button itself.
+     * button uses (fresh git/hg log, same criteria); reflection reaches it
+     * without a plugin dependency on the versioning modules. If reflection
+     * is blocked (JPMS), fall back to clicking the Search button itself.
      */
     static void runSearch(Component searchPanel) {
         if (searchPanel == null) {
             return;
         }
         for (Class<?> k = searchPanel.getClass(); k != null; k = k.getSuperclass()) {
-            if (!SEARCH_PANEL_CLASS_NAME.equals(k.getName())) {
+            if (!SEARCH_PANEL_CLASS_NAMES.contains(k.getName())) {
                 continue;
             }
             try {
@@ -207,12 +241,18 @@ public class ShowHistoryRefresh implements Runnable, PropertyChangeListener {
     }
 
     /**
-     * The Search button is the only plain {@link JButton} inside the panel
-     * that is neither in the toolbar (the next/prev jump buttons) nor a
-     * LinkButton (the versioning module's expand-criteria arrow extends
-     * JButton). Matched structurally, no bundle strings needed.
+     * The Search button ({@code bSearch}) is a direct child of the panel in
+     * both git and Mercurial: their {@code GroupLayout} adds every constrained
+     * component to the host. Checking direct children first keeps nested
+     * buttons — the criteria panel's branch selector in Mercurial — from ever
+     * being mistaken for it. The deep scan stays as a fallback.
      */
     static JButton findSearchButton(Container searchPanel) {
+        for (Component child : searchPanel.getComponents()) {
+            if (child instanceof JButton && !componentIs(child, LINK_BUTTON_CLASS_NAME)) {
+                return (JButton) child;
+            }
+        }
         return findButtonOutsideToolBar(searchPanel, null);
     }
 

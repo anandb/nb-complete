@@ -12,6 +12,7 @@ import javax.swing.JPanel;
 import javax.swing.JToolBar;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -19,9 +20,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Structural tests for the Show History refresh-button injection. The IDE git
- * module's SearchHistoryPanel is absent from the test classpath, so a
- * stand-in panel tree with the same layout is used (toolbar in the panel,
- * Show All Files checkbox + Search button in the toolbar's position).
+ * and Mercurial modules' SearchHistoryPanels are absent from the test classpath,
+ * so a stand-in panel tree with the same layout is used (toolbar in the panel,
+ * file-info checkbox + Search button in the toolbar's position).
  */
 class ShowHistoryRefreshTest {
 
@@ -103,6 +104,31 @@ class ShowHistoryRefreshTest {
         fresh.remove(fresh.searchButton); // tree holds only the toolbar subtree
         assertNull(ShowHistoryRefresh.findSearchButton(fresh),
                 "toolbar jump buttons are not treated as the Search button");
+    }
+
+    @Test
+    void nestedPanelButtonIsNotMistakenForSearchButton() {
+        FakeHistoryPanel panel = new FakeHistoryPanel();
+        JPanel criteria = new JPanel();
+        JButton branchSelector = new JButton("Select Branch");
+        criteria.add(branchSelector);
+        panel.add(criteria, 0); // criteria panel precedes the direct Search button
+        assertSame(panel.searchButton, ShowHistoryRefresh.findSearchButton(panel),
+                "only a direct child can be the Search button");
+    }
+
+    @Test
+    void matchesGitAndMercurialHistoryWindows() {
+        String hgTc = "org.netbeans.modules.mercurial.ui.log.SearchHistoryTopComponent";
+        assertTrue(ShowHistoryRefresh.matchesHistoryWindow(hgTc, null),
+                "Mercurial's legacy window has no Description annotation");
+        assertTrue(ShowHistoryRefresh.matchesHistoryWindow(
+                "org.netbeans.modules.git.ui.history.SearchHistoryTopComponent",
+                "Git.SearchHistoryTopComponent"), "git window matches by id");
+        assertTrue(ShowHistoryRefresh.matchesHistoryWindow("some.OtherWindow",
+                "Git.SearchHistoryTopComponent"), "id match does not require a known class");
+        assertFalse(ShowHistoryRefresh.matchesHistoryWindow("some.OtherWindow", null),
+                "unrelated windows are ignored");
     }
 
     @Test
