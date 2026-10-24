@@ -46,7 +46,7 @@ public class ShowHistoryRefresh implements Runnable, PropertyChangeListener {
     private static final Set<String> HISTORY_TC_IDS =
             Set.of("Git.SearchHistoryTopComponent"); // NOI18N
     /** Window classes matched by name; Mercurial's legacy TC has no Description annotation. */
-    private static final Set<String> HISTORY_TC_CLASS_NAMES = Set.of(
+    static final Set<String> HISTORY_TC_CLASS_NAMES = Set.of(
             "org.netbeans.modules.git.ui.history.SearchHistoryTopComponent", // NOI18N
             "org.netbeans.modules.mercurial.ui.log.SearchHistoryTopComponent"); // NOI18N
     /** The git and Mercurial search panels (Mercurial's is a fork of git's). */
@@ -112,6 +112,16 @@ public class ShowHistoryRefresh implements Runnable, PropertyChangeListener {
             return true;
         }
         return HISTORY_TC_CLASS_NAMES.contains(windowClassName);
+    }
+
+    /** @return whether the class (or a superclass) is a git/Mercurial Show History window. */
+    static boolean isHistoryWindowClass(Class<?> type) {
+        for (Class<?> k = type; k != null; k = k.getSuperclass()) {
+            if (HISTORY_TC_CLASS_NAMES.contains(k.getName())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     static void patch(TopComponent tc) {
