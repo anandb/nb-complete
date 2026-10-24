@@ -17,8 +17,11 @@ permissions:
 
 env:
   # docs/stitch.py compiles target/User Guide.twee with tweego. The runner image
-  # ships python3 but not tweego, so pin and install it below.
+  # ships python3 but not tweego, so pin and install it below. The hash pins the
+  # exact archive this build trusts (the release ships no checksum file):
+  # sha256 of tweego-2.1.1-linux-x64.zip from the v2.1.1 GitHub release.
   TWEEGO_VERSION: '2.1.1'
+  TWEEGO_SHA256: '2ed11c3aa66c88ec5382b51061c7782152632b88916777428ab57a66feb7e5aa'
 
 jobs:
   release:
@@ -47,6 +50,7 @@ jobs:
           mkdir -p "$dest"
           curl -fsSL -o /tmp/tweego.zip \
             "https://github.com/tmedwards/tweego/releases/download/v${TWEEGO_VERSION}/tweego-${TWEEGO_VERSION}-linux-x64.zip"
+          echo "${TWEEGO_SHA256}  /tmp/tweego.zip" | sha256sum -c -
           unzip -q -o /tmp/tweego.zip -d "$dest"
           chmod +x "$dest/tweego"          # the release archive stores no exec bit
           echo "$dest" >> "$GITHUB_PATH"   # stitch.py resolves tweego from PATH

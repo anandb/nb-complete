@@ -7,18 +7,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.TextNode;
 
 import java.io.IOException;
-import java.io.PipedInputStream;
-import java.io.PipedOutputStream;
 import java.lang.reflect.Field;
 import java.util.UUID;
 
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
@@ -36,24 +31,6 @@ class AcpProtocolClientTest {
     private MockAcpServer server;
     private AcpProtocolClient client;
     private final ObjectMapper mapper = MapperSupplier.get();
-
-    @BeforeAll
-    static void checkEnvironment() {
-        // Verify PipedStream is available (should always be true, but safety check)
-        try {
-            PipedInputStream testIn = new PipedInputStream();
-            PipedOutputStream testOut = new PipedOutputStream(testIn);
-            testIn.close();
-            testOut.close();
-        } catch (Exception e) {
-            assumeTrue(false, "PipedStreams not available: " + e.getMessage());
-        }
-        // Ensure we have enough memory for large payload tests
-        Runtime runtime = Runtime.getRuntime();
-        long freeMemory = runtime.freeMemory() / (1024 * 1024);
-        assumeTrue(freeMemory > 50,
-                "Need at least 50MB free memory for protocol tests");
-    }
 
     @BeforeEach
     void setUp() throws IOException {

@@ -1221,7 +1221,7 @@ public class SessionManager implements SessionQuery, SessionControl {
         }
 
         // Notify UI that preamble is being posted
-        new ArrayList<>(listeners).forEach(SessionListener::onPreambleStarted);
+        new ArrayList<>(listeners).forEach(l -> l.onPreambleStarted(sessionId));
 
         // Send chunks sequentially, waiting for each to complete
         sendPreambleChunks(sessionId, chunks, 0);

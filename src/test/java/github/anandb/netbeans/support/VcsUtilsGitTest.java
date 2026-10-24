@@ -2,6 +2,7 @@ package github.anandb.netbeans.support;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
@@ -158,7 +159,7 @@ class VcsUtilsGitTest {
 
         String first = VcsUtils.backupUncommittedChanges(
                 VcsUtils.findVcsInfo(repo.getAbsolutePath()));
-        assumeTrue(first != null, "first backup should stash something");
+        assertNotNull(first, "first backup should stash something");
 
         // No new changes: the same working tree is already stored, so
         // the duplicate-skip must return null instead of re-stashing.

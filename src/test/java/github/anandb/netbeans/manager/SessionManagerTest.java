@@ -661,16 +661,12 @@ class SessionManagerTest {
     }
 
     @Test
-    void testDecodeHtmlEntities() {
-        try {
-            Method m = SessionManager.class
-                    .getDeclaredMethod("decodeHtmlEntities", String.class);
-            m.setAccessible(true);
-            assertEquals("a & b", m.invoke(sessionManager, "a &amp; b"));
-            assertEquals("\"hi\"", m.invoke(sessionManager, "&quot;hi&quot;"));
-        } catch (Exception e) {
-            // skip
-        }
+    void testDecodeHtmlEntities() throws Exception {
+        Method m = SessionManager.class
+                .getDeclaredMethod("decodeHtmlEntities", String.class);
+        m.setAccessible(true);
+        assertEquals("a & b", m.invoke(sessionManager, "a &amp; b"));
+        assertEquals("\"hi\"", m.invoke(sessionManager, "&quot;hi&quot;"));
     }
 
     @Test

@@ -2,9 +2,9 @@ package github.anandb.netbeans.support;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.File;
 import java.nio.file.Path;
@@ -177,7 +177,7 @@ class VcsUtilsHgTest {
         // second must succeed without a duplicate-shelf error.
         java.nio.file.Files.writeString(tracked.toPath(), "one\ntwo\n");
         String first = VcsUtils.backupUncommittedChanges(VcsUtils.findVcsInfo(repo.getAbsolutePath()));
-        assumeTrue(first != null, "first backup should shelve something");
+        assertNotNull(first, "first backup should shelve something");
         java.nio.file.Files.writeString(tracked.toPath(), "one\ntwo\nthree\n");
         String second = VcsUtils.backupUncommittedChanges(VcsUtils.findVcsInfo(repo.getAbsolutePath()));
 

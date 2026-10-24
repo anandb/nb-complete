@@ -588,9 +588,16 @@ public class SessionLifecycleHandler implements SessionListener {
     }
 
     @Override
-    public void onPreambleStarted() {
+    public void onPreambleStarted(String sessionId) {
         SwingUtilities.invokeLater(() -> {
-            chatPanel.addMessage(ProcessedMessage.createInfo("Posting preamble..."));
+            // Same race guard as displayMessage: never post the marker into a
+            // session the user has already switched away from.
+            String currentId = sessionService.get().getCurrentSessionId();
+            if (sessionId != null && !sessionId.equals(currentId)) {
+                return;
+            }
+            chatPanel.addMessage(ProcessedMessage.createInfo(
+                    NbBundle.getMessage(SessionLifecycleHandler.class, "INFO_PostingPreamble")));
         });
     }
 

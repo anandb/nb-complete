@@ -35,8 +35,11 @@ public interface SessionListener {
     default void onPreambleDone() {}
 
     /** Fired when the preamble starts being posted. UI should show a
-     *  bubble indicating that the preamble is being sent. */
-    default void onPreambleStarted() {}
+     *  bubble indicating that the preamble is being sent.
+     * @param sessionId the session posting it; consumers that render into the
+     *                  thread must re-check it on the EDT, since the user can
+     *                  switch sessions before the callback runs. */
+    default void onPreambleStarted(String sessionId) {}
 
     /** Fired when a new session was created but no startup prompt was sent
      * (preamble disabled or empty). Only called for new sessions — never on

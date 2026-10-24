@@ -366,6 +366,30 @@ class SessionLifecycleHandlerTest {
     }
 
     @Test
+    void preambleStartedPostsBubbleForCurrentSession() throws Exception {
+        setUpMocks(false);
+        stubCurrent("sess-1");
+        SessionLifecycleHandler handler = newHandler();
+
+        handler.onPreambleStarted("sess-1");
+        flushEdt();
+
+        verify(chatPanel).addMessage(any(ProcessedMessage.class));
+    }
+
+    @Test
+    void preambleStartedDroppedWhenUserSwitchedSessions() throws Exception {
+        setUpMocks(false);
+        stubCurrent("sess-2");
+        SessionLifecycleHandler handler = newHandler();
+
+        handler.onPreambleStarted("sess-1");
+        flushEdt();
+
+        verify(chatPanel, never()).addMessage(any(ProcessedMessage.class));
+    }
+
+    @Test
     void preambleSkippedShowsMarkerForCurrentSession() throws Exception {
         setUpMocks(false);
         stubCurrent("sess-1");

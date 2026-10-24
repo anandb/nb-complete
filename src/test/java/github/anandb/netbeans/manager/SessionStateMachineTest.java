@@ -2,8 +2,8 @@ package github.anandb.netbeans.manager;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -11,7 +11,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -28,18 +27,6 @@ import github.anandb.netbeans.model.SessionState;
 class SessionStateMachineTest {
 
     private SessionStateMachine stateMachine;
-
-    @BeforeAll
-    static void checkEnvironment() {
-        // Ensure we have enough threads for concurrent tests
-        assumeTrue(Runtime.getRuntime().availableProcessors() >= 1,
-                "Need at least 1 CPU core for state machine tests");
-        // Ensure we have enough memory for concurrent tests
-        Runtime runtime = Runtime.getRuntime();
-        long freeMemory = runtime.freeMemory() / (1024 * 1024);
-        assumeTrue(freeMemory > 10,
-                "Need at least 10MB free memory for state machine tests");
-    }
 
     @BeforeEach
     void setUp() {
@@ -230,6 +217,7 @@ class SessionStateMachineTest {
         CountDownLatch startLatch = new CountDownLatch(1);
         CountDownLatch doneLatch = new CountDownLatch(10);
         AtomicReference<SessionState> finalState = new AtomicReference<>();
+        AtomicReference<Throwable> workerFailure = new AtomicReference<>();
 
         for (int i = 0; i < 10; i++) {
             new Thread(() -> {
@@ -241,7 +229,10 @@ class SessionStateMachineTest {
                     stateMachine.transitionTo(SessionState.IDLE);
                     finalState.set(stateMachine.getState());
                 } catch (Exception e) {
-                    // Ignore
+                    // Keep the first failure and report it below: JUnit cannot see
+                    // an exception thrown on a worker thread, so swallowing it here
+                    // would let a broken transition look like a passing race test.
+                    workerFailure.compareAndSet(null, e);
                 } finally {
                     doneLatch.countDown();
                 }
@@ -250,6 +241,7 @@ class SessionStateMachineTest {
 
         startLatch.countDown();
         assertTrue(doneLatch.await(5, TimeUnit.SECONDS));
+        assertNull(workerFailure.get(), () -> "worker thread failed: " + workerFailure.get());
 
         // Final state should be IDLE (all threads completed the cycle)
         assertEquals(SessionState.IDLE, finalState.get());
