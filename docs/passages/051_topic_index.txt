@@ -69,6 +69,7 @@ This is a complete list of topics in this guide, use it to directly jump to that
 > [[Pick Your Harness]]
 > [[Picking an Agent, Model and Thinking Level]]
 > [[Pinned Messages]]
+> [[Plan Slideout]]
 > [[Post Install]]
 > [[Queuing Messages]]
 > [[Reloading a Session]]

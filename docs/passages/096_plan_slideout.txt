@@ -1,0 +1,19 @@
+:: Plan Slideout {"position":"1550,300","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Plan Slideout</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+When the agent emits a plan — its step list for the task in hand — the steps appear in a slideout docked at the bottom of the message thread, above the input box and below the chat. It borrows height from the thread only, so the input area never shrinks.
+
+**Collapsed** the header shows the first unfinished step, its status icon and a `(done/total)` counter. **Expanded** it shows the full list under a `Plan (done/total)` title, up to eight rows at a time; a longer plan scrolls inside the slideout. Rows carry a pending, in-progress or completed icon: the active step is bold in the accent colour, completed steps are muted.
+
+The slideout opens automatically when a plan is first created or when the agent adds more steps. An update that keeps the same number of steps preserves whatever you last chose, so collapsing it does not make it reopen on every progress update. Starting or loading a session clears it.
+
+Click anywhere on the header — the title, the chevron, the counter or the progress bar — to collapse or expand it.
+
+> [[Thinking and Tool Responses]]
+> [[Pinned Messages]]
+> [[Chat Features]]

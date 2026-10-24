@@ -24,8 +24,11 @@ The plugin integrates deeply with NetBeans beyond just the chat panel to boost y
     *   **Sort Lines Ascending / Descending:** Select multiple lines, right-click, and choose this option to alphabetically sort them.
     *   **Minify JSON:** Right-click any JSON content to quickly strip out all formatting whitespace.
     *   **Toggle Annotations:** Right-click in the editor and choose **Toggle Annotations** to toggle the versioning system's blame annotations for the file.
-    *   **View File History:** Right-click in the editor and choose **View File History** to open the versioning system's history view for the file.
+    *   **View File History:** Right-click in the editor and choose **View File History** to open the versioning system's history view for the file. For git and Mercurial, the Show History window gains a **Refresh** button that re-runs the search and **Copy Message** on commit rows, and the Show Changes window gains **Locate in System** to open the selected file's folder in your file manager.
     *   Each of these context menu items can be enabled or disabled independently under `Tools > Options > BeanBot`.
+<div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0.2em;">Action Items Copy</div>
+    *   Adds a copy button to NetBeans' Action Items toolbar that copies every task in the current scope and filters — including tasks hidden inside collapsed groups — as a plain-text list, with file and location details when available.
+    *   Can be enabled or disabled under `Tools > Options > BeanBot` (**Enable Copy All in Action Items**).
 <div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0.2em;">Jump to File</div>
     *   A modeless file search dialog triggered via `Ctrl + Alt + J` (or `Cmd + Option + J` on Mac) that lets you search all open projects by filename prefix, path substring, or glob patterns.
     *   Supports quick keyboard navigation with arrow keys and `Enter` to open.
