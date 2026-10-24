@@ -7,14 +7,9 @@ import org.openide.windows.TopComponent;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.PluginSettings;
 
-import java.awt.AWTEvent;
 import java.awt.Component;
-import java.awt.Container;
 import java.awt.Toolkit;
-import java.awt.Window;
 import java.awt.datatransfer.StringSelection;
-import java.awt.event.AWTEventListener;
-import java.awt.event.MouseEvent;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
@@ -23,10 +18,7 @@ import java.util.List;
 import javax.swing.JList;
 import javax.swing.JMenuItem;
 import javax.swing.JPopupMenu;
-import javax.swing.MenuElement;
-import javax.swing.MenuSelectionManager;
 import javax.swing.SwingUtilities;
-import javax.swing.Timer;
 
 /**
  * Adds a "Copy Message" item to the right-click menu of the commit rows in the
@@ -45,26 +37,18 @@ import javax.swing.Timer;
  * Gated at startup on the plugin's "Enable View File History" option.</p>
  */
 @OnStart
-public final class ShowHistoryCopyMessageHook implements Runnable, AWTEventListener {
+public final class ShowHistoryCopyMessageHook implements Runnable {
 
     private static final Logger LOG = Logger.from(ShowHistoryCopyMessageHook.class);
 
     /** Popup client property marking a popup as already injected (idempotency). */
     private static final String CLIENT_PROP_INJECTED = "beanbot.copyMessageInjected"; // NOI18N
 
-    /** Poll interval; the popup is typically up after the very first tick. */
-    private static final int PROBE_DELAY_MS = 40;
-    /** Ticks after a click before polling gives up (no popup opened, e.g. plain right-click). */
-    private static final int PROBE_MAX_TICKS = 25;
-
     /** The toolkit keeps AWT listeners via weak references; hold a strong one. */
     private static ShowHistoryCopyMessageHook instance;
 
-    /** Poll timer: right-click restarts it; it injects as soon as the popup shows. */
-    private Timer probe;
-
-    /** Ticks since the last popup-trigger click; caps the poll loop. */
-    private int probeTicks;
+    /** Popup-trigger hook; the field keeps it strongly reachable. */
+    private PopupProbe probe;
 
     @Override
     public void run() {
@@ -81,36 +65,14 @@ public final class ShowHistoryCopyMessageHook implements Runnable, AWTEventListe
     }
 
     private void register() {
-        probe = new Timer(PROBE_DELAY_MS, e -> injectIntoShownPopup());
-        Toolkit.getDefaultToolkit().addAWTEventListener(this, AWTEvent.MOUSE_EVENT_MASK);
+        probe = new PopupProbe("Show History", ShowHistoryCopyMessageHook::insideHistoryWindow,
+                ShowHistoryCopyMessageHook::accepts, ShowHistoryCopyMessageHook::injectFromPopup);
+        probe.start();
     }
 
-    @Override
-    public void eventDispatched(AWTEvent event) {
-        // Right-button press or release (popup trigger varies by platform/LAF).
-        // Coalesce: the timer is simply restarted, so an entire click produces one probe.
-        if (event instanceof MouseEvent mouseEvent && (mouseEvent.isPopupTrigger()
-                || SwingUtilities.isRightMouseButton(mouseEvent))
-                && insideHistoryWindow(mouseEvent.getComponent())) {
-            probeTicks = 0;
-            probe.restart();
-        }
-    }
-
-    /** Runs on the EDT via the poll timer. */
-    private void injectIntoShownPopup() {
-        if (++probeTicks > PROBE_MAX_TICKS) {
-            probe.stop(); // no qualifying popup opened; stop polling
-            return;
-        }
-        JPopupMenu popup = findShownPopup();
-        if (popup == null) {
-            LOG.fine("probe: no Show History popup on screen yet"); // NOI18N
-            return;
-        }
-        probe.stop();
-        List<String> messages = selectedMessages((JList<?>) popup.getInvoker());
-        inject(popup, messages);
+    /** Adds Copy Message to the history popup (runs with the popup on screen). */
+    private static void injectFromPopup(JPopupMenu popup) {
+        inject(popup, selectedMessages((JList<?>) popup.getInvoker()));
     }
 
     /**
@@ -224,44 +186,6 @@ public final class ShowHistoryCopyMessageHook implements Runnable, AWTEventListe
             // Headless test environments and a clipboard owned by another app both surface here
             LOG.warn("Could not copy the commit message: {0}", ex); // NOI18N
         }
-    }
-
-    /**
-     * Finds the on-screen popup of a Show History window at probe time. The
-     * primary source is the {@link MenuSelectionManager} selection path (only
-     * lists a popup after one of its items is armed); otherwise every open
-     * window hierarchy is walked for a showing popup.
-     */
-    private static JPopupMenu findShownPopup() {
-        MenuElement[] path = MenuSelectionManager.defaultManager().getSelectedPath();
-        for (MenuElement el : path) {
-            if (el instanceof JPopupMenu p && accepts(p)) {
-                return p;
-            }
-        }
-        for (Window w : Window.getWindows()) {
-            JPopupMenu popup = findShowingPopup(w);
-            if (popup != null && accepts(popup)) {
-                return popup;
-            }
-        }
-        return null;
-    }
-
-    /** @return the topmost showing JPopupMenu in the given component hierarchy, if any. */
-    private static JPopupMenu findShowingPopup(Component c) {
-        if (c instanceof JPopupMenu p && p.isShowing()) {
-            return p;
-        }
-        if (c instanceof Container container) {
-            for (Component child : container.getComponents()) {
-                JPopupMenu found = findShowingPopup(child);
-                if (found != null) {
-                    return found;
-                }
-            }
-        }
-        return null;
     }
 
     /** A popup qualifies when its invoker is the commit list of a Show History window. */

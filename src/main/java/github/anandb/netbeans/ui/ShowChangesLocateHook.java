@@ -8,13 +8,8 @@ import org.openide.windows.TopComponent;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.PluginSettings;
 
-import java.awt.AWTEvent;
 import java.awt.Component;
-import java.awt.Container;
 import java.awt.Desktop;
-import java.awt.Toolkit;
-import java.awt.event.AWTEventListener;
-import java.awt.event.MouseEvent;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Method;
@@ -25,10 +20,7 @@ import java.util.List;
 import javax.swing.JMenuItem;
 import javax.swing.JPopupMenu;
 import javax.swing.JTable;
-import javax.swing.MenuSelectionManager;
-import javax.swing.MenuElement;
 import javax.swing.SwingUtilities;
-import javax.swing.Timer;
 
 /**
  * Adds a "Locate in System" item to the right-click (context) menu of the IDE's
@@ -51,7 +43,7 @@ import javax.swing.Timer;
  * "Enable View File History" option.</p>
  */
 @OnStart
-public final class ShowChangesLocateHook implements Runnable, AWTEventListener {
+public final class ShowChangesLocateHook implements Runnable {
 
     private static final Logger LOG = Logger.from(ShowChangesLocateHook.class);
 
@@ -75,16 +67,11 @@ public final class ShowChangesLocateHook implements Runnable, AWTEventListener {
     /** Popup client property marking a popup as already injected (idempotency). */
     private static final String CLIENT_PROP_INJECTED = "beanbot.locateInSystemInjected"; // NOI18N
 
-    /** Poll interval; the popup is typically up after the very first tick. */
-    private static final int PROBE_DELAY_MS = 40;
-    /** Ticks after a click before polling gives up (no popup opened, e.g. plain right-click). */
-    private static final int PROBE_MAX_TICKS = 25;
-
     /** The toolkit keeps AWT listeners via weak references; hold a strong one. */
     private static ShowChangesLocateHook instance;
 
-    /** Poll timer: right-click restarts it; it injects as soon as the popup shows. */
-    private Timer probe;
+    /** Popup-trigger hook; the field keeps it strongly reachable. */
+    private PopupProbe probe;
 
     @Override
     public void run() {
@@ -103,42 +90,14 @@ public final class ShowChangesLocateHook implements Runnable, AWTEventListener {
     private void register() {
         // Repeats while the IDE is still assembling/showing the popup (its own path
         // runs through a request-processor + invokeLater); stops on first injection
-        // or after PROBE_MAX_TICKS, so a click costs at most about one second of scans.
-        probe = new Timer(PROBE_DELAY_MS, e -> injectIntoShownPopup());
-        Toolkit.getDefaultToolkit().addAWTEventListener(this, AWTEvent.MOUSE_EVENT_MASK);
+        // or after the probe's tick cap, so a click costs at most about one second of scans.
+        probe = new PopupProbe("Show Changes", ShowChangesLocateHook::matchesShowChangesWindow,
+                ShowChangesLocateHook::accepts, ShowChangesLocateHook::inject);
+        probe.start();
     }
 
-    @Override
-    public void eventDispatched(AWTEvent event) {
-        // Right-button press or release (popup trigger varies by platform/LAF).
-        // Coalesce: the timer is simply restarted, so an entire click produces one probe.
-        // Scope the click to the Show Changes window first: every right-click in the
-        // IDE reaches this listener, and an unscoped one would start a poll that walks
-        // every open window hierarchy for up to PROBE_MAX_TICKS before giving up.
-        if (event instanceof MouseEvent mouseEvent && (mouseEvent.isPopupTrigger()
-                || SwingUtilities.isRightMouseButton(mouseEvent))
-                && matchesShowChangesWindow(mouseEvent.getComponent())) {
-            probeTicks = 0;
-            probe.restart();
-        }
-    }
-
-    /** Ticks since the last popup-trigger click; caps the poll loop. */
-    private int probeTicks;
-
-    /** Runs on the EDT via the poll timer. */
-    private void injectIntoShownPopup() {
-        if (++probeTicks > PROBE_MAX_TICKS) {
-            probe.stop(); // no qualifying popup opened; stop polling
-            return;
-        }
-        JPopupMenu popup = findShownPopup();
-        if (popup == null) {
-            LOG.fine("probe: no Show Changes popup on screen yet"); // NOI18N
-            return;
-        }
-        probe.stop();
-        LOG.fine("probe: injecting Locate in System into Show Changes popup"); // NOI18N
+    /** Adds Locate in System to the Show Changes popup (runs with the popup on screen). */
+    private static void inject(JPopupMenu popup) {
         List<File> files = resolveSelection((JTable) popup.getInvoker());
         if (files.isEmpty()) {
             LOG.fine("probe: selection could not be resolved; no item added"); // NOI18N
@@ -153,47 +112,6 @@ public final class ShowChangesLocateHook implements Runnable, AWTEventListener {
         // the menu is already on screen; it must be repacked or the added item is cut off
         popup.pack();
         popup.repaint();
-    }
-
-    /**
-     * Finds the on-screen popup of the git/Mercurial Show Changes window at probe time.
-     * Primary source is the {@link MenuSelectionManager} selection path — which
-     * only lists the popup after one of its items has been armed, so if the
-     * path is empty (no hover/selection yet) or the popup is not there, every
-     * open top-level window hierarchy is walked for a showing JPopupMenu
-     * instead (lightweight popups live inside one of the open windows,
-     * heavyweight ones inside a Popup window).
-     */
-    private static JPopupMenu findShownPopup() {
-        MenuElement[] path = MenuSelectionManager.defaultManager().getSelectedPath();
-        for (MenuElement el : path) {
-            if (el instanceof JPopupMenu p && accepts(p)) {
-                return p;
-            }
-        }
-        for (java.awt.Window w : java.awt.Window.getWindows()) {
-            JPopupMenu popup = findShowingPopup(w);
-            if (popup != null && accepts(popup)) {
-                return popup;
-            }
-        }
-        return null;
-    }
-
-    /** @return the topmost showing JPopupMenu in the given component hierarchy, if any. */
-    private static JPopupMenu findShowingPopup(Component c) {
-        if (c instanceof JPopupMenu p && p.isShowing()) {
-            return p;
-        }
-        if (c instanceof Container container) {
-            for (Component child : container.getComponents()) {
-                JPopupMenu found = findShowingPopup(child);
-                if (found != null) {
-                    return found;
-                }
-            }
-        }
-        return null;
     }
 
     /** A popup qualifies when its invoker is a row-table of a git/Mercurial Show Changes window. */
