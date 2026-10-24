@@ -2,6 +2,8 @@ package github.anandb.netbeans.ui;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Component;
+import java.awt.Container;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Font;
@@ -81,14 +83,15 @@ public class PlanPanel extends JPanel {
         // BorderLayout lets the label take exactly the remaining width: its text
         // can then ellipsize without ever pushing the (n/n) bar out of the header.
         header.setLayout(new BorderLayout(4, 0));
-        header.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        header.addMouseListener(new MouseAdapter() {
+        MouseAdapter toggle = new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
                 expanded = !expanded;
                 setEntries(entries);
             }
-        });
+        };
+        header.addMouseListener(toggle);
+        header.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         headerLabel.setOpaque(false);
         badgeIcon.setOpaque(false);
         progressBar.setVisible(false);
@@ -107,6 +110,11 @@ public class PlanPanel extends JPanel {
         barSlot.add(progressBar);
         header.add(barSlot, BorderLayout.EAST);
         add(header);
+        // Mouse events go to the deepest component under the cursor, so the
+        // header panel's own listener never sees clicks on its children
+        // (label, icons, progress bar). Attach the same toggle to all of them;
+        // containers are traversed recursively.
+        wireToggleRecursively(header, toggle);
 
         rowsPanel.setOpaque(false);
         rowsPanel.setLayout(new BoxLayout(rowsPanel, BoxLayout.Y_AXIS));
@@ -125,10 +133,17 @@ public class PlanPanel extends JPanel {
      * sizing method — this runs from the session-update pipeline.
      */
     public void setEntries(List<PlanEntry> entries) {
+        List<PlanEntry> previous = this.entries;
         this.entries = entries == null ? List.of() : List.copyOf(entries);
         if (this.entries.isEmpty()) {
             clear();
             return;
+        }
+        // The slideout opens itself when a plan is created (first entries) or
+        // populated further (more steps than before); a same-size refresh
+        // preserves whatever the user last chose (toggle via the header).
+        if (previous.isEmpty() || this.entries.size() > previous.size()) {
+            expanded = true;
         }
         ColorTheme theme = ThemeManager.getCurrentTheme();
         Color headerBg = theme.tableHeaderBackground();
@@ -201,6 +216,19 @@ public class PlanPanel extends JPanel {
         revalidate();
         repaint();
         LOG.fine("Plan slideout updated: {0} entries, {1} done", total, done);
+    }
+
+    /**
+     * Attaches the header's toggle mouse listener to every component in the
+     * given container hierarchy (see the constructor call site for why).
+     */
+    private static void wireToggleRecursively(Component root, MouseAdapter toggle) {
+        root.addMouseListener(toggle);
+        if (root instanceof Container container) {
+            for (int i = 0; i < container.getComponentCount(); i++) {
+                wireToggleRecursively(container.getComponent(i), toggle);
+            }
+        }
     }
 
     /** Hides the slideout entirely and forgets the entries. */
