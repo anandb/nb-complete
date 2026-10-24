@@ -16,8 +16,11 @@
   `generate-resources`) needs `python3` + `tweego` (Harlowe 3) to produce
   `target/generated-guide/UserGuide.html`, which is packaged into the module jar. The antrun
   `<exec>` is `failonerror="false"`, so a missing tweego only warns and the jar ships without
-  the guide. CI installs a pinned tweego release in `.github/workflows/release.yml` and fails
-  the release when the generated HTML is absent — keep both steps if you edit that workflow.
+  the guide. CI installs a pinned tweego release in `.github/workflows/release.yml`, and the
+  `release` profile in `pom.xml` binds an antrun `verify-user-guide` check to the `verify`
+  phase: it fails the build (before `deploy` publishes anything) when
+  `target/generated-guide/UserGuide.html` is missing or is not stitched HTML. Keep the
+  install step if you edit the workflow — the check needs tweego to have produced the file.
 
 ## Architecture & UI
 - **ACP & JSON-RPC**: Compliant with ACP v1. Communication via `AcpProtocolClient`

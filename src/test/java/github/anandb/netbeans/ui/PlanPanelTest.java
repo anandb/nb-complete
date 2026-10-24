@@ -32,6 +32,87 @@ class PlanPanelTest {
                 new PlanEntry("low", "in-progress", "Analyze config"));
     }
 
+    @Test
+    void paintingANarrowSlideoutNeverDestroysTheFullTitle() {
+        PlanPanel panel = new PlanPanel();
+        panel.setEntries(sample());
+        JLabel label = headerLabel(panel);
+        String full = label.getText();
+        assertTrue(full.contains("Verify extension functionality"), "precondition: " + full);
+
+        // Narrow enough that the header title must be ellipsized on screen.
+        paintAt(panel, 260, 200);
+        assertTrue(label.getWidth() > 0,
+                "precondition: the label is laid out, width=" + label.getWidth());
+        assertEquals(full, label.getText(),
+                "ellipsizing is a paint-time decision; it must not overwrite the model text");
+        assertEquals(full, label.getToolTipText(), "tooltip keeps the full entry");
+
+        // Widening restores the whole title with no plan update in between.
+        paintAt(panel, 900, 200);
+        assertEquals(full, label.getText());
+
+        // The width comes from the layout now (preferred width is zero), so verify the
+        // expanded rows still span the viewport and their labels span the row.
+        for (var listener : ((Container) panel.getComponent(0)).getMouseListeners()) {
+            listener.mouseClicked(null);
+        }
+        java.awt.image.BufferedImage painted = paintAt(panel, 260, 400);
+        Container rows = (Container) ((JScrollPane) panel.getComponent(1)).getViewport().getView();
+        Container firstRow = (Container) rows.getComponent(0);
+        assertTrue(rows.getWidth() > 0, "rows laid out, width=" + rows.getWidth());
+        int contentWidth = rows.getWidth() - rows.getInsets().left - rows.getInsets().right;
+        assertEquals(contentWidth, firstRow.getWidth(), "row spans the content width");
+        JLabel firstRowLabel = (JLabel) firstRow.getComponent(0);
+        assertEquals(firstRow.getWidth(), firstRowLabel.getWidth(), "label spans the row");
+        assertEquals("Verify extension functionality", firstRowLabel.getText(),
+                "painting a narrow row must keep the full entry text");
+        // Custom paint path: the label must actually draw ink (icon + clipped text),
+        // not just keep the model text while rendering nothing.
+        java.awt.Rectangle labelBounds = javax.swing.SwingUtilities.convertRectangle(
+                firstRowLabel.getParent(), firstRowLabel.getBounds(), panel);
+        assertTrue(paintedInk(painted, labelBounds) > 0,
+                "the ellipsized row label renders ink inside " + labelBounds);
+    }
+
+    private static int paintedInk(java.awt.image.BufferedImage image, java.awt.Rectangle area) {
+        int ink = 0;
+        for (int y = Math.max(0, area.y); y < Math.min(image.getHeight(), area.y + area.height); y++) {
+            for (int x = Math.max(0, area.x); x < Math.min(image.getWidth(), area.x + area.width); x++) {
+                if ((image.getRGB(x, y) >>> 24) != 0) {
+                    ink++;
+                }
+            }
+        }
+        return ink;
+    }
+
+    private static java.awt.image.BufferedImage paintAt(PlanPanel panel, int width, int height) {
+        panel.setSize(width, height);
+        // Headless: no peer to validate the tree, so lay every container out top-down
+        // (a single doLayout() would leave the header's children at width 0 and the
+        // label would never reach its paint path).
+        layoutTree(panel);
+        java.awt.image.BufferedImage image =
+                new java.awt.image.BufferedImage(width, height, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+        java.awt.Graphics2D g = image.createGraphics();
+        try {
+            panel.paint(g);
+        } finally {
+            g.dispose();
+        }
+        return image;
+    }
+
+    private static void layoutTree(java.awt.Container container) {
+        container.doLayout();
+        for (java.awt.Component child : container.getComponents()) {
+            if (child instanceof java.awt.Container nested) {
+                layoutTree(nested);
+            }
+        }
+    }
+
     private static JLabel headerLabel(PlanPanel panel) {
         // The header row is the panel's first child and uses BorderLayout:
         // WEST = chevron + badge, CENTER = the title label, EAST = progress bar.

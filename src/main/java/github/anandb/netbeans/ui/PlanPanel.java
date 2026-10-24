@@ -233,11 +233,11 @@ public class PlanPanel extends JPanel {
             label.setFont(font);
             label.setForeground(theme.foreground());
         }
-        JPanel row = new JPanel();
+        JPanel row = new JPanel(new BorderLayout());
         row.setOpaque(false);
-        row.setLayout(new BoxLayout(row, BoxLayout.X_AXIS));
-        row.add(label);
-        row.add(Box.createHorizontalGlue());
+        // CENTER stretches the label to the row width; the label's preferred width is
+        // zero, so a long entry cannot widen the row (or the scrollpane) either.
+        row.add(label, BorderLayout.CENTER);
         return row;
     }
 
@@ -274,11 +274,13 @@ public class PlanPanel extends JPanel {
     }
 
     /**
-     * Single-line label that clips its text with a trailing ellipsis instead
-     * of a hard mid-glyph edge; the full text is always available as the
-     * tooltip. Uses {@link SwingUtilities#layoutCompoundLabel} so placement
-     * and clipping match exactly how the label paints. No wrapping, no
-     * {@code revalidate()} from a sizing path (only a setText equality guard).
+     * Single-line label that ellipsizes its text to the laid-out width instead of
+     * clipping mid-glyph. The full entry stays the model text, so {@link #getText()},
+     * the tooltip and accessibility always report it; the clipped rendering is a
+     * paint-time decision only. The preferred width is deliberately zero: the parent
+     * layout (BorderLayout CENTER) owns the width, so one long entry can neither widen
+     * the slideout nor force a horizontal scrollbar, and widening the panel restores
+     * the full title without any plan update.
      */
     private static final class EllipsisLabel extends JLabel {
         private static final long serialVersionUID = 1L;
@@ -288,23 +290,56 @@ public class PlanPanel extends JPanel {
         }
 
         void setFullText(String text) {
-            setToolTipText(text);
-            super.setText(text);
+            String full = text == null ? "" : text;
+            setToolTipText(full.isEmpty() ? null : full);
+            super.setText(full);
+        }
+
+        @Override
+        public Dimension getPreferredSize() {
+            Dimension size = super.getPreferredSize();
+            size.width = 0;
+            return size;
+        }
+
+        @Override
+        public Dimension getMinimumSize() {
+            return getPreferredSize();
         }
 
         @Override
         protected void paintComponent(Graphics g) {
-            Rectangle view = new Rectangle(0, 0, Math.max(0, getWidth()), getHeight());
+            java.awt.Insets insets = getInsets();
+            Rectangle view = new Rectangle(
+                    insets.left, insets.top,
+                    Math.max(0, getWidth() - insets.left - insets.right),
+                    Math.max(0, getHeight() - insets.top - insets.bottom));
+            Rectangle iconRect = new Rectangle();
+            Rectangle textRect = new Rectangle();
+            // Computes the clipped text exactly as JLabel's own layout would, without
+            // writing it back to the model (setText here would revalidate during paint).
             String displayed = SwingUtilities.layoutCompoundLabel(this,
                     getFontMetrics(getFont()), getText(), getIcon(),
                     getVerticalAlignment(), getHorizontalAlignment(),
                     getVerticalTextPosition(), getHorizontalTextPosition(),
-                    view, new Rectangle(), new Rectangle(), 0);
-            // equality guard: setText changes preferred size → relayout, converges
-            if (!displayed.equals(getText())) {
-                super.setText(displayed);
+                    view, iconRect, textRect, getIconTextGap());
+            Icon icon = getIcon();
+            if (icon != null) {
+                icon.paintIcon(this, g, iconRect.x, iconRect.y);
             }
-            super.paintComponent(g);
+            if (displayed.isEmpty()) {
+                return;
+            }
+            Graphics2D g2 = (Graphics2D) g.create();
+            try {
+                g2.setFont(getFont());
+                g2.setColor(getForeground());
+                g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
+                        RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+                g2.drawString(displayed, textRect.x, textRect.y + g2.getFontMetrics().getAscent());
+            } finally {
+                g2.dispose();
+            }
         }
     }
 

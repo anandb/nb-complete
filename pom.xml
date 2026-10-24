@@ -690,6 +690,50 @@
             <build>
                 <plugins>
                     <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-antrun-plugin</artifactId>
+                        <version>3.1.0</version>
+                        <executions>
+                            <execution>
+                                <id>verify-user-guide</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>run</goal>
+                                </goals>
+                                <configuration>
+                                    <target>
+                                        <!-- generate-user-guide runs stitch.py with failonerror=false so a
+                                             developer build without tweego still works. A release must not
+                                             publish a jar with no bundled guide, and `deploy` runs after
+                                             verify, so the check lives here: it fails the build before
+                                             anything is published, and no version is burned. -->
+                                        <fail message="Bundled user guide missing: ${project.build.directory}/generated-guide/UserGuide.html (install tweego and re-run the build).">
+                                            <condition>
+                                                <not>
+                                                    <available file="${project.build.directory}/generated-guide/UserGuide.html"/>
+                                                </not>
+                                            </condition>
+                                        </fail>
+                                        <loadfile property="beanbot.guide.head"
+                                                  srcFile="${project.build.directory}/generated-guide/UserGuide.html">
+                                            <filterchain>
+                                                <headfilter lines="1"/>
+                                            </filterchain>
+                                        </loadfile>
+                                        <fail message="Bundled user guide is not stitched HTML: ${project.build.directory}/generated-guide/UserGuide.html">
+                                            <condition>
+                                                <not>
+                                                    <contains string="${beanbot.guide.head}"
+                                                              substring="&lt;!DOCTYPE html&gt;"/>
+                                                </not>
+                                            </condition>
+                                        </fail>
+                                    </target>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
                         <groupId>org.sonatype.central</groupId>
                         <artifactId>central-publishing-maven-plugin</artifactId>
                         <version>0.7.0</version>
