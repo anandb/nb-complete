@@ -25,6 +25,26 @@ public interface UsageStatsStore {
     /** Records the {@code usage} object of a {@code session/prompt} result as one row. Never blocks on I/O. */
     void recordPromptUsage(PromptUsageRow row);
 
+    /**
+     * Called from an explicit user action (opening or refreshing the token-stats
+     * panel) to let a persistent store that failed to open at startup try once
+     * more. Implementations that cannot fail do nothing, and an implementation
+     * that already has its database or has spent its attempts must ignore it.
+     * A successful retry finishes the startup work the failed open skipped.
+     *
+     * <p>May block on the database; background-thread use.</p>
+     */
+    default void retryAfterFailure() {
+    }
+
+    /**
+     * Releases the database and stops its writer. Called when the module is
+     * disabled, including an in-place plugin upgrade: the old module's
+     * classloader must let go of the database file before the new one opens it.
+     * Idempotent; a store that keeps nothing open may do nothing.
+     */
+    void close();
+
     /** Records one counted message update. Never blocks on I/O. */
     void recordMessage(MessageEvent event);
 

@@ -242,6 +242,12 @@ public class TokenUsageDialog extends JDialog {
                     }
                 }
                 UsageStatsStore store = Lookup.getDefault().lookup(UsageStatsStore.class);
+                if (store != null) {
+                    // Opening or refreshing this panel is the explicit user action
+                    // that may spend the store's one retry: startup may have found
+                    // the database file locked by another process.
+                    store.retryAfterFailure();
+                }
                 UsageSummary summary = store != null
                         ? store.query(days, projectDir, System.currentTimeMillis())
                         : UsageSummary.empty();

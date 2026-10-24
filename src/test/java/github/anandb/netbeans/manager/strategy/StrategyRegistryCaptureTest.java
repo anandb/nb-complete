@@ -85,6 +85,11 @@ class StrategyRegistryCaptureTest {
         public List<ToolTotals> queryToolTotals(int days, String projectDir, long now) {
             throw new UnsupportedOperationException("tool totals are not part of this test");
         }
+
+        @Override
+        public void close() {
+            // Nothing to release: this double writes to lists only.
+        }
     }
 
     private static final JsonMapper MAPPER = MapperSupplier.get();

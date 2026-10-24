@@ -219,12 +219,38 @@ public class H2UsageStatsStore
      */
     private static final int SCHEMA_VERSION = 6;
 
+    /**
+     * Open attempts allowed per process: the startup attempt plus the single
+     * retry an explicit user action may request. Further attempts cannot help
+     * while another process holds the file, and would only spam the log.
+     */
+    private static final int MAX_OPEN_ATTEMPTS = 2;
+
+    /** Close attempts before giving up; a failed close keeps the file locked. */
+    private static final int CLOSE_ATTEMPTS = 3;
+
+    /** Base backoff between close attempts; grows linearly (50, 100, ...). */
+    private static final long CLOSE_RETRY_DELAY_MS = 50L;
+
     private static final long DAY_MILLIS = 86_400_000L;
 
     private final String jdbcUrl;
     private final Object initLock = new Object();
     private final ExecutorService dbExecutor;
     private volatile Connection connection;
+
+    /**
+     * Set when {@link #open()} failed. H2 refuses a second process on the same
+     * database file ("Database may be already in use"), and retrying cannot fix
+     * that while the other process lives. Every operation therefore returns
+     * empty and logs nothing; only {@link #retryAfterFailure()} can re-arm the
+     * attempt, and only once ({@link #MAX_OPEN_ATTEMPTS}). The preferences stay
+     * untouched, so the next launch tries again regardless.
+     */
+    private volatile boolean unavailable;
+
+    /** Open attempts made so far; only {@link #connection()} writes it, under {@link #initLock}. */
+    private int openAttempts;
 
     /**
      * Input history, newest last. An immutable value published by a single
@@ -313,7 +339,7 @@ public class H2UsageStatsStore
         if (row == null) {
             return;
         }
-        dbExecutor.execute(() -> {
+        runDb(() -> {
             try (PreparedStatement ps = connection().prepareStatement(INSERT_USAGE_UPDATE)) {
                 bindAttribution(ps, 1, row.attribution());
                 ps.setLong(5, row.capturedAt());
@@ -453,7 +479,7 @@ public class H2UsageStatsStore
         if (row == null) {
             return;
         }
-        dbExecutor.execute(() -> {
+        runDb(() -> {
             try (PreparedStatement ps = connection().prepareStatement(INSERT_PROMPT_USAGE)) {
                 bindAttribution(ps, 1, row.attribution());
                 ps.setLong(5, row.capturedAt());
@@ -474,7 +500,7 @@ public class H2UsageStatsStore
         if (event == null) {
             return;
         }
-        dbExecutor.execute(() -> {
+        runDb(() -> {
             try (PreparedStatement ps = connection().prepareStatement(INSERT_MESSAGE_EVENT)) {
                 bindAttribution(ps, 1, event.attribution());
                 ps.setLong(5, event.capturedAt());
@@ -491,7 +517,7 @@ public class H2UsageStatsStore
         if (row == null || row.callCount() <= 0) {
             return;
         }
-        dbExecutor.execute(() -> {
+        runDb(() -> {
             try (PreparedStatement ps = connection().prepareStatement(INSERT_TOOL_CALL_USAGE)) {
                 bindAttribution(ps, 1, row.attribution());
                 ps.setLong(5, row.capturedAt());
@@ -530,6 +556,29 @@ public class H2UsageStatsStore
         return report;
     }
 
+    /**
+     * Spends the one retry an explicit user action may request after the startup
+     * open failed. Reopens on the database thread and finishes the preference
+     * migration the failed open skipped.
+     *
+     * <p>The in-memory datasets are deliberately not reloaded: this session kept
+     * writing to them while the database was unreachable, and a load would
+     * replace them with older rows — dropping input history typed in the
+     * meantime. They persist from this point on, and the next launch loads the
+     * complete set.</p>
+     */
+    @Override
+    public void retryAfterFailure() {
+        synchronized (initLock) {
+            if (connection != null || openAttempts >= MAX_OPEN_ATTEMPTS) {
+                return;
+            }
+            // Re-arm exactly one attempt; ensureDatabase() reports the outcome.
+            unavailable = false;
+        }
+        call(this::runPrefsMigration, MigrationReport.none());
+    }
+
     @Override
     public List<String> inputHistory() {
         return history;
@@ -550,7 +599,7 @@ public class H2UsageStatsStore
             next.remove(0);
         }
         history = List.copyOf(next);
-        dbExecutor.execute(() -> {
+        runDb(() -> {
             try (PreparedStatement ps = connection().prepareStatement(
                     "INSERT INTO input_history (text) VALUES (?)")) {
                 ps.setString(1, text);
@@ -580,7 +629,7 @@ public class H2UsageStatsStore
         // rather than be overwritten with nulls. Seeing the flag later would be too
         // late, since a load completing in between would hide the race.
         boolean fillFromStored = !metadataLoaded;
-        dbExecutor.execute(() -> {
+        runDb(() -> {
             try {
                 SessionMetadata effective = fillFromStored
                         ? fillBlanksFromStored(bucket, sessionId, sessionMetadata)
@@ -605,7 +654,7 @@ public class H2UsageStatsStore
         Map<String, SessionMetadata> snapshot = new LinkedHashMap<>(updates);
         putAllInMemory(bucket, snapshot);
         boolean fillFromStored = !metadataLoaded;
-        dbExecutor.execute(() -> {
+        runDb(() -> {
             try {
                 upsertSessionMetaBatch(bucket, snapshot, fillFromStored);
             } catch (SQLException e) {
@@ -996,7 +1045,7 @@ public class H2UsageStatsStore
             pinsDirty.add(sessionId);
         }
         long now = System.currentTimeMillis();
-        dbExecutor.execute(() -> {
+        runDb(() -> {
             try {
                 // Row-level delta, never a snapshot replace: a write that races the
                 // startup load must not resurrect rows the load has not seen yet.
@@ -1047,7 +1096,7 @@ public class H2UsageStatsStore
         LOG.info("Pinned-message cleanup for session {0}: kept {1}",
                 sessionId, kept.size());
         Set<String> snapshot = kept;
-        dbExecutor.execute(() -> {
+        runDb(() -> {
             try {
                 replacePins(sessionId, snapshot);
             } catch (SQLException e) {
@@ -1082,7 +1131,7 @@ public class H2UsageStatsStore
         }
         models.put(harnessId, snapshot);
         modelsDirty.add(harnessId);
-        dbExecutor.execute(() -> {
+        runDb(() -> {
             try {
                 replaceModels(harnessId, snapshot);
             } catch (SQLException e) {
@@ -1096,6 +1145,16 @@ public class H2UsageStatsStore
         // Writes are already queued on the executor; a barrier makes shutdown wait
         // for them instead of dropping the tail of the queue with the daemon thread.
         awaitQueuedWrites();
+    }
+
+    /**
+     * Closes the connection and stops the writer so the database file is
+     * unlocked before this module's classloader can be discarded by an in-place
+     * upgrade. Idempotent.
+     */
+    @Override
+    public void close() {
+        shutdown();
     }
 
     private void awaitQueuedWrites() {
@@ -1189,6 +1248,12 @@ public class H2UsageStatsStore
      * database that cannot be written never costs the user their data.</p>
      */
     private MigrationReport runPrefsMigration() {
+        if (!ensureDatabase()) {
+            // Nothing was read or written, so there is nothing to report. Saying
+            // "some data could not be migrated" here would blame the user's
+            // preferences for a database another process is holding open.
+            return MigrationReport.none();
+        }
         List<String> reasons = new ArrayList<>();
         int[] migrated = {0};
         int[] skipped = {0};
@@ -1975,10 +2040,59 @@ public class H2UsageStatsStore
             return local;
         }
         synchronized (initLock) {
-            if (connection == null) {
-                connection = open();
+            if (connection != null) {
+                return connection;
             }
-            return connection;
+            if (unavailable) {
+                throw new SQLException("Usage-stats database is unavailable for this session", "90020", 90020);
+            }
+            openAttempts++;
+            try {
+                connection = open();
+                return connection;
+            } catch (SQLException e) {
+                unavailable = true;
+                throw e;
+            }
+        }
+    }
+
+    /**
+     * Queues a database task unless the database already failed to open.
+     * The check runs on the executor, so tasks queued behind the one that
+     * discovers the failure are dropped instead of retrying and logging.
+     */
+    private void runDb(Runnable task) {
+        dbExecutor.execute(() -> {
+            if (!ensureDatabase()) {
+                return;
+            }
+            task.run();
+        });
+    }
+
+    /**
+     * Performs this process's single open attempt. A failure is reported once,
+     * here, because every later operation is gated by {@link #unavailable}.
+     * The message names the file and the underlying cause; the stack trace is
+     * demoted to FINE so a database another process holds open does not look
+     * like a plugin crash on every launch.
+     *
+     * @return true when the database can be used in this session
+     */
+    private boolean ensureDatabase() {
+        if (unavailable) {
+            return false;
+        }
+        try {
+            connection();
+            return true;
+        } catch (SQLException e) {
+            LOG.log(Level.WARNING,
+                    "Usage-stats database unavailable ({0}); capture disabled until the next restart: {1}",
+                    jdbcUrl, e.getMessage());
+            LOG.log(Level.FINE, "Usage-stats database open failed", e);
+            return false;
         }
     }
 
@@ -2043,7 +2157,10 @@ public class H2UsageStatsStore
 
     /** Runs a database callable on the executor, returning {@code fallback} on failure. */
     private <T> T call(Callable<T> task, T fallback) {
-        Future<T> future = dbExecutor.submit(task);
+        if (unavailable) {
+            return fallback;
+        }
+        Future<T> future = dbExecutor.submit(() -> ensureDatabase() ? task.call() : fallback);
         try {
             return future.get();
         } catch (InterruptedException e) {
@@ -2056,17 +2173,46 @@ public class H2UsageStatsStore
     }
 
     /** Closes the connection and executor synchronously. Idempotent. Package-private; for tests. */
-    void shutdown() {
+    synchronized void shutdown() {
         if (dbExecutor.isShutdown()) {
             return;
         }
         call(() -> {
             Connection local = connection;
             if (local != null) {
-                local.close();
+                closeWithRetry(local);
+                connection = null;
             }
             return null;
         }, null);
         dbExecutor.shutdown();
+    }
+
+    /**
+     * Closes the connection, retrying a few times. H2 releases the file lock
+     * inside {@code close()}, and a close that throws leaves the new module of
+     * an in-place upgrade locked out; the retry window covers a file channel
+     * that is still draining on Windows.
+     */
+    private static void closeWithRetry(Connection conn) {
+        for (int attempt = 1; attempt <= CLOSE_ATTEMPTS; attempt++) {
+            try {
+                conn.close();
+                return;
+            } catch (SQLException e) {
+                if (attempt == CLOSE_ATTEMPTS) {
+                    LOG.log(Level.WARNING,
+                            "Could not close the usage-stats database after " + CLOSE_ATTEMPTS + " attempts", e);
+                    return;
+                }
+                LOG.log(Level.FINE, "Usage-stats database close failed; retrying", e);
+                try {
+                    Thread.sleep(CLOSE_RETRY_DELAY_MS * attempt);
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+            }
+        }
     }
 }

@@ -28,6 +28,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.UUID;
+import java.util.logging.Handler;
+import java.util.logging.Level;
+import java.util.logging.LogRecord;
 import java.util.prefs.BackingStoreException;
 import java.util.prefs.Preferences;
 import org.junit.jupiter.api.AfterEach;
@@ -544,6 +547,8 @@ class H2UsageStatsStoreTest {
             MigrationReport report = broken.migrateLegacyPrefs();
 
             assertNotNull(report, "the migration always reports, even when it can do nothing");
+            assertEquals(0, report.skipped(),
+                    "a locked database is not skipped preference data, so it must not be reported as such");
             assertTrue(broken.inputHistory().isEmpty());
             assertTrue(broken.sessionMetadata("omp").isEmpty());
             assertEquals("kept", root.get(PreferenceKeys.INPUT_HISTORY_PREFIX + "0", null),
@@ -552,6 +557,109 @@ class H2UsageStatsStoreTest {
         } finally {
             broken.shutdown();
         }
+    }
+
+    /**
+     * H2 refuses a second process on the database file. Retrying cannot fix that,
+     * and every retry used to log its own stack trace while the migration counted
+     * the failed writes as skipped preferences. Startup gets one attempt and an
+     * explicit user action one retry; every later operation stays silent.
+     */
+    @Test
+    void anUnopenableDatabaseIsAttemptedOnceAndThenLeftAlone() throws Exception {
+        File blocker = File.createTempFile("beanbot-not-a-dir-once", ".tmp");
+        blocker.deleteOnExit();
+        H2UsageStatsStore broken = new H2UsageStatsStore("jdbc:h2:" + blocker.getAbsolutePath() + "/db");
+
+        java.util.logging.Logger jul = java.util.logging.Logger.getLogger(H2UsageStatsStore.class.getName());
+        List<LogRecord> warnings = new ArrayList<>();
+        Level previousLevel = jul.getLevel();
+        jul.setLevel(Level.WARNING);
+        Handler capture = captureWarnings(jul, warnings);
+        try {
+            broken.load();
+            broken.migrateLegacyPrefs();
+            broken.appendInputHistory("still usable in memory");
+            broken.updateModels("omp", List.of(new AvailableModel("m1", "M1", null)));
+            broken.recordMessage(new MessageEvent(att("s1", "omp", "m1", "/p"), NOW, MessageKind.USER));
+            broken.flush();
+
+            synchronized (warnings) {
+                assertEquals(1, warnings.size(), "the failure must be reported once, not once per write");
+            }
+        } finally {
+            jul.removeHandler(capture);
+            jul.setLevel(previousLevel);
+            broken.shutdown();
+        }
+    }
+
+    @Test
+    void anExplicitRetryIsTheOnlyAdditionalOpenAttempt() throws Exception {
+        File blocker = File.createTempFile("beanbot-not-a-dir-retry", ".tmp");
+        blocker.deleteOnExit();
+        H2UsageStatsStore broken = new H2UsageStatsStore("jdbc:h2:" + blocker.getAbsolutePath() + "/db");
+
+        java.util.logging.Logger jul = java.util.logging.Logger.getLogger(H2UsageStatsStore.class.getName());
+        List<LogRecord> warnings = new ArrayList<>();
+        Level previousLevel = jul.getLevel();
+        jul.setLevel(Level.WARNING);
+        Handler capture = captureWarnings(jul, warnings);
+        try {
+            broken.load();
+            broken.retryAfterFailure();
+            broken.retryAfterFailure();
+            broken.load();
+
+            synchronized (warnings) {
+                assertEquals(2, warnings.size(), "the startup attempt plus exactly one retry");
+            }
+        } finally {
+            jul.removeHandler(capture);
+            jul.setLevel(previousLevel);
+            broken.shutdown();
+        }
+    }
+
+    @Test
+    void aSuccessfulRetryResumesCapture(@TempDir Path tempDir) throws Exception {
+        Path blocker = Files.createTempFile(tempDir, "beanbot-blocker", ".tmp");
+        String fileUrl = "jdbc:h2:" + blocker.toAbsolutePath().toString().replace('\\', '/') + "/db";
+        H2UsageStatsStore broken = new H2UsageStatsStore(fileUrl);
+        try {
+            broken.load();
+            assertTrue(Files.deleteIfExists(blocker), "the startup attempt must have failed on this path");
+
+            broken.retryAfterFailure();
+            broken.recordMessage(new MessageEvent(att("s1", "omp", "m1", "/p"), NOW, MessageKind.USER));
+            assertEquals(1, broken.query(1, null, NOW).messages(),
+                    "after a successful retry, writes reach the database");
+        } finally {
+            broken.shutdown();
+        }
+    }
+
+    private static Handler captureWarnings(java.util.logging.Logger logger, List<LogRecord> sink) {
+        Handler capture = new Handler() {
+            @Override
+            public void publish(LogRecord record) {
+                if (record.getLevel().intValue() >= Level.WARNING.intValue()) {
+                    synchronized (sink) {
+                        sink.add(record);
+                    }
+                }
+            }
+
+            @Override
+            public void flush() {
+            }
+
+            @Override
+            public void close() {
+            }
+        };
+        logger.addHandler(capture);
+        return capture;
     }
 
     @Test

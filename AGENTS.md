@@ -539,6 +539,20 @@ process-global model fallback: a model belongs to a session, and `getSessionMode
 as "(not attributed)" — that is the correct answer, not a bug. Attribution is captured as messages arrive,
 never resolved from current UI state at query time.
 
+Opening and closing are both bounded. H2 refuses a file another process holds, so an `open()` failure sets
+`unavailable`: `connection()` then throws without retrying, `runDb()`/`call()` skip every later task, and the
+reason is logged once (stack at FINE). `retryAfterFailure()` — called by `ui/TokenUsageDialog` when the user
+opens or refreshes it — spends the only further attempt (`MAX_OPEN_ATTEMPTS` = 2) and finishes the startup
+preference migration, without reloading the in-memory datasets (a reload would drop history typed while the
+database was unreachable). A failed open also makes `runPrefsMigration` return an empty report, so a locked
+database never surfaces as "some data could not be migrated" and preference keys stay put for the next
+launch. Do NOT re-add automatic retries or per-write failure logging.
+
+`project/ACPShutdown` must call `UsageStatsStore.close()`. An in-place plugin upgrade loads the new module in
+the same JVM, and the new classloader's H2 cannot lock a file the old one still holds (`OverlappingFileLock`
+surfaces as "Database may be already in use"). `close()` delegates to `shutdown()`, which closes the
+connection with three attempts and then stops the executor; `flush()` alone does not release the lock.
+
 ### Preference Migration To The Store
 Input history, per-session metadata, pinned message ids and per-harness model lists moved out of
 `NbPreferences` into the same H2 store. `runPrefsMigration()` copies each dataset once, guarded by its own
