@@ -36,6 +36,7 @@ class PlanPanelTest {
     void paintingANarrowSlideoutNeverDestroysTheFullTitle() {
         PlanPanel panel = new PlanPanel();
         panel.setEntries(sample());
+        toggleHeader(panel); // a new plan auto-opens; this test covers the collapsed header
         JLabel label = headerLabel(panel);
         String full = label.getText();
         assertTrue(full.contains("Verify extension functionality"), "precondition: " + full);
@@ -54,9 +55,7 @@ class PlanPanelTest {
 
         // The width comes from the layout now (preferred width is zero), so verify the
         // expanded rows still span the viewport and their labels span the row.
-        for (var listener : ((Container) panel.getComponent(0)).getMouseListeners()) {
-            listener.mouseClicked(null);
-        }
+        toggleHeader(panel);
         java.awt.image.BufferedImage painted = paintAt(panel, 260, 400);
         Container rows = (Container) ((JScrollPane) panel.getComponent(1)).getViewport().getView();
         Container firstRow = (Container) rows.getComponent(0);
@@ -113,6 +112,14 @@ class PlanPanelTest {
         }
     }
 
+    /** Clicks the header once; the first non-empty plan auto-opens the slideout. */
+    private static void toggleHeader(PlanPanel panel) {
+        Container header = (Container) panel.getComponent(0);
+        for (var listener : header.getMouseListeners()) {
+            listener.mouseClicked(null);
+        }
+    }
+
     private static JLabel headerLabel(PlanPanel panel) {
         // The header row is the panel's first child and uses BorderLayout:
         // WEST = chevron + badge, CENTER = the title label, EAST = progress bar.
@@ -141,6 +148,7 @@ class PlanPanelTest {
     void collapsedHeaderShowsTheFirstUnfinishedItemWithCount() {
         PlanPanel panel = new PlanPanel();
         panel.setEntries(sample());
+        toggleHeader(panel); // a new plan auto-opens; collapse to test the header text
 
         String text = headerLabel(panel).getText();
         assertTrue(text.contains("Verify extension functionality"),
@@ -153,11 +161,7 @@ class PlanPanelTest {
         PlanPanel panel = new PlanPanel();
         panel.setEntries(sample());
 
-        // Expanded: rows live in the scrollpane's viewport.
-        Container header = (Container) panel.getComponent(0);
-        for (var listener : header.getMouseListeners()) {
-            listener.mouseClicked(null);
-        }
+        // A new plan opens the slideout: rows live in the scrollpane's viewport.
         JScrollPane scroll = (JScrollPane) panel.getComponent(1);
         assertTrue(scroll.isVisible());
         Container rows = (Container) scroll.getViewport().getView();
@@ -188,10 +192,6 @@ class PlanPanelTest {
         }
         PlanPanel panel = new PlanPanel();
         panel.setEntries(many);
-        Container header = (Container) panel.getComponent(0);
-        for (var listener : header.getMouseListeners()) {
-            listener.mouseClicked(null);
-        }
         JScrollPane scroll = (JScrollPane) panel.getComponent(1);
         Container rows = (Container) scroll.getViewport().getView();
         int rowHeight = rows.getComponent(0).getPreferredSize().height;
@@ -209,10 +209,7 @@ class PlanPanelTest {
         panel.clear();
 
         // Clicking the header after a clear must not resurrect the old plan.
-        Container header = (Container) panel.getComponent(0);
-        for (var listener : header.getMouseListeners()) {
-            listener.mouseClicked(null);
-        }
+        toggleHeader(panel);
         assertFalse(panel.isVisible());
     }
 }

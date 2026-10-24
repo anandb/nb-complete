@@ -90,7 +90,6 @@ public class PlanPanel extends JPanel {
                 setEntries(entries);
             }
         };
-        header.addMouseListener(toggle);
         header.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         headerLabel.setOpaque(false);
         badgeIcon.setOpaque(false);
