@@ -287,7 +287,7 @@ public class ActionItemsCopyButton implements Runnable, PropertyChangeListener, 
         if (last < 0 || !(toolbar.getComponent(last) instanceof JToggleButton)) {
             return null;
         }
-        JButton button = UIUtils.createToolbarButton("copy.svg", 16,
+        JButton button = UIUtils.createToolbarButton("copy-action-items.svg", 16,
                 NbBundle.getMessage(ActionItemsCopyButton.class, "TT_ActionItemsCopyAll"),
                 event -> onCopy.run());
         button.setName(BUTTON_NAME);
