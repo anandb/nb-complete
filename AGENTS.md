@@ -6,12 +6,12 @@
 - **Key Tech**: NetBeans API (RELEASE220), Flexmark, Jackson, RSyntaxTextArea, JUnit 5.
 
 ## Build Commands
-- Build: `mvn package` (runs checks & tests) | Clean: `mvn clean` | Quick: `mvn package -DskipTests`
-- **CI publishes with `./mvnw`** (pinned Maven 3.9.x), never system `mvn`: Maven 3.10 writes
+- Build: `./mvnw package` (runs checks & tests) | Clean: `./mvnw clean` | Quick: `./mvnw package -DskipTests`
+- **Always use `./mvnw`** (pinned Maven 3.9.x) and never system `mvn`: Maven 3.10 writes
   `maven-metadata-local.xml` into `central-publishing-maven-plugin`'s file:// staging repo,
   which gets bundled and Central rejects the deployment ("Bundle has content that does NOT
   have a .pom file"). 3.9.x writes `maven-metadata-central-staging.xml`, which the plugin
-  deletes before bundling.
+  deletes before bundling. The wrapper keeps local builds on the same Maven as CI.
 - **User guide toolchain**: `docs/stitch.py` (antrun `generate-user-guide` at
   `generate-resources`) needs `python3` + `tweego` (Harlowe 3) to produce
   `target/generated-guide/UserGuide.html`, which is packaged into the module jar. The antrun
@@ -21,6 +21,28 @@
   phase: it fails the build (before `deploy` publishes anything) when
   `target/generated-guide/UserGuide.html` is missing or is not stitched HTML. Keep the
   install step if you edit the workflow — the check needs tweego to have produced the file.
+
+## BMAD Working Artifacts (`_bmad-output/`)
+- `_bmad-output/` is **gitignored local state** — never commit it and never cite it as a repo
+  artifact. Its entry point is `_bmad-output/index.md`; `project-context.md` holds only rule
+  deltas that this file does not already state, and `implementation-artifacts/deferred-work.md`
+  holds accepted debt with evidence.
+- **Spec lifecycle**: every `implementation-artifacts/spec-*.md` carries YAML frontmatter
+  (`title`, `type`, `created`, `status`). `done` and `superseded` specs move to
+  `implementation-artifacts/archive/`; `ready-for-dev`, `shelved` and `in-progress` stay live.
+  A spec's status must match the tree — `done` requires every class it names to exist.
+- **Research epics** live beside their research run and carry a `- **Status:**` line that must
+  agree with the corresponding spec.
+- **`index.md` is maintained, not generated**: update it in the same change that adds, moves or
+  retires an artifact, or that changes the pom version, the README badge or the passage count.
+- **Generated project docs** (`architecture.md`, `project-overview.md`, `technology-stack.md`,
+  `source-tree-analysis.md`, `component-inventory.md`, `development-guide.md`) are a dated
+  snapshot — regenerate with `bmad-document-project`; never hand-edit them to look current.
+- **Gate**: `python3 _bmad/check_artifacts.py` (exit 1 = violation) verifies all of the above
+  plus relative-link integrity and `index.md` freshness. Run it at the end of any spec /
+  quick-dev / research iteration and before `./mvnw verify -P release`; it is a no-op when
+  `_bmad-output/` is absent, and `_bmad/` is gitignored local tooling (missing on a fresh clone,
+  where the gate is skipped).
 
 ## Architecture & UI
 - **ACP & JSON-RPC**: Compliant with ACP v1. Communication via `AcpProtocolClient`

@@ -31,7 +31,7 @@ Supported coding harnesses: **Oh My Pi, OpenCode, Codex, OpenClaw, Pi, Goose, Cu
    ```
 2. Build the package:
    ```bash
-   mvn package -DskipTests
+   ./mvnw package -DskipTests
    ```
 3. The generated NBM will be located in the `./target/nbm/` directory.
 4. Install the plugin through the NetBeans Plugin Manager.
