@@ -87,6 +87,16 @@ public class MiniAssistantDialog extends JDialog {
 
     private AutocompleteManager autocompleteManager;
 
+    /** For {@link MiniAssistantKeyDispatcher}. */
+    PlaceholderTextArea inputArea() {
+        return inputArea;
+    }
+
+    /** For {@link MiniAssistantKeyDispatcher}. */
+    AutocompleteManager autocompleteManager() {
+        return autocompleteManager;
+    }
+
     // Permission panel components
     private final WobblePanel miniPermissionPanel;
     private final JLabel miniPermissionLabel;
@@ -171,87 +181,7 @@ public class MiniAssistantDialog extends JDialog {
             }
         });
 
-        keyDispatcher = new KeyEventDispatcher() {
-            @Override
-            public boolean dispatchKeyEvent(KeyEvent e) {
-                if (!isVisible()) return false;
-                Component focusOwner = KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusOwner();
-                if (focusOwner != MiniAssistantDialog.this && !isAncestorOf(focusOwner)) return false;
-
-                if (e.getID() == KeyEvent.KEY_PRESSED) {
-                    boolean isMac = Utilities.isMac();
-                    boolean isCmdOrCtrl = isMac ? e.isMetaDown() : e.isControlDown();
-                    boolean isPrev = e.getKeyCode() == KeyEvent.VK_PAGE_UP ||
-                                     (isMac && e.getKeyCode() == KeyEvent.VK_LEFT && e.isMetaDown());
-                    boolean isNext = e.getKeyCode() == KeyEvent.VK_PAGE_DOWN ||
-                                     (isMac && e.getKeyCode() == KeyEvent.VK_RIGHT && e.isMetaDown());
-
-                    if (isPrev) {
-                        navigateAssistantBubble(-1);
-                        return true;
-                    } else if (isNext) {
-                        navigateAssistantBubble(1);
-                        return true;
-                    } else if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
-                        if (autocompleteManager != null && autocompleteManager.isPopupVisible()) {
-                            autocompleteManager.handleKeyReleased(e);
-                            return true;
-                        }
-                        AssistantTopComponent tc = AssistantTopComponent.findInstance();
-                        if (tc != null && tc.getConfigPanelController() != null
-                                && tc.getConfigPanelController().isAnyPopupVisible()) {
-                            tc.getConfigPanelController().closeAnyPopup();
-                            return true;
-                        }
-                        setVisible(false);
-                        return true;
-                    } else if (e.getKeyCode() == KeyEvent.VK_ENTER) {
-                        if (inputArea.isFocusOwner()) {
-                            if (autocompleteManager != null && autocompleteManager.isPopupVisible()) {
-                                autocompleteManager.handleKeyPressed(e);
-                                return true;
-                            }
-                            if (e.isShiftDown()) {
-                                inputArea.insert("\n", inputArea.getCaretPosition());
-                                return true;
-                            } else {
-                                sendMessage();
-                                return true;
-                            }
-                        }
-                    } else if (e.getKeyCode() == KeyEvent.VK_TAB) {
-                        if (inputArea.isFocusOwner()) {
-                            e.consume();
-                            if (autocompleteManager != null && autocompleteManager.isPopupVisible()) {
-                                autocompleteManager.selectCommand();
-                            } else {
-                                var pc = Lookup.getDefault()
-                                        .lookup(ProcessControl.class);
-                                var interceptor = pc != null ? pc.getSlashCommandInterceptor() : null;
-                                var cb = interceptor != null ? interceptor.getCallback() : null;
-                                if (cb != null) {
-                                    cb.popupAgentCombo();
-                                }
-                            }
-                            return true;
-                        }
-                    } else if (e.getKeyCode() == KeyEvent.VK_C && isCmdOrCtrl) {
-                        copyContent();
-                        return true;
-                    } else if (e.getKeyCode() == KeyEvent.VK_L && isCmdOrCtrl && !e.isAltDown()) {
-                        AssistantTopComponent tc = AssistantTopComponent.findInstance();
-                        if (tc != null) {
-                            tc.toggleVisibility();
-                        }
-                        return true;
-                    } else if (e.getKeyCode() == KeyEvent.VK_L && isCmdOrCtrl && e.isAltDown()) {
-                        toggleVisibility();
-                        return true;
-                    }
-                }
-                return false;
-            }
-        };
+        keyDispatcher = new MiniAssistantKeyDispatcher(this);
         KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(keyDispatcher);
 
         JScrollPane inputScrollPane = new JScrollPane(inputArea);
@@ -460,7 +390,7 @@ public class MiniAssistantDialog extends JDialog {
         inputArea.requestFocusInWindow();
     }
 
-    private void sendMessage() {
+    void sendMessage() {
         String sessionId = Lookup.getDefault().lookup(SessionControl.class).getCurrentSessionId();
         if (sessionId == null) {
             return;
@@ -625,7 +555,7 @@ public class MiniAssistantDialog extends JDialog {
         setTokenOverlayVisible(false, null);
     }
 
-    private void navigateAssistantBubble(int direction) {
+    void navigateAssistantBubble(int direction) {
         List<MessageBubble> bubbles = getAssistantBubbles();
         if (bubbles.isEmpty()) return;
 
@@ -821,7 +751,7 @@ public class MiniAssistantDialog extends JDialog {
         }
     }
 
-    private void copyContent() {
+    void copyContent() {
         if (inputArea.getSelectedText() != null) {
             inputArea.copy();
             return;
