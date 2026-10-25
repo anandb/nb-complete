@@ -1,0 +1,1 @@
+html,body{margin:0;padding:8px;background:$bg;color:$fg;font-family:$monoFamily;font-size:13px;line-height:1.4;}table{border-collapse:collapse;width:100%;margin:8px 0;background:$tableBg;}th{background:$tableHeaderBg;padding:8px;border:1px solid $borderColor;text-align:left;font-weight:bold;}td{padding:8px;border:1px solid $borderColor;vertical-align:top;}

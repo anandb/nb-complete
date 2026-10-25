@@ -48,30 +48,7 @@ public class TaskToolProvider {
 
         mcpTools.registerTool(
             "add_task",
-            """
-            Creates a task in a Beanbot Tasks repository.
-
-            Use when the user wants to add, store, track, or create a task or todo item, including:
-            - Explicit requests: 'add a task', 'create a todo', 'track this', 'log this as a task'
-            - Reminders: 'remind me about X tomorrow/next week/next Thursday'
-            - Quick captures: 'note this down', 'put this on my list', 'save for later'
-
-            Priority guidelines:
-            - User says 'critical', 'urgent', 'important', or 'high priority': use 'A'
-            - User says 'low priority', 'nice to have', or 'whenever': use 'T' (or 'S' for someday/maybe)
-            - Otherwise, infer importance from context and assign A-Z (default 'N' for normal tasks)
-
-            Due dates:
-            - If user specifies a date ('tomorrow', 'next week', 'Sept 5'), parse and set dueDate
-            - If no date is mentioned or cannot be inferred, omit dueDate (task has no deadline)
-
-            Examples:
-            - 'Add a task to fix the login bug' -> summary='Fix the login bug', priority='B'
-            - 'Remind me to run tests next Monday' -> summary='Run tests', dueDate='2026-09-07', priority='B'
-            - 'Critical: deploy the hotfix today' -> summary='Deploy the hotfix', dueDate='2026-08-27', priority='A'
-            - 'Add a todo: update API docs for v2 release' -> summary='Update API docs for v2 release', priority='B'
-            - 'Track this as a task for the backend project, tag it @api' -> summary='[user query]', projects='backend', tags='api'
-            """,
+            ToolDescriptions.get("add_task"),
             schema,
             new ToolExecutor<AddTaskInput, Map<String, Object>>(AddTaskInput.class) {
                 @Override
@@ -135,20 +112,7 @@ public class TaskToolProvider {
 
         mcpTools.registerTool(
             "close_task",
-            """
-            Closes (marks as done) a task in a Beanbot Tasks repository.
-
-            Use when the user wants to complete, finish, close, or mark a task as done, including:
-            - 'close that task', 'mark it as done', 'task is complete'
-            - 'finish the login-bug task', 'that todo is done'
-
-            Only sets status to 'closed'; other task fields (summary, priority, tags, due date)
-            are left untouched. The completion timestamp is recorded automatically.
-
-            Examples:
-            - 'Close task t-3' -> taskId='t-3'
-            - 'The deploy task is done, close it' -> taskId=<id from add_task or list>
-            """,
+            ToolDescriptions.get("close_task"),
             schema,
             new ToolExecutor<CloseTaskInput, Map<String, Object>>(CloseTaskInput.class) {
                 @Override
@@ -196,25 +160,7 @@ public class TaskToolProvider {
 
         mcpTools.registerTool(
             "update_task",
-            """
-            Updates an existing task in a Beanbot Tasks repository.
-
-            Use when the user wants to change, edit, rename, reschedule, or
-            reopen a task, including:
-            - 'rename task t-3 to ...', 'change its priority to A'
-            - 'reschedule the deploy task to Friday', 'clear the due date'
-            - 'reopen task t-7'
-
-            Only the provided fields change; omitted fields keep their values.
-            Empty tags/projects/dueDate clear those values. status='closed'
-            records completion, 'open' clears it. Idempotent fields are
-            validated (status must be open|closed, priority a single A-Z).
-
-            Examples:
-            - 'Rename task t-3' -> taskId='t-3', summary='New title'
-            - 'Priority A for the login task' -> taskId='t-1', priority='A'
-            - 'Reopen the deploy task' -> taskId='t-7', status='open'
-            """,
+            ToolDescriptions.get("update_task"),
             schema,
             new ToolExecutor<UpdateTaskInput, Map<String, Object>>(UpdateTaskInput.class) {
                 @Override
@@ -284,21 +230,7 @@ public class TaskToolProvider {
 
         mcpTools.registerTool(
             "search_task",
-            """
-            Searches open tasks in Beanbot Tasks repositories by a substring of their summary.
-
-            Returns at most the top 10 matching open tasks, each with its repoId and taskId so the
-            result can be passed directly to close_task. Closed tasks are excluded.
-
-            Use when the user wants to find, look up, or list tasks, especially before closing one:
-            - 'which tasks mention login?'
-            - 'find the bug task', 'search for the deploy task'
-            - 'list all the open tasks'
-
-            Examples:
-            - 'search_task query=login' -> matches tasks whose summary contains 'login'
-            - 'search_task repoId=backend query=test' -> search only the backend repo
-            """,
+            ToolDescriptions.get("search_task"),
             schema,
             new ToolExecutor<SearchTaskInput, Map<String, Object>>(SearchTaskInput.class) {
                 @Override

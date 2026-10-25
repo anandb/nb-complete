@@ -54,6 +54,9 @@ import github.anandb.netbeans.model.UsageRecords.GroupTotals;
 import github.anandb.netbeans.model.UsageRecords.ToolTotals;
 import github.anandb.netbeans.model.UsageRecords.UsageSummary;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.UsageStatsFormat;
@@ -356,6 +359,30 @@ public class TokenUsageDialog extends JDialog {
         return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
     }
 
+    // ---- Summary stylesheet ---------------------------------------------------
+
+    private static volatile String cachedCssTemplate;
+
+    private static String loadCssTemplate() {
+        String template = cachedCssTemplate;
+        if (template != null) {
+            return template;
+        }
+        try (InputStream in = TokenUsageDialog.class
+                .getResourceAsStream("token-usage-style.css.template")) {
+            if (in == null) {
+                throw new IllegalStateException(NbBundle.getMessage(
+                        TokenUsageDialog.class, "ERR_TokenUsageCssTemplateNotFound"));
+            }
+            template = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+            cachedCssTemplate = template;
+            return template;
+        } catch (IOException e) {
+            throw new IllegalStateException(NbBundle.getMessage(
+                    TokenUsageDialog.class, "ERR_LoadTokenUsageCssTemplateFailed"), e);
+        }
+    }
+
     /**
      * Renders the OVERVIEW and COST &amp; TOKENS blocks as themed HTML tables
      * from the aggregated summary, then the breakdown tables grouped by model
@@ -375,15 +402,13 @@ public class TokenUsageDialog extends JDialog {
 
         StringBuilder sb = new StringBuilder(2048);
         sb.append("<html><head><style>")
-          .append("html,body{margin:0;padding:8px;background:").append(bg)
-          .append(";color:").append(fg).append(";font-family:")
-          .append(MONO_STACK).append(";font-size:13px;line-height:1.4;}")
-          .append("table{border-collapse:collapse;width:100%;margin:8px 0;background:")
-          .append(tableBg).append(";}")
-          .append("th{background:").append(headerBg).append(";padding:8px;border:1px solid ")
-          .append(borderColor).append(";text-align:left;font-weight:bold;}")
-          .append("td{padding:8px;border:1px solid ").append(borderColor)
-          .append(";vertical-align:top;}")
+          .append(loadCssTemplate()
+                  .replace("$bg", bg)
+                  .replace("$fg", fg)
+                  .replace("$monoFamily", MONO_STACK)
+                  .replace("$tableBg", tableBg)
+                  .replace("$tableHeaderBg", headerBg)
+                  .replace("$borderColor", borderColor))
           .append("</style></head><body>");
 
         appendLocalizedTable(sb, "LBL_Overview", headerBg, altBg, new String[][]{
