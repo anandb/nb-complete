@@ -4,6 +4,7 @@ import java.awt.Component;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -12,6 +13,8 @@ import java.util.List;
 import java.util.logging.Level;
 
 import javax.swing.JPanel;
+
+import org.openide.util.NbBundle;
 
 import com.vladsch.flexmark.ext.tables.TablesExtension;
 import com.vladsch.flexmark.html.HtmlRenderer;
@@ -71,6 +74,30 @@ final class HtmlConversationExporter {
         setup.body().append("</div>\n");
         return buildPageHtml(setup.pageTitle(), setup.timestamp(),
                 setup.body().toString(), setup.theme());
+    }
+
+    // ---- Export stylesheet template -------------------------------------------
+
+    private static volatile String cachedCssTemplate;
+
+    private static String loadCssTemplate() {
+        String template = cachedCssTemplate;
+        if (template != null) {
+            return template;
+        }
+        try (InputStream in = HtmlConversationExporter.class
+                .getResourceAsStream("export-style.css.template")) {
+            if (in == null) {
+                throw new IllegalStateException(NbBundle.getMessage(
+                        HtmlConversationExporter.class, "ERR_ExportCssTemplateNotFound"));
+            }
+            template = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+            cachedCssTemplate = template;
+            return template;
+        } catch (IOException e) {
+            throw new IllegalStateException(NbBundle.getMessage(
+                    HtmlConversationExporter.class, "ERR_LoadExportCssTemplateFailed"), e);
+        }
     }
 
     // ---- SVG icon cache (loaded once from classpath) --------------------------
@@ -345,281 +372,25 @@ final class HtmlConversationExporter {
         String monoFamily = UIUtils.MONO_STACK;
         int fontSize = ThemeManager.getFont().getSize() - 2;
 
-        String css = """
-body {
-    font-family: %s;
-    font-size: %dpx;
-    color: %s;
-    background: %s;
-    margin: 0;
-    padding: 16px;
-    line-height: 1.4;
-}
-.chat-container {
-    max-width: 800px;
-    margin: 0 auto;
-}
-.chat-header {
-    text-align: center;
-    padding: 8px 0 16px;
-    border-bottom: 1px solid %s;
-    margin-bottom: 16px;
-}
-.chat-header h1 {
-    margin: 0;
-    font-size: 20px;
-    font-weight: 600;
-}
-.header-date {
-    font-size: 11px;
-    color: %s;
-}
-.message {
-    display: flex;
-    margin-bottom: 4px;
-    gap: 8px;
-    align-items: flex-start;
-}
-.message.user {
-    justify-content: flex-start;
-}
-.message.assistant {
-    flex-direction: row;
-}
-.message.thought,
-.message.tool {
-    flex-direction: row;
-}
-.bubble {
-    width: 80%%;
-    padding: 8px 12px;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-}
-.bubble-header {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-bottom: 4px;
-}
-.bubble-header .avatar {
-    width: 24px;
-    height: 24px;
-    border-radius: 50%%;
-}
-.user-bubble {
-    background: %s;
-    border-radius: 16px 16px 4px 16px;
-}
-.assistant-bubble {
-    background: %s;
-    border-radius: 16px 16px 16px 4px;
-}
-.content p,
-.content div,
-.content h1,
-.content h2,
-.content h3,
-.content h4,
-.content h5,
-.content h6 {
-    margin: 2px 0;
-    text-align: left;
-}
-.content ul,
-.content ol {
-    padding-left: 20px;
-    margin: 4px 0;
-}
-.content li {
-    margin: 2px 0;
-}
-.content table {
-    width: 100%%;
-    border-collapse: collapse;
-    margin: 8px 0;
-    background: %s;
-}
-.content th {
-    background: %s;
-    padding: 8px;
-    border: 1px solid %s;
-    text-align: left;
-    font-weight: bold;
-}
-.content td {
-    padding: 8px;
-    border: 1px solid %s;
-    vertical-align: top;
-}
-.content tr:nth-child(even) td {
-    background: %s;
-}
-.content a {
-    color: %s;
-    text-decoration: none;
-    font-weight: 500;
-}
-.content a:hover {
-    text-decoration: underline;
-}
-.content pre {
-    background: %s;
-    color: %s;
-    padding: 10px;
-    border-radius: 4px;
-    font-family: %s;
-    font-size: 13px;
-    overflow-x: auto;
-    margin: 6px 0;
-    white-space: pre-wrap;
-    word-wrap: break-word;
-}
-.content code {
-    background: rgba(255,255,255,0.1);
-    padding: 2px 4px;
-    border-radius: 3px;
-    font-family: %s;
-    font-size: 12px;
-}
-.activity {
-    margin: 2px 0;
-    border-radius: 12px;
-    overflow: hidden;
-    border: 1px solid %s;
-    width: 80%%;
-}
-.activity-pane > summary {
-    padding: 6px 10px;
-    background: %s;
-    cursor: pointer;
-    font-weight: bold;
-    font-size: 13px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    user-select: none;
-    width: 100%%;
-    box-sizing: border-box;
-}
-.activity-pane > summary img {
-    width: 16px;
-    height: 16px;
-}
-.activity-pane > summary::-webkit-details-marker {
-    display: none;
-}
-.activity-pane > summary::before {
-    content: '▶';
-    margin-right: 4px;
-    font-size: 10px;
-}
-.activity-pane[open] > summary::before {
-    content: '▼';
-}
-.segment {
-    margin: 0;
-    border-top: 1px solid %s;
-    width: 100%%;
-    box-sizing: border-box;
-}
-.segment summary {
-    padding: 4px 8px 4px 24px;
-    font-size: 12px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    user-select: none;
-    border-left: 4px solid transparent;
-    background: %s;
-}
-.segment.thought summary {
-    border-left-color: %s;
-}
-.segment.tool summary {
-    border-left-color: %s;
-}
-.segment summary img {
-    width: 16px;
-    height: 16px;
-}
-.segment summary::-webkit-details-marker {
-    display: none;
-}
-.segment summary::before {
-    content: '▶';
-    margin-right: 4px;
-    font-size: 10px;
-    color: %s;
-}
-.segment[open] > summary::before {
-    content: '▼';
-}
-.segment-body {
-    padding: 8px 12px 8px 28px;
-    font-size: 13px;
-    line-height: 1.3;
-    border-left: 4px solid transparent;
-    border-left-color: inherit;
-}
-.segment-body pre {
-    background: %s;
-    color: %s;
-    padding: 8px;
-    border-radius: 4px;
-    font-family: %s;
-    font-size: 12px;
-    margin: 0;
-    white-space: pre-wrap;
-    word-wrap: break-word;
-}
-.segment.thought .segment-body pre {
-    background: %s;
-}
-.activity-segment {
-    margin: 1px 0;
-    border-radius: 8px;
-    overflow: hidden;
-    border: 1px solid %s;
-    width: 80%%;
-}
-.segment-header {
-    padding: 4px 8px;
-    font-size: 12px;
-    font-weight: bold;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    background: %s;
-}
-.segment-header img {
-    width: 16px;
-    height: 16px;
-}
-.thought .segment-header {
-    border-left: 4px solid %s;
-}
-.tool .segment-header {
-    border-left: 4px solid %s;
-}
-.thought .segment-body {
-    border-left: 4px solid %s;
-}
-.tool .segment-body {
-    border-left: 4px solid %s;
-}
-""";
-        css = css.formatted(
-            fontFamily, fontSize, fg, bg, borderColor, muted,
-            userBg, assistantBg,
-            tableBg, tableHeaderBg, borderColor, borderColor, tableAlternate, linkColor,
-            codeBg, codeFg, monoFamily, monoFamily,
-            borderColor, base2, borderColor,
-            base2, yellow, accent, muted,
-            codeBg, codeFg, monoFamily, codeBg,
-            borderColor, base2, yellow, accent, yellow, accent
-        );
+        String css = loadCssTemplate()
+                .replace("$fontFamily", fontFamily)
+                .replace("$fontSize", fontSize + "px")
+                .replace("$fg", fg)
+                .replace("$bg", bg)
+                .replace("$borderColor", borderColor)
+                .replace("$muted", muted)
+                .replace("$userBg", userBg)
+                .replace("$assistantBg", assistantBg)
+                .replace("$tableBg", tableBg)
+                .replace("$tableHeaderBg", tableHeaderBg)
+                .replace("$tableAlternate", tableAlternate)
+                .replace("$linkColor", linkColor)
+                .replace("$codeBg", codeBg)
+                .replace("$codeFg", codeFg)
+                .replace("$monoFamily", monoFamily)
+                .replace("$base2", base2)
+                .replace("$yellow", yellow)
+                .replace("$accent", accent);
 
         return "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n"
              + "<meta charset=\"UTF-8\">\n"
