@@ -89,6 +89,8 @@ class AcpProtocolClientTest {
 
         Exception ex = assertThrows(Exception.class, () -> future.get(5, TimeUnit.SECONDS));
         assertTrue(ExceptionUtils.getMessage(ex).contains("Internal error"));
+        assertTrue(ex.getCause() instanceof AcpRpcException, "expected typed JSON-RPC error");
+        assertEquals(-32603, ((AcpRpcException) ex.getCause()).code());
     }
 
     /**

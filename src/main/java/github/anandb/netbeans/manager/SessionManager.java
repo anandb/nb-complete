@@ -830,8 +830,21 @@ public class SessionManager implements SessionQuery, SessionControl {
         final long start = System.nanoTime();
         return withMcpFallback("session/load",
                 () -> sendLoadSessionRequest(sessionId, cwd, start), start)
-                .exceptionally(ex -> {
-                    LOG.warn("loadSessionFromServer: error: {0}", ExceptionUtils.getMessage(ex), ex);
+                .handle((res, ex) -> {
+                    if (ex == null) {
+                        return res;
+                    }
+                    if (isMethodNotFound(ex)) {
+                        processManager.markSessionLoadUnsupported();
+                        LOG.warn("Harness does not implement session/load; session reload/restore disabled "
+                                + "for this server process");
+                        return null;
+                    }
+                    // Agents may fail session/load while the session itself stays
+                    // open; keep the existing behaviour of completing with no
+                    // options rather than tearing the session down.
+                    LOG.warn("loadSessionFromServer: error: {0}",
+                            ExceptionUtils.getMessage(ex), ex);
                     return null;
                 });
     }
@@ -1108,6 +1121,12 @@ public class SessionManager implements SessionQuery, SessionControl {
 
     @Override
     public boolean loadSession(String sessionId, boolean isStartup) {
+        if (processManager.isSessionLoadUnsupported()) {
+            // Discovered on a previous call; do not clear the current session or
+            // re-issue a request the process already answered with -32601.
+            notifyError(NbBundle.getMessage(SessionManager.class, "ERR_LoadSessionUnsupported"));
+            return false;
+        }
         StrategyRegistry.invalidateSession(sessionId);
         if (!stateMachine.transitionTo(SessionState.LOADING)) {
             LOG.warn("Cannot load session in state {0}", stateMachine.getState());
@@ -1165,6 +1184,11 @@ public class SessionManager implements SessionQuery, SessionControl {
             prepared
                     .thenCompose(v -> loadSessionFromServer(sessionId, cwd))
                     .thenAccept(configOptions -> {
+                        if (processManager.isSessionLoadUnsupported()) {
+                            // loadSessionFromServer mapped -32601 to a null result;
+                            // never present that as a successful load.
+                            throw new CompletionException(new IllegalStateException("session/load unsupported"));
+                        }
                         if (sessionId.equals(this.currentSessionId)) {
                             notifySessionProgress(60);
                             stateMachine.transitionTo(SessionState.STREAMING);
@@ -1178,13 +1202,21 @@ public class SessionManager implements SessionQuery, SessionControl {
                         }
                     })
                     .exceptionally(ex -> {
-                        LOG.severe("Failed to load session async: {0}", ExceptionUtils.getMessage(ex), ex);
+                        boolean unsupported = processManager.isSessionLoadUnsupported();
+                        if (unsupported) {
+                            LOG.warn("Session load rejected by harness: session/load is not implemented");
+                        } else {
+                            LOG.severe("Failed to load session async: {0}", ExceptionUtils.getMessage(ex), ex);
+                        }
                         if (sessionId.equals(this.currentSessionId)) {
                             // The session never became active — clear the pointer
                             // so SSE routing and the UI don't treat it as current.
                             this.currentSessionId = null;
                             stateMachine.transitionTo(SessionState.IDLE);
-                            notifyError(NbBundle.getMessage(SessionManager.class, "ERR_LoadSessionFailed", rootMessage(ex)));
+                            notifyError(unsupported
+                                    ? NbBundle.getMessage(SessionManager.class, "ERR_LoadSessionUnsupported")
+                                    : NbBundle.getMessage(SessionManager.class, "ERR_LoadSessionFailed",
+                                            rootMessage(ex)));
                             // Re-sync session list from server so the dropdown reflects
                             // the actual server state and loads the most recent session.
                             refreshSessions();
@@ -1537,6 +1569,20 @@ public class SessionManager implements SessionQuery, SessionControl {
         }
         String msg = ExceptionUtils.getMessage(cause);
         return msg != null ? msg : ExceptionUtils.getMessage(ex);
+    }
+
+    /** True when the cause chain contains a JSON-RPC "Method not found" error. */
+    private static boolean isMethodNotFound(Throwable ex) {
+        Throwable cause = ex;
+        while (cause != null) {
+            if (cause instanceof AcpRpcException) {
+                if (((AcpRpcException) cause).isMethodNotFound()) {
+                    return true;
+                }
+            }
+            cause = cause.getCause();
+        }
+        return false;
     }
 
     private long parseTimestamp(String ts) {

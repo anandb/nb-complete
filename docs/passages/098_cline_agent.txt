@@ -11,7 +11,7 @@
 - **macOS / Linux / WSL**: `npm i -g cline`
 - **Windows (PowerShell, CMD or Git Bash)**: `npm i -g cline`
 
-That npm route requires **Node.js**; install Node first if `npm` is not on your `PATH`. CLI docs: <a href="https://docs.cline.bot/usage/acp" target="_blank" rel="noopener">docs.cline.bot/usage/acp</a>.
+The npm route requires **Node.js**, and BeanBot needs Cline CLI **3.0.74 or newer** (`npm i -g cline@latest`). Older 2.x builds expose an ACP server without `session/load`, `session/cancel` or config options, so upgrade before connecting. CLI docs: <a href="https://docs.cline.bot/usage/acp" target="_blank" rel="noopener">docs.cline.bot/usage/acp</a>.
 
 #### About
 
@@ -26,7 +26,7 @@ Cline in BeanBot supports:
 - **Model Selection**: Exposed as an ACP config option, so the in-session model dropdown works.
 - **Plan / Act mode**: The agent selector is offered and sends <code>session/set_mode</code>, but Cline applies the chosen mode when it creates the session manager (on the first prompt). Pick the mode before the first message, or start a new session after changing it.
 - **Queued messages**: a message sent while a turn is running is held in the [[Queuing Messages]] toolbar queue until the turn ends. Cline accepts the second prompt but resolves it with <code>end_turn</code> immediately while the first turn keeps streaming, so sending immediately would unlock the input against a running turn.
-- **Session reload**: sessions can be resumed with <code>session/load</code>, so [[Reloading a Session]] works for sessions Cline has already persisted.
+- **Session reload**: with Cline CLI 3.0.74+ sessions can be resumed with <code>session/load</code>, so [[Reloading a Session]] works for sessions Cline has already persisted. Older 2.x builds do not implement the method; reload is refused and the status line asks you to upgrade.
 
 #### Limitations
 

@@ -322,8 +322,8 @@ public final class HarnessCatalog {
         "npm i -g cline",
         "npm i -g cline",
         "npm i -g cline",
-        "Requires Node.js. Run cline auth once (or set CLINE_API_KEY) before connecting; "
-                + "ACP sessions start no interactive login.",
+        "Requires Cline CLI 3.0.74+ (npm i -g cline@latest). Run cline auth once (or set CLINE_API_KEY) "
+                + "before connecting; ACP sessions start no interactive login.",
         "https://docs.cline.bot/usage/acp",
         List.of()
     );

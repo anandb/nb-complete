@@ -19,8 +19,12 @@ class PluginSettingsTest {
     }
 
     @Test
-    void testCopyAllItemsPreferenceDefaultsEnabledAndCanBeDisabled() {
+    void testCopyAllItemsPreferenceDefaultsEnabledAndCanBeDisabled() throws Exception {
         Preferences prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
+        // Force the node to load from the backing store before reading its
+        // default: a lazy node could answer get(key, null) from an empty cache
+        // and then getBoolean(key, true) after loading the stored value.
+        prefs.sync();
         String previous = prefs.get(PreferenceKeys.ACTIONS_COPY_ALL_ITEMS, null);
         try {
             if (previous == null) {

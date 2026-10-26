@@ -66,6 +66,13 @@ class ServerProcessLifecycle {
      * not advertise it, so every close is gated on this.
      */
     private volatile boolean sessionCloseSupported;
+    /**
+     * Set when a {@code session/load} request fails with JSON-RPC
+     * {@code -32601}. Some agents advertise {@code loadSession} but do not
+     * implement the method; the flag is per server process and stops the client
+     * from clearing and re-issuing a load it knows cannot succeed.
+     */
+    private volatile boolean sessionLoadUnsupported;
     /** Whether the agent advertised {@code promptCapabilities.embeddedContext}. */
     private volatile boolean embeddedContextSupported;
     /** Listener fired once the harness is resolved after the initialize handshake. */
@@ -101,6 +108,16 @@ class ServerProcessLifecycle {
     /** Whether the agent advertised {@code sessionCapabilities.close}. */
     boolean isSessionCloseSupported() {
         return sessionCloseSupported;
+    }
+
+    /** True once {@code session/load} was rejected as an unknown method. */
+    boolean isSessionLoadUnsupported() {
+        return sessionLoadUnsupported;
+    }
+
+    /** Marks {@code session/load} unsupported for this server process. */
+    void markSessionLoadUnsupported() {
+        sessionLoadUnsupported = true;
     }
 
     /** Whether the agent advertised {@code promptCapabilities.embeddedContext}. */
@@ -282,6 +299,7 @@ class ServerProcessLifecycle {
             // A restart may land on a different harness, which must not inherit
             // the previous one's advertised capabilities.
             sessionCloseSupported = false;
+            sessionLoadUnsupported = false;
             embeddedContextSupported = false;
 
             AcpProtocolClient client = new AcpProtocolClient(serverProcess);

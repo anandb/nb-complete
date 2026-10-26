@@ -475,6 +475,16 @@ public class ProcessManager implements ProcessControl {
         return serverLifecycle.isSessionCloseSupported();
     }
 
+    /** True once this server process rejected {@code session/load} as unknown. */
+    public boolean isSessionLoadUnsupported() {
+        return serverLifecycle.isSessionLoadUnsupported();
+    }
+
+    /** Marks {@code session/load} unsupported for this server process. */
+    public void markSessionLoadUnsupported() {
+        serverLifecycle.markSessionLoadUnsupported();
+    }
+
     @Override
     public boolean supportsEmbeddedContext() {
         return serverLifecycle.isEmbeddedContextSupported();

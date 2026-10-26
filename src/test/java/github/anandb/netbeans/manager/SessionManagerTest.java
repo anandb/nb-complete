@@ -721,6 +721,28 @@ class SessionManagerTest {
     }
 
     @Test
+    void sessionLoadMethodNotFoundMarksCapabilityUnsupported() throws Exception {
+        seedCachedSession("s1", "/p");
+        when(processManager.sendRequest(eq("session/load"), any(), eq(2L), eq(TimeUnit.MINUTES)))
+                .thenReturn(CompletableFuture.failedFuture(
+                        new AcpRpcException(AcpRpcException.METHOD_NOT_FOUND,
+                                "\"Method not found\": session/load")));
+
+        assertNull(sessionManager.loadSessionFromServer("s1", "/p").get(5, TimeUnit.SECONDS));
+        verify(processManager).markSessionLoadUnsupported();
+    }
+
+    @Test
+    void knownUnsupportedLoadIsRefusedWithoutIssuingAnotherRequest() {
+        when(processManager.isSessionLoadUnsupported()).thenReturn(true);
+
+        assertFalse(sessionManager.loadSession("s1"));
+        verify(processManager, never()).sendRequest(eq("session/load"), any(),
+                eq(2L), eq(TimeUnit.MINUTES));
+        assertNull(sessionManager.getCurrentSessionId());
+    }
+
+    @Test
     void readyHandlerDoesNotReloadWhileAnExplicitLoadIsInFlight() throws Exception {
         seedCachedSession("old", "/old-project");
         CompletableFuture<JsonNode> pendingLoad = new CompletableFuture<>();
