@@ -299,6 +299,35 @@ public final class HarnessCatalog {
         List.of("%USERHOME%/.kilo/bin")
     );
 
+    /**
+     * Cline: a native ACP agent launched as {@code cline --acp}. Its ACP layer
+     * is v1 but sparse — no session capability block, no {@code session/list},
+     * no message ids and no usage updates — and it ignores the per-session
+     * {@code mcpServers} field, so the plugin's MCP server is never offered. A
+     * prompt sent during a running turn resolves {@code end_turn} immediately
+     * while that turn continues, so messages must be queued
+     * ({@code requiresMessageQueue}). Model and mode are driven by config
+     * options and {@code session/set_mode}; the dedicated model request is only
+     * registered as {@code unstable_}. {@code session/new} returns plan/act
+     * modes, so the agent selector is offered. Credentials come from a prior
+     * {@code cline auth} (or {@code CLINE_API_KEY}); BeanBot has no ACP
+     * authenticate client.
+     */
+    public static final Harness CLINE = new Harness(
+        "cline", "Cline", "cline",
+        List.of("cline"), "--acp",
+        true, false, true, false, false, true, true, false, true, false, true,
+        "",
+        "",
+        "npm i -g cline",
+        "npm i -g cline",
+        "npm i -g cline",
+        "Requires Node.js. Run cline auth once (or set CLINE_API_KEY) before connecting; "
+                + "ACP sessions start no interactive login.",
+        "https://docs.cline.bot/usage/acp",
+        List.of()
+    );
+
     /** Fallback for unknown harnesses. */
     public static final Harness UNKNOWN = new Harness(
         "unknown", "Agent", "agent",
@@ -312,7 +341,8 @@ public final class HarnessCatalog {
 
     /** All supported harnesses, in the order offered during onboarding. */
     public static final List<Harness> ALL =
-            List.of(OMP, OPENCODE, CODEX, OPENCLAW, PI, GOOSE, CURSOR, COPILOT, CLAUDE, HERMES, GEMINI, DEVIN, KILO);
+            List.of(OMP, OPENCODE, CODEX, OPENCLAW, PI, GOOSE, CURSOR, COPILOT, CLAUDE, HERMES, GEMINI, DEVIN,
+                    KILO, CLINE);
 
     /** Looks up a harness by catalog id; {@link #UNKNOWN} when not found. */
     public static Harness byId(String id) {

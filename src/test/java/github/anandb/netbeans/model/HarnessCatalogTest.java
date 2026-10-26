@@ -18,13 +18,13 @@ class HarnessCatalogTest {
 
     @Test
     void allHarnessesPresent() {
-        assertEquals(13, HarnessCatalog.ALL.size());
+        assertEquals(14, HarnessCatalog.ALL.size());
         Set<String> ids = new HashSet<>();
         for (HarnessCatalog.Harness h : HarnessCatalog.ALL) {
             assertTrue(ids.add(h.id()), "duplicate id: " + h.id());
         }
         assertTrue(ids.containsAll(Set.of("opencode", "codex", "goose", "pi", "cursor", "claude", "hermes",
-                "gemini", "omp", "openclaw", "devin", "copilot", "kilo")));
+                "gemini", "omp", "openclaw", "devin", "copilot", "kilo", "cline")));
     }
 
     @Test
@@ -32,7 +32,7 @@ class HarnessCatalogTest {
         Set<String> allIds = new HashSet<>(HarnessCatalog.ALL.stream()
                 .map(HarnessCatalog.Harness::id).toList());
         assertEquals(Set.of("omp", "opencode", "codex", "openclaw", "pi", "goose", "cursor", "copilot",
-                "claude", "hermes", "gemini", "devin", "kilo"),
+                "claude", "hermes", "gemini", "devin", "kilo", "cline"),
                 allIds);
     }
 
@@ -244,6 +244,40 @@ class HarnessCatalogTest {
         assertEquals(List.of("%USERHOME%/.kilo/bin"), HarnessCatalog.KILO.windowsInstallSubDirs());
         assertEquals("https://kilo.ai/docs/code-with-ai/platforms/cli", HarnessCatalog.KILO.docsUrl());
         assertEquals("kilo.svg", HarnessCatalog.harnessIconName("kilo"));
+    }
+
+    @Test
+    void clineCapabilitiesMatchHandshake() {
+        // Catalog data pinned against the live Cline 3.0.74 initialize: protocol 1,
+        // loadSession, prompt image only (embeddedContext=false). No
+        // sessionCapabilities and no mcpCapabilities are advertised; session/list
+        // is -32601 and message ids/usage are absent. requiresMessageQueue is a
+        // client policy: a prompt sent mid-turn resolves end_turn immediately
+        // while the running turn keeps streaming.
+        assertEquals(List.of("cline"), HarnessCatalog.CLINE.binaryNames());
+        assertEquals("--acp", HarnessCatalog.CLINE.launchArgs());
+        assertEquals(HarnessCatalog.CLINE, HarnessCatalog.byBinaryName("cline"));
+        assertEquals(HarnessCatalog.CLINE, HarnessCatalog.byBinaryName("cline.exe"));
+        assertEquals(HarnessCatalog.CLINE, HarnessCatalog.byBinaryName("cline.cmd"));
+        assertTrue(HarnessCatalog.CLINE.requiresMessageQueue());
+        assertFalse(HarnessCatalog.CLINE.sendsMcpServerConfig());
+        assertTrue(HarnessCatalog.CLINE.injectsEditorContext());
+        assertFalse(HarnessCatalog.CLINE.supportsMessageIds());
+        assertFalse(HarnessCatalog.CLINE.supportsMcpServer());
+        assertTrue(HarnessCatalog.CLINE.supportsSessionSetMode());
+        assertTrue(HarnessCatalog.CLINE.supportsSessionSetConfigOption());
+        assertFalse(HarnessCatalog.CLINE.supportsSessionSetModel());
+        assertTrue(HarnessCatalog.CLINE.supportsModelSelection());
+        assertFalse(HarnessCatalog.CLINE.supportsSessionList());
+        assertTrue(HarnessCatalog.CLINE.supportsAgentList());
+        assertEquals("npm i -g cline", HarnessCatalog.CLINE.installWindows());
+        assertEquals("npm i -g cline", HarnessCatalog.CLINE.installMac());
+        assertEquals("npm i -g cline", HarnessCatalog.CLINE.installLinux());
+        assertEquals(List.of(), HarnessCatalog.CLINE.windowsInstallSubDirs());
+        assertEquals("https://docs.cline.bot/usage/acp", HarnessCatalog.CLINE.docsUrl());
+        assertEquals("cline.svg", HarnessCatalog.harnessIconName("cline"));
+        assertNotNull(HarnessCatalogTest.class.getResource("/github/anandb/netbeans/ui/icons/cline.svg"));
+        assertNotNull(HarnessCatalogTest.class.getResource("/github/anandb/netbeans/ui/icons/cline_dark.svg"));
     }
 
     @Test

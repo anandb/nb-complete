@@ -18,7 +18,7 @@ BeanBot is a NetBeans IDE plugin designed to provide integrated AI capabilities 
 
 ## Getting Started
 
-Supported coding harnesses: **Oh My Pi, OpenCode, Codex, OpenClaw, Pi, Goose, Cursor, Copilot, Claude, Hermes, Gemini, Devin, Kilo Code** — pick one during onboarding or later from the help menu.
+Supported coding harnesses: **Oh My Pi, OpenCode, Codex, OpenClaw, Pi, Goose, Cursor, Copilot, Claude, Hermes, Gemini, Devin, Kilo Code, Cline** — pick one during onboarding or later from the help menu.
 
 **Token and cost statistics** are captured from the ACP traffic itself, not from an external process: the usage updates and per-turn token figures a harness already sends are recorded into an embedded H2 database under the NetBeans user directory (`beanbot/usage-stats.mv.db`), so they survive restarts and are readable without a harness running. The currency button in the toolbar opens the panel, which breaks the figures down by model and by agent; they are approximate for harnesses that report incomplete usage.
 
@@ -133,7 +133,7 @@ For a guided walkthrough mapped to the plugin's execution flow, read files in th
 3. [`src/main/resources/github/anandb/netbeans/ui/layer.xml`](src/main/resources/github/anandb/netbeans/ui/layer.xml) — NetBeans registration (window menu/shortcuts, editor popup, Git toolbar); the Options panel is registered by annotation in `ui/ACPOptionsPanelController.java`
 
 ### Phase 2: Server Process
-4. [`manager/ProcessManager.java`](src/main/java/github/anandb/netbeans/manager/ProcessManager.java) — Owns the ACP server subprocess and acts as the central request-dispatch hub; spawn itself is in `manager/ServerProcessLifecycle.startServer()`, launching the harness binary the user selected (13 supported)
+4. [`manager/ProcessManager.java`](src/main/java/github/anandb/netbeans/manager/ProcessManager.java) — Owns the ACP server subprocess and acts as the central request-dispatch hub; spawn itself is in `manager/ServerProcessLifecycle.startServer()`, launching the harness binary the user selected (14 supported)
 5. [`support/BinaryResolver.java`](src/main/java/github/anandb/netbeans/support/BinaryResolver.java) — Locates the binary on PATH
 6. [`manager/AcpProtocolClient.java`](src/main/java/github/anandb/netbeans/manager/AcpProtocolClient.java) — JSON-RPC over stdin/stdout, SSE read loop, pending request tracking
 

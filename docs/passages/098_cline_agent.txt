@@ -1,0 +1,45 @@
+:: Cline Agent {"position":"2400,1300","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Cline Agent</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+#### Install
+
+- **macOS / Linux / WSL**: `npm i -g cline`
+- **Windows (PowerShell, CMD or Git Bash)**: `npm i -g cline`
+
+That npm route requires **Node.js**; install Node first if `npm` is not on your `PATH`. CLI docs: <a href="https://docs.cline.bot/usage/acp" target="_blank" rel="noopener">docs.cline.bot/usage/acp</a>.
+
+#### About
+
+<a href="https://docs.cline.bot/usage/acp" target="_blank" rel="noopener">Cline</a> is an open-source coding agent. Running <code>cline --acp</code> makes it act as an **ACP server** over stdio: it speaks JSON-RPC on stdin/stdout and is meant to be spawned by an ACP-aware editor, so it is not a command to run yourself.
+
+The executable you configure in BeanBot is <code>cline</code>, run with the default launch argument <code>--acp</code>.
+
+**Authentication** is a CLI prerequisite: run <code>cline auth</code> once in a terminal (or export <code>CLINE_API_KEY</code>) before connecting. Cline does expose ACP authenticate methods (Cline, ClinePass, ChatGPT subscription), but BeanBot has no in-chat sign-in, so a fresh install without credentials fails <code>session/new</code> with an authentication error — sign in first, then pick Cline in the chooser.
+
+Cline in BeanBot supports:
+- **Editor Context**: Seamlessly injects the active editor state into agent prompts.
+- **Model Selection**: Exposed as an ACP config option, so the in-session model dropdown works.
+- **Plan / Act mode**: The agent selector is offered and sends <code>session/set_mode</code>, but Cline applies the chosen mode when it creates the session manager (on the first prompt). Pick the mode before the first message, or start a new session after changing it.
+- **Queued messages**: a message sent while a turn is running is held in the [[Queuing Messages]] toolbar queue until the turn ends. Cline accepts the second prompt but resolves it with <code>end_turn</code> immediately while the first turn keeps streaming, so sending immediately would unlock the input against a running turn.
+- **Session reload**: sessions can be resumed with <code>session/load</code>, so [[Reloading a Session]] works for sessions Cline has already persisted.
+
+#### Limitations
+
+- **No plugin MCP tools**: BeanBot does not hand its internal MCP server to Cline (it sends an empty list); the embedded server may still run for other harnesses. Configure MCP servers in Cline's own configuration if you need them.
+- **No session list from Cline**: Cline does not implement <code>session/list</code>, so the session dropdown only shows sessions tracked locally by this BeanBot instance — sessions created in another Cline client do not appear.
+- **No token statistics**: Cline sends no usage updates, so per-turn token and cost figures stay empty for this harness; see [[Check token usage]].
+- **Thinking level**: there is no thinking config option. Add <code>--thinking &lt;level&gt;</code> after the existing <code>--acp</code> argument under Process Arguments in <code>Options &gt; BeanBot</code>, or set it in the CLI, to influence reasoning before a session starts.
+- **Images and binary attachments are dropped**: Cline advertises image prompts but its ACP <code>prompt()</code> reads only text blocks, so image blocks and binary <code>resource_link</code> blocks never reach the model. Text attachments are inlined as text blocks and do work — see [[Attachments]].
+- **No in-chat sign-in**: BeanBot has no ACP authenticate client for Cline; credentials must exist before the connection.
+
+> [[Post Install]]
+> [[Starting a Session]]
+> [[Choose Your Coding Harness]]
+> [[Queuing Messages]]
+> [[Picking an Agent, Model and Thinking Level]]
+> [[Options Panel Reference]]

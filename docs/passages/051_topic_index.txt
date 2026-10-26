@@ -21,6 +21,7 @@ This is a complete list of topics in this guide, use it to directly jump to that
 > [[Check token usage]]
 > [[Choose Your Coding Harness]]
 > [[Claude Agent]]
+> [[Cline Agent]]
 > [[Codex Agent]]
 > [[Commands]]
 > [[Configuration Template]]
