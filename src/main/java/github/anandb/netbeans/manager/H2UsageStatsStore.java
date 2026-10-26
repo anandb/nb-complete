@@ -2210,6 +2210,8 @@ public class H2UsageStatsStore
                     Thread.sleep(CLOSE_RETRY_DELAY_MS * attempt);
                 } catch (InterruptedException interrupted) {
                     Thread.currentThread().interrupt();
+                    LOG.log(Level.WARNING,
+                            "Interrupted while closing the usage-stats database; it may stay locked", interrupted);
                     return;
                 }
             }
