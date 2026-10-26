@@ -42,17 +42,88 @@ public class AttachmentManager {
         return attachments.size();
     }
 
-    public List<Map<String, Object>> buildFileBlocks() {
+    /**
+     * Builds ACP v1 {@code ContentBlock}s for the attachments.
+     * <p>
+     * ACP has no {@code "file"} content block, so a non-image attachment is sent
+     * as (1) an embedded {@code resource} when the agent advertises
+     * {@code promptCapabilities.embeddedContext}, (2) an inlined {@code text}
+     * block for textual files otherwise (text is the one block type every agent
+     * must support, and it does not depend on the agent reading a local path),
+     * and (3) a {@code resource_link} as the last resort for binary files.
+     */
+    public List<Map<String, Object>> buildFileBlocks(boolean embeddedContextSupported) {
         List<Map<String, Object>> blocks = new ArrayList<>();
         for (AttachedFile af : attachments) {
-            Map<String, Object> block = new HashMap<>();
-            block.put("type", af.mimeType().startsWith("image/") ? "image" : "file");
-            block.put("filename", af.filename());
-            block.put("mimeType", af.mimeType());
-            block.put("data", af.base64Data());
-            blocks.add(block);
+            blocks.add(toContentBlock(af, embeddedContextSupported));
         }
         return blocks;
+    }
+
+    private static Map<String, Object> toContentBlock(AttachedFile af, boolean embeddedContextSupported) {
+        if (af.isImage()) {
+            Map<String, Object> block = new HashMap<>();
+            block.put("type", "image");
+            block.put("mimeType", af.mimeType());
+            block.put("data", af.base64Data());
+            return block;
+        }
+
+        if (embeddedContextSupported) {
+            Map<String, Object> resource = new HashMap<>();
+            resource.put("uri", af.uri());
+            resource.put("mimeType", af.mimeType());
+            String text = af.textContent();
+            if (text != null) {
+                resource.put("text", text);
+            } else {
+                resource.put("blob", af.base64Data());
+            }
+            Map<String, Object> block = new HashMap<>();
+            block.put("type", "resource");
+            block.put("resource", resource);
+            return block;
+        }
+
+        String text = af.textContent();
+        if (text != null) {
+            // Fence longer than the longest backtick run, so file content that
+            // itself contains a code fence cannot terminate the block early.
+            int fenceLength = Math.max(3, longestBacktickRun(text) + 1);
+            String fence = "`".repeat(fenceLength);
+            Map<String, Object> block = new HashMap<>();
+            block.put("type", "text");
+            block.put("text", "Attached file `" + af.filename() + "`:\n"
+                    + fence + "\n" + text + "\n" + fence + "\n");
+            // The whole file body is in the prompt, so hide it from the replayed
+            // user bubble (same audience trick as the editor-context block).
+            block.put("annotations", Map.of("audience", List.of("assistant")));
+            return block;
+        }
+
+        Map<String, Object> block = new HashMap<>();
+        block.put("type", "resource_link");
+        block.put("uri", af.uri());
+        block.put("name", af.filename());
+        block.put("mimeType", af.mimeType());
+        block.put("size", af.size());
+        return block;
+    }
+
+    private static int longestBacktickRun(String text) {
+        int longest = 0;
+        int current = 0;
+        for (int i = 0; i < text.length(); i++) {
+            if (text.charAt(i) == '`') {
+                current++;
+                if (current > longest) {
+                    longest = current;
+                }
+            } else {
+                current = 0;
+            }
+        }
+        return longest;
     }
 
     public void addFromFiles(File[] files) {

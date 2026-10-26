@@ -18,6 +18,7 @@ import github.anandb.netbeans.support.PreferenceKeys;
 import github.anandb.netbeans.support.ToolDataExtractor;
 import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.ProcessedMessage;
+import github.anandb.netbeans.model.AttachedFile;
 import github.anandb.netbeans.support.Logger;
 import org.openide.util.Lookup;
 import org.openide.util.NbPreferences;
@@ -259,8 +260,16 @@ public class MessageSender {
         statusController.updateButtonState(true);
         statusController.armRunWatchdog();
 
-        // Build file attachment blocks (skip for forwarded slash commands)
-        List<Map<String, Object>> fileBlocks = isForwardedSlash ? List.of() : attachmentManager.buildFileBlocks();
+        // Editor Context — only capture when the agent injects it into prompts
+        ProcessControl sendProc = processService.get();
+        boolean embeddedContext = sendProc != null && sendProc.supportsEmbeddedContext();
+
+        // Build file attachment blocks (skip for forwarded slash commands).
+        // The block shape depends on the handshake capability, so the blocks are
+        // built once here and the echo uses the attachment list, not the blocks.
+        List<AttachedFile> attachedFiles = attachmentManager.getAttachments();
+        List<Map<String, Object>> fileBlocks = isForwardedSlash
+                ? List.of() : attachmentManager.buildFileBlocks(embeddedContext);
         if (!isForwardedSlash) {
             attachmentManager.clear();
             paperclipUpdater.run();
@@ -268,16 +277,14 @@ public class MessageSender {
             // Local echo with file references
             if (localEchoEnabled) {
                 StringBuilder echoBuilder = new StringBuilder(text);
-                if (!fileBlocks.isEmpty()) {
+                if (!attachedFiles.isEmpty()) {
                     if (!text.isBlank()) echoBuilder.append("\n");
-                    for (Map<String, Object> block : fileBlocks) {
-                        String type = (String) block.get("type");
-                        String fname = (String) block.get("filename");
+                    for (AttachedFile af : attachedFiles) {
                         echoBuilder.append("\n[")
-                                .append("image".equals(type)
+                                .append(af.isImage()
                                         ? NbBundle.getMessage(MessageSender.class, "LBL_Image")
                                         : NbBundle.getMessage(MessageSender.class, "LBL_File")).append(": ")
-                                .append(fname).append("]");
+                                .append(af.filename()).append("]");
                     }
                 }
 
@@ -329,7 +336,6 @@ public class MessageSender {
         }
 
         // Editor Context — only capture when the agent injects it into prompts
-        ProcessControl sendProc = processService.get();
         boolean injectsContext = sendProc != null && sendProc.getCapabilities().injectsEditorContext();
         Map<String, Object> context = (isForwardedSlash || !injectsContext) ? null : EditorContextCapture.capture();
         // Only after we actually issue session/prompt: local slash / no-session

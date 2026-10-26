@@ -66,6 +66,8 @@ class ServerProcessLifecycle {
      * not advertise it, so every close is gated on this.
      */
     private volatile boolean sessionCloseSupported;
+    /** Whether the agent advertised {@code promptCapabilities.embeddedContext}. */
+    private volatile boolean embeddedContextSupported;
     /** Listener fired once the harness is resolved after the initialize handshake. */
     private volatile Consumer<HarnessCatalog.Harness> harnessListener;
     private RequestProcessor reconnectRP;
@@ -99,6 +101,11 @@ class ServerProcessLifecycle {
     /** Whether the agent advertised {@code sessionCapabilities.close}. */
     boolean isSessionCloseSupported() {
         return sessionCloseSupported;
+    }
+
+    /** Whether the agent advertised {@code promptCapabilities.embeddedContext}. */
+    boolean isEmbeddedContextSupported() {
+        return embeddedContextSupported;
     }
 
     /** Generation of the current (or most recent) server process; 0 before the first start. */
@@ -275,6 +282,7 @@ class ServerProcessLifecycle {
             // A restart may land on a different harness, which must not inherit
             // the previous one's advertised capabilities.
             sessionCloseSupported = false;
+            embeddedContextSupported = false;
 
             AcpProtocolClient client = new AcpProtocolClient(serverProcess);
             this.rpcClient.set(client);
@@ -390,6 +398,11 @@ class ServerProcessLifecycle {
                         JsonNode sessionCaps = res.get("agentCapabilities") == null
                                 ? null : res.get("agentCapabilities").get("sessionCapabilities");
                         sessionCloseSupported = sessionCaps != null && sessionCaps.has("close");
+                        // Prompt capabilities decide how an attachment reaches the
+                        // agent: embedded resources need embeddedContext, otherwise
+                        // the client inlines text or sends a resource link.
+                        JsonNode promptCaps = res.path("agentCapabilities").path("promptCapabilities");
+                        embeddedContextSupported = promptCaps.path("embeddedContext").asBoolean(false);
                         // Resolve harness from stored preferences, ignoring the
                         // agent name from the initialize response.
                         String harnessId = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)

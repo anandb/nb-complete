@@ -90,18 +90,78 @@ class AttachmentManagerTest {
     }
 
     @Test
-    void buildFileBlocks() throws IOException {
+    void buildFileBlocksImage() throws IOException {
         Path f = tempDir.resolve("test.png");
         Files.write(f, new byte[]{1, 2, 3});
         AttachmentManager am = new AttachmentManager();
         am.add(new AttachedFile(f.toFile()));
-        List<Map<String, Object>> blocks = am.buildFileBlocks();
+        List<Map<String, Object>> blocks = am.buildFileBlocks(true);
         assertEquals(1, blocks.size());
         Map<String, Object> block = blocks.get(0);
         assertEquals("image", block.get("type"));
-        assertEquals("test.png", block.get("filename"));
         assertEquals("image/png", block.get("mimeType"));
         assertNotNull(block.get("data"));
+    }
+
+    @Test
+    void buildFileBlocksEmbedsTextResource() throws IOException {
+        Path f = tempDir.resolve("test.md");
+        Files.writeString(f, "# Title\n\nBody\n");
+        AttachmentManager am = new AttachmentManager();
+        am.add(new AttachedFile(f.toFile()));
+        List<Map<String, Object>> blocks = am.buildFileBlocks(true);
+        assertEquals(1, blocks.size());
+        Map<String, Object> block = blocks.get(0);
+        assertEquals("resource", block.get("type"));
+        @SuppressWarnings("unchecked")
+        Map<String, Object> resource = (Map<String, Object>) block.get("resource");
+        assertEquals("text/markdown", resource.get("mimeType"));
+        assertEquals("# Title\n\nBody\n", resource.get("text"));
+        assertEquals(f.toFile().toURI().toString(), resource.get("uri"));
+    }
+
+    @Test
+    void buildFileBlocksInlinesTextWithoutEmbeddedContext() throws IOException {
+        Path f = tempDir.resolve("test.md");
+        Files.writeString(f, "line one\n```\ncode\n```\n");
+        AttachmentManager am = new AttachmentManager();
+        am.add(new AttachedFile(f.toFile()));
+        List<Map<String, Object>> blocks = am.buildFileBlocks(false);
+        assertEquals(1, blocks.size());
+        Map<String, Object> block = blocks.get(0);
+        assertEquals("text", block.get("type"));
+        // The inner triple-backtick fence must not close the block early, so the
+        // wrapper fence grows to four backticks.
+        assertEquals("Attached file `test.md`:\n````\nline one\n```\ncode\n```\n\n````\n", block.get("text"));
+        // Inlined file bodies must not be replayed into the user bubble.
+        assertEquals(Map.of("audience", List.of("assistant")), block.get("annotations"));
+    }
+
+    @Test
+    void buildFileBlocksEmbedsBinaryAsBlob() throws IOException {
+        Path f = tempDir.resolve("test.pdf");
+        Files.write(f, new byte[]{1, 2, 3});
+        AttachmentManager am = new AttachmentManager();
+        am.add(new AttachedFile(f.toFile()));
+        List<Map<String, Object>> blocks = am.buildFileBlocks(true);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> resource = (Map<String, Object>) blocks.get(0).get("resource");
+        assertEquals("application/pdf", resource.get("mimeType"));
+        assertNotNull(resource.get("blob"));
+        assertFalse(resource.containsKey("text"));
+    }
+
+    @Test
+    void buildFileBlocksFallsBackToResourceLinkForBinary() throws IOException {
+        Path f = tempDir.resolve("test.pdf");
+        Files.write(f, new byte[]{1, 2, 3});
+        AttachmentManager am = new AttachmentManager();
+        am.add(new AttachedFile(f.toFile()));
+        Map<String, Object> block = am.buildFileBlocks(false).get(0);
+        assertEquals("resource_link", block.get("type"));
+        assertEquals("test.pdf", block.get("name"));
+        assertEquals(3L, block.get("size"));
+        assertNotNull(block.get("uri"));
     }
 
     @Test
@@ -110,7 +170,7 @@ class AttachmentManagerTest {
         Files.writeString(f, "hello");
         AttachmentManager am = new AttachmentManager();
         am.add(new AttachedFile(f.toFile()));
-        List<Map<String, Object>> blocks = am.buildFileBlocks();
+        List<Map<String, Object>> blocks = am.buildFileBlocks(true);
         am.clear();
         assertFalse(blocks.isEmpty());
     }

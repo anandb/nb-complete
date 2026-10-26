@@ -1,5 +1,17 @@
 # Release Notes
 
+## v1.29.0 (Changes since v1.28.0)
+
+### Fixes
+- **Non-image attachments no longer break `session/prompt`**: attached documents (Markdown, JSON, Java, YAML, …) were serialized as a `{"type":"file"}` content block, which is not part of the ACP `ContentBlock` union, so the agent rejected the whole prompt while images worked. Attachments now use the negotiated shapes: an image block for images, an embedded `resource` (text or blob) when the agent advertises `promptCapabilities.embeddedContext` in the handshake, an inlined `text` block for textual files otherwise, and a `resource_link` as the last resort for binary files. `AttachedFile` holds the raw bytes plus the source URI, so base64 is only encoded when a block needs it and the local echo keeps working from the attachment list.
+- **Prompt capabilities are captured per connection**: `ServerProcessLifecycle` records `promptCapabilities.embeddedContext` from the `initialize` response, resets it when a new server process starts, and exposes it through `ProcessControl.supportsEmbeddedContext()`.
+
+### Documentation
+- **User guide attachments page** explains how text, binary and image attachments reach the agent.
+
+### Housekeeping
+- Version bumped to 1.29.0-SNAPSHOT.
+
 ## v1.28.0 (Changes since v1.27.0)
 
 ### Features

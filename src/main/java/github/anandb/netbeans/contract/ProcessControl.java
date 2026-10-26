@@ -65,4 +65,11 @@ public interface ProcessControl {
      * {@link HarnessCatalog#UNKNOWN} until the handshake completes.
      */
     HarnessCatalog.Harness getCapabilities();
+
+    /**
+     * Whether the current agent advertised {@code promptCapabilities.embeddedContext}
+     * in the {@code initialize} handshake. False before the handshake completes and
+     * after a restart until the new process answers.
+     */
+    boolean supportsEmbeddedContext();
 }

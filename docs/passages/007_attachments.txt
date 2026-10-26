@@ -10,6 +10,8 @@
 
 You can attach files and images to provide more context to the AI. Click the **Paperclip icon** in the input area to open the attachment menu. The paperclip icon displays a numeric badge showing how many files are currently attached, so attachments are visible at a glance. The plugin also supports dragging and dropping files directly into the chat, as well as pasting screenshots straight from your clipboard (you need a vision-capable model).
 
+Text and code files (Markdown, JSON, Java, YAML, …) are sent with their full content. When the agent supports embedded context the file travels as an embedded resource, otherwise its content is inlined into the prompt as a text block; other binary files that cannot be embedded are sent as a file reference. Images are sent as image content blocks.
+
 
 > [[Swing Mockups via Matisse]]
 > [[Offline/Private Coding (Local LLMs)]]

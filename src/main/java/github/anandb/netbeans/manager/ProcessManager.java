@@ -475,6 +475,11 @@ public class ProcessManager implements ProcessControl {
         return serverLifecycle.isSessionCloseSupported();
     }
 
+    @Override
+    public boolean supportsEmbeddedContext() {
+        return serverLifecycle.isEmbeddedContextSupported();
+    }
+
     /** Generation of the current (or most recent) server process; 0 before the first start. */
     public long serverGeneration() {
         return serverLifecycle.generation();

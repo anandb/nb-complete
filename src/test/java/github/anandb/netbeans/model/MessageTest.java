@@ -2,6 +2,8 @@ package github.anandb.netbeans.model;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
@@ -41,5 +43,27 @@ class MessageTest {
         ModelRecords.Agent agent = new ModelRecords.Agent("bot", "description");
         assertEquals("bot", agent.name());
         assertEquals("description", agent.description());
+    }
+
+    @Test
+    void embeddedResourceDisplaysFileNameFromUri() {
+        Message.ContentPart part = new Message.ContentPart("resource", null, null, null, null, null,
+                null, null, new Message.ContentPart.Resource("file:///tmp/paste_1_notes.md", "text/markdown",
+                        "# Notes", null), null);
+        assertEquals("[File: paste_1_notes.md]", part.getDisplayText());
+    }
+
+    @Test
+    void resourceLinkDisplaysName() {
+        Message.ContentPart part = new Message.ContentPart("resource_link", null, null, null, null, null,
+                "notes.md", "file:///tmp/notes.md", null, null);
+        assertEquals("[File: notes.md]", part.getDisplayText());
+    }
+
+    @Test
+    void assistantAudienceTextIsHiddenFromBubbles() {
+        Message.ContentPart part = new Message.ContentPart("text", "file body", null, null, null, null,
+                null, null, null, new Message.Annotations(List.of("assistant"), null));
+        assertEquals("", part.getDisplayText());
     }
 }

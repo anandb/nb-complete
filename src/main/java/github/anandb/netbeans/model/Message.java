@@ -34,8 +34,15 @@ public record Message(
         String filename,
         @JsonProperty("mimeType") String mimeType,
         String data,
+        String name,
+        String uri,
+        Resource resource,
         Annotations annotations
     ) {
+        /** Payload of an embedded {@code resource} content block. */
+        @JsonIgnoreProperties(ignoreUnknown = true)
+        public record Resource(String uri, String mimeType, String text, String blob) {}
+
         public String getDisplayText() {
             if (annotations != null) {
                 if (annotations.audience() != null && annotations.audience().contains("assistant")) {
@@ -54,7 +61,23 @@ public record Message(
             if ("file".equals(type)) {
                 return "[File: " + filename + "]";
             }
+            if ("resource".equals(type)) {
+                return "[File: " + fileName(resource != null ? resource.uri() : null) + "]";
+            }
+            if ("resource_link".equals(type)) {
+                return "[File: " + (name != null ? name : fileName(uri)) + "]";
+            }
             return "";
+        }
+
+        /** Last path segment of a {@code file:} URI, used as the display name. */
+        private static String fileName(String uri) {
+            if (uri == null || uri.isBlank()) {
+                return "attachment";
+            }
+            int slash = uri.lastIndexOf('/');
+            String tail = slash >= 0 ? uri.substring(slash + 1) : uri;
+            return tail.isEmpty() ? uri : tail;
         }
     }
 
@@ -95,7 +118,7 @@ public record Message(
                 } else if (completion().text() != null) {
                     sb.append(completion().text());
                 }
-                
+
                 if (completion().toolCalls() != null) {
                     for (ToolCall tc : completion().toolCalls()) {
                         if (sb.length() > 0) sb.append("\n\n");
