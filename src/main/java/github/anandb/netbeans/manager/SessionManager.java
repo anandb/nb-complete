@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import github.anandb.netbeans.model.HarnessCatalog;
 import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.model.SessionConfigOption;
 import github.anandb.netbeans.model.ConfigOptionConverter;
@@ -179,9 +180,9 @@ public class SessionManager implements SessionQuery, SessionControl {
 
 
     /** True when the harness has no session/list and the plugin tracks IDs locally. */
-    private static boolean tracksSessionsLocally() {
-        ProcessControl pc = Lookup.getDefault().lookup(ProcessControl.class);
-        return pc != null && !pc.getCapabilities().supportsSessionList();
+    private boolean tracksSessionsLocally() {
+        HarnessCatalog.Harness caps = processManager.getCapabilities();
+        return caps != null && !caps.supportsSessionList();
     }
 
     private static List<String> openProjectDirectories() {
@@ -453,6 +454,7 @@ public class SessionManager implements SessionQuery, SessionControl {
     private volatile String lastProjectDir;
     private final SessionCacheManager cacheManager = new SessionCacheManager();
     private final Consumer<SessionUpdate> sseListener = this::handleSseUpdate;
+    private final ProcessManager processManager;
     private final SessionRpcClient rpcClient;
     private final SlidingTask projectRefreshTask = new SlidingTask(
             SESSION_REFRESH_RP, PROJECT_REFRESH_DELAY_MS, this::refreshSessions);
@@ -467,12 +469,18 @@ public class SessionManager implements SessionQuery, SessionControl {
             projectQuery.setProjectCloseListener(this::handleProjectClosed);
         }
 
+        // Capture the singleton once: handlers and async callbacks must use this
+        // instance, not a fresh ProcessManager.getInstance() lookup on a pool
+        // thread (a static mock is thread-local, so a lookup there resolves the
+        // real singleton and breaks unit tests).
+        this.processManager = ProcessManager.getInstance();
+
         // Register for SSE updates to route them to the active session
-        ProcessManager.getInstance().addSseListener(sseListener);
-        this.rpcClient = new SessionRpcClient(ProcessManager.getInstance());
+        processManager.addSseListener(sseListener);
+        this.rpcClient = new SessionRpcClient(processManager);
 
         // Reset state machine and notify UI when server crashes
-        ProcessManager.getInstance().setCrashHandler(() -> {
+        processManager.setCrashHandler(() -> {
             stateMachine.transitionTo(SessionState.IDLE);
             notifyError(NbBundle.getMessage(SessionManager.class, "ERR_ServerDisconnected"));
         });
@@ -483,10 +491,10 @@ public class SessionManager implements SessionQuery, SessionControl {
         // manual restart path leaves a LOADING/STOPPING state machine in place,
         // which makes the post-restart loadSession() refuse to run and freezes
         // the panel until the whole IDE is restarted.
-        ProcessManager.getInstance().setPreRestartHandler(this::resetForServerRestart);
+        processManager.setPreRestartHandler(this::resetForServerRestart);
 
         // Auto-reload last session after successful reconnect
-        ProcessManager.getInstance().setReadyHandler(() -> {
+        processManager.setReadyHandler(() -> {
             String sid = currentSessionId;
             if (sid != null) {
                 SwingUtilities.invokeLater(() -> loadSession(sid));
@@ -594,7 +602,7 @@ public class SessionManager implements SessionQuery, SessionControl {
         stateMachine.transitionTo(SessionState.IDLE);
         String sid = this.currentSessionId;
         if (sid != null) {
-            ProcessManager.getInstance().stopMessage(sid);
+            processManager.stopMessage(sid);
         }
     }
 
@@ -612,8 +620,8 @@ public class SessionManager implements SessionQuery, SessionControl {
 
     public CompletableFuture<List<Session>> getSessions(String directory) {
         LOG.log(Level.FINE, "getSessions: called with directory={0}", directory);
-        return ProcessManager.getInstance().whenReady()
-                .thenCompose(v -> ProcessManager.getInstance().getToolExecutor().waitForReady())
+        return processManager.whenReady()
+                .thenCompose(v -> processManager.getToolExecutor().waitForReady())
                 .orTimeout(60, TimeUnit.SECONDS)
                 .thenCompose(v -> {
                     return rpcClient.getSessions(directory);
@@ -722,12 +730,12 @@ public class SessionManager implements SessionQuery, SessionControl {
         // thread first: a rebind restarts the process (terminating its tree),
         // which must not block the caller, and the readiness gate below then
         // waits for the restarted server to finish initializing.
-        return CompletableFuture.runAsync(() -> ProcessManager.getInstance().ensureStartedIn(new File(finalCwd)))
+        return CompletableFuture.runAsync(() -> processManager.ensureStartedIn(new File(finalCwd)))
                 // Gate on the ACP server's readiness: MCP's waitForReady() returns
                 // immediately when the embedded MCP server is disabled, which let
                 // session/new race ahead of process startup ("Server not started").
-                .thenCompose(v -> ProcessManager.getInstance().whenReady())
-                .thenCompose(v -> ProcessManager.getInstance().getToolExecutor().waitForReady())
+                .thenCompose(v -> processManager.whenReady())
+                .thenCompose(v -> processManager.getToolExecutor().waitForReady())
                 .orTimeout(60, TimeUnit.SECONDS)
                 .thenCompose(v -> {
                     return rpcClient.createSession(finalCwd);
@@ -788,9 +796,9 @@ public class SessionManager implements SessionQuery, SessionControl {
      * must not block the caller. A {@code null} directory only starts an
      * unbound server.
      */
-    private static CompletableFuture<Void> bindServerTo(String workingCwd) {
+    private CompletableFuture<Void> bindServerTo(String workingCwd) {
         return CompletableFuture.runAsync(() ->
-                ProcessManager.getInstance().ensureStartedIn(workingCwd != null ? new File(workingCwd) : null));
+                processManager.ensureStartedIn(workingCwd != null ? new File(workingCwd) : null));
     }
 
     @Override
@@ -806,8 +814,8 @@ public class SessionManager implements SessionQuery, SessionControl {
     }
 
     private CompletableFuture<List<SessionConfigOption>> sendLoadSessionRequest(String sessionId, String cwd, long start) {
-        return ProcessManager.getInstance().whenReady()
-                .thenCompose(v -> ProcessManager.getInstance().getToolExecutor().waitForReady())
+        return processManager.whenReady()
+                .thenCompose(v -> processManager.getToolExecutor().waitForReady())
                 .orTimeout(2, TimeUnit.MINUTES)
                 // An agent advertising sessionCapabilities.close must have the
                 // session cancelled and closed before it is loaded again.
@@ -923,7 +931,7 @@ public class SessionManager implements SessionQuery, SessionControl {
 
     @Override
     public void refreshSessions() {
-        ProcessManager.getInstance().whenReady()
+        processManager.whenReady()
                 .thenCompose(v -> {
                     // Agents that don't support session/list (e.g. Gemini) rely on
                     // locally-created sessions tracked in the cache. Skip the RPC.
@@ -1287,7 +1295,7 @@ public class SessionManager implements SessionQuery, SessionControl {
         params.put("sessionId", sessionId);
         params.put("prompt", List.of(textBlock));
 
-        return ProcessManager.getInstance().sendRequest("session/prompt", params)
+        return processManager.sendRequest("session/prompt", params)
                 .whenComplete((res, ex) -> {
                     if (ex != null) {
                         LOG.warn("Failed to send {0}: {1}", label, ExceptionUtils.getRootCauseMessage(ex));
@@ -1341,7 +1349,7 @@ public class SessionManager implements SessionQuery, SessionControl {
 
     /** Release resources and unregister from ProcessManager SSE stream. */
     public void dispose() {
-        ProcessManager.getInstance().removeSseListener(sseListener);
+        processManager.removeSseListener(sseListener);
     }
 
     @Override
@@ -1356,7 +1364,7 @@ public class SessionManager implements SessionQuery, SessionControl {
         // always recovers even if ProcessManager.stopMessage() blocks on pipe write.
         scheduleStopRecovery();
         if (sid != null) {
-            ProcessManager.getInstance().stopMessage(sid);
+            processManager.stopMessage(sid);
         }
     }
 
@@ -1464,9 +1472,9 @@ public class SessionManager implements SessionQuery, SessionControl {
                 LOG.warn("{0} failed after {1}ms: {2}", operationName, durationMs, ExceptionUtils.getMessage(ex));
             }
             Throwable cause = (ex instanceof CompletionException) ? ex.getCause() : ex;
-            if (isInvalidParamsError(cause) && !ProcessManager.getInstance().getToolExecutor().isDisabled()) {
+            if (isInvalidParamsError(cause) && !processManager.getToolExecutor().isDisabled()) {
                 LOG.warn("{0} failed with Invalid Params, retrying without MCP", operationName);
-                ProcessManager.getInstance().getToolExecutor().disable();
+                processManager.getToolExecutor().disable();
                 return requestFn.get();
             }
             return CompletableFuture.<T>failedFuture(ex);

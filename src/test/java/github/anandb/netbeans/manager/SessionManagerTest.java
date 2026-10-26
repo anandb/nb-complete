@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -14,6 +15,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.io.File;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -114,15 +116,18 @@ class SessionManagerTest {
     }
 
     @Test
-    void testCreateSession() {
+    void testCreateSession() throws Exception {
         JsonNode mockResponse = mapper.createObjectNode()
                 .put("id", "new-id")
                 .put("title", "New");
         when(processManager.sendRequest(eq("session/new"), any(), eq(60L), eq(TimeUnit.SECONDS)))
                 .thenReturn(CompletableFuture.completedFuture(mockResponse));
 
-        sessionManager.createSession("/test/cwd");
-        verify(processManager).sendRequest(eq("session/new"), any(), eq(60L), eq(TimeUnit.SECONDS));
+        sessionManager.createSession("/test/cwd").get(5, TimeUnit.SECONDS);
+        // The server must be rebound to the session's cwd BEFORE session/new is issued.
+        var order = inOrder(processManager);
+        order.verify(processManager).ensureStartedIn(new File("/test/cwd"));
+        order.verify(processManager).sendRequest(eq("session/new"), any(), eq(60L), eq(TimeUnit.SECONDS));
     }
 
     @Test
@@ -132,14 +137,8 @@ class SessionManagerTest {
                 .put("title", "Listed");
         when(processManager.sendRequest(eq("session/new"), any(), eq(60L), eq(TimeUnit.SECONDS)))
                 .thenReturn(CompletableFuture.completedFuture(mockResponse));
-        ProcessControl pc = mock(ProcessControl.class);
-        when(pc.getCapabilities()).thenReturn(HarnessCatalog.OPENCODE);
-        try (MockedStatic<Lookup> lookupMock = mockStatic(Lookup.class)) {
-            Lookup mockLookup = mock(Lookup.class);
-            lookupMock.when(Lookup::getDefault).thenReturn(mockLookup);
-            when(mockLookup.lookup(ProcessControl.class)).thenReturn(pc);
-            sessionManager.createSession("/test/cwd").get(5, TimeUnit.SECONDS);
-        }
+        when(processManager.getCapabilities()).thenReturn(HarnessCatalog.OPENCODE);
+        sessionManager.createSession("/test/cwd").get(5, TimeUnit.SECONDS);
         assertTrue(cacheManager().getLocallyCreatedIds("opencode").isEmpty());
         assertTrue(cacheManager().getLocallyCreatedIds(null).isEmpty());
     }
@@ -151,14 +150,8 @@ class SessionManagerTest {
                 .put("title", "Gemini");
         when(processManager.sendRequest(eq("session/new"), any(), eq(60L), eq(TimeUnit.SECONDS)))
                 .thenReturn(CompletableFuture.completedFuture(mockResponse));
-        ProcessControl pc = mock(ProcessControl.class);
-        when(pc.getCapabilities()).thenReturn(HarnessCatalog.GEMINI);
-        try (MockedStatic<Lookup> lookupMock = mockStatic(Lookup.class)) {
-            Lookup mockLookup = mock(Lookup.class);
-            lookupMock.when(Lookup::getDefault).thenReturn(mockLookup);
-            when(mockLookup.lookup(ProcessControl.class)).thenReturn(pc);
-            sessionManager.createSession("/test/cwd").get(5, TimeUnit.SECONDS);
-        }
+        when(processManager.getCapabilities()).thenReturn(HarnessCatalog.GEMINI);
+        sessionManager.createSession("/test/cwd").get(5, TimeUnit.SECONDS);
         assertTrue(cacheManager().getLocallyCreatedIds(null).contains("gemini-id"));
     }
 
@@ -687,6 +680,10 @@ class SessionManagerTest {
         assertEquals(SessionState.STREAMING, sessionManager.getCurrentState());
         assertTrue(lastLoadedOptions != null && lastLoadedOptions.size() == 1);
         assertEquals("m1", lastLoadedOptions.get(0).currentValue());
+        // The server must be rebound to the session's cwd BEFORE session/load is issued.
+        var order = inOrder(processManager);
+        order.verify(processManager).ensureStartedIn(new File("/p"));
+        order.verify(processManager).sendRequest(eq("session/load"), any(), eq(2L), eq(TimeUnit.MINUTES));
     }
 
     @Test
@@ -720,15 +717,9 @@ class SessionManagerTest {
 
     @Test
     void loadSessionWithoutCwdFailsFastForGemini() {
-        ProcessControl pc = mock(ProcessControl.class);
-        when(pc.getCapabilities()).thenReturn(HarnessCatalog.GEMINI);
+        when(processManager.getCapabilities()).thenReturn(HarnessCatalog.GEMINI);
         sessionManager.addSessionListener(mockListener());
-        try (MockedStatic<Lookup> lookupMock = mockStatic(Lookup.class)) {
-            Lookup mockLookup = mock(Lookup.class);
-            lookupMock.when(Lookup::getDefault).thenReturn(mockLookup);
-            when(mockLookup.lookup(ProcessControl.class)).thenReturn(pc);
-            assertFalse(sessionManager.loadSession("s1"));
-        }
+        assertFalse(sessionManager.loadSession("s1"));
         assertEquals(SessionState.IDLE, sessionManager.getCurrentState());
         assertNull(sessionManager.getCurrentSessionId());
         assertTrue(lastError != null && lastError.contains("s1"));
@@ -739,21 +730,17 @@ class SessionManagerTest {
     void loadSessionWithoutCwdProceedsWhenSessionListSupported() throws Exception {
         stubSessionLoad(mapper.createObjectNode());
         sessionManager.addSessionListener(mockListener());
-        ProcessControl pc = mock(ProcessControl.class);
-        when(pc.getCapabilities()).thenReturn(HarnessCatalog.OPENCODE);
-        try (MockedStatic<Lookup> lookupMock = mockStatic(Lookup.class)) {
-            Lookup mockLookup = mock(Lookup.class);
-            lookupMock.when(Lookup::getDefault).thenReturn(mockLookup);
-            when(mockLookup.lookup(ProcessControl.class)).thenReturn(pc);
-            assertTrue(sessionManager.loadSession("s1"));
-            awaitLoaded();
-        }
+        when(processManager.getCapabilities()).thenReturn(HarnessCatalog.OPENCODE);
+        assertTrue(sessionManager.loadSession("s1"));
+        awaitLoaded();
         @SuppressWarnings("unchecked")
         ArgumentCaptor<Map<String, Object>> params = ArgumentCaptor.forClass(Map.class);
         verify(processManager).sendRequest(eq("session/load"), params.capture(),
                 eq(2L), eq(TimeUnit.MINUTES));
         assertFalse(params.getValue().containsKey("cwd"));
         assertEquals("s1", lastLoadedSessionId);
+        // No cwd means an unbound server, not a stale binding from a previous session.
+        verify(processManager).ensureStartedIn(null);
     }
 
     @Test
@@ -781,6 +768,8 @@ class SessionManagerTest {
                 eq(2L), eq(TimeUnit.MINUTES));
         assertEquals("/only/project", params.getValue().get("cwd"));
         assertEquals("/only/project", sessionManager.getCurrentSessionDirectory());
+        // The single open project is used for the rebind as well as the load params.
+        verify(processManager).ensureStartedIn(new File("/only/project"));
     }
 
     @Test
