@@ -1,6 +1,6 @@
 # BeanBot
 
-[![Version](https://img.shields.io/badge/version-1.27.1--SNAPSHOT-blue.svg)](pom.xml)
+[![Version](https://img.shields.io/badge/version-1.28.0-blue.svg)](pom.xml)
 [![Build Status](https://img.shields.io/badge/build-success-brightgreen.svg)](https://github.com/anandb/nb-complete)
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.anandb/beanbot)](https://central.sonatype.com/artifact/io.github.anandb/beanbot/versions)
 [![NetBeans](https://img.shields.io/badge/NetBeans-RELEASE220-blue.svg)](https://netbeans.apache.org/download/index.html)
@@ -21,6 +21,8 @@ BeanBot is a NetBeans IDE plugin designed to provide integrated AI capabilities 
 Supported coding harnesses: **Oh My Pi, OpenCode, Codex, OpenClaw, Pi, Goose, Cursor, Copilot, Claude, Hermes, Gemini, Devin** — pick one during onboarding or later from the help menu.
 
 **Token and cost statistics** are captured from the ACP traffic itself, not from an external process: the usage updates and per-turn token figures a harness already sends are recorded into an embedded H2 database under the NetBeans user directory (`beanbot/usage-stats.mv.db`), so they survive restarts and are readable without a harness running. The currency button in the toolbar opens the panel, which breaks the figures down by model and by agent; they are approximate for harnesses that report incomplete usage.
+
+**Project working directory (experimental)**: by default the ACP server keeps the working directory it started with, exactly as in 1.27.0 — switching to a session in another project never restarts it. Enabling *Options > BeanBot > Actions → Enable ACP server restart on project switch* binds the server to the session's project and restarts it on a switch; a restart terminates every session the running server serves. The option is read at startup, so changing it requires an IDE restart.
 
 
 ### Installation from Source
@@ -221,7 +223,7 @@ x (B) 2026-08-02 2026-08-01 Fix the bug @urgent @bug +myproject due:2026-09-01 i
 
 | Problem | Solution |
 | --- | --- |
-| Plugin can't find the harness | Use the harness chooser to pick an installed harness, copy its install command, or set the path manually under `Options > Assistant`. Binaries found on `PATH` are never auto-selected — you always make the choice. |
+| Plugin can't find the harness | Use the harness chooser to pick an installed harness, copy its install command, or set the path manually under `Options > BeanBot`. Binaries found on `PATH` are never auto-selected — you always make the choice. |
 | Assistant becomes unresponsive | Click **Restart Harness** in the toolbar. |
 | Ctrl + L stops working | Close and reopen the assistant panel from the Window menu. If that doesn't work, restart the IDE. |
 | Sidebar doesn't open after install/upgrade | The plugin auto-opens the sidebar on version change. If it doesn't appear, open it from `Window > Assistant`. |

@@ -2,7 +2,7 @@
 
 ## Project Overview
 - **Project**: Coding Assistant (NetBeans IDE plugin, Java 17, Maven)
-- **Current Stable Version**: 1.27.0
+- **Current Stable Version**: 1.28.0
 - **Key Tech**: NetBeans API (RELEASE220), Flexmark, Jackson, RSyntaxTextArea, JUnit 5.
 
 ## Build Commands
@@ -329,8 +329,15 @@ different harness never inherits it.
 `SessionRpcClient.closeBeforeLoad()` gates on it — sends the `session/cancel`
 notification, then `session/close`, and swallows any failure, because a close
 that fails must never skip the load that follows. `SessionManager` chains it
-immediately before `session/load`. Copilot advertises `close` and needs this;
-without it the load replays against a session still holding in-flight work.
+immediately before `session/load`, but ONLY when the load target is the session
+already loaded by the current server process: `shouldCloseBeforeLoad()` compares
+`loadedSessionId` and the `ProcessManager.serverGeneration()` the load recorded.
+Cancelling any other session cancels the load that follows (omp answers
+"ACP session load was cancelled"), so a plain switch skips cancel+close and goes
+straight to `session/load`. A restart/rebind bumps the generation, so the new
+process never inherits the previous process's loaded session. Copilot advertises
+`close` and needs the reload path; without it the load replays against a session
+still holding in-flight work. Do NOT make cancel+close unconditional again.
 
 ### ACP fs Tools Are Not Project-Confined
 - `fs/readTextFile` (`fs/read_text_file`) and `fs/writeTextFile` (`fs/write_text_file`)
@@ -360,6 +367,27 @@ without it the load replays against a session still holding in-flight work.
   `requestActive()` — yanks the user out of whatever they are typing and MUST NOT
   appear on an agent-triggered path: opening in the background is fine, stealing
   focus is not.
+
+### ACP Server Working Directory (Experimental)
+
+- `ProcessManager.ensureStartedIn(dir)` binds the server's spawn cwd and rebinds by
+  restarting the process. It is gated by `projectSwitchRestart.enabled`
+  (*Options > BeanBot > Actions → Enable ACP server restart on project switch*), read
+  once at startup — changing the option requires an IDE restart. Do NOT add a
+  preference listener for it or make it live; `setProjectSwitchRestartForTest` exists
+  only for tests.
+- Off (default): `SessionManager.createSession`/`loadSession` follow the v1.27.0 code
+  path (no `ensureStartedIn`/`bindServerTo`), `ServerProcessLifecycle.spawnDirectory()`
+  returns null, and the server is never bound or restarted on a project switch. Keep
+  the off-path free of side effects; it is the compatibility contract.
+- On: a rebind restarts the process and terminates every session it serves. The restart
+  installs a fresh ready future and `initializeProtocol` is bound to its
+  (client, generation), so a stale handshake cannot complete/stop the new process.
+  Binding comparison is canonical; a missing directory clears the binding.
+- The ready handler must NOT auto-reload while an explicit session operation is in
+  flight (`explicitSessionOps`): loading `currentSessionId` at that point can load the
+  previous session over the new one and rebind back, killing the new session.
+- Manual *Restart Server* and preference-driven restarts are independent of this gate.
 
 ### fs/read_text_file Line Windows
 - `AcpRequestRouter.selectLines(content, startLine, limit)` slices content from both the editor document and

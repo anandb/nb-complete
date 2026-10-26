@@ -1,5 +1,37 @@
 # Release Notes
 
+## v1.28.0 (Changes since v1.27.0)
+
+### Features
+- **Experimental ACP working-directory binding, off by default**: the ACP server can be started in the session's project directory and restarted when a session from another project is opened, so harnesses that resolve paths relative to their working directory (containers, project-relative tools) see the right workspace. A rebind restarts the process, which terminates every session the running server serves, so the behaviour is opt-in through *Options > BeanBot > Actions → Enable ACP server restart on project switch (Experimental)* (`projectSwitchRestart.enabled`). The value is captured at startup and changing it requires an IDE restart; the options panel shows the stored value while the engine reads the effective one. With the option off, `SessionManager` sends `session/new` and `session/load` exactly as v1.27.0 did — no bind, no restart — and the server starts unbound, so switching projects never kills a running session. The checkbox tooltip spells out the consequences on separate lines and the guide documents the setting.
+
+### Fixes
+- **In-place plugin upgrades no longer leave the usage-stats database locked**: `@OnStop` only flushed the store, so the old classloader kept `beanbot/usage-stats.mv.db` open and the upgraded module's H2 failed with "Database may be already in use". `UsageStatsStore.close()` now closes the connection (three attempts) before stopping the executor; the store opens at most once per process and a failure marks it unavailable instead of retrying on every write, while `retryAfterFailure()` gives the token-usage panel two further attempts and leaves the in-memory datasets alone. An interrupted close retry logs a warning instead of dropping the connection silently, and the preference migration aborts when the database is unavailable so a lock never surfaces as "some data could not be migrated".
+- **Rebinding the ACP server is restart-safe**: every restart installs a fresh readiness future and binds the `initialize` handshake to the client/generation that started it, so a superseded handshake can no longer complete the new generation's future, reset `serverStarted` or stop the process that replaced it; waiters of the replaced generation fail fast with "ACP server restarting". Binding comparison resolves symlinks and `..`, a deleted project directory is cleared instead of being retried by every `ProcessBuilder.start()`, and a binding recorded while the feature was enabled is not reused after an IDE restart with the option off.
+- **Switching sessions no longer cancels the load it is about to issue**: `closeBeforeLoad()` sent `session/cancel` + `session/close` for every `session/load`, including a switch to a session the server process had never opened. omp treats that cancel as cancellation of the following load ("ACP session load was cancelled"), so every switch away from the active session failed. `SessionManager` now records the session loaded by the current server generation and only runs cancel/close for that session (the reload case Copilot needs); a plain switch goes straight to `session/load`, and a restart/rebind bumps the generation so the new process inherits nothing.
+- **The ready handler no longer reloads during an explicit session operation**: a restart caused by `session/new`/`session/load` fires the ready callback, which used to queue a reload of `currentSessionId` — still the previous session. If that task landed after the explicit operation reached `STREAMING`, it loaded the old session over the new one and rebound the server back, terminating the session it had just created. `SessionManager` now counts explicit operations in flight and skips the auto-reload while one is running; the regression test proves two loads before the guard and one after.
+- **Async session paths use the captured `ProcessManager`**: `SessionManager` resolves the singleton once at construction instead of inside `ForkJoinPool` lambdas, and reads harness capabilities from that instance rather than a second `Lookup`. Production behaviour is unchanged; the session tests no longer depend on a thread-local static mock and assertions about binding now precede `session/new`/`session/load`.
+- **Exported conversation title carries the export time**: `HtmlConversationExporter` writes the timestamp into the exported page's `<title>` instead of leaving it fixed.
+
+### Refactoring
+- **MCP tool descriptions and token-usage CSS moved into resources**: each tool's description lives in `mcp/descriptions/<tool>.md` and the dialog stylesheet in `ui/token-usage-style.css.template`, loaded from the classpath, shrinking the provider classes and keeping long text out of Java sources.
+- **Exported conversation stylesheet is a template**: the ~260-line CSS moved out of `HtmlConversationExporter` into `ui/export-style.css.template`, loaded through the bundle.
+- **MiniAssistant key dispatcher extracted** into `MiniAssistantKeyDispatcher`, leaving the dialog to own only its layout and state.
+
+### Documentation
+- **User guide options reference** documents the experimental project-switch setting, its default, the restart requirement and the consequence of a rebind.
+- **README and AGENTS.md** describe the opt-in working-directory behaviour and record the 1.28.0 stable version; the stale *Options > Assistant* reference in the README is corrected to *Options > BeanBot*.
+
+### Tests
+- **`SessionManagerTest`**: restart-only setting semantics, the v1.27.0 off-path for create/load (no `ensureStartedIn`), binding order against `session/new`/`session/load`, the ready-handler race (a blocked EDT plus an in-flight load yields exactly one `onSessionStarted`), and close-before-load gating (a switch sends no cancel/close, a same-session reload does, and a new server generation never closes the session it did not load).
+- **`ServerProcessLifecycleTest`**: `shouldRebind` gate, spawn-directory ignoring a stale binding, canonical directory equality, clearing a vanished directory, the ready-future swap on restart, and a static `BinaryResolver` mock so the suite never spawns the agent configured in `target/test-userdir`.
+- **`PluginSettingsTest`**: the option is captured at startup — storing a new value does not change running behaviour until the simulated restart.
+- **`ACPOptionsPanelLineHeightTest`**: layout regression for the new Actions row (a stretched section must keep the standard 5px gap, not the 45px produced by a weighted row).
+- **`H2UsageStatsStoreTest`**: an unopenable database is attempted once and then left alone, an explicit retry is the only additional attempt, and a successful retry resumes capture.
+
+### Housekeeping
+- Version bumped to 1.28.0.
+
 ## v1.27.0 (Changes since v1.26.1)
 
 ### Features
