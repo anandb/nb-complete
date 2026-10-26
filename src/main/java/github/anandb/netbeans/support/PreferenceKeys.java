@@ -121,6 +121,10 @@ public final class PreferenceKeys {
     /** Internal MCP server HTTP port. 0 (default) = pick a random free port. */
     public static final String MCP_SERVER_PORT = "mcpServer.port";
 
+    /** Whether switching to a session in another project restarts the ACP server to rebind its
+     *  working directory (experimental, disabled by default). */
+    public static final String PROJECT_SWITCH_RESTART_ENABLED = "projectSwitchRestart.enabled";
+
     /** Whether to launch the agent through WSL when available (Windows only, enabled by default). */
     public static final String USE_WSL = "useWsl";
 

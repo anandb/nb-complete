@@ -725,11 +725,16 @@ public class SessionManager implements SessionQuery, SessionControl {
     }
 
     private CompletableFuture<Session> sendCreateSessionRequest(String finalCwd, long start) {
-        // Bind the server to this session's working directory on a background
-        // thread first: a rebind restarts the process (terminating its tree),
-        // which must not block the caller, and the readiness gate below then
-        // waits for the restarted server to finish initializing.
-        return CompletableFuture.runAsync(() -> processManager.ensureStartedIn(new File(finalCwd)))
+        // Experimental cwd binding: bind the server to this session's working
+        // directory first; a rebind restarts the process (terminating its tree),
+        // so it runs off the caller and the readiness gate below waits for the
+        // restarted server to finish initializing. When the setting is off, use
+        // the v1.27.0 behaviour exactly: never start or rebind from a session
+        // request, only wait for the server the startup/restart paths own.
+        CompletableFuture<Void> prepared = PluginSettings.isProjectSwitchRestartEnabled()
+                ? CompletableFuture.runAsync(() -> processManager.ensureStartedIn(new File(finalCwd)))
+                : CompletableFuture.completedFuture(null);
+        return prepared
                 // Gate on the ACP server's readiness: MCP's waitForReady() returns
                 // immediately when the embedded MCP server is disabled, which let
                 // session/new race ahead of process startup ("Server not started").
@@ -1114,7 +1119,12 @@ public class SessionManager implements SessionQuery, SessionControl {
         notifySessionProgress(30);
         try {
             final String cwd = workingCwd;
-            bindServerTo(cwd)
+            // v1.27.0 behaviour when cwd binding is disabled: no bind/rebind,
+            // just wait for the server and load.
+            CompletableFuture<Void> prepared = PluginSettings.isProjectSwitchRestartEnabled()
+                    ? bindServerTo(cwd)
+                    : CompletableFuture.completedFuture(null);
+            prepared
                     .thenCompose(v -> loadSessionFromServer(sessionId, cwd))
                     .thenAccept(configOptions -> {
                         if (sessionId.equals(this.currentSessionId)) {

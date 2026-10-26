@@ -3,6 +3,7 @@ package github.anandb.netbeans.manager;
 import github.anandb.netbeans.contract.ToolExecutor;
 import github.anandb.netbeans.model.HarnessCatalog;
 import github.anandb.netbeans.support.BinaryResolver;
+import github.anandb.netbeans.support.PluginSettings;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -121,6 +122,25 @@ class ServerProcessLifecycleTest {
     }
 
     @Test
+    void rebindRequiresTheExperimentalProjectSwitchSetting() throws Exception {
+        File a = Files.createTempDirectory("acp-cwd-a").toFile();
+        File b = Files.createTempDirectory("acp-cwd-b").toFile();
+        try {
+            // Disabled by default while the feature stabilises.
+            PluginSettings.setProjectSwitchRestartForTest(false);
+            assertFalse(ServerProcessLifecycle.shouldRebind(b, a),
+                    "a project switch must not restart the server unless the setting is on");
+
+            PluginSettings.setProjectSwitchRestartForTest(true);
+            assertTrue(ServerProcessLifecycle.shouldRebind(b, a));
+            assertFalse(ServerProcessLifecycle.shouldRebind(a, a), "same directory never restarts");
+            assertFalse(ServerProcessLifecycle.shouldRebind(null, a), "no target never restarts");
+        } finally {
+            PluginSettings.setProjectSwitchRestartForTest(false);
+        }
+    }
+
+    @Test
     void sameDirectoryResolvesDotSegmentsAndSymlinks() throws Exception {
         File dir = Files.createTempDirectory("acp-cwd").toFile();
         assertTrue(ServerProcessLifecycle.sameDirectory(dir, new File(dir, ".")),
@@ -133,13 +153,38 @@ class ServerProcessLifecycleTest {
     @Test
     void ensureStartedInBindsAndClearsAVanishedDirectory() throws Exception {
         File dir = Files.createTempDirectory("acp-cwd").toFile();
+        PluginSettings.setProjectSwitchRestartForTest(true);
+        try {
+            lifecycle.ensureStartedIn(dir);
+            assertEquals(dir.getAbsoluteFile(), lifecycle.boundWorkDir());
+
+            // The project directory no longer exists: the binding must be cleared,
+            // or every later start retries a path ProcessBuilder cannot use.
+            lifecycle.ensureStartedIn(new File(dir, "gone"));
+            assertNull(lifecycle.boundWorkDir());
+        } finally {
+            PluginSettings.setProjectSwitchRestartForTest(false);
+        }
+    }
+
+    @Test
+    void bindingIsIgnoredWhileTheExperimentalSettingIsOff() throws Exception {
+        File dir = Files.createTempDirectory("acp-cwd").toFile();
+        PluginSettings.setProjectSwitchRestartForTest(false);
+        lifecycle.ensureStartedIn(dir);
+        assertNull(lifecycle.boundWorkDir(),
+                "with the feature off the server must start unbound, as before cwd binding");
+
+        // A binding left over from when the feature was enabled must not be used
+        // after the user turns it off: v1.27.0 always spawned unbound.
+        PluginSettings.setProjectSwitchRestartForTest(true);
         lifecycle.ensureStartedIn(dir);
         assertEquals(dir.getAbsoluteFile(), lifecycle.boundWorkDir());
-
-        // The project directory no longer exists: the binding must be cleared,
-        // or every later start retries a path ProcessBuilder cannot use.
-        lifecycle.ensureStartedIn(new File(dir, "gone"));
-        assertNull(lifecycle.boundWorkDir());
+        PluginSettings.setProjectSwitchRestartForTest(false);
+        assertNull(lifecycle.spawnDirectory());
+        PluginSettings.setProjectSwitchRestartForTest(true);
+        assertEquals(dir.getAbsoluteFile(), lifecycle.spawnDirectory());
+        PluginSettings.setProjectSwitchRestartForTest(false);
     }
 
     @Test

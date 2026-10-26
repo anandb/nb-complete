@@ -73,6 +73,12 @@ public final class PluginSettings {
     private static volatile boolean cachedCheckForUpdates = true;
     /** Cached use WSL toggle — volatile for cross-thread visibility. Defaults to false. */
     private static volatile boolean cachedUseWsl = false;
+    /**
+     * Effective project-switch rebind toggle, captured at startup. Changing the
+     * option requires an IDE restart, so the preference listener deliberately
+     * does not update it; volatile for cross-thread visibility. Defaults to false.
+     */
+    private static volatile boolean projectSwitchRestartEnabled = false;
 
     private static final PreferenceChangeListener listener = PluginSettings::onPreferenceChanged;
 
@@ -114,6 +120,8 @@ public final class PluginSettings {
         cachedCombineToolThought = prefs.getBoolean(PreferenceKeys.COMBINE_TOOL_THOUGHT, true);
         cachedCheckForUpdates = prefs.getBoolean(PreferenceKeys.CHECK_FOR_UPDATES, true);
         cachedUseWsl = prefs.getBoolean(PreferenceKeys.USE_WSL, false);
+        projectSwitchRestartEnabled =
+                prefs.getBoolean(PreferenceKeys.PROJECT_SWITCH_RESTART_ENABLED, false);
         prefs.addPreferenceChangeListener(listener);
     }
 
@@ -293,6 +301,8 @@ public final class PluginSettings {
         } else if (PreferenceKeys.USE_WSL.equals(evt.getKey())) {
             cachedUseWsl = Boolean.parseBoolean(evt.getNewValue());
         }
+        // PROJECT_SWITCH_RESTART_ENABLED is intentionally absent: it is read once
+        // at startup, so a change takes effect only after an IDE restart.
     }
 
     /** Whether auto backup of uncommitted changes is enabled on turn start. */
@@ -565,5 +575,33 @@ public final class PluginSettings {
         cachedUseWsl = enabled;
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
                 .putBoolean(PreferenceKeys.USE_WSL, enabled);
+    }
+
+    /**
+     * Whether switching a session to another project restarts the ACP server so its
+     * working directory follows the session (experimental, disabled by default).
+     *
+     * <p>The effective value is captured at startup; changing the option in the
+     * Options dialog requires an IDE restart to take effect.</p>
+     */
+    public static boolean isProjectSwitchRestartEnabled() {
+        return projectSwitchRestartEnabled;
+    }
+
+    /** The stored option value, which may differ from the effective value until restart. */
+    public static boolean isProjectSwitchRestartConfigured() {
+        return NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                .getBoolean(PreferenceKeys.PROJECT_SWITCH_RESTART_ENABLED, false);
+    }
+
+    /** Persists the option; the effective value changes only after an IDE restart. */
+    public static void setProjectSwitchRestartEnabled(boolean enabled) {
+        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                .putBoolean(PreferenceKeys.PROJECT_SWITCH_RESTART_ENABLED, enabled);
+    }
+
+    /** Test seam: simulate the value captured by an IDE restart, without touching preferences. */
+    public static void setProjectSwitchRestartForTest(boolean enabled) {
+        projectSwitchRestartEnabled = enabled;
     }
 }

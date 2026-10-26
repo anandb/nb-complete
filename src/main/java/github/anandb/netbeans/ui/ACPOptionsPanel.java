@@ -83,6 +83,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
     private JCheckBox mcpServerCheckbox;
     private JSpinner mcpPortSpinner;
     private JCheckBox useWslCheckbox;
+    private JCheckBox projectSwitchRestartCheckbox;
     private JSpinner idleTimeoutSpinner;
     private JSpinner maxMessagesSpinner;
     private JLabel argsLabel;
@@ -138,6 +139,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         markdownProjectCheckbox = new JCheckBox();
         mcpServerCheckbox = new JCheckBox();
         preambleEnabledCheckbox = new JCheckBox();
+        projectSwitchRestartCheckbox = new JCheckBox();
         iconLabel = new JLabel();
         iconPathField = new JTextField(40);
         iconBrowseButton = new JButton();
@@ -418,6 +420,14 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         actionsPanel.add(taskRepositoryCheckbox, UIUtils.createGbc(1, 4, 1.0, 0, GridBagConstraints.HORIZONTAL,
                 GridBagConstraints.WEST, new Insets(0, 25, 5, 0)));
 
+        projectSwitchRestartCheckbox.setText(
+                NbBundle.getMessage(ACPOptionsPanel.class, "LBL_ProjectSwitchRestart"));
+        projectSwitchRestartCheckbox.setToolTipText(
+                NbBundle.getMessage(ACPOptionsPanel.class, "TT_ProjectSwitchRestart"));
+        projectSwitchRestartCheckbox.addActionListener(evt -> controller.changed());
+        actionsPanel.add(projectSwitchRestartCheckbox, UIUtils.createGbc(0, 6, 1.0, 0, GridBagConstraints.HORIZONTAL,
+                GridBagConstraints.WEST, new Insets(0, 12, 5, 0)));
+
         add(actionsPanel);
         add(Box.createVerticalStrut(4));
 
@@ -644,6 +654,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         copyAllItemsCheckbox.setSelected(PluginSettings.isCopyAllItemsEnabled());
         miniAssistantCheckbox.setSelected(PluginSettings.isMiniAssistantEnabled());
         taskRepositoryCheckbox.setSelected(PluginSettings.isTaskRepositoryEnabled());
+        projectSwitchRestartCheckbox.setSelected(PluginSettings.isProjectSwitchRestartConfigured());
         markdownProjectCheckbox.setSelected(PluginSettings.isMarkdownProjectEnabled());
         mcpServerCheckbox.setSelected(PluginSettings.isMcpServerEnabled());
         mcpPortSpinner.setValue(PluginSettings.getMcpServerPort());
@@ -730,6 +741,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         PluginSettings.setCopyAllItemsEnabled(copyAllItemsCheckbox.isSelected());
         PluginSettings.setMiniAssistantEnabled(miniAssistantCheckbox.isSelected());
         PluginSettings.setTaskRepositoryEnabled(taskRepositoryCheckbox.isSelected());
+        PluginSettings.setProjectSwitchRestartEnabled(projectSwitchRestartCheckbox.isSelected());
         PluginSettings.setMarkdownProjectEnabled(markdownProjectCheckbox.isSelected());
         PluginSettings.setMcpServerEnabled(mcpServerCheckbox.isSelected());
         PluginSettings.setMcpServerPort((Integer) mcpPortSpinner.getValue());

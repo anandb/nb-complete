@@ -61,6 +61,7 @@ This page describes every preference in the panel, organised into six sections. 
 <tr><td><strong>Enable Copy All in Action Items</strong></td><td>On</td><td>Adds a copy button to NetBeans' Action Items toolbar that copies every task in the active scope and filters — including tasks hidden inside collapsed groups — as a plain-text list, with file and location details when available.</td></tr>
 <tr><td><strong>Enable Mini Assistant</strong></td><td>On</td><td>Decides where <strong>Send to Assistant</strong> / <strong>Ask Assistant</strong> actions open: the floating mini dialog (enabled) or the main sidebar (disabled).</td></tr>
 <tr><td><strong>Enable Task Repository</strong></td><td>On</td><td>Enables the todo.txt task management feature. When disabled, no task repositories are loaded, the Tasks Dashboard is hidden, and AI task tools (e.g. <code>add&#95;task</code>) are unavailable.</td></tr>
+<tr><td><strong>Enable ACP server restart on project switch (Experimental)</strong></td><td>Off</td><td>Binds the ACP server's working directory to the project of the session being opened, restarting the server when that project changes. Off by default while the feature stabilises; a restart terminates every session the running server is serving. When disabled, the server keeps the directory it was started with and only a manual restart or an IDE restart rebinds it. Requires an IDE restart to apply.</td></tr>
 </tbody>
 </table>
 

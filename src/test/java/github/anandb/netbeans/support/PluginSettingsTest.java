@@ -51,6 +51,34 @@ class PluginSettingsTest {
     }
 
     @Test
+    void testProjectSwitchRestartIsCapturedAtStartup() {
+        Preferences prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
+        try {
+            PluginSettings.setProjectSwitchRestartForTest(false);
+            PluginSettings.setProjectSwitchRestartEnabled(false);
+            assertFalse(prefs.getBoolean(PreferenceKeys.PROJECT_SWITCH_RESTART_ENABLED, true),
+                    "a missing key must leave the experimental feature off");
+            assertFalse(PluginSettings.isProjectSwitchRestartConfigured());
+            assertFalse(PluginSettings.isProjectSwitchRestartEnabled());
+
+            // Storing the option must not change the running behaviour: it is a
+            // startup setting, so the new value applies after an IDE restart.
+            PluginSettings.setProjectSwitchRestartEnabled(true);
+            assertTrue(PluginSettings.isProjectSwitchRestartConfigured());
+            assertFalse(PluginSettings.isProjectSwitchRestartEnabled(),
+                    "changing the option requires an IDE restart");
+
+            // Simulate the next startup reading the stored value.
+            PluginSettings.setProjectSwitchRestartForTest(
+                    PluginSettings.isProjectSwitchRestartConfigured());
+            assertTrue(PluginSettings.isProjectSwitchRestartEnabled());
+        } finally {
+            PluginSettings.setProjectSwitchRestartEnabled(false);
+            PluginSettings.setProjectSwitchRestartForTest(false);
+        }
+    }
+
+    @Test
     void testPreambleToggleRoundTrip() {
         // Assert the persisted values only: the cached accessor is updated
         // asynchronously by the PreferenceChangeListener and can briefly lag.

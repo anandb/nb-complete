@@ -62,6 +62,7 @@ import github.anandb.netbeans.model.SessionConfigOption;
 import github.anandb.netbeans.model.SessionState;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.MapperSupplier;
+import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.PreferenceKeys;
 
 @ExtendWith(MockitoExtension.class)
@@ -100,6 +101,9 @@ class SessionManagerTest {
         // test would get the cached instance whose SessionRpcClient is bound to
         // an EARLIER test's ProcessManager mock, so sendRequest verifies
         // against the wrong mock.
+        // Most tests below assert the cwd-binding path; the off-path tests turn
+        // it off explicitly. tearDown restores the default.
+        PluginSettings.setProjectSwitchRestartForTest(true);
         sessionManager = new SessionManager();
         // Never let a unit test reach the production store: its database lives on
         // disk under the user directory, and these tests must stay in memory.
@@ -108,6 +112,7 @@ class SessionManagerTest {
 
     @AfterEach
     void tearDown() {
+        PluginSettings.setProjectSwitchRestartForTest(false);
         NbPreferences.forModule(PreferenceKeys.class).remove(PreferenceKeys.ACP_HARNESS_ID);
         if (pmMock != null) {
             pmMock.close();
@@ -127,6 +132,22 @@ class SessionManagerTest {
         var order = inOrder(processManager);
         order.verify(processManager).ensureStartedIn(new File("/test/cwd"));
         order.verify(processManager).sendRequest(eq("session/new"), any(), eq(60L), eq(TimeUnit.SECONDS));
+    }
+
+    @Test
+    void createSessionDoesNotBindWhenProjectSwitchRestartIsDisabled() throws Exception {
+        PluginSettings.setProjectSwitchRestartForTest(false);
+        JsonNode mockResponse = mapper.createObjectNode()
+                .put("id", "v127-id")
+                .put("title", "V127");
+        when(processManager.sendRequest(eq("session/new"), any(), eq(60L), eq(TimeUnit.SECONDS)))
+                .thenReturn(CompletableFuture.completedFuture(mockResponse));
+
+        sessionManager.createSession("/test/cwd").get(5, TimeUnit.SECONDS);
+
+        // v1.27.0 behaviour: a session request never starts or rebinds the server.
+        verify(processManager, never()).ensureStartedIn(any());
+        verify(processManager).sendRequest(eq("session/new"), any(), eq(60L), eq(TimeUnit.SECONDS));
     }
 
     @Test
@@ -681,6 +702,22 @@ class SessionManagerTest {
         var order = inOrder(processManager);
         order.verify(processManager).ensureStartedIn(new File("/p"));
         order.verify(processManager).sendRequest(eq("session/load"), any(), eq(2L), eq(TimeUnit.MINUTES));
+    }
+
+    @Test
+    void loadSessionDoesNotBindWhenProjectSwitchRestartIsDisabled() throws Exception {
+        PluginSettings.setProjectSwitchRestartForTest(false);
+        seedCachedSession("s1", "/p");
+        stubSessionLoad(mapper.createObjectNode());
+        sessionManager.addSessionListener(mockListener());
+
+        assertTrue(sessionManager.loadSession("s1"));
+        awaitLoaded();
+
+        // v1.27.0 behaviour: the load only waits for the existing server.
+        verify(processManager, never()).ensureStartedIn(any());
+        verify(processManager).sendRequest(eq("session/load"), any(), eq(2L), eq(TimeUnit.MINUTES));
+        assertEquals("s1", lastLoadedSessionId);
     }
 
     @Test

@@ -24,6 +24,7 @@ import github.anandb.netbeans.model.HarnessCatalog;
 import github.anandb.netbeans.support.PreferenceKeys;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.BinaryResolver;
+import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.FsWriteSettings;
 import github.anandb.netbeans.support.ProcessTerminator;
 
@@ -121,22 +122,52 @@ class ServerProcessLifecycle {
      * <p>Rebinding restarts the process, which terminates every session the
      * current process serves: switching a session to another project ends the
      * previous project's in-flight turns by construction.</p>
+     *
+     * <p>The whole binding is gated by the experimental
+     * {@code projectSwitchRestart.enabled} setting. While disabled the server is
+     * started without a working directory and a live server keeps whatever
+     * binding it has — exactly the behaviour before cwd binding was added.</p>
      */
     synchronized void ensureStartedIn(File workDir) {
-        File target = workDir != null && workDir.isDirectory()
+        boolean bindCwd = PluginSettings.isProjectSwitchRestartEnabled();
+        File target = bindCwd && workDir != null && workDir.isDirectory()
                 ? workDir.getAbsoluteFile() : null;
         if (serverProcess != null && serverProcess.isAlive()) {
-            if (target != null && !sameDirectory(target, spawnWorkDir)) {
+            if (shouldRebind(target, spawnWorkDir)) {
                 LOG.warn("ACP server bound to {0}; restarting to serve {1}", spawnWorkDir, target);
                 spawnWorkDir = target;
                 restartServer();
+            } else if (bindCwd && target != null && !sameDirectory(target, spawnWorkDir)) {
+                LOG.fine("Project-switch rebind disabled; keeping ACP server bound to {0} (requested {1})",
+                        spawnWorkDir, target);
             }
             return;
         }
         // Always assign: keeping a deleted directory here makes every later
-        // ProcessBuilder.start() fail with "No such file or directory".
+        // ProcessBuilder.start() fail with "No such file or directory". When the
+        // feature is off this also clears any binding left from an earlier run.
         spawnWorkDir = target;
         ensureStarted();
+    }
+
+    /**
+     * Working directory to spawn the server in, or {@code null} to inherit the
+     * IDE's. Gated by the experimental setting so a binding left over from when
+     * the feature was enabled is not reused after the user turns it off
+     * (v1.27.0 behaviour: the server starts unbound).
+     */
+    File spawnDirectory() {
+        return PluginSettings.isProjectSwitchRestartEnabled() ? spawnWorkDir : null;
+    }
+
+    /**
+     * True when a live server must be restarted to serve {@code target}: the
+     * directories differ and the experimental project-switch rebind setting is
+     * enabled. Kept as a pure decision so the gate is testable without a process.
+     */
+    static boolean shouldRebind(File target, File current) {
+        return target != null && !sameDirectory(target, current)
+                && PluginSettings.isProjectSwitchRestartEnabled();
     }
 
     /**
@@ -213,11 +244,12 @@ class ServerProcessLifecycle {
             // process starts. The directory is the project the user picked for
             // a session (set by ensureStartedIn); there is no pre-session
             // guess. Before the first session the server inherits the IDE dir.
-            if (spawnWorkDir != null) {
-                pb.directory(spawnWorkDir);
-                LOG.info("ACP server working directory: {0}", spawnWorkDir);
+            File bindDir = spawnDirectory();
+            if (bindDir != null) {
+                pb.directory(bindDir);
+                LOG.info("ACP server working directory: {0}", bindDir);
             } else {
-                LOG.fine("ACP server inherits IDE working directory (no session bound yet)");
+                LOG.fine("ACP server inherits IDE working directory (cwd binding disabled or unbound)");
             }
 
             this.serverProcess = pb.start();
