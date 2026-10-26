@@ -32,7 +32,6 @@ import org.openide.filesystems.FileObject;
 import org.openide.util.Lookup;
 import org.openide.util.NbPreferences;
 
-import github.anandb.netbeans.contract.ProcessControl;
 import github.anandb.netbeans.contract.ProjectQuery;
 import github.anandb.netbeans.manager.strategy.StrategyRegistry;
 import github.anandb.netbeans.model.HarnessCatalog;
@@ -172,8 +171,7 @@ class SessionManagerTest {
         Method updateMeta = SessionManager.class.getDeclaredMethod("updateMetadata",
                 String.class, java.util.function.Function.class);
         updateMeta.setAccessible(true);
-        ProcessControl pc = mock(ProcessControl.class);
-        when(pc.getCapabilities()).thenReturn(HarnessCatalog.GEMINI);
+        when(processManager.getCapabilities()).thenReturn(HarnessCatalog.GEMINI);
         ProjectQuery pq = mock(ProjectQuery.class);
         Project project = mock(Project.class);
         FileObject dir = mock(FileObject.class);
@@ -184,7 +182,6 @@ class SessionManagerTest {
         try (MockedStatic<Lookup> lookupMock = mockStatic(Lookup.class)) {
             Lookup mockLookup = mock(Lookup.class);
             lookupMock.when(Lookup::getDefault).thenReturn(mockLookup);
-            when(mockLookup.lookup(ProcessControl.class)).thenReturn(pc);
             when(mockLookup.lookup(ProjectQuery.class)).thenReturn(pq);
 
             cacheManager().addLocallyCreated(cachedSession("keep", "/open"), null);
@@ -739,7 +736,8 @@ class SessionManagerTest {
                 eq(2L), eq(TimeUnit.MINUTES));
         assertFalse(params.getValue().containsKey("cwd"));
         assertEquals("s1", lastLoadedSessionId);
-        // No cwd means an unbound server, not a stale binding from a previous session.
+        // A null cwd is still forwarded to the binding step; the lifecycle layer
+        // keeps a live server's existing binding (it does not force an unbound start).
         verify(processManager).ensureStartedIn(null);
     }
 
@@ -989,8 +987,7 @@ class SessionManagerTest {
     @Test
     void setSessionConfigOptionNotifiesWhenCurrentSession() throws Exception {
         driveToStreaming("s1");
-        ProcessControl pc = mock(ProcessControl.class);
-        when(pc.getCapabilities()).thenReturn(HarnessCatalog.UNKNOWN);
+        when(processManager.getCapabilities()).thenReturn(HarnessCatalog.UNKNOWN);
         when(processManager.sendRequest(eq("session/set_config_option"), any(),
                 eq(30L), eq(TimeUnit.SECONDS)))
                 .thenReturn(CompletableFuture.completedFuture(mapper.readTree(
@@ -998,12 +995,7 @@ class SessionManagerTest {
                         + "\"category\":\"effort\",\"type\":\"select\",\"currentValue\":\"high\","
                         + "\"options\":[]}]}")));
         sessionManager.addSessionListener(mockListener());
-        try (MockedStatic<Lookup> lookupMock = mockStatic(Lookup.class)) {
-            Lookup mockLookup = mock(Lookup.class);
-            lookupMock.when(Lookup::getDefault).thenReturn(mockLookup);
-            when(mockLookup.lookup(ProcessControl.class)).thenReturn(pc);
-            sessionManager.setSessionConfigOption("s1", "effort", "high").get(5, TimeUnit.SECONDS);
-        }
+        sessionManager.setSessionConfigOption("s1", "effort", "high").get(5, TimeUnit.SECONDS);
         awaitLoaded();
         assertEquals("s1", lastLoadedSessionId);
         assertEquals(Boolean.FALSE, lastLoadedStartup);
@@ -1012,14 +1004,8 @@ class SessionManagerTest {
 
     @Test
     void setSessionConfigOptionSkippedWhenUnsupported() throws Exception {
-        ProcessControl pc = mock(ProcessControl.class);
-        when(pc.getCapabilities()).thenReturn(HarnessCatalog.GEMINI);
-        try (MockedStatic<Lookup> lookupMock = mockStatic(Lookup.class)) {
-            Lookup mockLookup = mock(Lookup.class);
-            lookupMock.when(Lookup::getDefault).thenReturn(mockLookup);
-            when(mockLookup.lookup(ProcessControl.class)).thenReturn(pc);
-            sessionManager.setSessionConfigOption("s1", "effort", "high").get(5, TimeUnit.SECONDS);
-        }
+        when(processManager.getCapabilities()).thenReturn(HarnessCatalog.GEMINI);
+        sessionManager.setSessionConfigOption("s1", "effort", "high").get(5, TimeUnit.SECONDS);
         verify(processManager, never()).sendRequest(eq("session/set_config_option"), any(),
                 eq(30L), eq(TimeUnit.SECONDS));
     }
@@ -1027,39 +1013,27 @@ class SessionManagerTest {
     @Test
     void setSessionConfigOptionRejectedValueDoesNotLoad() throws Exception {
         driveToStreaming("s1");
-        ProcessControl pc = mock(ProcessControl.class);
-        when(pc.getCapabilities()).thenReturn(HarnessCatalog.UNKNOWN);
+        when(processManager.getCapabilities()).thenReturn(HarnessCatalog.UNKNOWN);
         when(processManager.sendRequest(eq("session/set_config_option"), any(),
                 eq(30L), eq(TimeUnit.SECONDS)))
                 .thenReturn(CompletableFuture.failedFuture(new RuntimeException("rejected")));
         sessionManager.addSessionListener(mockListener());
-        try (MockedStatic<Lookup> lookupMock = mockStatic(Lookup.class)) {
-            Lookup mockLookup = mock(Lookup.class);
-            lookupMock.when(Lookup::getDefault).thenReturn(mockLookup);
-            when(mockLookup.lookup(ProcessControl.class)).thenReturn(pc);
-            CompletableFuture<Void> future = sessionManager.setSessionConfigOption("s1", "effort", "bad");
-            assertTrue(future.isCompletedExceptionally()
-                    || future.handle((v, ex) -> ex != null).get(5, TimeUnit.SECONDS));
-        }
+        CompletableFuture<Void> future = sessionManager.setSessionConfigOption("s1", "effort", "bad");
+        assertTrue(future.isCompletedExceptionally()
+                || future.handle((v, ex) -> ex != null).get(5, TimeUnit.SECONDS));
         assertNull(lastLoadedSessionId);
     }
 
     @Test
     void setSessionConfigOptionForOtherSessionDoesNotNotify() throws Exception {
         driveToStreaming("current");
-        ProcessControl pc = mock(ProcessControl.class);
-        when(pc.getCapabilities()).thenReturn(HarnessCatalog.UNKNOWN);
+        when(processManager.getCapabilities()).thenReturn(HarnessCatalog.UNKNOWN);
         when(processManager.sendRequest(eq("session/set_config_option"), any(),
                 eq(30L), eq(TimeUnit.SECONDS)))
                 .thenReturn(CompletableFuture.completedFuture(mapper.readTree(
                         "{\"configOptions\":[{\"id\":\"effort\",\"currentValue\":\"high\"}]}")));
         sessionManager.addSessionListener(mockListener());
-        try (MockedStatic<Lookup> lookupMock = mockStatic(Lookup.class)) {
-            Lookup mockLookup = mock(Lookup.class);
-            lookupMock.when(Lookup::getDefault).thenReturn(mockLookup);
-            when(mockLookup.lookup(ProcessControl.class)).thenReturn(pc);
-            sessionManager.setSessionConfigOption("other", "effort", "high").get(5, TimeUnit.SECONDS);
-        }
+        sessionManager.setSessionConfigOption("other", "effort", "high").get(5, TimeUnit.SECONDS);
         Thread.sleep(100);
         assertNull(lastLoadedSessionId);
     }
@@ -1075,17 +1049,11 @@ class SessionManagerTest {
                 false, true, true, true, true, false, false, true, true, true, true,
                 "", "", "", "", "", "", "",
                 List.of());
-        ProcessControl pc = mock(ProcessControl.class);
-        when(pc.getCapabilities()).thenReturn(setModelOnly);
+        when(processManager.getCapabilities()).thenReturn(setModelOnly);
 
         when(processManager.sendRequest(eq("session/set_model"), any(), eq(30L), eq(TimeUnit.SECONDS)))
                 .thenReturn(CompletableFuture.completedFuture(mapper.createObjectNode()));
-        try (MockedStatic<Lookup> lookupMock = mockStatic(Lookup.class)) {
-            Lookup mockLookup = mock(Lookup.class);
-            lookupMock.when(Lookup::getDefault).thenReturn(mockLookup);
-            when(mockLookup.lookup(ProcessControl.class)).thenReturn(pc);
-            sessionManager.setSessionConfigOption("s1", "model", "m2").get(5, TimeUnit.SECONDS);
-        }
+        sessionManager.setSessionConfigOption("s1", "model", "m2").get(5, TimeUnit.SECONDS);
         verify(processManager).sendRequest(eq("session/set_model"), any(), eq(30L), eq(TimeUnit.SECONDS));
         verify(processManager, never()).sendRequest(eq("session/set_config_option"), any(),
                 eq(30L), eq(TimeUnit.SECONDS));
@@ -1096,17 +1064,11 @@ class SessionManagerTest {
         // Hermes supports set_model AND set_config_option; only the "model"
         // configId is routed to the dedicated RPC, other configs go through
         // set_config_option as before.
-        ProcessControl pc = mock(ProcessControl.class);
-        when(pc.getCapabilities()).thenReturn(HarnessCatalog.HERMES);
+        when(processManager.getCapabilities()).thenReturn(HarnessCatalog.HERMES);
 
         when(processManager.sendRequest(eq("session/set_config_option"), any(), eq(30L), eq(TimeUnit.SECONDS)))
                 .thenReturn(CompletableFuture.completedFuture(mapper.createObjectNode()));
-        try (MockedStatic<Lookup> lookupMock = mockStatic(Lookup.class)) {
-            Lookup mockLookup = mock(Lookup.class);
-            lookupMock.when(Lookup::getDefault).thenReturn(mockLookup);
-            when(mockLookup.lookup(ProcessControl.class)).thenReturn(pc);
-            sessionManager.setSessionConfigOption("s1", "effort", "high").get(5, TimeUnit.SECONDS);
-        }
+        sessionManager.setSessionConfigOption("s1", "effort", "high").get(5, TimeUnit.SECONDS);
         verify(processManager).sendRequest(eq("session/set_config_option"), any(), eq(30L), eq(TimeUnit.SECONDS));
         verify(processManager, never()).sendRequest(eq("session/set_model"), any(),
                 eq(30L), eq(TimeUnit.SECONDS));
@@ -1116,17 +1078,11 @@ class SessionManagerTest {
     void setSessionConfigOptionSendsModelViaConfigWhenSetModelUnsupported() throws Exception {
         // UNKNOWN has setModel=false, setConfigOption=true: the "model" config
         // must still flow through set_config_option as before the routing.
-        ProcessControl pc = mock(ProcessControl.class);
-        when(pc.getCapabilities()).thenReturn(HarnessCatalog.UNKNOWN);
+        when(processManager.getCapabilities()).thenReturn(HarnessCatalog.UNKNOWN);
 
         when(processManager.sendRequest(eq("session/set_config_option"), any(), eq(30L), eq(TimeUnit.SECONDS)))
                 .thenReturn(CompletableFuture.completedFuture(mapper.createObjectNode()));
-        try (MockedStatic<Lookup> lookupMock = mockStatic(Lookup.class)) {
-            Lookup mockLookup = mock(Lookup.class);
-            lookupMock.when(Lookup::getDefault).thenReturn(mockLookup);
-            when(mockLookup.lookup(ProcessControl.class)).thenReturn(pc);
-            sessionManager.setSessionConfigOption("s1", "model", "m2").get(5, TimeUnit.SECONDS);
-        }
+        sessionManager.setSessionConfigOption("s1", "model", "m2").get(5, TimeUnit.SECONDS);
         verify(processManager).sendRequest(eq("session/set_config_option"), any(), eq(30L), eq(TimeUnit.SECONDS));
         verify(processManager, never()).sendRequest(eq("session/set_model"), any(),
                 eq(30L), eq(TimeUnit.SECONDS));
@@ -1194,14 +1150,8 @@ class SessionManagerTest {
     @Test
     void renameSessionPersistsWhenSessionListUnsupported() throws Exception {
         seedCachedSession("s1", "/p");
-        ProcessControl pc = mock(ProcessControl.class);
-        when(pc.getCapabilities()).thenReturn(HarnessCatalog.GEMINI);
-        try (MockedStatic<Lookup> lookupMock = mockStatic(Lookup.class)) {
-            Lookup mockLookup = mock(Lookup.class);
-            lookupMock.when(Lookup::getDefault).thenReturn(mockLookup);
-            when(mockLookup.lookup(ProcessControl.class)).thenReturn(pc);
-            sessionManager.renameSession("s1", "Persisted");
-        }
+        when(processManager.getCapabilities()).thenReturn(HarnessCatalog.GEMINI);
+        sessionManager.renameSession("s1", "Persisted");
         // Drop the live caches: the renamed title has to come back from the store.
         Field mapField = SessionCacheManager.class.getDeclaredField("locallyCreatedSessionToAgentMap");
         mapField.setAccessible(true);

@@ -258,8 +258,14 @@ public class ProcessManager implements ProcessControl {
     /**
      * Ensures the server serves sessions from {@code workDir}: starts it bound
      * to the directory, restarts it when bound to a different one, and does
-     * nothing when already bound to it. A {@code null} or missing directory
-     * only starts an unbound server.
+     * nothing when already bound to it.
+     *
+     * <p>A {@code null} or missing directory leaves a live server's binding
+     * untouched. When no server is running it clears any previous binding, so
+     * the next process starts unbound rather than inheriting a deleted path.</p>
+     *
+     * <p>Rebinding restarts the process and therefore terminates every session
+     * it currently serves; this is inherent to one process serving one cwd.</p>
      */
     public synchronized void ensureStartedIn(File workDir) {
         serverLifecycle.ensureStartedIn(workDir);

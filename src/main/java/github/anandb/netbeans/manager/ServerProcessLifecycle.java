@@ -11,6 +11,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.io.File;
+import java.io.IOException;
 
 import org.apache.commons.exec.CommandLine;
 import org.openide.util.NbPreferences;
@@ -108,26 +109,50 @@ class ServerProcessLifecycle {
 
     /**
      * Ensures the server serves sessions from {@code workDir}: starts it bound
-     * to the directory, restarts it when it is bound to a different one (one
-     * ACP process serves one working directory for its whole life), and does
-     * nothing when already bound to it. A {@code null} or missing directory
-     * only starts an unbound server.
+     * to the directory, restarts it when bound to a different one (one ACP
+     * process serves one working directory for its whole life), and does
+     * nothing when already bound to it.
+     *
+     * <p>A {@code null} or missing directory leaves a live server's binding
+     * untouched — there is nothing to rebind to. When no server is running it
+     * clears any previous binding, so the next process starts unbound instead
+     * of inheriting a directory that no longer exists on disk.</p>
+     *
+     * <p>Rebinding restarts the process, which terminates every session the
+     * current process serves: switching a session to another project ends the
+     * previous project's in-flight turns by construction.</p>
      */
     synchronized void ensureStartedIn(File workDir) {
         File target = workDir != null && workDir.isDirectory()
                 ? workDir.getAbsoluteFile() : null;
         if (serverProcess != null && serverProcess.isAlive()) {
-            if (target != null && !target.equals(spawnWorkDir)) {
+            if (target != null && !sameDirectory(target, spawnWorkDir)) {
                 LOG.warn("ACP server bound to {0}; restarting to serve {1}", spawnWorkDir, target);
                 spawnWorkDir = target;
                 restartServer();
             }
             return;
         }
-        if (target != null) {
-            spawnWorkDir = target;
-        }
+        // Always assign: keeping a deleted directory here makes every later
+        // ProcessBuilder.start() fail with "No such file or directory".
+        spawnWorkDir = target;
         ensureStarted();
+    }
+
+    /**
+     * Absolute-path equality that also resolves symlinks and {@code ..}, so a
+     * project reachable through two paths does not trigger a pointless restart.
+     * The stored spawn directory stays as given; only the comparison is canonical.
+     */
+    static boolean sameDirectory(File a, File b) {
+        if (a == null || b == null) {
+            return a == b;
+        }
+        try {
+            return a.getCanonicalFile().equals(b.getCanonicalFile());
+        } catch (IOException ex) {
+            return a.getAbsoluteFile().equals(b.getAbsoluteFile());
+        }
     }
 
     synchronized void startServer() {
@@ -282,11 +307,20 @@ class ServerProcessLifecycle {
             readyFuture.completeExceptionally(new IllegalStateException("rpcClient not set"));
             return;
         }
+        // Bind this handshake to the generation it belongs to. A restart swaps
+        // both fields; this callback must then leave the new process alone.
+        CompletableFuture<Void> generation = readyFuture;
         client.sendRequest("initialize", params)
                 // Exception to the no-orTimeout rule: initialize must complete fast
                 // and does not stream long-running data.
                 .orTimeout(30, TimeUnit.SECONDS)
                 .thenAccept(res -> {
+                    if (!isCurrentGeneration(client, generation)) {
+                        LOG.fine("Ignoring initialize response from a superseded server generation");
+                        generation.completeExceptionally(
+                                new IllegalStateException("ACP server generation superseded during initialize"));
+                        return;
+                    }
                     if (res != null) {
                         // Store harness info from initialize response
                         JsonNode agentInfo = res.get("agentInfo");
@@ -335,7 +369,7 @@ class ServerProcessLifecycle {
                             listener.accept(capabilities);
                         }
                     }
-                    readyFuture.complete(null);
+                    generation.complete(null);
                     LOG.fine("ACP initialized successfully");
                     // Guard: stopServer() may have been called during the async
                     // initialize window. Do not fire the ready callback if the
@@ -349,8 +383,16 @@ class ServerProcessLifecycle {
                     }
                 })
                 .exceptionally(ex -> {
+                    // Unblock this generation's waiters first, even when superseded.
+                    generation.completeExceptionally(ex);
+                    if (!isCurrentGeneration(client, generation)) {
+                        // A restart or shutdown replaced the process: never reset
+                        // the new generation's state or stop its server from here.
+                        LOG.fine("Ignoring failed initialize from a superseded server generation: {0}",
+                                ExceptionUtils.getMessage(ex));
+                        return null;
+                    }
                     LOG.severe("Failed to initialize ACP", ex);
-                    readyFuture.completeExceptionally(ex);
                     synchronized (ServerProcessLifecycle.this) {
                         serverStarted = false;
                     }
@@ -359,13 +401,30 @@ class ServerProcessLifecycle {
                 });
     }
 
+    /** True when {@code client}/{@code generation} still own the lifecycle state. */
+    private boolean isCurrentGeneration(AcpProtocolClient client, CompletableFuture<Void> generation) {
+        return rpcClient.get() == client && readyFuture == generation;
+    }
+
     synchronized void restartServer() {
         LOG.fine("Manual restart of ACP server requested...");
+        // A restart starts a new generation. Install its ready future BEFORE the
+        // old client is closed: initialize callbacks capture the future they
+        // started with, so the old generation can only complete its own future
+        // and can never poison the new one or stop the new process.
+        CompletableFuture<Void> previous = readyFuture;
+        readyFuture = new CompletableFuture<>();
         stopServer();
         // Reset all state so startServer() proceeds cleanly
         isClosing = false;
         serverStarted = true;
         startServer();
+        // Unblock waiters of the previous generation. That future is normally
+        // already failed by stopServer() closing the client; a waiter that
+        // grabbed it before any server existed would otherwise wait forever.
+        if (previous != null && !previous.isDone()) {
+            previous.completeExceptionally(new IOException("ACP server restarting"));
+        }
     }
 
     synchronized void stopServer() {
@@ -406,6 +465,9 @@ class ServerProcessLifecycle {
 
     // Getters for fields ProcessManager still needs
     Process serverProcess() { return serverProcess; }
+
+    /** Working directory the current (or next) server process is bound to. */
+    File boundWorkDir() { return spawnWorkDir; }
 
     boolean isClosing() { return isClosing; }
 

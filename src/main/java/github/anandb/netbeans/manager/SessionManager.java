@@ -13,7 +13,6 @@ import github.anandb.netbeans.model.ModelsInfo;
 import github.anandb.netbeans.model.ModesInfo;
 import github.anandb.netbeans.model.SessionMetadata;
 import github.anandb.netbeans.support.PluginSettings;
-import github.anandb.netbeans.contract.ProcessControl;
 import github.anandb.netbeans.contract.ProjectQuery;
 import org.apache.commons.lang3.StringUtils;
 import org.netbeans.api.project.Project;
@@ -857,7 +856,7 @@ public class SessionManager implements SessionQuery, SessionControl {
 
     @Override
     public CompletableFuture<Void> setSessionConfigOption(String sessionId, String configId, String value) {
-        ProcessControl pc = Lookup.getDefault().lookup(ProcessControl.class);
+        HarnessCatalog.Harness caps = processManager.getCapabilities();
         // Hermes-style agents expose model switching as a dedicated RPC; a
         // "model" config option is silently stored there (acp_adapter
         // set_config_option) without switching the model. Route it to
@@ -866,11 +865,11 @@ public class SessionManager implements SessionQuery, SessionControl {
         // runs BEFORE the set_config_option guard: a harness may support
         // session/set_model without session/set_config_option, and the guard
         // would otherwise swallow the "model" switch silently.
-        if (pc != null && pc.getCapabilities().supportsSessionSetModel() && "model".equals(configId)) {
-            LOG.fine("Routing model config to session/set_model for harness {0}", pc.getCapabilities().id());
+        if (caps != null && caps.supportsSessionSetModel() && "model".equals(configId)) {
+            LOG.fine("Routing model config to session/set_model for harness {0}", caps.id());
             return setSessionModel(sessionId, value);
         }
-        if (pc != null && !pc.getCapabilities().supportsSessionSetConfigOption()) {
+        if (caps != null && !caps.supportsSessionSetConfigOption()) {
             LOG.fine("Harness does not support session/set_config_option, skipping config {0}", configId);
             return CompletableFuture.completedFuture(null);
         }
@@ -935,8 +934,7 @@ public class SessionManager implements SessionQuery, SessionControl {
                 .thenCompose(v -> {
                     // Agents that don't support session/list (e.g. Gemini) rely on
                     // locally-created sessions tracked in the cache. Skip the RPC.
-                    ProcessControl pc = Lookup.getDefault().lookup(ProcessControl.class);
-                    if (pc != null && !pc.getCapabilities().supportsSessionList()) {
+                    if (tracksSessionsLocally()) {
                         loadLocallyCreatedSessionIds();
                         List<String> openDirs = openProjectDirectories();
                         List<Session> local = retainSessionsForDirectories(
