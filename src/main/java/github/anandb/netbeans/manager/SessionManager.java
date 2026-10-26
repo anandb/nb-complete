@@ -35,6 +35,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import java.util.function.Supplier;
 import java.util.concurrent.TimeoutException;
@@ -448,6 +449,13 @@ public class SessionManager implements SessionQuery, SessionControl {
 
     private static final ObjectMapper MAPPER = MapperSupplier.get();
     private final List<SessionListener> listeners = new CopyOnWriteArrayList<>();
+    /**
+     * Explicit {@code createSession}/{@code loadSession} calls currently in flight.
+     * A restart they cause fires the ready handler; that handler must not schedule
+     * its own auto-load, or it can rebind back to the previous project and kill the
+     * session the explicit operation just started.
+     */
+    private final AtomicInteger explicitSessionOps = new AtomicInteger();
     private final SessionStateMachine stateMachine = new SessionStateMachine();
     private volatile String currentSessionId;
     private volatile String lastProjectDir;
@@ -460,6 +468,13 @@ public class SessionManager implements SessionQuery, SessionControl {
     private volatile BiFunction<String, List<SessionConfigOption>, CompletableFuture<Void>> beforePreambleHandler;
     /** True if a manual reconnect was initiated by the user. */
     private volatile boolean manualReconnectPending;
+    /**
+     * Session loaded by the server process of {@link #loadedSessionGeneration}.
+     * Only that session needs cancel/close before a reload; other sessions are
+     * unknown to the process and cancelling them cancels the load that follows.
+     */
+    private volatile String loadedSessionId;
+    private volatile long loadedSessionGeneration = -1;
 
     public SessionManager() {
         ProjectQuery projectQuery = Lookup.getDefault().lookup(ProjectQuery.class);
@@ -495,7 +510,7 @@ public class SessionManager implements SessionQuery, SessionControl {
         // Auto-reload last session after successful reconnect
         processManager.setReadyHandler(() -> {
             String sid = currentSessionId;
-            if (sid != null) {
+            if (sid != null && explicitSessionOps.get() == 0) {
                 SwingUtilities.invokeLater(() -> loadSession(sid));
             }
         });
@@ -720,8 +735,10 @@ public class SessionManager implements SessionQuery, SessionControl {
         LOG.log(Level.FINE, "Creating new session with CWD: {0}", cwd);
         final String finalCwd = cwd;
         final long start = System.nanoTime();
+        explicitSessionOps.incrementAndGet();
         return withMcpFallback("session/new",
-                () -> sendCreateSessionRequest(finalCwd, start), start);
+                () -> sendCreateSessionRequest(finalCwd, start), start)
+                .whenComplete((res, ex) -> explicitSessionOps.decrementAndGet());
     }
 
     private CompletableFuture<Session> sendCreateSessionRequest(String finalCwd, long start) {
@@ -782,6 +799,8 @@ public class SessionManager implements SessionQuery, SessionControl {
                                     s.modes().currentModeId());
                         }
                         cacheManager.cacheSession(s);
+                        loadedSessionId = s.id();
+                        loadedSessionGeneration = processManager.serverGeneration();
                         updateMetadata(s.id(), m -> new SessionMetadata(m.title(), m.usage(), m.hidden(), finalCwd));
                         if (tracksSessionsLocally()) {
                             cacheManager.addLocallyCreated(s, agentName());
@@ -817,18 +836,36 @@ public class SessionManager implements SessionQuery, SessionControl {
                 });
     }
 
+    /**
+     * True when {@code sessionId} is the session loaded by the current server
+     * process. Only then does cancel/close-before-load make sense; for any other
+     * target both operations refer to a session the process never opened.
+     */
+    private boolean shouldCloseBeforeLoad(String sessionId) {
+        return sessionId != null
+                && sessionId.equals(loadedSessionId)
+                && loadedSessionGeneration == processManager.serverGeneration();
+    }
+
     private CompletableFuture<List<SessionConfigOption>> sendLoadSessionRequest(String sessionId, String cwd, long start) {
         return processManager.whenReady()
                 .thenCompose(v -> processManager.getToolExecutor().waitForReady())
                 .orTimeout(2, TimeUnit.MINUTES)
-                // An agent advertising sessionCapabilities.close must have the
-                // session cancelled and closed before it is loaded again.
-                .thenCompose(v -> rpcClient.closeBeforeLoad(sessionId))
+                // Only the session loaded by THIS server process can hold in-flight
+                // work. Cancelling/closing any other session cancels the load that
+                // follows (omp: "ACP session load was cancelled"), so the switch
+                // path goes straight to session/load.
+                .thenCompose(v -> shouldCloseBeforeLoad(sessionId)
+                        ? rpcClient.closeBeforeLoad(sessionId)
+                        : CompletableFuture.completedFuture(null))
                 .thenCompose(v -> {
                     return rpcClient.loadSessionFromServer(sessionId, cwd);
                 })
                 .thenApply(res -> {
                     long durationMs = (System.nanoTime() - start) / 1_000_000;
+                    // Record only on success: this thenApply is skipped on error.
+                    loadedSessionId = sessionId;
+                    loadedSessionGeneration = processManager.serverGeneration();
                     LOG.info("session/load completed in {0}ms", durationMs);
                     LOG.fine("loadSessionFromServer: got response {0}", res);
                     if (res != null && res.has("configOptions")) {
@@ -1117,6 +1154,7 @@ public class SessionManager implements SessionQuery, SessionControl {
             this.lastProjectDir = workingCwd;
         }
         notifySessionProgress(30);
+        explicitSessionOps.incrementAndGet();
         try {
             final String cwd = workingCwd;
             // v1.27.0 behaviour when cwd binding is disabled: no bind/rebind,
@@ -1152,8 +1190,10 @@ public class SessionManager implements SessionQuery, SessionControl {
                             refreshSessions();
                         }
                         return null;
-                    });
+                    })
+                    .whenComplete((v, ex) -> explicitSessionOps.decrementAndGet());
         } catch (Exception ex) {
+            explicitSessionOps.decrementAndGet();
             LOG.severe("Failed to load session", ex);
             this.currentSessionId = null;
             stateMachine.transitionTo(SessionState.IDLE);

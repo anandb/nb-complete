@@ -475,6 +475,11 @@ public class ProcessManager implements ProcessControl {
         return serverLifecycle.isSessionCloseSupported();
     }
 
+    /** Generation of the current (or most recent) server process; 0 before the first start. */
+    public long serverGeneration() {
+        return serverLifecycle.generation();
+    }
+
     public void setReadyHandler(Runnable handler) {
         this.readyHandler = handler;
     }

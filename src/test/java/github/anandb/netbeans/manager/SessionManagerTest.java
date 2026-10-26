@@ -11,6 +11,8 @@ import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -22,6 +24,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -36,6 +39,8 @@ import github.anandb.netbeans.contract.ProjectQuery;
 import github.anandb.netbeans.manager.strategy.StrategyRegistry;
 import github.anandb.netbeans.model.HarnessCatalog;
 
+
+import javax.swing.SwingUtilities;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -302,10 +307,14 @@ class SessionManagerTest {
     private volatile String lastError;
     private volatile String lastRenamedId;
     private final AtomicBoolean loadingBecameFalse = new AtomicBoolean();
+    private final java.util.concurrent.atomic.AtomicInteger startedCount =
+            new java.util.concurrent.atomic.AtomicInteger();
 
     private SessionListener mockListener() {
         return new SessionListener() {
-            @Override public void onSessionStarted(String sessionId) {}
+            @Override public void onSessionStarted(String sessionId) {
+                startedCount.incrementAndGet();
+            }
             @Override public void onSessionLoading(boolean isLoading) {
                 if (!isLoading) {
                     loadingBecameFalse.set(true);
@@ -351,6 +360,13 @@ class SessionManagerTest {
     private void awaitLoaded() throws InterruptedException {
         long deadline = System.currentTimeMillis() + 5000;
         while (lastLoadedSessionId == null && System.currentTimeMillis() < deadline) {
+            Thread.sleep(50);
+        }
+    }
+
+    private void awaitLoaded(String expectedId) throws InterruptedException {
+        long deadline = System.currentTimeMillis() + 5000;
+        while (!expectedId.equals(lastLoadedSessionId) && System.currentTimeMillis() < deadline) {
             Thread.sleep(50);
         }
     }
@@ -705,6 +721,49 @@ class SessionManagerTest {
     }
 
     @Test
+    void readyHandlerDoesNotReloadWhileAnExplicitLoadIsInFlight() throws Exception {
+        seedCachedSession("old", "/old-project");
+        CompletableFuture<JsonNode> pendingLoad = new CompletableFuture<>();
+        when(processManager.sendRequest(eq("session/load"), any(), eq(2L), eq(TimeUnit.MINUTES)))
+                .thenReturn(pendingLoad);
+        sessionManager.addSessionListener(mockListener());
+
+        assertTrue(sessionManager.loadSession("old"));
+        // The explicit load registers before its RPC is sent.
+        verify(processManager, timeout(2000)).sendRequest(eq("session/load"), any(),
+                eq(2L), eq(TimeUnit.MINUTES));
+
+        ArgumentCaptor<Runnable> readyHandler = ArgumentCaptor.forClass(Runnable.class);
+        verify(processManager).setReadyHandler(readyHandler.capture());
+
+        // Hold the EDT so any auto-load the ready handler schedules can only run
+        // after the explicit load has already reached STREAMING. That is the
+        // window where it would load the previous session over the new one and
+        // rebind the server back to the old project.
+        CountDownLatch releaseEdt = new CountDownLatch(1);
+        SwingUtilities.invokeLater(() -> {
+            try {
+                releaseEdt.await(5, TimeUnit.SECONDS);
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+            }
+        });
+
+        // The rebind restart fires ready while the explicit load is in flight.
+        readyHandler.getValue().run();
+
+        pendingLoad.complete(mapper.createObjectNode());
+        awaitLoaded();
+        releaseEdt.countDown();
+        SwingUtilities.invokeAndWait(() -> {});
+
+        // A second load starts synchronously on the EDT (notifySessionStarted
+        // fires before its async bind), so a flushed EDT makes this deterministic.
+        assertEquals(1, startedCount.get(),
+                "ready handler must not start a second load while an explicit one is in flight");
+    }
+
+    @Test
     void loadSessionDoesNotBindWhenProjectSwitchRestartIsDisabled() throws Exception {
         PluginSettings.setProjectSwitchRestartForTest(false);
         seedCachedSession("s1", "/p");
@@ -718,6 +777,82 @@ class SessionManagerTest {
         verify(processManager, never()).ensureStartedIn(any());
         verify(processManager).sendRequest(eq("session/load"), any(), eq(2L), eq(TimeUnit.MINUTES));
         assertEquals("s1", lastLoadedSessionId);
+    }
+
+    @Test
+    void switchingSessionsDoesNotCancelOrCloseTheTarget() throws Exception {
+        // omp treats session/cancel as cancellation of the following load
+        // ("ACP session load was cancelled"), so a switch to a session this
+        // process never opened must go straight to session/load.
+        when(processManager.isSessionCloseSupported()).thenReturn(true);
+        when(processManager.serverGeneration()).thenReturn(1L);
+        seedCachedSession("s1", "/p");
+        seedCachedSession("s2", "/p");
+        stubSessionLoad(mapper.createObjectNode());
+        sessionManager.addSessionListener(mockListener());
+
+        assertTrue(sessionManager.loadSession("s1"));
+        awaitLoaded("s1");
+        clearInvocations(processManager);
+
+        assertTrue(sessionManager.loadSession("s2"));
+        awaitLoaded("s2");
+
+        verify(processManager, never()).sendNotification(eq("session/cancel"), any());
+        verify(processManager, never()).sendRequest(eq("session/close"), any(),
+                eq(30L), eq(TimeUnit.SECONDS));
+        verify(processManager).sendRequest(eq("session/load"), any(),
+                eq(2L), eq(TimeUnit.MINUTES));
+    }
+
+    @Test
+    void reloadingTheLoadedSessionClosesItFirst() throws Exception {
+        when(processManager.isSessionCloseSupported()).thenReturn(true);
+        when(processManager.serverGeneration()).thenReturn(1L);
+        when(processManager.sendRequest(eq("session/close"), any(), eq(30L), eq(TimeUnit.SECONDS)))
+                .thenReturn(CompletableFuture.completedFuture(mapper.createObjectNode()));
+        seedCachedSession("s1", "/p");
+        stubSessionLoad(mapper.createObjectNode());
+        sessionManager.addSessionListener(mockListener());
+
+        assertTrue(sessionManager.loadSession("s1"));
+        awaitLoaded("s1");
+        clearInvocations(processManager);
+
+        assertTrue(sessionManager.loadSession("s1"));
+        // Wait for the whole chain; the order check below inspects the recorded history.
+        verify(processManager, timeout(2000)).sendRequest(eq("session/load"), any(),
+                eq(2L), eq(TimeUnit.MINUTES));
+
+        var order = inOrder(processManager);
+        order.verify(processManager).sendNotification(eq("session/cancel"), any());
+        order.verify(processManager).sendRequest(eq("session/close"), any(),
+                eq(30L), eq(TimeUnit.SECONDS));
+        order.verify(processManager).sendRequest(eq("session/load"), any(),
+                eq(2L), eq(TimeUnit.MINUTES));
+    }
+
+    @Test
+    void aRestartedServerDoesNotCloseASessionItNeverLoaded() throws Exception {
+        when(processManager.isSessionCloseSupported()).thenReturn(true);
+        when(processManager.serverGeneration()).thenReturn(1L);
+        seedCachedSession("s1", "/p");
+        stubSessionLoad(mapper.createObjectNode());
+        sessionManager.addSessionListener(mockListener());
+
+        assertTrue(sessionManager.loadSession("s1"));
+        awaitLoaded("s1");
+        clearInvocations(processManager);
+
+        // A restart or rebind replaced the process: its sessions are unknown.
+        when(processManager.serverGeneration()).thenReturn(2L);
+        assertTrue(sessionManager.loadSession("s1"));
+
+        verify(processManager, timeout(2000)).sendRequest(eq("session/load"), any(),
+                eq(2L), eq(TimeUnit.MINUTES));
+        verify(processManager, never()).sendNotification(eq("session/cancel"), any());
+        verify(processManager, never()).sendRequest(eq("session/close"), any(),
+                eq(30L), eq(TimeUnit.SECONDS));
     }
 
     @Test

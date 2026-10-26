@@ -46,6 +46,12 @@ class ServerProcessLifecycle {
     private final RequestHandler onRequestPermission;
 
     private volatile Process serverProcess;
+    /**
+     * Bumped for every server process this lifecycle starts. Sessions loaded by a
+     * previous process are unknown to the new one, so callers compare this before
+     * cancelling/closing a session ahead of a load.
+     */
+    private volatile long generation;
     /** Working directory the server process is bound to ({@code null} = inherited IDE directory). */
     private volatile File spawnWorkDir;
     private volatile CompletableFuture<Void> readyFuture = new CompletableFuture<>();
@@ -93,6 +99,11 @@ class ServerProcessLifecycle {
     /** Whether the agent advertised {@code sessionCapabilities.close}. */
     boolean isSessionCloseSupported() {
         return sessionCloseSupported;
+    }
+
+    /** Generation of the current (or most recent) server process; 0 before the first start. */
+    long generation() {
+        return generation;
     }
 
     /** Registers a listener fired (on the initialize completion thread) when the
@@ -200,6 +211,8 @@ class ServerProcessLifecycle {
             reconnectRP = new RequestProcessor("ACP-Reconnect", 1, true);
         }
         isClosing = false;
+        // A new process has no loaded sessions: invalidate the previous generation.
+        generation++;
         if (readyFuture == null || readyFuture.isDone()) {
             readyFuture = new CompletableFuture<>();
         }
