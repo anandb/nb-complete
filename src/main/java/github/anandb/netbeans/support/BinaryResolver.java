@@ -1,9 +1,14 @@
 package github.anandb.netbeans.support;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.prefs.Preferences;
 import java.util.regex.Pattern;
@@ -26,6 +31,14 @@ public final class BinaryResolver {
      *  The embedded MCP server skips token enforcement when one of these runs.
      *  Package-visible for tests. */
     static final Set<String> PI_HARNESS = Set.of("pi", "pi-acp", "pi-agent");
+
+    /** Linux system package directories, owned by the distribution's package
+     *  manager. No catalog harness ships in one: every installer writes to a
+     *  harness-owned directory, a user bin directory, a brew/npm prefix or
+     *  %LOCALAPPDATA%. A command found here that shares a harness binary's name
+     *  is the distro's, not the harness's — Debian/Ubuntu ship a {@code kilo}
+     *  text editor in {@code /usr/bin}. Such candidates are excluded. */
+    private static final Set<String> SYSTEM_PACKAGE_DIRS = Set.of("/bin", "/sbin", "/usr/bin", "/usr/sbin");
 
     /** Known ACP harness binaries (launch-capable entry points), derived from
      *  {@link HarnessCatalog}. Linux names without {@code .exe}. */
@@ -65,8 +78,8 @@ public final class BinaryResolver {
 
     /** First known harness found on PATH, or {@code null}. */
     private static String findFirstKnownOnPath() {
-        for (String name : nativeHarnessNames()) {
-            String found = findOnPath(name);
+        for (HarnessCatalog.Harness harness : HarnessCatalog.ALL) {
+            String found = findHarnessBinary(harness);
             if (found != null) {
                 return found;
             }
@@ -207,34 +220,222 @@ public final class BinaryResolver {
     }
 
     /**
-     * Searches for the given executable name: every PATH directory first, then
-     * well-known install directories common to all harnesses
+     * Returns every executable candidate for {@code exeName}, ordered like
+     * {@code which -a}: harness-owned install directories first (e.g. Oh My Pi's
+     * %LOCALAPPDATA%\omp, Kilo Code's {@code ~/.kilo/bin}), then candidates owned
+     * by the IDE's user (macOS/Linux), then the rest in PATH order followed by
+     * the well-known install directories common to all harnesses
      * ({@code ~/.local/bin}, the WinGet shim directory and the Chocolatey bin
-     * directory), then harness-specific install directories (e.g. Oh My Pi's
-     * %LOCALAPPDATA%\omp), and finally the macOS Devin app bundle.
+     * directory), then the macOS Devin app bundle.
+     *
+     * <p>Dubious candidates are not returned at all: a hit inside a Linux system
+     * package directory is excluded, because no catalog harness ships in a
+     * distro package and a distro command may share the binary's name (Debian's
+     * {@code kilo} text editor; a generic {@code agent}). This is what lets callers
+     * pick the right binary when {@link #findOnPath(String)} alone would have
+     * taken a same-named stranger.
      *
      * <p>Catalog names are extension-less ({@code goose}); the installed file
-     * may be {@code goose.exe} / {@code goose.cmd} / {@code goose.bat}, so
-     * every probed directory is also searched for those forms.
+     * may be {@code goose.exe} / {@code goose.cmd} / {@code goose.bat}, so every
+     * probed directory is also searched for those forms.
+     */
+    public static List<String> findAllOnPath(String exeName) {
+        return findCandidates(exeName).stream().map(Candidate::path).toList();
+    }
+
+    /**
+     * Returns the most trusted candidate for {@code exeName}: the first entry of
+     * {@link #findAllOnPath(String)}, or {@code null} when nothing qualifies.
      */
     public static String findOnPath(String exeName) {
-        List<File> dirs = new ArrayList<>();
+        List<Candidate> candidates = findCandidates(exeName);
+        return candidates.isEmpty() ? null : candidates.get(0).path();
+    }
+
+    /**
+     * All qualifying candidates, in probe order, with the harness-owned flag kept
+     * for cross-name ranking. Package-visible for tests.
+     */
+    static List<Candidate> findCandidates(String exeName) {
+        List<Candidate> candidates = new ArrayList<>();
+        Set<String> seen = new HashSet<>();
+        for (ProbeDir probe : probeDirs(exeName)) {
+            if (isSystemPackageDir(probe.dir())) {
+                LOG.fine("Ignoring system package directory {0} for {1}", probe.dir(), exeName);
+                continue;
+            }
+            String hit = probeDir(probe.dir(), exeName);
+            if (hit != null && seen.add(canonicalPath(hit))) {
+                candidates.add(new Candidate(hit, probe.harnessOwned(), isUserOwned(hit)));
+            }
+        }
+        String mac = findInMacAppBundleLocations(exeName);
+        if (mac != null && seen.add(canonicalPath(mac))) {
+            candidates.add(new Candidate(mac, false, isUserOwned(mac)));
+        }
+        // Stable sort: harness-owned install dirs first, then files owned by the
+        // IDE's user (a root-owned /usr/local install loses to ~/.local/bin),
+        // otherwise probe order is kept.
+        candidates.sort(Comparator.comparingInt((Candidate c) -> c.harnessOwned() ? 0 : 1)
+                .thenComparingInt(c -> c.userOwned() ? 0 : 1));
+        return candidates;
+    }
+
+    /** One executable candidate: where it is, whether a harness installer owns
+     *  its directory, and whether the IDE's user owns the file. */
+    record Candidate(String path, boolean harnessOwned, boolean userOwned) { }
+
+    /** A probed directory and whether the harness installer owns it. */
+    private record ProbeDir(File dir, boolean harnessOwned) { }
+
+    /** Probe directories in trust order: harness-owned, PATH, common install dirs. */
+    private static List<ProbeDir> probeDirs(String exeName) {
+        List<ProbeDir> dirs = new ArrayList<>();
+        for (File dir : harnessInstallDirs(exeName)) {
+            dirs.add(new ProbeDir(dir, true));
+        }
         String pathEnv = System.getenv("PATH");
         if (pathEnv != null) {
             for (String dir : PATH_SPLIT.split(pathEnv)) {
-                dirs.add(new File(dir));
+                dirs.add(new ProbeDir(new File(dir), false));
             }
         }
-        dirs.addAll(commonInstallDirs());
-        dirs.addAll(harnessInstallDirs(exeName));
-        for (File dir : dirs) {
-            String hit = probeDir(dir, exeName);
-            if (hit != null) {
-                return hit;
+        for (File dir : commonInstallDirs()) {
+            dirs.add(new ProbeDir(dir, false));
+        }
+        return dirs;
+    }
+
+    /**
+     * True when the executable name is generic enough that another program can
+     * own it system-wide: a same-named file exists in a system package directory.
+     * Matches {@code kilo} (Debian/Ubuntu text editor) and {@code agent} (Cursor
+     * CLI's binary name). Package-visible for tests.
+     */
+    static boolean isGenericBinaryName(String exeName) {
+        for (String dir : SYSTEM_PACKAGE_DIRS) {
+            if (probeDir(new File(dir), exeName) != null) {
+                return true;
             }
         }
-        // macOS app bundle locations (e.g., Devin CLI inside the app)
-        return findInMacAppBundleLocations(exeName);
+        return false;
+    }
+
+    /**
+     * Resolves a harness to its best binary path, or {@code null}. Candidates are
+     * ranked so a same-named stranger never wins:
+     * <ol>
+     *   <li>a binary in a harness-owned install directory (best);</li>
+     *   <li>a file owned by the same user the IDE runs as, before a root-owned
+     *       install (macOS/Linux);</li>
+     *   <li>a distinctive name ({@code kilocode}, {@code cursor-agent}) before a
+     *       generic one ({@code kilo}, {@code agent}) that a distro command also
+     *       owns.</li>
+     * </ol>
+     * Ties keep catalog name order, then probe order. Package-visible for tests.
+     */
+    static String findHarnessBinary(HarnessCatalog.Harness harness) {
+        String bestPath = null;
+        int bestRank = Integer.MAX_VALUE;
+        for (String name : harness.binaryNames()) {
+            boolean generic = isGenericBinaryName(name);
+            for (Candidate candidate : findCandidates(name)) {
+                int rank = candidateRank(candidate, generic);
+                if (rank < bestRank) {
+                    bestRank = rank;
+                    bestPath = candidate.path();
+                }
+            }
+        }
+        return bestPath;
+    }
+
+    /**
+     * Rank of a candidate for cross-name selection: harness-owned dirs beat
+     * everything, then same-user files beat files owned by another user
+     * (e.g. a root-owned {@code /usr/local/bin} install), then distinctive names
+     * beat generic ones. Package-visible for tests.
+     */
+    static int candidateRank(Candidate candidate, boolean genericName) {
+        int rank = candidate.harnessOwned() ? 0 : (candidate.userOwned() ? 2 : 4);
+        return rank + (genericName ? 1 : 0);
+    }
+
+    /** True on platforms where a file owner is meaningful for this check. */
+    private static boolean ownerCheckSupported() {
+        String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
+        return !os.contains("win");
+    }
+
+    /**
+     * True when {@code path} is owned by the same user the IDE runs as, compared
+     * by uid on macOS/Linux. Returns {@code true} when ownership cannot be
+     * determined (Windows, filesystems without POSIX owners, access denied) so an
+     * unknown owner never disqualifies a real harness. Package-visible for tests.
+     */
+    static boolean isUserOwned(String path) {
+        if (!ownerCheckSupported()) {
+            return true;
+        }
+        try {
+            Object fileUid = Files.getAttribute(Paths.get(path), "unix:uid");
+            int ideUid = ideUid();
+            return !(fileUid instanceof Number) || ideUid < 0 || ((Number) fileUid).intValue() == ideUid;
+        } catch (UnsupportedOperationException | IOException | SecurityException e) {
+            LOG.fine("Owner check unavailable for {0}: {1}", path, e.getMessage());
+            return true;
+        }
+    }
+
+    /** UID of the user the IDE runs as, from the home directory it was started
+     *  with; {@code -1} when unknown. */
+    private static int ideUid() {
+        String home = System.getProperty("user.home");
+        if (isBlank(home)) {
+            return -1;
+        }
+        try {
+            Object uid = Files.getAttribute(Paths.get(home), "unix:uid");
+            return uid instanceof Number ? ((Number) uid).intValue() : -1;
+        } catch (UnsupportedOperationException | IOException | SecurityException e) {
+            LOG.fine("Cannot determine IDE uid from {0}: {1}", home, e.getMessage());
+            return -1;
+        }
+    }
+
+    /**
+     * True when {@code dir} is a Linux system package directory, the one place a
+     * distro command is installed and no harness installer writes.
+     * Package-visible for tests.
+     */
+    static boolean isSystemPackageDir(File dir) {
+        return dir != null && SYSTEM_PACKAGE_DIRS.contains(canonicalDir(dir));
+    }
+
+    /**
+     * True when {@code path} (an executable, not a directory) lives in a Linux
+     * system package directory. Package-visible for tests.
+     */
+    static boolean isSystemPackagePath(String path) {
+        return isSystemPackageDir(new File(path).getParentFile());
+    }
+
+    /** Canonical form of a probe directory; falls back to a normalized absolute
+     *  path when the directory cannot be resolved (it may not exist yet). */
+    private static String canonicalDir(File dir) {
+        if (dir == null) {
+            return "";
+        }
+        try {
+            return dir.getCanonicalPath().replace('\\', '/');
+        } catch (IOException e) {
+            return dir.getAbsoluteFile().toPath().normalize().toString().replace('\\', '/');
+        }
+    }
+
+    /** Canonical form of a candidate file, for de-duplication. */
+    private static String canonicalPath(String path) {
+        return canonicalDir(new File(path));
     }
 
     /**
@@ -374,14 +575,7 @@ public final class BinaryResolver {
     public static List<FoundBinary> findAllKnownOnPath() {
         List<FoundBinary> found = new ArrayList<>();
         for (HarnessCatalog.Harness harness : HarnessCatalog.ALL) {
-            String nativePath = null;
-            for (String name : harness.binaryNames()) {
-                String p = findOnPath(name);
-                if (p != null) {
-                    nativePath = p;
-                    break;
-                }
-            }
+            String nativePath = findHarnessBinary(harness);
             if (nativePath != null) {
                 found.add(new FoundBinary(harness.id(), harness.displayName(), nativePath));
                 continue;
@@ -397,18 +591,24 @@ public final class BinaryResolver {
     }
 
     /**
-     * Probes the WSL distribution for the first of the given binary names
-     * that exists, using a single {@code wsl.exe} invocation.
+     * Probes the WSL distribution for the best of the given binary names, using
+     * a single {@code wsl.exe} invocation. Applies the same policy as native
+     * detection: a hit inside a Linux system package directory is ignored, a
+     * distinctive name beats a generic one ({@code kilocode} over a distro
+     * {@code kilo}, {@code cursor-agent} over a generic {@code agent}), and
+     * catalog name order breaks ties.
      *
      * @param names bare Linux binary names, in preference order
-     * @return the Linux path of the first binary found, or {@code null}
+     * @return the Linux path of the best binary found, or {@code null}
      */
     static String findFirstKnownOnWslPath(List<String> names) {
         try {
             List<String> cmd = new ArrayList<>(List.of(
                     "wsl.exe", "-e", "bash", "-lc",
                     "for n in \"$@\"; do p=$(command -v \"$n\" 2>/dev/null) && "
-                            + "{ printf '%s=%s\\n' \"$n\" \"$p\"; }; done",
+                            + "{ printf 'hit:%s=%s\\n' \"$n\" \"$p\"; }; "
+                            + "for d in /usr/bin /bin /usr/sbin /sbin; do "
+                            + "[ -x \"$d/$n\" ] && { printf 'sys:%s\\n' \"$n\"; break; }; done; done",
                     "--"));
             cmd.addAll(names);
             ProcessBuilder pb = new ProcessBuilder(cmd);
@@ -416,22 +616,36 @@ public final class BinaryResolver {
             Process proc = pb.start();
             try {
                 java.util.Map<String, String> hits = new java.util.LinkedHashMap<>();
+                Set<String> generic = new HashSet<>();
                 try (var reader = proc.inputReader()) {
                     String line;
                     while ((line = reader.readLine()) != null) {
+                        if (line.startsWith("sys:")) {
+                            generic.add(line.substring("sys:".length()).trim());
+                            continue;
+                        }
                         int eq = line.indexOf('=');
-                        if (eq > 0) {
-                            hits.putIfAbsent(line.substring(0, eq).trim(), line.substring(eq + 1).trim());
+                        if (eq > "hit:".length() && line.startsWith("hit:")) {
+                            hits.putIfAbsent(line.substring("hit:".length(), eq).trim(),
+                                    line.substring(eq + 1).trim());
                         }
                     }
                 }
                 proc.waitFor(10, java.util.concurrent.TimeUnit.SECONDS);
+                String bestPath = null;
+                int bestRank = Integer.MAX_VALUE;
                 for (String name : names) {
                     String p = hits.get(name);
-                    if (p != null && !p.isBlank()) {
-                        return p;
+                    if (p == null || p.isBlank() || isSystemPackagePath(p)) {
+                        continue;
+                    }
+                    int rank = generic.contains(name) ? 2 : 1;
+                    if (rank < bestRank) {
+                        bestRank = rank;
+                        bestPath = p;
                     }
                 }
+                return bestPath;
             } finally {
                 if (proc.isAlive()) {
                     proc.destroyForcibly();
@@ -483,7 +697,8 @@ public final class BinaryResolver {
                     result = reader.readLine();
                 }
                 proc.waitFor(2, java.util.concurrent.TimeUnit.SECONDS);
-                if (result != null && !result.isBlank() && proc.exitValue() == 0) {
+                if (result != null && !result.isBlank() && proc.exitValue() == 0
+                        && !isSystemPackagePath(result.strip())) {
                     return result.strip();
                 }
             } finally {

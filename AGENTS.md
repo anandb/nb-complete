@@ -86,6 +86,18 @@
   tokens** (never interpolated into the shell script). Do NOT reintroduce string
   concatenation into the `bash -lc` script — that enabled shell injection from user-editable
   process arguments. Use `tokenizeArgs()` (commons-exec quoting) to split the prefs string.
+- **Harness binary detection**: `BinaryResolver.findAllOnPath()` is the `which -a` view
+  (harness-owned install dirs first, then same-user files, then PATH, then common install
+  dirs). Candidates inside `/bin`, `/sbin`, `/usr/bin` or `/usr/sbin` are excluded for
+  **every** harness — no catalog harness ships in a distro package, and a distro command can
+  own the same name (Debian's `kilo` text editor, a generic `agent`). On macOS/Linux file
+  ownership is compared by uid against the IDE user's home, so a root-owned
+  `/usr/local/bin/agent` loses to a user-owned `~/.local/bin/agent`; unknown owners (Windows,
+  non-POSIX filesystems) are treated as same-user, never disqualified. `findHarnessBinary()`
+  ranks harness-owned dir > same-user file > other-owner file, and breaks ties in favour of a
+  distinctive name (`kilocode`, `cursor-agent`) over a generic one. Do NOT reintroduce
+  "first PATH hit wins" or a per-name collision list; the WSL batch probe applies the same
+  policy.
 - **Context-menu hooks (EDT safety)**: `InspectorContextMenu`/`TestResultsContextMenu` must
   NEVER call `WindowManager.findTopComponent(...)` on the EDT — it synchronously instantiates
   the target TopComponent and blocks on `MediaTracker` image loading. Match already-open

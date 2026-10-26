@@ -1,6 +1,12 @@
 package github.anandb.netbeans.support;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
 
 import github.anandb.netbeans.model.HarnessCatalog;
 
@@ -176,6 +182,98 @@ class BinaryResolverTest {
         for (String name : BinaryResolver.nativeHarnessNames(true)) {
             assertNotSame(HarnessCatalog.UNKNOWN, HarnessCatalog.byBinaryName(name),
                     "Windows binary name does not resolve to a catalog harness: " + name);
+        }
+    }
+
+    /**
+     * A Linux distro command lives in a system package directory. No catalog
+     * harness ships in one, so such candidates are excluded for every name —
+     * not just a hardcoded collision list (Debian {@code kilo}, generic
+     * {@code agent}).
+     */
+    @Test
+    void systemPackageDirCandidatesAreExcluded() {
+        assertTrue(BinaryResolver.isSystemPackagePath("/usr/bin/kilo"));
+        assertTrue(BinaryResolver.isSystemPackagePath("/bin/agent"));
+        assertTrue(BinaryResolver.isSystemPackagePath("/usr/sbin/gemini"));
+        assertFalse(BinaryResolver.isSystemPackagePath("/home/me/.kilo/bin/kilo"));
+        assertFalse(BinaryResolver.isSystemPackagePath("/usr/local/bin/agent"));
+        assertFalse(BinaryResolver.isSystemPackagePath("/home/me/.local/bin/opencode"));
+        assertTrue(BinaryResolver.isSystemPackageDir(new java.io.File("/usr/bin")));
+        assertFalse(BinaryResolver.isSystemPackageDir(new java.io.File("/usr/local/bin")));
+    }
+
+    /**
+     * {@code which -a} semantics: every qualifying candidate is returned, in
+     * trust order (harness-owned dir first), and a generic name installed next
+     * to a distro command is still a candidate.
+     */
+    @Test
+    void findAllOnPathReturnsEveryCandidateInTrustOrder(@TempDir Path home) throws IOException {
+        Path bin = Files.createDirectories(home.resolve(".kilo").resolve("bin"));
+        Path kilo = bin.resolve("kilo");
+        Files.writeString(kilo, "#!/bin/sh\n");
+        assertTrue(kilo.toFile().setExecutable(true), "could not mark test binary executable");
+
+        String previousHome = System.getProperty("user.home");
+        System.setProperty("user.home", home.toString());
+        try {
+            List<String> candidates = BinaryResolver.findAllOnPath("kilo");
+            assertFalse(candidates.isEmpty());
+            assertEquals(kilo.toAbsolutePath().toString(), candidates.get(0),
+                    "harness-owned install dir must outrank any PATH hit");
+            for (String candidate : candidates) {
+                assertFalse(BinaryResolver.isSystemPackagePath(candidate),
+                        "system package dir leaked into candidates: " + candidate);
+            }
+        } finally {
+            System.setProperty("user.home", previousHome);
+        }
+    }
+
+    /**
+     * Cross-name ranking: harness-owned dir first, then same-user files, then
+     * distinctive names over generic ones a distro command also owns.
+     */
+    @Test
+    void candidateRankOrdersOwnedThenOwnerThenDistinctive() {
+        var owned = new BinaryResolver.Candidate("/home/me/.kilo/bin/kilo", true, true);
+        var userFile = new BinaryResolver.Candidate("/home/me/.local/bin/kilo", false, true);
+        var rootFile = new BinaryResolver.Candidate("/usr/local/bin/kilo", false, false);
+        assertEquals(0, BinaryResolver.candidateRank(owned, false));
+        assertEquals(2, BinaryResolver.candidateRank(userFile, false));
+        assertEquals(3, BinaryResolver.candidateRank(userFile, true));
+        assertEquals(4, BinaryResolver.candidateRank(rootFile, false));
+        assertEquals(5, BinaryResolver.candidateRank(rootFile, true));
+    }
+
+    /** A file created by this test belongs to the IDE's user. */
+    @Test
+    void userOwnedFilesAreRecognised(@TempDir Path dir) throws IOException {
+        Path file = dir.resolve("agent");
+        Files.writeString(file, "#!/bin/sh\n");
+        assertTrue(BinaryResolver.isUserOwned(file.toString()));
+        assertTrue(BinaryResolver.isUserOwned(dir.toString()));
+    }
+
+    /**
+     * A harness-owned install dir beats everything on PATH, including a generic
+     * name that also exists system-wide.
+     */
+    @Test
+    void findHarnessBinaryPrefersOwnedInstallDir(@TempDir Path home) throws IOException {
+        Path owned = Files.createDirectories(home.resolve(".kilo").resolve("bin"));
+        Path ownedKilo = owned.resolve("kilo");
+        Files.writeString(ownedKilo, "#!/bin/sh\n");
+        assertTrue(ownedKilo.toFile().setExecutable(true), "could not mark test binary executable");
+
+        String previousHome = System.getProperty("user.home");
+        System.setProperty("user.home", home.toString());
+        try {
+            assertEquals(ownedKilo.toAbsolutePath().toString(),
+                    BinaryResolver.findHarnessBinary(HarnessCatalog.KILO));
+        } finally {
+            System.setProperty("user.home", previousHome);
         }
     }
 }
