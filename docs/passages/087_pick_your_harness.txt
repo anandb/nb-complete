@@ -22,6 +22,7 @@ In this guide you might also see a harness referred to as an ACP Server, an Agen
 > [[Oh My Pi Agent]]
 > [[OpenClaw Agent]]
 > [[Devin Agent]]
+> [[Kilo Code Agent]]
 
 If you are not sure, The plugin will detect installed harnesses and let you choose at startup.
 See [[Choose Your Coding Harness]].

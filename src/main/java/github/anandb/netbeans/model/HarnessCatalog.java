@@ -275,6 +275,30 @@ public final class HarnessCatalog {
         List.of()
     );
 
+    /**
+     * Kilo Code: an OpenCode-derived ACP agent with its own version scheme
+     * ({@code 7.x}) and prompt queue, so it is catalogued on its own rather than
+     * as an {@link #OPENCODE} variant. Messages are queued by the client until
+     * turn end ({@code requiresMessageQueue}) instead of interleaved. Model
+     * switching uses the stable {@code model} config option; Kilo also exposes
+     * the thinking variant as a separate {@code effort} option, and its
+     * dedicated model request is only registered as {@code unstable_}.
+     */
+    public static final Harness KILO = new Harness(
+        "kilo", "Kilo Code", "kilo",
+        List.of("kilo", "kilocode"), "acp",
+        true, true, true, true, true, true, true, false, true, true, true,
+        "",
+        "",
+        "npm install -g @kilocode/cli",
+        "brew install Kilo-Org/tap/kilo",
+        "curl -fsSL https://kilo.ai/cli/install | bash",
+        "Authenticate with kilo auth login (or run kilo and use /connect) before connecting. "
+                + "The npm route requires Node.js.",
+        "https://kilo.ai/docs/code-with-ai/platforms/cli",
+        List.of("%USERHOME%/.kilo/bin")
+    );
+
     /** Fallback for unknown harnesses. */
     public static final Harness UNKNOWN = new Harness(
         "unknown", "Agent", "agent",
@@ -288,7 +312,7 @@ public final class HarnessCatalog {
 
     /** All supported harnesses, in the order offered during onboarding. */
     public static final List<Harness> ALL =
-            List.of(OMP, OPENCODE, CODEX, OPENCLAW, PI, GOOSE, CURSOR, COPILOT, CLAUDE, HERMES, GEMINI, DEVIN);
+            List.of(OMP, OPENCODE, CODEX, OPENCLAW, PI, GOOSE, CURSOR, COPILOT, CLAUDE, HERMES, GEMINI, DEVIN, KILO);
 
     /** Looks up a harness by catalog id; {@link #UNKNOWN} when not found. */
     public static Harness byId(String id) {

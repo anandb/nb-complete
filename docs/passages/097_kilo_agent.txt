@@ -1,0 +1,46 @@
+:: Kilo Code Agent {"position":"2400,1400","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Kilo Code Agent</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+#### Install
+
+- **macOS (Homebrew)**: `brew install Kilo-Org/tap/kilo`
+- **Linux / WSL (install script)**: `curl -fsSL https://kilo.ai/cli/install | bash`
+- **Windows (npm)**: `npm install -g @kilocode/cli`
+
+The install script puts the binary in `~/.kilo/bin`; the Homebrew tap brings its own runtime. The npm route needs Node.js on your `PATH`. CLI docs: <a href="https://kilo.ai/docs/code-with-ai/platforms/cli" target="_blank" rel="noopener">kilo.ai/docs/code-with-ai/platforms/cli</a>.
+
+#### About
+
+<a href="https://kilo.ai/docs/code-with-ai/platforms/cli" target="_blank" rel="noopener">Kilo Code</a> is an OpenCode-derived coding agent. Running <code>kilo acp</code> makes it act as an **ACP server** over stdio: it speaks JSON-RPC on stdin/stdout and is meant to be spawned by an ACP-aware editor, so it is not a command to run yourself.
+
+The executable you configure in BeanBot is <code>kilo</code> — the alias <code>kilocode</code> is detected too — run with the default launch argument <code>acp</code>.
+
+**Authentication** is worth setting up before you connect: run <code>kilo auth login</code> in a terminal, or start <code>kilo</code> on its own and use <code>/connect</code> inside it. MCP servers are handed to Kilo per session with their headers forwarded, so no manual registration is needed.
+
+Kilo Code in BeanBot supports:
+- **Editor Context**: Seamlessly injects the active editor state into agent prompts.
+- **[[MCP Tools]]**: Kilo accepts a per-session MCP server, so BeanBot hands it the plugin's internal HTTP server automatically — no manual registration is needed.
+- **Model Selection**: Exposed as an ACP config option, so the in-session model dropdown works.
+- **Thinking Level**: Kilo reports each model's variants as a separate `effort` config option, so the thinking-level dropdown works with it.
+- **Agent / Mode List**: The agent selector is offered, and mode changes go through the protocol's mode request, so the dropdown works in an open session.
+- **Session List**: Sessions come from Kilo itself, so the dropdown reflects its own list and needs no local tracking.
+- **Queued messages**: a second message sent while a turn is running waits in the [[Queuing Messages]] toolbar queue and is delivered after the current turn ends.
+- **Slash Commands**: Kilo advertises its slash-command set over the protocol, so its commands appear in the command palette with their descriptions.
+
+#### Limitations
+
+- **Queued messages**: Kilo can accept a follow-up prompt while a turn runs and hands it off at its next step, but BeanBot deliberately holds the message until the turn ends (see [[Queuing Messages]]) so a running turn is never cut short as superseded. Interleaved agents such as [[OpenCode]] send immediately instead.
+- **Model switching path**: BeanBot changes the model through Kilo's `model` config option and the thinking level through `effort`, rather than the dedicated (unstable) model request. Both dropdowns show the options Kilo reports back, not a fixed list.
+- **Node.js for the npm route**: the Windows install command uses npm, so it needs Node.js installed; the install script and Homebrew tap do not.
+
+> [[Post Install]]
+> [[Starting a Session]]
+> [[Choose Your Coding Harness]]
+> [[MCP Tools]]
+> [[Picking an Agent, Model and Thinking Level]]
+> [[Queuing Messages]]

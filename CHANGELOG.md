@@ -2,12 +2,19 @@
 
 ## v1.29.0 (Changes since v1.28.0)
 
+### Features
+- **Kilo Code harness**: the catalog now includes [Kilo Code](https://kilo.ai/docs/code-with-ai/platforms/cli), the OpenCode-derived ACP agent, with its own entry rather than an OpenCode variant (its `7.x` version scheme is unrelated). It launches `kilo` (alias `kilocode`) with `acp`, is discovered through the catalog-derived `BinaryResolver` probe set (including the installer's `~/.kilo/bin`), and ships theme-aware icons, per-OS install commands (npm, Homebrew tap, install script) and the `kilo auth login` prerequisite in the chooser. Capabilities match the live `initialize` handshake: messages are queued until turn end (`requiresMessageQueue`), one HTTP MCP server is sent per session, editor context and message ids are on, modes use `session/set_mode`, and model/thinking go through the `model`/`effort` config options (the dedicated model request is only `unstable_`), with session list and agent list enabled. A `critical_rules/kilo.md` overlay carries the harness-specific tool rules.
+
 ### Fixes
 - **Non-image attachments no longer break `session/prompt`**: attached documents (Markdown, JSON, Java, YAML, …) were serialized as a `{"type":"file"}` content block, which is not part of the ACP `ContentBlock` union, so the agent rejected the whole prompt while images worked. Attachments now use the negotiated shapes: an image block for images, an embedded `resource` (text or blob) when the agent advertises `promptCapabilities.embeddedContext` in the handshake, an inlined `text` block for textual files otherwise, and a `resource_link` as the last resort for binary files. `AttachedFile` holds the raw bytes plus the source URI, so base64 is only encoded when a block needs it and the local echo keeps working from the attachment list.
 - **Prompt capabilities are captured per connection**: `ServerProcessLifecycle` records `promptCapabilities.embeddedContext` from the `initialize` response, resets it when a new server process starts, and exposes it through `ProcessControl.supportsEmbeddedContext()`.
 
 ### Documentation
 - **User guide attachments page** explains how text, binary and image attachments reach the agent.
+- **Kilo Code harness page** covers the per-OS install commands, `kilo auth login`, the model/thinking config options, queueing and limitations; it is linked from Home, Pick Your Harness, Choose Your Coding Harness, Queuing Messages and the Topic Index.
+
+### Tests
+- **`HarnessCatalogTest`** pins the Kilo entry: binary names and Windows forms, launch argument, every capability flag, the three install commands, the `~/.kilo/bin` probe directory and the icon name.
 
 ### Housekeeping
 - Version bumped to 1.29.0-SNAPSHOT.

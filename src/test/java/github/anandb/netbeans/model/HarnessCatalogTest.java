@@ -18,13 +18,13 @@ class HarnessCatalogTest {
 
     @Test
     void allHarnessesPresent() {
-        assertEquals(12, HarnessCatalog.ALL.size());
+        assertEquals(13, HarnessCatalog.ALL.size());
         Set<String> ids = new HashSet<>();
         for (HarnessCatalog.Harness h : HarnessCatalog.ALL) {
             assertTrue(ids.add(h.id()), "duplicate id: " + h.id());
         }
         assertTrue(ids.containsAll(Set.of("opencode", "codex", "goose", "pi", "cursor", "claude", "hermes",
-                "gemini", "omp", "openclaw", "devin", "copilot")));
+                "gemini", "omp", "openclaw", "devin", "copilot", "kilo")));
     }
 
     @Test
@@ -32,7 +32,7 @@ class HarnessCatalogTest {
         Set<String> allIds = new HashSet<>(HarnessCatalog.ALL.stream()
                 .map(HarnessCatalog.Harness::id).toList());
         assertEquals(Set.of("omp", "opencode", "codex", "openclaw", "pi", "goose", "cursor", "copilot",
-                "claude", "hermes", "gemini", "devin"),
+                "claude", "hermes", "gemini", "devin", "kilo"),
                 allIds);
     }
 
@@ -212,6 +212,38 @@ class HarnessCatalogTest {
         assertTrue(HarnessCatalog.COPILOT.supportsModelSelection());
         assertTrue(HarnessCatalog.COPILOT.supportsSessionList());
         assertTrue(HarnessCatalog.COPILOT.supportsAgentList());
+    }
+
+    @Test
+    void kiloCapabilitiesMatchHandshake() {
+        // Catalog data pinned against the live Kilo 7.8.18 initialize: protocol 1,
+        // loadSession, sessionCapabilities {close,fork,list,resume}, mcp http+sse,
+        // prompt embeddedContext+image. requiresMessageQueue is a client policy:
+        // Kilo accepts a follow-up server-side, but the client holds it until
+        // turn end instead of letting the running turn be superseded.
+        assertEquals(List.of("kilo", "kilocode"), HarnessCatalog.KILO.binaryNames());
+        assertEquals("acp", HarnessCatalog.KILO.launchArgs());
+        assertEquals(HarnessCatalog.KILO, HarnessCatalog.byBinaryName("kilo"));
+        assertEquals(HarnessCatalog.KILO, HarnessCatalog.byBinaryName("kilocode"));
+        assertEquals(HarnessCatalog.KILO, HarnessCatalog.byBinaryName("kilo.exe"));
+        assertEquals(HarnessCatalog.KILO, HarnessCatalog.byBinaryName("kilo.cmd"));
+        assertTrue(HarnessCatalog.KILO.requiresMessageQueue());
+        assertTrue(HarnessCatalog.KILO.sendsMcpServerConfig());
+        assertTrue(HarnessCatalog.KILO.injectsEditorContext());
+        assertTrue(HarnessCatalog.KILO.supportsMessageIds());
+        assertTrue(HarnessCatalog.KILO.supportsMcpServer());
+        assertTrue(HarnessCatalog.KILO.supportsSessionSetMode());
+        assertTrue(HarnessCatalog.KILO.supportsSessionSetConfigOption());
+        assertFalse(HarnessCatalog.KILO.supportsSessionSetModel());
+        assertTrue(HarnessCatalog.KILO.supportsModelSelection());
+        assertTrue(HarnessCatalog.KILO.supportsSessionList());
+        assertTrue(HarnessCatalog.KILO.supportsAgentList());
+        assertEquals("npm install -g @kilocode/cli", HarnessCatalog.KILO.installWindows());
+        assertEquals("brew install Kilo-Org/tap/kilo", HarnessCatalog.KILO.installMac());
+        assertEquals("curl -fsSL https://kilo.ai/cli/install | bash", HarnessCatalog.KILO.installLinux());
+        assertEquals(List.of("%USERHOME%/.kilo/bin"), HarnessCatalog.KILO.windowsInstallSubDirs());
+        assertEquals("https://kilo.ai/docs/code-with-ai/platforms/cli", HarnessCatalog.KILO.docsUrl());
+        assertEquals("kilo.svg", HarnessCatalog.harnessIconName("kilo"));
     }
 
     @Test
