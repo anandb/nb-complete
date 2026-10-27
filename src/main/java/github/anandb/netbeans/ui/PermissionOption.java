@@ -66,6 +66,27 @@ record PermissionOption(String id, String name, String kind) {
         return 0;
     }
 
+    /** A parsed option together with the mnemonic its row assigned to it. */
+    record Choice(PermissionOption option, char mnemonic) {
+    }
+
+    /**
+     * Parses an options array and assigns each entry the mnemonic its row gave it.
+     * Both button builders iterate this, so neither repeats the parse-and-assign loop.
+     */
+    static List<Choice> choices(JsonNode options) {
+        List<PermissionOption> parsed = new ArrayList<>(options.size());
+        for (JsonNode opt : options) {
+            parsed.add(fromJson(opt));
+        }
+        char[] letters = mnemonics(parsed);
+        List<Choice> choices = new ArrayList<>(parsed.size());
+        for (int i = 0; i < parsed.size(); i++) {
+            choices.add(new Choice(parsed.get(i), letters[i]));
+        }
+        return choices;
+    }
+
     /** Letters an allow option may fall back to, in preference order. */
     private static final String ALLOW_FALLBACKS = "OSPBFELT";
     /** Letters a reject option may fall back to. {@code 'D'} is excluded: Alt+D is Show Diff. */

@@ -1011,17 +1011,12 @@ public class MiniAssistantDialog extends JDialog {
             }
 
             if (options != null && options.isArray() && !options.isEmpty()) {
-                List<PermissionOption> parsed = new ArrayList<>(options.size());
-                for (JsonNode opt : options) {
-                    parsed.add(PermissionOption.fromJson(opt));
-                }
-                char[] mnemonics = PermissionOption.mnemonics(parsed);
-                for (int i = 0; i < parsed.size(); i++) {
-                    PermissionOption po = parsed.get(i);
+                for (PermissionOption.Choice choice : PermissionOption.choices(options)) {
+                    PermissionOption po = choice.option();
+                    char mnemonic = choice.mnemonic();
 
                     JButton btn = new JButton(po.name());
                     btn.setFocusPainted(false);
-                    char mnemonic = mnemonics[i];
                     if (mnemonic != 0) {
                         btn.setMnemonic(mnemonic);
                     }

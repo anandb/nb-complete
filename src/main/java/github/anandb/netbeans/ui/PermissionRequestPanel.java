@@ -450,14 +450,9 @@ final class PermissionRequestPanel extends JPanel {
         }
 
         if (options != null && options.isArray() && !options.isEmpty()) {
-            List<PermissionOption> parsed = new ArrayList<>(options.size());
-            for (JsonNode opt : options) {
-                parsed.add(PermissionOption.fromJson(opt));
-            }
-            char[] mnemonics = PermissionOption.mnemonics(parsed);
-            for (int i = 0; i < parsed.size(); i++) {
-                PermissionOption po = parsed.get(i);
-                char mnemonic = mnemonics[i];
+            for (PermissionOption.Choice choice : PermissionOption.choices(options)) {
+                PermissionOption po = choice.option();
+                char mnemonic = choice.mnemonic();
 
                 JButton btn;
                 if (po.kind().contains("allow")) {
