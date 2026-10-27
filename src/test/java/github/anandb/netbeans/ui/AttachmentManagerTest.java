@@ -186,9 +186,44 @@ class AttachmentManagerTest {
      * not throw while a prompt is being built: it is simply not an image and not
      * textual, which routes it to the resource-link shape.
      */
+    /**
+     * The MIME table used to know a short list of extensions, so a .log or a
+     * source file was typed application/octet-stream and sent as a resource link
+     * instead of inlined for the agent.
+     */
+    @Test
+    void unknownExtensionsAreSniffedAsText() throws IOException {
+        Path log = tempDir.resolve("build.log");
+        Files.writeString(log, "line one\nline two\n");
+        assertEquals("text/plain", new AttachedFile(log.toFile()).mimeType());
+
+        Path makefile = tempDir.resolve("Makefile");
+        Files.writeString(makefile, "all:\n\techo hi\n");
+        AttachedFile sniffed = new AttachedFile(makefile.toFile());
+        assertEquals("application/octet-stream", sniffed.mimeType(), "no extension to go on");
+        assertEquals("all:\n\techo hi\n", sniffed.textContent(), "UTF-8 text is detected by content");
+
+        AttachmentManager am = new AttachmentManager();
+        am.add(sniffed);
+        Map<String, Object> block = am.buildFileBlocks(false).get(0);
+        assertEquals("text", block.get("type"), "a sniffed text file is inlined, not linked");
+    }
+
+    @Test
+    void binaryContentStaysLinked() throws IOException {
+        Path blob = tempDir.resolve("firmware");
+        Files.write(blob, new byte[]{0, 1, 2, 3, (byte) 0xFF});
+        AttachedFile file = new AttachedFile(blob.toFile());
+        assertNull(file.textContent(), "NUL bytes mean binary");
+        AttachmentManager am = new AttachmentManager();
+        am.add(file);
+        assertEquals("resource_link", am.buildFileBlocks(false).get(0).get("type"));
+    }
+
     @Test
     void nullMimeTypeIsNeitherImageNorTextual() {
-        AttachedFile file = new AttachedFile("blob", null, new byte[]{1, 2, 3}, 3, "file:/tmp/blob");
+        // Binary content with an unknown type: no image, no text, no exception.
+        AttachedFile file = new AttachedFile("blob", null, new byte[]{0, 1, 2}, 3, "file:/tmp/blob");
         assertFalse(file.isImage());
         assertNull(file.textContent());
 
