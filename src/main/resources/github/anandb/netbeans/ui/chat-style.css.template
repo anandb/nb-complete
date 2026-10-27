@@ -19,7 +19,7 @@ pre {
     padding: 10px;
     border-radius: 4px;
     font-family: $monoFamily;
-    font-size: 13pt;
+    font-size: $preFontSize;
     overflow-x: auto;
     margin: 6px 0;
     text-align: left !important;
@@ -33,7 +33,7 @@ code {
     padding: 2px 4px;
     border-radius: 3px;
     font-family: $monoFamily;
-    font-size: 12pt;
+    font-size: $codeFontSize;
 }
 p, div, h1, h2, h3, h4, h5, h6 {
     margin: 2px 0;
