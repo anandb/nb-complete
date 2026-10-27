@@ -103,6 +103,8 @@ class SessionLifecycleHandlerTest {
         toggleOptionsBtn = new JButton();
 
         when(projectContext.getAllOpenProjects()).thenReturn(new org.netbeans.api.project.Project[0]);
+        // The list auto-selects a session only when the harness can load one.
+        when(sessionControl.canLoadSessions()).thenReturn(true);
 
         platformBridgeMock.when(PlatformBridge::sessionServiceSafe)
                 .thenReturn((SessionService) () -> sessionControl);
