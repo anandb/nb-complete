@@ -13,6 +13,12 @@ public class AttachmentManager {
 
     static final int MAX_ATTACHMENTS = 2;
     static final long MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024;
+    /**
+     * Largest file body inlined into a prompt, in characters. A 10 MB log would
+     * otherwise become a multi-million-token turn (and stay in session history),
+     * so the body is cut here with a marker the model can see.
+     */
+    static final int MAX_INLINE_TEXT_CHARS = 256 * 1024;
 
     private final List<AttachedFile> attachments = new ArrayList<>();
 
@@ -75,7 +81,7 @@ public class AttachmentManager {
             resource.put("mimeType", af.mimeType());
             String text = af.textContent();
             if (text != null) {
-                resource.put("text", text);
+                resource.put("text", inlineText(text));
             } else {
                 resource.put("blob", af.base64Data());
             }
@@ -87,14 +93,15 @@ public class AttachmentManager {
 
         String text = af.textContent();
         if (text != null) {
+            String inline = inlineText(text);
             // Fence longer than the longest backtick run, so file content that
             // itself contains a code fence cannot terminate the block early.
-            int fenceLength = Math.max(3, longestBacktickRun(text) + 1);
+            int fenceLength = Math.max(3, longestBacktickRun(inline) + 1);
             String fence = "`".repeat(fenceLength);
             Map<String, Object> block = new HashMap<>();
             block.put("type", "text");
             block.put("text", "Attached file `" + af.filename() + "`:\n"
-                    + fence + "\n" + text + "\n" + fence + "\n");
+                    + fence + "\n" + inline + "\n" + fence + "\n");
             // The whole file body is in the prompt, so hide it from the replayed
             // user bubble (same audience trick as the editor-context block).
             block.put("annotations", Map.of("audience", List.of("assistant")));
@@ -108,6 +115,22 @@ public class AttachmentManager {
         block.put("mimeType", af.mimeType());
         block.put("size", af.size());
         return block;
+    }
+
+    /**
+     * File body as it may enter a prompt: unchanged up to
+     * {@link #MAX_INLINE_TEXT_CHARS}, otherwise cut with a marker that tells the
+     * model the text continues. The marker is part of the size budget so the
+     * result never exceeds the cap.
+     */
+    private static String inlineText(String text) {
+        if (text.length() <= MAX_INLINE_TEXT_CHARS) {
+            return text;
+        }
+        String marker = "\n\n[BeanBot: attachment truncated at " + MAX_INLINE_TEXT_CHARS
+                + " characters; the file continues]";
+        int keep = Math.max(0, MAX_INLINE_TEXT_CHARS - marker.length());
+        return text.substring(0, keep) + marker;
     }
 
     private static int longestBacktickRun(String text) {

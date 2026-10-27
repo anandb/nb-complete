@@ -175,6 +175,31 @@ class AttachmentManagerTest {
         assertFalse(blocks.isEmpty());
     }
 
+    /**
+     * A file beyond the inline budget must not enter the prompt whole: the block
+     * carries a bounded body plus a marker, in both the embedded-resource and the
+     * plain-text shape.
+     */
+    @Test
+    void oversizedTextIsTruncatedWithAMarker() throws IOException {
+        Path f = tempDir.resolve("huge.txt");
+        Files.writeString(f, "x".repeat(AttachmentManager.MAX_INLINE_TEXT_CHARS + 5000));
+        AttachmentManager am = new AttachmentManager();
+        am.add(new AttachedFile(f.toFile()));
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> resource = (Map<String, Object>)
+                am.buildFileBlocks(true).get(0).get("resource");
+        String embedded = (String) resource.get("text");
+        assertEquals(AttachmentManager.MAX_INLINE_TEXT_CHARS, embedded.length());
+        assertTrue(embedded.endsWith("continues]"), "embedded text carries the marker");
+
+        String plain = (String) am.buildFileBlocks(false).get(0).get("text");
+        assertTrue(plain.contains("[BeanBot: attachment truncated"), "inline block carries the marker");
+        assertTrue(plain.length() < AttachmentManager.MAX_INLINE_TEXT_CHARS + 200,
+                "inline block stays within the cap plus its wrapper");
+    }
+
     @Test
     void addFromFilesSkipsOversized() throws IOException {
         Path small = tempDir.resolve("small.txt");
