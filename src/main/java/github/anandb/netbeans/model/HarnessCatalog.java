@@ -395,10 +395,13 @@ public final class HarnessCatalog {
         Map.entry("cline", new Activation("cline auth",
                 "Sign in once, or set CLINE_API_KEY.")));
 
+    /** Shared value for a harness without sign-in guidance; allocation-free. */
+    private static final Activation NO_ACTIVATION = new Activation("", "");
+
     /** Sign-in guidance for a harness id; empty when the harness has none. */
     public static Activation activation(String harnessId) {
         Activation activation = harnessId == null ? null : ACTIVATIONS.get(harnessId);
-        return activation != null ? activation : new Activation("", "");
+        return activation != null ? activation : NO_ACTIVATION;
     }
 
     /** Looks up a harness by catalog id; {@link #UNKNOWN} when not found. */

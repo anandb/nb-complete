@@ -75,9 +75,8 @@ public final class CssGenerator {
         // user and assistant bubbles.
         String fontSizeStr = fontSize + "pt";
         // Monospace glyphs read smaller than proportional ones at the same
-        // point size, so code sits at the body size instead of below it —
-        // derived from the preference so it scales with it, with a floor so a
-        // small chat font never yields unreadable code.
+        // point size, so code sits at the body size instead of below it, with a
+        // floor so a tiny inherited body size never yields unreadable code.
         String monoFontSizeStr = Math.max(9, fontSize) + "pt";
 
         // Fast path: check cached CSS outside lock
@@ -122,8 +121,7 @@ public final class CssGenerator {
                     .replace("$fontFamily", UIUtils.fontStackWithActual())
                     .replace("$monoFamily", UIUtils.MONO_STACK)
                     .replace("$fontSize", fontSizeStr)
-                    .replace("$preFontSize", monoFontSizeStr)
-                    .replace("$codeFontSize", monoFontSizeStr)
+                    .replace("$monoFontSize", monoFontSizeStr)
                     .replace("$fg", fg)
                     .replace("$bg", bg)
                     .replace("$linkColor", linkColor)

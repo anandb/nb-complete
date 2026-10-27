@@ -70,14 +70,24 @@ public record Message(
             return "";
         }
 
-        /** Last path segment of a {@code file:} URI, used as the display name. */
+        /**
+         * Last path segment of a {@code file:} URI, used as the display name. Any
+         * query or fragment is dropped first, so a revision-qualified URI reads as
+         * the file it points at.
+         */
         private static String fileName(String uri) {
             if (uri == null || uri.isBlank()) {
                 return "attachment";
             }
-            int slash = uri.lastIndexOf('/');
-            String tail = slash >= 0 ? uri.substring(slash + 1) : uri;
-            return tail.isEmpty() ? uri : tail;
+            int cut = uri.indexOf('?');
+            int hash = uri.indexOf('#');
+            if (cut < 0 || (hash >= 0 && hash < cut)) {
+                cut = hash;
+            }
+            String path = cut >= 0 ? uri.substring(0, cut) : uri;
+            int slash = path.lastIndexOf('/');
+            String tail = slash >= 0 ? path.substring(slash + 1) : path;
+            return tail.isEmpty() ? path : tail;
         }
     }
 

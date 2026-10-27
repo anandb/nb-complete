@@ -61,6 +61,13 @@ class MessageTest {
     }
 
     @Test
+    void resourceLinkDropsQueryAndFragmentFromTheUri() {
+        Message.ContentPart part = new Message.ContentPart("resource_link", null, null, null, null, null,
+                null, "file:///tmp/notes.md?rev=7#top", null, null);
+        assertEquals("[File: notes.md]", part.getDisplayText());
+    }
+
+    @Test
     void assistantAudienceTextIsHiddenFromBubbles() {
         Message.ContentPart part = new Message.ContentPart("text", "file body", null, null, null, null,
                 null, null, null, new Message.Annotations(List.of("assistant"), null));
