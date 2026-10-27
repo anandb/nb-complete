@@ -66,6 +66,33 @@ class OnboardingBubbleTest {
                 "First-install view must be non-dismissable (no Close button)");
     }
 
+    @Test
+    void showsTheHarnessSignInCommandAndHint() {
+        // The chooser must spell out how to authenticate, not just warn about it.
+        OnboardingBubble bubble = new OnboardingBubble(
+                java.util.List.of(new BinaryResolver.FoundBinary("kilo", "Kilo Code", "/usr/local/bin/kilo")),
+                (id, path) -> { });
+        java.util.List<String> texts = new java.util.ArrayList<>();
+        collectTexts(bubble, texts);
+        assertTrue(texts.stream().anyMatch(t -> t.contains("kilo auth login")),
+                "sign-in command missing from chooser: " + texts);
+        assertTrue(texts.stream().anyMatch(t -> t.contains("/connect")),
+                "sign-in hint missing from chooser: " + texts);
+    }
+
+    private static void collectTexts(java.awt.Container container, java.util.List<String> out) {
+        for (java.awt.Component comp : container.getComponents()) {
+            if (comp instanceof javax.swing.JLabel label && label.getText() != null) {
+                out.add(label.getText());
+            } else if (comp instanceof javax.swing.JTextArea area) {
+                out.add(area.getText());
+            }
+            if (comp instanceof java.awt.Container child) {
+                collectTexts(child, out);
+            }
+        }
+    }
+
     private static boolean containsButton(java.awt.Container container, String label) {
         for (java.awt.Component comp : container.getComponents()) {
             if (comp instanceof javax.swing.JButton button && label.equals(button.getText())) {

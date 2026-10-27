@@ -242,12 +242,17 @@ class OnboardingBubble extends JPanel {
         activeBtn.setFocusPainted(false);
         row.add(activeBtn, BorderLayout.EAST);
         card.add(row, BorderLayout.CENTER);
-        JLabel auth = new JLabel("\u24D8 " + NbBundle.getMessage(
-                OnboardingBubble.class, "OnboardingBubble.AuthWarning"));
-        auth.setFont(ThemeManager.getFont().deriveFont(11f));
-        auth.setForeground(theme.mutedForeground());
-        auth.setBorder(BorderFactory.createEmptyBorder(6, 0, 0, 0));
-        card.add(auth, BorderLayout.SOUTH);
+        JPanel activation = createActivationPanel(harness, theme, false, true);
+        if (activation != null) {
+            card.add(activation, BorderLayout.SOUTH);
+        } else {
+            JLabel auth = new JLabel("\u24D8 " + NbBundle.getMessage(
+                    OnboardingBubble.class, "OnboardingBubble.AuthWarning"));
+            auth.setFont(ThemeManager.getFont().deriveFont(11f));
+            auth.setForeground(theme.mutedForeground());
+            auth.setBorder(BorderFactory.createEmptyBorder(6, 0, 0, 0));
+            card.add(auth, BorderLayout.SOUTH);
+        }
         return card;
     }
 
@@ -289,6 +294,10 @@ class OnboardingBubble extends JPanel {
         nameLabel.setForeground(theme.foreground());
         textPanel.add(nameLabel);
         textPanel.add(pathLabel);
+        JPanel activation = createActivationPanel(harness, theme, false, false);
+        if (activation != null) {
+            textPanel.add(activation);
+        }
         row.add(textPanel, BorderLayout.CENTER);
         JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
         btnPanel.setOpaque(false);
@@ -351,6 +360,79 @@ class OnboardingBubble extends JPanel {
             repaint();
         });
         return cell;
+    }
+
+    /**
+     * Per-harness sign-in guidance: a copyable command chip plus the CLI's hint,
+     * and — in an install panel — the PATH/restart caveat. Returns {@code null}
+     * when the harness has no guidance (and no title is requested).
+     */
+    private JPanel createActivationPanel(HarnessCatalog.Harness harness, ColorTheme theme,
+            boolean afterInstall, boolean withTitle) {
+        HarnessCatalog.Activation activation = HarnessCatalog.activation(harness.id());
+        if (withTitle == false && activation.hint().isBlank() && activation.hasCommand() == false) {
+            return null;
+        }
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setOpaque(false);
+        panel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        panel.setBorder(BorderFactory.createEmptyBorder(withTitle ? 8 : 2, 0, 0, 0));
+        if (withTitle) {
+            JLabel title = new JLabel(NbBundle.getMessage(
+                    OnboardingBubble.class, "OnboardingBubble.Activation.BeforeFirstChat"));
+            title.setFont(ThemeManager.getFont().deriveFont(Font.BOLD, 11f));
+            title.setForeground(theme.foreground());
+            title.setAlignmentX(Component.LEFT_ALIGNMENT);
+            panel.add(title);
+        }
+        if (activation.hasCommand()) {
+            JPanel line = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+            line.setOpaque(false);
+            line.setAlignmentX(Component.LEFT_ALIGNMENT);
+            JLabel prompt = new JLabel(NbBundle.getMessage(
+                    OnboardingBubble.class, "OnboardingBubble.Activation.SignIn"));
+            prompt.setFont(ThemeManager.getFont().deriveFont(11f));
+            prompt.setForeground(theme.mutedForeground());
+            line.add(prompt);
+            line.add(createCommandChip(activation.command(), theme));
+            panel.add(line);
+        }
+        if (!activation.hint().isBlank()) {
+            JTextAreaNoWrap hint = new JTextAreaNoWrap(activation.hint(), 10f);
+            hint.setForeground(theme.mutedForeground());
+            hint.setBorder(BorderFactory.createEmptyBorder(2, 0, 0, 0));
+            hint.setAlignmentX(Component.LEFT_ALIGNMENT);
+            panel.add(hint);
+        }
+        if (afterInstall) {
+            JTextAreaNoWrap restart = new JTextAreaNoWrap(NbBundle.getMessage(
+                    OnboardingBubble.class, "OnboardingBubble.Activation.AfterInstall"), 10f);
+            restart.setForeground(theme.mutedForeground());
+            restart.setBorder(BorderFactory.createEmptyBorder(2, 0, 0, 0));
+            restart.setAlignmentX(Component.LEFT_ALIGNMENT);
+            panel.add(restart);
+        }
+        return panel;
+    }
+
+    /** Monospace command chip that copies the command when clicked. */
+    private JLabel createCommandChip(String command, ColorTheme theme) {
+        JLabel chip = new JLabel(command);
+        chip.setFont(IconResourceManager.getMonospaceFont().deriveFont(10f));
+        chip.setForeground(theme.isDark() ? new Color(0xA1EFE4) : new Color(0x0B6E4F));
+        chip.setOpaque(true);
+        chip.setBackground(theme.isDark() ? new Color(0x1A1B26) : new Color(0xF0F0F0));
+        chip.setBorder(BorderFactory.createEmptyBorder(1, 6, 1, 6));
+        chip.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        chip.setToolTipText(NbBundle.getMessage(OnboardingBubble.class, "OnboardingBubble.Hint.Copy"));
+        chip.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mousePressed(java.awt.event.MouseEvent e) {
+                copyCommand(chip, command);
+            }
+        });
+        return chip;
     }
 
     /** Collapsible post-activation note: auth in CLI/TUI + IDE restart. */
@@ -443,6 +525,11 @@ class OnboardingBubble extends JPanel {
             prereq.setBorder(BorderFactory.createEmptyBorder(4, 0, 4, 0));
             prereq.setAlignmentX(Component.LEFT_ALIGNMENT);
             panel.add(prereq);
+        }
+
+        JPanel activation = createActivationPanel(harness, theme, true, true);
+        if (activation != null) {
+            panel.add(activation);
         }
 
         // Gemini-specific note, shown only once the user picks this harness to

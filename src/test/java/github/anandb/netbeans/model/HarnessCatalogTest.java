@@ -52,6 +52,26 @@ class HarnessCatalogTest {
     }
 
     @Test
+    void everyHarnessHasActivationGuidance() {
+        for (HarnessCatalog.Harness h : HarnessCatalog.ALL) {
+            HarnessCatalog.Activation activation = HarnessCatalog.activation(h.id());
+            assertFalse(activation.hint().isBlank(), h.id() + ": no sign-in hint");
+        }
+        // Harnesses that need no interactive login still explain the first-run flow.
+        assertFalse(HarnessCatalog.activation("gemini").hasCommand());
+        assertTrue(HarnessCatalog.activation("codex").hint().contains("OPENAI_API_KEY"));
+        // Concrete, copyable commands for the harnesses that have one.
+        assertEquals("kilo auth login", HarnessCatalog.activation("kilo").command());
+        assertEquals("agent login", HarnessCatalog.activation("cursor").command());
+        assertEquals("copilot login", HarnessCatalog.activation("copilot").command());
+        assertEquals("cline auth", HarnessCatalog.activation("cline").command());
+        // Unknown ids and the fallback harness yield an empty activation.
+        assertTrue(HarnessCatalog.activation("nope").hint().isBlank());
+        assertTrue(HarnessCatalog.activation(null).hint().isBlank());
+        assertTrue(HarnessCatalog.activation(HarnessCatalog.UNKNOWN.id()).hint().isBlank());
+    }
+
+    @Test
     void lookupsByIdAndBinaryName() {
         assertEquals(HarnessCatalog.OPENCODE, HarnessCatalog.byId("opencode"));
         assertSame(HarnessCatalog.UNKNOWN, HarnessCatalog.byId("nope"));

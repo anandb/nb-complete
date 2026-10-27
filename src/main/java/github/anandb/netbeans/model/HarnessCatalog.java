@@ -2,6 +2,7 @@ package github.anandb.netbeans.model;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import org.openide.util.NbBundle;
 
 /**
@@ -343,6 +344,62 @@ public final class HarnessCatalog {
     public static final List<Harness> ALL =
             List.of(OMP, OPENCODE, CODEX, OPENCLAW, PI, GOOSE, CURSOR, COPILOT, CLAUDE, HERMES, GEMINI, DEVIN,
                     KILO, CLINE);
+
+    /**
+     * Post-selection activation guidance: how to authenticate a harness's CLI
+     * before its first session. {@code command} is empty when the harness signs
+     * in interactively on first run; {@code hint} always explains what to do.
+     * Like {@link Harness#prerequisites()}, this is plain install-time text, not
+     * a localized message.
+     */
+    public record Activation(String command, String hint) {
+        /** True when there is a concrete command the user can copy and run. */
+        public boolean hasCommand() {
+            return command != null && !command.isBlank();
+        }
+    }
+
+    /**
+     * Per-harness sign-in guidance, keyed by catalog id. Derived from the
+     * per-harness pages in the user guide; keep the two in step. A harness with
+     * no entry (including {@link #UNKNOWN}) yields an empty activation.
+     */
+    private static final Map<String, Activation> ACTIVATIONS = Map.ofEntries(
+        Map.entry("opencode", new Activation("opencode auth login",
+                "Sign in once and connect a model provider.")),
+        Map.entry("codex", new Activation("",
+                "The first session asks you to sign in with a ChatGPT account; "
+                        + "set OPENAI_API_KEY to skip that.")),
+        Map.entry("goose", new Activation("goose configure",
+                "Connect a model provider once.")),
+        Map.entry("pi", new Activation("",
+                "Connect a model provider in the Pi CLI before the first session.")),
+        Map.entry("cursor", new Activation("agent login",
+                "Register once, or set CURSOR_API_KEY.")),
+        Map.entry("copilot", new Activation("copilot login",
+                "Sign in with an account that has Copilot access, or set GITHUB_TOKEN.")),
+        Map.entry("claude", new Activation("",
+                "Set ANTHROPIC_API_KEY before the first session.")),
+        Map.entry("hermes", new Activation("hermes",
+                "Start it once and connect a model provider.")),
+        Map.entry("gemini", new Activation("",
+                "The first run opens the Google sign-in flow; set GEMINI_API_KEY to skip it.")),
+        Map.entry("omp", new Activation("omp",
+                "Start it once and use /login to connect a model provider.")),
+        Map.entry("openclaw", new Activation("",
+                "Start OpenClaw once to connect a Gateway and a model provider.")),
+        Map.entry("devin", new Activation("devin auth login",
+                "Sign in once, or set WINDSURF_API_KEY.")),
+        Map.entry("kilo", new Activation("kilo auth login",
+                "Sign in once, or start kilo and use /connect.")),
+        Map.entry("cline", new Activation("cline auth",
+                "Sign in once, or set CLINE_API_KEY.")));
+
+    /** Sign-in guidance for a harness id; empty when the harness has none. */
+    public static Activation activation(String harnessId) {
+        Activation activation = harnessId == null ? null : ACTIVATIONS.get(harnessId);
+        return activation != null ? activation : new Activation("", "");
+    }
 
     /** Looks up a harness by catalog id; {@link #UNKNOWN} when not found. */
     public static Harness byId(String id) {
