@@ -88,16 +88,21 @@
   process arguments. Use `tokenizeArgs()` (commons-exec quoting) to split the prefs string.
 - **Harness binary detection**: `BinaryResolver.findAllOnPath()` is the `which -a` view
   (harness-owned install dirs first, then same-user files, then PATH, then common install
-  dirs). Candidates inside `/bin`, `/sbin`, `/usr/bin` or `/usr/sbin` are excluded for
-  **every** harness — no catalog harness ships in a distro package, and a distro command can
-  own the same name (Debian's `kilo` text editor, a generic `agent`). On macOS/Linux file
-  ownership is compared by uid against the IDE user's home, so a root-owned
-  `/usr/local/bin/agent` loses to a user-owned `~/.local/bin/agent`; unknown owners (Windows,
-  non-POSIX filesystems) are treated as same-user, never disqualified. `findHarnessBinary()`
-  ranks harness-owned dir > same-user file > other-owner file, and breaks ties in favour of a
-  distinctive name (`kilocode`, `cursor-agent`) over a generic one. Do NOT reintroduce
-  "first PATH hit wins" or a per-name collision list; the WSL batch probe applies the same
-  policy.
+  dirs). A candidate inside `/bin`, `/sbin`, `/usr/bin` or `/usr/sbin` is accepted only when
+  `isTrustedSystemCandidate()` vouches for it — the file is owned by the IDE user, or it is
+  the symlink a root `npm i -g`/`bun install -g` leaves behind (a link into
+  `node_modules/`). Distro packages ship a regular root-owned file or a link into
+  `/usr/lib`, so Debian's `kilo` text editor and a generic `agent` stay excluded and can
+  never shadow a real harness. Do NOT drop system-directory candidates outright: a real
+  global install into `/usr/bin` would become invisible. On macOS/Linux file ownership is
+  compared by uid against the IDE user's home, so a root-owned `/usr/local/bin/agent` loses
+  to a user-owned `~/.local/bin/agent`; unknown owners (Windows, non-POSIX filesystems) are
+  treated as same-user, never disqualified. `findHarnessBinary()` ranks harness-owned dir >
+  same-user file > other-owner file, and breaks ties in favour of a distinctive name
+  (`kilocode`, `cursor-agent`) over a generic one. Do NOT reintroduce "first PATH hit wins"
+  or a per-name collision list. The WSL batch probe keeps the stricter rule — it ignores
+  every system-directory hit, because ownership and link targets cannot be inspected from
+  the host.
 - **Context-menu hooks (EDT safety)**: `InspectorContextMenu`/`TestResultsContextMenu` must
   NEVER call `WindowManager.findTopComponent(...)` on the EDT — it synchronously instantiates
   the target TopComponent and blocks on `MediaTracker` image loading. Match already-open

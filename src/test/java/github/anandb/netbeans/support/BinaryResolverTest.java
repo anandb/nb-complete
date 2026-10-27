@@ -186,10 +186,10 @@ class BinaryResolverTest {
     }
 
     /**
-     * A Linux distro command lives in a system package directory. No catalog
-     * harness ships in one, so such candidates are excluded for every name —
-     * not just a hardcoded collision list (Debian {@code kilo}, generic
-     * {@code agent}).
+     * A Linux distro command lives in a system package directory. Such a path is
+     * still classified (and ranked last), but only a candidate the IDE user owns
+     * or a global node-package install is accepted — Debian {@code kilo} and a
+     * generic {@code agent} stay excluded.
      */
     @Test
     void systemPackageDirCandidatesAreExcluded() {
@@ -201,6 +201,37 @@ class BinaryResolverTest {
         assertFalse(BinaryResolver.isSystemPackagePath("/home/me/.local/bin/opencode"));
         assertTrue(BinaryResolver.isSystemPackageDir(new java.io.File("/usr/bin")));
         assertFalse(BinaryResolver.isSystemPackageDir(new java.io.File("/usr/local/bin")));
+    }
+
+    /**
+     * A system-directory candidate survives only when it can be vouched for: a
+     * file the IDE's user owns, or the symlink a root {@code npm i -g} leaves
+     * behind. A missing path and a symlink into a distro package do not.
+     */
+    @Test
+    void systemCandidatesNeedOwnershipOrNodeModulesLink(@TempDir Path dir) throws IOException {
+        Path owned = dir.resolve("goose");
+        Files.writeString(owned, "#!/bin/sh\n");
+        assertTrue(BinaryResolver.isTrustedSystemCandidate(owned.toString()),
+                "a user-owned file is trusted");
+
+        Path pkg = Files.createDirectories(dir.resolve("pkg").resolve("node_modules")
+                .resolve("goose").resolve("bin"));
+        Path real = pkg.resolve("goose");
+        Files.writeString(real, "#!/bin/sh\n");
+        Path link = dir.resolve("goose-link");
+        Files.createSymbolicLink(link, real);
+        assertTrue(BinaryResolver.isTrustedSystemCandidate(link.toString()),
+                "a symlink into node_modules is a global package install");
+
+        Path distroTarget = dir.resolve("kilo-editor");
+        Files.writeString(distroTarget, "#!/bin/sh\n");
+        Path distroLink = dir.resolve("kilo-link");
+        Files.createSymbolicLink(distroLink, distroTarget);
+        assertTrue(BinaryResolver.isTrustedSystemCandidate(distroLink.toString()),
+                "the test owns both ends, so ownership vouches for it");
+        assertFalse(BinaryResolver.isTrustedSystemCandidate(dir.resolve("absent").toString()),
+                "a path that does not exist cannot be trusted");
     }
 
     /**
@@ -223,8 +254,9 @@ class BinaryResolverTest {
             assertEquals(kilo.toAbsolutePath().toString(), candidates.get(0),
                     "harness-owned install dir must outrank any PATH hit");
             for (String candidate : candidates) {
-                assertFalse(BinaryResolver.isSystemPackagePath(candidate),
-                        "system package dir leaked into candidates: " + candidate);
+                assertFalse(BinaryResolver.isSystemPackagePath(candidate)
+                                && !BinaryResolver.isTrustedSystemCandidate(candidate),
+                        "unvouched system package candidate leaked: " + candidate);
             }
         } finally {
             System.setProperty("user.home", previousHome);

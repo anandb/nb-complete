@@ -260,12 +260,15 @@ public final class BinaryResolver {
         List<Candidate> candidates = new ArrayList<>();
         Set<String> seen = new HashSet<>();
         for (ProbeDir probe : probeDirs(exeName)) {
-            if (isSystemPackageDir(probe.dir())) {
-                LOG.fine("Ignoring system package directory {0} for {1}", probe.dir(), exeName);
+            String hit = probeDir(probe.dir(), exeName);
+            if (hit == null) {
                 continue;
             }
-            String hit = probeDir(probe.dir(), exeName);
-            if (hit != null && seen.add(canonicalPath(hit))) {
+            if (isSystemPackageDir(probe.dir()) && !isTrustedSystemCandidate(hit)) {
+                LOG.fine("Ignoring system package candidate {0} for {1}", hit, exeName);
+                continue;
+            }
+            if (seen.add(canonicalPath(hit))) {
                 candidates.add(new Candidate(hit, probe.harnessOwned(), isUserOwned(hit)));
             }
         }
@@ -305,6 +308,45 @@ public final class BinaryResolver {
         }
         return dirs;
     }
+
+    /**
+     * True when a candidate found in a system package directory is plausibly a
+     * harness install rather than a distro command, so it is not silently lost:
+     * the file is owned by the IDE's user, or it is a symlink into a node
+     * package directory — a global {@code npm}/{@code bun} install that was run
+     * as root writes {@code /usr/bin/<name>} as a link into
+     * {@code .../node_modules/<package>/...}.
+     *
+     * <p>Distro packages ship either a regular root-owned file or a symlink
+     * into {@code /usr/lib}, so Debian's {@code kilo} text editor and a generic
+     * {@code agent} stay excluded and can never shadow a real harness.
+     * Package-visible for tests.
+     */
+    static boolean isTrustedSystemCandidate(String path) {
+        java.nio.file.Path file;
+        try {
+            file = Paths.get(path);
+        } catch (RuntimeException e) { // InvalidPathException, or a null caller
+            return false;
+        }
+        if (!Files.exists(file)) {
+            return false;
+        }
+        if (isUserOwned(path)) {
+            return true;
+        }
+        try {
+            if (!Files.isSymbolicLink(file)) {
+                return false;
+            }
+            String target = Files.readSymbolicLink(file).toString().replace('\\', '/');
+            return target.contains("node_modules/");
+        } catch (IOException | SecurityException e) {
+            LOG.fine("Cannot inspect system candidate {0}: {1}", path, e.getMessage());
+            return false;
+        }
+    }
+
 
     /**
      * True when the executable name is generic enough that another program can
@@ -593,10 +635,13 @@ public final class BinaryResolver {
     /**
      * Probes the WSL distribution for the best of the given binary names, using
      * a single {@code wsl.exe} invocation. Applies the same policy as native
-     * detection: a hit inside a Linux system package directory is ignored, a
-     * distinctive name beats a generic one ({@code kilocode} over a distro
-     * {@code kilo}, {@code cursor-agent} over a generic {@code agent}), and
-     * catalog name order breaks ties.
+     * detection — a distinctive name beats a generic one ({@code kilocode} over
+     * a distro {@code kilo}, {@code cursor-agent} over a generic {@code agent}),
+     * and catalog name order breaks ties — with one deliberate difference: every
+     * hit inside a Linux system package directory is ignored, because file
+     * ownership and symlink targets cannot be inspected from the host without a
+     * second round trip, so {@link #isTrustedSystemCandidate(String)} cannot
+     * vouch for it.
      *
      * @param names bare Linux binary names, in preference order
      * @return the Linux path of the best binary found, or {@code null}
