@@ -68,7 +68,12 @@ public final class CssGenerator {
     public static String generateCss(ColorRegistry registry, Color bubbleBg,
                                      boolean isAssistant, int fontSize) {
         String bg = bubbleBg != null ? toHtmlHex(bubbleBg) : "transparent";
-        String fontSizeStr = fontSize + "px";
+        // Points, not px: the HTML renderer honors display properties, which
+        // scales CSS px by the screen DPI (~4/3 at 96 dpi) while the plain
+        // JTextArea bubbles size in points. Same number in pt renders both at
+        // the same physical size, so the Chat Font Size means one size for
+        // user and assistant bubbles.
+        String fontSizeStr = fontSize + "pt";
 
         // Fast path: check cached CSS outside lock
         if (isAssistant) {

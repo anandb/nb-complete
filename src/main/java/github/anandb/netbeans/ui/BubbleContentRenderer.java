@@ -12,6 +12,8 @@ import javax.swing.JPanel;
 import javax.swing.JTextArea;
 import javax.swing.border.EmptyBorder;
 
+import github.anandb.netbeans.support.PluginSettings;
+
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
 // DSL-LEAF: not a controller — renders bubble content (segment → component).
@@ -49,7 +51,7 @@ class BubbleContentRenderer {
         this.codeStates = codeStates;
         this.streamer = streamer;
     }
-    
+
     void setFontSizeOverride(int size) {
         if (this.fontSizeOverride != size) {
             this.fontSizeOverride = size;
@@ -135,6 +137,11 @@ class BubbleContentRenderer {
                 segments.removeAll();
                 JTextArea pane = streamer.createWrappingTextArea(theme, userText);
                 pane.setBorder(new EmptyBorder(8, 16, 8, 16));
+                // Same size the HTML assistant bubbles get (HtmlContentPreparer):
+                // the preference, or its inherited default when unset.
+                int chatFontSize = PluginSettings.getChatFontSize();
+                int fontSize = chatFontSize > 0 ? chatFontSize : ThemeManager.getFont().getSize() - 2;
+                pane.setFont(ThemeManager.getFont().deriveFont((float) fontSize));
                 segments.add(pane);
             }
             while (segments.getComponentCount() > 1) {
