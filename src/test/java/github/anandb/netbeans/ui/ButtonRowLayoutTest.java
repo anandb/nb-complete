@@ -120,6 +120,44 @@ class ButtonRowLayoutTest {
         return Math.max(first, second) + GAP * 4;
     }
 
+    /** Width that fits every button on one row, for the current LAF font. */
+    private static int oneRowWidth(JButton[] buttons) {
+        int total = 0;
+        for (JButton button : buttons) {
+            total += button.getPreferredSize().width;
+        }
+        return total + GAP * (buttons.length + 1);
+    }
+
+    private static JButton[] shortAnswers() {
+        return new JButton[] {
+            button("Allow once"),
+            button("Always allow"),
+            button("Reject"),
+            button("Always reject"),
+        };
+    }
+
+    @Test
+    void fourShortAnswersShareOneRowWhenTheyFit() {
+        JButton[] buttons = shortAnswers();
+        JPanel row = rowAt(oneRowWidth(buttons), buttons);
+        assertEquals(1, rowTops(row).size(), "a row breaks only when the width runs out\n" + describe(row));
+        assertEquals(drawnHeight(row), row.getHeight(), describe(row));
+    }
+
+    @Test
+    void aFourthAnswerWrapsOnlyWhenItCannotFit() {
+        JButton[] buttons = shortAnswers();
+        int threeButtons = 0;
+        for (int i = 0; i < 3; i++) {
+            threeButtons += buttons[i].getPreferredSize().width;
+        }
+        JPanel row = rowAt(threeButtons + GAP * 3, buttons);
+        assertEquals(2, rowTops(row).size(), describe(row));
+        assertEquals(drawnHeight(row), row.getHeight(), describe(row));
+    }
+
     @Test
     void devinSixOptionsFitTwoRowsOnAWideSidebar() {
         JButton[] buttons = devinButtons();
@@ -156,14 +194,11 @@ class ButtonRowLayoutTest {
     }
 
     @Test
-    void aRowNeverHoldsMoreThanThreeButtons() {
+    void aWideBandKeepsEveryButtonOnOneRow() {
         JButton[] buttons = devinButtons();
         JPanel row = rowAt(4000, buttons);
-        assertEquals(2, rowTops(row).size(), describe(row));
-        for (int i = 0; i < 3; i++) {
-            assertEquals(buttons[0].getY(), buttons[i].getY(), "first three share a row");
-        }
-        assertEquals(buttons[3].getY(), buttons[5].getY(), "last three share a row");
+        assertEquals(1, rowTops(row).size(), "width alone decides the break\n" + describe(row));
+        assertEquals(drawnHeight(row), row.getHeight(), describe(row));
     }
 
     @Test
@@ -178,12 +213,12 @@ class ButtonRowLayoutTest {
     }
 
     @Test
-    void hiddenButtonsDoNotConsumeARowSlot() {
-        JButton[] buttons = devinButtons();
+    void hiddenButtonsDoNotConsumeASlot() {
+        JButton[] buttons = shortAnswers();
         JButton hidden = button("hidden");
         hidden.setVisible(false);
-        JPanel row = rowAt(4000, hidden, buttons[0], buttons[1], buttons[2], buttons[3]);
-        assertEquals(2, rowTops(row).size(), describe(row));
+        JPanel row = rowAt(oneRowWidth(buttons), hidden, buttons[0], buttons[1], buttons[2], buttons[3]);
+        assertEquals(1, rowTops(row).size(), describe(row));
         assertEquals(drawnHeight(row), row.getHeight(), describe(row));
     }
 }

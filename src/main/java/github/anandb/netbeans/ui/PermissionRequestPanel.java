@@ -152,8 +152,8 @@ final class PermissionRequestPanel extends JPanel {
         content.add(contentScroll, BorderLayout.CENTER);
 
         // Row 2: buttons right-aligned, pinned to the bottom so they never scroll away.
-        // A harness can send six options (Devin); ButtonRowLayout wraps them two rows
-        // deep and reports the wrapped height, so none of them is clipped.
+        // A harness can send six options (Devin); ButtonRowLayout wraps them onto as
+        // many rows as the width needs and reports that height, so none is clipped.
         buttonPanel = new JPanel(new ButtonRowLayout(8, 4));
         buttonPanel.setOpaque(false);
         content.add(buttonPanel, BorderLayout.SOUTH);

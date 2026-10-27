@@ -9,8 +9,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Right-aligned button rows: at most {@link #MAX_PER_ROW} buttons per row, wrapping
- * when the width runs out, and a preferred height that matches the rows it lays out.
+ * Right-aligned button rows, wrapping when the width runs out, with a preferred height
+ * that matches the rows it lays out.
  * <p>
  * {@link java.awt.FlowLayout} reports the width of a single row, so a button bar
  * pinned to the bottom of a {@code BorderLayout} was given one row of height and then
@@ -18,12 +18,11 @@ import java.util.List;
  * past the first — including its Reject button — was clipped away.
  * <p>
  * Measuring and laying out share {@link #rows}, so the height reported to the parent
- * is the height actually used. Capping a row at three buttons keeps a six-option
- * harness to two rows on a normally sized sidebar instead of one over-wide row.
+ * is the height actually used. A row breaks only when the next button does not fit at
+ * the current width: four short answers stay on one line, while Devin's six prose
+ * labels fall into two rows on a normally sized sidebar.
  */
 final class ButtonRowLayout implements LayoutManager {
-
-    private static final int MAX_PER_ROW = 3;
 
     private final int hgap;
     private final int vgap;
@@ -112,7 +111,7 @@ final class ButtonRowLayout implements LayoutManager {
         return new Dimension(widest, height);
     }
 
-    /** Visible components grouped into rows, breaking at {@code MAX_PER_ROW} or on overflow. */
+    /** Visible components grouped into rows, breaking when the next one does not fit. */
     private List<List<Component>> rows(Container parent, int width) {
         List<List<Component>> rows = new ArrayList<>();
         List<Component> row = new ArrayList<>();
@@ -122,9 +121,7 @@ final class ButtonRowLayout implements LayoutManager {
                 continue;
             }
             int compWidth = comp.getPreferredSize().width;
-            boolean full = row.size() >= MAX_PER_ROW;
-            boolean overflow = !row.isEmpty() && width > 0 && rowWidth + hgap + compWidth > width;
-            if (full || overflow) {
+            if (!row.isEmpty() && width > 0 && rowWidth + hgap + compWidth > width) {
                 rows.add(row);
                 row = new ArrayList<>();
                 rowWidth = 0;
