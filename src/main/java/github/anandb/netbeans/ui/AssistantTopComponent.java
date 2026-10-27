@@ -1147,8 +1147,13 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
     /**
      * Persists the user's harness choice (executable path + harness-specific
-     * launch arguments) on a background thread, then restarts the server.
+     * launch arguments) on a background thread, then asks for an IDE restart.
      * Called from the onboarding bubble's "Use" button.
+     *
+     * <p>The server is deliberately NOT restarted here: a harness switch takes
+     * effect when the IDE starts, and the user may still have to sign in to the
+     * new harness's CLI. Restarting the server now would launch the new harness
+     * immediately, into an unauthenticated session.
      */
     private void onHarnessSelected(String harnessId, String path) {
         HarnessCatalog.Harness harness = HarnessCatalog.byId(harnessId);
@@ -1169,8 +1174,26 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             prefs.put(PreferenceKeys.ACP_HARNESS_ID, harnessId);
             prefs.put(PreferenceKeys.ACP_HARNESS_DISPLAY_NAME, harness.displayName());
             LOG.info("Harness selected during onboarding: {0} at {1}", harnessId, path);
-            SwingUtilities.invokeLater(() -> componentLifecycleHandler.restartServer());
+            // Fresh detection so the rebuilt chooser shows the new harness as
+            // Active; showHarnessChooser() computes availability here (off the
+            // EDT) and marshals its own UI update. Then ask for the restart that
+            // applies the choice.
+            java.util.List<BinaryResolver.FoundBinary> found = BinaryResolver.findAllKnownOnPath();
+            showHarnessChooser(found);
+            SwingUtilities.invokeLater(() -> {
+                statusController.setStatus("STATUS_RestartIdeToApply", harness.displayName());
+                promptRestartIde(harness.displayName());
+            });
         });
+    }
+
+    /** Tells the user the harness change applies on the next IDE start. */
+    private void promptRestartIde(String displayName) {
+        NotifyDescriptor.Message message = new NotifyDescriptor.Message(
+                NbBundle.getMessage(AssistantTopComponent.class, "MSG_RestartIdeForHarness", displayName),
+                NotifyDescriptor.INFORMATION_MESSAGE);
+        message.setTitle(NbBundle.getMessage(AssistantTopComponent.class, "TITLE_RestartIde"));
+        DialogDisplayer.getDefault().notify(message);
     }
 
     @Override
