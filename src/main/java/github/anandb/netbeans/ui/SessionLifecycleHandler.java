@@ -435,15 +435,23 @@ public class SessionLifecycleHandler implements SessionListener {
                         // session to replace the WelcomeScreen with actual chat messages.
                         if (showingWelcomeScreen) {
                             showingWelcomeScreen = false;
-                            sessionService.get().loadSession(currentId);
+                            if (sessionService.get().canLoadSessions()) {
+                                sessionService.get().loadSession(currentId);
+                            }
                         }
                     } else {
                         // Current session is gone (archived or project closed).
                         // Prefer a session from the SAME project as the last active
                         // session to avoid hijacking the user to a different project.
+                        // Some harnesses cannot load sessions at all (they answered
+                        // session/load with "method not found"); selecting one there
+                        // would show a session that never opens and, with the
+                        // refresh after each refusal, walk the whole list — so fall
+                        // through to the WelcomeScreen instead.
+                        boolean canLoad = sessionService.get().canLoadSessions();
                         String prevDir = sessionService.get().getCurrentSessionDirectory();
                         SessionItem sameProjectMatch = null;
-                        for (int i = 0; i < sessionDropdown.getItemCount(); i++) {
+                        for (int i = 0; canLoad && i < sessionDropdown.getItemCount(); i++) {
                             SessionItem item = sessionDropdown.getItemAt(i);
                             if (item != null && prevDir != null
                                     && prevDir.equals(item.getSession().effectiveDirectory())
@@ -456,7 +464,7 @@ public class SessionLifecycleHandler implements SessionListener {
                         // Exclude archived sessions from the fallback unless the
                         // show-archived toggle is active.
                         SessionItem fallback = sameProjectMatch;
-                        if (fallback == null) {
+                        if (fallback == null && canLoad) {
                             for (int i = 0; i < sessionDropdown.getItemCount(); i++) {
                                 SessionItem item = sessionDropdown.getItemAt(i);
                                 if (item != null && !item.getSession().id().equals(lastAutoLoadSessionId)

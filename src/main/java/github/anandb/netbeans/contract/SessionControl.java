@@ -25,6 +25,14 @@ public interface SessionControl extends SessionQuery {
     /** Loads an existing session by ID. Returns true if load starts successfully. */
     boolean loadSession(String sessionId);
 
+    /**
+     * Whether this server process can load sessions at all. False once the agent
+     * answered {@code session/load} with JSON-RPC "method not found" (some
+     * harnesses advertise {@code loadSession} but do not implement it); the UI
+     * then keeps the current session instead of selecting one that can never load.
+     */
+    boolean canLoadSessions();
+
     /** Loads an existing session, optionally marking it as a startup load. Returns true if load starts successfully. */
     boolean loadSession(String sessionId, boolean isStartup);
 

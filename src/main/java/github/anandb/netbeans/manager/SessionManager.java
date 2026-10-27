@@ -458,6 +458,8 @@ public class SessionManager implements SessionQuery, SessionControl {
     private final AtomicInteger explicitSessionOps = new AtomicInteger();
     private final SessionStateMachine stateMachine = new SessionStateMachine();
     private volatile String currentSessionId;
+    /** Server generation whose unsupported-load notice was already shown. */
+    private volatile long loadUnsupportedNoticeGeneration = -1;
     private volatile String lastProjectDir;
     private final SessionCacheManager cacheManager = new SessionCacheManager();
     private final Consumer<SessionUpdate> sseListener = this::handleSseUpdate;
@@ -1120,11 +1122,18 @@ public class SessionManager implements SessionQuery, SessionControl {
     }
 
     @Override
+    public boolean canLoadSessions() {
+        return !processManager.isSessionLoadUnsupported();
+    }
+
+    @Override
     public boolean loadSession(String sessionId, boolean isStartup) {
         if (processManager.isSessionLoadUnsupported()) {
             // Discovered on a previous call; do not clear the current session or
-            // re-issue a request the process already answered with -32601.
-            notifyError(NbBundle.getMessage(SessionManager.class, "ERR_LoadSessionUnsupported"));
+            // re-issue a request the process already answered with -32601. Announce
+            // it once per server process: a failed auto-select can walk several
+            // sessions, and a dialog per attempt buries the real message.
+            notifyLoadUnsupportedOnce();
             return false;
         }
         StrategyRegistry.invalidateSession(sessionId);
@@ -1213,10 +1222,12 @@ public class SessionManager implements SessionQuery, SessionControl {
                             // so SSE routing and the UI don't treat it as current.
                             this.currentSessionId = null;
                             stateMachine.transitionTo(SessionState.IDLE);
-                            notifyError(unsupported
-                                    ? NbBundle.getMessage(SessionManager.class, "ERR_LoadSessionUnsupported")
-                                    : NbBundle.getMessage(SessionManager.class, "ERR_LoadSessionFailed",
-                                            rootMessage(ex)));
+                            if (unsupported) {
+                                notifyLoadUnsupportedOnce();
+                            } else {
+                                notifyError(NbBundle.getMessage(SessionManager.class, "ERR_LoadSessionFailed",
+                                        rootMessage(ex)));
+                            }
                             // Re-sync session list from server so the dropdown reflects
                             // the actual server state and loads the most recent session.
                             refreshSessions();
@@ -1569,6 +1580,20 @@ public class SessionManager implements SessionQuery, SessionControl {
         }
         String msg = ExceptionUtils.getMessage(cause);
         return msg != null ? msg : ExceptionUtils.getMessage(ex);
+    }
+
+    /**
+     * Shows the unsupported-load message once per server process: a failed
+     * auto-select can try several sessions, and a dialog per attempt buries the
+     * one message the user needs.
+     */
+    private void notifyLoadUnsupportedOnce() {
+        long generation = processManager.serverGeneration();
+        if (loadUnsupportedNoticeGeneration == generation) {
+            return;
+        }
+        loadUnsupportedNoticeGeneration = generation;
+        notifyError(NbBundle.getMessage(SessionManager.class, "ERR_LoadSessionUnsupported"));
     }
 
     /** True when the cause chain contains a JSON-RPC "Method not found" error. */

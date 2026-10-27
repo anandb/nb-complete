@@ -743,6 +743,41 @@ class SessionManagerTest {
     }
 
     @Test
+    void canLoadSessionsTracksTheCapability() {
+        assertTrue(sessionManager.canLoadSessions());
+        when(processManager.isSessionLoadUnsupported()).thenReturn(true);
+        assertFalse(sessionManager.canLoadSessions());
+    }
+
+    /**
+     * The unsupported-load message is shown once per server process: an
+     * auto-select can try several sessions, and one dialog per attempt buries it.
+     * A new server generation is allowed to report again.
+     */
+    @Test
+    void unsupportedLoadIsAnnouncedOncePerServerGeneration() {
+        when(processManager.isSessionLoadUnsupported()).thenReturn(true);
+        when(processManager.serverGeneration()).thenReturn(7L);
+        List<String> errors = new java.util.ArrayList<>();
+        sessionManager.addSessionListener(new SessionListener() {
+            @Override public void onSessionListUpdated(List<Session> s) {}
+            @Override public void onSessionStarted(String id) {}
+            @Override public void onSessionLoaded(String id, List<SessionConfigOption> o, boolean b) {}
+            @Override public void onSessionLoading(boolean l) {}
+            @Override public void onSessionError(String m) { errors.add(m); }
+            @Override public void onSessionUpdate(SessionUpdate u) {}
+        });
+
+        assertFalse(sessionManager.loadSession("s1"));
+        assertFalse(sessionManager.loadSession("s2"));
+        assertEquals(1, errors.size(), "one notice per server process");
+
+        when(processManager.serverGeneration()).thenReturn(8L);
+        assertFalse(sessionManager.loadSession("s3"));
+        assertEquals(2, errors.size(), "a new process may report again");
+    }
+
+    @Test
     void readyHandlerDoesNotReloadWhileAnExplicitLoadIsInFlight() throws Exception {
         seedCachedSession("old", "/old-project");
         CompletableFuture<JsonNode> pendingLoad = new CompletableFuture<>();
