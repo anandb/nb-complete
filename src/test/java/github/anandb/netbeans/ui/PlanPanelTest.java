@@ -171,7 +171,7 @@ class PlanPanelTest {
             JLabel row = (JLabel) ((Container) rows.getComponent(i)).getComponent(0);
             assertNotNull(row.getIcon(), "row " + i + " uses an icon, not a font glyph");
         }
-        // Completed row is muted; the active row takes the accent color and
+        // Completed row is muted; the active row takes the theme foreground and
         // bold weight (bold only visibly differs when the base font is plain,
         // so the foreground colors carry the assertion).
         JLabel done = (JLabel) ((Container) rows.getComponent(2)).getComponent(0);
@@ -180,8 +180,8 @@ class PlanPanelTest {
         ColorTheme theme = ThemeManager.getCurrentTheme();
         assertEquals(theme.mutedForeground(), done.getForeground(),
                 "completed row is muted");
-        assertEquals(theme.accent(), active.getForeground(),
-                "active row takes the accent color");
+        assertEquals(theme.foreground(), active.getForeground(),
+                "active row uses the theme foreground");
     }
 
     @Test
