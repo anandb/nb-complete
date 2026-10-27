@@ -487,9 +487,11 @@ public class SessionLifecycleHandler implements SessionListener {
                             // session id so nothing tries to reload it later.
                             sessionService.get().closeSession();
                             // closeSession() only fires onSessionLoading(false), so
-                            // clear the plan slideout here: it belongs to the closed
-                            // session and must not survive into the WelcomeScreen.
+                            // clear the plan slideout and the context meter here: both
+                            // belong to the closed session and must not survive into
+                            // the WelcomeScreen.
                             planPanel.clear();
+                            statusController.clearContextUsage();
                             showingWelcomeScreen = true;
                             chatPanel.setSessionList(sessions,
                                 id -> sessionService.get().loadSession(id), () -> {
@@ -519,6 +521,9 @@ public class SessionLifecycleHandler implements SessionListener {
                         // The plan slideout belongs to the just-closed session.
                         planPanel.clear();
                     }
+                    // Nothing is loaded on the WelcomeScreen, so neither the plan
+                    // nor the context meter may keep the closed session's state.
+                    statusController.clearContextUsage();
                     showingWelcomeScreen = true;
                     // Filter hidden sessions for WelcomeScreen too
                     List<Session> visibleSessions = showHidden ? sessions

@@ -283,6 +283,24 @@ class SessionLifecycleHandlerTest {
         // doRestart) would otherwise re-open the archived session while the
         // dropdown — which filters it out — stays empty.
         verify(sessionControl).closeSession();
+        verify(statusController).clearContextUsage();
+    }
+
+    @Test
+    void archivedLastSessionClearsContextMeterWhenNoFallbackExists() throws Exception {
+        setUpMocks(false);
+        stubCurrent("gone-1");
+        when(sessionControl.canLoadSessions()).thenReturn(false);
+        List<Session> list = sessions(session("vis-1", false));
+
+        SessionLifecycleHandler handler = newHandler();
+        handler.onSessionListUpdated(list);
+        flushEdt();
+
+        // The current session is no longer listed and no fallback may be loaded,
+        // so the handler closes the session and shows the WelcomeScreen.
+        verify(sessionControl).closeSession();
+        verify(statusController).clearContextUsage();
     }
 
     @Test
