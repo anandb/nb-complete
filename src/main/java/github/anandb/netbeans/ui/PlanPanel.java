@@ -117,8 +117,9 @@ public class PlanPanel extends JPanel {
 
         rowsPanel.setOpaque(false);
         rowsPanel.setLayout(new BoxLayout(rowsPanel, BoxLayout.Y_AXIS));
+        // leading inset: visible gap between the panel's left edge and the row text/icons;
         // trailing inset: the vertical scrollbar rides on empty space, not on glyph ink
-        rowsPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, SCROLL_INSET_PX));
+        rowsPanel.setBorder(BorderFactory.createEmptyBorder(0, PAD, 0, SCROLL_INSET_PX));
         rowsScroll = new JScrollPane(rowsPanel);
         rowsScroll.setBorder(BorderFactory.createEmptyBorder());
         rowsScroll.setOpaque(false);
@@ -240,8 +241,10 @@ public class PlanPanel extends JPanel {
 
     /**
      * One plan row: status icon + text. Completed rows mute; the active row
-     * (the first unfinished one) takes the accent color and bold weight so
-     * the eye lands on what the harness is working on right now.
+     * (the first unfinished one) takes the theme foreground at bold weight so
+     * the eye lands on what the harness is working on right now — accent blue
+     * read as a selection state rather than emphasis, and plain text keeps the
+     * same contrast in both light and dark themes.
      */
     private JPanel buildRow(PlanEntry entry, boolean active, Font font, ColorTheme theme) {
         EllipsisLabel label = new EllipsisLabel();
@@ -250,7 +253,7 @@ public class PlanPanel extends JPanel {
         label.setHorizontalAlignment(JLabel.LEFT);
         if (active) {
             label.setFont(font.deriveFont(Font.BOLD));
-            label.setForeground(theme.accent());
+            label.setForeground(theme.foreground());
         } else if (isCompleted(entry)) {
             // strike-through + muted colour: instantly reads as "done" without HTML
             label.setFont(font.deriveFont(Collections.<TextAttribute, Boolean>singletonMap(

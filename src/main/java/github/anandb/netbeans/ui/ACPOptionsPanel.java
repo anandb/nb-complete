@@ -482,7 +482,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         appearancePanel.add(chatFontLabel, UIUtils.createGbc(0, row, 1.5, 0, GridBagConstraints.HORIZONTAL,
                 GridBagConstraints.WEST, new Insets(0, 12, 5, 5)));
 
-        chatFontCombo = new JComboBox<>(new String[]{"Inherited", "10", "11", "12", "13", "14", "16"});
+        chatFontCombo = new JComboBox<>(new String[]{"Inherited", "10", "11", "12", "13", "14", "16", "18", "20", "22", "24"});
         chatFontCombo.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_ChatFontSize"));
         chatFontCombo.setPrototypeDisplayValue("100");
         chatFontCombo.addActionListener(evt -> controller.changed());
