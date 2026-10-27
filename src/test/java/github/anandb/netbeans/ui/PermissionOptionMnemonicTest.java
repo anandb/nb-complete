@@ -130,6 +130,28 @@ class PermissionOptionMnemonicTest {
     }
 
     @Test
+    void reorderedRowKeepsEachScopeOnItsDocumentedLetter() {
+        // The server may reorder its options; the letters belong to the scopes,
+        // not to array positions, so a reordered row must map the same id to the
+        // same letter.
+        PermissionOption[] options = new PermissionOption[] {
+            devin("reject_once", "Reject", "reject_once"),
+            devin("switch_bypass", "Yes, switch to bypass mode", "allow_always"),
+            devin("allow_once", "Allow", "allow_once"),
+            devin("allow_always_global", "Yes, always allow `git reset` commands in all projects", "allow_always"),
+            devin("allow_session", "Yes, allow `git reset` commands (this session)", "allow_always"),
+            devin("allow_always", "Yes, always allow `git reset` commands in `bridge`", "allow_always"),
+        };
+        char[] letters = PermissionOption.mnemonics(List.of(options));
+        assertEquals('R', letters[0], "reject");
+        assertEquals('B', letters[1], "bypass mode");
+        assertEquals('O', letters[2], "plain allow");
+        assertEquals('P', letters[3], "all projects");
+        assertEquals('S', letters[4], "this session");
+        assertEquals('A', letters[5], "this project");
+    }
+
+    @Test
     void rowLettersAreNeverRepeated() {
         char[] letters = PermissionOption.mnemonics(List.of(devinRow()));
         Set<Character> seen = new HashSet<>();

@@ -129,8 +129,15 @@ record PermissionOption(String id, String name, String kind) {
     }
 
     private static boolean isAlways(PermissionOption option) {
+        // The id is the only scope signal: Devin reports kind allow_always for
+        // every allow option, so a kind/name test puts the whole row in one pass
+        // and the priority below becomes array order.
+        String lid = option.id() == null ? "" : option.id().toLowerCase(Locale.ROOT);
+        if (lid.contains("always") || lid.contains("global") || lid.contains("bypass")) {
+            return true;
+        }
         String lname = option.name() == null ? "" : option.name().toLowerCase(Locale.ROOT);
-        return lname.contains("always") || (option.kind() != null && option.kind().contains("always"));
+        return lid.isEmpty() && lname.contains("always");
     }
 
     private static char pick(PermissionOption option, boolean[] taken) {
