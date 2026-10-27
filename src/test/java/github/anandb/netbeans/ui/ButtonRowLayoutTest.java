@@ -9,6 +9,7 @@ import java.util.Set;
 
 import javax.swing.JButton;
 import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
 
 import org.junit.jupiter.api.Test;
 
@@ -191,6 +192,47 @@ class ButtonRowLayoutTest {
 
         assertEquals(drawnHeight(row), row.getHeight(), "band must reserve what it draws\n" + describe(row));
         assertTrue(row.getHeight() > wideHeight, "narrowing must add rows\n" + describe(row));
+    }
+
+    /**
+     * pack() can measure the band while no ancestor has a width, reserving one row
+     * of height; the band then lays out more rows into that space. The first
+     * layout at a real width must ask the host for one more pass, and a repeat
+     * layout at the same width must not ask again (no revalidate loop).
+     */
+    @Test
+    void firstLayoutThatNoLongerFitsRequestsOneRelayout() throws Exception {
+        JButton[] buttons = devinButtons();
+        JPanel row = new JPanel(new ButtonRowLayout(8, 4));
+        for (JButton button : buttons) {
+            row.add(button);
+        }
+        int[] revalidations = new int[1];
+        JPanel host = new JPanel(new BorderLayout()) {
+            @Override
+            public void revalidate() {
+                revalidations[0]++;
+                super.revalidate();
+            }
+        };
+        host.add(row, BorderLayout.SOUTH);
+
+        int staleHeight = row.getPreferredSize().height; // measured with no width
+        int narrow = twoRowWidth(buttons) / 2;
+        host.setSize(new Dimension(narrow, 600));
+        row.setBounds(0, 0, narrow, staleHeight);
+        // Resizing the child makes Swing propagate its own invalidations; count
+        // only what the band itself requests from here on.
+        SwingUtilities.invokeAndWait(() -> { });
+        int baseline = revalidations[0];
+
+        row.doLayout();
+        SwingUtilities.invokeAndWait(() -> { });
+        assertEquals(baseline + 1, revalidations[0], "one relayout request when the rows no longer fit");
+
+        row.doLayout();
+        SwingUtilities.invokeAndWait(() -> { });
+        assertEquals(baseline + 1, revalidations[0], "the same width must not queue another pass");
     }
 
     @Test

@@ -7,6 +7,7 @@ import java.awt.Insets;
 import java.awt.LayoutManager;
 import java.util.ArrayList;
 import java.util.List;
+import javax.swing.SwingUtilities;
 
 /**
  * Right-aligned button rows, wrapping when the width runs out, with a preferred height
@@ -26,6 +27,10 @@ final class ButtonRowLayout implements LayoutManager {
 
     private final int hgap;
     private final int vgap;
+    /** Width of the last layout pass; {@code -1} before the first one. */
+    private int lastWidth = -1;
+    /** True while the deferred relayout below is already queued. */
+    private boolean relayoutQueued;
 
     ButtonRowLayout(int hgap, int vgap) {
         this.hgap = hgap;
@@ -56,8 +61,9 @@ final class ButtonRowLayout implements LayoutManager {
     public void layoutContainer(Container parent) {
         synchronized (parent.getTreeLock()) {
             int width = parent.getWidth();
+            List<List<Component>> rows = rows(parent, width);
             int y = 0;
-            for (List<Component> row : rows(parent, width)) {
+            for (List<Component> row : rows) {
                 int rowHeight = 0;
                 for (Component comp : row) {
                     rowHeight = Math.max(rowHeight, comp.getPreferredSize().height);
@@ -72,7 +78,30 @@ final class ButtonRowLayout implements LayoutManager {
                 }
                 y += rowHeight + vgap;
             }
+            requestRelayoutIfClipped(parent, width, rows.isEmpty() ? 0 : y - vgap);
         }
+    }
+
+    /**
+     * The first layout of a dialog can run before the host has a width of its own
+     * (a {@code pack()} measured the band while every ancestor reported zero).
+     * The preferred height is then one row, the band is given that much space and
+     * lays out more rows into it. Ask the host for exactly one more layout pass
+     * when a new width no longer fits the allotted height; the coalescing flag
+     * keeps repeated layouts from queueing again.
+     */
+    private void requestRelayoutIfClipped(Container parent, int width, int usedHeight) {
+        boolean widthChanged = width != lastWidth;
+        lastWidth = width;
+        Container host = parent.getParent();
+        if (!widthChanged || host == null || usedHeight <= parent.getHeight() || relayoutQueued) {
+            return;
+        }
+        relayoutQueued = true;
+        SwingUtilities.invokeLater(() -> {
+            relayoutQueued = false;
+            host.revalidate();
+        });
     }
 
     /**
@@ -91,7 +120,10 @@ final class ButtonRowLayout implements LayoutManager {
                 return width;
             }
         }
-        return 0;
+        // Nothing sized yet (pack-before-show): the band's own width is the best
+        // available answer, and 0 still degrades to a single row rather than
+        // throwing.
+        return parent.getWidth();
     }
 
     private Dimension measure(Container parent, int width) {
