@@ -26,7 +26,7 @@ public record AttachedFile(
 
     /** True when the agent should receive this as an ACP image block. */
     public boolean isImage() {
-        return mimeType.startsWith("image/");
+        return mimeType != null && mimeType.startsWith("image/");
     }
 
     /** Base64 of the raw bytes, encoded on demand. */
@@ -49,8 +49,8 @@ public record AttachedFile(
     }
 
     private boolean isTextual() {
-        return mimeType.startsWith("text/") || "application/json".equals(mimeType)
-                || "application/xml".equals(mimeType);
+        return mimeType != null && (mimeType.startsWith("text/") || "application/json".equals(mimeType)
+                || "application/xml".equals(mimeType));
     }
 
     private static String guessMimeType(String name) {

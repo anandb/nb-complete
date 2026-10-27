@@ -14,6 +14,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AttachmentManagerTest {
@@ -180,6 +181,23 @@ class AttachmentManagerTest {
      * carries a bounded body plus a marker, in both the embedded-resource and the
      * plain-text shape.
      */
+    /**
+     * The record is public and directly constructible, so a null MIME type must
+     * not throw while a prompt is being built: it is simply not an image and not
+     * textual, which routes it to the resource-link shape.
+     */
+    @Test
+    void nullMimeTypeIsNeitherImageNorTextual() {
+        AttachedFile file = new AttachedFile("blob", null, new byte[]{1, 2, 3}, 3, "file:/tmp/blob");
+        assertFalse(file.isImage());
+        assertNull(file.textContent());
+
+        AttachmentManager am = new AttachmentManager();
+        am.add(file);
+        Map<String, Object> block = am.buildFileBlocks(false).get(0);
+        assertEquals("resource_link", block.get("type"));
+    }
+
     @Test
     void oversizedTextIsTruncatedWithAMarker() throws IOException {
         Path f = tempDir.resolve("huge.txt");
