@@ -318,7 +318,7 @@ public class MiniAssistantDialog extends JDialog {
         FontMetrics fm = miniContextLabel.getFontMetrics(miniContextLabel.getFont());
         miniContextLabel.setMaximumSize(new Dimension(Integer.MAX_VALUE, fm.getHeight() * 2));
 
-        miniPermissionButtons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 4));
+        miniPermissionButtons = new JPanel(new ButtonRowLayout(8, 4));
         miniPermissionButtons.setOpaque(false);
 
         miniPermissionPanel.add(labelRow);
@@ -1011,12 +1011,17 @@ public class MiniAssistantDialog extends JDialog {
             }
 
             if (options != null && options.isArray() && !options.isEmpty()) {
+                List<PermissionOption> parsed = new ArrayList<>(options.size());
                 for (JsonNode opt : options) {
-                    PermissionOption po = PermissionOption.fromJson(opt);
+                    parsed.add(PermissionOption.fromJson(opt));
+                }
+                char[] mnemonics = PermissionOption.mnemonics(parsed);
+                for (int i = 0; i < parsed.size(); i++) {
+                    PermissionOption po = parsed.get(i);
 
                     JButton btn = new JButton(po.name());
                     btn.setFocusPainted(false);
-                    char mnemonic = po.mnemonic();
+                    char mnemonic = mnemonics[i];
                     if (mnemonic != 0) {
                         btn.setMnemonic(mnemonic);
                     }

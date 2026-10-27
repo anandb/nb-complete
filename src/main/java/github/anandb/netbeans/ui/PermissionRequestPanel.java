@@ -19,6 +19,7 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
@@ -150,8 +151,10 @@ final class PermissionRequestPanel extends JPanel {
         contentScroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
         content.add(contentScroll, BorderLayout.CENTER);
 
-        // Row 2: buttons right-aligned, pinned to the bottom so they never scroll away
-        buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        // Row 2: buttons right-aligned, pinned to the bottom so they never scroll away.
+        // A harness can send six options (Devin); ButtonRowLayout wraps them two rows
+        // deep and reports the wrapped height, so none of them is clipped.
+        buttonPanel = new JPanel(new ButtonRowLayout(8, 4));
         buttonPanel.setOpaque(false);
         content.add(buttonPanel, BorderLayout.SOUTH);
 
@@ -447,26 +450,38 @@ final class PermissionRequestPanel extends JPanel {
         }
 
         if (options != null && options.isArray() && !options.isEmpty()) {
+            List<PermissionOption> parsed = new ArrayList<>(options.size());
             for (JsonNode opt : options) {
-                PermissionOption po = PermissionOption.fromJson(opt);
+                parsed.add(PermissionOption.fromJson(opt));
+            }
+            char[] mnemonics = PermissionOption.mnemonics(parsed);
+            for (int i = 0; i < parsed.size(); i++) {
+                PermissionOption po = parsed.get(i);
+                char mnemonic = mnemonics[i];
 
                 JButton btn;
                 if (po.kind().contains("allow")) {
                     btn = createButton(po.name(), theme.permissionGrantFg(),
                             theme.permissionGrantBg(), theme.permissionGrantBorder());
-                    applyMnemonic(btn, po);
-                    if ("Always Allow".equalsIgnoreCase(po.name())) {
+                    applyMnemonic(btn, mnemonic);
+                    if (po.name().toLowerCase(Locale.ROOT).contains("always")) {
                         btn.setToolTipText(NbBundle.getMessage(PermissionRequestPanel.class, "HINT_AlwaysAllow"));
                     }
-                    allowAction = () -> {
-                        pendingResponse.complete(po.id());
-                        slideClose();
-                        fireResult(po.name(), true);
-                    };
+                    // Ctrl+Alt+A is labelled "Allow Once", so it must answer the first
+                    // allow option (the plain/once one). Taking the last would turn the
+                    // shortcut into a permanent policy change — Devin's last allow
+                    // option is "Yes, switch to bypass mode".
+                    if (allowAction == null) {
+                        allowAction = () -> {
+                            pendingResponse.complete(po.id());
+                            slideClose();
+                            fireResult(po.name(), true);
+                        };
+                    }
                 } else if (po.kind().contains("reject") || po.kind().contains("deny")) {
                     btn = createButton(po.name(), theme.permissionDenyFg(),
                             theme.permissionDenyBg(), theme.permissionDenyBorder());
-                    applyMnemonic(btn, po);
+                    applyMnemonic(btn, mnemonic);
                 } else {
                     btn = createButton(po.name(), null, null, null);
                 }
@@ -509,9 +524,8 @@ final class PermissionRequestPanel extends JPanel {
         }
     }
 
-    /** Applies the option's mnemonic; options with an unknown kind get none. */
-    private static void applyMnemonic(JButton btn, PermissionOption po) {
-        char mnemonic = po.mnemonic();
+    /** Applies a row mnemonic; options with an unknown kind get none. */
+    private static void applyMnemonic(JButton btn, char mnemonic) {
         if (mnemonic != 0) {
             btn.setMnemonic(mnemonic);
         }
