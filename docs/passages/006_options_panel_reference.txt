@@ -10,7 +10,9 @@ Customise the plugin behavior by navigating to `Tools > Options > BeanBot`. Here
 
 Additionally, the plugin includes a background **Update Checker Service** that automatically queries for new releases (with randomised intervals between 16 and 24 hours). You can toggle the update checks under `Tools > Options > BeanBot > Check for updates`. When an update is found, you will be prompted with a dialog to download the update immediately, get reminded later, or skip the version entirely.
 
-This page describes every preference in the panel, organised into six sections. All changes take effect when you click **Apply** or **OK**.
+This page describes every preference in the panel, organised into six sections.
+
+Two markers next to an option name tell you when its value takes effect. **· needs restart** means the running IDE only reads that value while it starts, so the change applies after you restart NetBeans — a bar at the top of the panel lists what is still waiting, and your sessions are restored automatically after the restart. **· applies to new sessions** means the change applies to sessions you create from then on; sessions already open keep the value they started with. **· needs session reload** means the current chat keeps the old setting until its history is reloaded. Options without a marker take effect as soon as you click **Apply** or **OK**.
 
 ##### 1. Assistant Service
 
@@ -40,7 +42,7 @@ This page describes every preference in the panel, organised into six sections. 
 <tbody>
 <tr><td><strong>Echo user input immediately (Local Echo)</strong></td><td>On</td><td>Renders your message instantly in the chat while the server is processing, instead of waiting for the first response.</td></tr>
 <tr><td><strong>Session Idle Timeout (seconds)</strong></td><td>600</td><td>How long (0–3600, step 5) a request may sit idle — with no data arriving from the server — before it is failed. This is an <em>idle</em> timeout, not an absolute deadline, so long-running responses that keep streaming are never cut off.</td></tr>
-<tr><td><strong>Combine tool and thought bubbles into a single accordion</strong></td><td>On</td><td>Groups tool outputs and reasoning into one expandable header instead of separate bubbles. Changing this reloads the current session.</td></tr>
+<tr><td><strong>Combine tool and thought bubbles into a single accordion</strong></td><td>On</td><td>Groups tool outputs and reasoning into one expandable header instead of separate bubbles. Takes effect after the session is reloaded. Marked <em>· needs session reload</em>.</td></tr>
 <tr><td><strong>Auto-backup uncommitted changes on turn start (git/hg) (Experimental)</strong></td><td>On</td><td>Stashes uncommitted changes in git/hg repositories before each turn, so the AI can be rolled back safely.</td></tr>
 <tr><td><strong>Max Displayed Messages</strong></td><td>100</td><td>The maximum number of visible bubbles (10–200, step 5) kept in the chat panel before older ones are trimmed from the view to conserve memory. The full history remains on the server and can be reloaded.</td></tr>
 </tbody>
@@ -61,7 +63,7 @@ This page describes every preference in the panel, organised into six sections. 
 <tr><td><strong>Enable Copy All in Action Items</strong></td><td>On</td><td>Adds a copy button to NetBeans' Action Items toolbar that copies every task in the active scope and filters — including tasks hidden inside collapsed groups — as a plain-text list, with file and location details when available.</td></tr>
 <tr><td><strong>Enable Mini Assistant</strong></td><td>On</td><td>Decides where <strong>Send to Assistant</strong> / <strong>Ask Assistant</strong> actions open: the floating mini dialog (enabled) or the main sidebar (disabled).</td></tr>
 <tr><td><strong>Enable Task Repository</strong></td><td>On</td><td>Enables the todo.txt task management feature. When disabled, no task repositories are loaded, the Tasks Dashboard is hidden, and AI task tools (e.g. <code>add&#95;task</code>) are unavailable.</td></tr>
-<tr><td><strong>Enable ACP server restart on project switch (Experimental)</strong></td><td>Off</td><td>Binds the ACP server's working directory to the project of the session being opened, restarting the server when that project changes. Off by default while the feature stabilises; a restart terminates every session the running server is serving. When disabled, the server keeps the directory it was started with and only a manual restart or an IDE restart rebinds it. Requires an IDE restart to apply.</td></tr>
+<tr><td><strong>Enable ACP server restart on project switch (Experimental)</strong></td><td>Off</td><td>Binds the ACP server's working directory to the project of the session being opened, restarting the server when that project changes. Off by default while the feature stabilises; the panel shows a note that a project switch restarts the server and ends every session it is serving. When disabled, the server keeps the directory it was started with and only a manual restart or an IDE restart rebinds it. Marked <em>· needs restart</em>.</td></tr>
 </tbody>
 </table>
 
@@ -71,8 +73,8 @@ This page describes every preference in the panel, organised into six sections. 
 <thead><tr><th>Preference</th><th>Default</th><th>Description</th></tr></thead>
 <tbody>
 <tr><td><strong>Custom User Icon (PNG)</strong></td><td>(empty)</td><td>Path to a PNG used as your avatar in chat. Click <strong>Browse...</strong> to pick one, or right-click the preview to clear it. Changing it reloads the session.</td></tr>
-<tr><td><strong>Toolbar Icon Size (requires restart)</strong></td><td>24</td><td>Icon size for the assistant toolbar: 16, 24, 28, 32, or 48. Requires an IDE restart to apply.</td></tr>
-<tr><td><strong>Chat Font Size</strong></td><td>Inherited</td><td>Font size for chat text: Inherited (uses the theme), or 10, 11, 12, 13, 14, 16.</td></tr>
+<tr><td><strong>Toolbar Icon Size</strong></td><td>24</td><td>Icon size for the assistant toolbar: 16, 24, 28, 32, or 48. Marked <em>· needs restart</em>.</td></tr>
+<tr><td><strong>Chat Font Size</strong></td><td>Inherited</td><td>Font size for chat text: Inherited (uses the theme), or 10, 11, 12, 13, 14, 16. Existing chats keep their current size until the session is reloaded. Marked <em>· needs session reload</em>.</td></tr>
 </tbody>
 </table>
 
@@ -81,7 +83,7 @@ This page describes every preference in the panel, organised into six sections. 
 <table class="ug-table">
 <thead><tr><th>Preference</th><th>Default</th><th>Description</th></tr></thead>
 <tbody>
-<tr><td><strong>Enable Session Preamble</strong></td><td>On</td><td>Controls the startup prompt sent as the first user message for new chats: the bundled critical rules, any WSL guidance, and the session preamble. When disabled, no startup prompt is sent at all. When unchecked, the pencil button next to it is disabled.</td></tr>
+<tr><td><strong>Enable Session Preamble</strong></td><td>On</td><td>Controls the startup prompt sent as the first user message for new chats: the bundled critical rules, any WSL guidance, and the session preamble. When disabled, no startup prompt is sent at all. When unchecked, the pencil button next to it is disabled. Marked <em>· applies to new sessions</em>.</td></tr>
 <tr><td><strong>Pencil button</strong></td><td>—</td><td>Opens the preamble editor. The session preamble is sent as part of the first user message for new chats. Use <code>---</code> on its own line as a message separator. Right-click the text area to <strong>Clear</strong> it or <strong>Reset to default</strong>.</td></tr>
 </tbody>
 </table>

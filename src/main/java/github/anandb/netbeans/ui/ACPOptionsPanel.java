@@ -2,8 +2,11 @@ package github.anandb.netbeans.ui;
 
 import java.io.File;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.prefs.Preferences;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.swing.JFileChooser;
 import javax.swing.filechooser.FileNameExtensionFilter;
@@ -11,6 +14,7 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 import github.anandb.netbeans.support.BinaryResolver;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.ShortcutUtils;
+import github.anandb.netbeans.support.XmlUtils;
 import org.netbeans.api.editor.mimelookup.MimeLookup;
 import org.netbeans.api.editor.mimelookup.MimePath;
 import org.netbeans.api.editor.settings.SimpleValueNames;
@@ -18,6 +22,7 @@ import org.openide.util.NbBundle;
 import org.openide.util.NbPreferences;
 
 import java.awt.Component;
+import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -29,6 +34,7 @@ import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.Box;
 import javax.swing.border.TitledBorder;
+import javax.swing.border.EmptyBorder;
 
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
@@ -59,6 +65,17 @@ import github.anandb.netbeans.ui.platform.SessionService;
 public class ACPOptionsPanel extends JPanel implements OptionsPanel {
     private static final Logger LOG = Logger.from(ACPOptionsPanel.class);
     private static final long serialVersionUID = 1L;
+    /** Target tooltip line length in characters; the pixel width is derived from the LAF font. */
+    private static final int TOOLTIP_CHARS = 85;
+    /** Never wrap narrower than this, even if the LAF reports a tiny tooltip font. */
+    private static final int MIN_TOOLTIP_WIDTH = 420;
+    /** Tokens longer than this get zero-width breaks after path/word separators. */
+    private static final int LONG_TOKEN_CHARS = 40;
+    /** Swing's HTML view has no word-break, so long paths are broken after these characters. */
+    private static final Pattern LONG_TOKEN = Pattern.compile("[^\\s<>]{" + LONG_TOKEN_CHARS + ",}");
+    private static final char ZERO_WIDTH_SPACE = '\u200B';
+    private static volatile Font cachedTooltipFont;
+    private static volatile int cachedTooltipWidth;
     private final SessionService sessionService = PlatformBridge.sessionServiceSafe();
     private final ACPOptionsPanelController controller;
     private JLabel jLabel1;
@@ -93,6 +110,9 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
     private JTextField iconPathField;
     private JButton iconBrowseButton;
     private JLabel iconPreviewLabel;
+    private JPanel pendingRestartBar;
+    private JLabel pendingRestartTitle;
+    private JLabel pendingRestartBody;
     private transient IconPreviewManager iconPreviewManager;
     private JComboBox<String> toolbarIconCombo;
     private JComboBox<String> chatFontCombo;
@@ -114,6 +134,8 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
     private void initComponents() {
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+
+        createPendingRestartBar();
 
         jLabel1 = new JLabel();
         pathCombo = new JComboBox<>();
@@ -152,12 +174,12 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         servicePanel.setLayout(new GridBagLayout());
         int row = 0;
 
-        jLabel1.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_ExecutablePath"));
-        jLabel1.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_ExecutablePath"));
+        jLabel1.setText(scopedLabel("LBL_ExecutablePath", PluginSettings.Effect.IDE_RESTART));
+        jLabel1.setToolTipText(tooltip("TT_ExecutablePath"));
         servicePanel.add(jLabel1, UIUtils.createGbc(0, row, 0.0, 0, GridBagConstraints.NONE, GridBagConstraints.WEST,
                                        new Insets(0, 12, 5, 5)));
 
-        pathCombo.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_ExecutablePath"));
+        pathCombo.setToolTipText(tooltip("TT_ExecutablePath"));
         pathCombo.addActionListener(evt -> {
             if (pathCombo.isPopupVisible()) {
                 userEditedPath = true;
@@ -183,7 +205,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
                                          GridBagConstraints.WEST, new Insets(0, 0, 0, 5)));
 
         browseButton.setText(NbBundle.getMessage(ACPOptionsPanel.class, "BTN_Browse"));
-        browseButton.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_BrowseExecutable"));
+        browseButton.setToolTipText(tooltip("TT_BrowseExecutable"));
         browseButton.addActionListener(evt -> browseButtonActionPerformed());
         servicePanel.add(browseButton, UIUtils.createGbc(2, row, 0.0, 0, GridBagConstraints.NONE, GridBagConstraints.WEST,
                                             new Insets(0, 0, 5, 0)));
@@ -197,8 +219,8 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         errGbc.ipady = 0;
         servicePanel.add(pathErrorLabel, errGbc);
 
-        argsLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_ProcessArguments"));
-        argsLabel.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_ProcessArguments"));
+        argsLabel.setText(scopedLabel("LBL_ProcessArguments", PluginSettings.Effect.IDE_RESTART));
+        argsLabel.setToolTipText(tooltip("TT_ProcessArguments"));
         servicePanel.add(argsLabel, UIUtils.createGbc(0, ++row, 0.0, 0, GridBagConstraints.NONE, GridBagConstraints.WEST,
                                          new Insets(0, 12, 5, 5)));
 
@@ -206,7 +228,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
             @Override
             public void keyReleased(KeyEvent evt) { controller.changed(); }
         });
-        argsField.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_ProcessArguments"));
+        argsField.setToolTipText(tooltip("TT_ProcessArguments"));
         servicePanel.add(argsField, UIUtils.createGbc(1, row, 1.0, 0, GridBagConstraints.HORIZONTAL,
                                          GridBagConstraints.WEST, new Insets(0, 0, 2, 5)));
 
@@ -219,8 +241,8 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         servicePanel.add(argsHintLabel, hintGbc);
 
         useWslCheckbox = new JCheckBox();
-        useWslCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_UseWsl"));
-        useWslCheckbox.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_UseWsl"));
+        useWslCheckbox.setText(scopedLabel("LBL_UseWsl", PluginSettings.Effect.IDE_RESTART));
+        useWslCheckbox.setToolTipText(tooltip("TT_UseWsl"));
         useWslCheckbox.addActionListener(evt -> controller.changed());
         boolean isWindows = System.getProperty("os.name", "").toLowerCase().contains("win");
         if (isWindows) {
@@ -238,37 +260,37 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         systemPanel.setLayout(new GridBagLayout());
 
         checkForUpdatesCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_CheckForUpdates"));
-        checkForUpdatesCheckbox.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_CheckForUpdates"));
+        checkForUpdatesCheckbox.setToolTipText(tooltip("TT_CheckForUpdates"));
         checkForUpdatesCheckbox.addActionListener(evt -> controller.changed());
         systemPanel.add(checkForUpdatesCheckbox, UIUtils.createGbc(0, 0, 1.0, 0, GridBagConstraints.HORIZONTAL,
                 GridBagConstraints.WEST, new Insets(0, 12, 5, 0)));
 
-        mcpServerCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_EnableMcpServers"));
-        mcpServerCheckbox.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_EnableMcpServers"));
+        mcpServerCheckbox.setText(scopedLabel("LBL_EnableMcpServers", PluginSettings.Effect.IDE_RESTART));
+        mcpServerCheckbox.setToolTipText(tooltip("TT_EnableMcpServers"));
         mcpServerCheckbox.addActionListener(evt -> controller.changed());
         systemPanel.add(mcpServerCheckbox, UIUtils.createGbc(0, 1, 1.0, 0, GridBagConstraints.HORIZONTAL,
                 GridBagConstraints.WEST, new Insets(0, 12, 5, 0)));
 
-        JLabel mcpPortLabel = new JLabel(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_McpServerPort"));
-        mcpPortLabel.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_McpServerPort"));
+        JLabel mcpPortLabel = new JLabel(scopedLabel("LBL_McpServerPort", PluginSettings.Effect.IDE_RESTART));
+        mcpPortLabel.setToolTipText(tooltip("TT_McpServerPort"));
         systemPanel.add(mcpPortLabel, UIUtils.createGbc(2, 1, 0.0, 0, GridBagConstraints.NONE,
                 GridBagConstraints.WEST, new Insets(0, 15, 5, 5)));
         SpinnerNumberModel mcpPortModel = new SpinnerNumberModel(0, 0, 65535, 1);
         mcpPortSpinner = new JSpinner(mcpPortModel);
-        mcpPortSpinner.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_McpServerPort"));
+        mcpPortSpinner.setToolTipText(tooltip("TT_McpServerPort"));
         ((JSpinner.DefaultEditor) mcpPortSpinner.getEditor()).getTextField().setColumns(6);
         mcpPortSpinner.addChangeListener(evt -> controller.changed());
         systemPanel.add(mcpPortSpinner, UIUtils.createGbc(3, 1, 0.0, 0, GridBagConstraints.NONE,
                 GridBagConstraints.EAST, new Insets(0, 0, 5, 12)));
 
         JLabel lineHeightLabel = new JLabel(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_LineHeightCorrection"));
-        lineHeightLabel.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_LineHeightCorrection"));
+        lineHeightLabel.setToolTipText(tooltip("TT_LineHeightCorrection"));
         systemPanel.add(lineHeightLabel, UIUtils.createGbc(2, 0, 0.0, 0, GridBagConstraints.NONE,
                 GridBagConstraints.WEST, new Insets(0, 15, 5, 5)));
 
         SpinnerNumberModel lineHeightModel = new SpinnerNumberModel(1.0d, 0.5d, 3.0d, 0.1d);
         lineHeightCorrectionSpinner = new JSpinner(lineHeightModel);
-        lineHeightCorrectionSpinner.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_LineHeightCorrection"));
+        lineHeightCorrectionSpinner.setToolTipText(tooltip("TT_LineHeightCorrection"));
         ((JSpinner.DefaultEditor) lineHeightCorrectionSpinner.getEditor()).getTextField().setColumns(6);
         lineHeightCorrectionSpinner.addChangeListener(evt -> controller.changed());
         systemPanel.add(lineHeightCorrectionSpinner, UIUtils.createGbc(3, 0, 0.0, 0, GridBagConstraints.NONE,
@@ -283,47 +305,43 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         row = 0;
 
         echoCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_EchoInput"));
-        echoCheckbox.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_EchoInput"));
+        echoCheckbox.setToolTipText(tooltip("TT_EchoInput"));
         echoCheckbox.addActionListener(evt -> controller.changed());
         behaviorPanel.add(echoCheckbox, UIUtils.createGbc(0, row, 1.0, 0, GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST,
                 new Insets(0, 12, 5, 0)));
 
         JLabel idleTimeoutLabel = new JLabel(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_SessionIdleTimeout"));
-        idleTimeoutLabel.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_SessionIdleTimeout"));
+        idleTimeoutLabel.setToolTipText(tooltip("TT_SessionIdleTimeout"));
         behaviorPanel.add(idleTimeoutLabel, UIUtils.createGbc(2, row, 0.0, 0, GridBagConstraints.NONE,
                 GridBagConstraints.WEST, new Insets(0, 15, 5, 5)));
         SpinnerNumberModel spinnerModel = new SpinnerNumberModel(600, 0, 3600, 5);
         idleTimeoutSpinner = new JSpinner(spinnerModel);
         ((JSpinner.DefaultEditor) idleTimeoutSpinner.getEditor()).getTextField().setColumns(4);
-        ((JSpinner.DefaultEditor) idleTimeoutSpinner.getEditor()).getTextField()
-                .setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_SessionIdleTimeout"));
-        idleTimeoutSpinner.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_SessionIdleTimeout"));
+        idleTimeoutSpinner.setToolTipText(tooltip("TT_SessionIdleTimeout"));
         idleTimeoutSpinner.addChangeListener(evt -> controller.changed());
         behaviorPanel.add(idleTimeoutSpinner, UIUtils.createGbc(3, row, 0.0, 0, GridBagConstraints.NONE,
                 GridBagConstraints.EAST, new Insets(0, 0, 5, 12)));
 
-        combineCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_CombineToolThought"));
-        combineCheckbox.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_CombineToolThought"));
+        combineCheckbox.setText(scopedLabel("LBL_CombineToolThought", PluginSettings.Effect.SESSION_RELOAD));
+        combineCheckbox.setToolTipText(tooltip("TT_CombineToolThought"));
         combineCheckbox.addActionListener(evt -> controller.changed());
         behaviorPanel.add(combineCheckbox, UIUtils.createGbc(0, ++row, 1.0, 0, GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST,
                 new Insets(0, 12, 5, 0)));
 
         JLabel maxMessagesLabel = new JLabel(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_MaxMessages"));
-        maxMessagesLabel.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_MaxMessages"));
+        maxMessagesLabel.setToolTipText(tooltip("TT_MaxMessages"));
         behaviorPanel.add(maxMessagesLabel, UIUtils.createGbc(2, row, 0.0, 0, GridBagConstraints.NONE,
                 GridBagConstraints.WEST, new Insets(0, 15, 5, 5)));
         SpinnerNumberModel maxMessagesModel = new SpinnerNumberModel(25, 10, 200, 5);
         maxMessagesSpinner = new JSpinner(maxMessagesModel);
         ((JSpinner.DefaultEditor) maxMessagesSpinner.getEditor()).getTextField().setColumns(4);
-        ((JSpinner.DefaultEditor) maxMessagesSpinner.getEditor()).getTextField()
-                .setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_MaxMessages"));
-        maxMessagesSpinner.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_MaxMessages"));
+        maxMessagesSpinner.setToolTipText(tooltip("TT_MaxMessages"));
         maxMessagesSpinner.addChangeListener(evt -> controller.changed());
         behaviorPanel.add(maxMessagesSpinner, UIUtils.createGbc(3, row, 0.0, 0, GridBagConstraints.NONE,
                 GridBagConstraints.EAST, new Insets(0, 0, 5, 12)));
 
         autoBackupChangesCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_AutoBackupChanges"));
-        autoBackupChangesCheckbox.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_AutoBackupChanges"));
+        autoBackupChangesCheckbox.setToolTipText(tooltip("TT_AutoBackupChanges"));
         autoBackupChangesCheckbox.addActionListener(evt -> controller.changed());
         behaviorPanel.add(autoBackupChangesCheckbox, UIUtils.createGbc(0, ++row, 1.0, 0, GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST,
                 new Insets(0, 12, 5, 0)));
@@ -331,11 +349,11 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         editPreambleButton = new JButton();
         editPreambleButton.setIcon(ThemeManager.getIcon("pencil.svg", 16));
         editPreambleButton.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_EditPreamble"));
-        editPreambleButton.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_PreambleEditor"));
+        editPreambleButton.setToolTipText(tooltip("TT_PreambleEditor"));
         editPreambleButton.addActionListener(evt -> openPreambleDialog());
 
-        preambleEnabledCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_PreambleEnabled"));
-        preambleEnabledCheckbox.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_PreambleEnabled"));
+        preambleEnabledCheckbox.setText(scopedLabel("LBL_PreambleEnabled", PluginSettings.Effect.NEW_SESSION));
+        preambleEnabledCheckbox.setToolTipText(tooltip("TT_PreambleEnabled"));
         preambleEnabledCheckbox.addActionListener(evt -> {
             editPreambleButton.setEnabled(preambleEnabledCheckbox.isSelected());
             controller.changed();
@@ -353,43 +371,43 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         actionsPanel.setLayout(new GridBagLayout());
 
         sortLinesCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_SortLines"));
-        sortLinesCheckbox.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_SortLines"));
+        sortLinesCheckbox.setToolTipText(tooltip("TT_SortLines"));
         sortLinesCheckbox.addActionListener(evt -> controller.changed());
         actionsPanel.add(sortLinesCheckbox, UIUtils.createGbc(0, 0, 1.0, 0, GridBagConstraints.HORIZONTAL,
                 GridBagConstraints.WEST, new Insets(0, 12, 5, 0)));
 
         compactJsonCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_CompactJson"));
-        compactJsonCheckbox.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_CompactJson"));
+        compactJsonCheckbox.setToolTipText(tooltip("TT_CompactJson"));
         compactJsonCheckbox.addActionListener(evt -> controller.changed());
         actionsPanel.add(compactJsonCheckbox, UIUtils.createGbc(0, 1, 1.0, 0, GridBagConstraints.HORIZONTAL,
                 GridBagConstraints.WEST, new Insets(0, 12, 5, 0)));
 
         searchWebCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_SearchWeb"));
-        searchWebCheckbox.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_SearchWeb"));
+        searchWebCheckbox.setToolTipText(tooltip("TT_SearchWeb"));
         searchWebCheckbox.addActionListener(evt -> controller.changed());
         actionsPanel.add(searchWebCheckbox, UIUtils.createGbc(0, 2, 1.0, 0, GridBagConstraints.HORIZONTAL,
                 GridBagConstraints.WEST, new Insets(0, 12, 5, 0)));
 
         showAnnotationsCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_ShowAnnotations"));
-        showAnnotationsCheckbox.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_ShowAnnotations"));
+        showAnnotationsCheckbox.setToolTipText(tooltip("TT_ShowAnnotations"));
         showAnnotationsCheckbox.addActionListener(evt -> controller.changed());
         actionsPanel.add(showAnnotationsCheckbox, UIUtils.createGbc(0, 3, 1.0, 0, GridBagConstraints.HORIZONTAL,
                 GridBagConstraints.WEST, new Insets(0, 12, 5, 0)));
 
         markdownProjectCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_EnableMarkdownProject"));
-        markdownProjectCheckbox.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_EnableMarkdownProject"));
+        markdownProjectCheckbox.setToolTipText(tooltip("TT_EnableMarkdownProject"));
         markdownProjectCheckbox.addActionListener(evt -> controller.changed());
         actionsPanel.add(markdownProjectCheckbox, UIUtils.createGbc(0, 4, 1.0, 0, GridBagConstraints.HORIZONTAL,
                 GridBagConstraints.WEST, new Insets(0, 12, 5, 0)));
 
         viewFileHistoryCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_ViewFileHistory"));
-        viewFileHistoryCheckbox.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_ViewFileHistory"));
+        viewFileHistoryCheckbox.setToolTipText(tooltip("TT_ViewFileHistory"));
         viewFileHistoryCheckbox.addActionListener(evt -> controller.changed());
         actionsPanel.add(viewFileHistoryCheckbox, UIUtils.createGbc(1, 0, 1.0, 0, GridBagConstraints.HORIZONTAL,
                 GridBagConstraints.WEST, new Insets(0, 25, 5, 0)));
 
         stashDiffCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_StashDiff"));
-        stashDiffCheckbox.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_StashDiff"));
+        stashDiffCheckbox.setToolTipText(tooltip("TT_StashDiff"));
         stashDiffCheckbox.addActionListener(evt -> controller.changed());
         actionsPanel.add(stashDiffCheckbox, UIUtils.createGbc(1, 1, 1.0, 0, GridBagConstraints.HORIZONTAL,
                 GridBagConstraints.WEST, new Insets(0, 25, 5, 0)));
@@ -397,36 +415,46 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         String quickJumpShortcut = ShortcutUtils.resolveShortcut("github.anandb.netbeans.ui.GoToFileAction");
         quickJumpCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_QuickJump")
                 + (quickJumpShortcut.isEmpty() ? "" : " (" + quickJumpShortcut + ")"));
-        quickJumpCheckbox.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_QuickJump"));
+        quickJumpCheckbox.setToolTipText(tooltip("TT_QuickJump"));
         quickJumpCheckbox.addActionListener(evt -> controller.changed());
         actionsPanel.add(quickJumpCheckbox, UIUtils.createGbc(1, 2, 1.0, 0, GridBagConstraints.HORIZONTAL,
                 GridBagConstraints.WEST, new Insets(0, 25, 5, 0)));
 
         copyAllItemsCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_CopyAllItems"));
-        copyAllItemsCheckbox.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_CopyAllItems"));
+        copyAllItemsCheckbox.setToolTipText(tooltip("TT_CopyAllItems"));
         copyAllItemsCheckbox.addActionListener(evt -> controller.changed());
         actionsPanel.add(copyAllItemsCheckbox, UIUtils.createGbc(0, 5, 1.0, 0, GridBagConstraints.HORIZONTAL,
                 GridBagConstraints.WEST, new Insets(0, 12, 5, 0)));
 
         miniAssistantCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_EnableMiniAssistant"));
-        miniAssistantCheckbox.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_EnableMiniAssistant"));
+        miniAssistantCheckbox.setToolTipText(tooltip("TT_EnableMiniAssistant"));
         miniAssistantCheckbox.addActionListener(evt -> controller.changed());
         actionsPanel.add(miniAssistantCheckbox, UIUtils.createGbc(1, 3, 1.0, 0, GridBagConstraints.HORIZONTAL,
                 GridBagConstraints.WEST, new Insets(0, 25, 5, 0)));
 
         taskRepositoryCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_EnableTaskRepository"));
-        taskRepositoryCheckbox.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_EnableTaskRepository"));
+        taskRepositoryCheckbox.setToolTipText(tooltip("TT_EnableTaskRepository"));
         taskRepositoryCheckbox.addActionListener(evt -> controller.changed());
         actionsPanel.add(taskRepositoryCheckbox, UIUtils.createGbc(1, 4, 1.0, 0, GridBagConstraints.HORIZONTAL,
                 GridBagConstraints.WEST, new Insets(0, 25, 5, 0)));
 
         projectSwitchRestartCheckbox.setText(
-                NbBundle.getMessage(ACPOptionsPanel.class, "LBL_ProjectSwitchRestart"));
-        projectSwitchRestartCheckbox.setToolTipText(
-                NbBundle.getMessage(ACPOptionsPanel.class, "TT_ProjectSwitchRestart"));
+                scopedLabel("LBL_ProjectSwitchRestart", PluginSettings.Effect.IDE_RESTART));
+        projectSwitchRestartCheckbox.setToolTipText(tooltip("TT_ProjectSwitchRestart"));
         projectSwitchRestartCheckbox.addActionListener(evt -> controller.changed());
         actionsPanel.add(projectSwitchRestartCheckbox, UIUtils.createGbc(0, 6, 1.0, 0, GridBagConstraints.HORIZONTAL,
                 GridBagConstraints.WEST, new Insets(0, 12, 5, 0)));
+
+        // Visible without a hover: the cost of this option must be readable before it is ticked.
+        JLabel projectSwitchHintLabel = new JLabel(
+                NbBundle.getMessage(ACPOptionsPanel.class, "HLP_ProjectSwitchRestart"));
+        projectSwitchHintLabel.setForeground(UIManager.getColor("Label.disabledForeground"));
+        projectSwitchHintLabel.setFont(projectSwitchHintLabel.getFont()
+                .deriveFont(Font.ITALIC, projectSwitchHintLabel.getFont().getSize() - 1f));
+        GridBagConstraints projectSwitchHintGbc = UIUtils.createGbc(0, 7, 1.0, 0, GridBagConstraints.HORIZONTAL,
+                GridBagConstraints.WEST, new Insets(0, 32, 5, 0));
+        projectSwitchHintGbc.gridwidth = 2;
+        actionsPanel.add(projectSwitchHintLabel, projectSwitchHintGbc);
 
         add(actionsPanel);
         add(Box.createVerticalStrut(4));
@@ -437,7 +465,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         row = 0;
 
         iconLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_UserIcon"));
-        iconLabel.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_UserIcon"));
+        iconLabel.setToolTipText(tooltip("TT_UserIcon"));
         appearancePanel.add(iconLabel, UIUtils.createGbc(0, row, 1.5, 0, GridBagConstraints.HORIZONTAL,
                 GridBagConstraints.WEST, new Insets(0, 12, 5, 5)));
 
@@ -448,12 +476,12 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
                 controller.changed();
             }
         });
-        iconPathField.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_UserIcon"));
+        iconPathField.setToolTipText(tooltip("TT_UserIcon"));
         appearancePanel.add(iconPathField, UIUtils.createGbc(1, row, 1.0, 0, GridBagConstraints.HORIZONTAL,
                                              GridBagConstraints.EAST, new Insets(0, 0, 5, 5)));
 
         iconBrowseButton.setText(NbBundle.getMessage(ACPOptionsPanel.class, "BTN_Browse"));
-        iconBrowseButton.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_UserIcon"));
+        iconBrowseButton.setToolTipText(tooltip("TT_UserIcon"));
         iconBrowseButton.addActionListener(evt -> iconBrowseButtonActionPerformed());
         appearancePanel.add(iconBrowseButton, UIUtils.createGbc(2, row, 0.0, 0, GridBagConstraints.NONE,
                                                 GridBagConstraints.WEST, new Insets(0, 0, 5, 0)));
@@ -464,26 +492,27 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         appearancePanel.add(iconPreviewLabel, previewGbc);
 
         row++;
-        JLabel toolbarIconLabel = new JLabel(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_ToolbarIconSize"));
-        toolbarIconLabel.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_ToolbarIconSize"));
+        JLabel toolbarIconLabel = new JLabel(scopedLabel("LBL_ToolbarIconSize",
+                PluginSettings.Effect.IDE_RESTART));
+        toolbarIconLabel.setToolTipText(tooltip("TT_ToolbarIconSize"));
         appearancePanel.add(toolbarIconLabel, UIUtils.createGbc(0, row, 1.5, 0, GridBagConstraints.HORIZONTAL,
                 GridBagConstraints.WEST, new Insets(0, 12, 5, 5)));
 
         toolbarIconCombo = new JComboBox<>(new String[]{"16", "24", "28", "32", "48"});
-        toolbarIconCombo.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_ToolbarIconSize"));
+        toolbarIconCombo.setToolTipText(tooltip("TT_ToolbarIconSize"));
         toolbarIconCombo.setPrototypeDisplayValue("100");
         toolbarIconCombo.addActionListener(evt -> controller.changed());
         appearancePanel.add(toolbarIconCombo, UIUtils.createGbc(2, row, 0.0, 0, GridBagConstraints.NONE,
                 GridBagConstraints.EAST, new Insets(0, 0, 5, 5)));
 
         row++;
-        JLabel chatFontLabel = new JLabel(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_ChatFontSize"));
-        chatFontLabel.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_ChatFontSize"));
+        JLabel chatFontLabel = new JLabel(scopedLabel("LBL_ChatFontSize", PluginSettings.Effect.SESSION_RELOAD));
+        chatFontLabel.setToolTipText(tooltip("TT_ChatFontSize"));
         appearancePanel.add(chatFontLabel, UIUtils.createGbc(0, row, 1.5, 0, GridBagConstraints.HORIZONTAL,
                 GridBagConstraints.WEST, new Insets(0, 12, 5, 5)));
 
         chatFontCombo = new JComboBox<>(new String[]{"Inherited", "10", "11", "12", "13", "14", "16", "18", "20", "22", "24"});
-        chatFontCombo.setToolTipText(NbBundle.getMessage(ACPOptionsPanel.class, "TT_ChatFontSize"));
+        chatFontCombo.setToolTipText(tooltip("TT_ChatFontSize"));
         chatFontCombo.setPrototypeDisplayValue("100");
         chatFontCombo.addActionListener(evt -> controller.changed());
         appearancePanel.add(chatFontCombo, UIUtils.createGbc(2, row, 0.0, 0, GridBagConstraints.NONE,
@@ -660,6 +689,8 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         mcpPortSpinner.setValue(PluginSettings.getMcpServerPort());
         useWslCheckbox.setSelected(PluginSettings.isUseWsl());
         updateGeminiModelHint();
+        // Reopening Options (including after Cancel) must still show what is outstanding.
+        refreshPendingRestartBar();
     }
 
     /** Shows a reminder to change --model when the selected binary is Gemini. */
@@ -679,6 +710,157 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
     private String getExecutablePath() {
         Object item = pathCombo.getSelectedItem();
         return item != null ? item.toString().trim() : "";
+    }
+
+    /**
+     * Permanent scope marker for an option whose value the running IDE only reads at
+     * startup (or at session creation). Appended to the control's own text so it is part
+     * of the accessible name and mirrors under RTL.
+     */
+    private static String scopeSuffix(PluginSettings.Effect effect) {
+        return switch (effect) {
+            case IDE_RESTART -> NbBundle.getMessage(ACPOptionsPanel.class, "SCOPE_Restart");
+            case NEW_SESSION -> NbBundle.getMessage(ACPOptionsPanel.class, "SCOPE_NewSession");
+            case SESSION_RELOAD -> NbBundle.getMessage(ACPOptionsPanel.class, "SCOPE_SessionReload");
+            case IMMEDIATE -> "";
+        };
+    }
+
+    /** Bundle label plus its permanent scope marker. */
+    private static String scopedLabel(String key, PluginSettings.Effect effect) {
+        return NbBundle.getMessage(ACPOptionsPanel.class, key) + scopeSuffix(effect);
+    }
+
+    /** Bundle-backed tooltip, wrapped so long hints stay readable. */
+    private static String tooltip(String key) {
+        return wrapTooltip(NbBundle.getMessage(ACPOptionsPanel.class, key));
+    }
+
+    /**
+     * Wraps a tooltip into HTML at roughly {@link #TOOLTIP_CHARS} columns. Values that
+     * already start with {@code <html>} pass through untouched — nesting a second
+     * {@code <body>} would drop the width. Newlines become line breaks, and long
+     * unbroken tokens (paths, commands) get zero-width breaks because Swing's HTML
+     * view cannot break a word.
+     */
+    static String wrapTooltip(String raw) {
+        if (raw == null || raw.isEmpty() || raw.startsWith("<html>")) {
+            return raw;
+        }
+        String escaped = XmlUtils.escapeHtml(raw).replace("\n", "<br>");
+        return "<html><body style='width:" + tooltipWidth() + "px'>"
+                + breakLongTokens(escaped) + "</body></html>";
+    }
+
+    /** Inserts zero-width breaks into over-long tokens so Swing can wrap them. */
+    private static String breakLongTokens(String text) {
+        Matcher matcher = LONG_TOKEN.matcher(text);
+        StringBuilder out = new StringBuilder(text.length() + 16);
+        while (matcher.find()) {
+            matcher.appendReplacement(out, Matcher.quoteReplacement(breakToken(matcher.group())));
+        }
+        matcher.appendTail(out);
+        return out.toString();
+    }
+
+    private static String breakToken(String token) {
+        if (token.indexOf('&') >= 0 || token.indexOf(';') >= 0) {
+            return token;
+        }
+        StringBuilder out = new StringBuilder(token.length() + 8);
+        for (int i = 0; i < token.length(); i++) {
+            char c = token.charAt(i);
+            out.append(c);
+            boolean separator = c == '/' || c == '-' || c == '@' || c == '.';
+            if (separator && i < token.length() - 1) {
+                out.append(ZERO_WIDTH_SPACE);
+            }
+        }
+        return out.toString();
+    }
+
+    /** Tooltip width in pixels, measured from the LAF tooltip font and cached per font. */
+    private static int tooltipWidth() {
+        Font font = UIManager.getFont("ToolTip.font");
+        if (font == null) {
+            font = UIManager.getFont("Label.font");
+        }
+        if (font != null && font.equals(cachedTooltipFont)) {
+            return cachedTooltipWidth;
+        }
+        int charWidth = 7;
+        if (font != null) {
+            charWidth = Math.max(1, new JLabel().getFontMetrics(font).stringWidth("x"));
+        }
+        cachedTooltipFont = font;
+        cachedTooltipWidth = Math.max(MIN_TOOLTIP_WIDTH, charWidth * TOOLTIP_CHARS);
+        return cachedTooltipWidth;
+    }
+
+    /**
+     * Builds the transient "a restart is pending" bar. Text only: an IDE restart is not
+     * data loss, so the bar stays calm instead of turning into a warning (sessions live in
+     * the store and reload through {@code session/load}).
+     */
+    private void createPendingRestartBar() {
+        ColorTheme theme = ThemeManager.getCurrentTheme();
+        pendingRestartBar = new JPanel();
+        pendingRestartBar.setLayout(new BoxLayout(pendingRestartBar, BoxLayout.Y_AXIS));
+        pendingRestartBar.setAlignmentX(Component.LEFT_ALIGNMENT);
+        pendingRestartBar.setOpaque(true);
+        pendingRestartBar.setBackground(theme.sunkenBackground());
+        pendingRestartBar.setBorder(new EmptyBorder(6, 12, 6, 12));
+
+        pendingRestartTitle = new JLabel();
+        pendingRestartTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
+        pendingRestartBody = new JLabel(NbBundle.getMessage(ACPOptionsPanel.class, "RST_Pending_Body"));
+        pendingRestartBody.setAlignmentX(Component.LEFT_ALIGNMENT);
+        pendingRestartBody.setForeground(theme.mutedForeground());
+        pendingRestartBody.setFont(pendingRestartBody.getFont()
+                .deriveFont(pendingRestartBody.getFont().getSize() - 1f));
+
+        pendingRestartBar.add(pendingRestartTitle);
+        pendingRestartBar.add(pendingRestartBody);
+        pendingRestartBar.setVisible(false);
+        add(pendingRestartBar);
+        add(Box.createVerticalStrut(8));
+    }
+
+    /** Recomputes pending restarts from stored vs effective values and updates the bar. */
+    private void refreshPendingRestartBar() {
+        List<String> pending = PluginSettings.getAllPendingRestartKeys();
+        boolean visible = !pending.isEmpty();
+        if (visible) {
+            pendingRestartTitle.setText(pendingBarText(pending));
+            pendingRestartBar.setMaximumSize(new Dimension(Integer.MAX_VALUE,
+                    pendingRestartBar.getPreferredSize().height));
+        }
+        pendingRestartBar.setVisible(visible);
+        revalidate();
+        repaint();
+    }
+
+    private static String pendingBarText(List<String> keys) {
+        String first = pendingItemLabel(keys.get(0));
+        if (keys.size() == 1) {
+            return NbBundle.getMessage(ACPOptionsPanel.class, "RST_Pending_Single", first);
+        }
+        return NbBundle.getMessage(ACPOptionsPanel.class, "RST_Pending_Multiple", first, keys.size() - 1);
+    }
+
+    /** Short display name for a restart-scoped preference inside the bar. */
+    private static String pendingItemLabel(String key) {
+        String bundleKey = switch (key) {
+            case PreferenceKeys.ACP_EXECUTABLE_PATH -> "RST_Item_Path";
+            case PreferenceKeys.PROCESS_ARGUMENTS -> "RST_Item_Args";
+            case PreferenceKeys.USE_WSL -> "RST_Item_Wsl";
+            case PreferenceKeys.TOOLBAR_ICON_SIZE -> "RST_Item_IconSize";
+            case PreferenceKeys.PROJECT_SWITCH_RESTART_ENABLED -> "RST_Item_ProjectSwitch";
+            case PreferenceKeys.MCP_SERVER_ENABLED -> "RST_Item_McpEnabled";
+            case PreferenceKeys.MCP_SERVER_PORT -> "RST_Item_McpPort";
+            default -> null;
+        };
+        return bundleKey == null ? key : NbBundle.getMessage(ACPOptionsPanel.class, bundleKey);
     }
 
     public void store() {
@@ -701,8 +883,6 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
             PluginSettings.setPreamble(preambleText);
         }
         PluginSettings.setPreambleEnabled(preambleEnabledCheckbox.isSelected());
-        boolean changedCombine = combineCheckbox.isSelected()
-                != PluginSettings.isCombineToolThoughtEnabled();
         PluginSettings.setEchoUserInput(echoCheckbox.isSelected());
         PluginSettings.setCombineToolThoughtEnabled(combineCheckbox.isSelected());
         PluginSettings.setAutoBackupChanges(autoBackupChangesCheckbox.isSelected());
@@ -711,14 +891,6 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         editorPrefs.putFloat(SimpleValueNames.LINE_HEIGHT_CORRECTION, ((Number) lineHeightCorrectionSpinner.getValue()).floatValue());
         PluginSettings.setSessionIdleTimeout((Integer) idleTimeoutSpinner.getValue());
         PluginSettings.setMaxMessages((Integer) maxMessagesSpinner.getValue());
-
-        if (changedCombine) {
-            LOG.info("Combine tool/thought toggled to {0}", combineCheckbox.isSelected());
-            String currentId = sessionService.get().getCurrentSessionId();
-            if (currentId != null) {
-                SwingUtilities.invokeLater(() -> sessionService.get().loadSession(currentId));
-            }
-        }
         PluginSettings.setCustomUserIcon(iconPathField.getText());
 
         String selectedSize = (String) toolbarIconCombo.getSelectedItem();
@@ -761,6 +933,9 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
                 }
             });
         }
+        // Recompute here: every restart-scoped value has been stored by now, and the
+        // comparison against the startup snapshot is what decides the bar.
+        refreshPendingRestartBar();
     }
 
     /**

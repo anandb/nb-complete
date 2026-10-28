@@ -128,6 +128,13 @@ public final class PreferenceKeys {
     /** Whether to launch the agent through WSL when available (Windows only, enabled by default). */
     public static final String USE_WSL = "useWsl";
 
+    /**
+     * Prefix of the effective-value snapshot taken at IDE start. One child key per
+     * restart-scoped preference holds the value the running IDE actually uses, so a
+     * pending restart is "stored value differs from the value this IDE started with".
+     */
+    public static final String EFFECTIVE_SNAPSHOT = "effective.snapshot.v1.";
+
     // Mini Assistant window bounds and layout
     public static final String MINI_ASSISTANT_X = "miniAssistant.x";
     public static final String MINI_ASSISTANT_Y = "miniAssistant.y";

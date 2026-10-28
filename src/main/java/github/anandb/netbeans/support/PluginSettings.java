@@ -1,5 +1,7 @@
 package github.anandb.netbeans.support;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.prefs.PreferenceChangeEvent;
@@ -603,5 +605,87 @@ public final class PluginSettings {
     /** Test seam: simulate the value captured by an IDE restart, without touching preferences. */
     public static void setProjectSwitchRestartForTest(boolean enabled) {
         projectSwitchRestartEnabled = enabled;
+    }
+
+    // --- Option effect markers -------------------------------------------------
+
+    /** How a change to an option reaches the running IDE. */
+    public enum Effect {
+        /** Applies as soon as the value is stored. */
+        IMMEDIATE,
+        /** Applies to sessions created from now on. */
+        NEW_SESSION,
+        /** Applies to the current chat only after its history is reloaded. */
+        SESSION_RELOAD,
+        /** Applies only after NetBeans restarts. */
+        IDE_RESTART
+    }
+
+    private static final String DEFAULT_PROCESS_ARGUMENTS = "acp";
+
+    /**
+     * Preferences whose stored value this IDE process reads only while starting, so a
+     * change needs a restart before it takes effect. Order is the Options panel's
+     * reading order and is reused for the pending-restart bar.
+     */
+    private static final List<String> IDE_RESTART_KEYS = List.of(
+            PreferenceKeys.ACP_EXECUTABLE_PATH,
+            PreferenceKeys.PROCESS_ARGUMENTS,
+            PreferenceKeys.USE_WSL,
+            PreferenceKeys.TOOLBAR_ICON_SIZE,
+            PreferenceKeys.PROJECT_SWITCH_RESTART_ENABLED,
+            PreferenceKeys.MCP_SERVER_ENABLED,
+            PreferenceKeys.MCP_SERVER_PORT);
+
+    /**
+     * Records the value of every restart-scoped preference this IDE process started
+     * with. Called once from {@code @OnStart}: without a snapshot every option looks
+     * like a pending restart, and reverting a change could never clear the marker.
+     */
+    public static void refreshEffectiveSnapshot() {
+        Preferences prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
+        for (String key : IDE_RESTART_KEYS) {
+            prefs.put(PreferenceKeys.EFFECTIVE_SNAPSHOT + key, snapshotValue(prefs, key));
+        }
+    }
+
+    /**
+     * Whether {@code key} was changed since this IDE started and therefore still needs
+     * a restart. Compares values, not flags, so reverting a change clears the marker.
+     */
+    public static boolean isRestartPending(String key) {
+        Preferences prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
+        String snapshot = prefs.get(PreferenceKeys.EFFECTIVE_SNAPSHOT + key, null);
+        return snapshot != null && !snapshot.equals(snapshotValue(prefs, key));
+    }
+
+    /** Restart-scoped keys changed since this IDE started, in panel order. */
+    public static List<String> getAllPendingRestartKeys() {
+        List<String> pending = new ArrayList<>(IDE_RESTART_KEYS.size());
+        for (String key : IDE_RESTART_KEYS) {
+            if (isRestartPending(key)) {
+                pending.add(key);
+            }
+        }
+        return pending;
+    }
+
+    /** Restart-scoped keys in panel order. */
+    public static List<String> getRestartScopedKeys() {
+        return IDE_RESTART_KEYS;
+    }
+
+    /** Canonical string form of a preference value, independent of its stored type. */
+    private static String snapshotValue(Preferences prefs, String key) {
+        return switch (key) {
+            case PreferenceKeys.ACP_EXECUTABLE_PATH -> prefs.get(key, "");
+            case PreferenceKeys.PROCESS_ARGUMENTS -> prefs.get(key, DEFAULT_PROCESS_ARGUMENTS);
+            case PreferenceKeys.USE_WSL -> String.valueOf(prefs.getBoolean(key, false));
+            case PreferenceKeys.TOOLBAR_ICON_SIZE -> String.valueOf(prefs.getInt(key, DEFAULT_TOOLBAR_ICON_SIZE));
+            case PreferenceKeys.PROJECT_SWITCH_RESTART_ENABLED -> String.valueOf(prefs.getBoolean(key, false));
+            case PreferenceKeys.MCP_SERVER_ENABLED -> String.valueOf(prefs.getBoolean(key, true));
+            case PreferenceKeys.MCP_SERVER_PORT -> String.valueOf(prefs.getInt(key, 0));
+            default -> throw new IllegalArgumentException("Not a restart-scoped preference: " + key);
+        };
     }
 }

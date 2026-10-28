@@ -13,6 +13,7 @@ import github.anandb.netbeans.contract.UpdateCheckerControl;
 import github.anandb.netbeans.model.MigrationReport;
 import github.anandb.netbeans.support.AgentUtils;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.PreferenceKeys;
 import github.anandb.netbeans.support.PreferencesMigrator;
 import java.util.logging.Level;
@@ -38,6 +39,10 @@ public class ACPStartup implements Runnable {
             // left behind in a previous NetBeans user dir is copied over (the built-in
             // IDE migration skips plugin files because the plugin is imported later).
             PreferencesMigrator.migrateIfNeeded();
+
+            // Snapshot the values this IDE process starts with, so the Options panel can
+            // tell a changed-but-not-applied option from one that is already in effect.
+            PluginSettings.refreshEffectiveSnapshot();
 
             // Runs on this background thread, never the EDT: it reads preferences,
             // writes the database, and leaves the store's data in memory so every
