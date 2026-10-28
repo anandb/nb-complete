@@ -171,6 +171,11 @@ public class StrategyRegistry implements UpdateDispatcher {
                     return;
                 }
 
+                if (ToolDataExtractor.isDetailLessToolCall(update)) {
+                    LOG.fine("Ignoring tool_call: no detail beyond the tool name, update={0}", update);
+                    return;
+                }
+
                 final String sessionId = update.params() != null ? update.params().sessionId() : null;
                 final String messageId = update.messageId();
                 if (isBlank(messageId) || isBlank(sessionId)) {

@@ -6,10 +6,13 @@ import github.anandb.netbeans.model.SessionUpdate;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ToolDataExtractorTest {
+
+    private static final com.fasterxml.jackson.databind.json.JsonMapper MAPPER = MapperSupplier.get();
 
     @Test
     void testStripMetadataRemovesComments() {
@@ -158,6 +161,65 @@ class ToolDataExtractorTest {
         );
         assertTrue(result.length() < 120);
         assertTrue(result.contains("..."));
+    }
+
+    @Test
+    void claudeEmptyEditIsDetailLess() throws Exception {
+        assertTrue(ToolDataExtractor.isDetailLessToolCall(claudeToolCall("Edit", "edit", "{}", null)));
+    }
+
+    @Test
+    void claudeEditWithoutContentIsDetailLess() throws Exception {
+        assertTrue(ToolDataExtractor.isDetailLessToolCall(
+                claudeToolCall("Edit", "edit", "{\"replace_all\":false}", null)));
+    }
+
+    @Test
+    void claudeReadWithPathIsNotDetailLess() throws Exception {
+        assertFalse(ToolDataExtractor.isDetailLessToolCall(
+                claudeToolCall("Read", "read", "{\"file_path\":\"/tmp/a.java\"}", null)));
+    }
+
+    @Test
+    void claudeEditWithContentIsNotDetailLess() throws Exception {
+        assertFalse(ToolDataExtractor.isDetailLessToolCall(
+                claudeToolCall("Edit", "edit", "{}", "[{\"type\":\"content\",\"content\":{\"type\":\"text\",\"text\":\"+1 -1\"}}]")));
+    }
+
+    @Test
+    void bashCallWithCommandIsNotDetailLess() throws Exception {
+        assertFalse(ToolDataExtractor.isDetailLessToolCall(
+                claudeToolCall("Bash", "execute", "{\"command\":\"npm build\"}", null)));
+    }
+
+    @Test
+    void claudeExecutePendingIsDetailLess() throws Exception {
+        assertTrue(ToolDataExtractor.isDetailLessToolCall(claudeToolCall("execute", "other", "{}", null)));
+    }
+
+    @Test
+    void claudeExecuteWithCommandIsNotDetailLess() throws Exception {
+        assertFalse(ToolDataExtractor.isDetailLessToolCall(
+                claudeToolCall("execute", "other", "{\"command\":\"ls -l\"}", null)));
+    }
+
+    @Test
+    void descriptiveTitleIsNotDetailLess() throws Exception {
+        assertFalse(ToolDataExtractor.isDetailLessToolCall(
+                claudeToolCall("Execute the migration", "other", "{}", null)));
+    }
+
+    private static SessionUpdate claudeToolCall(String title, String kind, String rawInput, String content)
+            throws Exception {
+        SessionUpdate.UpdateData ud = new SessionUpdate.UpdateData(
+                MessageType.tool_call,
+                title,
+                rawInput == null ? null : MAPPER.readTree(rawInput),
+                "tc1",
+                content == null ? null : MAPPER.readTree(content),
+                null, null, null, null,
+                "pending", kind, "tc1", null, null, null, null, null, null, null, null);
+        return new SessionUpdate("2.0", "session/update", new SessionUpdate.Params("s1", ud));
     }
 
     private SessionUpdate updateWithTitle(String title) {

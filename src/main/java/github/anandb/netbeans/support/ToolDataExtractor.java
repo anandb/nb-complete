@@ -1,6 +1,7 @@
 package github.anandb.netbeans.support;
 
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -38,6 +39,12 @@ public final class ToolDataExtractor {
         Pattern.compile("<!--.*?-->", Pattern.DOTALL),
         Pattern.compile("<metadata>.*?</metadata>", Pattern.DOTALL)
     };
+
+    /** rawInput keys that carry the target file of a read/edit tool call. */
+    private static final String[] RAW_INPUT_PATH_KEYS = {"path", "filePath", "file_path"};
+
+    /** Tool kinds that Claude Code sends with nothing but the tool name. */
+    private static final Set<String> DETAIL_LESS_KINDS = Set.of("read", "edit", "other", "execute");
 
     private static final List<Pair<String, Pattern>> TOOL_CONTENT_PATTERNS = List.of(
         Pair.of("skill", Pattern.compile("<skill_content name=\"([^\"]{2,})\"")),
@@ -145,6 +152,54 @@ public final class ToolDataExtractor {
         }
 
         return tag + " " + abbreviateMiddle(defaultString(identifier), "...", maxLen);
+    }
+
+    /**
+     * Detects a tool call update that carries nothing but the tool name. Claude Code
+     * emits these for {@code read}/{@code edit}/{@code execute} before the arguments
+     * are known ({@code rawInput:{}}, empty content, generic title), which used to
+     * render an empty bubble titled like "edit Edit". Such updates are not displayed;
+     * a later update that does carry a path, a command or content still renders
+     * normally.
+     */
+    public static boolean isDetailLessToolCall(SessionUpdate update) {
+        SessionUpdate.UpdateData ud = update != null ? update.update() : null;
+        if (ud == null) return false;
+        String kind = toRootLowerCase(defaultString(ud.kind()));
+        if (!DETAIL_LESS_KINDS.contains(kind)) return false;
+        if (isNotBlank(update.command())) return false;
+        if (isNotBlank(contentText(ud.content()))) return false;
+        // A title that is the bare tool name (single token, e.g. "Edit" or "execute")
+        // adds no detail; a descriptive title keeps the bubble.
+        String title = defaultString(ud.title()).strip();
+        if (isNotBlank(title) && !title.equalsIgnoreCase(kind) && title.indexOf(' ') >= 0) return false;
+        JsonNode rawInput = ud.rawInput();
+        if (rawInput != null && rawInput.isObject()) {
+            for (String key : RAW_INPUT_PATH_KEYS) {
+                JsonNode value = rawInput.get(key);
+                if (value != null && isNotBlank(value.asText(null))) return false;
+            }
+        }
+        return isBlank(extractFirstLocationPath(ud));
+    }
+
+    /** Concatenates the display text of a tool-call content structure. */
+    private static String contentText(JsonNode content) {
+        if (content == null) return null;
+        if (content.isTextual()) return content.asText();
+        if (content.has("text")) return content.get("text").asText();
+        StringBuilder sb = new StringBuilder();
+        if (content.isArray()) {
+            for (JsonNode part : content) {
+                JsonNode inner = part.get("content");
+                if (inner != null && inner.has("text")) {
+                    sb.append(inner.get("text").asText());
+                } else if ("text".equals(part.path("type").asText()) && part.has("text")) {
+                    sb.append(part.get("text").asText());
+                }
+            }
+        }
+        return sb.toString();
     }
 
     private static String extractIdentifier(SessionUpdate update) {
