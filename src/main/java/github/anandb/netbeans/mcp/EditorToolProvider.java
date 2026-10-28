@@ -53,7 +53,8 @@ public class EditorToolProvider {
                     public Map<String, Object> execute(EmptyToolInput args) throws Exception {
                         EditorContextQuery query = Lookup.getDefault().lookup(EditorContextQuery.class);
                         if (query == null) {
-                            return Map.of("status", "error", "message", "Editor context service not available");
+                            return Map.of("status", "error", "message", "Editor context service not available",
+                                    "fatal", true);
                         }
                         Map<String, Object>[] result = new Map[1];
                         SwingUtilities.invokeAndWait(() -> {
@@ -171,7 +172,7 @@ public class EditorToolProvider {
                             }
                         } catch (Exception e) {
                             LOG.warn("Failed to resolve file at line on background thread: {0}", ExceptionUtils.getMessage(e));
-                            return Map.of("status", "error", "message", "Failed to open file");
+                            return Map.of("status", "error", "message", "Failed to open file", "fatal", true);
                         }
                         return Map.of("status", "error", "message", "File or line not found");
                     }

@@ -749,6 +749,13 @@ public void toggleVisibility() {
    *working directory* only (`ProjectPathGuard.isInOpenProject(workDir)`, defaulting
    to the current session directory); the command string itself is executed by
    `bash -c` and is not otherwise constrained — treat that as deferred hardening.
+8. MCP tool failures: a tool returns a normal JSON object with `status: "error"` plus a
+   human `message`. `MessageServlet.handleToolsCallAsync` sets `result.isError = true` only
+   when that object also carries `"fatal": true`, so the harness shows a failed call for real
+   breakage without painting ordinary validation failures ("file not found", "summary is
+   required") red. Reserve `fatal` for a missing service (`…Control not available`), a failed
+   write/close/update, and a VCS command that timed out or exited non-zero. Do NOT throw (the
+   servlet would answer JSON-RPC `-32603` and the harness loses the message).
 
 ## User Guide (docs/)
 

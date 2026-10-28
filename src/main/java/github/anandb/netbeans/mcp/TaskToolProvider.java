@@ -55,7 +55,7 @@ public class TaskToolProvider {
                 public Map<String, Object> execute(AddTaskInput args) throws Exception {
                     TaskRepositoryControl control = Lookup.getDefault().lookup(TaskRepositoryControl.class);
                     if (control == null) {
-                        return Map.of("status", "error", "message", "TaskRepositoryControl not available");
+                        return Map.of("status", "error", "message", "TaskRepositoryControl not available", "fatal", true);
                     }
                     if (args.summary() == null || args.summary().isBlank()) {
                         return Map.of("status", "error", "message", "summary is required");
@@ -133,7 +133,7 @@ public class TaskToolProvider {
                     boolean updated = control.update(repoId, closed);
                     if (!updated) {
                         return Map.of("status", "error", "message",
-                            "Failed to close task '" + args.taskId() + "'.");
+                            "Failed to close task '" + args.taskId() + "'.", "fatal", true);
                     }
                     LOG.info("close_task tool called: repo={0} id={1}", repoId, task.id());
                     return Map.of("status", "ok", "id", task.id(),
@@ -196,7 +196,7 @@ public class TaskToolProvider {
                     boolean ok = control.update(repoId, updated);
                     if (!ok) {
                         return Map.of("status", "error", "message",
-                            "Failed to update task '" + args.taskId() + "'.");
+                            "Failed to update task '" + args.taskId() + "'.", "fatal", true);
                     }
                     LOG.info("update_task tool called: repo={0} id={1}", repoId, task.id());
                     return Map.of("status", "ok", "id", task.id(),
@@ -237,7 +237,7 @@ public class TaskToolProvider {
                 public Map<String, Object> execute(SearchTaskInput args) throws Exception {
                     TaskRepositoryControl control = Lookup.getDefault().lookup(TaskRepositoryControl.class);
                     if (control == null) {
-                        return Map.of("status", "error", "message", "TaskRepositoryControl not available");
+                        return Map.of("status", "error", "message", "TaskRepositoryControl not available", "fatal", true);
                     }
                     if (args.query() == null || args.query().isBlank()) {
                         return Map.of("status", "error", "message", "query is required");
@@ -298,7 +298,7 @@ public class TaskToolProvider {
         TaskRepositoryControl control = Lookup.getDefault().lookup(TaskRepositoryControl.class);
         if (control == null) {
             return new LoadedTask(null, null, null,
-                    Map.of("status", "error", "message", "TaskRepositoryControl not available"));
+                    Map.of("status", "error", "message", "TaskRepositoryControl not available", "fatal", true));
         }
         if (taskIdArg == null || taskIdArg.isBlank()) {
             return new LoadedTask(null, null, null,

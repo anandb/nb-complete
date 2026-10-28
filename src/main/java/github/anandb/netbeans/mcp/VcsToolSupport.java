@@ -138,7 +138,7 @@ final class VcsToolSupport {
     static Map<String, Object> run(String repoDir, String vcsLabel, String... command) throws Exception {
         VcsUtils.CapturedCommand captured = VcsUtils.runCaptured(new File(repoDir), 30, command);
         if (captured.timedOut()) {
-            return Map.of("status", "error", "message", vcsLabel + " command timed out");
+            return Map.of("status", "error", "message", vcsLabel + " command timed out", "fatal", true);
         }
         Map<String, Object> result = new HashMap<>();
         result.put("exitCode", captured.exitCode());
@@ -149,6 +149,7 @@ final class VcsToolSupport {
         if (captured.exitCode() != 0) {
             result.put("status", "error");
             result.put("message", vcsLabel + " command failed");
+            result.put("fatal", true);
             return result;
         }
         result.put("status", "ok");

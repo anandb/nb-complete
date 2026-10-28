@@ -210,6 +210,14 @@ class MessageServlet extends HttpServlet {
                     result.set("structuredContent", wrapped);
                 } else {
                     result.set("structuredContent", toolResponse);
+                    // A tool reports {"status":"error"} for expected validation failures too.
+                    // Only a tool that marks the failure "fatal": true maps to isError, so the
+                    // harness shows a failed call for real breakage without painting every
+                    // "file not found" red.
+                    if ("error".equals(toolResponse.path("status").asText(""))
+                            && toolResponse.path("fatal").asBoolean(false)) {
+                        result.put("isError", true);
+                    }
                 }
                 ArrayNode contentNode = MAPPER.createArrayNode();
                 ObjectNode contentElement = MAPPER.createObjectNode();

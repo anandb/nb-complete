@@ -1,5 +1,6 @@
 package github.anandb.netbeans.mcp;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -8,6 +9,7 @@ import static org.mockito.Mockito.when;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.Map;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -102,6 +104,73 @@ class MessageServletTest {
         verify(c.response, org.mockito.Mockito.never()).setStatus(403);
         verify(ctx, org.mockito.Mockito.timeout(5000)).complete();
         verify(c.response, org.mockito.Mockito.timeout(5000)).setStatus(400);
+    }
+
+    // ---- tool errors --------------------------------------------------------
+
+    @Test
+    void marksFatalToolErrorsAsMcpErrors() throws Exception {
+        mcpTools.registerTool("boom", "always fails", ToolSchema.object().build(),
+                new ToolExecutor<AddTaskInput, Map<String, Object>>(AddTaskInput.class) {
+                    @Override
+                    Map<String, Object> execute(AddTaskInput args) {
+                        return Map.of("status", "error", "message", "no repository", "fatal", true);
+                    }
+                });
+
+        String body = callTool("boom");
+
+        assertTrue(body.contains("\"isError\":true"), body);
+        assertTrue(body.contains("no repository"), body);
+    }
+
+    @Test
+    void leavesValidationErrorsWithoutTheErrorFlag() throws Exception {
+        mcpTools.registerTool("validate", "rejects input", ToolSchema.object().build(),
+                new ToolExecutor<AddTaskInput, Map<String, Object>>(AddTaskInput.class) {
+                    @Override
+                    Map<String, Object> execute(AddTaskInput args) {
+                        return Map.of("status", "error", "message", "summary is required");
+                    }
+                });
+
+        String body = callTool("validate");
+
+        assertTrue(body.contains("summary is required"), body);
+        assertFalse(body.contains("isError"), body);
+    }
+
+    @Test
+    void leavesSuccessfulToolResultsWithoutTheErrorFlag() throws Exception {
+        mcpTools.registerTool("fine", "works", ToolSchema.object().build(),
+                new ToolExecutor<AddTaskInput, Map<String, Object>>(AddTaskInput.class) {
+                    @Override
+                    Map<String, Object> execute(AddTaskInput args) {
+                        return Map.of("status", "ok");
+                    }
+                });
+
+        String body = callTool("fine");
+
+        assertTrue(body.contains("\"status\":\"ok\""), body);
+        assertFalse(body.contains("isError"), body);
+    }
+
+    /** Runs one JSON-RPC tools/call through the servlet and returns the written body. */
+    private String callTool(String name) throws Exception {
+        Captured c = new Captured();
+        jakarta.servlet.AsyncContext ctx = mock(jakarta.servlet.AsyncContext.class);
+        when(c.request.startAsync()).thenReturn(ctx);
+        when(ctx.getResponse()).thenReturn(c.response);
+        when(ctx.getRequest()).thenReturn(c.request);
+        when(c.request.getReader()).thenReturn(new java.io.BufferedReader(
+                new java.io.StringReader("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\","
+                        + "\"params\":{\"name\":\"" + name + "\",\"arguments\":{}}}")));
+
+        servlet(false).doPost(c.request, c.response);
+
+        verify(ctx, org.mockito.Mockito.timeout(5000)).complete();
+        return c.body.toString();
     }
 
     // ---- CORS ---------------------------------------------------------------

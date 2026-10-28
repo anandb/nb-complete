@@ -40,7 +40,8 @@ public class StashDiffToolProvider {
                     public Map<String, Object> execute(StashDiffInput args) throws Exception {
                         StashDiffControl control = Lookup.getDefault().lookup(StashDiffControl.class);
                         if (control == null) {
-                            return Map.of("status", "error", "message", "StashDiffControl not available");
+                            return Map.of("status", "error", "message", "StashDiffControl not available",
+                                    "fatal", true);
                         }
 
                         File repoDir;
