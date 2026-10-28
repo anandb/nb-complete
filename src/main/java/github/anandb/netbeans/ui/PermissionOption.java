@@ -21,22 +21,21 @@ record PermissionOption(String id, String name, String kind) {
      * Keyboard mnemonic for the button that answers this option, or {@code 0} when the
      * option carries an unknown kind and should have none.
      * <p>
-     * Harnesses send their own labels, so allow options arrive as "Allow Once" and
-     * "Always Allow" (or "allow_once"/"allow_always"). Giving both {@code 'A'} made
-     * Alt+A ambiguous, and Swing only activates the first match. The <em>always</em>
-     * variant therefore takes a letter from "Always" ({@code 'A'} for allow,
-     * {@code 'W'} for reject) while the once/lone variant keeps the verb's letter
-     * ({@code 'O'} for allow, {@code 'R'} for reject). Every letter appears in the
-     * usual labels, so Swing underlines it.
+     * Giving every allow option {@code 'A'} made Alt+A ambiguous, and Swing only
+     * activates the first match, so the <em>always</em> variant takes
+     * {@code 'A'} while the once variant takes {@code 'O'} ({@code 'W'} and
+     * {@code 'R'} on the reject side).
      * <p>
-     * The option id is checked before the label because a label is prose: Devin
-     * reports kind {@code allow_always} for all five of its allow options and names
-     * them "Allow", "Yes, allow `git reset` commands (this session)", "…in `bridge`",
-     * "…in all projects" and "Yes, switch to bypass mode". Only the ids
-     * ({@code allow_once}, {@code allow_session}, {@code allow_always},
-     * {@code allow_always_global}, {@code switch_bypass}) order those scopes.
-     * The global variant takes {@code 'P'} from "all projects" rather than
-     * {@code 'G'} for global, so its label can underline the letter.
+     * The <em>name</em> is never consulted: it is prose the harness chooses, and
+     * Claude names its allow options "Yes" and its reject option "No", none of
+     * which contains the verb letter. The id and kind are the machine-readable
+     * signal. Devin reports kind {@code allow_always} for all five of its allow
+     * options and names them "Allow", "Yes, allow `git reset` commands (this
+     * session)", "…in `bridge`", "…in all projects" and "Yes, switch to bypass
+     * mode". Only the ids ({@code allow_once}, {@code allow_session},
+     * {@code allow_always}, {@code allow_always_global}, {@code switch_bypass})
+     * order those scopes. The global variant takes {@code 'P'} from "all projects"
+     * rather than {@code 'G'} for global, so its label can underline the letter.
      * <p>
      * {@code 'L'} is deliberately avoided for the always-reject button: the plugin
      * binds Alt+L to toggle the mini assistant, and a destructive "stop asking me"
@@ -47,21 +46,21 @@ record PermissionOption(String id, String name, String kind) {
      * Alt+D, and the two would collide on every edit request.
      */
     char mnemonic() {
-        String lid = id == null ? "" : id.toLowerCase(Locale.ROOT);
-        String lname = name == null ? "" : name.toLowerCase(Locale.ROOT);
         if (kind == null) {
             return 0;
         }
-        if (kind.contains("allow")) {
+        String lid = id == null ? "" : id.toLowerCase(Locale.ROOT);
+        String lkind = kind.toLowerCase(Locale.ROOT);
+        if (lkind.contains("allow")) {
             if (lid.contains("session")) return 'S';
             if (lid.contains("global")) return 'P';
             if (lid.contains("bypass")) return 'B';
-            if (lid.contains("always") || lname.contains("always")) return 'A';
-            if (lid.contains("once") || lname.contains("once")) return 'O';
+            if (lid.contains("always") || lkind.contains("always")) return 'A';
+            if (lid.contains("once") || lkind.contains("once")) return 'O';
             return 'A';
         }
-        if (kind.contains("reject") || kind.contains("deny")) {
-            return lid.contains("always") || lname.contains("always") ? 'W' : 'R';
+        if (lkind.contains("reject") || lkind.contains("deny")) {
+            return lid.contains("always") || lkind.contains("always") ? 'W' : 'R';
         }
         return 0;
     }
@@ -104,8 +103,7 @@ record PermissionOption(String id, String name, String kind) {
      * The always-variants therefore claim their letter first, and every remaining
      * option then takes the first free letter that appears in its own label. Devin's
      * row reads Alt+O (allow), Alt+S (this session), Alt+A (this project), Alt+P (all
-     * projects), Alt+B (bypass mode), Alt+R (reject); a lone "Allow" still keeps
-     * Alt+A because nothing else competes for it.
+     * projects), Alt+B (bypass mode), Alt+R (reject).
      */
     static char[] mnemonics(List<PermissionOption> options) {
         char[] letters = new char[options.size()];

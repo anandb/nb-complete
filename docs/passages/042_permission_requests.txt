@@ -10,14 +10,14 @@
 
 When the AI attempts to execute a tool, modify files, or run shell commands, the plugin ensures you remain in control. An Accept/Deny bubble will appear in the chat with full context of the requested action. You must explicitly grant permission before the operation proceeds. The permission configuration varies by harness, look at their respective documentation for details.
 
-The buttons follow whatever options the harness sends, so the exact set varies: a harness may offer *Allow Once* and *Always Allow* side by side, or only a single *Allow*. When the request includes file changes, a **Show Diff** button appears next to them so you can review the edit before approving.
+The buttons follow whatever options the harness sends, so the exact set and wording vary: a harness may offer *Allow Once* and *Always Allow* side by side, a single *Allow*, or — as Claude does — word the same choices **Yes** / **No**. When the request includes file changes, a **Show Diff** button appears next to them so you can review the edit before approving.
 
 Each button has a keyboard mnemonic, so this panel never needs the mouse:
 
 <table class="ug-table">
 <thead><tr><th>Shortcut</th><th>Action</th></tr></thead>
 <tbody>
-<tr><td><code>Alt + A</code></td><td>Always Allow (<em>Allow</em> when the harness offers a single allow option)</td></tr>
+<tr><td><code>Alt + A</code></td><td>Always Allow</td></tr>
 <tr><td><code>Alt + O</code></td><td>Allow Once — separate from <code>Alt + A</code>, so the two allow options are never ambiguous</td></tr>
 <tr><td><code>Alt + R</code></td><td>Reject / Deny</td></tr>
 <tr><td><code>Alt + W</code></td><td>Always Reject / Deny Always — the counterpart of <code>Alt + A</code> when a harness offers both reject options</td></tr>
@@ -25,7 +25,7 @@ Each button has a keyboard mnemonic, so this panel never needs the mouse:
 </tbody>
 </table>
 
-Options the harness labels differently keep the same idea: a *once* button takes a letter from its own word (`O`, `R`) and an *always* button takes one from "Always" (`A`, `W`), so no two buttons in the row ever share a key. The same keys work in the mini assistant, see [[Mini Assistant Permission Requests]].
+The letter belongs to the option's scope, not to its label: the harness reports a *once* or *always* kind (and, when it reuses one kind, an id that names the scope), and the plugin maps that to `Alt + O` / `Alt + R` for once and `Alt + A` / `Alt + W` for always, so no two buttons in a row ever share a key. Some harnesses word the buttons so the letter never appears — Claude sends **Yes** and **No** — but `Alt + O`, `Alt + A` and `Alt + R` still answer them; only the underline is missing. The same keys work in the mini assistant, see [[Mini Assistant Permission Requests]].
 
 
 > [[Configuration Template]]

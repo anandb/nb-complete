@@ -36,9 +36,11 @@ class PermissionOptionMnemonicTest {
     }
 
     @Test
-    void singleAllowKeepsAltA() {
-        assertEquals('A', mnemonic("Allow", "allow_once"));
-        assertEquals('A', mnemonic("Allow edit", "allow_once"));
+    void allowOnceKindKeepsAltOWhateverTheLabelSays() {
+        // The kind is the signal, not the prose: Claude labels this option "Yes".
+        assertEquals('O', mnemonic("Allow", "allow_once"));
+        assertEquals('O', mnemonic("Allow edit", "allow_once"));
+        assertEquals('O', mnemonic("Yes", "allow_once"));
     }
 
     @Test
@@ -171,16 +173,41 @@ class PermissionOptionMnemonicTest {
     }
 
     @Test
-    void loneAllowNextToARejectKeepsAltA() {
+    void allowOnceAndRejectUseTheirKindLetters() {
         char[] letters = PermissionOption.mnemonics(List.of(
                 option("Allow", "allow_once"), option("Deny", "reject_once")));
-        assertArrayEquals(new char[] {'A', 'R'}, letters);
+        assertArrayEquals(new char[] {'O', 'R'}, letters);
     }
 
     @Test
     void identicalLabelsStillGetDistinctLetters() {
         char[] letters = PermissionOption.mnemonics(List.of(
                 option("Allow", "allow_once"), option("Allow", "allow_once")));
-        assertArrayEquals(new char[] {'A', 'O'}, letters);
+        assertArrayEquals(new char[] {'O', 'L'}, letters);
+    }
+
+    /** The three options Claude sent for a Bash request (wire log, 2026-10-28). */
+    private static PermissionOption[] claudeRow() {
+        return new PermissionOption[] {
+            new PermissionOption("allow-once", "Yes", "allow_once"),
+            new PermissionOption("allow-with-updates",
+                    "Yes, and don't ask again for similar commands", "allow_always"),
+            new PermissionOption("reject", "No", "reject_once"),
+        };
+    }
+
+    @Test
+    void claudeYesNoLabelsDoNotDecideTheLetter() {
+        // The name is prose: Claude calls the allow options "Yes" and the reject
+        // option "No". The kind still yields the documented letters.
+        assertEquals('O', mnemonic("Yes", "allow_once"));
+        assertEquals('A', mnemonic("Yes, and don't ask again for similar commands", "allow_always"));
+        assertEquals('R', mnemonic("No", "reject_once"));
+    }
+
+    @Test
+    void claudeRowKeepsAllowOnceAllowAlwaysReject() {
+        char[] letters = PermissionOption.mnemonics(List.of(claudeRow()));
+        assertArrayEquals(new char[] {'O', 'A', 'R'}, letters);
     }
 }
