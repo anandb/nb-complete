@@ -73,6 +73,14 @@ public class TokenUsageDialog extends JDialog {
     private static final Logger LOG = Logger.from(TokenUsageDialog.class);
     private static final long serialVersionUID = 1L;
 
+    /**
+     * Icon-theme teal, used for the section rules and the tool-call bars.
+     * The light-theme value is the logo's darkest teal; the dark-theme value is
+     * its lightest, so both stay legible on the table backgrounds.
+     */
+    private static final String TEAL_LIGHT = "#2A7D7D";
+    private static final String TEAL_DARK = "#9FD2D2";
+
     private final JSpinner daysSpinner;
     private final JComboBox<String> projectCombo;
     private final FitEditorPane statsPane;
@@ -387,7 +395,8 @@ public class TokenUsageDialog extends JDialog {
      * Renders the OVERVIEW and COST &amp; TOKENS blocks as themed HTML tables
      * from the aggregated summary, then the breakdown tables grouped by model
      * and by agent, then the MCP tool list with a block-character histogram.
-     * Group and tool tables are omitted when their list is empty.
+     * Group and tool tables are omitted when their list is empty; each present
+     * section is preceded by a bold rule.
      */
     static String renderSummaryHtml(UsageSummary summary, List<GroupTotals> byModel,
                                     List<GroupTotals> byAgent, List<ToolTotals> byTool,
@@ -398,7 +407,7 @@ public class TokenUsageDialog extends JDialog {
         String headerBg = theme.toHtmlHex(theme.tableHeaderBackground());
         String tableBg = theme.toHtmlHex(theme.tableBackground());
         String altBg = theme.toHtmlHex(theme.tableRowAlternate());
-        String barColor = ThemeManager.isDark() ? "#589DF6" : "#268BD2";
+        String teal = ThemeManager.isDark() ? TEAL_DARK : TEAL_LIGHT;
 
         StringBuilder sb = new StringBuilder(2048);
         sb.append("<html><head><style>")
@@ -427,17 +436,36 @@ public class TokenUsageDialog extends JDialog {
         });
 
         if (!byModel.isEmpty()) {
+            appendSectionSeparator(sb, teal);
             appendGroupTables(sb, "LBL_ByModel", byModel, headerBg, altBg);
         }
         if (!byAgent.isEmpty()) {
+            if (!byModel.isEmpty()) {
+                appendSectionSeparator(sb, teal);
+            }
             appendGroupTables(sb, "LBL_ByAgent", byAgent, headerBg, altBg);
         }
         if (!byTool.isEmpty()) {
-            appendToolHistogram(sb, byTool, barColor, altBg);
+            if (!byModel.isEmpty() || !byAgent.isEmpty()) {
+                appendSectionSeparator(sb, teal);
+            }
+            appendToolHistogram(sb, byTool, teal, altBg);
         }
 
         sb.append("</body></html>");
         return sb.toString();
+    }
+
+    /**
+     * Bold rule separating the summary blocks from the breakdown sections and
+     * the breakdown sections from each other. A div's CSS {@code height} is
+     * ignored by Swing's HTML kit (it would paint a full text line), so the
+     * rule is a line box sized by its font: 5px renders as a 7px band in the
+     * chat monospace stack, roughly double the earlier 3px rule.
+     */
+    private static void appendSectionSeparator(StringBuilder sb, String color) {
+        sb.append("<div style='font-size:5px;line-height:5px;background:").append(color)
+          .append(";margin:6px 0;'>&nbsp;</div>");
     }
 
     /**

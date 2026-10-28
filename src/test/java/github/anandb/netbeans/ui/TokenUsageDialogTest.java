@@ -114,6 +114,71 @@ class TokenUsageDialogTest {
     }
 
     @Test
+    void renderSummaryHtmlSeparatesTheBreakdownSections() {
+        List<GroupTotals> byModel = List.of(
+                new GroupTotals("gpt-x", 1, 2, 3, 4_000, 500, 600, 0.1000));
+        List<GroupTotals> byAgent = List.of(
+                new GroupTotals("omp", 1, 2, 3, 4_000, 500, 600, 0.1000));
+        List<ToolTotals> byTool = List.of(new ToolTotals("read_file", 1));
+
+        String html = TokenUsageDialog.renderSummaryHtml(sample(), byModel, byAgent, byTool,
+                ThemeManager.getCurrentTheme());
+
+        int summary = html.indexOf("COST &amp; TOKENS");
+        int model = html.indexOf("BY MODEL");
+        int agent = html.indexOf("BY AGENT");
+        int tools = html.indexOf("MCP Tool Calls");
+        assertTrue(summary >= 0 && summary < model && model < agent && agent < tools,
+                "the sections must render in summary, model, agent, tools order");
+
+        assertEquals(1, countSeparators(html.substring(0, model)), "a rule before BY MODEL");
+        assertEquals(1, countSeparators(html.substring(model, agent)), "a rule before BY AGENT");
+        assertEquals(1, countSeparators(html.substring(agent, tools)), "a rule before MCP Tool Calls");
+        assertEquals(3, countSeparators(html), "no rule after the last section");
+    }
+
+    @Test
+    void renderSummaryHtmlUsesTheIconTealForRulesAndBars() {
+        List<GroupTotals> byModel = List.of(
+                new GroupTotals("gpt-x", 1, 2, 3, 4_000, 500, 600, 0.1000));
+        List<GroupTotals> byAgent = List.of(
+                new GroupTotals("omp", 1, 2, 3, 4_000, 500, 600, 0.1000));
+        List<ToolTotals> byTool = List.of(new ToolTotals("read_file", 1));
+
+        String html = TokenUsageDialog.renderSummaryHtml(sample(), byModel, byAgent, byTool,
+                ThemeManager.getCurrentTheme());
+
+        boolean lightTeal = html.contains("#2A7D7D");
+        boolean darkTeal = html.contains("#9FD2D2");
+        assertTrue(lightTeal ^ darkTeal, "exactly one icon-teal variant must be used");
+        String teal = lightTeal ? "#2A7D7D" : "#9FD2D2";
+        assertEquals(3, countSeparators(html), "one rule per section");
+        assertTrue(html.contains("background:" + teal + ";margin:6px 0"),
+                "the rules use the icon teal");
+        assertTrue(html.contains("height:10px;background:" + teal + ";"),
+                "the histogram bars use the icon teal");
+        assertFalse(html.contains("#589DF6") || html.contains("#268BD2"),
+                "the accent blue is no longer used for the stats visuals");
+    }
+
+    @Test
+    void renderSummaryHtmlOmitsSeparatorsWhenNoBreakdownExists() {
+        String html = TokenUsageDialog.renderSummaryHtml(sample(), List.of(), List.of(), List.of(),
+                ThemeManager.getCurrentTheme());
+
+        assertEquals(0, countSeparators(html), "the summary alone needs no separators");
+    }
+
+    private static int countSeparators(String html) {
+        String marker = "font-size:5px;line-height:5px;background:";
+        int count = 0;
+        for (int i = html.indexOf(marker); i >= 0; i = html.indexOf(marker, i + marker.length())) {
+            count++;
+        }
+        return count;
+    }
+
+    @Test
     void toolPercentRoundsAndFloorsAtOne() {
         assertEquals(79, TokenUsageDialog.toolPercent(120, 151));
         assertEquals(20, TokenUsageDialog.toolPercent(30, 151));

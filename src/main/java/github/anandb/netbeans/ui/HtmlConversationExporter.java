@@ -440,8 +440,9 @@ final class HtmlConversationExporter {
      * Show a Save dialog, write the HTML to the chosen file, and open it
      * in the IDE editor.
      */
-    static void export(Component parent, String html, String defaultName) {
-        ConversationExporter.export(parent, html, defaultName, false);
+    static void export(Component parent, String html, String defaultName,
+                       ConversationExporter.ExportListener listener) {
+        ConversationExporter.export(parent, html, defaultName, false, listener);
     }
 
     /**

@@ -92,6 +92,9 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     private static final Logger LOG = Logger.from(AssistantTopComponent.class);
 
     private static final long serialVersionUID = 1L;
+
+    /** How long the "Exported: …" confirmation stays in the status row. */
+    private static final int EXPORT_STATUS_MS = 2000;
     private final SessionService sessionService = PlatformBridge.sessionServiceSafe();
     private final ProjectContext projectContext = PlatformBridge.projectContextSafe();
     private final ChatThreadPanel chatPanel;
@@ -780,13 +783,19 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             String html = chatPanel.getConversationAsHtml(title);
             if (isBlank(html)) return;
             HtmlConversationExporter.export(this, html,
-                    HtmlConversationExporter.defaultFileName(title));
+                    HtmlConversationExporter.defaultFileName(title), this::showExported);
         } else {
             String markdown = chatPanel.getConversationAsMarkdown(title);
             if (isBlank(markdown)) return;
             ConversationExporter.export(this, markdown,
-                    ConversationExporter.defaultFileName(title));
+                    ConversationExporter.defaultFileName(title), this::showExported);
         }
+    }
+
+    /** Brief confirmation in the status row once an export file was written. */
+    private void showExported(File file) {
+        statusController.setStatus("STATUS_Exported", file.getName());
+        statusController.scheduleReset(EXPORT_STATUS_MS);
     }
 
     private void updateTabName(String modelName) {

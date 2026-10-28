@@ -29,6 +29,9 @@ public class StatusController {
     private static final int MAX_STATUS_LENGTH = 50;
     private static final String ELLIPSIS = "...";
 
+    /** Default lifetime of a transient status message (attachment, copy, …). */
+    private static final int STATUS_RESET_MS = 1500;
+
     private final JLabel statusLabel;
     private final Timer thinkingTimer;
     private final Timer statusResetTimer;
@@ -79,7 +82,7 @@ public class StatusController {
         this.usageMeter = usageMeter;
 
         this.thinkingTimer = new Timer(500, e -> animateThinkingTick());
-        this.statusResetTimer = new Timer(1500, e -> {
+        this.statusResetTimer = new Timer(STATUS_RESET_MS, e -> {
             if (statusLabel != null) {
                 show(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Ready"));
             }
@@ -227,6 +230,15 @@ public class StatusController {
     }
 
     public void scheduleReset() {
+        scheduleReset(STATUS_RESET_MS);
+    }
+
+    /** Schedules the transient status to return to Ready after {@code delayMs}.
+     *  No-arg callers always reapply the default, so a custom delay affects only
+     *  the reset it schedules (the timer is one-shot). */
+    public void scheduleReset(int delayMs) {
+        statusResetTimer.setInitialDelay(delayMs);
+        statusResetTimer.setDelay(delayMs);
         statusResetTimer.restart();
     }
 

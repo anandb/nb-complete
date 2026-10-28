@@ -70,6 +70,19 @@ class StatusControllerTest {
     }
 
     @Test
+    void scheduleResetHonoursACustomDelayThenReturnsToTheDefault() {
+        StatusController c = controller(label());
+        c.scheduleReset(2000);
+        assertTrue(c.getStatusResetTimer().isRunning());
+        assertEquals(2000, c.getStatusResetTimer().getInitialDelay());
+        assertEquals(2000, c.getStatusResetTimer().getDelay());
+        c.scheduleReset();
+        assertEquals(1500, c.getStatusResetTimer().getInitialDelay(),
+                "later transient statuses keep the default lifetime");
+        assertEquals(1500, c.getStatusResetTimer().getDelay());
+    }
+
+    @Test
     void sendingAnimationFramesAreAllTenCharacters() {
         // "Sending" is 7 chars; the cycle appends up to 3 dots, so every frame is
         // padded with spaces to 10 — the label width never changes while ticking.

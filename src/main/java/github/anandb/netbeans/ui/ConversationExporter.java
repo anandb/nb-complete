@@ -161,16 +161,22 @@ final class ConversationExporter {
         }
     }
 
+    /** Notified on the EDT once the export file was written. */
+    @FunctionalInterface
+    interface ExportListener {
+        void exported(File file);
+    }
+
     /**
-     * Show a Save dialog, write the markdown to the chosen file, and open it
-     * in the IDE editor.
+     * Export conversation to a file.
      *
      * @param parent      parent component for the dialog
      * @param markdown    the content to write
      * @param defaultName suggested file name (e.g. "session.md")
+     * @param listener    notified on the EDT once the file was written, may be null
      */
-    static void export(Component parent, String markdown, String defaultName) {
-        export(parent, markdown, defaultName, true);
+    static void export(Component parent, String markdown, String defaultName, ExportListener listener) {
+        export(parent, markdown, defaultName, true, listener);
     }
 
     /**
@@ -180,8 +186,10 @@ final class ConversationExporter {
      * @param markdown    the content to write
      * @param defaultName suggested file name (e.g. "session.md")
      * @param openAfter   whether to open the file in the editor after saving
+     * @param listener    notified on the EDT once the file was written, may be null
      */
-    static void export(Component parent, String markdown, String defaultName, boolean openAfter) {
+    static void export(Component parent, String markdown, String defaultName, boolean openAfter,
+                       ExportListener listener) {
         JFileChooser chooser = new JFileChooser();
         chooser.setDialogTitle(NbBundle.getMessage(ConversationExporter.class, "TITLE_ExportConv"));
         chooser.setSelectedFile(new File(defaultName));
@@ -201,19 +209,27 @@ final class ConversationExporter {
                 try (OutputStreamWriter writer = new OutputStreamWriter(
                         new FileOutputStream(file), StandardCharsets.UTF_8)) {
                     writer.write(markdown);
-                    LOG.log(Level.FINE, "Conversation exported to {0}", file.getAbsolutePath());
-                    if (openAfter) {
-                        FileObject fo = FileUtil.toFileObject(FileUtil.normalizeFile(file));
-                        if (fo != null) {
+                } catch (IOException ex) {
+                    LOG.log(Level.WARNING, "Failed to export conversation", ex);
+                    return;
+                }
+                LOG.log(Level.FINE, "Conversation exported to {0}", file.getAbsolutePath());
+                if (listener != null) {
+                    SwingUtilities.invokeLater(() -> listener.exported(file));
+                }
+                if (openAfter) {
+                    FileObject fo = FileUtil.toFileObject(FileUtil.normalizeFile(file));
+                    if (fo != null) {
+                        try {
                             DataObject dobj = DataObject.find(fo);
                             EditorCookie ec = dobj.getLookup().lookup(EditorCookie.class);
                             if (ec != null) {
                                 SwingUtilities.invokeLater(() -> ec.open());
                             }
+                        } catch (IOException ex) {
+                            LOG.log(Level.FINE, "Could not open exported file", ex);
                         }
                     }
-                } catch (IOException ex) {
-                    LOG.log(Level.WARNING, "Failed to export conversation", ex);
                 }
             });
         }
