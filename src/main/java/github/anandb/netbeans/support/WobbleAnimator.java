@@ -19,7 +19,7 @@ public final class WobbleAnimator {
 
     private static final int WOBBLE_DELAY_MS = 10_000;
     private static final int WOBBLE_INTERVAL_MS = 30;
-    private static final int WOBBLE_RESTART_MS = 5_000;
+    private static final int WOBBLE_RESTART_MS = 10_000;
 
     // Rapid side-to-side "buzz" burst used to draw immediate attention (e.g. when the
     // user tries to send a new message while a permission request is pending).
@@ -93,7 +93,7 @@ public final class WobbleAnimator {
                     target.repaint();
                     wobbleTimer.stop();
                     wobbleTimer = null;
-                    // Schedule repeat after 5 seconds
+                    // Schedule repeat after the same quiet period as the first wobble
                     wobbleRestartTimer = new Timer(WOBBLE_RESTART_MS, ev -> start());
                     wobbleRestartTimer.setRepeats(false);
                     wobbleRestartTimer.start();
