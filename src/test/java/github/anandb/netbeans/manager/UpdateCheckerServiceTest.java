@@ -73,8 +73,108 @@ class UpdateCheckerServiceTest {
         assertNull(UpdateCheckerService.parseLatestVersion(null));
         assertNull(UpdateCheckerService.parseLatestVersion("   "));
         assertNull(UpdateCheckerService.parseLatestVersion("<metadata><versioning>"));
-        assertNull(UpdateCheckerService.parseLatestVersion(
-                "<metadata><versioning><versions><version>1.0.0</version></versions></versioning></metadata>"));
+    }
+
+    @Test
+    void parseLatestVersionFallsBackToTheVersionList() {
+        String metadata = """
+                <metadata><versioning><versions>
+                  <version>1.0.0</version>
+                  <version>1.2.0</version>
+                  <version>1.1.0</version>
+                </versions></versioning></metadata>
+                """;
+
+        assertEquals("1.2.0", UpdateCheckerService.parseLatestVersion(metadata));
+    }
+
+    @Test
+    void milestoneReleaseIsSkippedForTheNewestStableVersion() {
+        String metadata = """
+                <metadata><versioning>
+                  <latest>1.30.0-M2</latest>
+                  <release>1.30.0-M2</release>
+                  <versions>
+                    <version>1.28.0</version>
+                    <version>1.29.0</version>
+                    <version>1.30.0-M1</version>
+                    <version>1.30.0-M2</version>
+                  </versions>
+                </versioning></metadata>
+                """;
+
+        assertEquals("1.29.0", UpdateCheckerService.parseLatestVersion(metadata));
+    }
+
+    @Test
+    void milestoneLatestAloneIsNotOffered() {
+        String metadata = """
+                <metadata><versioning><latest>1.30.0-M1</latest></versioning></metadata>
+                """;
+
+        assertNull(UpdateCheckerService.parseLatestVersion(metadata));
+    }
+
+    @Test
+    void milestoneOnlyVersionListIsNotOffered() {
+        String metadata = """
+                <metadata><versioning><versions>
+                  <version>1.30.0-M1</version>
+                  <version>1.30.0-M12</version>
+                </versions></versioning></metadata>
+                """;
+
+        assertNull(UpdateCheckerService.parseLatestVersion(metadata));
+    }
+
+    @Test
+    void stableReleaseStillWinsOverANewerMilestoneInTheVersionList() {
+        String metadata = """
+                <metadata><versioning>
+                  <release>1.29.0</release>
+                  <versions>
+                    <version>1.29.0</version>
+                    <version>1.30.0-M1</version>
+                  </versions>
+                </versioning></metadata>
+                """;
+
+        assertEquals("1.29.0", UpdateCheckerService.parseLatestVersion(metadata));
+    }
+
+    @Test
+    void offerableVersionsArePlainOrRelease() {
+        assertTrue(UpdateCheckerService.isOfferableVersion("1.30.0"));
+        assertTrue(UpdateCheckerService.isOfferableVersion("1.30"));
+        assertTrue(UpdateCheckerService.isOfferableVersion("  1.30.0  "));
+        assertTrue(UpdateCheckerService.isOfferableVersion("1.30.0-RELEASE"));
+        assertTrue(UpdateCheckerService.isOfferableVersion("1.30.0.RELEASE"));
+        assertTrue(UpdateCheckerService.isOfferableVersion("1.30.0-release"));
+        assertFalse(UpdateCheckerService.isOfferableVersion("1.30.0-M1"));
+        assertFalse(UpdateCheckerService.isOfferableVersion("1.30.0-M12"));
+        assertFalse(UpdateCheckerService.isOfferableVersion("1.30.0-RC1"));
+        assertFalse(UpdateCheckerService.isOfferableVersion("1.30.0-SNAPSHOT"));
+        assertFalse(UpdateCheckerService.isOfferableVersion("release"));
+        assertFalse(UpdateCheckerService.isOfferableVersion(null));
+    }
+
+    @Test
+    void releaseQualifierDoesNotChangeOrdering() {
+        assertFalse(UpdateCheckerService.isNewerVersion("1.30.0-RELEASE", "1.30.0"));
+        assertTrue(UpdateCheckerService.isNewerVersion("1.30.0-RELEASE", "1.29.0"));
+        assertTrue(UpdateCheckerService.isNewerVersion("1.30.0", "1.29.0-RELEASE"));
+    }
+
+    @Test
+    void releaseQualifiedVersionIsOffered() {
+        String metadata = """
+                <metadata><versioning><versions>
+                  <version>1.29.0</version>
+                  <version>1.30.0-RELEASE</version>
+                </versions></versioning></metadata>
+                """;
+
+        assertEquals("1.30.0-RELEASE", UpdateCheckerService.parseLatestVersion(metadata));
     }
 
     @Test

@@ -16,6 +16,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.logging.Level;
 import java.util.prefs.Preferences;
 import java.util.function.Supplier;
+import java.util.regex.Pattern;
 
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamConstants;
@@ -50,6 +51,18 @@ public class UpdateCheckerService implements UpdateCheckerControl {
     /** Daemon request processor for the update-check loop. */
     private static final RequestProcessor RP =
             new RequestProcessor("ACP-UpdateChecker", 1, true);
+
+    /**
+     * Versions the update channel may offer: a numeric core with no qualifier, or the
+     * same core with an explicit {@code -RELEASE} / {@code .RELEASE}. Milestones
+     * ({@code -M1}), release candidates, snapshots and any other qualifier are skipped.
+     */
+    private static final Pattern OFFERABLE_VERSION =
+            Pattern.compile("\\d+(?:\\.\\d+)*(?:[-.]RELEASE)?", Pattern.CASE_INSENSITIVE);
+
+    /** The {@code -RELEASE} qualifier is not part of the ordering key. */
+    private static final Pattern RELEASE_SUFFIX =
+            Pattern.compile("[-.]RELEASE$", Pattern.CASE_INSENSITIVE);
 
     /** Cached singleton — populated lazily from Lookup. */
     private static volatile UpdateCheckerService instance;
@@ -275,14 +288,19 @@ public class UpdateCheckerService implements UpdateCheckerControl {
     }
 
     /**
-     * Extracts the newest published version from a Maven {@code maven-metadata.xml}.
-     * A non-empty {@code <release>} wins; {@code <latest>} is the fallback. DTDs and
-     * external entities are disabled, so a malformed or hostile document can neither
-     * expand entities nor make the parser fetch anything.
+     * Extracts the newest offerable version from a Maven {@code maven-metadata.xml}. A
+     * non-empty offerable {@code <release>} wins; otherwise the highest offerable
+     * {@code <version>} entry, and {@code <latest>} only as a last resort. Only a plain
+     * numeric version or one qualified with {@code -RELEASE} is offered: milestones
+     * ({@code -M1}, {@code -M12}), release candidates, snapshots and anything else with
+     * a suffix are skipped, because the release channel publishes them ahead of the
+     * version they are cutting.
+     * DTDs and external entities are disabled, so a malformed or hostile document
+     * can neither expand entities nor make the parser fetch anything.
      *
      * @param xml metadata document
-     * @return the version, or {@code null} when the document is blank, malformed, or
-     *         carries neither element
+     * @return the version, or {@code null} when the document is blank, malformed,
+     *         or carries no offerable version
      */
     static String parseLatestVersion(String xml) {
         if (xml == null || xml.isBlank()) {
@@ -296,6 +314,7 @@ public class UpdateCheckerService implements UpdateCheckerControl {
             try {
                 String release = null;
                 String latest = null;
+                List<String> versions = new ArrayList<>();
                 String element = null;
                 StringBuilder text = new StringBuilder();
                 while (reader.hasNext()) {
@@ -312,6 +331,8 @@ public class UpdateCheckerService implements UpdateCheckerControl {
                                 release = value;
                             } else if ("latest".equals(element)) {
                                 latest = value;
+                            } else if ("version".equals(element) && !value.isEmpty()) {
+                                versions.add(value);
                             }
                             element = null;
                         }
@@ -320,10 +341,14 @@ public class UpdateCheckerService implements UpdateCheckerControl {
                         }
                     }
                 }
-                if (release != null && !release.isEmpty()) {
-                    return release;
+                if (isOfferableVersion(release)) {
+                    return release.trim();
                 }
-                return latest == null || latest.isEmpty() ? null : latest;
+                String newest = newestOfferableVersion(versions);
+                if (newest != null) {
+                    return newest;
+                }
+                return isOfferableVersion(latest) ? latest.trim() : null;
             } finally {
                 reader.close();
             }
@@ -332,13 +357,49 @@ public class UpdateCheckerService implements UpdateCheckerControl {
         }
     }
 
+    /**
+     * True when {@code version} is a plain numeric version or carries an explicit
+     * {@code -RELEASE} qualifier, i.e. something the update channel may offer.
+     */
+    static boolean isOfferableVersion(String version) {
+        return version != null && OFFERABLE_VERSION.matcher(version.trim()).matches();
+    }
+
+    /** Highest offerable version in {@code versions}, or {@code null} when there is none. */
+    static String newestOfferableVersion(List<String> versions) {
+        String best = null;
+        for (String version : versions) {
+            if (!isOfferableVersion(version)) {
+                continue;
+            }
+            String candidate = version.trim();
+            if (best == null) {
+                best = candidate;
+                continue;
+            }
+            try {
+                if (orderingKey(candidate).compareTo(orderingKey(best)) > 0) {
+                    best = candidate;
+                }
+            } catch (IllegalArgumentException e) {
+                LOG.fine("Skipping unparseable version in metadata: {0}", candidate);
+            }
+        }
+        return best;
+    }
+
+    /** Version minus a {@code -RELEASE} qualifier, so the qualifier never affects ordering. */
+    private static SpecificationVersion orderingKey(String version) {
+        return new SpecificationVersion(RELEASE_SUFFIX.matcher(version).replaceFirst(""));
+    }
+
     static boolean isNewerVersion(String latestVersionStr, String currentVersionStr) {
         if (latestVersionStr == null || currentVersionStr == null) {
             return false;
         }
         try {
-            SpecificationVersion current = new SpecificationVersion(currentVersionStr);
-            SpecificationVersion latest = new SpecificationVersion(latestVersionStr);
+            SpecificationVersion current = orderingKey(currentVersionStr.trim());
+            SpecificationVersion latest = orderingKey(latestVersionStr.trim());
             return latest.compareTo(current) > 0;
         } catch (IllegalArgumentException e) {
             return false;
