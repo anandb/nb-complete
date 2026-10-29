@@ -115,8 +115,8 @@ public final class LanguageResolver {
             return "";
         }
 
-        int lastDot = path.lastIndexOf('.');
-        if (lastDot == -1 || lastDot == path.length() - 1) {
+        int lastDot = lastExtensionDot(path);
+        if (lastDot == -1) {
             return "";
         }
 
@@ -124,6 +124,20 @@ public final class LanguageResolver {
 
         // O(1) lookup from static map, fallback to extension itself
         return EXT_TO_LANGUAGE.getOrDefault(ext, ext);
+    }
+
+    /**
+     * Index of the dot that starts the file extension, or {@code -1} when the path has
+     * none. A dot in a parent directory name ({@code /tmp/folder.d/file}) is not an
+     * extension, so the search never crosses a path separator.
+     */
+    private static int lastExtensionDot(String path) {
+        int lastDot = path.lastIndexOf('.');
+        if (lastDot == -1 || lastDot == path.length() - 1) {
+            return -1;
+        }
+        int lastSeparator = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
+        return lastDot < lastSeparator ? -1 : lastDot;
     }
 
     /**
@@ -136,8 +150,8 @@ public final class LanguageResolver {
         if (path == null || path.isEmpty()) {
             return "text/plain";
         }
-        int lastDot = path.lastIndexOf('.');
-        if (lastDot == -1 || lastDot == path.length() - 1) {
+        int lastDot = lastExtensionDot(path);
+        if (lastDot == -1) {
             return "text/plain";
         }
         return EXT_TO_MIME.getOrDefault(path.substring(lastDot + 1).toLowerCase(), "text/plain");
