@@ -8,6 +8,8 @@
 
 > **An AI pair programmer that lives inside your NetBeans editor — ask, explain, generate, and refactor code without leaving the IDE.**
 
+> **Versioning:** every `0.x` build is a test build. Only `1.x.x` versions are released; `0.x` numbers are deliberately below the published `1.x` line so a test build is never mistaken for a release. Install a `0.x` build manually — NetBeans refuses it as a downgrade of an installed `1.x`.
+
 BeanBot is a NetBeans IDE plugin designed to provide integrated AI capabilities through the Agent Client Protocol (ACP). It offers a structured chat interface for technical assistance, including code generation, project analysis, and automated task execution.
 
 | | | |

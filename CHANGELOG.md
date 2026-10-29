@@ -1,6 +1,9 @@
 # Release Notes
 
-## v1.29.0 (Changes since v1.28.0)
+## Unreleased (test build)
+
+> Test builds are numbered `0.x` and are never released; this section becomes the next `1.x`
+> release when the version is set accordingly.
 
 ### Features
 - **Kilo Code harness**: the catalog now includes [Kilo Code](https://kilo.ai/docs/code-with-ai/platforms/cli), the OpenCode-derived ACP agent, with its own entry rather than an OpenCode variant (its `7.x` version scheme is unrelated). It launches `kilo` (alias `kilocode`) with `acp`, is discovered through the catalog-derived `BinaryResolver` probe set (including the installer's `~/.kilo/bin`), and ships theme-aware icons, per-OS install commands (npm, Homebrew tap, install script) and the `kilo auth login` prerequisite in the chooser. Capabilities match the live `initialize` handshake: messages are queued until turn end (`requiresMessageQueue`), one HTTP MCP server is sent per session, editor context and message ids are on, modes use `session/set_mode`, and model/thinking go through the `model`/`effort` config options (the dedicated model request is only `unstable_`), with session list and agent list enabled. A `critical_rules/kilo.md` overlay carries the harness-specific tool rules.

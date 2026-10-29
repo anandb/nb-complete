@@ -3,6 +3,10 @@
 ## Project Overview
 - **Project**: Coding Assistant (NetBeans IDE plugin, Java 17, Maven)
 - **Current Stable Version**: 1.28.0
+- **Test Builds**: a `0.x` version in `pom.xml` is a test build, never a release. It is
+  numbered below the published `1.x` line on purpose, so an artifact built from it cannot be
+  mistaken for, or auto-updated over, a release; NetBeans treats it as a downgrade. Releases
+  always come from a `1.x` version and a `v*` tag.
 - **Key Tech**: NetBeans API (RELEASE220), Flexmark, Jackson, RSyntaxTextArea, JUnit 5.
 
 ## Build Commands
