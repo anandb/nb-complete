@@ -2,7 +2,7 @@
 
 ## Project Overview
 - **Project**: Coding Assistant (NetBeans IDE plugin, Java 17, Maven)
-- **Current Stable Version**: 1.28.0
+- **Current Stable Version**: 1.29.0
 - **Test Builds**: a `0.x` version in `pom.xml` is a test build, never a release. It is
   numbered below the published `1.x` line on purpose, so an artifact built from it cannot be
   mistaken for, or auto-updated over, a release; NetBeans treats it as a downgrade. Releases

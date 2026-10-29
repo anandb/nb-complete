@@ -1,9 +1,6 @@
 # Release Notes
 
-## Unreleased (test build)
-
-> Test builds are numbered `0.x` and are never released; this section becomes the next `1.x`
-> release when the version is set accordingly.
+## v1.29.0 (Changes since v1.28.0)
 
 ### Features
 - **Kilo Code harness**: the catalog now includes [Kilo Code](https://kilo.ai/docs/code-with-ai/platforms/cli), the OpenCode-derived ACP agent, with its own entry rather than an OpenCode variant (its `7.x` version scheme is unrelated). It launches `kilo` (alias `kilocode`) with `acp`, is discovered through the catalog-derived `BinaryResolver` probe set (including the installer's `~/.kilo/bin`), and ships theme-aware icons, per-OS install commands (npm, Homebrew tap, install script) and the `kilo auth login` prerequisite in the chooser. Capabilities match the live `initialize` handshake: messages are queued until turn end (`requiresMessageQueue`), one HTTP MCP server is sent per session, editor context and message ids are on, modes use `session/set_mode`, and model/thinking go through the `model`/`effort` config options (the dedicated model request is only `unstable_`), with session list and agent list enabled. A `critical_rules/kilo.md` overlay carries the harness-specific tool rules.
@@ -12,8 +9,9 @@
 - **Larger chat font sizes**: the Chat Font Size combo offers 18, 20, 22 and 24 alongside the existing 10–16 values. The preference stores a plain size, so no other change was needed.
 
 ### Fixes
+- **Possible client-side mitigation for a harness that is still starting**: the first `session/list` and `session/load` of a fresh process could fail with a generic `-32603` while the agent was still booting ([opencode#57204](https://github.com/anomalyco/opencode/issues/57204), still open upstream). Both now retry only in the startup window opened by the `initialize` handshake — 2 s, 4 s, 8 s — and only for `-32603` or a dropped connection.
 - **Exporting a session now confirms itself**: the Markdown and HTML exports wrote the file silently (only a log line), so it was unclear whether the save happened. Once the file is written and closed, the status row shows `Exported: <file name>` for two seconds and then returns to Ready; the confirmation is skipped when the write fails or the Save dialog is cancelled.
-- **Token stats sections are visually separated and drawn in the icon teal**: the overview and cost/tokens blocks ran straight into the per-model tables, and those into the per-agent tables and the MCP tool list. A bold full-width rule now separates the summary from the breakdowns and each breakdown section from the next; a section with no rows contributes no rule. The rules and the MCP call histogram use the icon theme's teal (`#2A7D7D` in light, `#9FD2D2` in dark) instead of the accent blue, which read as a second selection colour.
+- **Token stats sections are visually separated and drawn in the icon teal**: the overview and cost/tokens blocks ran straight into the per-model tables, and those into the per-agent tables and the Internal MCP Calls list. A bold full-width rule now separates the summary from the breakdowns and each breakdown section from the next; a section with no rows contributes no rule. The rules and the Internal MCP Calls histogram use the icon theme's teal (`#2A7D7D` in light, `#9FD2D2` in dark) instead of the accent blue, which read as a second selection colour. The section is titled *Internal MCP Calls* because it counts calls into BeanBot's own MCP server, not the harness's tooling.
 - **The context-window meter no longer keeps the archived session's fill**: archiving the last visible session (or every session, via *Archive All*) closes it and shows the WelcomeScreen, which cleared the plan slideout but left the meter painted with the closed session's `used/size`. The gauge is now cleared on both close paths — no replacement session available, and the current session hidden while *show archived* is off — and whenever the WelcomeScreen is shown with nothing loaded, including the all-projects-closed path that closes the session directly in `SessionManager`.
 - **The chat font size now applies to user bubbles too**: user messages render in a plain `JTextArea` that kept the theme font, so the setting only changed the assistant's HTML bubbles. The user bubble now resolves the same size `HtmlContentPreparer` uses — the preference when set, otherwise its inherited default (`theme − 2`), so "Inherited" no longer leaves user text one step larger than the assistant's.
 - **Assistant bubbles render at the configured size instead of ~33% larger**: `FitEditorPane` sets `HONOR_DISPLAY_PROPERTIES`, so Swing scaled the CSS `font-size` in `px` by the screen DPI (4/3 at 96 dpi) while plain-text bubbles size in points; a "16" therefore painted as ~21. The chat CSS is now generated in `pt`, so both bubble kinds render at the same physical size. Inline code and `pre` blocks derive their size from the same preference (floored at 9 pt) because monospace glyphs read smaller than proportional ones at the same point size.
@@ -36,6 +34,7 @@
 - **Cline harness page** covers the npm install, the `cline auth` prerequisite, the model and plan/act controls, queueing and the limitations (no plugin MCP tools, no harness session list, no token stats, `--thinking` via Process Arguments, images and binary attachments dropped); it is linked from Home, Pick Your Harness, Choose Your Coding Harness, Queuing Messages and the Topic Index.
 
 ### Tests
+- **`SessionManagerTest`** pins the startup-only retry for `session/list` and `session/load`.
 - **`PermissionOptionMnemonicTest`** pins row-level assignment on Devin's real six-option payload (and that the letters come from the `optionId`, since every allow option reports kind `allow_always`), plus the goose once/always/reject row, a lone "Allow" beside "Deny", two identical labels, distinctness and underlinability of every letter.
 - **`ButtonRowLayoutTest`** pins the band contract: four short answers share one row when they fit and wrap only when the fourth cannot, Devin's six labels lay out as two rows at a width three fit, a narrow band adds rows instead of clipping, narrowing a laid-out band re-reserves its height, buttons stay right-aligned, and hidden components do not consume a slot.
 - **`HarnessCatalogTest`** pins the Kilo entry: binary names and Windows forms, launch argument, every capability flag, the three install commands, the `~/.kilo/bin` probe directory and the icon name.
@@ -50,7 +49,7 @@
 - **`PlanPanelTest`** follows the restyled active row: it asserts the theme foreground (it still expected the accent color) next to the status-icon, muting and ellipsis contracts.
 
 ### Housekeeping
-- Version bumped to 1.29.0-SNAPSHOT.
+- Version bumped to 1.29.0.
 
 ## v1.28.0 (Changes since v1.27.0)
 
