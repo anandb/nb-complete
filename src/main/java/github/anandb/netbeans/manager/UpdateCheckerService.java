@@ -378,7 +378,7 @@ public class UpdateCheckerService implements UpdateCheckerControl {
                 continue;
             }
             try {
-                if (orderingKey(candidate).compareTo(orderingKey(best)) > 0) {
+                if (compareVersions(candidate, best) > 0) {
                     best = candidate;
                 }
             } catch (IllegalArgumentException e) {
@@ -388,22 +388,48 @@ public class UpdateCheckerService implements UpdateCheckerControl {
         return best;
     }
 
-    /** Version minus a {@code -RELEASE} qualifier, so the qualifier never affects ordering. */
-    private static SpecificationVersion orderingKey(String version) {
-        return new SpecificationVersion(RELEASE_SUFFIX.matcher(version).replaceFirst(""));
-    }
-
     static boolean isNewerVersion(String latestVersionStr, String currentVersionStr) {
         if (latestVersionStr == null || currentVersionStr == null) {
             return false;
         }
         try {
-            SpecificationVersion current = orderingKey(currentVersionStr.trim());
-            SpecificationVersion latest = orderingKey(latestVersionStr.trim());
-            return latest.compareTo(current) > 0;
+            return compareVersions(latestVersionStr, currentVersionStr) > 0;
         } catch (IllegalArgumentException e) {
             return false;
         }
+    }
+
+    /**
+     * Compares two versions by numeric core. A qualifier makes a version older than the
+     * same core without one, so {@code 1.29.0} is an update for {@code 1.29.0-M1}.
+     * {@code SpecificationVersion} rejects a qualifier outright, so the core is compared
+     * on its own.
+     */
+    private static int compareVersions(String left, String right) {
+        String leftCore = numericCore(left);
+        String rightCore = numericCore(right);
+        int byCore = new SpecificationVersion(leftCore).compareTo(new SpecificationVersion(rightCore));
+        if (byCore != 0) {
+            return byCore;
+        }
+        boolean leftPre = isPreRelease(left);
+        boolean rightPre = isPreRelease(right);
+        if (leftPre == rightPre) {
+            return 0;
+        }
+        return leftPre ? -1 : 1;
+    }
+
+    /** The dotted numeric part of a version, without {@code -RELEASE} or any qualifier. */
+    private static String numericCore(String version) {
+        String unqualified = RELEASE_SUFFIX.matcher(version.trim()).replaceFirst("");
+        int qualifier = unqualified.indexOf('-');
+        return qualifier > 0 ? unqualified.substring(0, qualifier) : unqualified;
+    }
+
+    /** True when a dash qualifier other than {@code -RELEASE} remains. */
+    private static boolean isPreRelease(String version) {
+        return RELEASE_SUFFIX.matcher(version.trim()).replaceFirst("").indexOf('-') > 0;
     }
 
     private void showNotification(String latestVersion, String downloadUrl, String notesUrl) {

@@ -166,6 +166,15 @@ class UpdateCheckerServiceTest {
     }
 
     @Test
+    void finalReleaseIsNewerThanItsMilestones() {
+        assertTrue(UpdateCheckerService.isNewerVersion("1.29.0", "1.29.0-M1"));
+        assertTrue(UpdateCheckerService.isNewerVersion("1.29.0-RELEASE", "1.29.0-M2"));
+        assertFalse(UpdateCheckerService.isNewerVersion("1.29.0-M2", "1.29.0"));
+        assertFalse(UpdateCheckerService.isNewerVersion("1.29.0-M1", "1.29.0-M1"));
+        assertTrue(UpdateCheckerService.isNewerVersion("1.30.0", "1.29.0-M1"));
+    }
+
+    @Test
     void releaseQualifiedVersionIsOffered() {
         String metadata = """
                 <metadata><versioning><versions>
