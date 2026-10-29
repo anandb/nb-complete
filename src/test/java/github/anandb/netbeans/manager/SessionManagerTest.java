@@ -3,6 +3,7 @@ package github.anandb.netbeans.manager;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -26,6 +27,7 @@ import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.List;
@@ -1411,6 +1413,65 @@ class SessionManagerTest {
                 .get(5, TimeUnit.SECONDS);
         verify(processManager, times(2)).sendRequest(eq("session/list"), any(), eq(60L), eq(TimeUnit.SECONDS));
         assertEquals(2, sessions.size());
+    }
+
+    @Test
+    void sessionListRetriesInternalErrorWhileHarnessIsStarting() throws Exception {
+        // A harness that has just started answers session/list with a generic
+        // internal error until its own activation finishes (opencode#57204),
+        // so the startup window retries instead of showing an empty dropdown.
+        sessionManager.setHarnessStartupPendingForTest(true);
+        sessionManager.setStartupRetryDelaysForTest(new long[]{1});
+        when(processManager.sendRequest(eq("session/list"), any(), eq(60L), eq(TimeUnit.SECONDS)))
+                .thenReturn(CompletableFuture.failedFuture(
+                        new AcpRpcException(AcpRpcException.INTERNAL_ERROR, "Internal error")))
+                .thenReturn(CompletableFuture.completedFuture(
+                        mapper.readTree("{\"sessions\":[{\"sessionId\":\"a\",\"cwd\":\"/x\"}]}")));
+
+        List<Session> sessions = sessionManager.getSessions("/x").get(5, TimeUnit.SECONDS);
+
+        assertEquals(1, sessions.size());
+        verify(processManager, times(2)).sendRequest(eq("session/list"), any(), eq(60L), eq(TimeUnit.SECONDS));
+    }
+
+    @Test
+    void sessionListDoesNotRetryOnceHarnessIsWarm() {
+        sessionManager.setHarnessStartupPendingForTest(false);
+        when(processManager.sendRequest(eq("session/list"), any(), eq(60L), eq(TimeUnit.SECONDS)))
+                .thenReturn(CompletableFuture.failedFuture(
+                        new AcpRpcException(AcpRpcException.INTERNAL_ERROR, "Internal error")));
+
+        CompletableFuture<List<Session>> future = sessionManager.getSessions("/x");
+
+        assertThrows(ExecutionException.class, () -> future.get(5, TimeUnit.SECONDS));
+        verify(processManager, times(1)).sendRequest(eq("session/list"), any(), eq(60L), eq(TimeUnit.SECONDS));
+    }
+
+    @Test
+    void sessionLoadRetriesInternalErrorWhileHarnessIsStarting() throws Exception {
+        sessionManager.setHarnessStartupPendingForTest(true);
+        sessionManager.setStartupRetryDelaysForTest(new long[]{1});
+        when(processManager.sendRequest(eq("session/load"), any(), eq(2L), eq(TimeUnit.MINUTES)))
+                .thenReturn(CompletableFuture.failedFuture(
+                        new AcpRpcException(AcpRpcException.INTERNAL_ERROR, "Internal error")))
+                .thenReturn(CompletableFuture.completedFuture(mapper.createObjectNode()));
+
+        sessionManager.loadSessionFromServer("sid", "/x").get(5, TimeUnit.SECONDS);
+
+        verify(processManager, times(2)).sendRequest(eq("session/load"), any(), eq(2L), eq(TimeUnit.MINUTES));
+    }
+
+    @Test
+    void sessionLoadDoesNotRetryMethodNotFoundEvenDuringStartup() {
+        // -32601 is a permanent answer: the harness cannot load sessions at all,
+        // so retrying would only delay marking it unsupported.
+        sessionManager.setHarnessStartupPendingForTest(true);
+        when(processManager.sendRequest(eq("session/load"), any(), eq(2L), eq(TimeUnit.MINUTES)))
+                .thenReturn(CompletableFuture.failedFuture(
+                        new AcpRpcException(AcpRpcException.METHOD_NOT_FOUND, "Method not found")));
+
+        assertNull(sessionManager.loadSessionFromServer("sid", "/x").join());
+        verify(processManager, times(1)).sendRequest(eq("session/load"), any(), eq(2L), eq(TimeUnit.MINUTES));
     }
 
     @Test

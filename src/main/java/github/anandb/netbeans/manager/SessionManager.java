@@ -456,6 +456,44 @@ public class SessionManager implements SessionQuery, SessionControl {
      * session the explicit operation just started.
      */
     private final AtomicInteger explicitSessionOps = new AtomicInteger();
+
+    /**
+     * True between a fresh server process finishing its {@code initialize}
+     * handshake and the first session it actually opens. Only while this holds
+     * do {@code session/list} and {@code session/load} retry a failed call: a
+     * harness that has just been started (or switched to) answers them with a
+     * generic internal error until its own CLI/SDK, plugin and skill activation
+     * has finished (opencode#57204, claude-agent-acp bootstrap). Once the
+     * harness has opened a session it is warm, so later failures are real and
+     * must surface at once instead of being retried.
+     */
+    private volatile boolean harnessStartupPending;
+
+    /** Wall-clock end of the startup window opened by the ready handler. */
+    private volatile long harnessStartupDeadlineNanos;
+
+    /** How long after a fresh handshake a session call may still be retried. */
+    private static final long HARNESS_STARTUP_WINDOW_MS = 60_000;
+
+    /**
+     * Delays before each startup retry. Startup activation can take tens of
+     * seconds on a large skill/plugin set, so the attempts are spread out rather
+     * than fired rapidly; nothing here runs on the EDT.
+     */
+    private volatile long[] startupRetryDelaysMs = {2_000, 4_000, 8_000};
+
+    /** Test hook: marks the startup window without going through a handshake. */
+    void setHarnessStartupPendingForTest(boolean pending) {
+        harnessStartupPending = pending;
+        harnessStartupDeadlineNanos = pending
+                ? System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(HARNESS_STARTUP_WINDOW_MS) : 0L;
+    }
+
+    /** Test hook: shrinks the startup retry delays so tests need not wait. */
+    void setStartupRetryDelaysForTest(long[] delaysMs) {
+        startupRetryDelaysMs = delaysMs;
+    }
+
     private final SessionStateMachine stateMachine = new SessionStateMachine();
     private volatile String currentSessionId;
     /** Server generation whose unsupported-load notice was already shown. */
@@ -511,6 +549,12 @@ public class SessionManager implements SessionQuery, SessionControl {
 
         // Auto-reload last session after successful reconnect
         processManager.setReadyHandler(() -> {
+            // A new process (first start, restart, harness switch) has to finish
+            // its own startup before it can answer session calls; open the retry
+            // window the session/list and session/load paths consult.
+            harnessStartupPending = true;
+            harnessStartupDeadlineNanos = System.nanoTime()
+                    + TimeUnit.MILLISECONDS.toNanos(HARNESS_STARTUP_WINDOW_MS);
             String sid = currentSessionId;
             if (sid != null && explicitSessionOps.get() == 0) {
                 SwingUtilities.invokeLater(() -> loadSession(sid));
@@ -635,6 +679,10 @@ public class SessionManager implements SessionQuery, SessionControl {
     // --- Session CRUD (moved from ProcessManager) ---
 
     public CompletableFuture<List<Session>> getSessions(String directory) {
+        return withStartupRetry("session/list", () -> getSessionsOnce(directory), 0);
+    }
+
+    private CompletableFuture<List<Session>> getSessionsOnce(String directory) {
         LOG.log(Level.FINE, "getSessions: called with directory={0}", directory);
         return processManager.whenReady()
                 .thenCompose(v -> processManager.getToolExecutor().waitForReady())
@@ -766,6 +814,8 @@ public class SessionManager implements SessionQuery, SessionControl {
                 .thenApply(res -> {
                     long durationMs = (System.nanoTime() - start) / 1_000_000;
                     LOG.info("session/new completed in {0}ms", durationMs);
+                    // A session opened successfully: the harness finished starting.
+                    harnessStartupPending = false;
                     try {
                         Session s = MAPPER.treeToValue(res, Session.class);
                         LOG.info("session/new extracted sessionId: {0}, title: {1}", s.id(), s.title());
@@ -831,7 +881,8 @@ public class SessionManager implements SessionQuery, SessionControl {
         LOG.fine("loadSessionFromServer: called with {0}, cwd={1}", sessionId, cwd);
         final long start = System.nanoTime();
         return withMcpFallback("session/load",
-                () -> sendLoadSessionRequest(sessionId, cwd, start), start)
+                () -> withStartupRetry("session/load",
+                        () -> sendLoadSessionRequest(sessionId, cwd, start), 0), start)
                 .handle((res, ex) -> {
                     if (ex == null) {
                         return res;
@@ -879,6 +930,7 @@ public class SessionManager implements SessionQuery, SessionControl {
                 .thenApply(res -> {
                     long durationMs = (System.nanoTime() - start) / 1_000_000;
                     // Record only on success: this thenApply is skipped on error.
+                    harnessStartupPending = false;
                     loadedSessionId = sessionId;
                     loadedSessionGeneration = processManager.serverGeneration();
                     LOG.info("session/load completed in {0}ms", durationMs);
@@ -1570,6 +1622,60 @@ public class SessionManager implements SessionQuery, SessionControl {
             }
             return CompletableFuture.<T>failedFuture(ex);
         }).thenCompose(f -> f);
+    }
+
+    /**
+     * Retries a session call that failed while the harness was still starting.
+     * A freshly started agent answers {@code session/list} and
+     * {@code session/load} with a generic internal error until its own CLI/SDK,
+     * plugin and skill activation has finished (opencode#57204); the identical
+     * request succeeds seconds later. Only the startup window retries — once the
+     * harness has opened a session, a failure is real and propagates unchanged.
+     * The retry itself is bounded by {@link #startupRetryDelaysMs} and by the
+     * {@link #HARNESS_STARTUP_WINDOW_MS} window opened at the handshake.
+     */
+    private <T> CompletableFuture<T> withStartupRetry(
+            String operationName,
+            Supplier<CompletableFuture<T>> requestFn,
+            int attempt) {
+        return requestFn.get().handle((res, ex) -> {
+            if (ex == null) {
+                return CompletableFuture.completedFuture(res);
+            }
+            if (!harnessStartupPending
+                    || System.nanoTime() > harnessStartupDeadlineNanos
+                    || attempt >= startupRetryDelaysMs.length
+                    || !isStartupRetryable(ex)) {
+                return CompletableFuture.<T>failedFuture(ex);
+            }
+            long delayMs = startupRetryDelaysMs[attempt];
+            LOG.log(Level.INFO, "{0} failed while the harness was still starting, "
+                    + "retrying in {1}ms (attempt {2}): {3}",
+                    operationName, delayMs, attempt + 2, ExceptionUtils.getMessage(ex));
+            return CompletableFuture.<T>completedFuture(null)
+                    .thenComposeAsync(v -> withStartupRetry(operationName, requestFn, attempt + 1),
+                            CompletableFuture.delayedExecutor(delayMs, TimeUnit.MILLISECONDS));
+        }).thenCompose(f -> f);
+    }
+
+    /**
+     * True for the failures a harness emits before it can serve sessions: a
+     * generic internal error, or the connection dropping while the process is
+     * still booting. A missing method ({@code -32601}) and invalid params are
+     * permanent answers and are never retried.
+     */
+    private static boolean isStartupRetryable(Throwable ex) {
+        Throwable cause = ex;
+        while (cause != null) {
+            if (cause instanceof AcpRpcException) {
+                return ((AcpRpcException) cause).code() == AcpRpcException.INTERNAL_ERROR;
+            }
+            if (cause instanceof IOException) {
+                return true;
+            }
+            cause = cause.getCause();
+        }
+        return false;
     }
 
     /** Unwrap the cause chain and return the root error message. */

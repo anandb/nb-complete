@@ -12,6 +12,9 @@ public final class AcpRpcException extends RuntimeException {
     /** JSON-RPC "Method not found". */
     public static final int METHOD_NOT_FOUND = -32601;
 
+    /** JSON-RPC "Internal error". */
+    public static final int INTERNAL_ERROR = -32603;
+
     private final int code;
 
     public AcpRpcException(int code, String message) {
