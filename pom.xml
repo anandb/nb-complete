@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>io.github.anandb</groupId>
     <artifactId>beanbot</artifactId>
-    <version>1.29.0</version>
+    <version>1.29.1</version>
     <packaging>nbm</packaging>
 
     <name>Coding Assistant</name>
@@ -661,6 +661,24 @@
     </build>
 
     <profiles>
+        <profile>
+            <!-- Runs the tests in a random order to surface order-dependent tests.
+                 Surefire prints a -Dsurefire.runOrder.random.seed=<n> flag to
+                 reproduce one run; -Dsurefire.runOrder=alphabetical restores the
+                 default order. -->
+            <id>random-test-order</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <runOrder>random</runOrder>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
         <profile>
             <id>check-cvss</id>
             <build>

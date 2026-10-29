@@ -143,6 +143,8 @@ class FileCacheManagerTest {
 
     @Test
     void publishingTheScanKeepsEntriesAddedWhileItRan() throws Exception {
+        await().atMost(10, TimeUnit.SECONDS).until(manager::isReady);
+
         FileSystem fs = FileUtil.createMemoryFileSystem();
         FileObject live = fs.getRoot().createData("Live.java");
         FileObject deleted = fs.getRoot().createData("Gone.java");

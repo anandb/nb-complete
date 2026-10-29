@@ -1,6 +1,6 @@
 # Release Notes
 
-## v1.29.0 (Changes since v1.28.0)
+## v1.29.1 (Changes since v1.28.0)
 
 ### Features
 - **Kilo Code harness**: the catalog now includes [Kilo Code](https://kilo.ai/docs/code-with-ai/platforms/cli), the OpenCode-derived ACP agent, with its own entry rather than an OpenCode variant (its `7.x` version scheme is unrelated). It launches `kilo` (alias `kilocode`) with `acp`, is discovered through the catalog-derived `BinaryResolver` probe set (including the installer's `~/.kilo/bin`), and ships theme-aware icons, per-OS install commands (npm, Homebrew tap, install script) and the `kilo auth login` prerequisite in the chooser. Capabilities match the live `initialize` handshake: messages are queued until turn end (`requiresMessageQueue`), one HTTP MCP server is sent per session, editor context and message ids are on, modes use `session/set_mode`, and model/thinking go through the `model`/`effort` config options (the dedicated model request is only `unstable_`), with session list and agent list enabled. A `critical_rules/kilo.md` overlay carries the harness-specific tool rules.
@@ -34,6 +34,7 @@
 - **Cline harness page** covers the npm install, the `cline auth` prerequisite, the model and plan/act controls, queueing and the limitations (no plugin MCP tools, no harness session list, no token stats, `--thinking` via Process Arguments, images and binary attachments dropped); it is linked from Home, Pick Your Harness, Choose Your Coding Harness, Queuing Messages and the Topic Index.
 
 ### Tests
+- **`FileCacheManagerTest` no longer races the initial cache rebuild**: on slower runners the constructor-scheduled rebuild could land between the test's `publish(...)` calls, snapshot its entries as known before the scan and republish an empty scan, dropping them — the CI failure `expected: <[Live.java]> but was: <[]>`. The test now waits for the cache to report ready before publishing.
 - **`SessionManagerTest`** pins the startup-only retry for `session/list` and `session/load`.
 - **`PermissionOptionMnemonicTest`** pins row-level assignment on Devin's real six-option payload (and that the letters come from the `optionId`, since every allow option reports kind `allow_always`), plus the goose once/always/reject row, a lone "Allow" beside "Deny", two identical labels, distinctness and underlinability of every letter.
 - **`ButtonRowLayoutTest`** pins the band contract: four short answers share one row when they fit and wrap only when the fourth cannot, Devin's six labels lay out as two rows at a width three fit, a narrow band adds rows instead of clipping, narrowing a laid-out band re-reserves its height, buttons stay right-aligned, and hidden components do not consume a slot.
@@ -49,7 +50,8 @@
 - **`PlanPanelTest`** follows the restyled active row: it asserts the theme foreground (it still expected the accent color) next to the status-icon, muting and ellipsis contracts.
 
 ### Housekeeping
-- Version bumped to 1.29.0.
+- **Random-order test profile**: `./mvnw test -P random-test-order` runs the Surefire classes in a random order to surface order-dependent tests; the log prints `-Dsurefire.runOrder.random.seed=<n>` so a failing order can be reproduced.
+- Version bumped to 1.29.1.
 
 ## v1.28.0 (Changes since v1.27.0)
 

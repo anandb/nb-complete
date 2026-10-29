@@ -2,7 +2,7 @@
 
 ## Project Overview
 - **Project**: Coding Assistant (NetBeans IDE plugin, Java 17, Maven)
-- **Current Stable Version**: 1.29.0
+- **Current Stable Version**: 1.29.1
 - **Test Builds**: a `0.x` version in `pom.xml` is a test build, never a release. It is
   numbered below the published `1.x` line on purpose, so an artifact built from it cannot be
   mistaken for, or auto-updated over, a release; NetBeans treats it as a downgrade. Releases
@@ -11,6 +11,8 @@
 
 ## Build Commands
 - Build: `./mvnw package` (runs checks & tests) | Clean: `./mvnw clean` | Quick: `./mvnw package -DskipTests`
+- Random test order: `./mvnw test -P random-test-order` runs Surefire classes in random order to surface
+  order-dependent tests; the log prints `-Dsurefire.runOrder.random.seed=<n>` to reproduce one run.
 - **Always use `./mvnw`** (pinned Maven 3.9.x) and never system `mvn`: Maven 3.10 writes
   `maven-metadata-local.xml` into `central-publishing-maven-plugin`'s file:// staging repo,
   which gets bundled and Central rejects the deployment ("Bundle has content that does NOT
