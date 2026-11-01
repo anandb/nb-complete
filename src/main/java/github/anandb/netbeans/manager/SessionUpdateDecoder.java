@@ -58,6 +58,7 @@ final class SessionUpdateDecoder {
             }
 
             SessionUpdate.Params sessionParams = MAPPER.treeToValue(params, SessionUpdate.Params.class);
+            ActiveRunTracker.update(sessionParams.sessionId(), params.get("update"));
             return new SessionUpdate(SessionUpdate.JSONRPC_VERSION, SessionUpdate.METHOD, sessionParams);
         } catch (Exception e) {
             LOG.log(rawType != null ? Level.INFO : Level.FINE,

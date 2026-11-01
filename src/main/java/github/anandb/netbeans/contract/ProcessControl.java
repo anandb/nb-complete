@@ -26,6 +26,16 @@ public interface ProcessControl {
     /** Sends a chat message with additional blocks. */
     CompletableFuture<JsonNode> sendMessage(String sessionId, String text, Map<String, Object> context, List<Map<String, Object>> additionalBlocks);
 
+    /** Returns the harness's active run id for a session, or null when no run is active. */
+    String getActiveRunId(String sessionId);
+
+    /**
+     * Adds user input to the running turn through the harness's steering extension
+     * ({@code _goose/unstable/session/steer}) instead of starting a new turn.
+     * The returned future fails when no run is active.
+     */
+    CompletableFuture<JsonNode> steerMessage(String sessionId, String text, List<Map<String, Object>> additionalBlocks);
+
     /** Stops the current message being processed. */
     CompletableFuture<Void> stopMessage(String sessionId);
 

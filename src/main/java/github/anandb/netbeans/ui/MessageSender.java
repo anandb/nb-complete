@@ -34,6 +34,7 @@ import github.anandb.netbeans.model.UsageRecords.Attribution;
 import github.anandb.netbeans.model.UsageRecords.PromptUsageRow;
 import java.util.prefs.PreferenceChangeListener;
 import github.anandb.netbeans.support.PluginSettings;
+import github.anandb.netbeans.support.SteerEchoes;
 import github.anandb.netbeans.support.VcsUtils;
 import org.openide.util.RequestProcessor;
 
@@ -162,58 +163,25 @@ public class MessageSender {
             return;
         }
         boolean turnEnded = turnEndedCheck != null ? turnEndedCheck.getAsBoolean() : true;
-        // requiresMessageQueue decides mid-turn delivery: queueing agents (goose,
-        // OpenCode v2) cannot steer a running turn, so messages wait for turn end
-        // and go out as one combined prompt at flush time. Steering agents
-        // (OpenCode v1) accept a new session/prompt while a previous one is
-        // running — send immediately.
+        // Mid-turn delivery has three routes. A harness with its own steering extension
+        // (goose) adds the text to the running turn through that call; otherwise a
+        // queueing harness (OpenCode v2, Codex, Kilo, Cline) holds it until turn end and
+        // flushes one combined prompt; the rest (OpenCode v1) accept a second prompt.
         // Read live from the resolved capabilities: the harness variant is chosen
         // from the initialize response version (see HarnessCatalog.forAgentVersion).
         ProcessControl proc = processService.get();
-        boolean queueingAgent = proc != null && proc.getCapabilities().requiresMessageQueue();
-        if ((!sessionService.get().canSendMessage() || !turnEnded) && queueingAgent) {
-            // Bot is actively processing (streaming / awaiting RPC completion) —
-            // queue the message for later delivery when the turn ends.
-            String text = inputArea.getText();
-            if (!text.isEmpty() && queueManager != null) {
-                queueManager.enqueue(text);
-                // Bubble is NOT drawn here — it is drawn later in
-                // sendQueuedMessage() when the combined text is actually posted.
-                // This keeps the chat panel free of half-visible queued echoes.
-                inputArea.setText("");
-                messageHistory.add(text);
-                // Attachments are intentionally dropped, not queued: when several
-                // messages are queued they are later concatenated into ONE combined
-                // prompt (see MessageQueueManager.flushAll), so per-message file
-                // blocks would be ambiguous — there is no well-defined mapping of
-                // "attach file X to queued message N" onto a single merged prompt.
-                // The input is cleared so the user must re-attach after the turn ends.
-                attachmentManager.clear();
-                paperclipUpdater.run();
-            }
-            return;
-        }
         String text = inputArea.getText(); // Don't trim user input spaces
         if (text.isEmpty() && attachmentManager.getAttachments().isEmpty()) {
             return;
         }
-
-        // Block the send while a permission request awaits a decision: sending a new
-        // message would supersede the pending request and hang the server, which is
-        // still waiting on the tool-call decision. Keep the typed text in the input and
-        // draw attention to the pending request instead of rejecting it.
-        if (permissionPendingCheck != null && permissionPendingCheck.getAsBoolean()) {
-            if (onPermissionBlockedCallback != null) {
-                onPermissionBlockedCallback.run();
-            }
-            return;
-        }
+        boolean permissionPending = permissionPendingCheck != null && permissionPendingCheck.getAsBoolean();
 
         // Add to history before slash intercept so local commands (/models, /title etc.)
         // are available via Alt+Up browsing.
         messageHistory.add(text);
 
-        // Intercept local slash commands first (trim is only to check for '/')
+        // Intercept local slash commands before any mid-turn routing: they are UI
+        // actions, so they stay immediate instead of being steered or queued.
         boolean isForwardedSlash = false;
         if (text.trim().startsWith("/")) {
             SlashCommandInterceptor interceptor = processService.get().getSlashCommandInterceptor();
@@ -242,6 +210,43 @@ public class MessageSender {
                 inputArea.setText("");
                 isForwardedSlash = true;
             }
+        }
+
+        boolean midTurn = !sessionService.get().canSendMessage() || !turnEnded;
+        if (midTurn && !permissionPending && trySteer(text, proc)) {
+            return;
+        }
+        boolean queueingAgent = proc != null && proc.getCapabilities().requiresMessageQueue();
+        if (midTurn && queueingAgent) {
+            // Bot is actively processing (streaming / awaiting RPC completion) —
+            // queue the message for later delivery when the turn ends.
+            if (!text.isEmpty() && queueManager != null) {
+                queueManager.enqueue(text);
+                // Bubble is NOT drawn here — it is drawn later in
+                // sendQueuedMessage() when the combined text is actually posted.
+                // This keeps the chat panel free of half-visible queued echoes.
+                inputArea.setText("");
+                // Attachments are intentionally dropped, not queued: when several
+                // messages are queued they are later concatenated into ONE combined
+                // prompt (see MessageQueueManager.flushAll), so per-message file
+                // blocks would be ambiguous — there is no well-defined mapping of
+                // "attach file X to queued message N" onto a single merged prompt.
+                // The input is cleared so the user must re-attach after the turn ends.
+                attachmentManager.clear();
+                paperclipUpdater.run();
+            }
+            return;
+        }
+
+        // Block the send while a permission request awaits a decision: sending a new
+        // message would supersede the pending request and hang the server, which is
+        // still waiting on the tool-call decision. Keep the typed text in the input and
+        // draw attention to the pending request instead of rejecting it.
+        if (permissionPending) {
+            if (onPermissionBlockedCallback != null) {
+                onPermissionBlockedCallback.run();
+            }
+            return;
         }
 
         String currentSessionId = sessionService.get().getCurrentSessionId();
@@ -276,22 +281,11 @@ public class MessageSender {
 
             // Local echo with file references
             if (localEchoEnabled) {
-                StringBuilder echoBuilder = new StringBuilder(text);
-                if (!attachedFiles.isEmpty()) {
-                    if (!text.isBlank()) echoBuilder.append("\n");
-                    for (AttachedFile af : attachedFiles) {
-                        echoBuilder.append("\n[")
-                                .append(af.isImage()
-                                        ? NbBundle.getMessage(MessageSender.class, "LBL_Image")
-                                        : NbBundle.getMessage(MessageSender.class, "LBL_File")).append(": ")
-                                .append(af.filename()).append("]");
-                    }
-                }
-
+                String echoText = buildEchoText(text, attachedFiles);
                 chatPanel.addMessage(new ProcessedMessage.Builder()
                     .messageType(MessageType.user_message_chunk)
-                    .text(echoBuilder.toString())
-                    .rawText(echoBuilder.toString())
+                    .text(echoText)
+                    .rawText(echoText)
                     .messageId(clientMessageId)
                     .build());
             }
@@ -343,6 +337,10 @@ public class MessageSender {
         if (onNewMessageCallback != null) {
             onNewMessageCallback.run();
         }
+        // A mid-turn send only adds input to the running turn: its failure must not
+        // end the turn UI (see the exceptionally branch below).
+        final boolean steeringSend = midTurn;
+        final int prevGen = sendGeneration.get();
         final int gen = sendGeneration.incrementAndGet();
         sendProc.sendMessage(currentSessionId, messageText, context, fileBlocks)
                 .thenAccept(result -> {
@@ -391,18 +389,32 @@ public class MessageSender {
                             return;
                         }
                         LOG.info("RPC exceptionally fired: {0}", ExceptionUtils.getMessage(ex));
-                        statusController.setStatus("STATUS_Error",
-                    ExceptionUtils.getMessage(ex) != null ? ExceptionUtils.getMessage(ex) : ex.getClass().getSimpleName());
+                        String reason = ExceptionUtils.getMessage(ex) != null
+                                ? ExceptionUtils.getMessage(ex) : ex.getClass().getSimpleName();
+                        statusController.setStatus("STATUS_Error", reason);
+                        chatPanel.addMessage(ProcessedMessage.createError(
+                                MessageType.error_response,
+                                NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Error", reason),
+                                null, null
+                        ));
+                        if (steeringSend) {
+                            // The harness's first turn is still running: this send only added
+                            // input to it, so the failure must not end the turn UI. Keep Stop,
+                            // the stall watchdog and the streaming bubble alive, and hand the
+                            // turn-end claim back to the original prompt.
+                            if (inputArea.getText().isEmpty()) {
+                                inputArea.setText(messageText);
+                            }
+                            sendGeneration.compareAndSet(gen, prevGen);
+                            statusController.updateButtonState(true);
+                            statusController.touchRunActivity();
+                            inputFocusRequester.run();
+                            return;
+                        }
+                        inputArea.setText(messageText);
                         statusController.stopThinking();
                         statusController.disarmRunWatchdog();
                         chatPanel.stopStreaming();
-                        chatPanel.addMessage(ProcessedMessage.createError(
-                                MessageType.error_response,
-                                NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Error",
-                                        ExceptionUtils.getMessage(ex) != null ? ExceptionUtils.getMessage(ex) : ex.getClass().getSimpleName()),
-                                null, null
-                        ));
-                        inputArea.setText(messageText);
                         statusController.updateButtonState(false);
                         if (onMessageDoneCallback != null) {
                             onMessageDoneCallback.run();
@@ -415,6 +427,80 @@ public class MessageSender {
                     return null;
                 });
         // CPD-ON
+    }
+
+    /**
+     * Adds the text to the running turn through the harness's steering extension.
+     * Returns false when the harness cannot steer right now, leaving the caller to
+     * queue or to start a new prompt.
+     */
+    private boolean trySteer(String text, ProcessControl proc) {
+        if (proc == null || !proc.getCapabilities().supportsSessionSteer()) {
+            return false;
+        }
+        List<AttachedFile> attachedFiles = attachmentManager.getAttachments();
+        if ((text == null || text.isEmpty()) && attachedFiles.isEmpty()) {
+            return false;
+        }
+        String sessionId = sessionService.get().getCurrentSessionId();
+        if (sessionId == null || proc.getActiveRunId(sessionId) == null) {
+            return false;
+        }
+        List<Map<String, Object>> fileBlocks = attachmentManager.buildFileBlocks(proc.supportsEmbeddedContext());
+        attachmentManager.clear();
+        paperclipUpdater.run();
+        inputArea.setText("");
+        final String echoText = text == null ? "" : text;
+        if (localEchoEnabled) {
+            String rendered = buildEchoText(echoText, attachedFiles);
+            chatPanel.addMessage(new ProcessedMessage.Builder()
+                    .messageType(MessageType.user_message_chunk)
+                    .text(rendered)
+                    .rawText(rendered)
+                    .messageId(UUID.randomUUID().toString())
+                    .build());
+        }
+        proc.steerMessage(sessionId, echoText, fileBlocks)
+                .thenAccept(result -> {
+                    String messageId = result != null && result.has("messageId")
+                            ? result.get("messageId").asText() : null;
+                    // goose streams the queued steer back later; the local echo already
+                    // drew it, so that echo is skipped by its server message id.
+                    if (localEchoEnabled) {
+                        SteerEchoes.expect(sessionId, messageId);
+                    }
+                    LOG.info("Steered running turn for session {0}, messageId={1}", sessionId, messageId);
+                })
+                .exceptionally(ex -> {
+                    SwingUtilities.invokeLater(() -> {
+                        statusController.setStatus("STATUS_Error",
+                                ExceptionUtils.getMessage(ex) != null
+                                        ? ExceptionUtils.getMessage(ex) : ex.getClass().getSimpleName());
+                        if (inputArea.getText().isEmpty()) {
+                            inputArea.setText(echoText);
+                        }
+                    });
+                    return null;
+                });
+        return true;
+    }
+
+    /** Renders the local echo of a user message, appending one label line per attachment. */
+    private static String buildEchoText(String text, List<AttachedFile> attachedFiles) {
+        StringBuilder echoBuilder = new StringBuilder(text);
+        if (!attachedFiles.isEmpty()) {
+            if (!text.isBlank()) {
+                echoBuilder.append("\n");
+            }
+            for (AttachedFile af : attachedFiles) {
+                echoBuilder.append("\n[")
+                        .append(af.isImage()
+                                ? NbBundle.getMessage(MessageSender.class, "LBL_Image")
+                                : NbBundle.getMessage(MessageSender.class, "LBL_File")).append(": ")
+                        .append(af.filename()).append("]");
+            }
+        }
+        return echoBuilder.toString();
     }
 
     /** Stops the currently processing message. */

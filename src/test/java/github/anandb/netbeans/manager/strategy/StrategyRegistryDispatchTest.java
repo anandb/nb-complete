@@ -24,6 +24,7 @@ import github.anandb.netbeans.model.ModelRecords.PlanEntry;
 import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.MapperSupplier;
+import github.anandb.netbeans.support.SteerEchoes;
 
 /**
  * {@link StrategyRegistry} dispatch, exercised through its injectable {@link UIHandler}.
@@ -42,6 +43,7 @@ class StrategyRegistryDispatchTest {
         handler = mock(UIHandler.class);
         registry = new StrategyRegistry();
         StrategyRegistry.invalidateSession("s1");
+        SteerEchoes.clear();
     }
 
     // ---- dispatch guards ----------------------------------------------------
@@ -63,6 +65,23 @@ class StrategyRegistryDispatchTest {
 
         verify(handler, never()).displayMessage(any());
         verify(handler, never()).updatePlan(any());
+    }
+
+    @Test
+    void echoedSteerIsNotRenderedTwice() {
+        SteerEchoes.expect("s1", "steer_1");
+
+        registry.handle(update("s1", chunk(MessageType.user_message_chunk, "hello", "steer_1")), handler);
+
+        verify(handler, never()).displayMessage(any());
+    }
+
+    @Test
+    void userMessageWithoutSteerExpectationIsRendered() {
+        registry.handle(update("s1", chunk(MessageType.user_message_chunk, "hello", "steer_2")), handler);
+
+        ProcessedMessage msg = captureDisplayed();
+        assertEquals("hello", msg.text());
     }
 
     @Test

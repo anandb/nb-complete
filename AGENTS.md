@@ -354,6 +354,47 @@ Resolved — kept as regression guards:
   install metadata and `byId`/`byBinaryName` must keep resolving the v1 base entry.
 - Unknown, absent or non-numeric version keeps the catalog default (v1); never guess v2.
 
+### goose Mid-Turn Steering (`_goose/unstable/session/steer`)
+
+- A second `session/prompt` while a goose run is active is **rejected**, not folded into
+  the turn: `server.rs` answers `invalid_params` with *"session already has active run
+  `<run_id>`; use _goose/unstable/session/steer"*. Therefore `HarnessCatalog.GOOSE` is
+  `requiresMessageQueue = true` (queue is the fallback), and
+  `Harness.supportsSessionSteer()` is true for goose only.
+- Run id: goose publishes it on `session_info_update` as `_meta.goose.activeRunId`
+  (null when the run ends). `manager/ActiveRunTracker` stores it per session;
+  `SessionUpdateDecoder` feeds every raw `session/update` notification into it (that is
+  the only place the raw node exists — do NOT try to read it from `SessionUpdate`), and
+  `ProcessManager.getActiveRunId()` reads it. Cleared on `session/cancel` and on restart.
+- `ProcessManager.steerMessage()` builds the request with `support/SteerRequest.params`
+  (`sessionId`, `prompt` blocks, `expectedRunId`) and fails fast when no run id is known.
+- `MessageSender.trySteer()` takes the steer route only when the turn is in flight, no
+  permission request is pending, the harness supports steering and a run id is known;
+  otherwise the queue branch handles it. A failed steer restores the text and does NOT
+  stop streaming. Local slash commands are intercepted BEFORE the mid-turn routing —
+  they are UI actions and must never be steered or queued.
+- A **failed mid-turn send must not end the turn UI**, for any harness. When the send
+  happens while a turn is in flight (OpenCode v1's second `session/prompt`, or goose's
+  steer call), the harness's first turn keeps running, so the `exceptionally` branch in
+  `MessageSender.sendMessage()` keeps Stop enabled and the stall watchdog armed, leaves
+  the streaming bubble alone, skips `onMessageDoneCallback`/`onTurnEndedCallback`, and
+  hands the turn-end claim back to the original prompt
+  (`compareAndSet(gen, prevGen)` on `sendGeneration`). Only a failed turn-starting send
+  tears the turn down. Symptom of the old behaviour: `RPC exceptionally fired:
+  AcpRpcException: Invalid params` on a mid-turn send flipped Stop to Go while the
+  server was still working, leaving no way to cancel.
+- Echo: goose repeats the steer as a `user_message_chunk` carrying the `messageId` the
+  steer returned (docs: "with `_meta.goose.steer`"). User bubbles never merge
+  (`canMerge` excludes `user`), so that echo would render the text twice.
+  `support/SteerEchoes` registers the id from the steer response (only when the local
+  echo was drawn) and `StrategyRegistry` consumes it after `captureMessage`, before
+  `displayMessage`. Do NOT use `seenMessageIdsBySession` for this: it is the
+  stale-pin-cleanup set, it is removed by `retainActivePins()` after every flush, and it
+  never receives live user inserts. Do NOT skip the echo when `localEchoEnabled` is
+  false — then the harness chunk is the only renderer.
+- ACP v2 `session/inject` is the eventual standard replacement; keep the goose call
+  behind `supportsSessionSteer()` so it can be swapped without touching the UI.
+
 ### Harness Identity For Custom Binaries And Containers
 - `acpHarnessId` is written only by onboarding (`AssistantTopComponent.onHarnessSelected`)
   and `ACPOptionsPanel.store()`. The Options **Harness** combo

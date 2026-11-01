@@ -41,6 +41,8 @@ import github.anandb.netbeans.support.PreferenceKeys;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.SteerEchoes;
+import github.anandb.netbeans.support.SteerRequest;
 import github.anandb.netbeans.contract.ToolExecutor;
 import github.anandb.netbeans.contract.ProcessControl;
 
@@ -307,6 +309,9 @@ public class ProcessManager implements ProcessControl {
                 LOG.warn("Pre-restart handler failed", e);
             }
         }
+        // Run ids and pending steer echoes belong to the process being replaced.
+        ActiveRunTracker.clear();
+        SteerEchoes.clear();
         serverLifecycle.restartServer();
         reconnectManager.resetThrottle();
     }
@@ -426,12 +431,36 @@ public class ProcessManager implements ProcessControl {
     }
 
     @Override
+    public String getActiveRunId(String sessionId) {
+        return ActiveRunTracker.get(sessionId);
+    }
+
+    @Override
+    public CompletableFuture<JsonNode> steerMessage(String sessionId, String text,
+                                                    List<Map<String, Object>> additionalBlocks) {
+        AcpProtocolClient client = rpcClient.get();
+        if (client == null) {
+            return CompletableFuture.failedFuture(new RuntimeException(operationalError()));
+        }
+        String runId = ActiveRunTracker.get(sessionId);
+        if (runId == null) {
+            return CompletableFuture.failedFuture(new IllegalStateException("No active run to steer"));
+        }
+        int idleTimeoutSec = PluginSettings.getSessionIdleTimeout();
+        return client.sendRequest(SteerRequest.METHOD,
+                SteerRequest.params(sessionId, text, additionalBlocks, runId),
+                idleTimeoutSec, TimeUnit.SECONDS);
+    }
+
+    @Override
     public CompletableFuture<Void> stopMessage(String sessionId) {
         AcpProtocolClient client = rpcClient.get();
         if (client == null) {
             return CompletableFuture.failedFuture(new RuntimeException(operationalError()));
         }
         client.sendNotification("session/cancel", Map.of("sessionId", sessionId));
+        ActiveRunTracker.clear(sessionId);
+        SteerEchoes.clear(sessionId);
         return CompletableFuture.completedFuture(null);
     }
 

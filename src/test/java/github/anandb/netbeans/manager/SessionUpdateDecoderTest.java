@@ -127,4 +127,30 @@ class SessionUpdateDecoderTest {
             "{\"sessionId\":\"s\",\"update\":{\"sessionUpdate\":\"session_info_updated\"}}"))
             .update().type());
     }
+
+    @Test
+    void sessionInfoMetaTracksAndClearsTheActiveRunId() throws IOException {
+        ActiveRunTracker.clear();
+        SessionUpdateDecoder.decode(json(
+            "{\"sessionId\":\"gs\",\"update\":{\"sessionUpdate\":\"session_info_update\","
+                + "\"_meta\":{\"goose\":{\"activeRunId\":\"run-7\"}}}}"));
+        assertEquals("run-7", ActiveRunTracker.get("gs"));
+
+        SessionUpdateDecoder.decode(json(
+            "{\"sessionId\":\"gs\",\"update\":{\"sessionUpdate\":\"session_info_update\","
+                + "\"_meta\":{\"goose\":{\"activeRunId\":null}}}}"));
+        assertNull(ActiveRunTracker.get("gs"), "a null activeRunId ends the run");
+        ActiveRunTracker.clear();
+    }
+
+    @Test
+    void updatesWithoutRunMetaLeaveTheTrackerAlone() throws IOException {
+        ActiveRunTracker.clear();
+        ActiveRunTracker.update("gs", json("{\"_meta\":{\"goose\":{\"queuedSteer\":{\"messageId\":\"m\"}}}}"));
+        assertNull(ActiveRunTracker.get("gs"), "queuedSteer meta is not a run id");
+
+        SessionUpdateDecoder.decode(json(
+            "{\"sessionId\":\"gs\",\"update\":{\"sessionUpdate\":\"agent_message_chunk\"}}"));
+        assertNull(ActiveRunTracker.get("gs"));
+    }
 }

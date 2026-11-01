@@ -34,6 +34,7 @@ import github.anandb.netbeans.model.UsageRecords.MessageKind;
 import github.anandb.netbeans.model.UsageRecords.UsageUpdateRow;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.MapperSupplier;
+import github.anandb.netbeans.support.SteerEchoes;
 
 import org.openide.util.Lookup;
 import org.openide.util.lookup.ServiceProvider;
@@ -153,6 +154,11 @@ public class StrategyRegistry implements UpdateDispatcher {
                     return;
                 }
                 captureMessage(update, MessageKind.USER);
+                String userSessionId = update.params() != null ? update.params().sessionId() : null;
+                if (SteerEchoes.consume(userSessionId, update.messageId())) {
+                    LOG.fine("Skipping echoed steer {0}: already rendered locally", update.messageId());
+                    return;
+                }
                 handler.displayMessage(buildStreamingMessage(update, text));
             }
 

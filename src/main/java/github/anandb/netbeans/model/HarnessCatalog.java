@@ -23,7 +23,9 @@ public final class HarnessCatalog {
             List<String> binaryNames,
             String launchArgs,
             /** True when a second {@code session/prompt} does not steer the in-flight
-             *  turn, so messages must be queued until turn end (goose; OpenCode v2). */
+             *  turn, so messages must be queued until turn end (OpenCode v2, Codex,
+             *  Kilo, Cline). A queueing harness may still steer through its own
+             *  extension — see {@link #supportsSessionSteer()}. */
             boolean requiresMessageQueue,
             boolean sendsMcpServerConfig,
             boolean injectsEditorContext,
@@ -89,6 +91,16 @@ public final class HarnessCatalog {
         public boolean matchesBinary(String binaryName) {
             String base = stripBinaryExtension(binaryName);
             return base != null && binaryNames.contains(base);
+        }
+
+        /**
+         * True when the harness adds input to a running turn through its own protocol
+         * extension instead of a second {@code session/prompt}. Only goose does:
+         * {@code _goose/unstable/session/steer}, which needs the active run id the
+         * harness publishes as {@code _meta.goose.activeRunId}.
+         */
+        public boolean supportsSessionSteer() {
+            return "goose".equals(id);
         }
     }
 

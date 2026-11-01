@@ -152,6 +152,18 @@ class HarnessCatalogTest {
     }
 
     @Test
+    void gooseQueuesPromptsButSteersThroughItsOwnExtension() {
+        // goose rejects a second session/prompt mid-turn ("session already has active
+        // run …; use _goose/unstable/session/steer"), so it queues as a fallback.
+        assertTrue(HarnessCatalog.GOOSE.requiresMessageQueue());
+        assertTrue(HarnessCatalog.GOOSE.supportsSessionSteer());
+        assertFalse(HarnessCatalog.OPENCODE.supportsSessionSteer());
+        assertFalse(HarnessCatalog.OPENCODE_V2.supportsSessionSteer());
+        assertFalse(HarnessCatalog.KILO.supportsSessionSteer());
+        assertFalse(HarnessCatalog.UNKNOWN.supportsSessionSteer());
+    }
+
+    @Test
     void unknownVersionKeepsCatalogCapabilities() {
         assertSame(HarnessCatalog.OPENCODE, HarnessCatalog.forAgentVersion(HarnessCatalog.OPENCODE, null));
         assertSame(HarnessCatalog.OPENCODE, HarnessCatalog.forAgentVersion(HarnessCatalog.OPENCODE, "  "));
