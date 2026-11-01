@@ -796,6 +796,12 @@ public void toggleVisibility() {
 - **Tool names** should be short and descriptive — they are re-sent in the tool list on every
   model turn and cost tokens each time. No hard length cap; the earlier 14-character limit was
   arbitrary and was already exceeded by `get_current_file_context` (24).
+- **Locating Java types**: use `find_java_type` when you need to find or verify where a Java type
+  (class, interface, enum, record) is declared, before reading, editing or opening it. It searches
+  the open projects' `ClassIndex` and returns fully qualified names plus source paths, so do NOT
+  `grep`/`search_project` for `class Foo` declarations and do NOT guess a path from a package name.
+  It is Java-only; other languages still go through `search_project`. Follow a returned `path` with
+  `open_pos` (no `focus`) to read the file.
 - **Token auth**: `MessageServlet` verifies a per-instance token whenever `authRequired` is set.
   `BinaryResolver.isPiHarness()` exempts the PI family (`pi`, `pi-acp`, `pi-agent`) — they cannot
   carry tokens. `ServerProcessLifecycle` sets the flag BEFORE `toolExecutor.start()`; do NOT move

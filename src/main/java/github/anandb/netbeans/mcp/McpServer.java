@@ -55,6 +55,9 @@ public class McpServer {
         EditorToolProvider editorTools = new EditorToolProvider();
         editorTools.registerTools(mcpTools);
 
+        FindTypeToolProvider findTypeTools = new FindTypeToolProvider();
+        findTypeTools.registerTools(mcpTools);
+
         StashDiffToolProvider stashDiffTool = new StashDiffToolProvider();
         stashDiffTool.registerTools(mcpTools);
 
