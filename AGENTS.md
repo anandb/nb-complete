@@ -75,12 +75,11 @@
 - **Line Length**: Keep the line length <= 120 characters, but try to fit entire statements into the line without needlessly splitting into small chunks.
 - **Code Comments**: Keep code comments brief — at most 1–2 lines — and say only what the code cannot.
   Longer explanations belong in Javadoc (or the commit message), not in inline comments.
-- **Refactor with Jackpot, not scripts**: for structural edits — replace usages, delete a helper
-  block, remove constants, rename across files — use a Jackpot declarative refactoring via the
-  `run_jackpot` MCP tool (discover rule names with `list_available_hints` first); the IDE's own
-  refactoring is not exposed to the agent. Never use `python`/`sed`/`awk`/shell one-offs for these:
-  scripted text edits bypass the parser, miss call sites and are hard to review. Reserve the file
-  tools for single-file surgical edits.
+- **Structural edits, not scripts**: for structural edits — replace usages, delete a helper
+  block, remove constants, rename across files — use parser-aware tooling: the IDE's own
+  refactoring, or a tree-sitter rewrite such as `ast-grep --pattern … --rewrite …`. Never use
+  `python`/`sed`/`awk`/shell one-offs for these: scripted text edits bypass the parser, miss call
+  sites and are hard to review. Reserve the file tools for single-file surgical edits.
 - **Logging**: Use index-based placeholders (`{0}`). NO `warning()` method (use
   `LOG.log(Level.WARNING, ...)` or `severe/warn/info/fine`). Pass exceptions as the LAST argument.
 - **Theming**: Use `ThemeManager.getCurrentTheme()`. Dark mode icons require `_dark.svg` suffix.
