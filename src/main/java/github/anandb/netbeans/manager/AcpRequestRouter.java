@@ -31,11 +31,10 @@ import javax.swing.SwingUtilities;
 
 import github.anandb.netbeans.contract.PermissionHandler;
 import github.anandb.netbeans.support.AcpFsPolicy;
+import github.anandb.netbeans.support.FileAccessGuard;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.MapperSupplier;
 import github.anandb.netbeans.support.PluginSettings;
-import github.anandb.netbeans.support.ProtectedPaths;
-import github.anandb.netbeans.support.SecretPaths;
 import github.anandb.netbeans.support.ToolDataExtractor;
 
 class AcpRequestRouter {
@@ -80,39 +79,25 @@ class AcpRequestRouter {
      * @return the rejection message, or {@code null} when the request may proceed
      */
     private String checkFsAccess(JsonNode params, String filePath, boolean write) {
-        if (SecretPaths.isSecret(filePath)) {
-            return NbBundle.getMessage(ProcessManager.class, "ERR_FsSecretFile", filePath);
-        }
-        AcpFsPolicy policy = fsPolicySupplier.get();
-        if (write) {
-            if (policy == AcpFsPolicy.READ_ONLY) {
-                return NbBundle.getMessage(ProcessManager.class, "ERR_FsReadOnly");
-            }
-        } else if (policy == AcpFsPolicy.READ_ANY_WRITE_PROJECT) {
-            // Reads are unrestricted under this policy; writes still take the path check.
-            return null;
-        }
         String sessionId = params.hasNonNull("sessionId") ? params.get("sessionId").asText() : null;
         String root = sessionDirectoryResolver.apply(sessionId);
-        if (root == null || root.isBlank()) {
-            return NbBundle.getMessage(ProcessManager.class, "ERR_FsNoProjectDirectory");
-        }
-        if (!isInsideProject(root, filePath)) {
-            return NbBundle.getMessage(ProcessManager.class, "ERR_FsOutsideProject", filePath, root);
-        }
-        return null;
-    }
-
-    /** True when {@code path} is the project directory or a file below it, after
-     *  resolving symlinks. An unresolvable path is treated as outside. */
-    static boolean isInsideProject(String projectDirectory, String path) {
-        try {
-            File root = new File(projectDirectory).getCanonicalFile();
-            File target = new File(path).getCanonicalFile();
-            return target.equals(root)
-                    || target.getPath().startsWith(root.getPath() + File.separator);
-        } catch (IOException e) {
-            return false;
+        FileAccessGuard.Denial denial = FileAccessGuard.check(fsPolicySupplier.get(), filePath, write,
+                path -> root != null && !root.isBlank() && FileAccessGuard.isInsideProject(root, path));
+        switch (denial) {
+            case ALLOWED:
+                return null;
+            case SECRET_FILE:
+                return NbBundle.getMessage(ProcessManager.class, "ERR_FsSecretFile", filePath);
+            case PROTECTED_PATH:
+                return NbBundle.getMessage(ProcessManager.class, "ERR_FsProtectedPath", filePath);
+            case WRITE_DENIED:
+                return NbBundle.getMessage(ProcessManager.class, "ERR_FsReadOnly");
+            case OUTSIDE_PROJECT:
+            default:
+                if (root == null || root.isBlank()) {
+                    return NbBundle.getMessage(ProcessManager.class, "ERR_FsNoProjectDirectory");
+                }
+                return NbBundle.getMessage(ProcessManager.class, "ERR_FsOutsideProject", filePath, root);
         }
     }
 
@@ -312,12 +297,6 @@ class AcpRequestRouter {
             LOG.fine("Rejected fs/writeTextFile: {0}", accessError);
             return CompletableFuture.failedFuture(new RequestRejectedException(accessError));
         }
-        if (ProtectedPaths.isProtected(filePath)) {
-            LOG.fine("Rejected fs/writeTextFile inside protected VCS/build directory: {0}", filePath);
-            return CompletableFuture.failedFuture(new RequestRejectedException(
-                    NbBundle.getMessage(ProcessManager.class, "ERR_FsProtectedPath", filePath)));
-        }
-
         File file = new File(filePath);
 
         // The policy confines writes to the session's project directory; the

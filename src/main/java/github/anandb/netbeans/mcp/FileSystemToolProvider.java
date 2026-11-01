@@ -14,8 +14,7 @@ import org.openide.filesystems.FileUtil;
 import org.openide.util.Lookup;
 import org.openide.util.RequestProcessor;
 
-import static github.anandb.netbeans.mcp.ProjectPathGuard.isInOpenProject;
-import github.anandb.netbeans.support.ProtectedPaths;
+import github.anandb.netbeans.support.FileAccessGuard;
 import github.anandb.netbeans.support.SecretPaths;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.RunCommandPolicy;
@@ -73,14 +72,20 @@ public class FileSystemToolProvider {
      * the path is valid.
      */
     private static Map<String, Object> validateExistingFile(String filePath) {
+        return validateExistingFile(filePath, false);
+    }
+
+    /**
+     * Validates a path for an existing-file tool, applying the shared
+     * file-access policy for a read or a write.
+     */
+    private static Map<String, Object> validateExistingFile(String filePath, boolean write) {
         if (isBlank(filePath)) {
             return Map.of("status", "error", "message", "filePath is required");
         }
-        if (!isInOpenProject(filePath)) {
-            return outsideProjectError(filePath);
-        }
-        if (SecretPaths.isSecret(filePath)) {
-            return secretFileError(filePath);
+        Map<String, Object> access = checkAccess(filePath, write);
+        if (access != null) {
+            return access;
         }
         File file = new File(filePath);
         if (!file.exists()) {
@@ -145,22 +150,41 @@ public class FileSystemToolProvider {
     }
 
     /**
-     * Guard shared by every write tool: the path must be inside an open
-     * project, outside VCS/build metadata, and not look like a credential file.
+     * Guard shared by every write tool: the policy must allow writes (not
+     * read-only), the path must be inside an open project, outside VCS/build
+     * metadata, and not look like a credential file.
      *
      * @return the rejection response, or {@code null} when the write may proceed
      */
     private static Map<String, Object> validateWritePath(String filePath) {
-        if (!isInOpenProject(filePath)) {
-            return outsideProjectError(filePath);
+        if (isBlank(filePath)) {
+            return Map.of("status", "error", "message", "filePath is required");
         }
-        if (ProtectedPaths.isProtected(filePath)) {
-            return protectedWriteError(filePath);
-        }
-        if (SecretPaths.isSecret(filePath)) {
-            return secretFileError(filePath);
-        }
-        return null;
+        return checkAccess(filePath, true);
+    }
+
+    /**
+     * Applies the shared file-access policy (the same one the ACP fs tools use)
+     * to one MCP path access.
+     *
+     * @return the rejection response, or {@code null} when the access may proceed
+     */
+    private static Map<String, Object> checkAccess(String path, boolean write) {
+        FileAccessGuard.Denial denial = FileAccessGuard.check(PluginSettings.getAcpFsPolicy(), path, write,
+                ProjectPathGuard::isInOpenProject);
+        return switch (denial) {
+            case ALLOWED -> null;
+            case SECRET_FILE -> secretFileError(path);
+            case PROTECTED_PATH -> protectedWriteError(path);
+            case WRITE_DENIED -> writeDeniedError(path);
+            case OUTSIDE_PROJECT -> outsideProjectError(path);
+        };
+    }
+
+    /** Rejects writes while the file-access policy is read-only. */
+    private static Map<String, Object> writeDeniedError(String path) {
+        return Map.of("status", "error", "message",
+                "Refusing to write " + path + ": BeanBot's file-access policy is read-only.");
     }
 
     /** Rejects writes into VCS metadata or Maven wrapper configuration. */
@@ -497,8 +521,9 @@ public class FileSystemToolProvider {
                         if (isBlank(args.dirPath())) {
                             return Map.of("status", "error", "message", "dirPath is required");
                         }
-                        if (!isInOpenProject(args.dirPath())) {
-                            return outsideProjectError(args.dirPath());
+                        Map<String, Object> access = checkAccess(args.dirPath(), false);
+                        if (access != null) {
+                            return access;
                         }
                         File dir = new File(args.dirPath());
                         if (!dir.exists()) {
@@ -747,12 +772,9 @@ public class FileSystemToolProvider {
                         if (isBlank(args.patch())) {
                             return Map.of("status", "error", "message", "patch is required");
                         }
-                        Map<String, Object> err = validateExistingFile(args.filePath());
+                        Map<String, Object> err = validateExistingFile(args.filePath(), true);
                         if (err != null) {
                             return err;
-                        }
-                        if (ProtectedPaths.isProtected(args.filePath())) {
-                            return protectedWriteError(args.filePath());
                         }
                         File file = new File(args.filePath());
 

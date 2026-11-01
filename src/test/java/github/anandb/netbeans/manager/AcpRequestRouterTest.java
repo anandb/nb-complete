@@ -153,19 +153,6 @@ class AcpRequestRouterTest {
     }
 
     @Test
-    void isInsideProjectUsesPathBoundariesAndResolvesParentSegments(@TempDir Path dir) {
-        Path project = dir.resolve("project");
-        assertTrue(AcpRequestRouter.isInsideProject(project.toString(), project.toString()));
-        assertTrue(AcpRequestRouter.isInsideProject(project.toString(),
-                project.resolve("src/Main.java").toString()));
-        assertFalse(AcpRequestRouter.isInsideProject(project.toString(),
-                dir.resolve("project-other").toString()),
-                "a sibling sharing the prefix is outside the project");
-        assertFalse(AcpRequestRouter.isInsideProject(project.toString(),
-                project.resolve("../escape.txt").toString()));
-    }
-
-    @Test
     void absentLineAndLimitReturnsWholeContent() {
         assertEquals(CONTENT, AcpRequestRouter.selectLines(CONTENT, 1, null));
     }

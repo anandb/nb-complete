@@ -39,6 +39,7 @@ import org.openide.util.Lookup;
 
 import github.anandb.netbeans.contract.ProjectQuery;
 import github.anandb.netbeans.contract.SessionQuery;
+import github.anandb.netbeans.support.AcpFsPolicy;
 import github.anandb.netbeans.support.PluginSettings;
 
 /**
@@ -298,6 +299,46 @@ class FileSystemToolProviderTest {
 
         // The rejected write must not have created the file.
         assertFalse(new File(outside).exists(), "outside write must not create a file");
+    }
+
+    @Test
+    void readOnlyPolicyDeniesWritesButAllowsProjectReads() throws Exception {
+        PluginSettings.setAcpFsPolicy(AcpFsPolicy.READ_ONLY);
+        try {
+            openProjectAt(tempDir.toFile());
+            File existing = writeFile("a.txt", "one\n");
+            String target = tempDir.resolve("b.txt").toString();
+
+            assertEquals("ok", readFile()
+                    .execute(new ReadFileInput(existing.getAbsolutePath(), null, null)).get("status"));
+            Map<String, Object> write = writeFileTool().execute(new WriteToFileInput(target, "x"));
+            assertEquals("error", write.get("status"));
+            assertTrue(write.get("message").toString().contains("read-only"), write.get("message").toString());
+            assertFalse(new File(target).exists(), "a read-only policy must not create the file");
+        } finally {
+            PluginSettings.setAcpFsPolicy(AcpFsPolicy.DEFAULT);
+        }
+    }
+
+    @Test
+    void readAnyPolicyAllowsExternalReadsButStillConfinesWrites() throws Exception {
+        PluginSettings.setAcpFsPolicy(AcpFsPolicy.READ_ANY_WRITE_PROJECT);
+        try {
+            openProjectAt(tempDir.toFile());
+            String outside = tempDir.resolveSibling("outside-read.txt").toString();
+            Files.writeString(Path.of(outside), "external\n", StandardCharsets.UTF_8);
+
+            Map<String, Object> read = readFile().execute(new ReadFileInput(outside, null, null));
+            assertEquals("ok", read.get("status"));
+            assertEquals("external", read.get("content"));
+
+            String target = tempDir.resolveSibling("outside-write.txt").toString();
+            Map<String, Object> write = writeFileTool().execute(new WriteToFileInput(target, "x"));
+            assertEquals("Path is outside the open projects: " + target, write.get("message"));
+            assertFalse(new File(target).exists(), "writes stay confined under every policy");
+        } finally {
+            PluginSettings.setAcpFsPolicy(AcpFsPolicy.DEFAULT);
+        }
     }
 
     // ---- replace_lines ------------------------------------------------------

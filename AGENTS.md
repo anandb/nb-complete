@@ -362,33 +362,48 @@ process never inherits the previous process's loaded session. Copilot advertises
 `close` and needs the reload path; without it the load replays against a session
 still holding in-flight work. Do NOT make cancel+close unconditional again.
 
-### ACP fs Tools Are Project-Confined By Policy
+### File Access Policy Is Shared By ACP And MCP Tools
+- `support/FileAccessGuard.check(policy, path, write, inProject)` is the single
+  enforcement point for the user's file-access policy (`support/AcpFsPolicy`):
+  `ALLOW` permits reads and writes inside the project, `READ_ANY_WRITE_PROJECT`
+  permits reads anywhere but keeps writes inside the project, and `READ_ONLY`
+  permits project reads and rejects writes. It also denies credential files for
+  reads and writes and VCS/build metadata for writes. Each caller supplies only
+  its own containment predicate and its own message.
 - `fs/readTextFile` (`fs/read_text_file`) and `fs/writeTextFile` (`fs/write_text_file`)
-  are handled by `manager/AcpRequestRouter` and are confined to the session's project
-  directory. `checkFsAccess` applies `PluginSettings.getAcpFsPolicy()`
-  (`support/AcpFsPolicy`): `ALLOW` permits reads and writes inside the project,
-  `READ_ANY_WRITE_PROJECT` permits reads anywhere but keeps writes inside the project,
-  and `READ_ONLY` permits project reads and rejects writes. The directory comes from
+  are handled by `manager/AcpRequestRouter`; its `checkFsAccess` applies the guard
+  with the session's project directory, resolved through
   `SessionQuery.getSessionDirectory(sessionId)`; a missing directory denies access.
-- Path containment goes through `AcpRequestRouter.isInsideProject`, which compares
+  The ACP fs capabilities are advertised from the policy during `initialize`
+  (`readTextFile` always; `writeTextFile` only for `ALLOW` and
+  `READ_ANY_WRITE_PROJECT`), so a policy change takes effect on the next harness
+  start while per-request enforcement is immediate.
+- The internal MCP file tools apply the same guard through
+  `FileSystemToolProvider.checkAccess`: `read_file` and `list_directory` are reads,
+  `write_to_file`, `replace_lines`, `insert_in_file`, `delete_lines` and
+  `apply_patch` are writes. Under `READ_ONLY` every MCP write is refused; under
+  `READ_ANY_WRITE_PROJECT` MCP reads may leave the open projects while writes
+  still may not. Their containment predicate is `ProjectPathGuard.isInOpenProject`.
+  Do NOT add an MCP file tool that bypasses `checkAccess`.
+- `search_project` keeps its own project-root contract (it only scans open
+  projects, skips secret files and rejects traversal out of the project), and the
+  git/hg/run_command tools keep `ProjectPathGuard` confinement for their working
+  directory. `run_command` is not a file tool: the policy does not restrict what a
+  command may read or write.
+- Path containment goes through `FileAccessGuard.isInsideProject`, which compares
   canonical paths with a separator boundary (a sibling sharing a prefix is outside,
   symlinks are resolved, `..` cannot escape). Do NOT replace it with a bare
   `startsWith` on the unresolved path.
-- The policy is user-visible under *Options > BeanBot > System* (the **ACP file access** dropdown). The fs
-  capabilities are advertised from it during `initialize` (`readTextFile` always;
-  `writeTextFile` only for `ALLOW` and `READ_ANY_WRITE_PROJECT`), so a policy change
-  takes effect on the next harness start while per-request enforcement is immediate.
+- The policy is user-visible under *Options > BeanBot > System* (the **ACP file access** dropdown).
 - The harness's own `session/request_permission` prompt still runs; the policy is the
-  IDE-side guard, not a replacement for it. `ProjectPathGuard` confinement in
-  `mcp/ProjectPathGuard` still applies to the MCP tools (`read_file`, `write_to_file`,
-  git/hg, etc.) and must stay there.
+  IDE-side guard, not a replacement for it.
 - Writes into `.git`, `.hg` and `.mvn` are refused even inside an open project:
-  `support/ProtectedPaths.isProtected` is applied by every MCP write tool
-  (`write_to_file`, `replace_lines`, `insert_in_file`, `delete_lines`, `apply_patch`)
-  and by `fs/write_text_file`. Those directories contain hooks and build
+  `support/ProtectedPaths.isProtected` is applied by `FileAccessGuard` to every
+  write (both ACP and MCP). Those directories contain hooks and build
   configuration that execute on the user's next git/hg/build action, so a write
   there is code execution by proxy. Reads stay allowed. Do NOT add a write path
-  that skips this check.
+  that skips this check (or an MCP write tool that calls the guard with
+  `write=false`).
 - Credential-looking files are refused for both reads and writes:
   `support/SecretPaths.isSecret` covers `.env*` (except `.env.example|sample|template|dist`),
   `.netrc`, `.npmrc`, `.pypirc`, `.git-credentials`, `.htpasswd`, SSH/GPG/cloud
