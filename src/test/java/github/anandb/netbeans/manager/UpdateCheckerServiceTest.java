@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.openide.util.NbPreferences;
 
 import github.anandb.netbeans.contract.UpdateCheckerControl.UpdateCheckResult;
+import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.PreferenceKeys;
 
 import static org.awaitility.Awaitility.await;
@@ -213,10 +214,10 @@ class UpdateCheckerServiceTest {
     void manualCheckIsUnscheduledAndConcurrentRequestsShareOneCheck() throws Exception {
         var prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
         String oldSchedule = prefs.get(PreferenceKeys.NEXT_UPDATE_CHECK_TIME, null);
-        String oldEnabled = prefs.get(PreferenceKeys.CHECK_FOR_UPDATES, null);
+        boolean oldEnabled = PluginSettings.isCheckForUpdates();
         long scheduledTime = 1_900_000_000_000L;
         prefs.putLong(PreferenceKeys.NEXT_UPDATE_CHECK_TIME, scheduledTime);
-        prefs.putBoolean(PreferenceKeys.CHECK_FOR_UPDATES, false);
+        PluginSettings.setCheckForUpdates(false);
 
         CountDownLatch entered = new CountDownLatch(1);
         CountDownLatch release = new CountDownLatch(1);
@@ -252,11 +253,7 @@ class UpdateCheckerServiceTest {
             } else {
                 prefs.put(PreferenceKeys.NEXT_UPDATE_CHECK_TIME, oldSchedule);
             }
-            if (oldEnabled == null) {
-                prefs.remove(PreferenceKeys.CHECK_FOR_UPDATES);
-            } else {
-                prefs.put(PreferenceKeys.CHECK_FOR_UPDATES, oldEnabled);
-            }
+            PluginSettings.setCheckForUpdates(oldEnabled);
         }
     }
 
@@ -264,12 +261,12 @@ class UpdateCheckerServiceTest {
     void cancelStopsPendingCycleAndStartResumesLoop() {
         var prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
         String oldSchedule = prefs.get(PreferenceKeys.NEXT_UPDATE_CHECK_TIME, null);
-        String oldEnabled = prefs.get(PreferenceKeys.CHECK_FOR_UPDATES, null);
+        boolean oldEnabled = PluginSettings.isCheckForUpdates();
         try {
             // An hour out, so the first cycle can never race into a check.
             prefs.putLong(PreferenceKeys.NEXT_UPDATE_CHECK_TIME,
                     System.currentTimeMillis() + TimeUnit.HOURS.toMillis(1));
-            prefs.putBoolean(PreferenceKeys.CHECK_FOR_UPDATES, true);
+            PluginSettings.setCheckForUpdates(true);
 
             AtomicInteger checks = new AtomicInteger();
             UpdateCheckerService service = new UpdateCheckerService(() -> {
@@ -303,11 +300,7 @@ class UpdateCheckerServiceTest {
             } else {
                 prefs.put(PreferenceKeys.NEXT_UPDATE_CHECK_TIME, oldSchedule);
             }
-            if (oldEnabled == null) {
-                prefs.remove(PreferenceKeys.CHECK_FOR_UPDATES);
-            } else {
-                prefs.put(PreferenceKeys.CHECK_FOR_UPDATES, oldEnabled);
-            }
+            PluginSettings.setCheckForUpdates(oldEnabled);
         }
     }
 }

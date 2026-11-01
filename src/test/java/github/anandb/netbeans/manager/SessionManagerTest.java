@@ -2,6 +2,7 @@ package github.anandb.netbeans.manager;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -155,6 +156,39 @@ class SessionManagerTest {
         // v1.27.0 behaviour: a session request never starts or rebinds the server.
         verify(processManager, never()).ensureStartedIn(any());
         verify(processManager).sendRequest(eq("session/new"), any(), eq(60L), eq(TimeUnit.SECONDS));
+    }
+
+    @Test
+    void preambleChunksAreGatedByTheEnableToggleAndFollowTheUserText() throws Exception {
+        boolean originalEnabled = PluginSettings.isPreambleEnabled();
+        String originalPreamble = PluginSettings.getPreamble();
+        try {
+            PluginSettings.setPreamble("custom-preamble-a\n---\ncustom-preamble-b");
+
+            PluginSettings.setPreambleEnabled(false);
+            assertNull(SessionManager.preambleChunks(),
+                    "checkbox off means no critical rules, WSL block or user preamble");
+
+            PluginSettings.setPreambleEnabled(true);
+            // A delayed preference event can briefly replay the previous value.
+            String[] chunks = null;
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(2);
+            while (chunks == null && System.nanoTime() < deadline) {
+                chunks = SessionManager.preambleChunks();
+                if (chunks == null) {
+                    Thread.sleep(10);
+                }
+            }
+            assertNotNull(chunks);
+            assertEquals(2, chunks.length, "the prompt is split on the --- separator");
+            assertTrue(chunks[0].contains("NEVER automatically commit"),
+                    "critical rules must lead the first chunk");
+            assertTrue(chunks[0].contains("custom-preamble-a"));
+            assertEquals("custom-preamble-b", chunks[1]);
+        } finally {
+            PluginSettings.setPreambleEnabled(originalEnabled);
+            PluginSettings.setPreamble(originalPreamble);
+        }
     }
 
     @Test

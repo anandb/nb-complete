@@ -1359,10 +1359,29 @@ public class SessionManager implements SessionQuery, SessionControl {
      *  Splits the prompt by "---" separators and sends each chunk separately.
      *  @return true if a prompt was sent, false if skipped/empty */
     private boolean sendPreamble(String sessionId) {
-        // Checkbox off = no startup prompt at all: no critical rules, no
-        // WSL block, no user preamble.
-        if (!PluginSettings.isPreambleEnabled()) {
+        String[] chunks = preambleChunks();
+        if (chunks == null || chunks.length == 0) {
             return false;
+        }
+
+        // Notify UI that preamble is being posted
+        new ArrayList<>(listeners).forEach(l -> l.onPreambleStarted(sessionId));
+
+        // Send chunks sequentially, waiting for each to complete
+        sendPreambleChunks(sessionId, chunks, 0);
+        return true;
+    }
+
+    /**
+     * Builds the startup prompt chunks (critical rules, then the user
+     * preamble) or returns {@code null} when the Enable Session Preamble
+     * checkbox is off or the combined text is empty. The checkbox gates the
+     * whole prompt: no critical rules, no WSL block, no user preamble.
+     * Chunks are split on {@code "\n---\n"} and sent one at a time.
+     */
+    static String[] preambleChunks() {
+        if (!PluginSettings.isPreambleEnabled()) {
+            return null;
         }
         String rules = PluginSettings.getCriticalRules();
         String preamble = PluginSettings.getPreamble();
@@ -1382,21 +1401,9 @@ public class SessionManager implements SessionQuery, SessionControl {
 
         String text = combined.toString().trim();
         if (text.isEmpty()) {
-            return false;
+            return null;
         }
-
-        // Split by "---" separators and send each chunk
-        String[] chunks = text.split("\n---\n");
-        if (chunks.length == 0) {
-            return false;
-        }
-
-        // Notify UI that preamble is being posted
-        new ArrayList<>(listeners).forEach(l -> l.onPreambleStarted(sessionId));
-
-        // Send chunks sequentially, waiting for each to complete
-        sendPreambleChunks(sessionId, chunks, 0);
-        return true;
+        return text.split("\n---\n");
     }
 
     /** Sends preamble chunks sequentially, one at a time */

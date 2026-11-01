@@ -37,6 +37,7 @@ import github.anandb.netbeans.support.AgentUtils;
 import github.anandb.netbeans.support.AppLinks;
 import github.anandb.netbeans.support.BrowserUtils;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.PreferenceKeys;
 
 @ServiceProvider(service = UpdateCheckerControl.class)
@@ -188,7 +189,7 @@ public class UpdateCheckerService implements UpdateCheckerControl {
                 long nextTime = System.currentTimeMillis() + interval;
                 prefs.putLong(PreferenceKeys.NEXT_UPDATE_CHECK_TIME, nextTime);
 
-                boolean checkEnabled = prefs.getBoolean(PreferenceKeys.CHECK_FOR_UPDATES, true);
+                boolean checkEnabled = PluginSettings.isCheckForUpdates();
 
                 if (checkEnabled) {
                     try {

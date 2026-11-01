@@ -63,10 +63,6 @@ public final class PluginSettings {
     private static volatile boolean cachedShowHiddenSessions = false;
     /** Cached keep older messages toggle — volatile for cross-thread visibility. Defaults to false. */
     private static volatile boolean cachedKeepOlderMessages = false;
-    /** Cached show tool messages toggle — volatile for cross-thread visibility. Defaults to true. */
-    private static volatile boolean cachedShowToolMessages = true;
-    /** Cached show thought messages toggle — volatile for cross-thread visibility. Defaults to true. */
-    private static volatile boolean cachedShowThoughtMessages = true;
     /** Cached echo user input toggle — volatile for cross-thread visibility. Defaults to true. */
     private static volatile boolean cachedEchoUserInput = true;
     /** Cached combine tool+thought toggle — volatile for cross-thread visibility. Defaults to true. */
@@ -122,8 +118,6 @@ public final class PluginSettings {
         cachedMarkdownProjectEnabled = prefs.getBoolean(PreferenceKeys.ACTIONS_MARKDOWN_PROJECT, true);
         cachedShowHiddenSessions = prefs.getBoolean(PreferenceKeys.SHOW_HIDDEN_SESSIONS, false);
         cachedKeepOlderMessages = prefs.getBoolean(PreferenceKeys.KEEP_OLDER_MESSAGES, false);
-        cachedShowToolMessages = prefs.getBoolean(PreferenceKeys.SHOW_TOOL_MESSAGES, true);
-        cachedShowThoughtMessages = prefs.getBoolean(PreferenceKeys.SHOW_THOUGHT_MESSAGES, true);
         cachedEchoUserInput = prefs.getBoolean(PreferenceKeys.ECHO_USER_INPUT, true);
         cachedCombineToolThought = prefs.getBoolean(PreferenceKeys.COMBINE_TOOL_THOUGHT, true);
         cachedCheckForUpdates = prefs.getBoolean(PreferenceKeys.CHECK_FOR_UPDATES, true);
@@ -222,7 +216,24 @@ public final class PluginSettings {
     }
 
     public static void setSessionIdleTimeout(int seconds) {
+        cachedSessionIdleTimeout = seconds;
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putInt(KEY_SESSION_IDLE_TIMEOUT, seconds);
+    }
+
+    /** Clamp shared by the listener and {@link #setMaxMessages(int)}. */
+    private static int normalizeMaxMessages(int value) {
+        return value < 0 ? DEFAULT_MAX_MESSAGES : value;
+    }
+
+    /** Accepted sizes shared by the listener and {@link #setToolbarIconSize(int)}. */
+    private static int normalizeToolbarIconSize(int value) {
+        return (value == 16 || value == 24 || value == 28 || value == 32 || value == 48)
+                ? value : DEFAULT_TOOLBAR_ICON_SIZE;
+    }
+
+    /** Any negative size means "inherited from the theme". */
+    private static int normalizeChatFontSize(int value) {
+        return value < 0 ? -1 : value;
     }
 
     private static void onPreferenceChanged(PreferenceChangeEvent evt) {
@@ -237,27 +248,20 @@ public final class PluginSettings {
                 if (evt.getNewValue() == null || evt.getNewValue().isBlank()) {
                     cachedMaxMessages = DEFAULT_MAX_MESSAGES;
                 } else {
-                    int v = Integer.parseInt(evt.getNewValue());
-                    cachedMaxMessages = (v < 0) ? DEFAULT_MAX_MESSAGES : v;
+                    cachedMaxMessages = normalizeMaxMessages(Integer.parseInt(evt.getNewValue()));
                 }
             } catch (NumberFormatException e) {
                 cachedMaxMessages = DEFAULT_MAX_MESSAGES;
             }
         } else if (PreferenceKeys.TOOLBAR_ICON_SIZE.equals(evt.getKey())) {
             try {
-                int v = Integer.parseInt(evt.getNewValue());
-                if (v == 16 || v == 24 || v == 28 || v == 32 || v == 48) {
-                    cachedToolbarIconSize = v;
-                } else {
-                    cachedToolbarIconSize = DEFAULT_TOOLBAR_ICON_SIZE;
-                }
+                cachedToolbarIconSize = normalizeToolbarIconSize(Integer.parseInt(evt.getNewValue()));
             } catch (NumberFormatException e) {
                 cachedToolbarIconSize = DEFAULT_TOOLBAR_ICON_SIZE;
             }
         } else if (PreferenceKeys.CHAT_FONT_SIZE.equals(evt.getKey())) {
             try {
-                int v = Integer.parseInt(evt.getNewValue());
-                cachedChatFontSize = (v < 0) ? -1 : v;
+                cachedChatFontSize = normalizeChatFontSize(Integer.parseInt(evt.getNewValue()));
             } catch (NumberFormatException e) {
                 cachedChatFontSize = -1;
             }
@@ -276,6 +280,9 @@ public final class PluginSettings {
         } else if (PreferenceKeys.ACTIONS_QUICK_JUMP.equals(evt.getKey())) {
             cachedQuickJumpEnabled = Boolean.parseBoolean(evt.getNewValue());
         } else if (PreferenceKeys.ACTIONS_COPY_ALL_ITEMS.equals(evt.getKey())) {
+            // Re-read instead of trusting the event value: a rapid toggle can
+            // deliver an older event after a newer put, and this branch must not
+            // overwrite the cache with the stale value.
             cachedCopyAllItemsEnabled = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
                     .getBoolean(PreferenceKeys.ACTIONS_COPY_ALL_ITEMS, true);
         } else if (PreferenceKeys.AUTO_BACKUP_CHANGES.equals(evt.getKey())) {
@@ -306,10 +313,6 @@ public final class PluginSettings {
             cachedShowHiddenSessions = Boolean.parseBoolean(evt.getNewValue());
         } else if (PreferenceKeys.KEEP_OLDER_MESSAGES.equals(evt.getKey())) {
             cachedKeepOlderMessages = Boolean.parseBoolean(evt.getNewValue());
-        } else if (PreferenceKeys.SHOW_TOOL_MESSAGES.equals(evt.getKey())) {
-            cachedShowToolMessages = evt.getNewValue() == null || Boolean.parseBoolean(evt.getNewValue());
-        } else if (PreferenceKeys.SHOW_THOUGHT_MESSAGES.equals(evt.getKey())) {
-            cachedShowThoughtMessages = evt.getNewValue() == null || Boolean.parseBoolean(evt.getNewValue());
         } else if (PreferenceKeys.ECHO_USER_INPUT.equals(evt.getKey())) {
             cachedEchoUserInput = evt.getNewValue() == null || Boolean.parseBoolean(evt.getNewValue());
         } else if (PreferenceKeys.COMBINE_TOOL_THOUGHT.equals(evt.getKey())) {
@@ -329,6 +332,7 @@ public final class PluginSettings {
     }
 
     public static void setAutoBackupChanges(boolean enabled) {
+        cachedAutoBackupChanges = enabled;
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean(PreferenceKeys.AUTO_BACKUP_CHANGES, enabled);
     }
 
@@ -338,6 +342,7 @@ public final class PluginSettings {
     }
 
     public static void setMaxMessages(int count) {
+        cachedMaxMessages = normalizeMaxMessages(count);
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putInt(KEY_MAX_MESSAGES, count);
     }
 
@@ -355,10 +360,12 @@ public final class PluginSettings {
     }
 
     public static void setChatFontSize(int size) {
+        cachedChatFontSize = normalizeChatFontSize(size);
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putInt(PreferenceKeys.CHAT_FONT_SIZE, size);
     }
 
     public static void setToolbarIconSize(int size) {
+        cachedToolbarIconSize = normalizeToolbarIconSize(size);
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putInt(PreferenceKeys.TOOLBAR_ICON_SIZE, size);
     }
 
@@ -368,6 +375,7 @@ public final class PluginSettings {
     }
 
     public static void setSortLinesEnabled(boolean enabled) {
+        cachedSortLinesEnabled = enabled;
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean(PreferenceKeys.ACTIONS_SORT_LINES, enabled);
     }
 
@@ -377,6 +385,7 @@ public final class PluginSettings {
     }
 
     public static void setCompactJsonEnabled(boolean enabled) {
+        cachedCompactJsonEnabled = enabled;
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean(PreferenceKeys.ACTIONS_COMPACT_JSON, enabled);
     }
 
@@ -386,6 +395,7 @@ public final class PluginSettings {
     }
 
     public static void setSearchWebEnabled(boolean enabled) {
+        cachedSearchWebEnabled = enabled;
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean(PreferenceKeys.ACTIONS_SEARCH_WEB, enabled);
     }
 
@@ -395,6 +405,7 @@ public final class PluginSettings {
     }
 
     public static void setShowAnnotationsEnabled(boolean enabled) {
+        cachedShowAnnotationsEnabled = enabled;
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean(PreferenceKeys.ACTIONS_SHOW_ANNOTATIONS, enabled);
     }
 
@@ -404,6 +415,7 @@ public final class PluginSettings {
     }
 
     public static void setViewFileHistoryEnabled(boolean enabled) {
+        cachedViewFileHistoryEnabled = enabled;
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean(PreferenceKeys.ACTIONS_VIEW_FILE_HISTORY, enabled);
     }
 
@@ -413,6 +425,7 @@ public final class PluginSettings {
     }
 
     public static void setStashDiffEnabled(boolean enabled) {
+        cachedStashDiffEnabled = enabled;
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean(PreferenceKeys.ACTIONS_STASH_DIFF, enabled);
     }
 
@@ -422,6 +435,7 @@ public final class PluginSettings {
     }
 
     public static void setQuickJumpEnabled(boolean enabled) {
+        cachedQuickJumpEnabled = enabled;
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean(PreferenceKeys.ACTIONS_QUICK_JUMP, enabled);
     }
 
@@ -563,28 +577,6 @@ public final class PluginSettings {
         cachedKeepOlderMessages = keep;
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
                 .putBoolean(PreferenceKeys.KEEP_OLDER_MESSAGES, keep);
-    }
-
-    /** Whether to show tool call messages in chat. */
-    public static boolean isShowToolMessages() {
-        return cachedShowToolMessages;
-    }
-
-    public static void setShowToolMessages(boolean show) {
-        cachedShowToolMessages = show;
-        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
-                .putBoolean(PreferenceKeys.SHOW_TOOL_MESSAGES, show);
-    }
-
-    /** Whether to show thought messages in chat. */
-    public static boolean isShowThoughtMessages() {
-        return cachedShowThoughtMessages;
-    }
-
-    public static void setShowThoughtMessages(boolean show) {
-        cachedShowThoughtMessages = show;
-        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
-                .putBoolean(PreferenceKeys.SHOW_THOUGHT_MESSAGES, show);
     }
 
     /** Whether to echo user input locally before server confirms. */

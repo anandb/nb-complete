@@ -361,12 +361,22 @@ class ServerProcessLifecycle {
         }
     }
 
-    private void initializeProtocol() {
-        AcpFsPolicy fsPolicy = PluginSettings.getAcpFsPolicy();
+    /**
+     * File-system capabilities advertised in {@code initialize}. Reads are
+     * always advertised; {@code writeTextFile} is advertised only when the
+     * policy permits a write. A policy change applies on the next harness
+     * start, which is what this handshake reflects.
+     */
+    static Map<String, Object> fsCapabilities(AcpFsPolicy policy) {
         Map<String, Object> fsCaps = new HashMap<>();
         fsCaps.put("readTextFile", true);
-        fsCaps.put("writeTextFile", fsPolicy == AcpFsPolicy.ALLOW
-                || fsPolicy == AcpFsPolicy.READ_ANY_WRITE_PROJECT);
+        fsCaps.put("writeTextFile", policy == AcpFsPolicy.ALLOW
+                || policy == AcpFsPolicy.READ_ANY_WRITE_PROJECT);
+        return fsCaps;
+    }
+
+    private void initializeProtocol() {
+        Map<String, Object> fsCaps = fsCapabilities(PluginSettings.getAcpFsPolicy());
         Map<String, Object> params = Map.of(
                 "protocolVersion", 1,
                 "clientCapabilities", Map.of(

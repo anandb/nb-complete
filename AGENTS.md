@@ -81,7 +81,11 @@
   that one. Always edit the `src/main/resources/` version.
 - **NbPreferences caching**: If a preference is read in a hot path, cache it in a `static volatile`
   field and register a `PreferenceChangeListener` to update on change. Do NOT call
-  `NbPreferences.forModule().getBoolean()` on every invocation.
+  `NbPreferences.forModule().getBoolean()` on every invocation. Every cached setting must be read
+  through its `PluginSettings` accessor — `UpdateCheckerService` and `BinaryResolver` used to read
+  `CHECK_FOR_UPDATES` and `USE_WSL` straight from `NbPreferences` (bypassing the cache and its
+  round-trip test) and now go through `isCheckForUpdates()` / `isUseWsl()`. Do NOT reintroduce a
+  direct preference read for a key `PluginSettings` already exposes.
 - **Scan ranges**: When scanning large strings for patterns (e.g. ASCII art detection), limit
   the scan to a bounded prefix (e.g. first 512 chars) instead of the full string.
 - **ACPProjectManager cache**: `getAllOpenProjects()` returns the cached `currentProjects` field,

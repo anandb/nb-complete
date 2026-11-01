@@ -712,8 +712,7 @@ public final class BinaryResolver {
         if (!isWindows) {
             return false;
         }
-        boolean enabled = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
-                .getBoolean(PreferenceKeys.USE_WSL, false);
+        boolean enabled = PluginSettings.isUseWsl();
         if (!enabled) {
             return false;
         }

@@ -2,6 +2,7 @@ package github.anandb.netbeans.manager;
 
 import github.anandb.netbeans.contract.ToolExecutor;
 import github.anandb.netbeans.model.HarnessCatalog;
+import github.anandb.netbeans.support.AcpFsPolicy;
 import github.anandb.netbeans.support.BinaryResolver;
 import github.anandb.netbeans.support.PluginSettings;
 import org.junit.jupiter.api.AfterEach;
@@ -81,6 +82,20 @@ class ServerProcessLifecycleTest {
     @Test
     void readyFutureIsNonNull() {
         assertNotNull(lifecycle.readyFuture());
+    }
+
+    @Test
+    void initializeAdvertisesWritesOnlyWhenThePolicyAllowsThem() {
+        assertEquals(Boolean.TRUE, ServerProcessLifecycle.fsCapabilities(AcpFsPolicy.ALLOW).get("readTextFile"));
+        assertEquals(Boolean.TRUE,
+                ServerProcessLifecycle.fsCapabilities(AcpFsPolicy.ALLOW).get("writeTextFile"));
+        assertEquals(Boolean.TRUE, ServerProcessLifecycle
+                .fsCapabilities(AcpFsPolicy.READ_ANY_WRITE_PROJECT).get("readTextFile"));
+        assertEquals(Boolean.TRUE, ServerProcessLifecycle
+                .fsCapabilities(AcpFsPolicy.READ_ANY_WRITE_PROJECT).get("writeTextFile"));
+        assertEquals(Boolean.TRUE, ServerProcessLifecycle.fsCapabilities(AcpFsPolicy.READ_ONLY).get("readTextFile"));
+        assertEquals(Boolean.FALSE,
+                ServerProcessLifecycle.fsCapabilities(AcpFsPolicy.READ_ONLY).get("writeTextFile"));
     }
 
     @Test
