@@ -195,9 +195,9 @@
 | From | To |
 |---|---|
 | `ui/` | `support/` (112), `model/` (60), `contract/` (48), `project/` (1 — `ui/platform/DefaultPlatformBridge` only) |
-| `manager/` | `support/` (59), `model/` (40), `contract/` (37), `mcp/` (2 — `ProcessManager` only) |
+| `manager/` | `support/` (53), `model/` (35), `contract/` (38), `mcp/` (2 — `ProcessManager` only), `pattern/` (4) |
 | `mcp/` | `support/` (18), `contract/` (12), `model/` (4) |
-| `db/` | `model/` (11), `contract/` (4), `support/` (4), `pattern/` (2 — `Sql` only) |
+| `db/` | `model/` (24), `support/` (11), `contract/` (6), `pattern/` (2 — `Sql` only) |
 | `tasks/` | `model/` (9), `contract/` (8), `support/` (6), `ui/` (3 — deferred debt) |
 | `project/` | `support/` (8), `contract/` (3), `model/` (1) |
 | `support/` | `model/` (6 — incl. `HarnessCatalog` exception) |
