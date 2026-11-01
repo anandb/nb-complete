@@ -15,8 +15,8 @@ import javax.swing.SwingUtilities;
  * images, inlined story engine) and packaged GZIPPED ({@code UserGuide.html.gz}) so the
  * IDE's HTML validator never scans the megabyte-sized artifact; opening inflates it to a
  * temp file first. When the resource is missing (stitch skipped at build time) or the
- * temp extract fails, the caller-supplied remote-URL fallback runs instead — always on
- * the EDT, because the existing fallback path updates a status label.
+ * temp extract fails, the caller-supplied fallback runs instead — always on the EDT,
+ * because the fallback path updates a status label or opens a custom URL.
  */
 public final class UserGuideOpener {
     private static final Logger LOG = Logger.from(UserGuideOpener.class);
@@ -26,20 +26,20 @@ public final class UserGuideOpener {
     private UserGuideOpener() {}
 
     /**
-     * Opens the bundled guide in the system browser, or invokes {@code urlFallback} when the
-     * bundled copy is unavailable. The copy runs on a background thread — never call this
-     * expecting synchronous completion; both outcomes notify the user via the browser or
-     * the fallback, not a return value.
+     * Opens the bundled guide in the system browser, or invokes {@code unavailableFallback}
+     * when the bundled copy cannot be served. The copy runs on a background thread — never
+     * call this expecting synchronous completion; both outcomes notify the user via the
+     * browser or the fallback, not a return value.
      *
-     * @param urlFallback remote-guide fallback, invoked on the EDT when the bundled
-     *                    guide cannot be served
+     * @param unavailableFallback invoked on the EDT when the bundled guide cannot be served
+     *                            (a custom URL when configured, otherwise a status message)
      */
-    public static void open(Runnable urlFallback) {
+    public static void open(Runnable unavailableFallback) {
         CompletableFuture.runAsync(() -> {
             try (InputStream in = UserGuideOpener.class.getResourceAsStream(GUIDE_RESOURCE)) {
                 if (in == null) {
-                    LOG.fine("Bundled user guide not found at {0}; falling back to the remote URL", GUIDE_RESOURCE);
-                    runFallback(urlFallback);
+                    LOG.fine("Bundled user guide not found at {0}; running the fallback", GUIDE_RESOURCE);
+                    runFallback(unavailableFallback);
                     return;
                 }
                 Path dir = Path.of(System.getProperty("java.io.tmpdir"), "beanbot");
@@ -53,16 +53,16 @@ public final class UserGuideOpener {
                         && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
                     Desktop.getDesktop().browse(file.toUri());
                 } else {
-                    runFallback(urlFallback);
+                    runFallback(unavailableFallback);
                 }
             } catch (IOException ex) {
                 LOG.warn("Failed to serve the bundled user guide: {0}", ex.getMessage());
-                runFallback(urlFallback);
+                runFallback(unavailableFallback);
             }
         });
     }
 
-    private static void runFallback(Runnable urlFallback) {
-        SwingUtilities.invokeLater(urlFallback);
+    private static void runFallback(Runnable unavailableFallback) {
+        SwingUtilities.invokeLater(unavailableFallback);
     }
 }

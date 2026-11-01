@@ -49,8 +49,8 @@ public final class AppLinks {
         return base.endsWith("/") ? base.substring(0, base.length() - 1) : base;
     }
 
-    /** @return the user guide URL, overridable with {@code -Dbeanbot.user.guide.url}. */
+    /** @return the custom user-guide URL, or {@code null} when none is configured. */
     public static String userGuideUrl() {
-        return System.getProperty(PreferenceKeys.USER_GUIDE_URL_PROP, PreferenceKeys.DEFAULT_USER_GUIDE_URL);
+        return System.getProperty(PreferenceKeys.USER_GUIDE_URL_PROP);
     }
 }

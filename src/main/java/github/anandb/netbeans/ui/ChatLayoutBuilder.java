@@ -93,7 +93,6 @@ final class ChatLayoutBuilder {
     private JButton refreshBtn;
     private JButton exportBtn;
     private JButton launchMiniAssistantBtn;
-    private PulsingToggleButton breakModeBtn;
     private PreferenceChangeListener miniAssistantPrefListener;
     private JPanel rightStatusPanel;
 
@@ -423,7 +422,7 @@ final class ChatLayoutBuilder {
         cwdRow.setOpaque(false);
         cwdRow.add(cwdLabel, BorderLayout.CENTER);
 
-        String userGuideUrl = AppLinks.userGuideUrl();
+        String customGuideUrl = AppLinks.userGuideUrl();
 
         helpBtn = UIUtils.createToolbarButton("help.svg",
             NbBundle.getMessage(AssistantTopComponent.class, "HINT_QuickstartGuide"), null);
@@ -436,9 +435,7 @@ final class ChatLayoutBuilder {
 
             JMenuItem openGuideItem = new JMenuItem(NbBundle.getMessage(
                     AssistantTopComponent.class, "LBL_HelpOpenGuide"));
-            openGuideItem.addActionListener(ev -> UserGuideOpener.open(() ->
-                BrowserUtils.openOrCopyUrl(userGuideUrl,
-                    "STATUS_QuickstartCopied", (url, key) -> topComponent.setStatus(key, url))));
+            openGuideItem.addActionListener(ev -> UserGuideOpener.open(guideFallback(customGuideUrl)));
             helpPopup.add(openGuideItem);
 
             JMenuItem checkUpdatesItem = new JMenuItem(NbBundle.getMessage(
@@ -486,14 +483,12 @@ final class ChatLayoutBuilder {
         PulsingToggleButton breakModeBtn = UIUtils.createToggleToolbarButton("lock.svg", "take-break.svg",
                 NbBundle.getMessage(ChatLayoutBuilder.class, "HINT_BreakModeOff"));
         applyLockIcon(breakModeBtn);
-        this.breakModeBtn = breakModeBtn;
         breakModeBtn.setSelected(PermissionAutoAllow.isEnabled());
         updateBreakModeTooltip(breakModeBtn);
         breakModeBtn.addActionListener(e -> onBreakModeToggled(breakModeBtn));
 
-        JButton launchMiniAssistantBtn = UIUtils.createToolbarButton("mini-assistant.svg",
+        launchMiniAssistantBtn = UIUtils.createToolbarButton("mini-assistant.svg",
             "Launch Mini Assistant", null);
-        this.launchMiniAssistantBtn = launchMiniAssistantBtn;
         launchMiniAssistantBtn.setContentAreaFilled(false);
         launchMiniAssistantBtn.setBorderPainted(false);
         launchMiniAssistantBtn.setVisible(PluginSettings.isMiniAssistantEnabled());
@@ -774,8 +769,6 @@ final class ChatLayoutBuilder {
 
     JButton getHideBtn() { return hideBtn; }
 
-    JButton getShowHiddenBtn() { return showHiddenBtn; }
-
     private void fireNewSession() {
         var bridge = Lookup.getDefault().lookup(PlatformBridge.class);
         if (bridge == null) return;
@@ -821,8 +814,6 @@ final class ChatLayoutBuilder {
     PermissionRequestPanel getPermissionPanel() { return permissionPanel; }
     PermissionRequestPanel getConfigConfirmPanel() { return configConfirmPanel; }
 
-    JPanel getHeader() { return header; }
-
     JButton getSendBtn() { return sendBtn; }
 
     /**
@@ -865,15 +856,6 @@ final class ChatLayoutBuilder {
 
     JButton getExportBtn() { return exportBtn; }
 
-    void updateHideButtonIcon(boolean hidden) {
-        if (hideBtn != null) {
-            hideBtn.setIcon(ThemeManager.getIcon(hidden ? "unarchive.svg" : "archive.svg", PluginSettings.getToolbarIconSize()));
-            hideBtn.setToolTipText(hidden
-                ? NbBundle.getMessage(AssistantTopComponent.class, "HINT_UnarchiveSession")
-                : NbBundle.getMessage(AssistantTopComponent.class, "HINT_ArchiveSession"));
-        }
-    }
-
     /**
      * Applies the break-mode toggle. Arming it asks for confirmation first — the mode
      * approves every permission request with "allow once" and shows no prompt, so the
@@ -909,6 +891,18 @@ final class ChatLayoutBuilder {
         boolean confirmed = DialogDisplayer.getDefault().notify(confirm) == NotifyDescriptor.YES_OPTION;
         restoreFocusAfterDialog(focusBefore);
         return confirmed;
+    }
+
+    /**
+     * Fallback used when the bundled guide cannot be opened: the custom URL when one is
+     * configured, otherwise a status message. There is no default remote URL.
+     */
+    private Runnable guideFallback(String customGuideUrl) {
+        if (customGuideUrl != null && !customGuideUrl.isBlank()) {
+            return () -> BrowserUtils.openOrCopyUrl(customGuideUrl,
+                    "STATUS_QuickstartCopied", (url, key) -> topComponent.setStatus(key, url));
+        }
+        return () -> topComponent.setStatus("STATUS_UserGuideUnavailable");
     }
 
     /**

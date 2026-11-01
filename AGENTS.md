@@ -10,8 +10,8 @@
 - **Key Tech**: NetBeans API (RELEASE220), Flexmark, Jackson, RSyntaxTextArea, JUnit 5.
 
 ## Build Commands
-- Build: `./mvnw package -P random-test-order` (runs checks & tests) | Clean: `./mvnw clean` |
-  Quick: `./mvnw package -DskipTests`
+- Build: `./mvnw package` (runs checks & tests — add the random-order profile per the rule below) |
+  Clean: `./mvnw clean` | Quick: `./mvnw package -DskipTests`
 - **Always run tests with `-P random-test-order`**: any command that executes the suite
   (`./mvnw test`, `./mvnw verify`, `./mvnw package` without `-DskipTests`) MUST add the profile.
   It runs Surefire classes in random order to surface order-dependent tests; the log prints
@@ -71,6 +71,8 @@
 - **JSON-RPC Parsing**: NEVER use `BufferedReader.readLine()` to parse JSON-RPC streams. It incorrectly assumes single-line formatting and breaks on embedded newlines or throws `OutOfMemoryError` on large payloads. Always use Jackson's streaming `JsonParser` (e.g., `MAPPER.getFactory().createParser()`).
 - **JSON-RPC ids may be strings**: goose sends requests with UUID string ids (`"id":"517ef9d2-…"`). NEVER coerce an incoming id with `asLong()` (non-numeric → 0) — echoing `id=0` back makes the agent wait forever for a matching response (goose hung on `fs/read_text_file`). Echo the id `JsonNode` verbatim in responses.
 - **Line Length**: Keep the line length <= 120 characters, but try to fit entire statements into the line without needlessly splitting into small chunks.
+- **Code Comments**: Keep code comments brief — at most 1–2 lines — and say only what the code cannot.
+  Longer explanations belong in Javadoc (or the commit message), not in inline comments.
 - **Logging**: Use index-based placeholders (`{0}`). NO `warning()` method (use
   `LOG.log(Level.WARNING, ...)` or `severe/warn/info/fine`). Pass exceptions as the LAST argument.
 - **Theming**: Use `ThemeManager.getCurrentTheme()`. Dark mode icons require `_dark.svg` suffix.
@@ -193,10 +195,6 @@ serves the IDE tool set. Both are adapters over `contract/` ports and `model/` r
 | `contract/` | `model/` (25) |
 | `model/` | *(nothing — leaf)* |
 
-Zero-import guarantees currently hold (do NOT break them): `manager/` → `ui/`,
-`project/` → `ui/`, `ui/` → `manager/`, `ui/` → `mcp/`, and any
-`model/`/`contract/`/`support/` → `manager|mcp|tasks|project|ui`.
-
 ### Forbidden Patterns (do NOT introduce these)
 - **manager/ → ui/**: Never import from `ui/` in `manager/`. Use `contract/`
   interfaces or `support/` classes instead.
@@ -262,7 +260,7 @@ Active debt — three entries, all verified against the current tree:
   `SessionUpdate`), `BinaryResolver` (`HarnessCatalog`), and `TaskTxtCodec`
   (`TaskRecord`). All three are pure static utilities (string/pattern parsing,
   binary discovery, todo.txt codec) — they are not data classes, so they do not belong
-  in `model/`. The peer-level `support/` → `model/` dependency is accepted.
+  in `model/`.
   **Exception — `HarnessCatalog`**: any `support/` file may import
   `model/HarnessCatalog` (currently `BinaryResolver` and `PluginSettings`, which
   validates the stored harness id against `HarnessCatalog.UNKNOWN`). It is a catalog
@@ -280,8 +278,7 @@ Active debt — three entries, all verified against the current tree:
   `ui/platform/PlatformBridge` and `ui/platform/ProjectContext` — a dependency from a
   feature package into the presentation layer. The seams live in `ui/platform/`; moving
   them down to `contract/` would touch 14 `ui/` files plus the `DefaultPlatformBridge`
-  adapter, so it is deferred. No separate MIGRATION.md exists. Do NOT add further
-  non-`ui/` consumers of the `ui/platform` seams.
+  adapter, so it is deferred. No separate MIGRATION.md exists.
 
 Resolved — kept as regression guards:
 
@@ -292,15 +289,13 @@ Resolved — kept as regression guards:
   `Lookup.getDefault().lookup(ProcessControl.class)`. Do NOT reintroduce either pattern.
 - **project/ACPStartup → manager/ (RESOLVED)**: `ACPStartup` was importing
   `manager/UpdateCheckerService` directly. Fixed via `contract/UpdateCheckerControl`
-  interface with `Lookup.getDefault().lookup()`. Do NOT reintroduce direct
-  `UpdateCheckerService.getInstance()` calls in `project/`.
+  interface with `Lookup.getDefault().lookup()`.
 - **project/ACPShutdown → ui/ (RESOLVED)**: `ACPShutdown` was importing
   `ui/ImagePasteTransferHandler` to shut down the image paste I/O thread pool.
   Fixed by extracting the `RequestProcessor` to `support/ImagePasteIoProcessor`.
 - **ui/GoToFileDialog → manager/FileCacheManager (RESOLVED)**: `GoToFileDialog` was importing
   `manager/FileCacheManager` directly instead of using `contract/FileCacheQuery` via Lookup.
-  Fixed by accessing `Lookup.getDefault().lookup(FileCacheQuery.class)`. Do NOT reintroduce
-  `FileCacheManager.getDefault()` calls in `ui/`.
+  Fixed by accessing `Lookup.getDefault().lookup(FileCacheQuery.class)`.
 - **model/ → support/ (NOT PRESENT)**: an earlier `model/MessageTransformer →
   support/Logger` exemption is obsolete. `model/MessageTransformer` has no imports at
   all and `model/` does not reference `support/Logger` anywhere. `model/` is a clean
@@ -547,13 +542,9 @@ divider and the input area (it must borrow space from the thread only).
   session create/load. Same inputs always produce same hash (stable across reloads).
 
 ### Startup Session/List Optimization
-- `session/list` RPC was called 3 times at startup: `initChat()`, `componentOpened()`,
-  and `deferStartupSessionLoad()`.
-- Removed redundant calls from `AssistantTopComponent.initChat()` and
-  `ComponentLifecycleHandler.componentOpened()`. Only the deferred call in
-  `deferStartupSessionLoad()` remains (after `SESSION_LOAD_STARTUP_GRACE_MS`).
-- Do NOT re-add `refreshSessions()` to `initChat()` or the immediate path in
-  `componentOpened()` — it causes duplicate RPC calls.
+- Only `deferStartupSessionLoad()` calls `session/list` at startup (after
+  `SESSION_LOAD_STARTUP_GRACE_MS`). Do NOT re-add `refreshSessions()` to `initChat()` or the
+  immediate `componentOpened()` path — that caused three duplicate RPC calls at startup.
 - Session titles can change without any event this panel can apply: a harness may
   rename a session itself (OpenCode sends no title in `session_info_update`), and
   the only source of titles is `session/list`. `DefaultSlashCommandInterceptor`
@@ -602,10 +593,10 @@ divider and the input area (it must borrow space from the thread only).
 
 ### Task Repository Toggle
 - The `taskRepository.enabled` preference (default `true`) gates the entire todo.txt feature.
-- **Two entry points are guarded**: `TasksStartup.run()` (skips `restoreFromMetadata()`) and
-  `TasksConnector.createRepository(RepositoryInfo)` (returns `null` when disabled). Both must
-  be gated because the bugtracking framework calls `createRepository()` during its own
-  `loadRepositories()` startup, which races with `TasksStartup`.
+- **Two entry points are guarded** because the bugtracking framework calls
+  `createRepository()` during its own `loadRepositories()` startup, which races with
+  `TasksStartup`: `TasksStartup.run()` (skips `restoreFromMetadata()`) and
+  `TasksConnector.createRepository(RepositoryInfo)` (returns `null` when disabled).
 - The checkbox lives in Preferences > Advanced > IDE Extensions section.
 - The preference key is `PreferenceKeys.TASK_REPOSITORY_ENABLED`; cached via
   `PluginSettings.isTaskRepositoryEnabled()`.
@@ -631,7 +622,7 @@ divider and the input area (it must borrow space from the thread only).
 `EditorContextCapture.capture()` returns `null` when no real file is open (no `FileObject` associated with the editor document). This prevents phantom paths like `/tmp/xxx` from being sent to the AI as context. The return value is passed as `Map<String, Object> context` in `MessageSender`, where `null` means "no editor context available" — the caller skips attaching context entirely.
 
 ### Auto-Scroll Contract
-`ScrollController.isAtBottom()` uses a 150px sticky-zone tolerance (a 50px margin is too tight: adding a bubble shifts the viewport past it before `wasAtBottom` is captured). All content-modifying calls in `ChatThreadPanel` (`addSingleBubble`, `processMessageSections`, `stopStreaming`, stream timer) capture `wasAtBottom` BEFORE touching content. Auto-scroll only fires when `wasAtBottom` is true. The stream timer path (`Timer TimingConstants.STREAM_FLUSH_MS` ms) already captured `wasAtBottom` before `flushUpdate()` — this is the correct pattern; new callers must follow it.
+`ScrollController.isAtBottom()` uses a 150px sticky-zone tolerance (a 50px margin is too tight: adding a bubble shifts the viewport past it before `wasAtBottom` is captured). All content-modifying calls in `ChatThreadPanel` (`addSingleBubble`, `processMessageSections`, `stopStreaming`, stream timer) capture `wasAtBottom` BEFORE touching content; auto-scroll only fires when it is true. The stream timer (`Timer TimingConstants.STREAM_FLUSH_MS` ms) is the reference: it captures `wasAtBottom` before `flushUpdate()`.
 
 ### Usage Stats Store
 `manager/H2UsageStatsStore` implements `contract/UsageStatsStore`, `contract/SessionStore`,
@@ -706,10 +697,9 @@ which computes `field && !processing`:
 
 - **Never call `combo.setEnabled()` directly** — always update the corresponding
   field and call `applyEnabledState()`.
-- `updateConfigControls` sets the `*Enabled` fields based on harness capabilities.
-  When processing is active, `applyEnabledState` keeps combos disabled regardless
-  of the field value. When processing ends, the stored fields are reapplied — a
-  combo that was never supposed to be enabled stays disabled.
+- `updateConfigControls` fills the `*Enabled` fields from the harness capabilities
+  (table above). When processing is active, `applyEnabledState` keeps combos disabled
+  regardless of the field value; when processing ends, the stored fields are reapplied.
 - `setProcessing(boolean)` updates the `processing` flag and re-applies on the EDT.
 - `setOptionsPanelVisible` calls `applyEnabledState()` when the panel becomes
   visible (does NOT overwrite fields).
@@ -801,35 +791,31 @@ public void toggleVisibility() {
    was inside the assistant panel. The interceptor was removed. Do NOT re-add Ctrl+L
    handling in any `KeyEventDispatcher`.
 
-6. MCP tool names should be short and descriptive — they are re-sent in the tool
-   list on every model turn and cost tokens each time. No hard length cap; the
-   earlier 14-character limit was arbitrary and was already exceeded by
-   `get_current_file_context` (24).
+## MCP Tools
 
-7. MCP token auth: `MessageServlet` verifies a per-instance token whenever
-   `authRequired` is set. `BinaryResolver.isPiHarness()` exempts the PI family
-   (`pi`, `pi-acp`, `pi-agent`) — they cannot carry tokens. `ServerProcessLifecycle`
-   sets the flag BEFORE `toolExecutor.start()`; do NOT move it after, and do NOT
-   hand authenticated URLs to PI harness sessions (`McpManager.getServerConfig()`).
-   Filesystem/git/hg tools are confined to open projects via `ProjectPathGuard` —
-   never add MCP tools that touch paths without it. `run_command` is gated on its
-   *working directory* (`ProjectPathGuard.isInOpenProject(workDir)`, defaulting to the
-   current session directory) and by `support/RunCommandPolicy`: when either the
-   allowlist or denylist (*Options > BeanBot > System → Command Whitelist*) is set, shell
-   operators, env assignments and command chaining are rejected, a denied binary
-   always loses even if allowed, a denied `*` denies everything, and only allowlisted
-   executables may run (entries and commands match by executable name; `*`/`?` globs
-   are supported). With both
-   lists empty the command string still runs via `bash -c` unconstrained — that
-   remains deferred hardening. Do NOT bypass `RunCommandPolicy.rejection` in any
-   command-executing tool.
-8. MCP tool failures: a tool returns a normal JSON object with `status: "error"` plus a
-   human `message`. `MessageServlet.handleToolsCallAsync` sets `result.isError = true` only
-   when that object also carries `"fatal": true`, so the harness shows a failed call for real
-   breakage without painting ordinary validation failures ("file not found", "summary is
-   required") red. Reserve `fatal` for a missing service (`…Control not available`), a failed
-   write/close/update, and a VCS command that timed out or exited non-zero. Do NOT throw (the
-   servlet would answer JSON-RPC `-32603` and the harness loses the message).
+- **Tool names** should be short and descriptive — they are re-sent in the tool list on every
+  model turn and cost tokens each time. No hard length cap; the earlier 14-character limit was
+  arbitrary and was already exceeded by `get_current_file_context` (24).
+- **Token auth**: `MessageServlet` verifies a per-instance token whenever `authRequired` is set.
+  `BinaryResolver.isPiHarness()` exempts the PI family (`pi`, `pi-acp`, `pi-agent`) — they cannot
+  carry tokens. `ServerProcessLifecycle` sets the flag BEFORE `toolExecutor.start()`; do NOT move
+  it after, and do NOT hand authenticated URLs to PI harness sessions
+  (`McpManager.getServerConfig()`). `run_command` is gated on its *working directory*
+  (`ProjectPathGuard.isInOpenProject(workDir)`, defaulting to the current session directory) and
+  by `support/RunCommandPolicy`: when either the allowlist or denylist (*Options > BeanBot >
+  System → Command Whitelist*) is set, shell operators, env assignments and command chaining are
+  rejected, a denied binary always loses even if allowed, a denied `*` denies everything, and
+  only allowlisted executables may run (entries and commands match by executable name; `*`/`?`
+  globs are supported). With both lists empty the command string still runs via `bash -c`
+  unconstrained — that remains deferred hardening. Do NOT bypass `RunCommandPolicy.rejection` in
+  any command-executing tool.
+- **Tool failures**: a tool returns a normal JSON object with `status: "error"` plus a human
+  `message`. `MessageServlet.handleToolsCallAsync` sets `result.isError = true` only when that
+  object also carries `"fatal": true`, so the harness shows a failed call for real breakage
+  without painting ordinary validation failures ("file not found", "summary is required") red.
+  Reserve `fatal` for a missing service (`…Control not available`), a failed write/close/update,
+  and a VCS command that timed out or exited non-zero. Do NOT throw (the servlet would answer
+  JSON-RPC `-32603` and the harness loses the message).
 
 ## User Guide (docs/)
 
@@ -849,12 +835,14 @@ When editing it, use the split passage files — they are the source of truth:
   artifact exists — the IDE's HTML validator flags it in `target/`). The Open User Guide
   action (`support/UserGuideOpener`) extracts it to `java.io.tmpdir/beanbot` on a
   background thread and opens it in the system browser; if the resource is missing
-  (stitch skipped) or the copy fails, it falls back to the remote
-  `AppLinks.userGuideUrl()` on the EDT. Do NOT open the temp file on the EDT.
+  (stitch skipped) or the copy fails, the fallback runs on the EDT: a custom
+  `-Dbeanbot.user.guide.url` when set, otherwise a "not available in this build" status.
+  There is no default remote URL. Do NOT open the temp file on the EDT.
 - **Reachability check**: after editing, run
-  `python3 docs/check_reachable.py "target/User Guide.twee"` to verify every
-  passage is reachable from Home without the Topic Index, and that there are
-  no dangling links. Show the absolute path to the stitched file in a code block.
+  `python3 docs/check_reachable.py "target/User Guide.twee"`. Every passage must be
+  reachable from Home through the in-page `> [[Other Page]]` cross-links alone — never
+  only via the Topic Index — and there must be no dangling links. Show the absolute path
+  to the stitched file in a code block.
 - **Workflow to add a page**: create `docs/passages/NNN_<topic>.txt` (next
   number), add a `> [[Page Name]]` link to the Topic Index passage
   (`051_topic_index.txt`), then run `python3 docs/stitch.py` to regenerate
@@ -863,10 +851,6 @@ When editing it, use the split passage files — they are the source of truth:
   (`Topic Title` + `[[Index->Topic Index]]` link) like existing passages.
 - **Cross-links**: pages link to related pages via `> [[Other Page]]` blocks
   near the bottom.
-- **Reachability**: every passage must be reachable through the in-page
-  `> [[Other Page]]` cross-links alone — never rely solely on the Topic Index.
-  A user following the links at the bottom of each page must be able to get
-  anywhere in the guide without ever visiting the index.
 - **Topic Index sorting**: keep the `> [[Page Name]]` entries in
   `051_topic_index.txt` sorted alphabetically; insert new entries in the
   correct position instead of appending at the end.

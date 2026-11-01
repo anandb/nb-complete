@@ -68,13 +68,9 @@ public final class PreferenceKeys {
      */
     public static final String UPDATE_URL_PROP = "beanbot.update.url";
 
-    /** User guide opened from the toolbar help menu. */
-    public static final String DEFAULT_USER_GUIDE_URL =
-            "https://anandb.github.io/beanbot_user_guide.html";
-
     /**
-     * System property ({@code -D}) overriding the user guide URL. Defaults to
-     * {@link #DEFAULT_USER_GUIDE_URL}.
+     * System property ({@code -D}) setting a custom user-guide URL. Used only when the
+     * bundled guide cannot be opened; unset means no remote fallback.
      */
     public static final String USER_GUIDE_URL_PROP = "beanbot.user.guide.url";
 
