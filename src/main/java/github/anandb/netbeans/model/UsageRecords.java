@@ -22,6 +22,16 @@ public final class UsageRecords {
         THOUGHT
     }
 
+    /** How one MCP tool execution ended. */
+    public enum ToolCallStatus {
+        /** The tool ran and did not report a {@code status: "error"} payload. */
+        OK,
+        /** The tool ran and reported {@code status: "error"}, or threw. */
+        ERROR,
+        /** No executor is registered under the requested name. */
+        NOT_FOUND
+    }
+
     /**
      * Session, harness, model and project a row is attributed to. Harness and
      * model are resolved for the session the message belongs to at capture
@@ -54,14 +64,21 @@ public final class UsageRecords {
     }
 
     /**
-     * MCP tool-call counts drained from the per-turn counter at end of turn: one
-     * row per tool name actually invoked during the turn, with that turn's count.
+     * One finished MCP tool execution, captured as it happens: the tool name, when
+     * it ended, how long it took and how it ended. Attribution is resolved for the
+     * session that issued the call at capture time, never from UI state at query
+     * time; the session is null when no session was active.
      */
-    public record ToolCallRow(Attribution attribution, long capturedAt, String toolName, long callCount) {
+    public record ToolCallExecution(Attribution attribution, long capturedAt, String toolName,
+                                    long durationMs, ToolCallStatus status) {
     }
 
-    /** Per-tool call total over the queried window, rendered as a histogram. */
-    public record ToolTotals(String toolName, long calls) {
+    /**
+     * Per-tool totals over the queried window, rendered as a histogram.
+     * {@code failures} counts the executions whose {@link ToolCallStatus} was not
+     * {@code OK}, so a tool that reports errors stays visible.
+     */
+    public record ToolTotals(String toolName, long calls, long failures) {
     }
 
     /**

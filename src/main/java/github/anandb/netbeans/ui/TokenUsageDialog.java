@@ -472,7 +472,8 @@ public class TokenUsageDialog extends JDialog {
      * Renders the per-tool MCP call list as one table: tool name in the label
      * column, a themed bar sized by the tool's share of the window's calls in
      * the middle, and the count with that share on the right. Most-called
-     * first; a 1% floor keeps a rare tool's bar from rendering as empty.
+     * first; a 1% floor keeps a rare tool's bar from rendering as empty. A tool
+     * whose executions did not all end OK also shows how many failed.
      *
      * <p>The bar is a percentage-width {@code div}, not a run of {@code █}
      * characters: the monospace stack has no block-glyph coverage in Swing's
@@ -499,11 +500,21 @@ public class TokenUsageDialog extends JDialog {
               .append("</tr></table>")
               .append("</td>")
               .append("<td style='text-align:right;white-space:nowrap;'>")
-              .append(escapeHtml(UsageStatsFormat.thousands(tool.calls()) + " (" + pct + "%)"))
+              .append(escapeHtml(toolCallsLabel(tool, pct)))
               .append("</td></tr>");
             alt = !alt;
         }
         sb.append("</table>");
+    }
+
+    /** "count (share)", with the failure count appended when any execution failed. */
+    static String toolCallsLabel(ToolTotals tool, int pct) {
+        String label = UsageStatsFormat.thousands(tool.calls()) + " (" + pct + "%)";
+        if (tool.failures() <= 0) {
+            return label;
+        }
+        return label + " · " + NbBundle.getMessage(TokenUsageDialog.class, "LBL_McpToolFailures",
+                UsageStatsFormat.thousands(tool.failures()));
     }
 
     /**

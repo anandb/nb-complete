@@ -11,7 +11,7 @@ import github.anandb.netbeans.model.UsageRecords.Attribution;
 import github.anandb.netbeans.model.UsageRecords.GroupTotals;
 import github.anandb.netbeans.model.UsageRecords.MessageEvent;
 import github.anandb.netbeans.model.UsageRecords.PromptUsageRow;
-import github.anandb.netbeans.model.UsageRecords.ToolCallRow;
+import github.anandb.netbeans.model.UsageRecords.ToolCallExecution;
 import github.anandb.netbeans.model.UsageRecords.ToolTotals;
 import github.anandb.netbeans.model.UsageRecords.UsageSummary;
 import github.anandb.netbeans.model.UsageRecords.UsageUpdateRow;
@@ -37,6 +37,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -84,91 +85,10 @@ public class H2UsageStatsStore
     private static final TypeReference<List<String>> LIST_OF_STRINGS = new TypeReference<>() { };
     private static final TypeReference<List<AvailableModel>> MODEL_LIST = new TypeReference<>() { };
 
-    private static final String CREATE_USAGE_UPDATE = "CREATE TABLE IF NOT EXISTS usage_update ("
-            + "id BIGINT AUTO_INCREMENT PRIMARY KEY,"
-            + "session_id VARCHAR(512), harness_id VARCHAR(128), model_id VARCHAR(512), project VARCHAR(2048),"
-            + "captured_at BIGINT NOT NULL, used_tokens BIGINT NOT NULL, size_tokens BIGINT,"
-            + "cost_amount NUMERIC(20,6) NOT NULL, cost_currency VARCHAR(16))";
-
-    private static final String CREATE_PROMPT_USAGE = "CREATE TABLE IF NOT EXISTS prompt_usage ("
-            + "id BIGINT AUTO_INCREMENT PRIMARY KEY,"
-            + "session_id VARCHAR(512), harness_id VARCHAR(128), model_id VARCHAR(512), project VARCHAR(2048),"
-            + "captured_at BIGINT NOT NULL, input_tokens BIGINT NOT NULL, output_tokens BIGINT NOT NULL,"
-            + "total_tokens BIGINT NOT NULL, thought_tokens BIGINT, cached_read_tokens BIGINT)";
-
-    private static final String CREATE_MESSAGE_EVENT = "CREATE TABLE IF NOT EXISTS message_event ("
-            + "id BIGINT AUTO_INCREMENT PRIMARY KEY,"
-            + "session_id VARCHAR(512), harness_id VARCHAR(128), model_id VARCHAR(512), project VARCHAR(2048),"
-            + "captured_at BIGINT NOT NULL, kind VARCHAR(16) NOT NULL)";
-
-    private static final String CREATE_TOOL_CALL_USAGE = "CREATE TABLE IF NOT EXISTS tool_call_usage ("
-            + "id BIGINT AUTO_INCREMENT PRIMARY KEY,"
-            + "session_id VARCHAR(512), harness_id VARCHAR(128), model_id VARCHAR(512), project VARCHAR(2048),"
-            + "captured_at BIGINT NOT NULL, tool_name VARCHAR(128) NOT NULL, call_count BIGINT NOT NULL)";
-
-    private static final String INSERT_USAGE_UPDATE = "INSERT INTO usage_update "
-            + "(session_id, harness_id, model_id, project, captured_at, used_tokens, size_tokens,"
-            + " cost_amount, cost_currency) VALUES (?,?,?,?,?,?,?,?,?)";
-
-    private static final String INSERT_PROMPT_USAGE = "INSERT INTO prompt_usage "
-            + "(session_id, harness_id, model_id, project, captured_at, input_tokens, output_tokens,"
-            + " total_tokens, thought_tokens, cached_read_tokens) VALUES (?,?,?,?,?,?,?,?,?,?)";
-
-    private static final String INSERT_MESSAGE_EVENT = "INSERT INTO message_event "
-            + "(session_id, harness_id, model_id, project, captured_at, kind) VALUES (?,?,?,?,?,?)";
-
-    private static final String INSERT_TOOL_CALL_USAGE = "INSERT INTO tool_call_usage "
-            + "(session_id, harness_id, model_id, project, captured_at, tool_name, call_count) VALUES (?,?,?,?,?,?,?)";
-
-    private static final String CREATE_META = "CREATE TABLE IF NOT EXISTS usage_meta ("
-            + "meta_key VARCHAR(64) PRIMARY KEY, meta_value VARCHAR(64))";
-
-    /** Chat input history. {@code seq} is append order, so the newest has the highest. */
-    private static final String CREATE_INPUT_HISTORY = "CREATE TABLE IF NOT EXISTS input_history ("
-            + "seq BIGINT AUTO_INCREMENT PRIMARY KEY, text CLOB NOT NULL)";
-
-    /**
-     * Per-session metadata, replacing the {@code sessmeta_<harness>} nodes and the
-     * {@code sessids_<harness>} id lists. {@code ordinal} carries the session
-     * ordering those lists encoded: within a harness the newest session has the
-     * highest ordinal, which is what makes {@link #sessionMetadata} newest-first.
-     */
-    private static final String CREATE_SESSION_META = "CREATE TABLE IF NOT EXISTS session_meta ("
-            + "harness_id VARCHAR(128) NOT NULL, session_id VARCHAR(512) NOT NULL,"
-            + " title CLOB, hidden BOOLEAN NOT NULL DEFAULT FALSE, cwd VARCHAR(2048),"
-            + " used_tokens BIGINT, size_tokens BIGINT, ordinal BIGINT NOT NULL,"
-            + " PRIMARY KEY (harness_id, session_id))";
-
-    private static final String MERGE_SESSION_META =
-            "MERGE INTO session_meta (harness_id, session_id, title, hidden, cwd,"
-            + " used_tokens, size_tokens, ordinal) VALUES (?,?,?,?,?,?,?,?)";
-
-    /**
-     * Pinned message ids per session, replacing {@code pinnedMessages.<sessionId>}.
-     * A session id is globally unique, so no harness column is needed.
-     */
-    private static final String CREATE_PINNED_MESSAGE = "CREATE TABLE IF NOT EXISTS pinned_message ("
-            + "session_id VARCHAR(512) NOT NULL, message_id VARCHAR(128) NOT NULL,"
-            + " pinned_at BIGINT NOT NULL, PRIMARY KEY (session_id, message_id))";
-
-    /**
-     * Last known model list per harness, replacing {@code modelList.<harnessId>}.
-     * {@code position} preserves the order the harness reported; {@code description}
-     * is a CLOB because a model list can exceed the 8 KB preference value ceiling.
-     */
-    private static final String CREATE_HARNESS_MODEL = "CREATE TABLE IF NOT EXISTS harness_model ("
-            + "harness_id VARCHAR(128) NOT NULL, position INT NOT NULL,"
-            + " model_id VARCHAR(512) NOT NULL, name VARCHAR(512), description CLOB,"
-            + " last_seen BIGINT NOT NULL, PRIMARY KEY (harness_id, position))";
-
-    private static final String MERGE_PINNED_MESSAGE =
-            "MERGE INTO pinned_message (session_id, message_id, pinned_at) VALUES (?,?,?)";
-
-    private static final String INSERT_HARNESS_MODEL =
-            "INSERT INTO harness_model (harness_id, position, model_id, name, description, last_seen)"
-            + " VALUES (?,?,?,?,?,?)";
-
     private static final String SCHEMA_VERSION_KEY = "schema_version";
+
+    /** Idempotent DDL, run on every open. */
+    private static final String SCHEMA_SCRIPT = "schema.sql";
 
     /** Set once the legacy {@code NbPreferences} data has been copied in. */
     private static final String PREFS_MIGRATED_KEY = "prefs_migrated";
@@ -221,8 +141,12 @@ public class H2UsageStatsStore
      * Version 7 adds {@code harness_model.last_seen} so a model the harness stops
      * reporting is retained for two days before its row is dropped; existing rows
      * are stamped at upgrade time.
+     * Version 8 adds {@code tool_call_usage.duration_ms} and {@code .status}: one
+     * row now records one finished MCP tool execution instead of a turn's per-tool
+     * counts. The columns are additive and defaulted, so version-7 rows survive and
+     * their {@code call_count} still sums correctly with the new rows.
      */
-    private static final int SCHEMA_VERSION = 7;
+    private static final int SCHEMA_VERSION = 8;
 
     /** How long a model the harness stops reporting is kept before its row is dropped. */
     static final long MODEL_RETENTION_MS = TimeUnit.DAYS.toMillis(2);
@@ -357,7 +281,7 @@ public class H2UsageStatsStore
             return;
         }
         runDb(() -> {
-            try (PreparedStatement ps = connection().prepareStatement(INSERT_USAGE_UPDATE)) {
+            try (PreparedStatement ps = connection().prepareStatement(Sql.get("insert_usage_update"))) {
                 bindAttribution(ps, 1, row.attribution());
                 ps.setLong(5, row.capturedAt());
                 ps.setLong(6, row.used());
@@ -384,25 +308,11 @@ public class H2UsageStatsStore
         }
         Connection conn = DriverManager.getConnection(jdbcUrl);
         try {
-            try (Statement st = conn.createStatement()) {
-                st.execute(CREATE_META);
-            }
+            Sql.runScript(conn, SCHEMA_SCRIPT);
             int dbVersion = readSchemaVersion(conn);
-            applySchemaMigration(conn, dbVersion);
-            try (Statement st = conn.createStatement()) {
-                st.execute(CREATE_USAGE_UPDATE);
-                st.execute(CREATE_PROMPT_USAGE);
-                st.execute(CREATE_MESSAGE_EVENT);
-                st.execute(CREATE_TOOL_CALL_USAGE);
-                st.execute(CREATE_INPUT_HISTORY);
-                st.execute(CREATE_SESSION_META);
-                st.execute(CREATE_PINNED_MESSAGE);
-                st.execute(CREATE_HARNESS_MODEL);
-                st.execute("CREATE INDEX IF NOT EXISTS idx_usage_update_ts ON usage_update (captured_at)");
-                st.execute("CREATE INDEX IF NOT EXISTS idx_prompt_usage_ts ON prompt_usage (captured_at)");
-                st.execute("CREATE INDEX IF NOT EXISTS idx_message_event_ts ON message_event (captured_at)");
-                st.execute("CREATE INDEX IF NOT EXISTS idx_tool_call_usage_ts ON tool_call_usage (captured_at)");
-                st.execute("CREATE INDEX IF NOT EXISTS idx_session_meta_harness ON session_meta (harness_id)");
+            if (applySchemaMigration(conn, dbVersion)) {
+                // The legacy reset dropped the capture tables the script just created.
+                Sql.runScript(conn, SCHEMA_SCRIPT);
             }
             if (dbVersion >= 2 && dbVersion < SCHEMA_VERSION) {
                 // After the tables exist, so a database that predates one of them
@@ -440,7 +350,7 @@ public class H2UsageStatsStore
         List<String> stale = new ArrayList<>();
         for (String table : CAPTURE_TABLES) {
             try (PreparedStatement ps = conn.prepareStatement(
-                    "SELECT DISTINCT model_id FROM " + table + " WHERE model_id LIKE '%:%'");
+                    tableSql("normalize_select_model_ids", table));
                  ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     String value = rs.getString(1);
@@ -460,7 +370,7 @@ public class H2UsageStatsStore
             }
             for (String table : CAPTURE_TABLES) {
                 try (PreparedStatement ps = conn.prepareStatement(
-                        "UPDATE " + table + " SET model_id = ? WHERE model_id = ?")) {
+                        tableSql("normalize_update_model_id", table))) {
                     ps.setString(1, canonical);
                     ps.setString(2, value);
                     ps.executeUpdate();
@@ -482,8 +392,7 @@ public class H2UsageStatsStore
         if (attribution == null || attribution.sessionId() == null) {
             return row.costAmount();
         }
-        try (PreparedStatement ps = connection().prepareStatement(
-                "SELECT COALESCE(SUM(cost_amount), 0) FROM usage_update WHERE session_id = ?")) {
+        try (PreparedStatement ps = connection().prepareStatement(Sql.get("select_session_cost"))) {
             ps.setString(1, attribution.sessionId());
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() ? row.costAmount() - rs.getDouble(1) : row.costAmount();
@@ -497,7 +406,7 @@ public class H2UsageStatsStore
             return;
         }
         runDb(() -> {
-            try (PreparedStatement ps = connection().prepareStatement(INSERT_PROMPT_USAGE)) {
+            try (PreparedStatement ps = connection().prepareStatement(Sql.get("insert_prompt_usage"))) {
                 bindAttribution(ps, 1, row.attribution());
                 ps.setLong(5, row.capturedAt());
                 ps.setLong(6, row.inputTokens());
@@ -518,7 +427,7 @@ public class H2UsageStatsStore
             return;
         }
         runDb(() -> {
-            try (PreparedStatement ps = connection().prepareStatement(INSERT_MESSAGE_EVENT)) {
+            try (PreparedStatement ps = connection().prepareStatement(Sql.get("insert_message_event"))) {
                 bindAttribution(ps, 1, event.attribution());
                 ps.setLong(5, event.capturedAt());
                 ps.setString(6, event.kind() != null ? event.kind().name() : "ASSISTANT");
@@ -530,16 +439,20 @@ public class H2UsageStatsStore
     }
 
     @Override
-    public void recordToolCalls(ToolCallRow row) {
-        if (row == null || row.callCount() <= 0) {
+    public void recordToolCall(ToolCallExecution row) {
+        if (row == null || row.toolName() == null || row.toolName().isBlank()) {
             return;
         }
         runDb(() -> {
-            try (PreparedStatement ps = connection().prepareStatement(INSERT_TOOL_CALL_USAGE)) {
+            try (PreparedStatement ps = connection().prepareStatement(Sql.get("insert_tool_call_usage"))) {
                 bindAttribution(ps, 1, row.attribution());
                 ps.setLong(5, row.capturedAt());
                 ps.setString(6, row.toolName());
-                ps.setLong(7, row.callCount());
+                // One row per execution; keeping the column at 1 leaves a SUM over
+                // pre-version-8 turn aggregates correct.
+                ps.setLong(7, 1);
+                ps.setLong(8, Math.max(row.durationMs(), 0));
+                ps.setString(9, row.status() != null ? row.status().name().toLowerCase(Locale.ROOT) : "ok");
                 ps.executeUpdate();
             } catch (SQLException e) {
                 LOG.log(Level.WARNING, "Failed to record tool-call usage row", e);
@@ -617,8 +530,7 @@ public class H2UsageStatsStore
         }
         history = List.copyOf(next);
         runDb(() -> {
-            try (PreparedStatement ps = connection().prepareStatement(
-                    "INSERT INTO input_history (text) VALUES (?)")) {
+            try (PreparedStatement ps = connection().prepareStatement(Sql.get("insert_input_history"))) {
                 ps.setString(1, text);
                 ps.executeUpdate();
                 pruneHistory();
@@ -700,9 +612,7 @@ public class H2UsageStatsStore
 
     /** One session's stored row, or null when it has none. */
     private SessionMetadata storedMetadata(String bucket, String sessionId) throws SQLException {
-        try (PreparedStatement ps = connection().prepareStatement(
-                "SELECT title, hidden, cwd, used_tokens, size_tokens FROM session_meta"
-                + " WHERE harness_id = ? AND session_id = ?")) {
+        try (PreparedStatement ps = connection().prepareStatement(Sql.get("select_session_meta_row"))) {
             ps.setString(1, bucket);
             ps.setString(2, sessionId);
             try (ResultSet rs = ps.executeQuery()) {
@@ -782,8 +692,7 @@ public class H2UsageStatsStore
 
     private void loadHistory() throws SQLException {
         List<String> loaded = new ArrayList<>();
-        try (PreparedStatement ps = connection().prepareStatement(
-                "SELECT text FROM input_history ORDER BY seq");
+        try (PreparedStatement ps = connection().prepareStatement(Sql.get("select_input_history"));
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
                 loaded.add(rs.getString(1));
@@ -796,8 +705,7 @@ public class H2UsageStatsStore
     /** Reads every row, oldest first per harness so the exposed order is newest-first. */
     private void loadMetadata() throws SQLException {
         Map<String, LinkedHashMap<String, SessionMetadata>> byHarness = new LinkedHashMap<>();
-        String sql = "SELECT harness_id, session_id, title, hidden, cwd, used_tokens, size_tokens"
-                + " FROM session_meta ORDER BY harness_id, ordinal";
+        String sql = Sql.get("select_all_session_meta");
         try (PreparedStatement ps = connection().prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
@@ -827,7 +735,7 @@ public class H2UsageStatsStore
         if (ordinal == null) {
             ordinal = nextOrdinal(bucket);
         }
-        try (PreparedStatement ps = connection().prepareStatement(MERGE_SESSION_META)) {
+        try (PreparedStatement ps = connection().prepareStatement(Sql.get("merge_session_meta"))) {
             bindSessionMeta(ps, bucket, sessionId, meta, ordinal);
             ps.executeUpdate();
         }
@@ -843,7 +751,7 @@ public class H2UsageStatsStore
         Connection conn = connection();
         boolean autoCommit = conn.getAutoCommit();
         conn.setAutoCommit(false);
-        try (PreparedStatement ps = conn.prepareStatement(MERGE_SESSION_META)) {
+        try (PreparedStatement ps = conn.prepareStatement(Sql.get("merge_session_meta"))) {
             Map<String, Long> ordinals = storedOrdinals(bucket);
             long highest = 0L;
             for (long value : ordinals.values()) {
@@ -870,7 +778,7 @@ public class H2UsageStatsStore
         }
     }
 
-    /** Binds one {@link #MERGE_SESSION_META} row. */
+    /** Binds one {@code merge_session_meta} row. */
     private static void bindSessionMeta(PreparedStatement ps, String bucket, String sessionId,
             SessionMetadata meta, long ordinal) throws SQLException {
         Long[] usage = parseUsage(meta.usage());
@@ -887,8 +795,7 @@ public class H2UsageStatsStore
     /** Every stored ordinal in a bucket, keyed by session id. */
     private Map<String, Long> storedOrdinals(String bucket) throws SQLException {
         Map<String, Long> ordinals = new HashMap<>();
-        try (PreparedStatement ps = connection().prepareStatement(
-                "SELECT session_id, ordinal FROM session_meta WHERE harness_id = ?")) {
+        try (PreparedStatement ps = connection().prepareStatement(Sql.get("select_session_ordinals"))) {
             ps.setString(1, bucket);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
@@ -901,8 +808,7 @@ public class H2UsageStatsStore
 
     /** The stored ordinal for a session, or null when it has no row yet. */
     private Long existingOrdinal(String bucket, String sessionId) throws SQLException {
-        try (PreparedStatement ps = connection().prepareStatement(
-                "SELECT ordinal FROM session_meta WHERE harness_id = ? AND session_id = ?")) {
+        try (PreparedStatement ps = connection().prepareStatement(Sql.get("select_session_ordinal"))) {
             ps.setString(1, bucket);
             ps.setString(2, sessionId);
             try (ResultSet rs = ps.executeQuery()) {
@@ -913,8 +819,7 @@ public class H2UsageStatsStore
 
     /** Next free ordinal in a bucket; the newest session carries the highest. */
     private long nextOrdinal(String bucket) throws SQLException {
-        try (PreparedStatement ps = connection().prepareStatement(
-                "SELECT COALESCE(MAX(ordinal), 0) + 1 FROM session_meta WHERE harness_id = ?")) {
+        try (PreparedStatement ps = connection().prepareStatement(Sql.get("select_next_ordinal"))) {
             ps.setString(1, bucket);
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() ? rs.getLong(1) : 1L;
@@ -925,8 +830,7 @@ public class H2UsageStatsStore
     /** Drops all but the newest {@link #HISTORY_CAP} history rows. */
     private void pruneHistory() throws SQLException {
         Long oldestKept = null;
-        try (PreparedStatement ps = connection().prepareStatement(
-                "SELECT seq FROM input_history ORDER BY seq DESC LIMIT 1 OFFSET ?")) {
+        try (PreparedStatement ps = connection().prepareStatement(Sql.get("prune_history_seq"))) {
             ps.setInt(1, HISTORY_CAP - 1);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
@@ -937,8 +841,7 @@ public class H2UsageStatsStore
         if (oldestKept == null) {
             return;
         }
-        try (PreparedStatement ps = connection().prepareStatement(
-                "DELETE FROM input_history WHERE seq < ?")) {
+        try (PreparedStatement ps = connection().prepareStatement(Sql.get("delete_input_history_before"))) {
             ps.setLong(1, oldestKept);
             ps.executeUpdate();
         }
@@ -1000,8 +903,7 @@ public class H2UsageStatsStore
 
     private void loadPins() throws SQLException {
         Map<String, LinkedHashSet<String>> loaded = new HashMap<>();
-        try (PreparedStatement ps = connection().prepareStatement(
-                "SELECT session_id, message_id FROM pinned_message");
+        try (PreparedStatement ps = connection().prepareStatement(Sql.get("select_pins"));
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
                 loaded.computeIfAbsent(rs.getString(1), k -> new LinkedHashSet<>())
@@ -1017,9 +919,7 @@ public class H2UsageStatsStore
 
     private void loadModels() throws SQLException {
         Map<String, List<TimedModel>> loaded = new LinkedHashMap<>();
-        try (PreparedStatement ps = connection().prepareStatement(
-                "SELECT harness_id, model_id, name, description, last_seen FROM harness_model"
-                + " ORDER BY harness_id, position");
+        try (PreparedStatement ps = connection().prepareStatement(Sql.get("select_models"));
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
                 loaded.computeIfAbsent(rs.getString(1), k -> new ArrayList<>())
@@ -1071,15 +971,14 @@ public class H2UsageStatsStore
                 // Row-level delta, never a snapshot replace: a write that races the
                 // startup load must not resurrect rows the load has not seen yet.
                 if (pinned) {
-                    try (PreparedStatement ps = connection().prepareStatement(MERGE_PINNED_MESSAGE)) {
+                    try (PreparedStatement ps = connection().prepareStatement(Sql.get("merge_pinned_message"))) {
                         ps.setString(1, sessionId);
                         ps.setString(2, messageId);
                         ps.setLong(3, now);
                         ps.executeUpdate();
                     }
                 } else {
-                    try (PreparedStatement ps = connection().prepareStatement(
-                            "DELETE FROM pinned_message WHERE session_id = ? AND message_id = ?")) {
+                    try (PreparedStatement ps = connection().prepareStatement(Sql.get("delete_pin"))) {
                         ps.setString(1, sessionId);
                         ps.setString(2, messageId);
                         ps.executeUpdate();
@@ -1234,13 +1133,12 @@ public class H2UsageStatsStore
         boolean autoCommit = conn.getAutoCommit();
         conn.setAutoCommit(false);
         try {
-            try (PreparedStatement delete = conn.prepareStatement(
-                    "DELETE FROM pinned_message WHERE session_id = ?")) {
+            try (PreparedStatement delete = conn.prepareStatement(Sql.get("delete_session_pins"))) {
                 delete.setString(1, sessionId);
                 delete.executeUpdate();
             }
             long now = System.currentTimeMillis();
-            try (PreparedStatement insert = conn.prepareStatement(MERGE_PINNED_MESSAGE)) {
+            try (PreparedStatement insert = conn.prepareStatement(Sql.get("merge_pinned_message"))) {
                 for (String messageId : pinned) {
                     insert.setString(1, sessionId);
                     insert.setString(2, messageId);
@@ -1264,12 +1162,11 @@ public class H2UsageStatsStore
         boolean autoCommit = conn.getAutoCommit();
         conn.setAutoCommit(false);
         try {
-            try (PreparedStatement delete = conn.prepareStatement(
-                    "DELETE FROM harness_model WHERE harness_id = ?")) {
+            try (PreparedStatement delete = conn.prepareStatement(Sql.get("delete_harness_models"))) {
                 delete.setString(1, harnessId);
                 delete.executeUpdate();
             }
-            try (PreparedStatement insert = conn.prepareStatement(INSERT_HARNESS_MODEL)) {
+            try (PreparedStatement insert = conn.prepareStatement(Sql.get("insert_harness_model"))) {
                 int position = 0;
                 for (TimedModel row : list) {
                     AvailableModel model = row.model();
@@ -1357,8 +1254,7 @@ public class H2UsageStatsStore
     }
 
     private boolean isMigrated(String marker) {
-        try (PreparedStatement ps = connection().prepareStatement(
-                "SELECT meta_value FROM usage_meta WHERE meta_key = ?")) {
+        try (PreparedStatement ps = connection().prepareStatement(Sql.get("select_meta_value"))) {
             ps.setString(1, marker);
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() && "true".equalsIgnoreCase(rs.getString(1));
@@ -1371,8 +1267,7 @@ public class H2UsageStatsStore
 
     /** @return true when the database accepted the marker, so the sources may be deleted. */
     private boolean markMigrated(String marker) {
-        try (PreparedStatement ps = connection().prepareStatement(
-                "MERGE INTO usage_meta (meta_key, meta_value) VALUES (?, ?)")) {
+        try (PreparedStatement ps = connection().prepareStatement(Sql.get("merge_meta_value"))) {
             ps.setString(1, marker);
             ps.setString(2, "true");
             ps.executeUpdate();
@@ -1546,8 +1441,7 @@ public class H2UsageStatsStore
             entries.remove(0);
         }
         for (String entry : entries) {
-            try (PreparedStatement ps = connection().prepareStatement(
-                    "INSERT INTO input_history (text) VALUES (?)")) {
+            try (PreparedStatement ps = connection().prepareStatement(Sql.get("insert_input_history"))) {
                 ps.setString(1, entry);
                 ps.executeUpdate();
                 migrated[0]++;
@@ -1560,8 +1454,7 @@ public class H2UsageStatsStore
 
     /** Rows currently in the history table; 0 also means the table cannot be read. */
     private long historyRowCount() {
-        try (PreparedStatement ps = connection().prepareStatement(
-                "SELECT COUNT(*) FROM input_history");
+        try (PreparedStatement ps = connection().prepareStatement(Sql.get("count_input_history"));
              ResultSet rs = ps.executeQuery()) {
             return rs.next() ? rs.getLong(1) : 0;
         } catch (SQLException e) {
@@ -1834,24 +1727,18 @@ public class H2UsageStatsStore
     }
 
     /**
-     * Per-tool call totals over the window, most-called first: one row per
-     * tool_name, the sum of every turn's dumped call_count. Turn-boundary dumps
-     * make each row additive, so a SUM over the window is the true total.
+     * Per-tool totals over the window, most-called first: one row per tool_name,
+     * the sum of each execution's call_count and how many of those did not end OK.
      */
     private List<ToolTotals> runToolTotals(int days, String projectDir, long now) throws SQLException {
         long cutoff = now - days * DAY_MILLIS;
-        String sql = "SELECT tool_name, COALESCE(SUM(call_count), 0) AS calls FROM tool_call_usage"
-                + " WHERE captured_at >= ?" + (projectDir != null ? " AND project = ?" : "")
-                + " GROUP BY tool_name ORDER BY calls DESC, tool_name ASC";
-        try (PreparedStatement ps = connection().prepareStatement(sql)) {
-            ps.setLong(1, cutoff);
-            if (projectDir != null) {
-                ps.setString(2, projectDir);
-            }
+        Sql.Statement statement = windowQuery("tool_totals", cutoff, projectDir);
+        try (PreparedStatement ps = connection().prepareStatement(statement.sql())) {
+            bind(ps, 1, statement);
             try (ResultSet rs = ps.executeQuery()) {
                 List<ToolTotals> rows = new ArrayList<>();
                 while (rs.next()) {
-                    rows.add(new ToolTotals(rs.getString(1), rs.getLong(2)));
+                    rows.add(new ToolTotals(rs.getString(1), rs.getLong(2), rs.getLong(3)));
                 }
                 return rows;
             }
@@ -1860,62 +1747,19 @@ public class H2UsageStatsStore
 
 
     /**
-     * Grouped aggregation across the three tables, keyed to the distinct set
-     * of group values seen in the window. Each table contributes only the
-     * figures it owns (prompt_usage: token columns; usage_update: cost
-     * deltas; message_event: messages, tool calls and the session count).
-     * The group key source is a single UNION of the three attribution
-     * columns, so a group key appears once even when several tables carry it.
+     * Grouped aggregation across the three tables; the statement and its notes live in
+     * {@code queries.sql} under {@code grouped_totals}.
      */
     private List<GroupTotals> runGrouped(int days, String projectDir, long now, String column)
             throws SQLException {
         long cutoff = now - days * DAY_MILLIS;
-        String scope = "captured_at >= ?" + (projectDir != null ? " AND project = ?" : "");
-        String groupExpr = "COALESCE(" + column + ", '(unknown)')";
-
-        // One COALESCE-populated group set, then three LEFT JOINed aggregates.
-        // A single source of group keys avoids the double session counting a
-        // UNION of per-branch COUNT(DISTINCT session_id) produces (the same
-        // session appears in two branches when both recorded rows).
-        String groupSet =
-                "SELECT DISTINCT COALESCE(ids, '(unknown)') AS grp FROM ("
-                + "SELECT " + column + " AS ids FROM prompt_usage WHERE " + scope
-                + " UNION SELECT " + column + " FROM usage_update WHERE " + scope
-                + " UNION SELECT " + column + " FROM message_event WHERE " + scope + ")";
-        String tokensByGroup =
-                "SELECT COALESCE(" + column + ", '(unknown)') AS grp,"
-                + " COALESCE(SUM(input_tokens), 0) AS input_tokens,"
-                + " COALESCE(SUM(output_tokens), 0) AS output_tokens,"
-                + " COALESCE(SUM(cached_read_tokens), 0) AS cached_read_tokens"
-                + " FROM prompt_usage WHERE " + scope + " GROUP BY " + groupExpr + "";
-        String costByGroup =
-                "SELECT COALESCE(" + column + ", '(unknown)') AS grp,"
-                + " COALESCE(SUM(cost_amount), 0.0) AS cost"
-                + " FROM usage_update WHERE " + scope + " GROUP BY " + groupExpr + "";
-        String activityByGroup =
-                "SELECT COALESCE(" + column + ", '(unknown)') AS grp,"
-                + " COUNT(DISTINCT CASE WHEN kind IN ('USER', 'ASSISTANT', 'THOUGHT') THEN session_id END) AS sessions,"
-                + " SUM(CASE WHEN kind <> 'TOOL' THEN 1 ELSE 0 END) AS messages,"
-                + " SUM(CASE WHEN kind = 'TOOL' THEN 1 ELSE 0 END) AS tool_calls"
-                + " FROM message_event WHERE " + scope + " GROUP BY " + groupExpr + "";
-
-        String sql = "SELECT g.grp,"
-                + " COALESCE(a.sessions, 0) AS sessions,"
-                + " COALESCE(a.messages, 0) AS messages,"
-                + " COALESCE(a.tool_calls, 0) AS tool_calls,"
-                + " COALESCE(t.input_tokens, 0) AS input_tokens,"
-                + " COALESCE(t.output_tokens, 0) AS output_tokens,"
-                + " COALESCE(t.cached_read_tokens, 0) AS cached_read_tokens,"
-                + " COALESCE(c.cost, 0.0) AS cost"
-                + " FROM (" + groupSet + ") g"
-                + " LEFT JOIN (" + tokensByGroup + ") t ON t.grp = g.grp"
-                + " LEFT JOIN (" + costByGroup + ") c ON c.grp = g.grp"
-                + " LEFT JOIN (" + activityByGroup + ") a ON a.grp = g.grp"
-                + " ORDER BY g.grp";
+        Sql.Statement statement = Sql.render("grouped_totals", Map.of(
+                "scope", scopeSlot(cutoff, projectDir),
+                "column", Sql.Slot.of(column)));
 
         List<GroupTotals> rows = new ArrayList<>();
-        try (PreparedStatement ps = connection().prepareStatement(sql)) {
-            bindScopeParams(ps, 1, cutoff, projectDir, 6);
+        try (PreparedStatement ps = connection().prepareStatement(statement.sql())) {
+            bind(ps, 1, statement);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     String key = "(unknown)".equals(rs.getString(1)) ? null : rs.getString(1);
@@ -1930,31 +1774,17 @@ public class H2UsageStatsStore
     }
 
 
-    /** Binds a scope predicate's parameters starting at {@code start}; returns the next free index. */
-    private static int bindScopeParams(PreparedStatement ps, int start, long cutoff,
-                                       String projectFilter, int repetitions) throws SQLException {
-        int index = start;
-        for (int i = 0; i < repetitions; i++) {
-            ps.setLong(index++, cutoff);
-            if (projectFilter != null) {
-                ps.setString(index++, projectFilter);
-            }
-        }
-        return index;
-    }
     // ---- Query implementation (executor thread only) ----
 
     private UsageSummary runQuery(int days, String projectDir, long now) throws SQLException {
         long cutoff = now - days * DAY_MILLIS;
-        String scope = "captured_at >= ?" + (projectDir != null ? " AND project = ?" : "");
-        String projectFilter = projectDir;
 
-        long sessions = countScope("session_id", scope, cutoff, projectFilter);
-        long messages = countMessages(scope, cutoff, projectFilter);
-        long dayCount = countDays(scope, cutoff, projectFilter);
-        double totalCost = sumCost(scope, cutoff, projectFilter);
-        long[] tokens = sumTokens(scope, cutoff, projectFilter);
-        double[] perSession = perSessionTokenSums(scope, cutoff, projectFilter);
+        long sessions = countScope("session_id", cutoff, projectDir);
+        long messages = countMessages(cutoff, projectDir);
+        long dayCount = countDays(cutoff, projectDir);
+        double totalCost = sumCost(cutoff, projectDir);
+        long[] tokens = sumTokens(cutoff, projectDir);
+        double[] perSession = perSessionTokenSums(cutoff, projectDir);
 
         double avgTokens = perSession.length == 0 ? 0 : average(perSession);
         double medianTokens = perSession.length == 0 ? 0 : median(perSession);
@@ -1964,58 +1794,54 @@ public class H2UsageStatsStore
                 avgTokens, medianTokens, tokens[0], tokens[1], tokens[2]);
     }
 
-    private long countScope(String column, String scope, long cutoff, String projectFilter) throws SQLException {
-        String sql = "SELECT COUNT(*) FROM ("
-                + "SELECT " + column + " FROM usage_update WHERE " + scope
-                + " UNION SELECT " + column + " FROM prompt_usage WHERE " + scope
-                + " UNION SELECT " + column + " FROM message_event WHERE " + scope + ") scope_rows";
-        try (PreparedStatement ps = connection().prepareStatement(sql)) {
-            bindScope(ps, 1, cutoff, projectFilter, 3);
+    private long countScope(String column, long cutoff, String projectFilter) throws SQLException {
+        Sql.Statement statement = Sql.render("count_scope_rows", Map.of(
+                "scope", scopeSlot(cutoff, projectFilter),
+                "column", Sql.Slot.of(column)));
+        try (PreparedStatement ps = connection().prepareStatement(statement.sql())) {
+            bind(ps, 1, statement);
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() ? rs.getLong(1) : 0;
             }
         }
     }
 
-    private long countMessages(String scope, long cutoff, String projectFilter) throws SQLException {
-        String sql = "SELECT COUNT(*) FROM message_event WHERE " + scope;
-        try (PreparedStatement ps = connection().prepareStatement(sql)) {
-            bindScope(ps, 1, cutoff, projectFilter, 1);
+    private long countMessages(long cutoff, String projectFilter) throws SQLException {
+        Sql.Statement statement = windowQuery("count_messages", cutoff, projectFilter);
+        try (PreparedStatement ps = connection().prepareStatement(statement.sql())) {
+            bind(ps, 1, statement);
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() ? rs.getLong(1) : 0;
             }
         }
     }
 
-    private long countDays(String scope, long cutoff, String projectFilter) throws SQLException {
-        String dayExpr = "FLOOR(captured_at / " + DAY_MILLIS + ".0)";
-        String sql = "SELECT COUNT(*) FROM ("
-                + "SELECT DISTINCT " + dayExpr + " FROM usage_update WHERE " + scope
-                + " UNION SELECT DISTINCT " + dayExpr + " FROM prompt_usage WHERE " + scope
-                + " UNION SELECT DISTINCT " + dayExpr + " FROM message_event WHERE " + scope + ") day_rows";
-        try (PreparedStatement ps = connection().prepareStatement(sql)) {
-            bindScope(ps, 1, cutoff, projectFilter, 3);
+    private long countDays(long cutoff, String projectFilter) throws SQLException {
+        Sql.Statement statement = Sql.render("count_days", Map.of(
+                "scope", scopeSlot(cutoff, projectFilter),
+                "dayExpr", Sql.Slot.of("FLOOR(captured_at / " + DAY_MILLIS + ".0)")));
+        try (PreparedStatement ps = connection().prepareStatement(statement.sql())) {
+            bind(ps, 1, statement);
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() ? rs.getLong(1) : 0;
             }
         }
     }
 
-    private double sumCost(String scope, long cutoff, String projectFilter) throws SQLException {
-        String sql = "SELECT COALESCE(SUM(cost_amount), 0) FROM usage_update WHERE " + scope;
-        try (PreparedStatement ps = connection().prepareStatement(sql)) {
-            bindScope(ps, 1, cutoff, projectFilter, 1);
+    private double sumCost(long cutoff, String projectFilter) throws SQLException {
+        Sql.Statement statement = windowQuery("sum_cost", cutoff, projectFilter);
+        try (PreparedStatement ps = connection().prepareStatement(statement.sql())) {
+            bind(ps, 1, statement);
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() ? rs.getDouble(1) : 0;
             }
         }
     }
 
-    private long[] sumTokens(String scope, long cutoff, String projectFilter) throws SQLException {
-        String sql = "SELECT COALESCE(SUM(input_tokens), 0), COALESCE(SUM(output_tokens), 0),"
-                + " COALESCE(SUM(cached_read_tokens), 0) FROM prompt_usage WHERE " + scope;
-        try (PreparedStatement ps = connection().prepareStatement(sql)) {
-            bindScope(ps, 1, cutoff, projectFilter, 1);
+    private long[] sumTokens(long cutoff, String projectFilter) throws SQLException {
+        Sql.Statement statement = windowQuery("sum_tokens", cutoff, projectFilter);
+        try (PreparedStatement ps = connection().prepareStatement(statement.sql())) {
+            bind(ps, 1, statement);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     return new long[]{rs.getLong(1), rs.getLong(2), rs.getLong(3)};
@@ -2026,17 +1852,14 @@ public class H2UsageStatsStore
     }
 
     /**
-     * Per-session token sums for the Avg/Median Tokens/Session roll-up. The four
-     * stored token fields are summed here and only here; the reported Input,
-     * Output and Cache Read columns each stay a single-field sum.
+     * Per-session token sums for the Avg/Median Tokens/Session roll-up; the statement
+     * and its notes live in {@code queries.sql} under {@code per_session_totals}.
      */
-    private double[] perSessionTokenSums(String scope, long cutoff, String projectFilter) throws SQLException {
-        String sql = "SELECT SUM(COALESCE(input_tokens, 0) + COALESCE(output_tokens, 0)"
-                + " + COALESCE(thought_tokens, 0) + COALESCE(cached_read_tokens, 0))"
-                + " FROM prompt_usage WHERE " + scope + " GROUP BY session_id";
+    private double[] perSessionTokenSums(long cutoff, String projectFilter) throws SQLException {
         List<Double> sums = new ArrayList<>();
-        try (PreparedStatement ps = connection().prepareStatement(sql)) {
-            bindScope(ps, 1, cutoff, projectFilter, 1);
+        Sql.Statement statement = windowQuery("per_session_totals", cutoff, projectFilter);
+        try (PreparedStatement ps = connection().prepareStatement(statement.sql())) {
+            bind(ps, 1, statement);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     sums.add(rs.getDouble(1));
@@ -2070,14 +1893,33 @@ public class H2UsageStatsStore
 
     // ---- Binding helpers ----
 
-    private static void bindScope(PreparedStatement ps, int start, long cutoff,
-                                  String projectFilter, int repetitions) throws SQLException {
+    /** The window predicate every aggregate shares; the project filter is optional. */
+    private static String scopePredicate(String projectDir) {
+        return projectDir != null ? "captured_at >= ? AND project = ?" : "captured_at >= ?";
+    }
+
+    /** A {@code {{scope}}} slot, with the parameters it binds at every occurrence. */
+    private static Sql.Slot scopeSlot(long cutoff, String projectFilter) {
+        return projectFilter != null
+                ? Sql.Slot.of(scopePredicate(projectFilter), cutoff, projectFilter)
+                : Sql.Slot.of(scopePredicate(null), cutoff);
+    }
+
+    /** Renders a statement whose only slot is its window predicate. */
+    private static Sql.Statement windowQuery(String name, long cutoff, String projectFilter) {
+        return Sql.render(name, Map.of("scope", scopeSlot(cutoff, projectFilter)));
+    }
+
+    /** Renders a statement whose only slot is a capture table name; binds stay with the caller. */
+    private static String tableSql(String name, String table) {
+        return Sql.sql(name, Map.of("table", Sql.Slot.of(table)));
+    }
+
+    /** Binds a rendered statement's parameters in order. */
+    private static void bind(PreparedStatement ps, int start, Sql.Statement statement) throws SQLException {
         int index = start;
-        for (int i = 0; i < repetitions; i++) {
-            ps.setLong(index++, cutoff);
-            if (projectFilter != null) {
-                ps.setString(index++, projectFilter);
-            }
+        for (Object param : statement.params()) {
+            ps.setObject(index++, param);
         }
     }
 
@@ -2180,37 +2022,53 @@ public class H2UsageStatsStore
      * @param dbVersion the version read before any of this ran, so the caller can
      *                  also decide what to do after the tables exist
      */
-    private void applySchemaMigration(Connection conn, int dbVersion) throws SQLException {
+    /**
+     * Applies the data migrations a stored database needs, one branch per released
+     * version; the statements themselves live in {@code queries.sql}.
+     *
+     * @return true when the legacy reset dropped the capture tables, so the schema script
+     *         must run again to recreate them
+     */
+    private boolean applySchemaMigration(Connection conn, int dbVersion) throws SQLException {
         if (dbVersion >= SCHEMA_VERSION) {
-            return;
+            return false;
         }
+        boolean dropped = false;
         if (dbVersion < 2) {
             try (Statement st = conn.createStatement()) {
-                st.execute("DROP TABLE IF EXISTS usage_update");
-                st.execute("DROP TABLE IF EXISTS prompt_usage");
-                st.execute("DROP TABLE IF EXISTS message_event");
+                for (String table : CAPTURE_TABLES) {
+                    st.execute(tableSql("drop_capture_table", table));
+                }
             }
+            dropped = true;
         }
         if (dbVersion == 2) {
             try (Statement st = conn.createStatement()) {
-                st.execute("ALTER TABLE usage_update ALTER COLUMN cost_amount NUMERIC(20,6)");
+                st.execute(Sql.get("alter_usage_update_cost"));
             }
         }
         if (dbVersion == 6) {
             try (Statement st = conn.createStatement()) {
-                st.execute("ALTER TABLE IF EXISTS harness_model ADD COLUMN IF NOT EXISTS last_seen BIGINT");
+                st.execute(Sql.get("add_harness_model_last_seen"));
             }
-            try (PreparedStatement ps = conn.prepareStatement(
-                    "UPDATE harness_model SET last_seen = ? WHERE last_seen IS NULL")) {
+            try (PreparedStatement ps = conn.prepareStatement(Sql.get("backfill_harness_model_last_seen"))) {
                 ps.setLong(1, System.currentTimeMillis());
                 ps.executeUpdate();
             }
             try (Statement st = conn.createStatement()) {
-                st.execute("ALTER TABLE IF EXISTS harness_model ALTER COLUMN last_seen SET NOT NULL");
+                st.execute(Sql.get("alter_harness_model_last_seen_not_null"));
             }
         }
-        try (PreparedStatement ps = conn.prepareStatement(
-                "MERGE INTO usage_meta (meta_key, meta_value) VALUES (?, ?)")) {
+        if (dbVersion >= 2 && dbVersion < 8) {
+            // Version-7 rows predate per-execution capture: their call_count is a
+            // turn aggregate and their outcome is unknown, so they keep 'ok' and
+            // duration 0 rather than being rewritten or dropped.
+            try (Statement st = conn.createStatement()) {
+                st.execute(Sql.get("add_tool_call_usage_duration"));
+                st.execute(Sql.get("add_tool_call_usage_status"));
+            }
+        }
+        try (PreparedStatement ps = conn.prepareStatement(Sql.get("merge_meta_value"))) {
             ps.setString(1, SCHEMA_VERSION_KEY);
             ps.setString(2, String.valueOf(SCHEMA_VERSION));
             ps.executeUpdate();
@@ -2221,12 +2079,12 @@ public class H2UsageStatsStore
             LOG.log(Level.INFO, "Upgraded usage-stats store from schema version {0} to {1}",
                     new Object[]{dbVersion, SCHEMA_VERSION});
         }
+        return dropped;
     }
 
     /** Reads the recorded schema version, or 0 for a legacy database. */
     private static int readSchemaVersion(Connection conn) {
-        try (PreparedStatement ps = conn.prepareStatement(
-                "SELECT meta_value FROM usage_meta WHERE meta_key = ?")) {
+        try (PreparedStatement ps = conn.prepareStatement(Sql.get("select_meta_value"))) {
             ps.setString(1, SCHEMA_VERSION_KEY);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {

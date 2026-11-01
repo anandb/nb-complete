@@ -75,6 +75,12 @@
 - **Line Length**: Keep the line length <= 120 characters, but try to fit entire statements into the line without needlessly splitting into small chunks.
 - **Code Comments**: Keep code comments brief — at most 1–2 lines — and say only what the code cannot.
   Longer explanations belong in Javadoc (or the commit message), not in inline comments.
+- **Refactor with Jackpot, not scripts**: for structural edits — replace usages, delete a helper
+  block, remove constants, rename across files — use a Jackpot declarative refactoring via the
+  `run_jackpot` MCP tool (discover rule names with `list_available_hints` first); the IDE's own
+  refactoring is not exposed to the agent. Never use `python`/`sed`/`awk`/shell one-offs for these:
+  scripted text edits bypass the parser, miss call sites and are hard to review. Reserve the file
+  tools for single-file surgical edits.
 - **Logging**: Use index-based placeholders (`{0}`). NO `warning()` method (use
   `LOG.log(Level.WARNING, ...)` or `severe/warn/info/fine`). Pass exceptions as the LAST argument.
 - **Theming**: Use `ThemeManager.getCurrentTheme()`. Dark mode icons require `_dark.svg` suffix.
@@ -644,6 +650,15 @@ process-global model fallback: a model belongs to a session, and `getSessionMode
 as "(not attributed)" — that is the correct answer, not a bug. Attribution is captured as messages arrive,
 never resolved from current UI state at query time.
 
+MCP tool calls are captured per execution, not per turn: `mcp/McpTools.callTool` reports every exit (OK,
+`status:"error"`, unknown tool, thrown executor) through the `contract/ToolCallRecorder` port to
+`manager/ToolCallUsageRecorder`, which resolves the attribution from `SessionQuery` at that moment and writes
+one `tool_call_usage` row with `duration_ms` and `status`. There is no in-memory counter and no turn-end drain —
+do NOT reintroduce one: a drain loses counts on a stop, a session switch, a server restart or shutdown, and
+attributes them to whatever session is current when the turn ends. A call with no active session is stored with
+`session_id NULL` rather than dropped, and `call_count` stays 1 per row so the version-7 turn aggregates still
+sum correctly.
+
 Opening and closing are both bounded. H2 refuses a file another process holds, so an `open()` failure sets
 `unavailable`: `connection()` then throws without retrying, `runDb()`/`call()` skip every later task, and the
 reason is logged once (stack at FINE). `retryAfterFailure()` — called by `ui/TokenUsageDialog` when the user
@@ -657,6 +672,14 @@ launch. Do NOT re-add automatic retries or per-write failure logging.
 the same JVM, and the new classloader's H2 cannot lock a file the old one still holds (`OverlappingFileLock`
 surfaces as "Database may be already in use"). `close()` delegates to `shutdown()`, which closes the
 connection with three attempts and then stops the executor; `flush()` alone does not release the lock.
+
+The store's SQL does not live in the Java source. DDL is `manager/schema.sql` (all `IF NOT EXISTS`, so it runs
+through H2's `RunScript` on every open, and once more when the legacy reset dropped tables); statements are
+`manager/queries.sql` in `-- name: <key>` blocks. `manager/Sql` loads and renders them: `{{slot}}` values are
+code-controlled identifiers only (a column, a `CAPTURE_TABLES` entry, the window predicate), and `render()`
+fails fast when a statement's placeholder count disagrees with the parameters its slots produced — which is what
+removed the hand-counted bind repetitions the aggregates needed. Do NOT inline SQL back into the store, and do
+NOT hand-bind placeholders that a slot supplied; use `Sql.sql()` only for a statement whose `?` the caller owns.
 
 ### Preference Migration To The Store
 Input history, per-session metadata, pinned message ids and per-harness model lists moved out of
@@ -798,7 +821,7 @@ public void toggleVisibility() {
 - **Tool names** should be short and descriptive — they are re-sent in the tool list on every
   model turn and cost tokens each time. No hard length cap; the earlier 14-character limit was
   arbitrary and was already exceeded by `get_current_file_context` (24).
-- **Locating Java types**: use `find_java_type` when you need to find or verify where a Java type
+- **Locating Java types**: use `find_type` when you need to find or verify where a Java type
   (class, interface, enum, record) is declared, before reading, editing or opening it. It searches
   the open projects' `ClassIndex` and returns fully qualified names plus source paths, so do NOT
   `grep`/`search_project` for `class Foo` declarations and do NOT guess a path from a package name.
@@ -815,8 +838,10 @@ public void toggleVisibility() {
   rejected, a denied binary always loses even if allowed, a denied `*` denies everything, and
   only allowlisted executables may run (entries and commands match by executable name; `*`/`?`
   globs are supported). With both lists empty the command string still runs via `bash -c`
-  unconstrained — that remains deferred hardening. Do NOT bypass `RunCommandPolicy.rejection` in
-  any command-executing tool.
+  unconstrained — that remains deferred hardening. The denylist is seeded with
+  `sudo, dd, mkfs.*, shutdown, reboot` when the preference has never been set
+  (`RunCommandPolicy.DEFAULT_DENYLIST`); `rm` is intentionally not denied. Do NOT bypass
+  `RunCommandPolicy.rejection` in any command-executing tool.
 - **Tool failures**: a tool returns a normal JSON object with `status: "error"` plus a human
   `message`. `MessageServlet.handleToolsCallAsync` sets `result.isError = true` only when that
   object also carries `"fatal": true`, so the harness shows a failed call for real breakage
@@ -824,6 +849,13 @@ public void toggleVisibility() {
   Reserve `fatal` for a missing service (`…Control not available`), a failed write/close/update,
   and a VCS command that timed out or exited non-zero. Do NOT throw (the servlet would answer
   JSON-RPC `-32603` and the harness loses the message).
+- **Exploratory searches must not report failure**: `grep` exits 1 when it matches nothing, and a
+  harness's own shell tool (goose's `shell`) turns that exit status into a failed tool call even
+  though the command produced the real output. Prefer `nb__run_command`, which always returns
+  `status: "ok"` with a separate `exitCode`, and append `|| true` (or `; true`) when a command's
+  last element is `grep`/`rg` whose empty result is a legitimate answer. Keep `set -e`-less
+  one-liners honest: only the exit status of the *last* command in a chain decides the tool
+  result, so a trailing `grep` that finds nothing is what gets reported.
 
 ## User Guide (docs/)
 

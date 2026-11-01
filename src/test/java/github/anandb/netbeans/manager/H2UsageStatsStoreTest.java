@@ -7,7 +7,8 @@ import github.anandb.netbeans.model.UsageRecords.Attribution;
 import github.anandb.netbeans.model.UsageRecords.MessageEvent;
 import github.anandb.netbeans.model.UsageRecords.MessageKind;
 import github.anandb.netbeans.model.UsageRecords.PromptUsageRow;
-import github.anandb.netbeans.model.UsageRecords.ToolCallRow;
+import github.anandb.netbeans.model.UsageRecords.ToolCallExecution;
+import github.anandb.netbeans.model.UsageRecords.ToolCallStatus;
 import github.anandb.netbeans.model.UsageRecords.ToolTotals;
 import github.anandb.netbeans.model.UsageRecords.UsageSummary;
 import github.anandb.netbeans.model.UsageRecords.UsageUpdateRow;
@@ -99,25 +100,100 @@ class H2UsageStatsStoreTest {
     }
 
     @Test
-    void toolCallRowsSumPerToolAcrossTurnsAndScopeByProject() {
+    void toolCallRowsCountEveryExecutionAndScopeByProject() {
         Attribution a = att("s1", "omp", "m1", "/proj/a");
-        store.recordToolCalls(new ToolCallRow(a, NOW, "read_file", 4));
-        store.recordToolCalls(new ToolCallRow(a, NOW, "read_file", 2));
-        store.recordToolCalls(new ToolCallRow(att("s2", "omp", "m1", "/proj/b"), NOW, "run_command", 1));
-        store.recordToolCalls(new ToolCallRow(a, NOW - 2 * DAY, "stale_tool", 99)); // outside the 1-day window
-        store.recordToolCalls(null); // never throws
+        store.recordToolCall(new ToolCallExecution(a, NOW, "read_file", 12, ToolCallStatus.OK));
+        store.recordToolCall(new ToolCallExecution(a, NOW, "read_file", 30, ToolCallStatus.ERROR));
+        store.recordToolCall(new ToolCallExecution(a, NOW, "read_file", 4, ToolCallStatus.OK));
+        store.recordToolCall(new ToolCallExecution(att("s2", "omp", "m1", "/proj/b"), NOW,
+                "run_command", 900, ToolCallStatus.NOT_FOUND));
+        store.recordToolCall(new ToolCallExecution(a, NOW - 2 * DAY, "stale_tool", 1, ToolCallStatus.OK));
+        store.recordToolCall(null); // never throws
 
         List<ToolTotals> all = store.queryToolTotals(1, null, NOW);
         List<ToolTotals> projA = store.queryToolTotals(1, "/proj/a", NOW);
 
         assertEquals(2, all.size(), "read_file and run_command, the stale row excluded");
         assertEquals("read_file", all.get(0).toolName(), "most-called first");
-        assertEquals(6, all.get(0).calls(), "counts sum across turns");
+        assertEquals(3, all.get(0).calls(), "one row per execution, summed");
+        assertEquals(1, all.get(0).failures(), "the error execution is counted as a failure");
         assertEquals("run_command", all.get(1).toolName());
         assertEquals(1, all.get(1).calls());
+        assertEquals(1, all.get(1).failures(), "an unknown tool is a failed execution");
         assertEquals(1, projA.size(), "the project scope filters other projects out");
         assertEquals("read_file", projA.get(0).toolName());
-        assertEquals(6, projA.get(0).calls());
+        assertEquals(3, projA.get(0).calls());
+    }
+
+    @Test
+    void toolCallRowKeepsDurationOutcomeAndNullSession() throws SQLException {
+        store.recordToolCall(new ToolCallExecution(null, NOW, "list_projects", 7, ToolCallStatus.OK));
+        store.recordToolCall(new ToolCallExecution(att("s1", "omp", "m1", "/proj/a"), NOW,
+                "write_to_file", -5, ToolCallStatus.ERROR));
+
+        store.queryToolTotals(1, null, NOW); // FIFO: the writes above have landed
+
+        try (Connection c = DriverManager.getConnection(url);
+                Statement st = c.createStatement();
+                ResultSet rs = st.executeQuery(
+                        "SELECT session_id, tool_name, call_count, duration_ms, status"
+                                + " FROM tool_call_usage ORDER BY id")) {
+            assertTrue(rs.next(), "the session-less execution is stored, not dropped");
+            assertNull(rs.getString(1), "no active session is recorded as null");
+            assertEquals("list_projects", rs.getString(2));
+            assertEquals(1, rs.getLong(3), "call_count stays 1 per execution row");
+            assertEquals(7, rs.getLong(4));
+            assertEquals("ok", rs.getString(5).toLowerCase(java.util.Locale.ROOT));
+
+            assertTrue(rs.next());
+            assertEquals(0, rs.getLong(4), "a negative duration is stored as zero");
+            assertEquals("error", rs.getString(5).toLowerCase(java.util.Locale.ROOT));
+            assertFalse(rs.next());
+        }
+    }
+
+    /**
+     * Version-7 rows are turn aggregates without an outcome; the upgrade must add
+     * the two columns, keep the old rows (still summing through call_count) and
+     * accept per-execution rows afterwards.
+     */
+    @Test
+    void versionSevenToolRowsGainDurationAndStatusOnUpgrade(@TempDir Path tempDir) throws SQLException {
+        String fileUrl = "jdbc:h2:" + tempDir.resolve("usage-v7").toAbsolutePath().toString().replace('\\', '/');
+        try (Connection c = DriverManager.getConnection(fileUrl);
+                Statement st = c.createStatement()) {
+            st.execute("CREATE TABLE usage_meta (meta_key VARCHAR(64) PRIMARY KEY,"
+                    + " meta_value VARCHAR(64))");
+            st.execute("INSERT INTO usage_meta VALUES ('schema_version','7')");
+            st.execute("CREATE TABLE tool_call_usage (id BIGINT AUTO_INCREMENT PRIMARY KEY,"
+                    + " session_id VARCHAR(512), harness_id VARCHAR(128), model_id VARCHAR(512),"
+                    + " project VARCHAR(2048), captured_at BIGINT NOT NULL, tool_name VARCHAR(128) NOT NULL,"
+                    + " call_count BIGINT NOT NULL)");
+            st.execute("INSERT INTO tool_call_usage (session_id, captured_at, tool_name, call_count)"
+                    + " VALUES ('s1', " + NOW + ", 'read_file', 4)");
+        }
+
+        H2UsageStatsStore upgraded = new H2UsageStatsStore(fileUrl);
+        upgraded.recordToolCall(new ToolCallExecution(att("s1", "omp", "m1", "/proj/a"), NOW,
+                "read_file", 20, ToolCallStatus.OK));
+
+        List<ToolTotals> totals = upgraded.queryToolTotals(1, null, NOW);
+        assertEquals(1, totals.size());
+        assertEquals(5, totals.get(0).calls(), "the legacy turn aggregate still sums with the new row");
+        assertEquals(0, totals.get(0).failures(), "legacy rows are treated as successful");
+        assertEquals("8", upgradedScalarVersion(fileUrl));
+
+        try (Connection c = DriverManager.getConnection(fileUrl);
+                Statement st = c.createStatement();
+                ResultSet rs = st.executeQuery(
+                        "SELECT duration_ms, status FROM tool_call_usage WHERE session_id = 's1' ORDER BY id")) {
+            assertTrue(rs.next());
+            assertEquals(0, rs.getLong(1), "a legacy row has no recorded duration");
+            assertEquals("ok", rs.getString(2).toLowerCase(java.util.Locale.ROOT));
+            assertTrue(rs.next());
+            assertEquals(20, rs.getLong(1));
+        }
+        upgraded.shutdown();
     }
 
     @Test
@@ -394,8 +470,8 @@ class H2UsageStatsStoreTest {
         upgraded.recordUsageUpdate(new UsageUpdateRow(att("s1", "pi", "m1", "/proj/a"), NOW, 20, null, 0.6, "USD"));
         assertEquals(0.6, upgraded.query(1, null, NOW).totalCost(), 1e-9);
 
-        assertEquals("7", upgradedScalarVersion(fileUrl),
-                "version 7 adds last_seen to the model-list table");
+        assertEquals("8", upgradedScalarVersion(fileUrl),
+                "version 8 adds the call duration and outcome columns");
         upgraded.shutdown();
     }
 
@@ -417,7 +493,7 @@ class H2UsageStatsStoreTest {
         H2UsageStatsStore upgraded = new H2UsageStatsStore(fileUrl);
         upgraded.load();
         assertEquals(List.of(new AvailableModel("a", "A", null)), upgraded.getModels("omp"));
-        assertEquals("7", upgradedScalarVersion(fileUrl));
+        assertEquals("8", upgradedScalarVersion(fileUrl));
         try (Connection c = DriverManager.getConnection(fileUrl);
                 Statement st = c.createStatement();
                 ResultSet rs = st.executeQuery(

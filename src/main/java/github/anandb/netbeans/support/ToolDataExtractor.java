@@ -40,6 +40,14 @@ public final class ToolDataExtractor {
         Pattern.compile("<metadata>.*?</metadata>", Pattern.DOTALL)
     };
 
+    /**
+     * goose reports no {@code kind} on the initial tool_call; it puts the kind in the
+     * title instead ("edit · &lt;path&gt;", "shell · &lt;command&gt;"). MCP tools arrive as
+     * "nb: &lt;tool name&gt;".
+     */
+    private static final Pattern TITLE_PREFIX = Pattern.compile("^([a-z][a-z0-9_-]*)\\s+\\u00b7\\s+");
+    private static final Pattern MCP_TITLE_PREFIX = Pattern.compile("^(?:nb|mcp):\\s*");
+
     /** rawInput keys that carry the target file of a read/edit tool call. */
     private static final String[] RAW_INPUT_PATH_KEYS = {"path", "filePath", "file_path"};
 
@@ -83,6 +91,8 @@ public final class ToolDataExtractor {
 
         if (defaultString(title).startsWith("nb_")) {
             kind = "mcp";
+        } else if (isBlank(kind)) {
+            kind = titleKind(defaultString(title));
         }
 
         if ("think".equals(kind)) {
@@ -205,7 +215,7 @@ public final class ToolDataExtractor {
     private static String extractIdentifier(SessionUpdate update) {
         SessionUpdate.UpdateData ud = update != null ? update.update() : null;
         JsonNode ri = ud != null ? ud.rawInput() : null;
-        
+
         String path = null;
         if (ri != null && ri.isObject()) {
             path = firstNonBlank(
@@ -217,10 +227,30 @@ public final class ToolDataExtractor {
         if (path == null && ud != null) {
             path = extractFirstLocationPath(ud);
         }
-        String title = ud != null ? ud.title() : null;
+        String title = ud != null ? titleDetail(ud.title()) : null;
         String toolName = ri != null && ri.has("tool") ? ri.get("tool").asText(null) : null;
-        
+
         return firstNonBlank(path, title, toolName, "");
+    }
+
+    /** The kind goose puts in its title prefix, or null when the title carries none. */
+    private static String titleKind(String title) {
+        Matcher m = TITLE_PREFIX.matcher(defaultString(title));
+        if (m.find()) {
+            return m.group(1);
+        }
+        return MCP_TITLE_PREFIX.matcher(defaultString(title)).find() ? "mcp" : null;
+    }
+
+    /** The detail half of goose's "&lt;kind&gt; · &lt;detail&gt;" title, so the kind is not repeated. */
+    private static String titleDetail(String title) {
+        String text = defaultString(title);
+        Matcher m = TITLE_PREFIX.matcher(text);
+        if (m.find()) {
+            return text.substring(m.end());
+        }
+        Matcher mcp = MCP_TITLE_PREFIX.matcher(text);
+        return mcp.find() ? text.substring(mcp.end()) : text;
     }
 
     private static String extractPathFromRawInputJson(SessionUpdate.UpdateData ud) {
@@ -233,10 +263,7 @@ public final class ToolDataExtractor {
         if (locations != null && locations.isArray() && locations.size() > 0) {
             JsonNode first = locations.get(0);
             if (first.has("path") && first.get("path").isTextual()) {
-                String path = first.get("path").asText();
-                // Return just the filename for display
-                int lastSep = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
-                return lastSep >= 0 ? path.substring(lastSep + 1) : path;
+                return first.get("path").asText();
             }
         }
         return null;

@@ -16,7 +16,7 @@ import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.model.UsageRecords.MessageEvent;
 import github.anandb.netbeans.model.UsageRecords.MessageKind;
 import github.anandb.netbeans.model.UsageRecords.PromptUsageRow;
-import github.anandb.netbeans.model.UsageRecords.ToolCallRow;
+import github.anandb.netbeans.model.UsageRecords.ToolCallExecution;
 import github.anandb.netbeans.model.UsageRecords.ToolTotals;
 import github.anandb.netbeans.model.UsageRecords.UsageSummary;
 import github.anandb.netbeans.model.UsageRecords.UsageUpdateRow;
@@ -67,7 +67,7 @@ class StrategyRegistryCaptureTest {
         }
 
         @Override
-        public void recordToolCalls(ToolCallRow row) {
+        public void recordToolCall(ToolCallExecution row) {
             throw new UnsupportedOperationException("tool-call capture is not part of this test");
         }
 

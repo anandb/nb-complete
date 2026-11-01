@@ -2,7 +2,7 @@ package github.anandb.netbeans.contract;
 
 import github.anandb.netbeans.model.UsageRecords.MessageEvent;
 import github.anandb.netbeans.model.UsageRecords.PromptUsageRow;
-import github.anandb.netbeans.model.UsageRecords.ToolCallRow;
+import github.anandb.netbeans.model.UsageRecords.ToolCallExecution;
 import github.anandb.netbeans.model.UsageRecords.ToolTotals;
 import github.anandb.netbeans.model.UsageRecords.UsageSummary;
 import github.anandb.netbeans.model.UsageRecords.UsageUpdateRow;
@@ -49,11 +49,11 @@ public interface UsageStatsStore {
     void recordMessage(MessageEvent event);
 
     /**
-     * Records the per-tool MCP call counts of one finished turn: one row per
-     * tool invoked during that turn, with the turn's call count. Never blocks
-     * on I/O.
+     * Records one finished MCP tool execution as one row: tool name, end time,
+     * duration and outcome, with the attribution resolved at capture time. Never
+     * blocks on I/O.
      */
-    void recordToolCalls(ToolCallRow row);
+    void recordToolCall(ToolCallExecution row);
 
     /**
      * Aggregates the captured rows in scope.
@@ -87,7 +87,9 @@ public interface UsageStatsStore {
 
     /**
      * Per-tool MCP call totals over the window, most-called first, rendered as
-     * the tool list and histogram in the token-stats panel.
+     * the tool list and histogram in the token-stats panel. One row records one
+     * finished execution, so {@code failures} counts the executions whose
+     * outcome was not OK.
      *
      * @param days       day window ending at {@code now}; must be at least 1
      * @param projectDir restrict to rows captured for this project directory,

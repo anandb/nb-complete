@@ -93,9 +93,9 @@ class TokenUsageDialogTest {
     @Test
     void renderSummaryHtmlRendersToolHistogramAsShareBars() {
         List<ToolTotals> byTool = List.of(
-                new ToolTotals("read_file", 120),
-                new ToolTotals("search_project", 30),
-                new ToolTotals("list_projects", 1));
+                new ToolTotals("read_file", 120, 3),
+                new ToolTotals("search_project", 30, 0),
+                new ToolTotals("list_projects", 1, 0));
 
         String html = TokenUsageDialog.renderSummaryHtml(sample(), List.of(), List.of(), byTool,
                 ThemeManager.getCurrentTheme());
@@ -105,6 +105,7 @@ class TokenUsageDialogTest {
         assertTrue(html.contains("read_file"));
         assertTrue(html.contains("120 (79%)"), "counts render with the share of all calls");
         assertTrue(html.contains("30 (20%)"), "the share follows each count");
+        assertTrue(html.contains("3 failed"), "a tool that failed shows how many executions did");
         // The bar is a percentage-width div: a block character would print as
         // tofu in Swing's HTML kit, which has no U+2588 coverage.
         assertTrue(html.contains("width:79%;"), "the most-called tool gets the widest bar");
@@ -119,7 +120,7 @@ class TokenUsageDialogTest {
                 new GroupTotals("gpt-x", 1, 2, 3, 4_000, 500, 600, 0.1000));
         List<GroupTotals> byAgent = List.of(
                 new GroupTotals("omp", 1, 2, 3, 4_000, 500, 600, 0.1000));
-        List<ToolTotals> byTool = List.of(new ToolTotals("read_file", 1));
+        List<ToolTotals> byTool = List.of(new ToolTotals("read_file", 1, 0));
 
         String html = TokenUsageDialog.renderSummaryHtml(sample(), byModel, byAgent, byTool,
                 ThemeManager.getCurrentTheme());
@@ -143,7 +144,7 @@ class TokenUsageDialogTest {
                 new GroupTotals("gpt-x", 1, 2, 3, 4_000, 500, 600, 0.1000));
         List<GroupTotals> byAgent = List.of(
                 new GroupTotals("omp", 1, 2, 3, 4_000, 500, 600, 0.1000));
-        List<ToolTotals> byTool = List.of(new ToolTotals("read_file", 1));
+        List<ToolTotals> byTool = List.of(new ToolTotals("read_file", 1, 0));
 
         String html = TokenUsageDialog.renderSummaryHtml(sample(), byModel, byAgent, byTool,
                 ThemeManager.getCurrentTheme());
