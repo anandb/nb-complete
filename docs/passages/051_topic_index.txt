@@ -16,7 +16,7 @@ This is a complete list of topics in this guide, use it to directly jump to that
 > [[Auto-Backup on Turn Start]]
 > [[Auto-Reconnect]]
 > [[Automatic Context Capture]]
-> [[BeanBot]]
+> [[Break Mode]]
 > [[Chat Features]]
 > [[Check token usage]]
 > [[Claude Agent]]

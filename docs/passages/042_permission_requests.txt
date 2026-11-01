@@ -27,13 +27,7 @@ Each button has a keyboard mnemonic, so this panel never needs the mouse:
 
 The letter belongs to the option's scope, not to its label: the harness reports a *once* or *always* kind (and, when it reuses one kind, an id that names the scope), and the plugin maps that to `Alt + O` / `Alt + R` for once and `Alt + A` / `Alt + W` for always, so no two buttons in a row ever share a key. Some harnesses word the buttons so the letter never appears — Claude sends **Yes** and **No** — but `Alt + O`, `Alt + A` and `Alt + R` still answer them; only the underline is missing. The same keys work in the mini assistant, see [[Mini Assistant Permission Requests]].
 
-## On a break
-
-The header button to the left of the mini-assistant icon latches two states. Released, it shows a padlock and permission requests behave as described above. Pressed, it shows a coffee cup: you are on a break, and the plugin answers every permission request with **Allow Once** on its own — no prompt, no diff preview, nothing moves focus — until you press the button again. Arming it asks for confirmation once, because from that point on tool calls proceed without review. Releasing it never asks.
-
-Arming also gives the coffee icon one short two-beat pulse (about a second) so the change of state is caught even in peripheral vision; after that the icon stays still. The latched button, its tooltip and the auto-allowed result lines in the chat carry the state — there is no repeating blink.
-
-The mode lasts only for the current IDE session; it is never stored, so a restart returns to normal prompting.
+The header button to the left of the mini-assistant latches break mode, shown as a padlock or a coffee cup. See [[Break Mode]].
 
 > [[Configuration Template]]
 > [[Mini Assistant]]

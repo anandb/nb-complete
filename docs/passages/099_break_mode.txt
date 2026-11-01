@@ -1,0 +1,22 @@
+:: Break Mode {"position":"1200,600","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Break Mode</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+<div style="display: flex; gap: 1rem; align-items: center; margin: 0.5rem 0 0.75rem;">
+  ![Break button released: the padlock](../images/permission_requests-lock.webp){style="max-width:100%;"}
+  ![Break button pressed: the coffee cup](../images/permission_requests-coffee.webp){style="max-width:100%;"}
+</div>
+
+The header button to the left of the mini-assistant icon latches two states. Released, it shows a padlock and permission requests behave as described above. Pressed, it shows a coffee cup: you are on a break, and the plugin answers every permission request with **Allow Once** on its own — no prompt, no diff preview, nothing moves focus — until you press the button again. Arming it asks for confirmation once, because from that point on tool calls proceed without review. Releasing it never asks.
+
+Arming also gives the coffee icon one short two-beat pulse (about a second) so the change of state is caught even in peripheral vision; after that the icon stays still. The latched button, its tooltip and the auto-allowed result lines in the chat carry the state — there is no repeating blink.
+
+The mode lasts only for the current IDE session; it is never stored, so a restart returns to normal prompting.
+
+> [[Permission Requests]]
+> [[Mini Assistant]]
+> [[Keyboard Shortcuts]]
