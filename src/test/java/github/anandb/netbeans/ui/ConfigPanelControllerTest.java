@@ -7,13 +7,13 @@ import javax.swing.JComboBox;
 
 import org.junit.jupiter.api.Test;
 
+import github.anandb.netbeans.contract.ModelListControl;
 import github.anandb.netbeans.model.AvailableModel;
 import github.anandb.netbeans.model.ModelRecords.ConfigItem;
+import github.anandb.netbeans.model.SessionConfigSelectOption;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Regression tests for {@link ConfigPanelController#mergeModelItems}. A
@@ -103,35 +103,37 @@ class ConfigPanelControllerTest {
         assertEquals(List.of("alpha", "beta"), names(combo));
     }
 
-    // -- cacheModelList write decision --
+    // -- cacheModelList forwarding --
 
-    private static AvailableModel model(String id) {
-        return new AvailableModel(id, id, "");
+    /** Records what the UI hands to the store. */
+    private static final class RecordingModelList implements ModelListControl {
+        private String harnessId;
+        private List<AvailableModel> models;
+
+        @Override
+        public List<AvailableModel> getModels(String harnessId) {
+            return List.of();
+        }
+
+        @Override
+        public void updateModels(String harnessId, List<AvailableModel> models) {
+            this.harnessId = harnessId;
+            this.models = models;
+        }
     }
 
     @Test
-    void cacheCoversIncomingWhenEveryIdIsPresent() {
-        assertTrue(ConfigPanelController.coversAllIds(
-                List.of(model("a"), model("b"), model("c")),
-                List.of(model("a"), model("b"))));
-    }
+    void forwardsEveryReceivedModelListIncludingSubsets() {
+        RecordingModelList control = new RecordingModelList();
 
-    @Test
-    void sameSizeSwapWithUnseenIdIsNotCovered() {
-        assertFalse(ConfigPanelController.coversAllIds(
-                List.of(model("a"), model("b")),
-                List.of(model("a"), model("c"))));
-    }
+        ConfigPanelController.forwardModels(control, "omp", List.of(
+                new SessionConfigSelectOption("a", "A", "first"),
+                new SessionConfigSelectOption("b", "B", null)));
 
-    @Test
-    void smallerIncomingWithUnseenIdIsNotCovered() {
-        assertFalse(ConfigPanelController.coversAllIds(
-                List.of(model("a"), model("b"), model("c"), model("d")),
-                List.of(model("a"), model("e"))));
-    }
-
-    @Test
-    void emptyCacheCoversNothing() {
-        assertFalse(ConfigPanelController.coversAllIds(List.of(), List.of(model("a"))));
+        assertEquals("omp", control.harnessId);
+        assertEquals(List.of(
+                new AvailableModel("a", "A", "first"),
+                new AvailableModel("b", "B", null)), control.models,
+                "a subset list is forwarded so the store can stamp its models");
     }
 }

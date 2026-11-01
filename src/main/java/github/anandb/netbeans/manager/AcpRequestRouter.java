@@ -7,6 +7,8 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.logging.Level;
 import javax.swing.text.Document;
 
@@ -16,7 +18,10 @@ import org.openide.filesystems.FileObject;
 import org.openide.filesystems.FileSystem;
 import org.openide.filesystems.FileUtil;
 import org.openide.loaders.DataObject;
+import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
+
+import github.anandb.netbeans.contract.SessionQuery;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -25,10 +30,12 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import javax.swing.SwingUtilities;
 
 import github.anandb.netbeans.contract.PermissionHandler;
-import github.anandb.netbeans.support.FsWriteSettings;
+import github.anandb.netbeans.support.AcpFsPolicy;
 import github.anandb.netbeans.support.Logger;
-import github.anandb.netbeans.support.PreferenceKeys;
 import github.anandb.netbeans.support.MapperSupplier;
+import github.anandb.netbeans.support.PluginSettings;
+import github.anandb.netbeans.support.ProtectedPaths;
+import github.anandb.netbeans.support.SecretPaths;
 import github.anandb.netbeans.support.ToolDataExtractor;
 
 class AcpRequestRouter {
@@ -36,11 +43,77 @@ class AcpRequestRouter {
     private static final ObjectMapper MAPPER = MapperSupplier.get();
     private volatile PermissionHandler permissionHandler;
 
+    /** Resolves the project directory an ACP session is confined to. */
+    private volatile Function<String, String> sessionDirectoryResolver = AcpRequestRouter::lookupSessionDirectory;
+
+    /** The file-access policy; a supplier so tests can inject one. */
+    private volatile Supplier<AcpFsPolicy> fsPolicySupplier = PluginSettings::getAcpFsPolicy;
+
     AcpRequestRouter() {
     }
 
     void setPermissionHandler(PermissionHandler handler) {
         this.permissionHandler = handler;
+    }
+
+    void setSessionDirectoryResolver(Function<String, String> resolver) {
+        this.sessionDirectoryResolver = resolver != null ? resolver : AcpRequestRouter::lookupSessionDirectory;
+    }
+
+    void setFsPolicySupplier(Supplier<AcpFsPolicy> supplier) {
+        this.fsPolicySupplier = supplier != null ? supplier : PluginSettings::getAcpFsPolicy;
+    }
+
+    private static String lookupSessionDirectory(String sessionId) {
+        SessionQuery query = Lookup.getDefault().lookup(SessionQuery.class);
+        if (query == null) {
+            return null;
+        }
+        return sessionId != null ? query.getSessionDirectory(sessionId) : query.getCurrentSessionDirectory();
+    }
+
+    /**
+     * Applies the file-access policy to one fs request. Reads are confined to
+     * the project except under {@link AcpFsPolicy#READ_ANY_WRITE_PROJECT}; writes
+     * are confined to the project or rejected.
+     *
+     * @return the rejection message, or {@code null} when the request may proceed
+     */
+    private String checkFsAccess(JsonNode params, String filePath, boolean write) {
+        if (SecretPaths.isSecret(filePath)) {
+            return NbBundle.getMessage(ProcessManager.class, "ERR_FsSecretFile", filePath);
+        }
+        AcpFsPolicy policy = fsPolicySupplier.get();
+        if (write) {
+            if (policy == AcpFsPolicy.READ_ONLY) {
+                return NbBundle.getMessage(ProcessManager.class, "ERR_FsReadOnly");
+            }
+        } else if (policy == AcpFsPolicy.READ_ANY_WRITE_PROJECT) {
+            // Reads are unrestricted under this policy; writes still take the path check.
+            return null;
+        }
+        String sessionId = params.hasNonNull("sessionId") ? params.get("sessionId").asText() : null;
+        String root = sessionDirectoryResolver.apply(sessionId);
+        if (root == null || root.isBlank()) {
+            return NbBundle.getMessage(ProcessManager.class, "ERR_FsNoProjectDirectory");
+        }
+        if (!isInsideProject(root, filePath)) {
+            return NbBundle.getMessage(ProcessManager.class, "ERR_FsOutsideProject", filePath, root);
+        }
+        return null;
+    }
+
+    /** True when {@code path} is the project directory or a file below it, after
+     *  resolving symlinks. An unresolvable path is treated as outside. */
+    static boolean isInsideProject(String projectDirectory, String path) {
+        try {
+            File root = new File(projectDirectory).getCanonicalFile();
+            File target = new File(path).getCanonicalFile();
+            return target.equals(root)
+                    || target.getPath().startsWith(root.getPath() + File.separator);
+        } catch (IOException e) {
+            return false;
+        }
     }
 
     CompletableFuture<JsonNode> handleRequestPermission(JsonNode params) {
@@ -126,14 +199,17 @@ class AcpRequestRouter {
                     NbBundle.getMessage(ProcessManager.class, "ERR_MissingFilePath")));
         }
 
+        String accessError = checkFsAccess(params, filePath, false);
+        if (accessError != null) {
+            LOG.fine("Rejected fs/readTextFile: {0}", accessError);
+            return CompletableFuture.failedFuture(new RequestRejectedException(accessError));
+        }
+
         File file = new File(filePath);
         if (!file.exists()) {
             return CompletableFuture.failedFuture(new RequestRejectedException(
                     NbBundle.getMessage(ProcessManager.class, "ERR_FileNotFound", filePath)));
         }
-
-        // Reads are not confined to open projects: the harness (agent) owns the
-        // permission decision and gates file access through session/request_permission.
 
         CompletableFuture<JsonNode> resultFuture = new CompletableFuture<>();
 
@@ -223,16 +299,6 @@ class AcpRequestRouter {
     }
 
     CompletableFuture<JsonNode> handleWriteTextFile(JsonNode params) {
-        // fs/write tools are ENABLED by default; -Dbeanbot.fs.write.enabled=false
-        // turns them off. Reject early so no work runs even if a server ignores
-        // the (un)advertised capability.
-        if (!FsWriteSettings.isEnabled()) {
-            LOG.log(Level.FINE, "Rejected fs/writeTextFile — writing is disabled (system property {0})",
-                    PreferenceKeys.FS_WRITE_ENABLED_PROP);
-            return CompletableFuture.failedFuture(new RequestRejectedException(
-                    NbBundle.getMessage(ProcessManager.class, "ERR_WriteDisabled")));
-        }
-
         String filePath = extractFilePath(params);
         String content = params.has("content") ? params.get("content").asText() : "";
 
@@ -241,10 +307,21 @@ class AcpRequestRouter {
                     NbBundle.getMessage(ProcessManager.class, "ERR_MissingFilePath")));
         }
 
+        String accessError = checkFsAccess(params, filePath, true);
+        if (accessError != null) {
+            LOG.fine("Rejected fs/writeTextFile: {0}", accessError);
+            return CompletableFuture.failedFuture(new RequestRejectedException(accessError));
+        }
+        if (ProtectedPaths.isProtected(filePath)) {
+            LOG.fine("Rejected fs/writeTextFile inside protected VCS/build directory: {0}", filePath);
+            return CompletableFuture.failedFuture(new RequestRejectedException(
+                    NbBundle.getMessage(ProcessManager.class, "ERR_FsProtectedPath", filePath)));
+        }
+
         File file = new File(filePath);
 
-        // Writes are not confined to open projects: the harness (agent) owns the
-        // permission decision and gates file access through session/request_permission.
+        // The policy confines writes to the session's project directory; the
+        // harness still raises its own session/request_permission prompt.
 
         CompletableFuture<JsonNode> result = new CompletableFuture<>();
         // Offload filesystem work (folder creation, file creation, writing new

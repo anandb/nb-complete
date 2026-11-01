@@ -176,7 +176,6 @@ The plugin reads the following system properties and environment variables:
 | `java.io.tmpdir` | System | Temp directory for pasted images (`ImagePasteTransferHandler`) |
 | `os.name` | System | Detect Windows for binary resolution and platform-specific launching (`BinaryResolver`, `ProcessTerminator`, `ACPOptionsPanel`) |
 | `beanbot.roundedPanels` | System (`true`) | Toggle rounded panel corners (`RoundedPanel`) |
-| `beanbot.fs.write.enabled` | System (`true`) | ACP-only: gates the `fs/writeTextFile` / `fs/write_text_file` ACP tools (`FsWriteSettings`). MCP write tools (`write_to_file`, `replace_lines`, `insert_in_file`) are always confined to open projects and unaffected by this property. Set `-Dbeanbot.fs.write.enabled=false` to stop advertising the ACP write capability and reject every ACP write |
 | `beanbot.color.*` | System (varies) | Override any UI color. Read by `model/ColorRegistry` (resolution order: system property → `UIManager` key → built-in light/dark fallback), not by `ColorTheme`, which only loads `colors.json` |
 | `beanbot.update.url` | System | Override the update metadata URL fetched by the update checker (`support/AppLinks`); defaults to `https://repo1.maven.org/maven2/io/github/anandb/beanbot/maven-metadata.xml` — lets a fork or self-hosted deployment serve its own `maven-metadata.xml` |
 | `beanbot.nbm.base` | System | Base for the "Download Now" link, default `https://repo1.maven.org/maven2/io/github/anandb/beanbot`; the checker appends `/<version>/beanbot-<version>.nbm`, so it does not guess release-asset URLs |

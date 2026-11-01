@@ -125,5 +125,10 @@ class TxtTaskRepositoryTest {
         assertEquals(List.of(added), repo.list("r1"));
         assertTrue(repo.update("r1", added.withDetails("closed", "C", "Kept",
             List.of(), List.of(), "", 0, 0)));
+
+        // update() schedules its own persist; drain it too, or the write can land
+        // during JUnit's temp-directory cleanup (DirectoryNotEmptyException).
+        RequestProcessor.Task afterUpdate = io.post(() -> { });
+        afterUpdate.waitFinished(5000);
     }
 }

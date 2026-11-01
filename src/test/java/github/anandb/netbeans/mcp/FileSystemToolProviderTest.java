@@ -39,6 +39,7 @@ import org.openide.util.Lookup;
 
 import github.anandb.netbeans.contract.ProjectQuery;
 import github.anandb.netbeans.contract.SessionQuery;
+import github.anandb.netbeans.support.PluginSettings;
 
 /**
  * Tests the {@code FileSystemToolProvider} tool executors: happy paths for
@@ -192,6 +193,18 @@ class FileSystemToolProviderTest {
         assertEquals("Not a file: " + dir, result.get("message"));
     }
 
+    @Test
+    void readFileRefusesSecretFiles() throws Exception {
+        openProjectAt(tempDir.toFile());
+        File env = writeFile(".env", "TOKEN=super-secret\n");
+
+        Map<String, Object> result = readFile().execute(
+                new ReadFileInput(env.getAbsolutePath(), null, null));
+
+        assertEquals("error", result.get("status"));
+        assertTrue(result.get("message").toString().contains("secrets file"), result.get("message").toString());
+    }
+
     // ---- write_to_file ------------------------------------------------------
 
     @SuppressWarnings("unchecked")
@@ -209,6 +222,35 @@ class FileSystemToolProviderTest {
         assertEquals("ok", result.get("status"));
         assertEquals(6, result.get("bytesWritten"));
         assertEquals("hello\n", Files.readString(Path.of(target), StandardCharsets.UTF_8));
+    }
+
+    @Test
+    void writeToFileRefusesVcsAndMavenDirectories() throws Exception {
+        openProjectAt(tempDir.toFile());
+        for (String protectedPath : new String[]{
+                tempDir.resolve(".git/hooks/pre-commit").toString(),
+                tempDir.resolve(".hg/hgrc").toString(),
+                tempDir.resolve(".mvn/jvm.config").toString()}) {
+            Map<String, Object> result = writeFileTool().execute(
+                    new WriteToFileInput(protectedPath, "#!/bin/sh\n"));
+
+            assertEquals("error", result.get("status"), protectedPath);
+            assertTrue(result.get("message").toString().contains("protected"), protectedPath);
+            assertFalse(new File(protectedPath).exists(), protectedPath);
+        }
+    }
+
+    @Test
+    void writeToFileRefusesSecretFiles() throws Exception {
+        openProjectAt(tempDir.toFile());
+        for (String secret : new String[]{".env", "server.pem"}) {
+            String target = tempDir.resolve(secret).toString();
+            Map<String, Object> result = writeFileTool().execute(new WriteToFileInput(target, "x"));
+
+            assertEquals("error", result.get("status"), secret);
+            assertTrue(result.get("message").toString().contains("secrets file"), secret);
+            assertFalse(new File(target).exists(), secret);
+        }
     }
 
     @Test
@@ -413,6 +455,18 @@ class FileSystemToolProviderTest {
     }
 
     @Test
+    void searchProjectSkipsSecretFiles() throws Exception {
+        openProjectAt(tempDir.toFile());
+        writeFile(".env", "needle in secrets\n");
+        writeFile("src/A.java", "needle in source\n");
+
+        Map<String, Object> result = searchProject().execute(new SearchProjectInput("needle", null, null));
+
+        assertEquals("ok", result.get("status"));
+        assertEquals(1, result.get("totalMatches"), "the .env must not be searched");
+    }
+
+    @Test
     void searchProjectRejectsEscapingDirectory() throws Exception {
         openProjectAt(tempDir.toFile());
 
@@ -553,6 +607,44 @@ class FileSystemToolProviderTest {
         assertEquals("ok", result.get("status"));
         assertEquals(tempDir.toFile().getCanonicalPath(),
                 ((String) result.get("output")).trim());
+    }
+
+    @Test
+    void runCommandHonoursTheAllowAndDenyLists() throws Exception {
+        openProjectAt(tempDir.toFile());
+        PluginSettings.setRunCommandAllowlist("echo");
+        try {
+            Map<String, Object> allowed = runCommand()
+                    .execute(new RunCommandInput("echo hi", tempDir.toString(), 30));
+            assertEquals("ok", allowed.get("status"));
+            assertTrue(allowed.get("stdout").toString().contains("hi"));
+
+            Map<String, Object> blocked = runCommand()
+                    .execute(new RunCommandInput("rm -rf build", tempDir.toString(), 30));
+            assertEquals("error", blocked.get("status"));
+            assertTrue(blocked.get("message").toString().contains("not allowlisted"));
+
+            Map<String, Object> chained = runCommand()
+                    .execute(new RunCommandInput("echo hi && rm -rf build", tempDir.toString(), 30));
+            assertEquals("error", chained.get("status"));
+            assertTrue(chained.get("message").toString().contains("Shell operators"));
+        } finally {
+            PluginSettings.setRunCommandAllowlist("");
+        }
+    }
+
+    @Test
+    void runCommandHonoursTheDenyList() throws Exception {
+        openProjectAt(tempDir.toFile());
+        PluginSettings.setRunCommandDenylist("rm");
+        try {
+            Map<String, Object> blocked = runCommand()
+                    .execute(new RunCommandInput("rm -rf build", tempDir.toString(), 30));
+            assertEquals("error", blocked.get("status"));
+            assertTrue(blocked.get("message").toString().contains("denied"));
+        } finally {
+            PluginSettings.setRunCommandDenylist("");
+        }
     }
 
     @Test

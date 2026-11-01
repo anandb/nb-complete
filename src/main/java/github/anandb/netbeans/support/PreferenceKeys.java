@@ -148,13 +148,22 @@ public final class PreferenceKeys {
     /** Preferred width (px) of the assistant sidebar dock. */
     public static final String ASSISTANT_DOCK_WIDTH = "assistant.dockWidth";
 
+
     /**
-     * System property ({@code -D}) that toggles the {@code fs/writeTextFile} /
-     * {@code fs/write_text_file} tools. <b>Enabled by default</b> (the property
-     * is only read to switch it off): set {@code -Dbeanbot.fs.write.enabled=false}
-     * and the plugin neither advertises the write capability nor performs
-     * writes. When a write call is made while disabled the request is rejected
-     * with an error.
+     * Access policy for the ACP {@code fs/read_text_file} and
+     * {@code fs/write_text_file} tools: {@code allow}, {@code read_only} or
+     * {@code deny}. All modes confine paths to the session's project directory.
+     * Read through {@link PluginSettings#getAcpFsPolicy()}.
      */
-    public static final String FS_WRITE_ENABLED_PROP = "beanbot.fs.write.enabled";
+    public static final String ACP_FS_POLICY = "acp.fs.policy";
+
+    /**
+     * Comma-separated executable names {@code run_command} may invoke. Empty
+     * (the default) allows any command; a non-empty list also rejects shell
+     * operators and environment assignments.
+     */
+    public static final String RUN_COMMAND_ALLOWLIST = "runCommand.allowlist";
+
+    /** Comma-separated executable names {@code run_command} may never invoke. */
+    public static final String RUN_COMMAND_DENYLIST = "runCommand.denylist";
 }

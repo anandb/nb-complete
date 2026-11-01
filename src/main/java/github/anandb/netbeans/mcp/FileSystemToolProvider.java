@@ -10,10 +10,15 @@ import com.github.difflib.patch.PatchFailedException;
 import github.anandb.netbeans.contract.ProjectQuery;
 import github.anandb.netbeans.contract.SessionQuery;
 import github.anandb.netbeans.support.Logger;
+import org.openide.filesystems.FileUtil;
 import org.openide.util.Lookup;
 import org.openide.util.RequestProcessor;
 
 import static github.anandb.netbeans.mcp.ProjectPathGuard.isInOpenProject;
+import github.anandb.netbeans.support.ProtectedPaths;
+import github.anandb.netbeans.support.SecretPaths;
+import github.anandb.netbeans.support.PluginSettings;
+import github.anandb.netbeans.support.RunCommandPolicy;
 import static github.anandb.netbeans.mcp.ProjectPathGuard.outsideProjectError;
 
 import java.io.BufferedReader;
@@ -73,6 +78,9 @@ public class FileSystemToolProvider {
         }
         if (!isInOpenProject(filePath)) {
             return outsideProjectError(filePath);
+        }
+        if (SecretPaths.isSecret(filePath)) {
+            return secretFileError(filePath);
         }
         File file = new File(filePath);
         if (!file.exists()) {
@@ -136,6 +144,37 @@ public class FileSystemToolProvider {
                 });
     }
 
+    /**
+     * Guard shared by every write tool: the path must be inside an open
+     * project, outside VCS/build metadata, and not look like a credential file.
+     *
+     * @return the rejection response, or {@code null} when the write may proceed
+     */
+    private static Map<String, Object> validateWritePath(String filePath) {
+        if (!isInOpenProject(filePath)) {
+            return outsideProjectError(filePath);
+        }
+        if (ProtectedPaths.isProtected(filePath)) {
+            return protectedWriteError(filePath);
+        }
+        if (SecretPaths.isSecret(filePath)) {
+            return secretFileError(filePath);
+        }
+        return null;
+    }
+
+    /** Rejects writes into VCS metadata or Maven wrapper configuration. */
+    private static Map<String, Object> protectedWriteError(String path) {
+        return Map.of("status", "error", "message",
+                "Refusing to modify " + path + ": .git, .hg and .mvn directories are protected.");
+    }
+
+    /** Rejects reads and writes of files that look like credentials. */
+    private static Map<String, Object> secretFileError(String path) {
+        return Map.of("status", "error", "message",
+                "Refusing to access " + path + ": it looks like a secrets file.");
+    }
+
     private void registerWriteToFile(McpTools mcpTools) {
         ObjectNode schema = ToolSchema.object()
                 .str("filePath", "Absolute path to file")
@@ -156,8 +195,9 @@ public class FileSystemToolProvider {
                         if (args.content() == null) {
                             return Map.of("status", "error", "message", "content is required");
                         }
-                        if (!isInOpenProject(args.filePath())) {
-                            return outsideProjectError(args.filePath());
+                        Map<String, Object> pathGuard = validateWritePath(args.filePath());
+                        if (pathGuard != null) {
+                            return pathGuard;
                         }
                         File file = new File(args.filePath());
                         File parent = file.getParentFile();
@@ -205,8 +245,9 @@ public class FileSystemToolProvider {
                         if (isBlank(args.filePath())) {
                             return Map.of("status", "error", "message", "filePath is required");
                         }
-                        if (!isInOpenProject(args.filePath())) {
-                            return outsideProjectError(args.filePath());
+                        Map<String, Object> pathGuard = validateWritePath(args.filePath());
+                        if (pathGuard != null) {
+                            return pathGuard;
                         }
                         List<String> lines = readLinesFromPath(args.filePath());
                         File file = new File(args.filePath());
@@ -244,8 +285,9 @@ public class FileSystemToolProvider {
                         if (isBlank(args.filePath())) {
                             return Map.of("status", "error", "message", "filePath is required");
                         }
-                        if (!isInOpenProject(args.filePath())) {
-                            return outsideProjectError(args.filePath());
+                        Map<String, Object> pathGuard = validateWritePath(args.filePath());
+                        if (pathGuard != null) {
+                            return pathGuard;
                         }
                         List<String> lines = readLinesFromPath(args.filePath());
                         File file = new File(args.filePath());
@@ -279,8 +321,9 @@ public class FileSystemToolProvider {
                         if (isBlank(args.filePath())) {
                             return Map.of("status", "error", "message", "filePath is required");
                         }
-                        if (!isInOpenProject(args.filePath())) {
-                            return outsideProjectError(args.filePath());
+                        Map<String, Object> pathGuard = validateWritePath(args.filePath());
+                        if (pathGuard != null) {
+                            return pathGuard;
                         }
                         File file = new File(args.filePath());
                         if (!file.exists()) {
@@ -358,7 +401,7 @@ public class FileSystemToolProvider {
                                 ? compileGlob(fileGlob) : null;
                         List<Map<String, Object>> matches = new ArrayList<>();
                         for (Project p : projects) {
-                            File projectDirFile = org.openide.filesystems.FileUtil.toFile(p.getProjectDirectory());
+                            File projectDirFile = FileUtil.toFile(p.getProjectDirectory());
                             if (projectDirFile == null) continue;
                             Path projectDir = projectDirFile.toPath().normalize();
                             Path searchRoot = searchDir != null ? projectDir.resolve(searchDir).normalize() : projectDir;
@@ -372,6 +415,9 @@ public class FileSystemToolProvider {
                             Files.walkFileTree(searchRoot, new SimpleFileVisitor<>() {
                                 @Override
                                 public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+                                    if (SecretPaths.isSecret(file.toString())) {
+                                        return FileVisitResult.CONTINUE;
+                                    }
                                     if (globPattern != null) {
                                         String fileName = file.getFileName().toString();
                                         if (!globPattern.matcher(fileName).matches()) {
@@ -537,6 +583,12 @@ public class FileSystemToolProvider {
                         if (!ProjectPathGuard.isInOpenProject(workDir)) {
                             return ProjectPathGuard.outsideProjectError(workDir);
                         }
+                        String policyError = RunCommandPolicy.rejection(
+                                args.command(), PluginSettings.getRunCommandAllowlist(),
+                                PluginSettings.getRunCommandDenylist());
+                        if (policyError != null) {
+                            return Map.of("status", "error", "message", policyError);
+                        }
                         File dir = new File(workDir);
                         if (!dir.exists() || !dir.isDirectory()) {
                             return Map.of("status", "error", "message", "Invalid working directory: " + workDir);
@@ -698,6 +750,9 @@ public class FileSystemToolProvider {
                         Map<String, Object> err = validateExistingFile(args.filePath());
                         if (err != null) {
                             return err;
+                        }
+                        if (ProtectedPaths.isProtected(args.filePath())) {
+                            return protectedWriteError(args.filePath());
                         }
                         File file = new File(args.filePath());
 

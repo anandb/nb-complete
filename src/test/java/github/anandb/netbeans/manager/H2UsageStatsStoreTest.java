@@ -394,8 +394,37 @@ class H2UsageStatsStoreTest {
         upgraded.recordUsageUpdate(new UsageUpdateRow(att("s1", "pi", "m1", "/proj/a"), NOW, 20, null, 0.6, "USD"));
         assertEquals(0.6, upgraded.query(1, null, NOW).totalCost(), 1e-9);
 
-        assertEquals("6", upgradedScalarVersion(fileUrl),
-                "version 6 adds the pinned-message and model-list tables");
+        assertEquals("7", upgradedScalarVersion(fileUrl),
+                "version 7 adds last_seen to the model-list table");
+        upgraded.shutdown();
+    }
+
+    @Test
+    void versionSixModelRowsGainLastSeenOnUpgrade(@TempDir Path tempDir) throws SQLException {
+        String fileUrl = "jdbc:h2:" + tempDir.resolve("usage-v6").toAbsolutePath().toString().replace('\\', '/');
+        try (Connection c = DriverManager.getConnection(fileUrl);
+                Statement st = c.createStatement()) {
+            st.execute("CREATE TABLE usage_meta (meta_key VARCHAR(64) PRIMARY KEY,"
+                    + " meta_value VARCHAR(64))");
+            st.execute("INSERT INTO usage_meta VALUES ('schema_version','6')");
+            st.execute("CREATE TABLE harness_model (harness_id VARCHAR(128) NOT NULL,"
+                    + " position INT NOT NULL, model_id VARCHAR(512) NOT NULL, name VARCHAR(512),"
+                    + " description CLOB, PRIMARY KEY (harness_id, position))");
+            st.execute("INSERT INTO harness_model (harness_id, position, model_id, name)"
+                    + " VALUES ('omp', 0, 'a', 'A')");
+        }
+
+        H2UsageStatsStore upgraded = new H2UsageStatsStore(fileUrl);
+        upgraded.load();
+        assertEquals(List.of(new AvailableModel("a", "A", null)), upgraded.getModels("omp"));
+        assertEquals("7", upgradedScalarVersion(fileUrl));
+        try (Connection c = DriverManager.getConnection(fileUrl);
+                Statement st = c.createStatement();
+                ResultSet rs = st.executeQuery(
+                        "SELECT last_seen FROM harness_model WHERE harness_id = 'omp'")) {
+            assertTrue(rs.next());
+            assertTrue(rs.getLong(1) > 0L, "migrated rows are stamped so they are not pruned");
+        }
         upgraded.shutdown();
     }
 
@@ -898,20 +927,93 @@ class H2UsageStatsStoreTest {
     }
 
     @Test
-    void modelListsKeepOrderAndReplacement() throws SQLException {
+    void modelListsKeepOrderAndRetentionWindow() throws SQLException {
         List<AvailableModel> first = List.of(
                 new AvailableModel("a", "A", "first"),
                 new AvailableModel("b", "B", null));
-        store.updateModels("omp", first);
+        store.updateModels("omp", first, NOW);
         assertEquals(first, store.getModels("omp"));
 
         List<AvailableModel> second = List.of(new AvailableModel("c", "C", "only"));
-        store.updateModels("omp", second);
+        store.updateModels("omp", second, NOW + 1_000);
         store.flush();
 
-        assertEquals(second, store.getModels("omp"), "a newer list replaces the old one");
-        assertEquals(1L, scalarLong("SELECT COUNT(*) FROM harness_model WHERE harness_id = 'omp'"));
+        assertEquals(List.of(
+                new AvailableModel("c", "C", "only"),
+                new AvailableModel("a", "A", "first"),
+                new AvailableModel("b", "B", null)),
+                store.getModels("omp"),
+                "incoming models come first, then fresh models the harness stopped reporting");
+        assertEquals(3L, scalarLong("SELECT COUNT(*) FROM harness_model WHERE harness_id = 'omp'"));
         assertTrue(store.getModels(null).isEmpty(), "a blank harness id yields no list");
+    }
+
+    @Test
+    void receivingTheSameListRefreshesTheTimestamps() throws SQLException {
+        List<AvailableModel> list = List.of(new AvailableModel("a", "A", null));
+        store.updateModels("omp", list, NOW);
+        store.flush();
+        assertEquals(NOW, scalarLong("SELECT last_seen FROM harness_model WHERE model_id = 'a'"));
+
+        store.updateModels("omp", list, NOW + 60_000);
+        store.flush();
+        assertEquals(NOW + 60_000, scalarLong("SELECT last_seen FROM harness_model WHERE model_id = 'a'"),
+                "an unchanged list must still count as a sighting");
+    }
+
+    @Test
+    void omittedModelsArePrunedOnlyAfterTheRetentionWindow() throws SQLException {
+        store.load();
+        long stale = NOW - 3 * DAY;
+        long fresh = NOW - DAY;
+        execute("INSERT INTO harness_model (harness_id, position, model_id, name, description, last_seen)"
+                + " VALUES ('omp', 0, 'old', 'Old', NULL, " + stale + ")");
+        execute("INSERT INTO harness_model (harness_id, position, model_id, name, description, last_seen)"
+                + " VALUES ('omp', 1, 'keep', 'Keep', NULL, " + fresh + ")");
+        store.load();
+        assertEquals(2, store.getModels("omp").size());
+
+        store.updateModels("omp", List.of(new AvailableModel("new", "New", null)), NOW);
+        store.flush();
+
+        assertEquals(List.of(
+                new AvailableModel("new", "New", null),
+                new AvailableModel("keep", "Keep", null)),
+                store.getModels("omp"),
+                "a model outside the window is dropped, one inside it is kept");
+        assertEquals(0L, scalarLong("SELECT COUNT(*) FROM harness_model WHERE model_id = 'old'"));
+        assertEquals(2L, scalarLong("SELECT COUNT(*) FROM harness_model WHERE harness_id = 'omp'"));
+    }
+
+    @Test
+    void loadingAfterALongBreakKeepsModelsUntilTheHarnessReportsAgain() throws SQLException {
+        store.load();
+        long longAgo = NOW - 10 * DAY;
+        execute("INSERT INTO harness_model (harness_id, position, model_id, name, description, last_seen)"
+                + " VALUES ('omp', 0, 'a', 'A', NULL, " + longAgo + ")");
+        execute("INSERT INTO harness_model (harness_id, position, model_id, name, description, last_seen)"
+                + " VALUES ('omp', 1, 'b', 'B', NULL, " + longAgo + ")");
+        store.load();
+
+        assertEquals(2, store.getModels("omp").size(),
+                "retention is measured from a report, not from the clock at load");
+        assertEquals(2L, scalarLong("SELECT COUNT(*) FROM harness_model WHERE harness_id = 'omp'"),
+                "loading must not prune rows");
+    }
+
+    @Test
+    void anotherHarnesssReportDoesNotPruneThisHarnesssModels() throws SQLException {
+        store.load();
+        execute("INSERT INTO harness_model (harness_id, position, model_id, name, description, last_seen)"
+                + " VALUES ('omp', 0, 'a', 'A', NULL, " + (NOW - 10 * DAY) + ")");
+        store.load();
+
+        store.updateModels("other", List.of(new AvailableModel("x", "X", null)), NOW);
+        store.flush();
+
+        assertEquals(1L, scalarLong("SELECT COUNT(*) FROM harness_model WHERE harness_id = 'omp'"),
+                "pruning is per harness");
+        assertEquals(1, store.getModels("omp").size());
     }
 
     @Test

@@ -81,6 +81,12 @@ public final class PluginSettings {
      * does not update it; volatile for cross-thread visibility. Defaults to false.
      */
     private static volatile boolean projectSwitchRestartEnabled = false;
+    /** Cached ACP file-access policy; read per fs request, so it must be a cheap volatile read. */
+    private static volatile AcpFsPolicy cachedAcpFsPolicy = AcpFsPolicy.DEFAULT;
+    /** Raw {@code run_command} allowlist text; parsed by {@link RunCommandPolicy}. */
+    private static volatile String cachedRunCommandAllowlist = "";
+    /** Raw {@code run_command} denylist text; parsed by {@link RunCommandPolicy}. */
+    private static volatile String cachedRunCommandDenylist = "";
 
     private static final PreferenceChangeListener listener = PluginSettings::onPreferenceChanged;
 
@@ -124,6 +130,10 @@ public final class PluginSettings {
         cachedUseWsl = prefs.getBoolean(PreferenceKeys.USE_WSL, false);
         projectSwitchRestartEnabled =
                 prefs.getBoolean(PreferenceKeys.PROJECT_SWITCH_RESTART_ENABLED, false);
+        cachedAcpFsPolicy = AcpFsPolicy.fromStoredValue(
+                prefs.get(PreferenceKeys.ACP_FS_POLICY, AcpFsPolicy.DEFAULT.storedValue()));
+        cachedRunCommandAllowlist = prefs.get(PreferenceKeys.RUN_COMMAND_ALLOWLIST, "");
+        cachedRunCommandDenylist = prefs.get(PreferenceKeys.RUN_COMMAND_DENYLIST, "");
         prefs.addPreferenceChangeListener(listener);
     }
 
@@ -274,6 +284,12 @@ public final class PluginSettings {
             cachedMiniAssistantEnabled = evt.getNewValue() == null || Boolean.parseBoolean(evt.getNewValue());
         } else if (PreferenceKeys.TASK_REPOSITORY_ENABLED.equals(evt.getKey())) {
             cachedTaskRepositoryEnabled = evt.getNewValue() == null || Boolean.parseBoolean(evt.getNewValue());
+        } else if (PreferenceKeys.ACP_FS_POLICY.equals(evt.getKey())) {
+            cachedAcpFsPolicy = AcpFsPolicy.fromStoredValue(evt.getNewValue());
+        } else if (PreferenceKeys.RUN_COMMAND_ALLOWLIST.equals(evt.getKey())) {
+            cachedRunCommandAllowlist = evt.getNewValue() == null ? "" : evt.getNewValue();
+        } else if (PreferenceKeys.RUN_COMMAND_DENYLIST.equals(evt.getKey())) {
+            cachedRunCommandDenylist = evt.getNewValue() == null ? "" : evt.getNewValue();
         } else if (PreferenceKeys.PREAMBLE_ENABLED.equals(evt.getKey())) {
             cachedPreambleEnabled = evt.getNewValue() == null || Boolean.parseBoolean(evt.getNewValue());
         } else if (PreferenceKeys.MCP_SERVER_ENABLED.equals(evt.getKey())) {
@@ -440,6 +456,42 @@ public final class PluginSettings {
         cachedTaskRepositoryEnabled = enabled;
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
                 .putBoolean(PreferenceKeys.TASK_REPOSITORY_ENABLED, enabled);
+    }
+
+    /** Raw comma/space-separated allowlist for {@code run_command}; empty means unrestricted. */
+    public static String getRunCommandAllowlist() {
+        return cachedRunCommandAllowlist;
+    }
+
+    public static void setRunCommandAllowlist(String allowlist) {
+        String value = allowlist == null ? "" : allowlist.trim();
+        cachedRunCommandAllowlist = value;
+        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                .put(PreferenceKeys.RUN_COMMAND_ALLOWLIST, value);
+    }
+
+    /** Raw comma/space-separated denylist for {@code run_command}. */
+    public static String getRunCommandDenylist() {
+        return cachedRunCommandDenylist;
+    }
+
+    public static void setRunCommandDenylist(String denylist) {
+        String value = denylist == null ? "" : denylist.trim();
+        cachedRunCommandDenylist = value;
+        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                .put(PreferenceKeys.RUN_COMMAND_DENYLIST, value);
+    }
+
+    /** The ACP file-access policy (allow, read-only or deny); all modes are project-confined. */
+    public static AcpFsPolicy getAcpFsPolicy() {
+        return cachedAcpFsPolicy;
+    }
+
+    public static void setAcpFsPolicy(AcpFsPolicy policy) {
+        AcpFsPolicy effective = policy != null ? policy : AcpFsPolicy.DEFAULT;
+        cachedAcpFsPolicy = effective;
+        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                .put(PreferenceKeys.ACP_FS_POLICY, effective.storedValue());
     }
 
     /** Whether the user-editable session preamble is sent at turn start. */

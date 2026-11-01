@@ -362,23 +362,41 @@ process never inherits the previous process's loaded session. Copilot advertises
 `close` and needs the reload path; without it the load replays against a session
 still holding in-flight work. Do NOT make cancel+close unconditional again.
 
-### ACP fs Tools Are Not Project-Confined
+### ACP fs Tools Are Project-Confined By Policy
 - `fs/readTextFile` (`fs/read_text_file`) and `fs/writeTextFile` (`fs/write_text_file`)
-  are handled by `manager/AcpRequestRouter` and operate on any absolute path, inside or
-  outside the open projects. The harness (agent) owns the permission decision and gates
-  access via `session/request_permission`.
-- Do NOT reintroduce a project-containment check in `AcpRequestRouter` (the old
-  `isPathInProject` guard was removed). The `ProjectPathGuard` confinement in
+  are handled by `manager/AcpRequestRouter` and are confined to the session's project
+  directory. `checkFsAccess` applies `PluginSettings.getAcpFsPolicy()`
+  (`support/AcpFsPolicy`): `ALLOW` permits reads and writes inside the project,
+  `READ_ANY_WRITE_PROJECT` permits reads anywhere but keeps writes inside the project,
+  and `READ_ONLY` permits project reads and rejects writes. The directory comes from
+  `SessionQuery.getSessionDirectory(sessionId)`; a missing directory denies access.
+- Path containment goes through `AcpRequestRouter.isInsideProject`, which compares
+  canonical paths with a separator boundary (a sibling sharing a prefix is outside,
+  symlinks are resolved, `..` cannot escape). Do NOT replace it with a bare
+  `startsWith` on the unresolved path.
+- The policy is user-visible under *Options > BeanBot > System* (the **ACP file access** dropdown). The fs
+  capabilities are advertised from it during `initialize` (`readTextFile` always;
+  `writeTextFile` only for `ALLOW` and `READ_ANY_WRITE_PROJECT`), so a policy change
+  takes effect on the next harness start while per-request enforcement is immediate.
+- The harness's own `session/request_permission` prompt still runs; the policy is the
+  IDE-side guard, not a replacement for it. `ProjectPathGuard` confinement in
   `mcp/ProjectPathGuard` still applies to the MCP tools (`read_file`, `write_to_file`,
   git/hg, etc.) and must stay there.
-- `fs/write*` is **enabled by default**: `FsWriteSettings.isEnabled()` reads the
-  `beanbot.fs.write.enabled` system property, and only an explicit
-  `-Dbeanbot.fs.write.enabled=false` disables it (both capability advertisement and
-  the per-request guard). That gate is independent of path confinement, so with the
-  default the harness's per-write `session/request_permission` prompt is the only
-  path-level control. Do NOT change the default back to disabled without updating
-  `FsWriteSettings`, `PreferenceKeys.FS_WRITE_ENABLED_PROP` and
-  `manager/Bundle.properties` together.
+- Writes into `.git`, `.hg` and `.mvn` are refused even inside an open project:
+  `support/ProtectedPaths.isProtected` is applied by every MCP write tool
+  (`write_to_file`, `replace_lines`, `insert_in_file`, `delete_lines`, `apply_patch`)
+  and by `fs/write_text_file`. Those directories contain hooks and build
+  configuration that execute on the user's next git/hg/build action, so a write
+  there is code execution by proxy. Reads stay allowed. Do NOT add a write path
+  that skips this check.
+- Credential-looking files are refused for both reads and writes:
+  `support/SecretPaths.isSecret` covers `.env*` (except `.env.example|sample|template|dist`),
+  `.netrc`, `.npmrc`, `.pypirc`, `.git-credentials`, `.htpasswd`, SSH/GPG/cloud
+  credential directories, private key names and `*.pem|key|p12|pfx|jks|keystore|ppk|secret(s)`.
+  MCP `read_file`, the write tools, `apply_patch`, `search_project` (skips them) and
+  ACP `fs/read_text_file`/`fs/write_text_file` all apply it. It is a name heuristic,
+  not a sandbox: `run_command` can still print any file, so extend the matcher rather
+  than special-casing tools.
 - Agent-driven file access MUST NOT take focus unless the user asked to be taken
   there. `fs/write*` writes through `EditorCookie.openDocument()` (loads the
   buffer, opens no view), and `open_pos` defaults to `Line.show(OPEN, NONE)` —
@@ -395,7 +413,7 @@ still holding in-flight work. Do NOT make cancel+close unconditional again.
 
 - `ProcessManager.ensureStartedIn(dir)` binds the server's spawn cwd and rebinds by
   restarting the process. It is gated by `projectSwitchRestart.enabled`
-  (*Options > BeanBot > Actions → Enable ACP server restart on project switch*), read
+  (*Options > BeanBot > System → Enable ACP server restart on project switch*), read
   once at startup — changing the option requires an IDE restart. Do NOT add a
   preference listener for it or make it live; `setProjectSwitchRestartForTest` exists
   only for tests.
@@ -548,7 +566,7 @@ divider and the input area (it must borrow space from the thread only).
   `TasksConnector.createRepository(RepositoryInfo)` (returns `null` when disabled). Both must
   be gated because the bugtracking framework calls `createRepository()` during its own
   `loadRepositories()` startup, which races with `TasksStartup`.
-- The checkbox lives in Preferences > Advanced > Actions section.
+- The checkbox lives in Preferences > Advanced > IDE Extensions section.
 - The preference key is `PreferenceKeys.TASK_REPOSITORY_ENABLED`; cached via
   `PluginSettings.isTaskRepositoryEnabled()`.
 
@@ -582,7 +600,10 @@ user directory. Every database operation runs on that class's single-thread exec
 enqueues and returns — never add a query that runs inline on the calling thread. The pin and model-list
 caches are primed by `load()` and are memory-only for readers; writes update the cache and enqueue a
 row-level delta (`pinsDirty`/`modelsDirty` keep a write that races startup from being overwritten by the
-older snapshot). `SCHEMA_VERSION` is the upgrade cursor: bump it and extend `applySchemaMigration` when
+older snapshot). `harness_model` rows carry `last_seen`: `updateModels` stamps every model in a received
+list and keeps omitted models until two days have passed since they were last seen, measured from that
+harness's newest report — never from wall-clock at load, so a weekend without the IDE does not empty the
+cache. Pruning happens only when the harness reports again. `SCHEMA_VERSION` is the upgrade cursor: bump it and extend `applySchemaMigration` when
 stored semantics change, and never alter a released version's branch in place. Model ids are canonicalised
 (`support/ModelIdNormalizer`) inside `bindAttribution`, the one method every captured row from every table
 passes through; a version upgrade rewrites rows stored under the non-canonical separator. Do NOT re-add a
@@ -752,9 +773,16 @@ public void toggleVisibility() {
    hand authenticated URLs to PI harness sessions (`McpManager.getServerConfig()`).
    Filesystem/git/hg tools are confined to open projects via `ProjectPathGuard` —
    never add MCP tools that touch paths without it. `run_command` is gated on its
-   *working directory* only (`ProjectPathGuard.isInOpenProject(workDir)`, defaulting
-   to the current session directory); the command string itself is executed by
-   `bash -c` and is not otherwise constrained — treat that as deferred hardening.
+   *working directory* (`ProjectPathGuard.isInOpenProject(workDir)`, defaulting to the
+   current session directory) and by `support/RunCommandPolicy`: when either the
+   allowlist or denylist (*Options > BeanBot > System → Command Whitelist*) is set, shell
+   operators, env assignments and command chaining are rejected, a denied binary
+   always loses even if allowed, a denied `*` denies everything, and only allowlisted
+   executables may run (entries and commands match by executable name; `*`/`?` globs
+   are supported). With both
+   lists empty the command string still runs via `bash -c` unconstrained — that
+   remains deferred hardening. Do NOT bypass `RunCommandPolicy.rejection` in any
+   command-executing tool.
 8. MCP tool failures: a tool returns a normal JSON object with `status: "error"` plus a
    human `message`. `MessageServlet.handleToolsCallAsync` sets `result.isError = true` only
    when that object also carries `"fatal": true`, so the harness shows a failed call for real

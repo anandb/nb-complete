@@ -500,9 +500,8 @@ public class ConfigPanelController {
                 if (modelOption != null) {
                     modelResolver.parseModelVariants(modelOption, thinkingOptionValues());
                     final SessionConfigOption mirrorSource = modelOption;
-                    // updateModels mirrors into NbPreferences (possible
-                    // backing-store read on a first cache miss plus JSON
-                    // serialize + prefs.put) — keep that off the EDT.
+                    // updateModels touches the usage store (cache merge plus a
+                    // queued database write) — keep that off the EDT.
                     PREFS_RP.post(() -> cacheModelList(mirrorSource));
                 }
 
@@ -637,12 +636,11 @@ public class ConfigPanelController {
         }
     }
 
-    /** Mirrors a model option received from the server into the per-harness model list cache.
-     *  Never shrinks the cache — when the cache already covers every incoming id (e.g.
-     *  config_option_update carries a subset of what session/load reported), the existing
-     *  list is kept. Containment is checked by id, not list size: a same-size (or smaller)
-     *  list that swaps in an id the cache never held must still update, so those models
-     *  are not lost. */
+    /** Mirrors a model option received from the server into the per-harness model list
+     *  cache. Every list is forwarded, including a subset of what session/load reported:
+     *  the store stamps each included model as seen and keeps omitted models only for its
+     *  retention window, so skipping a subset here would let them expire while they are
+     *  still being reported. */
     private void cacheModelList(SessionConfigOption modelOption) {
         if (modelListControl == null || modelOption.options() == null || modelOption.options().isEmpty()) {
             return;
@@ -651,32 +649,18 @@ public class ConfigPanelController {
         if (harnessId == null) {
             return;
         }
-        List<AvailableModel> incoming = new ArrayList<>(modelOption.options().size());
-        for (SessionConfigSelectOption o : modelOption.options()) {
-            incoming.add(new AvailableModel(o.value(), o.name(), o.description()));
-        }
-        // Never shrink: keep the cache when it already covers every incoming id.
-        List<AvailableModel> existing = modelListControl.getModels(harnessId);
-        if (existing != null && coversAllIds(existing, incoming)) {
-            LOG.fine("Skipping cache update for {0}: existing list already covers all {1} incoming models",
-                    new Object[]{harnessId, incoming.size()});
-            return;
-        }
-        modelListControl.updateModels(harnessId, incoming);
+        forwardModels(modelListControl, harnessId, modelOption.options());
     }
 
-    /** True when {@code existing} already holds every model id present in {@code incoming}. */
-    static boolean coversAllIds(List<AvailableModel> existing, List<AvailableModel> incoming) {
-        Set<String> ids = new HashSet<>(existing.size() * 2);
-        for (AvailableModel model : existing) {
-            ids.add(model.modelId());
+    /** Converts the server's model options and hands the list to the store. Every
+     *  received list is forwarded, so the store can stamp each model as seen. */
+    static void forwardModels(ModelListControl control, String harnessId,
+                              List<SessionConfigSelectOption> options) {
+        List<AvailableModel> incoming = new ArrayList<>(options.size());
+        for (SessionConfigSelectOption o : options) {
+            incoming.add(new AvailableModel(o.value(), o.name(), o.description()));
         }
-        for (AvailableModel model : incoming) {
-            if (!ids.contains(model.modelId())) {
-                return false;
-            }
-        }
-        return true;
+        control.updateModels(harnessId, incoming);
     }
 
     /**

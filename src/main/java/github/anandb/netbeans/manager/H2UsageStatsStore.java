@@ -33,6 +33,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -46,6 +47,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.prefs.BackingStoreException;
 import java.util.prefs.Preferences;
@@ -157,14 +159,14 @@ public class H2UsageStatsStore
     private static final String CREATE_HARNESS_MODEL = "CREATE TABLE IF NOT EXISTS harness_model ("
             + "harness_id VARCHAR(128) NOT NULL, position INT NOT NULL,"
             + " model_id VARCHAR(512) NOT NULL, name VARCHAR(512), description CLOB,"
-            + " PRIMARY KEY (harness_id, position))";
+            + " last_seen BIGINT NOT NULL, PRIMARY KEY (harness_id, position))";
 
     private static final String MERGE_PINNED_MESSAGE =
             "MERGE INTO pinned_message (session_id, message_id, pinned_at) VALUES (?,?,?)";
 
     private static final String INSERT_HARNESS_MODEL =
-            "INSERT INTO harness_model (harness_id, position, model_id, name, description)"
-            + " VALUES (?,?,?,?,?)";
+            "INSERT INTO harness_model (harness_id, position, model_id, name, description, last_seen)"
+            + " VALUES (?,?,?,?,?,?)";
 
     private static final String SCHEMA_VERSION_KEY = "schema_version";
 
@@ -216,8 +218,14 @@ public class H2UsageStatsStore
      * counts dumped at end of turn); purely additive, no earlier row changes.
      * Version 6 adds {@code pinned_message} and {@code harness_model}, the two
      * datasets that outgrew preference values; purely additive.
+     * Version 7 adds {@code harness_model.last_seen} so a model the harness stops
+     * reporting is retained for two days before its row is dropped; existing rows
+     * are stamped at upgrade time.
      */
-    private static final int SCHEMA_VERSION = 6;
+    private static final int SCHEMA_VERSION = 7;
+
+    /** How long a model the harness stops reporting is kept before its row is dropped. */
+    static final long MODEL_RETENTION_MS = TimeUnit.DAYS.toMillis(2);
 
     /**
      * Open attempts allowed per process: the startup attempt plus the single
@@ -287,14 +295,23 @@ public class H2UsageStatsStore
      */
     private final Set<String> pinsDirty = ConcurrentHashMap.newKeySet();
 
-    /** Last known model list per harness; immutable snapshots, same convention. */
-    private final Map<String, List<AvailableModel>> models = new ConcurrentHashMap<>();
+    /**
+     * Last known model list per harness with the time each model was last reported.
+     * Immutable snapshots, same convention as the pin cache.
+     */
+    private final Map<String, List<TimedModel>> models = new ConcurrentHashMap<>();
 
     /** Harnesses whose model list was written after the last cache load. */
     private final Set<String> modelsDirty = ConcurrentHashMap.newKeySet();
 
     /** Serialises the read-modify-write of one session's pin set on the caller thread. */
     private final Object pinsLock = new Object();
+
+    /** Serialises the read-modify-write of one harness's model list on the caller thread. */
+    private final Object modelsLock = new Object();
+
+    /** A cached model and the time the harness last reported it. */
+    private record TimedModel(AvailableModel model, long lastSeen) { }
 
     /** Service-provider constructor: stores the database under the user directory. */
     public H2UsageStatsStore() {
@@ -999,16 +1016,20 @@ public class H2UsageStatsStore
     }
 
     private void loadModels() throws SQLException {
-        Map<String, List<AvailableModel>> loaded = new LinkedHashMap<>();
+        Map<String, List<TimedModel>> loaded = new LinkedHashMap<>();
         try (PreparedStatement ps = connection().prepareStatement(
-                "SELECT harness_id, model_id, name, description FROM harness_model"
+                "SELECT harness_id, model_id, name, description, last_seen FROM harness_model"
                 + " ORDER BY harness_id, position");
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
                 loaded.computeIfAbsent(rs.getString(1), k -> new ArrayList<>())
-                        .add(new AvailableModel(rs.getString(2), rs.getString(3), rs.getString(4)));
+                        .add(new TimedModel(new AvailableModel(rs.getString(2), rs.getString(3), rs.getString(4)),
+                                rs.getLong(5)));
             }
         }
+        // No retention pass here: the window is measured from a harness's most
+        // recent report, so rows loaded after a long break must survive until
+        // that harness reports again.
         loaded.forEach((harnessId, list) -> {
             if (!modelsDirty.contains(harnessId)) {
                 models.put(harnessId, List.copyOf(list));
@@ -1116,28 +1137,64 @@ public class H2UsageStatsStore
         if (harnessId == null || harnessId.isBlank()) {
             return List.of();
         }
-        List<AvailableModel> cached = models.get(harnessId);
-        return cached != null ? cached : List.of();
+        List<TimedModel> cached = models.get(harnessId);
+        if (cached == null) {
+            return List.of();
+        }
+        return cached.stream().map(TimedModel::model).toList();
     }
 
     @Override
     public void updateModels(String harnessId, List<AvailableModel> list) {
+        updateModels(harnessId, list, System.currentTimeMillis());
+    }
+
+    /**
+     * Records {@code list} as the harness's current models. Included models are
+     * stamped with {@code now}; models the harness stopped reporting are kept
+     * until {@link #MODEL_RETENTION_MS} has elapsed since they were last seen,
+     * measured from this newest report. Package-private so tests can supply the
+     * clock.
+     */
+    void updateModels(String harnessId, List<AvailableModel> list, long now) {
         if (harnessId == null || harnessId.isBlank() || list == null || list.isEmpty()) {
             return;
         }
-        List<AvailableModel> snapshot = List.copyOf(list.stream().filter(Objects::nonNull).toList());
-        if (snapshot.isEmpty() || snapshot.equals(models.get(harnessId))) {
-            return;
+        List<TimedModel> merged;
+        synchronized (modelsLock) {
+            merged = mergeModels(harnessId, list, now);
+            models.put(harnessId, merged);
         }
-        models.put(harnessId, snapshot);
         modelsDirty.add(harnessId);
         runDb(() -> {
             try {
-                replaceModels(harnessId, snapshot);
+                replaceModels(harnessId, merged);
             } catch (SQLException e) {
                 LOG.log(Level.WARNING, "Failed to persist the model list for harness " + harnessId, e);
             }
         });
+    }
+
+    /** Incoming models first, then the harness's previously known models that are still
+     *  inside the retention window; expired models are dropped. Caller holds {@code modelsLock}. */
+    private List<TimedModel> mergeModels(String harnessId, List<AvailableModel> list, long now) {
+        long cutoff = now - MODEL_RETENTION_MS;
+        List<TimedModel> merged = new ArrayList<>(list.size() + 4);
+        Set<String> seen = new HashSet<>();
+        for (AvailableModel model : list) {
+            if (model == null || model.modelId() == null || !seen.add(model.modelId())) {
+                continue;
+            }
+            merged.add(new TimedModel(model, now));
+        }
+        for (TimedModel previous : models.getOrDefault(harnessId, List.of())) {
+            String modelId = previous.model().modelId();
+            if (modelId != null && !seen.contains(modelId) && previous.lastSeen() >= cutoff) {
+                seen.add(modelId);
+                merged.add(previous);
+            }
+        }
+        return List.copyOf(merged);
     }
 
     @Override
@@ -1202,7 +1259,7 @@ public class H2UsageStatsStore
     }
 
     /** Rewrites one harness's model rows in a transaction, preserving list order. */
-    private void replaceModels(String harnessId, List<AvailableModel> list) throws SQLException {
+    private void replaceModels(String harnessId, List<TimedModel> list) throws SQLException {
         Connection conn = connection();
         boolean autoCommit = conn.getAutoCommit();
         conn.setAutoCommit(false);
@@ -1214,12 +1271,14 @@ public class H2UsageStatsStore
             }
             try (PreparedStatement insert = conn.prepareStatement(INSERT_HARNESS_MODEL)) {
                 int position = 0;
-                for (AvailableModel model : list) {
+                for (TimedModel row : list) {
+                    AvailableModel model = row.model();
                     insert.setString(1, harnessId);
                     insert.setInt(2, position++);
                     insert.setString(3, model.modelId());
                     insert.setString(4, model.name());
                     insert.setString(5, model.description());
+                    insert.setLong(6, row.lastSeen());
                     insert.addBatch();
                 }
                 insert.executeBatch();
@@ -1398,10 +1457,11 @@ public class H2UsageStatsStore
                 addReason(reasons, "model list: " + harnessId + ": " + e.getMessage());
             }
         }
+        long now = System.currentTimeMillis();
         List<String> written = new ArrayList<>();
         for (Map.Entry<String, List<AvailableModel>> entry : parsed.entrySet()) {
             try {
-                replaceModels(entry.getKey(), entry.getValue());
+                replaceModels(entry.getKey(), stampModels(entry.getValue(), now));
                 written.add(entry.getKey());
                 migrated[0]++;
             } catch (SQLException e) {
@@ -1417,6 +1477,17 @@ public class H2UsageStatsStore
             root.remove(LEGACY_MODEL_PREFIX + harnessId);
         }
         flushPreferences(root, reasons);
+    }
+
+    /** Wraps migrated models with one observation time. */
+    private static List<TimedModel> stampModels(List<AvailableModel> list, long now) {
+        List<TimedModel> rows = new ArrayList<>(list.size());
+        for (AvailableModel model : list) {
+            if (model != null) {
+                rows.add(new TimedModel(model, now));
+            }
+        }
+        return List.copyOf(rows);
     }
 
     private static List<String> rootKeys(Preferences root, List<String> reasons) {
@@ -2123,6 +2194,19 @@ public class H2UsageStatsStore
         if (dbVersion == 2) {
             try (Statement st = conn.createStatement()) {
                 st.execute("ALTER TABLE usage_update ALTER COLUMN cost_amount NUMERIC(20,6)");
+            }
+        }
+        if (dbVersion == 6) {
+            try (Statement st = conn.createStatement()) {
+                st.execute("ALTER TABLE IF EXISTS harness_model ADD COLUMN IF NOT EXISTS last_seen BIGINT");
+            }
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "UPDATE harness_model SET last_seen = ? WHERE last_seen IS NULL")) {
+                ps.setLong(1, System.currentTimeMillis());
+                ps.executeUpdate();
+            }
+            try (Statement st = conn.createStatement()) {
+                st.execute("ALTER TABLE IF EXISTS harness_model ALTER COLUMN last_seen SET NOT NULL");
             }
         }
         try (PreparedStatement ps = conn.prepareStatement(

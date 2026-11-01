@@ -8,7 +8,10 @@ import java.util.List;
  * <p>
  * The UI seeds the model dropdown from this store so it is populated before a
  * session reports its models, and pushes every received model list back into
- * it. Implementations handle persistence (NbPreferences).
+ * it. A list is merged, not replaced wholesale: models the harness stops
+ * reporting stay available until a retention window has elapsed since they
+ * were last seen, so a transient subset (e.g. {@code config_options_update})
+ * cannot drop models that are still valid. Implementations own that window.
  *
  * <p>Layer: contract — imports only {@code model/}.</p>
  */
@@ -18,8 +21,10 @@ public interface ModelListControl {
     List<AvailableModel> getModels(String harnessId);
 
     /**
-     * Stores {@code models} as the harness's model list when it differs from the
-     * cached one, updating both the in-memory and the persisted copy. Blank
+     * Records {@code models} as the harness's latest model list: every included
+     * model is stamped as seen now, previously known models that are absent are
+     * retained until their own retention window expires, and expired ones are
+     * removed. Both the in-memory and the persisted copy are updated. Blank
      * harness ids and null/empty lists are ignored.
      */
     void updateModels(String harnessId, List<AvailableModel> models);

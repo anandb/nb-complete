@@ -1,16 +1,19 @@
 package github.anandb.netbeans.ui;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
+import java.awt.Component;
 import java.awt.Container;
 import java.awt.Dimension;
 import java.lang.reflect.Field;
 import java.util.prefs.Preferences;
 
 import javax.swing.JCheckBox;
+import javax.swing.JLabel;
 import javax.swing.JSpinner;
 import javax.swing.SpinnerNumberModel;
 
@@ -19,6 +22,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.netbeans.api.editor.mimelookup.MimeLookup;
 import org.netbeans.api.editor.mimelookup.MimePath;
+import org.openide.util.NbBundle;
 import org.netbeans.api.editor.settings.SimpleValueNames;
 
 /**
@@ -86,20 +90,36 @@ class ACPOptionsPanelLineHeightTest {
         ACPOptionsPanelController controller = new ACPOptionsPanelController();
         ACPOptionsPanel panel = new ACPOptionsPanel(controller);
 
-        JCheckBox previous = getCheckbox(panel, "copyAllItemsCheckbox");
         JCheckBox setting = getCheckbox(panel, "projectSwitchRestartCheckbox");
-        Container actions = setting.getParent();
-        assertSame(previous.getParent(), actions, "both rows must live in the Actions grid");
+        Container system = setting.getParent();
+        Component hint = findLabel(system,
+                NbBundle.getMessage(ACPOptionsPanel.class, "HLP_ProjectSwitchRestart"));
+        assertNotNull(hint, "the restart explanation must stay with the option");
+        assertSame(system, hint.getParent(), "both rows must live in the System grid");
 
         // The Options dialog stretches sections beyond their preferred height.
         // Only a row with weighty > 0 grows; the last row must stay flush with
         // the previous one instead of centring itself in the spare space.
-        Dimension preferred = actions.getPreferredSize();
-        actions.setSize(preferred.width, preferred.height + 80);
-        actions.doLayout();
+        Dimension preferred = system.getPreferredSize();
+        system.setSize(preferred.width, preferred.height);
+        system.doLayout();
+        int gapBefore = hint.getY() - (setting.getY() + setting.getHeight());
+        system.setSize(preferred.width, preferred.height + 80);
+        system.doLayout();
 
-        int gap = setting.getY() - (previous.getY() + previous.getHeight());
-        assertTrue(gap <= 10, "last row must not absorb extra vertical space, gap was " + gap + "px");
+        int gapAfter = hint.getY() - (setting.getY() + setting.getHeight());
+        assertTrue(gapAfter - gapBefore <= 1,
+                "last row must not absorb extra vertical space, gap grew from "
+                        + gapBefore + "px to " + gapAfter + "px");
+    }
+
+    private static Component findLabel(Container parent, String text) {
+        for (Component child : parent.getComponents()) {
+            if (child instanceof JLabel label && text.equals(label.getText())) {
+                return label;
+            }
+        }
+        return null;
     }
 
     @Test

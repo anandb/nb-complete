@@ -25,7 +25,7 @@ import github.anandb.netbeans.support.PreferenceKeys;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.BinaryResolver;
 import github.anandb.netbeans.support.PluginSettings;
-import github.anandb.netbeans.support.FsWriteSettings;
+import github.anandb.netbeans.support.AcpFsPolicy;
 import github.anandb.netbeans.support.ProcessTerminator;
 
 /**
@@ -362,9 +362,11 @@ class ServerProcessLifecycle {
     }
 
     private void initializeProtocol() {
+        AcpFsPolicy fsPolicy = PluginSettings.getAcpFsPolicy();
         Map<String, Object> fsCaps = new HashMap<>();
         fsCaps.put("readTextFile", true);
-        fsCaps.put("writeTextFile", FsWriteSettings.isEnabled());
+        fsCaps.put("writeTextFile", fsPolicy == AcpFsPolicy.ALLOW
+                || fsPolicy == AcpFsPolicy.READ_ANY_WRITE_PROJECT);
         Map<String, Object> params = Map.of(
                 "protocolVersion", 1,
                 "clientCapabilities", Map.of(

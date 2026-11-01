@@ -1,5 +1,18 @@
 # Release Notes
 
+## Unreleased (1.29.2)
+
+### Features
+- **`run_command` can be restricted to allowlisted binaries**: *Options > BeanBot > System → Command Whitelist* opens a compact dialog with **Denied** and **Allowed** lists (one name or glob per line, `*` and `?` supported; matching is by executable name so `./mvnw` matches `mvnw`). Denied always wins, and a status line states when all commands are allowed or all denied. When either list is set, shell operators (`; | & > <`, `$(…)`), environment assignments and therefore command chaining are rejected, so an allowed binary cannot smuggle in another; both lists empty keeps the previous unrestricted behavior.
+- **ACP file access is confined to the project, with a user-selectable policy**: `fs/read_text_file` and `fs/write_text_file` now reject any path outside the session's project directory (canonical paths, separator boundary, symlinks resolved). *Options > BeanBot > System* offers an **ACP file access** dropdown: **Allow (project only)** (read and write inside the project, the default), **Read external, write project** (reads anywhere, writes confined) and **Read-only** (project reads only, no writes). The advertised capabilities follow the policy — reads are always offered, writes only for Allow and Read external — Tool calls rejected by the policy return a message naming the offending path or the policy. The policy governs only the ACP file tools; the harness's own file access and BeanBot's MCP tools are unaffected.
+- **Model lists keep models the harness stops reporting for two days**: `harness_model` rows now carry `last_seen`. Every received model list stamps the models it contains, and a model omitted from a later list is retained until two days have elapsed since it was last seen — measured from the harness's newest report, so a long break between IDE sessions never empties the cache. Pruning happens only when that harness reports again, and models listed before the upgrade are stamped at migration time.
+
+> **Isolation note:** these file-access, protected-path and command-whitelist checks are IDE-side guardrails. A harness's own tools — and any child process started by `run_command` — are not sandboxed by BeanBot. For true isolation, run the harness in a container (or VM) and mount only the project directory it should see.
+
+### Fixes
+- **Credential files are off-limits to the agent**: `.env*` (except `.env.example`/`sample`/`template`/`dist`), `.netrc`, `.npmrc`, `.pypirc`, `.git-credentials`, `.htpasswd`, SSH/GPG/cloud credential directories (`~/.ssh`, `.aws`, `.gnupg`, `.kube`, `.azure`, `.docker`), private key names (`id_rsa`, …) and `*.pem|key|p12|pfx|jks|keystore|ppk|secret(s)` are refused for reads and writes. `read_file`, the write tools, `apply_patch`, `search_project` (skipped from results) and the ACP `fs/read_text_file`/`fs/write_text_file` handlers all enforce the check, so secrets do not reach the model prompt or get planted for later tools.
+- **Agent writes are refused inside `.git`, `.hg` and `.mvn`**: those directories hold hooks and build configuration that run on the user's next git/hg/build action, so writing there is code execution by proxy. Every MCP write tool (`write_to_file`, `replace_lines`, `insert_in_file`, `delete_lines`, `apply_patch`) and the ACP `fs/write_text_file` handler now reject such paths with a message naming the protected directory; reads remain allowed.
+
 ## v1.29.1 (Changes since v1.28.0)
 
 ### Features

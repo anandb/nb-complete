@@ -8,12 +8,13 @@ import java.util.prefs.Preferences;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import java.util.logging.Level;
 import javax.swing.JFileChooser;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
 import github.anandb.netbeans.support.BinaryResolver;
+import github.anandb.netbeans.support.AcpFsPolicy;
 import github.anandb.netbeans.support.PluginSettings;
-import github.anandb.netbeans.support.ShortcutUtils;
 import github.anandb.netbeans.support.XmlUtils;
 import org.netbeans.api.editor.mimelookup.MimeLookup;
 import org.netbeans.api.editor.mimelookup.MimePath;
@@ -39,6 +40,7 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
+import javax.swing.DefaultListCellRenderer;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.ListCellRenderer;
@@ -101,6 +103,8 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
     private JSpinner mcpPortSpinner;
     private JCheckBox useWslCheckbox;
     private JCheckBox projectSwitchRestartCheckbox;
+    private JLabel contextActionsSummary;
+    private JButton contextActionsButton;
     private JSpinner idleTimeoutSpinner;
     private JSpinner maxMessagesSpinner;
     private JLabel argsLabel;
@@ -118,6 +122,10 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
     private JComboBox<String> chatFontCombo;
     private JButton editPreambleButton;
     private JCheckBox preambleEnabledCheckbox;
+    private JComboBox<AcpFsPolicy> fsPolicyCombo;
+    private JButton runCommandPolicyButton;
+    private String runCommandAllowlist = "";
+    private String runCommandDenylist = "";
     private JSpinner lineHeightCorrectionSpinner;
 
     private boolean userEditedPath;
@@ -296,6 +304,67 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         systemPanel.add(lineHeightCorrectionSpinner, UIUtils.createGbc(3, 0, 0.0, 0, GridBagConstraints.NONE,
                 GridBagConstraints.EAST, new Insets(0, 0, 5, 12)));
 
+        JLabel fsLabel = new JLabel(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_FsLabel"));
+        fsLabel.setToolTipText(tooltip("TT_FsNote"));
+        systemPanel.add(fsLabel, UIUtils.createGbc(2, 2, 0.0, 0, GridBagConstraints.NONE,
+                GridBagConstraints.WEST, new Insets(0, 15, 5, 5)));
+
+        fsPolicyCombo = new JComboBox<>(AcpFsPolicy.values());
+        fsPolicyCombo.setRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> list, Object value, int index,
+                    boolean isSelected, boolean cellHasFocus) {
+                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                setText(value instanceof AcpFsPolicy policy ? fsPolicyLabel(policy) : "");
+                return this;
+            }
+        });
+        fsPolicyCombo.setPrototypeDisplayValue(AcpFsPolicy.READ_ANY_WRITE_PROJECT);
+        fsPolicyCombo.addActionListener(evt -> {
+            updateFsPolicyTooltip();
+            controller.changed();
+        });
+        systemPanel.add(fsPolicyCombo, UIUtils.createGbc(3, 2, 0.0, 0, GridBagConstraints.NONE,
+                GridBagConstraints.EAST, new Insets(0, 0, 5, 12)));
+
+        runCommandPolicyButton = new JButton(
+                NbBundle.getMessage(ACPOptionsPanel.class, "LBL_RunCommandPolicy"));
+        runCommandPolicyButton.setToolTipText(tooltip("TT_RunCommandPolicy"));
+        runCommandPolicyButton.addActionListener(evt -> editRunCommandPolicy());
+        systemPanel.add(runCommandPolicyButton, UIUtils.createGbc(3, 3, 0.0, 0, GridBagConstraints.NONE,
+                GridBagConstraints.EAST, new Insets(0, 0, 5, 12)));
+
+        projectSwitchRestartCheckbox.setText(
+                scopedLabel("LBL_ProjectSwitchRestart", PluginSettings.Effect.IDE_RESTART));
+        projectSwitchRestartCheckbox.setToolTipText(tooltip("TT_ProjectSwitchRestart"));
+        projectSwitchRestartCheckbox.addActionListener(evt -> controller.changed());
+        GridBagConstraints restartGbc = UIUtils.createGbc(0, 2, 1.0, 0, GridBagConstraints.HORIZONTAL,
+                GridBagConstraints.WEST, new Insets(0, 12, 5, 0));
+        restartGbc.gridwidth = 2;
+        systemPanel.add(projectSwitchRestartCheckbox, restartGbc);
+
+        // Visible without a hover: the cost of this option must be readable before it is ticked.
+        JLabel projectSwitchHintLabel = new JLabel(
+                NbBundle.getMessage(ACPOptionsPanel.class, "HLP_ProjectSwitchRestart"));
+        projectSwitchHintLabel.setForeground(UIManager.getColor("Label.disabledForeground"));
+        projectSwitchHintLabel.setFont(projectSwitchHintLabel.getFont()
+                .deriveFont(Font.ITALIC, projectSwitchHintLabel.getFont().getSize() - 1f));
+        GridBagConstraints projectSwitchHintGbc = UIUtils.createGbc(0, 3, 1.0, 0, GridBagConstraints.HORIZONTAL,
+                GridBagConstraints.WEST, new Insets(0, 32, 5, 0));
+        projectSwitchHintGbc.gridwidth = 3;
+        systemPanel.add(projectSwitchHintLabel, projectSwitchHintGbc);
+
+        // One width for the right-hand controls: the two spinners match the
+        // ACP file-access dropdown instead of rendering as narrow boxes.
+        int rightColumnWidth = fsPolicyCombo.getPreferredSize().width;
+        for (JSpinner spinner : new JSpinner[]{lineHeightCorrectionSpinner, mcpPortSpinner}) {
+            Dimension spinnerSize = spinner.getPreferredSize();
+            spinner.setPreferredSize(new Dimension(rightColumnWidth, spinnerSize.height));
+        }
+        Dimension whitelistSize = runCommandPolicyButton.getPreferredSize();
+        runCommandPolicyButton.setPreferredSize(
+                new Dimension(rightColumnWidth, whitelistSize.height));
+
         add(systemPanel);
         add(Box.createVerticalStrut(4));
 
@@ -366,95 +435,38 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         add(behaviorPanel);
         add(Box.createVerticalStrut(4));
 
-        // --- Actions ---
+        // --- IDE Extensions ---
         JPanel actionsPanel = createSectionPanel("LBL_ActionsHeader");
         actionsPanel.setLayout(new GridBagLayout());
-
-        sortLinesCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_SortLines"));
-        sortLinesCheckbox.setToolTipText(tooltip("TT_SortLines"));
-        sortLinesCheckbox.addActionListener(evt -> controller.changed());
-        actionsPanel.add(sortLinesCheckbox, UIUtils.createGbc(0, 0, 1.0, 0, GridBagConstraints.HORIZONTAL,
-                GridBagConstraints.WEST, new Insets(0, 12, 5, 0)));
-
-        compactJsonCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_CompactJson"));
-        compactJsonCheckbox.setToolTipText(tooltip("TT_CompactJson"));
-        compactJsonCheckbox.addActionListener(evt -> controller.changed());
-        actionsPanel.add(compactJsonCheckbox, UIUtils.createGbc(0, 1, 1.0, 0, GridBagConstraints.HORIZONTAL,
-                GridBagConstraints.WEST, new Insets(0, 12, 5, 0)));
-
-        searchWebCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_SearchWeb"));
-        searchWebCheckbox.setToolTipText(tooltip("TT_SearchWeb"));
-        searchWebCheckbox.addActionListener(evt -> controller.changed());
-        actionsPanel.add(searchWebCheckbox, UIUtils.createGbc(0, 2, 1.0, 0, GridBagConstraints.HORIZONTAL,
-                GridBagConstraints.WEST, new Insets(0, 12, 5, 0)));
-
-        showAnnotationsCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_ShowAnnotations"));
-        showAnnotationsCheckbox.setToolTipText(tooltip("TT_ShowAnnotations"));
-        showAnnotationsCheckbox.addActionListener(evt -> controller.changed());
-        actionsPanel.add(showAnnotationsCheckbox, UIUtils.createGbc(0, 3, 1.0, 0, GridBagConstraints.HORIZONTAL,
-                GridBagConstraints.WEST, new Insets(0, 12, 5, 0)));
 
         markdownProjectCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_EnableMarkdownProject"));
         markdownProjectCheckbox.setToolTipText(tooltip("TT_EnableMarkdownProject"));
         markdownProjectCheckbox.addActionListener(evt -> controller.changed());
-        actionsPanel.add(markdownProjectCheckbox, UIUtils.createGbc(0, 4, 1.0, 0, GridBagConstraints.HORIZONTAL,
-                GridBagConstraints.WEST, new Insets(0, 12, 5, 0)));
-
-        viewFileHistoryCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_ViewFileHistory"));
-        viewFileHistoryCheckbox.setToolTipText(tooltip("TT_ViewFileHistory"));
-        viewFileHistoryCheckbox.addActionListener(evt -> controller.changed());
-        actionsPanel.add(viewFileHistoryCheckbox, UIUtils.createGbc(1, 0, 1.0, 0, GridBagConstraints.HORIZONTAL,
-                GridBagConstraints.WEST, new Insets(0, 25, 5, 0)));
-
-        stashDiffCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_StashDiff"));
-        stashDiffCheckbox.setToolTipText(tooltip("TT_StashDiff"));
-        stashDiffCheckbox.addActionListener(evt -> controller.changed());
-        actionsPanel.add(stashDiffCheckbox, UIUtils.createGbc(1, 1, 1.0, 0, GridBagConstraints.HORIZONTAL,
-                GridBagConstraints.WEST, new Insets(0, 25, 5, 0)));
-
-        String quickJumpShortcut = ShortcutUtils.resolveShortcut("github.anandb.netbeans.ui.GoToFileAction");
-        quickJumpCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_QuickJump")
-                + (quickJumpShortcut.isEmpty() ? "" : " (" + quickJumpShortcut + ")"));
-        quickJumpCheckbox.setToolTipText(tooltip("TT_QuickJump"));
-        quickJumpCheckbox.addActionListener(evt -> controller.changed());
-        actionsPanel.add(quickJumpCheckbox, UIUtils.createGbc(1, 2, 1.0, 0, GridBagConstraints.HORIZONTAL,
-                GridBagConstraints.WEST, new Insets(0, 25, 5, 0)));
-
-        copyAllItemsCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_CopyAllItems"));
-        copyAllItemsCheckbox.setToolTipText(tooltip("TT_CopyAllItems"));
-        copyAllItemsCheckbox.addActionListener(evt -> controller.changed());
-        actionsPanel.add(copyAllItemsCheckbox, UIUtils.createGbc(0, 5, 1.0, 0, GridBagConstraints.HORIZONTAL,
+        actionsPanel.add(markdownProjectCheckbox, UIUtils.createGbc(0, 0, 1.0, 0, GridBagConstraints.HORIZONTAL,
                 GridBagConstraints.WEST, new Insets(0, 12, 5, 0)));
 
         miniAssistantCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_EnableMiniAssistant"));
         miniAssistantCheckbox.setToolTipText(tooltip("TT_EnableMiniAssistant"));
         miniAssistantCheckbox.addActionListener(evt -> controller.changed());
-        actionsPanel.add(miniAssistantCheckbox, UIUtils.createGbc(1, 3, 1.0, 0, GridBagConstraints.HORIZONTAL,
-                GridBagConstraints.WEST, new Insets(0, 25, 5, 0)));
+        actionsPanel.add(miniAssistantCheckbox, UIUtils.createGbc(1, 0, 0.0, 0, GridBagConstraints.NONE,
+                GridBagConstraints.EAST, new Insets(0, 0, 5, 12)));
 
         taskRepositoryCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_EnableTaskRepository"));
         taskRepositoryCheckbox.setToolTipText(tooltip("TT_EnableTaskRepository"));
         taskRepositoryCheckbox.addActionListener(evt -> controller.changed());
-        actionsPanel.add(taskRepositoryCheckbox, UIUtils.createGbc(1, 4, 1.0, 0, GridBagConstraints.HORIZONTAL,
-                GridBagConstraints.WEST, new Insets(0, 25, 5, 0)));
-
-        projectSwitchRestartCheckbox.setText(
-                scopedLabel("LBL_ProjectSwitchRestart", PluginSettings.Effect.IDE_RESTART));
-        projectSwitchRestartCheckbox.setToolTipText(tooltip("TT_ProjectSwitchRestart"));
-        projectSwitchRestartCheckbox.addActionListener(evt -> controller.changed());
-        actionsPanel.add(projectSwitchRestartCheckbox, UIUtils.createGbc(0, 6, 1.0, 0, GridBagConstraints.HORIZONTAL,
+        actionsPanel.add(taskRepositoryCheckbox, UIUtils.createGbc(0, 1, 1.0, 0, GridBagConstraints.HORIZONTAL,
                 GridBagConstraints.WEST, new Insets(0, 12, 5, 0)));
 
-        // Visible without a hover: the cost of this option must be readable before it is ticked.
-        JLabel projectSwitchHintLabel = new JLabel(
-                NbBundle.getMessage(ACPOptionsPanel.class, "HLP_ProjectSwitchRestart"));
-        projectSwitchHintLabel.setForeground(UIManager.getColor("Label.disabledForeground"));
-        projectSwitchHintLabel.setFont(projectSwitchHintLabel.getFont()
-                .deriveFont(Font.ITALIC, projectSwitchHintLabel.getFont().getSize() - 1f));
-        GridBagConstraints projectSwitchHintGbc = UIUtils.createGbc(0, 7, 1.0, 0, GridBagConstraints.HORIZONTAL,
-                GridBagConstraints.WEST, new Insets(0, 32, 5, 0));
-        projectSwitchHintGbc.gridwidth = 2;
-        actionsPanel.add(projectSwitchHintLabel, projectSwitchHintGbc);
+        contextActionsSummary = new JLabel();
+        contextActionsSummary.setToolTipText(tooltip("TT_ContextActions"));
+        actionsPanel.add(contextActionsSummary, UIUtils.createGbc(0, 2, 1.0, 0, GridBagConstraints.HORIZONTAL,
+                GridBagConstraints.WEST, new Insets(0, 12, 5, 5)));
+
+        contextActionsButton = new JButton(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_Configure"));
+        contextActionsButton.setToolTipText(tooltip("TT_ContextActions"));
+        contextActionsButton.addActionListener(evt -> editContextActions());
+        actionsPanel.add(contextActionsButton, UIUtils.createGbc(1, 2, 0.0, 0, GridBagConstraints.NONE,
+                GridBagConstraints.EAST, new Insets(0, 0, 5, 12)));
 
         add(actionsPanel);
         add(Box.createVerticalStrut(4));
@@ -683,6 +695,12 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         copyAllItemsCheckbox.setSelected(PluginSettings.isCopyAllItemsEnabled());
         miniAssistantCheckbox.setSelected(PluginSettings.isMiniAssistantEnabled());
         taskRepositoryCheckbox.setSelected(PluginSettings.isTaskRepositoryEnabled());
+        updateContextActionsSummary();
+        fsPolicyCombo.setSelectedItem(PluginSettings.getAcpFsPolicy());
+        updateFsPolicyTooltip();
+        runCommandAllowlist = PluginSettings.getRunCommandAllowlist();
+        runCommandDenylist = PluginSettings.getRunCommandDenylist();
+        updateRunCommandTooltip();
         projectSwitchRestartCheckbox.setSelected(PluginSettings.isProjectSwitchRestartConfigured());
         markdownProjectCheckbox.setSelected(PluginSettings.isMarkdownProjectEnabled());
         mcpServerCheckbox.setSelected(PluginSettings.isMcpServerEnabled());
@@ -691,6 +709,87 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         updateGeminiModelHint();
         // Reopening Options (including after Cancel) must still show what is outstanding.
         refreshPendingRestartBar();
+    }
+
+    /** Opens the allow/deny editor; settings stay local until Options is applied. */
+    private void editRunCommandPolicy() {
+        RunCommandPolicyDialog.show(this, runCommandAllowlist, runCommandDenylist).ifPresent(result -> {
+            runCommandAllowlist = result.allowlist();
+            runCommandDenylist = result.denylist();
+            updateRunCommandTooltip();
+            controller.changed();
+        });
+    }
+
+    /** Summarises the current run_command policy in the button tooltip. */
+    private void updateRunCommandTooltip() {
+        String summary = NbBundle.getMessage(ACPOptionsPanel.class, "TT_RunCommandPolicy")
+                + "\nAllowed: " + (runCommandAllowlist.isBlank() ? "(any)" : runCommandAllowlist)
+                + "\nDenied: " + (runCommandDenylist.isBlank() ? "(none)" : runCommandDenylist);
+        runCommandPolicyButton.setToolTipText(wrapTooltip(summary));
+    }
+
+    /** Opens the editor-context action toggles; values apply when Options is applied. */
+    private void editContextActions() {
+        List<ContextActionsDialog.Toggle> toggles = contextActionToggles();
+        ContextActionsDialog.show(this, toggles).ifPresent(selected -> {
+            for (int i = 0; i < toggles.size(); i++) {
+                toggles.get(i).setter().accept(selected[i]);
+            }
+            updateContextActionsSummary();
+            controller.changed();
+        });
+    }
+
+    /** The editor-context toggles edited in the Configure dialog. */
+    private List<ContextActionsDialog.Toggle> contextActionToggles() {
+        return List.of(
+                toggle("LBL_ActionSortLines", "TT_SortLines", sortLinesCheckbox),
+                toggle("LBL_ActionCompactJson", "TT_CompactJson", compactJsonCheckbox),
+                toggle("LBL_ActionSearchWeb", "TT_SearchWeb", searchWebCheckbox),
+                toggle("LBL_ActionShowAnnotations", "TT_ShowAnnotations", showAnnotationsCheckbox),
+                toggle("LBL_ActionViewFileHistory", "TT_ViewFileHistory", viewFileHistoryCheckbox),
+                toggle("LBL_ActionStashDiff", "TT_StashDiff", stashDiffCheckbox),
+                toggle("LBL_ActionQuickJump", "TT_QuickJump", quickJumpCheckbox),
+                toggle("LBL_ActionCopyAllItems", "TT_CopyAllItems", copyAllItemsCheckbox));
+    }
+
+    private static ContextActionsDialog.Toggle toggle(String labelKey, String tooltipKey, JCheckBox box) {
+        return new ContextActionsDialog.Toggle(
+                NbBundle.getMessage(ACPOptionsPanel.class, labelKey),
+                tooltip(tooltipKey),
+                box::isSelected,
+                box::setSelected);
+    }
+
+    /** Refreshes "N of M enabled" from the current toggle states. */
+    private void updateContextActionsSummary() {
+        List<ContextActionsDialog.Toggle> toggles = contextActionToggles();
+        long enabled = toggles.stream().filter(t -> t.selected().getAsBoolean()).count();
+        contextActionsSummary.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_ContextActions",
+                enabled, toggles.size()));
+    }
+
+    /** Short label for one file-access policy option. */
+    private static String fsPolicyLabel(AcpFsPolicy policy) {
+        String key = switch (policy) {
+            case ALLOW -> "LBL_FsAllowShort";
+            case READ_ANY_WRITE_PROJECT -> "LBL_FsReadExternalShort";
+            case READ_ONLY -> "LBL_FsReadOnlyShort";
+        };
+        return NbBundle.getMessage(ACPOptionsPanel.class, key);
+    }
+
+    /** Explains the selected policy in the combo's tooltip. */
+    private void updateFsPolicyTooltip() {
+        Object selected = fsPolicyCombo.getSelectedItem();
+        if (selected instanceof AcpFsPolicy policy) {
+            fsPolicyCombo.setToolTipText(tooltip("TT_Fs" + switch (policy) {
+                case ALLOW -> "Allow";
+                case READ_ANY_WRITE_PROJECT -> "ReadExternal";
+                case READ_ONLY -> "ReadOnly";
+            }));
+        }
     }
 
     /** Shows a reminder to change --model when the selected binary is Gemini. */
@@ -913,6 +1012,9 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         PluginSettings.setCopyAllItemsEnabled(copyAllItemsCheckbox.isSelected());
         PluginSettings.setMiniAssistantEnabled(miniAssistantCheckbox.isSelected());
         PluginSettings.setTaskRepositoryEnabled(taskRepositoryCheckbox.isSelected());
+        PluginSettings.setAcpFsPolicy((AcpFsPolicy) fsPolicyCombo.getSelectedItem());
+        PluginSettings.setRunCommandAllowlist(runCommandAllowlist);
+        PluginSettings.setRunCommandDenylist(runCommandDenylist);
         PluginSettings.setProjectSwitchRestartEnabled(projectSwitchRestartCheckbox.isSelected());
         PluginSettings.setMarkdownProjectEnabled(markdownProjectCheckbox.isSelected());
         PluginSettings.setMcpServerEnabled(mcpServerCheckbox.isSelected());
@@ -946,7 +1048,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         String title = NbBundle.getMessage(ACPOptionsPanel.class, "LBL_PreambleTooLong");
         String message = NbBundle.getMessage(ACPOptionsPanel.class, "MSG_PreambleTooLong",
                 length, PluginSettings.MAX_PREAMBLE_LENGTH);
-        LOG.log(java.util.logging.Level.WARNING, "Session preamble not saved: {0} characters", length);
+        LOG.log(Level.WARNING, "Session preamble not saved: {0} characters", length);
         SwingUtilities.invokeLater(() -> NotificationDisplayer.getDefault().notify(
                 title, NotificationDisplayer.Priority.LOW.getIcon(), message, null,
                 NotificationDisplayer.Priority.LOW));
